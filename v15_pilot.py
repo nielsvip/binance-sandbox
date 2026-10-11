@@ -1507,15 +1507,83 @@ def _is_red_cell(cell) -> bool:
     except Exception:
         return False
 
-def _paint_tab_status(wb) -> dict:
+_ZERO_DEAD_KNOB_MIN_ROWS = 3
+_ZERO_SAME_RUN = 6
+_ZERO_TAB_FRAC = 0.85
+_ZERO_TAB_MIN_ROWS = 20
+_ZERO_BH_HALF = 0.5
+
+
+def _zero_rules_eval(sname: str, ordered: list, by_switch: dict, skipped_by_switch: dict | None = None) -> list:
+    """USER 2026-10-11: zero/same-delta detector (pure; shared by pilot paint + sidecar CLI). ordered = [(canon, g_or_None)] in sheet order (MEASURED rows only — callers exclude never-evaluated rows); by_switch = {switch: [(canon, g_or_None)]}. skipped_by_switch = {switch: [canon]} never evaluated. Returns [alert-dicts]. O(rows), no evals — never slows calculations."""
+    alerts = []
+    try:
+        for sw, keys in (skipped_by_switch or {}).items():
+            if len(keys) >= _ZERO_DEAD_KNOB_MIN_ROWS:
+                alerts.append({"tab": sname, "rule": "SKIP_KNOB", "keys": list(keys), "detail": f"{sw}: {len(keys)} values never evaluated (unwired or skipped — wire it or drop the rows)"})
+        nums = [(c, g) for c, g in ordered if isinstance(g, (int, float))]
+        if len(nums) >= _ZERO_TAB_MIN_ROWS:
+            n0 = sum(1 for _, g in nums if g == 0.0)
+            if n0 / len(nums) >= _ZERO_TAB_FRAC:
+                alerts.append({"tab": sname, "rule": "ZERO_TAB", "keys": [c for c, _ in nums[:8]], "detail": f"{n0}/{len(nums)} exact-0.0 G (>=85%)"})
+        best_run, best_val, best_at = 1, None, 0
+        run, run_at = 1, 0
+        for i in range(1, len(nums)):
+            if nums[i][1] == nums[i - 1][1]:
+                run += 1
+            else:
+                if run > best_run:
+                    best_run, best_val, best_at = run, nums[i - 1][1], run_at
+                run, run_at = 1, i
+        if run > best_run:
+            best_run, best_val, best_at = run, nums[run_at][1], run_at
+        if best_run >= _ZERO_SAME_RUN:
+            alerts.append({"tab": sname, "rule": "SAME_RUN", "keys": [c for c, _ in nums[best_at:best_at + best_run][:8]], "detail": f"{best_run} consecutive identical G={best_val}"})
+        for sw, rows in by_switch.items():
+            gvals = [(c, g) for c, g in rows if isinstance(g, (int, float))]
+            if len(gvals) >= _ZERO_DEAD_KNOB_MIN_ROWS and all(g == gvals[0][1] for _, g in gvals):
+                alerts.append({"tab": sname, "rule": "DEAD_KNOB", "keys": [c for c, _ in gvals], "detail": f"{sw}: all {len(gvals)} values delta {gvals[0][1]} (knob does nothing on this window)"})
+    except Exception:
+        pass
+    return alerts
+
+
+def _rec_measured(rec) -> bool:
+    """USER 2026-10-11: a done-rec counts as MEASURED when any eval output exists (vec/trades/yellows/naked/joint). DEAD_VEC_PATH/SKIPPED recs carry none of these."""
+    if not isinstance(rec, dict):
+        return False
+    if rec.get("vec_gain") is not None or rec.get("trades") is not None:
+        return True
+    if rec.get("yellows") or rec.get("pending_lbI"):
+        return True
+    return rec.get("naked_delta") is not None or rec.get("joint_delta") is not None
+
+
+def _zero_bh_eval(gain, bh) -> dict | None:
+    """USER 2026-10-11: BH-ratio rule — 15m must beat BH (1x acceptable, <0.5x inexcusable = RED). Returns alert or None."""
+    try:
+        g, b = float(gain), float(bh)
+    except Exception:
+        return None
+    if b > 0 and g < _ZERO_BH_HALF * b:
+        return {"tab": "BASELINE_METRICS", "rule": "BH_HALF", "keys": [], "detail": f"gain {g:.2f}% < 0.5x BH {b:.2f}% (inexcusable)"}
+    if b <= 0 and g <= 0:
+        return {"tab": "BASELINE_METRICS", "rule": "BH_HALF", "keys": [], "detail": f"gain {g:.2f}% <= 0 with BH {b:.2f}% (inexcusable)"}
+    return None
+
+def _paint_tab_status(wb, measured=None) -> dict:
     # tab color = live progress: RED any red/failed row (agent fixes it while the sheet keeps filling),
     # GREEN every switch row has numeric F, ORANGE in progress, untouched = no rows computed yet
+    # USER 2026-10-11: zero/same-delta detector rides this same loop (zero extra passes, zero evals — never slows calculations).
+    # measured = set of canonical keys actually evaluated (None = unknown, treat numeric as measured; sidecar refines).
     status = {}
+    all_alerts = []
     for sname in SWITCH_SHEETS:
         if sname not in wb.sheetnames:
             continue
         ws = wb[sname]
         rows = filled = red = 0
+        _ordered, _by_sw, _skipped = [], {}, {}
         for r in range(3, ws.max_row + 1):
             if ws.cell(row=r, column=1).value in (None, ""):
                 continue
@@ -1527,14 +1595,59 @@ def _paint_tab_status(wb) -> dict:
                 filled += 1
             if _is_red_cell(f_cell) or _is_red_cell(g_cell) or g_cell.value == -1.0:
                 red += 1
-        if red:
+            try:
+                _sw = str(ws.cell(row=r, column=1).value)
+                _ck = _canon_key(sname, _sw, ws.cell(row=r, column=2).value)
+                if measured is not None and _ck not in measured:
+                    _skipped.setdefault(_sw.strip().upper(), []).append(_ck)
+                    continue
+                _g = g_cell.value if isinstance(g_cell.value, (int, float)) else (f_cell.value if isinstance(f_cell.value, (int, float)) else None)
+                _ordered.append((_ck, _g))
+                _by_sw.setdefault(_sw.strip().upper(), []).append((_ck, _g))
+            except Exception:
+                pass
+        _zalerts = _zero_rules_eval(sname, _ordered, _by_sw, _skipped)
+        all_alerts.extend(_zalerts)
+        if red or _zalerts:
             ws.sheet_properties.tabColor = "FF0000"
         elif rows and filled >= rows:
             ws.sheet_properties.tabColor = "00B050"
         elif filled:
             ws.sheet_properties.tabColor = "FFC000"
-        status[sname] = {"rows": rows, "filled": filled, "red": red}
+        status[sname] = {"rows": rows, "filled": filled, "red": red, "zero": [a["rule"] for a in _zalerts]}
+    try:
+        if all_alerts:
+            _write_zero_alerts_sheet(wb, all_alerts)
+        elif "ZERO_DELTA_ALERTS" in wb.sheetnames:
+            wb["ZERO_DELTA_ALERTS"].sheet_properties.tabColor = "00B050"
+    except Exception:
+        pass
+    status["_zero_alerts"] = all_alerts
     return status
+
+
+def _write_zero_alerts_sheet(wb, alerts: list):
+    """USER 2026-10-11: red flag record — ZERO_DELTA_ALERTS sheet (red tab), full canon keys, no data cells touched."""
+    if "ZERO_DELTA_ALERTS" in wb.sheetnames:
+        ws = wb["ZERO_DELTA_ALERTS"]
+        ws.delete_rows(1, ws.max_row)
+    else:
+        ws = wb.create_sheet("ZERO_DELTA_ALERTS")
+    hdr = ["TAB", "RULE", "CANON_KEYS", "DETAIL"]
+    for c, h in enumerate(hdr, 1):
+        cell = ws.cell(row=1, column=c, value=h)
+        cell.fill = PatternFill(start_color="9C0006", end_color="9C0006", fill_type="solid")
+        cell.font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+    for i, a in enumerate(alerts, 2):
+        keys = a.get("keys") or []
+        ws.cell(row=i, column=1, value=a.get("tab"))
+        ws.cell(row=i, column=2, value=a.get("rule"))
+        ws.cell(row=i, column=3, value="; ".join(keys[:12]) + ("…" if len(keys) > 12 else ""))
+        ws.cell(row=i, column=4, value=a.get("detail"))
+        for c in range(1, 5):
+            ws.cell(row=i, column=c).fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+            ws.cell(row=i, column=c).font = Font(name="Arial", size=10, color="9C0006")
+    ws.sheet_properties.tabColor = "FF0000"
 
 def _spec_mark_red(wb, sheet: str, r: int, col: int, reason: str):
     """Mark a single yellow cell + tab RED and write reason — for >10s stall per spec."""
@@ -2577,6 +2690,73 @@ def same_val(a, b) -> bool:
         return str(a).strip() == str(b).strip()
 
 
+def _canon_val(v) -> str:
+    """USER 2026-10-11: canonical setting value — identity is FULL NAME + VALUE, never row/col. 2.0==2, True==TRUE, off==OFF."""
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+    s = str(v).strip() if v is not None else ""
+    if s.lower() in ("true", "false", "off", "on", "none"):
+        return s.upper()
+    try:
+        f = float(s)
+        return str(int(f)) if f.is_integer() else repr(f)
+    except Exception:
+        return s
+
+
+def _canon_key(tab: str, switch: str, cand) -> str:
+    """USER 2026-10-11: canonical cross-run identity TAB!SWITCH=value (row numbers shift daily by obligation — never identity)."""
+    return f"{str(tab).strip()}!{str(switch).strip().upper()}={_canon_val(cand)}"
+
+
+def _canon_key_of_done(done_key: str):
+    """Parse a stored done-key (TAB!row:SWITCH=value, any row) into its canonical identity. None if unparseable."""
+    try:
+        tab, rest = str(done_key).split("!", 1)
+        sw_val = rest.split(":", 1)[1]
+        sw, val = sw_val.split("=", 1)
+        return _canon_key(tab, sw, val)
+    except Exception:
+        return None
+
+
+def _done_canon_lookup(done: dict, tab: str, switch: str, cand, row=None, _cache: dict | None = None):
+    """USER 2026-10-11: cross-run done lookup by canonical identity (never row). Exact row-key first (fast, stable-template path), then canonical scan. Dup canonical matches prefer the embedded row, else first sorted. Returns (rec, matched_key) or (None, None)."""
+    if not isinstance(done, dict) or not done:
+        return None, None
+    if row is not None:
+        exact = f"{tab}!{row}:{switch}={cand}"
+        if exact in done:
+            return done[exact], exact
+    want = _canon_key(tab, switch, cand)
+    cmap = None
+    if _cache is not None and _cache.get("n") == len(done) and isinstance(_cache.get("map"), dict):
+        cmap = _cache["map"]
+    else:
+        cmap = {}
+        for k in done:
+            ck = _canon_key_of_done(k)
+            if ck is not None:
+                cmap.setdefault(ck, []).append(k)
+        if _cache is not None:
+            _cache["map"] = cmap
+            _cache["n"] = len(done)
+    cands = cmap.get(want) or []
+    if not cands:
+        return None, None
+    if len(cands) == 1:
+        return done[cands[0]], cands[0]
+    if row is not None:
+        for k in sorted(cands):
+            try:
+                if int(str(k).split("!", 1)[1].split(":", 1)[0]) == int(row):
+                    return done[k], k
+            except Exception:
+                continue
+    best = sorted(cands)[0]
+    return done[best], best
+
+
 def scan_template_cands(template_path, defaults: dict, cat_side: str, zero_on: bool = True) -> tuple:
     """Standalone mirror of the pilot's per_tab_rows + header_maps + orange scan and the _row_static KIND decision
     (USER 2026-10-07 s6: the 365D+GS driver needs the same candidate space as in-pilot diagnose/graph-search).
@@ -2817,13 +2997,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _next_pending(sname: str):
         # Exact (sheet, switch=cand) match survives row resorting; substring match falsely marked
         # "DC_ENABLED=True" done via "WT_DC_ENABLED=True" and "X=1" via "X=10".
+        # USER 2026-10-11: canonical compare (2.0==2, TRUE==True) — daily template reorders must not force recalcs.
         done = progress.get("done", {})
         if _done_ids_cache.get("n") != len(done):
-            _done_ids_cache["ids"] = {(k.split("!", 1)[0], k.split(":", 1)[1]) for k in done if "!" in k and ":" in k}
+            _done_ids_cache["ids"] = {_canon_key_of_done(k) for k in done if "!" in k and ":" in k} - {None}
             _done_ids_cache["n"] = len(done)
         done_ids = _done_ids_cache["ids"]
         for (rr, sw, cand) in per_tab_rows.get(sname, []):
-            if (sname, f"{sw}={cand}") in done_ids:
+            if _canon_key(sname, sw, cand) in done_ids:
                 continue
             return (rr, sw, cand)
         return None
@@ -4799,7 +4980,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[RED-RETRY] {rc['sheet']}!{rc['row']} {rc['label']} fixed delta={d:+.4f}{' (positive, NOT promoted: chain already passed this row)' if d > 1e-9 else ''}", flush=True)
     progress["red_retry"] = {"n": len(_red_retry), "timeout_s": _retry_s}
     try:
-        _paint_tab_status(wb)
+        _measured = {_canon_key_of_done(k) for k, v in (progress.get("done") or {}).items() if _rec_measured(v)} - {None}
+        _paint_tab_status(wb, measured=_measured)
     except Exception:
         pass
     # Loop exit — workbook rows complete
@@ -9129,11 +9311,14 @@ def main():
                 _rel_total = len(_rel_eval) + len(_rel_ident)
                 # RED RETRY 2026-09-25: a NO VALID row never computed (timeout/error) — it is a red placeholder, not a filled
                 # cell, so it is retried on every resume until it fills. Computed POS/NEG rows stay frozen below.
-                if key in progress.get("done", {}) and progress["done"][key].get("reason") == "all vectors invalid":
+                # USER 2026-10-11: resolve by canonical identity (row-free) — daily reorders resume, not recalc; a moved NO VALID row still retries.
+                _prev_rec, _prev_key = _done_canon_lookup(progress.get("done", {}), sheet, switch, cand, row=r)
+                if _prev_rec is not None and _prev_rec.get("reason") == "all vectors invalid":
                     print(f"[RED-RETRY] {key} was NO VALID — recalculating", flush=True)
-                    progress["done"].pop(key, None)
-                if key in progress.get("done", {}):
-                    prev = progress["done"][key]
+                    progress["done"].pop(_prev_key, None)
+                    _prev_rec, _prev_key = None, None
+                if _prev_rec is not None:
+                    prev = _prev_rec
                     # ABSOLUTE PER-CELL PROHIBITION — never recalc a cell already in done set (2026-09-16)
                     # Backups in xls/log/zip/bak exist — repeating wastes 1s/cell and violates Sequential One-Workbook-Then-Next law.
                     # Even if cum stale or yellows missing, DO NOT re-eval — keep original delta vs original cum (honest historical record).
@@ -9515,8 +9700,9 @@ def main():
                                     if _hdr in pending_lbI:
                                         # RESPECT s3/s5 STDEV/shuffle: if peer already computed this yellow, keep max
                                         _d = float(pending_lbI[_hdr])
-                                        if sheet == "STDEV_SLOPE_SIZING" and key in progress.get("done", {}) and _hdr in (progress["done"][key].get("yellows") or {}):
-                                            _peer_d = float(progress["done"][key]["yellows"][_hdr] or 0)
+                                        _stdev_peer = _done_canon_lookup(progress.get("done", {}), sheet, switch, cand, row=r)[0] if sheet == "STDEV_SLOPE_SIZING" else None
+                                        if _stdev_peer is not None and _hdr in (_stdev_peer.get("yellows") or {}):
+                                            _peer_d = float((_stdev_peer.get("yellows") or {})[_hdr] or 0)
                                             if abs(_peer_d) > abs(_d) and _peer_d != 0:
                                                 _d = _peer_d
                                                 print(f"[respect-stdev] {key} {_hdr} peer {_peer_d:.2f} > new {_d:.2f} — respect", flush=True)
@@ -9527,8 +9713,9 @@ def main():
                                     else:
                                         # STDEV respect: don't overwrite peer's valid yellow with 0.0 backstop
                                         _skip_zero = False
-                                        if sheet == "STDEV_SLOPE_SIZING" and key in progress.get("done", {}):
-                                            _peer_y = (progress["done"][key].get("yellows") or {}).get(_hdr)
+                                        _stdev_peer2 = _done_canon_lookup(progress.get("done", {}), sheet, switch, cand, row=r)[0] if sheet == "STDEV_SLOPE_SIZING" else None
+                                        if _stdev_peer2 is not None:
+                                            _peer_y = (_stdev_peer2.get("yellows") or {}).get(_hdr)
                                             if _peer_y is not None and float(_peer_y) != 0:
                                                 _skip_zero = True
                                                 try:

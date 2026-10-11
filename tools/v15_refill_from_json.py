@@ -165,15 +165,17 @@ def refill_one(symside: str, dry_run: bool = False) -> int:
             cur_b = ws_s.cell(r,2).value
             exp_sw = switch_eq.split("=")[0] if "=" in switch_eq else switch_eq
             exp_val = switch_eq.split("=",1)[1] if "=" in switch_eq else ""
-            cur_sw = str(cur_a).strip() if cur_a else ""
-            cur_val = str(cur_b).strip() if cur_b is not None and not isinstance(cur_b,bool) else (str(cur_b) if isinstance(cur_b,bool) else "")
-            if cur_sw != exp_sw or cur_val != exp_val:
+            # USER 2026-10-11: canonical identity (row-free, 2.0==2 TRUE==True) — daily template reorders must not drop refills.
+            from v15_pilot import _canon_key as _ck
+            want = _ck(sheet_part, exp_sw, exp_val)
+            cur_a = ws_s.cell(r,1).value
+            cur_b = ws_s.cell(r,2).value
+            if _ck(sheet_part, cur_a if cur_a else "", cur_b if cur_b is not None else "") != want:
                 found=None
                 for rr in range(3, ws_s.max_row+1):
                     a=ws_s.cell(rr,1).value
                     b=ws_s.cell(rr,2).value
-                    b_str=str(b).strip() if b is not None and not isinstance(b,bool) else (str(b) if isinstance(b,bool) else "")
-                    if str(a).strip()==exp_sw and b_str==exp_val:
+                    if _ck(sheet_part, a if a else "", b if b is not None else "")==want:
                         found=rr
                         break
                 if found:

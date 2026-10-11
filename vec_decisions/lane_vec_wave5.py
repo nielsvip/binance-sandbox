@@ -275,8 +275,8 @@ def btc_tech_exit_wt_mask(
 
 
 def _gr_wt_pair(npz: Mapping[str, Any], n: int) -> tuple | None:
-    """WT cross-state pair for the GR trigger. Backtest prefers 5m (:7079-7080)."""
-    for tf in ("5m", "3m"):
+    """WT cross-state pair for the GR trigger. Backtest prefers 5m (:7079-7080). USER 2026-10-11: 15m fallback — NPZs never carry 3m/5m WT by policy (speed), and 15m cross-state is just as valid with less noise. Backtest-only twin (no live callers); live wiring follows only via proven-profit promotion."""
+    for tf in ("5m", "3m", "15m"):
         w1 = _col(npz, f"wt1_{tf}", n)
         w2 = _col(npz, f"wt2_{tf}", n)
         if w1 is not None and w2 is not None:
