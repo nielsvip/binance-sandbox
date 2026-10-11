@@ -1630,26 +1630,32 @@ def tick(args, cfg, now):
     log["tier_launched"] = _tl  # USER 2026-10-09: prove ~90% of launches go to winners (M 3d / L 7d defer + slot quota)
     log["gain_tiers"] = {"measured_sides": len(_gtiers), **{t: sum(1 for e in _gtiers.values() if e["tier"] == t) for t in "WML"},
                          "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
-    _starve = {"waiting_state": [], "capped": [], "venue_gated": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick
-    for _ssym in all_syms:
-        if terminal(_ssym):
-            continue
-        _acts = pending_actions(_ssym, "")
-        if not _acts:
-            _has_need = any(s in ("need30", "need365", "needrepair", "needgs") for s, _a in (chain_state.get(_ssym) or {}).values())
-            _starve["capped" if _has_need else "waiting_state"].append(_ssym)
-            continue
-        if not _venue_allowed(_ssym, _native_syms):
-            _starve["venue_gated"].append(_ssym)
-            continue
-        _oh = owner.get(_ssym)
-        if not _oh:
-            _starve["unowned_ready"].append(_ssym)
-            continue
-        _hb = HB.get(_oh)
-        _room = bool(_hb) and len(held.get(_oh, {})) < _hb["cap"] and _hb["proj_mem"] >= _hb["est_pair"] and _hb["cpu"] < float(cfg.get("cpu_target_pct", 90))
-        _starve["owner_ready" if _room else "owned_busy"].append(_ssym)
-    log["starve_audit"] = {k: {"n": len(v), "syms": sorted(v)[:12]} for k, v in _starve.items()}
+    try:  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick. Guarded: a logging bug must never kill the tick.
+        _starve = {"running": [], "waiting_base": [], "capped": [], "venue_gated": [], "unready": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}
+        for _ssym in all_syms:
+            if terminal(_ssym):
+                continue
+            _acts = pending_actions(_ssym, "")
+            if not _acts:
+                _states = [s for s, _a in (chain_state.get(_ssym) or {}).values()]
+                _starve["running" if "running" in _states else "capped" if any(s in ("need30", "need365", "needrepair", "needgs") for s in _states) else "waiting_base"].append(_ssym)
+                continue
+            if not _venue_allowed(_ssym, _native_syms):
+                _starve["venue_gated"].append(_ssym)
+                continue
+            if not any(is_ready(_hn, _ssym).get("ok") for _hn in readiness_by_host):
+                _starve["unready"].append(_ssym)
+                continue
+            _oh = owner.get(_ssym)
+            if not _oh:
+                _starve["unowned_ready"].append(_ssym)
+                continue
+            _hb = HB.get(_oh)
+            _room = bool(_hb) and len(held.get(_oh, {})) < _hb["cap"] and _hb["proj_mem"] >= _hb["est_pair"] and _hb["cpu"] < float(cfg.get("cpu_target_pct", 90))
+            _starve["owner_ready" if _room else "owned_busy"].append(_ssym)
+        log["starve_audit"] = {k: {"n": len(v), "syms": sorted(v)[:12]} for k, v in _starve.items()}
+    except Exception as _e_audit:
+        log["starve_audit_error"] = f"{type(_e_audit).__name__}: {_e_audit}"
     log["pending_symbols"] = sum(1 for s in all_syms if not terminal(s))
     log["stocks_chain_left"] = sum(1 for s in stocks if not terminal(s))
     st["pend_same"], _stall_warn = _stall_tick(st.get("pend_last"), st.get("pend_same"), log["pending_symbols"])
