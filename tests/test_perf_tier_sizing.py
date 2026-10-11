@@ -40,12 +40,12 @@ def test_unlisted_symside_unchanged(pts):
     assert pts.apply_qty(7, "OTHER", "LONG") == 7
 
 
-def test_stock_qty_tiers_floor_one_share(pts):
-    # USER 2026-10-11: neg/365D-unrescued trade live tiny — whole shares rounded DOWN then floored at 1
-    # (supersedes the 2026-10-06 below-one-share = skip rule); zero/negative input stays 0 (no order invented)
+def test_stock_qty_tiers_skip_below_one_share(pts):
+    # USER 2026-10-11: only trade when the sized amount buys >= 1 full share — rounded DOWN, 0 = skip,
+    # never round up to 1; zero/negative input stays 0 (no order invented)
     assert pts.apply_qty(10, "BIG", "LONG") == 30
-    assert pts.apply_qty(2, "LOSER", "SHORT") == 1
-    assert pts.apply_qty(6, "LOSER", "SHORT") == 1
+    assert pts.apply_qty(2, "LOSER", "SHORT") == 0  # 2 x 0.25 = 0.5 -> 0 shares = skip
+    assert pts.apply_qty(6, "LOSER", "SHORT") == 1  # 6 x 0.25 = 1.5 -> 1 share
     assert pts.apply_qty(8, "LOSER", "SHORT") == 2
     assert pts.apply_qty(0, "LOSER", "SHORT") == 0
     assert pts.apply_qty(-3, "LOSER", "SHORT") == 0

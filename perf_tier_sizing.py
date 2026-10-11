@@ -4,7 +4,7 @@ data/persym_size_tiers.json (written daily by tools/v15_persym_size_tiers.py fro
 SYM_SIDE -> {"mult": m, ...}. Negative on 30D and 365D -> minimal multiplier; ranked 30D gainers -> larger multiplier.
 Live callers (behind config PERF_TIER_SIZING_ENABLED):
   * ez_manage._psym_sps (crypto START_POSITION_SIZE): apply_usd(base_usd, ...) — floor = exchange minimum, cap = MAX_ORDER_VALUE
-  * tradier_manage queue sizing (stocks quantity): apply_qty(qty, ...) — floor = 1 share; MAX_ORDER_VALUE cap stays downstream
+  * tradier_manage queue sizing (stocks quantity): apply_qty(qty, ...) — round DOWN, 0 = skip below one share; MAX_ORDER_VALUE cap stays downstream
   * negbook_blocks(entry, tier_sizing_on): with tier sizing ON only an explicit _NEG_BLOCK tag blocks; acc_gain_pct <= 0 -> minimal size
 Missing/unreadable file or sym_side -> multiplier 1.0 (fail-open = unchanged sizing).
 """
@@ -56,8 +56,8 @@ def apply_usd(base_usd: float, symbol: str, side: str, min_usd: float, max_usd: 
 
 
 def apply_qty(qty: float, symbol: str, side: str) -> float:
-    """Stocks quantity x tier multiplier, rounded DOWN to whole shares then floored at 1 (USER 2026-10-11:
-    neg/365D-unrescued trade live tiny — supersedes the 2026-10-06 below-one-share = skip rule).
+    """Stocks quantity x tier multiplier, rounded DOWN to whole shares (USER 2026-10-11: only trade when the
+    sized amount buys at least one full share — below one share returns 0 = skip, never round up to 1).
     Zero/negative input stays 0 (never invent an order). The MAX_ORDER_VALUE cap is applied right after by the caller.
     """
     if qty is None:
@@ -71,7 +71,7 @@ def apply_qty(qty: float, symbol: str, side: str) -> float:
     m = get_mult(symbol, side)
     if m == 1.0:
         return qty
-    return max(1, int(q * m))
+    return int(q * m)
 
 
 def negbook_blocks(entry: dict, tier_sizing_on: bool) -> bool:

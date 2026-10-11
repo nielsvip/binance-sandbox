@@ -13831,6 +13831,20 @@ class SmartCircuitBreaker:
         return self._path_disabled(_cb_path_tag(reason))
 
 
+def _min_viable_qty(symbol_min_qty, symbol_min_notional, current_price):
+    """USER 2026-10-11: smallest placeable qty = max(exchange minQty x1.2 buffer, $6/price, symbol MIN_NOTIONAL/price).
+    min_qty.json carries per-symbol minQty+minNotional (BTC $50, ETH/BCH/LTC/ETC/LINK $20, rest $5). Pure: unit-tested."""
+    try:
+        px = float(current_price)
+        if px <= 0:
+            return 0.0
+        mq = float(symbol_min_qty or 0.0) * 1.2
+        mn = float(symbol_min_notional or 0.0) / px
+        return max(mq, 6.0 / px, mn)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 class MultiAccountTradeManager:
     def __init__(
         self,
@@ -14006,6 +14020,7 @@ class MultiAccountTradeManager:
         self.queue_metrics = {}
         self.out_dict = {}
         self.min_qty = {}
+        self.min_notional = {}
         self.managed_stop_ids = {}
         self.last_reentry_dict = {}
         self.ladder_levels = getattr(positions_service, "ladder_levels", {})
@@ -17423,6 +17438,7 @@ class MultiAccountTradeManager:
 
     async def init_async(self):
         self.min_qty = await self.load_min_qty()
+        self.min_notional = await self.load_min_notional()
         self.symbol_configs = await self.load_symbol_configs()
         self.logger.info("Loaded symbol configs from self.config.SYMBOL_CONFIGS_FILE ")
         try:
@@ -21392,6 +21408,29 @@ class MultiAccountTradeManager:
             }
             logger.debug("Loaded minimum quantities from JSON.")
             return min_qty_flat
+        except FileNotFoundError:
+            logger.error(f"Minimum quantity file {file_path} not found.")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding JSON from {file_path}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error loading minimum quantities: {e}")
+        return {}
+
+    async def load_min_notional(self) -> Dict[str, float]:
+        file_path = self.config.MIN_QTY_FILE
+        if not os.path.exists(file_path):
+            logger.error(f"Minimum quantity file {file_path} not found.")
+            return {}
+        try:
+            async with aiofiles.open(file_path, "r") as f:
+                content = await f.read()
+            min_qty_data = json.loads(content)
+            min_notional_flat = {
+                symbol: float(details.get("minNotional", 5.0))
+                for symbol, details in min_qty_data.items()
+            }
+            logger.debug("Loaded minimum notionals from JSON.")
+            return min_notional_flat
         except FileNotFoundError:
             logger.error(f"Minimum quantity file {file_path} not found.")
         except json.JSONDecodeError as e:
@@ -25669,7 +25708,7 @@ class MultiAccountTradeManager:
                 exchange_min_qty = self.min_qty.get(symbol, 0.0001) * 1.2
                 min_notional_usd = 6.00
                 min_qty_by_notional = min_notional_usd / max(current_price, 1e-9)
-                min_viable_qty = max(exchange_min_qty, min_qty_by_notional)
+                min_viable_qty = _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price)
                 if quantity < min_viable_qty and not is_full_close:
                     failure_reason = f"{position_key}_{reason}_BLOCKED_EXIT_ACTION_QTY_TOO_SMALL_{action} (qty={quantity:.6f} < min_viable={min_viable_qty:.6f}, exchange_min={exchange_min_qty:.6f}, min_notional_qty={min_qty_by_notional:.6f}, is_full_close={is_full_close})"
                     logger.warning(
@@ -26647,7 +26686,7 @@ class MultiAccountTradeManager:
             exchange_min_qty = self.min_qty.get(symbol, 0.0001) * 1.2
             min_notional_usd = 6.00
             min_qty_by_notional = min_notional_usd / max(current_price, 1e-9)
-            min_viable_qty = max(exchange_min_qty, min_qty_by_notional)
+            min_viable_qty = _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price)
             (
                 market_sentiment_local,
                 market_sentiment,
@@ -28340,7 +28379,7 @@ class MultiAccountTradeManager:
             # Re-floor here, after the last multiplier, so a vec OPEN/AUGMENT can never die as dust.
             # ROLLBACK: delete block. Closes/reduces/hedges excluded (their qty is positional, never floored up).
             try:
-                _vff_min = max(6 * float(config.MIN_POSITION_SIZE) / float(current_price), 1.2 * float(exchange_min_qty))
+                _vff_min = max(6 * float(config.MIN_POSITION_SIZE) / float(current_price), _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price))
             except Exception:
                 _vff_min = 0.0
             if _vff_min > 0 and quantity < _vff_min:
@@ -28824,7 +28863,7 @@ class MultiAccountTradeManager:
     ):
         adjustment = 0.0
         qty = float(quantity)
-        pos_min_qty = max(5.50 / current_price, self.min_qty.get(symbol, 0.0001) * 1.2)
+        pos_min_qty = _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price)
         if account_key == "fin":
             adjustment += 9.0
         if account_key in ["ang", "inf", "flz", "men"] and not config.EXTREME_MODE:
@@ -28848,7 +28887,7 @@ class MultiAccountTradeManager:
         exchange_min_qty = self.min_qty.get(symbol, 0.0001) * 1.2
         min_notional_usd = 5.50
         min_qty_by_notional = min_notional_usd / max(current_price, 1e-9)
-        min_viable_qty = max(exchange_min_qty, min_qty_by_notional)
+        min_viable_qty = _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price)
         if qty < min_viable_qty:
             qty = min_viable_qty
             logger.debug(
@@ -28938,7 +28977,7 @@ class MultiAccountTradeManager:
         exchange_min_qty = self.min_qty.get(symbol, 0.0001) * 1.2
         min_notional_usd = 5.50
         min_qty_by_notional = min_notional_usd / max(current_price, 1e-9)
-        min_viable_qty = max(exchange_min_qty, min_qty_by_notional)
+        min_viable_qty = _min_viable_qty(self.min_qty.get(symbol, 0.0001), self.min_notional.get(symbol, 5.0), current_price)
         if qty < min_viable_qty:
             qty = min_viable_qty
             logger.debug(
@@ -29690,6 +29729,14 @@ class MultiAccountTradeManager:
             tick = Decimal(str(symbol_conf["tick_size"]))
             step = Decimal(str(symbol_conf["step_size"]))
             qty_dec = (Decimal(str(qty_abs)) // step) * step
+            try:
+                _mkr_req = float(self.min_notional.get(symbol, 5.0))
+                _mkr_px = float(current_price or 0.0)
+                if _mkr_px > 0 and not qty_dec.is_zero() and float(qty_dec) * _mkr_px < _mkr_req and float(qty_abs) * _mkr_px >= _mkr_req:
+                    qty_dec += step
+                    logger.warning(f"[MAKER_STEP_UP] {position_key}: floored below MIN_NOTIONAL ${_mkr_req:.2f} -> +1 step {qty_dec} (pre-round viable)")
+            except Exception:
+                pass
             if qty_dec.is_zero():
                 logger.critical(
                     f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0. ORDER NOT PLACED — suppressing webhook fallback (sentinel -1.0)"
