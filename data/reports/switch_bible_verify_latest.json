@@ -1,5 +1,5 @@
 {
- "broken": 88,
+ "broken": 87,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [
@@ -7,7 +7,6 @@
    "ENTRY_ZONE_SHORT: live stocks read vanished (baseline ['tradier_manage.py:24624(TradierTradeManager.execute_trade_action)'])"
   ],
   "DEFAULT_MISMATCH": [
-   "ATR_ADAPTIVE_STOP_MULT [STOCKS]: config_tradier.py=2.5 vs QuickConfig=2.0 (not on the documented conflict list)",
    "BB_SQUEEZE_WIDTH_PERCENTILE [STOCKS]: config_tradier.py=0.2 vs QuickConfig=0.25 (not on the documented conflict list)",
    "BREAKEVEN_GAIN_EROSION_FILTER_TF [STOCKS]: config_tradier.py='OFF' vs QuickConfig='1h' (not on the documented conflict list)",
    "BREAKOUT_RETEST_FILTER_TF [CRYPTO]: config.py='1h' vs QuickConfig='15m' (not on the documented conflict list)",
