@@ -45,6 +45,17 @@ def test_emergency_never_opens():
     assert (ok, code) == (False, "NATIVE_ENTRY")
 
 
+def test_margin_free_winner_close_exempt():
+    # USER 2026-10-11 fix-as-discovered: _emergency_margin_cleanup's QUICK_CLOSE
+    # (reason MARGIN_FREE_FOR_<key>) was refused as NATIVE_EXIT — the token list
+    # had MARGIN_KILL but not MARGIN_FREE — so -2019 margin deadlock could never
+    # self-relieve (men EGLDUSDT_SHORT blocked 3x 11:19-11:21, account wedged).
+    assert peg.allows("MARGIN_FREE_FOR_men:ARUSDT_SHORT", "QUICK_CLOSE") == (True, "EMERGENCY_EXIT")
+    assert peg.allows("MARGIN_FREE_1791717653", "CLOSE", True) == (True, "EMERGENCY_EXIT")
+    ok, code = peg.allows("MARGIN_FREE_FOR_men:ARUSDT_SHORT", "OPEN")
+    assert (ok, code) == (False, "NATIVE_ENTRY")
+
+
 def test_claim_blocks_double_inside_ttl():
     ok1, _ = peg.try_claim("fin:AMATUSDT_SHORT|INC", now=1000.0)
     ok2, age = peg.try_claim("fin:AMATUSDT_SHORT|INC", now=1000.067)
