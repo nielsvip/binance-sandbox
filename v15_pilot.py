@@ -7400,8 +7400,9 @@ def main():
                 _cat_vs_persym_done = False
         # USER 2026-10-09: defaults run at the beginning of EVERY NPZ load, even when the winner-select above is skipped
         # (V15_START_OVERRIDES / V15_SKIP_CAT_PERSYM_BASELINE=1, e.g. TEMPLATE_DEFAULTS herd boards) — just in case they
-        # are better than the latest best per_sym settings. MEASURE-ONLY: logs + progress record, never changes E3/start
-        # selection (mode purity preserved: TEMPLATE_DEFAULTS never ingests, autopsy keeps its base). 2 hot evals ~0.15s.
+        # are better than the latest best per_sym settings. USER 2026-10-11: START_OVERRIDES runs now CHOOSE (3-way
+        # start/per_sym/cat, incumbent-biased credible-first); needs_redo refills + SKIP=1 stay measure-only (sheet
+        # integrity / template purity). 2-3 hot evals ~0.2s.
         if prepared is not None and not locals().get("_cat_vs_persym_done"):
             try:
                 _dc_cat_ov, _ = sanitize_overrides(dict(_tpl_defaults), defaults)
@@ -7426,9 +7427,17 @@ def main():
                     _dc_per_ov, _ = sanitize_overrides(dict(_ingested_overrides), defaults)
                     _dc_per_lbl = "per_sym_ingested"
                 import concurrent.futures as _cf_dc
-                with _cf_dc.ThreadPoolExecutor(max_workers=2) as _ex_dc:
+                # USER 2026-10-11: EVERY test chooses — a V15_START_OVERRIDES (autopsy/365D-repair) run evaluates its
+                # start set alongside cat + per_sym and adopts the winner (incumbent-biased credible-first rule).
+                # needs_redo refills + V15_SKIP_CAT_PERSYM_BASELINE=1 stay measure-only (sheet integrity / template purity).
+                _dc_choose = bool(os.environ.get("V15_START_OVERRIDES")) and bool(locals().get("_so")) and not locals().get("_nr_applied") and os.environ.get("V15_SKIP_CAT_PERSYM_BASELINE", "0") != "1"
+                _dc_start_ov = None
+                if _dc_choose:
+                    _dc_start_ov, _ = sanitize_overrides(dict(locals().get("_so") or {}), defaults)
+                with _cf_dc.ThreadPoolExecutor(max_workers=3 if _dc_choose else 2) as _ex_dc:
                     _dc_fut_c = _ex_dc.submit(evaluate_prepared_sanitized, prepared, _dc_cat_ov, window_days=args.window_days)
                     _dc_fut_p = _ex_dc.submit(evaluate_prepared_sanitized, prepared, _dc_per_ov, window_days=args.window_days) if _dc_per_ov is not None else None
+                    _dc_fut_s = _ex_dc.submit(evaluate_prepared_sanitized, prepared, _dc_start_ov, window_days=args.window_days) if _dc_start_ov is not None else None
                     try:
                         _dc_cat = _dc_fut_c.result(timeout=60)
                     except Exception as _e_dcc:
@@ -7439,11 +7448,32 @@ def main():
                             _dc_per = _dc_fut_p.result(timeout=60)
                         except Exception as _e_dcp:
                             _dc_per = {"gain_pct": -1e9, "trades": 0, "valid": False, "invalid_reason": f"dc per {type(_e_dcp).__name__}"}
+                    _dc_start = None
+                    if _dc_fut_s is not None:
+                        try:
+                            _dc_start = _dc_fut_s.result(timeout=60)
+                        except Exception as _e_dcs:
+                            _dc_start = {"gain_pct": -1e9, "trades": 0, "valid": False, "invalid_reason": f"dc start {type(_e_dcs).__name__}"}
                 _dc_cg = float(_dc_cat.get("gain_pct") or -1e9)
                 _dc_pg = float((_dc_per or {}).get("gain_pct") or -1e9)
                 _dc_cAdopt = "cat_side_defaults" if _dc_per is None or _dc_cg >= _dc_pg else _dc_per_lbl
                 print(f"[DEFAULTS-CHALLENGER] {new_symside} cat={_dc_cg:.2f}/{_dc_cat.get('trades')}t/{'V' if _dc_cat.get('valid') else 'x'} vs {_dc_per_lbl}={_dc_pg:.2f}/{(_dc_per or {}).get('trades')}t/{'V' if (_dc_per or {}).get('valid') else 'x'} -> would-be {_dc_cAdopt} (measure-only, start set unchanged)", flush=True)
                 _defaults_challenger_record = {"cat_gain": _dc_cat.get("gain_pct"), "cat_trades": _dc_cat.get("trades"), "cat_valid": _dc_cat.get("valid"), "persym_label": _dc_per_lbl, "persym_gain": (_dc_per or {}).get("gain_pct"), "persym_trades": (_dc_per or {}).get("trades"), "persym_valid": (_dc_per or {}).get("valid"), "would_be": _dc_cAdopt}
+                if _dc_choose and _dc_start is not None:
+                    from baseline_select import pick_winner as _dc_pick
+                    _dc_cands = {"start": _dc_start, "cat_side_defaults": _dc_cat}
+                    _dc_ovs = {"start": _dc_start_ov, "cat_side_defaults": _dc_cat_ov}
+                    if _dc_per is not None:
+                        _dc_cands[_dc_per_lbl or "per_sym_last_best"] = _dc_per
+                        _dc_ovs[_dc_per_lbl or "per_sym_last_best"] = _dc_per_ov
+                    _dc_win = _dc_pick(_dc_cands, ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT, incumbent="start")
+                    _defaults_challenger_record.update({"choose_mode": True, "start_gain": _dc_start.get("gain_pct"), "start_trades": _dc_start.get("trades"), "start_valid": _dc_start.get("valid"), "chosen": _dc_win})
+                    if _dc_win is not None and _dc_win != "start":
+                        overrides = dict(_dc_ovs[_dc_win])
+                        baseline_vec = dict(_dc_cands[_dc_win])
+                        _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+                        _adapt_report = {"baseline_winner": f"challenger_{_dc_win}", "start_gain": _dc_start.get("gain_pct"), "cat_gain": _dc_cat.get("gain_pct"), "persym_gain": (_dc_per or {}).get("gain_pct")}
+                    print(f"[BASELINE-CHALLENGER-CHOOSE] {new_symside} start={float(_dc_start.get('gain_pct') or -1e9):.2f}/{_dc_start.get('trades')}t/{'V' if _dc_start.get('valid') else 'x'} vs cat={_dc_cg:.2f} vs {_dc_per_lbl}={_dc_pg:.2f} -> {_dc_win} ({'ADOPTED' if _dc_win not in (None, 'start') else 'start kept'})", flush=True)
             except Exception as _e_dc:
                 print(f"[DEFAULTS-CHALLENGER-warn] {new_symside} {_e_dc}", flush=True)
         # USER 2026-09-29: a sheet must start from the BEST previous settings — in FRESH mode always compare live recipe /

@@ -23220,7 +23220,7 @@ def _qta_entry_sizing(
         and bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False))
         and action in ("OPEN", "AUGMENT", "REENTRY", "QUICK_OPEN", "QUICK_AUGMENT")
     ):
-        try:  # PERF_TIER_SIZING 2026-10-06 (USER): per-sym performance tier (<1 allowed; whole shares rounded down; <1 share = skip); MAX_ORDER_VALUE cap below still applies
+        try:  # PERF_TIER_SIZING (USER): per-sym performance tier; whole shares rounded down, floored at 1 share (2026-10-11 tiny-live: neg/365D-unrescued trade 1 share, never skipped); MAX_ORDER_VALUE cap below still applies
             import perf_tier_sizing as _pts
 
             _pt_q0 = quantity
@@ -23229,12 +23229,8 @@ def _qta_entry_sizing(
                 logger.info(
                     f"[PERF_TIER_SIZING] {position_key}: qty {_pt_q0}->{quantity} (x{_pts.get_mult(symbol, position_side):.2f})"
                 )
-            if (
-                quantity < 1
-            ):  # USER 2026-10-06: tier size below one share -> skip the trade entirely (no 1-share floor)
-                logger.warning(
-                    f"[PERF_TIER_SIZING] {position_key}: tier qty {quantity} < 1 share -> trade SKIPPED"
-                )
+            if quantity < 1:  # Safety net only: apply_qty floors positive input at 1, so < 1 means zero/negative pre-tier quantity -> skip (never invent an order)
+                logger.warning(f"[PERF_TIER_SIZING] {position_key}: tier qty {quantity} < 1 share with non-positive input -> trade SKIPPED")
                 return 0
         except Exception as _pte:
             logger.warning(f"[PERF_TIER_SIZING] {position_key}: fail-open {_pte}")

@@ -56,12 +56,21 @@ def apply_usd(base_usd: float, symbol: str, side: str, min_usd: float, max_usd: 
 
 
 def apply_qty(qty: float, symbol: str, side: str) -> float:
-    """Stocks quantity x tier multiplier, rounded DOWN to whole shares (USER 2026-10-06: 1.5 -> 1, 2 -> 2;
-    < 1 share -> 0 = skip the trade entirely). The MAX_ORDER_VALUE cap is applied right after by the caller."""
-    m = get_mult(symbol, side)
-    if m == 1.0 or qty <= 0:
+    """Stocks quantity x tier multiplier, rounded DOWN to whole shares then floored at 1 (USER 2026-10-11:
+    neg/365D-unrescued trade live tiny — supersedes the 2026-10-06 below-one-share = skip rule).
+    Zero/negative input stays 0 (never invent an order). The MAX_ORDER_VALUE cap is applied right after by the caller."""
+    if qty is None:
         return qty
-    return int(qty * m)
+    try:
+        q = float(qty)
+    except Exception:
+        return qty
+    if q <= 0:
+        return 0
+    m = get_mult(symbol, side)
+    if m == 1.0:
+        return qty
+    return max(1, int(q * m))
 
 
 def negbook_blocks(entry: dict, tier_sizing_on: bool) -> bool:
