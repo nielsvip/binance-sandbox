@@ -129,7 +129,7 @@ STEPS_OK="$STEPS_OK,4c"
 
 # 4b. cell-evidence regen (zero-skip runtime maps) + verify at least one cat_side map exists
 log "step4b v15_cell_evidence"
-timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_pdirs" data/avg_delta_pos_sym_cell.json || fail 4b "cell_evidence rc=$?"
+timeout 900 "$PY" -u tools/v15_cell_evidence.py "$_cpdirs" data/avg_delta_pos_sym_cell.json || fail 4b "cell_evidence rc=$?"
 ls data/cell_evidence/*.json >/dev/null 2>&1 || fail 4b "no data/cell_evidence/*.json written"
 STEPS_OK="$STEPS_OK,4b"
 

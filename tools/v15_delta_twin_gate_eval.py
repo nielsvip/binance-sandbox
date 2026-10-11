@@ -24,7 +24,6 @@ import datetime as dt
 import json
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,7 +37,7 @@ def _universe(max_syms: int, only: str, sides: list) -> list:
         syms = [s.strip().upper() for s in only.split(",") if s.strip()]
     else:
         ind = ROOT / "backtest_v8" / "indicators"
-        syms = sorted(p.stem for p in ind.glob("*.npz"))
+        syms = sorted(p.stem for p in ind.glob("*.npz") if not p.name.startswith(".") and ".TMP" not in p.name.upper() and not p.stem.upper().endswith(("_LONG", "_SHORT")))
     out = []
     for s in syms:
         base = s.upper()
@@ -55,7 +54,7 @@ def _universe(max_syms: int, only: str, sides: list) -> list:
 
 def _prepare_one(symside: str):
     from tools.opt import v12_pilot as vp
-    from forward_parity.live_vs_vec import live_overrides
+    from tools.forward_parity.live_vs_vec import live_overrides
     base = symside.split("_")[0].upper()
     mode = "crypto" if base.endswith(("USDT", "USDC", "USD")) or base[:4].isdigit() else "stocks"
     try:
@@ -99,16 +98,14 @@ def main() -> int:
     sides = [s.strip().upper() for s in a.sides.split(",") if s.strip()]
     uni = _universe(a.max_syms, a.syms, sides)
     res = {}
-    jobs = []
-    for ss in uni:  # prepare is serial: the NPZ loader keeps racy global state
+    for ss in uni:  # serial prepare->eval->free: loader has racy globals, evals are 0.07s, peak mem = 1 prep
         ss2, prep, ov = _prepare_one(ss)
         if prep is None:
             res[ss2] = ov
-        else:
-            jobs.append((ss2, prep, ov))
-    with ThreadPoolExecutor(max_workers=a.workers) as ex:
-        for ss, r in ex.map(_eval_pair, jobs, [a.window] * len(jobs)):
-            res[ss] = r
+            continue
+        ss3, r = _eval_pair((ss2, prep, ov), a.window)
+        res[ss3] = r
+        del prep
     cats: dict = {}
     for ss, r in res.items():
         if "delta" not in r:
