@@ -962,8 +962,8 @@ def _steal_fetch(hosts, thief_host, sym, specs, log):
 
 
 def _spawn_guard(ss, window, body):
-    """USER 2026-10-11 (5x dup stacks + burned attempt caps): every remote launch is guarded by a real pgrep — the old 'pgrep dedups' comments had no implementation. [x]-trick patterns so the guard never matches its own bash -c wrapper. Skip logs [spawnguard] to the sweep log."""
-    pat = {"30D": f"[v]15_pilot.py --sym-side {ss}", "365D": f"[v]15_365_cycle.py --sym-side {ss}", "REPAIR": f"[v]15_365_cycle.py --sym-side {ss}", "GS": f"[v]15_graph_search.py --symsides {ss}"}[window]
+    """USER 2026-10-11 (5x dup stacks + burned attempt caps): every remote launch is guarded by a real pgrep — the old 'pgrep dedups' comments had no implementation. FIX 21:50Z: patterns are ^-ANCHORED to a python argv[0] — the first version matched its own bash -c wrapper (whose cmdline contains the literal pilot invocation) and self-skipped every launch fleet-wide. Skip logs [spawnguard] to the sweep log."""
+    pat = {"30D": f"^[^ ]*python[^ ]* -u v15_pilot.py --sym-side {ss}( |$)", "365D": f"^[^ ]*python[^ ]* -u tools/v15_365_cycle.py --sym-side {ss}( |$)", "REPAIR": f"^[^ ]*python[^ ]* -u tools/v15_365_cycle.py --sym-side {ss}( |$)", "GS": f"^[^ ]*python[^ ]* -u tools/v15_graph_search.py --symsides {ss}( |$)"}[window]
     return f"pgrep -f \"{pat}\" >/dev/null 2>&1 && echo \"[spawnguard] {ss} {window} already running on $(hostname)\" || {{ {body}; }}"
 
 

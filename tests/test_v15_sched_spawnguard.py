@@ -14,7 +14,14 @@ from v15_fleet_scheduler import _place_order, _spawn_guard, side_cmd
 
 class SpawnGuardShellTest(unittest.TestCase):
     def test_body_runs_when_idle_no_self_match(self):
-        g = _spawn_guard("ZZZGUARD_LONG", "30D", "echo BODY_RAN")
+        # REGRESSION 21:50Z: the body MUST contain the literal pilot invocation (as
+        # production side_cmd emits) — the first guard matched its own bash -c wrapper
+        # and self-skipped every launch fleet-wide.
+        g = _spawn_guard(
+            "ZZZGUARD_LONG",
+            "30D",
+            "echo BODY_RAN .venv/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG",
+        )
         out = subprocess.run(
             ["bash", "-c", g], capture_output=True, text=True, timeout=20
         )
@@ -26,7 +33,34 @@ class SpawnGuardShellTest(unittest.TestCase):
             [
                 "bash",
                 "-c",
-                'exec -a "python v15_pilot.py --sym-side ZZZGUARD_LONG" sleep 30',
+                'exec -a ".venv/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG" sleep 30',
+            ]
+        )
+        try:
+            time.sleep(0.5)
+            g = _spawn_guard(
+                "ZZZGUARD_LONG",
+                "30D",
+                "echo BODY_RAN .venv/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG",
+            )
+            out = subprocess.run(
+                ["bash", "-c", g], capture_output=True, text=True, timeout=20
+            )
+            self.assertIn(
+                "[spawnguard] ZZZGUARD_LONG 30D already running", out.stdout
+            )
+            self.assertNotIn("BODY_RAN", out.stdout)
+        finally:
+            fake.terminate()
+            fake.wait(timeout=10)
+
+    def test_wrapper_cmdline_never_matches(self):
+        # A bash wrapper whose cmdline merely CONTAINS the pilot string must not trip the guard.
+        wrap = subprocess.Popen(
+            [
+                "bash",
+                "-c",
+                'echo ".venv/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG" >/dev/null; sleep 30',
             ]
         )
         try:
@@ -35,22 +69,27 @@ class SpawnGuardShellTest(unittest.TestCase):
             out = subprocess.run(
                 ["bash", "-c", g], capture_output=True, text=True, timeout=20
             )
-            self.assertIn("[spawnguard] ZZZGUARD_LONG 30D already running", out.stdout)
-            self.assertNotIn("BODY_RAN", out.stdout)
+            self.assertIn("BODY_RAN", out.stdout)
+            self.assertNotIn("[spawnguard]", out.stdout)
         finally:
-            fake.terminate()
-            fake.wait(timeout=10)
+            wrap.terminate()
+            wrap.wait(timeout=10)
 
     def test_window_patterns(self):
         self.assertIn(
-            "[v]15_365_cycle.py --sym-side", _spawn_guard("A_LONG", "365D", "true")
+            "tools/v15_365_cycle.py --sym-side",
+            _spawn_guard("A_LONG", "365D", "true"),
         )
         self.assertIn(
-            "[v]15_365_cycle.py --sym-side", _spawn_guard("A_LONG", "REPAIR", "true")
+            "tools/v15_365_cycle.py --sym-side",
+            _spawn_guard("A_LONG", "REPAIR", "true"),
         )
         self.assertIn(
-            "[v]15_graph_search.py --symsides", _spawn_guard("A_LONG", "GS", "true")
+            "tools/v15_graph_search.py --symsides",
+            _spawn_guard("A_LONG", "GS", "true"),
         )
+        for w in ("30D", "365D", "REPAIR", "GS"):
+            self.assertIn("^[^ ]*python", _spawn_guard("A_LONG", w, "true"))
 
 
 class SideCmdGuardTest(unittest.TestCase):

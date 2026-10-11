@@ -1,5 +1,5 @@
 {
- "broken": 89,
+ "broken": 87,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [
@@ -20,8 +20,6 @@
    "MANDATORY_REENTRY_WT_FILTER_TF_MODE [STOCKS]: config_tradier.py='5m_or_15m' vs QuickConfig='15m_only' (not on the documented conflict list)",
    "MAX_ORDER_VALUE [CRYPTO]: config.py=180.0 vs QuickConfig=2500.0 (not on the documented conflict list)",
    "STDEV_REJECT_EXIT_TF [STOCKS]: config_tradier.py='15m' vs QuickConfig='D' (not on the documented conflict list)",
-   "STOCH_CROSS_ENTRY_TRADIER [CRYPTO]: config.py=False vs QuickConfig=True (not on the documented conflict list)",
-   "STOCH_CROSS_ENTRY_TRADIER [STOCKS]: config_tradier.py=False vs QuickConfig=True (not on the documented conflict list)",
    "WT_15M_BOUNCE_BB_MAX [STOCKS]: config_tradier.py=0.8 vs QuickConfig=0.9 (not on the documented conflict list)",
    "WT_DIV_EXIT_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)"
   ],
