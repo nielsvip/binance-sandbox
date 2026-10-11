@@ -17,10 +17,12 @@ def _cfg(**kw):
     return c
 
 
-def _synth_npz(n=300, seed=7):
-    # Two-phase tape: 0-99 live trend (builds speed/max/accel state), 100+ frozen
-    # delta fields (speeds die -> DEAD/DECEL/PEAK/TFLOST) with declining 1h/4h
-    # highs+lows (structural veto passes) and bearish HTF WT (no HTF veto).
+def _synth_npz(n=300, seed=7, drift=0.0, drift_mix=False, mfi_dead=30.0, kill_tfs=None):
+    # Two-phase tape: 0-99 live trend (builds speed/max/accel state), 100+ dying
+    # delta fields with declining 1h/4h highs+lows (structural veto passes) and
+    # bearish HTF WT (no HTF veto). drift: post-cut per-bar slope (0=frozen);
+    # drift_mix: half the fields slope down (bear pressure for OPPOSING tests);
+    # kill_tfs: freeze only these TFs (per-TF DOM tests); mfi_dead: MFI after cut.
     rng = np.random.default_rng(seed)
     d = {}
     tfs = ["15m", "1h", "4h", "D"]
@@ -30,19 +32,23 @@ def _synth_npz(n=300, seed=7):
               "wt_cross_bear", "wt_momentum_state"]
     cut = 100
     for tf in tfs:
-        for f in fields:
+        for j, f in enumerate(fields):
             walk = rng.normal(0, 1, n).cumsum()
             if f == "dc_position":
                 walk = 0.5 + 0.01 * walk
-            flat = np.concatenate([walk[:cut], np.full(n - cut, walk[cut - 1])])
-            d[f"{f}_{tf}"] = flat
+            if kill_tfs is not None and tf not in kill_tfs:
+                d[f"{f}_{tf}"] = walk
+                continue
+            slope = drift * (-1.0 if (drift_mix and j % 2) else 1.0)
+            tail = walk[cut - 1] + slope * np.arange(1, n - cut + 1)
+            d[f"{f}_{tf}"] = np.concatenate([walk[:cut], tail])
     for k in ["mfi_15m", "stoch_k_1h", "bb_pct_b_1h"]:
         d[k] = 100 + rng.normal(0, 1, n).cumsum()
     # 15m bars decline after cut (no rising bar -> structural veto passes)
     for k, base in (("open_15m", 100.0), ("high_15m", 101.0), ("low_15m", 99.0), ("close_15m", 100.0)):
         d[k] = np.concatenate([np.full(cut, base), base - 0.05 * np.arange(n - cut)])
     d["close"] = d["close_15m"].copy()  # like real NPZ: close tracks the micro close
-    d["mfi_15m"] = np.concatenate([np.full(cut, 60.0), np.full(n - cut, 30.0)])
+    d["mfi_15m"] = np.concatenate([np.full(cut, 60.0), np.full(n - cut, mfi_dead)])
     d["high_1h"] = np.concatenate([np.full(cut, 110.0), np.linspace(110, 90, n - cut)])
     d["low_1h"] = np.concatenate([np.full(cut, 100.0), np.linspace(100, 80, n - cut)])
     d["high_4h"] = np.concatenate([np.full(cut, 112.0), np.linspace(112, 92, n - cut)])
@@ -67,37 +73,48 @@ def test_gate_default_off_keeps_proxy():
 
 def test_knob_sensitivity_decay_ratio():
     n = 300
-    npz = _synth_npz(n)
-    f0, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DECAY_RATIO=0.0))
-    f1, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DECAY_RATIO=0.99))
-    assert f0.sum() != f1.sum(), "DECAY_RATIO must move twin fires (else unwired)"
+    npz = _synth_npz(n, drift=0.05, mfi_dead=60.0)
+    base = dict(DELTA_EXIT_MIN_TF_LOST=0, DELTA_EXIT_OPPOSING_RATIO=100.0,
+                DELTA_EXIT_ACCEL_THRESHOLD=10.0)
+    f0, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DECAY_RATIO=0.0, **base))
+    f1, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DECAY_RATIO=0.9999, **base))
+    assert f0.sum() > f1.sum(), "DECAY_RATIO must move twin fires (else unwired)"
 
 
 def test_knob_sensitivity_min_tf_lost():
     n = 300
-    npz = _synth_npz(n)
-    f0, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_MIN_TF_LOST=1))
-    f1, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_MIN_TF_LOST=5))
-    assert f0.sum() != f1.sum(), "MIN_TF_LOST must move twin fires (else unwired)"
+    npz = _synth_npz(n, drift=0.05, mfi_dead=60.0)
+    base = dict(DELTA_EXIT_DECAY_RATIO=0.9999, DELTA_EXIT_OPPOSING_RATIO=100.0,
+                DELTA_EXIT_ACCEL_THRESHOLD=10.0)
+    f0, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_MIN_TF_LOST=0, **base))
+    f1, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_MIN_TF_LOST=1, **base))
+    assert f0.sum() < f1.sum(), "MIN_TF_LOST must move twin fires (else unwired)"
 
 
 def test_knob_sensitivity_accel_opposing():
     n = 300
-    npz = _synth_npz(n)
-    fa, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_ACCEL_THRESHOLD=-10.0))
-    fb, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_ACCEL_THRESHOLD=10.0))
-    assert fa.sum() != fb.sum(), "ACCEL_THRESHOLD must move twin fires"
-    fo, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_OPPOSING_RATIO=0.01))
-    fp, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_OPPOSING_RATIO=100.0))
-    assert fo.sum() != fp.sum(), "OPPOSING_RATIO must move twin fires"
+    npz = _synth_npz(n, drift=0.05, mfi_dead=60.0)
+    base = dict(DELTA_EXIT_DECAY_RATIO=0.0, DELTA_EXIT_MIN_TF_LOST=1,
+                DELTA_EXIT_OPPOSING_RATIO=100.0)
+    fa, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_ACCEL_THRESHOLD=-10.0, **base))
+    fb, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_ACCEL_THRESHOLD=10.0, **base))
+    assert fa.sum() < fb.sum(), "ACCEL_THRESHOLD must move twin fires"
+    npz2 = _synth_npz(n, drift=0.05, drift_mix=True, mfi_dead=60.0)
+    base2 = dict(DELTA_EXIT_DECAY_RATIO=0.9999, DELTA_EXIT_MIN_TF_LOST=0,
+                 DELTA_EXIT_ACCEL_THRESHOLD=10.0)
+    fo, _ = T.rich_delta_exits(npz2, n, True, _cfg(DELTA_EXIT_OPPOSING_RATIO=0.01, **base2))
+    fp, _ = T.rich_delta_exits(npz2, n, True, _cfg(DELTA_EXIT_OPPOSING_RATIO=100.0, **base2))
+    assert fo.sum() > fp.sum(), "OPPOSING_RATIO must move twin fires"
 
 
 def test_knob_sensitivity_dom_and_hold():
     n = 300
-    npz = _synth_npz(n)
-    f0, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DOM_TF_ENABLED=False))
-    f1, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DOM_TF_ENABLED=True, DELTA_EXIT_TF="1h"))
-    assert f0.sum() != f1.sum(), "DOM_TF select must move twin fires"
+    npz = _synth_npz(n, mfi_dead=60.0, kill_tfs=["15m"])
+    base = dict(DELTA_EXIT_DECAY_RATIO=0.0, DELTA_EXIT_MIN_TF_LOST=1,
+                DELTA_EXIT_OPPOSING_RATIO=100.0, DELTA_EXIT_ACCEL_THRESHOLD=10.0)
+    f0, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DOM_TF_ENABLED=False, **base))
+    f1, _ = T.rich_delta_exits(npz, n, True, _cfg(DELTA_EXIT_DOM_TF_ENABLED=True, DELTA_EXIT_TF="15m", **base))
+    assert f1.sum() > 0 and f0.sum() != f1.sum(), "DOM_TF select must move twin fires"
 
 
 def test_live_crosscheck_controlled_substitution():
@@ -114,7 +131,9 @@ def test_live_crosscheck_controlled_substitution():
                 "accel_lookback": 5, "z_window": 200,
                 "exit_require_htf_slowdown": True, "exit_htf_veto_min_aligned": 2,
                 "structural_exit_gate_enabled": True, "rz_ltf_micro": "15m",
-                "rz_two_phase_exit_enabled": False}
+                "rz_two_phase_exit_enabled": False, "rz_exit_enabled": False,
+                "rz_entry_enabled": False, "rz_div_exit_enabled": False,
+                "rz_zscore_exit_enabled": False}
     tr = DeltaTracker(cfg=live_cfg)
     tr.reset_position_state("SYN")
     live_fires = []
@@ -136,10 +155,18 @@ def test_live_crosscheck_controlled_substitution():
                   "wt1_15m", "dc_position_15m", "mfi_3m", "wt1_3m",
                   "dc_position_3m", "stoch_k_1h", "bb_pct_b_1h"]:
             ind[k] = float(npz[k][i]) if k in npz else 50.0
+        if i > 0:
+            for k in ["open_15m", "high_15m", "low_15m", "close_15m", "high_1h",
+                      "low_1h", "high_4h", "low_4h", "wt1_15m", "dc_position_15m"]:
+                ind[f"{k}_prev"] = float(npz[k][i - 1])
+            for tf in tw:
+                for f in ["dc_basis", "dc_high", "dc_low"]:
+                    ind[f"{f}_{tf}_prev"] = float(npz[f"{f}_{tf}"][i - 1])
         ind["wt1_3m"] = 50.0  # flat 3m: live 3m terms False (controlled substitution)
         ind["dc_position_3m"] = 0.5
         ind["mfi_3m"] = 50.0
-        sig = tr.update("SYN", ind, {"side": "LONG", "held_bars": i})
+        sig = tr.update("SYN", ind, {"side": "LONG", "held_bars": 999, "n_entries": 99,
+                                     "last_entry_price": 100.0})
         live_fires.append(bool(sig.exit_long))
     fires, meta = T.rich_delta_exits(npz, n, True, cfg, entry_sig=None)
     assert meta["fires"] > 0, "twin must fire on dying-speed synthetic"
