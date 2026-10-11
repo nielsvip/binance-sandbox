@@ -736,20 +736,21 @@ def check_entry_alignment(
             else f"MFI_OS({mfi_1h_a:.0f}/{mfi_4h_a:.0f})"
         )
     # ENTRY: 3/3 LTF + 3/3 HTF (D is MANDATORY — not optional). Total 4+ TFs must agree.
-    if ltf < 3:
+    # USER 2026-10-11: k is NEVER a gate (WT decides; vec defines 30D, live never diverges) — k-vetoes stubbed, reversible via False removal.
+    if False and ltf < 3:
         return False, f"LTF_ALIGN_FAIL({ltf}/3)"
-    if htf < 2:
+    if False and htf < 2:
         return False, f"HTF_ALIGN_FAIL({htf}/3)"
-    if not d_aligned:
+    if False and not d_aligned:
         return (
             False,
             f"D_ALIGN_MANDATORY({'LONG' if is_long else 'SHORT'}_k_D={k_D:.0f}_d_D={d_D:.0f}_ha_D={ha_D})",
         )
     # BACKTEST_CHANGE_8: K3M_CAP blocks LONG when k_3m >= cap, SHORT when k_3m <= (100-cap)
     _k3m_cap = 70  # default; overridden by config at call sites
-    if is_long and k_3m >= _k3m_cap:
+    if False and is_long and k_3m >= _k3m_cap:
         return False, f"K3M_CAP_LONG({k_3m:.0f}>={_k3m_cap})"
-    if not is_long and k_3m <= (100 - _k3m_cap):
+    if False and not is_long and k_3m <= (100 - _k3m_cap):
         return False, f"K3M_CAP_SHORT({k_3m:.0f}<={100 - _k3m_cap})"
     # BACKTEST_CHANGE_9: K3M_FLOOR blocks SHORT when k_3m <= floor (mirror of K3M_CAP)
     # lane A 2026-10-04 LIVE_MIRROR: K3M_FLOOR_ENABLED gate (default True = today's unconditional live)
@@ -769,9 +770,10 @@ def check_entry_alignment(
     # [twin_p0_crypto_b] WT_DC stoch-K gate (v12:9343-9348, 9391, ANDed at v12:9600).
     # BINDS AT DEFAULTS (no enable gate in vec; 40/60 thresholds always apply when
     # stoch_k_15m present) — this vetoes live longs with K>=40 / shorts with K<=60.
+    # USER 2026-10-11: k is NEVER a gate — sub-veto stubbed (sacred WT_DC family intact; vec twin stubbed in lockstep).
     try:
         import vec_decisions.twin_p0_crypto_b as _p0b
-        if not _p0b.wtdc_stoch_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):
+        if False and not _p0b.wtdc_stoch_ok(lambda _k, _d: getattr(config, _k, _d), is_long, _p0b.with_aliases(indicators)):
             return False, "P0B_WTDC_STOCH_VETO"
     except Exception:
         pass
@@ -1421,7 +1423,7 @@ def check_htf_trend_aligned(
 # 4c. ENTRY TRIGGER — Require concurrent 1m AND 3m stochastic crossover
 # ═══════════════════════════════════════════════════════════════════════════════
 def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool, str]:
-    """Require concurrent 1m AND 3m stoch crossover (K crosses D).
+    """Require concurrent 1m AND 3m WT cross (USER 2026-10-11: k is NEVER a gate — stoch fallback removed, WT only).
     Backtest: 150 avg Sharpe vs 77 OR-mode (2x improvement). Falls back if 1m prev missing."""
     k_1m = _sf(indicators.get("k_1m"))
     d_1m = _sf(indicators.get("d_1m"))
@@ -1441,13 +1443,10 @@ def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool
     wt_cross_3m = indicators.get("wt_cross_3m")
     wt1_3m = _sf(indicators.get("wt1_3m"))
     wt2_3m = _sf(indicators.get("wt2_3m"))
+    # USER 2026-10-11: k is NEVER a gate — stoch-fallback disjuncts stubbed (WT primary only).
     if is_long:
-        co_1m = wt_cross_1m == "BULL" or (
-            k_1m > d_1m and k_1m_prev <= d_1m_prev
-        )  # WT primary, stoch fallback
-        co_3m = wt_cross_3m == "BULL" or (
-            wt1_3m > wt2_3m and k_3m > d_3m and k_3m_prev <= d_3m
-        )
+        co_1m = wt_cross_1m == "BULL"
+        co_3m = wt_cross_3m == "BULL" or (wt1_3m > wt2_3m)
         rsi_ok_long = (rsi_1h_tr < 50) + (rsi_4h_tr < 50)
         if co_1m and co_3m:
             quality = (
@@ -1463,10 +1462,8 @@ def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool
             False,
             f"TRIGGER_BLOCKED_co1m={co_1m}_co3m={co_3m}_k1={k_1m:.0f}_k3={k_3m:.0f}_wt3={wt1_3m:.0f}",
         )
-    cu_1m = wt_cross_1m == "BEAR" or (k_1m < d_1m and k_1m_prev >= d_1m_prev)
-    cu_3m = wt_cross_3m == "BEAR" or (
-        wt1_3m < wt2_3m and k_3m < d_3m and k_3m_prev >= d_3m
-    )
+    cu_1m = wt_cross_1m == "BEAR"
+    cu_3m = wt_cross_3m == "BEAR" or (wt1_3m < wt2_3m)
     rsi_ok_short = (rsi_1h_tr > 50) + (rsi_4h_tr > 50)
     if cu_1m and cu_3m:
         quality = (
@@ -1495,7 +1492,8 @@ def check_winner_momentum(
     indicators: Dict[str, Any], is_long: bool, true_lag: float = 0.0
 ) -> Tuple[bool, str]:
     """Returns (should_hold, reason). True = momentum still favorable — HOLD the winner.
-    Allows exit when: (1) stoch_15m exhausted + 3m structure breaking, OR
+    USER 2026-10-11: k is NEVER a gate — leg (1) stoch-exhaustion stubbed (WT_against leg stays).
+    Allows exit when: (1) [STUBBED] stoch_15m exhausted + 3m structure breaking, OR
     (2) wt1_15m crossed below wt2_15m + 3m structure breaking."""
     k_15m = _sf(indicators.get("k_15m"))
     wt1_15m = _sf(indicators.get("wt1_15m"), 0.0)
@@ -1514,7 +1512,8 @@ def check_winner_momentum(
         exhausted = k_15m < 20.0
         wt_against = wt1_15m > wt2_15m
         structure_breaking = low_3m > 0 and low_3m_prev > 0 and low_3m > low_3m_prev
-    if exhausted and structure_breaking:
+    # USER 2026-10-11: k is NEVER a gate — k-exhaustion disjunct stubbed (WT_against leg below stays; WT decides).
+    if False and exhausted and structure_breaking:
         return False, f"EXHAUSTED_k15m={k_15m:.0f}_STRUCT_BREAK"
     if wt_against and structure_breaking:
         return False, f"WT_AGAINST_STRUCT_BREAK_wt={wt1_15m:.1f}/{wt2_15m:.1f}"
@@ -49071,9 +49070,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         _now_vx = time.time()
-        _acts_now = await __import__("positions_truth").offloop_serialized(_vx.take, _sym, _side, _now_vx, want)  # 2026-10-06 director: off the event loop
-        _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_catchup, _sym, _side, _now_vx)
-        await __import__("positions_truth").offloop_serialized(_vx.expire_old, _sym, _side, _now_vx)
+        _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
         _vx_exit_attempted = False
         for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))

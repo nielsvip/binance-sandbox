@@ -12274,8 +12274,9 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else:
             extra_ok = extra_ok & (rsi_1h > getattr(cfg, "RSI_ENTRY_MIN_SHORT", 63.0))
     # LONG_STOCH_CHASE_BLOCK — side-aware veto (fails-open when False, crash-resilient)
+    # USER 2026-10-11: k is NEVER a gate — chase veto stubbed both venues (tradier live twin stubbed in lockstep; crypto live never had it).
     try:
-        if getattr(cfg, "LONG_STOCH_CHASE_BLOCK", False):
+        if False and getattr(cfg, "LONG_STOCH_CHASE_BLOCK", False):
             k_1h = _safe(npz, "stoch_k_1h", n, 50)
             ha_1h = _ha_int(npz, "ha_1h", n)
             if is_long:
@@ -12434,7 +12435,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 else (_dc_arr > _wtdc_dc_thr_short)
             )
     _wtdc_stoch_ok = np.ones(n, dtype=bool)
-    if _wtdc_stoch_tf in ("5m", "15m", "1h", "4h"):
+    # USER 2026-10-11: k is NEVER a gate — stoch veto stubbed (live twin stubbed in lockstep; sacred WT_DC family intact).
+    if False and _wtdc_stoch_tf in ("5m", "15m", "1h", "4h"):
         _sk = f"stoch_k_{_wtdc_stoch_tf}"
         _stoch_arr = _safe(npz, _sk, n, 50)
         if not np.all(_stoch_arr == 50):
@@ -13133,6 +13135,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
         )
         _base_entry = _base_entry | _b15_mask
     # SHARED ZONE GATE 2026-09-14 parity: same is_zone_blocked as live tradier_manage
+    # USER 2026-10-11: k is NEVER a gate — vec zone honors the live switches (both default False = off both venues; sweepable per sym_side).
+    _zone_live_on = bool(getattr(cfg, "ENTRY_ZONE_LONG_LIVE_ENABLED" if is_long else "ENTRY_ZONE_SHORT_LIVE_ENABLED", False))
     try:
         _zone_k = _safe(npz, "stoch_k_1h", n, 50)
         _ez = float(getattr(cfg, "ENTRY_ZONE_LONG", 22.0) or 22.0)
@@ -13142,7 +13146,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
             _zone_blocked = _zone_k > _ez
         else:
             _zone_blocked = _zone_k < _esz
-        _base_entry = _base_entry & ~_zone_blocked
+        if _zone_live_on:
+            _base_entry = _base_entry & ~_zone_blocked
     except Exception:
         pass
     # Re-OR BB/WT_DC after zone block to guarantee 30+ delta (META not erased)

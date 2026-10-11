@@ -21866,7 +21866,8 @@ async def process_position(
                         except Exception:
                             pass
                     # ENTRY_BOTTOM veto gates (fails-open, side-aware)
-                    if _veto is None and bool(
+                    # USER 2026-10-11: k is NEVER a gate — chase veto stubbed (vec twin stubbed in lockstep).
+                    if False and _veto is None and bool(
                         _cfg_auto("LONG_STOCH_CHASE_BLOCK", False)
                     ):
                         try:

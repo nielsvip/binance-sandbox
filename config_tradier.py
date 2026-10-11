@@ -4933,7 +4933,7 @@ class TradierConfig:
         False  # BACKTEST_CHANGE_T58: was True. ATR trailing stop = #1 stock PnL destroyer (-2557%). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     )
     STOCH_CROSS_ENTRY_TRADIER: bool = (
-        True  # BACKTEST_CHANGE_T59: was True. Stoch crossover = noise on daily bars. RSI(10) is the real entry.
+        False  # USER 2026-10-11: k is NEVER a gate (was True) — sweepable per sym_side via template rows
     )
     AUGMENT_PYRAMID_TRADIER: bool = (
         False  # BACKTEST_CHANGE_T60: Pyramiding barely fires on stocks (0-10 trades). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

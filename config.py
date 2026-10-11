@@ -4208,7 +4208,7 @@ class Config:
         30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
     )
     K3M_FLOOR_ENABLED: bool = (
-        True  # lane A 2026-10-04 LIVE_MIRROR: gates the BACKTEST_CHANGE_9 floor in check_entry_alignment; True = today's unconditional live
+        False  # USER 2026-10-11: k is NEVER a gate (was True) — WT decides; vec defines 30D, live never diverges
     )
     CYCLE_TP_PCT: float = (
         0.60  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
@@ -9176,7 +9176,7 @@ class Config:
         True  # BACKTEST_CHANGE_T17 stoch cross on 1h triggers exit  # PORTED from TradierConfig 2026-08-17
     )
     STOCH_CROSS_ENTRY_TRADIER: bool = (
-        True  # BACKTEST_CHANGE_T59: was True. Stoch crossover = noise on daily bars. RSI(10) is the real entry.  # PORTED from TradierConfig 2026-08-17
+        False  # USER 2026-10-11: k is NEVER a gate (was True) — sweepable per sym_side via template rows
     )
     STOP_LOSS_ENABLED: bool = (
         False  # 2026-10-04 live twin wired (vec_decisions/noloss_hold + grey-rewire hooks); was vector sweep-only cap  # PORTED from TradierConfig 2026-08-17
