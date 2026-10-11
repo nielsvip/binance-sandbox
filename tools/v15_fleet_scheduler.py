@@ -606,18 +606,31 @@ def _repair_allowed_for_tier(tier, measured):
     return tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset()):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
     minutes). Key = (redo, tier): the order is the NEW-pair budget priority (first 4 win); held
     chains are budget-free and the launch loop never BREAKS (continue skips over-cap/new-budget/dead
     pairs), so every held chain is evaluated every tick — a break-before-held froze the fleet 03:00-03:35Z.
-    USER 2026-10-10 22:30Z: temporary native-deprioritize REVERTED (GAP_MOC parity repaired, natives run)."""
+    USER 2026-10-10 22:30Z: temporary native-deprioritize REVERTED (GAP_MOC parity repaired, natives run).
+    USER 2026-10-11 (every sym gets its turn): within (redo, tier) the key extends to (chains-first,
+    director-priority, fewest-attempts, oldest-launch) — never-launched sorts first, so every sym gets
+    attempt N before any sym gets attempt N+1. Attempts reset at the midnight rollover (daily rotation)."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
     _rs = redo or set()
     _rk = lambda b: 0 if f"{b}_LONG" in _rs or f"{b}_SHORT" in _rs else 1
-    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers)))
+    _min_att, _old_ts = {}, {}
+    for _k, _v in (attempts or {}).items():
+        try: _sym, _vv = _k.split("|")[0].rsplit("_", 1)[0], float(_v)
+        except (TypeError, ValueError, IndexError): continue
+        if _sym not in _min_att or _vv < _min_att[_sym]: _min_att[_sym] = _vv
+    for _k, _v in (launched_at or {}).items():
+        try: _sym, _vv = _k.split("|")[0].rsplit("_", 1)[0], float(_v)
+        except (TypeError, ValueError, IndexError): continue
+        if _sym not in _old_ts or _vv < _old_ts[_sym]: _old_ts[_sym] = _vv
+    _pri = pri or frozenset()
+    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers), 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
     return seq
 
 
@@ -948,23 +961,31 @@ def _steal_fetch(hosts, thief_host, sym, specs, log):
     return True
 
 
+def _spawn_guard(ss, window, body):
+    """USER 2026-10-11 (5x dup stacks + burned attempt caps): every remote launch is guarded by a real pgrep — the old 'pgrep dedups' comments had no implementation. [x]-trick patterns so the guard never matches its own bash -c wrapper. Skip logs [spawnguard] to the sweep log."""
+    pat = {"30D": f"[v]15_pilot.py --sym-side {ss}", "365D": f"[v]15_365_cycle.py --sym-side {ss}", "REPAIR": f"[v]15_365_cycle.py --sym-side {ss}", "GS": f"[v]15_graph_search.py --symsides {ss}"}[window]
+    return f"pgrep -f \"{pat}\" >/dev/null 2>&1 && echo \"[spawnguard] {ss} {window} already running on $(hostname)\" || {{ {body}; }}"
+
+
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
-    """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd."""
+    """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd. USER 2026-10-11: spawn-guarded (see _spawn_guard)."""
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
         env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=1 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
-        return f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
-    if window == "365D":
-        return (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
+        body = f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
+    elif window == "365D":
+        body = (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
                 f"--template {t} --work {chain}/v365 --rounds 0 --workers {workers}")
-    if window == "GS":  # USER 2026-10-07: GS-heal adjuster stage (standalone runner, heal3+); gated by V15_GS_FLEET=1
-        return (f"mkdir -p {chain}/gs_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_graph_search.py --symsides {ss} --out {chain}/gs_a{attempt} "
+    elif window == "GS":  # USER 2026-10-07: GS-heal adjuster stage (standalone runner, heal3+); gated by V15_GS_FLEET=1
+        body = (f"mkdir -p {chain}/gs_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_graph_search.py --symsides {ss} --out {chain}/gs_a{attempt} "
                 f"--method gs --budget ${{V15_GS_BUDGET:-1200}} --workers {workers} --parallel 1 --progress-dirs {pdir},data/reports/lifecycle_pilot")
-    prev = (f"{pdir}/{ss}_v14_progress.json" if attempt == 1 else
-            f"$(.venv/bin/python -c \"import json;print(json.load(open('{chain}/repair_a{attempt-1}/{ss}_365_cycle.json'))['final_progress'])\")")
-    return (f"mkdir -p {chain}/repair_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {prev} "
-            f"--template {t} --work {chain}/repair_a{attempt} --rounds 3 --workers {workers}")
+    else:
+        prev = (f"{pdir}/{ss}_v14_progress.json" if attempt == 1 else
+                f"$(.venv/bin/python -c \"import json;print(json.load(open('{chain}/repair_a{attempt-1}/{ss}_365_cycle.json'))['final_progress'])\")")
+        body = (f"mkdir -p {chain}/repair_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {prev} "
+                f"--template {t} --work {chain}/repair_a{attempt} --rounds 3 --workers {workers}")
+    return _spawn_guard(ss, window, body)
 
 
 def pair_launch_cmd(host, actions, pdir, workers):
@@ -1379,7 +1400,7 @@ def tick(args, cfg, now):
         nonw_used = sum(1 for s in held[h["name"]] if _sym_quota_hit(s, _gtiers))
         nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo)
+                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri)
         for sym, needs_slot in order:
             if needs_slot and new_launched >= args.max_launch:
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
@@ -1406,6 +1427,7 @@ def tick(args, cfg, now):
             acts = pending_actions(sym, h["name"])
             acts = [a for a in acts if _repair_sticky_ok(a, rep_host, h["name"])]
             acts = [a for a in acts if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts)]
+            acts = [a for a in acts if f"{a['sym']}_{a['side']}" not in running]  # USER 2026-10-11: never launch a side with a live pilot anywhere (kills 5x dup stacks; backfill had this, steal gained it same turn)
             if not acts:
                 continue
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
@@ -1528,7 +1550,7 @@ def tick(args, cfg, now):
                 continue
             if terminal(sym):
                 continue
-            acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1))]
+            acts = [a for a in pending_actions(sym, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and (a["window"] == "365D" or (a["window"] == "REPAIR" and a["attempt"] == 1)) and f"{sym}_{a['side']}" not in running]
             if not acts:
                 continue
             if B["new_launched"] >= args.max_launch or len(held[h["name"]]) >= B["cap"] or B["proj_mem"] < B["est_pair"] or B["cpu"] >= cfg.get("cpu_target_pct", 90) or not _disk_admit_ok(s):  # USER 2026-10-10: pass-2 steal must respect the disk guard
@@ -1608,6 +1630,26 @@ def tick(args, cfg, now):
     log["tier_launched"] = _tl  # USER 2026-10-09: prove ~90% of launches go to winners (M 3d / L 7d defer + slot quota)
     log["gain_tiers"] = {"measured_sides": len(_gtiers), **{t: sum(1 for e in _gtiers.values() if e["tier"] == t) for t in "WML"},
                          "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
+    _starve = {"waiting_state": [], "capped": [], "venue_gated": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick
+    for _ssym in all_syms:
+        if terminal(_ssym):
+            continue
+        _acts = pending_actions(_ssym, "")
+        if not _acts:
+            _has_need = any(s in ("need30", "need365", "needrepair", "needgs") for s, _a in (chain_state.get(_ssym) or {}).values())
+            _starve["capped" if _has_need else "waiting_state"].append(_ssym)
+            continue
+        if not _venue_allowed(_ssym, _native_syms):
+            _starve["venue_gated"].append(_ssym)
+            continue
+        _oh = owner.get(_ssym)
+        if not _oh:
+            _starve["unowned_ready"].append(_ssym)
+            continue
+        _hb = HB.get(_oh)
+        _room = bool(_hb) and len(held.get(_oh, {})) < _hb["cap"] and _hb["proj_mem"] >= _hb["est_pair"] and _hb["cpu"] < float(cfg.get("cpu_target_pct", 90))
+        _starve["owner_ready" if _room else "owned_busy"].append(_ssym)
+    log["starve_audit"] = {k: {"n": len(v), "syms": sorted(v)[:12]} for k, v in _starve.items()}
     log["pending_symbols"] = sum(1 for s in all_syms if not terminal(s))
     log["stocks_chain_left"] = sum(1 for s in stocks if not terminal(s))
     st["pend_same"], _stall_warn = _stall_tick(st.get("pend_last"), st.get("pend_same"), log["pending_symbols"])

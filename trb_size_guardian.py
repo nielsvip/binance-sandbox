@@ -73,7 +73,7 @@ def _load_cfg():
     c = ct.TradierConfig
     mand = set(getattr(c, "TRADIER_MANDATORY_LONG_TRB", []) or []) | set(getattr(c, "TRADIER_MANDATORY_SHORT_TRB", []) or [])
     return {
-        "base": float(getattr(c, "START_POSITION_SIZE", 500.0)),
+        "base": float(getattr(c, "TRB_START_POSITION_SIZE", getattr(c, "START_POSITION_SIZE", 500.0))),
         "symbol_cap": float(getattr(c, "TRB_MAX_SYMBOL_VALUE", 2500.0)),
         "max_long": float(getattr(c, "TRB_MAX_LONG_VALUE", 12500.0)),
         "max_short": float(getattr(c, "TRB_MAX_SHORT_VALUE", 12500.0)),

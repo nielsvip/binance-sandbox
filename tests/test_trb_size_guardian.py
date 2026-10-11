@@ -28,7 +28,35 @@ def test_classify_bad_inputs_fail_quiet():
 
 def test_cfg_reads_live_tradier_values():
     cfg = g._load_cfg()
-    assert cfg["base"] == 500.0
-    assert cfg["symbol_cap"] == 2500.0
+    assert cfg["base"] == 900.0
+    assert cfg["symbol_cap"] == 3600.0
     assert cfg["max_long"] == 12500.0
     assert {"META", "MSTR", "VT"} <= cfg["mandatory"]
+
+
+def test_trb_start_base_and_caps():
+    import config_tradier as ct
+    c = ct.TradierConfig
+    assert float(getattr(c, "TRB_START_POSITION_SIZE")) == 900.0
+    assert float(getattr(c, "TRB_MAX_SYMBOL_VALUE")) == 3600.0
+    assert float(getattr(c, "HARD_MAX_SYMBOL_VALUE_TRADIER")) == 3600.0
+    assert float(getattr(c, "START_POSITION_SIZE")) == 500.0, "global START stays 500 (trc paper untouched)"
+
+
+def test_trb_start_wiring_present():
+    src = (Path(__file__).resolve().parent.parent / "tradier_manage.py").read_text()
+    assert "def _trb_start_usd(account_key):" in src
+    assert 'if param == "START_POSITION_SIZE" and str(account_key or "").lower() == "trb":' in src
+    assert src.count("_trb_start_usd(account_key)") >= 3, "helper + _cfg intercept + 2 weekly reads"
+    assert "TRB_START_POSITION_SIZE" in src
+
+
+def test_trb_step_arithmetic():
+    import config_tradier as ct
+    c = ct.TradierConfig
+    base = float(getattr(c, "TRB_START_POSITION_SIZE"))
+    assert base * 0.05 == 45.0, "trb loser floor must be $45"
+    assert base * 4.0 == 3600.0, "trb biggest gainer must be $3600"
+    assert float(getattr(c, "TRB_MAX_SYMBOL_VALUE")) >= base * 4.0
+    assert float(getattr(c, "HARD_MAX_SYMBOL_VALUE_TRADIER")) >= base * 4.0
+    assert float(getattr(c, "MAX_ORDER_VALUE")) >= base * 4.0

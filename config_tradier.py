@@ -5079,7 +5079,7 @@ class TradierConfig:
     MAX_SYMBOL_VALUE_TRADIER: float = (
         3750.0  # was 7500 / orig 15000 — 2026-04-27 second cut
     )
-    HARD_MAX_SYMBOL_VALUE_TRADIER: float = 2500.0
+    HARD_MAX_SYMBOL_VALUE_TRADIER: float = 3600.0  # USER 2026-10-11: 2500 -> 3600 = trb 900 base x 4x biggest gainer. Was 2500.
     TRC_MAX_SYMBOL_VALUE: float = 1250.0  # was 2500 / orig 5000 — 2026-04-27 second cut
     TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = (
         True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
@@ -5116,7 +5116,10 @@ class TradierConfig:
         2000.0  # was 4000 (tradier_manage default) — per-fire ceiling
     )
     TRB_MAX_SYMBOL_VALUE: float = (
-        2500.0  # was 5000 / orig 10000 — 2026-04-27 second cut
+        3600.0  # USER 2026-10-11: 2500 -> 3600 = trb 900 base x 4x biggest gainer. Was 2026-04-27 second cut 2500.
+    )
+    TRB_START_POSITION_SIZE: float = (
+        900.0  # USER 2026-10-11: trb (real) base START; losers x0.05 -> $45, biggest gainer x4 -> $3600. trc paper keeps TRC_START 330.
     )
     # === trb caps now 1/4 of original ===
     TRB_MAX_LONG_VALUE: float = 12500.0  # was 25000 / orig 50000

@@ -4,7 +4,7 @@
 Input: the day's per-sym go-live report (data/daily_chain/persym_golive_<date>*.json; every evaluated row carries the FRESH
 30D evidence of that sym_side's latest final set) + 365D (data/confirmed_365d.json gain_365d, else the progress final_365d).
 Rules (per venue, crypto / stocks ranked separately):
-  30D < 0 and 365D <= 0 or unknown  -> MIN      mult = --min-mult (default 0.25)
+  30D < 0 and 365D <= 0 or unknown  -> MIN      mult = --min-mult (default 0.25) crypto, --min-mult-stocks (default 0.05 = $45 at trb $900) stocks
   30D < 0 and 365D > 0              -> NEG30    mult = --neg30-mult (default 0.5)
   30D > 0 and 365D > 0 (confirmed) -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 4.0);
                                                 bigger gain = bigger size, up to 4x. ONLY 365D-confirmed gainers reach above 1x.
@@ -50,6 +50,20 @@ def _venue_of(ss):
     return "crypto" if str(ss).rsplit("_", 1)[0].endswith(CRYPTO_SUFFIX) else "stocks"
 
 
+def _min_mult_for_venue(venue, min_mult, min_mult_stocks):
+    """USER 2026-10-11: smallest size per venue — crypto min_mult (0.25 x $45 = $11.25),
+    stocks min_mult_stocks (0.05 x $900 = $45 loser floor). Pure: unit-tested."""
+    try:
+        if str(venue).lower() == "stocks":
+            return float(min_mult_stocks)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return float(min_mult)
+    except (TypeError, ValueError):
+        return 0.25
+
+
 def _size_ranked(x, max_mult, gain_cap, unconfirmed_mult):
     """USER 2026-10-11: (mult, tier) for a 30D-positive row. Above-1x size requires 365D confirmation (g365 > 0);
     unconfirmed (g365 None) or 365D-negative rows trade always but small at unconfirmed_mult. Pure: unit-tested."""
@@ -70,6 +84,7 @@ def main():
     ap.add_argument("--report", required=True)
     ap.add_argument("--out", default=str(ROOT / "data" / "persym_size_tiers.json"))
     ap.add_argument("--min-mult", type=float, default=0.25)
+    ap.add_argument("--min-mult-stocks", type=float, default=0.05)
     ap.add_argument("--neg30-mult", type=float, default=0.5)
     ap.add_argument("--max-mult", type=float, default=4.0)
     ap.add_argument("--unconfirmed-mult", type=float, default=0.5)
@@ -109,7 +124,7 @@ def main():
             if x["g365"] is not None and x["g365"] > 0:
                 tiers[x["ss"]] = dict(x, mult=a.neg30_mult, tier="NEG30_POS365")
             else:
-                tiers[x["ss"]] = dict(x, mult=a.min_mult, tier="MIN")
+                tiers[x["ss"]] = dict(x, mult=_min_mult_for_venue(x["venue"], a.min_mult, a.min_mult_stocks), tier="MIN")
     for book in ("per_sym_active_config.json", "per_sym_active_config_stocks.json"):  # live NEG-block is relaxed under tier sizing: every
         try:                                                                          # book entry with acc_gain_pct <= 0 and no fresh row -> MIN
             bk = json.loads((ROOT / "data" / "hourly_reconfig" / book).read_text())
@@ -124,7 +139,7 @@ def main():
                     continue
                 g = float(g)
                 if g <= 0:
-                    tiers[ss] = {"venue": "crypto" if book.endswith("config.json") else "stocks", "g30": g, "g365": None, "src365": "book acc_gain_pct (no fresh row)", "trades_30d": e.get("trades"), "tim_30d": e.get("tim_pct"), "mult": a.min_mult, "tier": "BOOK_NEG"}
+                    tiers[ss] = {"venue": "crypto" if book.endswith("config.json") else "stocks", "g30": g, "g365": None, "src365": "book acc_gain_pct (no fresh row)", "trades_30d": e.get("trades"), "tim_30d": e.get("tim_pct"), "mult": _min_mult_for_venue("crypto" if book.endswith("config.json") else "stocks", a.min_mult, a.min_mult_stocks), "tier": "BOOK_NEG"}
                 else:
                     tiers[ss] = {"venue": "crypto" if book.endswith("config.json") else "stocks", "g30": g, "g365": None, "src365": "book acc_gain_pct (no fresh row)", "trades_30d": e.get("trades"), "tim_30d": e.get("tim_pct"), "mult": 1.0, "tier": "BOOK_POS_HOLD"}
             except Exception:
@@ -138,23 +153,23 @@ def main():
         _allowed = set()
     for ss in sorted(_allowed):
         if ss not in tiers:
-            tiers[ss] = {"venue": _venue_of(ss), "g30": 0.0, "g365": None, "src365": "tradeable universe (no evidence)", "trades_30d": 0, "tim_30d": None, "mult": a.min_mult, "tier": "UNLISTED_MIN"}
+            tiers[ss] = {"venue": _venue_of(ss), "g30": 0.0, "g365": None, "src365": "tradeable universe (no evidence)", "trades_30d": 0, "tim_30d": None, "mult": _min_mult_for_venue(_venue_of(ss), a.min_mult, a.min_mult_stocks), "tier": "UNLISTED_MIN"}
     try:
         sys.path.insert(0, str(ROOT))
         import per_sym_store as _pss
         _stored = set(_pss.all_sym_sides()) if hasattr(_pss, "all_sym_sides") else {_r[0] for _r in __import__("sqlite3").connect(str(_pss.DB_PATH)).execute("SELECT sym_side FROM per_sym_active")}
-        _nostore = sorted(ss for ss, v in tiers.items() if v["mult"] > a.min_mult and ss not in _stored)
+        _nostore = sorted(ss for ss, v in tiers.items() if v["mult"] > _min_mult_for_venue(v.get("venue"), a.min_mult, a.min_mult_stocks) and ss not in _stored)
         for ss in _nostore:
             tiers[ss]["was_tier"] = tiers[ss]["tier"]
             tiers[ss]["tier"] = "NOSTORE_MIN"
-            tiers[ss]["mult"] = a.min_mult
+            tiers[ss]["mult"] = _min_mult_for_venue(tiers[ss].get("venue"), a.min_mult, a.min_mult_stocks)
         print(f"[tiers] NOSTORE_MIN demotions (no per_sym_store row -> defaults test waters): {len(_nostore)} {','.join(_nostore[:12])}{'...' if len(_nostore) > 12 else ''}")
     except Exception as _nse:
         _nostore = []
         print(f"[tiers] WARNING: per_sym_store check failed, keeping ranked sizes (fail-open): {_nse}")
     for v in tiers.values():
         v.pop("ss", None)
-    out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap, "unconfirmed_mult": a.unconfirmed_mult},
+    out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "min_mult_stocks": a.min_mult_stocks, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap, "unconfirmed_mult": a.unconfirmed_mult},
                      "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NO365_SMALL", "RANKED_NEG365_SMALL", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN", "NOSTORE_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
     srt = sorted(tiers.items(), key=lambda kv: -kv[1]["mult"])
     print(json.dumps(out["_meta"]["counts"]))

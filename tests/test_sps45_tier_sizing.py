@@ -72,13 +72,23 @@ def test_live_tiers_invariants():
     ts = d["tiers"]
     assert d["_meta"]["rules"]["max_mult"] == 4.0
     assert d["_meta"]["rules"]["unconfirmed_mult"] == 0.5
+    assert d["_meta"]["rules"]["min_mult_stocks"] == 0.05
     for ss, v in ts.items():
-        assert 0.25 <= v["mult"] <= 4.0, f"{ss} mult {v['mult']} outside [0.25, 4.0]"
+        floor = 0.05 if v.get("venue") == "stocks" else 0.25
+        assert floor <= v["mult"] <= 4.0, f"{ss} mult {v['mult']} outside [{floor}, 4.0]"
         assert v["tier"] != "RANKED_NEG365_CAP1", f"{ss} still on retired CAP1 tier"
         if v["tier"] == "RANKED":
             assert (v.get("g365") or 0) > 0, f"{ss} RANKED without 365D confirmation"
     sps = _fnum(_read("config.py"), "START_POSITION_SIZE")
-    assert sps * 0.25 >= 5.0, "smallest tier must clear the $5 futures notional"
+    assert sps * 0.25 >= 5.0, "smallest crypto tier must clear the $5 futures notional"
+
+
+def test_min_mult_for_venue():
+    f = tiers_mod._min_mult_for_venue
+    assert f("crypto", 0.25, 0.05) == 0.25
+    assert f("stocks", 0.25, 0.05) == 0.05
+    assert f("STOCKS", 0.25, 0.05) == 0.05
+    assert f(None, 0.25, 0.05) == 0.25
 
 
 def test_effective_step_arithmetic():

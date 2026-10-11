@@ -2441,11 +2441,7 @@ def _weekly_max_shares_tradier(
                                 if hrs > 24:
                                     target = (
                                         2
-                                        * float(
-                                            getattr(
-                                                config, "START_POSITION_SIZE", 500.0
-                                            )
-                                        )
+                                        * _trb_start_usd(account_key)
                                         / max(price, 1e-9)
                                     )
                                     if hrs >= 168:
@@ -2525,7 +2521,7 @@ def _weekly_max_shares_tradier(
     try:
         p = float(current_price) if current_price and float(current_price) > 0 else 1.0
         return max(
-            1.0, float(getattr(config, "START_POSITION_SIZE", 500.0)) / max(p, 1e-9)
+            1.0, _trb_start_usd(account_key) / max(p, 1e-9)
         )
     except Exception:
         return 1.0
@@ -7501,6 +7497,16 @@ def _load_global_per_sym_cfgs() -> dict:
     return _global_per_sym_cfgs
 
 
+def _trb_start_usd(account_key):
+    """USER 2026-10-11: trb (real) base START $900; every other account keeps global START. Pure except config read."""
+    try:
+        if str(account_key or "").lower() == "trb":
+            return float(getattr(config, "TRB_START_POSITION_SIZE", 900.0))
+    except Exception:
+        pass
+    return float(getattr(config, "START_POSITION_SIZE", 500.0))
+
+
 def _cfg(
     param,
     default=None,
@@ -7549,6 +7555,8 @@ def _cfg(
                 return _ov[param]
         except Exception:
             pass
+    if param == "START_POSITION_SIZE" and str(account_key or "").lower() == "trb":
+        return _trb_start_usd(account_key)
     if symbol and side and bool(getattr(config, "CAT_SIDE_DEFAULTS_ENABLED", True)):
         try:
             import cat_side_defaults as _csd
