@@ -62,20 +62,22 @@ def _arr(npz, key, n):
 
 
 def _knobs(cfg, stocks):
-    g = lambda k, d: getattr(cfg, k, d)
+    # NOTE: reads are intentionally explicit getattr(cfg, "NAME", default) call
+    # sites (no lambda/dict indirection) so the SWITCH_BIBLE vec-read scanner
+    # counts them. Do not refactor into a loop.
     return {
-        "enabled": bool(g("DELTA_EXIT_ENABLED", True)),
-        "decay_ratio": float(g("DELTA_EXIT_DECAY_RATIO", 0.30 if stocks else 0.90)),
-        "accel_thr": float(g("DELTA_EXIT_ACCEL_THRESHOLD", -0.1)),
-        "opp_ratio": float(g("DELTA_EXIT_OPPOSING_RATIO", 1.5)),
-        "min_tf_lost": float(g("DELTA_EXIT_MIN_TF_LOST", 2 if stocks else 1)),
-        "min_hold": float(g("DELTA_EXIT_MIN_HOLD", 4)),
-        "dom_on": bool(g("DELTA_EXIT_DOM_TF_ENABLED", True)),
-        "dom_tf": str(g("DELTA_EXIT_TF", "15m" if stocks else "3m")),
-        "nonzero": bool(g("DELTA_EXIT_REQUIRE_NONZERO_SCORE", True)) and stocks,
-        "accel_lb": int(g("DELTA_ACCEL_LOOKBACK", 5)),
-        "z_win": int(g("DELTA_Z_WINDOW", 200)),
-        "struct_gate": bool(g("STRUCTURAL_EXIT_GATE_ENABLED", False if stocks else True)),
+        "enabled": bool(getattr(cfg, "DELTA_EXIT_ENABLED", True)),
+        "decay_ratio": float(getattr(cfg, "DELTA_EXIT_DECAY_RATIO", 0.30 if stocks else 0.90)),
+        "accel_thr": float(getattr(cfg, "DELTA_EXIT_ACCEL_THRESHOLD", -0.1)),
+        "opp_ratio": float(getattr(cfg, "DELTA_EXIT_OPPOSING_RATIO", 1.5)),
+        "min_tf_lost": float(getattr(cfg, "DELTA_EXIT_MIN_TF_LOST", 2 if stocks else 1)),
+        "min_hold": float(getattr(cfg, "DELTA_EXIT_MIN_HOLD", 4)),
+        "dom_on": bool(getattr(cfg, "DELTA_EXIT_DOM_TF_ENABLED", True)),
+        "dom_tf": str(getattr(cfg, "DELTA_EXIT_TF", "15m" if stocks else "3m")),
+        "nonzero": bool(getattr(cfg, "DELTA_EXIT_REQUIRE_NONZERO_SCORE", True)) and stocks,
+        "accel_lb": int(getattr(cfg, "DELTA_ACCEL_LOOKBACK", 5)),
+        "z_win": int(getattr(cfg, "DELTA_Z_WINDOW", 200)),
+        "struct_gate": bool(getattr(cfg, "STRUCTURAL_EXIT_GATE_ENABLED", False if stocks else True)),
     }
 
 
