@@ -60155,6 +60155,15 @@ def heap_dump_handler(signum, frame):
             pass
 
 
+def _corruption_transition(prev, amt, ep):
+    """MARKER: CORRUPTION_REFIRE_FIX — pure transition predicate for monitor_position_corruption. True only on a live transition (amt>0 -> 0 or ep>0 -> 0); flat-vs-flat and first-seen are quiet. The loop advances the snapshot to current state every step so a flat ghost fires exactly once per transition."""
+    if not prev:
+        return False
+    prev_amt = abs(safe_fetch_float(prev.get("positionAmt", 0), 0))
+    prev_ep = safe_fetch_float(prev.get("entry_price", 0), 0)
+    return bool((prev_amt > 0 and amt == 0) or (prev_ep > 0 and ep == 0))
+
+
 class HaikuOverseer:
     """AI oversight agent — monitors decisions, reverses stupid trades, manages winners.
     Runs as a background task inside ez_manage. Direct access to TradeManager — no Redis pub/sub."""
@@ -60711,68 +60720,30 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                             amt = (safe_fetch_float(pos.get("positionAmt", 0), 0))
                             ep = safe_fetch_float(pos.get("entry_price", 0), 0)
                             prev = snapshots.get(pk)
-                            if prev:
-                                prev_amt = abs(
-                                    safe_fetch_float(prev.get("positionAmt", 0), 0)
-                                )
-                                prev_ep = safe_fetch_float(
-                                    prev.get("entry_price", 0), 0
-                                )
-                                if (prev_amt > 0 and amt == 0) or (
-                                    prev_ep > 0 and ep == 0
-                                ):
-                                    ts = datetime.now(timezone.utc).strftime(
-                                        "%Y-%m-%d %H:%M:%S"
-                                    )
-                                    alert = f"[{ts}] 🚨 CORRUPTION DETECTED: {pk} | positionAmt: {prev_amt} → {amt} | entry_price: {prev_ep} → {ep} | last_updated: {pos.get('last_updated')} | mark_price_last_updated: {pos.get('mark_price_last_updated')}"
-                                    logger.critical(alert)
+                            if _corruption_transition(prev, amt, ep):
+                                prev_amt = abs(safe_fetch_float(prev.get("positionAmt", 0), 0))
+                                prev_ep = safe_fetch_float(prev.get("entry_price", 0), 0)
+                                ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                                alert = f"[{ts}] 🚨 CORRUPTION DETECTED: {pk} | positionAmt: {prev_amt} → {amt} | entry_price: {prev_ep} → {ep} | last_updated: {pos.get('last_updated')} | mark_price_last_updated: {pos.get('mark_price_last_updated')}"
+                                logger.critical(alert)
+                                try:
+                                    async with aiofiles.open(corruption_log, "a") as lf:
+                                        await lf.write(alert + "\n")
+                                        prev_json = json.dumps(prev, default=str)
+                                        curr_json = json.dumps({field: pos.get(field) for field in CRITICAL_FIELDS}, default=str)
+                                        await lf.write(f"  BEFORE: {prev_json}\n  AFTER:  {curr_json}\n\n")
+                                except Exception:
+                                    pass
+                                mem_pos = self.trade_manager.positions.get(pk)
+                                if mem_pos:
+                                    mem_amt = abs(safe_fetch_float(getattr(mem_pos, "positionAmt", 0), 0))
+                                    mem_ep = safe_fetch_float(getattr(mem_pos, "entry_price", 0), 0)
                                     try:
-                                        async with aiofiles.open(
-                                            corruption_log, "a"
-                                        ) as lf:
-                                            await lf.write(alert + "\n")
-                                            prev_json = json.dumps(prev, default=str)
-                                            curr_json = json.dumps(
-                                                {
-                                                    field: pos.get(field)
-                                                    for field in CRITICAL_FIELDS
-                                                },
-                                                default=str,
-                                            )
-                                            await lf.write(
-                                                f"  BEFORE: {prev_json}\n  AFTER:  {curr_json}\n\n"
-                                            )
+                                        async with aiofiles.open(corruption_log, "a") as lf:
+                                            await lf.write(f"  IN-MEMORY: positionAmt={mem_amt} entry_price={mem_ep}\n\n")
                                     except Exception:
                                         pass
-                                    # Also check in-memory positions for the same corruption
-                                    mem_pos = self.trade_manager.positions.get(pk)
-                                    if mem_pos:
-                                        mem_amt = abs(
-                                            safe_fetch_float(
-                                                getattr(mem_pos, "positionAmt", 0), 0
-                                            )
-                                        )
-                                        mem_ep = safe_fetch_float(
-                                            getattr(mem_pos, "entry_price", 0), 0
-                                        )
-                                        try:
-                                            async with aiofiles.open(
-                                                corruption_log, "a"
-                                            ) as lf:
-                                                await lf.write(
-                                                    f"  IN-MEMORY: positionAmt={mem_amt} entry_price={mem_ep}\n\n"
-                                                )
-                                        except Exception:
-                                            pass
-                            if amt > 0 or ep > 0:
-                                snapshots[pk] = {
-                                    field: pos.get(field) for field in CRITICAL_FIELDS
-                                }
-                            elif prev and (
-                                (safe_fetch_float(prev.get("positionAmt", 0), 0)) > 0
-                                or safe_fetch_float(prev.get("entry_price", 0), 0) > 0
-                            ):
-                                pass
+                            snapshots[pk] = {field: pos.get(field) for field in CRITICAL_FIELDS}
             except Exception as e:
                 logger.error(f"[CORRUPTION_MONITOR] Error: {e}")
             await asyncio.sleep(10)
