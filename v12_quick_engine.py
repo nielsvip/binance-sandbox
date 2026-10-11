@@ -13203,7 +13203,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     return _base_entry
 
 
-def compute_exit_signals(npz, n, is_long, cfg):
+def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
     if getattr(cfg, "_G0_PURE_BH", False):
         import numpy as _np
 
@@ -13242,6 +13242,19 @@ def compute_exit_signals(npz, n, is_long, cfg):
         if getattr(cfg, "DELTA_EXIT_ENABLED", True)
         else np.zeros(n, dtype=bool)
     )
+    # USER 2026-10-10: rich DELTA slowdown twin (vec_decisions/delta_exit_rich_vec.py) wires the
+    # live-only sub-knobs (DECAY_RATIO/ACCEL_THRESHOLD/OPPOSING_RATIO/MIN_TF_LOST/MIN_HOLD/
+    # DOM_TF_ENABLED/TF/REQUIRE_NONZERO_SCORE) through v12. GATED by
+    # DELTA_EXIT_SPEED_DECAY_VEC_ENABLED (default False both venues): the legacy proxy above
+    # fires until the twin is parity-proven and the flag is explicitly flipped. The rich
+    # knobs execute NOWHERE (vec, sweep, live-apply) while the flag is False.
+    if bool(getattr(cfg, "DELTA_EXIT_SPEED_DECAY_VEC_ENABLED", False)):
+        try:
+            import vec_decisions.delta_exit_rich_vec as _derv
+            _rich, _rmeta = _derv.rich_delta_exits(npz, n, is_long, cfg, entry_sig)
+            delta_exit = np.asarray(_rich, dtype=bool)
+        except Exception:
+            pass
     # [C2 q007 -> DEF2/001] stocks live DELTA_EXIT_DC_FLOOR (tradier_manage.py:19690): a valid Delta exit is HELD until price breaks the 15m Donchian boundary; gated by STOCKS_LIVE_TWINS_ENABLED (default OFF)
     if (
         str(getattr(cfg, "MODE", "crypto")) == "tradier"
@@ -15372,7 +15385,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         cfg
     )  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
-    exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+    exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
     # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
     # 2026-10-06 USER: the RSI-T55 veto twin (vec_decisions/entry_vet_rsi_t55.py) is REMOVED (never approved). History: cut#6 had re-added it — cut#5 premise REFUTED by S1 parity leg-1: live crypto gate IS functional
