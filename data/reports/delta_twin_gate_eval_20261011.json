@@ -1,0 +1,835 @@
+{
+ "generated_utc": "2026-10-11T02:57:59Z",
+ "window_days": 30,
+ "n": 120,
+ "elapsed_s": 91.9,
+ "cats": {
+  "CRYPTO_LONG": {
+   "n": 28,
+   "pos": 0,
+   "sum": 0.0,
+   "syms": [],
+   "avg": 0.0,
+   "flip_recommend": false
+  },
+  "CRYPTO_SHORT": {
+   "n": 28,
+   "pos": 0,
+   "sum": 0.0,
+   "syms": [],
+   "avg": 0.0,
+   "flip_recommend": false
+  },
+  "STOCKS_LONG": {
+   "n": 26,
+   "pos": 0,
+   "sum": 0.0,
+   "syms": [],
+   "avg": 0.0,
+   "flip_recommend": false
+  },
+  "STOCKS_SHORT": {
+   "n": 26,
+   "pos": 0,
+   "sum": 0.0,
+   "syms": [],
+   "avg": 0.0,
+   "flip_recommend": false
+  }
+ },
+ "applied_per_sym": [],
+ "results": {
+  "1000000MOGUSDT_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "1000000MOGUSDT_SHORT": {
+   "off": -11.7729,
+   "on": -11.7729,
+   "delta": 0.0,
+   "trades_off": 180,
+   "trades_on": 180
+  },
+  "1000BONKUSDC_LONG": {
+   "off": 1.0256,
+   "on": 1.0256,
+   "delta": 0.0,
+   "trades_off": 361,
+   "trades_on": 361
+  },
+  "1000BONKUSDC_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "1000CHEEMSUSDT_LONG": {
+   "off": 1.2743,
+   "on": 1.2743,
+   "delta": 0.0,
+   "trades_off": 306,
+   "trades_on": 306
+  },
+  "1000CHEEMSUSDT_SHORT": {
+   "off": -4.7178,
+   "on": -4.7178,
+   "delta": 0.0,
+   "trades_off": 128,
+   "trades_on": 128
+  },
+  "1000FLOKIUSDT_LONG": {
+   "off": 2.3297,
+   "on": 2.3297,
+   "delta": 0.0,
+   "trades_off": 87,
+   "trades_on": 87
+  },
+  "1000FLOKIUSDT_SHORT": {
+   "off": -2.1896,
+   "on": -2.1896,
+   "delta": 0.0,
+   "trades_off": 114,
+   "trades_on": 114
+  },
+  "1000LUNCUSDT_LONG": {
+   "off": -8.7573,
+   "on": -8.7573,
+   "delta": 0.0,
+   "trades_off": 225,
+   "trades_on": 225
+  },
+  "1000LUNCUSDT_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "1000PEPEUSDC_LONG": {
+   "off": 5.8219,
+   "on": 5.8219,
+   "delta": 0.0,
+   "trades_off": 294,
+   "trades_on": 294
+  },
+  "1000PEPEUSDC_SHORT": {
+   "off": 3.0735,
+   "on": 3.0735,
+   "delta": 0.0,
+   "trades_off": 143,
+   "trades_on": 143
+  },
+  "1000SATSUSDT_LONG": {
+   "off": -1.343,
+   "on": -1.343,
+   "delta": 0.0,
+   "trades_off": 154,
+   "trades_on": 154
+  },
+  "1000SATSUSDT_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "1000SHIBUSDC_LONG": {
+   "off": -8.9013,
+   "on": -8.9013,
+   "delta": 0.0,
+   "trades_off": 117,
+   "trades_on": 117
+  },
+  "1000SHIBUSDC_SHORT": {
+   "off": -13.5656,
+   "on": -13.5656,
+   "delta": 0.0,
+   "trades_off": 131,
+   "trades_on": 131
+  },
+  "1000XECUSDT_LONG": {
+   "off": -5.9904,
+   "on": -5.9904,
+   "delta": 0.0,
+   "trades_off": 341,
+   "trades_on": 341
+  },
+  "1000XECUSDT_SHORT": {
+   "off": -0.6253,
+   "on": -0.6253,
+   "delta": 0.0,
+   "trades_off": 95,
+   "trades_on": 95
+  },
+  "1INCHUSDT_LONG": {
+   "off": -2.4195,
+   "on": -2.4195,
+   "delta": 0.0,
+   "trades_off": 193,
+   "trades_on": 193
+  },
+  "1INCHUSDT_SHORT": {
+   "off": -4.425,
+   "on": -4.425,
+   "delta": 0.0,
+   "trades_off": 82,
+   "trades_on": 82
+  },
+  "1MBABYDOGEUSDT_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "1MBABYDOGEUSDT_SHORT": {
+   "off": -6.0828,
+   "on": -6.0828,
+   "delta": 0.0,
+   "trades_off": 59,
+   "trades_on": 59
+  },
+  "A_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "A_SHORT": {
+   "off": 3.745,
+   "on": 3.745,
+   "delta": 0.0,
+   "trades_off": 22,
+   "trades_on": 22
+  },
+  "AAOIUSDT_LONG": {
+   "off": -7.6949,
+   "on": -7.6949,
+   "delta": 0.0,
+   "trades_off": 349,
+   "trades_on": 349
+  },
+  "AAOIUSDT_SHORT": {
+   "off": -2.8287,
+   "on": -2.8287,
+   "delta": 0.0,
+   "trades_off": 122,
+   "trades_on": 122
+  },
+  "AAPL_LONG": {
+   "off": 11.3338,
+   "on": 11.3338,
+   "delta": 0.0,
+   "trades_off": 46,
+   "trades_on": 46
+  },
+  "AAPL_SHORT": {
+   "off": -4.9286,
+   "on": -4.9286,
+   "delta": 0.0,
+   "trades_off": 30,
+   "trades_on": 30
+  },
+  "AAPL_365_LONG": {
+   "off": 5.3144,
+   "on": 5.3144,
+   "delta": 0.0,
+   "trades_off": 36,
+   "trades_on": 36
+  },
+  "AAPL_365_SHORT": {
+   "off": -3.1025,
+   "on": -3.1025,
+   "delta": 0.0,
+   "trades_off": 26,
+   "trades_on": 26
+  },
+  "AAPL_BF_LONG": {
+   "off": 5.0961,
+   "on": 5.0961,
+   "delta": 0.0,
+   "trades_off": 30,
+   "trades_on": 30
+  },
+  "AAPL_BF_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "AAPL_BF2_LONG": {
+   "off": 5.0961,
+   "on": 5.0961,
+   "delta": 0.0,
+   "trades_off": 30,
+   "trades_on": 30
+  },
+  "AAPL_BF2_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "AAPL_CYCLE_LONG": {
+   "off": 5.3144,
+   "on": 5.3144,
+   "delta": 0.0,
+   "trades_off": 36,
+   "trades_on": 36
+  },
+  "AAPL_CYCLE_SHORT": {
+   "off": -3.1025,
+   "on": -3.1025,
+   "delta": 0.0,
+   "trades_off": 26,
+   "trades_on": 26
+  },
+  "AAPL_W2B_LONG": {
+   "off": 5.3144,
+   "on": 5.3144,
+   "delta": 0.0,
+   "trades_off": 36,
+   "trades_on": 36
+  },
+  "AAPL_W2B_SHORT": {
+   "off": -3.1025,
+   "on": -3.1025,
+   "delta": 0.0,
+   "trades_off": 26,
+   "trades_on": 26
+  },
+  "AAVEUSDC_LONG": {
+   "off": 5.7744,
+   "on": 5.7744,
+   "delta": 0.0,
+   "trades_off": 17,
+   "trades_on": 17
+  },
+  "AAVEUSDC_SHORT": {
+   "off": -5.0946,
+   "on": -5.0946,
+   "delta": 0.0,
+   "trades_off": 93,
+   "trades_on": 93
+  },
+  "ABBV_LONG": {
+   "off": 3.1614,
+   "on": 3.1614,
+   "delta": 0.0,
+   "trades_off": 18,
+   "trades_on": 18
+  },
+  "ABBV_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "ABT_LONG": {
+   "off": 0.6875,
+   "on": 0.6875,
+   "delta": 0.0,
+   "trades_off": 23,
+   "trades_on": 23
+  },
+  "ABT_SHORT": {
+   "off": 1.2063,
+   "on": 1.2063,
+   "delta": 0.0,
+   "trades_off": 48,
+   "trades_on": 48
+  },
+  "ACEUSDT_LONG": {
+   "off": -0.9981,
+   "on": -0.9981,
+   "delta": 0.0,
+   "trades_off": 6,
+   "trades_on": 6
+  },
+  "ACEUSDT_SHORT": {
+   "off": -8.6921,
+   "on": -8.6921,
+   "delta": 0.0,
+   "trades_off": 100,
+   "trades_on": 100
+  },
+  "ACHUSDT_LONG": {
+   "off": -8.3407,
+   "on": -8.3407,
+   "delta": 0.0,
+   "trades_off": 297,
+   "trades_on": 297
+  },
+  "ACHUSDT_SHORT": {
+   "off": -10.1077,
+   "on": -10.1077,
+   "delta": 0.0,
+   "trades_off": 133,
+   "trades_on": 133
+  },
+  "ACN_LONG": {
+   "off": -4.4184,
+   "on": -4.4184,
+   "delta": 0.0,
+   "trades_off": 71,
+   "trades_on": 71
+  },
+  "ACN_SHORT": {
+   "off": -1.8448,
+   "on": -1.8448,
+   "delta": 0.0,
+   "trades_off": 1,
+   "trades_on": 1
+  },
+  "ACTUSDT_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "ACTUSDT_SHORT": {
+   "off": -10.3291,
+   "on": -10.3291,
+   "delta": 0.0,
+   "trades_off": 161,
+   "trades_on": 161
+  },
+  "ADAUSDC_LONG": {
+   "off": 0.3111,
+   "on": 0.3111,
+   "delta": 0.0,
+   "trades_off": 350,
+   "trades_on": 350
+  },
+  "ADAUSDC_SHORT": {
+   "off": -5.9213,
+   "on": -5.9213,
+   "delta": 0.0,
+   "trades_off": 84,
+   "trades_on": 84
+  },
+  "ADBE_LONG": {
+   "off": -6.9211,
+   "on": -6.9211,
+   "delta": 0.0,
+   "trades_off": 33,
+   "trades_on": 33
+  },
+  "ADBE_SHORT": {
+   "off": -6.3652,
+   "on": -6.3652,
+   "delta": 0.0,
+   "trades_off": 30,
+   "trades_on": 30
+  },
+  "ADBEUSDT_LONG": {
+   "off": 9.4082,
+   "on": 9.4082,
+   "delta": 0.0,
+   "trades_off": 16,
+   "trades_on": 16
+  },
+  "ADBEUSDT_SHORT": {
+   "off": -2.4087,
+   "on": -2.4087,
+   "delta": 0.0,
+   "trades_off": 134,
+   "trades_on": 134
+  },
+  "ADP_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "ADP_SHORT": {
+   "off": 1.0537,
+   "on": 1.0537,
+   "delta": 0.0,
+   "trades_off": 1,
+   "trades_on": 1
+  },
+  "AEM_LONG": {
+   "off": -9.9515,
+   "on": -9.9515,
+   "delta": 0.0,
+   "trades_off": 33,
+   "trades_on": 33
+  },
+  "AEM_SHORT": {
+   "off": 7.1275,
+   "on": 7.1275,
+   "delta": 0.0,
+   "trades_off": 18,
+   "trades_on": 18
+  },
+  "AG_LONG": {
+   "off": -34.754,
+   "on": -34.754,
+   "delta": 0.0,
+   "trades_off": 25,
+   "trades_on": 25
+  },
+  "AG_SHORT": {
+   "off": 23.5173,
+   "on": 23.5173,
+   "delta": 0.0,
+   "trades_off": 46,
+   "trades_on": 46
+  },
+  "AGCO_LONG": {
+   "off": -1.8068,
+   "on": -1.8068,
+   "delta": 0.0,
+   "trades_off": 24,
+   "trades_on": 24
+  },
+  "AGCO_SHORT": {
+   "off": 6.6399,
+   "on": 6.6399,
+   "delta": 0.0,
+   "trades_off": 25,
+   "trades_on": 25
+  },
+  "AGI_LONG": {
+   "off": -11.2724,
+   "on": -11.2724,
+   "delta": 0.0,
+   "trades_off": 34,
+   "trades_on": 34
+  },
+  "AGI_SHORT": {
+   "off": -1.4142,
+   "on": -1.4142,
+   "delta": 0.0,
+   "trades_off": 27,
+   "trades_on": 27
+  },
+  "AGLDUSDT_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "AGLDUSDT_SHORT": {
+   "off": -6.1937,
+   "on": -6.1937,
+   "delta": 0.0,
+   "trades_off": 107,
+   "trades_on": 107
+  },
+  "AIAUSDT_LONG": {
+   "off": -5.933,
+   "on": -5.933,
+   "delta": 0.0,
+   "trades_off": 79,
+   "trades_on": 79
+  },
+  "AIAUSDT_SHORT": {
+   "off": -17.3774,
+   "on": -17.3774,
+   "delta": 0.0,
+   "trades_off": 100,
+   "trades_on": 100
+  },
+  "ALABUSDT_LONG": {
+   "off": -3.2481,
+   "on": -3.2481,
+   "delta": 0.0,
+   "trades_off": 315,
+   "trades_on": 315
+  },
+  "ALABUSDT_SHORT": {
+   "off": -7.5345,
+   "on": -7.5345,
+   "delta": 0.0,
+   "trades_off": 85,
+   "trades_on": 85
+  },
+  "ALB_LONG": {
+   "off": -16.8929,
+   "on": -16.8929,
+   "delta": 0.0,
+   "trades_off": 18,
+   "trades_on": 18
+  },
+  "ALB_SHORT": {
+   "off": 19.2652,
+   "on": 19.2652,
+   "delta": 0.0,
+   "trades_off": 41,
+   "trades_on": 41
+  },
+  "ALGOUSDT_LONG": {
+   "off": -1.394,
+   "on": -1.394,
+   "delta": 0.0,
+   "trades_off": 115,
+   "trades_on": 115
+  },
+  "ALGOUSDT_SHORT": {
+   "off": 0.7877,
+   "on": 0.7877,
+   "delta": 0.0,
+   "trades_off": 131,
+   "trades_on": 131
+  },
+  "ALKT_LONG": {
+   "off": 0.1556,
+   "on": 0.1556,
+   "delta": 0.0,
+   "trades_off": 2,
+   "trades_on": 2
+  },
+  "ALKT_SHORT": {
+   "off": -1.6477,
+   "on": -1.6477,
+   "delta": 0.0,
+   "trades_off": 10,
+   "trades_on": 10
+  },
+  "ALMU_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "ALMU_SHORT": {
+   "off": 1.3289,
+   "on": 1.3289,
+   "delta": 0.0,
+   "trades_off": 3,
+   "trades_on": 3
+  },
+  "ALTUSDT_LONG": {
+   "off": 0.971,
+   "on": 0.971,
+   "delta": 0.0,
+   "trades_off": 100,
+   "trades_on": 100
+  },
+  "ALTUSDT_SHORT": {
+   "off": -15.658,
+   "on": -15.658,
+   "delta": 0.0,
+   "trades_off": 84,
+   "trades_on": 84
+  },
+  "AMAT_LONG": {
+   "off": 0.8683,
+   "on": 0.8683,
+   "delta": 0.0,
+   "trades_off": 16,
+   "trades_on": 16
+  },
+  "AMAT_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "AMATUSDT_LONG": {
+   "off": -4.2612,
+   "on": -4.2612,
+   "delta": 0.0,
+   "trades_off": 432,
+   "trades_on": 432
+  },
+  "AMATUSDT_SHORT": {
+   "off": -6.0671,
+   "on": -6.0671,
+   "delta": 0.0,
+   "trades_off": 114,
+   "trades_on": 114
+  },
+  "AMAT_LONGS3_LONG": {
+   "off": 1.4975,
+   "on": 1.4975,
+   "delta": 0.0,
+   "trades_off": 17,
+   "trades_on": 17
+  },
+  "AMAT_LONGS3_SHORT": {
+   "off": 0.881,
+   "on": 0.881,
+   "delta": 0.0,
+   "trades_off": 3,
+   "trades_on": 3
+  },
+  "AMAT_LONGS3B_LONG": {
+   "error": "no-prepared"
+  },
+  "AMAT_LONGS3B_SHORT": {
+   "error": "no-prepared"
+  },
+  "AMAT_LONGS3C_LONG": {
+   "error": "no-prepared"
+  },
+  "AMAT_LONGS3C_SHORT": {
+   "error": "no-prepared"
+  },
+  "AMAT_LONGS3D_LONG": {
+   "error": "no-prepared"
+  },
+  "AMAT_LONGS3D_SHORT": {
+   "error": "no-prepared"
+  },
+  "AMAT_SHORTS3_LONG": {
+   "off": 1.8411,
+   "on": 1.8411,
+   "delta": 0.0,
+   "trades_off": 15,
+   "trades_on": 15
+  },
+  "AMAT_SHORTS3_SHORT": {
+   "off": -4.5242,
+   "on": -4.5242,
+   "delta": 0.0,
+   "trades_off": 23,
+   "trades_on": 23
+  },
+  "AMAT_SHORTS3B_LONG": {
+   "error": "no-prepared"
+  },
+  "AMAT_SHORTS3B_SHORT": {
+   "error": "no-prepared"
+  },
+  "AMAT_SHORTS3C_LONG": {
+   "error": "no-prepared"
+  },
+  "AMAT_SHORTS3C_SHORT": {
+   "error": "no-prepared"
+  },
+  "AMAT_SHORTS3D_LONG": {
+   "error": "no-prepared"
+  },
+  "AMAT_SHORTS3D_SHORT": {
+   "error": "no-prepared"
+  },
+  "AMD_LONG": {
+   "off": 0.5828,
+   "on": 0.5828,
+   "delta": 0.0,
+   "trades_off": 17,
+   "trades_on": 17
+  },
+  "AMD_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "AMZN_LONG": {
+   "off": 2.9812,
+   "on": 2.9812,
+   "delta": 0.0,
+   "trades_off": 27,
+   "trades_on": 27
+  },
+  "AMZN_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "ANKRUSDT_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "ANKRUSDT_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "APA_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "APA_SHORT": {
+   "off": -4.5869,
+   "on": -4.5869,
+   "delta": 0.0,
+   "trades_off": 44,
+   "trades_on": 44
+  },
+  "APEUSDT_LONG": {
+   "off": -2.8374,
+   "on": -2.8374,
+   "delta": 0.0,
+   "trades_off": 161,
+   "trades_on": 161
+  },
+  "APEUSDT_SHORT": {
+   "off": -6.9368,
+   "on": -6.9368,
+   "delta": 0.0,
+   "trades_off": 127,
+   "trades_on": 127
+  },
+  "API3USDT_LONG": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  },
+  "API3USDT_SHORT": {
+   "off": -3.4709,
+   "on": -3.4709,
+   "delta": 0.0,
+   "trades_off": 109,
+   "trades_on": 109
+  },
+  "APO_LONG": {
+   "off": -14.0281,
+   "on": -14.0281,
+   "delta": 0.0,
+   "trades_off": 26,
+   "trades_on": 26
+  },
+  "APO_SHORT": {
+   "off": 0.5426,
+   "on": 0.5426,
+   "delta": 0.0,
+   "trades_off": 30,
+   "trades_on": 30
+  },
+  "APPUSDT_LONG": {
+   "off": -7.7373,
+   "on": -7.7373,
+   "delta": 0.0,
+   "trades_off": 331,
+   "trades_on": 331
+  },
+  "APPUSDT_SHORT": {
+   "off": 0.0,
+   "on": 0.0,
+   "delta": 0.0,
+   "trades_off": 0,
+   "trades_on": 0
+  }
+ }
+}
