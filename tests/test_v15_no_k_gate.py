@@ -15,7 +15,7 @@ def test_config_defaults():
     assert cfg.ENTRY_ZONE_SHORT_LIVE_ENABLED is False
     assert cfg.STOCH_CROSS_ENTRY_TRADIER is False
     import config_tradier as CT
-    tcfg = CT.Config() if hasattr(CT, "Config") else CT
+    tcfg = CT.TradierConfig()
     assert tcfg.STOCH_CROSS_ENTRY_TRADIER is False
 
 
@@ -46,8 +46,12 @@ def test_trigger_wt_only():
             "wt_cross_1m": "BULL", "wt_cross_3m": "BULL"}
     ok, _ = check_entry_trigger(dict(base), True)
     assert ok is True  # WT cross opens despite hostile k
-    nok, rs = check_entry_trigger({k: v for k, v in base.items() if not k.startswith("wt_cross")}, True)
-    assert nok is False and "TRIGGER_BLOCKED" in rs  # no WT cross -> blocked even with k present
+    # k crossed on 1m+3m but NO WT cross -> blocked (pre-change the k-fallback opened)
+    crossed = {"k_1m": 60.0, "d_1m": 50.0, "k_1m_prev": 40.0, "d_1m_prev": 55.0,
+               "k_3m": 60.0, "d_3m": 50.0, "k_3m_prev": 40.0, "k_15m": 50.0,
+               "rsi_1h": 40.0, "rsi_4h": 40.0, "wt1_3m": 60.0, "wt2_3m": 40.0}
+    nok, rs = check_entry_trigger(crossed, True)
+    assert nok is False and "TRIGGER_BLOCKED" in rs
 
 
 def test_winner_momentum_k_stub():
