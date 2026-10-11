@@ -25,7 +25,8 @@ def test_tradeable_keys_ang_not_100():
     import collections
     c = collections.Counter([k.split(":")[0] for k in tk if ":" in k])
     assert c["ang"] <= 60, f"ang tradeable_keys should be way less than 100 after 2d prune, got {c['ang']}"
-    assert len(tk) < 220, f"total tradeable should be <220 after 2d, got {len(tk)}"
+    # USER 2026-10-11: ceiling reconciled to configured universe (was <220 at 144-key universe 2026-09-29). Config base = men 50*2 + fin 31*2 + flz 13*2 + ang 29+16 + inf 23+11 = 267 keys; 310 = base + persistence/winners slack. Deliberate expansion toward 300 tradeable, not prune failure.
+    assert len(tk) <= 310, f"total tradeable should be <=310 (267 configured + slack), got {len(tk)}"
 
 
 def test_tradeable_keys_generated_inEzPositionsService():

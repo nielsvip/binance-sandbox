@@ -6,10 +6,11 @@ import pathlib
 
 def test_tradeable_keys_is_per_account_guide():
     tk = json.loads(pathlib.Path("tradeable_keys.json").read_text())
-    assert isinstance(tk, list) and 100 <= len(tk) <= 250, f"tradeable_keys should be 100-250 after 2d prune, got {len(tk)}"
+    # USER 2026-10-11: ceiling 250->310 reconciled to configured universe (267 base keys + persistence/winners slack; deliberate expansion toward 300 tradeable).
+    assert isinstance(tk, list) and 100 <= len(tk) <= 310, f"tradeable_keys should be 100-310 (267 configured + slack), got {len(tk)}"
     import collections
     c = collections.Counter([k.split(":")[0] for k in tk if ":" in k])
-    # Each account trades different symbols; ang was 100 before 2d cap, now 28 after service prune
+    # Each account trades different symbols; ang was 100 before 2d cap, now ~56 after service prune
     assert 20 <= c["ang"] <= 60, f"ang should be 20-60 after 2d cap (was 100), got {c['ang']}"
     assert c["inf"] > 30, f"inf should have >30, got {c['inf']}"
     assert c["flz"] > 10, f"flz should have >10, got {c['flz']}"
