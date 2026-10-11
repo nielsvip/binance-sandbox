@@ -1,69 +1,88 @@
 {
- "generated_at": "2026-10-11 00:15 UTC",
- "total_capital_usd": 65.29,
+ "generated_at": "2026-10-11 01:00 UTC",
+ "total_capital_usd": 127.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 60.27,
-  "C": 5.01
+  "B": 100.08,
+  "C": 27.44
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
+  "B": 5,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "inf:AIAUSDT_LONG"
+  "flz:XRPUSDC_LONG",
+  "flz:SOLUSDC_SHORT"
  ],
- "mediocre": [
-  "inf:PTBUSDT_LONG",
-  "inf:ARMUSDT_SHORT",
-  "inf:PYPLUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:PTBUSDT_LONG",
-   "symbol": "PTBUSDT",
-   "account": "inf",
-   "value_usd": 28.02,
-   "gain_pct": -0.133,
+   "pk": "flz:XRPUSDC_LONG",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 27.78,
+   "gain_pct": -0.754,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 31305.0,
-   "mark": 0.00089507
+   "perf_mult": 0.74,
+   "amt": 19.9,
+   "mark": 1.396
   },
   {
-   "pk": "inf:ARMUSDT_SHORT",
-   "symbol": "ARMUSDT",
-   "account": "inf",
-   "value_usd": 26.7,
-   "gain_pct": 0.07,
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 27.77,
+   "gain_pct": 0.434,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.1,
-   "mark": 267.04292272
+   "perf_mult": 0.76,
+   "amt": 0.545,
+   "mark": 50.96076838
   },
   {
-   "pk": "inf:PYPLUSDT_SHORT",
-   "symbol": "PYPLUSDT",
-   "account": "inf",
-   "value_usd": 5.55,
-   "gain_pct": -0.071,
+   "pk": "flz:GRAMUSDT_SHORT",
+   "symbol": "GRAMUSDT",
+   "account": "flz",
+   "value_usd": 27.71,
+   "gain_pct": 0.538,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 0.1,
-   "mark": 55.50925363
+   "perf_mult": 2.41,
+   "amt": 19.0,
+   "mark": 1.45844967
   },
   {
-   "pk": "inf:AIAUSDT_LONG",
-   "symbol": "AIAUSDT",
-   "account": "inf",
-   "value_usd": 5.01,
-   "gain_pct": -1.052,
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 27.44,
+   "gain_pct": 0.243,
    "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 61.0,
-   "mark": 0.08218
+   "perf_mult": 0.27,
+   "amt": 0.25,
+   "mark": 109.762439
+  },
+  {
+   "pk": "flz:DOGEUSDC_SHORT",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 10.86,
+   "gain_pct": 0.514,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 127.0,
+   "mark": 0.0855
+  },
+  {
+   "pk": "flz:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 5.96,
+   "gain_pct": 0.809,
+   "tier": "B",
+   "perf_mult": 1.2,
+   "amt": 10.8,
+   "mark": 0.5519
   }
  ]
 }
