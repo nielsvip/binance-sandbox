@@ -17,6 +17,10 @@ def test_config_defaults():
     import config_tradier as CT
     tcfg = CT.TradierConfig()
     assert tcfg.STOCH_CROSS_ENTRY_TRADIER is False
+    import v12_quick_engine as V
+    assert V.QuickConfig().STOCH_CROSS_ENTRY_TRADIER is False  # vec↔live lockstep
+    assert V.QuickConfig().ENTRY_ZONE_LONG_LIVE_ENABLED is False
+    assert V.QuickConfig().K3M_FLOOR_ENABLED is False
 
 
 def _hostile_long():

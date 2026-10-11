@@ -4837,7 +4837,7 @@ class QuickConfig:
     SQUEEZE_ENABLED: bool = False
     STOCH_CROSS_3M_EXIT_ENABLED: bool = False
     STOCH_CROSS_ENTRY_TRADIER: bool = (
-        True  # live parity: config_tradier True (was False, caused 0 trades)
+        False  # USER 2026-10-11: k is NEVER a gate (was True; stale "0 trades" claim disproven S1 AAPL/ENA True≡False)
     )
     TF_ALIGNMENT_MIN_LONG: int = 2
     TF_ALIGNMENT_MIN_SHORT: int = 2
