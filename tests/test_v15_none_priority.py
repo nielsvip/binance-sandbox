@@ -45,15 +45,17 @@ class PossymNoneTest(unittest.TestCase):
         self.assertLess(hits, 300)
 
     def test_known_probs_unchanged(self):
+        # USER 2026-10-10 refinement: pos>=1 always calculates; only pos=0/None sample.
         _, b0, p0, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 0, 30)
-        _, b1, p1, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 1, 30)
-        _, b2, p2, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 2, 30)
-        _, b3, p3, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 3, 30)
-        self.assertEqual((b0, b1, b2, b3), ("pos=0", "pos=1", "pos=2", "pos=3"))
+        c1, b1, p1, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 1, 30)
+        c2, b2, p2, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 2, 30)
+        c3, b3, p3, _ = PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 3, 30)
+        self.assertEqual((b0, b1, b2, b3), ("pos=0", "pos>=1", "pos>=1", "pos>=1"))
         self.assertAlmostEqual(p0, 1.0 / 20)
-        self.assertAlmostEqual(p1, 1.0 / 10)
-        self.assertAlmostEqual(p2, 1.0 / 6)
-        self.assertAlmostEqual(p3, 1.0 / 2)
+        self.assertTrue(c1 and c2 and c3)
+        self.assertIsNone(p1)
+        self.assertIsNone(p2)
+        self.assertIsNone(p3)
 
     def test_always_compute(self):
         self.assertTrue(PILOT._possym_decide("A_LONG", "TAB", "SW=V", "run99", 4, 30)[0])

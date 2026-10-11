@@ -2552,8 +2552,13 @@ def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, ne
         p = _POSSYM_P[0]
         u = _possym_draw(sym_side, tab, rkey, round_id)
         return (u < p), "pos=None", p, u
-    if pos >= 4 or pos < 0:
-        return True, "pos>=4", None, None
+    if pos is not None and pos >= 1:
+        # USER 2026-10-10: every switch/cell with a positive delta in history (pos_sym>=1)
+        # is ALWAYS calculated — sampling must never ignore proven-positive moves to save
+        # time. Rotation sampling applies ONLY to pos=0/None (never-positive/unknown).
+        return True, "pos>=1", None, None
+    if pos is not None and pos < 0:
+        return True, "pos<0", None, None
     if n is None or int(n) < _POSSYM_MIN_N:
         return True, "n<min_or_unknown", None, None
     p = _POSSYM_P[pos]

@@ -1,9 +1,11 @@
-"""Selective compute lock-in: possym sampling probabilities + enablement (USER 2026-10-07).
+"""Selective compute lock-in: possym sampling probabilities + enablement (USER 2026-10-07,
+refined USER 2026-10-10: pos_sym>=1 ALWAYS calculated — sampling must never ignore a
+proven-positive move to save time; rotation applies ONLY to pos=0/None).
 
-Every future pilot run must evaluate only a pos_sym-weighted sample (0->1/20, 1->1/10, 2->1/6,
-3->1/2, >=4 always) with a deterministic per-row draw, and zero-formula skip defaults ON.
-Fleet layers (verified live 2026-10-07): scheduler env V15_POSSYM_SAMPLING=1 on new launches +
-data/possym_sampling.flag=1 on s1/s2/s5 as fallback. This file locks the pilot-side contract.
+Sampling: 0->1/20, None->1/20, >=1 always, with a deterministic per-row draw, and
+zero-formula skip defaults ON. Fleet layers (verified live 2026-10-07): scheduler env
+V15_POSSYM_SAMPLING=1 on new launches + data/possym_sampling.flag=1 on s1/s2/s5 as fallback.
+This file locks the pilot-side contract.
 """
 import importlib
 import os
@@ -21,8 +23,9 @@ def test_prob_table_exact():
 
 def test_decide_always_compute_cases(monkeypatch):
     monkeypatch.setattr(P, "_POSSYM_MIN_N", 3)
-    assert P._possym_decide("A_LONG", "T", "K", "r1", 4, 99)[0] is True
-    assert P._possym_decide("A_LONG", "T", "K", "r1", 99, 99)[0] is True
+    for pos in (1, 2, 3, 4, 99):
+        c, b, p, u = P._possym_decide("A_LONG", "T", "K", "r1", pos, 99)
+        assert (c, b, p, u) == (True, "pos>=1", None, None), pos
     assert P._possym_decide("A_LONG", "T", "K", "r1", 0, 2)[0] is True
     assert P._possym_decide("A_LONG", "T", "K", "r1", 1, None)[0] is True
     c, b, p, u = P._possym_decide("A_LONG", "T", "K", "r1", 0, 99, new=True)
@@ -31,8 +34,8 @@ def test_decide_always_compute_cases(monkeypatch):
 
 def test_decide_buckets_and_prob(monkeypatch):
     monkeypatch.setattr(P, "_POSSYM_MIN_N", 3)
-    c, b, p, u = P._possym_decide("A_LONG", "T", "K", "r1", 2, 99)
-    assert (b, p) == ("pos=2", 1.0 / 6) and isinstance(c, bool) and 0.0 <= u < 1.0
+    c, b, p, u = P._possym_decide("A_LONG", "T", "K", "r1", 0, 99)
+    assert (b, p) == ("pos=0", 1.0 / 20) and isinstance(c, bool) and 0.0 <= u < 1.0
     c, b, p, u = P._possym_decide("A_LONG", "T", "K", "r1", None, 99)
     assert (b, p) == ("pos=None", 1.0 / 20)
 
