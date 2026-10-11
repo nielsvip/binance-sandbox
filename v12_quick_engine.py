@@ -5784,7 +5784,7 @@ class QuickConfig:
         self.MTF_BB_REJECT_EXIT_TF = "OFF"
         # parity-sync 20261006: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.FAST_RISER_DOUBLE_ENABLED = False
-        self.ATR_ADAPTIVE_STOP_MULT = 2.5
+        self.ATR_ADAPTIVE_STOP_MULT = 2.0
         self.BB_PULLBACK_GATE_TF = "OFF"
         self.GOLDEN_RULE_REQUIRE_ACTIVATION = False
         self.BB_EXIT_AT_LOSS_TF = "15m"
@@ -13153,6 +13153,11 @@ def compute_entry_signals(npz, n, is_long, cfg):
             _base_entry = _base_entry | blocks["B_WT_DC_LIVE"]
         if "B_WT_TOP" in blocks:
             _base_entry = _base_entry | blocks["B_WT_TOP"]
+        # USER 2026-10-11 knob#1 ABSOLUTE parity: live worker opens STDEV breakouts standalone
+        # (ez_positions_quick:30373, no pullback/zone veto before execute ~30876) while vec vetoed
+        # 10/10 fire bars via ~_bb_pullback_vec (PEPE proof). Re-OR restores live-faithful opens.
+        if "B_STDEV_BREAKOUT" in blocks:
+            _base_entry = _base_entry | np.asarray(blocks["B_STDEV_BREAKOUT"], dtype=bool)
     except Exception:
         pass
     # 2026-09-29 GREY-SWITCH REWIRE: RZ_BREAKOUT third entry path (tradier_manage process_position +

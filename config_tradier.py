@@ -6671,7 +6671,7 @@ class TradierConfig:
         True  # BACKTEST_CHANGE_130: ATR-based sizing reduction (not stop — STRICT_NO_LOSS)
     )
     ATR_ADAPTIVE_STOP_MULT: float = (
-        2.5  # 2026-10-06 daily chain (stocks-uniform template bold), was 2.0;  BACKTEST_CHANGE_130: ATR(14) x this = risk distance
+        2.0  # 2026-10-11 daily chain (bold-is-truth parity heal; STOCKS_SHORT promo +0.0622), was 2.5;  BACKTEST_CHANGE_130: ATR(14) x this = risk distance
     )
     ATR_ADAPTIVE_STOP_TF: str = "1h"
     ATR_LONG_WINDOW = 100
