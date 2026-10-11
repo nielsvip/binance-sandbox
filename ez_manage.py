@@ -1069,7 +1069,7 @@ def _confirm_wire_result(site, position_key, response, seq, action="", reason=""
         return None
     if seq == 0:
         try:
-            _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+            _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site, "ts": time.time()}
         except Exception:
             pass
         return order_id
@@ -1078,14 +1078,14 @@ def _confirm_wire_result(site, position_key, response, seq, action="", reason=""
         if rec.get("seq") != seq:
             logger.critical(f"🚨 [EXEC_WIRE_BYPASS] broker-confirmed order {order_id} at '{site}' has NO sanction for {position_key} — order placed outside execute_now. action={action} reason={(str(reason) if reason else '')[:80]}")
             try:
-                _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+                _EXEC_WIRE_SANCTIONS.setdefault(position_key, {"seq": 0, "action": action, "side": "", "orders": {}})["orders"][order_id] = {"state": _WIRE_STATE_OPEN, "site": site, "ts": time.time()}
             except Exception:
                 pass
             return "BYPASS"
         status = str((response or {}).get("status") or "").upper()
         if status in _WIRE_EXECUTED or status in _WIRE_CANCELED:
             return order_id
-        rec.setdefault("orders", {})[order_id] = {"state": _WIRE_STATE_OPEN, "site": site}
+        rec.setdefault("orders", {})[order_id] = {"state": _WIRE_STATE_OPEN, "site": site, "ts": time.time()}
         return order_id
     except Exception:
         return None
@@ -1101,6 +1101,52 @@ def _retire_wire_order(position_key, order_id, how):
         oid = str(order_id)
         if oid in orders:
             del orders[oid]
+    except Exception:
+        pass
+
+
+_WIRE_RECONCILE_LAST: Dict[str, float] = {}
+_WIRE_RECONCILE_MIN_AGE_S = 180.0
+_WIRE_RECONCILE_THROTTLE_S = 60.0
+
+
+async def _reconcile_wire_sanction(client, position_key, symbol):
+    """2026-10-11 USER fix-as-discovered: a stale OPEN sanction wedged inf:XTZUSDT_LONG 5h (refuse-before-verify deadlock — every new act dies at _sanction_execution before any verify/clear path runs). Re-query each OPEN order via cancel-then-classify and retire broker-confirmed terminal ones so the NEXT act can place. Current act stays refused (fail-safe). Fresh sanctions (<180s, inside the maker loop window) are never touched; at most one reconcile per key per 60s."""
+    if not _wire_guard_enabled() or client is None or not position_key or not symbol:
+        return False
+    try:
+        now = time.time()
+        if now - float(_WIRE_RECONCILE_LAST.get(position_key, 0.0)) < _WIRE_RECONCILE_THROTTLE_S:
+            return False
+        _WIRE_RECONCILE_LAST[position_key] = now
+        rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
+        oids = [str(oid) for oid, o in (rec.get("orders") or {}).items() if o.get("state") == _WIRE_STATE_OPEN and (now - float(o.get("ts", 0.0) or 0.0)) >= _WIRE_RECONCILE_MIN_AGE_S]
+        if not oids:
+            return False
+        healed = False
+        for oid in oids:
+            try:
+                ok, how = await _verify_order_terminal(client, symbol, oid)
+            except Exception:
+                continue
+            if ok:
+                _retire_wire_order(position_key, oid, how)
+                healed = True
+                logger.critical(f"🧹 [WIRE_SANCTION_RECONCILED] {position_key}: order {oid} broker-{how} — sanction retired, next act may place")
+            else:
+                logger.critical(f"🛑 [WIRE_SANCTION_STILL_OPEN] {position_key}: order {oid} broker-{how} — keeping sanction")
+        return healed
+    except Exception as _e:
+        logger.error(f"[WIRE_SANCTION_RECONCILE_FAIL] {position_key}: {_e}")
+        return False
+
+
+def _spawn_wire_reconcile(client, position_key, symbol):
+    """Fire-and-forget reconcile from a sanction-refuse branch (callers are async; never blocks the refused act)."""
+    try:
+        if client is None or not position_key or not symbol:
+            return
+        asyncio.create_task(_reconcile_wire_sanction(client, position_key, symbol))
     except Exception:
         pass
 
@@ -29665,6 +29711,7 @@ class MultiAccountTradeManager:
                         _dseq = _sanction_execution(position_key, ta, side, float(qty_dec), reason)
                         if _dseq is None:
                             logger.critical(f"🛑 [DUST_CLOSE_REFUSED] {position_key}: unconfirmed broker order pending — skipping dust market wire")
+                            _spawn_wire_reconcile(client, position_key, symbol)
                         else:
                             try:
                                 _dresp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(qty_dec), type=ORDER_TYPE_MARKET), timeout=15.0)
@@ -29925,6 +29972,7 @@ class MultiAccountTradeManager:
                                         _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_runaway), reason)
                                         if _wx_seq is None:
                                             logger.critical(f"🛑 [RUNAWAY_REFUSED] {position_key}: unconfirmed broker order pending — skipping runaway market wire")
+                                            _spawn_wire_reconcile(client, position_key, symbol)
                                             break
                                         try:
                                             _wx_resp = await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
@@ -29966,6 +30014,7 @@ class MultiAccountTradeManager:
                                         _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_runaway), reason)
                                         if _wx_seq is None:
                                             logger.critical(f"🛑 [RUNAWAY_REFUSED] {position_key}: unconfirmed broker order pending — skipping runaway market wire")
+                                            _spawn_wire_reconcile(client, position_key, symbol)
                                             break
                                         try:
                                             _wx_resp = await asyncio.to_thread(client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=str(_qty_runaway), type=ORDER_TYPE_MARKET)
@@ -30099,6 +30148,7 @@ class MultiAccountTradeManager:
                     _wx_seq = _sanction_execution(position_key, ta, side, float(_rem2_dec), reason)
                     if _wx_seq is None:
                         logger.critical(f"🛑 [MAKER_PLACE_REFUSED] {position_key}: unconfirmed broker order pending — NOT re-placing")
+                        _spawn_wire_reconcile(client, position_key, symbol)
                         await asyncio.sleep(POLL_INTERVAL)
                         continue
                     new_order = await asyncio.to_thread(
@@ -30330,6 +30380,7 @@ class MultiAccountTradeManager:
                         _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_market), reason)
                         if _wx_seq is None:
                             logger.critical(f"🛑 [FALLBACK_REFUSED] {position_key}: unconfirmed broker order pending — skipping fallback market wire")
+                            _spawn_wire_reconcile(client, position_key, symbol)
                         else:
                             try:
                                 _wx_resp = await asyncio.to_thread(
@@ -30371,6 +30422,7 @@ class MultiAccountTradeManager:
                     _wx_seq = _sanction_execution(position_key, ta, side, float(_qty_market), reason)
                     if _wx_seq is None:
                         logger.critical(f"🛑 [FALLBACK_REFUSED] {position_key}: unconfirmed broker order pending — skipping fallback market wire")
+                        _spawn_wire_reconcile(client, position_key, symbol)
                     else:
                         try:
                             _wx_resp = await asyncio.to_thread(
@@ -36478,6 +36530,7 @@ class MultiAccountTradeManager:
             _wx_seq = _sanction_execution(position_key, "DIRECT", side, float(qty_dec), reason)
             if _wx_seq is None:
                 logger.critical(f"🛑 [DIRECT_REFUSED] {position_key}: unconfirmed broker order pending — skipping direct market wire")
+                _spawn_wire_reconcile(client, position_key, symbol)
                 return False
             order = await __import__("asyncio").to_thread(
                 client.futures_create_order,

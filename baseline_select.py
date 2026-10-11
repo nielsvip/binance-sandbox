@@ -8,7 +8,11 @@ Pure functions so the rule is unit-tested without importing the pilot.
 
 
 def is_credible(vec, floor_trades, ultra_neg_pct):
-    return bool(vec.get("valid")) and int(vec.get("trades") or 0) >= floor_trades and float(vec.get("gain_pct") or -1e9) >= ultra_neg_pct
+    return (
+        bool(vec.get("valid"))
+        and int(vec.get("trades") or 0) >= floor_trades
+        and float(vec.get("gain_pct") or -1e9) >= ultra_neg_pct
+    )
 
 
 def _wr(vec):
@@ -25,7 +29,13 @@ def _wr(vec):
 
 
 def score(vec, floor_trades, ultra_neg_pct):
-    return (1 if is_credible(vec, floor_trades, ultra_neg_pct) else 0, float(vec.get("gain_pct") or -1e9), _wr(vec), -float(vec.get("max_dd_pct") or 1e9), float(vec.get("pool_sharpe") or -1e9))
+    return (
+        1 if is_credible(vec, floor_trades, ultra_neg_pct) else 0,
+        float(vec.get("gain_pct") or -1e9),
+        _wr(vec),
+        -float(vec.get("max_dd_pct") or 1e9),
+        float(vec.get("pool_sharpe") or -1e9),
+    )
 
 
 def pick_winner(cands, floor_trades, ultra_neg_pct, incumbent=None):
@@ -35,6 +45,10 @@ def pick_winner(cands, floor_trades, ultra_neg_pct, incumbent=None):
         if vec is None:
             continue
         s = score(vec, floor_trades, ultra_neg_pct)
-        if best_score is None or s > best_score or (s == best_score and label == incumbent):
+        if (
+            best_score is None
+            or s > best_score
+            or (s == best_score and label == incumbent)
+        ):
             best_label, best_score = label, s
     return best_label

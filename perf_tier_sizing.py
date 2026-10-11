@@ -58,7 +58,8 @@ def apply_usd(base_usd: float, symbol: str, side: str, min_usd: float, max_usd: 
 def apply_qty(qty: float, symbol: str, side: str) -> float:
     """Stocks quantity x tier multiplier, rounded DOWN to whole shares then floored at 1 (USER 2026-10-11:
     neg/365D-unrescued trade live tiny — supersedes the 2026-10-06 below-one-share = skip rule).
-    Zero/negative input stays 0 (never invent an order). The MAX_ORDER_VALUE cap is applied right after by the caller."""
+    Zero/negative input stays 0 (never invent an order). The MAX_ORDER_VALUE cap is applied right after by the caller.
+    """
     if qty is None:
         return qty
     try:
