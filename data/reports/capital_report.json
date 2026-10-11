@@ -1,109 +1,151 @@
 {
- "generated_at": "2026-10-11 04:25 UTC",
- "total_capital_usd": 159.64,
+ "generated_at": "2026-10-11 05:26 UTC",
+ "total_capital_usd": 160.06,
  "tier_capital": {
   "A": 0.0,
-  "B": 132.34,
-  "C": 27.3
+  "B": 122.23,
+  "C": 37.83
  },
  "tier_count": {
   "A": 0,
-  "B": 7,
-  "C": 1
+  "B": 8,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "inf:PTBUSDT_LONG",
+  "inf:AXSUSDT_LONG",
+  "inf:AAVEUSDC_LONG",
+  "inf:AIAUSDT_LONG",
+  "inf:KSMUSDT_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "inf:ARMUSDT_SHORT",
+  "inf:THETAUSDT_LONG",
+  "inf:ENAUSDC_SHORT",
+  "inf:PYPLUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "flz:ETHUSDC_SHORT",
-   "symbol": "ETHUSDC",
-   "account": "flz",
-   "value_usd": 37.5,
-   "gain_pct": 0.263,
+   "pk": "inf:PTBUSDT_LONG",
+   "symbol": "PTBUSDT",
+   "account": "inf",
+   "value_usd": 27.67,
+   "gain_pct": -1.368,
    "tier": "B",
-   "perf_mult": 1.01,
-   "amt": 0.015,
-   "mark": 2499.92084817
+   "perf_mult": 1.0,
+   "amt": 31305.0,
+   "mark": 0.000884
   },
   {
-   "pk": "flz:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 27.59,
-   "gain_pct": 1.094,
-   "tier": "B",
-   "perf_mult": 0.76,
-   "amt": 0.545,
-   "mark": 50.62
-  },
-  {
-   "pk": "flz:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
-   "account": "flz",
-   "value_usd": 27.55,
-   "gain_pct": 1.115,
-   "tier": "B",
-   "perf_mult": 2.41,
-   "amt": 19.0,
-   "mark": 1.45
-  },
-  {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 27.3,
-   "gain_pct": 0.747,
+   "pk": "inf:AXSUSDT_LONG",
+   "symbol": "AXSUSDT",
+   "account": "inf",
+   "value_usd": 27.19,
+   "gain_pct": -0.811,
    "tier": "C",
-   "perf_mult": 0.27,
-   "amt": 0.25,
-   "mark": 109.21
+   "perf_mult": 0.52,
+   "amt": 22.0,
+   "mark": 1.2358
   },
   {
-   "pk": "flz:ETHUSDC_LONG",
+   "pk": "inf:ARMUSDT_SHORT",
+   "symbol": "ARMUSDT",
+   "account": "inf",
+   "value_usd": 26.68,
+   "gain_pct": 0.159,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.1,
+   "mark": 266.83117961
+  },
+  {
+   "pk": "inf:ETHUSDC_LONG",
    "symbol": "ETHUSDC",
-   "account": "flz",
-   "value_usd": 20.0,
-   "gain_pct": -0.177,
+   "account": "inf",
+   "value_usd": 20.03,
+   "gain_pct": 0.066,
    "tier": "B",
    "perf_mult": 1.01,
    "amt": 0.008,
-   "mark": 2499.92084817
+   "mark": 2503.95
   },
   {
-   "pk": "flz:DOGEUSDC_SHORT",
-   "symbol": "DOGEUSDC",
-   "account": "flz",
-   "value_usd": 10.81,
-   "gain_pct": 0.933,
+   "pk": "inf:AAVEUSDC_LONG",
+   "symbol": "AAVEUSDC",
+   "account": "inf",
+   "value_usd": 16.77,
+   "gain_pct": -0.772,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 127.0,
-   "mark": 0.08514
+   "amt": 0.1,
+   "mark": 167.6927361
   },
   {
-   "pk": "flz:HYPEUSDT_SHORT",
-   "symbol": "HYPEUSDT",
-   "account": "flz",
-   "value_usd": 5.94,
-   "gain_pct": 0.394,
+   "pk": "inf:XTZUSDT_LONG",
+   "symbol": "XTZUSDT",
+   "account": "inf",
+   "value_usd": 10.22,
+   "gain_pct": 0.533,
    "tier": "B",
-   "perf_mult": 1.84,
-   "amt": 0.07,
-   "mark": 84.91
+   "perf_mult": 1.0,
+   "amt": 34.3,
+   "mark": 0.298
   },
   {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 2.95,
-   "gain_pct": -0.16,
+   "pk": "inf:THETAUSDT_LONG",
+   "symbol": "THETAUSDT",
+   "account": "inf",
+   "value_usd": 7.97,
+   "gain_pct": 0.005,
    "tier": "B",
-   "perf_mult": 1.2,
-   "amt": 5.4,
-   "mark": 0.5459
+   "perf_mult": 1.0,
+   "amt": 35.3,
+   "mark": 0.22571188
+  },
+  {
+   "pk": "inf:ENAUSDC_SHORT",
+   "symbol": "ENAUSDC",
+   "account": "inf",
+   "value_usd": 7.34,
+   "gain_pct": 0.207,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 33.0,
+   "mark": 0.22232
+  },
+  {
+   "pk": "inf:KSMUSDT_LONG",
+   "symbol": "KSMUSDT",
+   "account": "inf",
+   "value_usd": 5.57,
+   "gain_pct": 0.69,
+   "tier": "C",
+   "perf_mult": 0.33,
+   "amt": 1.1,
+   "mark": 5.066
+  },
+  {
+   "pk": "inf:PYPLUSDT_SHORT",
+   "symbol": "PYPLUSDT",
+   "account": "inf",
+   "value_usd": 5.55,
+   "gain_pct": -0.073,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.1,
+   "mark": 55.51075605
+  },
+  {
+   "pk": "inf:AIAUSDT_LONG",
+   "symbol": "AIAUSDT",
+   "account": "inf",
+   "value_usd": 5.07,
+   "gain_pct": -0.02,
+   "tier": "C",
+   "perf_mult": 0.25,
+   "amt": 61.0,
+   "mark": 0.08306304
   }
  ]
 }
