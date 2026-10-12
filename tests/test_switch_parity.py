@@ -390,3 +390,29 @@ def test_quickconfig_recent_reduction_lockstep_live():
     assert V.QuickConfig().RECENT_REDUCTION_GUARD_ENABLED is True
     assert C.Config().RECENT_REDUCTION_GUARD_ENABLED is True
     assert V.QuickConfig().RECENT_REDUCTION_GUARD_ENABLED == C.Config().RECENT_REDUCTION_GUARD_ENABLED
+
+
+def test_live_order_switches_zero_hard_after_catside_conversion():
+    # USER 2026-10-12 tandem: the 10 side-split skews + 3 missing keys cleared (hard 13 -> 0).
+    # Live read sites now resolve per-sym > cat_side > global, matching the vec side truth;
+    # VEC_STALE_FLATTEN_* + UNTESTED_FLAT_SPS_MULT mirrored into QuickConfig.
+    rep = SP.verify_live_order_switches()
+    assert not rep.get("error"), rep.get("error")
+    hard_keys = [h["key"] for h in rep["hard"]]
+    for k in (
+        "BB_FROZEN_STOP_ENABLED",
+        "DELTA_EXIT_ENABLED",
+        "FAST_RISER_DOUBLE_ENABLED",
+        "FAST_RISER_FILTER_TF",
+        "GUARANTEED_REENTRY_K_FAVORABLE_HIGH",
+        "HTF_DIRECTION_GATE_ENABLED",
+        "OPEN_CEIL_HARD_MAX_USD",
+        "R2_PEAK_MIN_PCT",
+        "REENTRY2_DC_BREAK_FILTER_TF",
+        "STRUCTURAL_RANGE_SHIFT_EXIT",
+        "UNTESTED_FLAT_SPS_MULT",
+        "VEC_STALE_FLATTEN_BARS",
+        "VEC_STALE_FLATTEN_ENABLED",
+    ):
+        assert k not in hard_keys, f"{k} regressed to HARD: {[h for h in rep['hard'] if h['key'] == k]}"
+    assert rep["n_hard"] == 0, f"live-order HARDs regressed: {hard_keys}"

@@ -3139,6 +3139,11 @@ def _sw_get(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default)
 
 
+def _psym_cs_get(symbol: str, side: str, knob: str, default):
+    """USER 2026-10-12 tandem: identical to _sw_get (per-sym > cat_side > global). Separate name so switch_parity classifies reads as cat_side-resolved."""
+    return _sw_get(symbol, side, knob, default)
+
+
 class _PerSymOverlay:
     """General per-sym config overlay. Forwards attr reads to per-sym overrides
     dict first; falls back to base config. Same pattern as _BtcConfigOverlay but
@@ -22923,7 +22928,8 @@ async def execute_trade_wrapper(
             # ═══ HTF DIRECTION GATE (D + 4h + 1h + price-vs-SMA200D) ═══
             # Blocks entries against the higher-TF direction. Configurable via HTF_GATE_* switches.
             # Whitelist: RZ bounces (own HTF logic) and winner/pullback augments (own 3m+15m gate).
-            if bool(getattr(config, "HTF_DIRECTION_GATE_ENABLED", True)):
+            _htf_pk = parse_position_key(position_key) or (None, "", "")
+            if bool(_psym_cs_get(_htf_pk[1], _htf_pk[2], "HTF_DIRECTION_GATE_ENABLED", getattr(config, "HTF_DIRECTION_GATE_ENABLED", True))):  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
                 _htf_apply_open = bool(getattr(config, "HTF_GATE_APPLY_TO_OPEN", True))
                 _htf_apply_aug = bool(
                     getattr(config, "HTF_GATE_APPLY_TO_AUGMENT", False)
@@ -26145,7 +26151,7 @@ async def check_exit_candidates_for_account(
                     not hard_exit_reason
                     and not is_hedge
                     and not _in_grace_period
-                    and getattr(config, "STRUCTURAL_RANGE_SHIFT_EXIT", False)
+                    and _psym_cs_get(symbol, position_side, "STRUCTURAL_RANGE_SHIFT_EXIT", getattr(config, "STRUCTURAL_RANGE_SHIFT_EXIT", False))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
                 ):
                     _srs_entry = safe_fetch_float(
                         getattr(position, "entry_price", 0), 0
@@ -30021,7 +30027,7 @@ async def check_entry_candidates_for_account(
                             )
                     # === RED ZONE EXIT (close when zone says get out) ===
                     _her_check = locals().get("hard_exit_reason", None)
-                    if config.DELTA_EXIT_ENABLED and pos_amt > 0 and not _her_check:
+                    if _psym_cs_get(symbol, position_side, "DELTA_EXIT_ENABLED", getattr(config, "DELTA_EXIT_ENABLED", True)) and pos_amt > 0 and not _her_check:  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
                         _rz_exit = False
                         if is_long and (
                             _rz_action == "EXIT_LONG" or _delta_sig.exit_long
@@ -31572,9 +31578,7 @@ async def reentry_enforcement_loop_epq(
                     _gr_k_fav_lo = float(
                         getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_LOW", 30.0)
                     )
-                    _gr_k_fav_hi = float(
-                        getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 70.0)
-                    )
+                    _gr_k_fav_hi = float(_psym_cs_get(symbol, pos_side, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 70.0)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
                     _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (
                         not is_long and k_3m <= _gr_k_lo
                     )
@@ -32490,7 +32494,7 @@ async def process_single_reentry_evaluation_epq(
         _dc_req_wt_re = bool(
             getattr(config_obj, "REENTRY2_DC_BREAK_REQUIRE_WT_FILTER", False)
         )
-        _dc_ftf_re = str(getattr(config_obj, "REENTRY2_DC_BREAK_FILTER_TF", "3m"))
+        _dc_ftf_re = str(_psym_cs_get(symbol, position_side, "REENTRY2_DC_BREAK_FILTER_TF", getattr(config_obj, "REENTRY2_DC_BREAK_FILTER_TF", "3m")))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
         _dc_fk_re = _sf(i.get(f"k_{_dc_ftf_re}", 0), 0.0)
         _dc_fd_re = _sf(i.get(f"d_{_dc_ftf_re}", 0), 0.0)
         _dc_fw1_re = _sf(i.get(f"wt1_{_dc_ftf_re}", 0), 0.0)

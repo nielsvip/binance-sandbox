@@ -284,6 +284,7 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
     bh = E._bh(npz, side)
     trades_rows = len(ledger)
     # PAR/001 2026-10-01: trades = REALISED closes (rows with pnl_dollars) — same unit as evaluate_v12 and backtest_v12_engine; the old all-rows count is kept as trades_rows
+    # E2 2026-10-12: unified semantic — pnl presence regardless of type label (REDUCE_TO_FLAT rows ARE closes); hires_chart._split_ledger consumes the same predicate so header==embedded always
     # [w2-carryin cut-fix] pre-window seed marker rows never count as trades (same filter as evaluate_v12/engine _mtrades)
     from metrics_guard import realised_closes as _mg_realised
     realised = _mg_realised(ledger)

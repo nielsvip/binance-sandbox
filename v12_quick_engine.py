@@ -8512,6 +8512,15 @@ class QuickConfig:
     VEC_EXIT_SIG_IS_TRIGGER: bool = (
         False  # N2/007 DEF2 neutral default (legacy: exit_sig does not close alone); True = live-faithful
     )
+    VEC_STALE_FLATTEN_ENABLED: bool = (
+        True  # USER 2026-10-12 tandem: mirror of config.py (vec-exact backstop; kill switch False). Added for verify-live-switches (was missing_in_quickconfig_and_template).
+    )
+    VEC_STALE_FLATTEN_BARS: float = (
+        8.0  # USER 2026-10-12 tandem: mirror of config.py (bars of continuous flat+holds before the backstop fires).
+    )
+    UNTESTED_FLAT_SPS_MULT: float = (
+        0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).
+    )
     GAP_RISK_EXIT_ENABLED: bool = (
         False  # 2026-09-29 USER: default OFF (frequent-exit churn, stock-only) — swept switch; sane baseline WT/DC. Was True.
     )

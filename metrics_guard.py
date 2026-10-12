@@ -64,9 +64,16 @@ def sym_sharpe_from_groups(returns_by_sym: Mapping[str, Sequence[float]]) -> flo
 def realised_closes(ledger) -> List[dict]:
     """Return the realised-close rows of an engine ledger (PAR/001 unit).
 
-    OPEN/AUGMENT/REDUCE position-scaling events carry no pnl_dollars and must
-    never enter trade counts or Sharpe; pre-window seed markers
-    (seeded_prewindow) stay in the ledger for reason trace but never count.
+    E2 UNIFIED SEMANTIC (2026-10-12): the ONLY test is realised-pnl presence
+    (pnl_dollars not None) — the type label is irrelevant. The engine books
+    genuine flat exits under type REDUCE (REDUCE_TO_FLAT, profit-lock
+    HLR_TOP/PPL_TP exits: qty 0, bar_entry/bar_exit, entry/exit prices, pnl);
+    gain/DD/Sharpe/WR already include those dollars, and zero of them share a
+    bar_exit with a CLOSE row (302/302 over the 30 fork charts), so counting
+    them double-counts nothing. Position bookkeeping without pnl
+    (OPEN/AUGMENT, partial REDUCE, companion markers) never enters trade
+    counts or Sharpe; pre-window seed markers (seeded_prewindow) stay in the
+    ledger for reason trace but never count.
     """
     out = []
     for t in ledger or []:
@@ -82,12 +89,15 @@ def realised_closes(ledger) -> List[dict]:
 
 def pool_sharpe_from_ledger(ledger, gain_field: str = "pnl_pct") -> float:
     """pool_sharpe over realised closes ONLY — the single sanctioned
-    ledger->Sharpe path. Rows are included by gain-field PRESENCE (engine
-    OPEN/AUGMENT/REDUCE events carry no gain field, so they are excluded; the
-    old `t.get(field) or 0.0` over all rows diluted Sharpe with zeros).
-    Presence — not pnl_dollars — is the filter so minimal gain-only rows still
-    count; on real engine ledgers both filters agree (closes always carry
-    pnl_dollars AND pnl_pct). Pre-window seeds never count."""
+    ledger->Sharpe path. Rows are included by gain-field PRESENCE (position
+    events without a gain field — OPEN/AUGMENT, partial REDUCE — are excluded;
+    the old `t.get(field) or 0.0` over all rows diluted Sharpe with zeros).
+    E2: REDUCE rows that DO carry a gain field are realised closes to flat
+    (qty 0, full close economics) and ARE included — same unit as
+    realised_closes/trades. Presence — not pnl_dollars — is the filter so
+    minimal gain-only rows still count; on real engine ledgers both filters
+    agree (closes always carry pnl_dollars AND pnl_pct). Pre-window seeds
+    never count."""
     pct = []
     for t in ledger or []:
         if not isinstance(t, dict):

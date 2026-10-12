@@ -35578,7 +35578,7 @@ class MultiAccountTradeManager:
                         except Exception:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
-                        _oc_hard = float(getattr(config, "OPEN_CEIL_HARD_MAX_USD", 180.0))
+                        _oc_hard = float(_psym_cs_get(symbol, position_side, "OPEN_CEIL_HARD_MAX_USD", getattr(config, "OPEN_CEIL_HARD_MAX_USD", 180.0)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only; vec uses side truth 28.0)
                         if _oc_ceil > _oc_hard:
                             _oc_ceil = _oc_hard
                         if bool(getattr(config, "UNTESTED_FLAT_SPS_ENABLED", True)):
@@ -38730,9 +38730,7 @@ class MultiAccountTradeManager:
                         _gr_k_fav_lo = float(
                             getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_LOW", 30.0)
                         )
-                        _gr_k_fav_hi = float(
-                            getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 70.0)
-                        )
+                        _gr_k_fav_hi = float(_psym_cs_get(symbol, pos_side, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 70.0)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
                         _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (
                             not is_long and k_3m <= _gr_k_lo
                         )
@@ -44603,7 +44601,7 @@ async def process_single_reentry_evaluation(
         _dc_reentry_allow_15m = bool(getattr(config, 'REENTRY2_DC_BREAK_ALLOW_15M', True))
         _dc_req_k = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_K_FILTER', True))
         _dc_req_wt = bool(getattr(config, 'REENTRY2_DC_BREAK_REQUIRE_WT_FILTER', False))
-        _dc_ftf = str(getattr(config, 'REENTRY2_DC_BREAK_FILTER_TF', '3m'))
+        _dc_ftf = str(_psym_cs_get(symbol, position_side, 'REENTRY2_DC_BREAK_FILTER_TF', getattr(config, 'REENTRY2_DC_BREAK_FILTER_TF', '3m')))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
         _dc_fk = safe_fetch_float(i.get(f"k_{_dc_ftf}", 0), 0.0)
         _dc_fd = safe_fetch_float(i.get(f"d_{_dc_ftf}", 0), 0.0)
         _dc_fw1 = safe_fetch_float(i.get(f"wt1_{_dc_ftf}", 0), 0.0)
@@ -50765,7 +50763,7 @@ async def process_position(
     if (
         position
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
-        and bool(getattr(config, "BB_FROZEN_STOP_ENABLED", False))
+        and bool(_psym_cs_get(symbol, position_side, "BB_FROZEN_STOP_ENABLED", getattr(config, "BB_FROZEN_STOP_ENABLED", False)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
     ):
         try:
             from vec_decisions.twin_yellow_filters import frozen_stop_tf as _tyf_frozen_tf
@@ -50914,7 +50912,7 @@ async def process_position(
         try:
             _wzg_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
             _wzg_max_gain = safe_fetch_float(getattr(position, "max_gain", 0), 0)
-            _wzg_peak_min = float(getattr(config, "R2_PEAK_MIN_PCT", 0.5))
+            _wzg_peak_min = float(_psym_cs_get(symbol, position_side, "R2_PEAK_MIN_PCT", getattr(config, "R2_PEAK_MIN_PCT", 0.5)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
             # 2026-05-18 per-sym overlay
             _wzg_band = float(_psym_get(symbol, position_side, "WT_15M_VEL_SLOW_GAIN_BAND_PCT", 0.10))
             _wzg_floor = float(_psym_get(symbol, position_side, "WT_15M_VEL_SLOW_GAIN_FLOOR_PCT", 0.01))
@@ -54143,7 +54141,7 @@ async def process_position(
             _rz_exit_enabled = bool(getattr(config, "RZ_EXIT_ENABLED", True))
             if (
                 trade_manager.delta_tracker
-                and getattr(config, "DELTA_EXIT_ENABLED", True)
+                and _psym_cs_get(symbol, position_side, "DELTA_EXIT_ENABLED", getattr(config, "DELTA_EXIT_ENABLED", True))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
                 and _rz_exit_enabled
             ):
                 _de_pos_amt = abs(
@@ -56276,7 +56274,7 @@ async def process_position(
         # 2026-09-28 USER parity order: FAST_RISER_FILTER_TF selects the quick-jump TF
         # (OFF = today's 3m values stay sole source; identical to vec filter_tf_gates).
         # Locals only — never clobber the shared *_3m variables other logic reads.
-        _frtf = str(getattr(config, "FAST_RISER_FILTER_TF", "OFF") or "OFF").strip()
+        _frtf = str(_psym_cs_get(symbol, position_side, "FAST_RISER_FILTER_TF", getattr(config, "FAST_RISER_FILTER_TF", "OFF")) or "OFF").strip()  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
         if _frtf.upper() != "OFF":
             _fr_close_prev = safe_fetch_float(i.get(f"close_{_frtf}_prev", 0.0), 0.0) or safe_fetch_float(i.get(f"ha_close_{_frtf}_prev", 0.0), 0.0)
             _fr_low = safe_fetch_float(i.get(f"low_{_frtf}", 0.0), 0.0)
@@ -56286,7 +56284,7 @@ async def process_position(
             _fr_close_prev, _fr_low, _fr_low_prev, _fr_ha = close_3m_prev, low_3m, low_3m_prev, ha_3m
         if (
             config.ENABLE_FAST_RISER_REDUCE
-            and getattr(config, "FAST_RISER_DOUBLE_ENABLED", False)
+            and _psym_cs_get(symbol, position_side, "FAST_RISER_DOUBLE_ENABLED", getattr(config, "FAST_RISER_DOUBLE_ENABLED", False))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
             and not getattr(config, "ABLATION_DISABLE_FAST_RISER", False)
             and _fr_close_prev > 0
             and position.positionAmt > 2 * pos_min_qty
