@@ -1519,6 +1519,8 @@ def tick(args, cfg, now):
             _bf_ts = st.setdefault("backfill_ts", {})
             blo = []
             for ss in _deferred_sides:
+                if ss in _fresh_map:
+                    continue  # USER 2026-10-12: 4-day fresh-skip — backfill never re-calculates a side computed in the last 4 days
                 sym2, sd2 = ss.rsplit("_", 1)
                 if venue_of(sym2) not in h["venues"]:
                     continue
