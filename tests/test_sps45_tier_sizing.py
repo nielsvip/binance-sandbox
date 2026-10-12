@@ -93,7 +93,7 @@ def test_min_mult_for_venue():
 
 def test_effective_step_arithmetic():
     sps = _fnum(_read("config.py"), "START_POSITION_SIZE")
-    hard = _fnum(_read("config.py"), "OPEN_CEIL_HARD_MAX_USD")
+    hard = _fnum(_read("config.py"), "OPEN_CEIL_ABSOLUTE_MAX_USD")
     assert min(sps * 4.0, hard) == 180.0, "confirmed gainer step must be $180"
     assert sps * 0.25 == 11.25, "loser/untested step must be $11.25 (trades, small)"
     assert sps * 0.5 == 22.5, "unconfirmed-365 step must be $22.50 (trades, small)"

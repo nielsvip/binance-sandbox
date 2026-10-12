@@ -407,6 +407,7 @@ def test_live_order_switches_zero_hard_after_catside_conversion():
         "GUARANTEED_REENTRY_K_FAVORABLE_HIGH",
         "HTF_DIRECTION_GATE_ENABLED",
         "OPEN_CEIL_HARD_MAX_USD",
+        "OPEN_CEIL_ABSOLUTE_MAX_USD",
         "R2_PEAK_MIN_PCT",
         "REENTRY2_DC_BREAK_FILTER_TF",
         "STRUCTURAL_RANGE_SHIFT_EXIT",
