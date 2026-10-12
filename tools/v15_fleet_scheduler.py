@@ -502,11 +502,49 @@ def _burn_launch(key, window, ss, st, started, n=1):
     else:
         st.setdefault("attempts", {})[key] = st.get("attempts", {}).get(key, 0) + n
 _VENUE_ONLY = os.environ.get("V15_SCHED_VENUE_ONLY", "").strip().lower()  # TEMPORARY USER 2026-10-10: stocks-only weekend push (all stocks rereun before Monday) — gates NEW pairs only; held chains drain, running pilots untouched. Unset/unknown = no gate.
-def _venue_allowed(sym, native_syms=None):
-    """TEMPORARY stocks-only gate (USER 2026-10-10). True unless V15_SCHED_VENUE_ONLY=stocks and sym is not native-stocks venue. USDT stock equivalents (AAPLUSDT) are NEVER stocks: user 2026-10-10 mandates actual Tradier info only (their klines+npz deleted fleet-wide). Pure (tested)."""
-    if _VENUE_ONLY != "stocks":
+def _venue_allowed(sym, native_syms=None, phase=None):
+    """Venue gate. V15_SCHED_VENUE_ONLY=stocks (USER 2026-10-10): only native-stocks pairs launch. USER 2026-10-12
+    `auto`: the gate is the current VENUE PHASE (`_venue_phase`): "stocks" while any tradeable stock sym_side is still
+    launchable (need30, not deferred/fresh/waiting_base), else "any" (crypto flows; W-tier stocks come back daily through
+    the 24h refresh and flip the phase for that tick). USDT stock equivalents (AAPLUSDT) are NEVER stocks. Pure (tested)."""
+    mode = phase if phase is not None else ("stocks" if _VENUE_ONLY == "stocks" else "any")
+    if mode != "stocks":
         return True
     return venue_of(sym) == "stocks"
+
+
+def _venue_phase(chain_state, mode=None):
+    """USER 2026-10-12: "stocks only until all tradeable stocks have passed, then crypto (+ best stock performers daily)".
+    -> (phase, launchable_stock_sides). mode = V15_SCHED_VENUE_ONLY: "auto" derives the phase from chain_state (stocks
+    sides still in need30 = launchable now); "stocks" forces the stocks phase; anything else = "any". Pure (tested)."""
+    mode = (mode if mode is not None else _VENUE_ONLY) or ""
+    pending = []
+    for sym, sides in (chain_state or {}).items():
+        if venue_of(sym) != "stocks":
+            continue
+        for side, v in (sides or {}).items():
+            try:
+                if v[0] == "need30":
+                    pending.append(f"{sym}_{side}")
+            except Exception:
+                continue
+    if mode == "stocks":
+        return "stocks", pending
+    if mode == "auto":
+        return ("stocks" if pending else "any"), pending
+    return "any", pending
+
+
+def _host_order(hosts, held):
+    """USER 2026-10-12 "divide the load between s1 s2 s5 s6 while available": admit new pairs on the host with the most
+    free capacity first (free-slot ratio, then free slots, then name) instead of config order (s1 — the live host — filled
+    first). Pure (tested)."""
+    def _key(h):
+        cap = max(2, min(12, int(h.get("max_pairs", 3))))
+        used = len((held or {}).get(h.get("name"), {}) or {})
+        free = max(0, cap - used)
+        return (-(free / float(cap)), -free, str(h.get("name")))
+    return sorted(list(hosts or []), key=_key)
 _GAIN_TIER_W_FRAC = 0.4  # top 40% of measured syms = winners (recalculated every round with the latest NPZ)
 _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re-admitted after _GAIN_TIER_DEFER_DAYS)
 def _defer_windows():
@@ -1421,6 +1459,9 @@ def tick(args, cfg, now):
                 _st[side] = ("terminal_fresh", None)
                 _fresh_skipped.append(f"{sym}_{side}")
         chain_state[sym] = _st
+    _phase, _phase_pending = _venue_phase(chain_state)  # USER 2026-10-12: stocks first until every tradeable stock has passed
+    _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12]}
+    print(f"[sched] venue phase={_phase} (mode={_VENUE_ONLY or 'none'}, launchable stock sides={len(_phase_pending)})", flush=True)
 
     def terminal(sym):
         return all(v[0].startswith("terminal") for v in chain_state[sym].values())
@@ -1502,7 +1543,8 @@ def tick(args, cfg, now):
     _native_syms = {s for s in all_syms if venue_of(s) == "stocks"}  # TEMPORARY USER 2026-10-10: base-name set for the stocks-only gate (USDT stock variants pass)
     mapped_unready = {}
     HB, launched_keys = {}, set()
-    for h in hosts:
+    log["venue_phase"] = _phase_log
+    for h in _host_order(hosts, held):  # USER 2026-10-12: most free capacity first (load divided across s1/s2/s5/s6)
         s = stats[h["name"]]
         if not s:
             log["hosts"][h["name"]] = "UNREACHABLE"
@@ -1541,7 +1583,7 @@ def tick(args, cfg, now):
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
-            if needs_slot and not _venue_allowed(sym, _native_syms):
+            if needs_slot and not _venue_allowed(sym, _native_syms, phase=_phase):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
@@ -1613,7 +1655,7 @@ def tick(args, cfg, now):
                 sym2, sd2 = ss.rsplit("_", 1)
                 if venue_of(sym2) not in h["venues"]:
                     continue
-                if not _venue_allowed(sym2, _native_syms):
+                if not _venue_allowed(sym2, _native_syms, phase=_phase):
                     continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — backfill takes new slots, crypto blocked
                 if sym2 in owner and owner[sym2] != h["name"]:
                     continue
@@ -1776,7 +1818,7 @@ def tick(args, cfg, now):
                 _states = [s for s, _a in (chain_state.get(_ssym) or {}).values()]
                 _starve["running" if "running" in _states else "capped" if any(s in ("need30", "need365", "needrepair", "needgs") for s in _states) else "waiting_base"].append(_ssym)
                 continue
-            if not _venue_allowed(_ssym, _native_syms):
+            if not _venue_allowed(_ssym, _native_syms, phase=_phase):
                 _starve["venue_gated"].append(_ssym)
                 continue
             if not any(is_ready(_hn, _ssym).get("ok") for _hn in readiness_by_host):

@@ -1936,3 +1936,15 @@ reads the newest progress per sym_side (final gain, bh, trades, tim, dd, wr, ver
 `_gain_tiers(gains, ledger=…)` lets the ledger WIN over its gain-only rank (stale > 3 d → fail-open), caps W per pool
 (`V15_TIER_W_MAX_POOL` 12 → ≤48 daily boards), keeps the 24 h W refresh, exempts W from the 4-day fresh skip, defers M/L by
 `_defer_windows()` (5/10 d). The scheduler tick log prints `[sched] cadence ledger: …`.
+
+**Venue phase + load division (USER 2026-10-12 PM: "stocks only until all tradeable stocks have passed, then crypto
+(+ best stock performers adjustment every day); the S1 orchestrator divides the load between s1/s2/s5/s6"):**
+S1 cron `V15_SCHED_VENUE_ONLY=auto` → `_venue_phase(chain_state)`: phase **stocks** while any tradeable stock sym_side is
+still launchable (`need30`; running / waiting_base / deferred / fresh never hold the phase), else **any** (crypto flows).
+W-tier stocks come back daily through the 24 h refresh → `need30` → the phase is stocks for that tick, they launch first,
+crypto resumes the next tick. `_venue_allowed(sym, phase=)` at all three gate sites; tick log `venue_phase` + `[sched] venue
+phase=…`. Hosts are admitted in `_host_order` (most free capacity first, then name) instead of config order (s1 = live host
+no longer fills first). `tools/v15_director.py` leads the priority file with the ledger W syms (stocks first in the stocks
+phase) and prints phase + DAILY list in `DIRECTOR_STATUS.md`. `tools/v15_daily_chain_s1.sh` step 4d regenerates the causal
+profile + ledger daily (ancillary, never fails the chain) and step 6 pushes `data/causal/switch_causal_profile.json` to the
+workers. Tests `tests/test_v15_sched_venue_phase.py`.

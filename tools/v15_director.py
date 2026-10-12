@@ -114,8 +114,24 @@ def main():
     live_todo = sorted(s for s in live if s not in done_syms)
     # priority file: a) one 365D away, b) live universe not yet done, c) 365D-failed once
     prio = []
+    # USER 2026-10-12: (0) the best performers (ledger W tier = DAILY adjustment) always lead; in the stocks phase
+    # (scheduler venue_phase: every tradeable stock passes before crypto) stocks lead and crypto waits.
+    phase = ((tick.get("venue_phase") or {}).get("phase")) or "any"
+    w_syms = []
+    try:
+        _led = jload(ROOT / "data" / "v15_symside_ledger.json", {}) or {}
+        _w = sorted(((e.get("potential") or 0.0), ss) for ss, e in ((_led.get("sym_sides") or {}).items()) if isinstance(e, dict) and e.get("sched_tier") == "W")
+        w_syms = list(dict.fromkeys(ss.rsplit("_", 1)[0] for _p, ss in reversed(_w)))  # one entry per symbol (both sides may be W)
+    except Exception:
+        w_syms = []
+    _is_crypto = lambda s: str(s).upper().endswith(("USDT", "USDC", "BUSD", "FDUSD", "TUSD"))
+    if phase == "stocks":
+        w_syms = [s for s in w_syms if not _is_crypto(s)] + [s for s in w_syms if _is_crypto(s)]
+    prio += w_syms
     for b in need365:
         prio.append(b["symside"].rsplit("_", 1)[0])
+    if phase == "stocks":
+        live_todo = [s for s in live_todo if not _is_crypto(s)] + [s for s in live_todo if _is_crypto(s)]
     # USER 2026-10-08 #1: symbols with an autopsy base carrying effective_switches run ~50x faster (AUTOPSY-INERT) -> they go first
     _bases = set()
     for _bp in glob.glob(str(HOME / "v15_autopsy_first" / "*_autopsy_base.json")):
@@ -210,7 +226,11 @@ def main():
           f"round `{status['round']}` · boards {len(boards)} · finished {len(done)} · positive {len(pos)} · need 365D {len(need365)} · 365D ok {len(ok365)} · 365D bad {len(bad365)}",
           f"finished last hour: {len(done_last_h)} · launches 24h: {launches_24h} · ETA full universe: {eta_h} h · applied live 24h: {applied}",
           f"hosts: " + ", ".join(f"{h} {s} cpu {c}%" + (f" ({r})" if r else "") for h, (s, c, r) in hosts.items()),
-          f"NPZ last bar: {npz_last}", "", "## Blockers", ""] + ([f"- {b}" for b in blockers] or ["- none"]) + ["", "## Priority (written to ~/v15_priority_syms.txt)", "", ", ".join(ordered) or "(none)"]
+          f"NPZ last bar: {npz_last}",
+          f"venue phase: {phase} (stocks launchable: {(tick.get('venue_phase') or {}).get('stocks_launchable')}) · ledger W (daily): {len(w_syms)} · gain tiers: {json.dumps({k: (tick.get('gain_tiers') or {}).get(k) for k in ('W', 'M', 'L', 'deferred_sides')})}",
+          "", "## Blockers", ""] + ([f"- {b}" for b in blockers] or ["- none"]) + ["", "## Priority (written to ~/v15_priority_syms.txt)", "", ", ".join(ordered) or "(none)", "", "## DAILY tier (ledger W, best performers first)", "", ", ".join(w_syms[:48]) or "(ledger missing)"]
+    status["venue_phase"] = phase
+    status["daily_w_syms"] = w_syms[:48]
     (OUT / "DIRECTOR_STATUS.md").write_text("\n".join(md) + "\n")
     print(f"[director] finished={len(done)} pos={len(pos)} need365={len(need365)} ok365={len(ok365)} last_h={len(done_last_h)} prio={len(ordered)} blockers={len(blockers)}")
     return 0

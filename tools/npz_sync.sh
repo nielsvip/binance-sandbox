@@ -1,7 +1,9 @@
 #!/bin/bash
-# npz_sync.sh — Mac is SOURCE OF TRUTH for NPZ / indicator caches, push to S1 24/7
-# Ensures every server gets latest versions of npz files and scripts and TEMPLATE*.xlsx 24/7
-# Mac -> S1 every 5 min, S1 is source of truth for backtest, workers pull from S1
+# npz_sync.sh — DORMANT (no LaunchAgent, no log). USER 2026-10-12: S1 is the SOLE NPZ
+# source — NPZs are made ONLY on S1, never on Mac ("NO npz on local - FORBIDDEN").
+# If re-enabled, the *.npz/matrix_npz sections below must stay OFF (Mac must never push
+# NPZ data to S1); sheets/progress sections only. Workers pull indicators from S1 via
+# tools/sync_indicators.sh (gated by tools/npz_freshness_gate.py).
 # Complements s1_s2_autosync.sh (scripts) and template_push.sh (TEMPLATE*.xlsx)
 # Never calculates a number twice: pushes are checksum-based, idempotent
 set -e

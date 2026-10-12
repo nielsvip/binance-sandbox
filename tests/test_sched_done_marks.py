@@ -1,4 +1,7 @@
-"""Scheduler done-detection: TOP-LEVEL final_gain only (nested endgame.final_gain must not mark done)."""
+"""Scheduler done-detection: TOP-LEVEL final_gain only (nested endgame.final_gain must not mark done).
+
+_progress_marks returns (done, quarantined, gain, redo) since 2026-10-10: the 4th
+element is True when the board carries needs_redo (must resume, never done)."""
 
 import ast
 import json
@@ -38,19 +41,19 @@ def test_nested_endgame_gain_not_done(tmp_path):
             "done": {"k": {"delta": 1.0}},
         },
     )
-    assert m(f) == (False, False, None)
+    assert m(f) == (False, False, None, True)
 
 
 def test_top_final_gain_done(tmp_path):
     m = _marks()
-    assert m(_write(tmp_path, "b.json", {"final_gain": 32.5})) == (True, False, 32.5)
-    assert m(_write(tmp_path, "c.json", {"final_gain": -3.2})) == (True, False, -3.2)
+    assert m(_write(tmp_path, "b.json", {"final_gain": 32.5})) == (True, False, 32.5, False)
+    assert m(_write(tmp_path, "c.json", {"final_gain": -3.2})) == (True, False, -3.2, False)
 
 
 def test_needs_redo_never_done(tmp_path):
     m = _marks()
     f = _write(tmp_path, "d.json", {"final_gain": 10.0, "needs_redo": {"depth": 1}})
-    assert m(f) == (False, False, 10.0)
+    assert m(f) == (False, False, 10.0, True)
 
 
 def test_oom_victim_spares_refills():
@@ -86,7 +89,7 @@ def test_verdicts_and_garbage(tmp_path):
     assert m(_write(tmp_path, "f.json", {"verdict": "BEST_EFFORT"}))[1] is True
     assert m(
         _write(tmp_path, "g.json", {"done": {"k": {"verdict": "IMPOSSIBLE"}}})
-    ) == (False, False, None)
-    assert m(_write(tmp_path, "h.json", {"final_gain": True})) == (False, False, None)
-    assert m(_write(tmp_path, "i.json", "{not json")) == (False, False, None)
-    assert m(_write(tmp_path, "j.json", [1, 2])) == (False, False, None)
+    ) == (False, False, None, False)
+    assert m(_write(tmp_path, "h.json", {"final_gain": True})) == (False, False, None, False)
+    assert m(_write(tmp_path, "i.json", "{not json")) == (False, False, None, False)
+    assert m(_write(tmp_path, "j.json", [1, 2])) == (False, False, None, False)
