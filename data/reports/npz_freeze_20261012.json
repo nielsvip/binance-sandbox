@@ -24,5 +24,9 @@
   },
   "note2": "GALA loop-tick was sentiment-only (ts_last stayed 07:15); one-shot 10:04:26Z appended 10 bars ends 09:45Z. Wave2 all-local S1: AAVE/COTI/SNX/GALA launched ~10:03-10:05Z, all past stale gate.",
   "note3": "COTI SIGTERM ~10:00Z (external signal 15, source unknown, no reaper on S1); file one-shot refreshed 10:27Z (2 bars, ends 10:00Z ts 1791799200); relaunched 10:28Z. 10:29Z census: COTI 174628, AAVE 4176578, SNX 20220, GALA 31610 all true pythons."
+ },
+ "final_unfreeze": {
+  "at": "2026-10-12T10:56:52Z",
+  "reason": "slice-trap: 2400s SLICE exits (AAVE/GALA) + SNX REDO cannot resume in frozen world (stale gate); per-file tick period is ~2h not 15min (cycle cadence confused with file period) so rotation risk was overestimated; ticking world gives fresh gates + stable windows >> slice times."
  }
 }
