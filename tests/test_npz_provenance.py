@@ -1,4 +1,5 @@
 """Unit tests for tools/opt/npz_provenance.py: pass on generating window, fail after drift."""
+
 import numpy as np
 import sys
 from pathlib import Path
@@ -20,13 +21,25 @@ def _write_npz(path, n=100, drift_idx=None, drift_val=999.0, drop_last=0):
     h = close + 2.0
     low = close - 2.0
     v = (1000.0 + np.arange(n2)).astype(np.float64)
-    np.savez(path, timestamps=ts, open_15m=o, high_15m=h, low_15m=low, close_15m=close, volume_15m=v, extra_key=np.ones(n2))
+    np.savez(
+        path,
+        timestamps=ts,
+        open_15m=o,
+        high_15m=h,
+        low_15m=low,
+        close_15m=close,
+        volume_15m=v,
+        extra_key=np.ones(n2),
+    )
 
 
 def _window_dict(path, lo, hi):
     z = np.load(path, allow_pickle=True)
     sl = slice(lo, hi)
-    return np.asarray(z["timestamps"])[sl], {k: np.asarray(z[k])[sl] for k in ("open_15m", "high_15m", "low_15m", "close_15m", "volume_15m")}
+    return np.asarray(z["timestamps"])[sl], {
+        k: np.asarray(z[k])[sl]
+        for k in ("open_15m", "high_15m", "low_15m", "close_15m", "volume_15m")
+    }
 
 
 def test_verify_passes_on_generating_window(tmp_path):
@@ -34,7 +47,13 @@ def test_verify_passes_on_generating_window(tmp_path):
     _write_npz(p)
     ts, win = _window_dict(p, 10, 60)
     rec = record_window_provenance(p, ts, win)
-    assert set(rec) == {"npz_mtime_ns", "npz_size", "win_ts_first", "win_ts_last", "win_slice_sha"}
+    assert set(rec) == {
+        "npz_mtime_ns",
+        "npz_size",
+        "win_ts_first",
+        "win_ts_last",
+        "win_slice_sha",
+    }
     ok, reason = verify_window_provenance(p, rec)
     assert ok, reason
 
@@ -75,7 +94,12 @@ def test_ndarray_window_and_missing_file(tmp_path):
     _write_npz(p)
     z = np.load(p, allow_pickle=True)
     ts = np.asarray(z["timestamps"])[10:60]
-    arr = np.column_stack([np.asarray(z[k])[10:60] for k in ("open_15m", "high_15m", "low_15m", "close_15m", "volume_15m")])
+    arr = np.column_stack(
+        [
+            np.asarray(z[k])[10:60]
+            for k in ("open_15m", "high_15m", "low_15m", "close_15m", "volume_15m")
+        ]
+    )
     rec = record_window_provenance(p, ts, arr)
     ok, _ = verify_window_provenance(p, rec)
     assert ok
