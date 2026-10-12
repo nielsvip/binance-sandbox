@@ -203,7 +203,7 @@ def main():
             if ch and not all(cur.get(k, defaults.get(k)) == v for k, v in ch.items()):
                 raw.append((f"{tab}:{sw}={cand}", ch))
         raw = order_candidates(raw, diag)
-        if diag != "overtrade" and (short or min(int(cur_pair[0].get("trades") or 0), int(cur_pair[1].get("trades") or 0)) < 3 * FLOOR:
+        if diag != "overtrade" and (short or min(int(cur_pair[0].get("trades") or 0), int(cur_pair[1].get("trades") or 0)) < 3 * FLOOR):
             raw += more_trade_cands(cur, defaults, rows_entry, P)
         if diag == "overtrade":
             raw = tighten_trade_cands(cur, defaults, P) + raw

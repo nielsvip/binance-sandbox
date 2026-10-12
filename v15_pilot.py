@@ -5723,6 +5723,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if not _q365_ok:
                 _depth365 = int(progress.get("redo_depth", 0))
                 _fixed365 = None
+                _progress365 = None
                 try:
                     _maybe_write_json(force=True)
                     _r365ov, _r365rep = _run_365_repair(new_symside, progress_path, args.template)
@@ -5744,16 +5745,26 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             print(f"[365-QUAL] {new_symside} {_fixed365[1]}", flush=True)
                         else:
                             print(f"[365-QUAL] {new_symside} repaired set still failing (30D: {'; '.join(_rr30) or 'ok'}; 365D: {'; '.join(_rr365) or 'ok'})", flush=True)
+                            try:
+                                from tools.v15_365_repair import score as _score365p
+                                _s_new = _score365p((_rv30 or {}, _rv365 or {}))
+                                _s_old = _score365p((_fresh_final or {}, _v365 or {}))
+                                if _s_new > _s_old:
+                                    _progress365 = (dict(_r365ov), f"365D strict progress (score {_s_old} -> {_s_new}; 30D: {'; '.join(_rr30) or 'ok'}; 365D: {'; '.join(_rr365) or 'ok'})")
+                                    print(f"[365-QUAL] {new_symside} strict progress — REDO from improved set instead of quarantine", flush=True)
+                            except Exception as _sp_e:
+                                print(f"[365-qual-progress-warn] {new_symside}: {_sp_e}", flush=True)
                 except Exception as _r365e:
                     print(f"[365-repair-warn] {new_symside}: {_r365e}", flush=True)
-                if _fixed365 is not None and _depth365 < QUAL_MAX_REDOS:
+                _redo365 = _fixed365 if _fixed365 is not None else _progress365
+                if _redo365 is not None and _depth365 < QUAL_MAX_REDOS:
                     _this_run = OUT_DIR / _final_name
                     if _this_run.exists():
                         try:
                             _this_run.unlink()
                         except Exception:
                             pass
-                    progress["needs_redo"] = {"overrides": _fixed365[0], "depth": _depth365 + 1, "reason": _fixed365[1]}
+                    progress["needs_redo"] = {"overrides": _redo365[0], "depth": _depth365 + 1, "reason": _redo365[1]}
                     progress.pop("final_path", None)
                     _maybe_write_json(force=True)
                     print(f"[REDO] {new_symside} 365D-driven re-fill scheduled (depth {_depth365 + 1})", flush=True)
