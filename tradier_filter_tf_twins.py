@@ -429,6 +429,8 @@ def kg_stocks_block(get_cfg, get_ind, price, is_long):
         return None
     cum = truthy(get_cfg("KINDERGARTEN_CUMULATIVE_MODE", True))
     tf1 = str(get_cfg("EMA_9_21_TIMEFRAME", "1h") or "1h")
+    from vec_decisions.kg_entry_gate import eff_921_tfs as _eff921
+    _union921 = _eff921(lambda k, d=None: get_cfg(k, d))
 
     def _has(k):
         try:
@@ -436,15 +438,25 @@ def kg_stocks_block(get_cfg, get_ind, price, is_long):
         except Exception:
             return False
     if not cum:
-        k = f"ema_9_above_21_{tf1}"
-        if not _has(k):
+        # USER 2026-10-12 legacy branch: every union TF must agree (AND) — mirrors live_kindergarten_stocks.
+        _bad = None
+        _n = 0
+        for tf in _union921:
+            k = f"ema_9_above_21_{tf}"
+            if not _has(k):
+                continue
+            _n += 1
+            a = _num(get_ind, k)
+            a = -1.0 if a is None else a
+            ok = (a != 0.0) if is_long else (a != 1.0)
+            if not ok:
+                _bad = tf
+                break
+        if _n == 0:
             return None
-        a = _num(get_ind, k)
-        a = -1.0 if a is None else a
-        ok = (a != 0.0) if is_long else (a != 1.0)
-        return None if ok else f"KG_STOCKS_LEGACY_{tf1}_BLOCK"
+        return None if _bad is None else f"KG_STOCKS_LEGACY_{_bad}_BLOCK"
     checks = []
-    for tf in _kg_tfs(get_cfg("EMA_9_21_FILTER_TFS", tf1)) or [tf1]:
+    for tf in _union921:
         k = f"ema_9_above_21_{tf}"
         if _has(k):
             a = _num(get_ind, k) or 0.0

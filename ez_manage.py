@@ -710,7 +710,11 @@ def check_entry_alignment(
     # KINDERGARTEN 2026-08-20 — SOFT +5 for tradier: stocks get bonus not hard block, crypto keeps hard block. Live mirrors v8_vec_sweep soft.
     _sym = str(indicators.get("symbol") or indicators.get("sym") or "")
     _is_crypto_live = ('/' in _sym or 'USDC' in _sym or 'USDT' in _sym)
-    _kg_ok, _kg_reason = _kindergarten_ema_gate(indicators, is_long, float(indicators.get("close") or 0))
+    # USER 2026-10-12 SUPERSEDE: EMA_9_21_FILTER replaces the SMA-kindergarten gate — KG runs only when E921 is off.
+    if bool(getattr(config, "EMA_9_21_FILTER_ENABLED", False)):
+        _kg_ok, _kg_reason = True, "KG_SUPERSEDED_BY_E921"
+    else:
+        _kg_ok, _kg_reason = _kindergarten_ema_gate(indicators, is_long, float(indicators.get("close") or 0))
     if not _kg_ok and _is_crypto_live:
         return False, _kg_reason
     # 2026-09-28 USER parity order: FILTER_TF entry gates (all OFF by default = bit-neutral)
@@ -31258,17 +31262,18 @@ class MultiAccountTradeManager:
                 _e921_on = bool(_kgx_get("EMA_9_21_FILTER_ENABLED", False))
                 if _kgx_on or _e921_on:
                     _kgx_ind = await ii(self, symbol) or {}
-                    if _kgx_on:
-                        _kgx_ok, _kgx_why = _kindergarten_ema_gate(_kgx_ind, position_side == "LONG", float(_kgx_ind.get("close") or 0), enabled=True, scan_tf=_kgx_get("KINDERGARTEN_FILTER_TF", "OFF"))
-                        if not _kgx_ok:
-                            logger.warning(f"🚫 [KINDERGARTEN_EMA_GATE] {position_key}: BLOCKED {action} — {_kgx_why}. reason={(reason or '')[:50]}")
-                            return f"BLOCKED_KINDERGARTEN_EMA_GATE_{position_side}"
+                    # USER 2026-10-12 SUPERSEDE: E921 replaces the SMA-kindergarten gate — never both.
                     if _e921_on:
                         from vec_decisions.kg_entry_gate import ema921_pass as _e921_pass
                         _e921_ok, _e921_n, _e921_c = _e921_pass(_kgx_get, _kgx_ind, position_side == "LONG")
                         if not _e921_ok:
                             logger.warning(f"🚫 [EMA_9_21_FILTER] {position_key}: BLOCKED {action} — 9/21 agrees on {_e921_n}/{_e921_c} TFs. reason={(reason or '')[:50]}")
                             return f"BLOCKED_EMA_9_21_FILTER_{position_side}"
+                    elif _kgx_on:
+                        _kgx_ok, _kgx_why = _kindergarten_ema_gate(_kgx_ind, position_side == "LONG", float(_kgx_ind.get("close") or 0), enabled=True, scan_tf=_kgx_get("KINDERGARTEN_FILTER_TF", "OFF"))
+                        if not _kgx_ok:
+                            logger.warning(f"🚫 [KINDERGARTEN_EMA_GATE] {position_key}: BLOCKED {action} — {_kgx_why}. reason={(reason or '')[:50]}")
+                            return f"BLOCKED_KINDERGARTEN_EMA_GATE_{position_side}"
         except Exception as _kgxe:
             logger.warning(f"[KG/EMA_9_21 chokepoint] check error (fail-open): {_kgxe}")
         # ═══ TWIN_EXITS_DEAD 2026-10-04 entry confirmation gates (BBKC/WICK veto fresh OPEN; default OFF = unchanged live; per-sym via _psym_get) ═══

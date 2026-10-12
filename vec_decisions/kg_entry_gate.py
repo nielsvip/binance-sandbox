@@ -1,7 +1,8 @@
 """kg_entry_gate (FLT2, 2026-10-01) — ONE predicate for the crypto EMA_9_21 / KINDERGARTEN entry gates, called identically by
 live (ez_manage.execute_now fresh-OPEN chokepoint, via `ema921_pass`) and by the vector (v12_quick_engine, `ema921_pass_vec`).
-Semantics = the stocks cumulative gate (tradier_manage.should_enter_long/short) so both venues mean the same thing:
-  checks = 9/21 per TF in EMA_9_21_FILTER_TFS (fallback EMA_9_21_TIMEFRAME, default 1h): LONG ok iff ema_9_above_21_tf != 0, SHORT ok iff != 1; TF without data = no check.
+Semantics = the stocks cumulative gate (tradier process_position FTF chain, tradier_filter_tf_twins.kg_stocks_block) so both venues mean the same thing:
+  checks = 9/21 per TF in the UNION of EMA_9_21_FILTER_TFS + EMA_9_21_TIMEFRAME (USER 2026-10-12: co-equal, never fallback-discarded; default-inert, both '1h' -> ['1h']):
+  LONG ok iff ema_9_above_21_tf != 0, SHORT ok iff != 1; TF without data = no check.
   KINDERGARTEN_STRICT_TFS (comma list): every listed-TF check must pass. Need = min(effective_min_tfs, len(checks)); effective_min_tfs = KINDERGARTEN_CUMULATIVE_MIN_TFS if >0
   else EMA_9_21_FILTER_MIN_TFS else 1 (same chain as live_entry_gates.effective_kg_min_tfs). No checks available -> pass.
 Gate only active when EMA_9_21_FILTER_ENABLED. `get(key, default)` is the live config resolver (per-sym aware)."""
@@ -10,6 +11,19 @@ import numpy as np
 
 def _tfs(s):
     return [t.strip() for t in str(s or "").split(",") if t.strip()]
+
+
+def eff_921_tfs(get):
+    """USER 2026-10-12 (canonical 9/21 TF union): EMA_9_21_FILTER_TFS + EMA_9_21_TIMEFRAME are CO-EQUAL checks.
+    TFS order first, TIMEFRAME appended when new; neither is ever discarded. Default-inert: both '1h' -> ['1h'].
+    Single source of truth — the stocks twins (live_kindergarten_stocks, tradier_filter_tf_twins) and the
+    v12 legacy block implement this exact union."""
+    tfs = _tfs(get("EMA_9_21_FILTER_TFS", ""))
+    tf1 = str(get("EMA_9_21_TIMEFRAME", "1h") or "1h").strip()
+    out = list(tfs)
+    if tf1 and tf1 not in out:
+        out.append(tf1)
+    return out or ["1h"]
 
 
 def effective_min_tfs(get):
@@ -23,7 +37,7 @@ def effective_min_tfs(get):
 
 
 def _filter_tfs(get):
-    return _tfs(get("EMA_9_21_FILTER_TFS", get("EMA_9_21_TIMEFRAME", "1h"))) or ["1h"]
+    return eff_921_tfs(get)
 
 
 def ema921_pass(get, indicators, is_long):

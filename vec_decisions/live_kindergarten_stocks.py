@@ -1,10 +1,10 @@
 """live_kindergarten_stocks (Agent C wave 3, batch b6) — numpy twin of the STOCKS live KINDERGARTEN / EMA_9_21 ENTRY GATE:
 tradier_manage.should_enter_long 27441-27520 / should_enter_short 27803-27860 (`_cfg_auto('EMA_9_21_FILTER_ENABLED') or _cfg_auto('KINDERGARTEN_EMA_GATE_ENABLED')`).
 It is a HARD VETO (`return False`) on the entry decision, NOT an additive entry signal (the vec used `_base_entry | _kg_signal` = the opposite semantic).
-Semantics: checks = [9/21 per TF in EMA_9_21_FILTER_TFS (default EMA_9_21_TIMEFRAME '1h'): LONG ok iff ema_9_above_21_tf != 0 ; SHORT ok iff != 1]
+Semantics: checks = [9/21 per TF in the UNION of EMA_9_21_FILTER_TFS + EMA_9_21_TIMEFRAME (USER 2026-10-12 co-equal; default-inert ['1h']): LONG ok iff ema_9_above_21_tf != 0 ; SHORT ok iff != 1]
   + (EMA_50_200_FILTER_ENABLED) ema_50_above_200 per EMA_50_200_TFS + (SMA_50_FILTER_ENABLED) price vs sma_50_{SMA_50_TIMEFRAME} + (SMA_200_FILTER_ENABLED) sma_200.
   No check available -> pass. KINDERGARTEN_CUMULATIVE_MODE (default True): every KINDERGARTEN_STRICT_TFS-listed TF check must pass and passing >= KINDERGARTEN_CUMULATIVE_MIN_TFS (live default 1).
-  Legacy (CUMULATIVE_MODE False): single EMA_9_21_TIMEFRAME 9/21 check. EMA_9_21_FILTER_MIN_TFS has NO live read (vec-only name) — ignored here.
+  Legacy (CUMULATIVE_MODE False): every union-TF 9/21 check must agree (AND). EMA_9_21_FILTER_MIN_TFS has NO live read (vec-only name) — ignored here.
 Crypto live KG is a different function (ez_manage._kindergarten_ema_gate) -> vec_decisions/live_kindergarten_gate.py."""
 import numpy as np
 
@@ -18,9 +18,11 @@ def pass_mask(npz, n, is_long, cfg, close, safe):
         return None
     cum = bool(getattr(cfg, "KINDERGARTEN_CUMULATIVE_MODE", True))
     checks = []   # (name, bool[n])
+    from vec_decisions.kg_entry_gate import eff_921_tfs as _eff921
+    _union921 = _eff921(lambda k, d=None: getattr(cfg, k, d))
     tf1 = str(getattr(cfg, "EMA_9_21_TIMEFRAME", "1h") or "1h")
     if cum:
-        for tf in _tfs(getattr(cfg, "EMA_9_21_FILTER_TFS", tf1)) or [tf1]:
+        for tf in _union921:
             k = f"ema_9_above_21_{tf}"
             if k in npz:
                 a = safe(npz, k, n, 0.0)
@@ -54,8 +56,17 @@ def pass_mask(npz, n, is_long, cfg, close, safe):
         from vec_decisions.kg_entry_gate import effective_min_tfs as _emt
         ok &= passing >= min(_emt(lambda k, d=None: getattr(cfg, k, d)), len(checks))
         return ok
-    k = f"ema_9_above_21_{tf1}"
-    if k not in npz:
+    # USER 2026-10-12 legacy branch: every union TF must agree (AND) — TFS and TIMEFRAME
+    # are co-equal here too, never discarded. Mirrors tradier_filter_tf_twins.kg_stocks_block.
+    _leg = []
+    for tf in _union921:
+        k = f"ema_9_above_21_{tf}"
+        if k in npz:
+            a = safe(npz, k, n, -1.0)
+            _leg.append((a != 0.0) if is_long else (a != 1.0))
+    if not _leg:
         return None
-    a = safe(npz, k, n, -1.0)
-    return (a != 0.0) if is_long else (a != 1.0)
+    _ok = _leg[0]
+    for _v in _leg[1:]:
+        _ok &= _v
+    return _ok

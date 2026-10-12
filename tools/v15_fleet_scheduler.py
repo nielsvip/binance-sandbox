@@ -748,13 +748,13 @@ def _fresh_daily_state(st, datestr):
 
 
 def _gs_allowed_for_tier(tier, measured):
-    """USER 2026-10-09 (90% on winners): GS-heal for W/M/discovery; L gets verified, not rescued."""
-    return (tier in ("W", "M")) or not measured
+    """USER 2026-10-09 (90% on winners): GS-heal for W/M/discovery; L gets verified, not rescued. USER 2026-10-12: V15_REPAIR_ALL_TIERS=1 opens all tiers (every sym_side over BH push)."""
+    return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or (tier in ("W", "M")) or not measured
 
 
 def _repair_allowed_for_tier(tier, measured):
-    """USER 2026-10-09 (90% on winners): repair rounds for W/discovery only; M got its GS shot, L gets none."""
-    return tier == "W" or not measured
+    """USER 2026-10-09 (90% on winners): repair rounds for W/discovery only; M got its GS shot, L gets none. USER 2026-10-12: V15_REPAIR_ALL_TIERS=1 opens all tiers (every sym_side over BH push)."""
+    return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or tier == "W" or not measured
 
 
 def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset()):
@@ -1307,7 +1307,8 @@ def tick(args, cfg, now):
         _no_chain = os.environ.get("V15_SCHED_NO_CHAIN") == "1" and not (ROOT / "data" / "autopilot" / "chain_mode.flag").exists()
         _quar = _quar_terminal(ss, quar, _no_chain)
         _non_short = side == "SHORT" and venue_of(sym) == "stocks" and sym in NON_SHORTABLE
-        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short:
+        # USER 2026-10-12: refresh (rm progress + requeue) skips fresh (<4d matrix) sides — without this the rm fires and fresh-skip blocks the relaunch, destroying the board.
+        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map:
             _rm_mtime = ((_tiers.get(ss) or {}).get("mtime"))
             _rkey = f"{ss}|{_rm_mtime}"
             _rd = st.setdefault("refresh_done", {})
