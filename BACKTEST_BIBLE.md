@@ -1883,3 +1883,56 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   no state loss) + disabled the per-host `v15_pusher_supervisor` crons (backed up to
   `/tmp/crontab_before_pushstop_20261010.txt` each host). Loads collapsed to 8–16 within 3 min.
   Resume with `pkill -CONT -f 'v15_[g]ain_pusher.py'` + cron restore when board rate is safe.
+
+## 87. PRIOR POLICY + TIERS + FOCUS ROUND + CADENCE (USER 2026-10-12 — "refactor based on all results so far")
+
+**Evidence (real, mined, never estimated):** `tools/v15_switch_causal_profile.py` mines EVERY fleet delta log (bible §20)
+into `data/causal/switch_causal_profile.json` + `.md` — 2026-10-12: 207 logs, 10.0M real engine evals, 171 sym_sides. Per
+cat_side, per `SWITCH=cand` (naked) and per `FILTER=opt` (marginal vs the row's naked): `n_sym, pos_sym, neg_sym, invalid_sym,
+mean/median delta, sum_pos/neg, mean_d_tim, mean_d_trades, promoted_sym, verdict, effect` tags. Verdicts: USEFUL (pos≥3,
+pos_rate≥15%, mean>0) / SOMETIMES / NEUTRAL / INSUFFICIENT (n<3) / USELESS (n≥10, ≤1 pos, <5%) / DEAD (n≥10, never moved) /
+HARMFUL (n≥10, 0 pos, ≥3 neg or invalid). d_tim/d_trades = engine differences vs the latest reproduced baseline (a valid
+|delta|<1e-9 eval reproduces the running set, §14.1). **Measured: 84–93% of all fleet eval time sat on DEAD/USELESS/HARMFUL
+keys** (CRYPTO_LONG 84%, CRYPTO_SHORT 88%, STOCKS_LONG 93%, STOCKS_SHORT 91%). DD/WR are not logged, so
+`tools/v15_switch_flip_study.py` re-measures the flagged switches on real autopsy bases with the real engine
+(`evaluate_prepared_sanitized`; 2026-10-12 s5: 4×30 bases × ~60 flips, 123 s, 0 errors) → `data/causal/switch_flip_study.json`
++ `.md` with `d_gain, d_tim, d_dd, d_wr, d_trades` per flip. Causal findings worth knowing: entry blockers
+(`WT_DIV_ENTRY_GATE_ENABLED=False` +3–7pp TIM, +5–40 trades), churn cutters (`EXIT_VELOCITY_WT_MIN_TFS=2` +3pp TIM, −23 trades),
+and the consistent killers (`MOM3_FILTER_TF=D`, `DC_BREAK_FILTER_TF=*`, `WICK_REJECT_ENTRY_ENABLED`, `STOCH_XTREME_ENTRY_ENABLED`,
+`RSI2_XTREME_ENTRY_ENABLED`: −3 to −7pp gain, −8 to −27pp TIM, −20 to −48pp WR, dozens of trades lost; low `MAX_AUGMENTS` −4pp
+on stocks). Re-run both tools after every round (S1: `python3 tools/v15_switch_causal_profile.py`; a worker:
+`.venv/bin/python tools/v15_switch_flip_study.py --workers 8`).
+
+**Pilot (`v15_pilot.py`, `prior_row_policy` / `symside_tier` / `_focus_round`, tests `tests/test_v15_prior_policy.py`):**
+- **Law kept:** EVERY row still gets its NAKED eval (§77, real G, never a fake 0). Only the yellow matrix (96% of evals) is pruned.
+- **PRIOR-SKIP:** a row whose `SWITCH=cand` verdict is DEAD/USELESS/HARMFUL on ≥ `V15_PRIOR_MIN_N` (10) sym_sides runs
+  naked-only; inside kept rows, cells whose `FILTER=opt` verdict is DEAD/USELESS/HARMFUL are skipped. Skipped cells are BLANK,
+  SETTLED (not hollow: RULE#3 never refills them), booked in `progress["prior_policy"]` + done-row `prior_skipped_filters` /
+  `prior_mode`. Never pruned: sacred families (`SACRED_ZERO_EXEMPT_PREFIXES`), `ESSENTIAL_GATE_SWITCHES`, `new` rows, promoted
+  rows earning the full matrix (`_coarse_expand`), unevidenced keys (fail-open). Rotating `1/V15_PRIOR_ROTATE_EVERY` (25) slice
+  per round re-tests pruned rows fully (priors self-correct). **PRIOR-REVIVED:** a positive naked delta on THIS sym_side runs
+  the skipped yellows on the spot. Order inside `_row_static`: autopsy-inert → prior → possym/coarse → zero-formula.
+- **TIERS (`progress["tier"]`):** potential = max(baseline gain, best earlier final gain of this sym_side). WINNER = potential ≥
+  max(bh, `V15_TIER_WIN_GAIN` 10) with ≥10 trades, or a BIG MOVER (|bh| ≥ `V15_TIER_BIG_MOVER` 25 — the opportunity exists both
+  ways); LOST_CAUSE = |bh| < `V15_TIER_BH_LOST` 2 and potential < `V15_TIER_LOST_GAIN` 5 (flat month: a couple of points at best);
+  LOSER = potential ≤ 0 or below the trade floor; else MEDIOCRE. LOSER/LOST_CAUSE run STRICT (yellows only on USEFUL/SOMETIMES
+  rows); LOST_CAUSE skips endgame + diagnose (lightning board). `V15_TIER_FORCE=<tier>` overrides.
+- **FOCUS ROUND** (after the main pass + sacred final repass, fork pool still hot; budget `V15_FOCUS_S_WINNER` 900 s /
+  `MEDIOCRE` 300 / `LOSER` 120 / `LOST_CAUSE` 0, inside the 90-min herd cap; `V15_FOCUS=0` disables): on the rows that moved
+  THIS sym_side (promoted or positive naked, ranked by |movement|, `V15_FOCUS_TOP_K` 12): (1) the full yellow matrix where it
+  was prior-skipped / coarse-deferred / inert, joint promote; (2) a finer numeric grid ×0.5…×2 around every promoted numeric
+  value inside the template candidate span; (3) pairwise joint evals of the top non-running switches (first synergy wins).
+  Same gates as the sacred repass (valid, trade floor, TIM/trades guards, `promotion_block_reason`), greedy vs the LATEST
+  cumulative (§14.2), honest deltas (§19), resume-safe (`focus_done.result_key`), `progress["focus"]` + `FOCUS_ROUND` tab,
+  done-keys `FOCUS!<n>:<label>` carry `cumulative_before/after` so the E-chain validator holds.
+- Kill switches: `V15_PRIOR_POLICY=0` (full board), `V15_TIER_STRICT=0`, `V15_TIER_SKIP_POST=0`, `V15_FOCUS=0`.
+- `V15_SLOW_CELL_S` default restored to 2.0 (the 2026-10-10 hotfix had been lost: 0.2 s cells were all going RED + 120 s retry).
+
+**Cadence (2-server regime, `tools/v15_symside_ledger.py` + `tools/v15_fleet_scheduler.py`, tests
+`tests/test_v15_sched_cadence.py`):** the ledger (S1 cron `V15_SYMSIDE_LEDGER` :07/:37 → `data/v15_symside_ledger.json` + `.md`)
+reads the newest progress per sym_side (final gain, bh, trades, tim, dd, wr, verdict, pilot tier, 365D) and assigns
+`sched_tier`: **W = DAILY** (top `V15_DAILY_CAP` 48 by potential, ≥10 trades, >0, ranked with half of B&H as the bar),
+**M = 5 d**, **L = 10 d** (losers, lost causes, IMPOSSIBLE/NO_TRADES) → "the rest weekly on average". The scheduler's
+`_gain_tiers(gains, ledger=…)` lets the ledger WIN over its gain-only rank (stale > 3 d → fail-open), caps W per pool
+(`V15_TIER_W_MAX_POOL` 12 → ≤48 daily boards), keeps the 24 h W refresh, exempts W from the 4-day fresh skip, defers M/L by
+`_defer_windows()` (5/10 d). The scheduler tick log prints `[sched] cadence ledger: …`.

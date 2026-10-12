@@ -512,14 +512,15 @@ _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re
 def _defer_windows():
     """Defer windows with env override (USER 2026-10-10 weekend push: V15_TIER_DEFER_M_D=1 V15_TIER_DEFER_L_D=2
     recalculates everything before Monday; defaults restore 3d/7d steady state). Bad values fail to defaults."""
+    # USER 2026-10-12 (2-server cadence): W = DAILY (24h refresh), M = 5d, L = 10d (losers / lost causes) -> "the rest weekly on average".
     try:
-        m = float(os.environ.get("V15_TIER_DEFER_M_D", 3.0))
+        m = float(os.environ.get("V15_TIER_DEFER_M_D", 5.0))
     except (TypeError, ValueError):
-        m = 3.0
+        m = 5.0
     try:
-        dl = float(os.environ.get("V15_TIER_DEFER_L_D", 7.0))
+        dl = float(os.environ.get("V15_TIER_DEFER_L_D", 10.0))
     except (TypeError, ValueError):
-        dl = 7.0
+        dl = 10.0
     return {"M": m, "L": dl}
 
 
@@ -561,11 +562,41 @@ _NONW_QUOTA_DIV = 4  # non-winner new pairs per host capped at max(1, cap//4); u
 _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
 
-def _gain_tiers(gains):
+_LEDGER_PATH = ROOT / "data" / "v15_symside_ledger.json"
+_LEDGER_MAX_AGE_S = float(os.environ.get("V15_LEDGER_MAX_AGE_S", 3 * 86400.0))
+_TIER_W_MAX_POOL = int(os.environ.get("V15_TIER_W_MAX_POOL", "12"))  # USER 2026-10-12: 2 hosts -> at most 4 pools x 12 = 48 DAILY boards
+
+
+def _ledger_load(path=None, now_ts=None):
+    """{ss: {"tier": W|M|L, "mtime": float, "potential": float}} from tools/v15_symside_ledger.py output (USER 2026-10-12:
+    gain + bh + trades + verdict decide the cadence, not gain alone). Stale (> V15_LEDGER_MAX_AGE_S) or missing -> {} (fail-open
+    to the gain-only ranking). Pure given the file."""
+    p = pathlib.Path(path) if path else _LEDGER_PATH
+    try:
+        if not p.exists():
+            return {}
+        now_ts = float(now_ts if now_ts is not None else time.time())
+        if (now_ts - p.stat().st_mtime) > _LEDGER_MAX_AGE_S:
+            return {}
+        j = json.loads(p.read_text())
+        out = {}
+        for ss, e in ((j or {}).get("sym_sides") or {}).items():
+            t = (e or {}).get("sched_tier")
+            if t in _TIER_RANK:
+                out[str(ss)] = {"tier": t, "mtime": float((e or {}).get("mtime") or 0.0), "potential": (e or {}).get("potential"), "why": (e or {}).get("tier_why")}
+        return out
+    except Exception:
+        return {}
+
+
+def _gain_tiers(gains, ledger=None, w_max=None):
     """Rank measured sym_sides by latest gain, separately per (venue, side) pool -> {ss: {"tier": W|M|L, ...}}.
     USER 2026-10-09: pooled ranks buried stock winners under crypto (PLTR_LONG rank 201/255); each pool (stocks-long,
     stocks-short, crypto-long, crypto-short) gets its own W = top 40%, L = bottom third, M = rest. Sides with no
-    measured gain are absent (callers default them to M: new/unknown work is never starved)."""
+    measured gain are absent (callers default them to M: new/unknown work is never starved).
+    USER 2026-10-12: `ledger` (tools/v15_symside_ledger.py: gain + bh + trades + verdict) WINS over the gain-only rank for
+    every side it carries (W = DAILY recalc, M = WEEKLY, L = BIWEEKLY); sides only in the ledger are added with the
+    ledger mtime. `w_max` caps W per pool (2-host capacity); overflow W become M, highest gain kept."""
     pools = {}
     for ss, g in (gains or {}).items():
         try:
@@ -587,6 +618,37 @@ def _gain_tiers(gains):
         nl = max(1, int(n * _GAIN_TIER_L_FRAC)) if n else 0
         for i, (ss, gv, mt) in enumerate(rows):
             out[ss] = {"tier": "W" if i < nw else ("L" if i >= n - nl else "M"), "gain": gv, "mtime": mt}
+    for ss, le in (ledger or {}).items():
+        t = (le or {}).get("tier")
+        if t not in _TIER_RANK:
+            continue
+        if ss in out:
+            out[ss]["tier"] = t
+            out[ss]["ledger"] = True
+            try:
+                out[ss]["mtime"] = max(float(out[ss].get("mtime") or 0.0), float((le or {}).get("mtime") or 0.0))
+            except (TypeError, ValueError):
+                pass
+        else:
+            try:
+                out[ss] = {"tier": t, "gain": (le or {}).get("potential"), "mtime": float((le or {}).get("mtime") or 0.0), "ledger": True}
+            except (TypeError, ValueError):
+                continue
+    cap = _TIER_W_MAX_POOL if w_max is None else w_max
+    if cap and cap > 0:
+        by_pool = {}
+        for ss, e in out.items():
+            if e.get("tier") != "W":
+                continue
+            sym, _, side = str(ss).rpartition("_")
+            by_pool.setdefault((venue_of(sym), side), []).append(ss)
+        for rows in by_pool.values():
+            if len(rows) <= cap:
+                continue
+            rows.sort(key=lambda s: -float(out[s].get("gain") or 0.0))
+            for s in rows[cap:]:
+                out[s]["tier"] = "M"
+                out[s]["w_capped"] = True
     return out
 
 
@@ -1323,7 +1385,10 @@ def tick(args, cfg, now):
     _now_ts = now.timestamp()
     for ss in [k for k, v in _seen.items() if (_now_ts - float((v or {}).get("mtime", 0) or 0)) > 30 * 86400.0]:
         _seen.pop(ss, None)
-    _gtiers = _gain_tiers(_seen)  # winners-first scheduling; loser tiers defer fresh boards (chains still drain)
+    _ledger = _ledger_load(now_ts=_now_ts)  # USER 2026-10-12: gain+bh+trades ledger decides DAILY / WEEKLY / BIWEEKLY cadence
+    _gtiers = _gain_tiers(_seen, ledger=_ledger)  # winners-first scheduling; loser tiers defer fresh boards (chains still drain)
+    if _ledger:
+        print(f"[sched] cadence ledger: {len(_ledger)} sides (W={sum(1 for v in _gtiers.values() if v.get('tier') == 'W')} M={sum(1 for v in _gtiers.values() if v.get('tier') == 'M')} L={sum(1 for v in _gtiers.values() if v.get('tier') == 'L')}, defer M={_GAIN_TIER_DEFER_DAYS['M']}d L={_GAIN_TIER_DEFER_DAYS['L']}d)", flush=True)
     _deferred_sides = []
     try:
         _fresh_map = _fresh_computed_sides(os.path.join(HOME, "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), now=_now_ts)
@@ -1351,7 +1416,8 @@ def tick(args, cfg, now):
                 _deferred_sides.append(f"{sym}_{side}")
             # USER 2026-10-12: never re-calculate a sym_side computed in the last 4 days (matrix mtime).
             # terminal_fresh (NOT terminal_deferred) so backfill can never relaunch it; started/redo drain, priority syms exempt.
-            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and f"{sym}_{side}" in _fresh_map and sym not in _fresh_pri:
+            # USER 2026-10-12: W-tier (DAILY) sides are exempt from the 4-day fresh skip — their 24h refresh is the point.
+            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and f"{sym}_{side}" in _fresh_map and sym not in _fresh_pri and _side_tier(f"{sym}_{side}", _gtiers) != "W":
                 _st[side] = ("terminal_fresh", None)
                 _fresh_skipped.append(f"{sym}_{side}")
         chain_state[sym] = _st

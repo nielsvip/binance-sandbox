@@ -4558,7 +4558,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         return {"static": st, "cand_parsed": cand_parsed, "sw_ov": sw_ov, "is_running": is_running, "switch_variant": sv, "items": items}
     inflight: dict = {}
     _slow_secs: dict = {}
-    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "0.1"))
+    _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "2.0"))  # USER 2026-10-10 throughput hotfix (0.1 -> 2.0: 0.2s cells are normal, were all going RED + 120s retry); re-applied 2026-10-12 after it was lost
     _BATCH_N = max(1, int(os.environ.get("V15_POOL_BATCH_N", "1")))
     _pend_batch: list = []
     def _harvest():
