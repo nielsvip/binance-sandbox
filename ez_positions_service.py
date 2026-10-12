@@ -7666,6 +7666,11 @@ class PositionService:
                 except Exception: pass
             reason = explicit_reason or context.get('reason') or context.get('reason_text') or "Manual/System Detection"
             snapshot = context.get('snapshot') or context.get('indicators', {})
+            try:  # USER 2026-10-12 write-path price guard: stale snapshots (ETC 0.083 vs 8.36 fill) anchor to fill, never block write
+                from tools.forward_parity import price_guard as _pg
+                snapshot = _pg.sanitize_snapshot(price, snapshot)[0]
+            except Exception:
+                pass
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
             async with aiofiles.open(filename, "a") as f:
                 await f.write(orjson.dumps(entry).decode('utf-8') + "\n")
