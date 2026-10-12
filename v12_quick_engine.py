@@ -12814,8 +12814,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # 2026-10-01 WIRING b1 (P0 KINDERGARTEN): live CRYPTO KG = HARD BLOCK on technical entries (ez_manage._kindergarten_ema_gate via check_entry_alignment 495),
     # NOT the additive entry signal below (that is the live STOCKS behaviour, tradier_manage._v12_kindergarten_entry_allowed). No EMA_9_21 reader outside the gate in crypto live.
     _kg_is_crypto = str(getattr(cfg, "MODE", "crypto")) != "tradier"
-    # USER 2026-10-12 SUPERSEDE: EMA_9_21_FILTER_ENABLED replaces the SMA-kindergarten gate (both live + vec); KG mask applies only when E921 is off.
-    if _kg_is_crypto and bool(getattr(cfg, "KINDERGARTEN_EMA_GATE_ENABLED", False)) and not bool(getattr(cfg, "EMA_9_21_FILTER_ENABLED", False)):
+    # USER 2026-10-12: KG + E921 are INDEPENDENT switches — both apply, never elif (deltas decide, never hardcoded).
+    if _kg_is_crypto and bool(getattr(cfg, "KINDERGARTEN_EMA_GATE_ENABLED", False)):
         try:
             import vec_decisions.live_kindergarten_gate as _lkg
 
@@ -16715,10 +16715,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # b7 (crypto): live crypto KINDERGARTEN hard block (ez_manage._kindergarten_ema_gate via check_entry_alignment) must sit on the FINAL entry signal — the copy inside
     # compute_entry_signals was undone by the later `_base_entry | ...` ORs (AND-inside-OR). Applied to entry_sig AND to the reentry/fire path (live: check_entry_alignment
     # is part of every technical-indicator entry; reentries via evaluate_reentry do not use it -> fire path NOT gated, matching live).
-    # USER 2026-10-12 SUPERSEDE: EMA_9_21_FILTER_ENABLED replaces the SMA-kindergarten gate (both live + vec); KG mask applies only when E921 is off.
+    # USER 2026-10-12: KG + E921 are INDEPENDENT switches — both apply, never elif (deltas decide, never hardcoded).
     if str(getattr(cfg, "MODE", "crypto")) != "tradier" and bool(
         getattr(cfg, "KINDERGARTEN_EMA_GATE_ENABLED", False)
-    ) and not bool(getattr(cfg, "EMA_9_21_FILTER_ENABLED", False)):
+    ):
         try:
             import vec_decisions.live_kindergarten_gate as _lkg2
 
@@ -16758,8 +16758,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
             # [FLT2 q001] live execute_now fresh-OPEN chokepoint also applies the crypto KINDERGARTEN gate (ez_manage._kindergarten_ema_gate) and the EMA_9_21 cumulative gate
             # (vec_decisions.kg_entry_gate.ema921_pass): same predicates on the watchdog open array (live opens come from MOMENTUM_WATCHDOG, not check_entry_alignment).
-            # USER 2026-10-12 SUPERSEDE: E921 replaces the KG gate; applies only when E921 is off.
-            if bool(getattr(cfg, "KINDERGARTEN_EMA_GATE_ENABLED", False)) and not bool(getattr(cfg, "EMA_9_21_FILTER_ENABLED", False)):
+            # USER 2026-10-12: KG + E921 are INDEPENDENT switches — both apply, never elif.
+            if bool(getattr(cfg, "KINDERGARTEN_EMA_GATE_ENABLED", False)):
                 import vec_decisions.live_kindergarten_gate as _lkg3
 
                 _wd_open = _wd_open & ~np.asarray(

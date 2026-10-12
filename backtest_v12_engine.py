@@ -3178,7 +3178,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 pass
         # USER 2026-10-12 (FLT2 twin): live ez_manage.execute_now gates every fresh crypto OPEN on KINDERGARTEN /
         # EMA_9_21; the harness replaces execute_now by this seam, so native entries skipped the live veto. Apply the
-        # SAME live functions here (E921 supersedes the SMA-kindergarten gate, never both — mirrors live + vec).
+        # SAME live functions here (KG + E921 are INDEPENDENT switches — both apply, never elif).
         _ga = str(act or "").upper()
         _gr = str(reason or "").upper()
         if sym and ("OPEN" in _ga or "ENTRY" in _ga or _ga == "BUY") and "AUGMENT" not in _ga and "REENTRY" not in _ga and "CLOSE" not in _ga and "REDUCE" not in _ga and "HEDGE" not in _gr and "OBLIGATORY" not in _gr and "REENTRY" not in _gr:
@@ -3190,15 +3190,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _g_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
                     _g_long = (ps == "LONG") if ps else pk.endswith("_LONG")
                     _g_side = "LONG" if _g_long else "SHORT"
+                    if _g_kg:
+                        _g_ok, _g_why = ez_manage._kindergarten_ema_gate(_g_ind, _g_long, float(_g_ind.get("close") or 0), enabled=True, scan_tf=_g_get("KINDERGARTEN_FILTER_TF", "OFF"))
+                        if not _g_ok:
+                            return f"BLOCKED_KINDERGARTEN_EMA_GATE_{_g_side}"
                     if _g_e921:
                         from vec_decisions.kg_entry_gate import ema921_pass as _g_e921_pass
                         _g_ok, _g_n, _g_c = _g_e921_pass(_g_get, _g_ind, _g_long)
                         if not _g_ok:
                             return f"BLOCKED_EMA_9_21_FILTER_{_g_side}"
-                    elif _g_kg:
-                        _g_ok, _g_why = ez_manage._kindergarten_ema_gate(_g_ind, _g_long, float(_g_ind.get("close") or 0), enabled=True, scan_tf=_g_get("KINDERGARTEN_FILTER_TF", "OFF"))
-                        if not _g_ok:
-                            return f"BLOCKED_KINDERGARTEN_EMA_GATE_{_g_side}"
             except Exception:
                 pass
         _shadow_side_contract = os.environ.get("V8_LADDER_ONLY_SIDE", "").upper()

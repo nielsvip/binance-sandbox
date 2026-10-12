@@ -566,8 +566,32 @@ _GAIN_TIER_DEFER_DAYS = _defer_windows()  # USER 2026-10-09: starve losers, feed
 _FRESH_SKIP_DAYS = 4.0  # USER 2026-10-12: never re-calculate a sym_side with a completed 30d matrix newer than this (V15_FRESH_SKIP_DAYS overrides; 0 disables)
 
 
-def _fresh_computed_sides(matrix_dir, days=_FRESH_SKIP_DAYS, now=None):
-    """{SYM_SIDE: newest_mtime} for sides with a completed 30d matrix newer than `days`. Pure function of the dir (testable); missing dir fails open ({})."""
+def _chain_stamp_ts(chain_dir, now=None):
+    """Epoch of the newest DONE daily-chain stamp ('ended'), else 0.0 (fail-open: no stamp -> every recent matrix counts as fresh). Pure function of the dir."""
+    import glob as _glob
+
+    best = 0.0
+    try:
+        files = _glob.glob(os.path.join(chain_dir, "2026*.json"))
+    except Exception:
+        return 0.0
+    for p in files:
+        if "tradeable" in os.path.basename(p):
+            continue
+        try:
+            d = json.load(open(p))
+            if d.get("status") != "DONE":
+                continue
+            e = str(d.get("ended") or "")
+            ts = datetime.datetime.fromisoformat(e.replace("Z", "+00:00")).timestamp() if e else 0.0
+            best = max(best, float(ts or 0.0))
+        except Exception:
+            continue
+    return best
+
+
+def _fresh_computed_sides(matrix_dir, days=_FRESH_SKIP_DAYS, now=None, min_ts=0.0):
+    """{SYM_SIDE: newest_mtime} for sides with a completed 30d matrix newer than `days` AND newer than min_ts (the chain stamp: pre-chain boards ran on stale inputs, so re-running them is new work, not a recalc). Pure function of the dir (testable); missing dir fails open ({})."""
     import glob as _glob
     import re as _re
 
@@ -592,7 +616,7 @@ def _fresh_computed_sides(matrix_dir, days=_FRESH_SKIP_DAYS, now=None):
             mt = float(os.path.getmtime(p))
         except OSError:
             continue
-        if (now - mt) / 86400.0 < win:
+        if mt >= min_ts and (now - mt) / 86400.0 < win:
             ss = f"{m.group(1)}_{m.group(2)}"
             out[ss] = max(out.get(ss, 0.0), mt)
     return out
@@ -1430,7 +1454,11 @@ def tick(args, cfg, now):
         print(f"[sched] cadence ledger: {len(_ledger)} sides (W={sum(1 for v in _gtiers.values() if v.get('tier') == 'W')} M={sum(1 for v in _gtiers.values() if v.get('tier') == 'M')} L={sum(1 for v in _gtiers.values() if v.get('tier') == 'L')}, defer M={_GAIN_TIER_DEFER_DAYS['M']}d L={_GAIN_TIER_DEFER_DAYS['L']}d)", flush=True)
     _deferred_sides = []
     try:
-        _fresh_map = _fresh_computed_sides(os.path.join(HOME, "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), now=_now_ts)
+        _chain_ts = _chain_stamp_ts(os.path.join(ROOT, "data", "daily_chain"))
+    except Exception:
+        _chain_ts = 0.0
+    try:
+        _fresh_map = _fresh_computed_sides(os.path.join(HOME, "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), now=_now_ts, min_ts=_chain_ts)
     except Exception:
         _fresh_map = {}
     _fresh_skipped = []

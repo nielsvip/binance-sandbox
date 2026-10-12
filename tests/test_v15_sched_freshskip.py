@@ -43,3 +43,24 @@ def test_fresh_env_override_disables(tmp_path, monkeypatch):
     _touch(tmp_path / "AMD_LONG_bh1_gain2_30d_matrix.xlsx", 0.5, now)
     monkeypatch.setenv("V15_FRESH_SKIP_DAYS", "0")
     assert S._fresh_computed_sides(str(tmp_path), now=now) == {}
+
+
+def test_chain_stamp_exempts_stale_input_boards(tmp_path):
+    import json
+
+    now = time.time()
+    chain = tmp_path / "chain"
+    chain.mkdir()
+    stamp_ts = now - 1.0 * 86400.0
+    json.dump({"status": "DONE", "ended": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(stamp_ts))}, open(chain / "20261012.json", "w"))
+    json.dump({"status": "DONE", "ended": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(stamp_ts - 86400))}, open(chain / "20261011.json", "w"))
+    assert abs(S._chain_stamp_ts(str(chain)) - stamp_ts) < 2.0
+    assert S._chain_stamp_ts(str(tmp_path / "nope")) == 0.0
+    mx = tmp_path / "mx"
+    mx.mkdir()
+    _touch(mx / "OLD_LONG_bh1_gain2_30d_matrix.xlsx", 2.0, now)
+    _touch(mx / "NEW_SHORT_bh1_gain2_30d_matrix.xlsx", 0.5, now)
+    out = S._fresh_computed_sides(str(mx), now=now, min_ts=stamp_ts)
+    assert set(out) == {"NEW_SHORT"}
+    out = S._fresh_computed_sides(str(mx), now=now, min_ts=0.0)
+    assert set(out) == {"OLD_LONG", "NEW_SHORT"}
