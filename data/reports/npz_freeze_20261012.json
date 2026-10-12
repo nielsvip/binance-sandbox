@@ -17,7 +17,7 @@
   "pid": 2835029,
   "reason": "wave2: one-shot AAVE/COTI/SNX INSTALLED 09:56:42Z then loop overwrote same-cutoff (build-stamp-only diff); files end 09:30Z cutoff 1791797400; freshness window to ~10:15Z; pilots must START by then, static during run",
   "md5": {
-   "AAVEUSDC": "eb646efb16348659eba11a4625c6d8e8",
+   "AAVEUSDC": "f3dcd1a55db1ce85c70253840099190a",
    "COTIUSDT": "39ec0baee4e0a089a7d3e7e1f8d5dffa",
    "SNXUSDT": "7eec3e08bf91f838b11b07b2734a25d7",
    "GALAUSDT": "400ee1cca964f3b5bf58b47b4e70093a"
@@ -28,5 +28,9 @@
  "final_unfreeze": {
   "at": "2026-10-12T10:56:52Z",
   "reason": "slice-trap: 2400s SLICE exits (AAVE/GALA) + SNX REDO cannot resume in frozen world (stale gate); per-file tick period is ~2h not 15min (cycle cadence confused with file period) so rotation risk was overestimated; ticking world gives fresh gates + stable windows >> slice times."
+ },
+ "wave3_tickworld": {
+  "unfroze": "10:56:52Z",
+  "note": "AAVE resume stale-died 10:57 (file pre-tick); loop ticked AAVE 10:58:22 SNX 10:58:45; one-shot AAVE 11:0x (1 bar, ends 10:45Z ts 1791801900); AAVE relaunched 11:0x py=5. SNX alive on loop-ticked file. All 4 alive ~11:05Z."
  }
 }
