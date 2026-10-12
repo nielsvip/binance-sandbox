@@ -169,7 +169,7 @@ async def process_symbol(symbol):
         try:
             return await asyncio.wait_for(awaitable, timeout=20)
         except Exception as exc:
-            logger.error("%s %s fetch failed/timeout: %s", symbol, label, exc)
+            logger.error("%s %s fetch failed/timeout: %s: %s", symbol, label, type(exc).__name__, exc)
             return []
     # Daily/5m/15m are local products. Fetch only the smallest live series;
     # derive the larger intraday bars immediately and keep historical rows.
