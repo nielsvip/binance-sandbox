@@ -204,6 +204,16 @@ except Exception as e:
   done
 done
 
+# 5a. live-reader parity (USER 2026-10-12: never forget QuickConfig — every switch read by a live
+#     opener/closer must exist in QuickConfig+TEMPLATE with the live value). Read-only, non-fatal by
+#     design: logs the hard count every chain run so new live-vs-vec gaps can never accumulate silently.
+for H in mac "$S1"; do
+  if [ "$H" = mac ]; then OUT=$("$PY" switch_parity.py verify-live-switches 2>&1); RC=$?
+  else OUT=$($SSH "$H" "cd ~/binance-sandbox && .venv/bin/python switch_parity.py verify-live-switches" 2>&1); RC=$?; fi
+  SUM=$(printf '%s' "$OUT" | grep -m1 '^LIVE_ORDER_SWITCHES' || printf '%s' "$OUT" | tail -2 | tr '\n' ' ')
+  log "step5a live-switches $H rc=$RC $SUM"
+done
+
 # 5b. STEP 3 per-sym go-live (USER 2026-10-06: register EVERY finished set, diff-only; risk carried by SIZE) + 5c size tiers.
 #     --apply only when the live files carry PERF_TIER_SIZING (tools/apply_perf_tier_patch.py) with the switch True: without it
 #     ez/tradier NEG-block every acc_gain<=0 book entry, so registering negative sets would stop them trading. Non-fatal.
