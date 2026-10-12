@@ -5819,6 +5819,8 @@ class QuickConfig:
         # parity-sync 20261009: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.DISASTER_GUARD_ENABLED = False
         self.GAP_MOC_FORCE_MOC_AT_CLOSE = False
+        # parity-sync 20261012: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.MU_CORRECTION_REENTRY_ENABLED = True
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625

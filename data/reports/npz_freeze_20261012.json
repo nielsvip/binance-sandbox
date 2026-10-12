@@ -1,1 +1,26 @@
-{"action":"SIGSTOP (reversible, no kill)","burst_note":"Boards stamped pre-freeze rotate exactly once more, then stabilize; holes-only resumes succeed while frozen.","expected_cont_utc":"~09:30Z after P0 publishes + verification","frozen_utc":"2026-10-12T07:37:38Z","host":"S1 (s1-pub 157.180.125.52); s2/s5/s6 have no local refresh loops (sync-only from S1)","live_trading_impact":"none (ez_manage.py + config.py contain zero backtest_v8/indicators or .npz references)","owner_lane":"sheets/parity fix (session basalt-aegaeon)","pid":2835029,"process":"tools/npz_bar_refresh.py --loop --mode both --workers 8 (started 06:17:31Z)","reason":"P0 resweeps cannot complete otherwise: PROVEN death loop — 40-min pilot slices (USER rule, unchangeable) vs 15-min NPZ ticks; every slice-resume finds changed NPZ (RULE#4 mtime/size/n/ts_last) and restarts from 0 (BB rotated twice, 3176 rows).","resume_condition":"all 7 P0 symsides published (manifests with publish_class) + Mac sync verified, then SIGCONT + catch-up check","resume_proof_required":"BBUSDT.npz mtime advancing again + loop STAT back to S","warning":"Do NOT SIGCONT early without coordinating with owner lane."}
+{
+ "action": "SIGSTOP (reversible, no kill)",
+ "burst_note": "Boards stamped pre-freeze rotate exactly once more, then stabilize; holes-only resumes succeed while frozen.",
+ "expected_cont_utc": "~09:30Z after P0 publishes + verification",
+ "frozen_utc": "2026-10-12T07:37:38Z",
+ "host": "S1 (s1-pub 157.180.125.52); s2/s5/s6 have no local refresh loops (sync-only from S1)",
+ "live_trading_impact": "none (ez_manage.py + config.py contain zero backtest_v8/indicators or .npz references)",
+ "owner_lane": "sheets/parity fix (session basalt-aegaeon)",
+ "pid": 2835029,
+ "process": "tools/npz_bar_refresh.py --loop --mode both --workers 8 (started 06:17:31Z)",
+ "reason": "P0 resweeps cannot complete otherwise: PROVEN death loop \u2014 40-min pilot slices (USER rule, unchangeable) vs 15-min NPZ ticks; every slice-resume finds changed NPZ (RULE#4 mtime/size/n/ts_last) and restarts from 0 (BB rotated twice, 3176 rows).",
+ "resume_condition": "all 7 P0 symsides published (manifests with publish_class) + Mac sync verified, then SIGCONT + catch-up check",
+ "resume_proof_required": "BBUSDT.npz mtime advancing again + loop STAT back to S",
+ "warning": "Do NOT SIGCONT early without coordinating with owner lane.",
+ "round2": {
+  "refreeze_at": "2026-10-12T09:56:54Z",
+  "pid": 2835029,
+  "reason": "wave2: one-shot AAVE/COTI/SNX INSTALLED 09:56:42Z then loop overwrote same-cutoff (build-stamp-only diff); files end 09:30Z cutoff 1791797400; freshness window to ~10:15Z; pilots must START by then, static during run",
+  "md5": {
+   "AAVEUSDC": "eb646efb16348659eba11a4625c6d8e8",
+   "COTIUSDT": "d3185eef1a0e7e543c5ed931aa561c18",
+   "SNXUSDT": "7eec3e08bf91f838b11b07b2734a25d7",
+   "GALAUSDT": "a442741c3aacc2857ca085b01a380f2e"
+  }
+ }
+}
