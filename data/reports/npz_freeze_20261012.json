@@ -45,5 +45,9 @@
  },
  "wave5_1221": {
   "note": "GALA SLICE-exit 12:18, file one-shot (2 bars, ends 12:00Z ts 1791806400), relaunched 12:20Z py=5. All 4 alive. AAVE RED-RETRY, COTI REDUCE, SNX DIAG-365."
+ },
+ "snx_hollow_loop": {
+  "at": "2026-10-12T12:38Z",
+  "finding": "SNX 3x identical RULE#3 refusal, 1033 hollows (ENTRY_REVERSAL_BOUNCE rows 8-32 yellows uncalculated from SKIPPED_SAMPLING pos_sym=0). Deterministic: skip-policy creates hollows, completeness-gate refuses hollows = design contradiction. STOPPED relaunches. Post-open fix: fill skipped yellows honest-zero (endgame honest-zero machinery exists) instead of hollow."
  }
 }
