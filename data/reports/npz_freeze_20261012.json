@@ -20,7 +20,7 @@
    "AAVEUSDC": "ab096b932e450a78d238cd34c54fe81d",
    "COTIUSDT": "ef0aeab87a201872daace655aced232a",
    "SNXUSDT": "84c1b6187174a34b8b580dcadee40021",
-   "GALAUSDT": "2b81de8d1b0011f4d1464b97213a42f3"
+   "GALAUSDT": "d328cdbf57b89d5613ffe1963352d865"
   },
   "note2": "GALA loop-tick was sentiment-only (ts_last stayed 07:15); one-shot 10:04:26Z appended 10 bars ends 09:45Z. Wave2 all-local S1: AAVE/COTI/SNX/GALA launched ~10:03-10:05Z, all past stale gate.",
   "note3": "COTI SIGTERM ~10:00Z (external signal 15, source unknown, no reaper on S1); file one-shot refreshed 10:27Z (2 bars, ends 10:00Z ts 1791799200); relaunched 10:28Z. 10:29Z census: COTI 174628, AAVE 4176578, SNX 20220, GALA 31610 all true pythons."
@@ -42,5 +42,8 @@
  },
  "wave4_1150": {
   "note": "AAVE slice2 SLICE-exit, COTI+SNX RULE#3 hollow-refusal (1036/1033, SNX twice identical); files refreshed; all 4 relaunched 11:45-11:50Z py=5. DOT tombstone 08:51:15 (post-publish pattern)."
+ },
+ "wave5_1221": {
+  "note": "GALA SLICE-exit 12:18, file one-shot (2 bars, ends 12:00Z ts 1791806400), relaunched 12:20Z py=5. All 4 alive. AAVE RED-RETRY, COTI REDUCE, SNX DIAG-365."
  }
 }
