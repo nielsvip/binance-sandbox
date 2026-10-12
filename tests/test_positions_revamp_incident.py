@@ -426,7 +426,7 @@ def test_C3_crypto_bad_qty_never_sent(binance):
 
 
 def test_C4_raw_python_binance_client_is_class_guarded(tmp_path, monkeypatch):
-    from binance.client import Client
+    Client = pytest.importorskip("binance.client", reason="needs real python-binance Client class for guard-patch proof").Client
 
     assert odg.install_binance_class_guard() and getattr(Client.futures_create_order, "__odg_patched__", False)
     monkeypatch.setenv("ORDER_DEDUPE_LEDGER_DIR", str(tmp_path))

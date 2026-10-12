@@ -22,7 +22,22 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import order_dedupe_guard as odg  # noqa: E402
 import positions_truth as pt  # noqa: E402
-from binance.exceptions import BinanceAPIException  # noqa: E402
+try:
+    from binance.exceptions import BinanceAPIException  # noqa: E402
+except Exception:  # USER 2026-10-12: klines are the price source; tests must not require python-binance
+    class BinanceAPIException(Exception):  # minimal contract twin: .code/.message/.status_code + APIError str
+        def __init__(self, response=None, status_code=None, text=None):
+            self.status_code, self.response, self.request = status_code, response, None
+            try:
+                d = json.loads(text or "{}")
+            except Exception:
+                d = {}
+            self.code = d.get("code", 0)
+            self.message = d.get("msg", text or "")
+            super().__init__(text)
+
+        def __str__(self):
+            return f"APIError(code={self.code}): {self.message}"
 
 from tests.test_positions_revamp_incident import FakeBinance, FakeTradierHTTP, tradier, run, _tm_dummy, _hermetic_positions  # noqa: E402,F401
 
