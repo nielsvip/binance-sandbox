@@ -18,6 +18,7 @@ Usage: python3 tools/v15_365_repair.py --progress <SS>_v14_progress.json --templ
 import argparse
 import json
 import multiprocessing as mp
+import os
 import sys
 import time
 from pathlib import Path
@@ -67,6 +68,48 @@ def score(pair):
     return (ok(a, FLOOR30) + ok(b, FLOOR365), (int(a.get("trades") or 0) >= FLOOR30) + (int(b.get("trades") or 0) >= FLOOR365), bool(a.get("valid")) + bool(b.get("valid")), min(_g(a), _g(b)), _g(b))
 
 
+def diagnose_pair(w30, w365):
+    """USER 2026-10-12: analyze WHAT is wrong before augmenting (the end-rerun mandate). Returns one of
+    short (either window below its trade floor -> open entries), overtrade (365D trades >= 3x floor ->
+    tighten outs, never add entries), dd_high (365D DD > 20 -> exits/reduce first), flat (no clear
+    disease -> exits as before). Pure function of the two windows' metrics; unit-tested."""
+    try:
+        t30 = int((w30 or {}).get("trades") or 0)
+    except Exception:
+        t30 = 0
+    try:
+        t365 = int((w365 or {}).get("trades") or 0)
+    except Exception:
+        t365 = 0
+    if t30 < FLOOR30 or t365 < FLOOR365:
+        return "short"
+    if t365 >= 3 * FLOOR365:
+        return "overtrade"
+    try:
+        dd = float((w365 or {}).get("max_dd_pct") or 0.0)
+    except Exception:
+        dd = 0.0
+    if dd > 20.0:
+        return "dd_high"
+    return "flat"
+
+
+TAB_ORDER = {
+    # overtrade: tighten the outs that cut chop (REDUCE/VELOCITY first); ENTRY rows excluded by the caller.
+    "overtrade": ("REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "EXIT_VELOCITY", "EXIT_STRUCTURAL", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE"),
+    "short": ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE"),
+    "dd_high": ("EXIT_VELOCITY", "EXIT_STRUCTURAL", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE"),
+    "flat": ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE"),
+}
+
+
+def order_candidates(raw, diag):
+    """Stable reorder of [(lab, ch)] exit candidates so the diagnosed family's tabs come first. lab is
+    f"{tab}:{sw}={cand}" so the tab is recoverable without extra plumbing."""
+    prio = {t: i for i, t in enumerate(TAB_ORDER.get(diag) or TAB_ORDER["flat"])}
+    return sorted(raw, key=lambda x: prio.get(str(x[0]).split(":", 1)[0], 99))
+
+
 def more_trade_cands(cur, defaults, rows_entry, P):
     """Soften filters + open entry/reentry paths (same token rules as v15_pilot._credible_baseline)."""
     out = []
@@ -82,6 +125,21 @@ def more_trade_cands(cur, defaults, rows_entry, P):
             out.append((f"SOFTEN:{k}=False", {k: False}))
         elif not c and k.endswith("_ENABLED") and any(t in k for t in P._ADAPT_ENTRY_TOKENS) and not any(t in k for t in P._ADAPT_SOFTEN_TOKENS):
             out.append((f"ENTRY_PATH:{k}=True", {k: True}))
+    return out
+
+
+def tighten_trade_cands(cur, defaults, P):
+    """Mirror of more_trade_cands: FEWER entries (veto on / entry path off) for overtrade chop. A step
+    only applies on strict joint-score improvement, so a 0-trade self-kill can never land."""
+    out = []
+    for k, dv in defaults.items():
+        c = cur.get(k, dv)
+        if not isinstance(dv, bool) or not isinstance(c, bool) or k == "SIMPLE_PRICE_GT0_ENABLED" or k in P.DEAD_VEC_SWITCHES or k in P.LIVE_ONLY_SWITCHES:
+            continue
+        if not c and any(t in k for t in P._ADAPT_SOFTEN_TOKENS):
+            out.append((f"TIGHTEN:{k}=True", {k: True}))
+        elif c and k.endswith("_ENABLED") and any(t in k for t in P._ADAPT_ENTRY_TOKENS) and not any(t in k for t in P._ADAPT_SOFTEN_TOKENS):
+            out.append((f"CLOSE_PATH:{k}=False", {k: False}))
     return out
 
 
@@ -115,35 +173,64 @@ def main():
     cur_pair = _eval_pair(cur)
     rep = {"sym_side": ss, "progress": a.progress, "start": {"n_overrides": len(cur), "w30": cur_pair[0], "w365": cur_pair[1]}, "steps": []}
     print(f"[365-REPAIR] {ss} start 30D {cur_pair[0]['gain_pct']} ({cur_pair[0]['trades']}tr TIM {cur_pair[0].get('tim_pct')} valid {cur_pair[0]['valid']}) | 365D {cur_pair[1]['gain_pct']} ({cur_pair[1]['trades']}tr TIM {cur_pair[1].get('tim_pct')} valid {cur_pair[1]['valid']} {cur_pair[1]['invalid_reason']})", flush=True)
+    # USER 2026-10-12: measured 2026-10-12 on S1 — 1006 exit rows x (0.2s 30D + 1.8s 365D) / 8 workers
+    # ~= 250s per step, so 8 uncapped steps (~34 min) always blew the 1800s pilot timeout and the
+    # report (written only at the end) was lost with it. Now: diagnose-ordered capped steps inside
+    # an inner budget, with the report dumped after EVERY step so a timeout keeps partial progress.
+    step_cap = int(os.environ.get("V15_365_STEP_CAP", "160"))
+    budget = float(os.environ.get("V15_365_BUDGET_S", "1500"))
+    Path(a.out).mkdir(parents=True, exist_ok=True)
+    op = Path(a.out) / f"{ss}_365_repair.json"
+    def _dump():
+        try:
+            op.write_text(json.dumps(rep, indent=1, default=str))
+        except Exception as _de:
+            print(f"[365-REPAIR] {ss} dump-warn: {_de}", flush=True)
     ctx = mp.get_context("fork")
     t0 = time.time()
     for step in range(a.max_steps):
         if ok_pair(cur_pair):
             break
-        short = int(cur_pair[0].get("trades") or 0) < FLOOR30 or int(cur_pair[1].get("trades") or 0) < FLOOR365
+        if time.time() - t0 > budget:
+            rep["steps"].append({"step": step, "result": f"budget {budget:.0f}s exceeded — stopping with best so far"})
+            print(f"[365-REPAIR] {ss} step {step}: budget {budget:.0f}s exceeded — stopping with best so far", flush=True)
+            break
+        diag = diagnose_pair(cur_pair[0], cur_pair[1])
+        short = diag == "short"
         raw = []
         for tab, sw, cand in rows_exit:
             ch = P._switch_overrides(sw, P._parse_opt_value(cand, defaults.get(sw)))
             if ch and not all(cur.get(k, defaults.get(k)) == v for k, v in ch.items()):
                 raw.append((f"{tab}:{sw}={cand}", ch))
-        if short or min(int(cur_pair[0].get("trades") or 0), int(cur_pair[1].get("trades") or 0)) < 3 * FLOOR:
+        raw = order_candidates(raw, diag)
+        if diag != "overtrade" and (short or min(int(cur_pair[0].get("trades") or 0), int(cur_pair[1].get("trades") or 0)) < 3 * FLOOR:
             raw += more_trade_cands(cur, defaults, rows_entry, P)
-        cands = [(lab, P.sanitize_overrides({**cur, **ch}, defaults)[0]) for lab, ch in raw]
+        if diag == "overtrade":
+            raw = tighten_trade_cands(cur, defaults, P) + raw
+        n_raw = len(raw)
+        cands = [(lab, P.sanitize_overrides({**cur, **ch}, defaults)[0]) for lab, ch in raw[:max(step_cap, 1)]]
         with ctx.Pool(a.workers) as pool:
             res = pool.map(_worker, cands, chunksize=4)
         best = max(res, key=lambda x: score(x[2]), default=None)
         if best is None or score(best[2]) <= score(cur_pair):
-            rep["steps"].append({"step": step, "n_cands": len(cands), "result": "no improving row"})
-            print(f"[365-REPAIR] {ss} step {step}: {len(cands)} candidates, none improves", flush=True)
+            rep["steps"].append({"step": step, "diag": diag, "n_cands": len(cands), "n_raw": n_raw, "result": "no improving row"})
+            print(f"[365-REPAIR] {ss} step {step} [{diag}] ({len(cands)}/{n_raw} cands): none improves", flush=True)
+            _dump()
             break
         lab, cur, cur_pair = best
-        rep["steps"].append({"step": step, "n_cands": len(cands), "applied": lab, "w30": cur_pair[0], "w365": cur_pair[1]})
-        print(f"[365-REPAIR] {ss} step {step} ({len(cands)} cands, {time.time()-t0:.0f}s): {lab} -> 30D {cur_pair[0]['gain_pct']:+.2f} {cur_pair[0]['trades']}tr TIM {cur_pair[0].get('tim_pct')} | 365D {cur_pair[1]['gain_pct']:+.2f} {cur_pair[1]['trades']}tr TIM {cur_pair[1].get('tim_pct')} valid {cur_pair[1]['valid']}", flush=True)
+        rep["steps"].append({"step": step, "diag": diag, "n_cands": len(cands), "n_raw": n_raw, "applied": lab, "w30": cur_pair[0], "w365": cur_pair[1], "overrides": dict(cur)})
+        print(f"[365-REPAIR] {ss} step {step} [{diag}] ({len(cands)}/{n_raw} cands, {time.time()-t0:.0f}s): {lab} -> 30D {cur_pair[0]['gain_pct']:+.2f} {cur_pair[0]['trades']}tr TIM {cur_pair[0].get('tim_pct')} | 365D {cur_pair[1]['gain_pct']:+.2f} {cur_pair[1]['trades']}tr TIM {cur_pair[1].get('tim_pct')} valid {cur_pair[1]['valid']}", flush=True)
+        _dump()
     # BOOST (USER): both windows fine but < TARGET30 trades/mo -> soften / open entries; keep a step only if both windows
     # stay valid+positive+floored and the worst-window gain does not get worse. Otherwise live with >= FLOOR30.
     rep["boost"] = []
     while ok_pair(cur_pair) and int(cur_pair[0].get("trades") or 0) < TARGET30 and len(rep["boost"]) < a.max_steps:
-        cands = [(lab, P.sanitize_overrides({**cur, **ch}, defaults)[0]) for lab, ch in more_trade_cands(cur, defaults, rows_entry, P)]
+        if time.time() - t0 > budget:
+            rep["boost"].append({"result": f"budget {budget:.0f}s exceeded — boost stops"})
+            print(f"[365-REPAIR] {ss} boost: budget {budget:.0f}s exceeded — stopping", flush=True)
+            break
+        _braw = more_trade_cands(cur, defaults, rows_entry, P)
+        cands = [(lab, P.sanitize_overrides({**cur, **ch}, defaults)[0]) for lab, ch in _braw[:max(step_cap, 1)]]
         with ctx.Pool(a.workers) as pool:
             res = pool.map(_worker, cands, chunksize=4)
         t0c, worst = int(cur_pair[0].get("trades") or 0), min(_g(cur_pair[0]), _g(cur_pair[1]))
@@ -151,14 +238,14 @@ def main():
         if not acc:
             rep["boost"].append({"n_cands": len(cands), "result": f"no softer set keeps results (stays at {t0c} trades/30D)"})
             print(f"[365-REPAIR] {ss} boost: {len(cands)} candidates, none adds trades without worse results — live at {t0c} trades/30D", flush=True)
+            _dump()
             break
         lab, cur, cur_pair = max(acc, key=lambda x: (min(int(x[2][0].get("trades") or 0), TARGET30), min(_g(x[2][0]), _g(x[2][1]))))
-        rep["boost"].append({"applied": lab, "w30": cur_pair[0], "w365": cur_pair[1]})
+        rep["boost"].append({"applied": lab, "w30": cur_pair[0], "w365": cur_pair[1], "overrides": dict(cur)})
         print(f"[365-REPAIR] {ss} boost: {lab} -> 30D {cur_pair[0]['gain_pct']:+.2f} {cur_pair[0]['trades']}tr | 365D {cur_pair[1]['gain_pct']:+.2f} {cur_pair[1]['trades']}tr", flush=True)
+        _dump()
     rep["final"] = {"both_positive_valid": ok_pair(cur_pair), "w30": cur_pair[0], "w365": cur_pair[1], "overrides": cur, "n_overrides": len(cur), "secs": round(time.time() - t0)}
-    Path(a.out).mkdir(parents=True, exist_ok=True)
-    op = Path(a.out) / f"{ss}_365_repair.json"
-    op.write_text(json.dumps(rep, indent=1, default=str))
+    _dump()
     print(f"[365-REPAIR] {ss} DONE both_positive_valid={rep['final']['both_positive_valid']} 30D {cur_pair[0]['gain_pct']} | 365D {cur_pair[1]['gain_pct']} -> {op}", flush=True)
     return 0
 

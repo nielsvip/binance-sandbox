@@ -673,6 +673,27 @@ def tim_guard_veto(candidate_tim, chain_tim=None) -> str:
     return ""
 
 
+def trades_guard_veto(candidate_trades, chain_trades=None) -> str:
+    """USER 2026-10-12 (TRADES-guard): a G>0 promotion whose candidate set trades below ADAPT_FLOOR_TRADES is vetoed — the greedy chain must not filter entries to death (AAPL_SHORT 30t template baseline -> 0t final, quarantined; the end repair then burns its whole budget trying to resurrect). Chain-health escape mirrors TIM-guard: a below-floor chain may promote a set that strictly improves trades. V15_TRADES_GUARD=0 disables."""
+    if os.environ.get("V15_TRADES_GUARD", "1") != "1":
+        return ""
+    try:
+        t = int(candidate_trades) if candidate_trades is not None else None
+    except Exception:
+        t = None
+    if t is None:
+        return ""
+    if t >= ADAPT_FLOOR_TRADES:
+        return ""
+    try:
+        c = int(chain_trades) if chain_trades is not None else None
+    except Exception:
+        c = None
+    if c is not None and c < ADAPT_FLOOR_TRADES and t > c:
+        return ""
+    return f"TRADES-guard: candidate trades {t}<{ADAPT_FLOOR_TRADES} — chain health over delta"
+
+
 def repair_needs_redo(rep) -> bool:
     """USER 2026-10-03 (row/set coherence): a COMPLIANCE repair that changed the set (any steps) makes the sheet rows stale — the repaired set must be re-filled (REDO), never published against rows measured for the failed set. Only a no-op repair (0 steps, identical set) may publish directly."""
     try:
@@ -1111,12 +1132,18 @@ def mandatory_bases_for_tab(sname: str) -> set:
 # EMA_9_21_SCORE_BONUS (DEAD_CONFIRMED), KINDERGARTEN_CUMULATIVE_MODE (stocks-only read),
 # KINDERGARTEN_STRICT_TFS ('' default unrepresentable as a row; group greyed -> truth fallback),
 # TOP_OF_RANGE_BLOCK_ENABLED + HTF_TREND_VETO_ENABLED (live-only, no vec read).
+# EMA_9_21_FILTER_TFS + EMA_9_21_TIMEFRAME (USER 2026-10-12: REMOVED — TFS is live-read 0x
+# (ez_manage) so it fails the BOTH-venues membership rule by itself; vec aliases TFS-first /
+# TIMEFRAME-fallback (v12_quick_engine _tfs_raw) so TIMEFRAME can never move while TFS is set;
+# live reads-and-discards TIMEFRAME (_ = getattr, ez_manage:1918); S1 flip test 2026-10-12
+# proves both inert (identical behavior fingerprint) — the gate demanded movement from
+# switches that cannot move and quarantined 28 healthy sheets (GE_SHORT +13.3/45t etc).
+# The EMA protection is proven by the ENABLED parent + FILTER_TF + MIN_TFS rows, which stay.
 # Venue binding proven by S1 flip test 2026-10-04 (tmp_s1_flip_test.py) — see matrix in report.
 ESSENTIAL_GATE_SWITCHES = frozenset({
     "KINDERGARTEN_EMA_GATE_ENABLED", "KINDERGARTEN_FILTER_TF",
     "KINDERGARTEN_CUMULATIVE_MIN_TFS",
     "EMA_9_21_FILTER_ENABLED", "EMA_9_21_FILTER_FILTER_TF", "EMA_9_21_FILTER_MIN_TFS",
-    "EMA_9_21_FILTER_TFS", "EMA_9_21_TIMEFRAME",
     "EMA_BLANKET_FILTER_ENABLED", "EMA_BLANKET_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_MIN_TFS",
     "HARDCODED_RALLY_REENTRY_ENABLED", "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
     "HARDCODED_RALLY_MIN_MOVE_PCT", "HARDCODED_RALLY_MIN_AGE_MIN",
@@ -1147,8 +1174,6 @@ ESSENTIAL_GATE_PARENTS = {
     "KINDERGARTEN_CUMULATIVE_MIN_TFS": ("KINDERGARTEN_EMA_GATE_ENABLED", "EMA_9_21_FILTER_ENABLED"),
     "EMA_9_21_FILTER_FILTER_TF": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
     "EMA_9_21_FILTER_MIN_TFS": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
-    "EMA_9_21_FILTER_TFS": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
-    "EMA_9_21_TIMEFRAME": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
     "EMA_BLANKET_FILTER_FILTER_TF": ("EMA_BLANKET_FILTER_ENABLED",),
     "EMA_BLANKET_FILTER_MIN_TFS": ("EMA_BLANKET_FILTER_ENABLED",),
     "HARDCODED_RALLY_MIN_MOVE_PCT": ("HARDCODED_RALLY_REENTRY_ENABLED",),
@@ -2257,24 +2282,78 @@ def _quarantine_impossible(new_symside, reasons, metrics, wb, wb_path, progress,
     return str(qdir)
 
 
+def _best_365_overrides(rep):
+    """Best set from a (possibly partial) v15_365_repair report: steps apply only on strict joint-score
+    improvement, so the LAST applied step/boost is the best; a finished report's final wins. Returns
+    (overrides|None, source_tag). USER 2026-10-12: timeouts keep partial progress instead of voiding it."""
+    try:
+        rep = rep or {}
+        fin = rep.get("final") or {}
+        if fin.get("overrides"):
+            return dict(fin["overrides"]), "final"
+        cands = [s for s in (rep.get("steps") or []) if isinstance(s, dict) and s.get("overrides")]
+        cands += [b for b in (rep.get("boost") or []) if isinstance(b, dict) and b.get("overrides")]
+        if cands:
+            return dict(cands[-1]["overrides"]), f"partial:{cands[-1].get('applied') or 'boost'}"
+    except Exception:
+        pass
+    return None, ""
+
+
 def _run_365_repair(new_symside, progress_path, template_path, timeout_sec=1800):
     """Run the §58 repair tool (tools/v15_365_repair.py) on this sheet's final set. Returns (overrides|None, report_dict)."""
-    import subprocess as _sp, tempfile as _tf
+    import subprocess as _sp
+    # USER 2026-10-12: persistent --out (was a temp dir that vanished with the evidence); a stale report
+    # from an older run is removed first so anything found after is this run's. rc!=0/timeout falls back
+    # to the partial report's best step instead of voiding the whole repair budget.
+    _r365dir = ROOT / "data" / "reports" / "v15_365_repair"
+    _r365rep = _r365dir / f"{new_symside}_365_repair.json"
     try:
-        with _tf.TemporaryDirectory(prefix="q365_") as _td:
-            _env = dict(os.environ)
-            _env["V12_NPZ_CACHE"] = "4"
-            _cp = _sp.run([sys.executable, str(ROOT / "tools" / "v15_365_repair.py"), "--progress", str(progress_path), "--template", str(template_path), "--out", _td, "--max-steps", "8"], capture_output=True, text=True, timeout=timeout_sec, cwd=str(ROOT), env=_env)
-            print(f"[365-repair] {new_symside} rc={_cp.returncode} tail={((_cp.stdout or '')[-400:] + (_cp.stderr or '')[-200:])!r}"[:600], flush=True)
-            _outs = list(Path(_td).glob("*_365_repair.json"))
-            if _cp.returncode != 0 or not _outs:
-                return None, {"rc": _cp.returncode}
-            rep = json.loads(_outs[0].read_text())
-            ov = (rep.get("final") or {}).get("overrides") or rep.get("overrides")
-            return (dict(ov) if ov else None), rep
+        _r365dir.mkdir(parents=True, exist_ok=True)
+        try:
+            if _r365rep.exists():
+                _r365rep.unlink()
+        except Exception:
+            pass
+        _env = dict(os.environ)
+        _env["V12_NPZ_CACHE"] = "4"
+        _cp = _sp.run([sys.executable, str(ROOT / "tools" / "v15_365_repair.py"), "--progress", str(progress_path), "--template", str(template_path), "--out", str(_r365dir), "--max-steps", "8"], capture_output=True, text=True, timeout=timeout_sec, cwd=str(ROOT), env=_env)
+        _tail = ((_cp.stdout or "")[-400:] + (_cp.stderr or "")[-200:])
+        print(f"[365-repair] {new_symside} rc={_cp.returncode} tail={_tail!r}"[:600], flush=True)
+        if _cp.returncode != 0 or not _r365rep.exists():
+            _prep, _psrc = None, ""
+            try:
+                if _r365rep.exists():
+                    _prep = json.loads(_r365rep.read_text())
+                    _pov, _psrc = _best_365_overrides(_prep)
+                else:
+                    _pov = None
+            except Exception:
+                _prep, _pov, _psrc = None, None, ""
+            if _pov is not None:
+                print(f"[365-repair] {new_symside} rc={_cp.returncode} but partial {_psrc} keeps best step — REDO from it", flush=True)
+                return _pov, dict(_prep or {}, rc=_cp.returncode, partial=True, partial_source=_psrc, tail=_tail[-600:])
+            return None, {"rc": _cp.returncode, "tail": _tail[-600:]}
+        rep = json.loads(_r365rep.read_text())
+        ov, _src = _best_365_overrides(rep)
+        if ov is None:
+            ov = rep.get("overrides")
+            ov = dict(ov) if ov else None
+        return ov, rep
     except Exception as _e:
-        print(f"[365-repair-warn] {new_symside}: {_e}", flush=True)
-        return None, {"error": str(_e)[:120]}
+        _tail = ""
+        try:
+            if _r365rep.exists():
+                _prep = json.loads(_r365rep.read_text())
+                _pov, _psrc = _best_365_overrides(_prep)
+            else:
+                _prep, _pov, _psrc = None, None, ""
+        except Exception:
+            _prep, _pov, _psrc = None, None, ""
+        print(f"[365-repair-warn] {new_symside}: {_e} (partial={_psrc or 'none'})", flush=True)
+        if _pov is not None:
+            return _pov, dict(_prep or {}, error=str(_e)[:300], partial=True, partial_source=_psrc)
+        return None, {"error": str(_e)[:300]}
 
 
 def _adapt_template_rows(template_path, tabs):
@@ -2927,6 +3006,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         chain_tim = float((baseline_vec or {}).get("tim_pct"))
     except Exception:
         chain_tim = None
+    try:
+        chain_trades = int((baseline_vec or {}).get("trades") or 0)
+    except Exception:
+        chain_trades = None
     # Ensure header L:BI uses is_default backup handling — restore bold if lost (is_default col12 = YES means default bold)
     try:
         for sname in SWITCH_SHEETS:
@@ -4234,7 +4317,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _zjr = (_zero_row_ev or {}).get(_zrkey)
                     if isinstance(_zjr, dict):
                         _zp, _zn = _zjr.get("pos_sym"), _zjr.get("n_sym")
-                if not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW) and not str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES):
+                if not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW) and not str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) and str(switch).strip() not in ESSENTIAL_GATE_SWITCHES:
                     _zjr2 = (_zero_row_ev or {}).get(_zrkey) or {}
                     info.update(kind="skip", reason=f"ZERO_FORMULA_ROW: pos_sym=0 in {_zn} syms, never positive — skipped, booked for formula fix (NOT obsolete)", g=None)
                     if _zero_book_enabled():
@@ -4480,7 +4563,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # boundary vs the grown cumulative — golden gates suffocate downstream switches, so a 0 measured
         # early can be positive later. Naked-only (yellows were measured in the main pass); the naked eval
         # IS the fresh full-set eval (identical overrides = same cache key, no separate RECALC needed).
-        nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim
+        nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
         if not _sacred_on:
             return 0
         upto = _sacred_tab_order if upto_tab_inclusive is None else (_sacred_tab_order[:_sacred_tab_order.index(upto_tab_inclusive) + 1] if upto_tab_inclusive in _sacred_tab_order else [])
@@ -4512,6 +4595,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _ct = None
             if tim_guard_veto(_ct, chain_tim):
                 continue
+            try:
+                _ctr = int((res or {}).get("trades") or 0)
+            except Exception:
+                _ctr = None
+            if trades_guard_veto(_ctr, chain_trades):
+                continue
             cumulative_overrides = dict(ov)
             cumulative_gain = float((res or {}).get("gain_pct"))
             e_next = cumulative_gain
@@ -4528,6 +4617,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress.setdefault("done", {})[f"{s}!{r}:{str(sw).strip()}={str(c).strip()}:REPASS"] = {"delta": float(d), "promoted": True, "promoted_how": "sacred_repass_naked", "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cum_before, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp(s), "complete": True}
             try:
                 chain_tim = float((res or {}).get("tim_pct"))
+            except Exception:
+                pass
+            try:
+                chain_trades = int((res or {}).get("trades") or 0)
             except Exception:
                 pass
             n_prom += 1
@@ -4794,6 +4887,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 promote = False
                 _blk = _tgv
                 print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_tgv}", flush=True)
+        if promote:
+            try:
+                _ctr = int((_src_ or {}).get("trades") or 0)
+            except Exception:
+                _ctr = None
+            _tgv = trades_guard_veto(_ctr, chain_trades)
+            if _tgv:
+                promote = False
+                _blk = ((_blk + "; ") if _blk else "") + _tgv
+                print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_tgv}", flush=True)
         # TEAL 2026-10-04 RAMFP: the in-RAM NPZ must be identical between preload and promotion (RAM LAW
         # forbids mid-run re-prepare; a mismatch means the row measured different bytes than the chain).
         # Tripwire only, default OFF (V15_RAMFP=1 arms). Mismatch blocks promotion; the row revalidates on resume.
@@ -4901,6 +5004,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             try:
                 _pt = float((_src_ or {}).get("tim_pct"))
                 chain_tim = _pt
+            except Exception:
+                pass
+            try:
+                chain_trades = int((_src_ or {}).get("trades") or 0)
             except Exception:
                 pass
         progress["cumulative_gain"] = float(cumulative_gain)
