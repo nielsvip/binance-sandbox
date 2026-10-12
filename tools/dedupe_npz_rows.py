@@ -28,23 +28,33 @@ def main():
                 continue
             keep = np.zeros(n, bool)
             keep[np.sort(first)] = True
+            order = np.argsort(ts, kind="stable")
+            tso = ts[order]
+            same = np.zeros(n, bool)
+            same[1:] = tso[1:] == tso[:-1]
             conf = []
             for k, v in L.items():
                 a = np.asarray(v)
                 if a.ndim >= 1 and len(a) == n and k != "timestamps":
+                    ao = a[order]
                     if a.dtype.kind in "biufc":
-                        f = a.astype(np.float64)
-                        for t in uniq[counts > 1]:
-                            idx = np.flatnonzero(ts == t)
-                            if len(idx) > 1 and float(f[idx].max() - f[idx].min()) > 1e-6 * max(1.0, float(abs(f[idx].mean()))):
-                                conf.append(k)
-                                break
+                        f = ao.astype(np.float64)
+                        d = np.abs(f[1:] - f[:-1])
+                        tol = 1e-6 * np.maximum(1.0, np.abs(f[:-1]))
+                        _nn = np.isnan(f[1:]) != np.isnan(f[:-1])
+                        if bool((((d > tol) | _nn) & same[1:]).any()):
+                            conf.append(k)
                     else:
-                        for t in uniq[counts > 1]:
-                            idx = np.flatnonzero(ts == t)
-                            if len(idx) > 1 and not all(x == a[idx[0]] for x in a[idx]):
-                                conf.append(k)
-                                break
+                        prev = None
+                        bad = False
+                        for i in range(n):
+                            if same[i]:
+                                if ao[i] != prev:
+                                    bad = True
+                                    break
+                            prev = ao[i]
+                        if bad:
+                            conf.append(k)
             rec = {"status": "CONFLICT" if conf else "DEDUPABLE", "rows": n, "unique": len(uniq), "dup_groups": ndup, "conflicts": conf[:6]}
             if conf:
                 audit["syms"][sym] = rec
