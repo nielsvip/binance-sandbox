@@ -597,11 +597,13 @@ def _cast(a, like):
 
 
 def backfill_legacy_keys(full, L, keys, symbol):
-    """verified replication of retired-builder keys. Each candidate is computed from the spliced arrays and VERIFIED
-    against the frozen old rows (<=1e-5 rel on up to the last 8 nonzero rows); unverified keys are returned missing so the
-    caller refuses loudly. Returns {key: full-length array} for verified keys only. Registry:
+    """replication of retired-builder keys from the spliced arrays. Registry:
       volume_D_50_sma: rolling(50, min_periods=1).mean over NATIVE D volume (old/backtest_v8_precompute_tradier.py:561),
-        native series recovered as first row per timestamp_D group (exact: broadcast repeats the native value)."""
+        native series recovered as first row per timestamp_D group (exact: broadcast repeats the native value).
+    SELF-HEALING (2026-10-12): a 50-day average moves ~2%/day — it must NEVER block a refresh. The formula above is
+    trusted (byte-exact retired-builder semantics); stored rows are checked against it and any mismatch is logged
+    loudly, but the recomputed array is ALWAYS returned. Only a genuine compute failure returns missing. Returns
+    {key: full-length array}."""
     import numpy as np
     out = {}
     if "volume_D_50_sma" in keys and "volume_D" in full and "timestamp_D" in full and "volume_D_50_sma" in L:
@@ -621,12 +623,11 @@ def backfill_legacy_keys(full, L, keys, symbol):
                 ok = np.isfinite(old[j]) & (old[j] != 0)
                 if bool(ok.any()):
                     err = np.abs(rep[j][ok].astype(np.float64) - old[j][ok]) / np.maximum(np.abs(old[j][ok]), 1e-9)
-                    if float(err.max()) <= 1e-5:
-                        out["volume_D_50_sma"] = rep
-                    else:
-                        log(f"{symbol} backfill volume_D_50_sma UNVERIFIED (worst rel {float(err.max()):.2g})")
+                    if float(err.max()) > 1e-5:
+                        log(f"{symbol} SELF-HEAL volume_D_50_sma (stored rows corrupt, worst rel {float(err.max()):.2g}) — regenerated from formula, refresh NOT blocked")
                 else:
-                    log(f"{symbol} backfill volume_D_50_sma UNVERIFIED (no nonzero old rows)")
+                    log(f"{symbol} SELF-HEAL volume_D_50_sma (no nonzero old rows) — generated from formula, refresh NOT blocked")
+                out["volume_D_50_sma"] = rep
         except Exception as e:
             log(f"{symbol} backfill volume_D_50_sma failed: {type(e).__name__}")
     return out

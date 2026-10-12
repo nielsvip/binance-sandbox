@@ -35578,7 +35578,7 @@ class MultiAccountTradeManager:
                         except Exception:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
-                        _oc_hard = float(_psym_cs_get(symbol, position_side, "OPEN_CEIL_HARD_MAX_USD", getattr(config, "OPEN_CEIL_HARD_MAX_USD", 180.0)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only; vec uses side truth 28.0)
+                        _oc_hard = float(getattr(config, "OPEN_CEIL_HARD_MAX_USD", 180.0))  # USER 2026-10-12: risk ceiling stays GLOBAL-ONLY (180 = 4x $45 SPS lift 2026-10-11); never per-sym/side overridable. Vec parity via cat_side store (=180).
                         if _oc_ceil > _oc_hard:
                             _oc_ceil = _oc_hard
                         if bool(getattr(config, "UNTESTED_FLAT_SPS_ENABLED", True)):
