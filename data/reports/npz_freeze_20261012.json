@@ -17,9 +17,9 @@
   "pid": 2835029,
   "reason": "wave2: one-shot AAVE/COTI/SNX INSTALLED 09:56:42Z then loop overwrote same-cutoff (build-stamp-only diff); files end 09:30Z cutoff 1791797400; freshness window to ~10:15Z; pilots must START by then, static during run",
   "md5": {
-   "AAVEUSDC": "f3dcd1a55db1ce85c70253840099190a",
-   "COTIUSDT": "39ec0baee4e0a089a7d3e7e1f8d5dffa",
-   "SNXUSDT": "7eec3e08bf91f838b11b07b2734a25d7",
+   "AAVEUSDC": "ab096b932e450a78d238cd34c54fe81d",
+   "COTIUSDT": "ef0aeab87a201872daace655aced232a",
+   "SNXUSDT": "84c1b6187174a34b8b580dcadee40021",
    "GALAUSDT": "2b81de8d1b0011f4d1464b97213a42f3"
   },
   "note2": "GALA loop-tick was sentiment-only (ts_last stayed 07:15); one-shot 10:04:26Z appended 10 bars ends 09:45Z. Wave2 all-local S1: AAVE/COTI/SNX/GALA launched ~10:03-10:05Z, all past stale gate.",
@@ -39,5 +39,8 @@
   "effect": "GALA DONE-STEP atomic save ENOSPC, pilot crashed py=0",
   "fix": "deleted verified-stale ~/npz_stage_live_equal_20261006 (14G, untouched since Oct-06) + ~/stalled_s2_202610090920 (5G, Oct-09) -> 20G avail 94%; left v15_run30/parity_laneA (others lanes) + eval_cache_v1.db 53G (live) untouched",
   "gala": "file loop-ticked (FRESH, md5 2b81de8d), relaunched 11:35Z py=5"
+ },
+ "wave4_1150": {
+  "note": "AAVE slice2 SLICE-exit, COTI+SNX RULE#3 hollow-refusal (1036/1033, SNX twice identical); files refreshed; all 4 relaunched 11:45-11:50Z py=5. DOT tombstone 08:51:15 (post-publish pattern)."
  }
 }
