@@ -1,59 +1,59 @@
 {
- "generated_utc": "2026-10-11T02:43:32Z",
- "window": "NPZ-ending 7d (Mac NPZ lags live; window ends 2026-10-07 06:30Z)",
- "start_utc": "2026-09-30T06:30Z",
- "end_utc": "2026-10-07T06:30Z",
- "keys": 740,
- "syms": 395,
- "elapsed_s": 7.8,
+ "generated_utc": "2026-10-12T00:33:52Z",
+ "window": "live-ending 7d",
+ "start_utc": "2026-10-05T00:33Z",
+ "end_utc": "2026-10-12T00:33Z",
+ "keys": 764,
+ "syms": 401,
+ "elapsed_s": 613.5,
  "legs": {
+  "VEC15": {
+   "exits": 290,
+   "total_pct": -126.748,
+   "per_trade": -0.4371,
+   "active_days": 7,
+   "pos_days": 3
+  },
   "NO_TWIN": {
-   "exits": 145,
-   "total_pct": -33.214,
-   "per_trade": -0.2291,
+   "exits": 423,
+   "total_pct": -18282.679,
+   "per_trade": -43.2215,
    "active_days": 7,
    "pos_days": 4
   },
-  "VEC15": {
-   "exits": 103,
-   "total_pct": 29.395,
-   "per_trade": 0.2854,
-   "active_days": 8,
-   "pos_days": 6
-  },
   "LTF_135": {
-   "exits": 108,
-   "total_pct": 50.704,
-   "per_trade": 0.4695,
-   "active_days": 4,
-   "pos_days": 2
+   "exits": 14,
+   "total_pct": -10.28,
+   "per_trade": -0.7343,
+   "active_days": 5,
+   "pos_days": 1
   }
  },
  "checks": {
-  "ltf_exits>=20": true,
-  "ltf_total>0": true,
-  "ltf_per_trade>0": true,
+  "ltf_exits>=20": false,
+  "ltf_total>0": false,
+  "ltf_per_trade>0": false,
   "ltf_pos_days>=60%": false
  },
  "verdict": "HOLD",
  "per_key": {
   "ang:1000BONKUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -0.3179
    }
   },
   "ang:1000FLOKIUSDT_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 4,
+   "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.0091,
     "VEC15": 0
    }
   },
@@ -68,73 +68,83 @@
    }
   },
   "ang:1000PEPEUSDC_LONG": {
-   "exits": 0,
+   "exits": 5,
+   "entries": 13,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 3.2257,
+    "VEC15": 1.8991
+   }
+  },
+  "ang:1000SATSUSDT_LONG": {
+   "exits": 1,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": -0.4153
+   }
+  },
+  "ang:1000SHIBUSDC_LONG": {
+   "exits": 4,
+   "entries": 6,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0.8433,
+    "VEC15": 0
+   }
+  },
+  "ang:1INCHUSDT_LONG": {
+   "exits": 5,
+   "entries": 8,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -2.4823,
+    "VEC15": 0
+   }
+  },
+  "ang:AAPLUSDT_LONG": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -0.0462,
+    "VEC15": 0
+   }
+  },
+  "ang:AAVEUSDC_LONG": {
+   "exits": 2,
+   "entries": 5,
+   "entries_ltf": 1,
+   "legs": {
+    "LTF_135": 0.6861,
+    "NO_TWIN": -0.5867,
+    "VEC15": 0
+   }
+  },
+  "ang:ACEUSDT_LONG": {
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:1000SATSUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:1000SHIBUSDC_LONG": {
-   "exits": 0,
-   "entries": 1,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:1INCHUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:AAVEUSDC_LONG": {
-   "exits": 0,
-   "entries": 3,
-   "entries_ltf": 1,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:ACEUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -1.4605
    }
   },
   "ang:ADAUSDC_LONG": {
-   "exits": 0,
-   "entries": 9,
+   "exits": 4,
+   "entries": 11,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.6595,
+    "VEC15": -0.6504
    }
   },
   "ang:ADAUSDC_SHORT": {
@@ -147,44 +157,54 @@
     "VEC15": 0
    }
   },
-  "ang:AIAUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:ALGOUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 1,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:ALTUSDT_LONG": {
-   "exits": 0,
+  "ang:ADBEUSDT_LONG": {
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.0042,
     "VEC15": 0
    }
   },
+  "ang:AIAUSDT_LONG": {
+   "exits": 3,
+   "entries": 3,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -4.5143,
+    "VEC15": 0
+   }
+  },
+  "ang:ALGOUSDT_LONG": {
+   "exits": 1,
+   "entries": 3,
+   "entries_ltf": 1,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0.7019
+   }
+  },
+  "ang:ALTUSDT_LONG": {
+   "exits": 4,
+   "entries": 6,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -1.5434,
+    "VEC15": 1.5855
+   }
+  },
   "ang:AMATUSDT_SHORT": {
-   "exits": 0,
-   "entries": 15,
+   "exits": 4,
+   "entries": 17,
    "entries_ltf": 12,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -38.224
    }
   },
   "ang:AMDUSDT_LONG": {
@@ -208,13 +228,13 @@
    }
   },
   "ang:APEUSDT_LONG": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 4,
+   "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 2.4063
    }
   },
   "ang:APEUSDT_SHORT": {
@@ -228,13 +248,13 @@
    }
   },
   "ang:API3USDT_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 3,
+   "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 3.85,
+    "VEC15": 0.0
    }
   },
   "ang:API3USDT_SHORT": {
@@ -258,23 +278,23 @@
    }
   },
   "ang:ARKMUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
+   "exits": 4,
+   "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 2.7628,
+    "VEC15": 1.8931
    }
   },
   "ang:ARKMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 2.3121
    }
   },
   "ang:ARMUSDT_SHORT": {
@@ -288,72 +308,82 @@
    }
   },
   "ang:ARPAUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 8.4035
    }
   },
   "ang:ARUSDT_LONG": {
-   "exits": 0,
+   "exits": 4,
    "entries": 6,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -6.9894,
+    "VEC15": -20.6473
    }
   },
   "ang:ASTERUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:ASTSUSDT_LONG": {
    "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -1.2326,
+    "NO_TWIN": -0.5656,
     "VEC15": 0
    }
   },
-  "ang:ASTSUSDT_SHORT": {
-   "exits": 0,
+  "ang:ASTSUSDT_LONG": {
+   "exits": 2,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.8129,
+    "VEC15": 0
+   }
+  },
+  "ang:ASTSUSDT_SHORT": {
+   "exits": 1,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0.0056,
+    "VEC15": 0
+   }
+  },
+  "ang:ATOMUSDT_LONG": {
+   "exits": 1,
+   "entries": 3,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -2.4788,
     "VEC15": 0
    }
   },
   "ang:ATOMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 7,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -16.1156,
     "VEC15": 0
    }
   },
   "ang:AVAXUSDC_LONG": {
-   "exits": 3,
-   "entries": 4,
+   "exits": 7,
+   "entries": 8,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 1.6293,
+    "NO_TWIN": 1.694,
     "VEC15": 0.8787
    }
   },
@@ -368,13 +398,13 @@
    }
   },
   "ang:AXSUSDT_LONG": {
-   "exits": 2,
-   "entries": 6,
+   "exits": 7,
+   "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.6734,
-    "VEC15": 0
+    "NO_TWIN": 0.6843,
+    "VEC15": -2.6413
    }
   },
   "ang:BABAUSDT_SHORT": {
@@ -388,42 +418,52 @@
    }
   },
   "ang:BANDUSDT_LONG": {
-   "exits": 0,
-   "entries": 1,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:BATUSDT_LONG": {
-   "exits": 0,
-   "entries": 3,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:BBUSDT_SHORT": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "ang:BIOUSDC_LONG": {
-   "exits": 0,
+   "exits": 3,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 3.6471,
+    "VEC15": -0.134
+   }
+  },
+  "ang:BATUSDT_LONG": {
+   "exits": 6,
+   "entries": 10,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 20.4013,
+    "VEC15": 0
+   }
+  },
+  "ang:BBUSDT_SHORT": {
+   "exits": 1,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -5.8235,
+    "VEC15": 0
+   }
+  },
+  "ang:BCHUSDC_SHORT": {
+   "exits": 2,
+   "entries": 8,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": -0.0152,
+    "NO_TWIN": -1.1436,
+    "VEC15": 0
+   }
+  },
+  "ang:BIOUSDC_LONG": {
+   "exits": 3,
+   "entries": 6,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 182.9416,
     "VEC15": 0
    }
   },
@@ -478,32 +518,32 @@
    }
   },
   "ang:CHRUSDT_LONG": {
-   "exits": 1,
-   "entries": 3,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0.2013,
-    "VEC15": 0
-   }
-  },
-  "ang:CHRUSDT_SHORT": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 2,
+   "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
+    "VEC15": 0.5871
+   }
+  },
+  "ang:CHRUSDT_SHORT": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -1.7822,
     "VEC15": 0
    }
   },
   "ang:COMPUSDT_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 1,
+   "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.6874,
     "VEC15": 0
    }
   },
@@ -527,43 +567,63 @@
     "VEC15": 0
    }
   },
-  "ang:DOGEUSDC_SHORT": {
+  "ang:DOGEUSDC_LONG": {
    "exits": 0,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
+  "ang:DOGEUSDC_SHORT": {
+   "exits": 2,
    "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 0.2979,
+    "VEC15": 0.9108
    }
   },
   "ang:DOTUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 3,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 2.2413,
     "VEC15": 0
    }
   },
   "ang:EDUUSDT_LONG": {
-   "exits": 2,
-   "entries": 4,
+   "exits": 4,
+   "entries": 7,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 2.683,
+    "NO_TWIN": 12.3931,
     "VEC15": -8.9799
    }
   },
   "ang:EGLDUSDT_LONG": {
    "exits": 0,
-   "entries": 10,
+   "entries": 11,
    "entries_ltf": 7,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
+  "ang:EGLDUSDT_SHORT": {
+   "exits": 1,
+   "entries": 3,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -1.2518,
     "VEC15": 0
    }
   },
@@ -577,14 +637,24 @@
     "VEC15": 0.9295
    }
   },
-  "ang:ENSUSDT_LONG": {
+  "ang:ENJUSDT_SHORT": {
    "exits": 1,
-   "entries": 4,
+   "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -0.8848
+    "NO_TWIN": -0.2524,
+    "VEC15": 0
+   }
+  },
+  "ang:ENSUSDT_LONG": {
+   "exits": 4,
+   "entries": 6,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0.2085,
+    "VEC15": -1.1552
    }
   },
   "ang:ETHFIUSDC_LONG": {
@@ -607,7 +677,7 @@
     "VEC15": 0
    }
   },
-  "ang:FLNCUSDT_SHORT": {
+  "ang:FARTCOINUSDT_LONG": {
    "exits": 0,
    "entries": 1,
    "entries_ltf": 0,
@@ -617,33 +687,63 @@
     "VEC15": 0
    }
   },
+  "ang:FILUSDC_LONG": {
+   "exits": 1,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 3.1298
+   }
+  },
+  "ang:FLNCUSDT_SHORT": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -0.4401,
+    "VEC15": 0
+   }
+  },
+  "ang:GALAUSDT_LONG": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -0.9259,
+    "VEC15": 0
+   }
+  },
   "ang:GALAUSDT_SHORT": {
-   "exits": 3,
-   "entries": 9,
+   "exits": 5,
+   "entries": 12,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": -4.0466,
     "NO_TWIN": 0,
-    "VEC15": 1.159
+    "VEC15": 0.1352
    }
   },
   "ang:GRAMUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.0151,
     "VEC15": 0
    }
   },
   "ang:GRTUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
+   "exits": 3,
+   "entries": 7,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 3.5991,
     "VEC15": 0
    }
   },
@@ -688,32 +788,32 @@
    }
   },
   "ang:JASMYUSDT_LONG": {
-   "exits": 3,
+   "exits": 1,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -1.6184
+    "VEC15": -0.6009
    }
   },
   "ang:KAVAUSDT_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 1,
+   "entries": 2,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.6333,
     "VEC15": 0
    }
   },
   "ang:KSMUSDT_LONG": {
-   "exits": 2,
-   "entries": 3,
+   "exits": 3,
+   "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -2.4023,
+    "NO_TWIN": -2.2501,
     "VEC15": 0.3418
    }
   },
@@ -749,32 +849,32 @@
   },
   "ang:MANAUSDT_LONG": {
    "exits": 1,
-   "entries": 1,
+   "entries": 6,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 1.5288,
+    "NO_TWIN": 0.7139,
     "VEC15": 0
    }
   },
   "ang:MANAUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.9737,
     "VEC15": 0
    }
   },
   "ang:MELANIAUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.199
    }
   },
   "ang:METAUSDT_LONG": {
@@ -788,12 +888,12 @@
    }
   },
   "ang:MINAUSDT_LONG": {
-   "exits": 0,
-   "entries": 18,
+   "exits": 1,
+   "entries": 19,
    "entries_ltf": 15,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -31.1266,
     "VEC15": 0
    }
   },
@@ -808,13 +908,13 @@
    }
   },
   "ang:MOVRUSDT_LONG": {
-   "exits": 4,
+   "exits": 0,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 1.2983,
-    "VEC15": 6.7179
+    "NO_TWIN": 0,
+    "VEC15": 0
    }
   },
   "ang:MSTRUSDT_LONG": {
@@ -838,13 +938,13 @@
    }
   },
   "ang:NEARUSDC_LONG": {
-   "exits": 0,
-   "entries": 5,
+   "exits": 3,
+   "entries": 8,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 8.6868,
+    "VEC15": 0.7076
    }
   },
   "ang:NFLXUSDT_SHORT": {
@@ -868,13 +968,13 @@
    }
   },
   "ang:ONDOUSDT_LONG": {
-   "exits": 0,
-   "entries": 10,
+   "exits": 3,
+   "entries": 11,
    "entries_ltf": 5,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 0.9762,
+    "VEC15": 0.1943
    }
   },
   "ang:PLTRUSDT_LONG": {
@@ -907,13 +1007,23 @@
     "VEC15": 0
    }
   },
+  "ang:PUMPUSDT_LONG": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 7.3543,
+    "VEC15": 0
+   }
+  },
   "ang:PUMPUSDT_SHORT": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 1,
+   "entries": 5,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -2.5838,
     "VEC15": 0
    }
   },
@@ -937,19 +1047,29 @@
     "VEC15": 0
    }
   },
+  "ang:QTUMUSDT_LONG": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -1.9477,
+    "VEC15": 0
+   }
+  },
   "ang:RAYSOLUSDT_LONG": {
-   "exits": 0,
-   "entries": 5,
+   "exits": 2,
+   "entries": 7,
    "entries_ltf": 5,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 5.5291,
     "VEC15": 0
    }
   },
   "ang:RENDERUSDT_LONG": {
    "exits": 1,
-   "entries": 1,
+   "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
@@ -958,13 +1078,13 @@
    }
   },
   "ang:RLCUSDT_LONG": {
-   "exits": 1,
+   "exits": 3,
    "entries": 6,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -1.2866
+    "NO_TWIN": -10.3724,
+    "VEC15": -7.704
    }
   },
   "ang:ROSEUSDT_SHORT": {
@@ -988,43 +1108,43 @@
    }
   },
   "ang:RVNUSDT_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 4.6966,
     "VEC15": 0
    }
   },
   "ang:SANDUSDT_LONG": {
-   "exits": 3,
-   "entries": 6,
+   "exits": 7,
+   "entries": 10,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 1.3152,
-    "VEC15": 8.5671
+    "NO_TWIN": -1.1615,
+    "VEC15": 7.5239
    }
   },
   "ang:SKLUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
+   "exits": 1,
+   "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -3.3212,
     "VEC15": 0
    }
   },
   "ang:SKYUSDT_LONG": {
-   "exits": 1,
-   "entries": 1,
+   "exits": 2,
+   "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 1.2501,
-    "VEC15": 0
+    "VEC15": -0.3821
    }
   },
   "ang:SNXUSDT_LONG": {
@@ -1039,7 +1159,7 @@
   },
   "ang:SNXUSDT_SHORT": {
    "exits": 0,
-   "entries": 3,
+   "entries": 4,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
@@ -1049,7 +1169,7 @@
   },
   "ang:SOLUSDC_LONG": {
    "exits": 0,
-   "entries": 1,
+   "entries": 3,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
@@ -1068,33 +1188,43 @@
    }
   },
   "ang:STRKUSDT_LONG": {
-   "exits": 0,
-   "entries": 8,
+   "exits": 8,
+   "entries": 17,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 24.4954,
+    "VEC15": 36.8865
    }
   },
   "ang:STRKUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 3,
    "entries_ltf": 2,
    "legs": {
-    "LTF_135": 0,
+    "LTF_135": 0.0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "ang:STXUSDT_LONG": {
-   "exits": 8,
+   "exits": 0,
    "entries": 8,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.8864,
-    "VEC15": 0.4916
+    "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
+  "ang:THETAUSDT_LONG": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 1.075
    }
   },
   "ang:TIAUSDC_LONG": {
@@ -1108,13 +1238,13 @@
    }
   },
   "ang:TRBUSDT_LONG": {
-   "exits": 1,
-   "entries": 5,
+   "exits": 2,
+   "entries": 8,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.4975
+    "VEC15": -0.4731
    }
   },
   "ang:TRUMPUSDC_SHORT": {
@@ -1129,12 +1259,12 @@
   },
   "ang:UNIUSDC_LONG": {
    "exits": 1,
-   "entries": 5,
+   "entries": 6,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.4044
+    "VEC15": -1.0947
    }
   },
   "ang:USARUSDT_SHORT": {
@@ -1148,43 +1278,53 @@
    }
   },
   "ang:VETUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.6964,
     "VEC15": 0
    }
   },
   "ang:WLDUSDC_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -2.9022,
+    "VEC15": 0.2389
    }
   },
   "ang:WLDUSDC_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.8331,
     "VEC15": 0
    }
   },
   "ang:XLMUSDT_LONG": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 1,
+   "entries": 8,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -1.6945
+   }
+  },
+  "ang:XMRUSDT_LONG": {
+   "exits": 3,
+   "entries": 8,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 2.5539
    }
   },
   "ang:XRPUSDC_LONG": {
@@ -1198,42 +1338,42 @@
    }
   },
   "ang:XTZUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
+   "exits": 9,
+   "entries": 10,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 10.4748,
+    "VEC15": 7.4072
    }
   },
   "ang:YFIUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.3154,
     "VEC15": 0
    }
   },
   "ang:ZECUSDC_LONG": {
-   "exits": 2,
-   "entries": 7,
+   "exits": 3,
+   "entries": 9,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.9088,
     "VEC15": -0.476
    }
   },
   "ang:ZROUSDT_LONG": {
-   "exits": 1,
-   "entries": 3,
+   "exits": 3,
+   "entries": 16,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -5.9826,
     "VEC15": -3.1145
    }
   },
@@ -1288,13 +1428,13 @@
    }
   },
   "fin:1INCHUSDT_LONG": {
-   "exits": 0,
+   "exits": 5,
    "entries": 25,
    "entries_ltf": 13,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 4.5504
    }
   },
   "fin:1INCHUSDT_SHORT": {
@@ -1318,22 +1458,22 @@
    }
   },
   "fin:ADAUSDC_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 38,
    "entries_ltf": 17,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.0892,
     "VEC15": 0
    }
   },
   "fin:ADAUSDC_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 27.897,
     "VEC15": 0
    }
   },
@@ -1358,13 +1498,13 @@
    }
   },
   "fin:ALGOUSDT_LONG": {
-   "exits": 0,
+   "exits": 4,
    "entries": 16,
    "entries_ltf": 11,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 4.2276,
+    "VEC15": -2.7587
    }
   },
   "fin:ALGOUSDT_SHORT": {
@@ -1398,13 +1538,13 @@
    }
   },
   "fin:AVAXUSDC_LONG": {
-   "exits": 1,
-   "entries": 5,
+   "exits": 3,
+   "entries": 9,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0.4973
+    "NO_TWIN": 2.5676,
+    "VEC15": 0.348
    }
   },
   "fin:AVAXUSDC_SHORT": {
@@ -1438,12 +1578,12 @@
    }
   },
   "fin:BNBUSDC_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 16,
    "entries_ltf": 10,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -4.2005,
     "VEC15": 0
    }
   },
@@ -1488,33 +1628,33 @@
    }
   },
   "fin:CHRUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -1.8845
    }
   },
   "fin:CHRUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 3,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.5778,
     "VEC15": 0
    }
   },
   "fin:COMPUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
+   "exits": 1,
+   "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 1.3977
    }
   },
   "fin:COMPUSDT_SHORT": {
@@ -1528,23 +1668,23 @@
    }
   },
   "fin:COTIUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 60,
    "entries_ltf": 55,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -16.99,
     "VEC15": 0
    }
   },
   "fin:COTIUSDT_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 27,
    "entries_ltf": 19,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -3.1548,
+    "VEC15": 4.0496
    }
   },
   "fin:CRVUSDC_LONG": {
@@ -1559,7 +1699,7 @@
   },
   "fin:DASHUSDT_LONG": {
    "exits": 0,
-   "entries": 16,
+   "entries": 18,
    "entries_ltf": 12,
    "legs": {
     "LTF_135": 0,
@@ -1608,12 +1748,12 @@
    }
   },
   "fin:EGLDUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.3185,
     "VEC15": 0
    }
   },
@@ -1647,6 +1787,16 @@
     "VEC15": 0
    }
   },
+  "fin:ETCUSDT_SHORT": {
+   "exits": 0,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
   "fin:ETHFIUSDC_LONG": {
    "exits": 0,
    "entries": 3,
@@ -1668,6 +1818,16 @@
    }
   },
   "fin:ETHUSDC_LONG": {
+   "exits": 3,
+   "entries": 3,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 3.6006,
+    "VEC15": 0
+   }
+  },
+  "fin:ETHUSDC_SHORT": {
    "exits": 0,
    "entries": 1,
    "entries_ltf": 0,
@@ -1778,18 +1938,18 @@
    }
   },
   "fin:IOTXUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 29,
    "entries_ltf": 24,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.5972,
     "VEC15": 0
    }
   },
   "fin:IOTXUSDT_SHORT": {
    "exits": 0,
-   "entries": 37,
+   "entries": 39,
    "entries_ltf": 30,
    "legs": {
     "LTF_135": 0,
@@ -1798,13 +1958,13 @@
    }
   },
   "fin:KSMUSDT_LONG": {
-   "exits": 0,
+   "exits": 6,
    "entries": 7,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -3.2081,
+    "VEC15": -4.0702
    }
   },
   "fin:KSMUSDT_SHORT": {
@@ -1828,13 +1988,13 @@
    }
   },
   "fin:LINKUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.8296
    }
   },
   "fin:LPTUSDT_SHORT": {
@@ -1898,22 +2058,22 @@
    }
   },
   "fin:MANAUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 4,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.0741,
     "VEC15": 0
    }
   },
   "fin:MANAUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 21,
    "entries_ltf": 18,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -3.1379,
     "VEC15": 0
    }
   },
@@ -2118,18 +2278,18 @@
    }
   },
   "fin:RLCUSDT_LONG": {
-   "exits": 1,
+   "exits": 13,
    "entries": 15,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -2.1826
+    "NO_TWIN": 11.2713,
+    "VEC15": 31.4992
    }
   },
   "fin:RLCUSDT_SHORT": {
    "exits": 0,
-   "entries": 20,
+   "entries": 21,
    "entries_ltf": 15,
    "legs": {
     "LTF_135": 0,
@@ -2178,12 +2338,12 @@
    }
   },
   "fin:SANDUSDT_LONG": {
-   "exits": 3,
+   "exits": 8,
    "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.7149,
+    "NO_TWIN": 14.014,
     "VEC15": 6.1033
    }
   },
@@ -2218,28 +2378,28 @@
    }
   },
   "fin:SNXUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 4,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.4279,
     "VEC15": 0
    }
   },
   "fin:SNXUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 18,
    "entries_ltf": 11,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -18.5712,
     "VEC15": 0
    }
   },
   "fin:SOLUSDC_LONG": {
    "exits": 0,
-   "entries": 11,
+   "entries": 13,
    "entries_ltf": 11,
    "legs": {
     "LTF_135": 0,
@@ -2248,13 +2408,13 @@
    }
   },
   "fin:SOLUSDC_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -1.3226
    }
   },
   "fin:SUIUSDC_LONG": {
@@ -2349,7 +2509,7 @@
   },
   "fin:UNIUSDC_SHORT": {
    "exits": 0,
-   "entries": 3,
+   "entries": 4,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
@@ -2448,29 +2608,39 @@
    }
   },
   "fin:XTZUSDT_LONG": {
-   "exits": 0,
-   "entries": 25,
+   "exits": 2,
+   "entries": 26,
    "entries_ltf": 23,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 6.6035,
     "VEC15": 0
    }
   },
   "fin:XTZUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -6.7187,
     "VEC15": 0
    }
   },
   "fin:ZENUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 10,
    "entries_ltf": 8,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 1.2822,
+    "VEC15": 0
+   }
+  },
+  "fin:ZENUSDT_SHORT": {
+   "exits": 0,
+   "entries": 1,
+   "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
@@ -2548,28 +2718,28 @@
    }
   },
   "flz:BNBUSDC_LONG": {
-   "exits": 0,
+   "exits": 5,
    "entries": 68,
    "entries_ltf": 47,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -3.4427,
+    "VEC15": -10.3281
    }
   },
   "flz:BNBUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.3599,
     "VEC15": 0
    }
   },
   "flz:BTCDOMUSDT_SHORT": {
    "exits": 0,
-   "entries": 11,
+   "entries": 13,
    "entries_ltf": 10,
    "legs": {
     "LTF_135": 0,
@@ -2598,62 +2768,62 @@
    }
   },
   "flz:DASHUSDT_LONG": {
-   "exits": 4,
+   "exits": 1,
    "entries": 20,
    "entries_ltf": 12,
    "legs": {
-    "LTF_135": -0.0803,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.8524
+    "VEC15": 0.5029
    }
   },
   "flz:DASHUSDT_SHORT": {
-   "exits": 0,
-   "entries": 36,
+   "exits": 7,
+   "entries": 37,
    "entries_ltf": 27,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 2.2121,
+    "VEC15": 4.7088
    }
   },
   "flz:DOGEUSDC_LONG": {
-   "exits": 1,
-   "entries": 11,
+   "exits": 2,
+   "entries": 12,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": -3.7756,
-    "VEC15": 0
+    "VEC15": 1.5224
    }
   },
   "flz:DOGEUSDC_SHORT": {
-   "exits": 1,
+   "exits": 4,
    "entries": 10,
    "entries_ltf": 6,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.3145,
     "VEC15": 0.1773
    }
   },
   "flz:ETHUSDC_LONG": {
-   "exits": 1,
-   "entries": 60,
+   "exits": 3,
+   "entries": 61,
    "entries_ltf": 41,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": -0.5053,
-    "VEC15": 0
+    "VEC15": -6.9403
    }
   },
   "flz:ETHUSDC_SHORT": {
-   "exits": 1,
-   "entries": 43,
+   "exits": 2,
+   "entries": 45,
    "entries_ltf": 36,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.2979,
     "VEC15": 0.0033
    }
   },
@@ -2668,63 +2838,63 @@
    }
   },
   "flz:GRAMUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.2267,
     "VEC15": 0
    }
   },
   "flz:GRAMUSDT_SHORT": {
-   "exits": 2,
+   "exits": 4,
    "entries": 9,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -8.5068
+    "NO_TWIN": 0.454,
+    "VEC15": -9.6384
    }
   },
   "flz:HYPEUSDT_LONG": {
-   "exits": 1,
+   "exits": 6,
    "entries": 70,
    "entries_ltf": 57,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -2.737
+    "NO_TWIN": -10.6142,
+    "VEC15": -31.4462
    }
   },
   "flz:HYPEUSDT_SHORT": {
-   "exits": 0,
-   "entries": 86,
+   "exits": 9,
+   "entries": 87,
    "entries_ltf": 58,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.2506,
+    "VEC15": 0.2116
    }
   },
   "flz:SOLUSDC_LONG": {
-   "exits": 0,
-   "entries": 89,
+   "exits": 3,
+   "entries": 92,
    "entries_ltf": 51,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -14.0524,
     "VEC15": 0
    }
   },
   "flz:SOLUSDC_SHORT": {
-   "exits": 4,
-   "entries": 17,
+   "exits": 11,
+   "entries": 18,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": -0.1989,
-    "NO_TWIN": 0,
-    "VEC15": -0.1308
+    "NO_TWIN": 3.914,
+    "VEC15": 3.5591
    }
   },
   "flz:SUIUSDC_LONG": {
@@ -2738,63 +2908,63 @@
    }
   },
   "flz:WLDUSDC_LONG": {
-   "exits": 0,
-   "entries": 54,
+   "exits": 9,
+   "entries": 60,
    "entries_ltf": 37,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 7.8365,
+    "VEC15": 1.2332
    }
   },
   "flz:WLDUSDC_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 101,
    "entries_ltf": 97,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 1.665,
+    "VEC15": 0.0
    }
   },
   "flz:XRPUSDC_LONG": {
-   "exits": 0,
+   "exits": 5,
    "entries": 17,
    "entries_ltf": 6,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 2.1786,
+    "VEC15": 0.048
    }
   },
   "flz:XRPUSDC_SHORT": {
-   "exits": 2,
-   "entries": 9,
+   "exits": 5,
+   "entries": 11,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 2.2918
+    "NO_TWIN": -0.4158,
+    "VEC15": 4.4509
    }
   },
   "flz:ZECUSDC_LONG": {
-   "exits": 4,
-   "entries": 32,
+   "exits": 12,
+   "entries": 37,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -12.8743
+    "NO_TWIN": 1.3163,
+    "VEC15": -34.5608
    }
   },
   "flz:ZECUSDC_SHORT": {
-   "exits": 0,
-   "entries": 6,
+   "exits": 4,
+   "entries": 9,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 0.0,
+    "VEC15": 0.9317
    }
   },
   "flz:ZECUSDT_LONG": {
@@ -2818,13 +2988,13 @@
    }
   },
   "inf:1000BONKUSDC_LONG": {
-   "exits": 0,
+   "exits": 4,
    "entries": 15,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 1.7409,
+    "VEC15": -0.4495
    }
   },
   "inf:1000FLOKIUSDT_SHORT": {
@@ -2848,32 +3018,32 @@
    }
   },
   "inf:1INCHUSDT_SHORT": {
-   "exits": 3,
+   "exits": 4,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.3183
+    "VEC15": -0.1173
    }
   },
   "inf:AAVEUSDC_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 1,
+   "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.0818,
     "VEC15": 0
    }
   },
   "inf:ACEUSDT_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 36,
    "entries_ltf": 27,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.0,
+    "NO_TWIN": -4.8472,
     "VEC15": 0
    }
   },
@@ -2898,42 +3068,42 @@
    }
   },
   "inf:AGLDUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 6,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 1.1672,
+    "VEC15": 2.7023
    }
   },
   "inf:AIAUSDT_LONG": {
-   "exits": 0,
+   "exits": 9,
    "entries": 8,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.3369,
+    "VEC15": -0.0197
    }
   },
   "inf:ALGOUSDT_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 6,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 4.4843,
     "VEC15": 0.0216
    }
   },
   "inf:AMATUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.0679,
     "VEC15": 0
    }
   },
@@ -2958,22 +3128,22 @@
    }
   },
   "inf:APEUSDT_SHORT": {
-   "exits": 1,
+   "exits": 3,
    "entries": 11,
    "entries_ltf": 8,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0.1327
+    "NO_TWIN": -0.8665,
+    "VEC15": -0.229
    }
   },
   "inf:API3USDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 6.5726,
     "VEC15": 0
    }
   },
@@ -2998,12 +3168,12 @@
    }
   },
   "inf:ARKMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 3.2953,
     "VEC15": 0
    }
   },
@@ -3018,53 +3188,53 @@
    }
   },
   "inf:ARMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 3,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.167
    }
   },
   "inf:ARPAUSDT_SHORT": {
-   "exits": 0,
+   "exits": 4,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 3.1726,
     "VEC15": 0
    }
   },
   "inf:ARUSDT_LONG": {
-   "exits": 1,
+   "exits": 2,
    "entries": 26,
    "entries_ltf": 16,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.0,
     "VEC15": 0.0935
    }
   },
   "inf:ASTSUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 20,
    "entries_ltf": 12,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 3.4146,
     "VEC15": 0
    }
   },
   "inf:AXSUSDT_LONG": {
-   "exits": 0,
+   "exits": 3,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.4753,
+    "VEC15": -0.6294
    }
   },
   "inf:AXSUSDT_SHORT": {
@@ -3107,6 +3277,16 @@
     "VEC15": 0
    }
   },
+  "inf:BCHUSDC_SHORT": {
+   "exits": 1,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0.7647
+   }
+  },
   "inf:BMNRUSDT_SHORT": {
    "exits": 0,
    "entries": 8,
@@ -3118,12 +3298,12 @@
    }
   },
   "inf:BNBUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.5664,
     "VEC15": 0
    }
   },
@@ -3178,12 +3358,12 @@
    }
   },
   "inf:COTIUSDT_LONG": {
-   "exits": 0,
-   "entries": 6,
+   "exits": 2,
+   "entries": 7,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -29.0762,
     "VEC15": 0
    }
   },
@@ -3269,7 +3449,7 @@
   },
   "inf:EGLDUSDT_SHORT": {
    "exits": 0,
-   "entries": 1,
+   "entries": 2,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
@@ -3278,23 +3458,23 @@
    }
   },
   "inf:ENAUSDC_SHORT": {
-   "exits": 0,
-   "entries": 2,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
-   }
-  },
-  "inf:ENJUSDT_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -7.4775,
     "VEC15": 0
+   }
+  },
+  "inf:ENJUSDT_LONG": {
+   "exits": 2,
+   "entries": 3,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -1.1722,
+    "VEC15": -0.3429
    }
   },
   "inf:ENSUSDT_SHORT": {
@@ -3305,6 +3485,16 @@
     "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
+   }
+  },
+  "inf:ETCUSDT_LONG": {
+   "exits": 2,
+   "entries": 4,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 2.2175
    }
   },
   "inf:ETHFIUSDC_LONG": {
@@ -3318,13 +3508,13 @@
    }
   },
   "inf:ETHUSDC_LONG": {
-   "exits": 0,
-   "entries": 4,
+   "exits": 4,
+   "entries": 6,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -0.341,
+    "VEC15": -0.6752
    }
   },
   "inf:FILUSDC_SHORT": {
@@ -3348,22 +3538,22 @@
    }
   },
   "inf:GRAMUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.6859,
     "VEC15": 0
    }
   },
   "inf:GRTUSDT_LONG": {
-   "exits": 0,
-   "entries": 7,
+   "exits": 1,
+   "entries": 9,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.5881,
     "VEC15": 0
    }
   },
@@ -3388,12 +3578,12 @@
    }
   },
   "inf:HYPEUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.0369,
     "VEC15": 0
    }
   },
@@ -3467,14 +3657,24 @@
     "VEC15": 0
    }
   },
-  "inf:KSMUSDT_LONG": {
+  "inf:KMNOUSDT_LONG": {
    "exits": 1,
-   "entries": 3,
+   "entries": 1,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 3.325,
+    "VEC15": 0
+   }
+  },
+  "inf:KSMUSDT_LONG": {
+   "exits": 3,
+   "entries": 4,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": -2.0318,
-    "VEC15": 0
+    "VEC15": 0.8551
    }
   },
   "inf:LINKUSDC_LONG": {
@@ -3578,12 +3778,12 @@
    }
   },
   "inf:NEARUSDC_LONG": {
-   "exits": 1,
+   "exits": 2,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 6.4808,
     "VEC15": 0.4888
    }
   },
@@ -3598,12 +3798,12 @@
    }
   },
   "inf:NMRUSDT_LONG": {
-   "exits": 1,
+   "exits": 2,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -2.3237,
     "VEC15": 0.5238
    }
   },
@@ -3658,12 +3858,12 @@
    }
   },
   "inf:PTBUSDT_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 1,
+   "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.5486,
     "VEC15": 0
    }
   },
@@ -3678,22 +3878,22 @@
    }
   },
   "inf:PUMPUSDT_SHORT": {
-   "exits": 0,
+   "exits": 6,
    "entries": 8,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -0.2106,
+    "VEC15": -6.1521
    }
   },
   "inf:PYPLUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 11,
    "entries_ltf": 9,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.0361,
     "VEC15": 0
    }
   },
@@ -3708,33 +3908,33 @@
    }
   },
   "inf:QTUMUSDT_LONG": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 3,
+   "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.7491,
     "VEC15": 0
    }
   },
   "inf:QTUMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 1.2343
    }
   },
   "inf:RENDERUSDT_LONG": {
-   "exits": 1,
+   "exits": 2,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 1.6526
+    "VEC15": -6.8482
    }
   },
   "inf:RENDERUSDT_SHORT": {
@@ -3758,12 +3958,12 @@
    }
   },
   "inf:RLCUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 7.8001,
     "VEC15": 0
    }
   },
@@ -3798,13 +3998,13 @@
    }
   },
   "inf:SKYUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 6,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.1099,
+    "VEC15": 0.6853
    }
   },
   "inf:SMCIUSDT_LONG": {
@@ -3828,23 +4028,23 @@
    }
   },
   "inf:SOLUSDC_SHORT": {
-   "exits": 1,
+   "exits": 3,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -0.4079
+    "NO_TWIN": 5.6394,
+    "VEC15": 1.5211
    }
   },
   "inf:STRKUSDT_LONG": {
-   "exits": 0,
+   "exits": 7,
    "entries": 8,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 44.5498,
+    "VEC15": 1.042
    }
   },
   "inf:THETAUSDT_LONG": {
@@ -3874,6 +4074,16 @@
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
+  "inf:VETUSDT_SHORT": {
+   "exits": 1,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -3.0043,
     "VEC15": 0
    }
   },
@@ -3927,6 +4137,16 @@
     "VEC15": 0
    }
   },
+  "inf:XMRUSDT_SHORT": {
+   "exits": 0,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
   "inf:XRPUSDC_LONG": {
    "exits": 0,
    "entries": 3,
@@ -3938,12 +4158,12 @@
    }
   },
   "inf:XTZUSDT_LONG": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 5,
+   "entries": 10,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 12.9592,
     "VEC15": 0
    }
   },
@@ -3968,13 +4188,13 @@
    }
   },
   "inf:ZROUSDT_LONG": {
-   "exits": 3,
-   "entries": 5,
+   "exits": 6,
+   "entries": 6,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -2.1714,
-    "VEC15": -1.4325
+    "NO_TWIN": -3.296,
+    "VEC15": -3.7867
    }
   },
   "inf:ZROUSDT_SHORT": {
@@ -4038,42 +4258,42 @@
    }
   },
   "men:1INCHUSDT_LONG": {
-   "exits": 0,
-   "entries": 10,
+   "exits": 1,
+   "entries": 11,
    "entries_ltf": 6,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.1589,
     "VEC15": 0
    }
   },
   "men:1INCHUSDT_SHORT": {
-   "exits": 2,
+   "exits": 3,
    "entries": 7,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.7587
+    "VEC15": 1.0981
    }
   },
   "men:ADAUSDC_LONG": {
-   "exits": 1,
+   "exits": 4,
    "entries": 21,
    "entries_ltf": 14,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 2.864
+    "VEC15": 2.1074
    }
   },
   "men:ADAUSDC_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.8716,
+    "NO_TWIN": 3.5011,
     "VEC15": 0
    }
   },
@@ -4088,13 +4308,13 @@
    }
   },
   "men:ALGOUSDT_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 23,
    "entries_ltf": 14,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.7445,
+    "VEC15": -7.8049
    }
   },
   "men:APPUSDT_SHORT": {
@@ -4118,22 +4338,22 @@
    }
   },
   "men:ARUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 9,
    "entries_ltf": 7,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -2.4291,
     "VEC15": 0
    }
   },
   "men:ARUSDT_SHORT": {
-   "exits": 1,
-   "entries": 2,
+   "exits": 2,
+   "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.4876,
     "VEC15": 1.9931
    }
   },
@@ -4148,22 +4368,22 @@
    }
   },
   "men:AVAXUSDC_LONG": {
-   "exits": 3,
-   "entries": 12,
+   "exits": 4,
+   "entries": 13,
    "entries_ltf": 7,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 2.4085,
+    "NO_TWIN": 5.4499,
     "VEC15": 0
    }
   },
   "men:AVAXUSDC_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.3434,
     "VEC15": 0
    }
   },
@@ -4178,32 +4398,32 @@
    }
   },
   "men:AXSUSDT_SHORT": {
-   "exits": 0,
-   "entries": 7,
+   "exits": 2,
+   "entries": 11,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -3.6333,
+    "VEC15": -1.2111
    }
   },
   "men:BBUSDT_LONG": {
-   "exits": 0,
+   "exits": 4,
    "entries": 7,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 3.433,
+    "VEC15": -0.9489
    }
   },
   "men:BBUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.4152,
     "VEC15": 0
    }
   },
@@ -4218,29 +4438,39 @@
    }
   },
   "men:BNBUSDC_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 8,
    "entries_ltf": 6,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -0.0544
    }
   },
   "men:BNBUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 4,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.009
    }
   },
   "men:BSVUSDT_LONG": {
    "exits": 0,
    "entries": 3,
    "entries_ltf": 2,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
+  "men:BTCDOMUSDT_LONG": {
+   "exits": 0,
+   "entries": 3,
+   "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
@@ -4278,33 +4508,33 @@
    }
   },
   "men:COMPUSDT_SHORT": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 3,
+   "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 0.2007,
+    "VEC15": -0.7382
    }
   },
   "men:COTIUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 35,
    "entries_ltf": 34,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -19.163,
     "VEC15": 0
    }
   },
   "men:COTIUSDT_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 9,
    "entries_ltf": 5,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.138
+    "VEC15": -0.5744
    }
   },
   "men:CRVUSDC_LONG": {
@@ -4328,13 +4558,13 @@
    }
   },
   "men:DASHUSDT_SHORT": {
-   "exits": 0,
-   "entries": 3,
+   "exits": 3,
+   "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 1.4112,
+    "VEC15": 0.1604
    }
   },
   "men:DOTUSDT_LONG": {
@@ -4348,32 +4578,32 @@
    }
   },
   "men:DOTUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 9,
    "entries_ltf": 7,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.7276,
     "VEC15": 0
    }
   },
   "men:EDUUSDT_LONG": {
-   "exits": 2,
+   "exits": 7,
    "entries": 7,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -8.3355,
-    "VEC15": 0
+    "NO_TWIN": -0.3576,
+    "VEC15": 1.6553
    }
   },
   "men:EDUUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -6.9027,
     "VEC15": 0
    }
   },
@@ -4388,43 +4618,43 @@
    }
   },
   "men:EGLDUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 4.5067,
     "VEC15": 0
    }
   },
   "men:ENJUSDT_LONG": {
-   "exits": 2,
+   "exits": 4,
    "entries": 6,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0,
+    "LTF_135": -2.3809,
     "NO_TWIN": -7.9331,
-    "VEC15": 0.049
+    "VEC15": -98.4407
    }
   },
   "men:ENJUSDT_SHORT": {
-   "exits": 1,
+   "exits": 3,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -0.1646,
-    "VEC15": 0
+    "NO_TWIN": 0.0378,
+    "VEC15": 0.811
    }
   },
   "men:ENSUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 8,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -0.0084
    }
   },
   "men:ENSUSDT_SHORT": {
@@ -4437,13 +4667,23 @@
     "VEC15": 0
    }
   },
-  "men:ETCUSDT_SHORT": {
+  "men:ETCUSDT_LONG": {
    "exits": 0,
-   "entries": 2,
+   "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
+    "VEC15": 0
+   }
+  },
+  "men:ETCUSDT_SHORT": {
+   "exits": 2,
+   "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": -18672.491,
     "VEC15": 0
    }
   },
@@ -4458,23 +4698,23 @@
    }
   },
   "men:ETHUSDC_LONG": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 1,
+   "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.1654,
     "VEC15": 0
    }
   },
   "men:ETHUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.1034
    }
   },
   "men:FARTCOINUSDT_LONG": {
@@ -4528,42 +4768,42 @@
    }
   },
   "men:GALAUSDT_SHORT": {
-   "exits": 1,
-   "entries": 18,
+   "exits": 2,
+   "entries": 21,
    "entries_ltf": 12,
    "legs": {
     "LTF_135": -0.5043,
-    "NO_TWIN": 0,
+    "NO_TWIN": -2.8724,
     "VEC15": 0
    }
   },
   "men:GRAMUSDT_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.0303,
     "VEC15": 0
    }
   },
   "men:GRAMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.0606,
     "VEC15": 0
    }
   },
   "men:GRTUSDT_LONG": {
-   "exits": 0,
-   "entries": 2,
+   "exits": 1,
+   "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.8326,
     "VEC15": 0
    }
   },
@@ -4618,33 +4858,33 @@
    }
   },
   "men:IOTXUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 22,
    "entries_ltf": 22,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 1.0753,
     "VEC15": 0
    }
   },
   "men:IOTXUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 7,
    "entries_ltf": 5,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -1.0875
    }
   },
   "men:JASMYUSDT_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.5306
+    "VEC15": 0
    }
   },
   "men:KASUSDT_LONG": {
@@ -4668,43 +4908,43 @@
    }
   },
   "men:KMNOUSDT_LONG": {
-   "exits": 0,
+   "exits": 3,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -1.465,
+    "VEC15": -0.3352
    }
   },
   "men:KMNOUSDT_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.105,
     "VEC15": 0
    }
   },
   "men:KSMUSDT_LONG": {
-   "exits": 1,
+   "exits": 4,
    "entries": 13,
    "entries_ltf": 9,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 4.6653
+    "NO_TWIN": 0.9459,
+    "VEC15": 4.568
    }
   },
   "men:KSMUSDT_SHORT": {
-   "exits": 2,
+   "exits": 4,
    "entries": 10,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -1.6798,
-    "VEC15": 0
+    "NO_TWIN": 0.3429,
+    "VEC15": 1.5112
    }
   },
   "men:LINKUSDC_LONG": {
@@ -4718,13 +4958,13 @@
    }
   },
   "men:LINKUSDC_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.0431
+    "VEC15": 1.121
    }
   },
   "men:LPTUSDT_SHORT": {
@@ -4748,13 +4988,13 @@
    }
   },
   "men:LTCUSDC_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 7,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 8.4376,
+    "VEC15": 1.6082
    }
   },
   "men:LUNA2USDT_LONG": {
@@ -4789,21 +5029,21 @@
   },
   "men:MANAUSDT_LONG": {
    "exits": 1,
-   "entries": 4,
+   "entries": 8,
    "entries_ltf": 3,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 1.5763
+    "VEC15": 0.1519
    }
   },
   "men:MANAUSDT_SHORT": {
-   "exits": 3,
+   "exits": 5,
    "entries": 19,
    "entries_ltf": 11,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -4.4005,
+    "NO_TWIN": 4.8408,
     "VEC15": -0.7476
    }
   },
@@ -4838,13 +5078,13 @@
    }
   },
   "men:MELANIAUSDT_SHORT": {
-   "exits": 1,
+   "exits": 3,
    "entries": 6,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.1383
+    "VEC15": 2.0066
    }
   },
   "men:MEMEUSDT_LONG": {
@@ -4878,23 +5118,23 @@
    }
   },
   "men:NEARUSDC_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 6,
    "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.6771,
+    "NO_TWIN": 0.6162,
     "VEC15": 0
    }
   },
   "men:NMRUSDT_LONG": {
-   "exits": 3,
+   "exits": 4,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 1.7188,
-    "VEC15": 0
+    "VEC15": -6.8681
    }
   },
   "men:NOTUSDT_SHORT": {
@@ -4968,13 +5208,13 @@
    }
   },
   "men:PUMPUSDT_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 1.3977,
+    "VEC15": 1.8619
    }
   },
   "men:PUMPUSDT_SHORT": {
@@ -4988,32 +5228,32 @@
    }
   },
   "men:QTUMUSDT_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 23,
    "entries_ltf": 19,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.5906,
     "VEC15": 0
    }
   },
   "men:QTUMUSDT_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 2.9594
    }
   },
   "men:RENDERUSDT_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 7,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -7.4993,
     "VEC15": 0
    }
   },
@@ -5028,23 +5268,23 @@
    }
   },
   "men:RLCUSDT_LONG": {
-   "exits": 1,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -5.1066,
+    "NO_TWIN": -5.5384,
     "VEC15": 0
    }
   },
   "men:RLCUSDT_SHORT": {
-   "exits": 1,
-   "entries": 15,
+   "exits": 2,
+   "entries": 16,
    "entries_ltf": 12,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0.6618,
-    "VEC15": 0
+    "VEC15": -2.6769
    }
   },
   "men:ROSEUSDT_SHORT": {
@@ -5078,23 +5318,23 @@
    }
   },
   "men:RVNUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 2.2349
    }
   },
   "men:SANDUSDT_LONG": {
-   "exits": 2,
+   "exits": 5,
    "entries": 11,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.0,
-    "VEC15": 5.259
+    "NO_TWIN": -8.2186,
+    "VEC15": 15.5753
    }
   },
   "men:SANDUSDT_SHORT": {
@@ -5108,48 +5348,48 @@
    }
   },
   "men:SKYUSDT_LONG": {
-   "exits": 1,
+   "exits": 2,
    "entries": 11,
    "entries_ltf": 4,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.4239
+    "VEC15": -9.6743
    }
   },
   "men:SKYUSDT_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 12,
    "entries_ltf": 8,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.5258
    }
   },
   "men:SNXUSDT_LONG": {
-   "exits": 2,
-   "entries": 4,
+   "exits": 3,
+   "entries": 6,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -4.0708,
+    "NO_TWIN": -8.6456,
     "VEC15": 0.1982
    }
   },
   "men:SNXUSDT_SHORT": {
-   "exits": 2,
+   "exits": 3,
    "entries": 23,
    "entries_ltf": 15,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -0.0336,
+    "NO_TWIN": 1.2851,
     "VEC15": 0.2756
    }
   },
   "men:SOLUSDC_LONG": {
    "exits": 0,
-   "entries": 10,
+   "entries": 12,
    "entries_ltf": 5,
    "legs": {
     "LTF_135": 0,
@@ -5158,33 +5398,33 @@
    }
   },
   "men:SOLUSDC_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.2966
+    "VEC15": 0.8578
    }
   },
   "men:STRKUSDT_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 2,
+   "entries_ltf": 0,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 116.7439,
+    "VEC15": 0
+   }
+  },
+  "men:STXUSDT_LONG": {
+   "exits": 0,
+   "entries": 10,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
-   }
-  },
-  "men:STXUSDT_LONG": {
-   "exits": 10,
-   "entries": 10,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 3.3388,
-    "VEC15": -0.3966
    }
   },
   "men:SUIUSDC_LONG": {
@@ -5208,13 +5448,13 @@
    }
   },
   "men:TAOUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.0401
    }
   },
   "men:THETAUSDT_LONG": {
@@ -5228,13 +5468,13 @@
    }
   },
   "men:THETAUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 0.8652
    }
   },
   "men:TRBUSDT_LONG": {
@@ -5278,12 +5518,12 @@
    }
   },
   "men:UNIUSDC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 12.327,
     "VEC15": 0
    }
   },
@@ -5318,13 +5558,13 @@
    }
   },
   "men:VETUSDT_SHORT": {
-   "exits": 1,
+   "exits": 2,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.0208
+    "VEC15": 1.7011
    }
   },
   "men:VIRTUALUSDT_LONG": {
@@ -5398,13 +5638,13 @@
    }
   },
   "men:XLMUSDT_SHORT": {
-   "exits": 2,
+   "exits": 3,
    "entries": 18,
    "entries_ltf": 10,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0.0,
-    "VEC15": 0.6473
+    "VEC15": -7.4027
    }
   },
   "men:XMRUSDT_LONG": {
@@ -5418,13 +5658,13 @@
    }
   },
   "men:XMRUSDT_SHORT": {
-   "exits": 0,
-   "entries": 1,
+   "exits": 1,
+   "entries": 4,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 1.5316
    }
   },
   "men:XRPUSDC_LONG": {
@@ -5438,62 +5678,62 @@
    }
   },
   "men:XRPUSDC_SHORT": {
-   "exits": 1,
+   "exits": 3,
    "entries": 3,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": -0.3735
+    "NO_TWIN": 5.4219,
+    "VEC15": -0.1765
    }
   },
   "men:XTZUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 25,
    "entries_ltf": 18,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 5.4545,
     "VEC15": 0
    }
   },
   "men:XTZUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 6,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 6.1991,
     "VEC15": 0
    }
   },
   "men:YFIUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.7893,
     "VEC15": 0
    }
   },
   "men:YFIUSDT_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 1.3104
    }
   },
   "men:ZENUSDT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 11,
    "entries_ltf": 7,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -10.5392,
     "VEC15": 0
    }
   },
@@ -5508,13 +5748,13 @@
    }
   },
   "men:ZROUSDT_LONG": {
-   "exits": 2,
+   "exits": 3,
    "entries": 6,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": -1.7507,
-    "VEC15": 0.687
+    "VEC15": -0.0638
    }
   },
   "men:ZROUSDT_SHORT": {
@@ -5548,32 +5788,32 @@
    }
   },
   "trb:AAPL_LONG": {
-   "exits": 0,
+   "exits": 3,
    "entries": 295,
    "entries_ltf": 1,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 0.7095,
+    "VEC15": 0
+   }
+  },
+  "trb:ABT_SHORT": {
+   "exits": 0,
+   "entries": 8,
+   "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
-  "trb:ABT_SHORT": {
-   "exits": 4,
-   "entries": 8,
-   "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 2.089,
-    "NO_TWIN": 0.0801,
-    "VEC15": 0
-   }
-  },
   "trb:ADBE_SHORT": {
-   "exits": 5,
+   "exits": 0,
    "entries": 226,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.8536,
-    "NO_TWIN": -1.2708,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -5588,13 +5828,13 @@
    }
   },
   "trb:ALB_SHORT": {
-   "exits": 4,
+   "exits": 1,
    "entries": 16,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 3.9075,
-    "NO_TWIN": 0.558,
-    "VEC15": 0
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0.9566
    }
   },
   "trb:ALMU_SHORT": {
@@ -5638,22 +5878,22 @@
    }
   },
   "trb:AMZN_SHORT": {
-   "exits": 3,
+   "exits": 0,
    "entries": 37,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 1.9844,
-    "NO_TWIN": 0.0622,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trb:APO_SHORT": {
-   "exits": 5,
+   "exits": 2,
    "entries": 288,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 3.3875,
-    "NO_TWIN": 0.1652,
+    "LTF_135": 0,
+    "NO_TWIN": 0.9852,
     "VEC15": 0
    }
   },
@@ -5708,23 +5948,23 @@
    }
   },
   "trb:AXON_SHORT": {
-   "exits": 6,
+   "exits": 0,
    "entries": 181,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -1.3346,
-    "NO_TWIN": -0.7223,
-    "VEC15": 0.9085
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
    }
   },
   "trb:AXTI_LONG": {
-   "exits": 5,
+   "exits": 3,
    "entries": 18,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 2.3101,
-    "NO_TWIN": -4.5004,
-    "VEC15": 6.2636
+    "LTF_135": 0,
+    "NO_TWIN": 2.6704,
+    "VEC15": 0.9903
    }
   },
   "trb:AXTI_SHORT": {
@@ -5738,12 +5978,12 @@
    }
   },
   "trb:A_LONG": {
-   "exits": 3,
+   "exits": 0,
    "entries": 17,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.2291,
-    "NO_TWIN": -1.5764,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -5778,12 +6018,12 @@
    }
   },
   "trb:BNO_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.0585,
     "VEC15": 0
    }
   },
@@ -5792,18 +6032,18 @@
    "entries": 118,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 2.5132,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -5.0926
    }
   },
   "trb:CF_SHORT": {
-   "exits": 3,
+   "exits": 2,
    "entries": 14,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 3.3967,
-    "NO_TWIN": -0.036,
+    "LTF_135": 0,
+    "NO_TWIN": -0.7077,
     "VEC15": 0
    }
   },
@@ -5828,13 +6068,13 @@
    }
   },
   "trb:CLS_LONG": {
-   "exits": 0,
+   "exits": 3,
    "entries": 371,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 3.3859,
+    "VEC15": 0.8089
    }
   },
   "trb:CLX_SHORT": {
@@ -5878,12 +6118,12 @@
    }
   },
   "trb:COHR_LONG": {
-   "exits": 2,
+   "exits": 10,
    "entries": 16,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.6562,
+    "NO_TWIN": -0.1764,
     "VEC15": 0
    }
   },
@@ -5908,22 +6148,22 @@
    }
   },
   "trb:COPX_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 421,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.5685,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trb:CRWD_LONG": {
-   "exits": 3,
+   "exits": 2,
    "entries": 109,
    "entries_ltf": 3,
    "legs": {
-    "LTF_135": 1.7149,
-    "NO_TWIN": -1.7447,
+    "LTF_135": 0,
+    "NO_TWIN": 0.207,
     "VEC15": 0
    }
   },
@@ -5938,32 +6178,32 @@
    }
   },
   "trb:DELL_LONG": {
-   "exits": 9,
+   "exits": 0,
    "entries": 58,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.7493,
-    "NO_TWIN": 0.7814,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trb:DINO_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 27,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 3.6194,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trb:EQT_SHORT": {
-   "exits": 3,
+   "exits": 1,
    "entries": 42,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -0.2266,
+    "NO_TWIN": -4.9635,
     "VEC15": 0
    }
   },
@@ -5978,13 +6218,13 @@
    }
   },
   "trb:EXEL_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 1.7026
    }
   },
   "trb:EXEL_SHORT": {
@@ -6038,13 +6278,13 @@
    }
   },
   "trb:GOOGL_LONG": {
-   "exits": 5,
+   "exits": 2,
    "entries": 33,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": -1.9177,
-    "NO_TWIN": -0.6232,
-    "VEC15": 2.6915
+    "LTF_135": 0,
+    "NO_TWIN": -0.7057,
+    "VEC15": 1.0827
    }
   },
   "trb:GOOGL_SHORT": {
@@ -6108,12 +6348,12 @@
    }
   },
   "trb:IBIT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 712,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -2.0485,
     "VEC15": 0
    }
   },
@@ -6198,12 +6438,12 @@
    }
   },
   "trb:LITE_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -0.2083,
     "VEC15": 0
    }
   },
@@ -6218,12 +6458,12 @@
    }
   },
   "trb:LOW_SHORT": {
-   "exits": 3,
+   "exits": 2,
    "entries": 55,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 1.2623,
-    "NO_TWIN": 0,
+    "LTF_135": 0,
+    "NO_TWIN": -4.0148,
     "VEC15": 0
    }
   },
@@ -6308,13 +6548,13 @@
    }
   },
   "trb:MSFT_LONG": {
-   "exits": 3,
+   "exits": 2,
    "entries": 617,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 1.7301,
-    "NO_TWIN": 0.0518,
-    "VEC15": 0.163
+    "LTF_135": 0,
+    "NO_TWIN": 3.0789,
+    "VEC15": 0
    }
   },
   "trb:MSTR_LONG": {
@@ -6338,12 +6578,12 @@
    }
   },
   "trb:MU_LONG": {
-   "exits": 3,
+   "exits": 0,
    "entries": 838,
    "entries_ltf": 5,
    "legs": {
-    "LTF_135": -0.1079,
-    "NO_TWIN": -1.1278,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -6368,12 +6608,12 @@
    }
   },
   "trb:NKE_SHORT": {
-   "exits": 4,
+   "exits": 2,
    "entries": 100,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.1965,
-    "NO_TWIN": -0.6445,
+    "LTF_135": 0,
+    "NO_TWIN": 9.4346,
     "VEC15": 0
    }
   },
@@ -6388,12 +6628,12 @@
    }
   },
   "trb:NVDA_LONG": {
-   "exits": 4,
+   "exits": 2,
    "entries": 334,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 1.2666,
-    "NO_TWIN": -0.033,
+    "LTF_135": 2.3301,
+    "NO_TWIN": 2.165,
     "VEC15": 0
    }
   },
@@ -6438,13 +6678,13 @@
    }
   },
   "trb:PSX_LONG": {
-   "exits": 6,
+   "exits": 1,
    "entries": 23,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.9902,
-    "NO_TWIN": -0.2837,
-    "VEC15": 0.4204
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0.1892
    }
   },
   "trb:PYPL_SHORT": {
@@ -6468,12 +6708,12 @@
    }
   },
   "trb:QQQ_LONG": {
-   "exits": 3,
+   "exits": 1,
    "entries": 12,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.0326,
-    "NO_TWIN": -0.4936,
+    "LTF_135": 0,
+    "NO_TWIN": 2.3168,
     "VEC15": 0
    }
   },
@@ -6528,42 +6768,42 @@
    }
   },
   "trb:SMG_SHORT": {
-   "exits": 1,
+   "exits": 0,
    "entries": 11,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.1809,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trb:SNDK_LONG": {
-   "exits": 0,
+   "exits": 2,
    "entries": 692,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": -0.0192,
+    "VEC15": -4.4921
    }
   },
   "trb:SNDK_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 1,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": 0.0356,
     "VEC15": 0
    }
   },
   "trb:TSLA_LONG": {
-   "exits": 2,
+   "exits": 0,
    "entries": 19,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.127,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -6582,7 +6822,7 @@
    "entries": 6,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.5225,
+    "LTF_135": 0.4764,
     "NO_TWIN": 0,
     "VEC15": 0
    }
@@ -6592,8 +6832,8 @@
    "entries": 49,
    "entries_ltf": 2,
    "legs": {
-    "LTF_135": 0.5363,
-    "NO_TWIN": 0,
+    "LTF_135": 0,
+    "NO_TWIN": 0.2433,
     "VEC15": 0
    }
   },
@@ -6618,12 +6858,12 @@
    }
   },
   "trb:UUUU_SHORT": {
-   "exits": 4,
+   "exits": 2,
    "entries": 19,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 2.6676,
-    "NO_TWIN": -0.7147,
+    "LTF_135": 0,
+    "NO_TWIN": 13.4855,
     "VEC15": 0
    }
   },
@@ -6638,32 +6878,32 @@
    }
   },
   "trb:VLO_LONG": {
-   "exits": 4,
+   "exits": 0,
    "entries": 633,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.552,
-    "NO_TWIN": -0.2791,
-    "VEC15": 0.421
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
    }
   },
   "trb:VT_LONG": {
-   "exits": 4,
+   "exits": 0,
    "entries": 37,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.4969,
-    "NO_TWIN": 0.1145,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trb:WDAY_SHORT": {
-   "exits": 1,
+   "exits": 3,
    "entries": 57,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -1.244,
+    "NO_TWIN": -0.2131,
     "VEC15": 0
    }
   },
@@ -6678,22 +6918,22 @@
    }
   },
   "trc:ABT_SHORT": {
-   "exits": 2,
+   "exits": 0,
    "entries": 5,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 1.3452,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:ADBE_SHORT": {
-   "exits": 3,
+   "exits": 2,
    "entries": 22,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 1.3771,
-    "NO_TWIN": -0.033,
+    "LTF_135": 0,
+    "NO_TWIN": -0.8308,
     "VEC15": 0
    }
   },
@@ -6718,32 +6958,32 @@
    }
   },
   "trc:ALB_SHORT": {
-   "exits": 4,
+   "exits": 1,
    "entries": 17,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 2.5501,
-    "NO_TWIN": 0.4635,
+    "LTF_135": 0,
+    "NO_TWIN": 1.7036,
     "VEC15": 0
    }
   },
   "trc:AMZN_SHORT": {
-   "exits": 2,
+   "exits": 0,
    "entries": 14,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.2704,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:APO_SHORT": {
-   "exits": 5,
+   "exits": 1,
    "entries": 176,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 1.2952,
-    "NO_TWIN": 2.3232,
+    "LTF_135": 0,
+    "NO_TWIN": 0.5335,
     "VEC15": 0
    }
   },
@@ -6768,22 +7008,22 @@
    }
   },
   "trc:AVGO_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 10,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -4.1583,
     "VEC15": 0
    }
   },
   "trc:AXON_SHORT": {
-   "exits": 4,
+   "exits": 1,
    "entries": 495,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 2.185,
-    "NO_TWIN": -0.3711,
+    "LTF_135": 0,
+    "NO_TWIN": 2.0655,
     "VEC15": 0
    }
   },
@@ -6808,12 +7048,12 @@
    }
   },
   "trc:A_LONG": {
-   "exits": 3,
+   "exits": 0,
    "entries": 5,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.6414,
-    "NO_TWIN": -0.0004,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -6848,13 +7088,13 @@
    }
   },
   "trc:BWXT_SHORT": {
-   "exits": 3,
+   "exits": 1,
    "entries": 15,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": -1.4432,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": -6.6676
    }
   },
   "trc:CIBR_LONG": {
@@ -6878,33 +7118,33 @@
    }
   },
   "trc:CLS_LONG": {
-   "exits": 3,
+   "exits": 0,
    "entries": 7,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 2.7741,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:CLX_SHORT": {
-   "exits": 5,
+   "exits": 0,
    "entries": 10,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 2.3327,
-    "NO_TWIN": 0.4859,
-    "VEC15": 1.7978
+    "LTF_135": 0,
+    "NO_TWIN": 0,
+    "VEC15": 0
    }
   },
   "trc:CMC_SHORT": {
-   "exits": 3,
+   "exits": 0,
    "entries": 9,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 3.2238,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0.7977
+    "VEC15": 0
    }
   },
   "trc:COE_SHORT": {
@@ -6928,42 +7168,42 @@
    }
   },
   "trc:CRWD_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 14,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 1.0853,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:CVX_SHORT": {
-   "exits": 2,
+   "exits": 0,
    "entries": 518,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.0072
+    "VEC15": 0
    }
   },
   "trc:DELL_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 14,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -0.2933,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:EQT_SHORT": {
-   "exits": 5,
+   "exits": 0,
    "entries": 19,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.3293,
-    "NO_TWIN": -0.3327,
+    "LTF_135": 0,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -6988,12 +7228,12 @@
    }
   },
   "trc:GOOGL_LONG": {
-   "exits": 3,
+   "exits": 0,
    "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -2.2127,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -7028,21 +7268,21 @@
    }
   },
   "trc:HOOD_SHORT": {
-   "exits": 1,
+   "exits": 0,
    "entries": 7,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 5.7163,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:IBIT_LONG": {
-   "exits": 0,
+   "exits": 1,
    "entries": 237,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0,
+    "LTF_135": -5.6745,
     "NO_TWIN": 0,
     "VEC15": 0
    }
@@ -7088,22 +7328,22 @@
    }
   },
   "trc:LOW_SHORT": {
-   "exits": 3,
+   "exits": 1,
    "entries": 29,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 3.0297,
+    "LTF_135": -2.2338,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:LSCC_SHORT": {
-   "exits": 1,
+   "exits": 0,
    "entries": 5,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -3.666,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -7118,23 +7358,23 @@
    }
   },
   "trc:META_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -0.0288,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:MNTS_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 3,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
-    "VEC15": 0
+    "NO_TWIN": 0.458,
+    "VEC15": 15.8722
    }
   },
   "trc:MPC_LONG": {
@@ -7148,11 +7388,11 @@
    }
   },
   "trc:MSFT_LONG": {
-   "exits": 7,
+   "exits": 0,
    "entries": 273,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.4852,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
@@ -7168,13 +7408,13 @@
    }
   },
   "trc:MU_LONG": {
-   "exits": 3,
+   "exits": 1,
    "entries": 609,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -3.1397,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 4.2254
+    "VEC15": -5.3521
    }
   },
   "trc:MU_SHORT": {
@@ -7188,22 +7428,22 @@
    }
   },
   "trc:NFLX_SHORT": {
-   "exits": 2,
+   "exits": 0,
    "entries": 9,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 2.1064
+    "VEC15": 0
    }
   },
   "trc:NKE_SHORT": {
-   "exits": 6,
+   "exits": 2,
    "entries": 64,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.7048,
-    "NO_TWIN": 0.1681,
+    "LTF_135": 0,
+    "NO_TWIN": 10.1365,
     "VEC15": 0
    }
   },
@@ -7218,11 +7458,11 @@
    }
   },
   "trc:NVDA_LONG": {
-   "exits": 2,
+   "exits": 1,
    "entries": 664,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.2027,
+    "LTF_135": 2.6829,
     "NO_TWIN": 0,
     "VEC15": 0
    }
@@ -7262,18 +7502,18 @@
    "entries": 22,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 1.3249,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 4.4288
    }
   },
   "trc:PYPL_SHORT": {
-   "exits": 0,
+   "exits": 2,
    "entries": 23,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -1.4687,
     "VEC15": 0
    }
   },
@@ -7308,33 +7548,33 @@
    }
   },
   "trc:RRC_SHORT": {
-   "exits": 0,
+   "exits": 1,
    "entries": 2,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0,
+    "NO_TWIN": -7.1855,
     "VEC15": 0
    }
   },
   "trc:RS_SHORT": {
-   "exits": 3,
+   "exits": 0,
    "entries": 27,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 0.2066,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:SMCI_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 9,
    "entries_ltf": 1,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": -0.4476
+    "VEC15": 0
    }
   },
   "trc:SMG_SHORT": {
@@ -7348,22 +7588,22 @@
    }
   },
   "trc:SNOW_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 12,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 2.128
+    "VEC15": 0
    }
   },
   "trc:TSLA_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 11,
    "entries_ltf": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.03,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -7378,62 +7618,62 @@
    }
   },
   "trc:UEC_SHORT": {
-   "exits": 6,
+   "exits": 0,
    "entries": 9,
    "entries_ltf": 0,
-   "legs": {
-    "LTF_135": 0.3188,
-    "NO_TWIN": 1.909,
-    "VEC15": 0
-   }
-  },
-  "trc:USAR_SHORT": {
-   "exits": 0,
-   "entries": 20,
-   "entries_ltf": 2,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
+  "trc:USAR_SHORT": {
+   "exits": 1,
+   "entries": 20,
+   "entries_ltf": 2,
+   "legs": {
+    "LTF_135": 0,
+    "NO_TWIN": 4.6048,
+    "VEC15": 0
+   }
+  },
   "trc:UUUU_SHORT": {
-   "exits": 5,
+   "exits": 1,
    "entries": 18,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0.2009,
-    "NO_TWIN": -0.2749,
+    "LTF_135": 0,
+    "NO_TWIN": 6.0325,
     "VEC15": 0
    }
   },
   "trc:VLO_LONG": {
-   "exits": 2,
+   "exits": 1,
    "entries": 12,
    "entries_ltf": 1,
    "legs": {
-    "LTF_135": 4.4742,
+    "LTF_135": 0,
     "NO_TWIN": 0,
-    "VEC15": 0
+    "VEC15": 6.2909
    }
   },
   "trc:VT_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 48,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": -0.2298,
+    "LTF_135": 0,
     "NO_TWIN": 0,
     "VEC15": 0
    }
   },
   "trc:WDAY_SHORT": {
-   "exits": 0,
+   "exits": 3,
    "entries": 4,
    "entries_ltf": 0,
    "legs": {
-    "LTF_135": 0,
-    "NO_TWIN": 0,
+    "LTF_135": -1.4015,
+    "NO_TWIN": 0.5045,
     "VEC15": 0
    }
   }
@@ -7446,10 +7686,12 @@
   "1000SATSUSDT_LONG": null,
   "1000SHIBUSDC_LONG": null,
   "1INCHUSDT_LONG": null,
+  "AAPLUSDT_LONG": null,
   "AAVEUSDC_LONG": null,
   "ACEUSDT_LONG": null,
   "ADAUSDC_LONG": null,
   "ADAUSDC_SHORT": null,
+  "ADBEUSDT_LONG": null,
   "AIAUSDT_LONG": null,
   "ALGOUSDT_LONG": null,
   "ALTUSDT_LONG": null,
@@ -7461,8 +7703,6 @@
   "API3USDT_LONG": null,
   "API3USDT_SHORT": null,
   "ARBUSDC_SHORT": null,
-  "ARKMUSDT_LONG": null,
-  "ARKMUSDT_SHORT": null,
-  "ARMUSDT_SHORT": null
+  "ARKMUSDT_LONG": null
  }
 }
