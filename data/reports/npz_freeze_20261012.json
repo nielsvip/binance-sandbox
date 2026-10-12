@@ -18,10 +18,11 @@
   "reason": "wave2: one-shot AAVE/COTI/SNX INSTALLED 09:56:42Z then loop overwrote same-cutoff (build-stamp-only diff); files end 09:30Z cutoff 1791797400; freshness window to ~10:15Z; pilots must START by then, static during run",
   "md5": {
    "AAVEUSDC": "eb646efb16348659eba11a4625c6d8e8",
-   "COTIUSDT": "d3185eef1a0e7e543c5ed931aa561c18",
+   "COTIUSDT": "39ec0baee4e0a089a7d3e7e1f8d5dffa",
    "SNXUSDT": "7eec3e08bf91f838b11b07b2734a25d7",
    "GALAUSDT": "400ee1cca964f3b5bf58b47b4e70093a"
   },
-  "note2": "GALA loop-tick was sentiment-only (ts_last stayed 07:15); one-shot 10:04:26Z appended 10 bars ends 09:45Z. Wave2 all-local S1: AAVE/COTI/SNX/GALA launched ~10:03-10:05Z, all past stale gate."
+  "note2": "GALA loop-tick was sentiment-only (ts_last stayed 07:15); one-shot 10:04:26Z appended 10 bars ends 09:45Z. Wave2 all-local S1: AAVE/COTI/SNX/GALA launched ~10:03-10:05Z, all past stale gate.",
+  "note3": "COTI SIGTERM ~10:00Z (external signal 15, source unknown, no reaper on S1); file one-shot refreshed 10:27Z (2 bars, ends 10:00Z ts 1791799200); relaunched 10:28Z. 10:29Z census: COTI 174628, AAVE 4176578, SNX 20220, GALA 31610 all true pythons."
  }
 }
