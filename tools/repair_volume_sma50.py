@@ -24,9 +24,16 @@ def native_sessions(td, v):
     return firsts, np.cumsum(chg) - 1, v[firsts]
 
 
+def true_sma50(v, td):
+    firsts, gid, nv = native_sessions(td, v)
+    sma = pd.Series(nv).rolling(50, min_periods=1).mean().values
+    return sma[gid].astype(np.float32), len(nv)
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
     apply = "--apply" in sys.argv
+    add_missing = "--add-missing" in sys.argv
     if pd is None:
         print("FATAL: pandas required")
         return 2
@@ -43,6 +50,23 @@ def main():
             audit["syms"][sym] = {"status": "LOAD_FAIL", "err": type(e).__name__}
             continue
         if "volume_D_50_sma" not in L or "volume_D" not in L or "timestamp_D" not in L:
+            if add_missing and "volume_D_50_sma" not in L and "volume_D" in L and "timestamp_D" in L:
+                try:
+                    v = np.asarray(L["volume_D"], dtype=np.float64).reshape(-1)
+                    td = np.asarray(L["timestamp_D"]).reshape(-1)
+                    rep, nsess = true_sma50(v, td)
+                    import shutil
+                    bak = p + f".bak-sma50-{stamp}"
+                    shutil.copy2(p, bak)
+                    L["volume_D_50_sma"] = rep
+                    tmp = p + ".tmp-repair.npz"
+                    np.savez_compressed(tmp, **{k: np.asarray(v) for k, v in L.items()})
+                    os.replace(tmp, p)
+                    audit["syms"][sym] = {"status": "ADDED", "sessions": nsess, "backup": os.path.basename(bak)}
+                    continue
+                except Exception as e:
+                    audit["syms"][sym] = {"status": "REPAIR_FAIL", "err": f"{type(e).__name__}:{str(e)[:100]}"}
+                    continue
             audit["syms"][sym] = {"status": "NO_KEY"}
             continue
         try:
@@ -51,8 +75,7 @@ def main():
             old = np.asarray(L["volume_D_50_sma"], dtype=np.float64).reshape(-1)
             ts = np.asarray(L["timestamps"]).astype(np.int64).reshape(-1)
             firsts, gid, nv = native_sessions(td, v)
-            sma = pd.Series(nv).rolling(50, min_periods=1).mean().values
-            rep = sma[gid].astype(np.float32)
+            rep, _ns = true_sma50(v, td)
             nz = old != 0
             err = np.abs(rep[nz].astype(np.float64) - old[nz]) / np.maximum(np.abs(old[nz]), 1e-9) if nz.any() else np.array([0.0])
             holes = [int(ts[firsts[i]]) for i in range(len(nv)) if nv[i] == 0]

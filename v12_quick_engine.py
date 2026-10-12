@@ -7709,7 +7709,7 @@ class QuickConfig:
     )
     REENTRY_BAR_STRUCTURE_TF: str = "3m"
     RECENT_REDUCTION_GUARD_ENABLED: bool = (
-        False  # WIRING LANE C L1b: inert until promotion (live True)
+        True  # USER 2026-10-12: PROMOTED (was False): live True + bolds True/True; dup of L5208 — later assignment wins, both now True
     )
     RECENT_REDUCTION_GUARD_WINDOW_S: float = 300.0
     RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
