@@ -57,6 +57,31 @@ def venue(ss):
     return "crypto" if FP.is_crypto(ss) else "stocks"
 
 
+def _symside_of_stem(stem):
+    for tag in ("_LONG_", "_SHORT_"):
+        if tag in str(stem):
+            return str(stem).split(tag)[0] + tag[:-1]
+    return None
+
+
+def quarantined_symsides(root):
+    """Symsides refused promotion: E3 quarantine blocklist (UNTRUSTED-STALE charts,
+    orphans, missing/incomplete artifacts). Missing/unreadable file = empty set
+    (the qualifiers' own gates still apply); never fail-closed on absence."""
+    bl = jl(Path(root) / "data" / "reports" / "lifecycle_pilot" / "promotion_blocklist_e3.json", {})
+    out = set()
+    for key in ("quarantined_charts", "missing_html", "missing_xlsx", "incomplete_manifests"):
+        for e in (bl.get(key) or []):
+            s = _symside_of_stem(e.get("stem", "") if isinstance(e, dict) else e)
+            if s:
+                out.add(s)
+    for e in (bl.get("quarantined_orphan_xlsx") or []):
+        s = _symside_of_stem(e)
+        if s:
+            out.add(s)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pull", action="store_true")
@@ -102,6 +127,13 @@ def main():
     qual = {s: r for s, r in ev.items() if r["status"] == "QUALIFIED"}
     neg = {s: r for s, r in ev.items() if r["status"] in ("NEGATIVE", "UNVERIFIED")}
     rep["gates"].update(expected=q.get("expected"), qualified=len(qual), blocked_candidates=len(neg), counts=q.get("counts"))
+    quarantined = quarantined_symsides(ROOT)
+    rep["gates"]["quarantine_listed"] = sorted(quarantined)
+    demoted = sorted(s for s in qual if s in quarantined)
+    for s in demoted:
+        neg[s] = {"status": "UNVERIFIED", "reasons": ["promotion-blocklisted (E3 quarantine: untrusted-stale/missing/incomplete artifacts)"]}
+        qual.pop(s, None)
+    rep["gates"]["quarantine_demoted"] = demoted
     if not qual:
         abort("0 qualified sym_sides")
     # local re-validation of every qualified record (never trust the producer blindly)

@@ -506,6 +506,39 @@ def _defer_windows():
 
 
 _GAIN_TIER_DEFER_DAYS = _defer_windows()  # USER 2026-10-09: starve losers, feed winners — mediocre 2x/week, losers weekly; winners every round + slot reservation -> ~90% on winners
+_FRESH_SKIP_DAYS = 4.0  # USER 2026-10-12: never re-calculate a sym_side with a completed 30d matrix newer than this (V15_FRESH_SKIP_DAYS overrides; 0 disables)
+
+
+def _fresh_computed_sides(matrix_dir, days=_FRESH_SKIP_DAYS, now=None):
+    """{SYM_SIDE: newest_mtime} for sides with a completed 30d matrix newer than `days`. Pure function of the dir (testable); missing dir fails open ({})."""
+    import glob as _glob
+    import re as _re
+
+    try:
+        win = float(os.environ.get("V15_FRESH_SKIP_DAYS", days))
+    except (TypeError, ValueError):
+        win = float(days)
+    if win <= 0:
+        return {}
+    try:
+        names = _glob.glob(os.path.join(matrix_dir, "*_30d_matrix.xlsx"))
+    except Exception:
+        return {}
+    now = float(now if now is not None else __import__("time").time())
+    pat = _re.compile(r"^(.+)_(LONG|SHORT)_(.+_)?30d_matrix\.xlsx$")
+    out = {}
+    for p in names:
+        m = pat.match(os.path.basename(p))
+        if not m:
+            continue
+        try:
+            mt = float(os.path.getmtime(p))
+        except OSError:
+            continue
+        if (now - mt) / 86400.0 < win:
+            ss = f"{m.group(1)}_{m.group(2)}"
+            out[ss] = max(out.get(ss, 0.0), mt)
+    return out
 _NONW_QUOTA_DIV = 4  # non-winner new pairs per host capped at max(1, cap//4); unknowns (discovery) exempt
 _TIER_RANK = {"W": 0, "M": 1, "L": 2}
 
@@ -1268,6 +1301,12 @@ def tick(args, cfg, now):
         _seen.pop(ss, None)
     _gtiers = _gain_tiers(_seen)  # winners-first scheduling; loser tiers defer fresh boards (chains still drain)
     _deferred_sides = []
+    try:
+        _fresh_map = _fresh_computed_sides(os.path.join(HOME, "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), now=_now_ts)
+    except Exception:
+        _fresh_map = {}
+    _fresh_skipped = []
+    _fresh_pri = priority_syms()
     _refresh_tick_n = [0]
     _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
     if not _allowed:
@@ -1286,6 +1325,11 @@ def tick(args, cfg, now):
             if v[0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and _side_deferred(f"{sym}_{side}", _gtiers, _now_ts):
                 _st[side] = ("terminal_deferred", None)
                 _deferred_sides.append(f"{sym}_{side}")
+            # USER 2026-10-12: never re-calculate a sym_side computed in the last 4 days (matrix mtime).
+            # terminal_fresh (NOT terminal_deferred) so backfill can never relaunch it; started/redo drain, priority syms exempt.
+            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and f"{sym}_{side}" in _fresh_map and sym not in _fresh_pri:
+                _st[side] = ("terminal_fresh", None)
+                _fresh_skipped.append(f"{sym}_{side}")
         chain_state[sym] = _st
 
     def terminal(sym):
@@ -1630,6 +1674,7 @@ def tick(args, cfg, now):
     log["tier_launched"] = _tl  # USER 2026-10-09: prove ~90% of launches go to winners (M 3d / L 7d defer + slot quota)
     log["gain_tiers"] = {"measured_sides": len(_gtiers), **{t: sum(1 for e in _gtiers.values() if e["tier"] == t) for t in "WML"},
                          "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
+    log["fresh_skipped"] = {"sides": len(_fresh_skipped), "sample": _fresh_skipped[:30]}
     try:  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick. Guarded: a logging bug must never kill the tick.
         _starve = {"running": [], "waiting_base": [], "capped": [], "venue_gated": [], "unready": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}
         for _ssym in all_syms:

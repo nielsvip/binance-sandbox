@@ -19,7 +19,7 @@ def _mk_npz(root, sym, last_ts, n=8):
 def fresh_root(tmp_path, monkeypatch):
     monkeypatch.setattr(P, "ROOT", tmp_path)
     monkeypatch.delenv("V12_ALLOW_STALE_NPZ", raising=False)
-    from tools.npz_bar_refresh import last_closed_bar
+    from tools.npz_cutoffs import last_closed_bar
     return tmp_path, int(last_closed_bar())
 
 
@@ -56,7 +56,7 @@ def test_two_bars_stale(fresh_root):
 
 def test_stocks_rth_cutoff(fresh_root, monkeypatch):
     root, _ = fresh_root
-    from tools.npz_bar_refresh import last_rth_close_bar
+    from tools.npz_cutoffs import last_rth_close_bar
     cut = int(last_rth_close_bar())
     assert cut > 0
     _mk_npz(root, "TST", cut)
@@ -65,6 +65,13 @@ def test_stocks_rth_cutoff(fresh_root, monkeypatch):
     _mk_npz(root, "TST", cut - 2 * 86400)
     fresh, reason = P.npz_freshness("TST_LONG")
     assert fresh is False and "STALE_NPZ_SKIPPED" in reason
+
+
+def test_gate_never_mutates_syspath(fresh_root):
+    import sys
+    before = list(sys.path)
+    P.npz_freshness("TSTUSDC_LONG")
+    assert list(sys.path) == before
 
 
 def test_missing_file_defers_to_loader(fresh_root):

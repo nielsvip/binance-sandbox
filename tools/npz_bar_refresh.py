@@ -41,25 +41,30 @@ from zoneinfo import ZoneInfo
 ROOT = Path(os.environ.get("NPZ_REFRESH_ROOT", os.path.expanduser("~/binance-sandbox")))
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
-BAR = 900
+try:
+    from tools.npz_cutoffs import (BAR, ET, STOCK_CLOSE_GRACE, NYSE_HOLIDAYS, is_crypto_symbol, last_closed_bar, last_closed_stock_bar, last_session_final_bar, last_rth_close_bar)
+except ImportError:
+    from npz_cutoffs import (BAR, ET, STOCK_CLOSE_GRACE, NYSE_HOLIDAYS, is_crypto_symbol, last_closed_bar, last_closed_stock_bar, last_session_final_bar, last_rth_close_bar)
 FAPI = "https://fapi.binance.com/fapi/v1/klines"
 FAPI_TF = {"15m": ("15m", 900), "1h": ("1h", 3600), "4h": ("4h", 14400), "D": ("1d", 86400)}
 STAMP = ROOT / "data" / "vec_live" / "npz_fresh.json"
 LOOPSTAMP = ROOT / "data" / "vec_live" / "npz_loop.json"
 FUNDOI_KEYS = ("funding_rate_15m", "funding_rate", "oi_15m", "oi_value_15m", "oi_change_15m_15m", "oi_change_1h_15m", "oi_change_1h_pct", "cov_funding", "cov_oi")
-ET = ZoneInfo("America/New_York")
+REFRESH_DROP_KEYS = frozenset({
+    "tco_15m", "tcu_15m", "linearity_15m", "slope_close_15m", "lr_upper_15m", "lr_lower_15m", "lr_pct_b_15m",
+    "linearity_1h", "slope_close_1h", "lr_upper_1h", "lr_lower_1h",
+    "slope_close_4h", "lr_upper_4h", "lr_lower_4h",
+    "linearity_D", "slope_close_D", "lr_upper_D", "lr_lower_D", "lr_pct_b_D",
+})  # 2026-10-12: stock_live_extras keys the tail builder cannot extend (need full live-frame history).
+# Proven safe to drop on refresh: v12_quick_engine + backtest_v12_engine read NONE of them; live tradier reads
+# only lr_pct_b_D (gate LR_PCTB_D_LONG_ENTRY_ENABLED, ON nowhere that has the key) and slope_close_1h
+# (snapshot copy never read downstream). Old NPZs never had them — drop = new files match old behavior.
 STOCK_GRID_MIN, STOCK_GRID_MAX = 240, 1185  # 04:00-19:45 ET (STKT grid; matches the live stock NPZ grid)
-STOCK_CLOSE_GRACE = 30  # s after a 15m bar closes before trusting the Tradier bar (API propagation)
 STOCK_PREFETCH_SEM = 2  # Tradier prefetch concurrency (gentle: s1 shares the token with the live stack)
 FNG_URL = "https://api.alternative.me/fng/?limit=0&format=json"
 FNG_CACHE = ROOT / "data" / "fear_greed_cache" / "fng.json"
 SENT_BACKFILL_S = 20 * 3600  # unknown sent_through -> (re)patch rows newer than now-20h (one-time heal, then tracked exactly)
 SENT_BACKLOG_CAP = 96  # max backlog rows patched per file per cycle (older heals over cycles + Sunday full)
-
-
-def is_crypto_symbol(symbol):
-    s = str(symbol).upper()
-    return s.endswith("USDT") or s.endswith("USDC")
 
 
 class _Captured(Exception):
@@ -70,11 +75,6 @@ class _Captured(Exception):
 
 def log(msg):
     print(f"[npz_bar_refresh {time.strftime('%H:%M:%S', time.gmtime())}Z] {msg}", flush=True)
-
-
-def last_closed_bar(now=None):
-    now = int(now if now is not None else time.time())
-    return (now // BAR) * BAR - BAR
 
 
 def fetch_fapi(symbol, tf, limit, end_open):
@@ -105,12 +105,6 @@ def fetch_fresh(symbol, last_ts, cutoff):
         return {"_rest_error": f"{type(e).__name__}: {e}"[:160]}
 
 
-def last_closed_stock_bar(now=None):
-    """latest 15m bar open (UTC grid — the stock grid is ts%900==0) that is CLOSED incl. Tradier propagation grace."""
-    now = int(now if now is not None else time.time())
-    return ((now - STOCK_CLOSE_GRACE) // BAR) * BAR - BAR
-
-
 def stocks_gate(now=None):
     """whether a stocks Tradier prefetch is worthwhile now. Returns (attempt, reason). Out-of-gate cycles skip stocks
     entirely (crypto still runs); the loop re-attempts deeply stale stocks (missed >=1 session) at most once/hour."""
@@ -124,54 +118,6 @@ def stocks_gate(now=None):
     if 210 <= mm <= 1230:
         return True, "session"
     return False, "night"
-
-
-def last_session_final_bar(now=None):
-    """most recent fully-closed weekday 19:45 ET bar (ext close), epoch; 0 when none in range (clock sanity).
-    Out-of-gate catch-up uses this (not an hour threshold): any stock older than the last closed session gets fetched."""
-    now = now if now is not None else dt.datetime.now(dt.timezone.utc)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=dt.timezone.utc)
-    ts_now = now.timestamp()
-    et_now = now.astimezone(ET)
-    for back in range(10):
-        d = (et_now - dt.timedelta(days=back)).date()
-        if d.weekday() >= 5:
-            continue
-        cand = int(dt.datetime(d.year, d.month, d.day, 19, 45, tzinfo=ET).timestamp())
-        if cand + BAR + STOCK_CLOSE_GRACE <= ts_now:
-            return cand
-    return 0
-
-
-NYSE_HOLIDAYS = frozenset({
-    "2026-11-26", "2026-12-25",
-    "2027-01-01", "2027-01-18", "2027-02-15", "2027-04-02", "2027-05-31", "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24",
-    "2028-01-03",
-})  # extend yearly; the freshness gate treats these as non-sessions (no bars expected)
-
-
-def last_rth_close_bar(now=None):
-    """most recent RTH-session 15m-bar close, epoch; 0 when none in range (clock sanity). RTH = 9:30-16:00 ET
-    on non-holiday weekdays. Weekend/pre-open/holiday -> previous session's 16:00 ET close; live RTH -> latest
-    closed 15m bar; post-close -> today's 16:00 ET. THE freshness-gate cutoff for stocks (v12_pilot.npz_freshness):
-    rebuilt NPZs carry RTH bars, so the ext 19:45 close is the wrong bar to demand."""
-    now = now if now is not None else dt.datetime.now(dt.timezone.utc)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=dt.timezone.utc)
-    ts_now = now.timestamp()
-    et_now = now.astimezone(ET)
-    mm = et_now.hour * 60 + et_now.minute
-    if et_now.weekday() < 5 and et_now.date().isoformat() not in NYSE_HOLIDAYS and 570 <= mm < 960:
-        return (int(ts_now) // BAR) * BAR - BAR
-    for back in range(12):
-        d = (et_now - dt.timedelta(days=back)).date()
-        if d.weekday() >= 5 or d.isoformat() in NYSE_HOLIDAYS:
-            continue
-        cand = int(dt.datetime(d.year, d.month, d.day, 16, 0, tzinfo=ET).timestamp())
-        if cand + BAR <= ts_now:
-            return cand
-    return 0
 
 
 def backlog_window(ts_last, sent_through_prev, now_s):
@@ -741,6 +687,7 @@ def splice(L, tail, symbol, overlap=8, mode="crypto"):
     if _bf:
         post.update(backfill_legacy_keys(full, L, _bf, symbol))
     missing = []
+    _dropped = []
     for k in row_keys:
         if k in builder_keys and k not in FUNDOI_KEYS:
             continue
@@ -748,12 +695,16 @@ def splice(L, tail, symbol, overlap=8, mode="crypto"):
             D[k] = np.concatenate([L[k], _cast(np.asarray(post[k])[n_old:], L[k])])
         elif k in builder_keys:
             continue
+        elif k in REFRESH_DROP_KEYS:
+            _dropped.append(k)
         else:
             missing.append(k)
+    if _dropped:
+        log(f"{symbol} refresh-dropped {len(_dropped)} unread keys ({','.join(sorted(_dropped)[:6])}...) — proven reader-free for vec, live gates on them are OFF")
     if missing:
         raise ValueError(f"cannot extend {len(missing)} row keys: {missing[:8]}")
     for k in L:
-        if k not in D:
+        if k not in D and k not in REFRESH_DROP_KEYS:
             D[k] = L[k]
     return D, info
 
@@ -772,13 +723,15 @@ def save_npz(path, D, level=1):
 def validate(L, D, path):
     import numpy as np
     from npz_guard import should_allow_overwrite
-    missing = sorted(set(L) - set(D))
+    missing = sorted(set(L) - set(D) - REFRESH_DROP_KEYS)
     if missing:
         return False, f"lost keys {missing[:5]}"
     n0, n1 = len(L["timestamps"]), len(D["timestamps"])
     if n1 <= n0:
         return False, "not longer"
     for k in L:
+        if k in REFRESH_DROP_KEYS and k not in D:
+            continue
         if np.ndim(L[k]) >= 1 and len(L[k]) == n0 and k != "htf_align" and len(D[k]) != n1:
             return False, f"{k} len {len(D[k])} != {n1}"
     ts = np.asarray(D["timestamps"]).astype(np.int64)
