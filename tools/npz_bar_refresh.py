@@ -55,10 +55,14 @@ REFRESH_DROP_KEYS = frozenset({
     "linearity_1h", "slope_close_1h", "lr_upper_1h", "lr_lower_1h",
     "slope_close_4h", "lr_upper_4h", "lr_lower_4h",
     "linearity_D", "slope_close_D", "lr_upper_D", "lr_lower_D", "lr_pct_b_D",
-})  # 2026-10-12: stock_live_extras keys the tail builder cannot extend (need full live-frame history).
+    "adx_M", "macd_M", "macd_crossover_M", "macd_crossunder_M", "macd_hist_M", "macd_signal_M",
+    "stdev_edge_15m", "stdev_edge_1h", "stdev_edge_4h", "stdev_edge_D",
+    "stdev_slope_15m", "stdev_slope_1h", "stdev_slope_4h", "stdev_slope_D",
+})  # 2026-10-12: keys the tail builder cannot extend (need full live-frame history / retired M-TF legs).
 # Proven safe to drop on refresh: v12_quick_engine + backtest_v12_engine read NONE of them; live tradier reads
 # only lr_pct_b_D (gate LR_PCTB_D_LONG_ENTRY_ENABLED, ON nowhere that has the key) and slope_close_1h
-# (snapshot copy never read downstream). Old NPZs never had them — drop = new files match old behavior.
+# (snapshot copy never read downstream); macd_M/adx_M have zero references repo-wide; stdev_edge/slope have
+# no value readers (ZECUSDC lacks them = known-tolerated). Old NPZs never had them — drop = match old behavior.
 STOCK_GRID_MIN, STOCK_GRID_MAX = 240, 1185  # 04:00-19:45 ET (STKT grid; matches the live stock NPZ grid)
 STOCK_PREFETCH_SEM = 2  # Tradier prefetch concurrency (gentle: s1 shares the token with the live stack)
 FNG_URL = "https://api.alternative.me/fng/?limit=0&format=json"
