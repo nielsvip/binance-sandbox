@@ -156,7 +156,7 @@ def run_refresh(refresh, rebuild, workers=6, dry_run=False):
 
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
-    d = argv[argv.index("--dir") + 1] if "--dir" in argv else "backtest_v8/indicators"
+    d = argv[argv.index("--dir") + 1] if "--dir" in argv else os.path.join(ROOT, "backtest_v8", "indicators")
     if not os.path.isdir(d):
         print(f"GATE_FAIL dir missing: {d}")
         return 1

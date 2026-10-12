@@ -763,6 +763,13 @@ def _sym_quota_hit(sym, tiers):
     return any(t in ("M", "L") for t in ts) and not any(t == "W" for t in ts)
 
 
+def _quota_blocks(sym, gtiers, chain_state):
+    """True = winner-quota blocks a NEW slot: non-winner pair that still wants a FRESH 30D board. Pure-chain syms (GS/repair/365D continuations) always drain — quota throttles new boards, never verification/heals (USER 2026-10-12: quota was starving 10/12 GS-heals on idle s5/s6)."""
+    if not _sym_quota_hit(sym, gtiers):
+        return False
+    return any(v[0] == "need30" for v in (chain_state.get(sym) or {}).values())
+
+
 def _fresh_daily_state(st, datestr):
     """Midnight rollover: fresh attempts/holds, but tier memory survives (own 30d prune). Without the carry-over,
     W/M/L + deferral evaporate daily (USER 2026-10-10: observed 255 -> 71 measured at 00:00Z)."""
@@ -1617,7 +1624,7 @@ def tick(args, cfg, now):
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
                 continue
-            if needs_slot and _sym_quota_hit(sym, _gtiers) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
+            if needs_slot and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
             if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok or not disk_ok):

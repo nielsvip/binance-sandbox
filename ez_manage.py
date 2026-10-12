@@ -3690,6 +3690,7 @@ try:
 except ImportError:
     _twin_dead_b = None
 from vec_decisions.process_position_stocks__alt_entries import _rz_breakout_fires  # 2026-09-29 grey rewire RZ_BREAKOUT shared predicate
+import vec_decisions.fixed_stop as _fixed_stop_core  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core (shared with v12/service/tradier)
 # --- FULL COVERAGE 2026-08-17: ez_ mirror of tradier_ coverage — identical params/hash so crypto vs stocks tradier_ parity is 100% identical is read at least once so switch_lab Tab 3 + vector parity can flip it ---
 # This does NOT change live trade logic (reads are dead-code gated); it makes grep-wiring and vector hash distinctness pass.
 _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
@@ -11836,6 +11837,8 @@ class Position:
     mark_price_last_updated: Optional[datetime] = None
     _position_key: str = ""
     _frozen_sacred: bool = False
+    fixed_stop_price: float = 0.0
+    exchange_stop_order_id: str = ""
 
     def __post_init__(self):
         """After construction: if positionAmt > 0, sacred fields MUST have content. If not, CRASH."""
@@ -11994,6 +11997,8 @@ class Position:
             augment_reason=str(data.get("augment_reason", data.get("reason", ""))),
             reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))),
             mark_price_last_updated=safe_time(data.get("mark_price_last_updated")),
+            fixed_stop_price=safe_float(data.get("fixed_stop_price")),
+            exchange_stop_order_id=str(data.get("exchange_stop_order_id") or ""),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -21091,6 +21096,235 @@ class MultiAccountTradeManager:
                 )
                 return position
         return None
+
+    async def _fixed_stop_order_action(self, *, position_key, account_key, symbol, position_side, side, quantity, old_price, unique_id, reason, action, stop_price=0.0, stop_order_id=""):
+        """Wire leg of FIXED_STOP (called ONLY via the execute_now PLACE_STOP/CANCEL_STOP branch). Never raises."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return "SKIPPED_STOP_PYTEST"
+            try:
+                if is_sandbox_account(config, account_key):
+                    return "SKIPPED_STOP_SANDBOX"
+            except Exception:
+                pass
+            try:
+                client = self.get_client(account_key)
+            except Exception as _ce:
+                logger.error(f"[FIXED_STOP_WIRE] {position_key}: no client ({_ce})")
+                return "FAILED_STOP_NO_CLIENT"
+            if client is None:
+                return "FAILED_STOP_NO_CLIENT"
+            if action == "CANCEL_STOP":
+                oid = str(stop_order_id or "").strip()
+                if not oid:
+                    return "SKIPPED_STOP_CANCEL_NO_ID"
+                try:
+                    await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=oid), timeout=15.0)
+                    logger.critical(f"🛡️ [FIXED_STOP_CANCEL] {position_key}: exchange backstop {oid} cancelled")
+                    return f"SUCCESS_STOP_CANCELLED_{oid}"
+                except Exception as _e:
+                    if "Unknown order" in str(_e) or "-2011" in str(_e):
+                        return f"SUCCESS_STOP_ALREADY_GONE_{oid}"
+                    logger.error(f"[FIXED_STOP_CANCEL] {position_key}: cancel {oid} failed: {_e}")
+                    return f"FAILED_STOP_CANCEL_{oid}"
+            lvl = float(stop_price or 0.0)
+            cur = float(old_price or 0.0)
+            is_long = str(position_side or "").upper() == "LONG"
+            if lvl <= 0:
+                return "REFUSED_STOP_NO_LEVEL"
+            if cur > 0 and ((is_long and lvl >= cur) or ((not is_long) and lvl <= cur)):
+                logger.critical(f"⛔ [FIXED_STOP_REFUSE] {position_key}: backstop {lvl:.6f} wrong side of {cur:.6f} — refusing (would trigger instantly)")
+                return "REFUSED_STOP_WRONG_SIDE"
+            import hashlib as _hl
+            _cid = f"{_fixed_stop_core.STOP_ORDER_PREFIX}{_hl.sha1(f'{position_key}:{time.time_ns()}'.encode()).hexdigest()[:12].upper()}"
+            try:
+                _resp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=("SELL" if is_long else "BUY"), positionSide=str(position_side).upper(), type="STOP_MARKET", stopPrice=str(lvl), closePosition=True, workingType="MARK_PRICE", newClientOrderId=_cid), timeout=15.0)
+            except Exception as _e:
+                logger.error(f"[FIXED_STOP_PLACE] {position_key}: place failed lvl={lvl}: {_e}")
+                return "FAILED_STOP_PLACE"
+            _oid = str((_resp or {}).get("orderId", "") or "") if isinstance(_resp, dict) else ""
+            logger.critical(f"🛡️ [FIXED_STOP_PLACED] {position_key}: exchange backstop {_oid} stop={lvl:.6f} ({'LONG' if is_long else 'SHORT'})")
+            return f"SUCCESS_STOP_PLACED_{_oid}" if _oid else "SUCCESS_STOP_PLACED"
+        except Exception as _e:
+            try:
+                logger.error(f"[FIXED_STOP_WIRE] {position_key}: {_e}")
+            except Exception:
+                pass
+            return "FAILED_STOP_WIRE"
+
+    async def ensure_fixed_stop_backstop(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price):
+        """Self-healing reconcile: exactly one live exchange backstop per open position. Never raises."""
+        try:
+            try:
+                reg = getattr(self, "managed_stop_registry", None)
+                if not isinstance(reg, dict):
+                    reg = {}
+                    self.managed_stop_registry = reg
+            except Exception:
+                return "SKIPPED_STOP_NO_REGISTRY"
+            try:
+                amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+            except Exception:
+                amt = 0.0
+            try:
+                _sig = f"{float(getattr(position, 'entry_price', 0) or 0)}|{getattr(position, 'opened_at', '')}|{float(getattr(position, 'initial_quantity', 0) or 0)}"
+            except Exception:
+                _sig = ""
+            _side_u = str(position_side or "").upper()
+            _close_side = "SELL" if _side_u == "LONG" else "BUY"
+            have = reg.get(position_key) if isinstance(reg.get(position_key), dict) else None
+            if amt <= 0:
+                if have and have.get("orderId"):
+                    _r = await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0.0, side=_close_side, position_side=position_side, quantity=0.0, old_price=float(current_price or 0.0), unique_id=f"FXX_{int(time.time())}", reason="FIXED_STOP_FLAT_CANCEL", is_full_close=False, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
+                    if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
+                        reg.pop(position_key, None)
+                        try:
+                            position.exchange_stop_order_id = ""
+                        except Exception:
+                            pass
+                    return str(_r)
+                return "NONE_FLAT"
+            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig:
+                return "OK_ALREADY_PLACED"
+            if have and have.get("orderId"):
+                try:
+                    await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0.0, side=_close_side, position_side=position_side, quantity=0.0, old_price=float(current_price or 0.0), unique_id=f"FXR_{int(time.time())}", reason="FIXED_STOP_REOPEN_REPLACE", is_full_close=False, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
+                except Exception:
+                    pass
+                reg.pop(position_key, None)
+            _soft = float(soft_level or 0.0)
+            if _soft <= 0:
+                return "SKIPPED_STOP_NO_LEVEL"
+            _tick = 0.0
+            try:
+                _sc = self.get_symbol_config(symbol) or {}
+                _tick = float(_sc.get("tickSize") or _sc.get("tick_size") or 0.0)
+            except Exception:
+                _tick = 0.0
+            _params = _fixed_stop_core.build_stop_params(_side_u == "LONG", _soft, _tick)
+            _lvl = float(_params.get("stopPrice") or 0.0)
+            if _lvl <= 0:
+                return "SKIPPED_STOP_NO_LEVEL"
+            _r = await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=amt, side=_close_side, position_side=position_side, quantity=amt, old_price=float(current_price or 0.0), unique_id=f"FXP_{int(time.time())}", reason="FIXED_STOP_BACKSTOP_PLACE", is_full_close=False, action="PLACE_STOP", stop_price=_lvl)
+            _rs = str(_r)
+            if _rs.startswith("SUCCESS_STOP_PLACED"):
+                _oid = _rs.replace("SUCCESS_STOP_PLACED_", "")
+                reg[position_key] = {"orderId": _oid, "stopPrice": _lvl, "entry_sig": _sig, "symbol": symbol, "side": position_side}
+                try:
+                    position.exchange_stop_order_id = _oid
+                except Exception:
+                    pass
+            return _rs
+        except Exception as _e:
+            try:
+                logger.warning(f"[FIXED_STOP_ENSURE] {position_key}: {_e}")
+            except Exception:
+                pass
+            return "FAILED_STOP_ENSURE"
+
+    async def sweep_fixed_stops(self, account_key, positions_by_key):
+        """Cancel backstops for flat/missing positions (covers every close path) + hourly full exchange reconcile. Never raises."""
+        try:
+            reg = getattr(self, "managed_stop_registry", None)
+            if not isinstance(reg, dict) or not reg:
+                return "SWEEP_EMPTY"
+            if not isinstance(positions_by_key, dict):
+                positions_by_key = {}
+            now = time.time()
+            try:
+                _tsmap = getattr(self, "_fixed_stop_full_reconcile_ts", None)
+                if not isinstance(_tsmap, dict):
+                    _tsmap = {}
+                    self._fixed_stop_full_reconcile_ts = _tsmap
+                _last = float(_tsmap.get(account_key, 0.0) or 0.0)
+            except Exception:
+                _last = 0.0
+                _tsmap = {}
+            if now - _last > 3600:
+                try:
+                    _tsmap[account_key] = now
+                except Exception:
+                    pass
+                try:
+                    await self._fixed_stop_full_reconcile(account_key, positions_by_key)
+                except Exception:
+                    pass
+            out = []
+            for _pk, _ent in list(reg.items()):
+                if not isinstance(_ent, dict) or not _ent.get("orderId"):
+                    continue
+                if not str(_pk).startswith(f"{account_key}:"):
+                    continue
+                _pos = positions_by_key.get(_pk)
+                try:
+                    _amt = abs(float(getattr(_pos, "positionAmt", 0) or 0)) if _pos is not None else 0.0
+                except Exception:
+                    _amt = 0.0
+                if _pos is None or _amt <= 0:
+                    _sym = str(_ent.get("symbol") or "")
+                    _pside = str(_ent.get("side") or "LONG")
+                    if not _sym:
+                        continue
+                    try:
+                        _r = await self.execute_now(position_key=_pk, account_key=account_key, symbol=_sym, original_positionAmt=0.0, side=("SELL" if _pside.upper() == "LONG" else "BUY"), position_side=_pside, quantity=0.0, old_price=0.0, unique_id=f"FXSW_{int(now)}", reason="FIXED_STOP_SWEEP_CANCEL", is_full_close=False, action="CANCEL_STOP", stop_order_id=str(_ent.get("orderId")))
+                    except Exception as _e:
+                        _r = f"FAILED_SWEEP_{_e}"
+                    if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
+                        reg.pop(_pk, None)
+                    out.append(f"{_pk}={_r}")
+            return "SWEEP_OK:" + ",".join(out) if out else "SWEEP_CLEAN"
+        except Exception as _e:
+            return f"FAILED_SWEEP_{_e}"
+
+    async def _fixed_stop_full_reconcile(self, account_key, positions_by_key):
+        """Hourly: cancel exchange EZMSTOP_* stops with no open position (restart/orphan safety). Never raises."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return "SKIPPED_PYTEST"
+            try:
+                if is_sandbox_account(config, account_key):
+                    return "SKIPPED_SANDBOX"
+            except Exception:
+                pass
+            try:
+                client = self.get_client(account_key)
+            except Exception:
+                return "SKIPPED_NO_CLIENT"
+            if client is None:
+                return "SKIPPED_NO_CLIENT"
+            try:
+                _open = await asyncio.wait_for(asyncio.to_thread(client.futures_open_orders), timeout=20.0) or []
+            except Exception as _e:
+                return f"SKIPPED_LIST_{_e}"
+            for _o in _open:
+                try:
+                    if not isinstance(_o, dict):
+                        continue
+                    if str(_o.get("type", "")).upper() != "STOP_MARKET":
+                        continue
+                    _cid = str(_o.get("clientOrderId") or _o.get("origClientOrderId") or "")
+                    if not (_cid.startswith(_fixed_stop_core.STOP_ORDER_PREFIX) or _cid.startswith("EZMSTOP_")):
+                        continue
+                    _sym = str(_o.get("symbol", ""))
+                    _pside = str(_o.get("positionSide", "")).upper()
+                    _pk = f"{account_key}:{_sym}_{_pside}" if _pside in ("LONG", "SHORT") else ""
+                    _pos = positions_by_key.get(_pk) if _pk else None
+                    try:
+                        _amt = abs(float(getattr(_pos, "positionAmt", 0) or 0)) if _pos is not None else 0.0
+                    except Exception:
+                        _amt = 0.0
+                    if _pos is None or _amt <= 0:
+                        try:
+                            await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=_sym, orderId=_o.get("orderId")), timeout=15.0)
+                            logger.critical(f"🛡️ [FIXED_STOP_ORPHAN] {_pk or _sym}: cancelled orphaned exchange stop {_o.get('orderId')}")
+                        except Exception as _ce:
+                            if "Unknown order" not in str(_ce) and "-2011" not in str(_ce):
+                                logger.warning(f"[FIXED_STOP_ORPHAN] cancel failed: {_ce}")
+                except Exception:
+                    continue
+            return "RECONCILED"
+        except Exception as _e:
+            return f"FAILED_RECONCILE_{_e}"
 
     async def cancel_empty_stop(
         self,
@@ -30856,7 +31090,18 @@ class MultiAccountTradeManager:
         is_hedge: bool = False,
         hedge_for: Optional[str] = None,
         url_variant: str = "",
+        stop_price: float = 0.0,
+        stop_order_id: str = "",
     ) -> str:
+        # ─── FIXED_STOP ORDER ACTIONS (2026-10-12 USER MANDATE — non-negotiable backstop) ───
+        # STOP placements/cancels are protection, not position changes: they run through
+        # execute_now (the ONLY gate) but bypass position-change gates (365D/vec/exposure).
+        try:
+            _fx_act0 = str(action or "").upper()
+        except Exception:
+            _fx_act0 = ""
+        if _fx_act0 in ("PLACE_STOP", "CANCEL_STOP"):
+            return await self._fixed_stop_order_action(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, side=side, quantity=quantity, old_price=old_price, unique_id=unique_id, reason=reason, action=_fx_act0, stop_price=stop_price, stop_order_id=stop_order_id)
         # ─── EXIT-ENGINE PARITY INSTRUMENTATION (2026-09-28) ────────────────────
         # Log EVERY attempted trade (reason/family/gate) BEFORE any downstream gate
         # (broker-sync, emergency_brake, quarantine) so exit-trigger parity is
@@ -49863,6 +50108,35 @@ async def process_position(
                     return f"{EvalStatus.ACTION_TAKEN}:NON_TRADEABLE_WT15M_CLOSED"
         except Exception as _nt_e:
             logger.warning(f"[NON_TRADEABLE] {position_key} probe err: {_nt_e}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no veto, no min-hold, evaluated on EVERY bar. Maker-first software leg; the exchange STOP_MARKET backstop (0.05% beyond) is ensured below so a dead system still exits taker.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
+        try:
+            if _pp_shared_ind is None:
+                _pp_shared_ind = await ii(trade_manager, symbol) or {}
+            _fx_is_long = position_side == "LONG"
+            _fx_lvl = safe_fetch_float(getattr(position, "fixed_stop_price", 0) or 0, 0.0)
+            if _fx_lvl <= 0:
+                _fx_lvl = _fixed_stop_core.freeze_software_level(_fx_is_long, safe_fetch_float(_pp_shared_ind.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(_pp_shared_ind.get("dc_high_15m", 0) or 0, 0.0), safe_fetch_float(getattr(position, "entry_price", 0) or 0, 0.0))
+                if _fx_lvl > 0:
+                    position.fixed_stop_price = _fx_lvl
+            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl):
+                _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
+                _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
+                _fx_side = "SELL" if _fx_is_long else "BUY"
+                logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if _fx_is_long else 'dc_high_15m'} stop {_fx_lvl:.6f} g={_fx_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)")
+                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_fx_amt, side=_fx_side, position_side=position_side, quantity=_fx_amt, old_price=current_price, unique_id=f"FIXED_STOP_{int(time.time())}", reason=f"FIXED_STOP_{'LONG' if _fx_is_long else 'SHORT'}_px{current_price:.6f}_lvl{_fx_lvl:.6f}_g{_fx_gain:.2f}", is_full_close=True, action="CLOSE")
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.ACTION_TAKEN}:FIXED_STOP_CLOSED"
+            try:
+                _fx_ensure = getattr(trade_manager, "ensure_fixed_stop_backstop", None)
+                if _fx_ensure is not None:
+                    asyncio.create_task(_fx_ensure(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_fx_lvl, current_price=current_price))
+            except Exception:
+                pass
+        except Exception as _fx_e:
+            logger.warning(f"[FIXED_STOP] {position_key} probe err: {_fx_e}")
     # ═══════════════════════════════════════════════════════════════════════════
     # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH.
     # No position may be held through dc_low_TF (LONG) / dc_high_TF (SHORT) where TF = DC_HARD_STOP_TF (4h|D) per sym_side.

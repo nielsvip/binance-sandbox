@@ -66,6 +66,7 @@ import numpy as np
 # Every switch predicate must live in vec_decisions and be called by v12_quick,
 # not re-implemented inline. This block is verified by tools/hooks/persistent_v12_hooks.py.
 import vec_decisions.breakout_opener
+import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
@@ -17720,6 +17721,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1  # [C2 b5b] executed fill today
         except Exception:
             pass
+        try:
+            _fx_e15l = float(_uh_l15[i]) if i < len(_uh_l15) else 0.0
+            _fx_e15h = float(_uh_h15[i]) if i < len(_uh_h15) else 0.0
+        except Exception:
+            _fx_e15l, _fx_e15h = 0.0, 0.0
         return {
             "qty": qty0,
             "avg_price": px,
@@ -17731,6 +17737,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             "peak_pnl_pct": 0.0,
             "fees": abs(qty0 * px) * half_fee,
             "entry_reason": entry_reason,
+            "fixed_stop": vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_e15l, _fx_e15h, px),
         }
 
     # [C2 q007] stocks STDEV_BREAKOUT size boost twin (tradier_manage.py:13515): inert unless STDEV_BREAKOUT_ENABLED (default False, live default False)
@@ -19638,6 +19645,61 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _vig_blocked = True
             _vig_block_px = float(px)
             continue
+        # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no cfg read, no veto, evaluated on EVERY bar of EVERY calc. Maker-first software leg; the exchange STOP_MARKET backstop (0.05% beyond) lives on the venue.
+        try:
+            _fx_fire = ""
+            if pos is not None:
+                _fx_lvl = float(pos.get("fixed_stop", 0.0) or 0.0)
+                if _fx_lvl <= 0:
+                    try:
+                        _fx_c15l = float(_uh_l15[i]) if i < len(_uh_l15) else 0.0
+                        _fx_c15h = float(_uh_h15[i]) if i < len(_uh_h15) else 0.0
+                    except Exception:
+                        _fx_c15l, _fx_c15h = 0.0, 0.0
+                    _fx_lvl = vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_c15l, _fx_c15h, float(pos.get("entry_price", pos.get("avg_price", px))))
+                    pos["fixed_stop"] = _fx_lvl
+                if vec_decisions.fixed_stop.breached(is_long, px, _fx_lvl):
+                    _fx_fire = "FIXED_STOP"
+            if _fx_fire:
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _pnl = (
+                    pos["realized"]
+                    + (
+                        (px - pos["avg_price"]) * pos["qty"]
+                        if is_long
+                        else (pos["avg_price"] - px) * pos["qty"]
+                    )
+                    - pos["fees"]
+                )
+                _pct = _pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _tsu = (
+                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                )
+                trades.append(
+                    {
+                        "pnl_dollars": _pnl,
+                        "pnl_pct": float(_pct),
+                        "deployed": pos["deployed"],
+                        "reason": _fx_fire,
+                        "type": "CLOSE",
+                        "ts": _tsu,
+                        "price": float(px),
+                        "bar_entry": int(pos["entry_bar"]),
+                        "bar_exit": int(i),
+                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                        "exit_price": float(px),
+                        "qty": float(pos["qty"]),
+                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                        "exit_reason": _fx_fire,
+                        "bars_held": int(i - pos["entry_bar"]),
+                    }
+                )
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
+        except Exception:
+            pass
         # 2026-10-06 USER MANDATE twin — UNCONDITIONAL DC STOP BOTH SIDES (hardcoded 4h + switched 1h/15m, ±0.25%). No veto.
         try:
             _uh_j = (

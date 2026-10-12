@@ -25,6 +25,7 @@ import threading
 import time
 import traceback
 import uuid
+import vec_decisions.fixed_stop as _fixed_stop_core  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core (shared with v12/ez_manage/tradier)
 from asyncio import Semaphore
 from collections import defaultdict, deque
 from contextlib import suppress
@@ -1706,6 +1707,8 @@ class Position:
     is_hedge: bool = False
     hedge_for: Optional[str] = None
     r1_stop_price: float = 0.0
+    fixed_stop_price: float = 0.0
+    exchange_stop_order_id: str = ""
 
     def __setattr__(self, name, value):
         if name in _POSITION_SERVICE_ONLY_FIELDS and hasattr(self, name):
@@ -1786,7 +1789,7 @@ class Position:
                 except ValueError:
                     pass
             return None
-        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=abs(safe_float(data.get("positionAmt")) or 0.0), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=(safe_float(data.get("realized_pnl"))), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), is_hedge=bool(data.get("is_hedge", False)), hedge_for=(str(data.get("hedge_for")) if data.get("hedge_for") else None), )
+        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=abs(safe_float(data.get("positionAmt")) or 0.0), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=(safe_float(data.get("realized_pnl"))), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), is_hedge=bool(data.get("is_hedge", False)), hedge_for=(str(data.get("hedge_for")) if data.get("hedge_for") else None), fixed_stop_price=safe_float(data.get("fixed_stop_price")), exchange_stop_order_id=str(data.get("exchange_stop_order_id") or ""), )
 
     def to_json(self) -> Dict[str, Any]:
         payload = asdict(self)
@@ -6817,6 +6820,10 @@ class PositionService:
         await self._check_for_deletions(account_key, f"before _process_account_update_impl")
         await self._process_account_update_impl(account_key, raw_positions_data, now, updated_keys_in_api, account_positions)
         await self._check_for_deletions(account_key, f"after _process_account_update_impl")
+        try:
+            await self._fixed_stop_fetch_cycle(account_key, account_positions)
+        except Exception:
+            pass
         positions_after_keys = set(account_positions.keys())
         positions_lost = positions_before_keys - positions_after_keys
         if positions_lost:
@@ -6857,6 +6864,114 @@ class PositionService:
         except Exception:
             pass
         return updated_keys_in_api
+
+    async def _fixed_stop_fetch_cycle(self, account_key: str, account_positions: dict):
+        """FIXED_STOP live leg (2026-10-12 USER MANDATE, non-negotiable). Runs every fetch cycle (~6s): freeze + software breach-close + exchange backstop ensure + sweep. Fast local math inline; API via tasks. Never raises."""
+        try:
+            if not isinstance(account_positions, dict) or not account_positions:
+                return
+            tm = getattr(self, "trade_manager", None)
+            try:
+                _inflight = getattr(self, "_fixed_stop_close_inflight", None)
+                if not isinstance(_inflight, set):
+                    _inflight = set()
+                    self._fixed_stop_close_inflight = _inflight
+            except Exception:
+                _inflight = set()
+            for position_key, position in list(account_positions.items()):
+                try:
+                    if position is None:
+                        continue
+                    try:
+                        _amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+                    except Exception:
+                        _amt = 0.0
+                    if _amt <= 0:
+                        continue
+                    _sym = str(getattr(position, "symbol", "") or "")
+                    _pside = str(getattr(position, "position_side", "") or "").upper()
+                    if not _sym or _pside not in ("LONG", "SHORT"):
+                        continue
+                    _is_long = _pside == "LONG"
+                    try:
+                        _px = float(getattr(position, "mark_price", 0) or 0)
+                    except Exception:
+                        _px = 0.0
+                    if _px <= 0:
+                        continue
+                    try:
+                        _lvl = float(getattr(position, "fixed_stop_price", 0) or 0)
+                    except Exception:
+                        _lvl = 0.0
+                    if _lvl <= 0:
+                        try:
+                            _ind = ii(self, _sym) or {}
+                        except Exception:
+                            _ind = {}
+                        try:
+                            _dlo = float((_ind.get("dc_low_15m", 0) if isinstance(_ind, dict) else 0) or 0)
+                            _dhi = float((_ind.get("dc_high_15m", 0) if isinstance(_ind, dict) else 0) or 0)
+                        except Exception:
+                            _dlo, _dhi = 0.0, 0.0
+                        try:
+                            _ep = float(getattr(position, "entry_price", 0) or 0)
+                        except Exception:
+                            _ep = 0.0
+                        _lvl = _fixed_stop_core.freeze_software_level(_is_long, _dlo, _dhi, _ep)
+                        if _lvl > 0:
+                            try:
+                                position.fixed_stop_price = _lvl
+                            except Exception:
+                                pass
+                    if _lvl <= 0 or tm is None:
+                        continue
+                    if _fixed_stop_core.breached(_is_long, _px, _lvl):
+                        if position_key in _inflight:
+                            continue
+                        try:
+                            _gain = float(getattr(position, "gain", 0) or 0)
+                        except Exception:
+                            _gain = 0.0
+                        _cs = "SELL" if _is_long else "BUY"
+                        logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {_px:.6f} breached frozen {'dc_low_15m' if _is_long else 'dc_high_15m'} stop {_lvl:.6f} g={_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)")
+                        _inflight.add(position_key)
+                        async def _fx_fire(_tm=tm, _pk=position_key, _ak=account_key, _s=_sym, _a=_amt, _c=_cs, _p=_pside, _x=_px, _g=_gain, _il=_is_long, _lv=_lvl, _fl=_inflight):
+                            try:
+                                await _tm.execute_now(position_key=_pk, account_key=_ak, symbol=_s, original_positionAmt=_a, side=_c, position_side=_p, quantity=_a, old_price=_x, unique_id=f"FIXED_STOP_{int(time.time())}", reason=f"FIXED_STOP_{'LONG' if _il else 'SHORT'}_px{_x:.6f}_lvl{_lv:.6f}_g{_g:.2f}", is_full_close=True, action="CLOSE")
+                            except Exception as _fe:
+                                try:
+                                    logger.error(f"[FIXED_STOP] {_pk} close err: {_fe}")
+                                except Exception:
+                                    pass
+                            finally:
+                                try:
+                                    _fl.discard(_pk)
+                                except Exception:
+                                    pass
+                        try:
+                            asyncio.create_task(_fx_fire())
+                        except Exception:
+                            try:
+                                _inflight.discard(position_key)
+                            except Exception:
+                                pass
+                        continue
+                    try:
+                        _ens = getattr(tm, "ensure_fixed_stop_backstop", None)
+                        if _ens is not None:
+                            asyncio.create_task(_ens(account_key=account_key, symbol=_sym, position_key=position_key, position_side=_pside, position=position, soft_level=_lvl, current_price=_px))
+                    except Exception:
+                        pass
+                except Exception:
+                    continue
+            try:
+                _sw = getattr(tm, "sweep_fixed_stops", None) if tm is not None else None
+                if _sw is not None:
+                    asyncio.create_task(_sw(account_key, account_positions))
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     async def _process_account_update_impl(self, account_key: str, raw_positions_data: list, now: datetime, updated_keys_in_api: set, account_positions: dict):
         try :
@@ -13432,6 +13547,31 @@ async def check_position_reductions(service, position_key: str, account_key: str
         pos_amt = abs(float(getattr(position, 'positionAmt', 0)))
         pos_min_qty = max(2 * config.MIN_POSITION_SIZE / current_price, service.min_qty.get(symbol, 0.0001))
         i = ii(service, symbol)
+        try:
+            _fx_lvl0 = float(getattr(position, 'fixed_stop_price', 0) or 0)
+        except Exception:
+            _fx_lvl0 = 0.0
+        if _fx_lvl0 <= 0:
+            try:
+                _fx_dlo = float((i.get('dc_low_15m', 0) if isinstance(i, dict) else 0) or 0)
+                _fx_dhi = float((i.get('dc_high_15m', 0) if isinstance(i, dict) else 0) or 0)
+            except Exception:
+                _fx_dlo, _fx_dhi = 0.0, 0.0
+            try:
+                _fx_ep0 = float(getattr(position, 'entry_price', 0) or 0)
+            except Exception:
+                _fx_ep0 = 0.0
+            _fx_lvl0 = _fixed_stop_core.freeze_software_level(is_long, _fx_dlo, _fx_dhi, _fx_ep0)
+            if _fx_lvl0 > 0:
+                try:
+                    position.fixed_stop_price = _fx_lvl0
+                except Exception:
+                    pass
+        if _fx_lvl0 > 0 and _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
+            _fx_side0 = 'SELL' if is_long else 'BUY'
+            logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_lvl0:.6f} g={float(gain or 0):.2f}% → HARD_STOP CLOSE (non-negotiable)")
+            await service.trade_manager.execute_now(position_key, account_key, symbol, pos_amt, _fx_side0, position_side, pos_amt, current_price, f"FIXED_STOP_{int(time.time())}", f"FIXED_STOP_{position_side}_px{current_price:.6f}_lvl{_fx_lvl0:.6f}_g{float(gain or 0):.2f}", True, 'CLOSE')
+            return
         if gain < -1.5 and pos_amt > pos_min_qty:
             # We verify if an active hedge ACTUALLY exists before trusting STRICT_NO_LOSS
             has_active_hedge_for_bleed = False

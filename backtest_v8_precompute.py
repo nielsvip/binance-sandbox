@@ -920,6 +920,49 @@ def load_klines(path: Path) -> Optional[pd.DataFrame]:
         return None
 
 
+def _source_score(df, tf, mode, now_ts):
+    """(tail_ok, bars, last_ts): best COMPLETE single source wins. No merges."""
+    try:
+        last = float(pd.DatetimeIndex(pd.to_datetime(df.index, utc=True))[-1].timestamp())
+    except Exception:
+        return (False, 0, 0.0)
+    if mode == "tradier":
+        tail_ok = (now_ts - last) / 86400.0 <= 4.0
+    else:
+        sec = {"15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "W": 604800, "M": 2592000}.get(tf, 900)
+        latest_closed = (now_ts // sec) * sec - sec
+        tail_ok = 0 <= (latest_closed - last) <= 2 * sec
+    return (tail_ok, len(df), last)
+
+
+def _pick_best_source(symbol, tf, sources, mode):
+    """USER 2026-10-12: ONE complete source per symbol/TF — never union gap-fill.
+    Returns (df or None, dirname or None). NPZ_SOURCE_UNION_LEGACY=1 restores merge."""
+    cands = []
+    for d in sources:
+        df = load_klines(d / f"{symbol}_{tf}.json")
+        if df is None or len(df) < 30:
+            continue
+        cands.append((d, df))
+    if not cands:
+        return None, None
+    if os.environ.get("NPZ_SOURCE_UNION_LEGACY") == "1":
+        merged_df = cands[0][1]
+        for d, df in cands[1:]:
+            combined = pd.concat([merged_df, df])
+            combined = combined[~combined.index.duplicated(keep="first")].sort_index()
+            if len(combined) > len(merged_df):
+                logger.info(f"  {symbol} {tf}: LEGACY union {len(merged_df)}→{len(combined)} (+{len(combined)-len(merged_df)} from {d.name})")
+                merged_df = combined
+        return merged_df, "union-legacy"
+    now_ts = time.time()
+    scored = sorted(((_source_score(df, tf, mode, now_ts), d, df) for d, df in cands), key=lambda t: (t[0][0], t[0][1], t[0][2]), reverse=True)
+    (tail_ok, bars, _), d, df = scored[0]
+    dropped = [(dd.name, len(ddf)) for (_, dd, ddf) in scored[1:]]
+    logger.info(f"  {symbol} {tf}: source {d.name} {bars} bars tail_ok={tail_ok} (dropped {dropped or 'none'})")
+    return df, d.name
+
+
 def _resolve_split_price_factor(
     frame: pd.DataFrame,
     effective: pd.Timestamp,
@@ -1443,7 +1486,7 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str, last_only: bool = False) -> Dic
     out[f"kc_lower_{tf}"] = kc_lower.values.astype(np.float32)
     is_squeezed = ((bb_upper <= kc_upper) & (bb_lower >= kc_lower)).fillna(False)
     out[f"squeeze_{tf}"] = is_squeezed.values.astype(np.int8)
-    was_squeezed = is_squeezed.shift(1).fillna(False)
+    was_squeezed = is_squeezed.shift(1, fill_value=False)  # USER 2026-10-12 log-noise fix: fill_value avoids NaN->object->fillna FutureWarning (identical values, stays bool)
     released = was_squeezed & (~is_squeezed)
     fire = np.where(released & (close > kc_mid), 1, np.where(released & (close < kc_mid), -1, 0))
     out[f"squeeze_fire_{tf}"] = fire.astype(np.int8)
@@ -1865,26 +1908,29 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         else:
             sources = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache", BASE_PATH / "klines_cache_gateway"]
     for tf in tfs:
-        # Merge across all sources: longest file wins, but also fill gaps from gateway
-        # by unioning timestamps (gateway as backup for any missing kline).
-        merged_df = None
-        for d in sources:
-            path = d / f"{symbol}_{tf}.json"
-            df = load_klines(path)
-            if df is None or len(df) < 30:
-                continue
-            if merged_df is None:
-                merged_df = df
-            else:
-                # Union: gateway fills any timestamp not in primary; keep primary on overlap
-                combined = pd.concat([merged_df, df])
-                combined = combined[~combined.index.duplicated(keep="first")]
-                combined = combined.sort_index()
-                if len(combined) > len(merged_df):
-                    logger.info(f"  {symbol} {tf}: gateway merge {len(merged_df)}→{len(combined)} bars (filled {len(combined)-len(merged_df)} gaps from {d.name})")
-                    merged_df = combined
-        if merged_df is not None:
-            dfs[tf] = merged_df
+        # USER 2026-10-12: ONE complete source per symbol/TF (_pick_best_source).
+        # Union gap-filling is BANNED (franken-klines -> shitty NPZ). Legacy merge
+        # only via NPZ_SOURCE_UNION_LEGACY=1.
+        best_df, best_src = _pick_best_source(symbol, tf, sources, mode)
+        if best_df is not None:
+            dfs[tf] = best_df
+    # USER 2026-10-12: no complete 15m anywhere -> resample 15m from finer TFs
+    # (1m, then 3m — we have everything). A resampled-complete 15m beats a
+    # gappy/stale authentic one; never fill gaps, replace the frame.
+    try:
+        _need15 = ("15m" not in dfs) or (not _source_score(dfs["15m"], "15m", mode, time.time())[0])
+        if _need15:
+            for _ftf in ("1m", "3m"):
+                _fdf, _fsrc = _pick_best_source(symbol, _ftf, sources, mode)
+                if _fdf is None or len(_fdf) < 30:
+                    continue
+                _rs = resample_tf(_fdf, "15m")
+                if _rs is not None and len(_rs) >= 30:
+                    dfs["15m"] = _rs
+                    logger.warning(f"  {symbol} 15m: NO complete authentic source — resampled {_ftf}@{_fsrc}->{len(_rs)} bars (good klines, not gap-fill)")
+                    break
+    except Exception as _rs_e:
+        logger.warning(f"  {symbol} 15m resample fallback skipped: {_rs_e}")
     dfs = _apply_split_adjustments(symbol, dfs)
     # FORMING-BAR DROP 2026-10-10: a still-forming bar (partial OHLCV) poisons tail indicators and makes
     # builds timing-dependent (mid-bar builds embed partials). Drop per-TF bars newer than TF+75s settle

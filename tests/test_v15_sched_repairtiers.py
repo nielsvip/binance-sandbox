@@ -25,3 +25,14 @@ def test_all_tiers_open_with_env(monkeypatch):
     for t in ("W", "M", "L"):
         assert S._gs_allowed_for_tier(t, True) is True
         assert S._repair_allowed_for_tier(t, True) is True
+
+
+def test_quota_blocks_fresh_only_chain_drains():
+    tiers = {"MCD_LONG": {"tier": "L"}, "MCD_SHORT": {"tier": "L"}}
+    assert S._quota_blocks("MCD", tiers, {"MCD": {"LONG": ("need30", 1), "SHORT": ("terminal_ok", None)}}) is True
+    assert S._quota_blocks("MCD", tiers, {"MCD": {"LONG": ("terminal_ok", None), "SHORT": ("needgs", 1)}}) is False
+    assert S._quota_blocks("MCD", tiers, {"MCD": {"LONG": ("terminal_ok", None), "SHORT": ("needrepair", 1)}}) is False
+    assert S._quota_blocks("MCD", tiers, {"MCD": {"LONG": ("terminal_ok", None), "SHORT": ("need365", 1)}}) is False
+    tiers_w = {"A_LONG": {"tier": "W"}, "A_SHORT": {"tier": "M"}}
+    assert S._quota_blocks("A", tiers_w, {"A": {"LONG": ("need30", 1), "SHORT": ("need30", 1)}}) is False
+    assert S._quota_blocks("NEW", {}, {"NEW": {"LONG": ("need30", 1)}}) is False
