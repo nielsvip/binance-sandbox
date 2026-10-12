@@ -378,3 +378,15 @@ def test_sync_promoted_bold_vs_cat_and_overlay_add(tmp_path, monkeypatch):
     rep = SP.sync_default_surfaces(None, apply=False, keys=["FAST_RISER_DOUBLE_ENABLED"])
     assert not rep.get("error")
     assert not [p for p in rep["needs_manual"] if p.get("key") == "FAST_RISER_DOUBLE_ENABLED" and "overlay" in str(p.get("why"))]
+
+
+def test_quickconfig_recent_reduction_lockstep_live():
+    # USER 2026-10-12: RECENT_REDUCTION_GUARD promoted True (was False "inert until promotion").
+    # Unanimous truth — live True (user-ordered 2026-06-03 anti-churn), both crypto bolds True.
+    # Pin the lockstep so a silent re-divergence fails loudly instead of skewing pilot cat-side baselines.
+    import config as C
+    import v12_quick_engine as V
+
+    assert V.QuickConfig().RECENT_REDUCTION_GUARD_ENABLED is True
+    assert C.Config().RECENT_REDUCTION_GUARD_ENABLED is True
+    assert V.QuickConfig().RECENT_REDUCTION_GUARD_ENABLED == C.Config().RECENT_REDUCTION_GUARD_ENABLED

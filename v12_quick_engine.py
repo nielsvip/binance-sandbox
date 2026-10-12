@@ -5206,7 +5206,7 @@ class QuickConfig:
     REENTRY_BAR_STRUCTURE_ENABLED: bool = True
     REENTRY_BAR_STRUCTURE_TF: str = "3m"
     RECENT_REDUCTION_GUARD_ENABLED: bool = (
-        False  # WIRING LANE C L1b: DIVERGENCE live True (config.py:883); inert until promotion
+        True  # USER 2026-10-12: PROMOTED (was False): unanimous truth — live True (user-ordered 2026-06-03 anti-churn), template bolds True/True; closes verify-live-switches HARD, pilot cat-side now live-faithful
     )
     RECENT_REDUCTION_GUARD_WINDOW_S: float = (
         300.0  # WIRING LANE C L1b: crypto live default (stocks 450 via apply_tradier_defaults)
