@@ -144,6 +144,36 @@ def last_session_final_bar(now=None):
     return 0
 
 
+NYSE_HOLIDAYS = frozenset({
+    "2026-11-26", "2026-12-25",
+    "2027-01-01", "2027-01-18", "2027-02-15", "2027-04-02", "2027-05-31", "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24",
+    "2028-01-03",
+})  # extend yearly; the freshness gate treats these as non-sessions (no bars expected)
+
+
+def last_rth_close_bar(now=None):
+    """most recent RTH-session 15m-bar close, epoch; 0 when none in range (clock sanity). RTH = 9:30-16:00 ET
+    on non-holiday weekdays. Weekend/pre-open/holiday -> previous session's 16:00 ET close; live RTH -> latest
+    closed 15m bar; post-close -> today's 16:00 ET. THE freshness-gate cutoff for stocks (v12_pilot.npz_freshness):
+    rebuilt NPZs carry RTH bars, so the ext 19:45 close is the wrong bar to demand."""
+    now = now if now is not None else dt.datetime.now(dt.timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=dt.timezone.utc)
+    ts_now = now.timestamp()
+    et_now = now.astimezone(ET)
+    mm = et_now.hour * 60 + et_now.minute
+    if et_now.weekday() < 5 and et_now.date().isoformat() not in NYSE_HOLIDAYS and 570 <= mm < 960:
+        return (int(ts_now) // BAR) * BAR - BAR
+    for back in range(12):
+        d = (et_now - dt.timedelta(days=back)).date()
+        if d.weekday() >= 5 or d.isoformat() in NYSE_HOLIDAYS:
+            continue
+        cand = int(dt.datetime(d.year, d.month, d.day, 16, 0, tzinfo=ET).timestamp())
+        if cand + BAR <= ts_now:
+            return cand
+    return 0
+
+
 def backlog_window(ts_last, sent_through_prev, now_s):
     """(lo_excl, hi_incl) ts window needing sentiment (re)patch, or None. Unknown sent_through -> the last
     SENT_BACKFILL_S window (one-time heal for pre-tracking rows, e.g. restart-interrupted placeholders)."""
@@ -641,11 +671,33 @@ def splice(L, tail, symbol, overlap=8, mode="crypto"):
     ts_t = np.asarray(tail["timestamps"]).astype(np.int64)
     new_mask = ts_t > ts_old[-1]
     k_new = int(new_mask.sum())
-    info = {"n_old": n_old, "appended": k_new, "new_ts": [int(t) for t in ts_t[new_mask].tolist()]}
     if k_new == 0:
-        return None, info
+        return None, {"n_old": n_old, "appended": 0, "new_ts": []}
     if (ts_t[new_mask][0] - ts_old[-1]) <= 0 or not np.all(np.diff(ts_t[new_mask]) > 0):
-        raise ValueError("non-monotonic tail timestamps")
+        # VENDOR/CACHE-OVERLAP TOLERANCE (2026-10-12): the tail builder stitches REST-fresh bars onto cache bars
+        # and the two can overlap (same bar twice). Identical-bar dups collapse exactly; on value conflict the
+        # LAST occurrence (freshest source) wins. Loud log; a genuinely disordered tail still raises below.
+        _seen, _keep = set(), []
+        for _i in range(len(ts_t) - 1, -1, -1):
+            _t = int(ts_t[_i])
+            if _t not in _seen:
+                _seen.add(_t)
+                _keep.append(_i)
+        _keep = np.array(sorted(_keep))
+        _ndrop = len(ts_t) - len(_keep)
+        if _ndrop > 0:
+            _tk = [k for k in tail if np.ndim(tail[k]) >= 1 and len(tail[k]) == len(ts_t)]
+            for k in _tk:
+                tail[k] = np.asarray(tail[k])[_keep]
+            ts_t = ts_t[_keep]
+            new_mask = ts_t > ts_old[-1]
+            k_new = int(new_mask.sum())
+            log(f"{symbol} tail deduped {_ndrop} overlap rows (vendor/cache stitch, freshest wins)")
+            if k_new == 0:
+                return None, {"n_old": n_old, "appended": 0, "new_ts": []}
+        if (ts_t[new_mask][0] - ts_old[-1]) <= 0 or not np.all(np.diff(ts_t[new_mask]) > 0):
+            raise ValueError("non-monotonic tail timestamps")
+    info = {"n_old": n_old, "appended": k_new, "new_ts": [int(t) for t in ts_t[new_mask].tolist()]}
     row_keys = [k for k in L if np.ndim(L[k]) >= 1 and len(L[k]) == n_old and k != "htf_align"]
     D = {}
     builder_keys = set()

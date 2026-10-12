@@ -10521,15 +10521,40 @@ def main():
     except Exception as _npzF_e:
         print(f"[npz-final-warn] {new_symside}: {_npzF_e} — continuing without midrun check (flagged)", flush=True)
         progress["npz_final_check"] = f"error: {_npzF_e}"[:150]
-    def fmt(v): return f"{v:.2f}".replace("-", "m").replace(".", "p")
-    final_name = f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix.xlsx"
+    # USER 2026-10-03 (final naming) + 2026-10-12 dupe fix: legacy-fallback publish uses the SAME
+    # new-style name as the spec-fill path (int-percent gain + _t{trades}) — old cents/no-trades names
+    # written here re-pulled as dupes on every 60s sync. Fresh-verify gain+trades like the 5399 path.
+    from tools.v15_final_naming import final_matrix_name as _final_matrix_name_legacy
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_legacy_pub
+    _leg_trades = None
+    _leg_gain = float(cumulative_gain)
+    try:
+        _leg_fresh = _eps_legacy_pub(prepared, dict(cumulative_overrides), args.window_days) if prepared is not None else {}
+        if _leg_fresh and _leg_fresh.get("trades") is not None:
+            _leg_trades = int(_leg_fresh.get("trades"))
+            _leg_gain = float(_leg_fresh.get("gain_pct"))
+    except Exception as _leg_e:
+        print(f"[legacy-publish-fresh-warn] {new_symside}: {_leg_e} — trying slow eval", flush=True)
+    if _leg_trades is None:
+        try:
+            from tools.opt.v12_pilot import evaluate_sanitized as _es_legacy_pub
+            _leg_slow = _es_legacy_pub(new_symside, dict(cumulative_overrides), window_days=args.window_days) or {}
+            if _leg_slow.get("trades") is not None:
+                _leg_trades = int(_leg_slow.get("trades"))
+                _leg_gain = float(_leg_slow.get("gain_pct"))
+        except Exception as _leg_e2:
+            print(f"[legacy-publish-slow-warn] {new_symside}: {_leg_e2}", flush=True)
+    if _leg_trades is None:
+        raise RuntimeError("final trades unknown — refusing bh/gain publish (no-lies)")
+    final_name = _final_matrix_name_legacy(new_symside, float(bh_raw), _leg_gain, _leg_trades, 30)
     final_path = OUT_DIR / final_name
     if final_path.exists():
         ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-        final_path = OUT_DIR / f"{new_symside}_bh{fmt(bh_raw)}_gain{fmt(cumulative_gain)}_30d_matrix_pilot_{ts}.xlsx"
+        final_path = OUT_DIR / (final_name.replace(".xlsx", "") + f"_pilot_{ts}.xlsx")
     import shutil
     shutil.copy2(wb_path, final_path)
-    progress["final_gain"] = cumulative_gain
+    progress["final_gain"] = _leg_gain
+    progress["final_trades"] = _leg_trades
     progress["bh"] = bh_raw
     progress["final_path"] = str(final_path)
     try:

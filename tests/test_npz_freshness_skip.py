@@ -54,6 +54,19 @@ def test_two_bars_stale(fresh_root):
     assert fresh is False
 
 
+def test_stocks_rth_cutoff(fresh_root, monkeypatch):
+    root, _ = fresh_root
+    from tools.npz_bar_refresh import last_rth_close_bar
+    cut = int(last_rth_close_bar())
+    assert cut > 0
+    _mk_npz(root, "TST", cut)
+    fresh, _ = P.npz_freshness("TST_LONG")
+    assert fresh is True
+    _mk_npz(root, "TST", cut - 2 * 86400)
+    fresh, reason = P.npz_freshness("TST_LONG")
+    assert fresh is False and "STALE_NPZ_SKIPPED" in reason
+
+
 def test_missing_file_defers_to_loader(fresh_root):
     fresh, reason = P.npz_freshness("NOSUCHSYM_LONG")
     assert fresh is True and reason == ""
