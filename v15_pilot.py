@@ -5558,6 +5558,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if parity is not None and not parity[0]:
                 _flag_to_md(flags_md, "LIVE", 0, "PARITY", "FAIL", f"live vs vec parity fail {parity[1]}", float(live_res["gain_pct"]), final_gain, final_gain)
         else:
+            # WARN→FAIL POLICY (Stream B, documented-not-failed): a missing live
+            # leg blanks H/I + records the reason in progress["live_verified"] —
+            # that IS the fail-closed surface (no number is safer than a wrong
+            # number). Failing the whole board here would discard hours of valid
+            # vector receipts on a live-engine timeout; the parity FAIL flag on
+            # stamped rows + BLANK H on unstamped rows carries the verdict.
             print(f"[spec-live] {new_symside} H/I left BLANK: {live_reason}", flush=True)
         progress["live_verified"] = {"gain_pct": (live_res or {}).get("gain_pct"), "pool_sharpe": (live_res or {}).get("pool_sharpe"), "trades": (live_res or {}).get("trades"), "parity": list(parity) if parity else None, "reason": live_reason}
         _atomic_write_json(progress_path, progress)
@@ -6077,6 +6083,11 @@ def preload_prepared(symside: str, window_days: int = 30):
 
 def live_evaluate(symside: str, overrides: dict, window_days: int = 30) -> dict:
     import os as _os
+    # V8_SKIP GUARD (Stream B): V8_SKIP_PROCESS_POSITION=1 stubs the live
+    # process_position call — any H-column number from a stubbed run is a lie,
+    # so refuse BEFORE touching the engine (H stays BLANK + reason recorded).
+    if _os.environ.get("V8_SKIP_PROCESS_POSITION", "0") == "1":
+        return {"symside": symside, "valid": False, "invalid_reason": "V8_SKIP_PROCESS_POSITION=1: live path stubbed, H refused", "gain_pct": None, "trades": 0, "pool_sharpe": 0.0}
     _os.environ["V12_NPZ_CACHE"] = "32"
     # 2026-10-04 parity-harness (staged): enable the scalar churn fix for the
     # DONE-stage live verify (same pattern as tools/v15_parity_check.py). Without
@@ -6117,6 +6128,15 @@ def vector_evaluate_cached(symside: str, overrides: dict, window_days: int = 30)
     return evaluate_prepared_sanitized(prep, overrides, window_days=window_days)
 
 def parity_ok(live: dict, vec: dict, allow_zero_baseline: bool = False) -> tuple[bool, str]:
+    # SPIKE handling (Stream B): a spike-corrupt leg (>2% bad-tick trades) can
+    # never verify — fail parity with reason instead of stamping H on corrupt
+    # data. Legs without spike fields (older live engine) are unaffected.
+    for _leg, _name in ((live, "live"), (vec, "vec")):
+        try:
+            if float((_leg or {}).get("spike_frac") or 0.0) > 0.02:
+                return False, f"{_name} spike-corrupt: spike_frac={float(_leg.get('spike_frac')):.3f} (>{0.02})"
+        except (TypeError, ValueError):
+            pass
     if not live.get("valid"):
         return False, f"live invalid: {live.get('invalid_reason')}"
     if not vec.get("valid"):
@@ -10888,6 +10908,15 @@ def main():
                     print(f"[live-verify-ok] {k}={v} live {live.get('gain_pct'):.2f} vec {vec.get('gain_pct'):.2f} ok", flush=True)
         except Exception as e:
             import traceback
+            # WARN→FAIL (Stream B, where safe): a crashed switch-by-switch pass
+            # must not vanish into a log line — record it on progress so the
+            # herd/verifier sees UNVERIFIED instead of assuming it ran. The board
+            # itself is NOT failed: vector cells stand on their own receipts and
+            # the DONE-stage live verify (H/I + parity flag) is the binding gate.
+            try:
+                progress["live_verify_warn"] = f"{type(e).__name__}: {e}"[:200]
+            except Exception:
+                pass
             print(f"[live-verify-warn] {e} {traceback.format_exc()[:800]}", flush=True)
     # complete zoomable chart (offline file:// like /private/tmp/MU_LONG_30D_REAL_ZOOMABLE.html) with all trades
     try:

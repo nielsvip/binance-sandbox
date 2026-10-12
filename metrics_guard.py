@@ -61,6 +61,49 @@ def sym_sharpe_from_groups(returns_by_sym: Mapping[str, Sequence[float]]) -> flo
     return (sum(caps) / len(caps)) if caps else 0.0
 
 
+def realised_closes(ledger) -> List[dict]:
+    """Return the realised-close rows of an engine ledger (PAR/001 unit).
+
+    OPEN/AUGMENT/REDUCE position-scaling events carry no pnl_dollars and must
+    never enter trade counts or Sharpe; pre-window seed markers
+    (seeded_prewindow) stay in the ledger for reason trace but never count.
+    """
+    out = []
+    for t in ledger or []:
+        if not isinstance(t, dict):
+            continue
+        if t.get("pnl_dollars") is None:
+            continue
+        if t.get("seeded_prewindow"):
+            continue
+        out.append(t)
+    return out
+
+
+def pool_sharpe_from_ledger(ledger, gain_field: str = "pnl_pct") -> float:
+    """pool_sharpe over realised closes ONLY — the single sanctioned
+    ledger->Sharpe path. Rows are included by gain-field PRESENCE (engine
+    OPEN/AUGMENT/REDUCE events carry no gain field, so they are excluded; the
+    old `t.get(field) or 0.0` over all rows diluted Sharpe with zeros).
+    Presence — not pnl_dollars — is the filter so minimal gain-only rows still
+    count; on real engine ledgers both filters agree (closes always carry
+    pnl_dollars AND pnl_pct). Pre-window seeds never count."""
+    pct = []
+    for t in ledger or []:
+        if not isinstance(t, dict):
+            continue
+        if t.get("seeded_prewindow"):
+            continue
+        g = t.get(gain_field)
+        if g is None:
+            continue
+        try:
+            pct.append(float(g))
+        except (TypeError, ValueError):
+            continue
+    return pool_sharpe(pct)
+
+
 def standard_metric_set(returns_by_sym: Mapping[str, Sequence[float]],
                         years: float) -> Dict[str, float]:
     """Compute the CLAUDE.md STANDARD METRIC SET from per-symbol return lists.

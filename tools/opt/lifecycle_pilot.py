@@ -247,6 +247,9 @@ def _config_and_month_npz(symside: str, overrides: Mapping[str, Any], window_day
     if npz is None:
         raise ValueError(f"no NPZ for {symside}")
     npz, window = exact_month_slice(npz, crypto, window_days=window_days)
+    # Provenance on the SLICED (pre-compaction) window: contiguous full-file
+    # rows, so verify_window_provenance reproduces it by [first, last] bounds.
+    window["npz_provenance"] = E._record_npz_provenance(symbol, npz)
     npz, floor = compact_to_completed_timeframe(npz)
     from min_decision_tf_guard import clamp_config, guard_npz
     npz, guard_receipt = guard_npz(npz, EXECUTION_TF)
@@ -282,7 +285,9 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
     trades_rows = len(ledger)
     # PAR/001 2026-10-01: trades = REALISED closes (rows with pnl_dollars) — same unit as evaluate_v12 and backtest_v12_engine; the old all-rows count is kept as trades_rows
     # [w2-carryin cut-fix] pre-window seed marker rows never count as trades (same filter as evaluate_v12/engine _mtrades)
-    trades = sum(1 for t in ledger if isinstance(t, dict) and "pnl_dollars" in t and not t.get("seeded_prewindow"))
+    from metrics_guard import realised_closes as _mg_realised
+    realised = _mg_realised(ledger)
+    trades = len(realised)
     out.update({
         "valid": True,
         "invalid_reason": "",
@@ -297,12 +302,12 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "delta_per_mo": ((gain - bh) / (float(window_days) / 30.44)) if bh is not None else None,
         "max_dd_pct": E._honest_max_dd_pct(result),
         "tim_pct": float(result.get("tim_pct") or 0.0),
-        "pool_sharpe": E._pool_sharpe_from_ledger(ledger),
+        "pool_sharpe": E._pool_sharpe_from_ledger(realised),
         "trades": trades,
         "trades_rows": trades_rows,
         "closes_per_month": trades / (float(window_days) / 30.44),
-        "wr_pct": (100.0 * sum(float(t.get("pnl_dollars") or 0) > 0 for t in ledger if isinstance(t, dict) and "pnl_dollars" in t) / trades) if trades else 0.0,
-        "gain_dollars": sum(float(t.get("pnl_dollars") or 0) for t in ledger if isinstance(t, dict)),
+        "wr_pct": (100.0 * sum(float(t.get("pnl_dollars") or 0) > 0 for t in realised) / trades) if trades else 0.0,
+        "gain_dollars": sum(float(t.get("pnl_dollars") or 0) for t in realised),
         "peak_capital": E._peak_concurrent(ledger),
         "spike_trades_dropped": spikes,
         "spike_frac": spikes / len(ledger_all) if ledger_all else 0.0,
@@ -310,6 +315,7 @@ def evaluate_month(symside: str, overrides: Mapping[str, Any], include_ledger: b
         "mode": mode,
         "tokenised": tokenised,
         "seeded": result.get("seeded"),  # [w2-carryin cut-fix] propagate engine seed attestation (None when unseeded)
+        "npz_provenance": window.get("npz_provenance"),
     })
     try:
         from v12_quick_engine import _base_safe as _mae_bs
