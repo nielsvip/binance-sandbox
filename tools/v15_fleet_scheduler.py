@@ -483,6 +483,24 @@ def host_py(host, mode, arg, timeout=90):
 _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFFORT)"')
 
 _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: single source of truth (gate + pending_actions); 30D 6->3, 40-min slices + free resume make more unnecessary
+_SLICE_RESUME_CAP = 20  # USER 2026-10-12: sliced-board resume budget (BG_SHORT stalled 23+ min at 3/3 attempts with 1769/3383 rows done — slices are resumes, not fresh attempts; 20x40min bounds any board, crash-loops still die at 20 quick spawns)
+
+
+def _launch_exhausted(key, window, ss, st, started, redo):
+    """True = no launch budget left. Redo resumes free; started (sliced) 30D sides draw the slice budget; everything else draws attempts."""
+    if window == "30D" and ss in (redo or set()):
+        return False
+    if window == "30D" and ss in (started or set()):
+        return (st.get("slices", {}) or {}).get(key, 0) >= _SLICE_RESUME_CAP
+    return (st.get("attempts", {}) or {}).get(key, 0) >= _LAUNCH_CAPS[window]
+
+
+def _burn_launch(key, window, ss, st, started, n=1):
+    """Burn the right budget: slice counter for started-30D resumes (attempts frozen — rotation keeps near-done boards early), attempts otherwise."""
+    if window == "30D" and ss in (started or set()):
+        st.setdefault("slices", {})[key] = st.get("slices", {}).get(key, 0) + n
+    else:
+        st.setdefault("attempts", {})[key] = st.get("attempts", {}).get(key, 0) + n
 _VENUE_ONLY = os.environ.get("V15_SCHED_VENUE_ONLY", "").strip().lower()  # TEMPORARY USER 2026-10-10: stocks-only weekend push (all stocks rereun before Monday) — gates NEW pairs only; held chains drain, running pilots untouched. Unset/unknown = no gate.
 def _venue_allowed(sym, native_syms=None):
     """TEMPORARY stocks-only gate (USER 2026-10-10). True unless V15_SCHED_VENUE_ONLY=stocks and sym is not native-stocks venue. USDT stock equivalents (AAPLUSDT) are NEVER stocks: user 2026-10-10 mandates actual Tradier info only (their klines+npz deleted fleet-wide). Pure (tested)."""
@@ -1078,7 +1096,7 @@ def tick(args, cfg, now):
         lst.sort(key=lambda s: (rank[v].get(s, 10 ** 6), s))  # worst-first per the previous order file, unknown last
     st = load_state()
     st = _fresh_daily_state(st, now.strftime("%Y%m%d"))
-    st.setdefault("held", {}); st.setdefault("attempts", {}); st.setdefault("ready", {}); st.setdefault("launched_at", {})
+    st.setdefault("held", {}); st.setdefault("attempts", {}); st.setdefault("slices", {}); st.setdefault("ready", {}); st.setdefault("launched_at", {})
     try:
         _now0 = now.timestamp()
         st["launched_at"] = {k: v for k, v in st["launched_at"].items() if _now0 - float(v or 0) < 3600}
@@ -1096,8 +1114,13 @@ def tick(args, cfg, now):
                 gone = {a_["ss"] for a_ in r_["actions"] if not a_["why"].startswith("orphaned")}
                 for ss_ in gone:
                     stats[h_["name"]]["running"].pop(ss_, None)
+                _reap_started = {x for _s in stats.values() if _s for x in (_s.get("started") or [])}
                 for k_, w_ in _reap_burns(r_["actions"], st.get("last_act")).items():
-                    st["attempts"][k_] = st["attempts"].get(k_, 0) + w_
+                    _rk_ss, _, _rk_w = (k_.split("|") + ["", ""])[:3]
+                    if _rk_w == "30D" and _rk_ss in _reap_started:
+                        st["slices"][k_] = st["slices"].get(k_, 0) + 4 * w_  # USER 2026-10-12: reaps burn the slice budget (x4 preserves parks-after-2-trips under cap 20)
+                    else:
+                        st["attempts"][k_] = st["attempts"].get(k_, 0) + w_
                 for a_ in r_["actions"]:
                     print(f"[reap] {h_['name']} {a_['ss']} {a_['why']} pids={a_['pids']}", flush=True)
                 for a_ in r_["actions"]:
@@ -1110,6 +1133,7 @@ def tick(args, cfg, now):
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
     if cur_pdir and st.get("attempts_pdir") != cur_pdir:
         st["attempts"] = {}
+        st["slices"] = {}
         st["attempts_pdir"] = cur_pdir  # SLOT fix 2026-10-01: day-level attempt counters carried over from the previous run's progress dir exhausted every chain action of the new run, so pairs held slots forever
     is_open, mto = us_market_open(now), minutes_to_open(now)
     vorder = venue_order(now)
@@ -1389,9 +1413,8 @@ def tick(args, cfg, now):
             if s in ("need30", "need365", "needrepair", "needgs"):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
-                _is_redo_resume = w == "30D" and f"{sym}_{side}" in redo
-                if not _is_redo_resume and st["attempts"].get(key, 0) >= _LAUNCH_CAPS[w]:  # USER 2026-10-09: 30D 6->3 (slices + free resume make more unnecessary); hopeless sides stop burning slots
-                    continue  # USER 2026-10-10 (82 redo backlog): needs_redo resume is FREE (attempts already paid; pilot resumes + refills, never restarts)
+                if _launch_exhausted(key, w, f"{sym}_{side}", st, started, redo):
+                    continue  # USER 2026-10-09: 30D 6->3 fresh (hopeless sides stop burning slots); USER 2026-10-10: redo resume FREE; USER 2026-10-12: sliced (started) 30D sides draw the 20-slice budget, not attempts
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
         return acts
 
@@ -1495,7 +1518,7 @@ def tick(args, cfg, now):
                 except subprocess.TimeoutExpired:
                     print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
-                    st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
+                    _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started)
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
                     st["launched_at"][a["key"]] = _now_ts
                     launched_keys.add(a["key"])
@@ -1535,7 +1558,7 @@ def tick(args, cfg, now):
                 if _now_ts - float(_bf_ts.get(sym2, 0) or 0) < 3600:
                     continue
                 key2 = f"{ss}|30D"
-                if st["attempts"].get(key2, 0) >= _LAUNCH_CAPS["30D"] or key2 in launched_keys:
+                if _launch_exhausted(key2, "30D", ss, st, started, redo) or key2 in launched_keys:
                     continue
                 try:
                     t2 = ((_gtiers or {}).get(ss) or {}).get("tier", "M")
@@ -1563,7 +1586,7 @@ def tick(args, cfg, now):
                         subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
                     except subprocess.TimeoutExpired:
                         print(f"[sched] backfill launch ssh timeout {h['name']} {sym2} (job may still have started; pgrep dedups)", flush=True)
-                    st["attempts"][key2] = st["attempts"].get(key2, 0) + 1
+                    _burn_launch(key2, "30D", ss, st, started)
                     st.setdefault("last_act", {})[ss] = key2
                     _bf_ts[sym2] = _now_ts
                     launched_keys.add(key2)
