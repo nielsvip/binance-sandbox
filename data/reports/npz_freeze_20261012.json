@@ -49,5 +49,11 @@
  "snx_hollow_loop": {
   "at": "2026-10-12T12:38Z",
   "finding": "SNX 3x identical RULE#3 refusal, 1033 hollows (ENTRY_REVERSAL_BOUNCE rows 8-32 yellows uncalculated from SKIPPED_SAMPLING pos_sym=0). Deterministic: skip-policy creates hollows, completeness-gate refuses hollows = design contradiction. STOPPED relaunches. Post-open fix: fill skipped yellows honest-zero (endgame honest-zero machinery exists) instead of hollow."
+ },
+ "s1_reboot_1258": {
+  "at": "2026-10-12T12:56-12:58Z",
+  "cause": "SCHEDULED daily reboot (same 12:56-12:58 window Oct-11; 23:58 uptime)",
+  "effect": "COTI+GALA pilots killed, /tmp logs wiped; NPZ loop + live auto-recovered (loop new PID 1543, ez_copilot 1813 alive)",
+  "fix": "COTI+GALA relaunched 13:08Z on loop-ticked files (COTI 13:02, GALA 13:04), py=5 both; AAVE auto-relaunched (herd) py=5"
  }
 }
