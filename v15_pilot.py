@@ -2758,6 +2758,165 @@ def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, ne
     return (u < p), f"pos={pos}", p, u
 
 
+# ── PRIOR POLICY + SYM_SIDE TIERS + FOCUS ROUND (USER 2026-10-12: "reduce calculation time of the worst_first part by over
+# 80% using the daily average delta and pos_sym … second round more specific and larger … winners get most time, mediocre
+# and losers go through the sheet lightning fast … bh near zero is mostly a lost case") ──
+# Evidence = data/causal/switch_causal_profile.json, mined by tools/v15_switch_causal_profile.py from EVERY fleet delta log
+# (2026-10-12: 207 logs, 10.5M real engine evals, 171 sym_sides). Per cat_side it carries, for every SWITCH=cand (naked)
+# and every FILTER=opt (marginal vs naked): n_sym, pos_sym, neg_sym, mean/median delta, d_tim, d_trades, verdict
+# (USEFUL / SOMETIMES / NEUTRAL / INSUFFICIENT / USELESS / DEAD / HARMFUL). Measured: 82–93% of all eval time sat on keys
+# that were never positive on >= 10 sym_sides.
+# Law kept: EVERY row still gets its NAKED eval (bible §77, real G, never a fake 0). Only the yellow matrix (96% of evals)
+# is pruned: a row/cell whose prior verdict is DEAD / USELESS / HARMFUL on >= V15_PRIOR_MIN_N sym_sides is PRIOR-SKIPPED
+# (blank, settled, booked in progress["prior_policy"], NOT hollow — RULE#3 does not refill it) except (a) a rotating
+# 1/V15_PRIOR_ROTATE_EVERY slice per round (priors self-correct), (b) sacred / essential-gate / new rows (never pruned),
+# (c) PRIOR-REVIVED: a positive naked delta on THIS sym_side runs the skipped yellows on the spot.
+# Tiers (progress["tier"]): WINNER = potential >= max(bh, V15_TIER_WIN_GAIN) or |bh| >= V15_TIER_BIG_MOVER (big movers get
+# the time); LOST_CAUSE = |bh| < V15_TIER_BH_LOST and no evidence of > V15_TIER_LOST_GAIN; LOSER = potential <= 0 or below
+# the trade floor; else MEDIOCRE. LOSER/LOST_CAUSE run STRICT (yellows only on USEFUL/SOMETIMES rows); LOST_CAUSE skips
+# the post-stages. The FOCUS round (after the main pass) spends a tier budget only on what moved THIS sym_side.
+# Kill switches: V15_PRIOR_POLICY=0 (full board), V15_TIER_FORCE=<tier>, V15_FOCUS_S_<TIER>=0.
+_PRIOR_ON = os.environ.get("V15_PRIOR_POLICY", "1") == "1"
+_PRIOR_MIN_N = int(os.environ.get("V15_PRIOR_MIN_N", "10") or 10)
+_PRIOR_ROTATE_EVERY = int(os.environ.get("V15_PRIOR_ROTATE_EVERY", "25") or 25)
+_PRIOR_SKIP_VERDICTS = ("DEAD", "USELESS", "HARMFUL")
+_PRIOR_KEEP_VERDICTS = ("USEFUL", "SOMETIMES")
+TIERS = ("WINNER", "MEDIOCRE", "LOSER", "LOST_CAUSE")
+_TIER_BH_LOST = float(os.environ.get("V15_TIER_BH_LOST", "2.0"))
+_TIER_LOST_GAIN = float(os.environ.get("V15_TIER_LOST_GAIN", "5.0"))
+_TIER_WIN_GAIN = float(os.environ.get("V15_TIER_WIN_GAIN", "10.0"))
+_TIER_BIG_MOVER = float(os.environ.get("V15_TIER_BIG_MOVER", "25.0"))
+_TIER_FOCUS_S = {"WINNER": float(os.environ.get("V15_FOCUS_S_WINNER", "900")), "MEDIOCRE": float(os.environ.get("V15_FOCUS_S_MEDIOCRE", "300")), "LOSER": float(os.environ.get("V15_FOCUS_S_LOSER", "120")), "LOST_CAUSE": float(os.environ.get("V15_FOCUS_S_LOST_CAUSE", "0"))}
+
+
+def _prior_load(cat_side: str) -> dict:
+    """{"switch_cand": {...}, "filter_opt": {...}} of one cat_side from the causal profile; {} = no prior (full board)."""
+    try:
+        f = Path(os.environ.get("V15_PRIOR_JSON") or (Path(__file__).resolve().parent / "data" / "causal" / "switch_causal_profile.json"))
+        if not f.exists():
+            return {}
+        j = json.loads(f.read_text())
+        d = ((j.get("cat_sides") or {}).get(cat_side)) or {}
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _prior_entry(prior: dict, kind: str, key: str):
+    e = ((prior or {}).get(kind) or {}).get(key)
+    return e if isinstance(e, dict) else None
+
+
+def _prior_skip(entry, min_n: int) -> bool:
+    try:
+        return bool(entry) and str(entry.get("verdict")) in _PRIOR_SKIP_VERDICTS and int(entry.get("n_sym") or 0) >= int(min_n)
+    except Exception:
+        return False
+
+
+def _prior_keep(entry) -> bool:
+    try:
+        return bool(entry) and str(entry.get("verdict")) in _PRIOR_KEEP_VERDICTS
+    except Exception:
+        return False
+
+
+def _prior_rank(entry) -> tuple:
+    """coarse-cap rank of a yellow header: (pos_sym, summed positive delta) — proven movers first."""
+    try:
+        return (int(entry.get("pos_sym") or 0), float(entry.get("sum_pos_delta") or 0.0))
+    except Exception:
+        return (0, 0.0)
+
+
+def prior_row_policy(prior: dict, tab: str, switch, cand, hdrs, rr: int, seq: int, every: int, min_n: int, exempt: bool, strict: bool = False):
+    """Pure (tests/test_v15_prior_policy.py): -> (mode, kept_hdrs, skipped_hdrs, meta).
+    mode 'full' (nothing pruned) | 'rotate' (rotating full re-test of a pruned row) | 'naked_only' (every yellow pruned) |
+    'trimmed' (some cells pruned). Row verdict = SWITCH=cand, cell verdicts = FILTER=opt. exempt rows are never pruned.
+    strict (LOSER / LOST_CAUSE tiers): yellows only on rows whose prior verdict is USEFUL/SOMETIMES."""
+    hdrs = list(hdrs)
+    if exempt or not prior or not hdrs:
+        return "full", hdrs, [], {"why": "exempt" if exempt else ("no_prior" if not prior else "no_yellows")}
+    rot = inert_row_sampled(rr, tab, seq, every)
+    rkey = f"{str(switch).strip()}={str(cand).strip()}"
+    row_e = _prior_entry(prior, "switch_cand", rkey)
+    if _prior_skip(row_e, min_n) or (strict and not _prior_keep(row_e)):
+        why = (f"PRIOR_{row_e.get('verdict')}: pos_sym={row_e.get('pos_sym')} in {row_e.get('n_sym')} syms, mean {row_e.get('mean_delta')}" if row_e else "PRIOR_STRICT: no USEFUL/SOMETIMES evidence for this row (tier strict)")
+        if rot:
+            return "rotate", hdrs, [], {"why": "ROTATE " + why, "verdict": (row_e or {}).get("verdict")}
+        return "naked_only", [], hdrs, {"why": why, "verdict": (row_e or {}).get("verdict")}
+    kept, skipped, cells = [], [], {}
+    for h in hdrs:
+        ce = _prior_entry(prior, "filter_opt", str(h).strip())
+        if not rot and _prior_skip(ce, min_n):
+            skipped.append(h)
+            cells[h] = f"PRIOR_{ce.get('verdict')}:pos={ce.get('pos_sym')}/n={ce.get('n_sym')}"
+        else:
+            kept.append(h)
+    return ("trimmed" if skipped else "full"), kept, skipped, {"why": "row kept", "cells": cells, "verdict": (row_e or {}).get("verdict")}
+
+
+def symside_tier(baseline_gain, bh, trades, prior_best=None, floor_trades=10, force=None):
+    """Pure (tested). -> (tier, meta). potential = max(baseline gain, best earlier final gain of this sym_side).
+    WINNER: potential >= max(bh, WIN_GAIN) with the sample floor, or a BIG MOVER (|bh| >= BIG_MOVER: big opportunity either
+    way). LOST_CAUSE: flat month (|bh| < BH_LOST) and nothing ever showed > LOST_GAIN. LOSER: potential <= 0 or below the
+    trade floor. Else MEDIOCRE. force (V15_TIER_FORCE) overrides for tests/ops."""
+    f = (force if force is not None else os.environ.get("V15_TIER_FORCE", "")).strip().upper()
+    g = float(baseline_gain or 0.0)
+    b = float(bh or 0.0)
+    t = int(trades or 0)
+    pb = None if prior_best is None else float(prior_best)
+    potential = max(g, pb) if pb is not None else g
+    meta = {"baseline_gain": round(g, 4), "bh": round(b, 4), "trades": t, "prior_best": pb, "potential": round(potential, 4), "focus_s": None}
+    if f in TIERS:
+        meta["why"] = f"forced {f}"
+        meta["focus_s"] = _TIER_FOCUS_S[f]
+        return f, meta
+    if abs(b) >= _TIER_BIG_MOVER:
+        tier, why = "WINNER", f"big mover |bh| {b:.2f} >= {_TIER_BIG_MOVER}"
+    elif abs(b) < _TIER_BH_LOST and potential < _TIER_LOST_GAIN:
+        tier, why = "LOST_CAUSE", f"flat month |bh| {b:.2f} < {_TIER_BH_LOST} and potential {potential:.2f} < {_TIER_LOST_GAIN}"
+    elif potential >= max(b, _TIER_WIN_GAIN) and t >= int(floor_trades):
+        tier, why = "WINNER", f"potential {potential:.2f} >= max(bh {b:.2f}, {_TIER_WIN_GAIN}) with {t} trades"
+    elif potential <= 0.0 or t < int(floor_trades):
+        tier, why = "LOSER", f"potential {potential:.2f} <= 0 or trades {t} < {floor_trades}"
+    else:
+        tier, why = "MEDIOCRE", f"potential {potential:.2f} between 0 and max(bh {b:.2f}, {_TIER_WIN_GAIN})"
+    meta["why"] = why
+    meta["focus_s"] = _TIER_FOCUS_S[tier]
+    return tier, meta
+
+
+def _prior_best_gain(symside: str):
+    """Highest top-level final_gain of earlier finished runs of this sym_side (newest 4 progress files + the size-tier
+    ledger). Tier evidence only — never a baseline, never a setting."""
+    best = None
+    try:
+        _pst = ROOT / "data" / "persym_size_tiers.json"
+        if _pst.exists():
+            _e = (json.loads(_pst.read_text()) or {}).get(symside) or {}
+            _g30 = _e.get("g30")
+            if isinstance(_g30, (int, float)) and not isinstance(_g30, bool):
+                best = float(_g30)
+    except Exception:
+        best = None
+    try:
+        import glob as _g
+        paths = _g.glob(os.path.expanduser(f"~/v15_run*/progress/{symside}_v14_progress.json")) + [str(ROOT / "data" / "reports" / "lifecycle_pilot" / f"{symside}_v14_progress.json")]
+        paths = [p for p in paths if os.path.exists(p)]
+        paths.sort(key=lambda p: -os.path.getmtime(p))
+        for pth in paths[:4]:
+            try:
+                fg = (json.loads(Path(pth).read_text()) or {}).get("final_gain")
+            except Exception:
+                continue
+            if isinstance(fg, (int, float)) and not isinstance(fg, bool) and (best is None or float(fg) > best):
+                best = float(fg)
+    except Exception:
+        pass
+    return best
+
+
 def same_val(a, b) -> bool:
     """Module-level twin of _spec_fill_workbook._same_val (identical body) for standalone drivers (s6 365D+GS)."""
     if isinstance(a, bool) or isinstance(b, bool) or str(a).lower() in ("true", "false") or str(b).lower() in ("true", "false"):
@@ -2988,6 +3147,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     Returns updated cumulative_gain, cumulative_overrides, progress.
     """
     import time as _t
+    # USER 2026-10-12 TIERS: where this sym_side sits (vs B&H, vs its own best, sample) decides how much time it gets (symside_tier).
+    try:
+        _tier_trades = int((baseline_live or {}).get("trades") or (baseline_vec or {}).get("trades") or 0)
+    except Exception:
+        _tier_trades = 0
+    _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
+    _tier_focus_s = float(_tier_meta.get("focus_s") or 0.0)
+    _tier_strict = _tier_name in ("LOSER", "LOST_CAUSE") and os.environ.get("V15_TIER_STRICT", "1") == "1"
+    _tier_skip_post = _tier_name == "LOST_CAUSE" and os.environ.get("V15_TIER_SKIP_POST", "1") == "1"
+    progress["tier"] = {"tier": _tier_name, **_tier_meta, "strict": _tier_strict, "skip_post": _tier_skip_post, "at": utcnow()}
+    print(f"[TIER] {new_symside} {_tier_name}: {_tier_meta.get('why')} -> focus {_tier_focus_s:.0f}s strict={_tier_strict} skip_post={_tier_skip_post}", flush=True)
     import random as _rnd
     import concurrent.futures as _cf
     from openpyxl.styles import PatternFill as _PF, Font as _FT
@@ -4161,6 +4331,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _inert_stats = {"pruned": 0, "sampled": 0, "revived": 0, "yellows_skipped": 0}
     if _inert_effective:
         print(f"[AUTOPSY-INERT] {new_symside}: {len(_inert_effective)} effective switches from the autopsy base; other rows naked-only, full yellows 1/{_inert_every} (seq {_inert_seq})", flush=True)
+    # PRIOR POLICY (USER 2026-10-12): fleet causal profile decides which yellow matrices are worth computing (see prior_row_policy)
+    _prior = _prior_load(map_key_for_symside(new_symside)) if _PRIOR_ON else {}
+    _prior_stats = {"naked_only": 0, "trimmed": 0, "rotated": 0, "revived": 0, "cells_skipped": 0}
+    _prior_book = progress.setdefault("prior_policy", {"rows": {}, "cells": {}})
+    _prior_psj = _possym_load_nsym(map_key_for_symside(new_symside)) if _prior else {}
+    if _prior:
+        print(f"[PRIOR-POLICY] {new_symside} cat={map_key_for_symside(new_symside)} tier={_tier_name} strict={_tier_strict} switch_cand={len(_prior.get('switch_cand') or {})} filter_opt={len(_prior.get('filter_opt') or {})} min_n={_PRIOR_MIN_N} rotate=1/{_PRIOR_ROTATE_EVERY} (seq {_inert_seq})", flush=True)
+    elif _PRIOR_ON:
+        print(f"[PRIOR-POLICY] {new_symside} no causal profile for {map_key_for_symside(new_symside)} (data/causal/switch_causal_profile.json) — full board", flush=True)
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
         k = (sname, rr)
@@ -4240,6 +4419,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["hdrs"] = []
                 _inert_stats["pruned"] += 1
                 _inert_stats["yellows_skipped"] += len(info["inert_filters"])
+        if _prior and info["kind"] == "eval" and info["hdrs"]:
+            try:
+                _pk = (sname, str(switch).strip(), str(cand).strip())
+                _pnew = bool(((_prior_psj or {}).get(f"{sname}!{_pk[1]}={_pk[2]}") or {}).get("new"))
+                _px = str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) or str(switch).strip() in ESSENTIAL_GATE_SWITCHES or _pnew or f"{sname}!{_pk[1]}={_pk[2]}" in _coarse_expand
+                _pmode, _pkept, _pskip, _pmeta = prior_row_policy(_prior, sname, switch, cand, info["hdrs"], rr, _inert_seq, _PRIOR_ROTATE_EVERY, _PRIOR_MIN_N, _px, strict=_tier_strict)
+                info["prior_mode"] = _pmode
+                if _pskip:
+                    info["hdrs"] = _pkept
+                    info["prior_skipped"] = list(_pskip)
+                    _prior_stats["cells_skipped"] += len(_pskip)
+                    _prior_stats["naked_only" if _pmode == "naked_only" else "trimmed"] += 1
+                    _prior_book["rows" if _pmode == "naked_only" else "cells"][f"{sname}!{_pk[1]}={_pk[2]}"] = {"mode": _pmode, "why": _pmeta.get("why"), "n": len(_pskip), "verdict": _pmeta.get("verdict")}
+                elif _pmode == "rotate":
+                    _prior_stats["rotated"] += 1
+                info["prior_rank"] = {h: _prior_rank(_prior_entry(_prior, "filter_opt", str(h).strip())) for h in info["hdrs"]}
+            except Exception as _pre:
+                print(f"[PRIOR-WARN] {sname}!{rr} {_pre} — row calculated", flush=True)
         if info["kind"] == "eval" and (_ps_on or _redo_heal):
             try:
                 _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
@@ -4627,6 +4824,324 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[SACRED-REPASS] {s}!{r} {sw}={c} +{float(d):.4f} {cum_before:.4f}->{cumulative_gain:.4f}", flush=True)
         _maybe_write_json(force=bool(n_prom))
         return n_prom
+    def _focus_sheet(out):
+        try:
+            if "FOCUS_ROUND" in wb.sheetnames:
+                del wb["FOCUS_ROUND"]
+            fws = wb.create_sheet("FOCUS_ROUND")
+            fws.append(["tier", out.get("tier"), "budget_s", out.get("budget_s"), "secs", out.get("secs"), "evals", out.get("evals"), "entry_gain", out.get("entry_gain"), "exit_gain", out.get("exit_gain"), "effective_rows", out.get("effective_rows"), "skipped", out.get("skipped") or ""])
+            fws.append(["how", "what", "delta", "before", "after", "trades", "tim", "dd"])
+            for p in out.get("promotions") or []:
+                fws.append([p.get("how"), p.get("what"), p.get("delta"), p.get("before"), p.get("after"), p.get("trades"), p.get("tim"), p.get("dd")])
+            fws.append([])
+            fws.append(["steps", json.dumps(out.get("steps") or {})])
+        except Exception as _se:
+            print(f"[FOCUS-WARN] sheet write failed: {_se}", flush=True)
+    def _focus_round():
+        # USER 2026-10-12 FOCUS ROUND ("second round more specific and larger, multiplies gains"): after the prior-driven
+        # worst_first pass, spend the TIER budget only on what moved THIS sym_side (promoted rows + positive naked rows):
+        #   1. the full yellow matrix on those rows where it was prior-skipped / coarse-deferred / inert (joint promote);
+        #   2. a finer numeric grid around every promoted numeric value (x0.5 .. x2 inside the template candidate span);
+        #   3. pairwise joint evals of the top effective non-running switches (the greedy blind spot).
+        # Every promotion = real engine eval vs the LATEST cumulative, same gates as the sacred repass (valid, trade floor,
+        # TIM/trades guards, promotion_block_reason), greedy law §14.2, honest deltas §19. Resume-safe (focus_done key),
+        # budget = tier focus_s inside the 90-min herd cap. V15_FOCUS=0 disables. Never raises.
+        nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
+        import hashlib as _fh
+        t0 = _t.time()
+        budget = float(_tier_focus_s)
+        n_eval = [0]
+        _sk = lambda ov: _fh.md5(json.dumps(sorted((k, str(v)) for k, v in ov.items())).encode()).hexdigest()
+        out = {"tier": _tier_name, "budget_s": budget, "evals": 0, "promotions": [], "steps": {}, "entry_gain": float(cumulative_gain)}
+        progress["focus"] = out
+        try:
+            if os.environ.get("V15_FOCUS", "1") != "1" or budget <= 0 or prepared is None or fast_switches is not None:
+                out["skipped"] = f"budget {budget:.0f}s / V15_FOCUS={os.environ.get('V15_FOCUS', '1')} / prepared={prepared is not None} / fast={fast_switches is not None}"
+                print(f"[FOCUS] {new_symside} tier={_tier_name} skipped ({out['skipped']})", flush=True)
+                return
+            budget = min(budget, 5400.0 - (t0 - _PILOT_T0) - 900.0)
+            out["budget_s"] = budget
+            if budget < 30:
+                out["skipped"] = f"only {budget:.0f}s left inside the 90-min herd cap"
+                print(f"[FOCUS] {new_symside} skipped: {out['skipped']}", flush=True)
+                return
+            if (progress.get("focus_done") or {}).get("result_key") == _sk(cumulative_overrides):
+                out["skipped"] = "already ran on this exact set (resume)"
+                return
+            deadline = t0 + budget
+            max_evals = int(os.environ.get("V15_FOCUS_MAX_EVALS", "2500"))
+            top_k = int(os.environ.get("V15_FOCUS_TOP_K", "12"))
+            def _left():
+                return (deadline - _t.time()) > 5.0 and n_eval[0] < max_evals
+            def _ev(label, ov, sw="", c=""):
+                n_eval[0] += 1
+                return _get("FOCUS", None, sw, c, label, sanitize_overrides(dict(ov), defaults)[0], min(deadline, _t.time() + YELLOW_TIMEOUT * 4), float(cumulative_gain))
+            def _ok(res, err, d, sw=""):
+                if err or d is None or float(d) <= 1e-9:
+                    return False
+                if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) < ADAPT_FLOOR_TRADES:
+                    return False
+                if sw and promotion_block_reason(str(sw).strip(), None):
+                    return False
+                try:
+                    _ct = float((res or {}).get("tim_pct"))
+                except Exception:
+                    _ct = None
+                if tim_guard_veto(_ct, chain_tim):
+                    return False
+                try:
+                    _ctr = int((res or {}).get("trades") or 0)
+                except Exception:
+                    _ctr = None
+                if trades_guard_veto(_ctr, chain_trades):
+                    return False
+                return True
+            def _promote(ov, res, d, how, label):
+                nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
+                cb = float(cumulative_gain)
+                cumulative_overrides = sanitize_overrides(dict(ov), defaults)[0]
+                cumulative_gain = float((res or {}).get("gain_pct"))
+                e_next = cumulative_gain
+                _spec_state["ver"] += 1
+                progress["cumulative_overrides"] = dict(cumulative_overrides)
+                progress["cumulative_gain"] = float(cumulative_gain)
+                try:
+                    chain_tim = float((res or {}).get("tim_pct"))
+                except Exception:
+                    pass
+                try:
+                    chain_trades = int((res or {}).get("trades") or 0)
+                except Exception:
+                    pass
+                rec = {"how": how, "what": label, "delta": round(float(d), 4), "before": round(cb, 4), "after": round(cumulative_gain, 4), "trades": (res or {}).get("trades"), "tim": (res or {}).get("tim_pct"), "dd": (res or {}).get("max_dd_pct")}
+                out["promotions"].append(rec)
+                progress.setdefault("done", {})[f"FOCUS!{len(out['promotions'])}:{label}"] = {"delta": float(d), "promoted": True, "promoted_how": how, "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cb, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp("FOCUS"), "complete": True}
+                print(f"[FOCUS-PROMOTE] {new_symside} {how} {label} +{float(d):.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
+                _maybe_write_json(force=True)
+            # effective rows on THIS sym_side: promoted, or a positive naked delta (ranked by |movement|)
+            eff = []
+            for k, v in list((progress.get("done") or {}).items()):
+                if not isinstance(v, dict) or "!" not in k or ":" not in k:
+                    continue
+                tab, rest = k.split("!", 1)
+                rrs, _, rk = rest.partition(":")
+                if tab not in SWITCH_SHEETS or rk.endswith(":REPASS") or not rrs.isdigit():
+                    continue
+                sw, _, c = rk.partition("=")
+                try:
+                    nd = float(v.get("naked_delta")) if v.get("naked_delta") is not None else None
+                except Exception:
+                    nd = None
+                try:
+                    dd_ = abs(float(v.get("delta") or 0.0))
+                except Exception:
+                    dd_ = 0.0
+                if v.get("promoted") or (nd is not None and nd > 1e-9):
+                    eff.append((max(abs(nd or 0.0), dd_), tab, int(rrs), sw.strip(), c.strip(), k, v))
+            eff.sort(key=lambda t: -t[0])
+            out["effective_rows"] = len(eff)
+            print(f"[FOCUS] {new_symside} tier={_tier_name} budget={budget:.0f}s effective rows={len(eff)} top_k={top_k} cum={float(cumulative_gain):.4f}", flush=True)
+            # STEP 1 — the full yellow matrix on effective rows whose yellows were prior-skipped / coarse-deferred / inert
+            s1 = {"rows": 0, "cells": 0, "promoted": 0}
+            for _, tab, rr_, sw, c, k, v in eff[: top_k * 2]:
+                if not _left():
+                    break
+                deferred = [h for h in list(v.get("prior_skipped_filters") or []) + list(v.get("coarse_deferred_filters") or []) + list(v.get("inert_filters") or []) if h not in (v.get("yellows") or {})]
+                deferred = list(dict.fromkeys(deferred))
+                if not deferred:
+                    continue
+                try:
+                    sw_ov = _switch_overrides(sw, _parse_opt_value(c, defaults.get(sw)))
+                except Exception:
+                    continue
+                base = dict(cumulative_overrides)
+                base.update(sw_ov)
+                base = sanitize_overrides(base, defaults)[0]
+                running = all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items())
+                cb = float(cumulative_gain)
+                if not running:
+                    nres, nerr = _ev(f"FOCUS_NAKED:{sw}={c}", base, sw, c)
+                    nd, nok, _ = _delta_vs(nres, cb)
+                    if nerr or nd is None or float(nd) < -1e-9:
+                        continue  # the switch no longer helps on the grown set — its yellows cannot be credited
+                s1["rows"] += 1
+                pos = []
+                for h in deferred:
+                    if not _left():
+                        break
+                    f_, _, o_ = str(h).partition("=")
+                    f_, o_ = f_.strip(), o_.strip()
+                    if f_ not in known_config_fields() or f_ in UNWIRED_FILTERS or f_ in UNWIRED_SWITCHES:
+                        continue
+                    ov = dict(base)
+                    ov[f_] = _parse_opt_value(o_, defaults.get(f_))
+                    res, err = _ev(f"FOCUS_YELLOW:{h}", ov, sw, c)
+                    s1["cells"] += 1
+                    d, ok, _ = _delta_vs(res, cb)
+                    try:
+                        _col = header_maps.get(tab, {}).get(h)
+                        if _col and d is not None and not err:
+                            _ycell = wb[tab].cell(row=rr_, column=_col)
+                            _ycell.value = float(d)
+                            _ycell.font = Font(name="Arial", size=10, bold=False, italic=False, color=None if ok else "808080")
+                            _ycell.alignment = VISUAL_ALIGN
+                    except Exception:
+                        pass
+                    try:
+                        progress["done"][k].setdefault("yellows", {})[h] = (float(d) if d is not None else None)
+                        progress["done"][k].setdefault("focus_filled", []).append(h)
+                    except Exception:
+                        pass
+                    if _ok(res, err, d, sw):
+                        pos.append((float(d), h, ov, res))
+                if not pos:
+                    continue
+                pos.sort(key=lambda t: -t[0])
+                best = pos[0]
+                joint = None
+                if len(pos) > 1 and _left():
+                    jov = dict(base)
+                    for _d, h, _o, _r in pos:
+                        f_, _, o_ = str(h).partition("=")
+                        jov[f_.strip()] = _parse_opt_value(o_.strip(), defaults.get(f_.strip()))
+                    jlabel = "+".join(h for _d, h, _o, _r in pos)
+                    jres, jerr = _ev("FOCUS_JOINT:" + jlabel, jov, sw, c)
+                    jd, jok, _ = _delta_vs(jres, cb)
+                    if _ok(jres, jerr, jd, sw) and float(jd) > best[0]:
+                        joint = (float(jd), jlabel, jov, jres)
+                pick = joint or best
+                _promote(pick[2], pick[3], pick[0], "focus_yellows_joint" if joint else "focus_yellow", f"{sw}={c}@{pick[1]}")
+                s1["promoted"] += 1
+                try:
+                    _ws = wb[tab]
+                    _set_override(_ws, tab, rr_, _resolve_cols(_ws), ([] if running else [f"{sw}={c}"]) + [p_ for p_ in pick[1].split("+")])
+                except Exception as _se:
+                    print(f"[FOCUS-WARN] {tab}!{rr_} C write failed: {_se}", flush=True)
+            out["steps"]["yellows"] = s1
+            # STEP 2 — finer numeric grid around every promoted/positive numeric value (x0.5 .. x2 inside the template span)
+            s2 = {"switches": 0, "evals": 0, "promoted": 0}
+            seen_sw = set()
+            for _, tab, rr_, sw, c, k, v in eff[:top_k]:
+                if not _left():
+                    break
+                if sw in seen_sw:
+                    continue
+                seen_sw.add(sw)
+                cur = cumulative_overrides.get(sw, defaults.get(sw))
+                if isinstance(cur, bool) or not isinstance(cur, (int, float)):
+                    continue
+                cands = []
+                for (_s, _r, _sw, _c) in queue:
+                    if str(_sw).strip() != sw:
+                        continue
+                    try:
+                        pv = _parse_opt_value(_c, defaults.get(sw))
+                    except Exception:
+                        continue
+                    if isinstance(pv, (int, float)) and not isinstance(pv, bool):
+                        cands.append(float(pv))
+                if len(cands) < 2:
+                    continue
+                lo, hi = min(cands), max(cands)
+                span_lo = (lo / 2.0) if lo > 0 else ((lo * 2.0) if lo < 0 else 0.0)
+                span_hi = hi * 2.0 if hi > 0 else hi / 2.0
+                is_int = isinstance(cur, int) and all(float(x).is_integer() for x in cands)
+                grid = []
+                for m in (0.5, 0.75, 1.25, 1.5, 2.0):
+                    g_ = float(cur) * m
+                    if is_int:
+                        g_ = float(int(round(g_)))
+                    if g_ < span_lo or g_ > span_hi or any(abs(g_ - x) < 1e-12 for x in cands) or abs(g_ - float(cur)) < 1e-12:
+                        continue
+                    grid.append(int(g_) if is_int else round(g_, 6))
+                grid = list(dict.fromkeys(grid))
+                if not grid:
+                    continue
+                s2["switches"] += 1
+                best = None
+                for g_ in grid:
+                    if not _left():
+                        break
+                    if _switch_type_violation(sw, g_, defaults):
+                        continue
+                    try:
+                        sw_ov = _switch_overrides(sw, g_)
+                    except Exception:
+                        continue
+                    ov = dict(cumulative_overrides)
+                    ov.update(sw_ov)
+                    cb = float(cumulative_gain)
+                    res, err = _ev(f"FOCUS_GRID:{sw}={g_}", ov, sw, g_)
+                    s2["evals"] += 1
+                    d, ok, _ = _delta_vs(res, cb)
+                    if _ok(res, err, d, sw) and (best is None or float(d) > best[0]):
+                        best = (float(d), g_, ov, res)
+                if best is not None:
+                    _promote(best[2], best[3], best[0], "focus_grid", f"{sw}={best[1]}")
+                    s2["promoted"] += 1
+                    try:
+                        _ws = wb[tab]
+                        _set_override(_ws, tab, rr_, _resolve_cols(_ws), [f"{sw}={best[1]}"])
+                    except Exception as _se:
+                        print(f"[FOCUS-WARN] {tab}!{rr_} C write failed: {_se}", flush=True)
+            out["steps"]["grid"] = s2
+            # STEP 3 — pairwise joint evals of the top effective NON-running switches (the greedy blind spot); first synergy wins
+            s3 = {"pairs": 0, "evals": 0, "promoted": 0}
+            singles = []
+            for _, tab, rr_, sw, c, k, v in eff[: max(8, top_k)]:
+                if len(singles) >= 8 or not _left():
+                    break
+                try:
+                    sw_ov = _switch_overrides(sw, _parse_opt_value(c, defaults.get(sw)))
+                except Exception:
+                    continue
+                if all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+                    continue
+                if any(sw == s_[0] for s_ in singles) or promotion_block_reason(sw, None):
+                    continue
+                ov = dict(cumulative_overrides)
+                ov.update(sw_ov)
+                cb = float(cumulative_gain)
+                res, err = _ev(f"FOCUS_SINGLE:{sw}={c}", ov, sw, c)
+                s3["evals"] += 1
+                d, ok, _ = _delta_vs(res, cb)
+                if err or d is None:
+                    continue
+                singles.append((sw, c, sw_ov, float(d)))
+            import itertools as _it
+            for a, b_ in _it.combinations(list(singles), 2):
+                if not _left():
+                    break
+                if a[3] < -1.0 and b_[3] < -1.0:
+                    continue  # two losers do not pair
+                ov = dict(cumulative_overrides)
+                ov.update(a[2])
+                ov.update(b_[2])
+                cb = float(cumulative_gain)
+                res, err = _ev(f"FOCUS_PAIR:{a[0]}={a[1]}+{b_[0]}={b_[1]}", ov, a[0], a[1])
+                s3["pairs"] += 1
+                s3["evals"] += 1
+                d, ok, _ = _delta_vs(res, cb)
+                if _ok(res, err, d, a[0]) and float(d) > max(a[3], b_[3], 0.0) + 1e-9:
+                    _promote(ov, res, d, "focus_pair", f"{a[0]}={a[1]}+{b_[0]}={b_[1]}")
+                    s3["promoted"] += 1
+                    break
+            out["steps"]["pairs"] = s3
+        except V15Shutdown:
+            raise
+        except Exception as _fe:
+            import traceback as _tb_f
+            out["error"] = f"{_fe}"[:200]
+            print(f"[FOCUS-warn] {new_symside}: {_fe}\n{_tb_f.format_exc()[-1200:]}", flush=True)
+        finally:
+            out["secs"] = round(_t.time() - t0, 1)
+            out["evals"] = n_eval[0]
+            out["exit_gain"] = float(cumulative_gain)
+            if not out.get("skipped"):
+                progress["focus_done"] = {"result_key": _sk(cumulative_overrides), "at": utcnow()}
+                _focus_sheet(out)
+            _maybe_write_json(force=True)
+            print(f"[FOCUS] {new_symside} tier={_tier_name} {out['secs']}s evals={n_eval[0]} promotions={len(out['promotions'])} {out['entry_gain']:.4f}->{float(cumulative_gain):.4f} steps={out['steps']}{' skipped=' + str(out.get('skipped')) if out.get('skipped') else ''}", flush=True)
     _sacred_prev_tab = [None]
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
@@ -4712,6 +5227,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 results[_rv_hdr] = _get(sname, rr, switch, cand, _rv_hdr, _rv_ov, _rv_deadline, cumulative_before)
             n_items = len(plan["items"])
             print(f"[AUTOPSY-INERT-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> full yellow pass ({len(st['hdrs'])} cells)", flush=True)
+        if st.get("prior_skipped") and not is_running and naked_ok and naked_delta is not None and float(naked_delta) > 1e-9:
+            # PRIOR-REVIVED (USER 2026-10-12): the fleet prior called this switch dead/useless, but on THIS sym_side the naked
+            # flip is positive -> it binds here; its prior-skipped yellows run now (a positive row may carry positive filters).
+            _pv_hdrs = [h for h in st["prior_skipped"] if h not in st["hdrs"] and h in st["h2f"]]
+            st["prior_revived"] = list(_pv_hdrs)
+            st["prior_skipped"] = []
+            _prior_stats["revived"] += 1
+            _pv_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_pv_hdrs) // max(1, _n_proc))) + 2)
+            for _pv_hdr in _pv_hdrs:
+                _pv_f = st["h2f"][_pv_hdr]
+                _pv_ov = dict(switch_variant)
+                _pv_ov[_pv_f["filter"]] = _parse_opt_value(_pv_f["opt"], defaults.get(_pv_f["filter"]))
+                _pv_ov = sanitize_overrides(_pv_ov, defaults)[0]
+                st["hdrs"].append(_pv_hdr)
+                plan["items"].append((_pv_hdr, _pv_ov))
+                results[_pv_hdr] = _get(sname, rr, switch, cand, _pv_hdr, _pv_ov, _pv_deadline, cumulative_before)
+            n_items = len(plan["items"])
+            print(f"[PRIOR-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> {len(_pv_hdrs)} prior-skipped yellows evaluated", flush=True)
         # USER 2026-10-03 hollow-fix: a deterministic engine verdict on naked (pre-eval rejection, invalid
         # with reason — tried, answered, cached) SETTLES the row like ZERO_TRADES does. Only a missing
         # verdict (timeout/exception) keeps the row pending. Short-circuit keeps nres/nerr safe.
@@ -5013,7 +5546,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
@@ -5021,12 +5554,25 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
-        print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])}{' inert=' + str(len(st['inert_filters'])) if st.get('inert_filters') else ''}{' SAMPLED' if st.get('inert_sampled') else ''} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
+        print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])}{' inert=' + str(len(st['inert_filters'])) if st.get('inert_filters') else ''}{' SAMPLED' if st.get('inert_sampled') else ''}{' prior=' + str(st.get('prior_mode')) + ':' + str(len(st.get('prior_skipped') or [])) if st.get('prior_mode') in ('naked_only', 'trimmed') else ''}{' PRIOR-REVIVED' if st.get('prior_revived') else ''} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
         _maybe_save()
         processed += 1
     if _sacred_on:
         _sacred_final_n = _sacred_repass(None)
         print(f"[SACRED-REPASS] {new_symside} final pass: {_sacred_final_n} promotions, cumulative {float(cumulative_gain):.4f}", flush=True)
+    if _prior:
+        print(f"[PRIOR-POLICY] {new_symside}: rows naked-only={_prior_stats['naked_only']} trimmed={_prior_stats['trimmed']} rotated={_prior_stats['rotated']} revived={_prior_stats['revived']} yellow evals skipped={_prior_stats['cells_skipped']}", flush=True)
+        try:
+            progress["prior_policy"]["stats"] = dict(_prior_stats)
+        except Exception:
+            pass
+    # USER 2026-10-12 FOCUS ROUND: tier budget on what moved this sym_side (runs with the fork pool still hot)
+    try:
+        _focus_round()
+    except V15Shutdown:
+        raise
+    except Exception as _fre:
+        print(f"[FOCUS-warn] outer {_fre}", flush=True)
     if _inert_effective:
         print(f"[AUTOPSY-INERT] {new_symside}: rows pruned={_inert_stats['pruned']} sampled-full={_inert_stats['sampled']} revived={_inert_stats['revived']} yellow evals skipped={_inert_stats['yellows_skipped']}", flush=True)
     # USER 2026-10-06 REDO-HEAL: the heal marker served its purpose once the fill completes (sampling
@@ -5111,7 +5657,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # USER 2026-10-07 ENDGAME: strip filters -> naked switch retest -> one-by-one reapply to bh+10.
     # Deterministic audit BEFORE the beam-search repair. V15_ENDGAME=0 disables.
     try:
-        _endgame_filter_cycle()
+        if _tier_skip_post:
+            print(f"[ENDGAME] {new_symside} skipped (tier {_tier_name}: lightning board, USER 2026-10-12)", flush=True)
+            progress["endgame"] = {"skipped": f"tier {_tier_name}"}
+        else:
+            _endgame_filter_cycle()
     except V15Shutdown:
         raise
     except Exception as _ege2:
@@ -5121,7 +5671,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # 365D check of the finalists, replace the final set only when compliant and better. V15_DIAG_REPAIR=0 disables,
     # V15_DIAG_REPAIR_MODE=report measures + writes the tab without changing the set.
     try:
-        if os.environ.get("V15_DIAG_REPAIR", "1") == "1" and fast_switches is None and prepared is not None:
+        if _tier_skip_post:
+            print(f"[DIAG] {new_symside} skipped (tier {_tier_name}: lightning board, USER 2026-10-12)", flush=True)
+            progress["diagnose_repair"] = {"skipped": f"tier {_tier_name}"}
+        elif os.environ.get("V15_DIAG_REPAIR", "1") == "1" and fast_switches is None and prepared is not None:
             _diagnose_repair()
     except Exception as _dre:
         import traceback as _tb_dr

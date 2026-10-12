@@ -83,7 +83,34 @@ class Agg:
         }
         out["pos_rate"] = round(pos / n, 3) if n else None
         out["verdict"] = classify(out)
+        out["effect"] = effect_tags(out)
         return out
+
+
+def effect_tags(s):
+    """Causal direction tags from the mean engine differences (real evals, never estimates)."""
+    tags = []
+    dt, dtr, md = s.get("mean_d_tim"), s.get("mean_d_trades"), s.get("mean_delta")
+    if dt is not None:
+        if dt >= 2.0:
+            tags.append("TIM_UP")
+        elif dt <= -2.0:
+            tags.append("TIM_DOWN")
+    if dtr is not None:
+        if dtr >= 5.0:
+            tags.append("TRADES_UP")
+        elif dtr <= -5.0:
+            tags.append("TRADES_DOWN")
+    if dt is not None and dtr is not None and dt > 0.5 and dtr < -3.0:
+        tags.append("CHURN_CUT")
+    if md is not None:
+        if md >= 1.0:
+            tags.append("GAIN_UP")
+        elif md <= -3.0:
+            tags.append("GAIN_DOWN")
+    if s.get("invalid_sym", 0) >= 3 and s.get("invalid_sym", 0) >= 0.3 * max(1, s.get("n_sym", 1)):
+        tags.append("OFTEN_INVALID")
+    return tags
 
 
 def classify(s):
@@ -146,9 +173,11 @@ def mine_file(path, switch_agg, filter_agg, name_agg, stats):
                         marg, marg_t, marg_tr = d, dt, dtr
                     filter_agg[cs][hdr].add(sym_side, marg, marg_t, marg_tr, valid, secs, False)
                 continue
-            if label is None or label.startswith(("FINAL_", "DIAG_", "REPAIR365", "SACRED", "COARSE")):
+            if label is None or label.startswith(("FINAL_", "DIAG_", "REPAIR365", "SACRED", "COARSE", "JOINT:", "STANDALONE:", "REF_BASELINE", "RECALC", "ENDGAME", "FOCUS")) or label == "hustle":
                 stats["other_labels"] += 1
                 continue
+            if label.startswith("RED_RETRY:"):
+                label = label[len("RED_RETRY:"):]
             delta = _f(r.get("delta"))
             tim = _f(r.get("tim"))
             trades = _f(r.get("trades"))
