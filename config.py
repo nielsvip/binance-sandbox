@@ -1775,7 +1775,10 @@ class Config:
         True  # 2026-10-06 USER: hard ceiling per new OPEN / AUGMENT step = START_POSITION_SIZE(sym_side) x perf tier (vec or native); live multipliers apply inside it; MAX_ORDER_VALUE stays the absolute cap. Log [OPEN_CEIL_SPS]
     )
     OPEN_CEIL_HARD_MAX_USD: float = (
-        180.0  # USER 2026-10-11: 28 -> 180 = 4x $45 SPS; gainers reach 4x, losers capped small by their tier. Was 2026-10-06 $28.
+        180.0  # SUPERSEDED 2026-10-12 (kept for history): static 4x$45 veto replaced by computed 4x per-sym SPS + OPEN_CEIL_ABSOLUTE_MAX_USD. No live readers.
+    )
+    OPEN_CEIL_ABSOLUTE_MAX_USD: float = (
+        8000.0  # USER 2026-10-12: real risk ceiling — no single OPEN/AUGMENT step exceeds $8000, any sym, any tier. Global-only, never swept, never per-sym.
     )
     UNTESTED_FLAT_SPS_ENABLED: bool = (
         True  # 2026-10-06 USER: sym_side with no 30d matrix trades FLAT START_POSITION_SIZE (no multiplier stack, no ladder) — untested edge gets no leverage. Log [FLAT_SPS_UNTESTED].

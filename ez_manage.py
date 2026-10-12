@@ -35566,8 +35566,8 @@ class MultiAccountTradeManager:
                         logger.warning(f"[VEC_EXACT_HARD_CAP] {position_key}: position cap check error {_vxp_e}")
                 # 2026-10-06 USER (men NMR/KSM $14-18 vec OPENs -> $180: indicator adds + sentiment x2 + LS_REBALANCE x2 + DC_POS + LADDER x3):
                 # HARD ceiling for every new OPEN / AUGMENT step, vec or native = START_POSITION_SIZE(sym_side) x perf tier (missing -> 1.0).
-                # Live multipliers still apply INSIDE the ceiling; MAX_ORDER_VALUE (above) stays the absolute cap; MAX_POSITION_SIZE caps the total.
-                # 2026-10-06 USER: the ceiling is additionally clamped to OPEN_CEIL_HARD_MAX_USD ($28) — reentries included, no tier boost can exceed it.
+                # Live multipliers still apply INSIDE the ceiling; MAX_ORDER_VALUE (above) caps first; MAX_POSITION_SIZE caps the total.
+                # USER 2026-10-12: MAX_ORDER_SIZE = 4x per-sym SPS (default $180), absolute risk ceiling OPEN_CEIL_ABSOLUTE_MAX_USD ($8000) — reentries included, no tier boost can exceed either.
                 if bool(getattr(config, "OPEN_CEIL_SPS_TIER_ENABLED", True)) and quantity and quantity > 0 and current_price and current_price > 0 and not is_reduce:
                     try:
                         _oc_side = position_side or ("LONG" if side == "BUY" else "SHORT")
@@ -35578,7 +35578,8 @@ class MultiAccountTradeManager:
                         except Exception:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
-                        _oc_hard = float(_psym_cs_get(symbol, position_side, "OPEN_CEIL_HARD_MAX_USD", getattr(config, "OPEN_CEIL_HARD_MAX_USD", 180.0)))  # USER 2026-10-12: per-sym DEFINES the amount (gain-driven $5->thousands); ceiling resolves per-sym > cat_side > global. Global 180 stays the fallback default, never a veto.
+                        _oc_abs = float(getattr(config, "OPEN_CEIL_ABSOLUTE_MAX_USD", 8000.0))  # USER 2026-10-12: real risk ceiling, global-only
+                        _oc_hard = max(0.0, min(4.0 * _oc_base, _oc_abs))  # USER 2026-10-12: MAX_ORDER_SIZE = 4x per-sym SPS (default 4x$45=$180), absolute $8000; supersedes static OPEN_CEIL_HARD_MAX_USD
                         if _oc_ceil > _oc_hard:
                             _oc_ceil = _oc_hard
                         if bool(getattr(config, "UNTESTED_FLAT_SPS_ENABLED", True)):

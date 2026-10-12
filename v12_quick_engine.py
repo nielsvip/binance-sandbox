@@ -8523,6 +8523,9 @@ class QuickConfig:
     UNTESTED_FLAT_SPS_MULT: float = (
         0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).
     )
+    OPEN_CEIL_ABSOLUTE_MAX_USD: float = (
+        8000.0  # USER 2026-10-12 tandem: mirror of config.py (absolute risk ceiling; never swept, no template row).
+    )
     GAP_RISK_EXIT_ENABLED: bool = (
         False  # 2026-09-29 USER: default OFF (frequent-exit churn, stock-only) — swept switch; sane baseline WT/DC. Was True.
     )
