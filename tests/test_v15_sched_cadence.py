@@ -41,10 +41,10 @@ def test_w_cap_per_pool_keeps_highest_gain():
 def test_defer_windows_weekly_biweekly(monkeypatch):
     monkeypatch.delenv("V15_TIER_DEFER_M_D", raising=False)
     monkeypatch.delenv("V15_TIER_DEFER_L_D", raising=False)
-    assert S._defer_windows() == {"M": 5.0, "L": 10.0}
+    assert S._defer_windows() == {"M": 1.0, "L": 1.0}  # USER 2026-10-13: ALL symbols EVERY day on s1+s2
     now = 10_000_000.0
-    tiers = {"A_LONG": {"tier": "M", "mtime": now - 3 * 86400}, "B_LONG": {"tier": "L", "mtime": now - 8 * 86400}, "C_LONG": {"tier": "W", "mtime": now - 3 * 86400}}
-    win = {"M": 5.0, "L": 10.0}
+    tiers = {"A_LONG": {"tier": "M", "mtime": now - 0.5 * 86400}, "B_LONG": {"tier": "L", "mtime": now - 0.5 * 86400}, "C_LONG": {"tier": "W", "mtime": now - 3 * 86400}}
+    win = {"M": 1.0, "L": 1.0}
     assert S._side_deferred("A_LONG", tiers, now, win) and S._side_deferred("B_LONG", tiers, now, win)
     assert not S._side_deferred("C_LONG", tiers, now, win)
     assert S._refresh_due("C_LONG", tiers, now)  # W older than 24h -> daily refresh
@@ -79,6 +79,6 @@ def test_ledger_build_ranks_daily_cap(tmp_path):
     led = L.build([str(d / "*_v14_progress.json")], daily_cap=2, now=time.time())
     w = sorted(ss for ss, e in led.items() if e["sched_tier"] == "W")
     assert w == ["S0USDT_LONG", "S1USDT_LONG"]
-    assert led["S2USDT_LONG"]["sched_tier"] == "M" and led["S2USDT_LONG"]["cadence_d"] == 5.0
-    assert led["FLATUSDT_LONG"]["sched_tier"] == "L" and led["FLATUSDT_LONG"]["cadence_d"] == 10.0
+    assert led["S2USDT_LONG"]["sched_tier"] == "M" and led["S2USDT_LONG"]["cadence_d"] == 1.0
+    assert led["FLATUSDT_LONG"]["sched_tier"] == "L" and led["FLATUSDT_LONG"]["cadence_d"] == 1.0
     assert led["S0USDT_LONG"]["next_due"] > led["S0USDT_LONG"]["mtime"]

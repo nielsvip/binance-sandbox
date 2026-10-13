@@ -60,22 +60,22 @@ class DeferralTest(unittest.TestCase):
         return _gain_tiers(gains)
 
     def test_young_loser_deferred(self):
-        self.assertTrue(_side_deferred("S09_LONG", self._tiers(), NOW))
+        # USER 2026-10-13: the window is 1 day for every tier, so "young" means measured less than a day ago
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=0.5) for i in range(10)}
+        self.assertTrue(_side_deferred("S09_LONG", _gain_tiers(gains), NOW))
 
     def test_stale_loser_readmitted(self):
-        # USER 2026-10-12 cadence: L = 10d ("the rest weekly on average" with M = 5d)
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=8.0) for i in range(10)}
+        # USER 2026-10-13: every tier is a 1-day window — a side measured >1d ago is eligible again
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=0.5) for i in range(10)}
         self.assertTrue(_side_deferred("S09_LONG", _gain_tiers(gains), NOW))
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=11.0) for i in range(10)}
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=1.5) for i in range(10)}
         self.assertFalse(_side_deferred("S09_LONG", _gain_tiers(gains), NOW))
 
     def test_mid_window_three_days(self):
-        tiers = self._tiers()
-        self.assertTrue(_side_deferred("S05_LONG", tiers, NOW))
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=4.0) for i in range(10)}
-        self.assertTrue(_side_deferred("S05_LONG", _gain_tiers(gains), NOW))  # M = 5d (USER 2026-10-12)
-        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=6.0) for i in range(10)}
-        self.assertFalse(_side_deferred("S05_LONG", _gain_tiers(gains), NOW))
+        gains0 = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=0.5) for i in range(10)}
+        self.assertTrue(_side_deferred("S05_LONG", _gain_tiers(gains0), NOW))  # inside the 1-day window
+        gains = {f"S{i:02d}_LONG": _g(float(10 - i), age_days=1.5) for i in range(10)}
+        self.assertFalse(_side_deferred("S05_LONG", _gain_tiers(gains), NOW))  # a day later it recalculates
 
     def test_winners_new_never_deferred(self):
         tiers = self._tiers()
@@ -88,7 +88,7 @@ class DeferralTest(unittest.TestCase):
         self.assertFalse(_side_deferred("X_LONG", tiers, NOW))
 
     def test_defer_windows_mid_weekly_loser(self):
-        self.assertEqual(_GAIN_TIER_DEFER_DAYS, {"M": 5.0, "L": 10.0})  # USER 2026-10-12: W daily, the rest weekly on average
+        self.assertEqual(_GAIN_TIER_DEFER_DAYS, {"M": 1.0, "L": 1.0})  # USER 2026-10-13: ALL symbols EVERY day (s1+s2)
 
     def test_defer_windows_env_override(self):
         import os
@@ -98,7 +98,7 @@ class DeferralTest(unittest.TestCase):
         with patch.dict(os.environ, {"V15_TIER_DEFER_M_D": "bogus"}, clear=False):
             if "V15_TIER_DEFER_L_D" in os.environ:
                 del os.environ["V15_TIER_DEFER_L_D"]
-            self.assertEqual(_defer_windows(), {"M": 5.0, "L": 10.0})
+            self.assertEqual(_defer_windows(), {"M": 1.0, "L": 1.0})
 
 
 class QuotaTest(unittest.TestCase):

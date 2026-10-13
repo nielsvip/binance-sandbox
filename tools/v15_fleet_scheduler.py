@@ -563,15 +563,15 @@ _GAIN_TIER_L_FRAC = 1.0 / 3.0  # bottom third = losers/low gainers (deferred, re
 def _defer_windows():
     """Defer windows with env override (USER 2026-10-10 weekend push: V15_TIER_DEFER_M_D=1 V15_TIER_DEFER_L_D=2
     recalculates everything before Monday; defaults restore 3d/7d steady state). Bad values fail to defaults."""
-    # USER 2026-10-12 (2-server cadence): W = DAILY (24h refresh), M = 5d, L = 10d (losers / lost causes) -> "the rest weekly on average".
+    # USER 2026-10-12 (2-server cadence): USER 2026-10-13 (2-server regime): EVERY symbol daily (1d for every tier) — the tier gates per-board BUDGET and ORDER, not frequency.
     try:
-        m = float(os.environ.get("V15_TIER_DEFER_M_D", 5.0))
+        m = float(os.environ.get("V15_TIER_DEFER_M_D", 1.0))
     except (TypeError, ValueError):
-        m = 5.0
+        m = 1.0
     try:
-        dl = float(os.environ.get("V15_TIER_DEFER_L_D", 10.0))
+        dl = float(os.environ.get("V15_TIER_DEFER_L_D", 1.0))
     except (TypeError, ValueError):
-        dl = 10.0
+        dl = 1.0
     return {"M": m, "L": dl}
 
 
@@ -1175,7 +1175,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
-        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_DIAG_REPAIR_S=300 V15_ENDGAME_S=240 V15_FOCUS_S_WINNER=300 V15_FOCUS_S_MEDIOCRE=150 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
+        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=300 V15_ENDGAME_S=240 V15_FOCUS_S_WINNER=300 V15_FOCUS_S_MEDIOCRE=150 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         body = f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
@@ -1635,6 +1635,7 @@ def tick(args, cfg, now):
     _native_syms = {s for s in all_syms if venue_of(s) == "stocks"}  # TEMPORARY USER 2026-10-10: base-name set for the stocks-only gate (USDT stock variants pass)
     mapped_unready = {}
     HB, launched_keys = {}, set()
+    npz_prefetch = []  # USER 2026-10-13: (host, [next candidate syms]) — s1 pre-generates their NPZ after the launch pass
     log["venue_phase"] = _phase_log
     for h in _host_order(hosts, held):  # USER 2026-10-12: most free capacity first (load divided across s1/s2/s5/s6)
         s = stats[h["name"]]
@@ -1744,6 +1745,25 @@ def tick(args, cfg, now):
                 if held[h["name"]].get(sym) != "running":
                     running_cnt += 1
                     held[h["name"]][sym] = "running"
+        # USER 2026-10-13 ("whenever a server is about to finish the last round of a symbol it gets the next symbol
+        # ready with a new npz"): remember this host's next dispatch candidates so s1 can PRE-GENERATE their NPZ while
+        # the current boards finish. Dispatch then never waits on an NPZ, and a stale tail never reaches a worker.
+        try:
+            _pf_n = int(os.environ.get("V15_SCHED_NPZ_PREFETCH_N", "1"))
+        except (TypeError, ValueError):
+            _pf_n = 1
+        if _pf_n > 0:
+            _pf = []
+            for _s, _ns in order:
+                if not _ns or _s in held[h["name"]] or f"{_s}_LONG" in running or f"{_s}_SHORT" in running:
+                    continue
+                if venue_of(_s) not in h["venues"] or not _venue_allowed(_s, _native_syms, phase=_phase):
+                    continue
+                _pf.append(_s)
+                if len(_pf) >= _pf_n:
+                    break
+            if _pf:
+                npz_prefetch.append((h, _pf))
         if launched == 0 and used < cap and proj_mem >= est_pair and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
             _bf_ts = st.setdefault("backfill_ts", {})
             blo = []
@@ -1872,6 +1892,38 @@ def tick(args, cfg, now):
                 log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
                 log["hosts"][h["name"]].setdefault("held", []).append(sym)
                 log["hosts"][h["name"]].pop("idle_reason", None)
+    # ---- NPZ PREFETCH (USER 2026-10-13): s1 readies the NEXT symbol's NPZ while the current boards finish, so a
+    # freed slot dispatches instantly on a fresh tail. Runs AFTER the launch pass (never delays a launch), bounded per
+    # tick, and skipped while s1 is busy so the NPZ job can never eat the compute s1 needs for its own boards
+    # ("always has 95% free for its own calculations"). Prefetch failures are informational: dispatch re-checks anyway.
+    if npz_prefetch and not (args.dry_run or sim):
+        try:
+            _pf_budget = int(os.environ.get("V15_SCHED_NPZ_PREFETCH_BUDGET", "4"))
+        except (TypeError, ValueError):
+            _pf_budget = 4
+        try:
+            _pf_maxload = float(os.environ.get("V15_SCHED_NPZ_PREFETCH_MAXLOAD", "1.6"))
+        except (TypeError, ValueError):
+            _pf_maxload = 1.6
+        try:
+            _l1 = float(open("/proc/loadavg").read().split()[0]) / max(1, os.cpu_count() or 1)
+        except Exception:
+            _l1 = 0.0
+        if _l1 > _pf_maxload:
+            log["npz_prefetch"] = {"skipped": f"s1 load {_l1:.2f}x cores > {_pf_maxload}x (keeping s1 free for its own calculations)"}
+        else:
+            _pf_done, _pf_hold = [], []
+            for _h, _syms in npz_prefetch:
+                for _s in _syms:
+                    if len(_pf_done) + len(_pf_hold) >= _pf_budget:
+                        break
+                    _r = npz_prep(_h, _s)
+                    if _r is None:
+                        continue
+                    (_pf_done if _r.get("ok") else _pf_hold).append(f"{_h['name']}:{_s}:{_r.get('action') or _r.get('reason')}")
+            log["npz_prefetch"] = {"ready": _pf_done, "held": _pf_hold, "load_x": round(_l1, 2)}
+            if _pf_done or _pf_hold:
+                print(f"[sched] npz prefetch ready={len(_pf_done)} held={len(_pf_hold)} {_pf_done[:4]}", flush=True)
     # ---- summary per cat
     cats = {c: {"sym_sides": 0, "done30": 0, "running": 0, "v365_ok": 0, "v365_bad": 0, "v365_unverifiable": 0, "repair_attempts": 0, "repair_ok": 0, "gs_attempts": 0, "gs_ok": 0, "failing": []} for c in CATS}
     for sym in all_syms:

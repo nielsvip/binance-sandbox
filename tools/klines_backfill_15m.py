@@ -125,7 +125,7 @@ def main():
     ap.add_argument("--forward", action="store_true", help="forward-fill tails newer than cache tail (default: backward backfill older than cache head)")
     ap.add_argument("--suffix", default="", help="filename suffix before .json (e.g. .usdc_pure)")
     a = ap.parse_args()
-    if a.forward and not a.symbols:
+    if not a.symbols:
         suf = TF_SUFFIX.get(a.interval, a.interval)
         pat = f"*_{suf}{a.suffix}.json"
         a.symbols = sorted(p.name[: -len(f"_{suf}{a.suffix}.json")] for p in (ROOT / a.cache_dir).glob(pat))

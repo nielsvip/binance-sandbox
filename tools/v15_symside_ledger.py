@@ -17,7 +17,10 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
-CADENCE_D = {"W": 1.0, "M": 5.0, "L": 10.0}
+# USER 2026-10-13 (2-server regime: "only s1 and s2 will be calculating ALL symbols EVERY day"): every symbol is
+# recalculated DAILY. The tier no longer gates frequency — it gates the per-board BUDGET (pilot FOCUS/post-stages,
+# §87) and the launch ORDER (best performers first). V15_CADENCE_* overrides for a slower regime.
+CADENCE_D = {"W": float(os.environ.get("V15_CADENCE_W_D", "1")), "M": float(os.environ.get("V15_CADENCE_M_D", "1")), "L": float(os.environ.get("V15_CADENCE_L_D", "1"))}
 
 
 def cat_side_of(ss):

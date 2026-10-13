@@ -139,13 +139,6 @@
     "symbol": "ETHUSDC",
     "side": "SHORT"
   },
-  "fin:IOTXUSDT_SHORT": {
-    "orderId": "3000002246911785",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 01:23:53.345049+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "fin:ALGOUSDT_SHORT": {
     "orderId": "3000002246911766",
     "stopPrice": 0.0,
@@ -166,5 +159,12 @@
     "entry_sig": "2026-10-13 01:50:40.868722+00:00",
     "symbol": "XTZUSDT",
     "side": "LONG"
+  },
+  "fin:ATOMUSDT_SHORT": {
+    "orderId": "3000002246996263",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 02:06:27.605674+00:00",
+    "symbol": "ATOMUSDT",
+    "side": "SHORT"
   }
 }
