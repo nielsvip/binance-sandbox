@@ -4656,7 +4656,7 @@ class QuickConfig:
     DC_EDGE_SIZING_ENABLED: bool = (
         False  # 2026-10-04 §17.4 C1: config.py False (PROMO run20); stocks True via overlay
     )
-    DC_EDGE_SIZING_MAX_MULT: float = 3.0
+    DC_EDGE_SIZING_MAX_MULT: float = 6.0
     DC_EDGE_SIZING_MIN_MULT: float = 1.0
     DC_EDGE_SIZING_PERIOD: int = 20
     DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT: float = 0.0
@@ -5822,6 +5822,9 @@ class QuickConfig:
         self.GAP_MOC_FORCE_MOC_AT_CLOSE = False
         # parity-sync 20261012: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.MU_CORRECTION_REENTRY_ENABLED = True
+        # parity-sync 20261013: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.DC_EDGE_SIZING_MAX_MULT = 3.0
+        self.HARDCODED_RALLY_MIN_AGE_MIN = 15.0
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625

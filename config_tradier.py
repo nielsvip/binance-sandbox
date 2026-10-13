@@ -6109,7 +6109,7 @@ class TradierConfig:
     HARDCODED_RALLY_MIN_MOVE_PCT: float = (
         0.0  # RE/001 optional rally filters (vector twin vec_decisions/hardcoded_rally_filters.py): all OFF = unchanged
     )
-    HARDCODED_RALLY_MIN_AGE_MIN: float = 0.0
+    HARDCODED_RALLY_MIN_AGE_MIN: float = 15.0
     HARDCODED_RALLY_HTF_TREND_TF: str = "OFF"  # OFF | 1h | 4h | 1h,4h
     HARDCODED_RALLY_DC_POS_MAX: float = 0.0
     HARDCODED_RALLY_SMA200_SIDE_ENABLED: bool = False
