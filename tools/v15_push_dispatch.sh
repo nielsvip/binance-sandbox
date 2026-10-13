@@ -47,7 +47,19 @@ except Exception as e:
 EOF
 )
   if [ "${LAG:--1}" -lt 0 ] 2>/dev/null; then echo "[hold] $SS s1 NPZ unreadable ($NPZ) — not dispatched"; continue; fi
-  if [ "$LAG" -gt "$MAX_LAG_MIN" ] 2>/dev/null; then echo "[hold] $SS s1 NPZ tail ${LAG}min behind (> ${MAX_LAG_MIN}) — not dispatched, refresher is behind"; continue; fi
+  # The wall-clock tail gate applies to CRYPTO only (24/7 bars). A STOCK tail is hours "behind" whenever the US market
+  # is closed, which is normal, not stale — stock freshness is judged by tools/v15_npz_prep.py above, which compares the
+  # NPZ against the Tradier klines cache and understands market hours. Gating stocks on wall clock blocks every
+  # overnight stock board (observed 2026-10-13 02:10Z: ZCSH 142min, AXON 262min, MSTR 157min all falsely held).
+  if [ "$CAT" = CRYPTO ] && [ "$LAG" -gt "$MAX_LAG_MIN" ] 2>/dev/null; then echo "[hold] $SS s1 crypto NPZ tail ${LAG}min behind (> ${MAX_LAG_MIN}) — not dispatched, refresher is behind"; continue; fi
+  if [ "$CAT" = STOCKS ]; then
+    POK=$(echo "${PREP:-}" | python3 -c "
+import json,sys
+try: print(json.loads(sys.stdin.read().strip()).get('ok'))
+except Exception: print('unknown')" 2>/dev/null)
+    if [ "$POK" = "False" ]; then echo "[hold] $SS stock NPZ gate says not usable — not dispatched"; continue; fi
+    echo "[npz-stocks] $SS prep_ok=$POK tail=${LAG}min (market-hours aware gate)"
+  fi
   # 2) the push: NPZ travels with the dispatch, md5 verified
   if [ "$IS_LOCAL" != 1 ]; then
     rsync -az -e "$SSH" "$NPZ" "niels@$H:~/binance-sandbox/backtest_v8/indicators/" || { echo "[hold] $SS npz rsync to $H failed"; continue; }

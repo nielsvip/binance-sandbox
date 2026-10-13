@@ -33,11 +33,20 @@ def api_key():
     raise RuntimeError("MASSIVE_API_KEY missing")
 
 
-def fetch(sym, frm, to):
+def fetch(sym, frm, to, retries=3):
+    import urllib.error
     q = urllib.parse.urlencode({"limit": 50000, "sort": "asc", "adjusted": "false", "apiKey": api_key()})
     req = urllib.request.Request(f"{URL.format(sym=sym, frm=frm, to=to)}?{q}", headers={"Authorization": f"Bearer {api_key()}"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read().decode()).get("results", [])
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode()).get("results", [])
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt + 1 < retries:
+                time.sleep(60 * (attempt + 1))
+                continue
+            raise
+    raise RuntimeError("unreachable")
 
 
 def to_row(x):
@@ -63,12 +72,16 @@ def backfill(sym, frm, apply):
     except Exception as e:
         return {"sym": sym, "have": have, "action": "fetch-err", "error": repr(e)[:120]}
     mrows = [to_row(x) for x in res if in_session(dt.datetime.fromtimestamp(x["t"] / 1000, tz=dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"))]
+    gap = 0.0
+    for a, b in zip(mrows, mrows[1:]):
+        if a["close"] and b["open"]:
+            gap = max(gap, abs(b["open"] / a["close"] - 1))
     if rows:
         old = [r for r in mrows if r["timestamp"] < rows[0]["timestamp"]]
     else:
         old = mrows
     if not apply:
-        return {"sym": sym, "have": have, "would_add": len(old), "action": "dry"}
+        return {"sym": sym, "have": have, "would_add": len(old), "max_gap": round(gap, 4), "action": "dry"}
     if not old:
         return {"sym": sym, "have": have, "now": have, "action": "noop"}
     by_ts = {r["timestamp"]: r for r in rows}
@@ -118,6 +131,13 @@ def main():
     a = ap.parse_args()
     for s in a.symbols:
         try:
+            try:
+                _have = len(json.loads((ROOT / "klines_cache_backtest" / "tradier" / f"{s}_15m.json").read_text()))
+            except Exception:
+                _have = 0
+            if _have >= 20000:
+                print(json.dumps({"sym": s, "have": _have, "action": "already-deep"}), flush=True)
+                continue
             g = overlap_guard(s)
             if g is not None and g > a.max_diff:
                 print(json.dumps({"sym": s, "action": "skip-seam", "max_diff": round(g, 4)}), flush=True)
@@ -125,7 +145,7 @@ def main():
             print(json.dumps(backfill(s, a.from_date, a.apply)), flush=True)
         except Exception as e:
             print(json.dumps({"sym": s, "error": repr(e)[:160]}), flush=True)
-        time.sleep(0.25)
+        time.sleep(2.0)
 
 
 if __name__ == "__main__":
