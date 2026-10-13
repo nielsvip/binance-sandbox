@@ -258,8 +258,22 @@ def _key_tf(key):
     return None
 
 
+_ROLE_MEMO = {}
+
+
 def key_role(key, sem=None):
     sem = sem if sem is not None else tf_semantics()
+    mk = (id(sem), key)
+    if mk in _ROLE_MEMO:
+        return _ROLE_MEMO[mk]
+    r = _key_role(key, sem)
+    if len(_ROLE_MEMO) > 200000:
+        _ROLE_MEMO.clear()
+    _ROLE_MEMO[mk] = r
+    return r
+
+
+def _key_role(key, sem):
     e = ((sem.get("keys") or {}).get(key)) if isinstance(sem, dict) else None
     if isinstance(e, dict) and e.get("role"):
         return str(e["role"])
@@ -338,11 +352,12 @@ def coherence_reason(delta, full, sem=None, venue=None):
     if "WT_15M_BOUNCE_MAX_BARS_AGO" in delta:
         return "C9 WT_15M_BOUNCE_MAX_BARS_AGO has no decision reader"
     keys = (sem.get("keys") or {}) if isinstance(sem, dict) else {}
-    arm = [_tf_token(v) for k, v in (full or delta).items() if key_role(k, sem) == "trigger" and _tf_token(v) not in (None, "OFF")]
+    wins = [(k, v) for k, v in delta.items() if "BARS" in str(k).upper() and not isinstance(v, bool) and isinstance(v, (int, float)) and key_role(k, sem) == "window"]
+    if not wins:
+        return ""
+    arm = [_tf_token(v) for k, v in (full or delta).items() if isinstance(v, str) and key_role(k, sem) == "trigger" and _tf_token(v) not in (None, "OFF")]
     arm_tf = max(arm, key=lambda t: TF_SPAN.get(t, 0)) if arm else None
-    for k, v in delta.items():
-        if key_role(k, sem) != "window" or "BARS" not in str(k).upper() or isinstance(v, bool) or not isinstance(v, (int, float)):
-            continue
+    for k, v in wins:
         e = keys.get(k) or {}
         tf = _tf_token(e.get("tf")) or _key_tf(k) or arm_tf
         if tf and float(v) > _span(tf, venue):
@@ -1514,7 +1529,12 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
         dual = 365 in tuple(windows or ())
         accept = accept or default_accept
         segs = regime_segments(prepared_365, sym_side.upper().endswith("_LONG")) if dual else []
+        t_b = time.time()
         b = ev([("b30", 30, base, False), ("b7", RECENT_DAYS, base, False)] + ([("b365", 365, base, True)] if dual else []))
+        t365 = (time.time() - t_b) if dual else 0.0
+        if dual:  # room for the fresh 365D verify + one chained 365D check (crypto 365D ledger evals are the expensive part)
+            verify_reserve = max(verify_reserve, 2.5 * t365)
+            st["t365_s"] = round(t365, 1)
         base365 = (b.get("b365") or (None,))[0] if dual else None
         cur365 = base365
         if dual:
@@ -1553,11 +1573,13 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
                 symptoms = {}
                 st["symptom_error"] = str(e)[:120]
         st["symptoms"] = symptoms
+        t_gen = time.time()
         space = ComboSpace(cs, sym_side)
         st["space"] = space.size()
         rng = random.Random(seed if seed is not None else int(hashlib.md5(f"{sym_side}|{_utc()[:10]}".encode()).hexdigest()[:8], 16))
         cands, gst = generate(space, sym_side, base, symptoms, feats, lib, rng, int(max_gen or _env_f("V17_COMBO_MAX_GEN", 40000)), log)
         st["generated"] = gst
+        st["gen_s"] = round(time.time() - t_gen, 1)
         order = schedule(cands, _env_f("V17_COMBO_EXPLORE", 0.15))
         # ---- successive-halving ROUNDS until the budget is used: each round screens the next slice of the ranked order on the
         # round's base (stage 1, full 30D = the gate window), takes the top ~5% to the recent 7D segment (stage 2) and greedy-
@@ -1618,7 +1640,7 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
                 n_ok = n_chk = 0
                 rej = []  # canonical item sets of long-window rejects: a superset combo is skipped (pruned, flagged unchecked)
                 for x in chk:
-                    if time.time() > deadline - verify_reserve or n_ok >= n365 or n_chk >= 3 * n365:
+                    if time.time() > deadline - verify_reserve - 1.5 * t365 or n_ok >= n365 or n_chk >= 3 * n365:
                         break
                     xi = {f"{k}={canon(v)}" for k, v in x["delta"].items()}
                     if any(r_ <= xi for r_ in rej):

@@ -10,7 +10,8 @@
 #   Results = 30D progress JSONs with final_gain + chain verdicts (v365/repair/gs), by mtime — never /tmp logs (wiped on reboot).
 #   A host with zero pilots is IDLE (scheduler's choice), never stalled.
 #       strike 1 -> copy progress/sheets/logs to S1 ~/stalled_<host>_<ts>/ -> REBOOT (ssh sudo reboot; ALERT_REBOOT_<host> for the Mac hcloud fallback)
-#       strike 2 -> copy again -> ALERT_HOST_<host> (the Mac deleter destroys it via hcloud) -> out of rotation
+#       strike 2 -> copy again -> ALERT_STALL_<host> (alert only + out of rotation). USER 2026-10-13 RULING: the watchdog
+#       can NOT delete a server, only the user can (Mac deleter disarmed same ruling).
 #   S1 itself: copy + kill pilots + ALERT only (never rebooted/deleted here; INFRA law). gateway never touched.
 #   A host booted < BOOT_GRACE_MIN ago gets no server verdict (pilots are still coming back).
 set -u
@@ -78,8 +79,8 @@ for HS in $HOSTS; do
   if [ "$STRIKES" -ge 2 ]; then
     cp tools/fleet_hosts_final.json "backups/fleet_hosts_before_strike_${H}_${TS}.json"
     python3 -c "import json;p='tools/fleet_hosts_final.json';d=json.load(open(p));[h.__setitem__('venues',[]) for h in d['hosts'] if h['name']=='$H'];json.dump(d,open(p,'w'),indent=1)"
-    echo "$(date -u +%FT%TZ) $H STALLED twice (>${RESULT_WINDOW_MIN}m no final results, progress silent) -> DESTROY; data in $DEST" > "$AL/ALERT_HOST_${H}.txt"
-    log "$H strike 2 -> ALERT_HOST_${H} (Mac deleter destroys via hcloud) + out of rotation"
+    echo "$(date -u +%FT%TZ) $H STALLED twice (>${RESULT_WINDOW_MIN}m no final results, progress silent); data in $DEST. USER 2026-10-13 RULING: watchdog can NOT delete a server, only the user can — this is an ALERT, out of rotation only." > "$AL/ALERT_STALL_${H}.txt"
+    log "$H strike 2 -> ALERT_STALL_${H} (alert only, no-delete ruling) + out of rotation"
   else
     ssh -o BatchMode=yes -o ConnectTimeout=8 "$IP" "sudo -n reboot" >/dev/null 2>&1 && log "$H strike 1 -> REBOOT issued (ssh sudo reboot)" || { echo "$(date -u +%FT%TZ) $H reboot via ssh failed -> hcloud reboot" > "$AL/ALERT_REBOOT_${H}.txt"; log "$H strike 1 -> ssh reboot failed, ALERT_REBOOT_${H} for the Mac hcloud fallback"; }
     python3 -c "import json;s=json.load(open('/tmp/v15_fleet_sched.log' if False else '$ST'));s['$H']['last_ok']=$NOW;json.dump(s,open('$ST','w'))"
