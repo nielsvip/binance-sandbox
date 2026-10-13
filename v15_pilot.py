@@ -2831,6 +2831,25 @@ _TIER_LOST_GAIN = float(os.environ.get("V15_TIER_LOST_GAIN", "5.0"))
 _TIER_WIN_GAIN = float(os.environ.get("V15_TIER_WIN_GAIN", "10.0"))
 _TIER_BIG_MOVER = float(os.environ.get("V15_TIER_BIG_MOVER", "25.0"))
 _TIER_FOCUS_S = {"WINNER": float(os.environ.get("V15_FOCUS_S_WINNER", "900")), "MEDIOCRE": float(os.environ.get("V15_FOCUS_S_MEDIOCRE", "300")), "LOSER": float(os.environ.get("V15_FOCUS_S_LOSER", "120")), "LOST_CAUSE": float(os.environ.get("V15_FOCUS_S_LOST_CAUSE", "0"))}
+# ── SMART ROUTE (USER 2026-10-13: "4-12 sym_sides resolved per hour per server … worst_first abbreviated, pinpoint enlarged …
+# filter ablation first, then all entry and exit paths that did not have a chance because filters disabled them … self-improving").
+# Mined from the finished boards (tools/v15_smart_route.py mine): KMNOUSDT_SHORT 2717/2861 rows G==0 with ZERO positive yellows
+# on them (106,656 yellow evals -> 30 positive rows), MELANIAUSDT_SHORT 2576/2683 likewise (81,807 -> 39). A non-binding naked
+# flip makes switch+filter == filter alone (already measured on the filter's own orange row) — its yellows are pure waste.
+# ROUND 1a ablation + path probe -> ROUND 1b abbreviated worst_first (naked every row, yellows only on HOT/masked/binding rows)
+# -> ROUND 2 PINPOINT (masked-path joint unmask, final-chain re-ablation, enlarged FOCUS) -> knowledge write-back.
+# Kill switch V15_SMART_ROUTE=0 (exact pre-route behaviour). Bible §93.
+_ROUTE_ON = os.environ.get("V15_SMART_ROUTE", "1") == "1"
+_ROUTE_ROTATE_EVERY = int(os.environ.get("V15_ROUTE_ROTATE_EVERY", "25") or 25)
+_ROUTE_REVIVE_MIN = float(os.environ.get("V15_ROUTE_REVIVE_MIN", "-1.0"))
+_ROUTE_ABL_MAX = int(os.environ.get("V15_ROUTE_ABL_MAX", "240") or 240)
+_ROUTE_PROBE_MAX = int(os.environ.get("V15_ROUTE_PROBE_MAX", "600") or 600)
+_ROUTE_ABL_S = float(os.environ.get("V15_ROUTE_ABL_S", "240"))
+_ROUTE_PINPOINT_S = {"WINNER": float(os.environ.get("V15_PINPOINT_S_WINNER", "600")), "MEDIOCRE": float(os.environ.get("V15_PINPOINT_S_MEDIOCRE", "420")), "LOSER": float(os.environ.get("V15_PINPOINT_S_LOSER", "240")), "LOST_CAUSE": float(os.environ.get("V15_PINPOINT_S_LOST_CAUSE", "90"))}
+_ROUTE_FOCUS_MULT = float(os.environ.get("V15_PINPOINT_FOCUS_MULT", "2.0"))
+_ROUTE_FOCUS_TOP_K = int(os.environ.get("V15_PINPOINT_TOP_K", "24") or 24)
+_ROUTE_FOCUS_MAX_EVALS = int(os.environ.get("V15_PINPOINT_MAX_EVALS", "8000") or 8000)
+_ROUTE_RECHECK_MAX = int(os.environ.get("V15_ROUTE_RECHECK_MAX", "200") or 200)
 
 
 def _prior_load(cat_side: str) -> dict:
@@ -3445,6 +3464,39 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 continue
             seen.setdefault((str(sw2).strip(), str(c2)), [])
             seen[(str(sw2).strip(), str(c2))].append(f"{sn}!{r2}")
+        if _route_on and seen and os.environ.get("V15_ROUTE_RECHECK_ALL", "0") != "1":
+            # SMART ROUTE: the full recheck re-ran ~1280 orange filters per board and promoted NOTHING on the mined boards
+            # (KMNO/MELANIA 0/1280). Keep the filters with evidence: hot by route knowledge, positive on THIS board (naked or
+            # any yellow), or part of the ablation/unmask story — capped at V15_ROUTE_RECHECK_MAX. V15_ROUTE_RECHECK_ALL=1 = all.
+            _rc_pos = set()
+            for _rk, _rv in (progress.get("done") or {}).items():
+                if not isinstance(_rv, dict):
+                    continue
+                _rck = _canon_key_of_done(_rk)
+                if _rck and ((_rv.get("naked_delta") is not None and float(_rv.get("naked_delta") or 0.0) > 1e-9) or _rv.get("promoted")):
+                    _rc_pos.add(_rck.split("!", 1)[1])
+                for _yh, _yd in (_rv.get("yellows") or {}).items():
+                    try:
+                        if _yd is not None and float(_yd) > 1e-9:
+                            _yf, _, _yo = str(_yh).partition("=")
+                            _rc_pos.add(f"{_yf.strip().upper()}={_canon_val(_yo)}")
+                    except Exception:
+                        continue
+            _rc_abl = {str(p).split("=", 1)[0].strip().upper() for p in (_route_book.get("unmask_keys") or [])}
+            _rc_rank = []
+            for (sw2, c2), where in seen.items():
+                _fk = f"{str(sw2).strip().upper()}={_canon_val(c2)}"
+                _hot = any(_sr.row_is_hot(_route_know["rows"].get(f"{str(w).split('!', 1)[0]}!{_fk}")) for w in where)
+                _fe = _route_know["filters"].get(_fk) or {}
+                _score = (2 if _fk in _rc_pos else 0) + (2 if _hot else 0) + (1 if str(sw2).strip().upper() in _rc_abl else 0) + (1 if (_fe.get("yellow_pos") or _fe.get("reapply_pos") or _fe.get("strip_pos")) else 0)
+                if _score > 0:
+                    _rc_rank.append((-_score, str(sw2), str(c2)))
+            _rc_rank.sort()
+            _rc_keep = {(s_, c_) for _, s_, c_ in _rc_rank[:_ROUTE_RECHECK_MAX]}
+            _rc_n0 = len(seen)
+            seen = {k: v for k, v in seen.items() if (str(k[0]), str(k[1])) in _rc_keep}
+            _route_book["recheck"] = {"orange_filters": _rc_n0, "kept": len(seen), "skipped": _rc_n0 - len(seen)}
+            print(f"[SMART-ROUTE] {new_symside} FINAL_FILTER_RECHECK trimmed {_rc_n0} -> {len(seen)} evidence-backed filters", flush=True)
         items = []
         for (sw2, c2) in seen:
             v = dict(cumulative_overrides)
@@ -3668,7 +3720,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # 6. ADOPT the reapplied set (fresh NO-LIES eval of exactly the adopted set) + C-reconcile drops
             adopted = False
             ares, aerr = _eg_eval("ENDGAME_ADOPT", working, base_gain, "ADOPT", f"{len(applied)}filters")
-            if ares is not None and ares.get("gain_pct") is not None and int(ares.get("trades") or 0) > 0 and ares.get("valid"):
+            # USER 2026-10-13 SMART ROUTE fix: one-by-one REAPPLY can never rebuild a JOINT filter set (two filters that only
+            # pay together — e.g. an ablation unmask), so the reapplied set can land BELOW the entry set; adopting it threw
+            # real, measured gain away (harness: 3.80 -> 0.80, lift -3.0, adopted). E only goes up (§14): a regressing ADOPT
+            # is refused, the entry set stands, the would-be lift stays on record. V15_ENDGAME_NO_REGRESS=0 = old behaviour.
+            _eg_regress = None
+            if os.environ.get("V15_ENDGAME_NO_REGRESS", "1") == "1" and ares is not None and ares.get("gain_pct") is not None and float(ares["gain_pct"]) < _pre_strip_gain - 1e-9:
+                _eg_regress = float(ares["gain_pct"]) - _pre_strip_gain
+                print(f"[ENDGAME] {new_symside} ADOPT refused: reapplied set {float(ares['gain_pct']):.4f} < entry {_pre_strip_gain:.4f} (would-be lift {_eg_regress:+.4f}) — entry set stands (no regression)", flush=True)
+                remaining = {}
+            if _eg_regress is None and ares is not None and ares.get("gain_pct") is not None and int(ares.get("trades") or 0) > 0 and ares.get("valid"):
                 cumulative_overrides = sanitize_overrides(working, defaults)[0]
                 cumulative_gain = float(ares["gain_pct"])
                 progress["cumulative_overrides"] = dict(cumulative_overrides)
@@ -3682,7 +3743,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         pass
                 if remaining:
                     print(f"[ENDGAME] {new_symside} C-reconciled: {len(remaining)} never-positive filters dropped from C: {sorted(remaining.keys())[:10]}", flush=True)
-            else:
+            elif _eg_regress is None:
                 print(f"[ENDGAME] {new_symside} ADOPT refused (valid={bool((ares or {}).get('valid'))} trades={(ares or {}).get('trades')} err={aerr}) — set unchanged", flush=True)
             _eg_lift = float(cumulative_gain) - _eg_entry_gain
             # 7. TIER-entry share from the final ledger (report-only flag; no auto-action)
@@ -3731,7 +3792,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                                    "naked": [(r[0], r[2], r[3] if len(r) > 3 else "") for r in naked_rows],
                                    "reapplied": [(f, g) for f, _v, g, _t in applied], "dropped": sorted(remaining.keys()),
                                    "target_pts": target_pts, "target_gain": tgt, "target_met": target_met, "target_step": target_step,
-                                   "adopted": adopted, "final_gain": float(cumulative_gain), "tier_share": tier_share,
+                                   "adopted": adopted, "regress_refused": _eg_regress, "final_gain": float(cumulative_gain), "tier_share": tier_share,
                                    "tier_opens": tier_n, "opens": open_n, "evals": _n_eval[0], "secs": round(_t.time() - t0, 1)}
             try:
                 _atomic_write_json(progress_path, progress)
@@ -4389,6 +4450,36 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[PRIOR-POLICY] {new_symside} cat={map_key_for_symside(new_symside)} tier={_tier_name} strict={_tier_strict} switch_cand={len(_prior.get('switch_cand') or {})} filter_opt={len(_prior.get('filter_opt') or {})} min_n={_PRIOR_MIN_N} rotate=1/{_PRIOR_ROTATE_EVERY} (seq {_inert_seq})", flush=True)
     elif _PRIOR_ON:
         print(f"[PRIOR-POLICY] {new_symside} no causal profile for {map_key_for_symside(new_symside)} (data/causal/switch_causal_profile.json) — full board", flush=True)
+    # SMART ROUTE (see _ROUTE_ON): cross-board route knowledge loads at entry (no look-ahead), masked paths come from the
+    # ablation pre-round (or the resumed progress), every route decision is booked in progress["smart_route"].
+    _route_on = _ROUTE_ON and fast_switches is None
+    _route_book = progress.setdefault("smart_route", {}) if _route_on else {}
+    _route_know = {"rows": {}, "filters": {}, "boards": {}}
+    _route_stats = {"abbrev": 0, "full": 0, "revived": 0, "cells_deferred": 0, "cells_revived": 0}
+    _route_masked: set = set()
+    _route_secs: dict = dict((_route_book or {}).get("stage_secs") or {})
+    if _route_on:
+        try:
+            from tools import v15_smart_route as _sr
+            _route_know = _sr.knowledge_for(_sr.load_knowledge(), _ps_cat)
+            _route_masked = set(_route_book.get("masked_paths") or [])
+            print(f"[SMART-ROUTE] {new_symside} cat={_ps_cat} knowledge boards={(_route_know.get('boards') or {}).get('n', 0)} rows={len(_route_know['rows'])} hot={sum(1 for _e in _route_know['rows'].values() if _sr.row_is_hot(_e))} filters={len(_route_know['filters'])} masked(resume)={len(_route_masked)}", flush=True)
+        except Exception as _sre:
+            print(f"[SMART-ROUTE-WARN] {new_symside} route disabled for this board: {_sre}", flush=True)
+            _route_on = False
+    def _route_row_ok(sw, cand) -> bool:
+        # the structural skips of _row_static without its side effects (the probe runs before any row is planned)
+        try:
+            s = str(sw).strip()
+            if cand is None or str(cand).strip() in ("", "None", "none") or s in UNWIRED_SWITCHES or s in UNWIRED_FILTERS:
+                return False
+            if s.startswith("ABLATION_") or (s == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(cand))) or str(cand).strip().upper().endswith("_ALT"):
+                return False
+            if not all(k in known_config_fields() for k in (_switch_overrides(s, _parse_opt_value(cand, defaults.get(s))) or {s: None})):
+                return False
+            return not _switch_type_violation(s, cand, defaults) and not promotion_block_reason(s, None)
+        except Exception:
+            return False
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
         k = (sname, rr)
@@ -4487,6 +4578,26 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["prior_rank"] = {h: _prior_rank(_prior_entry(_prior, "filter_opt", str(h).strip())) for h in info["hdrs"]}
             except Exception as _pre:
                 print(f"[PRIOR-WARN] {sname}!{rr} {_pre} — row calculated", flush=True)
+        if _route_on and info["kind"] == "eval" and info["hdrs"]:
+            # SMART ROUTE round 1b (abbreviated worst_first): naked always; yellows only on HOT / masked-path / exempt /
+            # rotation rows. Deferred cells are SETTLED (never hollow), revived inline when the naked flip binds, and handed
+            # to the PINPOINT/FOCUS round when the row moved this sym_side.
+            try:
+                _rk = f"{sname}!{str(switch).strip()}={str(cand).strip()}"
+                _rnew = bool(((_prior_psj or {}).get(_rk) or {}).get("new")) or bool(((_ps_json or {}).get(_rk) or {}).get("new")) or (sname, str(switch).strip(), str(cand).strip()) in _ps_new
+                _rx = str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) or str(switch).strip() in ESSENTIAL_GATE_SWITCHES or _rnew or _rk in _coarse_expand or bool(_redo_heal)
+                _rmode, _rkept, _rdef, _rmeta = _sr.route_row_policy(_route_know["rows"], sname, switch, cand, info["hdrs"], rr, _inert_seq, _ROUTE_ROTATE_EVERY, _rx, _route_masked)
+                info["route_mode"] = _rmode
+                info["route_why"] = _rmeta.get("why")
+                if _rdef:
+                    info["hdrs"] = _rkept
+                    info["route_deferred"] = list(_rdef)
+                    _route_stats["abbrev"] += 1
+                    _route_stats["cells_deferred"] += len(_rdef)
+                else:
+                    _route_stats["full"] += 1
+            except Exception as _rre:
+                print(f"[SMART-ROUTE-WARN] {sname}!{rr} {_rre} — row calculated in full", flush=True)
         if info["kind"] == "eval" and (_ps_on or _redo_heal or _COARSE_FIRST_PASS):
             try:
                 _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
@@ -4926,6 +5037,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         import hashlib as _fh
         t0 = _t.time()
         budget = float(_tier_focus_s)
+        if _route_on and _tier_name != "LOST_CAUSE":
+            # SMART ROUTE: round 1 is abbreviated, so the PINPOINT/FOCUS round is ENLARGED (USER 2026-10-13)
+            budget = max(budget * _ROUTE_FOCUS_MULT, float(os.environ.get("V15_PINPOINT_FOCUS_MIN_S", "240")))
         # USER 2026-10-13 V16 BH-CHASE ("every sym_side beats bh"): a board still below B&H after round 1 gets the
         # larger round-2 budget + wider top_k (same honest greedy gates — the target is a goal, never forced).
         _bh_chase = False
@@ -4957,6 +5071,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             deadline = t0 + budget
             max_evals = int(os.environ.get("V15_FOCUS_MAX_EVALS", "2500"))
             top_k = int(os.environ.get("V15_FOCUS_TOP_K", "12"))
+            if _route_on:
+                max_evals = max(max_evals, _ROUTE_FOCUS_MAX_EVALS)
+                top_k = max(top_k, _ROUTE_FOCUS_TOP_K)
             if _bh_chase:
                 top_k = max(top_k, int(os.environ.get("V15_FOCUS_TOP_K_BHCHASE", "24")))
                 max_evals = max(max_evals, int(os.environ.get("V15_FOCUS_MAX_EVALS_BHCHASE", "6000")))
@@ -5037,7 +5154,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for _, tab, rr_, sw, c, k, v in eff[: top_k * 2]:
                 if not _left():
                     break
-                deferred = [h for h in list(v.get("prior_skipped_filters") or []) + list(v.get("coarse_deferred_filters") or []) + list(v.get("inert_filters") or []) if h not in (v.get("yellows") or {})]
+                deferred = [h for h in list(v.get("prior_skipped_filters") or []) + list(v.get("coarse_deferred_filters") or []) + list(v.get("inert_filters") or []) + list(v.get("route_deferred_filters") or []) if h not in (v.get("yellows") or {})]
                 deferred = list(dict.fromkeys(deferred))
                 if not deferred:
                     continue
@@ -5233,6 +5350,395 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _focus_sheet(out)
             _maybe_write_json(force=True)
             print(f"[FOCUS] {new_symside} tier={_tier_name} {out['secs']}s evals={n_eval[0]} promotions={len(out['promotions'])} {out['entry_gain']:.4f}->{float(cumulative_gain):.4f} steps={out['steps']}{' skipped=' + str(out.get('skipped')) if out.get('skipped') else ''}", flush=True)
+    # ── SMART ROUTE rounds (see _ROUTE_ON). Every adoption = a real evaluate_prepared_sanitized eval of exactly the adopted
+    # set vs the LATEST cumulative, same gates as FOCUS (valid, trade floor, TIM/trades guards, promotion_block_reason),
+    # greedy §14.2, honest deltas §19. Done-keys ROUTE!<n>:<label> carry cumulative_before/after (E-chain validator holds).
+    import hashlib as _rh
+    _route_sk = lambda ov: _rh.md5(json.dumps(sorted((k, str(v)) for k, v in ov.items())).encode()).hexdigest()
+    def _route_filt_names() -> set:
+        names = set()
+        try:
+            for sname_ in tabs:
+                for (rr_, sw_, _cd) in per_tab_rows.get(sname_, []):
+                    if (sname_, rr_) in orange_rows:
+                        names.add(str(sw_).strip())
+                for hdr_ in header_maps.get(sname_, {}):
+                    names.add(str(hdr_).split("=", 1)[0].strip())
+        except Exception:
+            pass
+        return names
+    def _route_gate(res, err, d, keys) -> bool:
+        if err or d is None or float(d) <= 1e-9:
+            return False
+        if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) < ADAPT_FLOOR_TRADES:
+            return False
+        if any(promotion_block_reason(str(k).strip(), None) for k in keys):
+            return False
+        try:
+            _ct = float((res or {}).get("tim_pct"))
+        except Exception:
+            _ct = None
+        if tim_guard_veto(_ct, chain_tim):
+            return False
+        try:
+            _ctr = int((res or {}).get("trades") or 0)
+        except Exception:
+            _ctr = None
+        return not trades_guard_veto(_ctr, chain_trades)
+    def _route_c_write(parts: list):
+        # C law (§56.0): the adopted value lands on the template row that carries exactly that SWITCH=value
+        for part in parts:
+            k_, _, v_ = str(part).partition("=")
+            for (s_, r_, sw_, c_) in queue:
+                if str(sw_).strip() == k_.strip() and _canon_val(c_) == _canon_val(v_):
+                    try:
+                        _set_override(wb[s_], s_, r_, _resolve_cols(wb[s_]), [f"{k_.strip()}={c_}"])
+                    except Exception as _cwe:
+                        print(f"[SMART-ROUTE-WARN] C write {s_}!{r_} {part}: {_cwe}", flush=True)
+                    break
+    def _route_promote(ov, res, d, how, label, parts):
+        nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
+        cb = float(cumulative_gain)
+        cumulative_overrides = sanitize_overrides(dict(ov), defaults)[0]
+        cumulative_gain = float((res or {}).get("gain_pct"))
+        e_next = cumulative_gain
+        _spec_state["ver"] += 1
+        progress["cumulative_overrides"] = dict(cumulative_overrides)
+        progress["cumulative_gain"] = float(cumulative_gain)
+        try:
+            chain_tim = float((res or {}).get("tim_pct"))
+        except Exception:
+            pass
+        try:
+            chain_trades = int((res or {}).get("trades") or 0)
+        except Exception:
+            pass
+        proms = _route_book.setdefault("promotions", [])
+        rec = {"how": how, "what": label, "delta": round(float(d), 4), "before": round(cb, 4), "after": round(cumulative_gain, 4), "trades": (res or {}).get("trades"), "tim": (res or {}).get("tim_pct"), "dd": (res or {}).get("max_dd_pct"), "parts": list(parts)}
+        proms.append(rec)
+        progress.setdefault("done", {})[f"ROUTE!{len(proms)}:{label}"] = {"delta": float(d), "promoted": True, "promoted_how": how, "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cb, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp("ROUTE"), "complete": True}
+        _route_c_write(parts)
+        print(f"[ROUTE-PROMOTE] {new_symside} {how} {label} +{float(d):.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
+        _maybe_write_json(force=True)
+    def _route_strip_batch(base_ov: dict, cands: list, cum_ref: float, deadline: float, tag: str) -> dict:
+        # leave-one-out strips of cands=[(key, cur, off)] vs base_ov, all submitted to the fork pool first
+        items = {}
+        base_ck = _ck(sanitize_overrides(dict(base_ov), defaults)[0])
+        for k_, cur_, off_ in cands:
+            if k_ not in known_config_fields() or _switch_type_violation(k_, off_, defaults):
+                continue
+            ov_ = dict(base_ov)
+            ov_[k_] = off_
+            ov_ = sanitize_overrides(ov_, defaults)[0]
+            if _ck(ov_) == base_ck:
+                continue
+            items[k_] = (cur_, off_, ov_)
+            _submit(ov_)
+        _flush_batch()
+        out_ = {}
+        for k_, (cur_, off_, ov_) in items.items():
+            if _t.time() > deadline:
+                break
+            res_, err_ = _get("ROUTE", None, k_, off_, f"{tag}:{k_}={off_}", ov_, min(deadline, _t.time() + YELLOW_TIMEOUT * 4), cum_ref)
+            if err_ or res_ is None:
+                continue
+            out_[k_] = (cur_, off_, ov_, res_)
+        return out_
+    def _route_ablation_round():
+        # ROUND 1a: filter ablation on the running set -> blocking filters -> unmasked base U -> adopt on a real positive ->
+        # path probe on U (when U was not adopted) -> masked paths get full yellows in round 1 + joint unmask in PINPOINT.
+        t0 = _t.time()
+        rb = _route_book
+        try:
+            if rb.get("ablation_done"):
+                return
+            if prepared is None:
+                rb["ablation_done"] = {"skipped": "no prepared NPZ"}
+                return
+            if any(str(k).split("!", 1)[0] in SWITCH_SHEETS for k in (progress.get("done") or {})):
+                rb["ablation_done"] = {"skipped": "resume mid-board: the chain already started (ablation runs before row 1 only)"}
+                print(f"[SMART-ROUTE] {new_symside} ablation skipped: chain already started (resume)", flush=True)
+                return
+            deadline = t0 + max(0.0, min(_ROUTE_ABL_S, 5400.0 - (t0 - _PILOT_T0) - 900.0))
+            cg = float(cumulative_gain)
+            base_ov = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
+            base_res, base_err = _get("ROUTE", None, "BASE", "", "ROUTE_BASE", base_ov, _t.time() + YELLOW_TIMEOUT * 6, cg)
+            if base_res is None:
+                rb["ablation_done"] = {"skipped": f"base eval failed: {base_err}"}
+                return
+            fnames = _route_filt_names()
+            cands = _sr.ablation_candidates(cumulative_overrides, defaults, fnames, _route_know["filters"], _ROUTE_ABL_MAX)
+            got = _route_strip_batch(cumulative_overrides, cands, cg, deadline, "ROUTE_STRIP")
+            strips, by_fk = {}, {}
+            for k_, (cur_, off_, ov_, res_) in got.items():
+                fk = _sr.canon_filter(k_, cur_)
+                c_ = _sr.classify_strip(base_res, res_, ADAPT_FLOOR_TRADES)
+                c_.update({"key": k_, "cur": str(cur_), "off": str(off_), "gain": res_.get("gain_pct"), "trades": res_.get("trades")})
+                strips[fk] = c_
+                by_fk[fk] = (k_, off_, ov_, res_)
+            order = _sr.unmask_order(strips)
+            unmask = [(strips[fk]["key"], by_fk[fk][1]) for fk in order]
+            base_trades = int(base_res.get("trades") or 0)
+            full_strip = False
+            if not unmask and base_trades < ADAPT_FLOOR_TRADES and got:
+                # jointly-blocking filters: no single strip opens a path on a starved base -> probe on the FULL strip
+                unmask = [(k_, v_[1]) for k_, v_ in got.items()]
+                full_strip = True
+            u_ov, u_res = None, None
+            if unmask and _t.time() < deadline:
+                u_ov = dict(cumulative_overrides)
+                for k_, off_ in unmask:
+                    u_ov[k_] = off_
+                u_ov = sanitize_overrides(u_ov, defaults)[0]
+                u_res, _uerr = _get("ROUTE", None, "UNMASK", f"{len(unmask)}keys", "ROUTE_UNMASK", u_ov, min(deadline + 30, _t.time() + YELLOW_TIMEOUT * 6), cg)
+            opts = []
+            if u_res is not None:
+                du, _uok, _ = _delta_vs(u_res, cg)
+                if _route_gate(u_res, "", du, [k_ for k_, _ in unmask]):
+                    opts.append((float(du), "unmask_all", u_ov, u_res, [f"{k_}={off_}" for k_, off_ in unmask], [_sr.canon_filter(k_, (cumulative_overrides.get(k_, defaults.get(k_)))) for k_, _ in unmask]))
+            for fk, c_ in strips.items():
+                if c_.get("helps"):
+                    k_, off_, ov_, res_ = by_fk[fk]
+                    d_, _ok_, _ = _delta_vs(res_, cg)
+                    if _route_gate(res_, "", d_, [k_]):
+                        opts.append((float(d_), "strip", ov_, res_, [f"{k_}={off_}"], [fk]))
+            adopted = None
+            if opts:
+                opts.sort(key=lambda t: -t[0])
+                adopted = opts[0]
+                _route_promote(adopted[2], adopted[3], adopted[0], f"ablation_{adopted[1]}", "ABL:" + "+".join(adopted[4])[:240], adopted[4])
+                rb["unmask_adopted"] = list(adopted[5])
+            masked, masked_detail = set(), {}
+            probe_n = 0
+            if u_ov is not None and u_res is not None and adopted is None and _t.time() < deadline:
+                # PATH PROBE: entry/exit/reentry rows naked on U — what opens when the masking filters are gone
+                ug = u_res.get("gain_pct")
+                rows_ = [(s_, r_, sw_, c_) for (s_, r_, sw_, c_) in queue if (s_, r_) not in orange_rows and _route_row_ok(sw_, c_)]
+                plist = _sr.probe_rows(rows_, u_ov, defaults, _route_know["rows"], _ROUTE_PROBE_MAX)
+                povs = {}
+                u_ck = _ck(u_ov)
+                for (s_, r_, sw_, c_) in plist:
+                    try:
+                        pov = dict(u_ov)
+                        pov.update(_switch_overrides(str(sw_).strip(), _parse_opt_value(c_, defaults.get(str(sw_).strip()))))
+                        pov = sanitize_overrides(pov, defaults)[0]
+                    except Exception:
+                        continue
+                    if _ck(pov) == u_ck:
+                        continue
+                    povs[(s_, r_, sw_, c_)] = pov
+                    _submit(pov)
+                _flush_batch()
+                for (s_, r_, sw_, c_), pov in povs.items():
+                    if _t.time() > deadline or ug is None:
+                        break
+                    pres, perr = _get("ROUTE", None, sw_, c_, f"ROUTE_PROBE:{s_}!{sw_}={c_}", pov, min(deadline, _t.time() + YELLOW_TIMEOUT * 4), float(ug))
+                    probe_n += 1
+                    if perr or pres is None or pres.get("gain_pct") is None or not pres.get("valid"):
+                        continue
+                    pd_ = float(pres["gain_pct"]) - float(ug)
+                    if pd_ > 1e-9:
+                        ck_ = _sr.canon_key(s_, sw_, c_)
+                        masked.add(ck_)
+                        masked_detail[ck_] = {"tab": s_, "row": r_, "switch": str(sw_).strip(), "cand": str(c_), "u_delta": round(pd_, 6), "trades": pres.get("trades")}
+            _route_masked.update(masked)
+            rb["strips"] = strips
+            rb["unmask_keys"] = [f"{k_}={off_}" for k_, off_ in unmask]
+            rb["unmask_full_strip"] = full_strip
+            rb["unmask_gain"] = (u_res or {}).get("gain_pct")
+            rb["unmask_trades"] = (u_res or {}).get("trades")
+            rb["masked_paths"] = sorted(_route_masked)
+            rb["masked_detail"] = masked_detail
+            rb["ablation_done"] = {"at": utcnow(), "base_gain": cg, "base_trades": base_trades, "candidates": len(cands), "evaluated": len(got), "blocking": sum(1 for v in strips.values() if v.get("blocking")), "helps": sum(1 for v in strips.values() if v.get("helps")), "adopted": (adopted[1] if adopted else None), "probe_evals": probe_n, "masked": len(masked), "secs": round(_t.time() - t0, 1)}
+            print(f"[SMART-ROUTE] {new_symside} ABLATION base {cg:.4f}/{base_trades}t: {len(got)}/{len(cands)} strips, blocking={rb['ablation_done']['blocking']} helps={rb['ablation_done']['helps']} unmask={len(unmask)}{' (full strip)' if full_strip else ''} U={(u_res or {}).get('gain_pct')}/{(u_res or {}).get('trades')}t adopted={adopted[1] if adopted else None} -> {float(cumulative_gain):.4f}; probe {probe_n} rows -> masked paths {len(masked)} ({_t.time() - t0:.0f}s)", flush=True)
+        except V15Shutdown:
+            raise
+        except Exception as _ae:
+            import traceback as _tb_a
+            rb["ablation_done"] = {"error": f"{_ae}"[:200]}
+            print(f"[SMART-ROUTE-WARN] {new_symside} ablation: {_ae}\n{_tb_a.format_exc()[-1200:]}", flush=True)
+        finally:
+            _route_secs["ablation"] = round(_route_secs.get("ablation", 0.0) + (_t.time() - t0), 1)
+            _maybe_write_json(force=True)
+    def _route_pinpoint_round():
+        # ROUND 2 PINPOINT (before the enlarged FOCUS): P0 masked-path joint unmask, P1 re-ablation of the FINAL chain.
+        t0 = _t.time()
+        rb = _route_book
+        out = {"tier": _tier_name, "entry_gain": float(cumulative_gain), "evals": 0, "p0": {"paths": 0, "promoted": 0}, "p1": {"strips": 0, "positive": 0, "promoted": 0}}
+        try:
+            if prepared is None:
+                out["skipped"] = "no prepared NPZ"
+                return
+            if (rb.get("pinpoint_done") or {}).get("result_key") == _route_sk(cumulative_overrides):
+                out["skipped"] = "already ran on this exact set (resume)"
+                return
+            budget = float(_ROUTE_PINPOINT_S.get(_tier_name, 300.0))
+            try:
+                if bh is not None and float(cumulative_gain) < float(bh) and _tier_name != "LOST_CAUSE":
+                    budget = max(budget, float(os.environ.get("V15_PINPOINT_S_BHCHASE", "600")))
+            except Exception:
+                pass
+            budget = min(budget, 5400.0 - (t0 - _PILOT_T0) - 900.0)
+            out["budget_s"] = round(budget, 1)
+            if budget < 20:
+                out["skipped"] = f"only {budget:.0f}s left inside the 90-min herd cap"
+                return
+            deadline = t0 + budget
+            unmask = []
+            for part in rb.get("unmask_keys") or []:
+                k_, _, v_ = str(part).partition("=")
+                try:
+                    unmask.append((k_.strip(), _parse_opt_value(v_.strip(), defaults.get(k_.strip()))))
+                except Exception:
+                    continue
+            strips = rb.get("strips") or {}
+            top_block = sorted((v for v in strips.values() if v.get("blocking")), key=lambda v: -(v.get("d_trades") or 0))[:3]
+            # P0 — masked paths: the path ON together with the filters that masked it, vs the LATEST chain
+            wins = list(rb.get("masked_wins") or [])
+            detail = rb.get("masked_detail") or {}
+            for ck_ in sorted(detail, key=lambda c: -float(detail[c].get("u_delta") or 0.0)):
+                if _t.time() > deadline - 5:
+                    break
+                md = detail[ck_]
+                sw_, c_ = md["switch"], md["cand"]
+                try:
+                    sw_ov = _switch_overrides(sw_, _parse_opt_value(c_, defaults.get(sw_)))
+                except Exception:
+                    continue
+                if all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+                    continue
+                out["p0"]["paths"] += 1
+                cg = float(cumulative_gain)
+                variants = []
+                base = dict(cumulative_overrides)
+                base.update(sw_ov)
+                variants.append(("path", base, [f"{sw_}={c_}"]))
+                if unmask:
+                    v_all = dict(base)
+                    for k_, off_ in unmask:
+                        v_all[k_] = off_
+                    variants.append(("path+unmask", v_all, [f"{sw_}={c_}"] + [f"{k_}={off_}" for k_, off_ in unmask]))
+                for b_ in top_block:
+                    try:
+                        off_ = _parse_opt_value(b_.get("off"), defaults.get(b_.get("key")))
+                    except Exception:
+                        continue
+                    v_one = dict(base)
+                    v_one[b_["key"]] = off_
+                    variants.append((f"path+strip:{b_['key']}", v_one, [f"{sw_}={c_}", f"{b_['key']}={b_.get('off')}"]))
+                vovs = [(lab, sanitize_overrides(v_, defaults)[0], parts) for lab, v_, parts in variants]
+                for _lab, v_, _p in vovs:
+                    _submit(v_)
+                _flush_batch()
+                best = None
+                for lab, v_, parts in vovs:
+                    if _t.time() > deadline:
+                        break
+                    res_, err_ = _get("ROUTE", md.get("row"), sw_, c_, f"PINPOINT_{lab}:{ck_}", v_, min(deadline, _t.time() + YELLOW_TIMEOUT * 4), cg)
+                    out["evals"] += 1
+                    d_, _ok_, _ = _delta_vs(res_, cg)
+                    if _route_gate(res_, err_, d_, [p.split("=", 1)[0] for p in parts]) and (best is None or float(d_) > best[0]):
+                        best = (float(d_), lab, v_, res_, parts)
+                if best is not None:
+                    _route_promote(best[2], best[3], best[0], f"masked_{best[1].split(':')[0]}", f"{md['tab']}!{sw_}={c_}@{best[1]}"[:240], best[4])
+                    wins.append(ck_)
+                    out["p0"]["promoted"] += 1
+                    _stripped = {p.split("=", 1)[0].strip() for p in best[4][1:]}
+                    rb["unmask_adopted"] = sorted(set(rb.get("unmask_adopted") or []) | {fk for fk, v in strips.items() if v.get("key") in _stripped})
+            rb["masked_wins"] = sorted(set(wins))
+            # P1 — re-ablation of the grown chain: filters that were right for the masked start can be wrong now
+            if _t.time() < deadline - 5:
+                cands = _sr.ablation_candidates(cumulative_overrides, defaults, _route_filt_names(), _route_know["filters"], _ROUTE_ABL_MAX)
+                cg = float(cumulative_gain)
+                got = _route_strip_batch(cumulative_overrides, cands, cg, deadline, "PINPOINT_STRIP")
+                out["p1"]["strips"] = len(got)
+                out["evals"] += len(got)
+                pos = []
+                for k_, (cur_, off_, ov_, res_) in got.items():
+                    d_, _ok_, _ = _delta_vs(res_, cg)
+                    if _route_gate(res_, "", d_, [k_]):
+                        pos.append((float(d_), k_, off_, cur_))
+                pos.sort(key=lambda t: -t[0])
+                out["p1"]["positive"] = len(pos)
+                adopted = list(rb.get("unmask_adopted") or [])
+                for d0, k_, off_, cur_ in pos:
+                    if _t.time() > deadline - 2:
+                        break
+                    cg = float(cumulative_gain)
+                    ov_ = dict(cumulative_overrides)
+                    ov_[k_] = off_
+                    ov_ = sanitize_overrides(ov_, defaults)[0]
+                    res_, err_ = _get("ROUTE", None, k_, off_, f"PINPOINT_REAPPLY_STRIP:{k_}={off_}", ov_, min(deadline, _t.time() + YELLOW_TIMEOUT * 4), cg)
+                    out["evals"] += 1
+                    d_, _ok_, _ = _delta_vs(res_, cg)
+                    if _route_gate(res_, err_, d_, [k_]):
+                        _route_promote(ov_, res_, float(d_), "pinpoint_strip", f"STRIP:{k_}={off_}", [f"{k_}={off_}"])
+                        adopted.append(_sr.canon_filter(k_, cur_))
+                        out["p1"]["promoted"] += 1
+                rb["unmask_adopted"] = sorted(set(adopted))
+        except V15Shutdown:
+            raise
+        except Exception as _pe:
+            import traceback as _tb_p
+            out["error"] = f"{_pe}"[:200]
+            print(f"[PINPOINT-warn] {new_symside}: {_pe}\n{_tb_p.format_exc()[-1200:]}", flush=True)
+        finally:
+            out["secs"] = round(_t.time() - t0, 1)
+            out["exit_gain"] = float(cumulative_gain)
+            rb["pinpoint"] = out
+            if not out.get("skipped"):
+                rb["pinpoint_done"] = {"result_key": _route_sk(cumulative_overrides), "at": utcnow()}
+            _route_secs["pinpoint"] = round(_route_secs.get("pinpoint", 0.0) + (_t.time() - t0), 1)
+            _maybe_write_json(force=True)
+            print(f"[PINPOINT] {new_symside} tier={_tier_name} {out['secs']}s evals={out['evals']} masked={out['p0']} strips={out['p1']} {out['entry_gain']:.4f}->{float(cumulative_gain):.4f}{' skipped=' + str(out.get('skipped')) if out.get('skipped') else ''}", flush=True)
+    def _route_plan_sheet():
+        try:
+            if "ROUTE_PLAN" in wb.sheetnames:
+                del wb["ROUTE_PLAN"]
+            rws = wb.create_sheet("ROUTE_PLAN")
+            rb = _route_book
+            ab = rb.get("ablation_done") or {}
+            rws.append(["SMART_ROUTE", new_symside, "tier", _tier_name, "base_gain", ab.get("base_gain"), "base_trades", ab.get("base_trades"), "unmask_gain", rb.get("unmask_gain"), "unmask_trades", rb.get("unmask_trades"), "stage_secs", json.dumps(_route_secs)])
+            rws.append(["ROUND1", "abbrev_rows", _route_stats["abbrev"], "full_rows", _route_stats["full"], "revived_rows", _route_stats["revived"], "cells_deferred", _route_stats["cells_deferred"], "cells_revived", _route_stats["cells_revived"]])
+            rws.append([])
+            rws.append(["how", "what", "delta", "before", "after", "trades", "tim", "dd"])
+            for p in rb.get("promotions") or []:
+                rws.append([p.get("how"), p.get("what"), p.get("delta"), p.get("before"), p.get("after"), p.get("trades"), p.get("tim"), p.get("dd")])
+            rws.append([])
+            rws.append(["STRIP", "filter", "off", "d_gain", "d_trades", "d_tim", "blocking", "helps"])
+            for fk, s_ in sorted((rb.get("strips") or {}).items(), key=lambda t: (-(t[1].get("d_trades") or 0), t[0])):
+                rws.append(["STRIP", fk, s_.get("off"), s_.get("d_gain"), s_.get("d_trades"), s_.get("d_tim"), s_.get("blocking"), s_.get("helps")])
+            rws.append([])
+            rws.append(["MASKED_PATH", "key", "u_delta", "trades_on_U", "won"])
+            wins = set(rb.get("masked_wins") or [])
+            for ck_, md in sorted((rb.get("masked_detail") or {}).items(), key=lambda t: -float(t[1].get("u_delta") or 0.0)):
+                rws.append(["MASKED_PATH", ck_, md.get("u_delta"), md.get("trades"), ck_ in wins])
+        except Exception as _rse:
+            print(f"[SMART-ROUTE-WARN] ROUTE_PLAN sheet: {_rse}", flush=True)
+    def _route_learn():
+        # SELF-IMPROVEMENT write-back: this board's route record -> route_ledger.jsonl + route_knowledge.json (flock'd merge;
+        # the next board of this cat_side loads it at entry). Never raises, never touches the chain.
+        try:
+            import fcntl as _fc
+            _route_book["stage_secs"] = dict(_route_secs)
+            _route_book["round1"] = dict(_route_stats)
+            rec = _sr.record_from_progress(new_symside, {**progress, "cumulative_overrides": cumulative_overrides, "cumulative_gain": float(cumulative_gain), "bh": bh}, source=f"pilot:{progress_path.name}")
+            rec["round1"] = dict(_route_stats)
+            _sr.ROUTE_DIR.mkdir(parents=True, exist_ok=True)
+            with open(_sr.ROUTE_DIR / ".route_knowledge.lock", "w") as _lk:
+                _fc.flock(_lk, _fc.LOCK_EX)
+                know = _sr.load_knowledge()
+                if _sr.merge_record(know, rec):
+                    _sr.append_ledger(rec)
+                    _sr.save_knowledge(know)
+                    print(f"[SMART-ROUTE-LEARN] {new_symside} merged: rows={len(rec['rows'])} filters={len(rec['filters'])} masked_wins={len(_route_book.get('masked_wins') or [])} -> {_sr.ROUTE_DIR / _sr.KNOWLEDGE_NAME}", flush=True)
+                else:
+                    print(f"[SMART-ROUTE-LEARN] {new_symside} already merged for this exact final set (resume) — no double count", flush=True)
+        except Exception as _le:
+            print(f"[SMART-ROUTE-WARN] learn write-back failed: {_le}", flush=True)
+    if _route_on:
+        _route_ablation_round()
+    _route_r1_t0 = _t.time()
     _sacred_prev_tab = [None]
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
@@ -5341,6 +5847,42 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 results[_pv_hdr] = _get(sname, rr, switch, cand, _pv_hdr, _pv_ov, _pv_deadline, cumulative_before)
             n_items = len(plan["items"])
             print(f"[PRIOR-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> {len(_pv_hdrs)} prior-skipped yellows evaluated", flush=True)
+        if _route_on and st.get("route_deferred") and not is_running:
+            # SMART ROUTE ROUTE-REVIVED: the naked flip binds on THIS sym_side (ledger moved, not deeply negative) -> its
+            # deferred yellows run now vs the same cumulative_before. Non-binding rows keep the deferral (settled).
+            try:
+                _rv_run = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
+                if _ck(_rv_run) not in _ref_cache:
+                    _ref_cache[_ck(_rv_run)] = _peek(sname, rr, switch, cand, "REF_BASELINE", _rv_run, cumulative_before)
+                _rv_ref = _ref_cache.get(_ck(_rv_run))
+                _rv_bind = None
+                if _rv_ref is not None and not is_running:
+                    _rv_a, _rv_b = _fp_of(_rv_ref), _fp_of((results.get("naked") or (None, None))[0])
+                    _rv_bind = None if (_rv_a is None or _rv_b is None) else bool(_rv_a != _rv_b)
+                _rv_go = _sr.should_revive(naked_delta, _rv_bind, _ROUTE_REVIVE_MIN, str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES))
+            except Exception:
+                _rv_go = False
+            if _rv_go:
+                _rt_hdrs = [h for h in st["route_deferred"] if h not in st["hdrs"] and h in st["h2f"]]
+                st["route_revived"] = list(_rt_hdrs)
+                st["route_deferred"] = []
+                _route_stats["revived"] += 1
+                _route_stats["cells_revived"] += len(_rt_hdrs)
+                _rt_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_rt_hdrs) // max(1, _n_proc))) + 2)
+                _rt_ovs = {}
+                for _rt_h in _rt_hdrs:
+                    _rt_f = st["h2f"][_rt_h]
+                    _rt_ov = dict(switch_variant)
+                    _rt_ov[_rt_f["filter"]] = _parse_opt_value(_rt_f["opt"], defaults.get(_rt_f["filter"]))
+                    _rt_ovs[_rt_h] = sanitize_overrides(_rt_ov, defaults)[0]
+                    _submit(_rt_ovs[_rt_h])
+                _flush_batch()
+                for _rt_h in _rt_hdrs:
+                    st["hdrs"].append(_rt_h)
+                    plan["items"].append((_rt_h, _rt_ovs[_rt_h]))
+                    results[_rt_h] = _get(sname, rr, switch, cand, _rt_h, _rt_ovs[_rt_h], _rt_deadline, cumulative_before)
+                n_items = len(plan["items"])
+                print(f"[ROUTE-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} binds -> {len(_rt_hdrs)} deferred yellows evaluated", flush=True)
         if _COARSE_INLINE and st.get("coarse_deferred_filters"):
             # USER 2026-10-13 V16 COARSE-INLINE: a row that MOVES (positive naked or any positive kept yellow) evaluates
             # its coarse-deferred yellows NOW, vs the same cumulative_before, before G/promotion is decided. The row is
@@ -5679,6 +6221,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
+        if _route_on and (st.get("route_mode") or st.get("route_revived")):
+            progress["done"][key]["route_mode"] = st.get("route_mode")
+            progress["done"][key]["route_deferred_filters"] = list(st.get("route_deferred") or [])
+            progress["done"][key]["route_revived"] = list(st.get("route_revived") or [])
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)
@@ -5696,13 +6242,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["prior_policy"]["stats"] = dict(_prior_stats)
         except Exception:
             pass
+    if _route_on:
+        _route_secs["round1"] = round(_route_secs.get("round1", 0.0) + (_t.time() - _route_r1_t0), 1)
+        _route_book["round1"] = dict(_route_stats)
+        print(f"[SMART-ROUTE] {new_symside} ROUND1 abbreviated worst_first: rows abbrev={_route_stats['abbrev']} full={_route_stats['full']} revived={_route_stats['revived']} yellow evals deferred={_route_stats['cells_deferred'] - _route_stats['cells_revived']} ({_route_secs['round1']:.0f}s)", flush=True)
+        # ROUND 2 PINPOINT: masked-path joint unmask + final-chain re-ablation, then the enlarged FOCUS below
+        try:
+            _route_pinpoint_round()
+        except V15Shutdown:
+            raise
+        except Exception as _rpe:
+            print(f"[PINPOINT-warn] outer {_rpe}", flush=True)
     # USER 2026-10-12 FOCUS ROUND: tier budget on what moved this sym_side (runs with the fork pool still hot)
+    _route_f_t0 = _t.time()
     try:
         _focus_round()
     except V15Shutdown:
         raise
     except Exception as _fre:
         print(f"[FOCUS-warn] outer {_fre}", flush=True)
+    if _route_on:
+        _route_secs["focus"] = round(_route_secs.get("focus", 0.0) + (_t.time() - _route_f_t0), 1)
+        _route_plan_sheet()
     if _inert_effective:
         print(f"[AUTOPSY-INERT] {new_symside}: rows pruned={_inert_stats['pruned']} sampled-full={_inert_stats['sampled']} revived={_inert_stats['revived']} yellow evals skipped={_inert_stats['yellows_skipped']}", flush=True)
     # USER 2026-10-06 REDO-HEAL: the heal marker served its purpose once the fill completes (sampling
@@ -5780,10 +6341,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _e_drain:
         print(f"[red-fixer-drain-warn] {_e_drain}", flush=True)
     # Now fill LIVE_DELTA and LIVE_SHARPE when entire sheet complete via backtest_v12_engine parity
+    _route_st0 = _t.time()
     try:
         _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
+    if _route_on:
+        _route_secs["recheck"] = round(_route_secs.get("recheck", 0.0) + (_t.time() - _route_st0), 1)
+        _route_st0 = _t.time()
     # USER 2026-10-07 ENDGAME: strip filters -> naked switch retest -> one-by-one reapply to bh+10.
     # Deterministic audit BEFORE the beam-search repair. V15_ENDGAME=0 disables.
     try:
@@ -5796,6 +6361,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         raise
     except Exception as _ege2:
         print(f"[ENDGAME-warn] outer {_ege2}", flush=True)
+    if _route_on:
+        _route_secs["endgame"] = round(_route_secs.get("endgame", 0.0) + (_t.time() - _route_st0), 1)
+        _route_st0 = _t.time()
     # USER 2026-10-06 DIAGNOSE+REPAIR (tools/v15_diagnose_repair.py, ENCYCLOPEDIA.md §DIAGNOSIS): all cells calculated,
     # NPZ + fork pool still hot -> diagnose the final set, then non-sequential SOFTEN -> ADD -> TIGHTEN -> POLISH,
     # 365D check of the finalists, replace the final set only when compliant and better. V15_DIAG_REPAIR=0 disables,
@@ -5809,6 +6377,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _dre:
         import traceback as _tb_dr
         print(f"[DIAG-warn] {new_symside}: {_dre}\n{_tb_dr.format_exc()[-1500:]}", flush=True)
+    if _route_on:
+        _route_secs["diagnose"] = round(_route_secs.get("diagnose", 0.0) + (_t.time() - _route_st0), 1)
+        _route_learn()
     if _ps_on and _ps_counts:
         try:
             progress["possym_sampling"] = {"round": _ps_round, "cat": _ps_cat, "counts": {k: {"computed": v[0], "skipped": v[1]} for k, v in _ps_counts.items()}}

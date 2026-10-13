@@ -139,6 +139,11 @@ log "step4d switch causal profile + sym_side ledger"
 [ -f data/causal/switch_causal_profile.json ] && cp -p data/causal/switch_causal_profile.json "backups/before_daily_chain_${DATE}_switch_causal_profile.json"
 timeout 1200 nice -n 10 python3 -u tools/v15_switch_causal_profile.py || log "step4d causal profile rc=$? (non-fatal, previous profile kept)"
 timeout 600 nice -n 10 python3 -u tools/v15_symside_ledger.py || log "step4d symside ledger rc=$? (non-fatal)"
+# USER 2026-10-13 SMART ROUTE (bible §93): clean daily rebuild of the route knowledge (hot rows, blocking filters, masked-path
+# wins) from every finished board; pilots add their own boards incrementally during the day. Ancillary, never fatal.
+[ -f data/smart_routes/route_knowledge.json ] && cp -p data/smart_routes/route_knowledge.json "backups/before_daily_chain_${DATE}_route_knowledge.json"
+timeout 900 nice -n 10 python3 -u tools/v15_smart_route.py mine --rebuild > /dev/null || log "step4d smart route mine rc=$? (non-fatal, previous knowledge kept)"
+timeout 120 nice -n 10 python3 -u tools/v15_smart_route.py report --out data/smart_routes/ROUTE_KNOWLEDGE.md > /dev/null || true
 STEPS_OK="$STEPS_OK,4d"
 
 # 5. zero-delta watchdog (non-fatal)
@@ -152,6 +157,7 @@ FILES="$FILES SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADS
 FILES="$FILES data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
 FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json data/causal_condemned.json"
 [ -f data/causal/switch_causal_profile.json ] && FILES="$FILES data/causal/switch_causal_profile.json"  # USER 2026-10-12 pilot priors (step4d)
+[ -f data/smart_routes/route_knowledge.json ] && FILES="$FILES data/smart_routes/route_knowledge.json"  # USER 2026-10-13 smart route (step4d)
 FILES="$FILES $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx"
 FILES="$FILES data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 for F in $FILES; do [ -f "$F" ] || fail 6 "push file missing: $F"; done

@@ -2103,3 +2103,102 @@ immediately" is satisfied in the sense that 365D no longer gates it, but a set c
 next go-live slot. Making it apply per publish means applying unverified settings to real money many times a day; that
 is a live-money cadence decision for the operator, not a silent change. To enable, run
 `tools/v15_persym_golive.py --all-finished` on a tighter Mac cron (it is idempotent and diff-only).
+## 93. SMART ROUTE — ABLATION FIRST, ABBREVIATED WORST_FIRST, ENLARGED PINPOINT, SELF-IMPROVING (USER 2026-10-13)
+
+**Order (verbatim intent):** "4-12 sym_sides completely resolved per hour per server 24/7/365 … the worst_first round
+abbreviated, the pinpoint round enlarged … filter ablation first, then testing all the entry and exit paths that did not
+have a chance in previous rounds because filters had disabled them … the self-improving part is not working correctly."
+
+**Evidence (mined from the finished boards with `tools/v15_smart_route.py mine`, real cells, nothing estimated):**
+
+| board | rows | G == 0 | zero rows with ANY positive yellow | yellow evals | positive rows |
+|---|---|---|---|---|---|
+| KMNOUSDT_SHORT (baseline 0 trades) | 3164 | 2717 / 2861 numeric | **0** | 106,656 | 30 |
+| MELANIAUSDT_SHORT | 3164 | 2576 / 2683 numeric | **0** | 81,807 | 39 |
+| BWXT_SHORT (older 10-07 era, sparse yellows) | 4063 | 1319 / 2797 | 30 | 10,377 | 9 |
+
+FINAL_FILTER_RECHECK on both crypto boards: 1280 evals, **0** promotions. Conclusion: when filters mask the entry paths,
+almost every row is non-binding (same ledger fingerprint, G exactly 0). For a non-binding switch, switch+filter == filter
+alone, which the filter's own orange row already measures, so its 40–200 yellows are pure waste. The value lies in (a)
+unmasking and (b) the rows that actually move the ledger.
+
+**The route (`v15_pilot._spec_fill_workbook`, kill switch `V15_SMART_ROUTE=0` = exact pre-route behaviour):**
+1. **ROUND 1a ABLATION** (`_route_ablation_round`, before row 1 only; resume mid-board skips it). This is a leave-one-out
+   strip of every active entry-blocking filter/gate of the running set (`ablation_candidates`: bool True → False, a
+   timeframe → OFF; never stops/`FIXED_STOP`, `ABLATION_*`, caps, hedges, numeric thresholds), all in one fork-pool batch.
+   A filter is **blocking** when stripping it adds trades (≥ max(2, 10%) or any trade on a sub-floor base). The
+   **unmasked base U** is the running set minus every blocking/helping filter (on a starved base with no single blocker,
+   U is the full strip, because the filters block jointly). U or the best helping single strip is **adopted only on a
+   real positive delta** under the FOCUS gates (valid, trade floor, TIM/trades guards, `promotion_block_reason`), §14.2.
+2. **PATH PROBE** (only when U was not adopted): entry/exit/reentry rows evaluated naked on U, ordered by knowledge
+   (masked-path wins, row wins), then ENABLING rows (paths the masked chain never opened). Rows that gain on U are
+   **MASKED PATHS** (`progress.smart_route.masked_paths/masked_detail`).
+3. **ROUND 1b ABBREVIATED WORST_FIRST** (`route_row_policy` in `_row_static`, after the prior policy). Every row keeps
+   its NAKED eval (§77). Yellows run only on rows that are exempt (sacred, essential, new, coarse-expand, REDO-heal),
+   masked paths, HOT by knowledge (ever promoted / carried a positive yellow / won as a masked path on this cat_side), or
+   the rotating 1/`V15_ROUTE_ROTATE_EVERY` (25) slice. All other cells are **ROUTE-deferred**: blank, settled (never
+   hollow; RULE#3 does not refill them), booked per row (`route_mode`, `route_deferred_filters`).
+   **ROUTE-REVIVED:** when the naked flip binds (|delta| > 0 or the fingerprint moved) and is above
+   `V15_ROUTE_REVIVE_MIN` (−1.0; sacred always), the deferred yellows run inline vs the same `cumulative_before`.
+4. **ROUND 2 PINPOINT** (`_route_pinpoint_round`, before FOCUS). **P0** takes each masked path, best u_delta first, and
+   evaluates it vs the LATEST chain three ways: path alone, path + full unmask, and path + each of the top-3 blockers
+   stripped. The best variant that passes the gates is promoted. **P1** re-ablates the grown chain: strips that now pay
+   are adopted greedily, one fresh eval each. Budget per tier: `V15_PINPOINT_S_{WINNER,MEDIOCRE,LOSER,LOST_CAUSE}` =
+   600/420/240/90 s, raised to `V15_PINPOINT_S_BHCHASE` (600) while gain < bh. All of it stays inside the 90-min herd cap.
+   Then the **enlarged FOCUS**: budget × `V15_PINPOINT_FOCUS_MULT` (2, min 240 s), `top_k` ≥ 24, eval cap ≥ 8000. It
+   also earns the route-deferred cells of every row that moved.
+5. **FINAL_FILTER_RECHECK trimmed** to evidence-backed filters: positive on this board (naked/promoted/any yellow), HOT
+   by knowledge, part of the unmask, or ever positive in knowledge. Capped at `V15_ROUTE_RECHECK_MAX` (200). Set
+   `V15_ROUTE_RECHECK_ALL=1` for the old full pass.
+6. **Promotions** are done-keys `ROUTE!<n>:<label>` with `cumulative_before/after` (the E-chain validator holds, RULE#3 keeps
+   them). The adopted value is written to C on the template row carrying exactly that SWITCH=value (§56.0). The board
+   gets a `ROUTE_PLAN` tab (strips, masked paths, promotions, round-1 stats, stage seconds).
+
+**ENDGAME NO-REGRESSION FIX (same turn; this is a real bug in §69, found by the route harness):** REAPPLY puts filters
+back one at a time, so it can never rebuild a JOINT filter set (two filters that only pay together, e.g. an unmask). The
+reapplied set could land BELOW the entry set and was adopted anyway. Harness: 3.80 → 0.80, `lift -3.0, adopted=1`.
+ADOPT now refuses any set below the entry gain. The entry set stands, and the would-be lift is printed and stored as
+`endgame.regress_refused`. `V15_ENDGAME_NO_REGRESS=0` restores the old behaviour. E only goes up (§14).
+
+**SELF-IMPROVEMENT (what was missing):** endgame knowledge only reordered the endgame's own try-order. Nothing the
+fleet learned decided where round 1 spends its yellows, which filters mask paths, or which paths win once unmasked. Now:
+- every board appends `data/smart_routes/route_ledger.jsonl` and merges `data/smart_routes/route_knowledge.json` under
+  `flock` (`_route_learn`, after DIAGNOSE; idempotent per sym_side + final-set hash). Per cat_side the knowledge holds: rows
+  `n/pos/neg/zero/promoted/yellow_pos/masked/masked_win/sum_pos/sum_neg`, filters `blocking/strip_pos/unmask_win/
+  yellow_pos/reapply_pos`, and boards `n/beat_bh/sum gains/stage_secs`;
+- the next board loads it at entry (no look-ahead). It decides HOT rows (full yellows), the ablation try-order (proven
+  unmask wins and blockers first) and the probe order (masked-path wins first);
+- S1 daily chain step 4d runs `tools/v15_smart_route.py mine --rebuild` over every finished progress JSON plus any
+  finished xlsx without a progress JSON, writes `data/smart_routes/ROUTE_KNOWLEDGE.md`, and step 6 pushes the knowledge
+  md5-verified to the workers. The step is ancillary and never fatal; without a knowledge file the pilot fails open to
+  "no rows hot", which means every non-binding row is deferred and every binding row is revived.
+
+**Throughput math (eval counts only, from the mined boards; NOT a wall-clock measurement, no NPZ in the authoring
+container):** round 1 on KMNO-like boards drops from about 3.2k naked + 107k yellow evals to about 3.2k naked + yellows on
+binding/hot rows. Same template + same fake engine (harness below), route OFF vs ON: unique engine evals **21,937 →
+5,725 (−74%)**, yellow cells evaluated **61,638 → 7,952 (−87%)** (OFF already carries the V16 coarse cap of 24/row),
+harness wall 144 s → 65 s. That total already includes ablation (~210 strips), probe (≤600) and PINPOINT (~210).
+FINAL_FILTER_RECHECK drops from ~1280 to ≤200 (harness 1277 → 7). Wall-clock per board has to be measured on the fleet (the stage seconds are in every board's
+`ROUTE_PLAN` tab and `progress.smart_route.stage_secs`, and are aggregated per cat_side in the knowledge report).
+
+**Proof run (harness, real `_spec_fill_workbook` over the real `TEMPLATE_CRYPTO_SHORT`, deterministic FAKE engine
+with two planted blockers and one planted masked entry path; it proves the control flow and has no market meaning):**
+ablation found exactly the 2 blockers (207 strips, 2 s), the probe found the masked path, PINPOINT P0 promoted
+path+unmask (+3.0, 0.5 → 3.5), and round 1 could promote nothing on the starved 4-trade chain (trades guard), which
+is the KMNO failure mode. Before the endgame fix the board ended at 0.8; after it, 3.8. The same board with
+`V15_SMART_ROUTE=0` ends at 0.5 because it never finds the masked path. The fork-pool path (workers=3) gives an identical
+result. A second board loaded the first
+board's knowledge (rows=3155, hot=2).
+
+**Tests:** `tests/test_v15_smart_route.py` (17: candidates/blocking/unmask/probe order, row policy modes, rotation,
+revive rule, knowledge merge idempotency + corrupt fallback, progress/xlsx miners incl. the KMNO zero-row evidence,
+CLI idempotency, pilot wiring + endgame guard source pins, RULE#3 settledness of deferred rows and ROUTE keys).
+
+**Kill switches / knobs:** `V15_SMART_ROUTE=0`, `V15_ROUTE_ROTATE_EVERY`, `V15_ROUTE_REVIVE_MIN`, `V15_ROUTE_ABL_MAX` (240),
+`V15_ROUTE_PROBE_MAX` (600), `V15_ROUTE_ABL_S` (240), `V15_PINPOINT_S_*`, `V15_PINPOINT_FOCUS_MULT`, `V15_PINPOINT_TOP_K`,
+`V15_PINPOINT_MAX_EVALS`, `V15_ROUTE_RECHECK_MAX`, `V15_ROUTE_RECHECK_ALL`, `V15_ENDGAME_NO_REGRESS`, `V15_ROUTE_DIR`.
+
+**Not done (operator decisions, never silent):** (1) no new strategy switch was invented. DIAGNOSE's `MISSING_LEVER` gaps
+(e.g. KMNO "FEW_TRADES: no template switch/filter moves trades up") remain invention-loop work orders (§84) that need user
+approval per the NEW STRATEGY PROHIBITION. (2) Fleet deploy (rsync S1/s2/s5/s6 + md5) and a canary board on real NPZs
+are the next step. Watch `[SMART-ROUTE]`, `[ROUTE-REVIVED]`, `[PINPOINT]` and `[ROUTE-PROMOTE]` in the pilot logs.
