@@ -322,10 +322,23 @@ elif mode == "ready":
                         lag_min = float(np.nanmin(t - t15))
                         # base dt (300s = 5m-base) is recorded, NOT a blocker: the sweep loader evaluate_v12._compact_to_15m works on the
                         # timestamp_15m parent array and the old tick produced valid sheets from 5m-base stock NPZs.
+                        # USER 2026-10-12 dispatch gate: tail must be complete to the latest bar (crypto: last closed 15m;
+                        # stocks: last RTH close) BEFORE dispatch. Single source tools/npz_cutoffs.tail_currency. Import
+                        # failure falls back to the age_h backstop below (never worse than today) and is reported loudly.
+                        _tail_ok, _tail_why, _tail_enforced = True, "cutoffs-unavailable", False
+                        try:
+                            from tools.npz_cutoffs import tail_currency as _tail_currency
+                            _tail_ok, _tail_why = _tail_currency(float(t[-1]) / k, arg.get("venue"), now)
+                            _tail_enforced = True
+                        except Exception as _tail_e:
+                            _tail_why = "cutoffs-import-fail %s" % str(_tail_e)[:60]
+                        r["tail_check"] = ("enforced " if _tail_enforced else "fallback ") + _tail_why
                         if ev < 10 or lag_min < 0:  # mirrors evaluate_v12._compact_to_15m
                             r["reason"] = "_compact_to_15m would raise (events=%d, lag_min=%.0f)" % (ev, lag_min)
                         elif span < arg["min_span_30d"]:
                             r["reason"] = "history %.1fd < %.0fd" % (span, arg["min_span_30d"])
+                        elif _tail_enforced and not _tail_ok:
+                            r["reason"] = "tail-stale: %s" % _tail_why
                         elif age_h > max_age:
                             r["reason"] = "stale: last bar %.1fh old" % age_h
                         elif gap_h > 3.0:

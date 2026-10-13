@@ -35,6 +35,38 @@ def is_variant(stem):
     return bool(VARIANT_RE.search(stem))
 
 
+DERIVED_SUFFIXES = ("_365", "_BF2", "_BF", "_CYCLE", "_W2B", "_S3")  # unread + unrefreshable derived files (no klines match)
+
+
+def is_derived(stem):
+    return is_variant(stem) or stem.endswith(DERIVED_SUFFIXES)
+
+
+def tradeable_syms(root=None):
+    """Set of base syms from tradeable_keys.json (ang:SYM_SIDE format); missing file -> None (fail-closed: gate everything)."""
+    try:
+        import json as _js
+
+        tk = _js.load(open(os.path.join(root or ROOT, "tradeable_keys.json")))
+        out = set()
+        for k in tk:
+            s = k.split(":", 1)[-1]
+            s = re.sub(r"_(LONG|SHORT)$", "", s)
+            out.add(s)
+        return out
+    except Exception:
+        return None
+
+
+def is_tradeable_file(path_or_stem, tsyms):
+    """Suffix-tolerant on venue (NPZ AG.npz matches key AGUSDT; crypto direct). Derived-suffixed stems never match (purged, never refreshed). tsyms None -> True (fail-closed: gate everything)."""
+    if tsyms is None:
+        return True
+    stem = os.path.basename(str(path_or_stem))
+    stem = stem[:-4] if stem.endswith(".npz") else stem
+    return stem in tsyms or stem + "USDT" in tsyms or stem + "USDC" in tsyms
+
+
 def classify(path, now=None):
     """Return (verdict, detail): verdict in ok/short/stale/bad(+variant flag)."""
     now = now or time.time()
@@ -84,14 +116,14 @@ def audit(d):
 
 
 def plan(short, stale):
-    """Split violators into bar-refresh (stale), rebuild (short), unrefreshable (variants)."""
+    """Split violators into bar-refresh (stale), rebuild (short), unrefreshable (variants/derived: match no klines)."""
     refresh, rebuild, unref = [], [], []
     for entry in stale:
         stem = entry.split()[0].replace(".npz", "")
-        (unref if is_variant(stem) else refresh).append(stem)
+        (unref if is_derived(stem) else refresh).append(stem)
     for entry in short:
         stem = entry.split()[0].replace(".npz", "")
-        (unref if is_variant(stem) else rebuild).append(stem)
+        (unref if is_derived(stem) else rebuild).append(stem)
     return sorted(set(refresh)), sorted(set(rebuild)), sorted(set(unref))
 
 

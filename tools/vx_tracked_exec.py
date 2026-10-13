@@ -22,6 +22,72 @@ logger = logging.getLogger(__name__)
 
 INFLIGHT = {}
 STALE_GRACE_S = 60.0
+WIRE_LIVE = ("NEW", "PARTIALLY_FILLED", "PENDING", "OPEN", "WORKING")
+
+
+async def fire_exit_market(trade_manager, position_key, symbol, side, position_side):
+    """USER 2026-10-13: an exit that times out becomes MARKET — never canceled (suicide).
+
+    Last-resort flattener: cancel lingering same-side open orders WITH
+    confirmation, re-read live amt AFTER the cancels (closes the fill race as
+    tightly as possible without the sanction ledger), then MARKET exactly that.
+    Returns a result string, never raises.
+    """
+    try:
+        acct = str(position_key).split(":", 1)[0] if ":" in str(position_key) else None
+        pos = None
+        try:
+            pos = (trade_manager.positions or {}).get(position_key)
+        except Exception:
+            pass
+        amt = abs(float(getattr(pos, "positionAmt", 0.0) or 0.0)) if pos is not None else 0.0
+        if amt <= 0:
+            return "TIMEOUT_ALREADY_FLAT"
+        try:
+            client = trade_manager.get_client(acct)
+        except Exception as e:
+            logger.error(f"[VEC_EXACT] {position_key} TIMEOUT_MARKET_NO_CLIENT ({e})")
+            return "TIMEOUT_MARKET_NO_CLIENT"
+        if client is None:
+            return "TIMEOUT_MARKET_NO_CLIENT"
+        try:
+            step = float((trade_manager.get_symbol_config(symbol) or {}).get("step_size", 0) or 0)
+        except Exception:
+            step = 0.0
+        try:
+            oo = await asyncio.wait_for(asyncio.to_thread(client.futures_get_open_orders, symbol=symbol), timeout=15.0)
+        except Exception:
+            oo = []
+        for o in oo or []:
+            try:
+                if str((o or {}).get("side", "")).upper() != str(side).upper():
+                    continue
+                if str((o or {}).get("status", "")).upper() not in WIRE_LIVE:
+                    continue
+                await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=(o or {}).get("orderId")), timeout=15.0)
+            except Exception:
+                pass
+        try:
+            pos2 = (trade_manager.positions or {}).get(position_key)
+            amt2 = abs(float(getattr(pos2, "positionAmt", 0.0) or 0.0)) if pos2 is not None else 0.0
+        except Exception:
+            amt2 = amt
+        qty = amt2
+        if step > 0:
+            import math
+            qty = math.floor(amt2 / step) * step
+        if qty <= 0:
+            return "TIMEOUT_DUST_AFTER_CANCEL"
+        try:
+            resp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=str(side).upper(), positionSide=str(position_side).upper(), quantity=str(qty), type="MARKET"), timeout=15.0)
+        except Exception as e:
+            logger.error(f"[VEC_EXACT] {position_key} TIMEOUT_MARKET_FAIL qty={qty}: {e}")
+            return "TIMEOUT_MARKET_FAIL"
+        logger.critical(f"[VEC_EXACT] {position_key} TIMEOUT_EXIT_MARKET {side} {qty} wired (resp={str(resp)[:80]})")
+        return f"TIMEOUT_EXIT_MARKET {qty}"
+    except Exception as e:
+        logger.error(f"[VEC_EXACT] {position_key} TIMEOUT_MARKET_ERR: {e}")
+        return "TIMEOUT_MARKET_ERR"
 
 
 def _live(key):
@@ -39,11 +105,12 @@ def _live(key):
     return ent
 
 
-async def dispatch_tracked(position_key, label, coro_fn, timeout):
+async def dispatch_tracked(position_key, label, coro_fn, timeout, on_timeout=None):
     """Run coro_fn() tracked; survives outer (sweep) cancellation. Returns result.
 
     Raises CancelledError (after logging CANCELLED_DISPATCH) when the awaiting
-    sweep is cancelled — the execution itself continues detached.
+    sweep is cancelled — the execution itself continues detached. On inner
+    timeout, runs on_timeout() first (exit->MARKET conversion) when provided.
     """
     if _live(position_key):
         logger.warning(f"[VEC_EXACT] {position_key} {label} SKIPPED_VX_INFLIGHT (execution already running, no dup dispatch)")
@@ -54,6 +121,12 @@ async def dispatch_tracked(position_key, label, coro_fn, timeout):
             return await asyncio.wait_for(coro_fn(), timeout=timeout)
         except asyncio.TimeoutError:
             logger.warning(f"[VEC_EXACT] {position_key} {label} BLOCKED_DISPATCH_TIMEOUT after {timeout:.0f}s (tracked execution timed out)")
+            if on_timeout is not None:
+                try:
+                    cb = await on_timeout()
+                except Exception as e:
+                    cb = f"ON_TIMEOUT_ERR {e}"
+                return f"BLOCKED_DISPATCH_TIMEOUT->{cb}"
             return "BLOCKED_DISPATCH_TIMEOUT"
 
     born = time.time()

@@ -58,7 +58,9 @@ REFRESH_DROP_KEYS = frozenset({
     "adx_M", "macd_M", "macd_crossover_M", "macd_crossunder_M", "macd_hist_M", "macd_signal_M",
     "stdev_edge_15m", "stdev_edge_1h", "stdev_edge_4h", "stdev_edge_D",
     "stdev_slope_15m", "stdev_slope_1h", "stdev_slope_4h", "stdev_slope_D",
+    "t_up_1h", "tco_1h", "tcu_1h", "t_up_4h", "tco_4h", "tcu_4h", "t_up_D", "tco_D", "tcu_D",
 })  # 2026-10-12: keys the tail builder cannot extend (need full live-frame history / retired M-TF legs).
+# 2026-10-13: t_up/tco/tcu grid added (COE/DHR/EOG-class stocks ERROR every cycle: 67 hits; zero repo references to t_up|tco_|tcu_ verified 2026-10-13 — dead keys, drop = match old behavior).
 # Proven safe to drop on refresh: v12_quick_engine + backtest_v12_engine read NONE of them; live tradier reads
 # only lr_pct_b_D (gate LR_PCTB_D_LONG_ENTRY_ENABLED, ON nowhere that has the key) and slope_close_1h
 # (snapshot copy never read downstream); macd_M/adx_M have zero references repo-wide; stdev_edge/slope have

@@ -150,16 +150,18 @@ def test_stocks_legacy_union_blocks_on_either_tf():
 
 # ---- call-site pins (source patterns; modules too heavy to import) ----
 
-def test_ez_supersede_both_sites():
-    assert "KG_SUPERSEDED_BY_E921" in EZ_SRC
-    assert "USER 2026-10-12 SUPERSEDE" in EZ_SRC
-    i = EZ_SRC.index("if _e921_on:")
-    assert "elif _kgx_on:" in EZ_SRC[i:i + 2000]
+def test_ez_gates_independent_both_sites():
+    # USER 2026-10-12 correction: KG + E921 are INDEPENDENT switches — both apply, never elif.
+    assert "KG_SUPERSEDED_BY_E921" not in EZ_SRC
+    assert "INDEPENDENT switches" in EZ_SRC
+    i = EZ_SRC.index("if _kgx_on or _e921_on:")
+    seg = EZ_SRC[i:i + 2500]
+    assert "if _kgx_on:" in seg and "if _e921_on:" in seg and "elif _kgx_on:" not in seg
 
 
-def test_vec_supersede_three_sites_and_legacy_union():
-    assert V12_SRC.count("USER 2026-10-12 SUPERSEDE") == 3
-    assert V12_SRC.count('and not bool(getattr(cfg, "EMA_9_21_FILTER_ENABLED", False))') >= 3
+def test_vec_gates_independent_three_sites_and_legacy_union():
+    assert "SUPERSEDE" not in V12_SRC
+    assert V12_SRC.count("INDEPENDENT switches") == 3
     assert "_tf1_921" in V12_SRC  # legacy block union
 
 

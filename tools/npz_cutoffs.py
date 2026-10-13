@@ -58,6 +58,50 @@ def last_session_final_bar(now=None):
     return 0
 
 
+TAIL_GRACE_BARS_CRYPTO = 2  # daemon cycle + 60s worker sync lag (same standard as npz_freshness_gate)
+TAIL_GRACE_BARS_STOCKS = 1  # same 1-bar grace as the v12_pilot.npz_freshness eval gate
+
+
+def _now_split(now):
+    """(epoch_int, aware_utc_datetime) from None/epoch/datetime."""
+    if now is None:
+        now_dt = dt.datetime.now(dt.timezone.utc)
+        return int(now_dt.timestamp()), now_dt
+    if isinstance(now, dt.datetime):
+        now_dt = now if now.tzinfo is not None else now.replace(tzinfo=dt.timezone.utc)
+        return int(now_dt.timestamp()), now_dt
+    now_dt = dt.datetime.fromtimestamp(float(now), tz=dt.timezone.utc)
+    return int(float(now)), now_dt
+
+
+def tail_currency(tail_ts, venue, now=None):
+    """USER 2026-10-12 dispatch gate: is this NPZ tail complete to the latest bar? Pure (unit-tested).
+    tail_ts = last NPZ timestamp in epoch SECONDS; venue = 'crypto'|'stocks'. Returns (ok, detail).
+    crypto: tail within TAIL_GRACE_BARS_CRYPTO of the last closed 15m bar. stocks: tail within
+    TAIL_GRACE_BARS_STOCKS of last_rth_close_bar (RTH-session aware: weekends/holidays expect no new bars)."""
+    try:
+        tail = float(tail_ts)
+    except Exception:
+        return (False, "bad-tail-ts")
+    now_ts, now_dt = _now_split(now)
+    if str(venue).lower() == "crypto":
+        cutoff = last_closed_bar(now_ts)
+        if not cutoff:
+            return (False, "no-cutoff")
+        lag = (cutoff - tail) / BAR
+        if lag <= TAIL_GRACE_BARS_CRYPTO:
+            return (True, f"lag{lag:.1f}bars")
+        return (False, f"tail {lag:.1f} bars behind latest closed 15m")
+    cutoff = last_rth_close_bar(now_dt)
+    if not cutoff:
+        return (False, "no-cutoff")
+    if tail >= cutoff - TAIL_GRACE_BARS_STOCKS * BAR:
+        ahead_min = (tail - cutoff) / 60.0
+        return (True, f"{ahead_min:+.0f}min vs RTH close")
+    behind_min = (cutoff - tail) / 60.0
+    return (False, f"tail {behind_min:.0f}min behind RTH close")
+
+
 def last_rth_close_bar(now=None):
     """most recent RTH-session 15m-bar close, epoch; 0 when none in range (clock sanity). RTH = 9:30-16:00 ET
     on non-holiday weekdays. Weekend/pre-open/holiday -> previous session's 16:00 ET close; live RTH -> latest

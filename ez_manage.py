@@ -49387,8 +49387,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             except Exception:
                 _vx_tmo = 600.0
             try:
-                from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp
-                _res = await _vx_dsp(position_key, f"{_act} {_a['reason'][:60]}", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), _vx_tmo)
+                from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp, fire_exit_market as _vx_tmo_mkt
+                _vx_is_exit = bool(_full or "CLOSE" in str(_act).upper() or "REDUCE" in str(_act).upper())
+                _res = await _vx_dsp(position_key, f"{_act} {_a['reason'][:60]}", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), _vx_tmo, on_timeout=(lambda: _vx_tmo_mkt(trade_manager, position_key, _sym, _oside, _side)) if _vx_is_exit else None)
             except asyncio.CancelledError:
                 raise
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
@@ -49419,8 +49420,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 except Exception:
                     _vx_tmo_c = 600.0
                 try:
-                    from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_c
-                    _res_c = await _vx_dsp_c(position_key, "CLOSE VEC_CONVERGE_TO_FLAT", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), _vx_tmo_c)
+                    from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_c, fire_exit_market as _vx_tmo_mkt_c
+                    _res_c = await _vx_dsp_c(position_key, "CLOSE VEC_CONVERGE_TO_FLAT", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), _vx_tmo_c, on_timeout=lambda: _vx_tmo_mkt_c(trade_manager, position_key, _sym, _oside_c, _side))
                 except asyncio.CancelledError:
                     raise
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT qty={_amt_end:.6f} -> {str(_res_c)[:120]}")
@@ -49452,8 +49453,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 _stf_px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
                 _stf_oside = "SELL" if _side == "LONG" else "BUY"
                 try:
-                    from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_s
-                    _res_s = await _vx_dsp_s(position_key, "CLOSE VEC_STALE_FLATTEN", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), _stf_tmo)
+                    from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_s, fire_exit_market as _vx_tmo_mkt_s
+                    _res_s = await _vx_dsp_s(position_key, "CLOSE VEC_STALE_FLATTEN", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), _stf_tmo, on_timeout=lambda: _vx_tmo_mkt_s(trade_manager, position_key, _sym, _stf_oside, _side))
                 except asyncio.CancelledError:
                     raise
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN qty={_amt_end:.6f} -> {str(_res_s)[:120]}")
