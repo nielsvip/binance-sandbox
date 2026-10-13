@@ -1957,7 +1957,9 @@ workers. Tests `tests/test_v15_sched_venue_phase.py`.
 
 **Baseline honesty (§15/§19):** the stop is a REAL ledger change — baselines and finals recomputed under it WILL differ from pre-stop sheets. That is the fix working, not drift. Never present pre-stop gains as current; the hold-up batch (`data/reports/fixed_stop_holdup/`) recomputes baseline+final per sym_side under the stop (HOLDS = recomputed final ≥ recomputed baseline). Vec models the software leg only (perfect execution); the 0.05% is a live-only placement offset.
 
-**Provenance:** engine md5 `27489154` (v12), tests `tests/test_fixed_stop.py` (14 green Mac+S1), A/B old-vs-new on S1 NPZs (FIXED_STOP binds with exact frozen math), live algo backstops verified on the exchange per account.
+**Freeze timing (parity note):** vec freezes at the exact entry bar. Live and the scalar backtest freeze lazily on the first `process_position`/fetch cycle after open (same bar live within seconds; next 1m step in the scalar engine since entry scan runs after `process_position` in the bar loop) — the breach check can never fire before a freeze. Residual vec↔scalar skew is ≤1 bar of 15m-DC drift (the 15-bar rolling min rarely moves bar-to-bar); live↔backtest agree exactly since both use the lazy path. No OPEN-path freeze was added: `execute_now` is the only order gate and the skew is negligible.
+
+**Provenance:** engine md5 `ce6cf73c` (v12; `27489154` was a mid-task intermediate — fleet is ce6cf73c on Mac+S1+s2/s5/s6, verified 2026-10-13), tests `tests/test_fixed_stop.py` (14 green Mac+S1), A/B old-vs-new on S1 NPZs (FIXED_STOP binds with exact frozen math), live algo backstops verified on the exchange per account. Hold-up round 1 (`data/reports/fixed_stop_holdup/holdup_202610130144*.json`): 487 unique symsides, 296 evaluable on current NPZs → 96 HOLDS / 8 MARGINAL / 23 BROKEN among override stacks with ≥30 trades (75.6% hold, median edge retains ~72% of claimed); 187 unverifiable (174 missing NPZ + 13 stale, stock rebuild in flight).
 
 
 ## 89. ILLEGAL RE-STAMP + JIT NPZ DISPATCH + THROUGHPUT (USER 2026-10-13)
