@@ -105,7 +105,7 @@ def test_wiring_pins():
     for tok in ("ABL_STRIP:", "ABL_DISCOVER:", "ABL_RESTORE1:", "ABL_ATTR:", "ABL_RESTORE:", "ABL_EXEMPT:", "ABL_PROXY:", "[ABLATION-NO-EXEMPT]", 'f"ABL!{cat}:', "[V17-PHASE]", '"V17_ROUNDS"'):
         assert tok in SRC, tok
     # every promotion re-uses the exact promoted set's own eval (greedy re-eval vs the latest chain)
-    assert "_v17_promote(pos[0], how, prefix, ph)" in SRC
+    assert "_v17_promote(choice, how, prefix, ph)" in SRC
 
 
 def test_yellow_frequency_rule():
@@ -154,3 +154,27 @@ def test_filter_exemptions_string_and_global_only_key():
     s3, w3 = P.sanitize_overrides({"FILTER_EXEMPTIONS": "garbage{"}, {})
     assert "FILTER_EXEMPTIONS" not in s3 and "FILTER_EXEMPTIONS" in w3
     assert 'str(switch).strip() in GLOBAL_ONLY_KEYS' in SRC
+
+
+def test_surgeon_wiring():
+    # USER 2026-10-13: pinpoint = per-board surgeon (own ledger diagnosis -> symptom paths -> greedy verify -> re-diagnose)
+    for tok in ("def _v17_diagnose():", "_TA.classify(", "_TA.missed_moves(", "def _v17_surgeon_paths(", "def _v17_surgeon(", '"SURGEON"', "[SURGEON]", "P3_SURGEON_", 'progress_key_unused' if False else '_v17.setdefault("surgeon", {})'):
+        assert tok in SRC, tok
+    assert SRC.index("_v17_surgeon(_t.time()") < SRC.index("_focus_round()\n                    _v17_phase_end(ph, budget_s=")
+
+
+def test_switch_types_validator_wired():
+    assert P._parse_opt_value("0.5", 3) == "0.5"  # no silent 0.5 -> 0
+    assert P._parse_opt_value("2.0", 3) == 2
+    ok, why = P._cand_compatible("EXIT_VELOCITY_WT_MIN_TFS", "D", {})
+    assert not ok and why.startswith("TYPE_MISMATCH")
+    assert P._switch_type_violation("EXIT_VELOCITY_WT_MIN_TFS", "D", {}).startswith("TYPE_MISMATCH")
+    assert P._switch_type_violation("DAYTRADE_DC_TARGET_TF", "1h", {}) == ""
+    import unittest.mock as _m
+    with _m.patch("tools.switch_types.coerce", side_effect=RuntimeError("down")):
+        assert P._types_coerce_reason("X", 1).startswith("TYPE_MISMATCH")  # fail closed
+
+
+def test_regime_wiring():
+    for tok in ("def _v17_regime():", "def _v17_recent_eval(", "def _v17_regime_pick(", "OLD_REGIME_ONLY", "old_set_recent", '_v17["regime"] = out', "[REGIME]", "pick=_v17_regime_pick"):
+        assert tok in SRC, tok

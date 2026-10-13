@@ -8072,9 +8072,17 @@ def _air_native_carry(symbol, side, px, qty, reason, now_ts, log, bars_loader=No
     from live_twins import reentry_augment as _ra
     info = {"applied": False, "why": "live_sizing_off"}
     try:
-        if not _ra.live_on(config):
+        if not _ra.as_bool(getattr(config, "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", False), False):  # GLOBAL live kill switch (never per-sym)
             return qty, reason, info
-        _g = lambda _k, _d=None: _psym_get(symbol, side, _k, getattr(config, _k, _ra.DEFAULTS.get(_k, _d)))
+        _air_v = {
+            "AUGMENT_INTO_REENTRY_ENABLED": _psym_get(symbol, side, "AUGMENT_INTO_REENTRY_ENABLED", getattr(config, "AUGMENT_INTO_REENTRY_ENABLED", False)),
+            "REENTRY_AUGMENT_SIZE_MULT": _psym_get(symbol, side, "REENTRY_AUGMENT_SIZE_MULT", getattr(config, "REENTRY_AUGMENT_SIZE_MULT", 1.0)),
+            "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW": _psym_get(symbol, side, "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW", getattr(config, "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW", True)),
+            "REENTRY_AUGMENT_HL_REF": _psym_get(symbol, side, "REENTRY_AUGMENT_HL_REF", getattr(config, "REENTRY_AUGMENT_HL_REF", "entry")),
+            "REENTRY_AUGMENT_WINDOW_SEC": _psym_get(symbol, side, "REENTRY_AUGMENT_WINDOW_SEC", getattr(config, "REENTRY_AUGMENT_WINDOW_SEC", 86400.0)),
+            "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": _psym_get(symbol, side, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT", getattr(config, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT", True)),
+        }
+        _g = lambda _k, _d=None: _air_v[_k] if _k in _air_v else _psym_get(symbol, side, _k, getattr(config, _k, _ra.DEFAULTS.get(_k, _d)))
         if not _ra.enabled(_g):
             info["why"] = "per_sym_off"
             return qty, reason, info
@@ -8100,6 +8108,72 @@ def _vec_exact_mode_on() -> bool:
         return bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(config, "PARITY_VEC_EXACT_MODE", False))
     except Exception:
         return False
+
+
+# 2026-10-13 LIVE-MONEY FIXED_STOP exit hardening (additive helpers — prior behavior preserved).
+_FX_UNREACHABLE_PREFLIGHT_CODES = frozenset({"BROKER_UNREACHABLE_OPEN_ORDERS", "BROKER_UNREACHABLE_ORDERS", "PREFLIGHT_TIMEOUT_OR_ERROR"})
+
+
+def _fixed_stop_reason(reason) -> bool:
+    try:
+        return "FIXED_STOP" in str(reason or "").upper()
+    except Exception:
+        return False
+
+
+def _fixed_stop_preflight_failopen(reason, code) -> bool:
+    """True = a FIXED_STOP emergency exit may attempt despite an UNVERIFIABLE-state preflight refusal. Fail-open ONLY for unreachable/timeout codes (broker query itself failed, so the refusal carries no evidence of a live order); OPEN_ORDER_EXISTS / LAST_ORDER_NOT_FINAL / WIRE_UNCONFIRMED* still block (real double-order risk)."""
+    try:
+        if not _fixed_stop_reason(reason):
+            return False
+        if not bool(getattr(config, "FIXED_STOP_EXIT_FAILOPEN_PREFLIGHT", True)):
+            return False
+        return str(code or "").upper() in _FX_UNREACHABLE_PREFLIGHT_CODES
+    except Exception:
+        return False
+
+
+def _fixed_stop_freeze_level(is_long: bool, dc_low_15m: float, dc_high_15m: float, entry_price: float):
+    """Freeze the -0.25% software stop with stale-channel protection. Returns (level, source) where source is CHANNEL (dc within tolerance of entry), ENTRY_FALLBACK (dc missing/absurdly far — stale indicators), or ZERO (nothing to anchor). A stale dc frozen once would otherwise sit 10-40% away and the stop would never breach."""
+    try:
+        _tol = float(getattr(config, "FIXED_STOP_LEVEL_MAX_DIST_PCT", 5.0) or 5.0)
+    except Exception:
+        _tol = 5.0
+    try:
+        _ep = float(entry_price or 0.0)
+    except (TypeError, ValueError):
+        _ep = 0.0
+    try:
+        _ch = float(dc_low_15m) if is_long else float(dc_high_15m)
+    except (TypeError, ValueError):
+        _ch = 0.0
+    if _ch > 0 and _ep > 0 and abs(_ch - _ep) / _ep * 100.0 <= _tol:
+        return _fixed_stop_core.freeze_software_level(is_long, dc_low_15m, dc_high_15m, entry_price), "CHANNEL"
+    if _ep > 0:
+        return (_ep * 0.9975 if is_long else _ep * 1.0025), "ENTRY_FALLBACK"
+    if _ch > 0:
+        return _fixed_stop_core.freeze_software_level(is_long, dc_low_15m, dc_high_15m, entry_price), "CHANNEL_NO_ENTRY"
+    return 0.0, "ZERO"
+
+
+def _fixed_stop_level_absurd(is_long: bool, level: float, entry_price: float) -> bool:
+    """True = a previously frozen level sits impossibly far from entry (stale first-freeze) or on the wrong side — exactly one re-freeze is warranted, never a drift."""
+    try:
+        _tol = float(getattr(config, "FIXED_STOP_LEVEL_MAX_DIST_PCT", 5.0) or 5.0)
+    except Exception:
+        _tol = 5.0
+    try:
+        _lv = float(level or 0.0)
+        _ep = float(entry_price or 0.0)
+    except (TypeError, ValueError):
+        return False
+    if _lv <= 0 or _ep <= 0:
+        return False
+    if is_long and _lv >= _ep:
+        return True
+    if (not is_long) and _lv <= _ep:
+        return True
+    return abs(_lv - _ep) / _ep * 100.0 > _tol
 
 
 def _vec_exact_families() -> set:
@@ -21504,6 +21578,48 @@ class MultiAccountTradeManager:
                 pass
             return "FAILED_STOP_ENSURE"
 
+    async def _fixed_stop_taker_backstop(self, *, position_key, account_key, symbol, position_side, side, quantity, current_price, baseline_amt, is_long, unique_id, reason, action):
+        """2026-10-13: the taker backstop for FIXED_STOP (~-0.3% class: acts ONLY after maker-first failed AND the webhook failed). Broker-moved re-check first (the maker may have filled without local confirmation) — never double-close. Single reduceOnly MARKET through the wire sanction (refuses while a broker order is unconfirmed). Never raises."""
+        try:
+            try:
+                if await _ptruth.ez_broker_moved(self, account_key, symbol, position_side, abs(float(baseline_amt or 0.0)), "reduce", config=config, logger=logger):
+                    logger.critical(f"🛡️ [FIXED_STOP_TAKER_SUPPRESSED] {position_key}: broker shows the reduce already moved — NO taker backstop (no-double rule)")
+                    return "SUPPRESSED_TAKER_ALREADY_MOVED"
+            except Exception:
+                pass
+            if os.environ.get("PYTEST_CURRENT_TEST") or is_sandbox_account(config, account_key):
+                return "SKIPPED_TAKER_BACKSTOP_SANDBOX"
+            try:
+                _tb_acct = self.accounts.get(account_key)
+                _tb_client = getattr(_tb_acct, "client", None)
+            except Exception:
+                _tb_client = None
+            if _tb_client is None:
+                return "FAILED_TAKER_NO_CLIENT"
+            _tb_qty = abs(float(quantity or 0.0))
+            if _tb_qty <= 0:
+                return "SKIPPED_TAKER_ZERO_QTY"
+            _tb_seq = _sanction_execution(position_key, "REDUCE", side, float(_tb_qty), reason)
+            if _tb_seq is None:
+                logger.critical(f"🛑 [FIXED_STOP_TAKER_REFUSED] {position_key}: unconfirmed broker order pending — skipping taker backstop (reconcile watches it)")
+                _spawn_wire_reconcile(_tb_client, position_key, symbol)
+                return "SUPPRESSED_TAKER_UNCONFIRMED_PENDING"
+            logger.critical(f"🛡️ [FIXED_STOP_TAKER_BACKSTOP] {position_key}: maker+webhook failed — single reduceOnly MARKET {side} {_tb_qty} (taker backstop, last resort)")
+            try:
+                _tb_resp = await asyncio.to_thread(_tb_client.futures_create_order, symbol=symbol, side=side, positionSide=str(position_side).upper(), quantity=str(_tb_qty), type=ORDER_TYPE_MARKET, reduceOnly=True)
+            except Exception as _tb_e:
+                if "reduceOnly" in str(_tb_e) or "-2022" in str(_tb_e) or "-2019" in str(_tb_e):
+                    logger.warning(f"[FIXED_STOP_TAKER_RETRY] {position_key}: reduceOnly rejected ({str(_tb_e)[:120]}) — single retry without flag, same qty")
+                    _tb_resp = await asyncio.to_thread(_tb_client.futures_create_order, symbol=symbol, side=side, positionSide=str(position_side).upper(), quantity=str(_tb_qty), type=ORDER_TYPE_MARKET)
+                else:
+                    raise
+            _confirm_wire_result("futures_create_order:fixed_stop_taker_backstop", position_key, _tb_resp, _tb_seq, "REDUCE", reason)
+            logger.critical(f"🛡️ [FIXED_STOP_TAKER_SENT] {position_key}: taker MARKET sent {str(_tb_resp)[:200]}")
+            return "SUCCESS_VIA_FIXED_STOP_TAKER_BACKSTOP"
+        except Exception as _tb_e2:
+            logger.error(f"[FIXED_STOP_TAKER_BACKSTOP_FAIL] {position_key}: {_tb_e2}")
+            return "FAILED_TAKER_BACKSTOP"
+
     async def sweep_fixed_stops(self, account_key, positions_by_key):
         """Cancel backstops for flat/missing positions (covers every close path) + hourly full exchange reconcile. Never raises."""
         try:
@@ -30140,7 +30256,13 @@ class MultiAccountTradeManager:
         # USER 2026-10-10 GROUND RULE (unbreakable): maker chases 120s, then MARKET fallback — an order is
         # NEVER abandoned. And ANY order is confirmed canceled before another is added (see runaway +
         # VEC_MAKER_FALLBACK verification). Was 90s.
+        # 2026-10-13 FIXED_STOP: a hard stop cannot chase 120s while price crashes — short maker chase, then the taker backstop fires (execute_now CLOSE path). Non-stop orders keep 120s.
         TIMEOUT = 120.0
+        try:
+            if "FIXED_STOP" in reason_upper:
+                TIMEOUT = float(getattr(config, "FIXED_STOP_MAKER_TIMEOUT_SEC", 20.0) or 20.0)
+        except Exception:
+            pass
         POLL_INTERVAL = 0.1
         RETRY_DELAY = 0.05
         ak, symbol, p_side = parse_position_key(position_key)
@@ -34569,6 +34691,7 @@ class MultiAccountTradeManager:
                             or "NEWBORN_LOSS_KILL" in _nb_reason_up
                             or "R1_DC_LOW4_3M_EMERGENCY" in _nb_reason_up
                             or "HTF_AGAINST_FORCE_CLOSE" in _nb_reason_up
+                            or "FIXED_STOP" in _nb_reason_up
                         )
                         if not _nb_dc_broken and not _nb_emergency and not _vd_exempt:
                             logger.critical(
@@ -35271,8 +35394,11 @@ class MultiAccountTradeManager:
             if not is_sandbox_account(config, account_key):
                 _odg_dec = await _odg.binance_execute_now_preflight(getattr(self.accounts.get(account_key), "client", None), account_key, symbol, position_side, origin=f"{action}|{(reason or '')[:80]}", cfg=config, logger=logger)
                 if not _odg_dec.allowed:
-                    logger.critical(f"[ORDER_DEDUPE_BLOCK_CALLER] {position_key}: preflight refused code={_odg_dec.code} action={action} reason={(reason or '')[:80]} — order NOT placed (safety, stays; now visible)")
-                    return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
+                    if _fixed_stop_preflight_failopen(reason, _odg_dec.code):
+                        logger.critical(f"🛡️ [FIXED_STOP_PREFLIGHT_FAILOPEN] {position_key}: preflight {_odg_dec.code} is unverifiable broker state (no evidence of a live order) — FIXED_STOP emergency exit attempts anyway (wire guard re-checks at submit)")
+                    else:
+                        logger.critical(f"[ORDER_DEDUPE_BLOCK_CALLER] {position_key}: preflight refused code={_odg_dec.code} action={action} reason={(reason or '')[:80]} — order NOT placed (safety, stays; now visible)")
+                        return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
             logger.info(f"[EXEC_TRACE] {position_key}: STEP1c_PREFLIGHT {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
             _rup = (reason or "").upper()
             _is_reentry_exec = (
@@ -35995,6 +36121,11 @@ class MultiAccountTradeManager:
                     f"🔍 [WH_TRACE_4_done] after_send_webhook pk={position_key} ok={webhook_success}"
                 )
                 if not webhook_success:
+                    if _fixed_stop_reason(reason) and bool(getattr(config, "FIXED_STOP_TAKER_BACKSTOP_ENABLED", True)):
+                        try:
+                            return await self._fixed_stop_taker_backstop(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, side=side, quantity=quantity, current_price=current_price, baseline_amt=baseline_amt, is_long=is_long, unique_id=unique_id, reason=reason, action=action)
+                        except Exception as _fx_tb_e:
+                            logger.error(f"[FIXED_STOP_TAKER_BACKSTOP_FAIL] {position_key}: {_fx_tb_e}")
                     return "FAILED_WEBHOOK"
                 if position:
                     position.last_signal = action.upper()
@@ -50467,10 +50598,14 @@ async def process_position(
                 _pp_shared_ind = await ii(trade_manager, symbol) or {}
             _fx_is_long = position_side == "LONG"
             _fx_lvl = safe_fetch_float(getattr(position, "fixed_stop_price", 0) or 0, 0.0)
-            if _fx_lvl <= 0:
-                _fx_lvl = _fixed_stop_core.freeze_software_level(_fx_is_long, safe_fetch_float(_pp_shared_ind.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(_pp_shared_ind.get("dc_high_15m", 0) or 0, 0.0), safe_fetch_float(getattr(position, "entry_price", 0) or 0, 0.0))
+            _fx_ep = safe_fetch_float(getattr(position, "entry_price", 0) or 0, 0.0)
+            if _fx_lvl <= 0 or _fixed_stop_level_absurd(_fx_is_long, _fx_lvl, _fx_ep):
+                _fx_old = _fx_lvl
+                _fx_lvl, _fx_src = _fixed_stop_freeze_level(_fx_is_long, safe_fetch_float(_pp_shared_ind.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(_pp_shared_ind.get("dc_high_15m", 0) or 0, 0.0), _fx_ep)
                 if _fx_lvl > 0:
                     position.fixed_stop_price = _fx_lvl
+                    if _fx_old > 0:
+                        logger.critical(f"🛡️ [FIXED_STOP_REFREEZE] {position_key}: stale frozen {_fx_old:.6f} absurd vs entry {_fx_ep:.6f} — one-time re-freeze to {_fx_lvl:.6f} ({_fx_src}), never drifts again")
             if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl):
                 _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)

@@ -2613,10 +2613,10 @@ class TradierIndicatorOrchestrator:
         # wait, not compute — CME computes in 2.0s standalone). Slow TFs get
         # their own threads; per-executor semaphores keep queue-wait OUTSIDE
         # the wait_for budget; generation skips drain abandoned queue items.
-        self.executor_fast = ThreadPoolExecutor(max_workers=2)
-        self.executor_slow = ThreadPoolExecutor(max_workers=4)
-        self._compute_sem_fast = asyncio.Semaphore(2)
-        self._compute_sem_slow = asyncio.Semaphore(4)
+        self.executor_fast = ThreadPoolExecutor(max_workers=3)
+        self.executor_slow = ThreadPoolExecutor(max_workers=6)
+        self._compute_sem_fast = asyncio.Semaphore(3)
+        self._compute_sem_slow = asyncio.Semaphore(6)
         self._tf_gen: Dict[str, int] = {}
 
     def _tf_compute_lane(self, timeframe: str):
@@ -2955,7 +2955,11 @@ class TradierIndicatorOrchestrator:
                     # 2026-10-13 NEVER-AGAIN: slow TFs legitimately take minutes
                     # (off-loop now); a 30s cap here guaranteed zero 15m/1h
                     # completions forever.
-                    _sym_timeout = 30.0 if timeframe in ("1m", "5m") else 240.0
+                    # 2026-10-13H: this outer budget is now a pure FAILSAFE —
+                    # the real compute budget lives INSIDE _run_full (after
+                    # the lane semaphore), so queue-wait no longer burns it.
+                    # Values cover worst-case queue + inner compute + injects.
+                    _sym_timeout = 60.0 if timeframe in ("1m", "5m") else 300.0
                     await asyncio.wait_for(
                         self._run_full(symbol, timeframe, df, close_ts, mark_price, state, mark_ts=mark_ts),
                         timeout=_sym_timeout
@@ -2968,8 +2972,10 @@ class TradierIndicatorOrchestrator:
                     state.mid_due = close_ts + timedelta(seconds=duration + TIMEFRAMES.get(timeframe, {}).get("half", 30))
                 elif df is not None and close_ts is not None:
                     state.full_done = True
+                    # 2026-10-13H: failsafe only — the real 15s compute budget
+                    # is inside _maybe_run_mid (after the lane semaphore).
                     if await asyncio.wait_for(
-                        self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price), timeout=15.0
+                        self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price), timeout=20.0
                     ):
                         pass
                 elif state.last_df is not None and mark_price is not None:
@@ -3155,7 +3161,12 @@ class TradierIndicatorOrchestrator:
     async def _run_full(self, symbol: str, timeframe: str, df: pd.DataFrame, close_ts: datetime, mark_price: Optional[float], state: SymbolTimeframeState, mark_ts=None) -> None:
         required_keys = self._required_by_timeframe(timeframe)
         if mark_ts is None and required_keys and mark_price is None:
-            q = await self.price_cacheman.get_quote(symbol)
+            # 2026-10-13 NEVER-AGAIN: this quote fetch had NO timeout — the
+            # one unbounded await left inside the compute path.
+            try:
+                q = await asyncio.wait_for(self.price_cacheman.get_quote(symbol), timeout=10.0)
+            except Exception:
+                q = None
             if q:
                 mark_price = float(q.get('price') or q.get('last') or 0.0)
                 ts_raw = q.get('timestamp') or q.get('date')
@@ -4158,7 +4169,7 @@ def _release_instance() -> None:
         pass
 
 
-CODE_REV = "2026-10-13F-schedsplit-lanesplit-racefree"
+CODE_REV = "2026-10-13H-outer-failsafe-lane36"
 
 
 async def main():

@@ -222,6 +222,25 @@ _recent_reduces: Dict[str, float] = (
 _GAP_RISK_STATE: Dict[str, Dict[str, Any]] = (
     {}
 )  # key = position_key, val = {gap_dir, gap_open, prev_close, retraced, ext_high, ext_low}
+# OBLIGATORY_GAP_CLOSE state — once per position per day (USER 2026-10-13:
+# bad overnight gappers MUST close at the open; hedge PROHIBITED)
+_OB_GAP_FIRED: Dict[str, str] = {}  # key = position_key, val = YYYY-MM-DD
+
+
+def _ob_gap_should_close(is_long: bool, open_px: float, prev_px: float, min_adverse_pct: float) -> tuple:
+    """Pure decision for OBLIGATORY_GAP_CLOSE. Returns (fire: bool, gap_pct: float,
+    adverse_pct: float). Adverse = gap against the position (LONG down / SHORT up)."""
+    try:
+        _o = float(open_px or 0.0)
+        _p = float(prev_px or 0.0)
+        _t = float(min_adverse_pct or 0.0)
+    except Exception:
+        return (False, 0.0, 0.0)
+    if _o <= 0 or _p <= 0 or _t <= 0:
+        return (False, 0.0, 0.0)
+    _g = (_o - _p) / _p * 100.0
+    _a = (-_g) if bool(is_long) else _g
+    return (_a >= _t, _g, _a)
 # GAP_INVENTORY: cumulative open/close gap bias (2026-09-09) — MARKET-WIDE, DEPRECATED for 90m sentinel 2026-09-11 (kept for recording only)
 _GAP_INVENTORY: Dict[str, Any] = {
     "sum_pos_pct": 0.0,
@@ -7680,9 +7699,17 @@ def _air_native_carry_t(account_key, symbol, side, px, qty, reason, now_ts, log,
     from live_twins import reentry_augment as _ra
     info = {"applied": False, "why": "live_sizing_off"}
     try:
-        if not _ra.live_on(config):
+        if not _ra.as_bool(getattr(config, "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", False), False):  # GLOBAL live kill switch (never per-sym)
             return qty, reason, info
-        _g = lambda _k, _d=None: _cfg(_k, getattr(config, _k, _ra.DEFAULTS.get(_k, _d)), account_key, symbol, side)
+        _air_v = {
+            "AUGMENT_INTO_REENTRY_ENABLED": _cfg("AUGMENT_INTO_REENTRY_ENABLED", getattr(config, "AUGMENT_INTO_REENTRY_ENABLED", False), account_key, symbol, side),
+            "REENTRY_AUGMENT_SIZE_MULT": _cfg("REENTRY_AUGMENT_SIZE_MULT", getattr(config, "REENTRY_AUGMENT_SIZE_MULT", 1.0), account_key, symbol, side),
+            "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW": _cfg("REENTRY_AUGMENT_REQUIRE_HIGHER_LOW", getattr(config, "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW", True), account_key, symbol, side),
+            "REENTRY_AUGMENT_HL_REF": _cfg("REENTRY_AUGMENT_HL_REF", getattr(config, "REENTRY_AUGMENT_HL_REF", "entry"), account_key, symbol, side),
+            "REENTRY_AUGMENT_WINDOW_SEC": _cfg("REENTRY_AUGMENT_WINDOW_SEC", getattr(config, "REENTRY_AUGMENT_WINDOW_SEC", 86400.0), account_key, symbol, side),
+            "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": _cfg("REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT", getattr(config, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT", True), account_key, symbol, side),
+        }
+        _g = lambda _k, _d=None: _air_v[_k] if _k in _air_v else _cfg(_k, getattr(config, _k, _ra.DEFAULTS.get(_k, _d)), account_key, symbol, side)
         if not _ra.enabled(_g):
             info["why"] = "per_sym_off"
             return qty, reason, info
@@ -35126,6 +35153,47 @@ class StockStrategy:
         except Exception as _live_e:
             logger.debug(f"[EXIT_TOP_LIVE_ERR] {symbol}: {_live_e}")
 
+        # ═══ OBLIGATORY_GAP_CLOSE (USER 2026-10-13: bad overnight gappers MUST
+        # close at the open, then reopen via normal gates + gap-fill reentry.
+        # Hedge is PROHIBITED — close only. Above UNIVERSAL_NOLOSS_GATE so
+        # losers can close; reason carries OBLIGATORY so the re-add bypasses
+        # RECENT_REDUCTION_GUARD. Once per position per day, 9:30-9:45 ET. ═══
+        try:
+            _ob_acct = current_account.get("") or "trb"
+            _ob_side = str(getattr(position, "position_side", "LONG") or "LONG").upper()
+            _ob_is_long = _ob_side != "SHORT"
+            _ob_en = bool(_cfg("OB_GAP_CLOSE_ENABLED", True, _ob_acct, symbol, _ob_side))
+            if _ob_en:
+                _ob_now_et = datetime.now(ZoneInfo("America/New_York"))
+                _ob_in_window = (_ob_now_et.hour == 9 and 30 <= _ob_now_et.minute <= 45)
+                _ob_pk = (getattr(position, "position_key", "") or f"{_ob_acct}:{symbol}_{_ob_side}")
+                _ob_amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+                if _ob_amt > 0 and _ob_in_window and _OB_GAP_FIRED.get(_ob_pk) != _ob_now_et.strftime("%Y-%m-%d"):
+                    _ob_ind = indicators or {}
+                    _ob_fire, _ob_gap_pct, _ob_adv = _ob_gap_should_close(
+                        _ob_is_long,
+                        safe_fetch_float(_ob_ind.get("open_D", 0), 0.0),
+                        safe_fetch_float(_ob_ind.get("close_D_prev", 0), 0.0),
+                        float(_cfg("OB_GAP_CLOSE_MIN_ADVERSE_PCT", 2.0, _ob_acct, symbol, _ob_side) or 2.0),
+                    )
+                    if _ob_fire:
+                        _OB_GAP_FIRED[_ob_pk] = _ob_now_et.strftime("%Y-%m-%d")
+                        _ob_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                        _ob_open = safe_fetch_float(_ob_ind.get("open_D", 0), 0.0)
+                        _ob_prev = safe_fetch_float(_ob_ind.get("close_D_prev", 0), 0.0)
+                        logger.critical(f"[OBLIGATORY_GAP_CLOSE] {_ob_pk}: adverse overnight gap {_ob_gap_pct:+.2f}% (open {_ob_open:.2f} vs prev {_ob_prev:.2f}) — CLOSE + arm gap-fill reentry")
+                        try:
+                            _ob_re = getattr(self.trade_manager, "_gap_reentry_pending", None)
+                            if _ob_re is None:
+                                self.trade_manager._gap_reentry_pending = {}
+                                _ob_re = self.trade_manager._gap_reentry_pending
+                            _ob_re[_ob_pk] = {"symbol": symbol, "side": _ob_side, "account": _ob_acct, "gap_open": float(_ob_open), "prev_close": float(_ob_prev), "gap_dir": _ob_side, "exit_price": float(current_price or _ob_open), "exit_time": datetime.now(timezone.utc).isoformat(), "fill_target": float(_ob_prev), "max_days": 5, "size_pct": 100.0, "require_trend": False, "on_fill": True}
+                        except Exception:
+                            pass
+                        return (True, f"OBLIGATORY_GAP_CLOSE_o{_ob_open:.2f}_p{_ob_prev:.2f}_g{_ob_gain:.2f}%", _ob_amt)
+        except Exception as _ob_e:
+            logger.debug(f"[OBLIGATORY_GAP_CLOSE] {symbol}: gate skipped ({type(_ob_e).__name__}: {_ob_e})")
+
         # ═══ GAP_RISK_EXIT (before UNIVERSAL_NOLOSS_GATE so it can close losers at loss) ═══
         # Spec: Short gap-up (open_D > close_D_prev) / Long gap-down (open_D < close_D_prev).
         # State: GAP_DETECTED -> RETRACED (touch prev_close) -> EXIT on COND_A (open reclaim)
@@ -58513,8 +58581,51 @@ def _shutdown_watchdog_force_exit(timeout_s=30.0):
     os._exit(1)
 
 
+TRADIER_MANAGE_CODE_REV = "2026-10-13G-looplag-watch"
+
+
+async def _loop_lag_watchdog():
+    """2026-10-13 NEVER-AGAIN observability: stock orders burned 120s each
+    while the broker answered in ~2s from any quiet process (proven 6 ways).
+    If the loop ever freezes again, this logs the lag AND dumps live stacks
+    to stderr automatically — no injection needed for the next diagnosis."""
+    try:
+        import faulthandler as _fh
+    except Exception:
+        _fh = None
+    _prev = None
+    _max_lag = 0.0
+    try:
+        import time as _t
+        while True:
+            await asyncio.sleep(5.0)
+            try:
+                _now = _t.monotonic()
+                if _prev is not None:
+                    _lag = _now - _prev - 5.0
+                    if _lag > _max_lag:
+                        _max_lag = _lag
+                    if _lag > 10.0:
+                        logger.critical(f"🛑 [LOOP_LAG] event loop frozen {_lag:.1f}s (max {_max_lag:.1f}s) — broker awaits starve while loop parked")
+                    if _lag > 60.0 and _fh is not None:
+                        logger.critical(f"🛑 [LOOP_LAG] dumping stacks after {_lag:.1f}s freeze")
+                        try:
+                            _fh.dump_traceback()
+                        except Exception:
+                            pass
+                _prev = _now
+            except Exception:
+                pass
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        pass
+
+
 async def main():
     import argparse
+
+    logger.critical(f"tradier_manage boot CODE_REV={TRADIER_MANAGE_CODE_REV} pid={os.getpid()}")
 
     def signal_handler(signum, frame):
         """Handle shutdown signals"""
@@ -58553,6 +58664,10 @@ async def main():
     print(f"[STARTUP] Launching...", flush=True)
     try:
         asyncio.create_task(sent_strat.run_loop())
+        try:
+            asyncio.create_task(_loop_lag_watchdog())
+        except Exception:
+            pass
         print(f"[STARTUP] Calling manager.start()...", flush=True)
         await manager.start()
     except KeyboardInterrupt:

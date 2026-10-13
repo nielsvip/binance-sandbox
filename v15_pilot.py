@@ -1775,7 +1775,8 @@ def _parse_opt_value(val, default):
         return val
     if isinstance(default, int) and not isinstance(default, bool):
         try:
-            return int(float(str(val)))
+            _f = float(str(val))
+            return int(_f) if _f.is_integer() else val  # USER 2026-10-13 types lane: never a silent '0.5' -> 0
         except Exception:
             return val
     if isinstance(default, float):
@@ -1821,6 +1822,20 @@ def _config_default_of(field: str):
         return None
 
 
+_TYPES_VENUE = [None]  # CRYPTO / STOCKS of the board (set at fill start); None = both surfaces
+
+
+def _types_coerce_reason(field, value) -> str:
+    """USER 2026-10-13 template-types lane: tools/switch_types.coerce(field, value, venue) is the type law. '' = ok, else the
+    TYPE_MISMATCH reason. Import/validator failure = TYPE_MISMATCH (fail closed)."""
+    try:
+        from tools import switch_types as _sty
+        _ok, _cv, _why = _sty.coerce(field, value, _TYPES_VENUE[0])
+    except Exception as _te:
+        return f"TYPE_MISMATCH: switch_types validator unavailable ({_te})"[:200]
+    return "" if _ok else f"TYPE_MISMATCH: {_why}"
+
+
 def _cand_compatible(field: str, cand_parsed, defaults: dict) -> tuple:
     """Type gate: a candidate the engine cannot consume must never be evaluated.
 
@@ -1829,6 +1844,9 @@ def _cand_compatible(field: str, cand_parsed, defaults: dict) -> tuple:
     (K=V pollution — a real value never contains '='). Crash-prevention only."""
     if cand_parsed == DEFAULT_MARKER or cand_parsed is None:
         return True, ""
+    _tv = _types_coerce_reason(field, cand_parsed)
+    if _tv:
+        return False, _tv
     if isinstance(cand_parsed, str) and "=" in cand_parsed:
         return False, f"TYPE_MISMATCH: {field} value {cand_parsed!r} contains '=' (K=V pollution, never a real value)"
     default = (defaults or {}).get(field)
@@ -1876,6 +1894,10 @@ def _cand_compatible(field: str, cand_parsed, defaults: dict) -> tuple:
 
 def _switch_type_violation(switch: str, cand, defaults: dict) -> str:
     """'' when the row's expanded override set is type-compatible, else the TYPE_MISMATCH reason."""
+    if str(switch).strip() not in COMPOSITE_SWITCHES and cand != DEFAULT_MARKER and cand is not None:
+        _tv = _types_coerce_reason(str(switch).strip(), cand)
+        if _tv:
+            return _tv
     try:
         ov = _switch_overrides(str(switch).strip(), _parse_opt_value(cand, (defaults or {}).get(switch))) or {}
     except Exception:
@@ -3467,6 +3489,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _tier_trades = int((baseline_live or {}).get("trades") or (baseline_vec or {}).get("trades") or 0)
     except Exception:
         _tier_trades = 0
+    _TYPES_VENUE[0] = "STOCKS" if map_key_for_symside(new_symside).startswith("STOCKS") else "CRYPTO"
     _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
     _tier_focus_s = float(_tier_meta.get("focus_s") or 0.0)
     _tier_strict = _tier_name in ("LOSER", "LOST_CAUSE") and os.environ.get("V15_TIER_STRICT", "1") == "1"
@@ -5798,7 +5821,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[V17-WARN] {_tgt} C write failed: {_se}", flush=True)
         print(f"[V17-PROMOTE] {new_symside} {prefix} {how} {it['label']} +{d:.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
         _maybe_write_json(force=True)
-    def _v17_greedy(cands: list, how: str, prefix: str, deadline: float, ph: dict, accept=None, max_prom=None) -> list:
+    def _v17_greedy(cands: list, how: str, prefix: str, deadline: float, ph: dict, accept=None, max_prom=None, pick=None) -> list:
         # round 1: every candidate vs the CURRENT chain (parallel). Promote the best positive (its own eval IS the fresh exact
         # eval of the promoted set); re-evaluate only the remaining positives vs the new chain; repeat (greedy §14.2).
         # Returns round-1 items (honest deltas vs the chain they were measured on) for booking.
@@ -5827,10 +5850,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if not pos:
                 break
             pos.sort(key=lambda it: -float(it["d"]))
-            _v17_promote(pos[0], how, prefix, ph)
+            choice = pick(pos) if pick is not None else pos[0]
+            if choice is None:
+                break
+            _v17_promote(choice, how, prefix, ph)
             if max_prom is not None and ph.get("prom", 0) >= int(max_prom):
                 break
-            pool_ = [{k: v for k, v in it.items() if k not in ("ov", "res", "err", "d", "ok")} for it in pos[1:]]
+            pool_ = [{k: v for k, v in it.items() if k not in ("ov", "res", "err", "d", "ok")} for it in pos if it is not choice]
         return first or []
     def _v17_phase_start(name: str) -> dict:
         return {"name": name, "t0": _t.time(), "e0": _v17_evals[0], "g0": float(cumulative_gain), "prom": 0}
@@ -6221,6 +6247,306 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     if abs(float(it["d"])) > 1e-9:
                         proven[sw] = it["label"]
         _v17_phase_end(ph, fails=fails, proven=proven)
+    _v17_rg = {"prep": None, "days": None, "failed": False, "prev_diff": {}, "cur_recent": None}
+    def _v17_recent_eval(ov):
+        # real engine eval of a set on the RECENT slice only (last N days up to the last closed bar of this NPZ — no
+        # look-ahead); main process, a handful per board. Returns the result dict or None.
+        if _v17_rg["failed"]:
+            return None
+        if _v17_rg["prep"] is None:
+            try:
+                from tools.opt.v12_pilot import prepare_batch as _pb_r
+                p_ = _pb_r(new_symside, int(_v17_rg["days"] or 8))
+                if not isinstance(p_, dict) or p_.get("_stale"):
+                    _v17_rg["failed"] = True
+                    return None
+                _v17_rg["prep"] = p_
+            except Exception as _re:
+                _v17_rg["failed"] = True
+                print(f"[V17-WARN] recent slice prepare failed: {_re}", flush=True)
+                return None
+        try:
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_r
+            return _eps_r(_v17_rg["prep"], sanitize_overrides(dict(ov), defaults)[0], int(_v17_rg["days"] or 8))
+        except Exception:
+            return None
+    def _v17_seg_feats(cl):
+        # trend / volatility / chop of one close segment (side-adjusted net move)
+        if len(cl) < 8:
+            return {}
+        rets = [(cl[i] / cl[i - 1] - 1.0) * 100.0 for i in range(1, len(cl)) if cl[i - 1]]
+        net = (cl[-1] / cl[0] - 1.0) * 100.0 if cl[0] else 0.0
+        side_net = net if new_symside.upper().endswith("_LONG") else -net
+        mu = sum(rets) / max(1, len(rets))
+        vol = (sum((r - mu) ** 2 for r in rets) / max(1, len(rets))) ** 0.5
+        chop = (sum(abs(r) for r in rets) / abs(net)) if abs(net) > 1e-9 else 999.0
+        rng = (max(cl) - min(cl)) / (sum(cl) / len(cl)) * 100.0
+        return {"bars": len(cl), "net_pct": round(net, 3), "side_net_pct": round(side_net, 3), "vol_bar_pct": round(vol, 4), "chop": round(chop, 2), "range_pct": round(rng, 3)}
+    def _v17_classify(f, ref=None):
+        if not f:
+            return "UNKNOWN"
+        hv = bool(ref) and f.get("vol_bar_pct", 0) > 1.5 * max(1e-9, ref.get("vol_bar_pct", 0))
+        sq = bool(ref) and f.get("vol_bar_pct", 0) < 0.6 * max(1e-9, ref.get("vol_bar_pct", 0))
+        if f.get("chop", 999) < 12 and abs(f.get("net_pct", 0)) > 3 * f.get("vol_bar_pct", 0):
+            lab = "TREND_UP" if f["net_pct"] > 0 else "TREND_DOWN"
+        else:
+            lab = "RANGE"
+        return lab + ("+HIGH_VOL" if hv else ("+SQUEEZE" if sq else ""))
+    def _v17_regime():
+        # REGIME DIFF + FORWARD CHECK OF THE OLD SET (USER 2026-10-13 "understand market changes since the previous test of the
+        # sym_side and anticipate what is ahead"). Segments of THIS window: before vs since the previous board's window end;
+        # the previous final set is evaluated on the since-previous slice (true walk-forward, out of sample for it) next to the
+        # current set -> settings that stopped working become surgeon symptoms. Logged in progress["v17"]["regime"].
+        if _v17.get("regime") is not None:
+            return _v17["regime"]
+        out = {"at": utcnow()}
+        try:
+            npz = (prepared or {}).get("npz_prepared") or {}
+            cl = [float(x) for x in (npz.get("close") if npz.get("close") is not None else [])]
+            ts = [float(x) for x in (npz.get("timestamps") if npz.get("timestamps") is not None else [])]
+            ts = [t / 1000.0 if t > 1e12 else t for t in ts]
+            cur_last = ts[-1] if ts else None
+            prev = None
+            import glob as _gr
+            here = str(PROGRESS_DIR.resolve()) if PROGRESS_DIR.exists() else str(PROGRESS_DIR)
+            for pth in sorted(_gr.glob(os.path.expanduser(f"~/v15_run*/progress/{new_symside}_v14_progress.json")) + [str(ROOT / "data" / "reports" / "lifecycle_pilot" / f"{new_symside}_v14_progress.json")], key=lambda q: -os.path.getmtime(q) if os.path.exists(q) else 0):
+                try:
+                    if not os.path.exists(pth) or str(Path(pth).parent.resolve()) == here:
+                        continue
+                    pj = json.loads(Path(pth).read_text())
+                except Exception:
+                    continue
+                tl = ((pj.get("npz_id") or {}).get("ts_last")) if isinstance(pj.get("npz_id"), dict) else None
+                if pj.get("cumulative_overrides") and tl:
+                    tl = float(tl) / 1000.0 if float(tl) > 1e12 else float(tl)
+                    if cur_last is None or tl < cur_last - 3600:
+                        prev = {"src": str(Path(pth).parent.parent.name), "ts_last": tl, "final_gain": pj.get("final_gain"), "bh": pj.get("bh"), "ov": {k: v for k, v in pj["cumulative_overrides"].items() if not (isinstance(v, str) and " + " in v)}}
+                        break
+            days_since = ((cur_last - prev["ts_last"]) / 86400.0) if (prev and cur_last) else None
+            rd = int(max(3, min(15, round(days_since)))) if days_since and days_since >= 2.5 else int(os.environ.get("V15_V17_RECENT_D", "8"))
+            _v17_rg["days"] = rd
+            cut = None
+            if ts and cur_last:
+                b0 = cur_last - rd * 86400.0
+                cut = next((i for i, t in enumerate(ts) if t >= b0), None)
+            if cl and cut is not None and 8 <= cut < len(cl) - 8:
+                f_then, f_now = _v17_seg_feats(cl[:cut]), _v17_seg_feats(cl[cut:])
+                out.update({"recent_days": rd, "since_previous_days": None if days_since is None else round(days_since, 2), "then": f_then, "now": f_now, "regime_then": _v17_classify(f_then), "regime_now": _v17_classify(f_now, f_then)})
+            else:
+                out.update({"recent_days": rd, "since_previous_days": None if days_since is None else round(days_since, 2), "regime_then": "UNKNOWN", "regime_now": "UNKNOWN"})
+            cur_r = _v17_recent_eval(cumulative_overrides)
+            _v17_rg["cur_recent"] = (cur_r or {}).get("gain_pct")
+            out["current_set_recent"] = {k: (cur_r or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}
+            if prev:
+                pr = _v17_recent_eval(prev["ov"])
+                out["previous"] = {"src": prev["src"], "final_gain_then": prev["final_gain"], "bh_then": prev["bh"], "recent_slice": {k: (pr or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}}
+                diff = {k: v for k, v in prev["ov"].items() if not _same_val(cumulative_overrides.get(k, defaults.get(k)), v) and k in known_config_fields() and k not in GLOBAL_ONLY_KEYS}
+                out["previous"]["n_keys_differ"] = len(diff)
+                try:
+                    if pr and cur_r and pr.get("gain_pct") is not None and cur_r.get("gain_pct") is not None and float(pr["gain_pct"]) > float(cur_r["gain_pct"]) + float(os.environ.get("V15_V17_RECENT_TOL", "0.25")):
+                        _v17_rg["prev_diff"] = diff  # the old set did better on the recent slice: its differing keys are paths
+                        out["previous"]["old_set_better_recent_by"] = round(float(pr["gain_pct"]) - float(cur_r["gain_pct"]), 4)
+                except Exception:
+                    pass
+        except Exception as _rge:
+            out["error"] = f"{_rge}"[:200]
+        _v17["regime"] = out
+        print(f"[REGIME] {new_symside} then={out.get('regime_then')} now={out.get('regime_now')} recent_days={out.get('recent_days')} since_prev={out.get('since_previous_days')} cur_recent={(out.get('current_set_recent') or {}).get('gain_pct')} prev_recent={((out.get('previous') or {}).get('recent_slice') or {}).get('gain_pct')}", flush=True)
+        return out
+    def _v17_regime_pick(pos):
+        # ANTICIPATE: among the top positives on the full 30D, adopt the first that also holds up on the RECENT slice (current
+        # regime, delta >= -V15_V17_RECENT_TOL vs the current set there); a 30D-only winner is flagged OLD_REGIME_ONLY.
+        base_r = _v17_rg.get("cur_recent")
+        if base_r is None or os.environ.get("V15_V17_ANTICIPATE", "1") != "1":
+            return pos[0]
+        tol = float(os.environ.get("V15_V17_RECENT_TOL", "0.25"))
+        for it in pos[: int(os.environ.get("V15_V17_ANTICIPATE_TOP", "5"))]:
+            rr_ = _v17_recent_eval(it["ov"])
+            g_ = (rr_ or {}).get("gain_pct")
+            it["recent_delta"] = None if g_ is None else round(float(g_) - float(base_r), 4)
+            if g_ is not None and float(g_) - float(base_r) >= -tol:
+                _v17_rg["cur_recent"] = float(g_)
+                return it
+            _v17.setdefault("regime_flags", []).append({"what": it["label"], "d30": round(float(it["d"]), 4), "recent_delta": it["recent_delta"], "flag": "OLD_REGIME_ONLY"})
+        return None
+    def _v17_diagnose():
+        # SURGEON step 1 (USER 2026-10-13): this board's OWN result after worst_first — its trade ledger on its own NPZ slice
+        # (tools/v15_trade_autopsy pure logic: LOSER / PREMATURE_EXIT / GIVEBACK / MISSED_AUGMENT / missed favourable moves,
+        # churn = 1-bar trades) + TIM / DD / gain vs bh. One real ledger eval of the exact current set; never estimated.
+        from tools import v15_trade_autopsy as _TA
+        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_l
+        import collections as _col
+        res = _eps_l(prepared, sanitize_overrides(dict(cumulative_overrides), defaults)[0], args.window_days, include_ledger=True)
+        rows = _TA.scaled_rows(res)
+        npz = (prepared or {}).get("npz_prepared") or {}
+        close = [float(x) for x in (npz.get("close") if npz.get("close") is not None else [])]
+        is_long = new_symside.upper().endswith("_LONG")
+        base = _TA.classify(rows, close, is_long) if close else rows
+        moves = _TA.missed_moves(base, close, is_long) if close else []
+        bad = lambda c: [t for t in base if c in (t.get("cls") or [])]
+        churn = [t for t in base if int(t.get("bx", 0)) - int(t.get("be", 0)) <= 1]
+        sym = {
+            "missed_moves": {"n": len(moves), "size": round(sum(m["move_pct"] for m in moves), 3)},
+            "losers": {"n": len(bad("LOSER")), "size": round(-sum(t["pnl"] for t in bad("LOSER")), 3)},
+            "premature_exits": {"n": len(bad("PREMATURE_EXIT")), "size": round(sum(t.get("post_pct", 0.0) for t in bad("PREMATURE_EXIT")), 3)},
+            "giveback": {"n": len(bad("GIVEBACK")), "size": round(sum(t.get("mfe_pct", 0.0) - t.get("pnl_pct", 0.0) for t in bad("GIVEBACK")), 3)},
+            "missed_augment": {"n": len(bad("MISSED_AUGMENT")), "size": round(sum(t.get("mfe_pct", 0.0) for t in bad("MISSED_AUGMENT")), 3)},
+            "churn": {"n": len(churn), "size": round(-sum(min(0.0, t["pnl"]) for t in churn), 3)},
+        }
+        try:
+            _tim = float(res.get("tim_pct"))
+        except Exception:
+            _tim = None
+        try:
+            _bhf = float(bh)
+        except Exception:
+            _bhf = None
+        ctx = {"gain": res.get("gain_pct"), "trades": res.get("trades"), "tim": _tim, "dd": res.get("max_dd_pct"), "bh": _bhf, "valid": res.get("valid"), "n_trades_ledger": len(base)}
+        if _tim is not None and _tim < QUAL_TIM_MIN:
+            sym["tim_low"] = {"n": 1, "size": round(QUAL_TIM_MIN - _tim, 3)}
+        if _tim is not None and _tim > QUAL_TIM_MAX:
+            sym["tim_high"] = {"n": 1, "size": round(_tim - QUAL_TIM_MAX, 3)}
+        if _bhf is not None and res.get("gain_pct") is not None and float(res["gain_pct"]) < _bhf:
+            sym["below_bh"] = {"n": 1, "size": round(_bhf - float(res["gain_pct"]), 3)}
+        reasons = {
+            "exit": _col.Counter(t.get("exit_reason") or "" for t in bad("LOSER") + bad("PREMATURE_EXIT") + bad("GIVEBACK") + churn),
+            "entry": _col.Counter(t.get("entry_reason") or "" for t in bad("LOSER")),
+        }
+        return sym, reasons, ctx
+    def _v17_surgeon_paths(sym: dict, reasons: dict) -> list:
+        # SURGEON step 2: symptom -> candidate PATHS (specific switch [+ the specific filter / FILTER_EXEMPTIONS applied to it]),
+        # ranked by the symptom's size on THIS board; reason-token overlap with the offending trades lifts a path; priors only
+        # break ties. Families: missed moves / TIM low / below bh -> entry + reentry paths (+ their exemptions, loosened
+        # filters); premature exits / giveback / churn -> exit-path holds/min-TFs/velocity; losers / TIM high -> entry filters
+        # tightened + exits on the losers' exit path; missed augment -> AUGMENT paths.
+        fam_tabs = {
+            "missed_moves": V17_CATEGORY_TABS["entry"] + V17_CATEGORY_TABS["reentry"], "tim_low": V17_CATEGORY_TABS["entry"] + V17_CATEGORY_TABS["reentry"], "below_bh": V17_CATEGORY_TABS["entry"] + V17_CATEGORY_TABS["reentry"] + V17_CATEGORY_TABS["augment"],
+            "premature_exits": V17_CATEGORY_TABS["exit"], "giveback": V17_CATEGORY_TABS["exit"], "churn": V17_CATEGORY_TABS["exit"],
+            "losers": V17_CATEGORY_TABS["entry"] + V17_CATEGORY_TABS["exit"], "tim_high": V17_CATEGORY_TABS["entry"],
+            "missed_augment": V17_CATEGORY_TABS["augment"],
+        }
+        loosen = {"missed_moves", "tim_low", "below_bh"}
+        out, seen = [], {}
+        if float((sym.get("old_set_recent") or {}).get("size") or 0.0) > 0:
+            # REGIME: keys where the PREVIOUS final set differs and that set did better on the since-previous slice
+            for _k, _v in list((_v17_rg.get("prev_diff") or {}).items())[: int(os.environ.get("V15_V17_SURGEON_N", "120"))]:
+                if _v17_blocked({_k: _v}):
+                    continue
+                _rw = _v17_find_row(_k, _v)
+                seen[_canon_key("X", _k, _v)] = "old_set_recent"
+                out.append({"label": f"SURGEON:old_set_recent:{_k}={_v}", "delta_ov": {_k: _v}, "sw": _k, "cand": _v, "sheet": _rw[0] if _rw else "V17", "row": _rw[1] if _rw else None, "symptom": "old_set_recent", "score": float(sym["old_set_recent"]["size"]), "parts": [f"{_k}={json.dumps(_v, sort_keys=True) if isinstance(_v, (dict, list)) else _v}"]})
+        tighten = {"losers", "tim_high"}
+        tok = lambda s: {t for t in str(s or "").upper().replace("-", "_").split("_") if len(t) > 1}
+        rtok = {k: set().union(*[tok(r) for r in v]) if v else set() for k, v in reasons.items()}
+        try:
+            from tools import v17_priors as _vp
+        except Exception:
+            _vp = None
+        exm = v17_load_exemptions()
+        for sname, size in sorted(((k, float(v.get("size") or 0.0)) for k, v in sym.items()), key=lambda t: -t[1]):
+            if size <= 0 or sname not in fam_tabs:
+                continue
+            tabs_s = fam_tabs[sname]
+            want_tok = rtok["exit"] if sname in ("premature_exits", "giveback", "churn") else (rtok["entry"] | rtok["exit"] if sname == "losers" else set())
+            per = []
+            for (_s, _r, _w, _c) in queue:
+                _w = str(_w).strip()
+                if _s not in tabs_s:
+                    continue
+                is_f = v17_is_filter_key(_w)
+                try:
+                    if _row_static(_s, _r, _w, _c).get("kind") != "eval":
+                        continue
+                    pv = _parse_opt_value(_c, defaults.get(_w))
+                    dov = _switch_overrides(_w, pv)
+                except Exception:
+                    continue
+                if not dov or _v17_blocked(dov) or all(_same_val(cumulative_overrides.get(k, defaults.get(k)), v) for k, v in dov.items()):
+                    continue
+                if is_f:
+                    off = v17_filter_off_value(cumulative_overrides.get(_w, defaults.get(_w)), [_c])
+                    is_off = off is not None and _same_val(pv, off if not isinstance(off, bool) else False)
+                    if (sname in loosen and not is_off) or (sname in tighten and is_off) or sname not in (loosen | tighten):
+                        continue
+                ov_tok = len(tok(_w) & want_tok)
+                score = size * (1.0 + ov_tok) + 0.01 * v17_ev(f"{_w}={_c}", _v17_know, _v17_prior)
+                per.append((score, _s, _r, _w, _c, dov))
+            per.sort(key=lambda t: -t[0])
+            for score, _s, _r, _w, _c, dov in per[: int(os.environ.get("V15_V17_SURGEON_N", "120"))]:
+                key = _canon_key("X", _w, _c)
+                if key in seen:
+                    continue
+                seen[key] = sname
+                out.append({"label": f"SURGEON:{sname}:{_w}={_c}", "delta_ov": dov, "sw": _w, "cand": _c, "sheet": _s, "row": _r, "symptom": sname, "score": round(score, 3)})
+                # the path WITH its exemption from the filter that blocks it (priors' blocks pairs, else the exemption map)
+                if sname in loosen and not v17_is_filter_key(_w):
+                    exs = []
+                    try:
+                        exs = [b.get("exemption_override") for b in (_vp.exemptions_for(_v17_cs, f"{_w}={_c}") or _vp.exemptions_for(_v17_cs, _w) or []) if isinstance(b.get("exemption_override"), dict)][:2] if _vp else []
+                    except Exception:
+                        exs = []
+                    if not exs:
+                        _m = exm.get(f"{_w}={_c}") or exm.get(_w) or {}
+                        exs = [v for v in list(_m.values())[:2] if isinstance(v, dict)] if isinstance(_m, dict) else []
+                    for _ei, _ex in enumerate(exs):
+                        d2 = dict(dov)
+                        for _ek, _ev_ in _ex.items():
+                            d2[_ek] = v17_merge_exemptions(d2.get(_ek), _ev_) if _ek == "FILTER_EXEMPTIONS" else _ev_
+                        out.append({"label": f"SURGEON:{sname}:{_w}={_c}+EXEMPT{_ei}", "delta_ov": d2, "sw": _w, "cand": _c, "sheet": _s, "row": _r, "symptom": sname, "score": round(score, 3), "parts": [f"{_w}={_c}"] + [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in _ex.items()]})
+        return out
+    def _v17_surgeon(deadline: float, tag: str):
+        # SURGEON (USER 2026-10-13 pinpoint redefinition): diagnose -> map symptoms to paths -> evaluate on top of the current
+        # best set (greedy vs the latest cumulative, fresh evals, same guards) -> re-diagnose after every adoption round;
+        # continues while it lifts >= V15_V17_MIN_LIFT_PM pp/min or the deadline remains. Book: progress["v17"]["surgeon"].
+        if _v17_phase_done(tag) or _t.time() > deadline - 10.0:
+            return
+        ph = _v17_phase_start(tag)
+        book = _v17.setdefault("surgeon", {}).setdefault(tag, {"rounds": []})
+        try:
+            _rgo = _v17_regime()
+        except Exception as _rge2:
+            _rgo = {"error": str(_rge2)[:120]}
+        rnd = 0
+        while _t.time() < deadline - 10.0 and rnd < int(os.environ.get("V15_V17_SURGEON_ROUNDS", "6")):
+            rnd += 1
+            t_r, g_r = _t.time(), float(cumulative_gain)
+            try:
+                sym, reasons, ctx = _v17_diagnose()
+            except Exception as _de:
+                book["error"] = f"diagnose {_de}"[:200]
+                print(f"[V17-WARN] surgeon diagnose {_de}", flush=True)
+                break
+            try:
+                _crr = _v17_recent_eval(cumulative_overrides)
+                _v17_rg["cur_recent"] = (_crr or {}).get("gain_pct")
+            except Exception:
+                pass
+            if ((_rgo or {}).get("previous") or {}).get("old_set_better_recent_by") and _v17_rg.get("prev_diff"):
+                sym["old_set_recent"] = {"n": len(_v17_rg["prev_diff"]), "size": float(_rgo["previous"]["old_set_better_recent_by"])}
+            paths = _v17_surgeon_paths(sym, reasons)
+            rec = {"round": rnd, "symptoms": sym, "ctx": ctx, "top_exit_reasons": reasons["exit"].most_common(5), "paths": len(paths), "adopted": []}
+            print(f"[SURGEON] {new_symside} round {rnd}: gain={ctx['gain']} tim={ctx['tim']} dd={ctx['dd']} bh={ctx['bh']} symptoms={ {k: v['size'] for k, v in sym.items()} } paths={len(paths)}", flush=True)
+            n0 = len(_v17.get("promotions") or [])
+            first = _v17_greedy(paths, "v17_surgeon", "SURGEON", deadline, ph, max_prom=ph.get("prom", 0) + int(os.environ.get("V15_V17_SURGEON_PROM_PER_ROUND", "3")), pick=_v17_regime_pick)
+            for p in (_v17.get("promotions") or [])[n0:]:
+                rec["adopted"].append({k: p.get(k) for k in ("what", "delta", "before", "after", "trades", "tim", "dd")})
+            by_sym = {}
+            for it in first:
+                if it.get("d") is not None:
+                    e = by_sym.setdefault(it["symptom"], {"tried": 0, "pos": 0, "best": None})
+                    e["tried"] += 1
+                    e["pos"] += 1 if (it.get("ok") and float(it["d"]) > 1e-9) else 0
+                    if e["best"] is None or float(it["d"]) > e["best"][1]:
+                        e["best"] = (it["label"], round(float(it["d"]), 4), (it.get("res") or {}).get("tim_pct"), (it.get("res") or {}).get("max_dd_pct"), (it.get("res") or {}).get("trades"))
+            rec["by_symptom"] = by_sym
+            book["rounds"].append(rec)
+            _maybe_write_json(force=True)
+            lift = float(cumulative_gain) - g_r
+            if lift <= 1e-9:
+                break
+            if lift / max(1e-6, (_t.time() - t_r) / 60.0) < float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3")) and _t.time() > deadline - 60.0:
+                break
+        _v17_phase_end(ph, rounds=rnd)
     def _v17_sheet():
         try:
             if "V17_ROUNDS" in wb.sheetnames:
@@ -6233,6 +6559,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             vws.append(["phase", "how", "what", "delta", "before", "after", "trades", "tim", "dd"])
             for p in _v17.get("promotions") or []:
                 vws.append([p.get("phase"), p.get("how"), p.get("what"), p.get("delta"), p.get("before"), p.get("after"), p.get("trades"), p.get("tim"), p.get("dd")])
+            try:
+                if "SURGEON" in wb.sheetnames:
+                    del wb["SURGEON"]
+                sws = wb.create_sheet("SURGEON")
+                _rgx = _v17.get("regime") or {}
+                sws.append(["REGIME then", _rgx.get("regime_then"), "now", _rgx.get("regime_now"), "recent_days", _rgx.get("recent_days"), "since_prev_days", _rgx.get("since_previous_days"), "current_set_recent_gain", (_rgx.get("current_set_recent") or {}).get("gain_pct"), "previous_set_recent_gain", ((_rgx.get("previous") or {}).get("recent_slice") or {}).get("gain_pct"), "old_regime_only_flags", len(_v17.get("regime_flags") or [])])
+                sws.append(["phase", "round", "gain", "tim", "dd", "bh", "symptom", "size", "n", "paths_tried", "positive", "best_path", "best_delta", "best_tim", "best_dd", "best_trades", "adopted"])
+                for _stag, _sb in (_v17.get("surgeon") or {}).items():
+                    for _rd in (_sb or {}).get("rounds") or []:
+                        _cx = _rd.get("ctx") or {}
+                        _ad = "; ".join(f"{a.get('what')} {a.get('delta')}" for a in _rd.get("adopted") or [])
+                        for _sn, _sv in (_rd.get("symptoms") or {}).items():
+                            _bs = ((_rd.get("by_symptom") or {}).get(_sn) or {})
+                            _b = _bs.get("best") or [None] * 5
+                            sws.append([_stag, _rd.get("round"), _cx.get("gain"), _cx.get("tim"), _cx.get("dd"), _cx.get("bh"), _sn, _sv.get("size"), _sv.get("n"), _bs.get("tried"), _bs.get("pos"), _b[0], _b[1], _b[2], _b[3], _b[4], _ad])
+            except Exception as _swe:
+                print(f"[V17-WARN] SURGEON sheet {_swe}", flush=True)
             vws.append([])
             vws.append(["ablation", "switch", "strip_gain", "discovery_delta", "killers", "exemption_used", "no_exemption", "final_delta", "adopted"])
             for _atag, _abook in (_v17.get("ablation") or {}).items():
@@ -6258,6 +6601,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     break
                 _g_it = float(cumulative_gain)
                 _t_it = _t.time()
+                # SURGEON first: it owns the guaranteed budget (USER 2026-10-13); generic steps use what it leaves
+                _v17_surgeon(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_SURGEON", "0.6")), f"P3_SURGEON_{_it}")
                 _v17_focus_iter[0] = _it
                 if not _v17_phase_done(f"P3_FOCUS_{_it}"):
                     ph = _v17_phase_start(f"P3_FOCUS_{_it}")

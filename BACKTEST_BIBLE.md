@@ -2355,3 +2355,37 @@ templates; any refused or non-canonical value = step FAILED loudly (`data/alerts
 FAILED`, steps_ok `2b!TYPE_ALERT`); the chain continues (writers/registrar are fail-closed on their own); the alert file is removed
 on a clean scan. Tests: `tests/test_switch_types.py` (17: bool/int/float/TF/enum/dict/grey cases, the '0.0'-on-bool regression,
 fix-types on a fixture workbook, switch_add / intake / daily-writer / registrar refusals).
+
+**V17 iteration 2 (2026-10-13 19:2x–20:xxZ, USER: pinpoint = a per-board SURGEON + "understand market changes since the
+previous test and anticipate what is ahead"):**
+- **Budget:** a long main pass can no longer starve the pinpoint round. `v17_p3_budget` guarantees board target
+  (`V15_V17_BOARD_S` 1500 s = 25 min) × tier share (WINNER 50% / MEDIOCRE 40% / LOSER 25% / LOST_CAUSE 10%), more when the
+  board is ahead, hard cap `V15_V17_P3_MAX_S` 900 s; the loop extends while an iteration lifts ≥ `V15_V17_MIN_LIFT_PM` 0.3 pp/min.
+  Main-pass yellow work stops after `V15_V17_P2_YELLOW_S` (35% of the target): later rows run naked (+ full revive on a
+  positive naked), their cells coarse-deferred (settled) for the pinpoint round.
+- **SURGEON** (`_v17_diagnose` / `_v17_surgeon_paths` / `_v17_surgeon`, first step of every pinpoint iteration, 60% of it):
+  (1) diagnose this board's own result — one real ledger eval of the current set on its own NPZ slice, classified with
+  `tools/v15_trade_autopsy` (LOSER, PREMATURE_EXIT, GIVEBACK, MISSED_AUGMENT, missed favourable moves, churn = 1-bar trades)
+  plus TIM low/high and gain below bh; (2) map every symptom to PATHS (missed moves / TIM low / below bh → entry + reentry
+  switches, their loosened filters and the path WITH its exemption from `tools/v17_priors.exemptions_for` or
+  `data/v17_filter_exemptions.json`; premature exits / giveback / churn → exit-path switches, ranked up by token overlap with
+  the offending trades' exit reasons; losers / TIM high → entry filters tightened + exits on the losers' path; missed augment →
+  AUGMENT paths), ranked by the symptom's size on THIS board (priors only break ties); (3) greedy on top of the current best
+  set (fresh evals, same guards, ≤3 adoptions per round); (4) re-diagnose and repeat while it lifts. Book
+  `progress["v17"]["surgeon"]` + `SURGEON` tab (per round: symptoms with size, paths tried / positive / best path with
+  delta-TIM-DD-trades, adopted).
+- **REGIME** (`_v17_regime`): segments of this window before vs since the previous board's window end (net side-adjusted
+  move, bar volatility, chop, range → TREND_UP / TREND_DOWN / RANGE (+HIGH_VOL / +SQUEEZE)); the previous final set and the
+  current set are evaluated on the since-previous slice (`prepare_batch(sym_side, N days)` = last N days up to the last closed
+  bar, no look-ahead) — if the old set did better there, every key where it differs becomes an `old_set_recent` surgeon path.
+  ANTICIPATE (`_v17_regime_pick`): among the top 5 positive paths on the full 30D, the surgeon adopts the first whose recent-slice
+  delta ≥ −`V15_V17_RECENT_TOL` 0.25; 30D-only winners are flagged `OLD_REGIME_ONLY` (`progress["v17"]["regime_flags"]`).
+  `progress["v17"]["regime"]` + REGIME row on the SURGEON tab. `V15_V17_ANTICIPATE=0` disables the recent check.
+- **Types law** (template-types lane): `_switch_type_violation` (non-composite) and `_cand_compatible` call
+  `tools/switch_types.coerce(field, value, venue)` first — not ok → `TYPE_MISMATCH`, validator unavailable → TYPE_MISMATCH
+  (fail closed); `_parse_opt_value` int branch keeps a non-integer value raw (no silent '0.5' → 0).
+- **Go-live hooks:** `sanitize_overrides` json-parses a string FILTER_EXEMPTIONS into the engine dict and drops
+  `GLOBAL_ONLY_KEYS` (`AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED`); template rows of global-only keys are skipped. Proven on S1:
+  a set with FILTER_EXEMPTIONS evaluates bit-identically before/after a JSON round trip.
+- **Window boards** published 17:27–19:15Z with V17 default ON: `data/v17_window_requeue.json` (best-wins kept the higher
+  same-window active, e.g. BWXT_SHORT 28.68 next to V17 23.71; 6 requeue candidates + the full window list).

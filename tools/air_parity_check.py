@@ -84,7 +84,12 @@ def identity(ss: str, knob: str, window_days: int) -> dict:
     ov = dict(KNOB_SETS[knob])
     res = vec_run(ss, ov, window_days)
     rows = vec_log_rows(res)
-    get = lambda k, d=None: ov.get(k, RA.DEFAULTS.get(k, d))  # noqa: E731
+    from tools.opt.evaluate_v12 import build_cfg_npz
+
+    cfg, _npz, _s, _l, mode, _tok = build_cfg_npz(ss, dict(ov), window_days)
+    get = lambda k, d=None: getattr(cfg, k, RA.DEFAULTS.get(k, d))  # noqa: E731  (the effective QuickConfig the vec simulated)
+    whole = mode == "tradier"
+    cap = float((getattr(cfg, "MAX_SYMBOL_VALUE_TRADIER", 0.0) if whole else getattr(cfg, "MAX_POSITION_SIZE", 0.0)) or 0.0)
     bars = None
     if str(get("REENTRY_AUGMENT_HL_REF")).lower() == "low":
         bars = npz_bars(sym)
@@ -102,19 +107,16 @@ def identity(ss: str, knob: str, window_days: int) -> dict:
         m_fn, why = RA.carry_mult(get, is_long, r["price"], r["ts"], prev, adv)
         qty0 = r["qty"] - r["carry_qty"]
         m_vec = r["carry"]
-        carried_fn = m_fn > 0 and qty0 > 0
+        _q, _add, m_eff = RA.sized(qty0, m_fn, r["price"], cap, whole)  # same cap / whole-share rule live applies
         n_carry_vec += m_vec > 0
-        n_carry_fn += carried_fn
-        # vec caps the carried size at MAX_POSITION_SIZE/px (crypto) / MAX_SYMBOL_VALUE_TRADIER/px (stocks): a capped vec multiple is
-        # <= the uncapped function multiple; a cap that removes the carry entirely shows as vec 0 / fn > 0 -> reported, never hidden.
-        ok = (m_vec > 0) == carried_fn and (m_vec == 0 or m_vec <= m_fn + 1e-9)
-        exact = ok and abs(m_vec - (m_fn if carried_fn else 0.0)) <= 1e-9
+        n_carry_fn += m_eff > 0
+        ok = abs(m_vec - m_eff) <= 1e-6 * max(1.0, m_eff)
         agree += ok
-        if not ok or not exact:
-            mism.append({"ts": r["ts"], "px": r["price"], "vec_mult": m_vec, "fn_mult": m_fn if carried_fn else 0.0, "fn_why": why, "capped_only": ok and not exact})
+        if not ok:
+            mism.append({"ts": r["ts"], "px": r["price"], "vec_mult": m_vec, "fn_mult_capped": m_eff, "fn_mult_raw": m_fn, "fn_why": why, "qty0_usd": qty0 * r["price"], "cap_usd": cap})
     return {"sym_side": ss, "knob": knob, "overrides": ov, "valid": res.get("valid"), "trades": res.get("trades"), "gain_pct": res.get("gain_pct"),
             "n_open": n_open, "n_carry_vec": int(n_carry_vec), "n_carry_fn": int(n_carry_fn), "decision_agree": agree,
-            "identical": agree == n_open and not [m for m in mism if not m["capped_only"]], "mismatches": mism[:20]}
+            "cap_usd": cap, "identical": agree == n_open, "mismatches": mism[:20]}
 
 
 def scan(limit: int, window_days: int) -> list:
@@ -145,7 +147,8 @@ def scalar(ss: str, knob: str, window_days: int, mode: str) -> dict:
     os.chdir(ROOT)
     os.environ.setdefault("BASE_PATH", str(ROOT))
     T.freeze_npz_dir()
-    ov = dict(KNOB_SETS[knob])
+    base_set = {} if os.environ.get("AIR_SCALAR_NO_SET") == "1" else (T.load_overrides(ss, os.environ.get("AIR_SCALAR_SET_JSON")) or {})
+    ov = {**dict(base_set), **dict(KNOB_SETS[knob])}  # the sym_side's own final set (as tools/v15_trade_parity) + the AIR knobs
     side = ss.rsplit("_", 1)[1]
     is_long = side == "LONG"
     vec = vec_run(ss, ov, window_days)
@@ -191,7 +194,7 @@ def scalar(ss: str, knob: str, window_days: int, mode: str) -> dict:
         pairs.append({"entry_ts": p["vec"]["entry_ts"], "vec_mult": round(ve.get("carry", 0.0), 3), "live_mult": lm, "src": src,
                       "agree": abs(round(ve.get("carry", 0.0), 3) - lm) <= 0.002, "live_reason": lr[:90]})
     n_carry_pairs = sum(1 for x in pairs if x["vec_mult"] > 0 or x["live_mult"] > 0)
-    return {"sym_side": ss, "knob": knob, "mode": mode, "window_days": window_days, "secs_live": round(secs, 1),
+    return {"sym_side": ss, "knob": knob, "mode": mode, "window_days": window_days, "secs_live": round(secs, 1), "n_set_overrides": len(base_set),
             "vec": {k: vec.get(k) for k in ("trades", "gain_pct", "valid")}, "live": {k: live.get(k) for k in ("trades", "gain_pct", "valid", "invalid_reason")},
             "vec_trips": len(vt), "live_trips": len(lt), "matched": len(m["pairs"]),
             "vec_match_rate": round(len(m["pairs"]) / len(vt), 3) if vt else None, "live_match_rate": round(len(m["pairs"]) / len(lt), 3) if lt else None,
@@ -219,7 +222,7 @@ def main():
         print(json.dumps(rep[:40]))
     else:
         rep = scalar(a.sym_side, a.knobs.split(",")[0], a.window_days, a.mode)
-        print("AIR_SCALAR " + json.dumps({k: rep[k] for k in ("sym_side", "knob", "mode", "vec_trips", "live_trips", "matched", "matched_opens_compared", "matched_opens_with_carry", "carry_agree", "vec_carried_opens_total", "live_tagged_opens_total", "secs_live")}))
+        print("AIR_SCALAR " + json.dumps({k: rep[k] for k in ("sym_side", "knob", "mode", "n_set_overrides", "vec_trips", "live_trips", "matched", "matched_opens_compared", "matched_opens_with_carry", "carry_agree", "vec_carried_opens_total", "live_tagged_opens_total", "secs_live")}))
     if a.out:
         pathlib.Path(a.out).write_text(json.dumps(rep, indent=1, default=str))
 

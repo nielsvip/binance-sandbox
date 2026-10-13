@@ -3281,6 +3281,11 @@ class TradierConfig:
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = False
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0
+    # 2026-10-13 USER ORDER: bad overnight gappers MUST close at the open
+    # (then reopen via normal gates + gap-fill reentry). Close ONLY — hedge
+    # stays PROHIBITED. Above UNIVERSAL_NOLOSS_GATE so losers can close.
+    OB_GAP_CLOSE_ENABLED: bool = True
+    OB_GAP_CLOSE_MIN_ADVERSE_PCT: float = 2.0
     OBLIGATORY_HEDGE_PCT: float = 0.0
     OBLIGATORY_HEDGE_WT_TFS: int = 2
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0
