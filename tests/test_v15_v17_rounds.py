@@ -104,3 +104,25 @@ def test_wiring_pins():
         assert tok in SRC, tok
     # every promotion re-uses the exact promoted set's own eval (greedy re-eval vs the latest chain)
     assert "_v17_promote(pos[0], how, prefix, ph)" in SRC
+
+
+def test_yellow_frequency_rule():
+    # USER 2026-10-13: p = max(1/200, min(1, pos_sym/pos_top)); unevidenced = 1 (fail-open); deterministic draw
+    prior = {"filter_opt": {"A=1": {"pos_sym": 0, "n_sym": 50}, "B=1": {"pos_sym": 4, "n_sym": 50}, "C=1": {"pos_sym": 2, "n_sym": 50}, "D=1": {"pos_sym": 9, "n_sym": 3}}}
+    top = P.v17_pos_top(prior, 10, 0.9)
+    assert top == 4.0
+    assert P.v17_cell_p(prior["filter_opt"]["A=1"], top) == 0.005
+    assert P.v17_cell_p(prior["filter_opt"]["B=1"], top) == 1.0
+    assert P.v17_cell_p(prior["filter_opt"]["C=1"], top) == 0.5
+    assert P.v17_cell_p(prior["filter_opt"]["D=1"], top) == 1.0  # n < min -> unevidenced -> always
+    assert P.v17_cell_p(None, top) == 1.0
+    draws = [P.v17_cell_keep("CRYPTO_LONG", "EXIT_VELOCITY", "X", 1, "A=1", seq, 0.005) for seq in range(4000)]
+    assert 5 <= sum(draws) <= 40  # ~1 in 200 over rounds
+    assert P.v17_cell_keep("CRYPTO_LONG", "T", "X", 1, "A=1", 7, 0.3) == P.v17_cell_keep("CRYPTO_LONG", "T", "X", 1, "A=1", 7, 0.3)
+    assert "V15_POSSYM_P_SAMPLING" in SRC and "[YELLOW-SAMPLE]" in SRC
+
+
+def test_exemption_merge_and_tuple_ev():
+    m = P.v17_merge_exemptions({"AUGMENT_AT_LOSS": ["F1"]}, {"AUGMENT_AT_LOSS": ["F2", "F1"], "B12": ["WT_DIV"]})
+    assert m == {"AUGMENT_AT_LOSS": ["F1", "F2"], "B12": ["WT_DIV"]}
+    assert P.v17_ev("A=1", {"A=1": (10, 2.0, 0.25)}) == 0.5

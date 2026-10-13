@@ -33,7 +33,7 @@ if [ -n "$_FRZ" ]; then
   for _s in $_FRZ; do echo "${_s}.npz"; done >> "$EXCL"
   echo "$(date -u +%FT%TZ) FROZEN $(echo $_FRZ | wc -w) symbols excluded (unfinished boards)" >> /tmp/sync_indicators.log
 fi
-for ip in 10.0.0.6 10.0.0.5 10.0.0.4; do
+for ip in 10.0.0.4; do  # 2026-10-13 s5/s6 destroyed
   _excl_arg=""
   [ -f "$EXCL" ] && _excl_arg="--exclude-from=$EXCL"
   # shellcheck disable=SC2086

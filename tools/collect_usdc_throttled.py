@@ -55,13 +55,26 @@ for sym in ordered:
                 tmp.write_text(json.dumps(merged))
                 os.replace(tmp, klines_path)
                 print(f"    {sym} merged {len(existing)}->{len(merged)} span {span:.1f}d {'READY' if span>=300 else 'collecting'} atomic OK")
-                # rsync to gateway/S5/Macbook
-                for dst in ["niels@10.0.0.3:~/binance-sandbox/klines_cache/", "niels@10.0.0.5:~/binance-sandbox/klines_cache/", "niels@10.0.0.3:~/binance-sandbox/klines_cache/tradier/"]:
+                # USER 2026-10-13: S1 klines_cache/ is the deep repository — NEVER push into it
+                # from here (this host's files may be trimmed to ~1800 bars; a direct rsync
+                # CLOBBERED 13 deep S1 files on 2026-10-13, guard-restored). Feed ONLY the
+                # macbook staging dir; S1 klines_append unions it additively under guard.
+                # Crypto files must NEVER go to klines_cache/tradier/ (wrong venue).
+                for dst in ["niels@10.0.0.3:~/binance-sandbox/klines_cache_macbook/"]:
                     try:
                         subprocess.run(["rsync","-az",str(klines_path), dst], timeout=10, capture_output=True)
                         print(f"      rsync {dst} OK")
                     except Exception as e:
                         print(f"      rsync {dst} fail {e}")
+                # Deep-source hosts (S1, span>=300d) may ALSO feed S5's repo; shallow
+                # hosts must not (would shrink it).
+                if span>=300:
+                    for dst in ["niels@10.0.0.5:~/binance-sandbox/klines_cache/"]:
+                        try:
+                            subprocess.run(["rsync","-az",str(klines_path), dst], timeout=10, capture_output=True)
+                            print(f"      rsync {dst} OK")
+                        except Exception as e:
+                            print(f"      rsync {dst} fail {e}")
             else:
                 print(f"    {sym} would truncate {len(existing)}->{len(merged)} — BLOCKED")
         elif r.status_code in (418,429,403):

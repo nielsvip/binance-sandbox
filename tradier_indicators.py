@@ -1163,6 +1163,60 @@ TIMEFRAMES = {
 # is no later than the caller's as-of clock.  No order path reads these fields
 # until a separately reviewed adapter is installed.
 COMPLETED_SNAPSHOT_TIMEFRAMES = frozenset({"5m", "15m", "1h", "4h", "D"})
+
+# 2026-10-13 NEVER-AGAIN (15m/1h frozen 20d): gated TFs starved because the
+# sequential 39s loop only reaches them inside narrow ET windows while slow
+# 1m/5m passes eat minutes. A gated TF now ALSO runs as overdue catch-up
+# (single-flight, never blocking the loop) when its last start is older
+# than _TF_CATCHUP_S. Pure helpers so the policy is unit-testable.
+_TF_CATCHUP_S = {"15m": 2700.0, "1h": 3 * 3600.0, "4h": 12 * 3600.0, "D": 36 * 3600.0}
+
+
+def _tf_window_due(tf: str, et_h: int, et_m: int) -> bool:
+    """Verbatim extraction of the schedule gates (D/4h/1h/15m windows)."""
+    if tf == "15m":
+        return et_m in (0, 15, 30, 45)
+    if tf == "1h":
+        return 9 <= et_h <= 16 and et_m == 0
+    if tf == "4h":
+        return (et_h == 9 and et_m == 30) or (et_h == 13 and et_m == 0) or (et_h == 16 and et_m == 0)
+    if tf == "D":
+        return et_h == 16 and et_m == 0
+    return True
+
+
+def _tf_should_run(tf: str, et_h: int, et_m: int, last_start_ts, now_ts: float) -> bool:
+    """Window match OR overdue catch-up. 1m/5m always True. Missing/zero
+    last_start means overdue (fires once, then single-flight paces)."""
+    if tf in ("1m", "5m"):
+        return True
+    if _tf_window_due(tf, et_h, et_m):
+        return True
+    try:
+        return (float(now_ts) - float(last_start_ts or 0)) > _TF_CATCHUP_S.get(tf, 1e18)
+    except Exception:
+        return True
+
+
+def _replace_self_heal(tmp, path, what: str) -> None:
+    """os.replace with one self-heal retry: a stray immutable (uchg) flag
+    froze tradier_indicators_latest.json for 20d (every save EPERM). Clear
+    the flag and retry once; still raising after that (caller decides)."""
+    try:
+        os.replace(tmp, path)
+        return
+    except OSError as e:
+        if getattr(e, "errno", None) != 1:
+            raise
+        try:
+            import subprocess
+            subprocess.run(["chflags", "nouchg", str(path)], timeout=10, check=False)
+            os.replace(tmp, path)
+            logger.critical(f"SELF-HEAL cleared immutable flag on {path} ({what}) — save recovered")
+            return
+        except Exception as e2:
+            logger.critical(f"SELF-HEAL FAILED {path} ({what}): {e2}")
+            raise
 COMPLETED_SNAPSHOT_DEMAND_SWITCHES = (
     "ENTRY_STOCH_HHHL_DIRECT_ENABLED",
     "ENTRY_BOUNCE_DONCHIAN_DIRECT_ENABLED",
@@ -2206,8 +2260,10 @@ class TradierBarManager:
             await self.get_bundle(symbol)
         # 2026-09-14 MARKET-HOURS REFRESH: disk files can be missing/stale after a
         # weekend or kline outage; one force_api attempt beats a silent freeze.
-        # Gated to 1m/5m in market hours so the 39s loop can't hammer the API.
-        if (not path.exists() or path.stat().st_size == 0) and timeframe in ("1m", "5m") and _is_regular_trading_hours():
+        # 2026-10-13 NEVER-AGAIN: ungated to ALL TFs (was 1m/5m only —
+        # 15m/1h froze silently for 20d). Still rare: fires only when the
+        # disk file is missing/empty, never on the hot path.
+        if (not path.exists() or path.stat().st_size == 0) and _is_regular_trading_hours():
             try:
                 await self.get_bundle(symbol, force_api=True)
             except Exception as _fe:
@@ -2537,6 +2593,10 @@ class TradierIndicatorOrchestrator:
         self._load_existing_data()
         self._init_state()
         self._http_semaphore = asyncio.Semaphore(int(getattr(self.config, 'TRADIER_INDICATORS_HTTP_CONCURRENCY', 48)))  # was 15 — 2026-04-27 speedup
+        # 2026-10-13 NEVER-AGAIN: per-TF single-flight + last-start ledger for
+        # overdue catch-up (gated TFs must run even when windows are missed).
+        self._tf_inflight: Dict[str, bool] = {}
+        self._tf_last_start: Dict[str, float] = {}
 
     def _load_symbols(self) -> List[str]:
         collected: Set[str] = set()
@@ -2665,7 +2725,7 @@ class TradierIndicatorOrchestrator:
                             f.write(data_bytes)
                         f.flush()
                         os.fsync(f.fileno())
-                    os.replace(tmp, path)
+                    _replace_self_heal(tmp, path, "snapshot")
                 except Exception as e:
                     if tmp.exists():
                         try: os.remove(tmp)
@@ -2858,9 +2918,13 @@ class TradierIndicatorOrchestrator:
                     new_bar = state.last_close is None or (close_ts is not None and close_ts > state.last_close)
                 # release semaphore before CPU-heavy compute
                 if new_bar or needs_refresh or (required_keys and force):
+                    # 2026-10-13 NEVER-AGAIN: slow TFs legitimately take minutes
+                    # (off-loop now); a 30s cap here guaranteed zero 15m/1h
+                    # completions forever.
+                    _sym_timeout = 30.0 if timeframe in ("1m", "5m") else 240.0
                     await asyncio.wait_for(
                         self._run_full(symbol, timeframe, df, close_ts, mark_price, state, mark_ts=mark_ts),
-                        timeout=30.0
+                        timeout=_sym_timeout
                     )
                     state.last_close = close_ts
                     state.full_done = True
@@ -2877,31 +2941,34 @@ class TradierIndicatorOrchestrator:
                 elif state.last_df is not None and mark_price is not None:
                     state.full_done = True
             except asyncio.TimeoutError:
-                logger.error(f"Timeout processing {symbol} {timeframe} (30s)")
+                logger.error(f"Timeout processing {symbol} {timeframe} ({30 if timeframe in ('1m', '5m') else 240:.0f}s)")
             except Exception as e:
                 logger.error(f"Error processing {symbol} {timeframe}: {e}")
 
         # QUICK OPEN FIX 2026-08-17 13:17 UTC 17m before open: skip D/4h/1h/15m unless at correct ET window, otherwise 115 symbols D/1h hangs 60s+ and blocks 1m/5m fresh needed for open. Market open needs 1m/5m <40s, not D.
         now_et = utc_now().astimezone(ET)
-        if timeframe == "D" and not (now_et.hour == 16 and now_et.minute == 0):
+        if timeframe == "D" and not force and not (now_et.hour == 16 and now_et.minute == 0):
             logger.info(f"[{timeframe}] Skipped (not 16:00 ET, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
             return
-        if timeframe == "4h" and not ((now_et.hour == 9 and now_et.minute == 30) or (now_et.hour == 13 and now_et.minute == 0) or (now_et.hour == 16 and now_et.minute == 0)):
+        if timeframe == "4h" and not force and not ((now_et.hour == 9 and now_et.minute == 30) or (now_et.hour == 13 and now_et.minute == 0) or (now_et.hour == 16 and now_et.minute == 0)):
             logger.info(f"[{timeframe}] Skipped (not 9:30/13:00/16:00 ET) for quick open")
             return
-        if timeframe == "1h" and not (now_et.minute == 0):
+        if timeframe == "1h" and not force and not (now_et.minute == 0):
             logger.info(f"[{timeframe}] Skipped (not :00, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
             return
-        if timeframe == "15m" and now_et.minute not in (0, 15, 30, 45):
+        if timeframe == "15m" and not force and now_et.minute not in (0, 15, 30, 45):
             logger.info(f"[{timeframe}] Skipped (not :00/:15/:30/:45, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
             return
         logger.info(f"[{timeframe}] Starting concurrent update for {len(self.symbols)} symbols...")
         tasks =[asyncio.create_task(process_symbol(sym)) for sym in self.symbols]
         if tasks:
+            # 2026-10-13 NEVER-AGAIN: slow TFs need room to finish (partials
+            # persist in self.data, so a longer cap only gains coverage).
+            _gather_timeout = 180.0 if timeframe in ("1m", "5m") else 900.0
             try:
-                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=180.0)
+                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=_gather_timeout)
             except asyncio.TimeoutError:
-                logger.error(f"Timeout gathering {timeframe} for {len(tasks)} symbols (180s) — continuing with partial results")
+                logger.error(f"Timeout gathering {timeframe} for {len(tasks)} symbols ({_gather_timeout:.0f}s) — continuing with partial results")
 
         if timeframe == self._schedule_order[-1]:
             self._save_due = True
@@ -2933,9 +3000,45 @@ class TradierIndicatorOrchestrator:
         self.symbol_set = set(new_symbols)
         self._last_symbol_refresh = utc_now()
 
+    def _seed_tf_starts(self) -> None:
+        """Seed last-start ledger from loaded data so a stale boot
+        catch-ups immediately while a fresh boot does not herd."""
+        try:
+            now_ts = time.time()
+            for tf in ("15m", "1h", "4h", "D"):
+                try:
+                    best = 0.0
+                    for values in (self.data or {}).values():
+                        if not isinstance(values, dict):
+                            continue
+                        d = safe_datetime(values.get(f"timestamp_{tf}"))
+                        if d is not None:
+                            best = max(best, d.timestamp())
+                    self._tf_last_start[tf] = best or 0.0
+                except Exception:
+                    self._tf_last_start[tf] = 0.0
+        except Exception:
+            pass
+
+    async def _run_tf_guarded(self, tf: str, force: bool) -> None:
+        """Single-flight wrapper: never overlapping, ledger always cleared."""
+        try:
+            await self._process_timeframe(tf, force=force)
+        except Exception as e:
+            logger.error(f"[{tf}] guarded run failed: {e}")
+        finally:
+            try:
+                self._tf_inflight[tf] = False
+            except Exception:
+                pass
+
     async def _schedule_loop(self) -> None:
         # 2026-08-14 FIX: Tradier market hours ET 9:30-16:00: 4h=9:30/13:00/16:00, 1h=9:00-16:00, D=16:00 ET. Was run_cycle bundle 30min ABSURD -> <40s like ez + ET clocks.
         interval = 39.0
+        try:
+            self._seed_tf_starts()
+        except Exception:
+            pass
         while not self._shutdown.is_set():
             now = utc_now()
             midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2952,18 +3055,33 @@ class TradierIndicatorOrchestrator:
             now_et = now.astimezone(ET)
             et_h = now_et.hour
             et_m = now_et.minute
+            now_ts = time.time()
             for tf in self._schedule_order:
                 if self._shutdown.is_set():
                     break
-                if tf == "15m" and now_et.minute not in (0, 15, 30, 45):
+                if tf in ("1m", "5m"):
+                    await self._process_timeframe(tf, force=False)
                     continue
-                if tf == "1h" and not (9 <= et_h <= 16 and et_m == 0):
+                # 2026-10-13 NEVER-AGAIN: gated TFs launch single-flight in
+                # background on window match OR overdue catch-up (force=True
+                # bypasses the minute gate); the loop never blocks on them,
+                # so slow 1m/5m passes can no longer starve 15m/1h/4h/D.
+                try:
+                    _window = _tf_window_due(tf, et_h, et_m)
+                except Exception:
+                    _window = False
+                try:
+                    _overdue = (not _window) and _tf_should_run(tf, et_h, et_m, self._tf_last_start.get(tf), now_ts)
+                except Exception:
+                    _overdue = False
+                if not (_window or _overdue):
                     continue
-                if tf == "4h" and not ((et_h == 9 and et_m == 30) or (et_h == 13 and et_m == 0) or (et_h == 16 and et_m == 0)):
+                if self._tf_inflight.get(tf):
                     continue
-                if tf == "D" and not (et_h == 16 and et_m == 0):
-                    continue
-                await self._process_timeframe(tf, force=False)
+                self._tf_inflight[tf] = True
+                self._tf_last_start[tf] = now_ts
+                logger.info(f"[{tf}] launching {'catch-up' if _overdue else 'window'} run (single-flight, off-loop)")
+                asyncio.create_task(self._run_tf_guarded(tf, force=bool(_overdue)))
             self._save_due = True
 
     def _required_by_timeframe(self, timeframe: str) -> List[str]:
@@ -2992,7 +3110,16 @@ class TradierIndicatorOrchestrator:
         if 'close_time' in df.columns:
             df['close_time'] = _to_utc(df['close_time'])
 
-        result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=False)
+        # 2026-10-13 NEVER-AGAIN: compute off the event loop. The pandas
+        # rolling lambdas (wma/thma/hull) burn seconds-to-minutes of GIL CPU
+        # per symbol; in-loop they froze scheduling until every TF but 1m/5m
+        # starved for 20d. Bounded executor (4) mirrors the run_cycle path.
+        try:
+            _loop = asyncio.get_running_loop()
+            _exec = getattr(self, "executor", None)
+            result = await _loop.run_in_executor(_exec, self.calculator.compute, df, symbol, timeframe, mark_price, mark_ts, False)
+        except Exception:
+            result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=False)
         if not result: return
         symbol_data = self.data.setdefault(symbol, {})
         symbol_data.update(result)
@@ -3505,7 +3632,7 @@ class TradierIndicatorOrchestrator:
                         f.write(payload_bytes)
                     f.flush()
                     os.fsync(f.fileno())
-                os.replace(tmp, path)
+                _replace_self_heal(tmp, path, "broadcast")
             except Exception as e:
                 logger.error(f"File write error: {e}")
                 if tmp.exists():
@@ -3650,6 +3777,25 @@ class TradierIndicatorOrchestrator:
                     safe[symbol] = OrderedDict(sorted(filtered.items()))
                     symbols_with_data += 1
             
+            # 2026-10-13 NEVER-AGAIN watchdog: scream (not debug) when a slow
+            # TF goes hours stale in market hours — 15m/1h froze 20d silently.
+            try:
+                _wd_now = utc_now()
+                _wd_worst = {}
+                for _sym, _vals in safe.items():
+                    if not isinstance(_vals, dict):
+                        continue
+                    for _tf, _max_age in (("15m", 7200.0), ("1h", 28800.0), ("4h", 86400.0)):
+                        _d = safe_datetime(_vals.get(f"timestamp_{_tf}"))
+                        if _d is not None:
+                            _age = (_wd_now - _d).total_seconds()
+                            if _age > _wd_worst.get(_tf, (0, ""))[0]:
+                                _wd_worst[_tf] = (_age, _sym)
+                for _tf, (_age, _sym) in _wd_worst.items():
+                    if _age > 3 * {"15m": 7200.0, "1h": 28800.0, "4h": 86400.0}[_tf] and _is_regular_trading_hours():
+                        logger.critical(f"STALE-TF-WATCHDOG {_tf} worst age {_age:.0f}s ({_sym}) in market hours — catch-up overdue")
+            except Exception:
+                pass
             incomplete_count = len(self.symbols) - symbols_with_data
             if incomplete_count > 0:
                 logger.info(f"💾 Saving {symbols_with_data} symbols (stale/incomplete: {incomplete_count})")
@@ -3860,9 +4006,68 @@ def signal_handler(signum, frame, orchestrator=None):
         # Fallback if orchestrator isn't initialized yet
         sys.exit(0)
 
+def _instance_lock_path():
+    try:
+        return TradierConfig().DATA_DIR / "tradier_indicators.lock"
+    except Exception:
+        from pathlib import Path as _P
+        return _P("/Users/niels/Documents/binance/data/tradier/tradier_indicators.lock")
+
+
+def _pid_is_live_indicators(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except Exception:
+        return False
+    try:
+        import subprocess
+        out = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], timeout=10, capture_output=True, text=True)
+        cmd = (out.stdout or "")
+        return "tradier_indicators" in cmd
+    except Exception:
+        return True
+
+
+def _try_claim_instance() -> bool:
+    """True if this process may produce. A live holder blocks contenders
+    (they idle); a deadPid/stale lock is taken over. Kills the dual-writer
+    race that clobbered snapshots (orphan 37693, 2026-10-13)."""
+    try:
+        lp = _instance_lock_path()
+        try:
+            cur = lp.read_text().strip().split()
+            old_pid = int(cur[0]) if cur else 0
+        except Exception:
+            old_pid = 0
+        if old_pid and old_pid != os.getpid() and _pid_is_live_indicators(old_pid):
+            return False
+        try:
+            lp.write_text(f"{os.getpid()} {int(time.time())}\n")
+        except Exception:
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def _release_instance() -> None:
+    try:
+        lp = _instance_lock_path()
+        try:
+            if int((lp.read_text().strip().split() or ["0"])[0]) == os.getpid():
+                lp.unlink()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
 async def main():
     import signal
     from functools import partial
+    while not _try_claim_instance():
+        logger.critical("DUPLICATE tradier_indicators refused: live holder present — idling 60s (no dual writers)")
+        await asyncio.sleep(60)
     orchestrator = TradierIndicatorOrchestrator()
     sig_handler_with_ctx = partial(signal_handler, orchestrator=orchestrator)
     
@@ -3879,6 +4084,7 @@ async def main():
         # Guard against closing a client that wasn't successfully opened
         if hasattr(orchestrator, 'api_client') and orchestrator.api_client:
             await orchestrator.api_client.close()
+        _release_instance()
 
 # ============================================================================
 # CONSENSUS INDICATORS — migrated from tradier_indicators_extra.py 2026-04-26

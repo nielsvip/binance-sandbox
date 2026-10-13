@@ -7422,9 +7422,7 @@ class QuickConfig:
     WD_OPEN_CHOKE_GATES: bool = (
         True  # [FLT q001] execute_now OPEN chokepoint gates (EMA_BLANKET, COUNTER_TREND_ADD_BLOCK) also gate MOMENTUM_WATCHDOG opens (live parity); vec-only housekeeping
     )
-    EMA_BLANKET_FILTER_FILTER_TF: str = (
-        "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
-    )
+    EMA_BLANKET_FILTER_FILTER_TF: str = "OFF"  # 2026-10-13 parity: live config.py OFF + crypto cat_side OFF + TEMPLATE bold OFF (daily-chain needs_manual)
     EMA_BLANKET_FILTER_MIN_TFS: float = (
         3.0  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
     )

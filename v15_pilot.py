@@ -3100,6 +3100,36 @@ def v17_tab_order(tabs, prior: dict, tab_keys: dict | None = None) -> list:
     return sorted(tabs, key=lambda t: (rate[t] is None, -(rate[t] or 0.0), fb.get(t, len(fb))))
 
 
+def v17_pos_top(prior: dict, min_n: int = 10, pct: float = 0.9) -> float:
+    """Pure: pos_sym at the pct percentile of the cat_side's evidenced FILTER=opt cells (n_sym >= min_n); >= 1."""
+    vals = sorted(int(e.get("pos_sym") or 0) for e in ((prior or {}).get("filter_opt") or {}).values() if isinstance(e, dict) and int(e.get("n_sym") or 0) >= int(min_n))
+    if not vals:
+        return 1.0
+    return float(max(1, vals[min(len(vals) - 1, int(pct * len(vals)))]))
+
+
+def v17_cell_p(entry, top: float, min_n: int = 10) -> float:
+    """Pure (USER 2026-10-13 yellow-frequency rule): p = max(1/200, min(1, pos_sym / pos_top)); unevidenced (no entry or
+    n_sym < min_n) = 1.0 (fail-open, always evaluated). Floor via V15_V17_P_MIN (default 0.005 = once in 200)."""
+    pmin = float(os.environ.get("V15_V17_P_MIN", "0.005"))
+    try:
+        if not isinstance(entry, dict) or int(entry.get("n_sym") or 0) < int(min_n):
+            return 1.0
+        return max(pmin, min(1.0, float(entry.get("pos_sym") or 0) / max(1.0, float(top))))
+    except Exception:
+        return 1.0
+
+
+def v17_cell_keep(cat_side, tab, switch, cand, hdr, seq, p) -> bool:
+    """Pure deterministic draw: md5(cat_side|tab|switch=cand|hdr|seq) -> u in [0,1); keep iff u < p. The round seq rotates
+    the draw, so every cell is re-evaluated about once in 1/p rounds."""
+    if p >= 1.0:
+        return True
+    import hashlib as _hl
+    u = int(_hl.md5(f"{cat_side}|{tab}|{str(switch).strip()}={str(cand).strip()}|{str(hdr).strip()}|{seq}".encode()).hexdigest()[:12], 16) / float(16 ** 12)
+    return u < float(p)
+
+
 def v17_merge_exemptions(base, add) -> dict:
     """Pure: union-merge FILTER_EXEMPTIONS dicts {path: [filters]} (chain value + new exemption), order-stable, no duplicates."""
     out = {}
@@ -3476,6 +3506,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if not _v17.get("on"):
             progress.pop("v17", None)
     _v17_t = {"p2_start": None}
+    _v17_ptop = [1.0]
+    _v17_ystats = {"evaluated": 0, "skipped": 0}
     _v17_evals = [0]
     if _v17_on:
         _v17["on"] = True
@@ -3690,8 +3722,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ok = d is not None and bool((res or {}).get("valid"))
             recs.append([sw2, c2, g, (res or {}).get("trades"), (res or {}).get("valid"), d, False, cum0, ", ".join(seen[(sw2, c2)][:6]), err or (res or {}).get("invalid_reason") or ""])
             _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": "FINAL_FILTER_RECHECK", "row": None, "switch": sw2, "cand": str(c2), "label": "FINAL_RECHECK", "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum0, "delta": d, "secs": None, "cached": cached, "err": err})
-            if ok and d > 1e-9 and not promotion_block_reason(sw2) and (best is None or d > best[0]):
-                best = (d, sw2, c2, g)
+            if ok and d > 1e-9 and not promotion_block_reason(sw2) and (best is None or d > best[0]) and not (_v17_on and (tim_guard_veto((res or {}).get("tim_pct"), chain_tim) or trades_guard_veto((res or {}).get("trades"), chain_trades))):
+                best = (d, sw2, c2, g)  # V17: FFR obeys the same TIM/trades chain-health guards (canary RLC D: FFR pushed TIM 20+ -> 9.3 -> compliance REDO)
         if best is not None:
             d, sw2, c2, g = best
             cumulative_gain = float(g)
@@ -4894,7 +4926,27 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # prior-ranked yellows; the rest join the coarse deferral (settled, inline on moving rows, FOCUS in P3). Canary
             # 2026-10-13: naked-only P2 lost most of the joint lift (RLC A 48.7 at row 2000 vs naked-only 22.5 at P2 end).
             _v17_cap = int(os.environ.get("V15_V17_P2_YELLOWS", "8"))
-            if len(info["hdrs"]) > _v17_cap >= 0:
+            if os.environ.get("V15_POSSYM_P_SAMPLING", "1") == "1":
+                # USER 2026-10-13: "dont switch off yellow cells, just reduce their frequency of calculation from every time
+                # (highest pos_sym values) to once in 200 (0 pos_sym)". Pool = kept + coarse-deferred + prior-skipped + inert
+                # cells; each cell evaluated with p = v17_cell_p (deterministic draw per cat_side|tab|row|cell|round);
+                # a skipped cell is SAMPLED_SKIP = coarse-deferred (settled, never hollow) and revives on a positive naked.
+                _v17_pool = list(dict.fromkeys(list(info["hdrs"]) + list(info.get("coarse_deferred_filters") or []) + list(info.get("prior_skipped") or []) + list(info.get("inert_filters") or [])))
+                _v17_keep, _v17_skip = [], {}
+                for _h in _v17_pool:
+                    _p = v17_cell_p(_prior_entry(_v17_prior, "filter_opt", str(_h).strip()), _v17_ptop[0], _PRIOR_MIN_N)
+                    if v17_cell_keep(_v17_cs, sname, switch, cand, _h, _inert_seq, _p):
+                        _v17_keep.append(_h)
+                    else:
+                        _v17_skip[_h] = round(_p, 4)
+                info["hdrs"] = _v17_keep
+                info["coarse_deferred_filters"] = list(_v17_skip)
+                info["sampled_skip_p"] = _v17_skip
+                info["prior_skipped"] = []
+                info["inert_filters"] = []
+                _v17_ystats["evaluated"] += len(_v17_keep)
+                _v17_ystats["skipped"] += len(_v17_skip)
+            elif len(info["hdrs"]) > _v17_cap >= 0:
                 _v17_pr = info.get("prior_rank") or {}
                 _v17_keep = set(sorted(info["hdrs"], key=lambda h: _v17_pr.get(h, (0, 0.0)), reverse=True)[:_v17_cap])
                 info["coarse_deferred_filters"] = list(info.get("coarse_deferred_filters") or []) + [h for h in info["hdrs"] if h not in _v17_keep]
@@ -5558,6 +5610,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v17_cs = map_key_for_symside(new_symside)
     _v17_prior = _prior_load(_v17_cs) if _v17_on else {}
     _v17_know = v17_load_knowledge(_v17_cs) if _v17_on else {}
+    _v17_ptop[0] = v17_pos_top(_v17_prior, _PRIOR_MIN_N) if _v17_on else 1.0
     _v17_touched: set = set()
     _v17_focus_cap = [None]
     _v17_focus_iter = [0]
@@ -6288,6 +6341,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # then complete in round 1 (never a "promoted hole" that forces a full-board REDO wipe) and its joint set is
             # chosen from the full matrix. Rows that do not move keep the deferral (settled, not hollow) for FOCUS.
             _cz_move = bool(not is_running and naked_ok and naked_delta is not None and float(naked_delta) > 1e-9)
+            _cz_naked_pos = _cz_move  # V17 USER rule: a positive NAKED row revives its yellows fully (no inline cap)
             if not _cz_move:
                 for _czh in st["hdrs"]:
                     try:
@@ -6300,7 +6354,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if _cz_move:
                 _cz_hdrs = [h for h in st["coarse_deferred_filters"] if h not in st["hdrs"] and h in st["h2f"]]
                 _cz_rest = []
-                if _v17_on and len(_cz_hdrs) > int(os.environ.get("V15_V17_INLINE_CAP", "32")):
+                if _v17_on and not _cz_naked_pos and len(_cz_hdrs) > int(os.environ.get("V15_V17_INLINE_CAP", "32")):
                     # V17: canary RLC C spent 405 s of an 803 s P2 on 46 full ~205-cell inline matrices (4 promoted) — inline only the
                     # top prior-ranked cells; the rest stay coarse-deferred (settled) for the P3 FOCUS yellows (batched, moved chain).
                     _cz_pr = st.get("prior_rank") or {}
@@ -6643,6 +6697,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         processed += 1
     if _v17_on and _v17_t.get("p2") and (pending_queue or not _v17_phase_done("P2_WORST_FIRST")):
         _v17_t["p2"]["prom"] = sum(1 for _pk, _pv in (progress.get("done") or {}).items() if isinstance(_pv, dict) and _pv.get("promoted") and str(_pk).split("!", 1)[0] in SWITCH_SHEETS and not str(_pk).endswith(":REPASS") and not _pv.get("v17_phase"))
+        _v17["yellow_sample"] = {**_v17_ystats, "pos_top": _v17_ptop[0], "p_min": float(os.environ.get("V15_V17_P_MIN", "0.005")), "seq": _inert_seq}
+        print(f"[YELLOW-SAMPLE] {new_symside} evaluated={_v17_ystats['evaluated']} skipped={_v17_ystats['skipped']} pos_top={_v17_ptop[0]} (p = max(1/200, pos_sym/pos_top), unevidenced p=1)", flush=True)
         _v17_phase_end(_v17_t["p2"], rows_pending=_v17_t["p2"].get("rows_pending"), resumed_segment=bool(_v17_phase_done("P2_WORST_FIRST")))
     if _sacred_on:
         _sacred_final_n = _sacred_repass(None)

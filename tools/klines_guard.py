@@ -106,6 +106,18 @@ def take_snapshot():
                     ds = dst.stat()
                     if ds.st_mtime == st.st_mtime and ds.st_size == st.st_size:
                         continue
+                except FileNotFoundError:
+                    pass
+                # USER 2026-10-13: never snapshot a corrupt/unparseable file over a
+                # good backup (this destroyed the only deep copies of 7 files).
+                # Parse-checked only for changed files (cheap path stays stat-only).
+                try:
+                    rows = json.loads(p.read_text())
+                    if not isinstance(rows, list) or not rows:
+                        continue
+                except Exception:
+                    continue
+                try:
                     dst.unlink()
                 except FileNotFoundError:
                     pass

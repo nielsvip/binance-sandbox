@@ -4360,9 +4360,7 @@ class Config:
     DC_EDGE_SIZING_ENABLED: bool = (
         True  # PROMO run20: was True | BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge=trending=3x, center=sideways=1x. +68% PnL vs flat.
     )
-    DC_EDGE_SIZING_MAX_MULT: float = (
-        3.0  # BACKTEST_CHANGE_122: Max 3x at DC edges (trending). 1x at DC center (sideways).
-    )
+    DC_EDGE_SIZING_MAX_MULT: float = 6.0  # 2026-10-13 USER "a": TEMPLATE crypto bold 6.0 (daily-chain promo 13:22Z); was 3.0 (BACKTEST_CHANGE_122)
     DC_EDGE_SIZING_MIN_MULT: float = (
         1.0  # BACKTEST_CHANGE_122: Min 1x at DC center. Set to 0.5 to reduce in sideways.
     )
