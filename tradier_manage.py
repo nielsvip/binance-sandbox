@@ -31216,7 +31216,17 @@ class StockStrategy:
             # an HTF-only setup needs a fresh LTF confirmation (scoring path: attempt-1 requirement, no attempt book — see HTF_CONSUME_CHANGES.md).
             try:
                 import vec_decisions.htf_signal_consume as _hsc_t
-                _hsc_keys = {k: getattr(self.config, k, None) for k in ("HTF_SIGNAL_CONSUME_ENABLED", "HTF_SIGNAL_MAX_ATTEMPTS", "HTF_SIGNAL_VALID_BARS_D", "HTF_SIGNAL_VALID_BARS_4H", "HTF_SIGNAL_VALID_BARS_1H", "HTF_RETRY_LTF_WINDOW_BARS", "HTF_RETRY_TIGHTEN_WINDOW", "HTF_RETRY_TIGHTEN_CONFIRMS", "HTF_RETRY_TIGHTEN_SIZE")}
+                _hsc_keys = {
+                    "HTF_SIGNAL_CONSUME_ENABLED": _cfg("HTF_SIGNAL_CONSUME_ENABLED", getattr(self.config, "HTF_SIGNAL_CONSUME_ENABLED", None), account_key, symbol, _side),
+                    "HTF_SIGNAL_MAX_ATTEMPTS": _cfg("HTF_SIGNAL_MAX_ATTEMPTS", getattr(self.config, "HTF_SIGNAL_MAX_ATTEMPTS", None), account_key, symbol, _side),
+                    "HTF_SIGNAL_VALID_BARS_D": _cfg("HTF_SIGNAL_VALID_BARS_D", getattr(self.config, "HTF_SIGNAL_VALID_BARS_D", None), account_key, symbol, _side),
+                    "HTF_SIGNAL_VALID_BARS_4H": _cfg("HTF_SIGNAL_VALID_BARS_4H", getattr(self.config, "HTF_SIGNAL_VALID_BARS_4H", None), account_key, symbol, _side),
+                    "HTF_SIGNAL_VALID_BARS_1H": _cfg("HTF_SIGNAL_VALID_BARS_1H", getattr(self.config, "HTF_SIGNAL_VALID_BARS_1H", None), account_key, symbol, _side),
+                    "HTF_RETRY_LTF_WINDOW_BARS": _cfg("HTF_RETRY_LTF_WINDOW_BARS", getattr(self.config, "HTF_RETRY_LTF_WINDOW_BARS", None), account_key, symbol, _side),
+                    "HTF_RETRY_TIGHTEN_WINDOW": _cfg("HTF_RETRY_TIGHTEN_WINDOW", getattr(self.config, "HTF_RETRY_TIGHTEN_WINDOW", None), account_key, symbol, _side),
+                    "HTF_RETRY_TIGHTEN_CONFIRMS": _cfg("HTF_RETRY_TIGHTEN_CONFIRMS", getattr(self.config, "HTF_RETRY_TIGHTEN_CONFIRMS", None), account_key, symbol, _side),
+                    "HTF_RETRY_TIGHTEN_SIZE": _cfg("HTF_RETRY_TIGHTEN_SIZE", getattr(self.config, "HTF_RETRY_TIGHTEN_SIZE", None), account_key, symbol, _side),
+                }
                 _hsc_ok, _ = _hsc_t.live_gate(lambda k, d: _hsc_keys.get(k) if _hsc_keys.get(k) is not None else d, f"{account_key}:{symbol}:{_side}:score", f"BB_BREAKOUT_ENTRY_{_bb_tf}", _bb_tf, i or {}, is_long, time.time(), "tradier")
                 if not _hsc_ok:
                     _bb_breakout = False

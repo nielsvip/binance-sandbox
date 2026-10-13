@@ -1,23 +1,72 @@
 {
-  "inf:TRUMPUSDC_LONG": {
-    "orderId": "2000001509403614",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 19:11:11.218583+00:00",
+  "men:ETHUSDC_LONG": {
+    "orderId": "2000001509647787",
+    "stopPrice": 2483.97,
+    "entry_sig": "2026-10-13 22:51:39.339228+00:00",
+    "symbol": "ETHUSDC",
+    "side": "LONG"
+  },
+  "men:MELANIAUSDT_LONG": {
+    "orderId": "2000001509631291",
+    "stopPrice": 0.08832,
+    "entry_sig": "2026-10-13 22:34:14.618827+00:00",
+    "symbol": "MELANIAUSDT",
+    "side": "LONG"
+  },
+  "men:QTUMUSDT_LONG": {
+    "orderId": "2000001509632626",
+    "stopPrice": 0.9272,
+    "entry_sig": "2026-10-13 22:36:35.182537+00:00",
+    "symbol": "QTUMUSDT",
+    "side": "LONG"
+  },
+  "men:MELANIAUSDT_SHORT": {
+    "orderId": "2000001509661923",
+    "stopPrice": 0.08928,
+    "entry_sig": "2026-10-13 22:56:58.980936+00:00",
+    "symbol": "MELANIAUSDT",
+    "side": "SHORT"
+  },
+  "men:RLCUSDT_SHORT": {
+    "orderId": "2000001509661968",
+    "stopPrice": 0.9541,
+    "entry_sig": "2026-10-13 20:41:00.404819+00:00",
+    "symbol": "RLCUSDT",
+    "side": "SHORT"
+  },
+  "men:RVNUSDT_SHORT": {
+    "orderId": "2000001509661970",
+    "stopPrice": 0.001616,
+    "entry_sig": "2026-10-13 21:11:29.990636+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
+  },
+  "men:TRUMPUSDC_LONG": {
+    "orderId": "2000001509661971",
+    "stopPrice": 1.885,
+    "entry_sig": "2026-10-13 21:22:57.601375+00:00",
     "symbol": "TRUMPUSDC",
     "side": "LONG"
   },
-  "inf:BATUSDT_LONG": {
-    "orderId": "2000001509617784",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:19:22.164596+00:00",
-    "symbol": "BATUSDT",
+  "men:WUSDT_LONG": {
+    "orderId": "2000001509661972",
+    "stopPrice": 0.015879,
+    "entry_sig": "2026-10-13 21:50:45.617584+00:00",
+    "symbol": "WUSDT",
     "side": "LONG"
   },
-  "inf:PUMPUSDT_SHORT": {
-    "orderId": "2000001509617927",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:19:24.080326+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "SHORT"
+  "men:BTCDOMUSDT_LONG": {
+    "orderId": "2000001509661973",
+    "stopPrice": 5436.6,
+    "entry_sig": "2026-10-13 22:36:41.804948+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "men:BBUSDT_LONG": {
+    "orderId": "2000001509664495",
+    "stopPrice": 0.008883,
+    "entry_sig": "2026-10-13 22:59:20.458822+00:00",
+    "symbol": "BBUSDT",
+    "side": "LONG"
   }
 }

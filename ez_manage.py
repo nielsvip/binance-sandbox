@@ -50200,10 +50200,17 @@ def _htf_retry_native_gate(symbol, position_side, position_key, path, tf, ind, n
     confirmation; attempt k on the same HTF candle needs the tightened window/confirmation count. Returns (allowed, diag)."""
     try:
         import vec_decisions.htf_signal_consume as _hsc_l
-        _keys = {k: _psym_get(symbol, position_side, k, getattr(config, k, None)) for k in (
-            "HTF_SIGNAL_CONSUME_ENABLED", "HTF_SIGNAL_MAX_ATTEMPTS", "HTF_SIGNAL_VALID_BARS_D", "HTF_SIGNAL_VALID_BARS_4H",
-            "HTF_SIGNAL_VALID_BARS_1H", "HTF_RETRY_LTF_WINDOW_BARS", "HTF_RETRY_TIGHTEN_WINDOW", "HTF_RETRY_TIGHTEN_CONFIRMS",
-            "HTF_RETRY_TIGHTEN_SIZE")}
+        _keys = {
+            "HTF_SIGNAL_CONSUME_ENABLED": _psym_get(symbol, position_side, "HTF_SIGNAL_CONSUME_ENABLED", getattr(config, "HTF_SIGNAL_CONSUME_ENABLED", None)),
+            "HTF_SIGNAL_MAX_ATTEMPTS": _psym_get(symbol, position_side, "HTF_SIGNAL_MAX_ATTEMPTS", getattr(config, "HTF_SIGNAL_MAX_ATTEMPTS", None)),
+            "HTF_SIGNAL_VALID_BARS_D": _psym_get(symbol, position_side, "HTF_SIGNAL_VALID_BARS_D", getattr(config, "HTF_SIGNAL_VALID_BARS_D", None)),
+            "HTF_SIGNAL_VALID_BARS_4H": _psym_get(symbol, position_side, "HTF_SIGNAL_VALID_BARS_4H", getattr(config, "HTF_SIGNAL_VALID_BARS_4H", None)),
+            "HTF_SIGNAL_VALID_BARS_1H": _psym_get(symbol, position_side, "HTF_SIGNAL_VALID_BARS_1H", getattr(config, "HTF_SIGNAL_VALID_BARS_1H", None)),
+            "HTF_RETRY_LTF_WINDOW_BARS": _psym_get(symbol, position_side, "HTF_RETRY_LTF_WINDOW_BARS", getattr(config, "HTF_RETRY_LTF_WINDOW_BARS", None)),
+            "HTF_RETRY_TIGHTEN_WINDOW": _psym_get(symbol, position_side, "HTF_RETRY_TIGHTEN_WINDOW", getattr(config, "HTF_RETRY_TIGHTEN_WINDOW", None)),
+            "HTF_RETRY_TIGHTEN_CONFIRMS": _psym_get(symbol, position_side, "HTF_RETRY_TIGHTEN_CONFIRMS", getattr(config, "HTF_RETRY_TIGHTEN_CONFIRMS", None)),
+            "HTF_RETRY_TIGHTEN_SIZE": _psym_get(symbol, position_side, "HTF_RETRY_TIGHTEN_SIZE", getattr(config, "HTF_RETRY_TIGHTEN_SIZE", None)),
+        }
         return _hsc_l.live_gate(lambda k, d: _keys.get(k, d) if _keys.get(k) is not None else d, position_key, path, tf, ind or {}, position_side == "LONG", now_ts, "crypto")
     except Exception as _hsc_e:
         logger.warning(f"[HTF_RETRY] {position_key} gate err (fail-open): {_hsc_e}")

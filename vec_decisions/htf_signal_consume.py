@@ -100,7 +100,13 @@ def valid_bars(cfg: Any, tf: str, venue: str) -> int:
     if t is None:
         return 1
     try:
-        v = int(float(_g(cfg, VALID_KEY[t], 0) or 0))
+        if t == "D":
+            raw = _g(cfg, "HTF_SIGNAL_VALID_BARS_D", 0)
+        elif t == "4h":
+            raw = _g(cfg, "HTF_SIGNAL_VALID_BARS_4H", 0)
+        else:
+            raw = _g(cfg, "HTF_SIGNAL_VALID_BARS_1H", 0)
+        v = int(float(raw or 0))
     except Exception:
         v = 0
     return v if v > 0 else span_bars(t, venue)

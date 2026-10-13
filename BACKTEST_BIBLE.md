@@ -2558,3 +2558,11 @@ vec-decided OPEN/AUGMENT outside the 10 `_vec_exact_reason_ok` exemptions (e.g. 
   overrides all tiers); the round still only extends while it lifts ≥ `V15_V17_MIN_LIFT_PM`. Pool guard: a failed pool submit
   (broken / SIGTERM-ed workers) is a missing verdict, never a KeyError that aborts the pinpoint round (production AMZN_LONG
   lost its round + failed the ESSENTIAL gate that way); the ESSENTIAL proof now also runs after any pinpoint error.
+- **v13 (4a1b90b7, 23:0xZ) — USER "the 0.3 rule: never kill a backtest as long as it manages to keep it up":** per-tier caps are
+  INITIAL budgets only (`v17_p3_cap`; WINNER always gets its full 1500 s, not the P2-saved estimate). `v17_p3_hard()` = inf unless
+  `V15_V17_P3_MAX_S` is explicitly set; `v17_p3_extend()` adds a chunk (max(`V15_V17_P3_CHUNK_S` 180 s, last window)) whenever the
+  last window lifted ≥ `V15_V17_MIN_LIFT_PM` 0.3 pp/min and the deadline is < 120 s away; `V15_V17_P3_MAX_ITERS` / `V15_V17_SURGEON_ROUNDS`
+  default 0 = unbounded. WINNER: combo engine (30D+365D) runs EVERY window (`P3_COMBO_<it>`, share `V15_V17_COMBO_SHARE_WINNER` 0.5)
+  then the surgeon (`V15_V17_SHARE_SURGEON_WINNER` 0.75 of the rest); 365D regime box `V15_V17_365_S_WINNER` 600 s. `_SLICE_HOLD`:
+  `V15_FILL_SLICE_S` never slices a board once its pinpoint started. `[V17-HB]` heartbeat every `V15_V17_HB_S` 300 s ONLY when evals
+  advanced (keeps reaper/watchdog idle clocks honest; a hung pinpoint still goes silent). Per-window lift book `progress["v17"]["p3_lift"]`.

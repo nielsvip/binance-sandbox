@@ -435,6 +435,10 @@ elif mode == "reap":
             from v15_fleet_scheduler import _rank_oom_victim as _rov, _progress_done_rows as _pdr, _progress_is_refill as _pir
         except Exception:
             _rov, _pdr, _pir = None, None, None
+        try:
+            from v15_fleet_scheduler import _progress_pinpoint_lifting as _ppl
+        except Exception:
+            _ppl = None
         _victim = None
         if _rov is not None and _pdr is not None:
             try:
@@ -445,7 +449,7 @@ elif mode == "reap":
                     _pd = (groups.get(_ss) or {}).get("pdir") or ""
                     _pp = os.path.join(_pd, _ss + "_v14_progress.json") if _pd else ""
                     _done = _pdr(_pp) if _pp else None
-                    _cands.append((_ss, _done, _i["age"], bool(_pir and _pp and _pir(_pp))))
+                    _cands.append((_ss, _done, _i["age"], bool(_pir and _pp and _pir(_pp)), bool(_ppl and _pp and _ppl(_pp))))
                 _victim = _rov(_cands)
             except Exception:
                 _victim = None
@@ -1031,6 +1035,20 @@ def _progress_is_refill(path):
         return False
 
 
+def _progress_pinpoint_lifting(path, fresh_s=1200):
+    """True when a V17 board is in its pinpoint round (v17.p3_budget_s set, no final yet) and its progress was written
+    within fresh_s — i.e. still lifting (USER 2026-10-13: never kill a backtest while it keeps lifting >=0.3pp/min).
+    Never raises."""
+    try:
+        if time.time() - os.path.getmtime(path) > fresh_s:
+            return False
+        with open(path) as f:
+            d = json.load(f)
+        return bool((d.get("v17") or {}).get("p3_budget_s")) and d.get("final_gain") is None
+    except Exception:
+        return False
+
+
 def _rank_oom_victim(cands):
     """Least-progress OOM victim. cands: [(ss, done_or_None, age_s)] or 4-tuples with a
     refill flag appended. A side with no readable progress file and age < 30min counts
@@ -1044,9 +1062,12 @@ def _rank_oom_victim(cands):
         try:
             ss, done, age = c[0], c[1], float(c[2] or 0)
             refill = bool(len(c) > 3 and c[3])
+            lifting = bool(len(c) > 4 and c[4])
         except Exception:
             continue
-        if refill:
+        if lifting:  # USER 2026-10-13 0.3 rule: a board still lifting in pinpoint is the LAST possible victim
+            key = (3, 0, age)
+        elif refill:
             key = (2, 0, age)
         elif done is None:
             key = (0, 0, age) if age < 1800 else (1, 0, age)

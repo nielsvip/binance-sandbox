@@ -6570,6 +6570,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return _ce
         except Exception:
             return None
+    _v17_cevals = [0]  # combo-engine evals (incl. main-process 7D/365D) -> pinpoint heartbeat
     class _V17PilotEval:
         # combo-engine evaluator on the pilot's own pre-forked pool (30D) + main-process evals for 7D / 365D / ledgers —
         # the engine's default evaluator would fork a second pool after threads exist (deadlock risk, docs/v17_combo_engine.md)
@@ -6606,6 +6607,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 except Exception as _ce2:
                     out[k] = (None, f"ERR {_ce2}"[:120])
             self.n += len(out)
+            _v17_cevals[0] += len(out)
             return out
     def _v17_combo_search(sym: dict, deadline: float, budget_s: float) -> list:
         # tools/v17_combo_engine.search (combo lane: learned library 85k combos + priors + TF coherence + exploration,
@@ -6918,6 +6920,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[V17-WARN] saved-budget {_bse}", flush=True)
         _v17["p3_budget_s"] = round(budget, 1)
         _SLICE_HOLD["v"] = True  # the 0.3 rule: the fill slice never cuts a board from here on (the round stops itself on lift)
+        # heartbeat: a long combo/365D step can be silent for many minutes; the reaper (idle>20 min) / watchdog (90 min) read
+        # log mtimes. Prints ONLY when real evals advanced since the last beat — a hung pinpoint still goes silent and is reaped.
+        import threading as _thb
+        _hb_stop = _thb.Event()
+        def _hb_loop(_last=[None]):
+            while not _hb_stop.wait(float(os.environ.get("V15_V17_HB_S", "300"))):
+                cur = (int(_v17_evals[0]), int(_v17_cevals[0]), round(float(cumulative_gain), 4))
+                if cur != _last[0]:
+                    print(f"[V17-HB] {new_symside} pinpoint alive evals={cur[0]} combo_evals={cur[1]} cum={cur[2]} t={_t.time() - t0:.0f}s", flush=True)
+                    _last[0] = cur
+        _thb.Thread(target=_hb_loop, daemon=True).start()
         deadline = t0 + budget
         _win = _tier_name == "WINNER"
         _lift_book = _v17.setdefault("p3_lift", [])
@@ -6985,6 +6998,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             except Exception as _epe:
                 print(f"[V17-WARN] essential proof after pinpoint error: {_epe}", flush=True)
         finally:
+            _hb_stop.set()
             _v17["p3_wall_s"] = round(_t.time() - t0, 1)
             _v17_sheet()
             _maybe_write_json(force=True)
