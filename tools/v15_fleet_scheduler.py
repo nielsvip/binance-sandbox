@@ -526,7 +526,7 @@ def _venue_allowed(sym, native_syms=None, phase=None):
     return venue_of(sym) == "stocks"
 
 
-def _venue_phase(chain_state, mode=None):
+def _venue_phase(chain_state, mode=None, launchable=None):
     """USER 2026-10-12: "stocks only until all tradeable stocks have passed, then crypto (+ best stock performers daily)".
     -> (phase, launchable_stock_sides). mode = V15_SCHED_VENUE_ONLY: "auto" derives the phase from chain_state (stocks
     sides still in need30 = launchable now); "stocks" forces the stocks phase; anything else = "any". Pure (tested)."""
@@ -537,7 +537,7 @@ def _venue_phase(chain_state, mode=None):
             continue
         for side, v in (sides or {}).items():
             try:
-                if v[0] == "need30":
+                if v[0] == "need30" and (launchable is None or launchable(sym, side)):  # USER 2026-10-13: an exhausted/crashing stock side must not hold crypto hostage
                     pending.append(f"{sym}_{side}")
             except Exception:
                 continue
@@ -1223,7 +1223,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
-        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=300 V15_ENDGAME_S=240 V15_FOCUS_S_WINNER=300 V15_FOCUS_S_MEDIOCRE=150 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
+        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=300 V15_ENDGAME_S=240 V15_FOCUS_S_WINNER=300 V15_FOCUS_S_MEDIOCRE=150 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V12_ALLOW_STALE_NPZ=$(test -f {pdir}/{ss}_v14_progress.json && echo 1) V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         body = f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
@@ -1613,7 +1613,7 @@ def tick(args, cfg, now):
             _st[_stale_sd] = ("need30", 1)
             _pair_stale.append(f"{sym}_{_stale_sd}")
         chain_state[sym] = _st
-    _phase, _phase_pending = _venue_phase(chain_state)  # USER 2026-10-12: stocks first until every tradeable stock has passed
+    _phase, _phase_pending = _venue_phase(chain_state, launchable=lambda _s, _sd: not _launch_exhausted(f"{_s}_{_sd}|30D", "30D", f"{_s}_{_sd}", st, started, redo))  # USER 2026-10-12: stocks first until every tradeable stock has passed
     _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12]}
     print(f"[sched] venue phase={_phase} (mode={_VENUE_ONLY or 'none'}, launchable stock sides={len(_phase_pending)})", flush=True)
 
