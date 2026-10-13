@@ -1149,12 +1149,18 @@ def mandatory_bases_for_tab(sname: str) -> set:
 # proves both inert (identical behavior fingerprint) — the gate demanded movement from
 # switches that cannot move and quarantined 28 healthy sheets (GE_SHORT +13.3/45t etc).
 # The EMA protection is proven by the ENABLED parent + FILTER_TF + MIN_TFS rows, which stay.
+# EMA_BLANKET_FILTER_* (USER 2026-10-13: REMOVED — the blanket was replaced by the KG filters:
+# KINDERGARTEN_EMA_GATE (EMA200/SMA200 trend + 9/21 per TF D/4h/1h/15m, vec_decisions/live_kindergarten_gate)
+# + the cumulative EMA_9_21 gate (vec_decisions/kg_entry_gate: strict TFs + min-TFs across every TF), NOT a
+# single 50-EMA blanket. Blanket defaults False on both venues (config.py/config_tradier.py 2026-09-29) and
+# proved all-zero on SNDK_LONG (60 rows, every delta 0.0) — the gate demanded non-zero proof from the replaced
+# switch and refused a healthy +40.77/52t sheet. KG membership above (KINDERGARTEN_* + EMA_9_21_FILTER_*) is
+# the EMA protection proof now; the blanket stays sweepable, just never essential.
 # Venue binding proven by S1 flip test 2026-10-04 (tmp_s1_flip_test.py) — see matrix in report.
 ESSENTIAL_GATE_SWITCHES = frozenset({
     "KINDERGARTEN_EMA_GATE_ENABLED", "KINDERGARTEN_FILTER_TF",
     "KINDERGARTEN_CUMULATIVE_MIN_TFS",
     "EMA_9_21_FILTER_ENABLED", "EMA_9_21_FILTER_FILTER_TF", "EMA_9_21_FILTER_MIN_TFS",
-    "EMA_BLANKET_FILTER_ENABLED", "EMA_BLANKET_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_MIN_TFS",
     "HARDCODED_RALLY_REENTRY_ENABLED", "HARDCODED_RALLY_REENTRY_REQUIRE_WT",
     "HARDCODED_RALLY_MIN_MOVE_PCT", "HARDCODED_RALLY_MIN_AGE_MIN",
     "HARDCODED_RALLY_HTF_TREND_TF", "HARDCODED_RALLY_DC_POS_MAX",
@@ -1184,8 +1190,6 @@ ESSENTIAL_GATE_PARENTS = {
     "KINDERGARTEN_CUMULATIVE_MIN_TFS": ("KINDERGARTEN_EMA_GATE_ENABLED", "EMA_9_21_FILTER_ENABLED"),
     "EMA_9_21_FILTER_FILTER_TF": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
     "EMA_9_21_FILTER_MIN_TFS": ("EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED"),
-    "EMA_BLANKET_FILTER_FILTER_TF": ("EMA_BLANKET_FILTER_ENABLED",),
-    "EMA_BLANKET_FILTER_MIN_TFS": ("EMA_BLANKET_FILTER_ENABLED",),
     "HARDCODED_RALLY_MIN_MOVE_PCT": ("HARDCODED_RALLY_REENTRY_ENABLED",),
     "HARDCODED_RALLY_MIN_AGE_MIN": ("HARDCODED_RALLY_REENTRY_ENABLED",),
     "HARDCODED_RALLY_HTF_TREND_TF": ("HARDCODED_RALLY_REENTRY_ENABLED",),
@@ -6113,6 +6117,31 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress.pop("unprotected", None)
                     print(f"[ESSENTIAL-GATE] {new_symside} all {len(_eg)} essential filters proven non-zero", flush=True)
             _result_stamp(progress, new_symside)
+        # USER 2026-10-13 BELOW-BH ROUND 2 ("never a result < BH", vv for shorts — bh is side-adjusted): a compliant board
+        # on the WINNING side (bh > 0) that finished below B&H is NOT published; it is re-filled from its own best set (one
+        # more full round, bigger BH-CHASE focus) up to V15_BH_REDO_MAX times. Past the cap the REAL number publishes,
+        # flagged below_bh — no number is ever invented (NO-LIES).
+        if _compliant and not _impossible and os.environ.get("V15_BH_REDO", "1") == "1":
+            try:
+                _bfg = float((_fresh_final or {}).get("gain_pct"))
+            except Exception:
+                _bfg = None
+            try:
+                _bbh = float(bh) if bh is not None else None
+            except Exception:
+                _bbh = None
+            _bd = int(progress.get("bh_redo_depth", 0) or 0)
+            if _bfg is not None and _bbh is not None and _bbh > 0 and _bfg < _bbh:
+                if _bd < int(os.environ.get("V15_BH_REDO_MAX", "2")):
+                    progress["needs_redo"] = {"overrides": dict(cumulative_overrides), "result": {k: (_fresh_final or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": int(progress.get("redo_depth", 0)) + 1, "reason": f"BELOW_BH gain {_bfg:.4f} < bh {_bbh:.4f} — round 2 from the best set"}
+                    progress["bh_redo_depth"] = _bd + 1
+                    progress.pop("final_path", None)
+                    _maybe_write_json(force=True)
+                    _compliant = False
+                    print(f"[BELOW-BH-REDO] {new_symside} gain {_bfg:.4f} < bh {_bbh:.4f} — no publish, round {_bd + 2} from the best set", flush=True)
+                else:
+                    progress["below_bh"] = {"gain": _bfg, "bh": _bbh, "rounds": _bd + 1}
+                    print(f"[BELOW-BH-CAP] {new_symside} gain {_bfg:.4f} < bh {_bbh:.4f} after {_bd + 1} rounds — real number published, flagged below_bh", flush=True)
         if _impossible:
             _stand = _standing_best(OUT_DIR, new_symside)
             if _stand is not None:

@@ -99,7 +99,13 @@ def test_essential_gate_drops_unwired_tf_switches():
     assert "EMA_9_21_FILTER_TFS" not in g["ESSENTIAL_GATE_SWITCHES"]
     assert "EMA_9_21_TIMEFRAME" not in g["ESSENTIAL_GATE_SWITCHES"]
     assert "EMA_9_21_FILTER_ENABLED" in g["ESSENTIAL_GATE_SWITCHES"]
-    assert "EMA_BLANKET_FILTER_ENABLED" in g["ESSENTIAL_GATE_SWITCHES"]
+    # USER 2026-10-13: EMA_BLANKET was replaced by the KG filters (KINDERGARTEN_EMA_GATE +
+    # cumulative EMA_9_21 on every TF) — the blanket trio must not gate; KG trio stays.
+    assert "EMA_BLANKET_FILTER_ENABLED" not in g["ESSENTIAL_GATE_SWITCHES"]
+    assert "EMA_BLANKET_FILTER_FILTER_TF" not in g["ESSENTIAL_GATE_SWITCHES"]
+    assert "EMA_BLANKET_FILTER_MIN_TFS" not in g["ESSENTIAL_GATE_SWITCHES"]
+    assert "KINDERGARTEN_EMA_GATE_ENABLED" in g["ESSENTIAL_GATE_SWITCHES"]
+    assert "KINDERGARTEN_CUMULATIVE_MIN_TFS" in g["ESSENTIAL_GATE_SWITCHES"]
 
 
 def test_essential_gate_check_passes_proven_set():
