@@ -2001,7 +2001,7 @@ def tick(args, cfg, now):
     # freed slot dispatches instantly on a fresh tail. Runs AFTER the launch pass (never delays a launch), bounded per
     # tick, and skipped while s1 is busy so the NPZ job can never eat the compute s1 needs for its own boards
     # ("always has 95% free for its own calculations"). Prefetch failures are informational: dispatch re-checks anyway.
-    if npz_prefetch and not (args.dry_run or sim):
+    if npz_prefetch and os.environ.get("V15_SCHED_NPZ_PREFETCH", "0") == "1" and not (args.dry_run or sim):  # 2026-10-13 USER: build ONLY the NPZ the server is about to load (dispatch job) — speculative prefetch wasted CPU and blocked the 110 s tick
         try:
             _pf_budget = int(os.environ.get("V15_SCHED_NPZ_PREFETCH_BUDGET", "4"))
         except (TypeError, ValueError):

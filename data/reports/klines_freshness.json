@@ -1,18 +1,18 @@
 {
- "generated_utc": "2026-10-13T16:05:01Z",
+ "generated_utc": "2026-10-13T16:25:01Z",
  "tol_min": 35,
  "crypto": {
   "status": "BREACH",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 35.0,
+  "worst_lag_min": 55.0,
   "worst_sym": "BNBUSDC"
  },
  "stocks": {
   "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 5.0,
+  "worst_lag_min": 10.0,
   "worst_sym": "SPY"
  }
 }
