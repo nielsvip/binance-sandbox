@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-13 14:01:48 UTC
+# Copilot Status — 2026-10-13 14:22:15 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T13:56:38
-- **STALE_INDICATORS** [tradier]  — 2026-10-13T13:57:09
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T13:57:40
-- **STALE_INDICATORS** [tradier]  — 2026-10-13T13:58:41
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T13:58:41
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T13:59:43
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:00:44
-- **STALE_INDICATORS** [tradier]  — 2026-10-13T14:01:16
-- **STALE_INDICATORS** [tradier]  — 2026-10-13T14:01:46
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:01:47
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:16:06
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:17:07
+- **STALE_INDICATORS** [tradier]  — 2026-10-13T14:17:38
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:18:09
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:19:11
+- **STALE_INDICATORS** [tradier]  — 2026-10-13T14:19:41
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:20:12
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:21:13
+- **STALE_INDICATORS** [tradier]  — 2026-10-13T14:21:44
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-13T14:22:15
 
 ## Missed Trades (trader comparison)
 
@@ -32,10 +32,10 @@ _None_
 - HELD: **AIAUSDT** LONG (crypto) peak +29.8%, now +-5.7%
 - HELD: **XTZUSDT** LONG (crypto) peak +7.0%, now +6.6%
 - HELD: **DASHUSDT** SHORT (crypto) peak +6.3%, now +2.6%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +5.4%, now +0.3%
-- HELD: **BMNRUSDT** SHORT (crypto) peak +4.4%, now +-0.1%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +5.4%, now +0.4%
+- HELD: **BMNRUSDT** SHORT (crypto) peak +4.4%, now +-0.2%
 - HELD: **GRTUSDT** LONG (crypto) peak +4.1%, now +-8.5%
-- HELD: **AAPL** LONG (tradier) peak +3.7%, now +3.1%
+- HELD: **AAPL** LONG (tradier) peak +3.7%, now +3.6%
 - HELD: **CHRUSDT** LONG (crypto) peak +3.7%, now +-13.0%
 - HELD: **ENSUSDT** LONG (crypto) peak +3.7%, now +1.7%
 
