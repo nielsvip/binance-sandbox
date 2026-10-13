@@ -1317,6 +1317,7 @@ def npz_prep(host, symbol):
 
 _ASYNC_DISPATCH = os.environ.get("V15_SCHED_ASYNC_DISPATCH", "1") == "1"
 _PAIR_ALWAYS = os.environ.get("V15_SCHED_PAIR_ALWAYS", "1") == "1"
+_ALL_LAUNCH_NPZ = os.environ.get("V15_SCHED_ALL_LAUNCH_NPZ", "1") == "1"
 
 
 def _parity_gate_ok(venue, side, template_dir, cache, gate=None):
@@ -2063,7 +2064,7 @@ def tick(args, cfg, now):
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
                     continue
-                if _async_npz:
+                if _async_npz or _ALL_LAUNCH_NPZ:  # USER 2026-10-13: S1 recalcs + sends the latest NPZ for EVERY launch, every host incl. itself
                     _dispatch_async(h, sym, acts, pd, workers, tag)
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                     st.setdefault("dispatch_host", {})[sym] = h["name"]
@@ -2179,10 +2180,14 @@ def tick(args, cfg, now):
                     log["launched"].append(tag + " (dry)")
                     launched_keys.add(key2)
                 else:
-                    try:
-                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
-                    except subprocess.TimeoutExpired:
-                        print(f"[sched] backfill launch ssh timeout {h['name']} {sym2} (job may still have started; pgrep dedups)", flush=True)
+                    if _ALL_LAUNCH_NPZ:
+                        _dispatch_async(h, sym2, acts, pd, workers, f"{h['name']}:{sym2}:{sd2[0]}30D")
+                        _dispatch_q_mark(st, [key2], _now_ts)
+                    else:
+                        try:
+                            subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
+                        except subprocess.TimeoutExpired:
+                            print(f"[sched] backfill launch ssh timeout {h['name']} {sym2} (job may still have started; pgrep dedups)", flush=True)
                     _burn_launch(key2, "30D", ss, st, started)
                     st.setdefault("last_act", {})[ss] = key2
                     _bf_ts[sym2] = _now_ts
@@ -2251,10 +2256,14 @@ def tick(args, cfg, now):
             else:
                 if specs and not _steal_fetch(hosts, h, sym, specs, log):
                     continue
-                try:
-                    subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, B["workers"])], timeout=40)
-                except subprocess.TimeoutExpired:
-                    print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
+                if _ALL_LAUNCH_NPZ:
+                    _dispatch_async(h, sym, acts, pd, B["workers"], tag.replace("[steal]", ""))
+                    _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
+                else:
+                    try:
+                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, B["workers"])], timeout=40)
+                    except subprocess.TimeoutExpired:
+                        print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
                     st["attempts"][a["key"]] = st["attempts"].get(a["key"], 0) + 1
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]

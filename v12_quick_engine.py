@@ -8549,6 +8549,15 @@ class QuickConfig:
     UNTESTED_FLAT_SPS_MULT: float = (
         0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).
     )
+    SUBSTITUTION_CLOSE_ENABLED: bool = (
+        False  # USER 2026-10-13 "NOTHING can ever be live only": mirror of config.py (live-only substitution close OFF both sides; no vec path).
+    )
+    MARGIN_FREE_CLOSE_ENABLED: bool = (
+        False  # USER 2026-10-13 "NOTHING can ever be live only": mirror of config.py (live-only -2019 margin-free close OFF both sides; no vec path).
+    )
+    CB_HTF_EXHAUST_EXIT_ENABLED: bool = (
+        False  # USER 2026-10-13 "NOTHING can ever be live only": mirror of config.py (live-only circuit-breaker exit OFF both sides; no vec path).
+    )
     OPEN_CEIL_ABSOLUTE_MAX_USD: float = (
         8000.0  # USER 2026-10-12 tandem: mirror of config.py (absolute risk ceiling; never swept, no template row).
     )

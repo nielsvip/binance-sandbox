@@ -85,15 +85,40 @@ def _all_30d(tag):
     return bool(legs) and all(l[1:].startswith("30D") for l in legs)
 
 
+def tail_refresh(symbol):
+    """USER 2026-10-13: "the new test ALWAYS runs on the latest npz, never on old info". Append only the missing closed
+    15m bars to S1's NPZ with tools/npz_bar_refresh.py (builder's own indicator code, guard + atomic replace; ~9 s per
+    stock symbol) instead of a full-history rebuild. A frozen symbol (unfinished board / running pilot) is never touched."""
+    try:
+        sys.path.insert(0, str(ROOT))
+        from tools.v15_npz_freeze import is_frozen
+        if is_frozen(symbol):
+            return {"tail": "frozen"}
+    except ImportError:
+        pass
+    mode = "crypto" if symbol.endswith(("USDT", "USDC")) else "stocks"
+    t0 = time.time()
+    try:
+        r = subprocess.run([str(ROOT / ".venv" / "bin" / "python"), str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", symbol, "--mode", mode, "--w15", "2500", "--workers", "2", "--no-sentiment", "--no-fng"], capture_output=True, text=True, timeout=float(os.environ.get("V15_TAIL_REFRESH_TIMEOUT_S", "300")), cwd=str(ROOT))
+        st = "INSTALLED" if '"status": "INSTALLED"' in (r.stdout or "") else ("current" if r.returncode == 0 else f"rc={r.returncode}")
+    except subprocess.TimeoutExpired:
+        st = "timeout"
+    return {"tail": st, "tail_s": round(time.time() - t0, 1)}
+
+
 def fast_push(symbol, push):
-    """S1 NPZ exists -> push it (rsync, md5 verify) and launch; None -> fall back to the builder (no NPZ on S1)."""
+    """S1 NPZ exists -> tail-refresh it to the latest closed bar, push it (rsync, md5 verify) and launch; None -> fall back to the builder (no NPZ on S1)."""
     import hashlib
     live = ROOT / "backtest_v8" / "indicators" / f"{symbol}.npz"
     if not live.exists():
         return None
+    tr = tail_refresh(symbol) if os.environ.get("V15_DISPATCH_TAIL_REFRESH", "1") == "1" else {"tail": "off"}
+    if tr.get("tail") == "frozen":
+        # a board on this symbol is unfinished/running: its host keeps the NPZ it started on (never push a different one)
+        return {"ok": True, "action": "frozen-keep", "reason": "frozen symbol: target keeps its board's NPZ", "prep_s": 0.0}
     t0 = time.time()
     if not push:
-        return {"ok": True, "action": "fast30d-local", "reason": "S1 NPZ used as-is", "prep_s": 0.0}
+        return {"ok": True, "action": "fast30d-local", "reason": f"S1 NPZ tail {tr.get('tail')}", "prep_s": tr.get("tail_s", 0.0)}
     h = hashlib.md5(live.read_bytes()).hexdigest()
     dst = f"{push}:binance-sandbox/backtest_v8/indicators/{symbol}.npz"
     try:
@@ -102,7 +127,7 @@ def fast_push(symbol, push):
         ok = r.stdout.split()[0] == h if r.stdout else False
     except (subprocess.SubprocessError, OSError, IndexError):
         ok = False
-    return {"ok": True if ok else None, "action": "fast30d-push", "reason": f"pushed S1 NPZ md5 {h[:8]} verified={ok}", "prep_s": round(time.time() - t0, 1)}
+    return {"ok": True if ok else None, "action": "fast30d-push", "reason": f"tail {tr.get('tail')} ({tr.get('tail_s')}s); pushed S1 NPZ md5 {h[:8]} verified={ok}", "prep_s": round(time.time() - t0, 1)}
 
 
 def ship_prev_best(symbol, tag, push):
@@ -168,7 +193,7 @@ def main():
         cmd_path.unlink(missing_ok=True)
         return 0
     res = None
-    if _all_30d(a.tag) and os.environ.get("V15_DISPATCH_30D_FAST", "1") == "1":
+    if os.environ.get("V15_DISPATCH_30D_FAST", "1") == "1":  # every window: tail-refresh + push (365D/REPAIR included)
         # USER 2026-10-13: "YOU DONT NEED A 365D NPZ FOR A 30D BACKTEST" — a full-history rebuild took 10+ min per stock
         # symbol and stalled every launch. 30D boards launch at once on S1's current NPZ (md5-verified push to the target);
         # the builder only runs when S1 has no NPZ for the symbol at all.

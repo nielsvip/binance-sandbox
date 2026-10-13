@@ -49865,6 +49865,29 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         _now_vx = time.time()
         _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
+        try:  # 2026-10-13: a vec full exit that EXPIRED unconsumed is owed when it belongs to THIS live position and the vec paper is flat now
+            _exp_exits = _vx.pop_expired_exits(_sym, _side)
+            if _exp_exits:  # USER 2026-10-13: "NO exit can EVER be skipped AT ALL for ANY REASON" — no switch, no vec_holds condition
+                _oa_raw = getattr(_pos, "opened_at", None)
+                _oa_ep = None
+                if isinstance(_oa_raw, datetime):
+                    _oa_ep = (_oa_raw if _oa_raw.tzinfo else _oa_raw.replace(tzinfo=timezone.utc)).timestamp()
+                elif _oa_raw:
+                    try:
+                        _oa_dt = datetime.fromisoformat(str(_oa_raw).replace("Z", "+00:00"))
+                        _oa_ep = (_oa_dt if _oa_dt.tzinfo else _oa_dt.replace(tzinfo=timezone.utc)).timestamp()
+                    except Exception:
+                        _oa_ep = None
+                # entry time unknown -> OWED (never skipped). Only an exit decided BEFORE this live position existed is not this position's exit.
+                _mine = [e for e in _exp_exits if _oa_ep is None or float(e[0]) + 900.0 >= _oa_ep]
+                _prior = [e for e in _exp_exits if e not in _mine]
+                if _mine:
+                    _vx.exit_owed_add(position_key, f"EXPIRED {_mine[-1][1]} bar={int(_mine[-1][0])}")
+                    logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: {len(_mine)} vec exit(s) expired unconsumed (opened_at={_oa_raw!r}) -> owed CLOSE now ({_mine[-1][1]})")
+                if _prior:
+                    logger.critical(f"[VEC_EXACT_EXIT_PRIOR_LIFECYCLE] {position_key}: {len(_prior)} expired vec exit(s) decided BEFORE this live entry ({_oa_raw!r}) bars={[int(e[0]) for e in _prior]} — belong to an earlier vec position live never held")
+        except Exception as _exp_e:
+            logger.warning(f"[VEC_EXACT_EXIT_OWED] {position_key} expired-exit probe err: {_exp_e}")
         _vx_exit_attempted = False
         for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
@@ -58832,7 +58855,7 @@ async def crypto_fh_momentum_loop(trade_manager: MultiAccountTradeManager):
                 move_pct = (current_price - open_d) / open_d * 100.0
                 if abs(move_pct) < min_move:
                     continue
-                _fh_tf = str(getattr(config, "FH_MOMENTUM_FILTER_TF", "D") or "D")
+                _fh_tf = str(_psym_get(symbol, "LONG" if move_pct > 0 else "SHORT", "FH_MOMENTUM_FILTER_TF", getattr(config, "FH_MOMENTUM_FILTER_TF", "D")) or "D")  # 2026-10-13 BIBLE §90 chain-route (vec reads cat_side D/OFF; global 15m was a live!=vec HARD)
                 dc_pos = float(
                     ind.get(f"dc_position_{_fh_tf}", ind.get("dc_position_4h", 0.5)) or 0.5
                 )

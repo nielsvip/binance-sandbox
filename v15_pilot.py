@@ -3018,6 +3018,10 @@ def _prior_best_gain(symside: str):
 # Every promotion is a real engine eval of the exact promoted set vs the LATEST cumulative (§14.2, §19). Kill switch
 # V15_V17_ROUNDS=0 restores the pre-V17 board exactly. Bible §95.
 V17_ON = os.environ.get("V15_V17_ROUNDS", "0") == "1"  # 2026-10-13 A/B (data/reports/v17_ab_202610131911.md): V17 gain >= old on 1/4 only -> default OFF per the user acceptance rule; opt in with V15_V17_ROUNDS=1
+# A/B #3 (2026-10-13 21:4xZ): V17's own main-pass variants (tab reorder + pos_sym sampling of the whole cell pool) were slower
+# AND diverged the chain (RLC 29.3 vs old 58.7 at the same row). Default P2 = the old main pass exactly (legacy) minus the
+# hustle eval, so V17's main-pass chain equals the old board's and everything V17 adds on top is greedy (>= old by construction).
+_V17_P2_LEGACY = os.environ.get("V15_V17_P2_MODE", "legacy") == "legacy"
 V17_FILTER_FALLBACK = ("MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "HTF_DIRECTION_GATE_ENABLED", "COUNTER_TREND_ADD_BLOCK_ENABLED", "EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES", "DC_BREAK_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "FAST_RISER_FILTER_TF", "WT_DIV_ENTRY_GATE_ENABLED", "CIRCUIT_SHARPE_GATES_FILTER_TF")
 V17_TAB_ORDER_FALLBACK = ("EXIT_VELOCITY", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_ADAPTIVE", "REENTRY_WINDOWED", "EXIT_STRUCTURAL", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "STDEV_SLOPE_SIZING", "ENTRY_CONFIRMATION_GATES", "GLOBAL_RISK_GATES", "AUGMENT_TREND")
 V17_CATEGORY_TABS = {"entry": ("ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES"), "reentry": ("REENTRY_WINDOWED", "REENTRY_ADAPTIVE"), "augment": ("AUGMENT_TREND", "AUGMENT_RISK_SIZING"), "exit": ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER")}
@@ -3602,7 +3606,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v17.setdefault("started_utc", utcnow())
         _v17["p0_wall_s"] = round(_t.time() - _PILOT_T0, 1)
         try:
-            if os.environ.get("V15_V17_TAB_ORDER", "1") == "1":
+            if os.environ.get("V15_V17_TAB_ORDER", "0" if _V17_P2_LEGACY else "1") == "1":
                 if not (isinstance(_v17.get("tab_order"), list) and set(_v17["tab_order"]) == set(tabs)):
                     _tk = {s: [f"{str(sw).strip()}={str(cd).strip()}" for (_r, sw, cd) in per_tab_rows.get(s, [])] for s in tabs}
                     _v17["tab_order"] = v17_tab_order(tabs, _prior_load(map_key_for_symside(new_symside)), _tk)
@@ -3840,7 +3844,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _npz_bs = str(_run_npz_short)
             except NameError:
                 _npz_bs = ""
-            progress["best_seen"] = _endgame_best_seen_note(progress.get("best_seen"), stage, sanitize_overrides(dict(ov), defaults)[0], res, _npz_bs, ADAPT_FLOOR_TRADES, (QUAL_TIM_MIN, QUAL_TIM_MAX))
+            # USER 2026-10-13 ABSOLUTE best-start law: the publish floor records every engine-valid set above the trade floor;
+            # the TIM band guards promotions during the fill, it is never a reason to publish a LOWER result
+            progress["best_seen"] = _endgame_best_seen_note(progress.get("best_seen"), stage, sanitize_overrides(dict(ov), defaults)[0], res, _npz_bs, ADAPT_FLOOR_TRADES, (-1e18, 1e18))
         except Exception as _bse:
             print(f"[BEST-SEEN-warn] {new_symside} {stage}: {_bse}", flush=True)
     def _endgame_filter_cycle():
@@ -5010,7 +5016,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _zero_book["cell_rows"][_zrkey] = sorted(str(h).strip() for h in _zskip)
             except Exception as _ze:
                 print(f"[ZERO-FORMULA-WARN] {sname}!{rr} {_ze} — row calculated", flush=True)
-        if _v17_on and info["kind"] == "eval" and os.environ.get("V15_V17_P2_NAKED_ONLY", "0") != "1" and (info["hdrs"] or info.get("prior_skipped") or info.get("inert_filters") or info.get("coarse_deferred_filters")):
+        if _v17_on and _V17_P2_LEGACY:
+            pass  # V17 P2 = the old main pass exactly (same rows, same yellow policy, same chain path); only the hustle eval is dropped
+        elif _v17_on and info["kind"] == "eval" and os.environ.get("V15_V17_P2_NAKED_ONLY", "0") != "1" and (info["hdrs"] or info.get("prior_skipped") or info.get("inert_filters") or info.get("coarse_deferred_filters")):
             # V17 P2 ABBREVIATED WORST_FIRST (default): naked every row (§77 real G) + only the top V15_V17_P2_YELLOWS (8)
             # prior-ranked yellows; the rest join the coarse deferral (settled, inline on moving rows, FOCUS in P3). Canary
             # 2026-10-13: naked-only P2 lost most of the joint lift (RLC A 48.7 at row 2000 vs naked-only 22.5 at P2 end).
@@ -7009,7 +7017,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if _cz_move:
                 _cz_hdrs = [h for h in st["coarse_deferred_filters"] if h not in st["hdrs"] and h in st["h2f"]]
                 _cz_rest = []
-                if _v17_on and not _cz_naked_pos and len(_cz_hdrs) > int(os.environ.get("V15_V17_INLINE_CAP", "32")):
+                if _v17_on and not _V17_P2_LEGACY and not _cz_naked_pos and len(_cz_hdrs) > int(os.environ.get("V15_V17_INLINE_CAP", "32")):
                     # V17: canary RLC C spent 405 s of an 803 s P2 on 46 full ~205-cell inline matrices (4 promoted) — inline only the
                     # top prior-ranked cells; the rest stay coarse-deferred (settled) for the P3 FOCUS yellows (batched, moved chain).
                     _cz_pr = st.get("prior_rank") or {}
@@ -7513,8 +7521,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _cur_r = _eps_bs(prepared, dict(_cur_ov), args.window_days) or {}
                 _bs_r = _eps_bs(prepared, dict(_bs_ov), args.window_days) or {}
                 _cg_, _bg_ = _cur_r.get("gain_pct"), _bs_r.get("gain_pct")
-                _bs_ok, _bs_why = _endgame_adopt_verdict(_bs_r, _cg_, _cur_r.get("tim_pct"), _cur_r.get("trades"), ADAPT_FLOOR_TRADES, (QUAL_TIM_MIN, QUAL_TIM_MAX))
-                _bs_q = _qualifies_30d(_bs_r, bh)[0] or not _qualifies_30d(_cur_r, bh)[0]
+                _bs_ok, _bs_why = _endgame_adopt_verdict(_bs_r, _cg_, _cur_r.get("tim_pct"), _cur_r.get("trades"), ADAPT_FLOOR_TRADES, (-1e18, 1e18))
+                _bs_q = True  # USER 2026-10-13 ABSOLUTE: a higher engine-valid set above the trade floor always wins; TIM out of band is flagged, not a veto
                 if _bg_ is not None and _cg_ is not None and float(_bg_) > float(_cg_) + 1e-6 and _bs_ok and _bs_q:
                     _unpl = []
                     for _k in sorted(set(_cur_ov) | set(_bs_ov)):
@@ -7528,6 +7536,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _unpl.append(f"{_k}={_nv}")
                     print(f"[BEST-SEEN-FALLBACK] {new_symside} final {float(_cg_):.4f} < best_seen {float(_bg_):.4f} ({_bsx.get('stage')}) — publishing best_seen (c_unplaced={len(_unpl)})", flush=True)
                     progress["best_seen_fallback"] = {"from_gain": float(_cg_), "to_gain": float(_bg_), "stage": _bsx.get("stage"), "c_unplaced": _unpl[:60]}
+                    try:
+                        _bs_tim = float(_bs_r.get("tim_pct")) if _bs_r.get("tim_pct") is not None else None
+                    except Exception:
+                        _bs_tim = None
+                    if _bs_tim is not None and not (QUAL_TIM_MIN <= _bs_tim <= QUAL_TIM_MAX):
+                        progress["tim_out_of_band"] = True
+                        progress["tim_out_of_band_value"] = _bs_tim
+                        print(f"[BEST-SEEN-FALLBACK] {new_symside} published set TIM {_bs_tim:.2f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}] — flagged tim_out_of_band (higher result wins)", flush=True)
                     cumulative_overrides = dict(_bs_ov)
                     cumulative_gain = float(_bg_)
                     progress["cumulative_overrides"] = dict(cumulative_overrides)
@@ -7651,6 +7667,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ok, _ = _qualifies_30d(v, bh)
             return ok
         _qual_ok, _qual_reasons = _qualifies_30d(_fresh_final, bh)
+        if not _qual_ok and _qual_reasons and all(str(_r).startswith("TIM ") for _r in _qual_reasons) and os.environ.get("V15_TIM_PUBLISH_LAW", "1") == "1":
+            # USER 2026-10-13 ABSOLUTE best-start law: a TIM-only miss never triggers the compliance repair (it replaced COIN_LONG
+            # 15.73 with a 5.24 set + full REDO) — the higher result publishes, flagged; TIM still guards promotions in the fill
+            progress["tim_out_of_band"] = True
+            progress["tim_out_of_band_value"] = (_fresh_final or {}).get("tim_pct")
+            print(f"[TIM-OUT-OF-BAND] {new_symside} final TIM {(_fresh_final or {}).get('tim_pct')} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}] — published as is, flagged (no lower repaired set, no REDO)", flush=True)
+            _qual_ok, _qual_reasons = True, []
         _qual_repairs = []
         _redo_base = None
         if not _qual_ok and prepared is not None:
@@ -10172,6 +10195,11 @@ def main():
                     _pb_list.append((f"history_{_i}", _ov))
             for _src, _ov in _prior_final_sets(new_symside)[:3]:
                 _pb_list.append((f"prior_{_src}", _ov))
+            # USER 2026-10-13: "top 5 distinct published sets PLUS the TEMPLATE_CAT_SIDE defaults for that day" — today's
+            # template bolds compete on their own, and every earlier set is layered ON TOP of today's template defaults.
+            _pb_tpl = dict(locals().get("_tpl_defaults") or {})
+            _pb_list = [(_l, {**_pb_tpl, **dict(_o.get("overrides") if isinstance(_o, dict) and "overrides" in _o else _o)}) for _l, _o in _pb_list]
+            _pb_list.append(("template_cat_side_defaults_today", dict(_pb_tpl)))
             _pb_best = (_pb_score(baseline_vec, ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT), "incumbent")
             for _lbl, _ov in _pb_list:
                 _ov = dict(_ov.get("overrides") if isinstance(_ov, dict) and "overrides" in _ov else _ov)

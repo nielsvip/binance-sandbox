@@ -65,3 +65,27 @@ def test_per_key_isolation():
     vx.exit_owed_add(PK, "CLOSE X")
     assert vx.exit_owed_has("ang:OTHERUSDT_LONG") is False
     assert vx.exit_owed_due("ang:OTHERUSDT_LONG", 5.0) is False
+
+
+def test_expired_full_exits_are_collected_not_lost(monkeypatch):
+    """2026-10-13: 24 ULTIMATE_DC_4h hard stops + WT exits expired unconsumed (BLOCKED_SKIPPED_STALE) and were simply gone.
+    expire_old now hands full exits to pop_expired_exits; partial reduces and opens are not owed."""
+    cur = 1_800_000_000.0
+    old = cur - 6 * 900.0
+    monkeypatch.setattr(vx, "actions_at", lambda s, d, t: {"status": "OK", "bar_ts": cur})
+    vx._DECIDED[("ALGOUSDT_LONG", old)] = [
+        {"n": 1, "type": "CLOSE", "reason": "ULTIMATE_DC_4h_HARD_STOP_LONG", "to_flat": True},
+        {"n": 2, "type": "REDUCE", "reason": "WT_CROSS_EXIT_1h", "to_flat": False},
+        {"n": 3, "type": "OPEN", "reason": "B12"},
+    ]
+    try:
+        vx._EXPIRED_EXITS.clear()
+        vx.expire_old("ALGOUSDT", "LONG", cur)
+        got = vx.pop_expired_exits("ALGOUSDT", "LONG")
+        assert got == [(old, "ULTIMATE_DC_4h_HARD_STOP_LONG")]
+        assert vx.pop_expired_exits("ALGOUSDT", "LONG") == []  # drained once
+    finally:
+        vx._DECIDED.pop(("ALGOUSDT_LONG", old), None)
+        for n in (1, 2, 3):
+            vx._EMITTED.discard(("ALGOUSDT_LONG", old, n))
+            vx._EXPIRED.discard(("ALGOUSDT_LONG", old, n))

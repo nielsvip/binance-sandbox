@@ -207,3 +207,17 @@ def test_final_never_below_best_start_both_paths():
     i_loop = SRC.index("    for qi, (sname, rr, switch, cand) in enumerate(pending_queue):")
     assert i_note < i_e3 < i_loop  # before the only chain-lowering start step and before every phase (both paths)
     assert "V15_BEST_SEEN_GATE" in SRC and "[BEST-SEEN-FALLBACK]" in SRC
+
+
+def test_higher_out_of_band_set_publishes_flagged():
+    # USER 2026-10-13 ABSOLUTE: TIM band guards promotions in the fill, never a reason to publish a LOWER result
+    res = lambda g, tim: {"gain_pct": g, "trades": 40, "tim_pct": tim, "valid": True, "max_dd_pct": 2.0}
+    bs = P._endgame_best_seen_note({}, "START", {"A": 1}, res(20.0, 12.0), "n", 10, (-1e18, 1e18))
+    assert bs["gain"] == 20.0  # an out-of-band START is recorded as the publish floor
+    ok, why = P._endgame_adopt_verdict(res(20.0, 12.0), 15.0, 35.0, 40, 10, (-1e18, 1e18))
+    assert ok, why  # higher out-of-band set beats a lower in-band final in the publish gate
+    assert "_bs_q = True  # USER 2026-10-13 ABSOLUTE" in SRC
+    assert 'progress["tim_out_of_band"] = True' in SRC and "[TIM-OUT-OF-BAND]" in SRC
+    assert "ADAPT_FLOOR_TRADES, (-1e18, 1e18))" in SRC  # best_seen note: valid + trade floor, no TIM veto
+    bad = P._endgame_best_seen_note({}, "START", {"A": 1}, {"gain_pct": 30.0, "trades": 3, "tim_pct": 40.0, "valid": True}, "n", 10, (-1e18, 1e18))
+    assert bad.get("gain") is None  # below the trade floor is never a publish floor

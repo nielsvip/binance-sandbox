@@ -146,13 +146,6 @@
     "symbol": "ARUSDT",
     "side": "SHORT"
   },
-  "men:AXSUSDT_SHORT": {
-    "orderId": "2000001507415044",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 01:26:23.443339+00:00",
-    "symbol": "AXSUSDT",
-    "side": "SHORT"
-  },
   "men:RLCUSDT_SHORT": {
     "orderId": "2000001509518677",
     "stopPrice": 0.0,
@@ -179,6 +172,13 @@
     "stopPrice": 0.0,
     "entry_sig": "2026-10-13 21:36:25.933987+00:00",
     "symbol": "XTZUSDT",
+    "side": "LONG"
+  },
+  "men:WUSDT_LONG": {
+    "orderId": "2000001509588819",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 21:50:35.121143+00:00",
+    "symbol": "WUSDT",
     "side": "LONG"
   }
 }

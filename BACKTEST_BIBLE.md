@@ -2408,3 +2408,15 @@ previous test and anticipate what is ahead"):**
   chain divergence; `V15_V17_PROBE_FIRST=1` restores), skipped cells record their p (`sampled_skip_p`), and the pinpoint
   budget = the time the abbreviated pass saved at this board's P2 seconds/eval (tier floor 180/120/60/30 s, extension while
   it lifts) so V17 is not slower than the old board. A/B #3 runs one pair at a time on s2 (nice 10).
+- **Best-start floor (USER ABSOLUTE "a worse result is PHYSICALLY IMPOSSIBLE"):** the coordinator's `[BEST-START]` block picks
+  the start set (best of last round vs template defaults); `_spec_fill_workbook` now notes that start set as `best_seen`
+  ("START", fresh eval) before E3-DEFAULT-BASE or any phase can lower the chain, so the BEST-SEEN publish gate falls back to
+  it for the old board and for V17 (test `test_final_never_below_best_start_both_paths`). Remaining exception owned by the
+  endgame lane's gate: a higher start set that does not qualify (TIM band) does not replace a lower qualifying final.
+- **V17 P2 = legacy (v8, c11a14e1, 21:5xZ):** the first A/B #3 pair (RLC, v6) showed V17's own main pass slower than the old
+  one (2593 s for 2800 rows vs 1092 s) and on a lower chain (29.3 vs 58.7) — tab reorder + sampling of the whole cell pool
+  (incl. prior-skipped cells the old board never evaluates) diverged and enlarged it. `V15_V17_P2_MODE=legacy` (default): the
+  V17 main pass is the old main pass exactly (same rows, yellow policy, tab order, sacred repasses → same chain), only the
+  hustle eval is dropped; everything V17 adds afterwards (probe, surgeon, regime/365D, ablation, retest, focus) is greedy on
+  top, so V17 ≥ the old main pass by construction and its extra time = the hustle time saved (+ tier floor). A/B #3 restarted
+  with v8.
