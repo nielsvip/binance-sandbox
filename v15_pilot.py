@@ -630,6 +630,16 @@ SIZING_FALSE_ALPHA_SWITCHES = {"START_POSITION_SIZE", "MIN_POSITION_SIZE"}
 # real engine output, but a promoted override would change nothing in live -> promotion blocked until live produces those keys (user-gated live change).
 LIVE_DEAD_KEY_SWITCHES = {"WT_DIV_EXIT_ENABLED", "WT_15M_LH_WAIT_EXIT_ENABLED"}
 
+def _maxaug_is_zero(cand) -> bool:
+    """MAXAUG_NEVER_ZERO predicate (USER 2026-10-10 no-cap mandate): True for "0"/"0.0" and any fractional <1 ("0.5" coerces to int 0). Non-numerics False."""
+    s = str(cand).strip()
+    if s in ("0", "0.0"):
+        return True
+    try:
+        return float(s) < 1
+    except Exception:
+        return False
+
 def promotion_block_reason(switch: str, sheet: str | None = None) -> str:
     s = str(switch).strip()
     if sheet is not None and sheet in DEAD_VEC_TABS:
@@ -4356,9 +4366,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # USER 2026-10-08: "ABLATION can never be on unless for a momentary test" — a sweep is not that; 73 live sym_sides had
             # ABLATION_DISABLE_*=True promoted per-sym from these rows (stripped 17:4xZ). Never calculated, never promoted.
             info.update(kind="skip", reason="ABLATION_NEVER_ON: ablation kills are engine artefacts, not strategy (USER 2026-10-08) — not calculated, never promoted", g=None)
-        elif str(switch).strip() == "MAX_AUGMENTS_PER_POSITION" and str(cand).strip() in ("0", "0.0"):
+        elif str(switch).strip() == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(cand)):
             # USER 2026-10-10: "MAX_AUGMENTS_PER_POSITION=0 NOT MY CODE — we augment as rapidly and fast as we can"
             # (2026-05-30 no-cap mandate, config 999999). A sweep delta is not a mandate override; never calculated, never promoted.
+            # 2026-10-13: extended to fractional <1 ("0.5" bypassed the ("0","0.0") check, promoted 10-12, coerced to 0 — voided as phantom).
             info.update(kind="skip", reason="MAXAUG_NEVER_ZERO: 0 augments contradicts the user no-cap mandate (config 999999) — not calculated, never promoted", g=None)
         elif str(cand).strip().upper().endswith("_ALT"):
             info.update(kind="skip", reason="INVENTED_ALT: *_ALT option value exists in no config — grey, not calculated", g=None)
@@ -4766,7 +4777,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         upto = _sacred_tab_order if upto_tab_inclusive is None else (_sacred_tab_order[:_sacred_tab_order.index(upto_tab_inclusive) + 1] if upto_tab_inclusive in _sacred_tab_order else [])
         n_prom = 0
         for (s, r, sw, c) in [t for t in _sacred_rows if t[0] in upto]:
-            if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION" and str(c).strip() in ("0", "0.0"):
+            if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(c)):
                 continue  # MAXAUG_NEVER_ZERO applies to the repass too
             try:
                 sw_ov = _switch_overrides(str(sw).strip(), _parse_opt_value(c, defaults.get(str(sw).strip())))

@@ -120,6 +120,17 @@ def _collect_one(path):
     ]
     for k in rec["artefact_stripped"]:
         ov.pop(k, None)
+    # 2026-10-13 MAXAUG_NEVER_ZERO (USER 2026-10-10 no-cap mandate): per-sym MAX_AUGMENTS<1 never goes live
+    # (104 poison keys stripped Mac+S1 this turn from pre-guard sheets; the pilot guard alone does not cover golive).
+    rec["mandate_stripped"] = []
+    if "MAX_AUGMENTS_PER_POSITION" in ov:
+        try:
+            _mav = float(str(ov["MAX_AUGMENTS_PER_POSITION"]).strip())
+        except Exception:
+            _mav = None
+        if _mav is not None and _mav < 1:
+            rec["mandate_stripped"] = [f"MAX_AUGMENTS_PER_POSITION={ov['MAX_AUGMENTS_PER_POSITION']}"]
+            ov.pop("MAX_AUGMENTS_PER_POSITION", None)
     rec["overrides"] = ov
     sg = rec["stored_final_gain"]
     finished = bool(
