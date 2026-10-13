@@ -295,7 +295,8 @@ def measure_stocks(base, now=None, tradier_klines_log=None, delivered=None):
     kdir = base / "klines_cache" / "tradier"
     k5 = kline_lag(kdir, symbols, "5m", now, session, exclude)
     k15 = kline_lag(kdir, symbols, "15m", now, session, exclude)
-    ind_age = file_age(base / "data" / "tradier" / "tradier_indicators_latest.json", now)
+    ind_path = base / "data" / "tradier" / "tradier_indicators_latest.json"
+    ind_age = None if (delivered and str(ind_path) in delivered) else file_age(ind_path, now)
     errors = log_hits(tradier_klines_log, TRADIER_ERR_RX, now) if tradier_klines_log else 0
     reasons = []
     if k5["n"] and k5["median_behind_s"] > KLINE_STALE_S:

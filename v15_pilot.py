@@ -5197,6 +5197,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flush_batch()
         return ck
     _spec_state = {"ptr": 0, "ver": 0, "ptr_ver": 0}
+    _ROW_PRESUBMIT = os.environ.get("V15_ROW_PRESUBMIT", "1") == "1"  # 2026-10-13 throughput; 0 = old one-by-one (A/B kill switch)
     def _prefetch(qi: int):
         # speculative: rows ahead are submitted vs the CURRENT running set. A promotion changes the running set, so a
         # speculated result can never be used for a different baseline (cache key = the full override set).
@@ -5207,13 +5208,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # 2026-10-13 THROUGHPUT (USER ">12 boards/server/hour"): the cap counts distinct pool TASKS — with V15_POOL_BATCH_N=8
         # (scheduler env) 8 evals share one future, and counting entries capped the pipeline at ONE task (S1 HOOD_SHORT: 4
         # workers 87% idle, main 88% waiting, ~1 core per board). Pending partial batches are flushed at the end.
-        _ahead = int(os.environ.get("V15_PREFETCH_ROWS", "200"))
-        while _spec_state["ptr"] < len(pending_queue) and _spec_state["ptr"] < qi + _ahead and len({id(f) for f, _ in inflight.values() if not f.done()}) < 2 * _n_proc:
+        _taskcap = os.environ.get("V15_PREFETCH_TASKCAP", "1") == "1"  # 0 = the old entry-counting cap (A/B kill switch)
+        _ahead = int(os.environ.get("V15_PREFETCH_ROWS", "200")) if _taskcap else 60
+        def _busy():
+            return len({id(f) for f, _ in inflight.values() if not f.done()}) if _taskcap else sum(1 for f, _ in inflight.values() if not f.done())
+        while _spec_state["ptr"] < len(pending_queue) and _spec_state["ptr"] < qi + _ahead and _busy() < 2 * _n_proc:
             plan = _row_plan(*pending_queue[_spec_state["ptr"]])
             for _lab, _ov in plan.get("items", []):
                 _submit(_ov)
             _spec_state["ptr"] += 1
-        _flush_batch()
+        if _taskcap:
+            _flush_batch()
     def _get(sname: str, rr: int, switch, cand, label: str, ov: dict, deadline: float, cum_before: float):
         # one real evaluate_prepared_sanitized result (pool / cache / serial thread), hard deadline, one DELTA-LOG line
         ck = _ck(ov)
@@ -5398,10 +5403,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 except Exception:
                     pass
             _flush_batch()
-        _sacred_presubmit(_sq)
+        if _ROW_PRESUBMIT:
+            _sacred_presubmit(_sq)
         _sq_prom0 = 0
         for _sqi, (s, r, sw, c) in enumerate(_sq):
-            if n_prom != _sq_prom0:
+            if _ROW_PRESUBMIT and n_prom != _sq_prom0:
                 _sq_prom0 = n_prom
                 _sacred_presubmit(_sq[_sqi:])  # the running set moved: speculate the rest against the new one
             if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(c)):
@@ -7130,9 +7136,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         switch_variant = plan["switch_variant"]
         n_items = len(plan["items"])
         deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-n_items // max(1, _n_proc))) + 2)
-        for _lab_ps, _ov_ps in plan["items"]:
-            _submit(_ov_ps)  # whole row to the pool first (was one-by-one for cells the prefetch had not reached)
-        _flush_batch()
+        if _ROW_PRESUBMIT:
+            for _lab_ps, _ov_ps in plan["items"]:
+                _submit(_ov_ps)  # whole row to the pool first (was one-by-one for cells the prefetch had not reached)
+            _flush_batch()
         results = {lab: _get(sname, rr, switch, cand, lab, ov, deadline, cumulative_before) for lab, ov in plan["items"]}
         reasons = {}
         if is_running:
@@ -7163,7 +7170,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _rv_ov = dict(switch_variant)
                 _rv_ov[_rv_f["filter"]] = _parse_opt_value(_rv_f["opt"], defaults.get(_rv_f["filter"]))
                 _rv_ovs[_rv_hdr] = sanitize_overrides(_rv_ov, defaults)[0]
-                _submit(_rv_ovs[_rv_hdr])  # whole revived pass to the pool first (was serial: 174 cells one at a time)
+                if _ROW_PRESUBMIT:
+                    _submit(_rv_ovs[_rv_hdr])  # whole revived pass to the pool first (was serial: 174 cells one at a time)
             _flush_batch()
             for _rv_hdr in st["hdrs"]:
                 plan["items"].append((_rv_hdr, _rv_ovs[_rv_hdr]))

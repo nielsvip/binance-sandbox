@@ -31,31 +31,29 @@ def market_hours(df, fast=False):
     return df.loc[(local.time >= start) & (local.time <= dt_time(16, 0))]
 
 def parse_intraday(raw):
+    # STKT 2026-10-01: Tradier 'time' is a NAIVE America/New_York string; the epoch 'timestamp' is true UTC.
+    # The previous version parsed 'time' with utc=True (ET mis-tagged as UTC: 4-5h label shift) -> wrong/misplaced cache rows.
     df = pd.DataFrame(raw or [])
     if df.empty: return pd.DataFrame()
-    # Handle both "time" (Tradier native) and "timestamp" (our export) - use whichever is present
-    time_col = df.get("time")
-    if time_col is None or time_col.isna().all():
-        if "timestamp" in df:
-            time_col = df["timestamp"]
+    dt = None
+    if "timestamp" in df:
+        ep = pd.to_numeric(df["timestamp"], errors="coerce")
+        if ep.notna().any() and (ep.dropna() > 1e9).all():
+            dt = pd.to_datetime(ep, unit="s", utc=True, errors="coerce")
         else:
-            return pd.DataFrame()
-    else:
-        # Fill NaN time entries from timestamp (provisional rows)
-        if "timestamp" in df:
-            time_col = time_col.fillna(df["timestamp"])
-    dt = pd.to_datetime(time_col, format="mixed", utc=True, errors="coerce")
-    # Drop rows where timestamp failed to parse
+            dt = pd.to_datetime(df["timestamp"], format="mixed", utc=True, errors="coerce")  # our own ISO-UTC exports
+    if (dt is None or dt.isna().all()) and "time" in df:
+        naive = pd.to_datetime(df["time"], format="mixed", errors="coerce")
+        dt = naive.dt.tz_localize(ET, ambiguous="NaT", nonexistent="NaT").dt.tz_convert(UTC)
+    if dt is None:
+        return pd.DataFrame()
     valid = dt.notna()
     if not valid.any():
         return pd.DataFrame()
-    dt = dt[valid]
     df = df.loc[valid]
-    if dt.dt.tz is None: dt = dt.dt.tz_localize(ET, ambiguous="infer").dt.tz_convert(UTC)
-    else: dt = dt.dt.tz_convert(UTC)
-    df.index = pd.DatetimeIndex(dt)
+    df.index = pd.DatetimeIndex(dt[valid])
     for col in ("open", "high", "low", "close", "volume"): df[col] = pd.to_numeric(df.get(col), errors="coerce")
-    return df.sort_index()
+    return df[~df.index.duplicated(keep="last")].sort_index()
 
 def daily_frame(raw):
     df = pd.DataFrame(raw or [])
@@ -75,7 +73,10 @@ def daily_frame(raw):
         return pd.DataFrame()
     # Convert UTC dates to ET date then 16:00 ET -> UTC
     df = df.loc[dates.index] if len(dates) != len(df) else df
-    df.index = pd.DatetimeIndex([ET.localize(datetime.combine(d.tz_convert(ET).date() if d.tzinfo else d.date(), dt_time(16, 0))).astimezone(UTC) for d in dates])
+    # STKT: Tradier daily 'date' is the session date itself (YYYY-MM-DD); parsing it as UTC midnight and converting to ET mislabelled it one day early
+    raw_d = df["date"].astype(str).str[:10] if "date" in df else None
+    sess = [(pd.Timestamp(raw_d.loc[i]).date() if raw_d is not None and len(str(raw_d.loc[i])) == 10 and str(raw_d.loc[i])[4] == "-" and "T" not in str(df["date"].loc[i]) else (d.tz_convert(ET).date() if d.tzinfo else d.date())) for i, d in zip(df.index, dates)]
+    df.index = pd.DatetimeIndex([ET.localize(datetime.combine(d, dt_time(16, 0))).astimezone(UTC) for d in sess])
     for col in ("open", "high", "low", "close", "volume"): df[col] = pd.to_numeric(df.get(col), errors="coerce")
     return df.sort_index()
 
@@ -107,7 +108,7 @@ def pad_daily(target, daily):
     pad = daily[daily.index.tz_convert(ET).date < first]
     return pd.concat([pad, target]).sort_index() if not pad.empty else target
 
-def export_atomic(df, path):
+def export_atomic(df, path, replace_from=None):
     if df.empty: return False
     out = df.copy(); out.index = pd.DatetimeIndex(out.index)
     out["timestamp"] = out.index.tz_convert(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -123,6 +124,9 @@ def export_atomic(df, path):
                 merged = {}
                 for row in existing:
                     if isinstance(row, dict) and row.get("timestamp"):
+                        # STKT repair pass: rows inside the re-fetched window are replaced wholesale by the authoritative bars
+                        if replace_from and str(row["timestamp"]) >= replace_from:
+                            continue
                         merged[str(row["timestamp"])] = row
                 for row in records:
                     key = str(row["timestamp"])
@@ -137,7 +141,6 @@ def export_atomic(df, path):
             if path.stat().st_size > 1000:
                 logger.error("refusing write to unreadable existing cache %s", path)
                 return False
-    records = [{key: (None if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))) else value) for key, value in row.items()} for row in records]
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     with tmp.open("w", encoding="utf-8") as handle:
@@ -145,8 +148,24 @@ def export_atomic(df, path):
     os.replace(tmp, path)
     return True
 
-async def process_symbol(symbol):
+async def refresh_daily(symbol, days):
+    """STKT: the D cache had no writer after 2026-08-26 (146 symbols stalled) and held provisional vol-0 rows; re-fetch Tradier daily history."""
+    start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    try:
+        raw = await asyncio.wait_for(api_client.get_history(symbol, start=start), timeout=30)
+    except Exception as exc:
+        logger.error("%s D history failed: %s", symbol, exc)
+        return False
+    frame = daily_frame(raw)
+    if frame.empty or len(frame) < 3:
+        return False
+    frame = frame[frame["volume"] > 0]
+    ws = pd.Timestamp(start, tz="UTC").strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return export_atomic(frame, config.KLINES_CACHE_DIR / f"{symbol}_D.json", replace_from=ws)
+
+async def process_symbol(symbol, repair=False):
     now = datetime.now(timezone.utc)
+    rwin = (now - timedelta(days=7)).strftime("%Y-%m-%d")
     def load_cached(tf):
         try:
             with (config.KLINES_CACHE_DIR / f"{symbol}_{tf}.json").open(encoding="utf-8") as handle:
@@ -154,6 +173,10 @@ async def process_symbol(symbol):
         except Exception:
             return []
     def cached_start(tf, fallback):
+        # Tradier reads naive datetimes as America/New_York (proven 2026-10-13: response 'time'
+        # strings are ET-naive while epoch is true UTC). Our cache stamps are UTC, so convert the
+        # tail to ET wall time before asking — a UTC wall time is read 4-5h late and the RTH tail
+        # segment is never returned (tails froze fleet-wide at 17:30Z). Overlap is harmless (merge dedups).
         path = config.KLINES_CACHE_DIR / f"{symbol}_{tf}.json"
         try:
             with path.open(encoding="utf-8") as handle:
@@ -161,7 +184,7 @@ async def process_symbol(symbol):
             if rows:
                 stamp = rows[-1].get("timestamp")
                 if stamp:
-                    return pd.to_datetime(stamp, utc=True).strftime("%Y-%m-%d %H:%M")
+                    return pd.to_datetime(stamp, utc=True).tz_convert(ET).strftime("%Y-%m-%d %H:%M")
         except Exception:
             pass
         return fallback
@@ -169,18 +192,19 @@ async def process_symbol(symbol):
         try:
             return await asyncio.wait_for(awaitable, timeout=20)
         except Exception as exc:
-            logger.error("%s %s fetch failed/timeout: %s: %s", symbol, label, type(exc).__name__, exc)
+            logger.error("%s %s fetch failed/timeout: %s", symbol, label, exc)
             return []
     # Daily/5m/15m are local products. Fetch only the smallest live series;
     # derive the larger intraday bars immediately and keep historical rows.
+    await refresh_daily(symbol, 45 if repair else 10)
     daily = daily_frame(load_cached("D"))
     # Fetch each intraday TF natively via Time & Sales (1min/5min/15min) — each has authoritative volume.
     # Only resample as fallback when native returns <10 bars (API failure).
     f1 = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="1min", start=cached_start("1m", (now-timedelta(days=1)).strftime("%Y-%m-%d %H:%M"))), "1m"))
     if f1.empty:
         f1 = parse_intraday(load_cached("1m"))
-    f5_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="5min", start=cached_start("5m", (now-timedelta(days=5)).strftime("%Y-%m-%d"))), "5m"))
-    f15_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="15min", start=cached_start("15m", (now-timedelta(days=5)).strftime("%Y-%m-%d"))), "15min"))
+    f5_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="5min", start=(rwin if repair else cached_start("5m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "5m"))
+    f15_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="15min", start=(rwin if repair else cached_start("15m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "15min"))
     # Fallback resampling preserves volume by summing 1m volumes; native with volume preferred
     if f5_native.empty or len(f5_native) < 10:
         f5 = resample(f1, "5min") if not f1.empty else parse_intraday(load_cached("5m"))
@@ -195,32 +219,47 @@ async def process_symbol(symbol):
     # Never overwrite better OHLCV (volume>0) with provisional OHLC (volume 0) — handle in export_atomic merge, but also here:
     bundle = {"D":daily,"15m":f15,"5m":f5,"1m":f1,"1h":pad_daily(resample(f15,"1h"),daily),"4h":pad_daily(resample(f15,"4h"),daily)}
     written = 0
+    ws_iso = pd.Timestamp(rwin, tz="UTC").strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     for tf, frame in bundle.items():
-        if not frame.empty and export_atomic(frame, config.KLINES_CACHE_DIR / f"{symbol}_{tf}.json"): written += 1
+        rf = None
+        # repair pass: only replace a window the authoritative frame really covers (never delete rows we cannot re-supply)
+        if repair and tf in ("5m", "15m", "1h", "4h") and not frame.empty and frame.index.min() <= pd.Timestamp(rwin, tz="UTC") + pd.Timedelta(days=2):
+            rf = ws_iso
+        if not frame.empty and export_atomic(frame, config.KLINES_CACHE_DIR / f"{symbol}_{tf}.json", replace_from=rf): written += 1
     if written != 6: logger.warning("%s incomplete: wrote %d/6 timeframes", symbol, written)
-    return written == 6
+    return written >= 4  # STKT: 1m/5m of thin names may legitimately be empty; 15m+1h+4h+D are the backtest-critical frames
 
 async def main():
     # Stock kline creation is strictly RTH in UTC: Mon-Fri 13:30-20:00Z.
-    # Outside this window, leave every cache untouched.
+    # STKT 2026-10-01: outside RTH (after the close) run ONE repair pass per day that re-fetches the trailing 7 days and replaces
+    # provisional / mislabeled rows with the authoritative Time&Sales bars.
     now_utc = datetime.now(timezone.utc)
     market_open = now_utc.weekday() < 5 and (
         (now_utc.hour > 13 or (now_utc.hour == 13 and now_utc.minute >= 30))
         and now_utc.hour < 20
     )
+    repair = False
     if not market_open:
-        logger.info("Outside stock market hours (%sZ); no klines added", now_utc.strftime("%H:%M"))
-        return
+        marker = config.KLINES_CACHE_DIR / f".stkt_repair_{now_utc.strftime('%Y%m%d')}"
+        after_close = now_utc.hour >= 20 or now_utc.weekday() >= 5 or now_utc.hour < 13
+        if after_close and not marker.exists():
+            repair = True
+        else:
+            logger.info("Outside stock market hours (%sZ); no klines added", now_utc.strftime("%H:%M"))
+            return
     await api_client.connect()
     try:
         with open(config.SYMBOLS_FILE, encoding="utf-8") as handle: symbols = [str(s).upper() for s in json.load(handle)]
-        sem = asyncio.Semaphore(64)
+        sem = asyncio.Semaphore(16 if repair else 64)
         async def run(symbol):
             async with sem:
-                try: return await process_symbol(symbol)
+                try: return await process_symbol(symbol, repair=repair)
                 except Exception as exc: logger.error("%s failed: %s", symbol, exc); return False
         results = await asyncio.gather(*(run(s) for s in symbols))
-        logger.info("Tradier stock kline cycle complete: %d/%d symbols with all 6 timeframes", sum(results), len(results))
+        logger.info("Tradier stock kline %s cycle complete: %d/%d symbols with all 6 timeframes", "REPAIR" if repair else "RTH", sum(results), len(results))
+        if repair and sum(results) >= 0.9 * len(results):
+            try: marker.write_text(now_utc.isoformat())
+            except OSError: pass
     finally: await api_client.close()
 
 if __name__ == "__main__": asyncio.run(main())

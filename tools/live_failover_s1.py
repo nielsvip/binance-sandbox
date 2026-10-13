@@ -365,7 +365,13 @@ class Watchdog:
         cond = hb_absent and pushes_stopped and (unreachable or trading_dead)
         tk.update(hb_absent=hb_absent, pushes_stopped=pushes_stopped, unreachable=unreachable, trading_dead=trading_dead, cond=cond)
         pin = lease.get("pin")
+        if pin == "mac_once":
+            pin = "mac"
         if lease["holder"] == "mac":
+            if lease.get("pin") == "mac_once":
+                lease = dict(lease, pin=None)
+                C.atomic_write_json(LF / "lease.json", lease)
+                pin = None
             fb.clear()
             tk["confirm"] = (int(tk.get("confirm", 0)) + 1) if cond else 0
             want = pin == "s1" or (pin != "mac" and tk["confirm"] >= TAKEOVER_CONFIRM)
@@ -383,7 +389,7 @@ class Watchdog:
             else:
                 return lease
         # holder == s1
-        mac_fenced = isinstance(view["hb"], dict) and int(view["hb"].get("fence_ack_gen", -1)) == int(lease["gen"]) and int(view["hb"].get("trading_procs", 1)) == 0
+        mac_fenced = isinstance(view["hb"], dict) and view["hb"].get("fence_ack_gen") == lease["gen"] and view["hb"].get("trading_procs") == 0
         mac_silent = hb_absent or (hb_age is not None and hb_age >= FENCE_WAIT_S)
         healthy = (hb_age is not None and hb_age <= HB_FRESH_S and not any(r["applicable"] and r["stale"] for r in readings.values()))
         if pin == "mac" or (pin != "s1" and healthy):
@@ -425,7 +431,7 @@ def main():
     parser.add_argument("--loop", action="store_true")
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--status", action="store_true")
-    parser.add_argument("--pin", choices=["mac", "s1", "auto"])
+    parser.add_argument("--pin", choices=["mac", "mac_once", "s1", "auto"])
     args = parser.parse_args()
     LF.mkdir(parents=True, exist_ok=True)
     if args.pin:

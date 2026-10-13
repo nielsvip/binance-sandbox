@@ -48,18 +48,18 @@
     "symbol": "ALTUSDT",
     "side": "LONG"
   },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001966387022",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 23:19:36.343786+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
   "ang:NEARUSDC_LONG": {
     "orderId": "4000001966404327",
     "stopPrice": 0.0,
     "entry_sig": "2026-10-13 23:33:40.799771+00:00",
     "symbol": "NEARUSDC",
+    "side": "LONG"
+  },
+  "ang:BATUSDT_LONG": {
+    "orderId": "4000001966424059",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 23:49:11.151196+00:00",
+    "symbol": "BATUSDT",
     "side": "LONG"
   }
 }
