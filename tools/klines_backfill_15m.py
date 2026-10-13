@@ -57,6 +57,14 @@ def _is_tokenised(sym: str) -> bool:
         return False
 
 
+def fetch_after(sym: str, start_ms: int, limit: int = 1500, interval: str = "15m") -> list:
+    q = urllib.parse.urlencode({"symbol": sym, "interval": interval, "limit": limit, "startTime": start_ms})
+    with urllib.request.urlopen(f"{URL}?{q}", timeout=20) as r:
+        rows = json.loads(r.read().decode())
+    return [{"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S.000000Z", time.gmtime(int(k[0]) / 1000)), "open": float(k[1]), "high": float(k[2]),
+             "low": float(k[3]), "close": float(k[4]), "volume": float(k[5])} for k in rows]
+
+
 def fetch_before(sym: str, end_ms: int, limit: int = 1500, interval: str = "15m") -> list:
     q = urllib.parse.urlencode({"symbol": sym, "interval": interval, "limit": limit, "endTime": end_ms})
     with urllib.request.urlopen(f"{URL}?{q}", timeout=20) as r:
@@ -114,13 +122,57 @@ def main():
     ap.add_argument("--cache-dir", default="klines_cache", help="cache subdir under ROOT (e.g. klines_cache_backtest for 400D canonical)")
     ap.add_argument("--pages", type=int, default=6, help="max REST pages (1500 bars each) to fetch backwards")
     ap.add_argument("--interval", default="15m", choices=("15m", "1h", "4h", "1d"), help="Binance interval to backfill")
+    ap.add_argument("--forward", action="store_true", help="forward-fill tails newer than cache tail (default: backward backfill older than cache head)")
     a = ap.parse_args()
+    if a.forward and not a.symbols:
+        suf = TF_SUFFIX.get(a.interval, a.interval)
+        a.symbols = sorted(p.name[: -len(f"_{suf}.json")] for p in (ROOT / a.cache_dir).glob(f"*_{suf}.json"))
     for s in a.symbols or universe():
         tgt = max(a.target, TOKENISED_TARGET) if _is_tokenised(s) else a.target
         try:
-            print(json.dumps(backfill(s, tgt, a.apply, a.cache_dir, a.pages, a.interval)), flush=True)
+            if a.forward:
+                print(json.dumps(forward_fill(s, a.apply, a.cache_dir, a.pages, a.interval)), flush=True)
+            else:
+                print(json.dumps(backfill(s, tgt, a.apply, a.cache_dir, a.pages, a.interval)), flush=True)
         except Exception as e:
             print(json.dumps({"sym": s, "error": repr(e)[:160]}), flush=True)
+
+
+def forward_fill(sym: str, apply: bool, cache_dir: str = "klines_cache_backtest", max_pages: int = 6, interval: str = "15m") -> dict:
+    """Fetch bars NEWER than the cache tail (startTime=tail+1). Missing file -> no-op (nothing to extend)."""
+    suf = TF_SUFFIX.get(interval, interval)
+    p = ROOT / cache_dir / f"{sym}_{suf}.json"
+    try:
+        rows = json.loads(p.read_text())
+    except Exception:
+        rows = []
+    if not rows:
+        return {"sym": sym, "have": 0, "action": "no-file"}
+    by_ts = {r["timestamp"]: r for r in rows}
+    have = len(by_ts)
+    newest = max((_ms(t) for t in by_ts), default=0)
+    if not apply:
+        return {"sym": sym, "have": have, "tail": max(by_ts), "action": "would forward-fill"}
+    pages = added = 0
+    while pages < max_pages:
+        got = fetch_after(sym, newest + 1, interval=interval)
+        pages += 1
+        if not got:
+            break
+        for r in got:
+            if r["timestamp"] not in by_ts:
+                by_ts[r["timestamp"]] = r
+                added += 1
+        newest = max(_ms(r["timestamp"]) for r in got)
+        if len(got) < 1500:
+            break
+        time.sleep(0.25)
+    if added:
+        merged = [by_ts[k] for k in sorted(by_ts)]
+        tmp = p.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(merged))
+        os.replace(tmp, p)
+    return {"sym": sym, "have": have, "now": len(by_ts), "added": added, "pages": pages, "action": "extended" if added else "fresh"}
 
 
 if __name__ == "__main__":

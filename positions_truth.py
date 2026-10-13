@@ -736,6 +736,12 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
     position_key = a.get("position_key") or (f"{account_key}:{symbol}_{position_side}" if account_key and symbol else None)
     qty, full = a.get("quantity"), bool(a.get("is_full_close"))
     action, reason = a.get("action"), a.get("reason") or ""
+    try:
+        _fx_pa = str(action or "").upper()
+    except Exception:
+        _fx_pa = ""
+    if _fx_pa in ("PLACE_STOP", "CANCEL_STOP"):
+        return await core(*args, **kwargs)
     if bool(cfg(config, "POSITIONS_REFUSE_ZERO_QTY")) and is_zero_qty(qty) and not full:
         log.critical(f"🛑 [POSITIONS_ZERO_QTY_REFUSED] {position_key}: action={action} qty={qty!r} reason={str(reason)[:80]} — zero/invalid quantity is never sent and never SUCCESS")
         return "BLOCKED_ZERO_QTY"

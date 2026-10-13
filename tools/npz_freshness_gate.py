@@ -126,8 +126,18 @@ def is_tradeable_file(path_or_stem, tsyms):
     return stem in tsyms or stem + "USDT" in tsyms or stem + "USDC" in tsyms or (bare is not None and bare in tsyms)
 
 
-def classify(path, now=None):
-    """Return (verdict, detail): verdict in ok/short/stale/bad(+variant flag)."""
+def load_shorthist_exempt(root=None):
+    """{STEM: maxdays} from data/short_history_exempt.json (exchange-max history, depth-gate waived, freshness still enforced); missing/unreadable -> {}."""
+    try:
+        import json as _js
+        d = _js.load(open(os.path.join(root or ROOT, "data", "short_history_exempt.json")))
+        return {str(k).upper(): float(v.get("maxdays", 0)) for k, v in d.items() if isinstance(v, dict) and float(v.get("maxdays", 0)) > 0}
+    except Exception:
+        return {}
+
+
+def classify(path, now=None, exempt_maxdays=None):
+    """Return (verdict, detail): verdict in ok/short/stale/bad/shortx(+variant flag). shortx = exempt max-history (depth>=95% of exchange max AND tail fresh); stale tail on exempt stem stays blocking short."""
     now = now or time.time()
     latest_15m = (now // 900) * 900
     name = os.path.basename(path)
@@ -146,36 +156,43 @@ def classify(path, now=None):
         if ts[-1] > 1e12:
             ts = ts / 1000.0
         span_days = (ts[-1] - ts[0]) / 86400.0
-        if span_days < MIN_DAYS:
+        _x = exempt_maxdays is not None and exempt_maxdays > 0 and span_days >= exempt_maxdays * 0.95
+        if span_days < MIN_DAYS and not _x:
             return ("short", f"{span_days:.0f}d")
         if is_crypto(stem):
             lag = (latest_15m - ts[-1]) / 900.0
             if lag > MAX_LAG_BARS_CRYPTO:
-                return ("stale", f"lag{lag:.0f}bars")
+                return ("stale", f"lag{lag:.0f}bars") if span_days >= MIN_DAYS else ("short", f"{span_days:.0f}d STALE_TAIL lag{lag:.0f}bars")
         else:
             lagd = (now - ts[-1]) / 86400.0
             if lagd > STOCK_MAX_LAG_DAYS:
-                return ("stale", f"stock-lag{lagd:.1f}d")
+                return ("stale", f"stock-lag{lagd:.1f}d") if span_days >= MIN_DAYS else ("short", f"{span_days:.0f}d STALE_TAIL stock-lag{lagd:.1f}d")
+        if span_days < MIN_DAYS:
+            return ("shortx", f"{span_days:.0f}d [MAXHIST]")
         return ("ok", "")
     except Exception as e:
         return ("bad", f"ERR {e}")
 
 
 def audit(d):
-    short, stale, bad, ok = [], [], [], 0
+    short, stale, bad, shortx, ok = [], [], [], [], 0
     files = sorted(glob.glob(os.path.join(d, "*.npz")))
+    xmap = load_shorthist_exempt()
     for f in files:
-        v, det = classify(f)
         name = os.path.basename(f)
+        stem = name[:-4] if name.endswith(".npz") else name
+        v, det = classify(f, exempt_maxdays=xmap.get(stem.upper()))
         if v == "ok":
             ok += 1
         elif v == "short":
             short.append(f"{name} {det}")
         elif v == "stale":
             stale.append(f"{name} {det}")
+        elif v == "shortx":
+            shortx.append(f"{name} {det}")
         else:
             bad.append(f"{name} {det}")
-    return {"files": files, "ok": ok, "short": short, "stale": stale, "bad": bad}
+    return {"files": files, "ok": ok, "short": short, "stale": stale, "bad": bad, "shortx": shortx}
 
 
 def plan(short, stale):
@@ -290,13 +307,14 @@ def main(argv=None):
         print(f"GATE_FAIL dir missing: {d}")
         return 1
     res = audit(d)
-    short, stale, bad = res["short"], res["stale"], res["bad"]
+    short, stale, bad, shortx = res["short"], res["stale"], res["bad"], res["shortx"]
     t_only = "--tradeable-only" in argv
     tsyms = protected_syms() if (t_only or "--purge-nontradeable" in argv) else None
     if t_only and tsyms is not None:
         short = [s for s in short if is_tradeable_file(s.split()[0], tsyms)]
         stale = [s for s in stale if is_tradeable_file(s.split()[0], tsyms)]
         bad = [s for s in bad if is_tradeable_file(s.split()[0], tsyms)]
+        shortx = [s for s in shortx if is_tradeable_file(s.split()[0], tsyms)]
         purged_n = (len(res["short"]) - len(short)) + (len(res["stale"]) - len(stale)) + (len(res["bad"]) - len(bad))
     else:
         purged_n = 0
@@ -317,8 +335,8 @@ def main(argv=None):
             except Exception:
                 pass
             return 1
-    print(f"GATE files={len(res['files'])} ok={res['ok']} short={len(short)} stale={len(stale)} bad={len(bad)}" + (f" purge_candidates={purged_n} (tradeable-only)" if t_only else ""))
-    for lst, tag in ((short, "SHORT"), (stale, "STALE"), (bad, "BAD")):
+    print(f"GATE files={len(res['files'])} ok={res['ok']} short={len(short)} stale={len(stale)} bad={len(bad)} shortx={len(shortx)}" + (f" purge_candidates={purged_n} (tradeable-only)" if t_only else ""))
+    for lst, tag in ((short, "SHORT"), (stale, "STALE"), (bad, "BAD"), (shortx, "SHORTX")):
         for s in lst[:60]:
             print(f"  {tag} {s}")
     if "--fix-cmd" in argv and (short or stale):

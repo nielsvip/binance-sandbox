@@ -158,3 +158,24 @@ def test_reverse_venue_tolerance():
     assert G.is_tradeable_file("AGLDUSDT.npz", {"AGLD"}) is True
     assert G.is_tradeable_file("AG.npz", {"AGUSDT"}) is True
     assert G.is_tradeable_file("AAPL_BF.npz", {"AAPL"}) is False
+
+
+def test_shortx_exempt_maxhistory(tmp_path, monkeypatch):
+    import json, time
+    now = time.time()
+    latest = (now // 900) * 900
+    _w(tmp_path / "MAXUSDT.npz", 120, latest)
+    _w(tmp_path / "MAXSTALEUSDT.npz", 120, latest - 10 * 900)
+    _w(tmp_path / "TRUNCUSDT.npz", 40, latest)
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "short_history_exempt.json").write_text(json.dumps({"MAXUSDT": {"maxdays": 120, "maxbars": 11520, "reason": "exchange-max", "date": "2026-10-13"}, "MAXSTALEUSDT": {"maxdays": 120, "maxbars": 11520, "reason": "exchange-max", "date": "2026-10-13"}, "TRUNCUSDT": {"maxdays": 120, "maxbars": 11520, "reason": "exchange-max", "date": "2026-10-13"}}))
+    monkeypatch.setattr(G, "ROOT", str(tmp_path))
+    assert G.load_shorthist_exempt() == {"MAXUSDT": 120.0, "MAXSTALEUSDT": 120.0, "TRUNCUSDT": 120.0}
+    assert G.classify(str(tmp_path / "MAXUSDT.npz"), exempt_maxdays=120.0)[0] == "shortx"
+    v, det = G.classify(str(tmp_path / "MAXSTALEUSDT.npz"), exempt_maxdays=120.0)
+    assert v == "short" and "STALE_TAIL" in det
+    assert G.classify(str(tmp_path / "TRUNCUSDT.npz"), exempt_maxdays=120.0)[0] == "short"
+    assert G.classify(str(tmp_path / "MAXUSDT.npz"))[0] == "short"
+    res = G.audit(str(tmp_path))
+    assert any("MAXUSDT" in s for s in res["shortx"])
+    assert G.load_shorthist_exempt(str(tmp_path / "emptyroot")) == {}

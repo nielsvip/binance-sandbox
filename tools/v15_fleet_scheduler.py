@@ -1227,10 +1227,19 @@ def _npz_hold_triage(sym):
 
 
 def npz_prep(host, symbol):
-    """V15_SCHED_NPZ_REFRESH=1: klines gate + guarded NPZ regen (tools/v15_npz_prep.py) on the target host before a NEW stock pair launches. None = could not run (launch proceeds, gate is advisory on infra failure)."""
-    out = sh_ssh(host, f"cd {host['root']} && .venv/bin/python tools/v15_npz_prep.py --symbol {shlex.quote(symbol)} 2>&1 | tail -1", 900)
+    """USER 2026-10-13: "the npz goes WITH THE PUSH of the sym_side — it gets calculated on s1 before dispatching."
+    So the regen runs HERE (the scheduler host = s1, the NPZ source) via tools/v15_npz_prep.py and the fresh NPZ is
+    PUSHED to the target host with md5 verify (--push), before the pilot is launched. A target that is this host needs
+    no push. Returns the tool's JSON ({ok, action, reason, npz_last_bar}); None = could not run (launch proceeds).
+    Blocking by design: ok=False keeps the sym_side out of the dispatch instead of burning hours on a stale tail."""
+    cmd = [sys.executable, str(ROOT / "tools" / "v15_npz_prep.py"), "--symbol", str(symbol)]
+    tgt = (host.get("ssh") or [None])[0]
+    if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1"):
+        cmd += ["--push", str(tgt)]
     try:
-        return json.loads((out or "").strip().splitlines()[-1])
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=str(ROOT))
+        lines = [l for l in (r.stdout or "").strip().splitlines() if l.strip()]
+        return json.loads(lines[-1]) if lines else None
     except Exception:
         return None
 
@@ -1693,7 +1702,7 @@ def tick(args, cfg, now):
                 continue
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
                 continue
-            if needs_slot and os.environ.get("V15_SCHED_NPZ_REFRESH") == "1" and venue_of(sym) == "stocks" and not (args.dry_run or sim):
+            if needs_slot and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
                 pr = npz_prep(h, sym)
                 if pr is not None and not pr.get("ok"):
                     log["skipped_unready"][sym] = f"{h['name']}: npz_prep {pr.get('reason')}"

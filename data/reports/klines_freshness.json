@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-13T01:10:00Z",
+ "generated_utc": "2026-10-13T01:20:01Z",
  "tol_min": 35,
  "crypto": {
-  "status": "BREACH",
+  "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 40.0,
+  "worst_lag_min": 20.0,
   "worst_sym": "ENAUSDC"
  },
  "stocks": {
@@ -20,6 +20,6 @@
    "SPY",
    "TSLA"
   ],
-  "worst_lag_min": 4630.0
+  "worst_lag_min": 4640.0
  }
 }
