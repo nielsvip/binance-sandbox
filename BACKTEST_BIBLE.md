@@ -2237,3 +2237,69 @@ Steps 8a–8c run AFTER the DONE stamp and can never change or fail the day.
 -LIST_SWITCH_ENCODING (need `unlock` of v12_quick_engine/ez_manage/ez_positions_quick/tradier_manage/config/config_tradier).
 Tests: `tests/test_v15_template_row_queue.py`, `tests/test_v15_selfimprove_loop.py`, `tests/test_v15_invention_loop.py`,
 `tests/test_v15_causal_rescue.py`, `tests/test_v15_switch_add.py`, `tests/test_causal_learner.py`.
+
+## 95. V17 ROUNDS — FILTER PROBE → ABBREVIATED WORST_FIRST → PINPOINT (2026-10-13)
+
+**User goal (verbatim):** "speed up the v15_pilot.py we need 4-12 sym_sides to be completely resolved per hour per server
+24/7/365 where the worst_first round needs to be abbreviated and the pinpoint round needs to be enlarged … (by filter ablation
+first then testing all the entry and exit paths that did not have a chance in previous rounds because filters had disabled
+them)". Ablation route clarified by the user the same day: strip a category's filters (a discovery base, worse by design),
+find positive entry/augment/reentry/exit switches on it, pinpoint the filter that kills each one, exempt the switch from that
+filter, put every filter back and adopt only above the previous best.
+
+**Evidence that shaped it (run32, 198 boards, phase report):** main pass 68% of wall / 0.43 pp per 1k evals; focus ~3.7 pp per
+1k evals but <1 min per board; 112 REDOs from RULE#3 hollow rows; 197/245 filter switches never promoted yet 38% of yellow
+evals; endgame strip-all −15.8 pp median (blanket strip refuted); 286 naked≤0 rows won via a filter change; 137/227 sacred
+promotions were rows ≤0 earlier.
+
+**Board (`v15_pilot.py`, `_spec_fill_workbook`, kill switch `V15_V17_ROUNDS=0` = pre-V17 board exactly; default ON):**
+- **P0** baseline unchanged. A legacy board resumed mid-fill keeps pre-V17 semantics (no mixed chain); `progress["v17"]["on"]`.
+- **P1 FILTER PROBE** (`_v17_filter_probe`): every option of the top-K (`V15_V17_PROBE_K` 15) filter switches of the cat_side
+  (ranked from `data/causal/switch_causal_profile.json` + `data/causal/v17_priors.json` (larger n wins) + fleet endgame
+  knowledge `tools/v15_endgame_knowledge_merge.load_ev`, cold-start list `V17_FILTER_FALLBACK`), both directions, one parallel
+  batch vs the start set; greedy: best positive promoted (its own eval = the fresh exact eval), remaining positives
+  re-evaluated vs the new chain. Re-run as `P3_PROBE_<i>` at the end of every pinpoint iteration.
+- **P2 ABBREVIATED WORST_FIRST**: naked on every live row (§77); tab order = measured lift per eval-second of the cat_side
+  (`v17_tab_order`, persisted in `progress["v17"]["tab_order"]`); NO hustle eval — F = this row's result vs the ORIGINAL
+  baseline, the §56 wording ("the same row result vs the ORIGINAL baseline"), so a row costs 1 eval instead of 2.
+  **Yellow frequency (USER rule):** "dont switch off yellow cells, just reduce their frequency of calculation from every time
+  (highest pos_sym values) to once in 200 (0 pos_sym)": every yellow cell (incl. prior-skipped / inert) is evaluated with
+  `p = max(1/200, min(1, pos_sym / pos_top))` (`v17_cell_p`; pos_top = 97th percentile pos_sym of the cat_side's evidenced
+  cells, `V15_V17_P_TOP_PCT`; unevidenced n<`V15_PRIOR_MIN_N` → p=1), deterministic draw `md5(cat_side|tab|switch=cand|cell|round)`
+  (`v17_cell_keep`) so the rotation covers every cell. Skipped cells = coarse-deferred = SETTLED (blank, `sampled_skip_p` on the
+  row, never hollow, no RULE#3/REDO, no refill). A POSITIVE NAKED row revives its yellows fully (COARSE-INLINE); a row that
+  only moved through a kept yellow inlines the top `V15_V17_INLINE_CAP` (32) prior-ranked cells. `[YELLOW-SAMPLE]` +
+  `progress["v17"]["yellow_sample"]`. Kill switch `V15_POSSYM_P_SAMPLING=0` (then cap `V15_V17_P2_YELLOWS` 8).
+  `V15_V17_P2_NAKED_ONLY=1` = pure naked pass with every yellow `DEFERRED_V17` (measured worse, see below).
+  Tab-boundary sacred repass KEPT (`V15_V17_SACRED_REPASS`): canary RLC old arm got 21.1 pp from it (GOLDEN_RULE_BASE_USD=0.0).
+- **P3 PINPOINT** (`_v17_pinpoint`, budget `V15_V17_P3_S_<TIER>` 600/300/120/30 s capped so the board ends inside
+  `V15_V17_BOARD_S` 900 s with `V15_V17_TAIL_S` 210 s ahead), iterations until the budget is spent or an iteration adds nothing:
+  FOCUS (yellows of the moved rows submitted to the pool as one batch, numeric grid ×0.5..×2, pairs) → **ABLATION ROUTE**
+  per category entry/reentry/augment/exit (`ABL_STRIP` → `ABL_DISCOVER` (≤400 path switches by EV, every AUGMENT_* in augment) →
+  `ABL_RESTORE1` (one filter restored at a time; only filters that bind on the strip base) + `ABL_ATTR` → `v17_killers`
+  (restoring the filter removes >50% of the discovered delta) → exemption from `data/v17_filter_exemptions.json`
+  (engine key `FILTER_EXEMPTIONS`, union-merged with the chain's value, exact engine dict form) or proxy = killer filter OFF
+  (`[ABLATION-NO-EXEMPT]`) → `ABL_RESTORE` / `ABL_EXEMPT` / `ABL_PROXY` on the full previous-best chain, greedy) → moved-chain
+  RETEST of every non-promoted ENTRY/REENTRY/AUGMENT/EXIT row + sacred families whose chain moved since their eval, then
+  near-misses × ever-promoted filters → filter re-probe. Then **TIM-FIX** (a positive-delta candidate whose fresh eval lands
+  TIM inside [20,80]; prevents the compliance-repair full REDO) and **ESSENTIAL proof** (own-row then cross-row deferred
+  cells of every FAIL protection filter until one moves). Same gates everywhere: valid, trade floor, TIM/trades guards,
+  `promotion_block_reason`, MAXAUG/ABLATION never.
+- **P4** final_filter_recheck only on filters touched in P1/P3 (`V15_V17_FFR_TOUCHED`) and under the TIM/trades guards
+  (canary RLC: unguarded FFR pushed TIM to 9.3 → compliance REDO); `P4_TIMFIX`; endgame/diagnose budgets capped by env at call
+  time (`V15_V17_POST_S` 120 total).
+- Done keys: `V17_PROBE!n:F=opt`, `V17_RETEST!n:…`, `V17_TIMFIX!n:…`, `ABL!<cat>:<switch>=<cand>[+exempt|+proxy]`,
+  `FOCUS!<iter>.<n>:…` — all carry cumulative_before/after (E-chain validator holds), `complete: True`, plus tab/row/switch.
+  Resume: phase markers in `progress["v17"]["phases"]` (`P1_PROBE`, `P2_WORST_FIRST`, `P3_*_<i>`, `P4_*`); rows are never wiped.
+- Logs: one `[V17-PHASE] name evals= wall= lift=` line per phase, `[V17-PROMOTE]`, `V17_ROUNDS` sheet (phases, promotions,
+  ablation records: strip gain, discovery delta, killers, exemption used, final delta, adopted).
+
+**Measured 2026-10-13 (same frozen NPZ md5 on every host, identical start set; isolated V15_PROGRESS_DIR/V15_OUT_DIR,
+SWITCH_PARITY_REGISTER=0; crypto canaries needed SWITCH_PARITY_GATE=off because the fleet parity gate refuses every crypto
+board: DC_EDGE_SIZING_MAX_MULT bold 6.0 vs config 3.0, EMA_BLANKET_FILTER_FILTER_TF quick 15m vs OFF — engine/config lane):**
+see `data/reports/v17_ab_*.md` for the formal A/B. Canary history: naked-only P2 (variant B) was fast (10.8–17.3 min) but lost
+most of the joint lift (RLC 30.5 vs old 66.3 after focus) → yellows restored with the frequency rule; first variant with
+yellows + ablation: COIN_LONG 12.4 min, 19.69 published, 365D PASS, no REDO (old pilot same start: 20.9 min, then 365D REDO);
+v3: COIN_LONG 14.8 min 29.86 (old 20.x), VALE_SHORT 12.3 min 21.18 (old 26.x, run32 21.00), RLCUSDT_LONG 26.2 min 25.5
+(old ≥66.3: crypto P2 with many evidenced cells is the open gap). Fleet s2 after the V17 deploy: 9 boards in 30 min
+(10.5–19 min each) vs 20–35 min per board before.

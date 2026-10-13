@@ -126,3 +126,18 @@ def test_exemption_merge_and_tuple_ev():
     m = P.v17_merge_exemptions({"AUGMENT_AT_LOSS": ["F1"]}, {"AUGMENT_AT_LOSS": ["F2", "F1"], "B12": ["WT_DIV"]})
     assert m == {"AUGMENT_AT_LOSS": ["F1", "F2"], "B12": ["WT_DIV"]}
     assert P.v17_ev("A=1", {"A=1": (10, 2.0, 0.25)}) == 0.5
+
+
+def test_filter_exemptions_final_set_round_trip():
+    # a promoted exemption lands in the final override set in the engine's exact dict form and survives the progress /
+    # publish JSON round trip unchanged (same sanitized set, same eval-cache key => identical evaluation)
+    import json as _j
+    ov = {"WT_DIV_ENTRY_GATE_ENABLED": True, "FILTER_EXEMPTIONS": P.v17_merge_exemptions({"B12": ["WT_DIV_ENTRY_GATE"]}, {"AUGMENT_AT_LOSS": ["AUGMENT_ONLY_WHEN_PROFITABLE"]})}
+    s1, _ = P.sanitize_overrides(dict(ov), {})
+    assert s1["FILTER_EXEMPTIONS"] == {"B12": ["WT_DIV_ENTRY_GATE"], "AUGMENT_AT_LOSS": ["AUGMENT_ONLY_WHEN_PROFITABLE"]}
+    rt = _j.loads(_j.dumps({"final": {"overrides": s1}}))["final"]["overrides"]
+    s2, _ = P.sanitize_overrides(rt, {})
+    assert s2 == s1
+    key = lambda o: tuple(sorted((k, str(v)) for k, v in o.items()))
+    assert key(s1) == key(s2)
+    assert "FILTER_EXEMPTIONS" in P.known_config_fields()

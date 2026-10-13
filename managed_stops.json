@@ -48,13 +48,6 @@
     "symbol": "BBUSDT",
     "side": "SHORT"
   },
-  "ang:ARMUSDT_SHORT": {
-    "orderId": "4000001964373306",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-10 17:24:36.334347+00:00",
-    "symbol": "ARMUSDT",
-    "side": "SHORT"
-  },
   "ang:1000BONKUSDC_SHORT": {
     "orderId": "4000001964375347",
     "stopPrice": 0.0,
@@ -118,11 +111,11 @@
     "symbol": "SANDUSDT",
     "side": "LONG"
   },
-  "ang:RSRUSDT_LONG": {
-    "orderId": "4000001964762384",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 05:04:04.558996+00:00",
-    "symbol": "RSRUSDT",
+  "ang:ARUSDT_LONG": {
+    "orderId": "4000001966095692",
+    "stopPrice": 3.817,
+    "entry_sig": "2026-10-13 18:26:37.263386+00:00",
+    "symbol": "ARUSDT",
     "side": "LONG"
   }
 }

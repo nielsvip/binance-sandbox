@@ -3100,8 +3100,45 @@ def v17_tab_order(tabs, prior: dict, tab_keys: dict | None = None) -> list:
     return sorted(tabs, key=lambda t: (rate[t] is None, -(rate[t] or 0.0), fb.get(t, len(fb))))
 
 
-def v17_pos_top(prior: dict, min_n: int = 10, pct: float = 0.9) -> float:
+def v17_load_priors(cat_side: str) -> dict:
+    """data/causal/v17_priors.json via tools/v17_priors.load(cat_side) (eval-cache / causal-learner mining lane); {} = absent."""
+    try:
+        from tools.v17_priors import load as _vpl
+        d = _vpl(cat_side)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def v17_merge_priors(profile: dict, vp: dict) -> dict:
+    """Pure: causal profile + v17_priors, per key the entry with the larger n_sym wins (fail-open: profile alone)."""
+    out = {k: dict(v) if isinstance(v, dict) else v for k, v in (profile or {}).items()}
+    if not isinstance(vp, dict) or not vp:
+        return out
+    single = vp.get("single") if isinstance(vp.get("single"), dict) else {}
+    for kind in ("filter_opt", "switch_cand"):
+        dst = out.setdefault(kind, {})
+        src = dict(vp.get(kind) or {})
+        for key, e in single.items():
+            if isinstance(e, dict) and "=" in str(key) and (kind == "filter_opt") == v17_is_filter_key(str(key).split("=", 1)[0]):
+                src.setdefault(key, e)
+        for key, e in src.items():
+            if not isinstance(e, dict):
+                continue
+            cur = dst.get(key)
+            if not isinstance(cur, dict) or int(e.get("n_sym") or e.get("n") or 0) > int(cur.get("n_sym") or 0):
+                ne = dict(e)
+                ne.setdefault("n_sym", int(e.get("n") or 0))
+                dst[key] = ne
+    for extra in ("filter_blocks_switch", "synergy", "deprioritise"):
+        if vp.get(extra) is not None:
+            out["v17_" + extra] = vp.get(extra)
+    return out
+
+
+def v17_pos_top(prior: dict, min_n: int = 10, pct: float | None = None) -> float:
     """Pure: pos_sym at the pct percentile of the cat_side's evidenced FILTER=opt cells (n_sym >= min_n); >= 1."""
+    pct = float(os.environ.get("V15_V17_P_TOP_PCT", "0.97")) if pct is None else float(pct)
     vals = sorted(int(e.get("pos_sym") or 0) for e in ((prior or {}).get("filter_opt") or {}).values() if isinstance(e, dict) and int(e.get("n_sym") or 0) >= int(min_n))
     if not vals:
         return 1.0
@@ -5608,7 +5645,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[FOCUS] {new_symside} tier={_tier_name} {out['secs']}s evals={n_eval[0]} promotions={len(out['promotions'])} {out['entry_gain']:.4f}->{float(cumulative_gain):.4f} steps={out['steps']}{' skipped=' + str(out.get('skipped')) if out.get('skipped') else ''}", flush=True)
     # ── V17 ROUNDS (bible §95) — nested so every eval goes through the same _get/_submit/pool/delta-log/cache as the fill ──
     _v17_cs = map_key_for_symside(new_symside)
-    _v17_prior = _prior_load(_v17_cs) if _v17_on else {}
+    _v17_prior = v17_merge_priors(_prior_load(_v17_cs), v17_load_priors(_v17_cs)) if _v17_on else {}
     _v17_know = v17_load_knowledge(_v17_cs) if _v17_on else {}
     _v17_ptop[0] = v17_pos_top(_v17_prior, _PRIOR_MIN_N) if _v17_on else 1.0
     _v17_touched: set = set()
@@ -5706,7 +5743,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             chain_trades = int((res or {}).get("trades") or 0)
         except Exception:
             pass
-        parts = list(it.get("parts") or [f"{k}={v}" for k, v in (it.get("delta_ov") or {}).items()])
+        parts = list(it.get("parts") or [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in (it.get("delta_ov") or {}).items()])
         _v17_touched.update(k for k in (it.get("delta_ov") or {}) if v17_is_filter_key(k))
         prom = _v17.setdefault("promotions", [])
         rec = {"phase": prefix, "how": how, "what": it["label"], "delta": round(d, 4), "before": round(cb, 4), "after": round(cumulative_gain, 4), "trades": (res or {}).get("trades"), "tim": (res or {}).get("tim_pct"), "dd": (res or {}).get("max_dd_pct"), "parts": parts}
@@ -6008,7 +6045,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 base = {"sw": it["sw"], "cand": it["cand"], "sheet": it["sheet"], "row": it["row"], "rec_i": len(recs) - 1}
                 rest.append({**base, "label": f"ABL_RESTORE:{cat}:{it['sw']}={it['cand']}", "delta_ov": dict(it["delta_ov"]), "done_key": dk, "parts": [f"{it['sw']}={it['cand']}"]})
                 if ex_ov:
-                    rest.append({**base, "label": f"ABL_EXEMPT:{cat}:{it['sw']}={it['cand']}", "delta_ov": {**it["delta_ov"], **ex_ov}, "done_key": dk + "+exempt", "parts": [f"{it['sw']}={it['cand']}"] + [f"{k}={v}" for k, v in ex_ov.items()]})
+                    rest.append({**base, "label": f"ABL_EXEMPT:{cat}:{it['sw']}={it['cand']}", "delta_ov": {**it["delta_ov"], **ex_ov}, "done_key": dk + "+exempt", "parts": [f"{it['sw']}={it['cand']}"] + [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in ex_ov.items()]})
                 if no_ex:
                     pov = {f: strip[f] for f in no_ex}
                     rest.append({**base, "label": f"ABL_PROXY:{cat}:{it['sw']}={it['cand']}-" + "-".join(no_ex), "delta_ov": {**it["delta_ov"], **pov}, "done_key": dk + "+proxy", "parts": [f"{it['sw']}={it['cand']}"] + [f"{k}={v}" for k, v in pov.items()]})

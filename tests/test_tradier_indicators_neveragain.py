@@ -98,3 +98,11 @@ def test_singleton_claim_and_takeover(tmp_path, monkeypatch):
     assert lp.read_text().split()[0] == str(os.getpid())
     ti._release_instance()
     assert not lp.exists()
+
+
+def test_stale_first_orders_oldest_first():
+    order = ti._stale_first(["B", "A", "C"], {"A": 100.0, "B": 50.0}.get)
+    assert order[0] == "C"  # unknown (0.0) first
+    assert order[1] == "B"
+    assert order[2] == "A"
+    assert ti._stale_first(["X"], lambda s: 1 / 0) == ["X"]

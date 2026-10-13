@@ -1185,6 +1185,16 @@ def _tf_window_due(tf: str, et_h: int, et_m: int) -> bool:
     return True
 
 
+def _stale_first(symbols, last_close_ts_of) -> list:
+    """Order symbols stalest-first so stragglers can't starve deterministically
+    at the back of every run (27 symbols never completed 15m across runs).
+    last_close_ts_of(sym) -> epoch float or 0.0. Pure/testable."""
+    try:
+        return sorted(symbols, key=lambda s: (float(last_close_ts_of(s) or 0.0), str(s)))
+    except Exception:
+        return list(symbols)
+
+
 def _tf_should_run(tf: str, et_h: int, et_m: int, last_start_ts, now_ts: float) -> bool:
     """Window match OR overdue catch-up. 1m/5m always True. Missing/zero
     last_start means overdue (fires once, then single-flight paces)."""
@@ -2960,7 +2970,16 @@ class TradierIndicatorOrchestrator:
             logger.info(f"[{timeframe}] Skipped (not :00/:15/:30/:45, now {now_et.hour:02d}:{now_et.minute:02d} ET) for quick open")
             return
         logger.info(f"[{timeframe}] Starting concurrent update for {len(self.symbols)} symbols...")
-        tasks =[asyncio.create_task(process_symbol(sym)) for sym in self.symbols]
+        # 2026-10-13 NEVER-AGAIN: stalest-first so back-of-queue symbols can't
+        # starve across runs (fixed 27-symbol 15m holdout class).
+        def _lc(sym: str) -> float:
+            try:
+                _st = (self.state.get(sym, {}) or {}).get(timeframe)
+                _v = getattr(_st, "last_close", None)
+                return float(_v.timestamp()) if _v is not None else 0.0
+            except Exception:
+                return 0.0
+        tasks =[asyncio.create_task(process_symbol(sym)) for sym in _stale_first(self.symbols, _lc)]
         if tasks:
             # 2026-10-13 NEVER-AGAIN: slow TFs need room to finish (partials
             # persist in self.data, so a longer cap only gains coverage).
