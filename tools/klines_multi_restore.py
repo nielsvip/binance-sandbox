@@ -34,7 +34,7 @@ def _key(s):
 
 def _epoch(k):
     try:
-        return dt.datetime.strptime(k, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc).timestamp()
+        return dt.datetime.fromisoformat(k[:19]).replace(tzinfo=dt.timezone.utc).timestamp()
     except Exception:
         return None
 
@@ -71,7 +71,7 @@ def _rows_from_npz(p):
 def _rows_resampled(p, tf):
     """crypto only: exact UTC-aligned aggregation of a finer authentic file (3m/5m/1m/15m); a bucket is emitted only when
     EVERY sub-bar is present (no partial/forming/gap bars)."""
-    rows = _clean(_load_json(p))
+    rows = _source_rows("json", p, tf)
     if not rows:
         return []
     ks = sorted(rows)
@@ -112,8 +112,47 @@ def _clean(rows):
     return out
 
 
-def _gate(src, have, tf, venue):
-    """Return (ok, why). src/have: key->vals."""
+def _final_bar_key(day, tf, venue):
+    """key of the bar whose close is the day's close: crypto UTC day, stocks 15m = 15:45 ET bar."""
+    if venue == "crypto":
+        sec = 86400 - PERIOD[tf]
+        return f"{day}T{sec // 3600:02d}:{sec % 3600 // 60:02d}:00"
+    return None
+
+
+def _day_proof(src_new, tf, venue, dref):
+    """compare the source's day-closing bars with S1's own deep D file; (n, good)."""
+    if not dref or tf == "D":
+        return (0, 0)
+    n = good = 0
+    if venue == "crypto":
+        for day, dclose in dref.items():
+            k = _final_bar_key(day, tf, venue)
+            v = src_new.get(k)
+            if v is None:
+                continue
+            n += 1
+            good += abs(v["close"] / dclose - 1.0) <= 0.01
+        return (n, good)
+    if tf != "15m":
+        return (0, 0)
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    for k, v in src_new.items():
+        e = _epoch(k)
+        if e is None:
+            continue
+        d = dt.datetime.fromtimestamp(e, et)
+        if d.hour == 15 and d.minute == 45 and d.strftime("%Y-%m-%d") in dref:
+            n += 1
+            good += abs(v["close"] / dref[d.strftime("%Y-%m-%d")] - 1.0) <= 0.01
+    return (n, good)
+
+
+def _gate(src, have, tf, venue, dref=None):
+    """Return (ok, why). src/have: key->vals. Proof order: overlap closes >=20 bars; else day-close match vs S1's own D
+    file >=20 days; else adjacency (gap <=2 bars) with a bounded junction jump. Anything else is rejected whole."""
     if not src:
         return (False, "empty")
     per = PERIOD[tf]
@@ -135,15 +174,61 @@ def _gate(src, have, tf, venue):
         good = sum(1 for k in ov if abs(src[k]["close"] - have[k]["close"]) <= 0.005 * have[k]["close"])
         if good < 0.9 * len(ov):
             return (False, f"overlap disagrees {good}/{len(ov)} within 0.5%")
+        return (True, f"ok overlap {good}/{len(ov)} adds {len(new_keys)}")
+    n, good = _day_proof({k: src[k] for k in new_keys}, tf, venue, dref)
+    if n >= 20:
+        if good < 0.9 * n:
+            return (False, f"day-close proof failed {good}/{n} within 1% of S1 D file")
+        return (True, f"ok day-close proof {good}/{n} adds {len(new_keys)}")
     first_have = min(have)
     older = [k for k in src if k < first_have]
-    if older:
-        last_old = max(older)
-        jump = abs(have[first_have]["open"] / src[last_old]["close"] - 1.0)
-        lim = 0.35 if venue == "crypto" else 0.45
-        if jump > lim and len(ov) < 20:
-            return (False, f"junction jump {jump:.0%} without overlap proof")
-    return (True, f"ok overlap {len(ov)} adds {len(new_keys)}")
+    if not older:
+        return (False, f"no overlap/day proof (overlap {len(ov)}, day {n})")
+    last_old = max(older)
+    gap = (_epoch(first_have) - _epoch(last_old)) / per
+    jump = abs(have[first_have]["open"] / src[last_old]["close"] - 1.0)
+    lim = 0.35 if venue == "crypto" else 0.45
+    if gap > 2 or jump > lim:
+        return (False, f"no proof: overlap {len(ov)}, day {n}, junction gap {gap:.0f} bars jump {jump:.0%}")
+    return (True, f"ok adjacent junction jump {jump:.1%} adds {len(new_keys)}")
+
+
+def _dayref(tgt, venue):
+    """S1's own sibling D file -> {day: close} (crypto UTC date, stocks ET date; last row per date)."""
+    p = tgt.parent / (tgt.name.rsplit("_", 1)[0] + "_D.json")
+    try:
+        rows = _clean(_load_json(p))
+    except Exception:
+        return {}
+    out = {}
+    if venue == "crypto":
+        for k, v in rows.items():
+            out[k[:10]] = v["close"]
+        return out
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    for k in sorted(rows):
+        e = _epoch(k)
+        if e is not None:
+            out[dt.datetime.fromtimestamp(e, et).strftime("%Y-%m-%d")] = rows[k]["close"]
+    return out
+
+
+def _salvage(p):
+    """rows from a truncated/corrupt JSON array: every complete {...} object that parses."""
+    import re
+
+    raw = Path(p).read_bytes()
+    out = []
+    for m in re.finditer(rb"\{[^{}]*\}", raw):
+        try:
+            r = json.loads(m.group(0))
+        except Exception:
+            continue
+        if isinstance(r, dict) and r.get("timestamp"):
+            out.append(r)
+    return out
 
 
 def _in_session(k):
@@ -170,6 +255,20 @@ def _span(keys):
     return (b - a) / 86400 if a and b else 0.0
 
 
+_CACHE = {}
+
+
+def _source_rows(kind, path, tf):
+    """parsed+cleaned source rows, memoised per (kind, path, tf) for consecutive targets of one symbol."""
+    key = (kind, path, tf if kind == "resample" else "")
+    if key not in _CACHE:
+        if len(_CACHE) > 24:
+            _CACHE.clear()
+        rows = _rows_from_npz(path) if kind == "npz" else (_rows_resampled(path, tf) if kind == "resample" else _load_json(path))
+        _CACHE[key] = _clean(rows)
+    return _CACHE[key]
+
+
 def restore(item, apply, min_free_gb, bk_dir):
     from klines_guard import guarded_write
 
@@ -179,10 +278,17 @@ def restore(item, apply, min_free_gb, bk_dir):
     res = {"target": item["target"]}
     if not tgt.exists():
         return {**res, "action": "skip", "why": "target missing"}
-    cur = _load_json(tgt)
+    corrupt = False
+    try:
+        cur = _load_json(tgt)
+    except Exception:
+        cur = _salvage(tgt)
+        corrupt = True
+        res["corrupt_salvaged_rows"] = len(cur)
     have = _clean(cur)
     if not have:
         return {**res, "action": "skip", "why": "target unparseable/empty"}
+    dref = _dayref(tgt, venue)
     res.update(rows_before=len(cur), first_before=min(have), span_before=round(_span(have.keys()), 1))
     add = {}
     used = []
@@ -190,16 +296,15 @@ def restore(item, apply, min_free_gb, bk_dir):
         try:
             if s["kind"] == "resample" and venue != "crypto":
                 raise ValueError("resample is crypto-only (stock HTF bins are ET-session based)")
-            rows = _rows_from_npz(s["path"]) if s["kind"] == "npz" else (_rows_resampled(s["path"], tf) if s["kind"] == "resample" else _load_json(s["path"]))
+            src = dict(_source_rows(s["kind"], s["path"], tf))
         except Exception as e:
             used.append({"path": s["path"], "ok": False, "why": f"unreadable {type(e).__name__}"})
             continue
-        src = _clean(rows)
         if venue == "stocks" and tf == "15m":
             src = {k: v for k, v in src.items() if _in_session(k)}
         base = dict(have)
         base.update(add)
-        ok, why = _gate(src, have if len(have) >= 50 else base, tf, venue)
+        ok, why = _gate(src, have if len(have) >= 50 else base, tf, venue, dref)
         n = 0
         if ok:
             for k, v in src.items():
@@ -208,9 +313,11 @@ def restore(item, apply, min_free_gb, bk_dir):
                     n += 1
         used.append({"path": s["path"], "ok": ok, "why": why, "added": n})
     res["sources"] = used
-    if not add:
+    if not add and not corrupt:
         return {**res, "action": "no_gain"}
     allk = set(have) | set(add)
+    if corrupt:
+        res["corrupt"] = True
     res.update(added=len(add), first_after=min(allk), span_after=round(_span(allk), 1))
     if not apply:
         return {**res, "action": "would_restore"}
@@ -221,7 +328,10 @@ def restore(item, apply, min_free_gb, bk_dir):
     b.parent.mkdir(parents=True, exist_ok=True)
     b.write_bytes(gzip.compress(tgt.read_bytes()))
     suf = _fmt(cur)
-    cur = _load_json(tgt)
+    try:
+        cur = _load_json(tgt)
+    except Exception:
+        cur = _salvage(tgt)
     have_now = {_key(r.get("timestamp")) for r in cur if isinstance(r, dict) and r.get("timestamp")}
     extra = [{"timestamp": k + suf, **v} for k, v in add.items() if k not in have_now]
     merged = sorted(list(cur) + extra, key=lambda r: _key(r.get("timestamp", "")) if isinstance(r, dict) else "")

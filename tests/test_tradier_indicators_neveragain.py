@@ -106,3 +106,59 @@ def test_stale_first_orders_oldest_first():
     assert order[1] == "B"
     assert order[2] == "A"
     assert ti._stale_first(["X"], lambda s: 1 / 0) == ["X"]
+
+
+def _bare_orchestrator(**attrs):
+    orch = object.__new__(ti.TradierIndicatorOrchestrator)
+    orch._tf_gen = {}
+    orch._tf_compute_lane = ti.TradierIndicatorOrchestrator._tf_compute_lane.__get__(orch)
+    orch._compute_guarded = ti.TradierIndicatorOrchestrator._compute_guarded.__get__(orch)
+    for k, v in attrs.items():
+        setattr(orch, k, v)
+    return orch
+
+
+def test_compute_lane_split_fast_vs_slow():
+    import asyncio
+    orch = _bare_orchestrator(executor_fast="FAST", executor_slow="SLOW",
+                              _compute_sem_fast=asyncio.Semaphore(2),
+                              _compute_sem_slow=asyncio.Semaphore(4))
+    assert orch._tf_compute_lane("1m")[0] == "FAST"
+    assert orch._tf_compute_lane("5m")[0] == "FAST"
+    for tf in ("15m", "1h", "4h", "D"):
+        assert orch._tf_compute_lane(tf)[0] == "SLOW"
+    assert orch._tf_compute_lane("1m")[0] is not orch._tf_compute_lane("15m")[0]
+
+
+def test_compute_guarded_skips_stale_generation():
+    calls = []
+
+    class FakeCalc:
+        def compute(self, *a):
+            calls.append(a)
+            return {"k": 1}
+
+    orch = _bare_orchestrator(calculator=FakeCalc())
+    orch._tf_gen["15m"] = 7
+    assert orch._compute_guarded(6, "15m", None, "CME", None, None, False) is None
+    assert calls == []
+    assert orch._compute_guarded(7, "15m", None, "CME", None, None, False) == {"k": 1}
+    assert len(calls) == 1
+
+
+def test_guarded_run_bumps_generation():
+    import asyncio
+    orch = _bare_orchestrator()
+    orch._tf_inflight = {}
+    seen = []
+
+    async def fake_process(tf, force=False):
+        seen.append((tf, force))
+
+    orch._process_timeframe = fake_process
+    asyncio.run(ti.TradierIndicatorOrchestrator._run_tf_guarded(orch, "15m", True))
+    assert orch._tf_gen["15m"] == 1
+    assert seen == [("15m", True)]
+    assert orch._tf_inflight["15m"] is False
+    asyncio.run(ti.TradierIndicatorOrchestrator._run_tf_guarded(orch, "15m", False))
+    assert orch._tf_gen["15m"] == 2

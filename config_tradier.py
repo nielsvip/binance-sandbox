@@ -6118,7 +6118,7 @@ class TradierConfig:
     REENTRY_AUGMENT_WINDOW_SEC: float = 86400.0  # V17 reentry must open within this many seconds of the previous close (0 = no limit)
     REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: bool = True  # V17 carry only when the previous position never augmented
     AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED: bool = (
-        False  # V17 LIVE KILL SWITCH (real money, global only, never swept): False = a vec OPEN carrying an augment is sized as a plain open live; True = open x (1 + carry), every live cap still binds
+        True  # USER 2026-10-13: default True — augment tab never fired (exit on any WT cross); carry augment into the next higher-low open  # V17 LIVE KILL SWITCH (real money, global only, never swept): False = a vec OPEN carrying an augment is sized as a plain open live; True = open x (1 + carry), every live cap still binds
     )
     HARDCODED_RALLY_MIN_MOVE_PCT: float = (
         0.0  # RE/001 optional rally filters (vector twin vec_decisions/hardcoded_rally_filters.py): all OFF = unchanged

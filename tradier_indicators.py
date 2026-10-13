@@ -2607,6 +2607,30 @@ class TradierIndicatorOrchestrator:
         # overdue catch-up (gated TFs must run even when windows are missed).
         self._tf_inflight: Dict[str, bool] = {}
         self._tf_last_start: Dict[str, float] = {}
+        # 2026-10-13 NEVER-AGAIN executor split: 1m/5m churn (372 full
+        # computes every few minutes) queued behind the same 4 threads as
+        # 15m/1h/4h/D starved slow TFs for 20d (240s timeouts measured queue
+        # wait, not compute — CME computes in 2.0s standalone). Slow TFs get
+        # their own threads; per-executor semaphores keep queue-wait OUTSIDE
+        # the wait_for budget; generation skips drain abandoned queue items.
+        self.executor_fast = ThreadPoolExecutor(max_workers=2)
+        self.executor_slow = ThreadPoolExecutor(max_workers=4)
+        self._compute_sem_fast = asyncio.Semaphore(2)
+        self._compute_sem_slow = asyncio.Semaphore(4)
+        self._tf_gen: Dict[str, int] = {}
+
+    def _tf_compute_lane(self, timeframe: str):
+        if timeframe in ("1m", "5m"):
+            return self.executor_fast, self._compute_sem_fast
+        return self.executor_slow, self._compute_sem_slow
+
+    def _compute_guarded(self, gen: int, timeframe: str, df, symbol: str, mark_price, mark_ts, mid_run: bool):
+        try:
+            if self._tf_gen.get(timeframe, 0) != gen:
+                return None
+        except Exception:
+            pass
+        return self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run)
 
     def _load_symbols(self) -> List[str]:
         collected: Set[str] = set()
@@ -3042,6 +3066,10 @@ class TradierIndicatorOrchestrator:
     async def _run_tf_guarded(self, tf: str, force: bool) -> None:
         """Single-flight wrapper: never overlapping, ledger always cleared."""
         try:
+            try:
+                self._tf_gen[tf] = self._tf_gen.get(tf, 0) + 1
+            except Exception:
+                pass
             await self._process_timeframe(tf, force=force)
         except Exception as e:
             logger.error(f"[{tf}] guarded run failed: {e}")
@@ -3133,10 +3161,21 @@ class TradierIndicatorOrchestrator:
         # rolling lambdas (wma/thma/hull) burn seconds-to-minutes of GIL CPU
         # per symbol; in-loop they froze scheduling until every TF but 1m/5m
         # starved for 20d. Bounded executor (4) mirrors the run_cycle path.
+        # 2026-10-13 NEVER-AGAIN executor split: per-lane executor + semaphore
+        # so the wait_for budget measures compute, never queue-wait; compute a
+        # clipped copy (same 600-bar bound as run_cycle) while last_df keeps
+        # full history; generation skip drops superseded runs at pickup.
         try:
             _loop = asyncio.get_running_loop()
-            _exec = getattr(self, "executor", None)
-            result = await _loop.run_in_executor(_exec, self.calculator.compute, df, symbol, timeframe, mark_price, mark_ts, False)
+            _exec, _sem = self._tf_compute_lane(timeframe)
+            _gen = self._tf_gen.get(timeframe, 0)
+            try:
+                _clip = int(getattr(self.config, 'LIVE_INDICATOR_MAX_BARS_PER_TF', 600))
+            except Exception:
+                _clip = 600
+            _cdf = df.tail(_clip).reset_index(drop=True) if _clip > 0 and len(df) > _clip else df
+            async with _sem:
+                result = await _loop.run_in_executor(_exec, self._compute_guarded, _gen, timeframe, _cdf, symbol, mark_price, mark_ts, False)
         except Exception:
             result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=False)
         if not result: return
@@ -3177,7 +3216,19 @@ class TradierIndicatorOrchestrator:
             df['timestamp'] = _to_utc(df['timestamp'])
         if 'close_time' in df.columns:
             df['close_time'] = _to_utc(df['close_time'])
-        result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=True)
+        # 2026-10-13 NEVER-AGAIN: mid compute off-loop too — on-loop GIL
+        # burn here froze scheduling for every TF (wait_for cannot preempt
+        # synchronous code). Same lane/semaphore/generation guards as full.
+        try:
+            _mloop = asyncio.get_running_loop()
+            _mexec, _msem = self._tf_compute_lane(timeframe)
+            _mgen = self._tf_gen.get(timeframe, 0)
+            if _msem.locked():
+                return False
+            async with _msem:
+                result = await _mloop.run_in_executor(_mexec, self._compute_guarded, _mgen, timeframe, df, symbol, mark_price, mark_ts, True)
+        except Exception:
+            result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=True)
         if not result:
             return False
         symbol_data = self.data.setdefault(symbol, {})

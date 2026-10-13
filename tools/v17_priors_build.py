@@ -16,6 +16,7 @@ import time
 EPS = 1e-9
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 SCHEMA_VERSION = 1
+MIN_PAIR_N = 2
 
 
 def r4(x):
@@ -95,6 +96,7 @@ def build_single(rows):
             "n_evals": n_evals, "n_sym_new": n_new, "n_sym_old_only": n_old_only,
             "old_new_both": both, "old_new_sign_agree": agree,
             "verdict": verdict(n, pos, neg, zero, m),
+            "absent_value": label.endswith("=<absent>"),
         }
     return out
 
@@ -120,7 +122,7 @@ def build_blocks(rows, exemptions, top):
             if d_off > EPS and d_on <= EPS:
                 pos += 1
         totals[cs] += 1
-        if pos == 0:
+        if pos == 0 or len(offs) < MIN_PAIR_N:
             continue
         sw = s.split("=", 1)[0]
         ex = (exemptions.get(sw) or {}).get(f)
@@ -158,6 +160,8 @@ def build_synergy(rows, top):
             if it < -EPS:
                 anti_sym += 1
         totals[cs] += 1
+        if len(J) < MIN_PAIR_N:
+            continue
         e = {"a": l1, "b": l2, "n": len(J), "mean_joint": r4(mean(J)), "mean_single_a": r4(mean(A)), "mean_single_b": r4(mean(B)),
              "mean_interaction": r4(mean(I)), "syn_sym": syn_sym, "anti_sym": anti_sym}
         if syn_sym:
@@ -342,7 +346,8 @@ def main():
         "exemptions_file": args.exemptions, "max_edge_gap_h": (sources[0].get("max_edge_gap_h") if sources else None),
         "block_pairs_measured": btot, "synergy_pairs_measured": qtot,
         "engine_version_note": "eval_cache rows carry no engine md5 (it is hashed into the key only); old-engine rows are evidence with that caveat, drift collisions excluded",
-        "eps": EPS,
+        "eps": EPS, "min_pair_n": MIN_PAIR_N,
+        "sym_sides_per_cat_side": {cs: len({sym for c, _l, sym, _v in srows if c == cs}) for cs in CAT_SIDES},
     }}
     for cs in CAT_SIDES:
         s = single.get(cs) or {}

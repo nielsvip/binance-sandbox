@@ -121,6 +121,45 @@ FOSSIL_HELD = frozenset(
 )
 
 
+# V17 2026-10-13: dict-valued promotable keys. {} default on every surface (config.py / config_tradier.py / QuickConfig);
+# the type gate used to refuse ANY dict value -> one swept FILTER_EXEMPTIONS refused the WHOLE set at go-live.
+STRUCTURED_KEYS = frozenset({"FILTER_EXEMPTIONS"})
+# Live kill switches that are global-only and never swept: a per-sym value is dropped (reported), never registered.
+GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED"})
+
+
+def coerce_structured(key: str, value):
+    """(ok, normalized_or_reason) for STRUCTURED_KEYS. FILTER_EXEMPTIONS: {path: [filter_key, ...]} (a JSON-string form is
+    parsed; a comma string per path is split); normalized = str keys, de-duplicated str lists, empty paths dropped."""
+    v = value
+    if isinstance(v, str):
+        try:
+            v = json.loads(v) if v.strip() else {}
+        except Exception:
+            return (False, f"{key}: unparseable string {value!r}"[:200])
+    if not isinstance(v, dict):
+        return (False, f"{key}: type {type(value).__name__} is not a dict {{path: [filters]}}")
+    out = {}
+    for path, fl in v.items():
+        if isinstance(fl, str):
+            fl = [x.strip() for x in fl.split(",")]
+        if not isinstance(fl, (list, tuple, set)):
+            return (False, f"{key}[{path!r}]: filters must be a list, got {type(fl).__name__}")
+        lst = []
+        for f in fl:
+            f = str(f).strip()
+            if f and f not in lst:
+                lst.append(f)
+        if str(path).strip() and lst:
+            out[str(path).strip()] = lst
+    return (True, out)
+
+
+def _structured_default(key: str, snap: dict, live_vals: dict) -> dict:
+    ok, ref = coerce_structured(key, snap[key] if key in snap else live_vals.get(key, {}))
+    return ref if ok else {}
+
+
 def _ROOT() -> Path:
     return Path(os.environ.get("SWITCH_PARITY_ROOT") or Path(__file__).resolve().parent)
 
@@ -392,7 +431,22 @@ def register_workbook_result(
     if diff_only:
         live_vals, quick_vals = _venue_values_cached(not is_crypto_sym(symbol), root)
         same, noop, floatkept = [], [], []
+    global_only = []
     for k, v in overrides.items():
+        if k in GLOBAL_ONLY_KEYS:
+            global_only.append(k)
+            continue
+        if k in STRUCTURED_KEYS:
+            ok_s, sv = coerce_structured(k, v)
+            if not ok_s:
+                bad[k] = sv
+            elif diff_only and sv == _structured_default(k, snap, live_vals):
+                same.append(k)  # equal to the effective default ({} on every surface today)
+            elif not sv:
+                pass  # full mode: {} is the no-exemption value, nothing to pin
+            else:
+                coerced[k] = sv
+            continue
         if not diff_only:
             if k not in snap:
                 bad[k] = "not a cat_side/config key"
@@ -439,6 +493,7 @@ def register_workbook_result(
             "n_noop_nonlive": len(noop),
             "noop_nonlive": noop[:20],
             "float_kept_for_int": floatkept,
+            "global_only_dropped": global_only,
         }
         if not bad and not coerced:
             rep["reason"] = (

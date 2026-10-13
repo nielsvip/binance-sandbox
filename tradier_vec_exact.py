@@ -324,6 +324,9 @@ class VecExactOracle:
                 continue
             out.append({"type": typ, "qty": float(e.get("qty") or 0.0), "price": float(e.get("price") or e.get("exit_price") or 0.0),
                         "reason": str(e.get("reason") or e.get("exit_reason") or typ), "ts": t})
+            if typ == "OPEN" and e.get("carry_aug_qty"):
+                out[-1]["carry_aug_qty"] = float(e.get("carry_aug_qty") or 0.0)  # V17: live_action_for divides the carry out unless AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED
+                out[-1]["carry_aug_mult"] = float(e.get("carry_aug_mult") or 0.0)
         if not any(e["type"] == "CLOSE" for e in out):
             _hs = bar_hard_stop_event(npz, side, overrides)
             if _hs is not None:
