@@ -2420,3 +2420,123 @@ previous test and anticipate what is ahead"):**
   hustle eval is dropped; everything V17 adds afterwards (probe, surgeon, regime/365D, ablation, retest, focus) is greedy on
   top, so V17 ≥ the old main pass by construction and its extra time = the hustle time saved (+ tier floor). A/B #3 restarted
   with v8.
+
+## 97. V17 COMBO ENGINE — LEARNED + EXPLORED PATHS (2026-10-13)
+
+**User goal (verbatim):** "NOW START ON v17 so it LEARNS FROM PAST DATA AND STARTS IDENTIFYING AND EMPLOYING TENS OF THOUSANDS
+OF CUSTOM SWITCH/FILTER/TF COMBINATIONS THAT WILL FINALLY GET GAINS UP". The pilot lane owns `v15_pilot.py` (V17 SURGEON);
+this lane built the engine the surgeon calls: `tools/v17_combo_engine.py` (+ `data/v17_combo_library.sqlite`,
+`tests/test_v17_combo_engine.py` 12 tests, handoff `docs/v17_combo_engine.md`). Deployed s2 + S1, md5 `dc76fa82` (tool),
+`6a778e76` (library), `f3f8e7bd` (`data/v17_tf_semantics.json`).
+
+**API:** `search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budget_s=300, workers=4, stats_out=,
+evaluator=, windows=(30,)|(30,365), prepared_365=, accept=)` -> ranked verified combos `{overrides_delta, gain, base_gain, delta,
+trades, tim, dd, wr, recent_segment_gain, recent_delta, n_evals, origin, why, flags, tf, w365, regime_attr_365, steps}`;
+item 0 `kind:"joint"` only when the greedy-combined set beats the ORIGINAL base in a fresh **cache-off** re-evaluation that
+matches the greedy number exactly and passes the pilot's own gates (imported from v15_pilot: sanitized floor, TIM ≤ 80,
+DD ≤ 30, trades ≥ 10, `tim_guard_veto`, `trades_guard_veto`, `promotion_block_reason`, MAXAUG never 0, ABLATION never).
+
+**Combo = path:** 1–3 switch=value changes (ENTRY/REENTRY/AUGMENT/EXIT/SIZING/GLOBAL) + filter(s) at a TF (yellow headers)
+applied/removed + `FILTER_EXEMPTIONS` (exemption map / priors blocks) + numeric ×0.5…×2 inside the template span +
+AUGMENT_INTO_REENTRY family. Values only from the four TEMPLATE_* candidate sets / config field types, each through
+`switch_types.coerce(strict_unknown=True)`; refused/blocked/identity combos never evaluated. ~38–39k typed combos per board.
+
+**TF coherence (TF study lane, `docs/v17_tf_semantics.md`, `data/v17_tf_semantics.json`, WO-20261013-V17TF-001..004):**
+the engine has NO validity window or consumption memory for HTF signals — a D/4h STATE trigger re-opens on every flat 15m bar
+while true (COOLDOWN_BARS 0; measured RLCUSDT_LONG `BB_BREAKOUT_ENTRY_TF=D` 33 opens in 6 D bars, up to 11 per instance;
+94 re-opens inside one instance across the isolated runs, 61 without a fresh 15m cross), an HTF EVENT trigger lives one 15m
+bar (`BB_BOUNCE_ENTRY_TF`, which is also a global entry AND filter: opens 133 -> 0). Engine rules: C4 + C9 rejected before
+evaluation, C5 window ≤ arming-TF span (stocks D = 26 bars); C1/C2 combos down-ranked and re-offered as `tf_coherent`
+variants with a consumption rule (cooldown ≤ span) and/or an explicit 15m confirm. TF structure (htf, ltf_confirm,
+window_bars, rearm) is stored per combo in the library.
+
+**Library (learned from past data):** per-host `build-library` (progress done rows: naked + every yellow with delta > 0;
+delta-log positives of non-row phases incl. SURGEON symptom labels; v17_priors synergy + block->exemption; fleet endgame
+knowledge; regime features from each board's own NPZ window, no look-ahead) then `merge`. S1 (117 s) + s2 (377 s) merged:
+2,493 boards / 75,961 combos / 798,534 evidence rows; after the proofs 2,508 boards / 85,897 combos / 842,844 rows
+(44,514 engine evals appended, 514 regime-evidence rows), 169 MB. Generators: same-sym history, k=30 regime neighbours
+(z-scored side-adjusted trend, bar vol, log chop, range, bh, TIM, log trades), symptom fixes, regime fixes (dual runs),
+synergy, block->exemption, symptom paths, filter paths, exemption paths, numeric, AIR, pairs, tf_coherent, 15% exploration.
+
+**Search:** rounds until the budget is used — stage 1 screens the next slice of the quota-interleaved order on the full 30D
+(the gate window) in batched fork-pool waves; stage 2 = top ~5% to the recent 7D segment (+365D with ledgers in dual mode);
+stage 3 greedy-combines non-conflicting winners on the CURRENT best set (re-evaluated after every adoption;
+OLD_REGIME_ONLY = recent delta < −0.25 is not adopted, pilot ANTICIPATE parity); the next round starts from the improved set.
+FEW_TRADES flag = ≤3 changed trades or one trade > 70% of the change (ledger diff per adoption step).
+
+**Recent-slice law (finding):** `evaluate_v12._exact_30d_slice` honours only window 1 and 7 (crypto calendar days, stocks
+sessions); `prepare_batch(ss, 8)` (and any 3..15 other than 7) evaluates the FULL 30D. The engine uses 7. The pilot's
+`_v17_recent_eval` / `_v17_regime_pick` use `rd` in 3..15 (default 8) -> its "recent" check is the 30D window except rd=7
+(handed to the pilot lane).
+
+**Proof (s2 only, one board at a time, 4 workers, nice 19, start = newest progress JSON `cumulative_overrides` =
+published final, same NPZ for base and combos, `V12_ALLOW_STALE_NPZ=1` as the fleet launches; all numbers real engine evals,
+joint verified cache-off; pool_sharpe single-board = [DIAGNOSTIC ONLY]):**
+
+| sym_side | published (its NPZ) | fresh base, current NPZ | joint 30D (verified) | lift | screened | evals | ev/s | adopted | 7D base -> joint |
+|---|---|---|---|---|---|---|---|---|---|
+| RLCUSDT_LONG | 30.11 (same NPZ) | 30.11 | 64.55 (110 t, TIM 23.4, DD 4.1) | +34.44 | 5,280 | 6,085 | 25.3 | 12 | 9.58 -> 25.36 |
+| UNIUSDC_SHORT | 50.43 (same NPZ) | 50.43 | 56.04 (170 t, TIM 43.3, DD 7.7) | +5.61 | 3,600 | 3,628 | 13.5 | 4 | 5.05 -> 22.28 |
+| VALE_SHORT | 21.00 (older NPZ) | 16.87 | 23.75 (19 t, TIM 63.1, DD 1.1) | +6.88 | 5,472 | 5,839 | 21.8 | 7 | 0.85 -> 1.19 |
+| COIN_LONG | 6.12 (older NPZ) | 6.40 | 21.56 (63 t, TIM 24.0, DD 3.2) | +15.16 | 7,080 | 7,844 | 33.8 | 12 | 1.42 -> 2.59 |
+
+These final runs were warm (the library already held the earlier engine runs of the same board); first-contact runs:
+VALE +6.73 (120 s smoke), RLC +16.79, UNI +4.21, COIN +15.67 (3,168 screened). Throughput at s2 load 8–13: 13.5–33.8
+evals/s per host-run = 3.4–8.4 evals/s/core (eval-cache hits included; CPU 0.08–0.21 s/eval), 800–1,830 combos screened
+per minute; at load 30–40: 7–12 evals/s. Generation 170 s -> 2 s after the coherence fix (early runs lost ~100 s to it).
+
+**Dual 30D+365D (240 s):** VALE_SHORT 30D +5.47, 365D 8.26 -> 11.08, DD 13.99 -> 13.71 (TREND_DOWN +1.36, TREND_UP +0.72,
+RANGE −0.05 pp); COIN_LONG 30D 6.40 -> 18.66, 365D −4.67 (DD 36.8 invalid) -> +7.01 (DD 29.8 valid); RLCUSDT_LONG 30D +1.87,
+365D −2.42 -> −1.75. **Overfitting caught:** RLC's largest 30D combo `GOLDEN_RULE_BASE_USD=0 + REENTRY_TIER1_SIZE_MULT=0.5`
+(+9.49 on 30D, bh +243%) gives 365D −23.23 with DD 38.6% (invalid) -> rejected; the 30D-only RLC lift (+34.44) must not go
+live without the 365D step. Many adoption steps carry FEW_TRADES (2–6 changed trades); COIN's top steps have recent delta 0.0
+(30D-only evidence). Promotion stays with the pilot (its gates + 365D policy §92).
+
+## 98. LIVE TRADES THE VECTOR — EXITS NEVER LOST, LIVE-ONLY PATHS OFF, GUARANTEED STOPS, LATEST BOARD LIVE (USER 2026-10-13)
+
+**User rules (verbatim intent):** "NOTHING can ever be live only — live trades EXACTLY what the vectorized best outcome switches
+dictate, nothing more nothing less, 0 tolerance; only the paper traders can diverge." "GUARANTEED STOP existing as soon as any
+position opens, stock or crypto, so that when any system is down it will always get rid of a position." "NO exit can EVER be
+skipped AT ALL for ANY REASON."
+
+**Evidence that live was NOT trading the vector (2026-10-13):**
+- Binance 7d (income API): ang +5.24, fin −2.04, flz −2.35, inf −11.15, men +13.52 realized / −24.48 uPnL. The internal ledger
+  `data/per_trade_returns` claimed every account profitable (men ≈ +$409; rows with `entry_price 0.0`) — it is NOT truth.
+- 63 crypto sym_sides whose live effective settings == their latest board: vec last-7d positive on 48/63 (+$1,268 sim), Binance
+  sign agreed on only 30/60. Same settings, different trades.
+- NEARUSDC_LONG ang: vec OPEN 10-11 23:45 == live BUY 23:43; vec CLOSE 10-12 00:32 -> `POSITIONS_SNAPSHOT_LOCK_BUSY` returned an
+  hours-old pre-OPEN snapshot -> `POSITIONS_BROKER_MISMATCH local=4 broker=0` -> exit skipped -> `BLOCKED_DISPATCH_TIMEOUT (act
+  consumed, no auto-retry)` -> live held 25h, sold 5.231 (−10.8%). No FIXED_STOP existed (first ang FIXED_STOP line 10-13 01:39).
+- Fleet log tallies (5 crypto accounts): ~1/3 of vec OPENs expired unconsumed (`BLOCKED_SKIPPED_STALE`, 4-bar catch-up), plus 24
+  `ULTIMATE_DC_4h` hard stops and 38 WT exits expired; `CANCELLED_DISPATCH` 819, `BLOCKED_DISPATCH_TIMEOUT` 175. Root: loop
+  latency (one order 80 s+: redis lock wedge 17 s, 2×20 s price timeouts, busy positions lock). Latency itself NOT yet fixed.
+- 14.6% of closes came from live-only paths: VEC_STALE_FLATTEN 207, MARGIN_FREE_FOR 142, SUBSTITUTION_FOR 115,
+  VEC_CONVERGE_TO_FLAT 45, CB_HTF_EXHAUST 42.
+- 67/130 crypto boards published on S1 were not live: go-live selection (`data/avg_delta_selection.json`) pointed at old
+  campaign files (DOGEUSDC_LONG -> destroyed s6 run30) and a manual stalefix run registered ~400 old sets incl. negative
+  `_NEG_BLOCK` ones (DOGE live −3.16% vs board +50.18%, md5 5be34dd3).
+- Stocks: 36/37 Tradier positions had NO broker stop — the stop wire call was refused `ORDER_DEDUPE_BLOCK:NOT_VIA_EXECUTE_NOW`.
+
+**Fixes (2026-10-13 21:3x–22:0xZ):**
+1. `positions_truth.BrokerPositions.snapshot`: busy single-flight returns ONLY a fresh snapshot, else None (unknown).
+   `ez_pre_order_check`: a stale snapshot can never veto an exit (`SKIP_BROKER_FLAT` only on fresh broker truth).
+2. Exit-owed is the law: a vec full exit (CLOSE / REDUCE-to-flat) is owed from hand-out until a FORCED broker read shows flat.
+   Local flat never clears it (`vec_exact.exit_owed_due`); local-flat-with-owed -> forced read: holds -> CLOSE re-sent now,
+   flat -> cleared, unknown -> kept. A vec CLOSE met with local flat is owed. EXPIRED vec full exits are owed
+   (`pop_expired_exits`); opened_at unknown -> owed; only exits decided before this live entry are logged
+   `[VEC_EXACT_EXIT_PRIOR_LIFECYCLE]` (they belong to an earlier vec position live never held).
+3. Live-only closes OFF by their own switches, mirrored in QuickConfig (§68.1): `SUBSTITUTION_CLOSE_ENABLED`,
+   `MARGIN_FREE_CLOSE_ENABLED`, `CB_HTF_EXHAUST_EXIT_ENABLED` = False. `verify_live_order_switches` n_hard 0
+   (`FH_MOMENTUM_FILTER_TF` now read via `_psym_get`).
+4. GUARANTEED STOP: crypto FIXED_STOP exchange order is never cancelled on local flat (sweep, hourly reconcile, ensure all need a
+   forced broker read; unknown keeps it). Stocks: stop PLACE/CANCEL inside `execute_now_context("tradier")`, own protective stop
+   never blocks exits (dedupe guard), cancel-before-exit handoff + re-ensure, broker-confirmed-flat before any cancel, registry
+   save merges per account, entry-price fallback level. Audit tools (read-only): scratch `stop_audit.py` / `tradier_stop_audit.py`
+   pattern — every open position must list a broker STOP.
+5. GO-LIVE = latest published board per sym_side (`tools/v15_published_selection.py`, `v15_persym_golive.py --published
+   --pin-all`, chain step 5b); `_NEG_BLOCK` never appended/kept; perf tiers size negative gainers minimal, never block.
+
+**Still open (not fixed in this pass):** loop latency (the cause of expiries/cancellations); remaining live gates that can refuse a
+vec-decided OPEN/AUGMENT outside the 10 `_vec_exact_reason_ok` exemptions (e.g. HARD_SIZE_GATE); live sizing multipliers
+(BREAKOUT_SIZE_LADDER ×3, LS_REBALANCE) still apply per §68.3a; partial vec REDUCEs skipped while in flight are not owed;
+`data/per_trade_returns` ledger must be rebuilt from Binance fills; Mac v12_quick_engine mirror fields not yet pushed to S1.

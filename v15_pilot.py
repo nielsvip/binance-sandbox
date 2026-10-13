@@ -6536,17 +6536,61 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return _ce
         except Exception:
             return None
-    def _v17_combo_search(sym: dict, deadline: float) -> list:
-        # tools/v17_combo_engine.search (combo lane: learned library + priors + exploration, successive halving over real
-        # evals) — fail-open when absent. Its combos become surgeon paths; nothing is adopted without our own fresh eval.
+    class _V17PilotEval:
+        # combo-engine evaluator on the pilot's own pre-forked pool (30D) + main-process evals for 7D / 365D / ledgers —
+        # the engine's default evaluator would fork a second pool after threads exist (deadlock risk, docs/v17_combo_engine.md)
+        def __init__(self):
+            self.workers = _n_proc
+            self.n = 0
+            self.cpu_s = 0.0
+        def __call__(self, items, deadline=None):
+            from tools import v17_combo_engine as _CEc
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_c
+            out = {}
+            pool_it = [(k, ov) for (k, w, ov, led) in items if int(w) == 30 and not led]
+            rest = [(k, int(w), ov, bool(led)) for (k, w, ov, led) in items if not (int(w) == 30 and not led)]
+            sov = {}
+            for k, ov in pool_it:
+                sov[k] = sanitize_overrides(dict(ov), defaults)[0]
+                _submit(sov[k])
+            _flush_batch()
+            tmo = (deadline + 30.0) if deadline else (_t.time() + YELLOW_TIMEOUT * (len(pool_it) // max(1, _n_proc) + 4))
+            for k, ov in pool_it:
+                if deadline and _t.time() > deadline + 30.0:
+                    break
+                res, err = _get("COMBO", None, "", "", "COMBO_ENGINE", sov[k], tmo, float(cumulative_gain))
+                out[k] = (_CEc._compact(res, False) if res else None, err)
+            for k, w, ov, led in rest:
+                if deadline and _t.time() > deadline:
+                    break
+                prep_w = prepared if w == 30 else (_v17_rg.get("prep") if w == 7 else _v17_rg.get("prep365"))
+                if prep_w is None:
+                    out[k] = (None, f"no prepared {w}D")
+                    continue
+                try:
+                    out[k] = (_CEc._compact(_eps_c(prep_w, sanitize_overrides(dict(ov), defaults)[0], w, led), led), "")
+                except Exception as _ce2:
+                    out[k] = (None, f"ERR {_ce2}"[:120])
+            self.n += len(out)
+            return out
+    def _v17_combo_search(sym: dict, deadline: float, budget_s: float) -> list:
+        # tools/v17_combo_engine.search (combo lane: learned library 85k combos + priors + TF coherence + exploration,
+        # successive halving over real evals, dual 30D+365D windows so 365D-harmful combos are rejected) — fail-open when
+        # absent. Its verified combos become pinpoint candidates; nothing is adopted without the pilot's own fresh eval + gates.
         _ce = _v17_combo_mod()
-        if _ce is None or not hasattr(_ce, "search") or os.environ.get("V15_V17_COMBO_ENGINE", "1") != "1":
-            return []
-        left = max(0.0, deadline - _t.time())
-        if left < 30.0:
+        if _ce is None or not hasattr(_ce, "search") or os.environ.get("V15_V17_COMBO_ENGINE", "1") != "1" or budget_s < 30.0:
             return []
         try:
-            res = _ce.search(prepared, new_symside, dict(cumulative_overrides), dict(sym), dict(_v17.get("regime") or {}), budget_s=left * float(os.environ.get("V15_V17_COMBO_SHARE", "0.4")), workers=_n_proc)
+            _v17_recent_eval(cumulative_overrides)  # prepares the 7D slice
+            if _v17_rg.get("prep365") is None and os.environ.get("V15_V17_COMBO_365", "1") == "1":
+                from tools.opt.v12_pilot import prepare_batch as _pb_c
+                _p3c = _pb_c(new_symside, 365)
+                if isinstance(_p3c, dict) and not _p3c.get("_stale"):
+                    _v17_rg["prep365"] = _p3c
+            dual = _v17_rg.get("prep365") is not None
+            stats = {}
+            res = _ce.search(prepared, new_symside, dict(cumulative_overrides), symptoms=dict(sym or {}), regime=dict(_v17.get("regime") or {}), budget_s=budget_s, workers=_n_proc, stats_out=stats, evaluator=_V17PilotEval(), recent_prepared=_v17_rg.get("prep"), windows=(30, 365) if dual else (30,), prepared_365=_v17_rg.get("prep365"))
+            _v17.setdefault("combo_engine", []).append({k: stats.get(k) for k in ("wall_s", "n_evals", "evals_per_s", "combos_per_min", "lift")} if isinstance(stats, dict) else {})
         except Exception as _cee:
             print(f"[V17-WARN] combo engine search failed: {_cee}", flush=True)
             return []
@@ -6554,18 +6598,32 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         for i, c in enumerate(res or []):
             if not isinstance(c, dict):
                 continue
-            dov = next((c.get(k) for k in ("delta_ov", "overrides", "changes", "ov") if isinstance(c.get(k), dict)), None)
+            dov = next((c.get(k) for k in ("overrides_delta", "delta_ov", "overrides", "changes", "ov") if isinstance(c.get(k), dict)), None)
             if not dov:
                 continue
             dov = {k: v for k, v in dov.items() if not (k in cumulative_overrides and _same_val(cumulative_overrides.get(k), v))}
             if not dov or _v17_blocked(dov):
                 continue
             k0 = next(iter(dov))
-            lab = str(c.get("label") or "+".join(f"{k}={v}" for k, v in list(dov.items())[:4]))[:160]
+            lab = str(c.get("why") or "+".join(f"{k}={v}" for k, v in list(dov.items())[:4]))[:120]
             _rw = _v17_find_row(k0, dov[k0])
-            out.append({"label": f"SURGEON:combo:{lab}", "delta_ov": dov, "sw": k0, "cand": dov[k0], "sheet": _rw[0] if _rw else "V17", "row": _rw[1] if _rw else None, "symptom": str(c.get("symptom") or "combo_engine"), "score": float(c.get("score") or c.get("delta") or 0.0), "parts": [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in dov.items()]})
-        print(f"[SURGEON] {new_symside} combo engine offered {len(out)} combos", flush=True)
+            out.append({"label": f"SURGEON:combo:{c.get('kind')}:{lab}", "delta_ov": dov, "sw": k0, "cand": dov[k0], "sheet": _rw[0] if _rw else "V17", "row": _rw[1] if _rw else None, "symptom": "combo_engine", "score": float(c.get("delta") or 0.0), "parts": [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in dov.items()]})
+        print(f"[SURGEON] {new_symside} combo engine offered {len(out)} combos (dual={dual}) stats={_v17.get('combo_engine', [{}])[-1]}", flush=True)
         return out
+    def _v17_combo_step(deadline: float, tag: str = "P3_COMBO"):
+        # fixed share of the pinpoint budget (V15_V17_COMBO_SHARE of P3): the engine's joint set first, then its singles,
+        # adopted greedily vs the latest cumulative with the pilot's gates + ANTICIPATE (fresh evals, NO-LIES)
+        if _v17_phase_done(tag) or _v17_combo_mod() is None:
+            return
+        ph = _v17_phase_start(tag)
+        try:
+            sym, reasons, ctx = _v17_diagnose()
+        except Exception:
+            sym = {}
+        cands = _v17_combo_search(sym, deadline, max(0.0, deadline - _t.time() - 20.0))
+        if cands:
+            _v17_greedy(cands, "v17_combo_engine", "COMBO", max(deadline, _t.time() + 60.0), ph, pick=_v17_regime_pick)
+        _v17_phase_end(ph, offered=len(cands))
     def _v17_combo_append(items: list):
         # every surgeon-evaluated path goes to the combo library so V17 keeps learning board after board (fail-open)
         _ce = _v17_combo_mod()
@@ -6612,9 +6670,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if ((_rgo or {}).get("previous") or {}).get("old_set_better_recent_by") and _v17_rg.get("prev_diff"):
                 sym["old_set_recent"] = {"n": len(_v17_rg["prev_diff"]), "size": float(_rgo["previous"]["old_set_better_recent_by"])}
             paths = _v17_surgeon_paths(sym, reasons)
-            _cmb = _v17_combo_search(sym, deadline)
-            if _cmb:
-                paths = _cmb + paths  # verified-by-the-engine combos first; adopted only through the same greedy gates
+            _cmb = []  # the combo engine runs as its own pinpoint step (_v17_combo_step, fixed budget share)
             rec = {"round": rnd, "symptoms": sym, "ctx": ctx, "top_exit_reasons": reasons["exit"].most_common(5), "paths": len(paths), "adopted": []}
             print(f"[SURGEON] {new_symside} round {rnd}: gain={ctx['gain']} tim={ctx['tim']} dd={ctx['dd']} bh={ctx['bh']} symptoms={ {k: v['size'] for k, v in sym.items()} } paths={len(paths)}", flush=True)
             n0 = len(_v17.get("promotions") or [])
@@ -6838,6 +6894,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     break
                 _g_it = float(cumulative_gain)
                 _t_it = _t.time()
+                if _it == 1:
+                    try:
+                        _v17_regime()
+                    except Exception:
+                        pass
+                    _v17_combo_step(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_COMBO_SHARE", "0.35")))
                 # SURGEON first: it owns the guaranteed budget (USER 2026-10-13); generic steps use what it leaves
                 _v17_surgeon(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_SURGEON", "0.6")), f"P3_SURGEON_{_it}")
                 _v17_focus_iter[0] = _it

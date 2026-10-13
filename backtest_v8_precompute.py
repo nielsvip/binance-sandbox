@@ -2780,7 +2780,10 @@ def _inject_market_sentiment(out_dir, symbols):
         p = out_dir / f"{sym}.npz"
         mss = np.array([ts_score.get(int(t), 50.0) for t in ts], dtype=np.float32)
         z['market_sentiment_score'] = mss
-        np.savez_compressed(str(p), **z)
+        # USER 2026-10-13: atomic like the main save path — a kill mid-write must never leave a truncated NPZ.
+        _tmp = out_dir / f".{sym}.{os.getpid()}.inject.tmp.npz"
+        np.savez_compressed(str(_tmp), **z)
+        os.replace(str(_tmp), str(p))
         updated += 1
     logger.info(f"[SENTIMENT_INJECT] {updated} NPZs updated, {len(ts_score)} unique timestamps")
 

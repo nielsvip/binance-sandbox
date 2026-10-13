@@ -8515,7 +8515,11 @@ paper_trading_logger.propagate = False
 paper_trading_logger.setLevel(logging.DEBUG)
 for h in list(paper_trading_logger.handlers):
     paper_trading_logger.removeHandler(h)
-paper_logs_dir = Path.home() / "logs"
+if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
+    import tempfile as _tf2
+    paper_logs_dir = Path(os.environ.get("EZ_TEST_LOG_DIR") or os.path.join(_tf2.gettempdir(), "ez_manage_test_logs"))
+else:
+    paper_logs_dir = Path.home() / "logs"
 paper_logs_dir.mkdir(parents=True, exist_ok=True)
 paper_log_filename = str(paper_logs_dir / "paper_trading.log")
 paper_file_handler = RotatingFileHandler(
@@ -9758,10 +9762,23 @@ def setup_logger_per_account(
         stream_handler.setFormatter(stream_formatter)
         stream_handler.addFilter(ActiveAccountStreamFilter(set(account_list)))
         logger_obj.addHandler(stream_handler)
+        # 2026-10-13 NEVER-AGAIN: tests importing this module wrote fixture
+        # lines into LIVE ~/logs/ez_manage_{acct}.log — indistinguishable from
+        # real money events (cf. tradier 123456 incident same day). Under
+        # pytest every file handler goes to a temp dir; live workers never
+        # import pytest so they are unaffected.
+        _ez_log_dir = str(Path.home() / "logs")
+        if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
+            import tempfile as _tf
+            _ez_log_dir = os.environ.get("EZ_TEST_LOG_DIR") or os.path.join(_tf.gettempdir(), "ez_manage_test_logs")
+            try:
+                os.makedirs(_ez_log_dir, exist_ok=True)
+            except Exception:
+                pass
         for acct in account_list:
             base_path_str = str(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'))
             filename = os.path.join(
-                str(Path.home()), "logs", f"ez_manage_{acct.lower()}.log"
+                _ez_log_dir, f"ez_manage_{acct.lower()}.log"
             )
             file_handler = RotatingFileHandler(
                 filename,
@@ -49938,6 +49955,13 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             try:
                 _amt_owed = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
                 if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed):
+                    _ow_snap = await _ptruth.ez_broker(trade_manager, _acct or account_key, config, logger).snapshot(force=True, reason=f"exit_owed_retry {position_key}")
+                    if _ow_snap is not None and abs(float(_ow_snap.amount(_sym, _side))) <= 0:
+                        _vx.exit_owed_drop(position_key)  # broker confirms FLAT (inf WUSDT 22:03: filled while local stayed stale 150s+)
+                        logger.info(f"[VEC_EXACT_EXIT_OWED] {position_key}: broker confirms FLAT (local stale {_amt_owed:.6f}) — owed exit cleared")
+                        return True
+                    if _ow_snap is not None:
+                        _amt_owed = abs(float(_ow_snap.amount(_sym, _side)))  # close exactly what the broker holds
                     _owed_reason = _vx.tagged_reason({"reason": "VEC_EXIT_OWED paper-flat-live-holds-retry"})
                     logger.warning(f"[VEC_EXACT_EXIT_OWED] {position_key}: live holds {_amt_owed:.6f}, vec full-close owed -> CLOSE retry")
                     try:

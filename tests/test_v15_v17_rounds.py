@@ -181,7 +181,7 @@ def test_regime_wiring():
 
 
 def test_combo_engine_wiring_fail_open():
-    for tok in ("def _v17_combo_search(", "def _v17_combo_append(", "import tools.v17_combo_engine as _ce", "_v17_combo_append(first)", "SURGEON:combo:"):
+    for tok in ("def _v17_combo_search(", "def _v17_combo_append(", "import tools.v17_combo_engine as _ce", "_v17_combo_append(first)", "SURGEON:combo:", "class _V17PilotEval:", "def _v17_combo_step(", "windows=(30, 365) if dual else (30,)", "V15_V17_COMBO_SHARE"):
         assert tok in SRC, tok
 
 
