@@ -1621,6 +1621,18 @@ def tick(args, cfg, now):
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
         return acts
 
+    _CONT_FREEZE_ON = os.environ.get("V15_SCHED_CONT_NPZ_FREEZE", "1") == "1"
+
+    def _cont_sides(sym_):
+        """USER 2026-10-13 V16: sides of sym_ with an UNFINISHED board in the round (sliced / crashed resume / needs_redo)."""
+        return [ss_ for ss_ in (f"{sym_}_LONG", f"{sym_}_SHORT") if (ss_ in started and ss_ not in done) or ss_ in redo]
+
+    def _cont_age_ok(rd_):
+        try:
+            return float(rd_.get("age_h")) <= float(os.environ.get("V15_CONT_NPZ_MAX_AGE_H", "24"))
+        except (TypeError, ValueError):
+            return False
+
     released = {}
     for hn_ in list(held):
         for sym_ in list(held[hn_]):
@@ -1693,6 +1705,12 @@ def tick(args, cfg, now):
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
                 continue
             rd = is_ready(h["name"], sym)
+            _cont_ss = _cont_sides(sym)
+            if not rd.get("ok") and _cont_ss and _CONT_FREEZE_ON and str(rd.get("reason") or "").startswith(("tail-stale:", "stale:")) and _cont_age_ok(rd):
+                # USER 2026-10-13 V16: an unfinished board resumes on the NPZ it was measured on (RULE#4) — a tail-stale
+                # gate would hold it forever, a rebuild would wipe it. Frozen resume is consistent by construction.
+                log.setdefault("cont_npz_frozen", []).append(f"{h['name']}:{sym}:{','.join(_cont_ss)}:{rd.get('reason')}")
+                rd = dict(rd, ok=True)
             if not rd.get("ok"):
                 _rsn = rd.get("reason") or ""
                 if _rsn.startswith("tail-stale:"):
@@ -1710,7 +1728,12 @@ def tick(args, cfg, now):
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
                 log.setdefault("skipped_pair_gate", []).append(f"{h['name']}:{sym}:" + str([a.get('side') for a in acts]))
                 continue
-            if needs_slot and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
+            _frz_why = ("continuation " + ",".join(_cont_ss)) if _cont_ss else ("sibling running " + ",".join(x for x in (f"{sym}_LONG", f"{sym}_SHORT") if x in running) if any(x in running for x in (f"{sym}_LONG", f"{sym}_SHORT")) else "")
+            if needs_slot and _CONT_FREEZE_ON and _frz_why and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
+                # USER 2026-10-13 V16: a rebuild here archived whole boards (NPZ-CHANGED-REFILL, 120k rows wiped fleet-wide)
+                # or tripped the FINAL midrun-swap refusal of a running sibling. Fresh boards still get the JIT NPZ.
+                log.setdefault("npz_frozen", []).append(f"{h['name']}:{sym}:{_frz_why}")
+            elif needs_slot and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
                 pr = npz_prep(h, sym)
                 if pr is not None and not pr.get("ok"):
                     log["skipped_unready"][sym] = f"{h['name']}: npz_prep {pr.get('reason')}"
@@ -1779,6 +1802,8 @@ def tick(args, cfg, now):
             for _s, _ns in order:
                 if not _ns or _s in held[h["name"]] or f"{_s}_LONG" in running or f"{_s}_SHORT" in running:
                     continue
+                if _CONT_FREEZE_ON and _cont_sides(_s) and _cont_age_ok(readiness_by_host.get(h["name"], {}).get(_s) or {}):
+                    continue  # USER 2026-10-13 V16: never prefetch-rebuild under an unfinished board (RULE#4 wipe); past the age cap it refreshes
                 if venue_of(_s) not in h["venues"] or not _venue_allowed(_s, _native_syms, phase=_phase):
                     continue
                 _pf.append(_s)

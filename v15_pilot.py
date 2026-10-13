@@ -93,7 +93,7 @@ GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}  # template switch-name font = skip row
 YELLOW_TIMEOUT = 10.0
 YELLOW_MIN_SHARED_TOKENS = int(os.environ.get("V15_YELLOW_MIN_SHARED", "2"))  # USER 2026-09-30 yellow = >=2 shared name tokens
 LIVE_TIMEOUT = 900.0
-XLSX_SAVE_EVERY_S = 120.0
+XLSX_SAVE_EVERY_S = float(os.environ.get("V15_XLSX_SAVE_EVERY_S", "600"))  # USER 2026-10-13 V16: 120s saves cost 11% of fill time (28-56s each loaded); JSON is truth, slice/DONE always save
 # F (HUSTLE_DELTA) stays blank by default — worst_first system does not use it (USER 2026-09-28)
 WRITE_HUSTLE = os.environ.get("V15_WRITE_HUSTLE", "0") == "1"
 # These tabs' switches reach the vector engine only via _apply_new_audit_causal, purged to a
@@ -2620,6 +2620,8 @@ _POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 2}  # USER 2026-10-0
 # rest deferred (NOT sampled/hollow) for phase-2 expansion on promoted rows. Target: 10-min worst_first.
 _COARSE_CAP = int(os.environ.get("V15_COARSE_YELLOW_CAP", "24"))
 _COARSE_ON = os.environ.get("V15_COARSE_SWEEP", "1") == "1"
+_COARSE_FIRST_PASS = _COARSE_ON and os.environ.get("V15_COARSE_NO_SAMPLING", "1") == "1"  # USER 2026-10-13 V16: coarse cap independent of possym sampling
+_COARSE_INLINE = _COARSE_ON and os.environ.get("V15_COARSE_INLINE", "1") == "1"  # USER 2026-10-13 V16: a moving row evaluates its deferred yellows on the spot
 
 
 def _coarse_trim(kept, ev, cap):
@@ -2629,6 +2631,32 @@ def _coarse_trim(kept, ev, cap):
         return list(kept), []
     ranked = sorted(kept, key=lambda h: ev.get(h, (0, 0)), reverse=True)
     return ranked[:cap], ranked[cap:]
+
+
+def _settle_promoted_holes(done: dict, keys, reasons: dict) -> list:
+    """USER 2026-10-13 V16 (no-wipe REDO): a PROMOTED row whose only hole is uncalculated yellow cells
+    (sampled-cells / incomplete-pending with a settled naked delta) is NOT re-filled — the chain has
+    passed it (§56.0 slow-cell law: never promoted after the fact), so re-measuring it would need a full
+    board wipe. Its missing cells become `chain_passed_filters` (blank, booked, never a number) and the
+    row is complete. Rows without a settled delta, tab-level eras, policy skips: untouched. Pure (tested).
+    Returns the keys settled."""
+    settled = []
+    for k in list(keys or []):
+        v = (done or {}).get(k)
+        if not isinstance(v, dict) or not v.get("promoted") or v.get("delta") is None:
+            continue
+        cls = str((reasons or {}).get(k, "")).split(":")[0]
+        if cls not in ("sampled-cells", "incomplete-pending"):
+            continue
+        if v.get("tab_level_excluded") or "RAMFP" in str(v.get("reason") or ""):
+            continue
+        cp = list(v.get("sampled_out_filters") or []) + list(v.get("missing_yellows") or [])
+        v["chain_passed_filters"] = sorted(set(list(v.get("chain_passed_filters") or []) + cp))
+        v["sampled_out_filters"] = []
+        v["missing_yellows"] = []
+        v["complete"] = True
+        settled.append(k)
+    return settled
 _POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "3"))  # USER 2026-10-06: sampling must speed sheets ~70-80% -> min evidence 3 sym_sides (= template writer --min-n); was 20 (USER 2026-10-01)
 _ZERO_MIN_N_ROW = int(os.environ.get("V15_ZERO_MIN_N_ROW", "15"))
 _ZERO_MIN_N_CELL = int(os.environ.get("V15_ZERO_MIN_N_CELL", "10"))
@@ -4250,8 +4278,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if _coarse_expand:
             print(f"[COARSE-EXPAND] {new_symside} {len(_coarse_expand)} promoted rows earn full yellow matrix this pass", flush=True)
     _ps_cat = map_key_for_symside(new_symside)
-    _ps_json = _possym_load_nsym(_ps_cat) if (_ps_on or _redo_heal) else {}
-    _prio = none_priority_evidence(_ps_cat) if (_ps_on or _redo_heal) else {"rows": {}, "cells": {}}
+    _ps_json = _possym_load_nsym(_ps_cat) if (_ps_on or _redo_heal or _COARSE_FIRST_PASS) else {}
+    _prio = none_priority_evidence(_ps_cat) if (_ps_on or _redo_heal or _COARSE_FIRST_PASS) else {"rows": {}, "cells": {}}
     if _ps_on and _prio.get("rows"):
         print(f"[NONE-PRIORITY] {new_symside} cat={_ps_cat} evidence rows={len(_prio['rows'])} cells={len(_prio['cells'])} — unevidenced yellow cells always calculated", flush=True)
     _zero_on = _zero_enabled()
@@ -4448,11 +4476,37 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["prior_rank"] = {h: _prior_rank(_prior_entry(_prior, "filter_opt", str(h).strip())) for h in info["hdrs"]}
             except Exception as _pre:
                 print(f"[PRIOR-WARN] {sname}!{rr} {_pre} — row calculated", flush=True)
-        if info["kind"] == "eval" and (_ps_on or _redo_heal):
+        if info["kind"] == "eval" and (_ps_on or _redo_heal or _COARSE_FIRST_PASS):
             try:
                 _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
                 if _isd:
                     _ps_count(sname, "default", True)
+                elif not _ps_on and not _redo_heal:
+                    # USER 2026-10-13 V16 SPEED: the coarse cap rode on possym sampling, so V15_POSSYM_SAMPLING=0
+                    # silently ran every row with its full ~205-yellow matrix (rows >10s = 40% of fill time).
+                    # Pass 1 keeps the top-K prior-ranked yellows; a MOVING row evaluates its deferred cells
+                    # inline vs the same chain state (COARSE-INLINE), the rest go to the FOCUS round (round 2).
+                    from tools.v15_cat_avg_matrix import norm_cand as _prio_norm
+                    _prio_rk = f"{sname}!{str(switch).strip()}={_prio_norm(cand)}"
+                    _kept = []
+                    _kept_ev = {}
+                    for _h in info["hdrs"]:
+                        _f, _o = _h.split("=", 1)
+                        _kept.append(_h)
+                        if _is_none_priority(_prio, f"{_prio_rk}@{_h}"):
+                            _kept_ev[_h] = (9999, 9999)
+                            continue
+                        _fp, _fn = _ps_filter_ev(sname, _f.strip(), _o.strip(), _pp, _nn)
+                        try:
+                            _kept_ev[_h] = (int(_fp), int(_fn))
+                        except Exception:
+                            _kept_ev[_h] = (0, 0)
+                    if (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
+                        _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
+                        for _dh in _deferred:
+                            info.setdefault("coarse_deferred_filters", []).append(_dh)
+                            _ps_count(sname, "coarse_deferred", False, "cell")
+                    info["hdrs"] = _kept
                 elif _redo_heal:
                     # USER 2026-10-10 HEAL-COARSE: the heal runs sample-free (deterministic re-skip) but
                     # evidence-capped (top-K prior-ranked yellows, rest deferred) — minutes, not hours.
@@ -4861,6 +4915,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         import hashlib as _fh
         t0 = _t.time()
         budget = float(_tier_focus_s)
+        # USER 2026-10-13 V16 BH-CHASE ("every sym_side beats bh"): a board still below B&H after round 1 gets the
+        # larger round-2 budget + wider top_k (same honest greedy gates — the target is a goal, never forced).
+        _bh_chase = False
+        try:
+            _bh_f = float(bh) if bh is not None else None
+        except Exception:
+            _bh_f = None
+        if os.environ.get("V15_BH_CHASE", "1") == "1" and _bh_f is not None and float(cumulative_gain) < _bh_f and _tier_name != "LOST_CAUSE":
+            _bh_chase = True
+            budget = max(budget, float(os.environ.get("V15_FOCUS_S_BHCHASE", "900")))
         n_eval = [0]
         _sk = lambda ov: _fh.md5(json.dumps(sorted((k, str(v)) for k, v in ov.items())).encode()).hexdigest()
         out = {"tier": _tier_name, "budget_s": budget, "evals": 0, "promotions": [], "steps": {}, "entry_gain": float(cumulative_gain)}
@@ -4882,6 +4946,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             deadline = t0 + budget
             max_evals = int(os.environ.get("V15_FOCUS_MAX_EVALS", "2500"))
             top_k = int(os.environ.get("V15_FOCUS_TOP_K", "12"))
+            if _bh_chase:
+                top_k = max(top_k, int(os.environ.get("V15_FOCUS_TOP_K_BHCHASE", "24")))
+                max_evals = max(max_evals, int(os.environ.get("V15_FOCUS_MAX_EVALS_BHCHASE", "6000")))
+                out["bh_chase"] = {"bh": _bh_f, "entry_gain": float(cumulative_gain), "budget_s": budget, "top_k": top_k}
+                print(f"[BH-CHASE] {new_symside} gain {float(cumulative_gain):.4f} < bh {_bh_f:.4f} -> round-2 budget {budget:.0f}s top_k {top_k}", flush=True)
             def _left():
                 return (deadline - _t.time()) > 5.0 and n_eval[0] < max_evals
             def _ev(label, ov, sw="", c=""):
@@ -5246,16 +5315,55 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             st["prior_skipped"] = []
             _prior_stats["revived"] += 1
             _pv_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_pv_hdrs) // max(1, _n_proc))) + 2)
+            _pv_ovs = {}
             for _pv_hdr in _pv_hdrs:
                 _pv_f = st["h2f"][_pv_hdr]
                 _pv_ov = dict(switch_variant)
                 _pv_ov[_pv_f["filter"]] = _parse_opt_value(_pv_f["opt"], defaults.get(_pv_f["filter"]))
-                _pv_ov = sanitize_overrides(_pv_ov, defaults)[0]
+                _pv_ovs[_pv_hdr] = sanitize_overrides(_pv_ov, defaults)[0]
+                _submit(_pv_ovs[_pv_hdr])  # V16: whole batch to the pool first, then collect (was one-by-one serial)
+            _flush_batch()
+            for _pv_hdr in _pv_hdrs:
+                _pv_ov = _pv_ovs[_pv_hdr]
                 st["hdrs"].append(_pv_hdr)
                 plan["items"].append((_pv_hdr, _pv_ov))
                 results[_pv_hdr] = _get(sname, rr, switch, cand, _pv_hdr, _pv_ov, _pv_deadline, cumulative_before)
             n_items = len(plan["items"])
             print(f"[PRIOR-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> {len(_pv_hdrs)} prior-skipped yellows evaluated", flush=True)
+        if _COARSE_INLINE and st.get("coarse_deferred_filters"):
+            # USER 2026-10-13 V16 COARSE-INLINE: a row that MOVES (positive naked or any positive kept yellow) evaluates
+            # its coarse-deferred yellows NOW, vs the same cumulative_before, before G/promotion is decided. The row is
+            # then complete in round 1 (never a "promoted hole" that forces a full-board REDO wipe) and its joint set is
+            # chosen from the full matrix. Rows that do not move keep the deferral (settled, not hollow) for FOCUS.
+            _cz_move = bool(not is_running and naked_ok and naked_delta is not None and float(naked_delta) > 1e-9)
+            if not _cz_move:
+                for _czh in st["hdrs"]:
+                    try:
+                        _czd, _czok, _ = _delta_vs((results.get(_czh) or (None, None))[0], cumulative_before)
+                    except Exception:
+                        _czd, _czok = None, False
+                    if _czok and _czd is not None and float(_czd) > 1e-9:
+                        _cz_move = True
+                        break
+            if _cz_move:
+                _cz_hdrs = [h for h in st["coarse_deferred_filters"] if h not in st["hdrs"] and h in st["h2f"]]
+                st["coarse_revived"] = list(_cz_hdrs)
+                st["coarse_deferred_filters"] = []
+                _cz_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_cz_hdrs) // max(1, _n_proc))) + 2)
+                _cz_ovs = {}
+                for _czh in _cz_hdrs:
+                    _czf = st["h2f"][_czh]
+                    _czov = dict(switch_variant)
+                    _czov[_czf["filter"]] = _parse_opt_value(_czf["opt"], defaults.get(_czf["filter"]))
+                    _cz_ovs[_czh] = sanitize_overrides(_czov, defaults)[0]
+                    _submit(_cz_ovs[_czh])
+                _flush_batch()
+                for _czh in _cz_hdrs:
+                    st["hdrs"].append(_czh)
+                    plan["items"].append((_czh, _cz_ovs[_czh]))
+                    results[_czh] = _get(sname, rr, switch, cand, _czh, _cz_ovs[_czh], _cz_deadline, cumulative_before)
+                n_items = len(plan["items"])
+                print(f"[COARSE-INLINE] {sname}!{rr} {switch}={cand} moving row -> {len(_cz_hdrs)} deferred yellows evaluated vs the same chain", flush=True)
         # USER 2026-10-03 hollow-fix: a deterministic engine verdict on naked (pre-eval rejection, invalid
         # with reason — tried, answered, cached) SETTLES the row like ZERO_TRADES does. Only a missing
         # verdict (timeout/exception) keeps the row pending. Short-circuit keeps nres/nerr safe.
@@ -5557,7 +5665,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
@@ -5943,6 +6051,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     pass
                 _hol_done = _scan_hollow_done(progress.get("done", {}), map_key_for_symside(new_symside), _tl_spec_done, assume_tablevel_on=True)
                 _incomplete = _hol_done.get("drop", [])
+                if _incomplete and os.environ.get("V15_REDO_SETTLE_PROMOTED", "1") == "1":
+                    _spd = set(_settle_promoted_holes(progress.get("done") or {}, [k for k in _incomplete if isinstance((progress.get("done") or {}).get(k), dict) and (progress.get("done") or {}).get(k).get("promoted")], _hol_done.get("reasons") or {}))
+                    if _spd:
+                        _incomplete = [k for k in _incomplete if k not in _spd]
+                        print(f"[CHAIN-PASSED] {new_symside} {len(_spd)} promoted rows settled at DONE (uncalculated cells booked chain_passed, no REDO for them)", flush=True)
                 if _COARSE_ON and not _redo_heal and _incomplete:
                     _reasons = _hol_done.get("reasons", {}) or {}
                     _forgiven = [k for k in _incomplete if str(_reasons.get(k, "")).split(":")[0] == "sampled-cells"]
@@ -8713,6 +8826,7 @@ def main():
             _nr3_reason = str(_nr3.get("reason") or "")
             _chain_same = False
             _holes_dropped = []
+            _sp = set()
             try:
                 # RULE#3 (DONE gate) and hollow-refill (launch gate) both carry the identical chain;
                 # repaired-set/365D REDOs carry a changed set and always wipe.
@@ -8727,11 +8841,21 @@ def main():
                         _tl_spec = json.loads((ROOT / "data" / "wiring" / "tab_filters" / "tab_level_filters.json").read_text())
                     except Exception:
                         pass
-                    _holes_dropped = list((_scan_holes(progress.get("done", {}), map_key_for_symside(new_symside), _tl_spec, assume_tablevel_on=True) or {}).get("drop", []))
+                    _hscan = _scan_holes(progress.get("done", {}), map_key_for_symside(new_symside), _tl_spec, assume_tablevel_on=True) or {}
+                    _holes_dropped = list(_hscan.get("drop", []))
                     # A dropped hole that PROMOTED (timeout/sampled-cells row with G>0) invalidates every
                     # downstream kept row (measured vs a chain that included it) — splicing is dishonest,
                     # full wipe required. Whole-row sampled skips never promote (the common case: splice).
                     _dropped_prom = [k for k in _holes_dropped if isinstance((progress.get("done") or {}).get(k), dict) and (progress.get("done") or {}).get(k).get("promoted")]
+                    if _dropped_prom and os.environ.get("V15_REDO_SETTLE_PROMOTED", "1") == "1":
+                        # USER 2026-10-13 V16: 98 of 122 measured REDOs wiped ~3400 rows over promoted rows whose naked
+                        # delta WAS measured and only some yellow cells were not — keep the row + chain, settle the
+                        # missing cells as CHAIN_PASSED (blank, booked). Only truly unmeasured promoted rows still wipe.
+                        _sp = set(_settle_promoted_holes(progress.get("done") or {}, _dropped_prom, _hscan.get("reasons") or {}))
+                        if _sp:
+                            _holes_dropped = [k for k in _holes_dropped if k not in _sp]
+                            _dropped_prom = [k for k in _dropped_prom if k not in _sp]
+                            print(f"[CHAIN-PASSED] {new_symside} {len(_sp)} promoted rows kept, their uncalculated cells booked as chain_passed (no full wipe)", flush=True)
                     if _dropped_prom:
                         print(f"[HOLES-ONLY] {new_symside} {len(_dropped_prom)} dropped holes promoted (e.g. {_dropped_prom[0]}) — chain-invalidating, full wipe fallback", flush=True)
                         _holes_dropped = []
@@ -8740,7 +8864,7 @@ def main():
                     print(f"[HOLES-ONLY-warn] {new_symside} hollow scan failed ({_ho_e}) — full wipe fallback", flush=True)
                     _holes_dropped = []
                     _chain_same = False
-            if _chain_same and _holes_dropped:
+            if _chain_same and (_holes_dropped or _sp):
                 for _hk in _holes_dropped:
                     (progress.get("done") or {}).pop(_hk, None)
                 progress["redo_depth"] = int(_nr3.get("depth", 1))
