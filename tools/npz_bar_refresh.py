@@ -1093,6 +1093,11 @@ def pilot_syms():
         if u is not None:
             grab(u)
         for f in (ROOT / "data" / "reports" / "lifecycle_pilot").glob("*_progress.json"):
+            try:
+                if time.time() - f.stat().st_mtime > 7 * 86400:
+                    continue
+            except Exception:
+                continue
             b = f.name
             for suf in ("_LONG_v14_progress.json", "_SHORT_v14_progress.json", "_LONG_v13_progress.json", "_SHORT_v13_progress.json"):
                 if b.endswith(suf):

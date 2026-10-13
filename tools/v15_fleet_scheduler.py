@@ -1232,7 +1232,11 @@ def npz_prep(host, symbol):
     PUSHED to the target host with md5 verify (--push), before the pilot is launched. A target that is this host needs
     no push. Returns the tool's JSON ({ok, action, reason, npz_last_bar}); None = could not run (launch proceeds).
     Blocking by design: ok=False keeps the sym_side out of the dispatch instead of burning hours on a stale tail."""
-    cmd = [sys.executable, str(ROOT / "tools" / "v15_npz_prep.py"), "--symbol", str(symbol)]
+    # SINGLE-FLIGHT (USER 2026-10-13): an NPZ rebuild spawns a multi-worker precompute. Several dispatches at once
+    # therefore stampede s1 — observed 34 concurrent `backtest_v8_precompute` workers pinning it at load 46 while 3
+    # orphaned blanket-refresh drivers ran. flock serialises every rebuild: one at a time, fleet-wide, no stampede.
+    cmd = ["flock", "-w", os.environ.get("V15_NPZ_LOCK_WAIT_S", "600"), "/tmp/v15_npz_prep.lock",
+           sys.executable, str(ROOT / "tools" / "v15_npz_prep.py"), "--symbol", str(symbol)]
     tgt = (host.get("ssh") or [None])[0]
     if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1"):
         cmd += ["--push", str(tgt)]
@@ -1752,7 +1756,25 @@ def tick(args, cfg, now):
             _pf_n = int(os.environ.get("V15_SCHED_NPZ_PREFETCH_N", "1"))
         except (TypeError, ValueError):
             _pf_n = 1
-        if _pf_n > 0:
+        # Only prefetch for a host that is ABOUT TO FREE UP (USER 2026-10-13: "send the latest npz along with the job
+        # just before the server finishes the previous calc"). An NPZ is backtest fuel and goes stale in ~15 min, so
+        # rebuilding one for a host that just started a full set of boards is waste. Gate: the host has no free slot
+        # AND its oldest running board has been going at least V15_SCHED_NPZ_PREFETCH_MIN_AGE_MIN (default 15) minutes.
+        _pf_ready = used >= cap
+        if _pf_ready:
+            try:
+                _pf_age_min = float(os.environ.get("V15_SCHED_NPZ_PREFETCH_MIN_AGE_MIN", "15"))
+            except (TypeError, ValueError):
+                _pf_age_min = 15.0
+            _oldest = 0.0
+            for _rss, _rr in (s.get("running") or {}).items():
+                try:
+                    _oldest = max(_oldest, float(_rr.get("age_min") or _rr.get("etime_min") or 0.0))
+                except (TypeError, ValueError, AttributeError):
+                    continue
+            if _oldest and _oldest < _pf_age_min:
+                _pf_ready = False
+        if _pf_n > 0 and _pf_ready:
             _pf = []
             for _s, _ns in order:
                 if not _ns or _s in held[h["name"]] or f"{_s}_LONG" in running or f"{_s}_SHORT" in running:

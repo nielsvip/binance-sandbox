@@ -152,6 +152,11 @@ def test_protected_union_keeps_universe_and_progress(tmp_path, monkeypatch):
     assert G.is_tradeable_file("AGLDUSDT.npz", prot) is True
     assert G.is_tradeable_file("JUNKXYZ.npz", prot) is False
     assert G.protected_syms(str(tmp_path / "emptyroot")) is None
+    import os, time
+    stale = tmp_path / "data" / "reports" / "lifecycle_pilot" / "OLD_LONG_v14_progress.json"
+    stale.write_text("{}")
+    os.utime(stale, (time.time() - 8 * 86400, time.time() - 8 * 86400))
+    assert "OLD" not in G.progress_syms() and "PLTR" in G.progress_syms()
 
 
 def test_reverse_venue_tolerance():

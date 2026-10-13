@@ -95,11 +95,18 @@ def pilot_universe_syms(root=None):
         return None
 
 
-def progress_syms(root=None):
-    """Syms with lifecycle pilot progress files; additive only, any failure -> empty set."""
+def progress_syms(root=None, max_age_days=7):
+    """Syms with FRESH (<max_age_days) lifecycle pilot progress files; stale archaeology must not protect junk. Additive only, any failure -> empty set."""
     try:
+        import time as _t
+        now = _t.time()
         out = set()
         for f in glob.glob(os.path.join(root or ROOT, "data", "reports", "lifecycle_pilot", "*_progress.json")):
+            try:
+                if now - os.path.getmtime(f) > max_age_days * 86400:
+                    continue
+            except Exception:
+                continue
             m = re.match(r"(.+)_(LONG|SHORT)_v1[34]_progress\.json", os.path.basename(f))
             if m:
                 out.add(m.group(1))
