@@ -141,6 +141,24 @@ else
 fi
 STEPS_OK="$STEPS_OK,2a"
 
+# 2b. TYPED SWITCH VALUES (2026-10-13, BIBLE §96): every template row/header value is scanned with the ONE validator
+#     (tools/switch_types.py). Any value it refuses or that is not natively typed ('0.0' on a bool, False on a TF, '25' text
+#     on an int) FAILS this step LOUDLY: data/alerts/SWITCH_TYPE_ALERT.json + "[chain] step2b FAILED" in the log. The chain
+#     continues (a type alert never blocks the day's go-live of already-validated sets — every writer/registrar is fail-closed
+#     on its own); repair = tools/v15_switch_add.py --fix-types --apply on S1, then sync. The alert file is removed on a clean scan.
+CUR_STEP=2b
+TYPE_ALERT=data/alerts/SWITCH_TYPE_ALERT.json
+[ "$DRYRUN" = 1 ] && TYPE_ALERT=$WORK/SWITCH_TYPE_ALERT.json
+log "step2b switch_types template scan"
+timeout 900 nice -n 10 "$PY" -u tools/switch_types.py --scan SPREADSHEETS/TEMPLATE_FINAL_NORM SPREADSHEETS --alert-file "$TYPE_ALERT" --json "$WORK/switch_types_scan.json" 2>&1 | sed 's/^/[chain] step2b /'
+RC=${PIPESTATUS[0]}
+if [ "$RC" -eq 0 ]; then
+  STEPS_OK="$STEPS_OK,2b"
+else
+  log "step2b FAILED (rc=$RC): mistyped switch values in templates — ALERT $TYPE_ALERT (repair: tools/v15_switch_add.py --fix-types --apply)"
+  STEPS_OK="$STEPS_OK,2b!TYPE_ALERT"
+fi
+
 if [ "$DRYRUN" = 1 ]; then
   log "step3 cat_side_defaults_4 SKIPPED (DRYRUN)"
   log "step4 pos_sym json (DRYRUN -> $WORK/avg_delta_pos_sym.json)"

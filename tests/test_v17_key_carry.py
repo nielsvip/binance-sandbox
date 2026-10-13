@@ -52,7 +52,10 @@ def test_empty_exemptions_is_default_and_string_form_accepted():
     assert "type-gate refused ALL" in str(r.get("reason"))  # a malformed value still refuses (fail-closed)
 
 
-def test_tradier_oracle_forwards_carry_and_live_action_divides_it_out():
+def test_tradier_oracle_forwards_carry_and_live_action_divides_it_out(monkeypatch):
     assert "carry_aug_qty" in inspect.getsource(tve.VecExactOracle.decide)
+    monkeypatch.setattr(tve, "_carry_live_on", lambda: False)  # kill switch off -> plain open (carry divided out)
     assert tve.live_action_for({"type": "OPEN", "qty": 15.0, "carry_aug_qty": 5.0}, 0.0) == ("OPEN", 10.0)
+    monkeypatch.setattr(tve, "_carry_live_on", lambda: True)  # USER 2026-10-13 default True -> vec qty incl. carry
+    assert tve.live_action_for({"type": "OPEN", "qty": 15.0, "carry_aug_qty": 5.0}, 0.0) == ("OPEN", 15.0)
     assert tve.live_action_for({"type": "OPEN", "qty": 15.0}, 0.0) == ("OPEN", 15.0)

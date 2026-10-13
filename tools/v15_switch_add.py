@@ -31,6 +31,7 @@ import csv
 import datetime
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -42,7 +43,8 @@ import v15_template_restructure_v3 as R  # noqa: E402
 import openpyxl  # noqa: E402
 from openpyxl.comments import Comment  # noqa: E402
 from openpyxl.styles import Font  # noqa: E402
-from template_row_guard import fingerprints  # noqa: E402
+from template_row_guard import fingerprints, _cell_sig  # noqa: E402
+import switch_types as ST  # noqa: E402  BIBLE §96 — the one typed-value validator
 
 SWITCH_SHEETS = ["STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES", "EXIT_STRUCTURAL", "EXIT_VELOCITY", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE", "AUGMENT_TREND", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "GLOBAL_RISK_GATES"]
 FILES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx", "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx", "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx"}
@@ -90,9 +92,12 @@ def parse_opt(raw, want):
         die(f"candidate {raw!r} is not a bool")
     if want == int:
         try:
-            return int(float(s))
+            f = float(s)
         except Exception:
             die(f"candidate {raw!r} is not an int")
+        if not f.is_integer():
+            die(f"candidate {raw!r} is not integral (int field; rounding would invent a value)")
+        return int(f)
     if want == float:
         try:
             return float(s)
@@ -165,6 +170,11 @@ def validate_switch(sw, tab, cands, default, venues, sides, root=ROOT, bible=Non
         _refuse(f"registry suggested_home_tab is {reg['suggested_home_tab']}, not {tab}")
     typed = [_parse_opt_r(c, want) for c in cands]
     dflt = _parse_opt_r(default, want)
+    for v in venues:  # BIBLE §96: the ONE validator has the last word on every value written to a template (fail-closed)
+        for t in [dflt] + typed:
+            ok_t, cv_t, why_t = ST.coerce(sw, t, v, root=root)
+            if not ok_t or not ST.canonical(sw, t, v, root=root):
+                _refuse(f"switch_types refused {sw}={t!r} for {v}: {why_t or 'not canonically typed'}")
     ordered = [dflt] + [t for t in typed if t != dflt]
     return ordered, dflt, sides, e
 
@@ -385,6 +395,226 @@ def apply_queue(queue_path, templates_dirs, apply=False, root=ROOT, lock_wait_s=
     return summary
 
 
+_MISS = object()
+
+
+def _cat_side_defaults(cs, root=ROOT):
+    try:
+        import importlib.util as _ilu
+        _sp = _ilu.spec_from_file_location(f"_csd_{abs(hash(str(root)))}", str(Path(root) / "cat_side_defaults.py"))
+        _csd = _ilu.module_from_spec(_sp)
+        sys.path.insert(0, str(root))
+        _sp.loader.exec_module(_csd)
+        return dict(_csd.defaults(cs) or {})
+    except Exception:
+        return {}
+
+
+def _set_bold(cell, bold):
+    f = cell.font
+    cell.font = Font(name=(f.name if f else None) or "Arial", size=(f.size if f else None) or 10, bold=bold, italic=f.italic if f else None, color=f.color if f else None)
+
+
+def plan_fix_types_ws(ws, venue, cs_defaults, root=ROOT):
+    """BIBLE §96 type repair plan for ONE switch tab. Returns {'writes': {row: value}, 'drops': {row: reason}, 'bold_moves': [(old, new)],
+    'log': [...], 'unresolved': [...]} — read-only. Rules: an unambiguous coercion is written in place (typed); an ambiguous
+    candidate row is dropped (never guessed); a refused BOLD row is realigned to the cat_side default (= what live and the store
+    run, BIBLE §90 builder placeholders) — bold moves onto the row already carrying that value, else the cell is rewritten to it;
+    a rewritten row that now duplicates a kept row of the same switch (same typed value AND every other cell identical in value +
+    fill, so no yellow/family information is lost) is dropped (bold / untouched rows are kept); a duplicate whose other cells
+    differ is kept, typed."""
+    hdr = [ws.cell(2, c).value for c in range(1, ws.max_column + 1)]
+    if not hdr or hdr[0] != "Switch" or "is_default" not in hdr:
+        return {"writes": {}, "drops": {}, "bold_moves": [], "log": [], "unresolved": []}
+    isd = hdr.index("is_default") + 1
+    groups = {}
+    for r in range(3, ws.max_row + 1):
+        a = ws.cell(r, 1).value
+        if isinstance(a, str) and re.fullmatch(r"[A-Z0-9_]{3,}", a.strip()) and ws.cell(r, 2).value is not None:
+            groups.setdefault(a.strip(), []).append(r)
+    writes, drops, moves, log, unresolved = {}, {}, [], [], []
+    for field, rows in groups.items():
+        bold = [r for r in rows if str(ws.cell(r, isd).value or "").strip().upper() == "YES"]
+        typed = {}
+        for r in rows:
+            raw = ws.cell(r, 2).value
+            ok, cv, why = ST.to_cell(field, raw, venue, root=root)
+            if ok:
+                typed[r] = cv
+                if not ST.canonical(field, raw, venue, root=root):
+                    writes[r] = cv
+                    log.append({"tab": ws.title, "row": r, "field": field, "action": "coerced", "from": repr(raw), "to": repr(cv), "bold": r in bold, "why": why})
+            elif r not in bold:
+                drops[r] = why
+                log.append({"tab": ws.title, "row": r, "field": field, "action": "dropped", "from": repr(raw), "to": None, "bold": False, "why": why})
+        for r in bold:
+            if r in typed:
+                continue
+            raw = ws.cell(r, 2).value
+            tgt = cs_defaults.get(field, _MISS)
+            if tgt == "" and ST._tf_named(field) and ST.field_spec(field, venue, root)["kind"] == "str":
+                ok_t, tv = True, "OFF"
+            elif tgt is _MISS or tgt is None or tgt == "":
+                ok_t, tv = False, None
+            else:
+                ok_t, tv, _ = ST.to_cell(field, tgt, venue, root=root)
+            if not ok_t:
+                unresolved.append({"tab": ws.title, "row": r, "field": field, "value": repr(raw), "why": f"bold value refused and no typed cat_side default ({tgt!r}) to realign to"})
+                continue
+            match = [x for x in rows if x != r and x in typed and x not in drops and ST.same_value(typed[x], tv)]
+            if match:
+                moves.append((r, match[0]))
+                drops[r] = f"refused bold {raw!r} — bold moved to the cat_side default row {match[0]} ({tv!r})"
+                bold = [match[0] if x == r else x for x in bold]
+                log.append({"tab": ws.title, "row": r, "field": field, "action": "bold_moved_dropped", "from": repr(raw), "to": f"row {match[0]} {tv!r}", "bold": True, "why": drops[r]})
+            else:
+                typed[r] = tv
+                writes[r] = tv
+                log.append({"tab": ws.title, "row": r, "field": field, "action": "bold_realigned", "from": repr(raw), "to": repr(tv), "bold": True, "why": "refused bold value -> cat_side default (live/store value)"})
+        kept, sigs = [], {}
+
+        def _sig(x):
+            if x not in sigs:
+                sigs[x] = tuple(_cell_sig(ws.cell(x, c)) for c in range(1, ws.max_column + 1) if c not in (2, isd))
+            return sigs[x]
+        for r in rows:
+            if r in drops or r not in typed:
+                continue
+            k = next((x for x in kept if ST.same_value(typed[x], typed[r]) and _sig(x) == _sig(r)), None)
+            if k is None:
+                kept.append(r)
+                continue
+            if r not in writes and k not in writes:
+                kept.append(r)  # pre-existing canonical duplicate: not this writer's business
+                continue
+            loser = r
+            if r in bold or (k in writes and r not in writes and k not in bold):
+                loser = k
+            if loser in bold:
+                kept.append(r)
+                continue
+            drops[loser] = f"duplicate of row {r if loser == k else k} after typing ({typed[loser]!r})"
+            writes.pop(loser, None)
+            log.append({"tab": ws.title, "row": loser, "field": field, "action": "dropped_duplicate", "from": repr(ws.cell(loser, 2).value), "to": None, "bold": False, "why": drops[loser]})
+            if loser == k:
+                kept[kept.index(k)] = r
+    return {"writes": writes, "drops": drops, "bold_moves": moves, "log": log, "unresolved": unresolved, "isd": isd}
+
+
+def _default_violations(ws):
+    hdr = [ws.cell(2, c).value for c in range(1, ws.max_column + 1)]
+    if "is_default" not in hdr:
+        return set()
+    isd = hdr.index("is_default") + 1
+    g = {}
+    for r in range(3, ws.max_row + 1):
+        a = ws.cell(r, 1).value
+        if a not in (None, ""):
+            g.setdefault(str(a).strip(), []).append(r)
+    out = set()
+    for a, rows in g.items():
+        yes = [r for r in rows if str(ws.cell(r, isd).value or "").strip().upper() == "YES"]
+        bold = [r for r in rows if ws.cell(r, 2).font is not None and ws.cell(r, 2).font.b]
+        if len(yes) != 1 or yes != bold:
+            out.add(a)
+    return out
+
+
+def fix_types(templates_dirs, apply=False, root=ROOT, lock_wait_s=1800, ts=None):
+    """--fix-types: repair every mistyped switch value in the target templates through the ONE validator (tools/switch_types.py).
+    Same guards as the queue mode: bookkeeper flock, backup per file, template_row_guard fingerprints (lost == dropped rows,
+    gained == 0, columns B/is_default skipped), one-default rule not broken, post-save validator rescan, zip-validated atomic save."""
+    ts = ts or datetime.datetime.now().strftime("%Y%m%d%H%M")
+    paths = [Path(d) / fn for d in templates_dirs for fn in FILES.values() if (Path(d) / fn).exists()]
+    summary = {"ts": ts, "apply": bool(apply), "files": {}}
+    lk = None
+    if apply:
+        try:
+            import fcntl
+            import time as _t
+            lk = open("/tmp/v15_bookkeeper.lock", "a")
+            t0 = _t.time()
+            while True:
+                try:
+                    fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except OSError:
+                    if _t.time() - t0 > lock_wait_s:
+                        _refuse("bookkeeper lock /tmp/v15_bookkeeper.lock held too long — another template writer is active")
+                    _t.sleep(5)
+        except ImportError:
+            lk = None
+    try:
+        for p in paths:
+            cs = next(k for k, v in FILES.items() if v == p.name)
+            venue = cs.split("_")[0]
+            csd = _cat_side_defaults(cs, root)
+            wb = openpyxl.load_workbook(str(p))
+            try:
+                plans, rep = {}, {"coerced": 0, "dropped": 0, "bold_realigned": 0, "bold_moved": 0, "unresolved": [], "log": []}
+                for tab in SWITCH_SHEETS:
+                    if tab not in wb.sheetnames:
+                        continue
+                    pl = plan_fix_types_ws(wb[tab], venue, csd, root)
+                    plans[tab] = pl
+                    rep["log"].extend(pl["log"])
+                    rep["unresolved"].extend(pl["unresolved"])
+                    rep["coerced"] += sum(1 for x in pl["log"] if x["action"] == "coerced" and x["row"] not in pl["drops"])
+                    rep["dropped"] += len(pl["drops"])
+                    rep["bold_realigned"] += sum(1 for x in pl["log"] if x["action"] == "bold_realigned")
+                    rep["bold_moved"] += len(pl["bold_moves"])
+                summary["files"][str(p)] = rep
+                n_change = sum(len(pl["writes"]) + len(pl["drops"]) for pl in plans.values())
+                print(f"[fix-types] {p.parent.name}/{p.name}: coerced={rep['coerced']} dropped={rep['dropped']} bold_realigned={rep['bold_realigned']} bold_moved={rep['bold_moved']} unresolved={len(rep['unresolved'])}", flush=True)
+                if not apply or n_change == 0:
+                    continue
+                shutil.copy2(p, root / "backups" / f"before_fix_types_{ts}_{p.parent.name}_{p.name}")
+                for tab, pl in plans.items():
+                    if not (pl["writes"] or pl["drops"]):
+                        continue
+                    ws = wb[tab]
+                    isd = pl["isd"]
+                    skip = frozenset({2, isd})
+                    before_fp = fingerprints(ws, skip)
+                    before_viol = _default_violations(ws)
+                    for r, v in pl["writes"].items():
+                        ws.cell(r, 2).value = v
+                    for old, new in pl["bold_moves"]:
+                        ws.cell(new, isd).value = "YES"
+                        _set_bold(ws.cell(new, 2), True)
+                        _set_bold(ws.cell(new, isd), True)
+                        ws.cell(old, isd).value = "NO"
+                        _set_bold(ws.cell(old, 2), False)
+                    for r in sorted(pl["drops"], reverse=True):
+                        ws.delete_rows(r, 1)
+                    after_fp = fingerprints(ws, skip)
+                    lost, gained = sum((before_fp - after_fp).values()), sum((after_fp - before_fp).values())
+                    if lost != len(pl["drops"]) or gained:
+                        _refuse(f"{p.name}!{tab}: integrity broken (lost {lost} != {len(pl['drops'])} dropped, gained {gained}) — file untouched")
+                    new_viol = _default_violations(ws) - before_viol
+                    if new_viol:
+                        _refuse(f"{p.name}!{tab}: one-default rule broken for {sorted(new_viol)[:5]} — file untouched")
+                tmp = str(p) + ".fixtypes.xlsx"
+                wb.save(tmp)
+                import zipfile
+                with zipfile.ZipFile(tmp) as z:
+                    if len(z.namelist()) < 10:
+                        os.remove(tmp)
+                        _refuse(f"refusing truncated save {p.name}")
+                left = [x for x in ST.scan_workbook(tmp, root=root) if not any(u["field"] == x["field"] and u["tab"] == x["tab"] for u in rep["unresolved"])]
+                if left:
+                    os.remove(tmp)
+                    _refuse(f"{p.name}: {len(left)} mistyped value(s) remain after the repair (first {left[:3]}) — file untouched")
+                os.replace(tmp, str(p))
+                print(f"[fix-types] saved {p.parent.name}/{p.name} (backup backups/before_fix_types_{ts}_{p.parent.name}_{p.name})", flush=True)
+            finally:
+                wb.close()
+    finally:
+        if lk is not None:
+            lk.close()
+    return summary
+
+
 def enqueue(entry, inbox_dir, push=None):
     Path(inbox_dir).mkdir(parents=True, exist_ok=True)
     ts = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
@@ -415,7 +645,19 @@ def main():
     ap.add_argument("--enqueue", action="store_true", help="write an inbox entry for the source host instead of touching templates")
     ap.add_argument("--inbox", default=str(ROOT / "data" / "template_row_queue_inbox"))
     ap.add_argument("--push", help="with --enqueue: rsync the inbox entry to HOST:binance-sandbox/data/template_row_queue_inbox/")
+    ap.add_argument("--fix-types", action="store_true", help="BIBLE §96: repair mistyped switch values in --templates-dirs via tools/switch_types.py (dry-run unless --apply)")
     a = ap.parse_args()
+    if a.fix_types:
+        try:
+            s = fix_types([d for d in a.templates_dirs.split(",") if d.strip()], apply=a.apply)
+        except Refused as r:
+            die(str(r))
+        if a.summary_out:
+            _write_json_atomic(a.summary_out, s)
+        unres = [u for f in s["files"].values() for u in f["unresolved"]]
+        for u in unres:
+            print(f"[fix-types] UNRESOLVED {u}", flush=True)
+        return 0
     if a.queue:
         try:
             s = apply_queue(a.queue, [d for d in a.templates_dirs.split(",") if d.strip()], apply=a.apply)

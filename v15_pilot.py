@@ -1331,10 +1331,30 @@ def _mandatory_summary() -> str:
         parts.append(f"{_s}:{sum(_d.values())}cells/{len(_d)}bases")
     return ", ".join(parts) if parts else "none"
 
+GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED"})
+
+
 def sanitize_overrides(overrides: dict, defaults: dict) -> tuple[dict, list]:
     sanitized = {}
     warns = []
     for k, v in dict(overrides).items():
+        if k in GLOBAL_ONLY_KEYS:
+            warns.append(k)  # global-only (USER 2026-10-13 go-live audit): never part of a per-sym / board override set
+            continue
+        if k == "FILTER_EXEMPTIONS" and isinstance(v, str):
+            # sheets / progress / START_OVERRIDES / needs_redo may carry the dict as JSON text; the engine field is a dict
+            try:
+                v = json.loads(v) if v.strip() else {}
+            except Exception:
+                try:
+                    import ast as _ast
+                    v = _ast.literal_eval(v)
+                except Exception:
+                    warns.append(k)
+                    continue
+            if not isinstance(v, dict):
+                warns.append(k)
+                continue
         if isinstance(v, str) and v.strip().endswith("_ALT"):
             v = v.strip()[:-4]
         if isinstance(v, str):
@@ -2975,7 +2995,7 @@ def _prior_best_gain(symside: str):
 # -> P4 trimmed tail (final_filter_recheck only on touched filters, post-stages capped to the board budget).
 # Every promotion is a real engine eval of the exact promoted set vs the LATEST cumulative (§14.2, §19). Kill switch
 # V15_V17_ROUNDS=0 restores the pre-V17 board exactly. Bible §95.
-V17_ON = os.environ.get("V15_V17_ROUNDS", "1") == "1"
+V17_ON = os.environ.get("V15_V17_ROUNDS", "0") == "1"  # 2026-10-13 A/B (data/reports/v17_ab_202610131911.md): V17 gain >= old on 1/4 only -> default OFF per the user acceptance rule; opt in with V15_V17_ROUNDS=1
 V17_FILTER_FALLBACK = ("MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "HTF_DIRECTION_GATE_ENABLED", "COUNTER_TREND_ADD_BLOCK_ENABLED", "EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES", "DC_BREAK_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "FAST_RISER_FILTER_TF", "WT_DIV_ENTRY_GATE_ENABLED", "CIRCUIT_SHARPE_GATES_FILTER_TF")
 V17_TAB_ORDER_FALLBACK = ("EXIT_VELOCITY", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_ADAPTIVE", "REENTRY_WINDOWED", "EXIT_STRUCTURAL", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "STDEV_SLOPE_SIZING", "ENTRY_CONFIRMATION_GATES", "GLOBAL_RISK_GATES", "AUGMENT_TREND")
 V17_CATEGORY_TABS = {"entry": ("ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES"), "reentry": ("REENTRY_WINDOWED", "REENTRY_ADAPTIVE"), "augment": ("AUGMENT_TREND", "AUGMENT_RISK_SIZING"), "exit": ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER")}
@@ -3197,13 +3217,19 @@ def v17_killers(eff_without, eff_by_filter: dict, frac: float = 0.5) -> list:
     return sorted(out, key=lambda f: float(eff_by_filter[f]))
 
 
+V17_P3_MIN_SHARE = {"WINNER": 0.5, "MEDIOCRE": 0.4, "LOSER": 0.25, "LOST_CAUSE": 0.1}
+
+
 def v17_p3_budget(tier: str, elapsed: float, board_s: float | None = None, tail_s: float | None = None) -> float:
-    """Pure: pinpoint budget = tier budget, capped so the board finishes inside V15_V17_BOARD_S (default 900 s) with the
-    tail (FFR + capped post-stages + save/publish, V15_V17_TAIL_S default 210 s) still ahead."""
-    b = float(board_s if board_s is not None else os.environ.get("V15_V17_BOARD_S", "900"))
+    """Pure: pinpoint budget is NEVER starved by a long main pass (A/B 2026-10-13: 3 of 4 boards got 0 s). Guaranteed minimum
+    = board target x tier share (WINNER 50% / MEDIOCRE 40% / LOSER 25% / LOST_CAUSE 10%, V15_V17_P3_SHARE_<TIER>); more when the
+    board is ahead of its target (V15_V17_BOARD_S 1500 s minus the tail V15_V17_TAIL_S 210 s); hard cap V15_V17_P3_MAX_S 900 s.
+    The pinpoint loop may extend past it while it keeps lifting >= V15_V17_MIN_LIFT_PM pp/min (still <= the hard cap)."""
+    b = float(board_s if board_s is not None else os.environ.get("V15_V17_BOARD_S", "1500"))
     t = float(tail_s if tail_s is not None else os.environ.get("V15_V17_TAIL_S", "210"))
-    base = float(V17_P3_S.get(str(tier), 120.0))
-    return max(0.0, min(base, b - float(elapsed) - t))
+    share = float(os.environ.get(f"V15_V17_P3_SHARE_{tier}", V17_P3_MIN_SHARE.get(str(tier), 0.25)))
+    guaranteed = b * share
+    return max(0.0, min(float(os.environ.get("V15_V17_P3_MAX_S", "900")), max(guaranteed, b - float(elapsed) - t)))
 
 
 def same_val(a, b) -> bool:
@@ -4756,6 +4782,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # USER 2026-10-08: "ABLATION can never be on unless for a momentary test" — a sweep is not that; 73 live sym_sides had
             # ABLATION_DISABLE_*=True promoted per-sym from these rows (stripped 17:4xZ). Never calculated, never promoted.
             info.update(kind="skip", reason="ABLATION_NEVER_ON: ablation kills are engine artefacts, not strategy (USER 2026-10-08) — not calculated, never promoted", g=None)
+        elif str(switch).strip() in GLOBAL_ONLY_KEYS:
+            info.update(kind="skip", reason="NOT_IN_CONFIG: GLOBAL_ONLY key (never a per-sym / board override, USER 2026-10-13) — not calculated, never promoted", g=None)
         elif str(switch).strip() == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(cand)):
             # USER 2026-10-10: "MAX_AUGMENTS_PER_POSITION=0 NOT MY CODE — we augment as rapidly and fast as we can"
             # (2026-05-30 no-cap mandate, config 999999). A sweep delta is not a mandate override; never calculated, never promoted.
@@ -4958,12 +4986,20 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _zero_book["cell_rows"][_zrkey] = sorted(str(h).strip() for h in _zskip)
             except Exception as _ze:
                 print(f"[ZERO-FORMULA-WARN] {sname}!{rr} {_ze} — row calculated", flush=True)
-        if _v17_on and info["kind"] == "eval" and os.environ.get("V15_V17_P2_NAKED_ONLY", "0") != "1" and info["hdrs"]:
+        if _v17_on and info["kind"] == "eval" and os.environ.get("V15_V17_P2_NAKED_ONLY", "0") != "1" and (info["hdrs"] or info.get("prior_skipped") or info.get("inert_filters") or info.get("coarse_deferred_filters")):
             # V17 P2 ABBREVIATED WORST_FIRST (default): naked every row (§77 real G) + only the top V15_V17_P2_YELLOWS (8)
             # prior-ranked yellows; the rest join the coarse deferral (settled, inline on moving rows, FOCUS in P3). Canary
             # 2026-10-13: naked-only P2 lost most of the joint lift (RLC A 48.7 at row 2000 vs naked-only 22.5 at P2 end).
             _v17_cap = int(os.environ.get("V15_V17_P2_YELLOWS", "8"))
-            if os.environ.get("V15_POSSYM_P_SAMPLING", "1") == "1":
+            _v17_p2_cap_hit = bool(_v17_t.get("p2")) and (_t.time() - _v17_t["p2"]["t0"]) > float(os.environ.get("V15_V17_P2_YELLOW_S", str(0.35 * float(os.environ.get("V15_V17_BOARD_S", "1500")))))
+            if _v17_p2_cap_hit:
+                # V17 main-pass yellow cap: past V15_V17_P2_YELLOW_S of P2 the remaining rows run naked (+ full revive on a
+                # positive naked); their cells are coarse-deferred (settled) for the pinpoint round, which is never starved.
+                _v17_pool = list(dict.fromkeys(list(info["hdrs"]) + list(info.get("coarse_deferred_filters") or []) + list(info.get("prior_skipped") or []) + list(info.get("inert_filters") or [])))
+                info["hdrs"], info["coarse_deferred_filters"], info["prior_skipped"], info["inert_filters"] = [], _v17_pool, [], []
+                info["v17_p2_cap"] = True
+                _v17_ystats["skipped_cap"] = _v17_ystats.get("skipped_cap", 0) + len(_v17_pool)
+            elif os.environ.get("V15_POSSYM_P_SAMPLING", "1") == "1":
                 # USER 2026-10-13: "dont switch off yellow cells, just reduce their frequency of calculation from every time
                 # (highest pos_sym values) to once in 200 (0 pos_sym)". Pool = kept + coarse-deferred + prior-skipped + inert
                 # cells; each cell evaluated with p = v17_cell_p (deterministic draw per cat_side|tab|row|cell|round);
@@ -6216,10 +6252,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         try:
             # iterations until the budget is spent or an iteration adds nothing: FOCUS (most productive per eval: yellows of the
             # moved rows, numeric grid, pairs) -> ABLATION ROUTE -> moved-chain RETEST -> top-K filter re-probe vs the new chain
-            for _it in range(1, int(os.environ.get("V15_V17_P3_MAX_ITERS", "3")) + 1):
+            _hard = t0 + float(os.environ.get("V15_V17_P3_MAX_S", "900"))
+            for _it in range(1, int(os.environ.get("V15_V17_P3_MAX_ITERS", "6")) + 1):
                 if deadline - _t.time() < 20.0:
                     break
                 _g_it = float(cumulative_gain)
+                _t_it = _t.time()
                 _v17_focus_iter[0] = _it
                 if not _v17_phase_done(f"P3_FOCUS_{_it}"):
                     ph = _v17_phase_start(f"P3_FOCUS_{_it}")
@@ -6232,6 +6270,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _v17_filter_probe(f"P3_PROBE_{_it}", min(60.0, max(0.0, deadline - _t.time())))
                 if float(cumulative_gain) - _g_it <= 1e-9:
                     break
+                _rate = (float(cumulative_gain) - _g_it) / max(1e-6, (_t.time() - _t_it) / 60.0)
+                if _rate >= float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3")) and deadline - _t.time() < 120.0 and _t.time() < _hard - 60.0:
+                    deadline = min(_hard, _t.time() + max(120.0, _t.time() - _t_it))  # still lifting: the round continues
+                    _v17["p3_extended"] = _v17.get("p3_extended", 0) + 1
+                    print(f"[V17] {new_symside} P3 extended (iteration {_it} lifted {_rate:.2f} pp/min) -> {deadline - t0:.0f}s", flush=True)
             _v17_tim_fix(max(deadline, _t.time() + 60.0), "P3_TIMFIX")
             _v17_essential_proof(_t.time() + float(os.environ.get("V15_V17_ESSENTIAL_S", "120")))
         except V15Shutdown:
@@ -6246,7 +6289,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _v17_cap_post():
         # P4: the post-stages (endgame / diagnose — owned elsewhere) read their budget env at call time; cap it to the board.
         try:
-            left = float(os.environ.get("V15_V17_BOARD_S", "900")) + float(os.environ.get("V15_V17_POST_GRACE_S", "60")) - (_t.time() - _PILOT_T0)
+            left = float(os.environ.get("V15_V17_BOARD_S", "1500")) + float(os.environ.get("V15_V17_POST_GRACE_S", "60")) - (_t.time() - _PILOT_T0)
             each = max(30.0, min(float(os.environ.get("V15_V17_POST_S", "120")), left) / 2.0)
             for _ek, _dv in (("V15_ENDGAME_S", "600"), ("V15_DIAG_REPAIR_S", "900")):
                 os.environ[_ek] = str(int(min(float(os.environ.get(_ek, _dv)), each)))

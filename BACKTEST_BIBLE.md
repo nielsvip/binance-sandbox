@@ -2252,7 +2252,7 @@ filter, put every filter back and adopt only above the previous best.
 evals; endgame strip-all −15.8 pp median (blanket strip refuted); 286 naked≤0 rows won via a filter change; 137/227 sacred
 promotions were rows ≤0 earlier.
 
-**Board (`v15_pilot.py`, `_spec_fill_workbook`, kill switch `V15_V17_ROUNDS=0` = pre-V17 board exactly; default ON):**
+**Board (`v15_pilot.py`, `_spec_fill_workbook`, kill switch `V15_V17_ROUNDS=0` = pre-V17 board exactly; default OFF since the A/B below — opt in with `V15_V17_ROUNDS=1`):**
 - **P0** baseline unchanged. A legacy board resumed mid-fill keeps pre-V17 semantics (no mixed chain); `progress["v17"]["on"]`.
 - **P1 FILTER PROBE** (`_v17_filter_probe`): every option of the top-K (`V15_V17_PROBE_K` 15) filter switches of the cat_side
   (ranked from `data/causal/switch_causal_profile.json` + `data/causal/v17_priors.json` (larger n wins) + fleet endgame
@@ -2303,3 +2303,13 @@ yellows + ablation: COIN_LONG 12.4 min, 19.69 published, 365D PASS, no REDO (old
 v3: COIN_LONG 14.8 min 29.86 (old 20.x), VALE_SHORT 12.3 min 21.18 (old 26.x, run32 21.00), RLCUSDT_LONG 26.2 min 25.5
 (old ≥66.3: crypto P2 with many evidenced cells is the open gap). Fleet s2 after the V17 deploy: 9 boards in 30 min
 (10.5–19 min each) vs 20–35 min per board before.
+
+**Formal A/B 2026-10-13 18:33–19:11Z (`data/reports/v17_ab_202610131911.md/.json`, `tools/v17_ab_report.py`; frozen pilot
+old=bab5e0ce vs new=V17, same frozen NPZ md5 / templates / start sets / priors / exemptions on S1 and s2, arms swapped across
+hosts; S1 ran at load ~28-31 on 16 cores (fleet + live), s2 ~12):** final gain new vs old — COIN_LONG 29.86 vs 20.56 (8.8 vs 33.4
+min), RLCUSDT_LONG 25.53 vs 64.29 (old still running at report time), UNIUSDC_SHORT 18.62 vs 29.92, VALE_SHORT 21.18 vs 25.43.
+V17 wins 1 of 4 on gain → **per the user acceptance rule V17 is default OFF** (`V15_V17_ROUNDS` default "0", deployed s1+s2
+md5 d14a97a7); opt in per launch with `V15_V17_ROUNDS=1`. Root cause measured in the phase lines: on 3 of 4 boards P2 used
+868–1582 s, so the 900 s board budget left P3 (focus/ablation/retest) no time at all — the abbreviated pass is not yet short
+enough on crypto/slow stocks and the pinpoint round never ran there. Next: guarantee P3 a minimum budget independent of P2,
+shrink P2 further (sampling pos_top, inline revives), then re-run this A/B.

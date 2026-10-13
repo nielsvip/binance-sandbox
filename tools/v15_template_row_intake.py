@@ -55,6 +55,24 @@ def load_queue(path):
     return q
 
 
+def entry_type_errors(e):
+    """BIBLE §96: every candidate + default of a queue entry must pass the ONE validator for each venue (fail-closed)."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import switch_types as ST
+    sw = str(e.get("switch", "")).strip().upper()
+    bad = []
+    for venue in [str(v).upper() for v in (e.get("venues") or ["CRYPTO", "STOCKS"])]:
+        c = e.get("candidates")
+        cands = (c.get(venue) or []) if isinstance(c, dict) else (c or [])
+        d = e.get("default")
+        dflt = d.get(venue) if isinstance(d, dict) else d
+        for v in list(cands) + ([dflt] if dflt is not None else []):
+            ok, _cv, why = ST.coerce(sw, v, venue)
+            if not ok:
+                bad.append(f"{venue}:{v!r}: {why}")
+    return bad
+
+
 def merge_entries(queue, new_entries, source):
     """Append entries whose switch is not queued yet; an existing entry always wins (S1 owns the queue). Returns (added, ignored)."""
     have = {str(e.get("switch", "")).strip().upper() for e in queue["entries"]}
@@ -63,6 +81,11 @@ def merge_entries(queue, new_entries, source):
         sw = str(e.get("switch", "")).strip().upper()
         if not sw or not e.get("tab"):
             ignored.append({"switch": sw, "why": "missing switch/tab"})
+            continue
+        _terr = entry_type_errors(e)
+        if _terr:
+            ignored.append({"switch": sw, "why": f"switch_types refused (BIBLE §96): {_terr[:4]}"})
+            print(f"[intake] REFUSED {sw}: mistyped candidate/default {_terr[:4]}", flush=True)
             continue
         if sw in have:
             ignored.append({"switch": sw, "why": "already queued"})
@@ -149,8 +172,12 @@ def lost_rows(before_root, after_root, flat_before=True):
         for sw, ent in before.items():
             if sw in after:
                 continue
-            vals = [v for v, _, _ in ent["rows"] if v not in (None, "")]
+            sys.path.insert(0, str(ROOT / "tools"))
+            import switch_types as ST  # BIBLE §96: a rescue never re-queues a value the one validator refuses
+            vals = [v for v, _, _ in ent["rows"] if v not in (None, "") and ST.coerce(sw, v, venue)[0]]
             dflt = next((v for v, y, b in ent["rows"] if y and b), None) or next((v for v, y, _ in ent["rows"] if y), None) or (vals[0] if vals else None)
+            if dflt is not None and not ST.coerce(sw, dflt, venue)[0]:
+                continue
             if len(set(vals)) < 2 or dflt is None:
                 continue
             e = found.setdefault(sw, {"switch": sw, "tab": ent["tab"], "venues": [], "sides": [], "candidates": {}, "default": {}, "lost_from": []})

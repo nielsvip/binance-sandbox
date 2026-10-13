@@ -3295,7 +3295,7 @@ class Config:
         default_factory=dict
     )  # V17 2026-10-13 per-switch filter exemption {path_id: [filter_key]}; {} = today. Decided by the vec twin (v12_quick_engine + vec_decisions/filter_exemptions.py); honoured live only through PARITY_VEC_EXACT_MODE (the native paths do not read it). Per-sym promoted sets carry it.
     AUGMENT_INTO_REENTRY_ENABLED: bool = (
-        False  # V17 2026-10-13 vec-twin decision switch (QuickConfig mirror): carry the missed augment into a higher-low reentry (size = open x (1 + REENTRY_AUGMENT_SIZE_MULT)). Native live paths do not read it; vec-exact live sizing additionally needs AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED
+        False  # V17 2026-10-13 vec-twin decision switch (QuickConfig mirror): carry the missed augment into a higher-low reentry (size = open x (1 + REENTRY_AUGMENT_SIZE_MULT)). Live: native execute_now (ez_manage / tradier_manage via live_twins/reentry_augment.py) and the vec-exact twin both read it per-sym; live sizing additionally needs the global AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED
     )
     REENTRY_AUGMENT_SIZE_MULT: float = 1.0  # V17 carried augment = this x the reentry open size
     REENTRY_AUGMENT_REQUIRE_HIGHER_LOW: bool = True  # V17 LONG reentry > previous trade reference / SHORT < (lower high)

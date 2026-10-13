@@ -74,11 +74,13 @@ def test_ev_ranking_sources():
     assert P.v17_ev("A=1", {}, {}) == 0.0
 
 
-def test_p3_budget_tier_and_board_cap():
-    assert P.v17_p3_budget("WINNER", 0.0, 900, 210) == min(P.V17_P3_S["WINNER"], 690.0)
-    assert P.v17_p3_budget("WINNER", 600.0, 900, 210) == 90.0
-    assert P.v17_p3_budget("LOSER", 1000.0, 900, 210) == 0.0
-    assert P.v17_p3_budget("LOST_CAUSE", 0.0, 900, 210) == P.V17_P3_S["LOST_CAUSE"]
+def test_p3_budget_guaranteed_minimum_never_starved():
+    # a long main pass can no longer starve the pinpoint round (A/B 2026-10-13: 3 of 4 boards got 0 s)
+    assert P.v17_p3_budget("WINNER", 1400.0, 1500, 210) == 750.0
+    assert P.v17_p3_budget("LOSER", 5000.0, 1500, 210) == 375.0
+    assert P.v17_p3_budget("LOST_CAUSE", 5000.0, 1500, 210) == 150.0
+    assert P.v17_p3_budget("WINNER", 0.0, 1500, 210) == 900.0  # ahead of target -> more, capped by V15_V17_P3_MAX_S
+    assert "V15_V17_MIN_LIFT_PM" in SRC and "V15_V17_P2_YELLOW_S" in SRC
 
 
 def test_deferred_v17_rows_are_settled_not_hollow():
@@ -141,3 +143,14 @@ def test_filter_exemptions_final_set_round_trip():
     key = lambda o: tuple(sorted((k, str(v)) for k, v in o.items()))
     assert key(s1) == key(s2)
     assert "FILTER_EXEMPTIONS" in P.known_config_fields()
+
+
+def test_filter_exemptions_string_and_global_only_key():
+    s, w = P.sanitize_overrides({"FILTER_EXEMPTIONS": '{"B12": ["WT_DIV_ENTRY_GATE"]}', "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED": True, "X": "1"}, {})
+    assert s["FILTER_EXEMPTIONS"] == {"B12": ["WT_DIV_ENTRY_GATE"]}
+    assert "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED" not in s and "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED" in w
+    s2, _ = P.sanitize_overrides({"FILTER_EXEMPTIONS": "{'A': ['F']}"}, {})
+    assert s2["FILTER_EXEMPTIONS"] == {"A": ["F"]}
+    s3, w3 = P.sanitize_overrides({"FILTER_EXEMPTIONS": "garbage{"}, {})
+    assert "FILTER_EXEMPTIONS" not in s3 and "FILTER_EXEMPTIONS" in w3
+    assert 'str(switch).strip() in GLOBAL_ONLY_KEYS' in SRC

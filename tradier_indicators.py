@@ -3127,8 +3127,14 @@ class TradierIndicatorOrchestrator:
                     continue
                 self._tf_inflight[tf] = True
                 self._tf_last_start[tf] = now_ts
+                # 2026-10-13 NEVER-AGAIN: window launches are authoritative —
+                # force=True so the worker's QUICK-OPEN minute gate cannot
+                # race the launcher (19:16 window skipped at minute :16 while
+                # _tf_last_start recorded a run that never ran, starving 15m
+                # until the next window). force only bypasses the minute
+                # gates; compute path is identical (required_keys always set).
                 logger.info(f"[{tf}] launching {'catch-up' if _overdue else 'window'} run (single-flight, off-loop)")
-                asyncio.create_task(self._run_tf_guarded(tf, force=bool(_overdue)))
+                asyncio.create_task(self._run_tf_guarded(tf, force=True))
             self._save_due = True
 
     def _required_by_timeframe(self, timeframe: str) -> List[str]:
@@ -3174,8 +3180,15 @@ class TradierIndicatorOrchestrator:
             except Exception:
                 _clip = 600
             _cdf = df.tail(_clip).reset_index(drop=True) if _clip > 0 and len(df) > _clip else df
+            # 2026-10-13 NEVER-AGAIN: the caller's wait_for budget must measure
+            # compute, never semaphore queue-wait — acquire the lane slot
+            # FIRST, then time only the executor run.
+            _compute_timeout = 30.0 if timeframe in ("1m", "5m") else 240.0
             async with _sem:
-                result = await _loop.run_in_executor(_exec, self._compute_guarded, _gen, timeframe, _cdf, symbol, mark_price, mark_ts, False)
+                result = await asyncio.wait_for(
+                    _loop.run_in_executor(_exec, self._compute_guarded, _gen, timeframe, _cdf, symbol, mark_price, mark_ts, False),
+                    timeout=_compute_timeout,
+                )
         except Exception:
             result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=False)
         if not result: return
@@ -3226,7 +3239,10 @@ class TradierIndicatorOrchestrator:
             if _msem.locked():
                 return False
             async with _msem:
-                result = await _mloop.run_in_executor(_mexec, self._compute_guarded, _mgen, timeframe, df, symbol, mark_price, mark_ts, True)
+                result = await asyncio.wait_for(
+                    _mloop.run_in_executor(_mexec, self._compute_guarded, _mgen, timeframe, df, symbol, mark_price, mark_ts, True),
+                    timeout=15.0,
+                )
         except Exception:
             result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=True)
         if not result:

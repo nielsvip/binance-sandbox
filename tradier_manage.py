@@ -7643,6 +7643,73 @@ def _cfg_ps(param, default=None, account_key=None, symbol=None, side=None):
     return _cfg(param, default, account_key, symbol, side, _promotions_only=True)
 
 
+_AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/tradier/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
+_AIR_LOG_LOADER = None  # V17 AIR: callable(account_key, symbol, side) -> lifecycle log; None = data/tradier/history/{acct}/{SYM}_{SIDE}.jsonl (backtest_v12_engine injects its replay ledger)
+
+
+def _air_history_log(account_key, symbol, side) -> list:
+    """V17 AIR: the persisted lifecycle log of one sym_side = the execute_now trade history (_append_to_history, ISO ts, type=action)."""
+    if _AIR_LOG_LOADER is not None:
+        try:
+            return list(_AIR_LOG_LOADER(account_key, symbol, side) or [])
+        except Exception:
+            return []
+    try:
+        _p = Path(getattr(config, "DATA_DIR", Path(config.BASE_PATH) / "data" / "tradier")) / "history" / str(account_key) / f"{symbol}_{str(side).upper()}.jsonl"
+        if not _p.exists():
+            return []
+        out = []
+        for _ln in _p.read_text(errors="ignore").splitlines()[-400:]:
+            try:
+                _r = json.loads(_ln)
+                if isinstance(_r, dict):
+                    out.append(_r)
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def _air_native_carry_t(account_key, symbol, side, px, qty, reason, now_ts, log, held_qty=0.0, bars_loader=None):
+    """V17 2026-10-13 AUGMENT_INTO_REENTRY native stocks sizing — twin of v12_quick_engine simulate_one _air_carry_mult/_open (whole shares,
+    MAX_SYMBOL_VALUE_TRADIER cap) via live_twins/reentry_augment.py; the HARD_MAX_SYMBOL_VALUE_TRADIER / per-account symbol cap also binds.
+    Returns (qty, reason, info). Inert unless the GLOBAL AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED and the per-sym AUGMENT_INTO_REENTRY_ENABLED
+    (_cfg per-sym > cat_side > global) are on. ' |VEC_EXACT' orders (tradier_vec_exact.live_action_for already sized them) and ' |AIR_CARRY'
+    orders pass through unchanged (exactly one path applies the carry)."""
+    from live_twins import reentry_augment as _ra
+    info = {"applied": False, "why": "live_sizing_off"}
+    try:
+        if not _ra.live_on(config):
+            return qty, reason, info
+        _g = lambda _k, _d=None: _cfg(_k, getattr(config, _k, _ra.DEFAULTS.get(_k, _d)), account_key, symbol, side)
+        if not _ra.enabled(_g):
+            info["why"] = "per_sym_off"
+            return qty, reason, info
+        if _ra.is_vec_sized(reason) or _ra.is_carried(reason):
+            info["why"] = "vec_sized_or_already_carried"
+            return qty, reason, info
+        if not qty or float(qty) <= 0 or not px or float(px) <= 0:
+            info["why"] = "no_qty_or_price"
+            return qty, reason, info
+        _cap = float(_g("MAX_SYMBOL_VALUE_TRADIER", 0.0) or 0.0)
+        try:
+            _hard = min(float(getattr(config, f"{str(account_key).upper()}_MAX_SYMBOL_VALUE", _g("MAX_SYMBOL_VALUE_TRADIER", 3750.0)) or 0.0), float(_g("HARD_MAX_SYMBOL_VALUE_TRADIER", 2500.0) or 0.0))
+            _hard_room = max(0.0, _hard - float(held_qty or 0.0) * float(px))
+            if _hard > 0:
+                _cap = min(_cap, _hard_room) if _cap > 0 else _hard_room
+        except Exception:
+            pass
+        _bl = bars_loader or (lambda: _AIR_BARS_LOADER(symbol, side) if _AIR_BARS_LOADER is not None else _ra.klines_bars(Path(config.BASE_PATH) / "klines_cache" / "tradier" / f"{symbol}_15m.json"))
+        _d = _ra.decide(_g, str(side).upper() == "LONG", float(px), now_ts, log, float(qty), _cap, True, _bl)
+        info = {"applied": _d["add"] > 0, "why": _d["why"], "mult": _d["mult"], "add": _d["add"]}
+        if _d["add"] > 0:
+            return _d["qty"], f"{reason}{_ra.CARRY_TAG}{_d['mult']:.3f}", info
+    except Exception as _air_e:
+        info = {"applied": False, "why": f"error_{type(_air_e).__name__}"}
+    return qty, reason, info
+
+
 # 2026-08-09 625 live wiring — every matrix param read via _cfg in live decision path (mirrors vector)
 def _wire_trb_stocks_hemisphere_tradier(account_key, symbol, side):
     """Stocks hemisphere parity — every TRB switch missing in live now wired via getattr and _cfg. Ensures 1h candle for SHORT and relative_volume_1h. 2026-09-07"""
@@ -47820,6 +47887,37 @@ class TradierTradeManager:
                         f"TF={_tf_label} mult={_tf_mult:.2f} qty "
                         f"{_orig_qty:.6f}→{quantity:.6f} reason={str(reason)[:60]}"
                     )
+            # V17 2026-10-13 AUGMENT_INTO_REENTRY native sizing (USER: wired on every live path; vec twin v12_quick_engine _open). ONE
+            # stocks choke: every flat entry reaches execute_now (queue -> execute_trade_action, REENTRY_MONITOR direct). A flat non-hedge
+            # entry whose previous trade closed within REENTRY_AUGMENT_WINDOW_SEC without augmenting, at a higher low (LONG) / lower high
+            # (SHORT), is sized x(1+REENTRY_AUGMENT_SIZE_MULT) in whole shares under MAX_SYMBOL_VALUE_TRADIER and the hard symbol cap.
+            # ' |VEC_EXACT' orders were sized by tradier_vec_exact.live_action_for -> skipped. Inert unless both switches are on.
+            try:
+                if (
+                    is_entry_action
+                    and not is_hedge
+                    and not _is_exit_or_reduce
+                    and _is_flat_open
+                    and quantity
+                    and float(quantity) > 0
+                ):
+                    _air_pos_t = (
+                        self.position_manager.positions.get(position_key)
+                        if self.position_manager
+                        else None
+                    )
+                    _air_held_t = (
+                        abs(float(getattr(_air_pos_t, "positionAmt", 0) or 0))
+                        if _air_pos_t
+                        else 0.0
+                    )
+                    if _air_held_t < 0.0001:
+                        _air_q0_t = quantity
+                        quantity, reason, _air_info_t = _air_native_carry_t(account_key, symbol, position_side, float(current_price), float(quantity), reason, time.time(), _air_history_log(account_key, symbol, position_side), _air_held_t)
+                        if _air_info_t.get("applied"):
+                            logger.warning(f"[AIR_CARRY] {position_key} {action}: qty {float(_air_q0_t):.4f}->{float(quantity):.4f} (x{1.0 + float(_air_info_t.get('mult', 0.0)):.3f}) {_air_info_t.get('why')} reason={str(reason)[:60]}")
+            except Exception as _air_e_t:
+                logger.warning(f"[AIR_CARRY] {position_key}: check error (fail-open, no carry): {_air_e_t}")
             # ═══ RATIO-AWARE SIZING — bull/bear-scenario-aware L/S rebalancing for stocks ═══
             # BEAR_SCENARIO_SYMBOLS (GLD, USO, XLE, GDX, etc.) go UP when the market goes DOWN.
             # A LONG on a bear_scenario symbol = bearish market bet → flip its contribution to the ratio.

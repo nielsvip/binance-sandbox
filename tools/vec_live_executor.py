@@ -215,14 +215,16 @@ def run_engine(ss: str, overrides: dict, anchor: dict, end_ts: float = None, raw
     from tools.opt import evaluate_v12 as E
     sym, side = split_ss(ss)
     mode = anchor["mode"]
+    base = base_prepared(ss)
+    if base is None:
+        return {"valid": False, "invalid_reason": "prepare failed"}, None
+    if isinstance(base, dict) and base.get("_stale"):
+        return {"valid": False, "invalid_reason": str(base["_stale"])}, None
     if raw is None:
         raw = load_raw(sym, anchor["load_start_ts"])
     if end_ts is not None:
         raw = truncate_raw(raw, end_ts)
     npz = build_npz(raw, sym, mode, anchor["anchor_ts"])
-    base = base_prepared(ss)
-    if base is None:
-        return {"valid": False, "invalid_reason": "prepare failed"}, npz
     prep = dict(base)
     prep["npz_prepared"] = npz
     prep["bh"] = E._bh(npz, side)
@@ -378,15 +380,22 @@ def process(ss: str, entry: dict, overrides: dict, emd5: str, force: bool = Fals
     t1 = _now()
     res, npz = run_engine(ss, overrides, anchor)
     t2 = _now()
+    pre_err = None if npz is not None else str(res.get("invalid_reason") or "prepare failed")
     import numpy as np
-    ts = np.asarray(npz["timestamps"], dtype="float64")
-    bar_ts = _sec(ts[-1])
-    n_bars = len(ts)
+    if npz is not None:
+        ts = np.asarray(npz["timestamps"], dtype="float64")
+        bar_ts = _sec(ts[-1])
+        n_bars = len(ts)
+    else:
+        bar_ts, n_bars = base_last, 0
     stale = (t0 - bar_ts) > STALE_SEC
-    base_size = float(base_prepared(ss)["base_cfg_dict"].get("START_POSITION_SIZE") or 0.0)
+    _base = base_prepared(ss) or {}
+    base_size = float(((_base.get("base_cfg_dict") or {}).get("START_POSITION_SIZE")) or 0.0)
     status = "OK"
     why = ""
-    if n_bars < MIN_BARS:
+    if pre_err:
+        status, why = "ENGINE_ERROR", pre_err
+    elif n_bars < MIN_BARS:
         status, why = "INSUFFICIENT_BARS", f"{n_bars} < {MIN_BARS} bars from anchor"
     elif res.get("execution_ledger") is None and "v12 prepared" in str(res.get("invalid_reason") or ""):
         status, why = "ENGINE_ERROR", str(res.get("invalid_reason"))

@@ -7297,6 +7297,9 @@ class QuickConfig:
     REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: bool = (
         True  # V17 carry only when the previous position never augmented (the augment was missed, not already taken)
     )
+    AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED: bool = (
+        True  # V17 mirror of the GLOBAL live kill switch (config.py / config_tradier.py, USER 2026-10-13 True); vec-inert (the vec ledger always carries), present so switch_parity sees live == vec; never swept, no template row
+    )
     KG_STOCKS_LIVE_GATE: bool = (
         True  # b6 vec-only: stocks KINDERGARTEN/EMA_9_21 = live HARD VETO on the final entry signal (False = legacy additive signal)
     )

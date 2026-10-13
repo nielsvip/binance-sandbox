@@ -1459,6 +1459,41 @@ def _f1_new_lifecycle(pos, px=None, qty=None):
                     pass
 
 
+def _air_ledger_record(tm, pk, ts, old_amt, new_amt, px, reason):
+    """V17 AUGMENT_INTO_REENTRY: the replay's lifecycle log (same shape as live tracker trade_log / stocks history) — action derived
+    from the position amount before/after the fill, sim timestamp. Read by ez_manage._air_native_carry / tradier_manage._air_native_carry_t."""
+    eps = 1e-4
+    if new_amt > old_amt + 1e-12:
+        act = "OPEN" if old_amt < eps else "AUGMENT"
+    elif new_amt < old_amt - 1e-12:
+        act = "CLOSE" if new_amt < eps else "REDUCE"
+    else:
+        return
+    lst = tm.__dict__.setdefault("_air_log", {}).setdefault(pk, [])
+    lst.append({"ts": float(ts), "action": act, "price": float(px or 0.0), "reason": str(reason or "")[:200]})
+    if len(lst) > 400:
+        del lst[:-400]
+
+
+def _air_npz_bars_loader(stores):
+    """V17 AIR REENTRY_AUGMENT_HL_REF='low': frozen-NPZ 15m low/high (same arrays v12_quick_engine reads) instead of live klines."""
+    def _loader(symbol, side):
+        st = stores.get(symbol) or stores.get(str(symbol).upper()) if stores else None
+        if st is None:
+            return None
+        a = getattr(st, "arrays", {}) or {}
+        ts = np.asarray(getattr(st, "timestamps", a.get("timestamps", [])), dtype="float64")
+        lo = a.get("low_15m", a.get("low"))
+        hi = a.get("high_15m", a.get("high"))
+        if lo is None or hi is None or ts.size == 0:
+            return None
+        if float(np.nanmax(ts)) > 1e11:
+            ts = ts / 1000.0
+        n = min(ts.size, len(lo), len(hi))
+        return list(zip(ts[:n].tolist(), np.asarray(lo[:n], dtype="float64").tolist(), np.asarray(hi[:n], dtype="float64").tolist()))
+    return _loader
+
+
 class _SimTime:
     """Drop-in for time module — returns simulation time."""
     def time(self):
@@ -3122,6 +3157,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             "qty_precision": 5,
         }
     v8_logger.info(f"Seeded symbol_configs for {len(stores)} symbols")
+    ez_manage._AIR_BARS_LOADER = _air_npz_bars_loader(stores)  # V17 AIR: HL_REF='low' reads the frozen NPZ, never live klines
 
     # Patch execute_trade_action — captures ALL trade paths (entries, exits, augments, reduces)
     async def _crypto_eta(account_key='', position_key='', symbol='', quantity=0, current_price=0, side='', position_side='', unique_id=None, is_full_close=False, action='', reason='', override_qty=None, is_hedge=False, hedge_for=None, **kw):
@@ -3878,6 +3914,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt:.2f}_dk={_v8ns_dk:.2f}_tm={_v8ns_tm:.2f}"
             elif _v8ns_sf_fired:
                 reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus:.0f}"
+        # V17 AUGMENT_INTO_REENTRY: this seam replaces execute_now -> run the SAME native sizing the live execute_now runs
+        # (ez_manage._air_native_carry, live_twins/reentry_augment.py) on a flat open, state = this replay's AIR ledger.
+        if (not is_red) and (not is_hedge):
+            _air_au = str(act or "").upper()
+            if ("OPEN" in _air_au or "ENTRY" in _air_au or "REENTRY" in _air_au) and "AUGMENT" not in _air_au and "HEDGE" not in _air_au:
+                _air_p = trade_manager.positions.get(pk)
+                _air_amt = abs(float(getattr(_air_p, 'positionAmt', 0) or 0)) if _air_p else 0.0
+                if _air_amt < 0.0001:
+                    _air_side = (ps or ('SHORT' if pk.endswith('_SHORT') else 'LONG')).upper()
+                    _air_q0 = qty
+                    qty, reason, _air_info = ez_manage._air_native_carry(sym, _air_side, px, qty, reason, float(_sim_ts[0]) if _sim_ts else 0.0, trade_manager.__dict__.setdefault('_air_log', {}).get(pk, []))
+                    if _air_info.get("applied"):
+                        v8_logger.warning(f"[AIR_CARRY] {pk} {act}: qty {_air_q0:.6f}->{qty:.6f} {_air_info.get('why')}")
         qty = _unlevered_shadow_qty(qty)
         if qty <= 0:
             return "BLOCKED_UNLEVERED_CAPACITY_OR_REDUCTION_EMPTY"
@@ -4036,6 +4085,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             v8_logger.warning(f"[V8_PNL] CLOSE {pk} {_close_reason_short} entry={_pos['vwap']:.4f} exit={px:.4f} pnl={_pnl_pct:+.2f}% gain%={_live_gain_pct:+.2f}% pool_sharpe={_live_sharpe_pt:.3f} closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']}")
         v8_logger.warning(f"[V8_TRADE] {pk} {side} qty={qty:.4f} @{px:.6f} {act} {reason[:60]}")
         pos = trade_manager.positions.get(pk)
+        _air_old_amt = abs(float(getattr(pos, 'positionAmt', 0) or 0)) if pos else 0.0
+        try:
+            _air_new_amt = (0.0 if (ifc or max(0.0, _air_old_amt - abs(qty)) < 0.0001) else max(0.0, _air_old_amt - abs(qty))) if (is_red and pos) else (_air_old_amt + abs(qty) if not is_red else _air_old_amt)
+            _air_ledger_record(trade_manager, pk, float(_sim_ts[0]) if _sim_ts else 0.0, _air_old_amt, _air_new_amt, px, reason)
+        except Exception:
+            pass
         if is_red and pos:
             old_amt = abs(getattr(pos, 'positionAmt', 0))
             new_amt = max(0, old_amt - abs(qty))
@@ -9111,6 +9166,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 "is_full_close": kw.get("is_full_close", False),
             })
             v8_logger.warning(f"[TRADE] {side} {qty:.0f} {sym} @{px:.2f} {act} {reason[:50]}")
+            try:  # V17 AIR: replay lifecycle log for tradier_manage._air_native_carry_t (live reads data/tradier/history/*.jsonl)
+                if _v8_open_action and "HEDGE" not in str(act or "").upper():
+                    _air_ledger_record(manager, pk, float(_sim_ts[0]) if _sim_ts else 0.0, _pretrade_existing_qty, _pretrade_existing_qty + qty, px, reason)
+                elif _v8_close_action:
+                    _air_ledger_record(manager, pk, float(_sim_ts[0]) if _sim_ts else 0.0, _pretrade_existing_qty, 0.0 if bool(kw.get("is_full_close", False)) else max(0.0, _pretrade_existing_qty - qty), px, reason)
+            except Exception:
+                pass
             # 2026-05-12 FIX 2 — sim-time state hooks (tradier _place path).
             try:
                 _bt_now_pl = float(_sim_ts[0]) if _sim_ts else 0.0
@@ -9129,6 +9191,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 pass
         return {"id": len(executed_trades), "status": "filled", "filled_quantity": qty, "order": {"id": len(executed_trades), "status": "ok"}}
     manager.place_order = _place
+    try:  # V17 AIR: the real tradier execute_now reads the replay ledger + frozen-NPZ bars (never data/tradier/history or live klines)
+        tm_mod._AIR_LOG_LOADER = lambda _a, _s, _sd: list(manager.__dict__.get("_air_log", {}).get(f"{_a}:{_s}_{str(_sd).upper()}", []))
+        tm_mod._AIR_BARS_LOADER = _air_npz_bars_loader(stores)
+    except Exception as _air_hook_e:
+        v8_logger.warning(f"[AIR_CARRY] tradier replay hooks not installed: {_air_hook_e}")
     # Patch execute_trade_action to route through our _v8_execute_now (captures ALL trade paths)
     _orig_eta = getattr(manager, 'execute_trade_action', None)
     async def _v8_execute_trade_action(account_key='', position_key='', symbol='', quantity=0, current_price=0, side='', position_side='', unique_id=None, is_full_close=False, action='', reason='', override_qty=None, is_hedge=False, hedge_for=None, **kw):

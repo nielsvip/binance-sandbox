@@ -8051,6 +8051,49 @@ def _vec_exact_reason_ok(reason) -> bool:
     return " |VEC_EXACT" in str(reason or "")
 
 
+_AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
+
+
+def _air_trade_log(trade_manager, position_key) -> list:
+    """V17 AIR: the persisted lifecycle log of one sym_side = tracker.json exit_candidates[pk].trade_log (on_trade_event, ISO ts)."""
+    try:
+        _tm = getattr(trade_manager, "tracker_manager", None) or getattr(getattr(trade_manager, "service", None), "tracker_manager", None) or getattr(getattr(trade_manager, "positions_service", None), "tracker_manager", None)
+        _ec = (getattr(_tm, "exit_candidates", None) or {}).get(position_key) or {}
+        return list(_ec.get("trade_log") or [])
+    except Exception:
+        return []
+
+
+def _air_native_carry(symbol, side, px, qty, reason, now_ts, log, bars_loader=None):
+    """V17 2026-10-13 AUGMENT_INTO_REENTRY native crypto sizing — twin of v12_quick_engine simulate_one _air_carry_mult/_open via
+    live_twins/reentry_augment.py. Returns (qty, reason, info). Inert unless the GLOBAL AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED and the
+    per-sym AUGMENT_INTO_REENTRY_ENABLED (_psym_get) are on. A ' |VEC_EXACT' order was already sized by live_twins/vec_exact.live_sizing_args
+    (carry_mult from the vec OPEN event) and an ' |AIR_CARRY' order was carried once -> both pass through unchanged (exactly one path applies it)."""
+    from live_twins import reentry_augment as _ra
+    info = {"applied": False, "why": "live_sizing_off"}
+    try:
+        if not _ra.live_on(config):
+            return qty, reason, info
+        _g = lambda _k, _d=None: _psym_get(symbol, side, _k, getattr(config, _k, _ra.DEFAULTS.get(_k, _d)))
+        if not _ra.enabled(_g):
+            info["why"] = "per_sym_off"
+            return qty, reason, info
+        if _ra.is_vec_sized(reason) or _ra.is_carried(reason):
+            info["why"] = "vec_sized_or_already_carried"
+            return qty, reason, info
+        if not qty or float(qty) <= 0 or not px or float(px) <= 0:
+            info["why"] = "no_qty_or_price"
+            return qty, reason, info
+        _bl = bars_loader or (lambda: _AIR_BARS_LOADER(symbol, side) if _AIR_BARS_LOADER is not None else _ra.klines_bars(Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"))
+        _d = _ra.decide(_g, str(side).upper() == "LONG", float(px), now_ts, log, float(qty), float(_g("MAX_POSITION_SIZE", 0.0) or 0.0), False, _bl)
+        info = {"applied": _d["add"] > 0, "why": _d["why"], "mult": _d["mult"], "add": _d["add"]}
+        if _d["add"] > 0:
+            return _d["qty"], f"{reason}{_ra.CARRY_TAG}{_d['mult']:.3f}", info
+    except Exception as _air_e:
+        info = {"applied": False, "why": f"error_{type(_air_e).__name__}"}
+    return qty, reason, info
+
+
 def _vec_exact_mode_on() -> bool:
     """parity-loop-crypto 2026-10-06: PARITY_VEC_EXACT_MODE master (global or per-sym proxy)."""
     try:
@@ -21139,6 +21182,57 @@ class MultiAccountTradeManager:
             return {"__transport_error__": str(_e)}
         return {}
 
+    async def _fixed_stop_find_algo(self, account_key, symbol, side_u, want_oid):
+        """2026-10-13 NEVER-AGAIN: a recorded stop oid is a claim, not proof (men:LTCUSDC tracked an oid while the broker held nothing — invisible forever). Returns True if want_oid is a live STOP algo for symbol/side, False if listed-and-absent, None if the check itself failed (caller treats as present this round, retries soon). Never raises."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return True
+            try:
+                _cli = self.get_client(account_key)
+            except Exception:
+                return None
+            if _cli is None:
+                return None
+            _ol = await self._fixed_stop_algo_call(_cli, "list", symbol=symbol)
+            if isinstance(_ol, dict) and _ol.get("__transport_error__"):
+                try:
+                    _nmap = getattr(self, "_fixed_stop_unreachable_n", None)
+                    if not isinstance(_nmap, dict):
+                        _nmap = {}
+                        self._fixed_stop_unreachable_n = _nmap
+                    _n = int(_nmap.get(symbol, 0) or 0) + 1
+                    _nmap[symbol] = _n
+                    if _n == 1 or _n % 10 == 0:
+                        logger.critical(f"🛡️ [FIXED_STOP_BROKER_UNREACHABLE] {symbol}: stop re-verify failed {str(_ol.get('__transport_error__'))[:120]} (x{_n}) — exits may be unprotected")
+                except Exception:
+                    pass
+                return None
+            try:
+                _nmap2 = getattr(self, "_fixed_stop_unreachable_n", None)
+                if isinstance(_nmap2, dict):
+                    _nmap2.pop(symbol, None)
+            except Exception:
+                pass
+            _oo = (_ol.get("orders") or []) if isinstance(_ol, dict) else (_ol or [])
+            _want = str(want_oid or "")
+            if not _want:
+                return False
+            for _o in _oo:
+                try:
+                    if not isinstance(_o, dict):
+                        continue
+                    if str(_o.get("orderType", "") or _o.get("origType", "") or _o.get("type", "")).upper() not in ("STOP_MARKET", "STOP"):
+                        continue
+                    if str(_o.get("positionSide", "")).upper() != str(side_u or "").upper():
+                        continue
+                    if str(_o.get("algoId", "") or _o.get("orderId", "") or "") == _want:
+                        return True
+                except Exception:
+                    continue
+            return False
+        except Exception:
+            return None
+
     async def _fixed_stop_order_action(self, *, position_key, account_key, symbol, position_side, side, quantity, old_price, unique_id, reason, action, stop_price=0.0, stop_order_id=""):
         """Wire leg of FIXED_STOP via Binance ALGO conditional orders (STOP_MARKET requires algo endpoints, -4120 on /fapi/v1/order). Called ONLY via the execute_now PLACE_STOP/CANCEL_STOP branch. Never raises."""
         try:
@@ -21259,7 +21353,39 @@ class MultiAccountTradeManager:
                     return str(_r)
                 return "NONE_FLAT"
             if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig:
-                return "OK_ALREADY_PLACED"
+                # 2026-10-13 NEVER-AGAIN: a recorded oid is a claim, not proof.
+                # TTL re-verify at the broker; drop to the re-place flow below
+                # when the oid is gone. Transport failure keeps the claim this
+                # round (fail-closed) but retries in 60s, never 300s-blind.
+                try:
+                    _vmap = getattr(self, "_fixed_stop_verify_ts", None)
+                    if not isinstance(_vmap, dict):
+                        _vmap = {}
+                        self._fixed_stop_verify_ts = _vmap
+                    try:
+                        _vttl = float(getattr(__import__("config").Config(), "FIXED_STOP_VERIFY_TTL_SEC", 300.0) or 300.0)
+                    except Exception:
+                        _vttl = 300.0
+                    _vnow = time.time()
+                    if _vnow - float(_vmap.get(position_key, 0.0) or 0.0) < _vttl:
+                        return "OK_ALREADY_PLACED"
+                    _vmap[position_key] = _vnow
+                    _vfound = await self._fixed_stop_find_algo(account_key, symbol, _side_u, str(have.get("orderId")))
+                    if _vfound is not False:
+                        if _vfound is None:
+                            try:
+                                _vmap[position_key] = _vnow - _vttl + 60.0
+                            except Exception:
+                                pass
+                        return "OK_ALREADY_PLACED"
+                    logger.critical(f"🛡️ [FIXED_STOP_GONE] {position_key}: recorded backstop {have.get('orderId')} absent at broker — re-placing")
+                    try:
+                        reg.pop(position_key, None)
+                    except Exception:
+                        pass
+                    have = None
+                except Exception:
+                    return "OK_ALREADY_PLACED"
             if not (have and have.get("orderId")):
                 try:
                     _chk = getattr(self, "_fixed_stop_exchange_check_ts", None)
@@ -25403,6 +25529,12 @@ class MultiAccountTradeManager:
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
         if is_augment and not _original_action_was_reentry and position:
             _aug_count = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)
+            try:
+                from live_twins import reentry_augment as _ra_cnt
+                if _ra_cnt.current_carried(_air_trade_log(self, position_key)):
+                    _aug_count += 1.0  # V17 AIR: a carried open counts as augment #1 (vec n_augments=1)
+            except Exception:
+                pass
             _max_augs = _psym_get(symbol, position_side, "MAX_AUGMENTS_PER_POSITION", getattr(config, "MAX_AUGMENTS_PER_POSITION", 3))
             if _aug_count >= _max_augs:
                 logger.warning(
@@ -32576,6 +32708,26 @@ class MultiAccountTradeManager:
                                 logger.warning(f"[INF_7D_BOOST] {position_key}: qty x{_i7_mult} (delta_wsharpe={_i7_delta:.3f}) {_i7_orig:.6f}→{quantity:.6f}. reason={(reason or '')[:40]}")
         except Exception as _i7_e:
             logger.warning(f"[INF_7D_BOOST] {position_key}: check error (fail-open): {_i7_e}")
+        # V17 2026-10-13 AUGMENT_INTO_REENTRY native sizing (USER: wired on every live path; vec twin v12_quick_engine _open). A flat
+        # non-hedge open whose previous trade closed within REENTRY_AUGMENT_WINDOW_SEC without augmenting, at a higher low (LONG) /
+        # lower high (SHORT), is sized x(1+REENTRY_AUGMENT_SIZE_MULT); every cap below (OPEN_CEIL / MAX_ORDER_VALUE / MAX_POSITION_SIZE)
+        # still binds. ' |VEC_EXACT' orders were sized by live_sizing_args -> skipped. Inert unless both switches are on.
+        try:
+            if (("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act)
+                    and "AUGMENT" not in _kill_act and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
+                    and not is_hedge and quantity and quantity > 0 and old_price and old_price > 0
+                    and abs(safe_fetch_float(original_positionAmt, 0.0)) <= self.min_qty.get(symbol, 0.0001)):
+                _air_sym = symbol or (pk_symbol(position_key) if position_key else "")
+                _air_side = (position_side or ("SHORT" if str(position_key or "").endswith("_SHORT") else "LONG")).upper()
+                _air_pos = await self.get_position(position_key) if position_key else None
+                _air_amt = abs(safe_fetch_float(getattr(_air_pos, "positionAmt", 0), 0.0)) if _air_pos else 0.0
+                if _air_sym and _air_amt <= self.min_qty.get(_air_sym, 0.0001):
+                    _air_q0 = quantity
+                    quantity, reason, _air_info = _air_native_carry(_air_sym, _air_side, float(old_price), float(quantity), reason, time.time(), _air_trade_log(self, position_key))
+                    if _air_info.get("applied"):
+                        logger.warning(f"[AIR_CARRY] {position_key} {action}: qty {_air_q0:.6f}->{quantity:.6f} (x{1.0 + float(_air_info.get('mult', 0.0)):.3f}) {_air_info.get('why')} reason={(reason or '')[:60]}")
+        except Exception as _air_e:
+            logger.warning(f"[AIR_CARRY] {position_key}: check error (fail-open, no carry): {_air_e}")
         # ═══════════════════════════════════════════════════════════════════════════
         # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
         # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency-exit reasons bypass.

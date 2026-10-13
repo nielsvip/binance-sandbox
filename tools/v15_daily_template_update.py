@@ -129,10 +129,16 @@ def _field_types():
     return _FIELD_TYPES
 
 
-def _coercible(name, value):
+def _coercible(name, value, cs=None):
     # 2026-10-03 (BIBLE §64 3rd enforcement): a promoted value MUST pass the pilot's strict
     # _coerce_override for its field type, else it deterministically voids every defaults-pure set
     # (observed phantom: bold '0.5' for bool WT_EXHAUST_EXIT_REQUIRE_GAIN). Unknown switch = accept.
+    # 2026-10-13 BIBLE §96: the ONE validator (tools/switch_types.py, live-config typed) decides first, fail-closed — the
+    # QuickConfig-first lookup below let '0.5' through on live-int/bool fields QuickConfig annotates float (MAX_AUGMENTS phantom).
+    import switch_types as _ST
+    _ok, _cv, _why = _ST.coerce(str(name), value, (cs or "").split("_")[0] or None)
+    if not _ok:
+        return False
     t = _field_types().get(str(name))
     if t is None:
         return True
@@ -218,7 +224,7 @@ def _floor_guard(cat_side, promoted):
     return res
 
 
-def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list):
+def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list, cs=None):
     """Cross-tab winners so ONE value per switch / filter wins in every tab: {('sw',name): (value_norm, avg)}, {('f',name): ...}."""
     win = {}
     f_opts = collections.defaultdict(list)   # filter -> [set of option values per tab that has it]
@@ -244,7 +250,7 @@ def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list):
                 if _ablation_refused(a, raw):
                     refused.append([tab, "sw", key_of(a, raw), round(avg, 4), pos, n, "P0 ablation=True"])
                     continue
-                if not _coercible(a, raw):
+                if not _coercible(a, raw, cs):
                     refused.append([tab, "sw", key_of(a, raw), round(avg, 4), pos, n, "type-uncoercible"])
                     continue
                 k = ("sw", a)
@@ -266,7 +272,7 @@ def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list):
                 if _ablation_refused(f, opt):
                     refused.append([tab, "f", h, round(avg, 4), pos, n, "P0 ablation=True"])
                     continue
-                if not _coercible(f, opt):
+                if not _coercible(f, opt, cs):
                     refused.append([tab, "f", h, round(avg, 4), pos, n, "type-uncoercible"])
                     continue
                 k = ("f", f)
@@ -553,11 +559,16 @@ def add_tab_level_rows(ws, spec_tab, rep):
         for opt in info["options"]:
             if opt in have:
                 continue
+            import switch_types as _ST  # BIBLE §96: never write a value the one validator refuses (fail-closed, reported)
+            _ok, _cell, _why = _ST.to_cell(f, opt, rep.get("venue"))
+            if not _ok:
+                rep.setdefault("type_refused", []).append([ws.title, f, opt, _why])
+                continue
             r += 1
             cells = [(None, _copy.copy(fo), _copy.copy(fi), nf, _copy.copy(al)) for (_v, fo, fi, nf, al) in base]
             write_row(ws, r, cells)
             ws.cell(row=r, column=1).value = f
-            ws.cell(row=r, column=2).value = opt
+            ws.cell(row=r, column=2).value = _cell
             ws.cell(row=r, column=c_isd).value = "YES" if (new_group and opt == default) else "NO"
             for c in range(2, ncol + 1):
                 if c != 2 and c != c_isd:
@@ -619,7 +630,7 @@ def main_tab_level(args):
         path = tdir / TEMPLATES[cs]
         before = openpyxl.load_workbook(str(path))
         wb = openpyxl.load_workbook(str(path))
-        expected, rep = {}, {}
+        expected, rep = {}, {"venue": cs.split("_")[0]}
         for tab, fs in spec.get(cs, {}).items():
             if tab in wb.sheetnames:
                 expected[tab] = add_tab_level_rows(wb[tab], fs, rep)
@@ -698,7 +709,7 @@ def main():
         if not round_changed:
             ledger_out = dict(ledger_cs)
         refused = []
-        win = {} if args.no_promote else pick_winners(wb, stats, args.min_pos_sym, args.min_n, refused)
+        win = {} if args.no_promote else pick_winners(wb, stats, args.min_pos_sym, args.min_n, refused, cs)
         report.setdefault("refused", {}).__setitem__(cs, refused)
         if refused:
             print(f"[{cs}] refused promotions: {len(refused)} (first: {refused[:3]})")

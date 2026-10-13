@@ -115,6 +115,11 @@ def apply_tab(ws, stats: dict, ledger: dict, rep: dict):
         if not cand:
             continue
         best_avg, best = max(cand)
+        import switch_types as _ST  # BIBLE §96: a bold/default value must pass the ONE validator (fail-closed, recorded)
+        _ok, _cv, _why = _ST.coerce(str(sw).strip(), ws.cell(row=best, column=2).value, rep.get("venue"))
+        if not _ok:
+            rep.setdefault("refused_type", []).append([ws.title, sw, ws.cell(row=best, column=2).value, round(best_avg, 4), _why])
+            continue
         if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION":
             try:
                 _mav = float(str(ws.cell(row=best, column=2).value).strip())
@@ -146,6 +151,11 @@ def apply_tab(ws, stats: dict, ledger: dict, rep: dict):
         if not cand:
             continue
         best_avg, best = max(cand)
+        import switch_types as _ST
+        _ok, _cv, _why = _ST.coerce(f, ws.cell(row=HDR, column=best).value.split("=", 1)[1], rep.get("venue"))
+        if not _ok:
+            rep.setdefault("refused_type", []).append([ws.title, f, ws.cell(row=HDR, column=best).value, round(best_avg, 4), _why])
+            continue
         cur = [c for c in cs if ws.cell(row=HDR, column=c).font is not None and ws.cell(row=HDR, column=c).font.b]
         if cur == [best]:
             continue
@@ -232,7 +242,7 @@ def main():
         before = openpyxl.load_workbook(str(path))
         wb = openpyxl.load_workbook(str(path))
         ledger = dict(ledger_all.get(cs) or {})
-        rep = {"rows_with_stats": 0, "promoted_switch": [], "promoted_filter": []}
+        rep = {"rows_with_stats": 0, "promoted_switch": [], "promoted_filter": [], "venue": cs.split("_")[0]}
         for tab in SWITCH_SHEETS:
             if tab in wb.sheetnames:
                 apply_tab(wb[tab], stats, ledger, rep)

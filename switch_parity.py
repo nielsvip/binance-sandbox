@@ -432,9 +432,20 @@ def register_workbook_result(
         live_vals, quick_vals = _venue_values_cached(not is_crypto_sym(symbol), root)
         same, noop, floatkept = [], [], []
     global_only = []
+    try:  # BIBLE §96: the ONE typed-value validator gates every key before any surface is written (fail-closed)
+        sys.path.insert(0, str(root / "tools"))
+        import switch_types as _ST
+    except Exception as _ste:
+        rep["reason"] = f"switch_types validator unavailable — refusing (fail-closed): {_ste}"
+        return rep
+    _venue = "CRYPTO" if is_crypto_sym(symbol) else "STOCKS"
     for k, v in overrides.items():
         if k in GLOBAL_ONLY_KEYS:
             global_only.append(k)
+            continue
+        _st_ok, _st_cv, _st_why = _ST.coerce(k, v, _venue, allow_quick_float=True, root=root)
+        if not _st_ok:
+            bad[k] = f"switch_types: {_st_why}"
             continue
         if k in STRUCTURED_KEYS:
             ok_s, sv = coerce_structured(k, v)

@@ -101,6 +101,41 @@ def run_ss(ss: str, bars: int, workers: int, slide: int) -> dict:
     return {"ss": ss, "n_bars_window": n, "bars_tested": len(ks), "bars_with_events": n_event_bars, "events_expected": sum(len(expected[k][0]) for k in ks), "mismatches": len(mism), "mismatch_detail": mism[:10], "truncation_end_misaligned": end_bad, "inconsistent_state_flags": incons[:10], "deterministic": det, "anchored_vs_canonical": canon_eq, "sliding_sample": len(slid), "sliding_mismatches": len(slide_mism), "sliding_detail": slide_mism[:5], "anchor_iso": X._iso(anchor["anchor_ts"]), "secs": round(time.time() - t0, 1)}
 
 
+_STALE_REASON = "STALE test: npz older than gate (unit probe)"
+
+
+def _stale_base(ss):
+    return {"_stale": _STALE_REASON, "symside": ss, "window_days": 30}
+
+
+def test_run_engine_stale_prepare_no_build():
+    """Stale prepare must short-circuit before any raw/npz build (USER 2026-10-13: 200k/cycle KeyError burn)."""
+    _orig_base, _orig_load = X.base_prepared, X.load_raw
+    X.base_prepared = lambda ss: _stale_base(ss)
+    X.load_raw = lambda *a, **k: (_ for _ in ()).throw(AssertionError("load_raw must not run on stale prepare"))
+    try:
+        res, npz = X.run_engine("PROBEUSDT_LONG", {}, {"mode": "crypto", "anchor_ts": 0.0, "load_start_ts": 0.0})
+    finally:
+        X.base_prepared, X.load_raw = _orig_base, _orig_load
+    assert npz is None
+    assert res.get("execution_ledger") is None and _STALE_REASON in str(res.get("invalid_reason"))
+
+
+def test_process_stale_prepare_engine_error(tmp_path, monkeypatch):
+    """process() with stale prepare records ENGINE_ERROR instead of raising KeyError."""
+    import numpy as np
+    monkeypatch.setattr(X, "base_prepared", lambda ss: _stale_base(ss))
+    monkeypatch.setattr(X, "npz_last_parent", lambda sym: (1700000000.0, 1700000000.0))
+    monkeypatch.setattr(X, "get_anchor", lambda ss: {"mode": "crypto", "anchor_ts": 1699900000.0, "load_start_ts": 1699900000.0})
+    monkeypatch.setattr(X, "run_engine", lambda ss, ov, anchor, end_ts=None, raw=None: ({"valid": False, "invalid_reason": _STALE_REASON}, None))
+    monkeypatch.setattr(X, "decide", lambda *a, **k: (_ for _ in ()).throw(AssertionError("decide must not run without bars")))
+    monkeypatch.setattr(X, "STATE", tmp_path / "state")
+    rec = X.process("PROBEUSDT_LONG", {"mode": "shadow"}, {}, "emd5-test", False)
+    assert rec["status"] == "ENGINE_ERROR" and _STALE_REASON in rec["why"]
+    st = json.loads((tmp_path / "state" / "PROBEUSDT_LONG.json").read_text())
+    assert st["status"] == "ENGINE_ERROR" and st["actionable"] is False
+
+
 def test_equivalence():
     sss = [s for s in os.environ.get("VEC_LIVE_TEST_SS", "").split(",") if s]
     if not sss:

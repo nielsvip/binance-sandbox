@@ -157,3 +157,80 @@ def test_position_fields_roundtrip():
     q = EP(symbol="ALGOUSDT", position_side="LONG", entry_price=0.13, mark_price=0.12, positionAmt=10.0, initial_quantity=10.0, gain=-8.0, max_gain=0.0, prev_gain=0.0, max_quantity=10.0, last_augmentation_amount=0.0, last_augmentation_price=0.0, last_augmentation_time=None, last_reduction_amount=0.0, last_reduction_price=0.0, last_reduction_time=None, max_positionSize=10.0, opened_at=None, last_updated=None, last_signal="", fixed_stop_price=0.128, exchange_stop_order_id="12345")
     q2 = EP.from_dict(q.to_dict())
     assert q2.fixed_stop_price == 0.128 and q2.exchange_stop_order_id == "12345"
+
+
+def _fake_stop_manager(find_result, exec_calls):
+    import types
+    from ez_manage import MultiAccountTradeManager as _MM
+    fake = types.SimpleNamespace()
+    fake.managed_stop_registry = {}
+    async def _find(account_key, symbol, side_u, want_oid):
+        exec_calls.setdefault("find", []).append((symbol, want_oid))
+        return find_result
+    async def _exec(**kw):
+        exec_calls.setdefault("exec", []).append(kw)
+        if kw.get("action") == "PLACE_STOP":
+            return "SUCCESS_STOP_PLACED_999"
+        return "SUCCESS_STOP_CANCELLED_X"
+    fake._fixed_stop_find_algo = _find
+    fake.execute_now = _exec
+    fake.get_client = lambda account_key: object()
+    fake.get_symbol_config = lambda symbol: {"tick_size": 0.5}
+    fake.ensure_fixed_stop_backstop = _MM.ensure_fixed_stop_backstop.__get__(fake)
+    return fake
+
+
+def _fake_stop_position():
+    import types
+    return types.SimpleNamespace(positionAmt=1.0, opened_at="OPEN123", entry_price=100.0, exchange_stop_order_id="OLD999")
+
+
+def _run(coro):
+    import asyncio
+    return asyncio.run(coro)
+
+
+def test_reverify_gone_oid_replaces():
+    calls = {}
+    m = _fake_stop_manager(False, calls)
+    pk = "men:LTCUSDC_LONG"
+    m.managed_stop_registry[pk] = {"orderId": "OLD999", "stopPrice": 60.0, "entry_sig": "OPEN123", "symbol": "LTCUSDC", "side": "LONG"}
+    out = _run(m.ensure_fixed_stop_backstop(account_key="men", symbol="LTCUSDC", position_key=pk, position_side="LONG", position=_fake_stop_position(), soft_level=60.0, current_price=61.6))
+    assert str(out).startswith("SUCCESS_STOP_PLACED"), out
+    assert m.managed_stop_registry[pk]["orderId"] == "999"
+    assert calls["find"] == [("LTCUSDC", "OLD999")]
+
+
+def test_reverify_present_oid_no_replace():
+    calls = {}
+    m = _fake_stop_manager(True, calls)
+    pk = "men:LTCUSDC_LONG"
+    m.managed_stop_registry[pk] = {"orderId": "OLD999", "stopPrice": 60.0, "entry_sig": "OPEN123", "symbol": "LTCUSDC", "side": "LONG"}
+    out = _run(m.ensure_fixed_stop_backstop(account_key="men", symbol="LTCUSDC", position_key=pk, position_side="LONG", position=_fake_stop_position(), soft_level=60.0, current_price=61.6))
+    assert out == "OK_ALREADY_PLACED", out
+    assert "exec" not in calls
+    assert m.managed_stop_registry[pk]["orderId"] == "OLD999"
+
+
+def test_reverify_ttl_skips_broker_call():
+    import time
+    calls = {}
+    m = _fake_stop_manager(True, calls)
+    pk = "men:LTCUSDC_LONG"
+    m.managed_stop_registry[pk] = {"orderId": "OLD999", "stopPrice": 60.0, "entry_sig": "OPEN123", "symbol": "LTCUSDC", "side": "LONG"}
+    m._fixed_stop_verify_ts = {pk: time.time()}
+    out = _run(m.ensure_fixed_stop_backstop(account_key="men", symbol="LTCUSDC", position_key=pk, position_side="LONG", position=_fake_stop_position(), soft_level=60.0, current_price=61.6))
+    assert out == "OK_ALREADY_PLACED", out
+    assert "find" not in calls
+
+
+def test_reverify_transport_failure_fail_closed():
+    import time
+    calls = {}
+    m = _fake_stop_manager(None, calls)
+    pk = "men:LTCUSDC_LONG"
+    m.managed_stop_registry[pk] = {"orderId": "OLD999", "stopPrice": 60.0, "entry_sig": "OPEN123", "symbol": "LTCUSDC", "side": "LONG"}
+    out = _run(m.ensure_fixed_stop_backstop(account_key="men", symbol="LTCUSDC", position_key=pk, position_side="LONG", position=_fake_stop_position(), soft_level=60.0, current_price=61.6))
+    assert out == "OK_ALREADY_PLACED", out
+    assert "exec" not in calls
+    assert m._fixed_stop_verify_ts[pk] < time.time()

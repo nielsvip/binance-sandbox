@@ -2272,6 +2272,13 @@ class TradierConfig:
         300  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     )
     WS_RECONNECT_DELAY: float = 5.0
+    # 2026-10-13 NEVER-AGAIN: broker orders listing takes ~3s (trb 1500 orders)
+    # from a quiet process but the live workers' saturated loop needs more
+    # headroom — 10s strangled every order into BROKER_UNREACHABLE_ORDERS for
+    # hours while the broker was healthy (proven 0.8-3.1s direct). 25s still
+    # fits the 120s ORDER_EXEC_TIMEOUT_S with preflight+place combined.
+    # Read by order_dedupe_guard._cfg (hasattr override of its 10.0 default).
+    ORDER_DEDUPE_QUERY_TIMEOUT_SEC: float = 25.0
 
     FUNDING_GATE_MTF_REQUIRED: bool = (
         True  # 2026-09-30 carbon-copy config.py (STOCKS_LONG template bold): MTF funding veto
@@ -6110,7 +6117,7 @@ class TradierConfig:
         default_factory=dict
     )  # V17 2026-10-13 per-switch filter exemption {path_id: [filter_key]}; {} = today. Decided by the vec twin (v12_quick_engine + vec_decisions/filter_exemptions.py); honoured live only through PARITY_VEC_EXACT_MODE (the native paths do not read it). Per-sym promoted sets carry it.
     AUGMENT_INTO_REENTRY_ENABLED: bool = (
-        False  # V17 2026-10-13 vec-twin decision switch (QuickConfig mirror): carry the missed augment into a higher-low reentry (size = open x (1 + REENTRY_AUGMENT_SIZE_MULT)). Native live paths do not read it; vec-exact live sizing additionally needs AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED
+        False  # V17 2026-10-13 vec-twin decision switch (QuickConfig mirror): carry the missed augment into a higher-low reentry (size = open x (1 + REENTRY_AUGMENT_SIZE_MULT)). Live: native execute_now (ez_manage / tradier_manage via live_twins/reentry_augment.py) and the vec-exact twin both read it per-sym; live sizing additionally needs the global AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED
     )
     REENTRY_AUGMENT_SIZE_MULT: float = 1.0  # V17 carried augment = this x the reentry open size
     REENTRY_AUGMENT_REQUIRE_HIGHER_LOW: bool = True  # V17 LONG reentry > previous trade reference / SHORT < (lower high)

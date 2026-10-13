@@ -109,7 +109,7 @@ def test_config_defaults_are_off():
     for c in (Config(), TradierConfig()):
         assert c.FILTER_EXEMPTIONS == {}
         assert c.AUGMENT_INTO_REENTRY_ENABLED is False
-        assert c.AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED is False
+        assert c.AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED is True  # USER 2026-10-13: live kill switch default True
 
 
 def test_quickconfig_defaults_are_off():
