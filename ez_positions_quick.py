@@ -28508,7 +28508,11 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 # "vector has to have the 100% guarantee so when live follows vector it also has": live follows the vec POSITION,
                 # not only its one-shot OPEN event. Vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> open now.
                 _cv = _vx.actions_at(_sym, _side, time.time())
-                if _cv.get("status") == "OK" and _cv.get("vec_holds") is True:
+                if _cv.get("status") == "OK" and _cv.get("vec_holds") is True and _vx.owned_has(_pk):
+                    # 2026-10-13 men EGLD double open: a twin OPEN dispatched 22:54:54 was still in flight (local still flat) when
+                    # converge fired 22:55:26. owned_add() runs BEFORE every twin OPEN is sent -> owned = an OPEN is in flight/recent.
+                    logger.info(f"[VEC_CONVERGE_OPEN] {_pk}: skipped — a twin OPEN is in flight/owned (no duplicate entry)")
+                elif _cv.get("status") == "OK" and _cv.get("vec_holds") is True:
                     _cv_tag = ("CVOPEN", _pk, float(_cv.get("bar_ts") or 0.0))
                     if _cv_tag not in _VX_HOLD_SKIP_LOGGED:
                         _VX_HOLD_SKIP_LOGGED.add(_cv_tag)

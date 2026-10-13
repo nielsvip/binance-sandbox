@@ -58922,6 +58922,48 @@ def _shutdown_watchdog_force_exit(timeout_s=30.0):
 TRADIER_MANAGE_CODE_REV = "2026-10-13G-looplag-watch"
 
 
+def _start_freeze_tripwire():
+    """2026-10-14 NEVER-AGAIN: the loop parks 11-89s (proven by lag timings)
+    but the cause is LOCAL, not the broker — and the loop watchdog can only
+    run AFTER a park ends, so it never catches the culprit red-handed. This
+    OS-thread tripwire dumps live stacks DURING a park (max 1 dump/10min).
+    Negligible cost; daemon thread dies with the process."""
+    try:
+        import faulthandler as _fh
+        import threading as _th
+        import time as _tt
+        _state = {"beat": _tt.monotonic(), "last_dump": 0.0}
+
+        async def _beater():
+            while True:
+                await asyncio.sleep(5.0)
+                try:
+                    _state["beat"] = _tt.monotonic()
+                except Exception:
+                    pass
+
+        def _watch():
+            while True:
+                _tt.sleep(5.0)
+                try:
+                    _lag = _tt.monotonic() - _state["beat"]
+                    if _lag > 60.0 and _tt.monotonic() - _state["last_dump"] > 600.0:
+                        _state["last_dump"] = _tt.monotonic()
+                        logger.critical(f"🧊 [FREEZE_TRIPWIRE] loop parked {_lag:.0f}s — dumping live stacks now")
+                        try:
+                            _fh.dump_traceback()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+        _t = _th.Thread(target=_watch, name="freeze-tripwire", daemon=True)
+        _t.start()
+        return _beater
+    except Exception:
+        return None
+
+
 async def _loop_lag_watchdog():
     """2026-10-13 NEVER-AGAIN observability: stock orders burned 120s each
     while the broker answered in ~2s from any quiet process (proven 6 ways).
@@ -59004,6 +59046,12 @@ async def main():
         asyncio.create_task(sent_strat.run_loop())
         try:
             asyncio.create_task(_loop_lag_watchdog())
+        except Exception:
+            pass
+        try:
+            _beater = _start_freeze_tripwire()
+            if _beater is not None:
+                asyncio.create_task(_beater())
         except Exception:
             pass
         print(f"[STARTUP] Calling manager.start()...", flush=True)

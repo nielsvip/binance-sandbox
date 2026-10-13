@@ -84,10 +84,27 @@ from pathlib import Path
 from tools.v15_shutdown import V15Shutdown
 _SLICE_HOLD = {"v": False}  # USER 2026-10-13 "the 0.3 rule": V15_FILL_SLICE_S never slices a board once its pinpoint round started
 _SHUTDOWN = {"v": False}  # USER 2026-10-07: SIGTERM/SIGINT -> finish cell/chunk, persist, exit (THROTTLE instead of OOM)
+_MAIN_PID = {"v": None}  # set where the handlers are installed; 2026-10-13 AMZN_LONG: forked pool workers inherited the handler
+
+
 def _sig_shutdown(signum, frame):
+    if _MAIN_PID["v"] is not None and os.getpid() != _MAIN_PID["v"]:
+        # a forked worker (pilot pool / combo / any library pool) being torn down: never trip the shutdown flag, never print
+        # a misleading line — die the default way so terminate() works
+        _sig.signal(signum, _sig.SIG_DFL)
+        os.kill(os.getpid(), signum)
+        return
     _SHUTDOWN["v"] = True
     try: print(f"[shutdown] signal {signum} -> will exit at next cell/chunk boundary", flush=True)
     except Exception: pass
+
+def _pool_worker_sig_default():
+    """Pool initializer: workers die on SIGTERM/SIGINT the default way (a pool teardown never reaches the pilot's handler)."""
+    try:
+        _sig.signal(_sig.SIGTERM, _sig.SIG_DFL)
+        _sig.signal(_sig.SIGINT, _sig.SIG_DFL)
+    except Exception:
+        pass
 
 # Spec stall guard: >10s on a cell -> RED + reason, continue. 0.07 turned every eval slower than 70ms into a fake 0.0 delta.
 GREY_SKIP_RGB = {"FFBFBFBF", "00BFBFBF"}  # template switch-name font = skip row (tools/v15_template_fix.py sets it)
@@ -3683,7 +3700,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     if prepared is not None and _n_proc > 1:
         import multiprocessing as _mp
         _POOL_PREPARED = prepared
-        _pool = _cf.ProcessPoolExecutor(max_workers=_n_proc, mp_context=_mp.get_context("fork"))
+        _pool = _cf.ProcessPoolExecutor(max_workers=_n_proc, mp_context=_mp.get_context("fork"), initializer=_pool_worker_sig_default)
         # 2026-09-28 fork-deadlock fix: ProcessPoolExecutor forks workers LAZILY at first submit,
         # which lands after threads exist (red-fixer/eval threads) — a fork while another thread
         # holds a lock leaves children in futex_wait forever (s2 herd froze at load 3.8, logs idle
@@ -14202,6 +14219,8 @@ def main():
 
 if __name__ == "__main__":
     try:
+        _MAIN_PID["v"] = os.getpid()
+        os.environ["V17_COMBO_IN_PILOT"] = "1"  # combo engine must use the pilot's evaluator, never fork its own pool
         _sig.signal(_sig.SIGTERM, _sig_shutdown)
         _sig.signal(_sig.SIGINT, _sig_shutdown)
     except Exception: pass

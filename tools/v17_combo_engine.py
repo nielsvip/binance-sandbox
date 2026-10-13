@@ -1320,6 +1320,16 @@ def _worker(chunk):
     return out
 
 
+def _worker_sig_default():
+    """Pool initializer: SIGTERM/SIGINT back to SIG_DFL (forked workers must never run a host's shutdown handler on teardown)."""
+    import signal
+    try:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+    except Exception:
+        pass
+
+
 class PoolEvaluator:
     """Fork pool over the prepared 30D + recent-7D slices (inherited copy-on-write, pre-forked single-threaded)."""
 
@@ -1334,7 +1344,7 @@ class PoolEvaluator:
         self.n = 0
         self.ex = None
         if self.workers > 1:
-            self.ex = cf.ProcessPoolExecutor(max_workers=self.workers, mp_context=mp.get_context(os.environ.get("V17_COMBO_MP", "fork")))
+            self.ex = cf.ProcessPoolExecutor(max_workers=self.workers, mp_context=mp.get_context(os.environ.get("V17_COMBO_MP", "fork")), initializer=_worker_sig_default)
             list(self.ex.map(abs, range(self.workers * 4)))
 
     def __call__(self, items, deadline=None):
@@ -1502,6 +1512,8 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
     cs = cat_side_of(sym_side)
     st = {"sym_side": sym_side, "cat_side": cs, "budget_s": float(budget_s), "workers": int(workers), "started_utc": _utc()}
     own_eval = evaluator is None
+    if own_eval and os.environ.get("V17_COMBO_IN_PILOT") == "1":
+        raise RuntimeError("v17_combo_engine.search inside v15_pilot needs evaluator= (the pilot's pool); never forks its own")
     if prepared is None and own_eval:
         from tools.opt.v12_pilot import prepare_batch
         prepared = prepare_batch(sym_side, 30)
