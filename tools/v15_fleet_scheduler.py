@@ -1047,9 +1047,12 @@ def probe(host):
 
 
 def readiness(host, symbols, venue, cache, now):
-    """{sym: info} for this host, cached (ok entries 3h, failures 30 min) in `cache[host]`."""
+    """{sym: info} for this host, cached (ok entries 30min, failures 30 min) in `cache[host]`."""
     c = cache.setdefault(host["name"], {})
-    need = [s for s in symbols if s not in c or (now.timestamp() - c[s].get("_at", 0)) > (10800 if c[s].get("ok") else 1800)]
+    # USER 2026-10-12 dispatch gate: ok-cache was 3h — a 3h-old "ok" could dispatch onto a 12-bar-stale NPZ.
+    # Tail currency decays every 15m bar, so re-probe ok entries every 30min. Probes are batched (1 ssh/host/tick
+    # worst case), so this costs nothing.
+    need = [s for s in symbols if s not in c or (now.timestamp() - c[s].get("_at", 0)) > 1800]
     if need:
         res = host_py(host, "ready", {"symbols": need, "venue": venue, "min_span_30d": MIN_SPAN_30D, "min_span_365d": MIN_SPAN_365D}, timeout=180)
         if res:
@@ -1190,6 +1193,32 @@ def pair_launch_cmd(host, actions, pdir, workers):
         body = side_cmd(host, a["sym"], a["side"], a["window"], pdir, a.get("attempt", 1), workers)
         parts.append(f"(cd {host['root']} && mkdir -p logs && setsid nohup bash -c {shlex.quote(body)} >> /tmp/sweep_{a['sym']}_{a['side']}_{a['window']}.log 2>&1 < /dev/null &) > /dev/null 2>&1")
     return "; ".join(parts)
+
+
+def _npz_hold_triage(sym):
+    """USER 2026-10-12 dispatch gate: a worker NPZ held for tail-staleness — is S1's own NPZ fresh (worker
+    sync lag, converges on its own via sync_indicators.sh) or stale/missing (daemon/refetch problem, needs an
+    agent)? S1-local, read-only, never raises. Returns a short tag for the skip log."""
+    try:
+        import numpy as _np
+        import npz_cutoffs as _nc  # flat style: this module puts ROOT/tools on sys.path (the worker heredoc uses tools.npz_cutoffs instead)
+        p = ROOT / "backtest_v8" / "indicators" / f"{sym}.npz"
+        if not p.exists():
+            return "s1:missing"
+        z = _np.load(str(p), allow_pickle=False)
+        if "timestamps" not in z.files:
+            return "s1:no-timestamps"
+        t = _np.asarray(z["timestamps"], dtype="float64").ravel()
+        t = t[_np.isfinite(t)]
+        if t.size == 0:
+            return "s1:no-timestamps"
+        tail = float(t[-1])
+        if tail > 1e12:
+            tail /= 1000.0
+        ok, _ = _nc.tail_currency(tail, venue_of(sym))
+        return "s1:fresh" if ok else "s1:stale"
+    except Exception as e:
+        return f"s1:check-fail {e}"[:40]
 
 
 def npz_prep(host, symbol):
@@ -1646,7 +1675,10 @@ def tick(args, cfg, now):
                 continue
             rd = is_ready(h["name"], sym)
             if not rd.get("ok"):
-                log["skipped_unready"][sym] = f"{h['name']}: {rd.get('reason')}"
+                _rsn = rd.get("reason") or ""
+                if _rsn.startswith("tail-stale:"):
+                    _rsn += f" [{_npz_hold_triage(sym)}]"
+                log["skipped_unready"][sym] = f"{h['name']}: {_rsn}"
                 continue
             acts = pending_actions(sym, h["name"])
             acts = [a for a in acts if _repair_sticky_ok(a, rep_host, h["name"])]

@@ -6870,6 +6870,12 @@ class PositionService:
         try:
             if not isinstance(account_positions, dict) or not account_positions:
                 return
+            try:
+                _etm = getattr(self, "_ensure_trade_manager", None)
+                if _etm is not None and getattr(self, "trade_manager", None) is None:
+                    await _etm()
+            except Exception:
+                pass
             tm = getattr(self, "trade_manager", None)
             try:
                 _inflight = getattr(self, "_fixed_stop_close_inflight", None)

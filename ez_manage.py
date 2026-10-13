@@ -21199,9 +21199,50 @@ class MultiAccountTradeManager:
             _tick = 0.0
             try:
                 _sc = self.get_symbol_config(symbol) or {}
-                _tick = float(_sc.get("tickSize") or _sc.get("tick_size") or 0.0)
+                _tick = float(_sc.get("tick_size") or _sc.get("tickSize") or 0.0)
             except Exception:
                 _tick = 0.0
+            if _tick <= 0:
+                try:
+                    if not getattr(self, "symbol_configs", None):
+                        _loaded = await self.load_symbol_configs()
+                        if isinstance(_loaded, dict) and _loaded:
+                            self.symbol_configs = _loaded
+                            _sc2 = self.get_symbol_config(symbol) or {}
+                            _tick = float(_sc2.get("tick_size") or _sc2.get("tickSize") or 0.0)
+                except Exception:
+                    pass
+            if _tick <= 0:
+                try:
+                    _cli = self.get_client(account_key)
+                    if _cli is not None:
+                        _ei = await asyncio.wait_for(asyncio.to_thread(_cli.futures_exchange_info), timeout=20.0) or {}
+                        for _s in (_ei.get("symbols") or []):
+                            try:
+                                if str(_s.get("symbol", "")) != symbol:
+                                    continue
+                                for _f in (_s.get("filters") or []):
+                                    if str(_f.get("filterType", "")) == "PRICE_FILTER":
+                                        _tick = float(_f.get("tickSize") or 0.0)
+                                        break
+                                break
+                            except Exception:
+                                continue
+                        if _tick > 0:
+                            try:
+                                if not isinstance(getattr(self, "symbol_configs", None), dict):
+                                    self.symbol_configs = {}
+                                _cur = self.symbol_configs.get(symbol) or {}
+                                if isinstance(_cur, dict):
+                                    _cur["tick_size"] = _tick
+                                    self.symbol_configs[symbol] = _cur
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+            if _tick <= 0:
+                logger.error(f"[FIXED_STOP_PLACE] {position_key}: no tick size for {symbol} — refusing unrounded stop (would fail -1111)")
+                return "REFUSED_STOP_NO_TICK"
             _params = _fixed_stop_core.build_stop_params(_side_u == "LONG", _soft, _tick)
             _lvl = float(_params.get("stopPrice") or 0.0)
             if _lvl <= 0:

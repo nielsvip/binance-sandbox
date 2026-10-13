@@ -89,3 +89,72 @@ def test_exit_codes(tmp_path, capsys):
     (tmp_path / "VARS3_LONG.npz").unlink()
     assert G.main(["gate", "--dir", str(tmp_path)]) == 0
     assert G.main(["gate", "--dir", str(tmp_path / "nope")]) == 1
+
+
+def _keys(root, keys):
+    import json
+
+    (root / "tradeable_keys.json").write_text(json.dumps(keys))
+
+
+def test_tradeable_helpers():
+    tsyms = {"FRESHUSDT", "AGUSDT"}
+    assert G.is_tradeable_file("FRESHUSDT.npz", tsyms) is True
+    assert G.is_tradeable_file("AG.npz", tsyms) is True
+    assert G.is_tradeable_file("NOPE.npz", tsyms) is False
+    assert G.is_tradeable_file("AAPL_BF.npz", {"AAPLUSDT"}) is False
+    assert G.is_tradeable_file("anything.npz", None) is True
+    assert G.is_derived("AAPL_BF") is True
+    assert G.is_derived("AAPL_365") is True
+    assert G.is_derived("VARS3_LONG") is True
+    assert G.is_derived("FRESHUSDT") is False
+
+
+def test_tradeable_only_exit_and_purge(tmp_path, monkeypatch):
+    _fixtures(tmp_path)
+    _keys(tmp_path, ["ang:FRESHUSDT_LONG", "ang:SHORTSTK_LONG"])
+    monkeypatch.setattr(G, "ROOT", str(tmp_path))
+    ind = tmp_path / "ind"
+    ind.mkdir()
+    for p in tmp_path.glob("*.npz"):
+        p.rename(ind / p.name)
+    assert G.main(["gate", "--dir", str(ind), "--tradeable-only"]) == 1
+    assert G.main(["gate", "--dir", str(ind), "--purge-nontradeable"]) == 0
+    assert (ind / "STALEUSDT.npz").exists()  # dry-run moves nothing
+    assert G.main(["gate", "--dir", str(ind), "--purge-nontradeable", "--yes"]) == 0
+    assert not (ind / "STALEUSDT.npz").exists()
+    assert not (ind / "VARS3.npz").exists()
+    assert (ind / "FRESHUSDT.npz").exists()
+    assert (ind / "SHORTSTK.npz").exists()
+    assert G.main(["gate", "--dir", str(ind), "--tradeable-only"]) == 1  # SHORTSTK still violates
+    (ind / "SHORTSTK.npz").unlink()
+    assert G.main(["gate", "--dir", str(ind), "--tradeable-only"]) == 0
+
+
+def test_purge_refuses_without_keys(tmp_path, monkeypatch, capsys):
+    _fixtures(tmp_path)
+    monkeypatch.setattr(G, "ROOT", str(tmp_path / "emptyroot"))
+    assert G.main(["gate", "--dir", str(tmp_path), "--purge-nontradeable", "--yes"]) == 1
+    assert "PURGE_REFUSE" in capsys.readouterr().out
+
+
+def test_protected_union_keeps_universe_and_progress(tmp_path, monkeypatch):
+    import json
+    (tmp_path / "data" / "daily_universe").mkdir(parents=True)
+    (tmp_path / "data" / "daily_universe" / "last_good.json").write_text(json.dumps({"stocks": ["GE", "ORCL_LONG"], "crypto": ["AGLDUSDT_SHORT"]}))
+    (tmp_path / "data" / "reports" / "lifecycle_pilot").mkdir(parents=True)
+    (tmp_path / "data" / "reports" / "lifecycle_pilot" / "PLTR_LONG_v14_progress.json").write_text("{}")
+    _keys(tmp_path, ["ang:FRESHUSDT_LONG"])
+    monkeypatch.setattr(G, "ROOT", str(tmp_path))
+    prot = G.protected_syms()
+    assert {"FRESHUSDT", "GE", "ORCL", "AGLDUSDT", "PLTR"} <= prot
+    assert G.is_tradeable_file("GE.npz", prot) is True
+    assert G.is_tradeable_file("AGLDUSDT.npz", prot) is True
+    assert G.is_tradeable_file("JUNKXYZ.npz", prot) is False
+    assert G.protected_syms(str(tmp_path / "emptyroot")) is None
+
+
+def test_reverse_venue_tolerance():
+    assert G.is_tradeable_file("AGLDUSDT.npz", {"AGLD"}) is True
+    assert G.is_tradeable_file("AG.npz", {"AGUSDT"}) is True
+    assert G.is_tradeable_file("AAPL_BF.npz", {"AAPL"}) is False

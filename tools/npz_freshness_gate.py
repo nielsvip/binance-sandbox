@@ -5,12 +5,17 @@ Every NPZ must hold >=365 days of data AND end at the latest 15m bar
 any sync to s2/s5/s6. Exit 0 = all pass. Exit 1 = violations listed.
 
 Usage (S1, the NPZ source):
-  python3 tools/npz_freshness_gate.py [--dir backtest_v8/indicators] [--fix-cmd]
+  python3 tools/npz_freshness_gate.py [--dir backtest_v8/indicators] [--fix-cmd] [--tradeable-only]
   python3 tools/npz_freshness_gate.py --refresh [--dry-run] [--workers 6]
   python3 tools/npz_freshness_gate.py --purge-variants [--yes]   # USER 2026-10-12:
     delete variant-suffixed NPZs (S3/_LONG/_SHORT) matching no klines (CPU/money
     waste). Lists only unless --yes; with --yes moves them to .purged_variants/<ts>/
     (out of the *.npz scan; rm -rf the dir to reclaim disk).
+  python3 tools/npz_freshness_gate.py --purge-nontradeable [--yes]  # USER 2026-10-13:
+    move non-tradeable + derived-suffix (_365/_BF/_BF2/_CYCLE/_W2B/_S3) NPZs to
+    .purged_npz/<ts>/ (unread + unrefreshable dead weight; rm -rf to reclaim).
+  --tradeable-only scopes violators/exit-code/refresh to tradeable syms (sync gate
+  use: dead files must not block pushes; they are purged, not gated).
 
 Refresh mapping: STALE (has history, old tail) -> tools/npz_bar_refresh.py
 --symbols (fast tail append); SHORT (<365d) -> backtest_v8_precompute.py
@@ -58,13 +63,67 @@ def tradeable_syms(root=None):
         return None
 
 
+def pilot_universe_syms(root=None):
+    """Base syms from data/daily_universe/last_good.json (fallback: newest dated [0-9]*.json); missing/unreadable -> None."""
+    try:
+        import json as _js, glob as _glob
+        ud = os.path.join(root or ROOT, "data", "daily_universe")
+        u = None
+        for c in [os.path.join(ud, "last_good.json")] + sorted(_glob.glob(os.path.join(ud, "[0-9]*.json"))):
+            try:
+                u = _js.load(open(c))
+                break
+            except Exception:
+                continue
+        if u is None:
+            return None
+        out = set()
+        def grab(o):
+            if isinstance(o, str):
+                m = re.match(r"([A-Z0-9]+USDT|[A-Z0-9]+USDC|[A-Z]{1,5})(_(LONG|SHORT))?$", o)
+                if m:
+                    out.add(m.group(1))
+            elif isinstance(o, dict):
+                for v in o.values():
+                    grab(v)
+            elif isinstance(o, list):
+                for v in o:
+                    grab(v)
+        grab(u)
+        return out or None
+    except Exception:
+        return None
+
+
+def progress_syms(root=None):
+    """Syms with lifecycle pilot progress files; additive only, any failure -> empty set."""
+    try:
+        out = set()
+        for f in glob.glob(os.path.join(root or ROOT, "data", "reports", "lifecycle_pilot", "*_progress.json")):
+            m = re.match(r"(.+)_(LONG|SHORT)_v1[34]_progress\.json", os.path.basename(f))
+            if m:
+                out.add(m.group(1))
+        return out
+    except Exception:
+        return set()
+
+
+def protected_syms(root=None):
+    """Union oracle for keep-decisions: live-tradeable + daily universe + pilot progress. All-missing -> None (fail-closed: purge refuses, audit gates everything)."""
+    parts = [p for p in (tradeable_syms(root), pilot_universe_syms(root)) if p]
+    if not parts:
+        return None
+    return set().union(*parts) | progress_syms(root)
+
+
 def is_tradeable_file(path_or_stem, tsyms):
-    """Suffix-tolerant on venue (NPZ AG.npz matches key AGUSDT; crypto direct). Derived-suffixed stems never match (purged, never refreshed). tsyms None -> True (fail-closed: gate everything)."""
+    """Venue-tolerant both directions (AG.npz<->AGUSDT key). Derived-suffixed stems never match (purged, never refreshed). tsyms None -> True (fail-closed: gate everything)."""
     if tsyms is None:
         return True
     stem = os.path.basename(str(path_or_stem))
     stem = stem[:-4] if stem.endswith(".npz") else stem
-    return stem in tsyms or stem + "USDT" in tsyms or stem + "USDC" in tsyms
+    bare = stem[:-4] if stem.endswith("USDT") or stem.endswith("USDC") else None
+    return stem in tsyms or stem + "USDT" in tsyms or stem + "USDC" in tsyms or (bare is not None and bare in tsyms)
 
 
 def classify(path, now=None):
@@ -186,6 +245,40 @@ def run_refresh(refresh, rebuild, workers=6, dry_run=False):
     return True
 
 
+def purge_nontradeable(d, tsyms, do_it=False):
+    """Move non-tradeable + derived-suffix NPZs to .purged_npz/<ts>/ (out of the scan). Lists only unless do_it. tsyms None -> refuse (fail-closed)."""
+    import datetime as _dt
+
+    if tsyms is None:
+        print("PURGE_REFUSE tradeable_keys.json unreadable — refusing blind purge")
+        return False
+    targets = []
+    for f in sorted(glob.glob(os.path.join(d, "*.npz"))):
+        stem = os.path.basename(f)[:-4]
+        if is_derived(stem) or not is_tradeable_file(stem, tsyms):
+            targets.append(f)
+    for f in targets:
+        print(f"  PURGE_TARGET {os.path.basename(f)}")
+    if not do_it:
+        print(f"PURGE dry-run: {len(targets)} file(s) listed, nothing moved (add --yes)")
+        return True
+    if not targets:
+        print("PURGE nothing to move")
+        return True
+    trash = os.path.join(d, ".purged_npz", _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d%H%M%S"))
+    os.makedirs(trash, exist_ok=True)
+    moved = 0
+    for f in targets:
+        try:
+            os.rename(f, os.path.join(trash, os.path.basename(f)))
+            moved += 1
+        except Exception as e:
+            print(f"  PURGE_FAIL {os.path.basename(f)}: {e}")
+            return False
+    print(f"PURGED {moved} file(s) -> {trash}")
+    return True
+
+
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
     d = argv[argv.index("--dir") + 1] if "--dir" in argv else os.path.join(ROOT, "backtest_v8", "indicators")
@@ -194,7 +287,16 @@ def main(argv=None):
         return 1
     res = audit(d)
     short, stale, bad = res["short"], res["stale"], res["bad"]
-    print(f"GATE files={len(res['files'])} ok={res['ok']} short={len(short)} stale={len(stale)} bad={len(bad)}")
+    t_only = "--tradeable-only" in argv
+    tsyms = protected_syms() if (t_only or "--purge-nontradeable" in argv) else None
+    if t_only and tsyms is not None:
+        short = [s for s in short if is_tradeable_file(s.split()[0], tsyms)]
+        stale = [s for s in stale if is_tradeable_file(s.split()[0], tsyms)]
+        bad = [s for s in bad if is_tradeable_file(s.split()[0], tsyms)]
+        purged_n = (len(res["short"]) - len(short)) + (len(res["stale"]) - len(stale)) + (len(res["bad"]) - len(bad))
+    else:
+        purged_n = 0
+    print(f"GATE files={len(res['files'])} ok={res['ok']} short={len(short)} stale={len(stale)} bad={len(bad)}" + (f" purge_candidates={purged_n} (tradeable-only)" if t_only else ""))
     for lst, tag in ((short, "SHORT"), (stale, "STALE"), (bad, "BAD")):
         for s in lst[:60]:
             print(f"  {tag} {s}")
@@ -214,6 +316,9 @@ def main(argv=None):
     if "--purge-variants" in argv:
         ok_p = purge_variants(d, do_it="--yes" in argv)
         return 0 if ok_p else 1
+    if "--purge-nontradeable" in argv:
+        ok_p = purge_nontradeable(d, tsyms, do_it="--yes" in argv)
+        return 0 if ok_p else 1
     if "--refresh" in argv and (short or stale):
         refresh, rebuild, unref = plan(short, stale)
         for s in unref:
@@ -227,6 +332,10 @@ def main(argv=None):
             return 1
         if not dry:
             res2 = audit(d)
+            if t_only and tsyms is not None:
+                res2["short"] = [s for s in res2["short"] if is_tradeable_file(s.split()[0], tsyms)]
+                res2["stale"] = [s for s in res2["stale"] if is_tradeable_file(s.split()[0], tsyms)]
+                res2["bad"] = [s for s in res2["bad"] if is_tradeable_file(s.split()[0], tsyms)]
             left = len(res2["short"]) + len(res2["stale"]) + len(res2["bad"])
             print(f"RE-AUDIT files={len(res2['files'])} ok={res2['ok']} residual={left}")
             return 0 if left == 0 else 1
