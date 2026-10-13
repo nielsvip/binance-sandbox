@@ -109,9 +109,12 @@ def append_one(name: str, dry_run: bool = False) -> dict:
     if dry_run:
         return {"file": name, "status": f"dry:{status}", "n_added": n_added,
                 "total": len(merged), "created": not existed}
-    tmp = target.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(merged))
-    tmp.replace(target)
+    sys.path.insert(0, str(REPO / "tools"))
+    from klines_guard import guarded_write
+    ok, why = guarded_write(target, merged)
+    if not ok:
+        return {"file": name, "status": "guard-blocked", "n_added": 0,
+                "total": len(existing), "created": False, "reason": why}
     return {"file": name, "status": status, "n_added": n_added,
             "total": len(merged), "created": not existed}
 

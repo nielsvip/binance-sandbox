@@ -90,9 +90,10 @@ def backfill(sym, frm, apply):
     merged = [by_ts[k] for k in sorted(by_ts)]
     if len(merged) <= have:
         return {"sym": sym, "have": have, "now": have, "action": "noop"}
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(merged))
-    os.replace(tmp, p)
+    from klines_guard import guarded_write
+    ok, why = guarded_write(p, merged)
+    if not ok:
+        return {"sym": sym, "have": have, "now": len(merged), "action": "guard-blocked", "reason": why}
     return {"sym": sym, "have": have, "now": len(merged), "added": len(merged) - have, "action": "written"}
 
 

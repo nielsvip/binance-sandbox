@@ -108,9 +108,10 @@ def backfill(sym: str, target: int, apply: bool, cache_dir: str = "klines_cache"
     merged = [by_ts[k] for k in sorted(by_ts)]
     reached = len(merged) >= target
     if len(merged) > have:
-        tmp = p.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(merged))
-        os.replace(tmp, p)
+        from klines_guard import guarded_write
+        ok, why = guarded_write(p, merged)
+        if not ok:
+            return {"sym": sym, "have": have, "now": len(merged), "pages": pages, "action": "guard-blocked", "reason": why}
     return {"sym": sym, "have": have, "now": len(merged), "pages": pages, "action": "written" if reached else "short"}
 
 
@@ -171,9 +172,10 @@ def forward_fill(sym: str, apply: bool, cache_dir: str = "klines_cache_backtest"
         time.sleep(0.25)
     if added:
         merged = [by_ts[k] for k in sorted(by_ts)]
-        tmp = p.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(merged))
-        os.replace(tmp, p)
+        from klines_guard import guarded_write
+        ok, why = guarded_write(p, merged)
+        if not ok:
+            return {"sym": sym, "have": have, "now": len(by_ts), "added": 0, "pages": pages, "action": "guard-blocked", "reason": why}
     return {"sym": sym, "have": have, "now": len(by_ts), "added": added, "pages": pages, "action": "extended" if added else "fresh"}
 
 

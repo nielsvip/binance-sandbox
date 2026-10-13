@@ -1946,6 +1946,33 @@ def tick(args, cfg, now):
             log["npz_prefetch"] = {"ready": _pf_done, "held": _pf_hold, "load_x": round(_l1, 2)}
             if _pf_done or _pf_hold:
                 print(f"[sched] npz prefetch ready={len(_pf_done)} held={len(_pf_hold)} {_pf_done[:4]}", flush=True)
+    # ---- SETTINGS HISTORY (USER 2026-10-13): "the db written by the fleet orchestrator with each sym_side's historical
+    # settings day by day ... updated when the json is written for any sym_side as soon as its new settings have been
+    # calculated." The orchestrator owns it: whenever this tick sees a sym_side that PUBLISHED since the last tick, it
+    # fires tools/v15_settings_history.py detached (flock = single instance) to append that board's full override set +
+    # metrics to per_sym_history. HISTORY ONLY — per_sym_active stays behind the go-live gate. Never blocks the tick.
+    try:
+        _hist_seen = st.setdefault("hist_seen", {})
+        _fresh_pub = []
+        for _ss, _g in (gains or {}).items():
+            try:
+                _mt = float((_g or {}).get("mtime") or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if _mt > float(_hist_seen.get(_ss) or 0.0):
+                _fresh_pub.append(_ss)
+                _hist_seen[_ss] = _mt
+        if len(_hist_seen) > 4000:
+            for _k in sorted(_hist_seen, key=lambda k: _hist_seen[k])[:1000]:
+                _hist_seen.pop(_k, None)
+        if _fresh_pub and not (args.dry_run or sim):
+            subprocess.Popen(["setsid", "flock", "-n", "/tmp/v15_settings_history.lock",
+                              sys.executable, str(ROOT / "tools" / "v15_settings_history.py"), "--window-h", "6"],
+                             cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            log["settings_history"] = {"new_publishes": sorted(_fresh_pub)[:12], "n": len(_fresh_pub), "spawned": True}
+            print(f"[sched] settings-history: {len(_fresh_pub)} new publish(es) -> recording settings to per_sym_history", flush=True)
+    except Exception as _he:
+        log["settings_history"] = {"error": str(_he)[:160]}
     # ---- summary per cat
     cats = {c: {"sym_sides": 0, "done30": 0, "running": 0, "v365_ok": 0, "v365_bad": 0, "v365_unverifiable": 0, "repair_attempts": 0, "repair_ok": 0, "gs_attempts": 0, "gs_ok": 0, "failing": []} for c in CATS}
     for sym in all_syms:

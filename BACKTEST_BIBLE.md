@@ -2012,3 +2012,47 @@ throttled from `fleet_hosts_final.json`); they are never crons.
 **Builder trust (NOT damage — verified working as designed):** `build_cat_side_defaults_4` transcribes a divergent bold ONLY with a promotion record (`per_sym_store.get_cat_side_promotions`, 89/106/110/86 per side); unpromoted divergent bolds (73) are held at config values as placeholders — that IS the no-LIES rule. The 2 promoted-but-untranscribed keys are P0-FOSSIL pins (§64, entry-killers, user-sanctioned). `STOCH_CROSS_ENTRY_TRADIER` bold=True is unpromoted → correctly held False (no-k-gate mandate + builder agree); the sheet bold is stale, behavior is right. KG gates are TEMPLATE-proven on all 4 sides (crypto False, stocks True) — the "config violation" claim was wrong; only the per-sym routing was fixed (ETHUSDC_SHORT E921=True was ignored at one call site).
 
 **Live behavior changes from the route (TEMPLATE values now enforced):** crypto-LONG MAX_ORDER_VALUE 180→90; SHORTS MAX_AUGMENTS 999999→0 (both venues); MOM5_LONG_THRESHOLD −1.0→−0.5; FG_SIZING CS off→on; ATR_ADAPTIVE_STOP_TF CS 1h→4h / SS 1h→OFF; EMA_DIST_SIZING_MULT 2.0→4.0; PARABOLIC SS on→off; STDEV_REJECT_EXIT_TF SL 15m→D. Files take effect at next live-loop restart (loops NOT restarted by the fixing agent).
+
+## 91. NPZ IS JIT-ONLY + SETTINGS HISTORY DB IS ORCHESTRATOR-OWNED (USER 2026-10-13)
+
+**(1) NPZ LAW — rebuild ONLY within ~15 min of a server loading it, otherwise NEVER.** "We need backtest results; NPZs
+are only good for that and 15 min later they are obsolete again." Blanket/background NPZ rebuilding is forbidden. What
+was found and STOPPED on s1 (it was pinning the host at load 46 while boards starved):
+- 3 orphaned `tools/npz_freshness_gate.py --refresh` drivers (2.9-3.1 h old, in NO cron) and the **34**
+  `backtest_v8_precompute.py` workers they had spawned;
+- the perpetual `tools/npz_bar_refresh.py --loop --mode both --workers 8` cron (`*/5` + its `@reboot` twin) and
+  `V15_AF_FORCE_REFRESH` (`*/10`) — commented `#NPZ_JIT_ONLY_20261013#` (crontab backup
+  `backups/crontab_s1_before_npz_jit_only_*`);
+- **`binance-npz-refresh.service`** — a systemd unit that silently resurrected the loop after every kill
+  (`systemctl stop` + `disable`; this is why earlier kills "didn't stick").
+Result: s1 load 46 -> 10, +52 GB free, and s1 finally computes boards. The ONLY rebuild path left is the dispatch
+path: `npz_prep()` runs on s1, rebuilds that one symbol, and PUSHES it md5-verified with the job (§89.2).
+- **Single-flight:** every rebuild is wrapped in `flock /tmp/v15_npz_prep.lock` (`V15_NPZ_LOCK_WAIT_S`, 600 s). One
+  rebuild at a time, fleet-wide — concurrent dispatches used to stampede s1 with 6 precompute workers each.
+- **Prefetch is completion-gated:** the scheduler pre-builds the next job's NPZ only for a host with NO free slot whose
+  oldest running board is at least `V15_SCHED_NPZ_PREFETCH_MIN_AGE_MIN` (15) minutes old — i.e. "just before the server
+  finishes the previous calc". Budget `V15_SCHED_NPZ_PREFETCH_BUDGET` (4), skipped entirely while s1 is above
+  `V15_SCHED_NPZ_PREFETCH_MAXLOAD` (1.6x cores) so NPZ work can never eat the compute s1 needs for its own boards.
+- **Venue-aware staleness:** the wall-clock tail gate applies to CRYPTO only. A STOCK tail is hours behind whenever the
+  US market is closed, which is normal; stock freshness is judged by `tools/v15_npz_prep.py` against the Tradier klines
+  cache. Gating stocks on wall clock falsely held every overnight stock board (ZCSH 142 min, AXON 262 min, MSTR 157 min).
+- **Every server computes SPREADSHEETS results.** s1 is NOT a live trader (it trades only if the MacBook dies) and must
+  keep ~95% of itself free for its own boards; it generates NPZs per job, nothing else.
+
+**(2) DISK — the eval memo cache was strangling the fleet.** `data/eval_cache_v1.db` had grown to **55 GB per host**
+(+5.6 GB WAL): s5 99% full (the scheduler's own disk guard was refusing its launches) and s2, a survivor, 98%. It is a
+regenerable cross-run memo cache with a documented fail-open path and kill switch (`V15_EVAL_CACHE=0`), so it was cleared
+fleet-wide and capped: cron `V15_EVALCACHE_CAP` (every 20 min, every host) drops it past 12 GB and logs to
+`~/logs/evalcache_cap.log`. Note: deleting it frees space only as the running boards release the inode.
+
+**(3) SETTINGS HISTORY — the orchestrator writes it, on every publish.** `per_sym_history` in
+`data/hourly_reconfig/per_sym_store.db` is the day-by-day trail of each sym_side's calculated settings. It was only
+written at the daily Mac go-live, so 160 freshly calculated sets were missing (DB 6-11 h stale while 15 boards published
+in 90 min). NEW `tools/v15_settings_history.py`: scans every host's round progress JSONs, and for each board with a
+top-level numeric `final_gain` and no `needs_redo` appends ONE row (same columns `per_sym_store.upsert()` writes) with
+the full `overrides_json` (~27 KB), gain/baseline/delta/bh/trades/tim/dd, `defaults_round`, NPZ id and
+`meta_json.source=fleet_orchestrator_publish`. Idempotent per (sym_side, gain, day); refuses to write unless
+`PRAGMA integrity_check` is `ok`. **HISTORY ONLY — it never touches `per_sym_active`:** a fresh 30D set is evidence, not
+a promotion, and live per-sym settings stay behind the go-live gate (365D verification, artefact stripping, blocklists).
+The fleet scheduler fires it detached (`flock /tmp/v15_settings_history.lock`) on any tick that sees a sym_side publish
+since the last tick (`st["hist_seen"]`, `log["settings_history"]`) — no extra cron, the orchestrator owns it.
