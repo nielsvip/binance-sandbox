@@ -75,6 +75,45 @@ class SpawnGuardShellTest(unittest.TestCase):
             wrap.terminate()
             wrap.wait(timeout=10)
 
+    def test_absolute_path_pilot_detected(self):
+        # 2026-10-13: a 365-cycle-lane launcher uses absolute interpreter+script
+        # paths (invisible to the old pattern) -> 5x ENJUSDT_SHORT stack on s2.
+        # The guard must see those too, but never the ab3 A/B lane.
+        fake = subprocess.Popen(
+            [
+                "bash",
+                "-c",
+                'exec -a "/home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/v15_pilot.py --sym-side ZZZGUARD_LONG" sleep 30',
+            ]
+        )
+        try:
+            time.sleep(0.5)
+            g = _spawn_guard(
+                "ZZZGUARD_LONG",
+                "30D",
+                "echo BODY_RAN",
+            )
+            out = subprocess.run(
+                ["bash", "-c", g], capture_output=True, text=True, timeout=20
+            )
+            self.assertIn(
+                "[spawnguard] ZZZGUARD_LONG 30D already running", out.stdout
+            )
+            self.assertNotIn("BODY_RAN", out.stdout)
+        finally:
+            fake.terminate()
+            fake.wait(timeout=10)
+
+    def test_ab3_lane_never_matches(self):
+        # The V17 ab3 A/B lane (own sequencer, own out dirs) is not scheduler
+        # territory: its pilots must never trip the 30D guard.
+        g = _spawn_guard("ZZZGUARD_LONG", "30D", "echo BODY_RAN")
+        self.assertNotIn("ab3", g)
+        out = subprocess.run(
+            ["bash", "-c", g], capture_output=True, text=True, timeout=20
+        )
+        self.assertIn("BODY_RAN", out.stdout)
+
     def test_window_patterns(self):
         self.assertIn(
             "tools/v15_365_cycle.py --sym-side",

@@ -232,4 +232,21 @@ def test_per_tier_pinpoint_cap(monkeypatch):
     assert P.v17_p3_cap("WINNER") == 1800.0
     monkeypatch.setenv("V15_V17_P3_MAX_S", "600")  # explicit global override wins
     assert P.v17_p3_cap("WINNER") == 600.0 and P.v17_p3_cap("LOSER") == 600.0
-    assert "_hard = t0 + v17_p3_cap(_tier_name)" in SRC
+    assert "_hard = t0 + v17_p3_hard()" in SRC
+
+
+def test_p3_no_absolute_cap_extends_while_lifting(monkeypatch):
+    # USER 2026-10-13 "the 0.3 rule": tier caps are initial budgets; extend in chunks while the last window lifted >= 0.3 pp/min
+    monkeypatch.delenv("V15_V17_P3_MAX_S", raising=False)
+    monkeypatch.delenv("V15_V17_MIN_LIFT_PM", raising=False)
+    monkeypatch.delenv("V15_V17_P3_CHUNK_S", raising=False)
+    assert P.v17_p3_hard() == float("inf")
+    assert P.v17_p3_extend(0.31, 10000.0, 10050.0, 400.0, float("inf")) == 10400.0  # far past any tier cap, still lifting
+    assert P.v17_p3_extend(0.31, 10000.0, 10050.0, 60.0, float("inf")) == 10180.0  # chunk floor 180 s
+    assert P.v17_p3_extend(0.29, 10000.0, 10050.0, 400.0, float("inf")) == 10050.0  # below the rate -> stop at deadline
+    assert P.v17_p3_extend(5.0, 10000.0, 10500.0, 400.0, float("inf")) == 10500.0  # deadline not near yet
+    monkeypatch.setenv("V15_V17_P3_MAX_S", "900")
+    assert P.v17_p3_hard() == 900.0
+    assert P.v17_p3_extend(5.0, 10000.0, 10050.0, 400.0, 10300.0) == 10300.0  # explicit override clips
+    assert 'while _max_it <= 0 or _it < _max_it:' in SRC and 'not _SLICE_HOLD["v"]' in SRC
+    assert SRC.count('not _SLICE_HOLD["v"]') == 2 and '_SLICE_HOLD["v"] = True' in SRC

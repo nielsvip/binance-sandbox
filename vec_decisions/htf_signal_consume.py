@@ -592,3 +592,21 @@ def dump_trace(ctx: Optional[Dict[str, Any]], sym: str, is_long: bool) -> None:
             f.write(json.dumps({"sym": str(sym), "is_long": bool(is_long), "paths": [{"path": x["path"], "tf": x["tf"], "mask_bars": int(x["mask"].sum())} for x in ctx["paths"]], "htf_only_bars": int(ctx["htf_only"].sum()), "trace": ctx["trace"]}, default=str) + "\n")
     except Exception:
         pass
+
+
+_LIVE_EVENTS: Dict[Tuple[str, str], Tuple[int, int]] = {}
+
+
+def live_event_armed(pkey: str, path: str, fired_now: bool, now_ts: float, tf: str, venue: str, cfg: Any) -> bool:
+    """Scalar twin of extend_event: a one-bar HTF EVENT stays armed for valid_bars 15m bars inside its instance."""
+    t = norm_tf(tf)
+    if t is None:
+        return bool(fired_now)
+    inst = live_instance_key(now_ts, t, venue)
+    pos = live_bars_into_instance(now_ts, t, venue)
+    k = (str(pkey), str(path))
+    if fired_now:
+        _LIVE_EVENTS[k] = (inst, pos)
+        return True
+    ev = _LIVE_EVENTS.get(k)
+    return bool(ev is not None and ev[0] == inst and (pos - ev[1]) < valid_bars(cfg, t, venue))

@@ -82,6 +82,7 @@ import queue
 import signal as _sig
 from pathlib import Path
 from tools.v15_shutdown import V15Shutdown
+_SLICE_HOLD = {"v": False}  # USER 2026-10-13 "the 0.3 rule": V15_FILL_SLICE_S never slices a board once its pinpoint round started
 _SHUTDOWN = {"v": False}  # USER 2026-10-07: SIGTERM/SIGINT -> finish cell/chunk, persist, exit (THROTTLE instead of OOM)
 def _sig_shutdown(signum, frame):
     _SHUTDOWN["v"] = True
@@ -3248,13 +3249,29 @@ V17_P3_MAX_DEFAULT = {"WINNER": 1500.0, "MEDIOCRE": 540.0, "LOSER": 300.0, "LOST
 
 
 def v17_p3_cap(tier: str) -> float:
-    """USER 2026-10-13 "extend time cap for winners": hard pinpoint cap per tier (the round still extends only while it lifts
-    >= V15_V17_MIN_LIFT_PM): V15_V17_P3_MAX_S_<TIER> (WINNER 1500 / MEDIOCRE 540 / LOSER 300 / LOST_CAUSE 120 s); an explicitly
-    set V15_V17_P3_MAX_S overrides every tier. Tier = symside_tier (big movers |bh| >= V15_TIER_BIG_MOVER are WINNER)."""
+    """USER 2026-10-13 "extend time cap for winners" + "the 0.3 rule": INITIAL pinpoint budget per tier (V15_V17_P3_MAX_S_<TIER>:
+    WINNER 1500 / MEDIOCRE 540 / LOSER 300 / LOST_CAUSE 120 s); the round then extends in chunks for as long as the last window
+    lifted >= V15_V17_MIN_LIFT_PM (no absolute cap, see v17_p3_hard). An explicitly set V15_V17_P3_MAX_S overrides every tier.
+    Tier = symside_tier (big movers |bh| >= V15_TIER_BIG_MOVER are WINNER)."""
     if os.environ.get("V15_V17_P3_MAX_S"):
         return float(os.environ["V15_V17_P3_MAX_S"])
     t = str(tier or "LOSER").upper()
     return float(os.environ.get(f"V15_V17_P3_MAX_S_{t}", V17_P3_MAX_DEFAULT.get(t, 300.0)))
+
+
+def v17_p3_hard() -> float:
+    """Absolute pinpoint wall: none (inf) unless V15_V17_P3_MAX_S is explicitly set (USER 2026-10-13 "never kill a backtest as
+    long as it manages to keep it up")."""
+    v = os.environ.get("V15_V17_P3_MAX_S")
+    return float(v) if v else float("inf")
+
+
+def v17_p3_extend(rate_pm: float, now: float, deadline: float, window_s: float, hard: float) -> float:
+    """Pure: new pinpoint deadline after a window that lifted rate_pm pp/min. Lifting >= V15_V17_MIN_LIFT_PM and the deadline
+    within 120 s -> extend by one chunk (max(V15_V17_P3_CHUNK_S 180 s, the window just measured)), clipped only by hard."""
+    if rate_pm < float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3")) or deadline - now >= 120.0 or now >= hard - 60.0:
+        return deadline
+    return min(hard, now + max(float(os.environ.get("V15_V17_P3_CHUNK_S", "180")), float(window_s)))
 
 
 def v17_p3_budget(tier: str, elapsed: float, board_s: float | None = None, tail_s: float | None = None) -> float:
@@ -3750,7 +3767,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             except Exception: pass
             raise V15Shutdown("shutdown in fill")
         _slice_s = float(os.environ.get("V15_FILL_SLICE_S", "2400"))  # USER 2026-10-07: NO CALC >40 min — fill time-slices, resume is instant (holes-only)
-        if _slice_s > 0 and progress.get("final_gain") is None and progress.get("diagnose_repair") is None and (_t.time() - _PILOT_T0) > _slice_s:
+        if _slice_s > 0 and not _SLICE_HOLD["v"] and progress.get("final_gain") is None and progress.get("diagnose_repair") is None and (_t.time() - _PILOT_T0) > _slice_s:
             try: _atomic_write_json(progress_path, progress)
             except Exception: pass
             try: _atomic_save(wb, wb_path)  # USER 2026-10-07: slice saves the workbook so resume continues (no hollow-redo); shutdown path skips this (OOM: speed+RAM)
@@ -6670,7 +6687,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _rge2:
             _rgo = {"error": str(_rge2)[:120]}
         rnd = 0
-        while _t.time() < deadline - 10.0 and rnd < int(os.environ.get("V15_V17_SURGEON_ROUNDS", "6")):
+        while _t.time() < deadline - 10.0 and (int(os.environ.get("V15_V17_SURGEON_ROUNDS", "0")) <= 0 or rnd < int(os.environ.get("V15_V17_SURGEON_ROUNDS", "0"))):
             rnd += 1
             t_r, g_r = _t.time(), float(cumulative_gain)
             try:
@@ -6724,7 +6741,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # valid on 365D. Book progress["v17"]["regime365"] + SURGEON tab; every tried path goes to the combo library.
         if _v17_phase_done(tag) or os.environ.get("V15_V17_365", "1") != "1":
             return
-        box = float(os.environ.get("V15_V17_365_S", "240"))
+        box = float(os.environ.get("V15_V17_365_S_WINNER", "600")) if _tier_name == "WINNER" and not os.environ.get("V15_V17_365_S") else float(os.environ.get("V15_V17_365_S", "240"))
         t0 = _t.time()
         dl = t0 + box
         ph = _v17_phase_start(tag)
@@ -6895,18 +6912,27 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _hus = sum(1 for _k, _v in (progress.get("done") or {}).items() if isinstance(_v, dict) and str(_k).split("!", 1)[0] in SWITCH_SHEETS and _v.get("naked_delta") is not None and not _v.get("v17_phase"))
                 _saved = (_hus + int(_v17_ystats.get("skipped") or 0)) * _spe
                 _floor = {"WINNER": 180.0, "MEDIOCRE": 120.0, "LOSER": 60.0, "LOST_CAUSE": 30.0}.get(_tier_name, 60.0) * float(os.environ.get("V15_V17_P3_FLOOR_X", "1"))
-                budget = max(_floor, min(v17_p3_cap(_tier_name), _saved))
+                budget = v17_p3_cap(_tier_name) if _tier_name == "WINNER" else max(_floor, min(v17_p3_cap(_tier_name), _saved))  # winners get their full initial budget
                 _v17["p3_saved_est"] = {"hustle_skipped": _hus, "yellows_skipped": int(_v17_ystats.get("skipped") or 0), "p2_secs_per_eval": round(_spe, 4), "saved_s": round(_saved, 1), "floor_s": _floor}
             except Exception as _bse:
                 print(f"[V17-WARN] saved-budget {_bse}", flush=True)
         _v17["p3_budget_s"] = round(budget, 1)
+        _SLICE_HOLD["v"] = True  # the 0.3 rule: the fill slice never cuts a board from here on (the round stops itself on lift)
         deadline = t0 + budget
+        _win = _tier_name == "WINNER"
+        _lift_book = _v17.setdefault("p3_lift", [])
         print(f"[V17] {new_symside} P3 PINPOINT tier={_tier_name} budget={budget:.0f}s (elapsed {t0 - _PILOT_T0:.0f}s)", flush=True)
         try:
             # iterations until the budget is spent or an iteration adds nothing: FOCUS (most productive per eval: yellows of the
             # moved rows, numeric grid, pairs) -> ABLATION ROUTE -> moved-chain RETEST -> top-K filter re-probe vs the new chain
-            _hard = t0 + v17_p3_cap(_tier_name)
-            for _it in range(1, int(os.environ.get("V15_V17_P3_MAX_ITERS", "6")) + 1):
+            # USER 2026-10-13 "the 0.3 rule": no absolute cap (only an explicit V15_V17_P3_MAX_S) and no iteration cap
+            # (V15_V17_P3_MAX_ITERS 0 = unbounded) — the round extends while the last window lifted >= V15_V17_MIN_LIFT_PM.
+            # WINNER: the combo engine (30D+365D) and the surgeon run every window and own the bulk of it.
+            _hard = t0 + v17_p3_hard()
+            _max_it = int(os.environ.get("V15_V17_P3_MAX_ITERS", "0"))
+            _it = 0
+            while _max_it <= 0 or _it < _max_it:
+                _it += 1
                 if deadline - _t.time() < 20.0:
                     break
                 _g_it = float(cumulative_gain)
@@ -6916,9 +6942,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _v17_regime()
                     except Exception:
                         pass
-                    _v17_combo_step(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_COMBO_SHARE", "0.35")))
+                if _it == 1 or _win:
+                    _csh = float(os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.5")) if _win else float(os.environ.get("V15_V17_COMBO_SHARE", "0.35"))
+                    _v17_combo_step(_t.time() + max(0.0, deadline - _t.time()) * _csh, "P3_COMBO" if _it == 1 else f"P3_COMBO_{_it}")
                 # SURGEON first: it owns the guaranteed budget (USER 2026-10-13); generic steps use what it leaves
-                _v17_surgeon(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_SURGEON", "0.6")), f"P3_SURGEON_{_it}")
+                _ssh = float(os.environ.get("V15_V17_SHARE_SURGEON_WINNER", "0.75")) if _win else float(os.environ.get("V15_V17_SHARE_SURGEON", "0.6"))
+                _v17_surgeon(_t.time() + max(0.0, deadline - _t.time()) * _ssh, f"P3_SURGEON_{_it}")
                 _v17_focus_iter[0] = _it
                 if not _v17_phase_done(f"P3_FOCUS_{_it}"):
                     ph = _v17_phase_start(f"P3_FOCUS_{_it}")
@@ -6929,13 +6958,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _v17_ablation(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_ABLATION", "0.6")), f"P3_ABLATION_{_it}")
                 _v17_retest(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_RETEST", "0.7")), f"P3_RETEST_{_it}")
                 _v17_filter_probe(f"P3_PROBE_{_it}", min(60.0, max(0.0, deadline - _t.time())))
+                _win_s = _t.time() - _t_it
+                _rate = (float(cumulative_gain) - _g_it) / max(1e-6, _win_s / 60.0)
+                _lift_book.append({"it": _it, "lift": round(float(cumulative_gain) - _g_it, 4), "wall_s": round(_win_s, 1), "pp_min": round(_rate, 4)})
                 if float(cumulative_gain) - _g_it <= 1e-9:
                     break
-                _rate = (float(cumulative_gain) - _g_it) / max(1e-6, (_t.time() - _t_it) / 60.0)
-                if _rate >= float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3")) and deadline - _t.time() < 120.0 and _t.time() < _hard - 60.0:
-                    deadline = min(_hard, _t.time() + max(120.0, _t.time() - _t_it))  # still lifting: the round continues
+                _nd = v17_p3_extend(_rate, _t.time(), deadline, _win_s, _hard)
+                if _nd > deadline:
+                    deadline = _nd  # still lifting: the round continues
                     _v17["p3_extended"] = _v17.get("p3_extended", 0) + 1
                     print(f"[V17] {new_symside} P3 extended (iteration {_it} lifted {_rate:.2f} pp/min) -> {deadline - t0:.0f}s", flush=True)
+                elif _rate < float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3")) and deadline - _t.time() < 20.0:
+                    print(f"[V17] {new_symside} P3 stops: iteration {_it} lifted {_rate:.2f} pp/min < {os.environ.get('V15_V17_MIN_LIFT_PM', '0.3')}", flush=True)
             _v17_regime365()  # own hard time box (V15_V17_365_S), replaces the 365D repair -> REDO path
             _v17_tim_fix(max(deadline, _t.time() + 60.0), "P3_TIMFIX")
             _v17_essential_proof(_t.time() + float(os.environ.get("V15_V17_ESSENTIAL_S", "120")))
@@ -11358,7 +11392,7 @@ def main():
             except: pass
             raise V15Shutdown(f"shutdown at {msg}")
         _slice_s = float(os.environ.get("V15_FILL_SLICE_S", "2400"))  # USER 2026-10-07: NO CALC >40 min — fill time-slices, resume is instant (holes-only)
-        if _slice_s > 0 and progress.get("final_gain") is None and progress.get("diagnose_repair") is None and (time.time() - _PILOT_T0) > _slice_s:
+        if _slice_s > 0 and not _SLICE_HOLD["v"] and progress.get("final_gain") is None and progress.get("diagnose_repair") is None and (time.time() - _PILOT_T0) > _slice_s:
             try: _atomic_write_json(progress_path, progress)
             except Exception: pass
             print(f"[SLICE] {new_symside} fill hit {_slice_s:.0f}s cap — clean exit, scheduler relaunches into holes-only resume", flush=True)

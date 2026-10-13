@@ -1,86 +1,23 @@
 {
-  "men:AXSUSDT_LONG": {
-    "orderId": "2000001509588546",
+  "inf:TRUMPUSDC_LONG": {
+    "orderId": "2000001509403614",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-10 06:15:17.382621+00:00",
-    "symbol": "AXSUSDT",
-    "side": "LONG"
-  },
-  "men:AVAXUSDC_LONG": {
-    "orderId": "2000001507372696",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-11 23:48:45.901295+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
-  "men:RLCUSDT_SHORT": {
-    "orderId": "2000001509518677",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 20:41:00.404819+00:00",
-    "symbol": "RLCUSDT",
-    "side": "SHORT"
-  },
-  "men:WUSDT_LONG": {
-    "orderId": "2000001509588819",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 21:50:45.617584+00:00",
-    "symbol": "WUSDT",
-    "side": "LONG"
-  },
-  "men:THETAUSDT_LONG": {
-    "orderId": "2000001507372700",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-12 01:20:25.397841+00:00",
-    "symbol": "THETAUSDT",
-    "side": "LONG"
-  },
-  "men:TRUMPUSDC_LONG": {
-    "orderId": "2000001509560968",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 21:22:57.601375+00:00",
+    "entry_sig": "2026-10-13 19:11:11.218583+00:00",
     "symbol": "TRUMPUSDC",
     "side": "LONG"
   },
-  "men:RVNUSDT_SHORT": {
-    "orderId": "2000001509550834",
+  "inf:BATUSDT_LONG": {
+    "orderId": "2000001509617784",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 21:11:29.990636+00:00",
-    "symbol": "RVNUSDT",
-    "side": "SHORT"
-  },
-  "men:VETUSDT_SHORT": {
-    "orderId": "2000001509628192",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:31:03.429149+00:00",
-    "symbol": "VETUSDT",
-    "side": "SHORT"
-  },
-  "men:MELANIAUSDT_LONG": {
-    "orderId": "2000001509631291",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:34:14.618827+00:00",
-    "symbol": "MELANIAUSDT",
+    "entry_sig": "2026-10-13 22:19:22.164596+00:00",
+    "symbol": "BATUSDT",
     "side": "LONG"
   },
-  "men:QTUMUSDT_LONG": {
-    "orderId": "2000001509632626",
+  "inf:PUMPUSDT_SHORT": {
+    "orderId": "2000001509617927",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:36:35.182537+00:00",
-    "symbol": "QTUMUSDT",
-    "side": "LONG"
-  },
-  "men:ATOMUSDT_SHORT": {
-    "orderId": "2000001509633136",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:36:28.353961+00:00",
-    "symbol": "ATOMUSDT",
+    "entry_sig": "2026-10-13 22:19:24.080326+00:00",
+    "symbol": "PUMPUSDT",
     "side": "SHORT"
-  },
-  "men:BTCDOMUSDT_LONG": {
-    "orderId": "2000001509633597",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:36:41.804948+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
   }
 }

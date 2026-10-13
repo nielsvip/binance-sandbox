@@ -20649,6 +20649,28 @@ async def process_position(
                             is_long,
                             str(_lc_c("BB_BOUNCE_ENTRY_TF", "OFF") or "OFF").strip(),
                         )
+                        _t3_tf = str(_lc_c("BB_BOUNCE_ENTRY_TF", "OFF") or "OFF").strip()
+                        if _t3_tf in ("1h", "4h", "D"):
+                            # 2026-10-13 V17 TF law native mirror (vec_decisions/htf_signal_consume = vec compute_reentry_blocks + simulate_one gate):
+                            # the HTF bounce event stays armed for its validity window; an OPEN from it needs a fresh LTF confirmation, tighter per attempt.
+                            try:
+                                import vec_decisions.htf_signal_consume as _hsc_b
+                                _hsc_cfg = lambda _k, _d: _lc_c(_k, _d)
+                                if _hsc_b.enabled(_hsc_cfg):
+                                    _hsc_pk = f"{account_key}:{symbol}:{position_side}"
+                                    _hsc_now = time.time()
+                                    _hsc_arm = _hsc_b.live_event_armed(_hsc_pk, f"BB_BOUNCE_ENTRY_{_t3_tf}", bool(_t3_fire), _hsc_now, _t3_tf, "tradier", _hsc_cfg)
+                                    _hsc_ok = False
+                                    if _hsc_arm:
+                                        _hsc_ok, _ = _hsc_b.live_gate(_hsc_cfg, _hsc_pk, f"BB_BOUNCE_ENTRY_{_t3_tf}", _t3_tf, _lc_ind or {}, is_long, _hsc_now, "tradier")
+                                    if _hsc_ok:
+                                        _t3_fire = True
+                                        _t3_reason = _t3_reason or f"BB_BOUNCE_ENTRY_{_t3_tf}_ARMED"
+                                        _hsc_b.live_commit(_hsc_pk, f"BB_BOUNCE_ENTRY_{_t3_tf}", _t3_tf, _hsc_now, "tradier")
+                                    else:
+                                        _t3_fire = False
+                            except Exception as _hsc_e:
+                                logger.warning(f"[HTF_RETRY] {account_key}:{symbol} bounce gate err (fail-open): {_hsc_e}")
                         if not _t3_fire:
                             _t3_fire, _t3_reason = _ftf_twins.wt15_bounce_fires(
                                 _lc_c, _lc_get, is_long

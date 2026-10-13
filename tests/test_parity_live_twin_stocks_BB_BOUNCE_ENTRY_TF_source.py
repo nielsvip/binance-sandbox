@@ -16,6 +16,10 @@ def _cfg(tf):
     c.apply_tradier_defaults()
     c.BB_BOUNCE_ENTRY_TF = tf
     c.BB_BREAKOUT_ENTRY_TF = "OFF"
+    # 2026-10-13 V17 TF law: with HTF_SIGNAL_CONSUME_ENABLED the vec block is the event ARMED for its validity window
+    # (htf_signal_consume.extend_event); the stateless source twin is the raw one-bar event, so it is compared with the
+    # law off. The armed window + LTF gate parity is tests/test_htf_signal_consume.py.
+    c.HTF_SIGNAL_CONSUME_ENABLED = False
     return c
 
 

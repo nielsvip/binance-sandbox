@@ -1,32 +1,103 @@
 {
- "generated_at": "2026-10-13 22:38 UTC",
- "total_capital_usd": 45.96,
+ "generated_at": "2026-10-13 22:51 UTC",
+ "total_capital_usd": 202.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 45.96
+  "B": 89.33,
+  "C": 113.19
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 5,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "ang:TRBUSDT_LONG",
+  "ang:COTIUSDT_SHORT",
+  "ang:RVNUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "ang:TRUMPUSDC_LONG",
+  "ang:FARTCOINUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 45.96,
-   "gain_pct": 0.699,
+   "pk": "ang:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "ang",
+   "value_usd": 68.06,
+   "gain_pct": -0.209,
    "tier": "C",
-   "perf_mult": 0.19,
-   "amt": 0.43,
-   "mark": 106.87722061
+   "perf_mult": 0.16,
+   "amt": 5470.0,
+   "mark": 0.012442
+  },
+  {
+   "pk": "ang:RVNUSDT_SHORT",
+   "symbol": "RVNUSDT",
+   "account": "ang",
+   "value_usd": 45.13,
+   "gain_pct": 0.412,
+   "tier": "C",
+   "perf_mult": 0.26,
+   "amt": 28355.0,
+   "mark": 0.00159148
+  },
+  {
+   "pk": "ang:PUMPUSDT_SHORT",
+   "symbol": "PUMPUSDT",
+   "account": "ang",
+   "value_usd": 45.11,
+   "gain_pct": -0.349,
+   "tier": "B",
+   "perf_mult": 3.84,
+   "amt": 8978.0,
+   "mark": 0.00502413
+  },
+  {
+   "pk": "ang:AMATUSDT_SHORT",
+   "symbol": "AMATUSDT",
+   "account": "ang",
+   "value_usd": 23.28,
+   "gain_pct": 4.435,
+   "tier": "B",
+   "perf_mult": 4.76,
+   "amt": 0.05,
+   "mark": 465.6
+  },
+  {
+   "pk": "ang:TRUMPUSDC_LONG",
+   "symbol": "TRUMPUSDC",
+   "account": "ang",
+   "value_usd": 11.26,
+   "gain_pct": 0.106,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 5.9,
+   "mark": 1.90902594
+  },
+  {
+   "pk": "ang:FARTCOINUSDT_LONG",
+   "symbol": "FARTCOINUSDT",
+   "account": "ang",
+   "value_usd": 5.89,
+   "gain_pct": 0.031,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 36.4,
+   "mark": 0.1619
+  },
+  {
+   "pk": "ang:TRBUSDT_LONG",
+   "symbol": "TRBUSDT",
+   "account": "ang",
+   "value_usd": 3.79,
+   "gain_pct": -0.595,
+   "tier": "B",
+   "perf_mult": 0.93,
+   "amt": 0.2,
+   "mark": 18.972
   }
  ]
 }

@@ -60,13 +60,13 @@
    "HTF_SIGNAL_MAX_ATTEMPTS: wired live+vec (['vec_decisions/htf_signal_consume.py:139(max_attempts)'] / ['vec_decisions/htf_signal_consume.py:139(max_attempts)']) but in no template",
    "MAX_ORDER_VALUE_FIN: wired live+vec (['ez_manage.py:11556(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:111(max_order_usd_for)']) but in no template",
    "MAX_ORDER_VALUE_MEN: wired live+vec (['ez_manage.py:11554(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:109(max_order_usd_for)']) but in no template",
-   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8096(_air_native_carry)'] / ['v12_quick_engine.py:17828(simulate_one._open)']) but in no template",
+   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8096(_air_native_carry)'] / ['v12_quick_engine.py:17831(simulate_one._open)']) but in no template",
    "MIN_GAIN: wired live+vec (['ez_manage.py:23163(MultiAccountTradeManager._handle_signal_message)'] / ['vec_decisions/aug_gain_gate.py:18(threshold)']) but in no template",
-   "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11108(in_opening_buffer)'] / ['v12_quick_engine.py:18120(simulate_one)']) but in no template",
-   "R2_TF_LIST: wired live+vec (['ez_manage.py:51841(process_position)'] / ['v12_quick_engine.py:17080(simulate_one)']) but in no template",
+   "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11108(in_opening_buffer)'] / ['v12_quick_engine.py:18123(simulate_one)']) but in no template",
+   "R2_TF_LIST: wired live+vec (['ez_manage.py:51841(process_position)'] / ['v12_quick_engine.py:17083(simulate_one)']) but in no template",
    "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34323(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
    "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:21807(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
-   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19090(process_position)'] / ['v12_quick_engine.py:19331(simulate_one)']) but in no template"
+   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19090(process_position)'] / ['v12_quick_engine.py:19334(simulate_one)']) but in no template"
   ],
   "TAB_FIRST_ROW_NOT_DEFAULT": [],
   "TAB_NO_ORANGE_ROWS": []
