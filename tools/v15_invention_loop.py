@@ -690,7 +690,7 @@ def render_order(prop, bible):
             f"1. Confirm `{sw}` is wired (SWITCH_BIBLE status + live/vec reads below)."
         )
         L.append(
-            f"2. Queue the rows in `data/template_row_queue.json` (switch {sw}, tab {tab}, candidates {cands}, default = config default); S1 chain step 1b (`tools/v15_template_row_intake.py`) installs them through `tools/v15_switch_add.py` on the template source host BEFORE the Mac pull, so they can never be overwritten."
+            f"2. Queue the rows in `data/template_row_queue.json` (switch {sw}, tab {tab}, candidates {cands}, default = config default); S1 chain step 2a (`tools/v15_template_row_intake.py`) installs them through `tools/v15_switch_add.py` on the template source host BEFORE the Mac pull, so they can never be overwritten."
         )
         L.append(
             "3. `python3 tools/build_switch_bible.py && python3 tools/verify_switch_bible.py` green for the switch; ledger-flip proof; pilot smoke."
@@ -739,7 +739,7 @@ def render_order(prop, bible):
             "3. Registry + index: data/wiring/vec_function_registry.json entry, then build_switch_bible.py + verify_switch_bible.py green."
         )
         L.append(
-            "4. Rows: queue in data/template_row_queue.json (S1 chain step 1b -> tools/v15_template_row_intake.py -> v15_switch_add.py on S1); never write Mac template copies (the Mac pull overwrites them)."
+            "4. Rows: queue in data/template_row_queue.json (S1 chain step 2a -> tools/v15_template_row_intake.py -> v15_switch_add.py on S1); never write Mac template copies (the Mac pull overwrites them)."
         )
         L.append(
             "5. Proofs: backtest_v12_engine ledger-flip (flipped vs default) saved to data/invention/proofs/<id>.json {switch, symside, npz, gain_before, gain_after, valid}; pilot smoke; bible green; --fleet sync + md5."

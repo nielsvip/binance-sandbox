@@ -3,6 +3,7 @@
 # Cron (Mac, 13:00Z after S1 12:15Z tools/v15_daily_chain_s1.sh, retry 20:00Z; step 0 no-ops a DONE day):
 #   0 13 * * * PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash /Users/niels/Documents/binance/tools/v15_daily_chain_mac_apply.sh >> /tmp/v15_daily_chain_mac_apply.log 2>&1 # V15_DAILY_CHAIN_MAC_APPLY
 #   0 20 * * * PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /bin/bash /Users/niels/Documents/binance/tools/v15_daily_chain_mac_apply.sh >> /tmp/v15_daily_chain_mac_apply.log 2>&1 # V15_DAILY_CHAIN_MAC_RETRY
+# 2c (2026-10-13) rescue rows the pull would drop -> S1 queue inbox; 2d pull the S1 invention backlog.
 # 1 require S1's done-stamp data/daily_chain/<date>.json -> 2 pull the chain's state (8 templates, cat_side_defaults_4 + sweep copy,
 # avg_delta_pos_sym.json, agg files, cat_side_promotions, round ledger, reports), md5-verified against the stamp, backups first,
 # then kv sync (SQL-primary readers) -> 3 switch_parity sync-defaults for the stamp's promoted_keys ON THE MAC (backup, compile, md5)
@@ -75,6 +76,8 @@ print(json.dumps({"date": date, "status": "DONE", "TEST_FIXTURE": "built by DRYR
 EOF
 elif rm -f "$SJ"; W=0; until rsync -az -e "$SSH" "$S1:binance-sandbox/data/daily_chain/$DATE.json" "$SJ" 2>/dev/null; do
        $SSH "$S1" "test -f ~/binance-sandbox/data/daily_chain/$DATE.FAILED.json" 2>/dev/null && break
+       # 2026-10-13 §94: a chain killed without its trap (SIGKILL/OOM) leaves <date>.RUNNING with a dead pid -> stop waiting
+       $SSH "$S1" "f=~/binance-sandbox/data/daily_chain/$DATE.RUNNING; test -f \$f && ! kill -0 \$(cut -d' ' -f1 \$f) 2>/dev/null" 2>/dev/null && { log "step1 S1 chain RUNNING marker has a dead pid — chain died"; break; }
        [ $W -ge "${CHAIN_WAIT_MIN:-55}" ] && break
        [ $W -eq 0 ] && log "step1 S1 stamp not there yet — waiting up to ${CHAIN_WAIT_MIN:-55} min"
        sleep 60; W=$((W+1))
@@ -122,6 +125,16 @@ if [ "$DRYRUN" = 1 ] && [ -n "${CHAIN_TEST_REPORT:-}" ]; then
 else
   rsync -az -e "$SSH" "$S1:binance-sandbox/data/daily_chain/work_$DATE/" "$DEST/data/daily_chain/work_$DATE/" || fail 2 "pull reports"
 fi
+# 2c. ROW RESCUE (2026-10-13, BIBLE §71 amendment / §94): the pull above replaces the Mac templates with S1's. Any switch
+#     that existed in a Mac template and is absent from the pulled one would be LOST (2026-10-09 13:49Z: ENTRY_LH_TRIGGER_*).
+#     It is queued instead: an inbox entry pushed to S1, which installs it at the next chain step 2a. Non-fatal.
+if [ "$DRYRUN" = 1 ]; then
+  timeout 600 "$PY" -u tools/v15_template_row_intake.py rescue-lost --before-dir "$ROOT" --unflat --after-root "$DEST" --dry-run || log "step2c rescue-lost rc=$? (non-fatal)"
+else
+  timeout 600 "$PY" -u tools/v15_template_row_intake.py rescue-lost --before-dir "backups/daily_chain_mac_$TS" --after-root "$DEST" --push "$S1" || log "step2c rescue-lost rc=$? (non-fatal; Mac backups keep the rows: backups/daily_chain_mac_$TS)"
+fi
+# 2d. invention backlog (2026-10-13): S1 chain step 4e owns data/invention/ — pulled outside the md5 stamp (report data only).
+rsync -az -e "$SSH" "$S1:binance-sandbox/data/invention/" "$DEST/data/invention/" 2>/dev/null && log "step2d invention backlog pulled from $S1" || log "step2d invention pull failed (non-fatal)"
 NCHG=0
 for F in $PULL; do
   WANT=$("$PY" -c "import json,sys; print(json.load(open(sys.argv[1]))['pushed_md5'].get(sys.argv[2],'NOT_IN_STAMP'))" "$SJ" "$F")

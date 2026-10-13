@@ -1574,6 +1574,16 @@ Full procedure: [SWITCH_ADD_GUIDE.md](SWITCH_ADD_GUIDE.md) (any agent can follow
   superseded — never un-refuse). Backlog signal: `verify_switch_bible` COVERAGE (wired but in no
   template — 53 entries on 2026-10-07 incl. 23 retired-generic-only switches).
 
+- **Amendment 2026-10-13 (§94) — PERSISTENT ROW INTAKE, rows can never be lost again.** Rows written only on the Mac were
+  overwritten by the Mac-apply template pull (ENTRY_LH_TRIGGER_* rows added 10-09 03:06, lost 10-09 13:49Z; replayed exactly by
+  `v15_template_row_intake.py rescue-lost` on the 10-09 backups). The ONE row writer is still `tools/v15_switch_add.py`; it now also
+  has `--queue data/template_row_queue.json [--apply]` (same validation/insert/defaults-gate/fingerprint guards, one atomic save per
+  file, flock shared with the bookkeeper, idempotent — anything dropped is re-installed) and `--enqueue [--push s1-int]` (inbox entry,
+  no template write). The S1 source host owns the queue; S1 chain step 2a installs it every day before the push; Mac-apply step 2c
+  queues any switch a pull would drop. On the Mac never `--apply` alone — use `--enqueue --push s1-int`. Non-scalar defaults
+  (tuples/None) are refused (work order WO-20261013-LIST_SWITCH_ENCODING). Venue rule: a venue gets rows only when its config has
+  the field AND its own manager reads it live (no VEC_ONLY rows, §67).
+
 ## 72. ZERO-FORMULA SKIP — NEVER-POSITIVE ROWS/CELLS ARE SKIPPED + BOOKED (USER 2026-10-06)
 
 Evidence-condemned rows (`pos_sym=0` in ≥15 syms, `V15_ZERO_MIN_N_ROW`) and yellow cells (`pos_sym=0`
@@ -1816,6 +1826,14 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   evidence. RETIRED records the verdict; nothing is ever deleted. Seed: 72 proposals, top = AGLD SHORT
   LH_TRIGGER (INV-0001, score 19.72).
 
+- **Amendment 2026-10-13 (§94):** the tool runs on S1 (chain step 4e: `mine --write` + rows-check + `promote-check`; the Mac cron
+  `V15_INVENT_MINE` is commented `#MOVED_TO_S1_CHAIN_4E_20261013#`, Mac-apply step 2d pulls `data/invention/`). `scan_autopsy` now reads
+  the fields the autopsy really writes (`missing_entry_filters` / `missing_exit_confirmations`), groups by (at, cat_side, feature, op),
+  counts DISTINCT sym_sides (≥3), score = |mean pp| × distinct syms; evidence is deduped by signature (INV-0001 223 copies → 1).
+  First S1 run: 300 observations, 164 autopsy rules, 175 new proposals (all `[DIAGNOSTIC ONLY]`: single-feature in-sample thresholds
+  that remove about as many good exits as bad). `rows-check` reports ROWS_INSTALLED only when the rows exist in the templates.
+  Engine work orders: data/invention/orders/WO-20261013-*.md.
+
 ## 85. CAUSAL LEARNER — EVERY LOSER + NEG-DELTA BECOMES A RANKED FIX (USER 2026-10-09)
 
 - **Tool:** `tools/v15_causal_learner.py` (tested, `tests/test_causal_learner.py` 9 tests): SQLite
@@ -1849,6 +1867,15 @@ would split sweep/live from pilot baselines; needs a director ruling, not a sile
   audit in `data/cell_evidence/_rotated_release.json`; proof on run29+30: 1,810/44,818 released.
   Naked still runs every row; disabled switches are NO-SKIP log-only in the pilot. (5) NEVER-CONDEMN
   mirrors `AUTOPSY_DENY` + pilot `KG_NEVER_SKIP` (exact + substring) — MODE demoted on sight.
+
+- **Amendment 2026-10-13 (§94) — rescue consumer + DB cap.** `tools/v15_causal_rescue.py run` turns the export's `rescue` list
+  into real-engine ablations (LOO to default + naked candidate tries, `evaluate_prepared_sanitized` on rotating autopsy bases per
+  cat_side) → `data/causal/rescue_outcomes.{json,md}`; `ingest-outcomes` writes `fixes(kind=rescue_ablation)` + `fix_outcomes`
+  (verdicts `ablation_*`/`naked_*`, deliberately not `helped`/`hurt`, so confirm/auto-lift logic is unchanged). First run (s6, 26
+  switches × 16 bases, 47 s): fix_outcomes 18 → 659; every rescue switch was already at its default and naked tries were mostly
+  exactly 0 — the large negative "net" totals look like chained side effects, `[DIAGNOSTIC ONLY]`. `cap --apply` (dry-run default,
+  `V15_CAUSAL_DB_MAX_GB` 2.0, integrity-check gated, protects confirmed/rejected causes, keeps lesson tombstones so ingest cannot
+  re-add them, VACUUM): 4.99 GB → 2.10 GB on S1 (backup `backups/before_causal_cap_202610131644_causal_learner.db`). Weekly: chain step 8c.
 
 ## 86. SCHEDULER DONE-STALL — NESTED endgame.final_gain FROZE THE FLEET AT ~1 RESULT/2H (USER 2026-10-10)
 
@@ -2126,3 +2153,87 @@ immediately" is satisfied in the sense that 365D no longer gates it, but a set c
 next go-live slot. Making it apply per publish means applying unverified settings to real money many times a day; that
 is a live-money cadence decision for the operator, not a silent change. To enable, run
 `tools/v15_persym_golive.py --all-finished` on a tighter Mac cron (it is idempotent and diff-only).
+## 93. ASYNC JIT DISPATCH + RESUME-FROM-CELL (2026-10-13)
+
+**Incident (measured).** Zero pilots fleet-wide 13:44Z–16:38Z. The S1 cron tick (`timeout 110`) ran `npz_prep()` synchronously;
+a stock NPZ build is ~20 single-core minutes once RTH is open (stock forming-values pass in `backtest_v8_precompute`), so every
+tick died before launching and never saved state. The async patch deployed at 16:13Z was LOST again by 16:27Z (cause not found —
+the Mac + S1 file reverted to the pre-async bytes); it was re-applied from the session record. On top of that: `results_watchdog`
+killed every new S1 pilot each 10 min ("progress silent 224m" = age of the newest file from before the idle), `cpu_target_pct`
+was 50 in `fleet_hosts_final.json` (s1 at 69% busy admitted nothing), and all crypto 30D pilots refuse at start-up on a
+PARITY-GATE hard disparity (`DC_EDGE_SIZING_MAX_MULT` bold 6 / global 3, `EMA_BLANKET_FILTER_FILTER_TF` OFF vs quick 15m —
+locked engine/config files, needs `unlock`), each refusal burning a resume slice.
+
+**Dispatch (tick returns in ~30 s).**
+- `tools/v15_fleet_scheduler.py` `_dispatch_async()` hands NPZ prep + md5-verified push + pilot launch to the detached
+  `tools/v15_dispatch_job.py`. Kill switch `V15_SCHED_ASYNC_DISPATCH=0` (old synchronous path).
+- In-flight dispatches HOLD their slot (`st["dispatch_q"]` key→ts + `st["dispatch_host"]` sym→host, held status `dispatching`);
+  the grace (`V15_DISPATCH_GRACE_S` 2400) is released as soon as the job process is gone (`_prune_finished_dispatches`).
+- Job: one live job per tag (flock dedup), per-symbol single flight, `V15_NPZ_PREP_SLOTS` (default 8) concurrent builds instead
+  of one global lock, `V15_NPZ_PREP_TIMEOUT_S` 2400. Prep `ok=False` = skip; `ok=None` (crash/timeout/guard-blocked) = launch
+  with what the host has. Log `/tmp/v15_dispatch.log`.
+- `tools/v15_npz_prep.py`: builds a missing NPZ (RIO "no live NPZ" was refused forever; sanity: ≥500 bars, ≥30d span); pushes
+  S1's copy to the target whenever usable — also when the tail was already current (it used to exit before the push) — and
+  verifies md5 before the `mv`.
+- Worker "npz missing" no longer idles a fresh pair: the job builds/pushes it (`npz_missing_jit` in the tick log).
+- Speculative NPZ prefetch stays OFF (`V15_SCHED_NPZ_PREFETCH=1` to enable). The pilot's own start-up refresh hook
+  (`tools.v15_npz_ensure`, `main()` in v15_pilot.py) is opt-in `V15_PILOT_NPZ_ENSURE=1` and never runs on a resume (the module
+  was never deployed, so it was inert; it is now safe if it ever is).
+- Parity preflight: `_parity_gate_ok()` runs `switch_parity.startup_gate` once per cat_side per tick; a refusing cat_side gets
+  no 30D launch (`skipped_parity_gate` names the disparity). `V15_SCHED_PARITY_PREFLIGHT=0` disables.
+- Capacity: `cpu_target_pct` floor 90 via `V15_SCHED_CPU_TARGET_MIN` (survives the hosts-file self-heal); slot cap is
+  mem-derived (`max(max_pairs, used + proj_mem // est_pair)`, ≤12; `V15_SCHED_MEM_CAP=0` disables).
+
+**Resume from the cell it left off.**
+- RULE#4 freeze registry `data/npz_frozen_syms.json` (`tools/v15_npz_freeze.py`), written every tick: symbols with an unfinished
+  board (progress without final_gain, or needs_redo) or a running pilot. Honoured by `v15_npz_prep` (no rebuild, no push →
+  `action=frozen`), `tools/sync_indicators.sh` (excluded from the S1→worker mirror), `npz_fundoi/install_fundoi_npz.py`,
+  `npz_sentiment_force.py`. Why: 44 boards (up to 3546 done rows) were archived by NPZ-CHANGED-REFILL in the 24h before the fix,
+  every one because the NPZ tail moved between two slices. `V15_NPZ_FREEZE=0` disables.
+- Order: `_place_order` ranks operator pins (0) → unfinished boards incl. needs_redo (1) → fresh pairs (2); every unfinished
+  board a host owns is admitted before any fresh pair in the same tick (`own_unfinished` per host in the tick log).
+- "Done" = the NEWEST progress (any host) is final; an older final elsewhere no longer hides a newer half-filled board.
+- Slice budget (20) restarts when the board's progress json advanced since the previous launch (`_slice_progress_reset`,
+  probe field `started_mt`) — a board that writes rows is never exhausted; crash loops still stop.
+- Never kill a pilot that writes rows: reaper `hardcap` additionally needs ≥20 min idle; `tools/v15_results_watchdog.sh`
+  stuck-side needs pilot age ≥ SYM_STALL_MIN AND progress/log/delta-log all silent; host stall needs EVERY pilot older than
+  PROGRESS_STALL_MIN.
+- Operator queue `data/v15_sched_pinned_sides.json` {"sides", "hosts"}: bypass deferral/fresh-skip/base-wait/venue phase/quota/
+  allowlist, own budget `_PIN_SLICE_CAP` 40, `pin_status` per side in every tick log.
+- Drain `data/fleet_drain_hosts.json` {"hosts"} or `V15_SCHED_DRAIN_HOSTS` (outside the self-healed hosts file): no new launches,
+  running pilots finish, boards re-home. Currently EMPTY (USER 17:13Z: s5/s6 run the full round).
+- Inventory: `tools/v15_unfinished_inventory.py` → `data/v15_unfinished_<date>.json` (newest progress per side across every
+  `~/v15_run*/progress` + `~/v15_import_*/progress` on S1 and s2; xlsx mtimes ignored). Boards from an OLDER campaign whose NPZ no
+  longer exists cannot resume under RULE#4 — they relaunch as fresh boards.
+
+Tests: `tests/test_v15_sched_resume.py` (+ all `tests/test_v15_sched*.py`, `tests/test_sched_done_marks.py`).
+
+## 94. SELF-IMPROVEMENT LOOP CLOSED (2026-10-13)
+
+**USER:** "the self improving part is not working correctly so you will need to add all code that it should have generated in
+the self improvement rounds and all the documentation". Audit (2026-10-13 ~16:15Z): every learner had a writer but no reader,
+or a reader of the wrong field, or no schedule. Each component below is now writer → reader → consumer → proof.
+
+| Component | Writer | Reader / consumer | Proof (2026-10-13) |
+|---|---|---|---|
+| **Template rows** (§71) | `data/template_row_queue.json` (60 entries, 8 explicit exclusions) + inbox `data/template_row_queue_inbox/` (`v15_switch_add.py --enqueue`, Mac-apply 2c `rescue-lost`) | S1 chain **2a**: `v15_template_row_intake.py merge-inbox` → `v15_switch_add.py --queue … --apply` (the ONE row writer) → step 6 push → Mac pull | 266 switch installs on S1: FINAL_NORM CL 34 sw/94 rows, CS 34/94, SL 38/105, SS 38/106; main CL 26/74, CS 26/74, SL 35/97, SS 35/98. Re-run plans 0 (304 present). md5-identical S1/s2/s5/s6/Mac. `v15_pilot.scan_template_cands` lists all 8 ENTRY_LH_TRIGGER candidates on every cat_side. Replay of the 10-09 loss: `rescue-lost` flags exactly the 3 LH switches |
+| **Invention loop** (§84) | S1 chain **4e** `v15_invention_loop.py mine --write` (real autopsy fields, distinct-sym score, dedup) | `promote-check` (TESTED→PROMOTED/RETIRED), `rows-check`, work orders `data/invention/orders/` | 300 obs, 164 autopsy rules, 175 added; 2nd run added=0; INV-0001 ROWS_INSTALLED |
+| **Causal rescue** (§85) | `v15_causal_learner.py export` → `rescue` list | **8c weekly**: `v15_causal_rescue.py run` (idlest host, nice 15, 2 workers) → `ingest-outcomes` → `fix_outcomes`; `cap --apply` | fix_outcomes 18 → 659; DB 4.99 → 2.10 GB |
+| **Autopsy-first bases** (§78) | NEW `tools/v15_autopsy_jit.py`, S1 cron `V15_AF_JIT` */15 (flock, nice 15, ≤4 sides, load1 < 0.75×cores) | scheduler `V15_SCHED_REQUIRE_BASE` / `V15_START_OVERRIDES`; `V15_AF_PUSH` → workers | picks only pending sides (scheduler snapshot × director priority) lacking an accepted base; first dry-run: 12 candidates, 39 without NPZ, deferred on load. Sides with no NPZ get ONE build through the dispatch builder (`flock /tmp/v15_npz_prep.lock v15_npz_prep.py`) right before the autopsy loads it — §91-compliant (load within minutes), ≤2 per run |
+| **Missed-trend round** (§80/§81) | NEW `tools/v15_missed_trend_round.py`, chain **8a** (≤2 boards/day) | real `v15_missed_trend.py screen` on BEST_EFFORT & TIM<20 boards; verified base (gain up AND TIM not down) installed as `~/v15_autopsy_first/{SS}_autopsy_base.json` (prev kept) for the side's next cadence round; published sheets untouched unless `V15_MT_REQUEUE=1` | first pick on S1: ETHUSDC_SHORT (6 such boards in the ledger) |
+| **Priority evidence** (pilot `none_priority_evidence`) | `v15_cat_avg_matrix.py`, chain **8b** daily (stale since 10-07) | pushed md5-verified to the workers in 8b and with tomorrow's step 6 | — |
+| **Switch flip study** (§87) | `v15_switch_flip_study.py`, chain **8c** weekly on the idlest host | `data/causal/switch_flip_study.json` pushed in step 6 | — |
+
+**Chain hardening (`tools/v15_daily_chain_s1.sh`):** `trap on_exit EXIT` writes `<date>.FAILED.json` whenever a run ends without
+DONE (TERM/INT/HUP trapped; bash runs the trap when the current step returns); `<date>.RUNNING` (pid + start) — a run killed by
+SIGKILL/OOM/reboot is converted to FAILED at the next start, and the Mac apply stops waiting when the RUNNING pid is dead.
+`V15_DAILY_CHAIN=1` is exported; `tools/oom_guard.sh` never STOPs (and resumes) a process carrying it. Fact: the guard's STOP patterns
+(`baseline_backtest`, `sweep_every`) never matched chain processes, so the 4 silent deaths (10-10 ×2, 10-12, 10-13 12:51Z right
+after the 4c ingest) are NOT explained by the guard; the cause stays unproven — from now on every death leaves a FAILED stamp.
+Steps 8a–8c run AFTER the DONE stamp and can never change or fail the day.
+
+**Not closed here (owned by other lanes or locked):** endgame ADOPT "not worse than entry" guard + shared endgame knowledge
+(`v15_pilot.py`, audit B1/B7); engine work orders WO-20261013-EXIT_HOLD_WT_VEL, -EXIT_HOLD_STRETCH, -STOCKS_OPENING_BUFFER_ENTRY_ENABLED,
+-LIST_SWITCH_ENCODING (need `unlock` of v12_quick_engine/ez_manage/ez_positions_quick/tradier_manage/config/config_tradier).
+Tests: `tests/test_v15_template_row_queue.py`, `tests/test_v15_selfimprove_loop.py`, `tests/test_v15_invention_loop.py`,
+`tests/test_v15_causal_rescue.py`, `tests/test_v15_switch_add.py`, `tests/test_causal_learner.py`.

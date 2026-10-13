@@ -27,12 +27,13 @@ for HS in $HOSTS; do
     PD=\$(cat ~/v15_current_progress_dir.txt 2>/dev/null); NOWR=\$(date +%s)
     D=0; if [ -n "\$PD" ] && [ -d "\$PD" ]; then for f in "\$PD"/*_v14_progress.json; do [ -f "\$f" ] || continue; [ \$(stat -c %Y "\$f") -gt \$((NOWR-${RESULT_WINDOW_MIN}*60)) ] || continue; grep -q '\"final_gain\": [-0-9]' "\$f" && D=\$((D+1)); done; for f in "\$PD"/../chain/v365/*_365_cycle.json "\$PD"/../chain/repair_a*/*_365_cycle.json "\$PD"/../chain/gs_a*/*.gs.json; do [ -f "\$f" ] || continue; [ \$(stat -c %Y "\$f") -gt \$((NOWR-${RESULT_WINDOW_MIN}*60)) ] || continue; D=\$((D+1)); done; fi
     P=\$(ps -eo args | grep -c '[v]15_pilot.py --sym-side')
-    NEW=\$(ls -t \$PD/*_v14_progress.json 2>/dev/null | head -1 | xargs -I{} stat -c %Y {} 2>/dev/null)
+    NEW=\$(ls -t \$PD/*_v14_progress.json /tmp/sweep_*_30D.log 2>/dev/null | head -1 | xargs -I{} stat -c %Y {} 2>/dev/null)
     UP=\$(cut -d. -f1 /proc/uptime)
-    STUCK=''; for ss in \$(ps -eo args | grep '[v]15_pilot.py --sym-side' | sed -E 's/.*--sym-side ([A-Z0-9_]+).*/\1/' | sort -u); do f=\$PD/\${ss}_v14_progress.json; if [ -f \$f ] && [ \$(stat -c %Y \$f) -lt \$((NOWR-${SYM_STALL_MIN}*60)) ]; then STUCK=\"\$STUCK \$ss\"; fi; done
-    echo \"\$D \$P \${NEW:-0} \$UP|\$STUCK\"" 2>/dev/null)
+    YOUNG=\$(ps -eo etimes=,args= | grep '[v]15_pilot.py --sym-side' | awk '{print \$1}' | sort -n | head -1)
+    STUCK=''; for ss in \$(ps -eo args | grep '[v]15_pilot.py --sym-side' | sed -E 's/.*--sym-side ([A-Z0-9_]+).*/\1/' | sort -u); do f=\$PD/\${ss}_v14_progress.json; A=\$(ps -eo etimes=,args= | grep \"[v]15_pilot.py --sym-side \$ss\" | awk '{print \$1}' | sort -n | tail -1); M=\$(ls -t \$f /tmp/sweep_\${ss}_*.log \$PD/v15_delta_log/\${ss}_jump.jsonl 2>/dev/null | head -1 | xargs -I{} stat -c %Y {} 2>/dev/null); if [ -n \"\$M\" ] && [ \${A:-0} -ge \$((${SYM_STALL_MIN}*60)) ] && [ \$M -lt \$((NOWR-${SYM_STALL_MIN}*60)) ]; then STUCK=\"\$STUCK \$ss\"; fi; done
+    echo \"\$D \$P \${NEW:-0} \$UP \${YOUNG:-0}|\$STUCK\"" 2>/dev/null)
   if [ -z "$R" ]; then log "$H UNREACHABLE"; continue; fi
-  META=${R%%|*}; STUCK=${R#*|}; set -- $META; DONE=$1; PIL=$2; NEWEST=$3; UP=$4
+  META=${R%%|*}; STUCK=${R#*|}; set -- $META; DONE=$1; PIL=$2; NEWEST=$3; UP=$4; YOUNG=${5:-0}
   # stuck sym_sides -> kill their pilot trees (the scheduler relaunches / quarantines)
   for ss in $STUCK; do
     ssh -o BatchMode=yes "$IP" "pkill -TERM -f '[v]15_pilot.py --sym-side $ss'; sleep 3; pkill -KILL -f '[v]15_pilot.py --sym-side $ss'; true" 2>/dev/null
@@ -50,9 +51,13 @@ for HS in $HOSTS; do
     python3 -c "import json;s=json.load(open('$ST'));s['$H']={'strikes':0,'last_ok':$NOW};json.dump(s,open('$ST','w'))"
     log "$H idle (0 pilots, scheduler's choice) done_${RESULT_WINDOW_MIN}m=$DONE progress_age=${PROG_AGE}m"; continue
   fi
-  if [ "$DONE" -ge 1 ] || [ "$PROG_AGE" -lt "$PROGRESS_STALL_MIN" ]; then
+  # 2026-10-13 (resume lane): a pilot younger than PROGRESS_STALL_MIN has not had the chance to write (resumes reload,
+  # fresh boards build a baseline) — S1 killed every new pilot 16:10-16:40Z on "progress silent 224m" (the age of the
+  # newest file from BEFORE the fleet idled). Host stall now needs EVERY pilot older than the window; stuck sym_sides
+  # need pilot age >= SYM_STALL_MIN and progress, pilot log AND delta log all silent.
+  if [ "$DONE" -ge 1 ] || [ "$PROG_AGE" -lt "$PROGRESS_STALL_MIN" ] || [ "$YOUNG" -lt $((PROGRESS_STALL_MIN*60)) ]; then
     python3 -c "import json;s=json.load(open('$ST'));s['$H']={'strikes':0,'last_ok':$NOW};json.dump(s,open('$ST','w'))"
-    log "$H ok done_${RESULT_WINDOW_MIN}m=$DONE pilots=$PIL progress_age=${PROG_AGE}m"; continue
+    log "$H ok done_${RESULT_WINDOW_MIN}m=$DONE pilots=$PIL progress_age=${PROG_AGE}m youngest_pilot=$((YOUNG/60))m"; continue
   fi
   STRIKES=$(python3 -c "import json;s=json.load(open('$ST'));e=s.setdefault('$H',{'strikes':0});e['strikes']=e.get('strikes',0)+1;json.dump(s,open('$ST','w'));print(e['strikes'])")
   PREV=$(ls -dt /home/niels/stalled_${H}_* 2>/dev/null | head -1)

@@ -39,6 +39,14 @@ class AddOnCopiesTest(unittest.TestCase):
     def test_wired_switch_adds_rows_then_dup_refuses(self):
         with tempfile.TemporaryDirectory() as td:
             shutil.copy(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / "TEMPLATE_CRYPTO_LONG.xlsx", Path(td) / "TEMPLATE_CRYPTO_LONG.xlsx")
+            import openpyxl as _ox  # 2026-10-13: the live templates now carry CHANNEL_REENTRY_STOP_TF (row queue) -> strip it from the copy first
+            _wb = _ox.load_workbook(str(Path(td) / "TEMPLATE_CRYPTO_LONG.xlsx"))
+            _ws = _wb["REENTRY_ADAPTIVE"]
+            for _r in range(_ws.max_row, 2, -1):
+                if _ws.cell(_r, 1).value == "CHANNEL_REENTRY_STOP_TF":
+                    _ws.delete_rows(_r, 1)
+            _wb.save(str(Path(td) / "TEMPLATE_CRYPTO_LONG.xlsx"))
+            _wb.close()
             base = ["--switch", "CHANNEL_REENTRY_STOP_TF", "--tab", "REENTRY_ADAPTIVE", "--candidates", "1h,OFF,15m", "--default", "1h", "--venues", "crypto", "--sides", "long", "--templates-dir", td]
             dry = run(*base)
             self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)

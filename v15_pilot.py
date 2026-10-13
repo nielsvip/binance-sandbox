@@ -2975,7 +2975,7 @@ def _prior_best_gain(symside: str):
 # -> P4 trimmed tail (final_filter_recheck only on touched filters, post-stages capped to the board budget).
 # Every promotion is a real engine eval of the exact promoted set vs the LATEST cumulative (§14.2, §19). Kill switch
 # V15_V17_ROUNDS=0 restores the pre-V17 board exactly. Bible §95.
-V17_ON = os.environ.get("V15_V17_ROUNDS", "0") == "1"
+V17_ON = os.environ.get("V15_V17_ROUNDS", "1") == "1"
 V17_FILTER_FALLBACK = ("MOM3_FILTER_TF", "MOMENTUM_BREAKOUT_FILTER_TF", "HTF_DIRECTION_GATE_ENABLED", "COUNTER_TREND_ADD_BLOCK_ENABLED", "EMA_9_21_FILTER_ENABLED", "KINDERGARTEN_EMA_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES", "DC_BREAK_FILTER_TF", "MTF_DC_REJECT_FILTER_TF", "DC_BREACH_REDUCE_FILTER_TF", "EXIT_TOP_FADE_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "FAST_RISER_FILTER_TF", "WT_DIV_ENTRY_GATE_ENABLED", "CIRCUIT_SHARPE_GATES_FILTER_TF")
 V17_TAB_ORDER_FALLBACK = ("EXIT_VELOCITY", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "REENTRY_ADAPTIVE", "REENTRY_WINDOWED", "EXIT_STRUCTURAL", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "STDEV_SLOPE_SIZING", "ENTRY_CONFIRMATION_GATES", "GLOBAL_RISK_GATES", "AUGMENT_TREND")
 V17_CATEGORY_TABS = {"entry": ("ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES"), "reentry": ("REENTRY_WINDOWED", "REENTRY_ADAPTIVE"), "augment": ("AUGMENT_TREND", "AUGMENT_RISK_SIZING"), "exit": ("EXIT_STRUCTURAL", "EXIT_VELOCITY", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER")}
@@ -3035,6 +3035,8 @@ def v17_ev(key, know=None, prior=None, kind="switch_cand") -> float:
         e = (know or {}).get(key)
         if isinstance(e, (int, float)) and not isinstance(e, bool):
             return float(e)
+        if isinstance(e, (tuple, list)) and len(e) >= 3:
+            return float(e[1]) * float(e[2])  # load_ev: (n, mean_delta, pos_rate)
         if isinstance(e, dict):
             if isinstance(e.get("ev"), (int, float)):
                 return float(e["ev"])
@@ -3096,6 +3098,20 @@ def v17_tab_order(tabs, prior: dict, tab_keys: dict | None = None) -> list:
     if not any(v is not None for v in rate.values()):
         return sorted(tabs, key=lambda t: fb.get(t, len(fb)))
     return sorted(tabs, key=lambda t: (rate[t] is None, -(rate[t] or 0.0), fb.get(t, len(fb))))
+
+
+def v17_merge_exemptions(base, add) -> dict:
+    """Pure: union-merge FILTER_EXEMPTIONS dicts {path: [filters]} (chain value + new exemption), order-stable, no duplicates."""
+    out = {}
+    for src in (base, add):
+        if not isinstance(src, dict):
+            continue
+        for path, fl in src.items():
+            cur = out.setdefault(str(path), [])
+            for f in (fl if isinstance(fl, (list, tuple)) else [fl]):
+                if f not in cur:
+                    cur.append(f)
+    return out
 
 
 def v17_killers(eff_without, eff_by_filter: dict, frac: float = 0.5) -> list:
@@ -4873,9 +4889,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _zero_book["cell_rows"][_zrkey] = sorted(str(h).strip() for h in _zskip)
             except Exception as _ze:
                 print(f"[ZERO-FORMULA-WARN] {sname}!{rr} {_ze} — row calculated", flush=True)
-        if _v17_on and info["kind"] == "eval":
-            # V17 P2 ABBREVIATED WORST_FIRST: naked every row (§77 real G); the row's yellow cells (kept + coarse-deferred +
-            # prior-skipped + inert) are DEFERRED_V17 = settled (never hollow, never refilled) for the P3 pinpoint round.
+        if _v17_on and info["kind"] == "eval" and os.environ.get("V15_V17_P2_NAKED_ONLY", "0") != "1" and info["hdrs"]:
+            # V17 P2 ABBREVIATED WORST_FIRST (default): naked every row (§77 real G) + only the top V15_V17_P2_YELLOWS (8)
+            # prior-ranked yellows; the rest join the coarse deferral (settled, inline on moving rows, FOCUS in P3). Canary
+            # 2026-10-13: naked-only P2 lost most of the joint lift (RLC A 48.7 at row 2000 vs naked-only 22.5 at P2 end).
+            _v17_cap = int(os.environ.get("V15_V17_P2_YELLOWS", "8"))
+            if len(info["hdrs"]) > _v17_cap >= 0:
+                _v17_pr = info.get("prior_rank") or {}
+                _v17_keep = set(sorted(info["hdrs"], key=lambda h: _v17_pr.get(h, (0, 0.0)), reverse=True)[:_v17_cap])
+                info["coarse_deferred_filters"] = list(info.get("coarse_deferred_filters") or []) + [h for h in info["hdrs"] if h not in _v17_keep]
+                info["hdrs"] = [h for h in info["hdrs"] if h in _v17_keep]
+        elif _v17_on and info["kind"] == "eval" and os.environ.get("V15_V17_P2_NAKED_ONLY", "0") == "1":
+            # V17 P2 NAKED-ONLY mode (V15_V17_P2_NAKED_ONLY=1): naked every row (§77 real G); the row's yellow cells (kept +
+            # coarse-deferred + prior-skipped + inert) are DEFERRED_V17 = settled (never hollow, never refilled) for P3.
             _v17_def = list(dict.fromkeys(list(info["hdrs"]) + list(info.get("coarse_deferred_filters") or []) + list(info.get("prior_skipped") or []) + list(info.get("inert_filters") or [])))
             if _v17_def:
                 info["v17_deferred"] = _v17_def
@@ -4900,7 +4926,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         hv = dict(initial_overrides)
         hv.update(sw_ov)
         hv, _ = sanitize_overrides(hv, defaults)
-        if not is_running and any(not _same_val(initial_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+        if not is_running and not _v17_on and any(not _same_val(initial_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):  # V17: F = this row's result vs the ORIGINAL baseline (§56 wording), no second eval
             items.append(("hustle", hv))
         for hdr in st["hdrs"]:
             f = st["h2f"][hdr]
@@ -5107,7 +5133,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         return _r
     _start_t = _t.time()
     _SACRED_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")
-    _sacred_on = os.environ.get("V15_SACRED_REPASS", "1") == "1" and not _v17_on  # V17: replaced by the P3 moved-chain retest (sacred rows included)
+    _sacred_on = os.environ.get("V15_SACRED_REPASS", "1") == "1" and not (_v17_on and os.environ.get("V15_V17_SACRED_REPASS", "1") != "1")  # V17 keeps it: canary RLC A got 21.1pp from tab-boundary sacred repasses (GOLDEN_RULE_BASE_USD=0.0 +19.8)
     _sacred_rows = [(s, r, sw, c) for (s, r, sw, c) in queue if str(sw).startswith(_SACRED_PREFIXES)]
     _sacred_tab_order = list(dict.fromkeys(s for s, _, _, _ in queue))
     def _sacred_repass(upto_tab_inclusive):
@@ -5290,7 +5316,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     pass
                 rec = {"how": how, "what": label, "delta": round(float(d), 4), "before": round(cb, 4), "after": round(cumulative_gain, 4), "trades": (res or {}).get("trades"), "tim": (res or {}).get("tim_pct"), "dd": (res or {}).get("max_dd_pct")}
                 out["promotions"].append(rec)
-                progress.setdefault("done", {})[f"FOCUS!{len(out['promotions'])}:{label}"] = {"delta": float(d), "promoted": True, "promoted_how": how, "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cb, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp("FOCUS"), "complete": True}
+                progress.setdefault("done", {})[f"FOCUS!{(str(_v17_focus_iter[0]) + '.') if _v17_on and _v17_focus_iter[0] else ''}{len(out['promotions'])}:{label}"] = {"delta": float(d), "promoted": True, "promoted_how": how, "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cb, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp("FOCUS"), "complete": True}
                 print(f"[FOCUS-PROMOTE] {new_symside} {how} {label} +{float(d):.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
                 _maybe_write_json(force=True)
             # effective rows on THIS sym_side: promoted, or a positive naked delta (ranked by |movement|)
@@ -5534,6 +5560,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v17_know = v17_load_knowledge(_v17_cs) if _v17_on else {}
     _v17_touched: set = set()
     _v17_focus_cap = [None]
+    _v17_focus_iter = [0]
     _v17_row_idx: dict = {}
     _v17_note_cols: dict = {}
     def _v17_note(sname: str, rr: int, text: str):
@@ -5645,7 +5672,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[V17-WARN] {_tgt} C write failed: {_se}", flush=True)
         print(f"[V17-PROMOTE] {new_symside} {prefix} {how} {it['label']} +{d:.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
         _maybe_write_json(force=True)
-    def _v17_greedy(cands: list, how: str, prefix: str, deadline: float, ph: dict) -> list:
+    def _v17_greedy(cands: list, how: str, prefix: str, deadline: float, ph: dict, accept=None, max_prom=None) -> list:
         # round 1: every candidate vs the CURRENT chain (parallel). Promote the best positive (its own eval IS the fresh exact
         # eval of the promoted set); re-evaluate only the remaining positives vs the new chain; repeat (greedy §14.2).
         # Returns round-1 items (honest deltas vs the chain they were measured on) for booking.
@@ -5658,6 +5685,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for c in pool_:
                 ov = dict(cumulative_overrides)
                 ov.update(c["delta_ov"])
+                if isinstance(c["delta_ov"].get("FILTER_EXEMPTIONS"), dict):
+                    ov["FILTER_EXEMPTIONS"] = v17_merge_exemptions(cumulative_overrides.get("FILTER_EXEMPTIONS"), c["delta_ov"]["FILTER_EXEMPTIONS"])
                 ov = sanitize_overrides(ov, defaults)[0]
                 if _ck(ov) == run_ck:
                     continue  # identity with the running set: delta 0 by construction, nothing to measure
@@ -5668,11 +5697,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if first is None:
                 first = items
             ph["tested"] = ph.get("tested", 0) + len(items)
-            pos = [it for it in items if _v17_ok(it.get("res"), it.get("err"), it.get("d"), it.get("delta_ov"))]
+            pos = [it for it in items if _v17_ok(it.get("res"), it.get("err"), it.get("d"), it.get("delta_ov")) and (accept is None or accept(it.get("res") or {}))]
             if not pos:
                 break
             pos.sort(key=lambda it: -float(it["d"]))
             _v17_promote(pos[0], how, prefix, ph)
+            if max_prom is not None and ph.get("prom", 0) >= int(max_prom):
+                break
             pool_ = [{k: v for k, v in it.items() if k not in ("ov", "res", "err", "d", "ok")} for it in pos[1:]]
         return first or []
     def _v17_phase_start(name: str) -> dict:
@@ -5719,11 +5750,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 continue
             out.append((v, pv))
         return out
-    def _v17_filter_probe():
+    def _v17_filter_probe(tag: str = "P1_PROBE", seconds=None):
         # P1 FILTER PROBE: every option of the top-K filter switches of this cat_side (both directions), vs the start set, greedy
-        if _v17_phase_done("P1_PROBE"):
+        # (re-run as P3_PROBE_<i> vs the moved chain at the end of every pinpoint iteration)
+        if _v17_phase_done(tag) or (seconds is not None and seconds < 5.0):
             return
-        ph = _v17_phase_start("P1_PROBE")
+        ph = _v17_phase_start(tag)
         names = [n for n in v17_top_filters(_v17_prior, _v17_know, int(os.environ.get("V15_V17_PROBE_K", "15"))) if n in known_config_fields() and n not in UNWIRED_FILTERS and n not in UNWIRED_SWITCHES]
         opts = _v17_opts_of(names)
         cands = []
@@ -5733,14 +5765,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 row = _v17_find_row(f, v)
                 cands.append({"label": f"V17_PROBE:{f}={v}", "delta_ov": dov, "sw": f, "cand": v, "sheet": row[0] if row else "V17_PROBE", "row": row[1] if row else None})
         _v17_touched.update(names)
-        first = _v17_greedy(cands, "v17_filter_probe", "V17_PROBE", _t.time() + float(os.environ.get("V15_V17_PROBE_S", "150")), ph)
+        first = _v17_greedy(cands, "v17_filter_probe", "V17_PROBE", _t.time() + (float(seconds) if seconds is not None else float(os.environ.get("V15_V17_PROBE_S", "150"))), ph)
         _v17_phase_end(ph, filters=names, cands=len(cands), deltas={it["label"]: (round(float(it["d"]), 4) if it.get("d") is not None else None) for it in first})
-    def _v17_retest(deadline: float):
+    def _v17_retest(deadline: float, tag: str = "P3_RETEST"):
         # P3.1 PATHS THAT HAD NO CHANCE: every non-promoted ENTRY/REENTRY/AUGMENT/EXIT row (+ sacred families anywhere) re-tested
         # naked vs the MOVED chain (only rows whose chain moved since their eval), then near-misses x ever-promoted filters.
-        if _v17_phase_done("P3_RETEST"):
+        if _v17_phase_done(tag) or _t.time() > deadline - 5.0:
             return
-        ph = _v17_phase_start("P3_RETEST")
+        ph = _v17_phase_start(tag)
         done_ = progress.get("done") or {}
         cands, seen = [], set()
         for k, v in list(done_.items()):
@@ -5799,16 +5831,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if xc and _t.time() < deadline - 5:
             _v17_greedy(xc, "v17_retest_joint", "V17_RETEST", deadline, ph)
         _v17_phase_end(ph, cands=len(cands), near_miss=len(near), joint_cands=len(xc))
-    def _v17_ablation(deadline: float):
+    def _v17_ablation(deadline: float, tag: str = "P3_ABLATION"):
         # P3.2 ABLATION ROUTE (USER 2026-10-13): per filter category (entry / reentry / augment / exit):
         #   STRIP all of its filters OFF (a discovery base, never adopted) -> DISCOVER path switches positive on it ->
         #   ATTRIBUTE which filter(s) kill each discovery (one restored at a time) -> EXEMPT the switch from them
         #   (data/v17_filter_exemptions.json, fail-open; proxy = killer filter OFF, logged [ABLATION-NO-EXEMPT]) ->
         #   RESTORE every filter (the previous best chain) + switch (+ exemption) -> fresh eval, adopted only above the latest best.
-        if _v17_phase_done("P3_ABLATION"):
+        if _v17_phase_done(tag) or _t.time() > deadline - 5.0:
             return
-        ph = _v17_phase_start("P3_ABLATION")
-        book = _v17.setdefault("ablation", {})
+        ph = _v17_phase_start(tag)
+        book = _v17.setdefault("ablation", {}).setdefault(tag, {})
         exm = v17_load_exemptions()
         cats = [c for c in ("entry", "reentry", "augment", "exit") if not (book.get(c) or {}).get("done")]
         for ci, cat in enumerate(cats):
@@ -5911,7 +5943,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 for f in kills:
                     e_ = ex_sw.get(f) if isinstance(ex_sw, dict) else None
                     if isinstance(e_, dict) and e_:
-                        ex_ov.update(e_)
+                        for _ek, _ev_ in e_.items():
+                            ex_ov[_ek] = v17_merge_exemptions(ex_ov.get(_ek), _ev_) if _ek == "FILTER_EXEMPTIONS" else _ev_
                         ex_used.append(f)
                     else:
                         no_ex.append(f)
@@ -5939,9 +5972,57 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             cb.update(done=True, records=recs, chain_after=round(float(cumulative_gain), 4))
             _maybe_write_json(force=True)
         _v17_phase_end(ph, categories={c: {k: v for k, v in (book.get(c) or {}).items() if k != "records"} for c in book})
+    def _v17_tim_fix(deadline: float, tag: str):
+        # CHAIN HEALTH before publish: a final set with TIM outside [20,80] fails the 30D finish gate -> compliance repair -> a
+        # full-board REDO from a (usually much lower) repaired set (COIN_LONG canary: 15.73 -> repaired 5.24 + REDO). While the
+        # pool is hot, look for a POSITIVE-delta candidate (any evaluated row / top filter option) whose fresh eval lands the
+        # chain inside the band; greedy law intact (only gains are promoted). None found -> the existing compliance path decides.
+        nonlocal chain_tim
+        if _v17_phase_done(tag) or _t.time() > deadline - 5.0:
+            return
+        ref = _v17_batch([{"label": "V17_TIMFIX_REF", "ov": dict(cumulative_overrides), "sheet": "V17"}], float(cumulative_gain), deadline)[0]
+        try:
+            tim0 = float((ref.get("res") or {}).get("tim_pct"))
+        except Exception:
+            return
+        chain_tim = tim0
+        if QUAL_TIM_MIN <= tim0 <= QUAL_TIM_MAX:
+            return
+        ph = _v17_phase_start(tag)
+        def _in_band(r):
+            try:
+                return QUAL_TIM_MIN <= float(r.get("tim_pct")) <= QUAL_TIM_MAX and int(r.get("trades") or 0) >= ADAPT_FLOOR_TRADES
+            except Exception:
+                return False
+        cands, seen = [], set()
+        for k, v in list((progress.get("done") or {}).items()):
+            if not isinstance(v, dict) or "!" not in str(k):
+                continue
+            tab, rest = str(k).split("!", 1)
+            rrs, _, rk = rest.partition(":")
+            if tab not in SWITCH_SHEETS or not rrs.isdigit() or ":" in rk or "=" not in rk or v.get("is_running"):
+                continue
+            if v.get("naked_delta") is None and not v.get("delta_invalid"):
+                continue
+            sw, _, c = rk.partition("=")
+            ck_ = _canon_key("X", sw.strip(), c.strip())
+            if ck_ in seen:
+                continue
+            seen.add(ck_)
+            try:
+                dov = _switch_overrides(sw.strip(), _parse_opt_value(c.strip(), defaults.get(sw.strip())))
+            except Exception:
+                continue
+            if not _v17_blocked(dov):
+                cands.append({"label": f"V17_TIMFIX:{sw.strip()}={c.strip()}", "delta_ov": dov, "sw": sw.strip(), "cand": c.strip(), "sheet": tab, "row": int(rrs), "ev": v17_ev(f"{sw.strip()}={c.strip()}", _v17_know, _v17_prior)})
+        cands.sort(key=lambda t: -t["ev"])
+        _v17_greedy(cands[: int(os.environ.get("V15_V17_TIMFIX_MAX", "2500"))], "v17_tim_fix", "V17_TIMFIX", deadline, ph, accept=_in_band, max_prom=1)
+        _v17_phase_end(ph, tim_before=round(tim0, 2), tim_after=chain_tim, cands=len(cands))
     def _v17_essential_proof(deadline: float):
-        # ESSENTIAL-ROWS gate needs a non-zero number per protection filter; deferred yellows were its cross-row evidence.
-        # For every FAIL switch: evaluate the deferred yellows of its own rows vs the current chain until one moves (real evals).
+        # ESSENTIAL-ROWS gate needs a non-zero number per protection filter; deferred yellows were its evidence. For every FAIL
+        # switch: (1) the deferred yellows of its OWN rows, then (2) cross-row cells whose header IS that filter (rows that move
+        # first) — real evals vs the current chain, recorded as yellows, until one moves. VALE_SHORT canary failed the gate
+        # with own-row cells only (all exact 0).
         try:
             _eg = essential_gate_check(progress.get("done", {}), dict(cumulative_overrides), new_symside.upper().endswith("_LONG"), _v17_cs.startswith("CRYPTO"))
         except Exception:
@@ -5951,47 +6032,69 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         ph = _v17_phase_start("P3_ESSENTIAL")
         done_ = progress.get("done") or {}
+        rows = []
+        for k, v in list(done_.items()):
+            if not isinstance(v, dict) or "!" not in str(k):
+                continue
+            _vdef = [h for h in list(v.get("v17_deferred_filters") or []) + list(v.get("coarse_deferred_filters") or []) + list(v.get("prior_skipped_filters") or []) + list(v.get("inert_filters") or []) if h not in (v.get("yellows") or {})]
+            if not _vdef:
+                continue
+            v = dict(v, v17_deferred_filters=list(dict.fromkeys(_vdef)), _rec=v)
+            tab, rest = str(k).split("!", 1)
+            rrs, _, rk = rest.partition(":")
+            if tab not in SWITCH_SHEETS or not rrs.isdigit() or "=" not in rk:
+                continue
+            st = _static_info.get((tab, int(rrs)))
+            if not st:
+                continue
+            rsw, _, rc = rk.partition("=")
+            try:
+                mv = abs(float(v.get("naked_delta") or 0.0))
+            except Exception:
+                mv = 0.0
+            rows.append((k, v, tab, int(rrs), rsw.strip(), rc.strip(), st, mv))
+        proven = {}
         for sw in fails:
-            for k, v in list(done_.items()):
-                if _t.time() > deadline:
+            cells = []
+            for (k, v, tab, rr_, rsw, rc, st, mv) in rows:
+                if rsw == sw:
+                    cells += [(k, v, tab, rr_, rsw, rc, st, h) for h in list(v["v17_deferred_filters"])[:60]]
+            xr = sorted([r for r in rows if r[4] != sw], key=lambda r: -r[7])
+            for (k, v, tab, rr_, rsw, rc, st, mv) in xr:
+                hs = [h for h in v["v17_deferred_filters"] if str(h).split("=", 1)[0].strip() == sw]
+                cells += [(k, v, tab, rr_, rsw, rc, st, h) for h in hs[:2]]
+                if len(cells) > 90:
                     break
-                if not isinstance(v, dict) or not str(k).split(":")[1:2] or str(k).split(":")[1].split("=")[0] != sw or not v.get("v17_deferred_filters"):
-                    continue
-                tab, rest = str(k).split("!", 1)
-                rrs, _, rk = rest.partition(":")
-                st = _static_info.get((tab, int(rrs))) if rrs.isdigit() else None
-                if not st:
-                    continue
-                c = rk.partition("=")[2]
-                try:
-                    sw_ov = _switch_overrides(sw, _parse_opt_value(c, defaults.get(sw)))
-                except Exception:
-                    continue
+            for i in range(0, len(cells), max(8, _n_proc * 4)):
+                if _t.time() > deadline or proven.get(sw):
+                    break
                 items = []
-                for h in list(v["v17_deferred_filters"])[:60]:
+                for (k, v, tab, rr_, rsw, rc, st, h) in cells[i:i + max(8, _n_proc * 4)]:
                     f_ = (st.get("h2f") or {}).get(h)
                     if not f_:
                         continue
-                    items.append({"label": f"V17_ESSENTIAL:{h}", "ov": {**cumulative_overrides, **sw_ov, f_["filter"]: _parse_opt_value(f_["opt"], defaults.get(f_["filter"]))}, "sw": sw, "cand": c, "sheet": tab, "row": int(rrs), "h": h})
+                    try:
+                        sw_ov = _switch_overrides(rsw, _parse_opt_value(rc, defaults.get(rsw)))
+                    except Exception:
+                        continue
+                    items.append({"label": f"V17_ESSENTIAL:{rsw}={rc}@{h}", "ov": {**cumulative_overrides, **sw_ov, f_["filter"]: _parse_opt_value(f_["opt"], defaults.get(f_["filter"]))}, "sw": rsw, "cand": rc, "sheet": tab, "row": rr_, "h": h, "v": v["_rec"]})
                 _v17_batch(items, float(cumulative_gain), deadline)
-                moved = False
                 for it in items:
                     if it.get("d") is None:
                         continue
-                    v.setdefault("yellows", {})[it["h"]] = float(it["d"])
-                    v.setdefault("focus_filled", []).append(it["h"])
+                    it["v"].setdefault("yellows", {})[it["h"]] = float(it["d"])
+                    it["v"].setdefault("focus_filled", []).append(it["h"])
                     try:
-                        _col = header_maps.get(tab, {}).get(it["h"])
+                        _col = header_maps.get(it["sheet"], {}).get(it["h"])
                         if _col:
-                            _yc = wb[tab].cell(row=int(rrs), column=_col)
+                            _yc = wb[it["sheet"]].cell(row=it["row"], column=_col)
                             _yc.value = float(it["d"])
                             _yc.font = Font(name="Arial", size=10, bold=False, color=None if it.get("ok") else "808080")
                     except Exception:
                         pass
-                    moved = moved or abs(float(it["d"])) > 1e-9
-                if moved:
-                    break
-        _v17_phase_end(ph, fails=fails)
+                    if abs(float(it["d"])) > 1e-9:
+                        proven[sw] = it["label"]
+        _v17_phase_end(ph, fails=fails, proven=proven)
     def _v17_sheet():
         try:
             if "V17_ROUNDS" in wb.sheetnames:
@@ -6006,9 +6109,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 vws.append([p.get("phase"), p.get("how"), p.get("what"), p.get("delta"), p.get("before"), p.get("after"), p.get("trades"), p.get("tim"), p.get("dd")])
             vws.append([])
             vws.append(["ablation", "switch", "strip_gain", "discovery_delta", "killers", "exemption_used", "no_exemption", "final_delta", "adopted"])
-            for cat, cbk in (_v17.get("ablation") or {}).items():
-                for r in cbk.get("records") or []:
-                    vws.append([cat, r.get("switch"), r.get("strip_gain"), r.get("discovery_delta"), ",".join(r.get("killers") or []), ",".join(r.get("exemption_used") or []), ",".join(r.get("no_exemption") or []), r.get("final_delta"), r.get("adopted")])
+            for _atag, _abook in (_v17.get("ablation") or {}).items():
+                for cat, cbk in (_abook or {}).items():
+                    for r in (cbk or {}).get("records") or []:
+                        vws.append([f"{_atag}:{cat}", r.get("switch"), r.get("strip_gain"), r.get("discovery_delta"), ",".join(r.get("killers") or []), ",".join(r.get("exemption_used") or []), ",".join(r.get("no_exemption") or []), r.get("final_delta"), r.get("adopted")])
         except Exception as _se:
             print(f"[V17-WARN] sheet write failed: {_se}", flush=True)
     def _v17_pinpoint():
@@ -6020,15 +6124,26 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         deadline = t0 + budget
         print(f"[V17] {new_symside} P3 PINPOINT tier={_tier_name} budget={budget:.0f}s (elapsed {t0 - _PILOT_T0:.0f}s)", flush=True)
         try:
-            _v17_retest(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_RETEST", "0.3")))
-            _v17_ablation(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_ABLATION", "0.6")))
-            _v17_essential_proof(_t.time() + 60.0)
-            if not _v17_phase_done("P3_FOCUS"):
-                ph = _v17_phase_start("P3_FOCUS")
-                _v17_focus_cap[0] = max(0.0, deadline - _t.time())
-                _tier_focus_s = _v17_focus_cap[0]
-                _focus_round()
-                _v17_phase_end(ph, budget_s=round(_v17_focus_cap[0], 1))
+            # iterations until the budget is spent or an iteration adds nothing: FOCUS (most productive per eval: yellows of the
+            # moved rows, numeric grid, pairs) -> ABLATION ROUTE -> moved-chain RETEST -> top-K filter re-probe vs the new chain
+            for _it in range(1, int(os.environ.get("V15_V17_P3_MAX_ITERS", "3")) + 1):
+                if deadline - _t.time() < 20.0:
+                    break
+                _g_it = float(cumulative_gain)
+                _v17_focus_iter[0] = _it
+                if not _v17_phase_done(f"P3_FOCUS_{_it}"):
+                    ph = _v17_phase_start(f"P3_FOCUS_{_it}")
+                    _v17_focus_cap[0] = max(0.0, (deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_FOCUS", "0.5")))
+                    _tier_focus_s = _v17_focus_cap[0]
+                    _focus_round()
+                    _v17_phase_end(ph, budget_s=round(_v17_focus_cap[0], 1))
+                _v17_ablation(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_ABLATION", "0.6")), f"P3_ABLATION_{_it}")
+                _v17_retest(_t.time() + max(0.0, deadline - _t.time()) * float(os.environ.get("V15_V17_SHARE_RETEST", "0.7")), f"P3_RETEST_{_it}")
+                _v17_filter_probe(f"P3_PROBE_{_it}", min(60.0, max(0.0, deadline - _t.time())))
+                if float(cumulative_gain) - _g_it <= 1e-9:
+                    break
+            _v17_tim_fix(max(deadline, _t.time() + 60.0), "P3_TIMFIX")
+            _v17_essential_proof(_t.time() + float(os.environ.get("V15_V17_ESSENTIAL_S", "120")))
         except V15Shutdown:
             raise
         except Exception as _pe:
@@ -6184,8 +6299,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         break
             if _cz_move:
                 _cz_hdrs = [h for h in st["coarse_deferred_filters"] if h not in st["hdrs"] and h in st["h2f"]]
+                _cz_rest = []
+                if _v17_on and len(_cz_hdrs) > int(os.environ.get("V15_V17_INLINE_CAP", "32")):
+                    # V17: canary RLC C spent 405 s of an 803 s P2 on 46 full ~205-cell inline matrices (4 promoted) — inline only the
+                    # top prior-ranked cells; the rest stay coarse-deferred (settled) for the P3 FOCUS yellows (batched, moved chain).
+                    _cz_pr = st.get("prior_rank") or {}
+                    _cz_sorted = sorted(_cz_hdrs, key=lambda h: _cz_pr.get(h, (0, 0.0)), reverse=True)
+                    _cz_cap = int(os.environ.get("V15_V17_INLINE_CAP", "32"))
+                    _cz_hdrs, _cz_rest = _cz_sorted[:_cz_cap], _cz_sorted[_cz_cap:]
                 st["coarse_revived"] = list(_cz_hdrs)
-                st["coarse_deferred_filters"] = []
+                st["coarse_deferred_filters"] = list(_cz_rest)
                 _cz_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_cz_hdrs) // max(1, _n_proc))) + 2)
                 _cz_ovs = {}
                 for _czh in _cz_hdrs:
@@ -6435,6 +6558,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if "hustle" in results:
             _hd, _hok, _hwhy = _delta_vs(results["hustle"][0], initial_baseline)
             hustle_delta = _hd if _hok else None
+        elif _v17_on and not is_running and row_delta is not None and (choice is not None or naked_ok):
+            hustle_delta = (float(cumulative_before) + float(row_delta)) - float(initial_baseline)  # V17 §56: same row result vs the ORIGINAL baseline
         _identity_zero = bool(is_running) and choice is None
         if row_delta is not None and not _identity_zero:
             if _is_red_cell(ws.cell(row=rr, column=cols["G"])):
@@ -6517,6 +6642,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _maybe_save()
         processed += 1
     if _v17_on and _v17_t.get("p2") and (pending_queue or not _v17_phase_done("P2_WORST_FIRST")):
+        _v17_t["p2"]["prom"] = sum(1 for _pk, _pv in (progress.get("done") or {}).items() if isinstance(_pv, dict) and _pv.get("promoted") and str(_pk).split("!", 1)[0] in SWITCH_SHEETS and not str(_pk).endswith(":REPASS") and not _pv.get("v17_phase"))
         _v17_phase_end(_v17_t["p2"], rows_pending=_v17_t["p2"].get("rows_pending"), resumed_segment=bool(_v17_phase_done("P2_WORST_FIRST")))
     if _sacred_on:
         _sacred_final_n = _sacred_repass(None)
@@ -6624,6 +6750,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     if _v17_on:
         if _v17_t.get("ffr"):
             _v17_phase_end(_v17_t["ffr"], touched=len(_v17_touched))
+        try:
+            _v17_tim_fix(_t.time() + float(os.environ.get("V15_V17_TIMFIX_S", "90")), "P4_TIMFIX")  # FFR promotes without a TIM guard
+        except V15Shutdown:
+            raise
+        except Exception as _tfe:
+            print(f"[V17-WARN] timfix {_tfe}", flush=True)
         _v17_cap_post()
         _v17_t["post"] = _v17_phase_start("P4_POST_ENDGAME_DIAG")
     # USER 2026-10-07 ENDGAME: strip filters -> naked switch retest -> one-by-one reapply to bh+10.
@@ -9749,8 +9881,14 @@ def main():
     # USER 2026-10-12: NO missing bar up to pilot start — refresh-and-go the run's NPZ
     # to the latest bar BEFORE stamping (loud on failure, never blocks the pilot).
     try:
-        from tools.v15_npz_ensure import ensure as _npz_ensure0
-        _npz_ensure0([new_symside])
+        # 2026-10-13 RULE#4 resume guard: the NPZ is built on S1 by the dispatch job right before launch (JIT law); an
+        # in-pilot refresh would rebuild it a second time and, on a RESUME, change it under the board -> NPZ-CHANGED-REFILL
+        # archives every done row. Opt-in only (V15_PILOT_NPZ_ENSURE=1) and never when a board with done rows exists.
+        _ens_pp = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
+        _ens_resume = _ens_pp.exists() and bool((json.loads(_ens_pp.read_text()) or {}).get("done"))
+        if os.environ.get("V15_PILOT_NPZ_ENSURE", "0") == "1" and not _ens_resume:
+            from tools.v15_npz_ensure import ensure as _npz_ensure0
+            _npz_ensure0([new_symside])
     except Exception as _npz_e0:
         print(f"[NPZ-ENSURE-LOUD] {new_symside}: hook failed ({_npz_e0}) — proceeding", flush=True)
     # USER 2026-10-03 RULE#4: stamp the NPZ this run measures on — done rows are valid only on it

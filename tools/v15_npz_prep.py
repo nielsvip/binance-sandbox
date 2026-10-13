@@ -126,6 +126,15 @@ def main():
     live = IND / f"{sym}.npz"
     now = time.time()
     r = {"symbol": sym, "action": "none", "ok": False, "reason": "", "venue": venue}
+    try:
+        from tools.v15_npz_freeze import is_frozen as _is_frozen
+        if _is_frozen(sym):
+            # 2026-10-13 RULE#4 resume guard: an unfinished board / running pilot on this symbol was measured on the
+            # current NPZ — a rebuild (or a push of a newer copy) would archive it (NPZ-CHANGED-REFILL) at resume.
+            r.update(ok=None, action="frozen", reason="frozen: unfinished board or running pilot on this symbol (data/npz_frozen_syms.json)")
+            out(r)
+    except ImportError:
+        pass
     if not live.exists():
         # 2026-10-13: a symbol in the dispatch universe without an S1 NPZ (e.g. RIO) was refused forever ("no live NPZ").
         # JIT law: build it now, for exactly this dispatch.

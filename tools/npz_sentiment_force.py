@@ -29,6 +29,14 @@ def main():
         except OSError:
             pass
     files = sorted(p for p in npz_dir.glob("*.npz") if ".tmp" not in p.name and ".sent." not in p.name)
+    try:  # 2026-10-13 RULE#4 resume guard: unfinished boards keep the NPZ they were measured on
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from v15_npz_freeze import frozen_syms as _fz
+        _frozen = _fz()
+    except Exception:
+        _frozen = set()
+    if _frozen:
+        print(f"[sent] RULE#4: {len(_frozen)} frozen symbols (unfinished boards) are read for the bias pass but not rewritten", flush=True)
     dbf = str(npz_dir / ".sent_tmp.db")
     con = sqlite3.connect(dbf)
     con.execute("CREATE TABLE v (t INTEGER, b INTEGER)")
@@ -76,6 +84,9 @@ def main():
     print("[sent] pass 2: zip-surgery write...", flush=True)
     updated = skipped = 0
     for i, p in enumerate(files, 1):
+        if p.stem.upper() in _frozen:
+            skipped += 1
+            continue
         try:
             with np.load(str(p), allow_pickle=True) as z:
                 if "timestamps" not in z.files or "wt_composite_bias" not in z.files:

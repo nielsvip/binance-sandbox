@@ -12,7 +12,7 @@
     "crypto"
    ],
    "mem_reserve_mb": 6000,
-   "max_pairs": 2,
+   "max_pairs": 4,
    "workers_per_side": 4,
    "oom_mb": 2000,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
@@ -29,7 +29,7 @@
     "crypto"
    ],
    "mem_reserve_mb": 5000,
-   "max_pairs": 3,
+   "max_pairs": 4,
    "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
@@ -46,7 +46,7 @@
     "crypto"
    ],
    "mem_reserve_mb": 4000,
-   "max_pairs": 5,
+   "max_pairs": 4,
    "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
@@ -62,13 +62,13 @@
     "crypto"
    ],
    "mem_reserve_mb": 4000,
-   "max_pairs": 5,
+   "max_pairs": 4,
    "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
   }
  ],
- "cpu_target_pct": 50,
+ "cpu_target_pct": 90,
  "default_job_rss_mb": 3500,
  "order_dir": "data/reports/per_sym_recheck_20260929",
  "default_pair_mb": 4000,
@@ -84,6 +84,9 @@
  "_doc_s6_stocks_20261008": "USER 2026-10-08: s6 takes stocks too (crypto 30D 117/144 done, tail thin; 116 stocks chains pending). Templates converged post-stamp + repainted; NPZs+code synced.",
  "_doc_all_stocks_20261008": "USER 2026-10-08: all hosts take stocks (crypto 30D 117/144, tail thin; s5 hit 0/3 idle; 234 stocks sides untouched). Crypto-first priority preserved via venue_order; stocks fill idle slots.",
  "_doc_stocks_hold_20261008": "HOLD 2026-10-08 01:15Z: stocks 30D pilots refuse fleet-wide (PARITY-GATE hard default disparity vs 00:23 chain bolds; 30D attempts cap 6 burns per churn cycle). Revert to crypto-only until peer parity-sync deploys, then flip back. See _doc_all_stocks_20261008.",
- "pair_floor_mb": 8000,
- "_doc_pair_floor": "2026-10-08: AUTOPSY-INERT boards ~4GB/pair; floor 8000 (measured max x1.25 wins when bigger)"
+ "pair_floor_mb": 6000,
+ "_doc_pair_floor": "2026-10-08: AUTOPSY-INERT boards ~4GB/pair; floor 8000 (measured max x1.25 wins when bigger)",
+ "_doc_emergency_20261012": "USER 2026-10-12 05:15Z EMERGENCY pre-open: s5/s6 cap 5->6, pair_floor 8000->6000 (measured ~4GB/pair; oom_guard backstop). s2 stays 3 (3 ancient slow pilots saturate), s1 stays 2 (live trading). Revert after open if OOM.",
+ "_doc_s5s6_stocks_20261012": "USER 2026-10-12: s5/s6 NEVER below 90pct cpu on STOCKS until open unless every sym_side over BH. Venues pinned stocks-only for new placements; running crypto drains naturally (no kills).",
+ "_doc_cpu90_20261013": "2026-10-13 17:20Z USER full capacity: cpu_target 50->90 (s1 cpu 69 blocked every admission); mem-derived cap in scheduler (V15_SCHED_MEM_CAP)"
 }

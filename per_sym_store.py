@@ -333,29 +333,146 @@ def _json_fallback_entry(p: Path, sym_side: str):
     # (crypto+stocks per_sym JSON) synchronously -> 1.5-2.4s per _psym_get for sym_sides absent from SQLite,
     # stalling the ez_manage event loop for minutes (men stalls, ang PAU_TIMEOUT exit 42). Keeps only the key
     # set + entries actually requested (not the whole 70MB dict) to bound RSS. Same data, same result.
-    st = p.stat()
-    sig = (st.st_mtime_ns, st.st_size, st.st_ino)
-    hit = _JSON_FALLBACK_CACHE.get(str(p))
-    if hit is None or hit[0] != sig:
-        hit = (sig, None, {})
-        _JSON_FALLBACK_CACHE[str(p)] = hit
-    if hit[1] is not None and sym_side not in hit[1]:
+    # 2026-10-13 STORM GUARD: one parse per file-signature, serving the whole
+    # working set from it. Previously EVERY not-yet-cached sym_side under a
+    # fresh sig re-parsed the entire 58-109MB file; the v15 chain rewrites
+    # these files ~1/min, so the hot live _cfg path did hundreds of 100MB
+    # parses per cycle and froze the tradier event loops for minutes (zero
+    # fills, BROKER_UNREACHABLE_ORDERS, 120s+ ORDER_STALL_SKIP — proven via
+    # live faulthandler stack: process_position -> ... -> json.loads). Same
+    # data, same freshness (any sig change re-reads); only redundant parses
+    # are gone. Working set stays bounded to requested sym_sides (RSS).
+    try:
+        st = p.stat()
+    except OSError:
         return None
-    if sym_side in hit[2]:
-        return hit[2][sym_side]
+    sig = (st.st_mtime_ns, st.st_size, st.st_ino)
+    key = str(p)
+    hit = _JSON_FALLBACK_CACHE.get(key)
+    if hit is not None and hit[0] == sig:
+        if sym_side in hit[2]:
+            return hit[2][sym_side]
+        if hit[1] is not None and sym_side not in hit[1]:
+            _absent_mark(key, (sym_side,))
+            return None
+    else:
+        hit = None
+        if _absent_known(key, sym_side):
+            return None
     raw = json.loads(p.read_text())
     keys = frozenset(raw.keys()) if isinstance(raw, dict) else frozenset()
-    val = raw.get(sym_side) if isinstance(raw, dict) else None
-    _JSON_FALLBACK_CACHE[str(p)] = (sig, keys, dict(hit[2]))
-    _JSON_FALLBACK_CACHE[str(p)][2][sym_side] = val
-    return val
+    want = set(hit[2].keys()) if hit else set()
+    want.add(sym_side)
+    entries: dict = {}
+    if isinstance(raw, dict):
+        for _k in want:
+            if _k in raw:
+                entries[_k] = raw[_k]
+    _JSON_FALLBACK_CACHE[key] = (sig, keys, entries)
+    if sym_side not in entries:
+        _absent_mark(key, (sym_side,))
+    return entries.get(sym_side)
+
+
+def _prime_one_file(p: Path, want: set) -> int:
+    """Parse p ONCE if its signature changed; keep entries for want + the
+    previously cached working set. Returns 1 if parsed, else 0."""
+    try:
+        st = p.stat()
+    except OSError:
+        return 0
+    sig = (st.st_mtime_ns, st.st_size, st.st_ino)
+    key = str(p)
+    hit = _JSON_FALLBACK_CACHE.get(key)
+    if hit is not None and hit[0] == sig:
+        return 0
+    try:
+        raw = json.loads(p.read_text())
+    except Exception:
+        return 0
+    keys = frozenset(raw.keys()) if isinstance(raw, dict) else frozenset()
+    keep = set(hit[2].keys()) if hit else set()
+    keep |= set(want or ())
+    entries: dict = {}
+    if isinstance(raw, dict):
+        for _k in keep:
+            if _k in raw:
+                entries[_k] = raw[_k]
+    _JSON_FALLBACK_CACHE[key] = (sig, keys, entries)
+    _absent_mark(key, (set(keep) - set(entries.keys())))
+    return 1
+
+
+def prime_json_working_set(sym_sides) -> int:
+    """Live hot-path primer: parse each per_sym JSON view at most ONCE per
+    file revision and pre-extract entries for sym_sides (e.g. a scan
+    universe). Without this, every uncached sym_side under a fresh revision
+    re-parsed the whole 58-109MB file (~1/min rewrites) and froze the live
+    loops. Returns number of files (re)parsed."""
+    try:
+        want = {str(s).strip() for s in (sym_sides or ()) if str(s).strip()}
+    except Exception:
+        return 0
+    if not want:
+        return 0
+    _paths = (CRYPTO_JSON, STOCKS_JSON, TRB_JSON, TRC_JSON)
+    if not any(str(_s).upper().rsplit("_", 1)[0].endswith(CRYPTO_SUFFIXES) for _s in want):
+        _paths = (STOCKS_JSON, TRB_JSON, TRC_JSON)
+    done = 0
+    for _p in _paths:
+        try:
+            if _p.exists():
+                done += _prime_one_file(_p, want)
+        except Exception:
+            continue
+    return done
+
+
+def _json_file_order(sym_side: str):
+    """Venue-aware view order: crypto syms hit the crypto view first, stocks
+    syms hit stocks/trb/trc first (CRYPTO_JSON last). The old fixed order
+    parsed the 96MB crypto view on EVERY stocks miss before reaching the
+    109MB stocks view — ~200MB per miss in the live hot path."""
+    _s = str(sym_side or "").upper()
+    _base = _s.rsplit("_", 1)[0] if "_" in _s else _s
+    if _base.endswith(CRYPTO_SUFFIXES):
+        return (CRYPTO_JSON, STOCKS_JSON, TRB_JSON, TRC_JSON)
+    return (STOCKS_JSON, TRB_JSON, TRC_JSON, CRYPTO_JSON)
+
+
+_ABSENT_TTL_S = 300.0
+_JSON_ABSENT_CACHE: dict = {}
+
+
+def _absent_known(path_key: str, sym_side: str) -> bool:
+    try:
+        _ts = _JSON_ABSENT_CACHE.get(path_key, {}).get(sym_side)
+        return _ts is not None and (time.time() - float(_ts)) < _ABSENT_TTL_S
+    except Exception:
+        return False
+
+
+def _absent_mark(path_key: str, syms) -> None:
+    try:
+        _now = time.time()
+        _d = _JSON_ABSENT_CACHE.get(path_key)
+        if not isinstance(_d, dict):
+            _d = _JSON_ABSENT_CACHE[path_key] = {}
+        for _s in syms or ():
+            _d[str(_s)] = _now
+        if len(_d) > 5000:
+            _cut = _now - _ABSENT_TTL_S
+            for _k in [k for k, v in _d.items() if float(v) < _cut]:
+                _d.pop(_k, None)
+    except Exception:
+        pass
 
 
 def _json_load_fallback(sym_side: str) -> Optional[dict]:
     """Try each JSON file for the sym_side. Returns raw entry or None."""
     import copy as _copy
     # choose file set based on suffix heuristic, but try all
-    for p in (CRYPTO_JSON, STOCKS_JSON, TRB_JSON, TRC_JSON):
+    for p in _json_file_order(sym_side):
         try:
             if not p.exists():
                 continue

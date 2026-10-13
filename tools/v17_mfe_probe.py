@@ -33,8 +33,9 @@ def one(ss):
     led = r.get("execution_ledger") or []
     npz = prep["npz_prepared"]
     close = np.asarray(npz.get("close"), dtype=float)
-    hi = np.asarray(npz.get("high", close), dtype=float)
-    lo = np.asarray(npz.get("low", close), dtype=float)
+    hi = np.asarray(npz.get("high_15m", npz.get("high", close)), dtype=float)  # compacted 15m NPZ carries high_15m/low_15m (no bare high/low)
+    lo = np.asarray(npz.get("low_15m", npz.get("low", close)), dtype=float)
+    hl_src = "high_15m/low_15m" if "high_15m" in npz else "close"
     is_long = prep["side"] == "LONG"
 
     class _C:
@@ -72,6 +73,7 @@ def one(ss):
 
     return ss, {
         "trades": int(len(mfe_a)),
+        "mfe_price_source": hl_src,
         "gain_pct": round(float(r.get("gain_pct") or 0.0), 4),
         "eff_augment_min_gain_pct": min_gain,
         "held_bars_15m": {"median": float(np.median(held_a)), "p75": float(np.percentile(held_a, 75)), "share_le_1bar_pct": round(float(np.mean(held_a <= 1)) * 100, 2)},

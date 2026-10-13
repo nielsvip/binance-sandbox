@@ -7276,6 +7276,27 @@ class QuickConfig:
     ENTRY_ISOLATE_FAMILY: str = (
         ""  # N1/004 TEST MODE (default '' = off): only this fresh-entry family (vec block name or alias) may open, all reentries disabled — for honest threshold sweeps
     )
+    FILTER_EXEMPTIONS: dict = field(
+        default_factory=dict
+    )  # V17 2026-10-13 USER per-switch filter exemption {path_id: [filter_key, ...]}; {} = current behaviour exactly. path_id = entry family alias/block (two-pass re-evaluation with the filters off, restricted to that family's raw bars), 'REENTRY' (reentry fires use the gate state with the filters off) or 'AUGMENT'/'AUGMENT_<SRC>' (in-loop augment gates). vec_decisions/filter_exemptions.py
+    AUGMENT_INTO_REENTRY_ENABLED: bool = (
+        False  # V17 2026-10-13 USER: carry the augment a position never reached (exited before +MIN_GAIN) into the next reentry at a higher low (LONG) / lower high (SHORT): reentry size = open x (1 + REENTRY_AUGMENT_SIZE_MULT). False = current behaviour exactly
+    )
+    REENTRY_AUGMENT_SIZE_MULT: float = (
+        1.0  # V17 carried augment amount as a multiple of the reentry open size (1.0 = open + 1x augment)
+    )
+    REENTRY_AUGMENT_REQUIRE_HIGHER_LOW: bool = (
+        True  # V17 LONG reentry price must be > the previous trade's reference (higher low); SHORT mirror < (lower high)
+    )
+    REENTRY_AUGMENT_HL_REF: str = (
+        "entry"  # V17 reference of the higher-low test: 'entry' = previous trade entry price, 'low' = previous trade's adverse swing (LONG min low / SHORT max high while held)
+    )
+    REENTRY_AUGMENT_WINDOW_SEC: float = (
+        86400.0  # V17 the reentry must open within this many seconds of the previous close (0 = no limit)
+    )
+    REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: bool = (
+        True  # V17 carry only when the previous position never augmented (the augment was missed, not already taken)
+    )
     KG_STOCKS_LIVE_GATE: bool = (
         True  # b6 vec-only: stocks KINDERGARTEN/EMA_9_21 = live HARD VETO on the final entry signal (False = legacy additive signal)
     )
@@ -17711,21 +17732,95 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
     _ot_cnt = {}  # [C2 b5b] executed OPEN/AUGMENT fills per UTC day
 
+    # V17 2026-10-13 AUGMENT_INTO_REENTRY (USER: "the augment would have to be summed to the reentry at a better price so it
+    # reenters bigger (open plus augment amount) when it manages to reenter at a higher low"). Default False = _open unchanged.
+    _air_on = bool(getattr(cfg, "AUGMENT_INTO_REENTRY_ENABLED", False))
+    _air_lo = _air_hi = None
+    if _air_on and str(getattr(cfg, "REENTRY_AUGMENT_HL_REF", "entry") or "entry").strip().lower() == "low":
+        _air_lo = _safe(npz, "low_15m" if "low_15m" in npz else "low", n, 0.0)  # 15m decision floor (compacted NPZ carries low_15m/high_15m, no bare low/high)
+        _air_hi = _safe(npz, "high_15m" if "high_15m" in npz else "high", n, 0.0)
+
+    def _air_carry_mult(px, i):
+        """Carried-augment multiple for an open at bar i (0.0 = no carry). Previous trade = trades[-1]."""
+        try:
+            if not trades:
+                return 0.0
+            _lt = trades[-1]
+            if "bar_exit" not in _lt or "bar_entry" not in _lt:
+                return 0.0
+            _be, _bx = int(_lt["bar_entry"]), int(_lt["bar_exit"])
+            if _bx > i:
+                return 0.0
+            _win = float(getattr(cfg, "REENTRY_AUGMENT_WINDOW_SEC", 86400.0) or 0.0)
+            if _win > 0 and len(ts) > max(i, _bx) and (float(ts[i]) - float(ts[_bx])) > _win:
+                return 0.0
+            if bool(getattr(cfg, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT", True)):
+                for _ev in reversed(events):
+                    _eb = int(_ev.get("bar", -1))
+                    if _eb < _be:
+                        break
+                    if _ev.get("type") == "AUGMENT" and _eb <= _bx:
+                        return 0.0
+            try:
+                if float(getattr(cfg, "MAX_AUGMENTS_PER_POSITION", 999999)) < 1:
+                    return 0.0
+            except Exception:
+                pass
+            if _sa_cap is not None and int(_sa_cap) < 1:
+                return 0.0
+            if bool(getattr(cfg, "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW", True)):
+                _ref = float(_lt.get("entry_price", 0.0) or 0.0)
+                if _air_lo is not None and _bx < len(_air_lo):
+                    _seg = (_air_lo if is_long else _air_hi)[_be : _bx + 1]
+                    _seg = _seg[_seg > 0]
+                    if len(_seg):
+                        _ref = float(_seg.min()) if is_long else float(_seg.max())
+                if _ref <= 0:
+                    return 0.0
+                if (is_long and not px > _ref) or ((not is_long) and not px < _ref):
+                    return 0.0
+            return max(0.0, float(getattr(cfg, "REENTRY_AUGMENT_SIZE_MULT", 1.0) or 0.0))
+        except Exception:
+            return 0.0
+
     def _open(qty0, px, i, entry_reason="VECTOR_ENTRY"):
         # Store original entry price/bar for ledger — avg_price may drift after augments
         _ts_open = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+        _air_mult = 0.0
+        _air_add = 0.0
+        if _air_on and entry_reason != "SEED_BH" and qty0 > 0:
+            _air_mult = _air_carry_mult(px, i)
+            if _air_mult > 0:
+                _air_q = qty0 * (1.0 + _air_mult)
+                _air_cap_usd = float(
+                    (getattr(cfg, "MAX_SYMBOL_VALUE_TRADIER", 0.0) or 0.0)
+                    if is_tradier
+                    else (getattr(cfg, "MAX_POSITION_SIZE", 0.0) or 0.0)
+                )
+                if _air_cap_usd > 0 and px > 0:
+                    _air_q = max(qty0, min(_air_q, _air_cap_usd / px))
+                if is_tradier:
+                    _air_q = float(int(_air_q))
+                _air_add = max(0.0, _air_q - qty0)
+                if _air_add > 0:
+                    _air_mult = _air_add / qty0
+                    qty0 = qty0 + _air_add
+                else:
+                    _air_mult = 0.0
         # OPEN ledger event for charts/parity — no pnl/bar_exit keys, so every trade metric skips it
-        events.append(
-            {
-                "type": "OPEN",
-                "ts": _ts_open,
-                "price": float(px),
-                "qty": float(qty0),
-                "pos_deployed": abs(qty0 * px),
-                "bar": int(i),
-                "reason": str(entry_reason),
-            }
-        )
+        _air_ev = {
+            "type": "OPEN",
+            "ts": _ts_open,
+            "price": float(px),
+            "qty": float(qty0),
+            "pos_deployed": abs(qty0 * px),
+            "bar": int(i),
+            "reason": str(entry_reason),
+        }
+        if _air_add > 0:
+            _air_ev["carry_aug_mult"] = float(_air_mult)  # live_twins/vec_exact -> live sizing x(1+mult) when AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED
+            _air_ev["carry_aug_qty"] = float(_air_add)
+        events.append(_air_ev)
         try:
             _ot_d = vec_decisions.overtrade_guard.day_of(_ts_open)
             _ot_cnt[_ot_d] = _ot_cnt.get(_ot_d, 0) + 1  # [C2 b5b] executed fill today
@@ -17748,6 +17843,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             "fees": abs(qty0 * px) * half_fee,
             "entry_reason": entry_reason,
             "fixed_stop": vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_e15l, _fx_e15h, px),
+            **(
+                {"n_augments": 1, "last_aug_px": float(px), "last_aug_bar": int(i), "last_aug_qty": float(_air_add), "carry_aug": True}
+                if _air_add > 0
+                else {}
+            ),
         }
 
     # [C2 q007] stocks STDEV_BREAKOUT size boost twin (tradier_manage.py:13515): inert unless STDEV_BREAKOUT_ENABLED (default False, live default False)
@@ -18070,6 +18170,168 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig = entry_sig & _kg2_ok_final
     if _e921_ok_final is not None:
         entry_sig = entry_sig & _e921_ok_final
+    # V17 2026-10-13 FILTER_EXEMPTIONS (vec_decisions/filter_exemptions.py). Probe pass: hand the final pre-loop gate state
+    # to the caller and stop (no bar walk). Main pass with a non-empty map: ENTRY paths OR their filters-off bars (restricted
+    # to the family's raw bars) and take the filters-off open-gate state on those bars; REENTRY keeps the filters-off gate
+    # arrays for reentry fires. Empty map (default) = nothing below runs.
+    _fx_probe = getattr(cfg, "_FX_PROBE_SINK", None)
+    if isinstance(_fx_probe, dict):
+        _fx_probe["entry_sig"] = np.asarray(entry_sig, dtype=bool)
+        _fx_probe["_strict_open_block"] = _strict_open_block
+        _fx_probe["_ec_choke_block"] = _ec_choke_block
+        _fx_probe["_atf_entry_block"] = _atf_entry_block
+        _fx_probe["_qta_ct_block"] = _qta_ct_block
+        _fx_probe["_w2_gr_block"] = _w2_gr_block
+        _fx_probe["_w2_dc4_block"] = _w2_dc4_block
+        _fx_probe["_bt_veto"] = _bt_veto
+        _fx_probe["_dg_block"] = _dg_block
+        _fx_probe["_rag_pass"] = _rag_pass
+        _fx_probe["_entry_filter_masks"] = list(_entry_filter_masks)
+        return None
+    _fx_map = {}
+    _fx_re_g = None
+    _fx_aug = {}
+    _fx_qta_pre = _qta_ct_block  # augment choke keeps the main-pass counter-trend mask (ENTRY exemptions never reshape augments)
+    _fxm = None
+    if getattr(cfg, "FILTER_EXEMPTIONS", None):
+        try:
+            import vec_decisions.filter_exemptions as _fxm
+
+            _fx_map = _fxm.parse(getattr(cfg, "FILTER_EXEMPTIONS", None))
+        except Exception:
+            _fx_map = {}
+    if _fx_map:
+        _fx_aug = _fx_map.get("AUGMENT") or {}
+        _fx_gnames = (
+            "_strict_open_block",
+            "_ec_choke_block",
+            "_atf_entry_block",
+            "_qta_ct_block",
+            "_w2_gr_block",
+            "_w2_dc4_block",
+            "_bt_veto",
+            "_dg_block",
+            "_rag_pass",
+        )
+
+        def _fx_probe_pair(_flts, _iso):
+            # B0 = same cfg (filters unchanged), B1 = filters off; both through the SAME prelude. Only the B0->B1 difference is
+            # attributed to the exempted filters, so probe artefacts (isolation, cfg copy) never leak into the main pass.
+            _c0 = _fxm.pass_b_cfg(cfg, [], isolate=_iso)
+            _c1 = _fxm.pass_b_cfg(cfg, _flts, isolate=_iso)
+            if _c0 is None or _c1 is None:
+                return None, None
+            simulate_one(npz, sym, is_long, _c0, force_initial_seed)
+            simulate_one(npz, sym, is_long, _c1, force_initial_seed)
+            _s0 = getattr(_c0, "_FX_PROBE_SINK", None) or {}
+            _s1 = getattr(_c1, "_FX_PROBE_SINK", None) or {}
+            if "entry_sig" not in _s0 or "entry_sig" not in _s1:
+                return None, None
+            return _s0, _s1
+
+        def _fx_gate_diff(_g0, _g1, _neutral):
+            _a0 = np.full(n, _neutral, dtype=bool) if _g0 is None else np.asarray(_g0, dtype=bool)
+            _a1 = np.full(n, _neutral, dtype=bool) if _g1 is None else np.asarray(_g1, dtype=bool)
+            return _a0 != _a1
+
+        for _fx_path, _fx_flts in (_fx_map.get("ENTRY") or {}).items():
+            try:
+                _fx_names = _ENTRY_FAMILY_ALIASES.get(_fx_path.upper(), [_fx_path])
+                _fx_raw = np.zeros(n, dtype=bool)
+                for _fx_nm in _fx_names:
+                    if _fx_nm in _entry_blocks_cache:
+                        _fx_raw = _fx_raw | np.asarray(_entry_blocks_cache[_fx_nm], dtype=bool)
+                if not _fx_raw.any():
+                    # non-block OR-sources (labelled in _entry_or_srcs, e.g. DC_BREAKOUT_TF_EXPANDED_1h, MU_REENTRY, TEDA_*): label == path or label startswith path_
+                    _fx_pu = _fx_path.upper()
+                    for _fx_lb, _fx_lm in list(_entry_or_srcs):
+                        _fx_lbu = str(_fx_lb).upper()
+                        if (_fx_lbu == _fx_pu or _fx_lbu.startswith(_fx_pu + "_")) and not _fx_lbu.startswith("FX_EXEMPT_"):
+                            _fx_raw = _fx_raw | np.asarray(_fx_lm, dtype=bool)
+                if not _fx_raw.any():
+                    continue
+                _fx_s0, _fx_s1 = _fx_probe_pair(_fx_flts, _fx_path)
+                if _fx_s0 is None:
+                    continue
+                _fx_S = _fx_raw & np.asarray(_fx_s1["entry_sig"], dtype=bool)
+                if not _fx_S.any():
+                    continue
+                _fx_R = _fx_S & ~np.asarray(_fx_s0["entry_sig"], dtype=bool)
+                _fx_loc = {
+                    "_strict_open_block": _strict_open_block,
+                    "_ec_choke_block": _ec_choke_block,
+                    "_atf_entry_block": _atf_entry_block,
+                    "_qta_ct_block": _qta_ct_block,
+                    "_w2_gr_block": _w2_gr_block,
+                    "_w2_dc4_block": _w2_dc4_block,
+                    "_bt_veto": _bt_veto,
+                    "_dg_block": _dg_block,
+                    "_rag_pass": _rag_pass,
+                }
+                for _fx_g in _fx_gnames:
+                    _fx_neu = _fx_g == "_rag_pass"
+                    _fx_d = _fx_S & _fx_gate_diff(_fx_s0.get(_fx_g), _fx_s1.get(_fx_g), _fx_neu)
+                    if _fx_d.any():
+                        _fx_loc[_fx_g] = _fxm.merge(_fx_loc[_fx_g], _fx_s1.get(_fx_g), _fx_d, n, _fx_neu)
+                _strict_open_block = _fx_loc["_strict_open_block"]
+                _ec_choke_block = _fx_loc["_ec_choke_block"]
+                _atf_entry_block = _fx_loc["_atf_entry_block"]
+                _qta_ct_block = _fx_loc["_qta_ct_block"]
+                _w2_gr_block = _fx_loc["_w2_gr_block"]
+                _w2_dc4_block = _fx_loc["_w2_dc4_block"]
+                _bt_veto = _fx_loc["_bt_veto"]
+                _dg_block = _fx_loc["_dg_block"]
+                _rag_pass = _fx_loc["_rag_pass"]
+                if _fx_R.any():
+                    entry_sig = np.asarray(entry_sig, dtype=bool) | _fx_R
+                    _entry_or_srcs.append(("FX_EXEMPT_" + _fx_path.upper(), _fx_R))
+            except Exception:
+                continue
+        if _fx_map.get("REENTRY"):
+            try:
+                _fx_r0, _fx_r1 = _fx_probe_pair(_fx_map["REENTRY"], "")
+                if _fx_r0 is not None:
+                    _fx_re_g = {}
+                    _fx_reloc = {
+                        "_strict_open_block": _strict_open_block,
+                        "_ec_choke_block": _ec_choke_block,
+                        "_atf_entry_block": _atf_entry_block,
+                        "_qta_ct_block": _qta_ct_block,
+                        "_w2_gr_block": _w2_gr_block,
+                        "_w2_dc4_block": _w2_dc4_block,
+                        "_bt_veto": _bt_veto,
+                        "_dg_block": _dg_block,
+                        "_rag_pass": _rag_pass,
+                    }
+                    for _fx_g in _fx_gnames:
+                        _fx_neu = _fx_g == "_rag_pass"
+                        _fx_d = _fx_gate_diff(_fx_r0.get(_fx_g), _fx_r1.get(_fx_g), _fx_neu)
+                        _fx_re_g[_fx_g] = (
+                            _fxm.merge(_fx_reloc[_fx_g], _fx_r1.get(_fx_g), _fx_d, n, _fx_neu)
+                            if _fx_d.any()
+                            else _fx_reloc[_fx_g]
+                        )
+                    _fx_m0 = _fx_r0.get("_entry_filter_masks") or []
+                    _fx_m1 = _fx_r1.get("_entry_filter_masks") or []
+                    _fx_same = len(_fx_m0) == len(_fx_m1) and all(
+                        np.array_equal(np.asarray(_x0, dtype=bool), np.asarray(_x1, dtype=bool))
+                        for _x0, _x1 in zip(_fx_m0, _fx_m1)
+                    )
+                    _fx_re_g["_entry_filter_masks"] = _entry_filter_masks if _fx_same else list(_fx_m1)
+            except Exception:
+                _fx_re_g = None
+    _fx_A = {
+        "_strict_open_block": _strict_open_block,
+        "_ec_choke_block": _ec_choke_block,
+        "_atf_entry_block": _atf_entry_block,
+        "_qta_ct_block": _qta_ct_block,
+        "_w2_gr_block": _w2_gr_block,
+        "_w2_dc4_block": _w2_dc4_block,
+        "_bt_veto": _bt_veto,
+        "_dg_block": _dg_block,
+        "_rag_pass": _rag_pass,
+        "_entry_filter_masks": _entry_filter_masks,
+    }
     for i in range(n):
         px = close[i]
         if px <= 0:
@@ -18210,6 +18472,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 else:
                     continue
             fire = entry_sig[i]
+            _fx_G = (
+                _fx_re_g
+                if (_fx_re_g is not None and has_closed_before and not bool(entry_sig[i]))
+                else _fx_A
+            )  # V17 FILTER_EXEMPTIONS 'REENTRY': reentry fires read the filters-off open-gate state; default = main-pass gates (identical objects)
             _fire_src = None  # 2026-10-06 ENTRY_SOURCE_LABEL: provenance of the in-loop fire below (first-writer-wins; label-only)
             # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY (live ez_manage.py:42701). Flat here (pos None); notional 0 < cap passes; age from last close bar. NOTE: live bypasses cooldown; vec honors cd above (checked before this block) — known gap, see COOLDOWN_BARS NEEDS-OPERATOR-DECISION.
             try:
@@ -18621,7 +18888,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # least REENTRY_FILTER_MIN_PASS of the active entry filters; new entries (entry_sig) must pass ALL of them.
             if fire and _reentry_filter_on and has_closed_before and not entry_sig[i]:
                 if (
-                    sum(1 for _rm in _entry_filter_masks if bool(_rm[i]))
+                    (sum(1 for _rm in _fx_G["_entry_filter_masks"] if bool(_rm[i])) + max(0, len(_entry_filter_masks) - len(_fx_G["_entry_filter_masks"])))
                     < _reentry_filter_need
                 ):
                     fire = False
@@ -18629,19 +18896,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 fire = False  # [N1/004] ENTRY_ISOLATE_FAMILY: every reentry fire disabled (fresh entries of the isolated family only)
             if (
                 fire
-                and _rag_pass is not None
+                and _fx_G["_rag_pass"] is not None
                 and has_closed_before
-                and not bool(_rag_pass[i])
+                and not bool(_fx_G["_rag_pass"][i])
             ):
                 fire = False  # [N1/004] REENTRY_APPLY_ENTRY_GATES_ENABLED: reentry must pass the same final entry-gate stack as a fresh entry
-            if fire and _strict_open_block is not None and bool(_strict_open_block[i]):
+            if fire and _fx_G["_strict_open_block"] is not None and bool(_fx_G["_strict_open_block"][i]):
                 fire = False
             # lane entry-crypto (2026-10-03, staged): ENTRY_VET / STDEV_MACRO /
             # WT_DIV veto twins — live gates every open incl. watchdog/rally.
-            if fire and _ec_choke_block is not None and bool(_ec_choke_block[i]):
+            if fire and _fx_G["_ec_choke_block"] is not None and bool(_fx_G["_ec_choke_block"][i]):
                 fire = False
             # 2026-10-01 WIRING b1: live ENTRY_VET (ez_manage 25616 'REENTRY respects ENTRY_VET') blocks ANY entry/reentry while >= MIN_TFS WT TFs are against
-            if fire and _atf_entry_block is not None and bool(_atf_entry_block[i]):
+            if fire and _fx_G["_atf_entry_block"] is not None and bool(_fx_G["_atf_entry_block"][i]):
                 fire = False
             # USER 2026-09-27: NEVER reenter when falling through 4h bottom/top, below STOP, against KG all TFs, against GR all TFs — FIX 2026-09-27: block ANY px below dc_low_4h (not just 0.25% below) to stop 1-bar ULTIMATE churn
             # 2026-10-02: SELL_TOP recross bypass (flag above) skips these hard blocks only.
@@ -19007,14 +19274,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         except Exception:
                             pass
                     if (
-                        _qta_ct_block is not None
-                        and bool(_qta_ct_block[i])
+                        _fx_G["_qta_ct_block"] is not None
+                        and bool(_fx_G["_qta_ct_block"][i])
                         and "RECLAIM" not in str(entry_reason).upper()
                     ):
                         continue  # [C2 b7] live queue_trade_action COUNTER_TREND_ADD_BLOCK (fresh + reentry opens)
                     if (
-                        _dg_block is not None
-                        and bool(_dg_block[i])
+                        _fx_G["_dg_block"] is not None
+                        and bool(_fx_G["_dg_block"][i])
                         and "LR_BAND" not in str(entry_reason).upper()
                         and "MANDATORY_REENTRY_PRICE_CROSS"
                         not in str(entry_reason).upper()
@@ -19034,21 +19301,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     # 24893-24944) with live-exact reason exemptions.
                     _w2_er = str(entry_reason).upper()
                     if (
-                        _w2_gr_block is not None
-                        and bool(_w2_gr_block[i])
+                        _fx_G["_w2_gr_block"] is not None
+                        and bool(_fx_G["_w2_gr_block"][i])
                         and "MTF_ARROW" not in _w2_er
                         and "LR_BAND" not in _w2_er
                     ):
                         continue  # BLOCKED_GR_CONSENSUS twin
                     if (
-                        _w2_dc4_block is not None
-                        and bool(_w2_dc4_block[i])
+                        _fx_G["_w2_dc4_block"] is not None
+                        and bool(_fx_G["_w2_dc4_block"][i])
                         and not (
                             is_long and ("MTF_ARROW" in _w2_er or "LR_BAND" in _w2_er)
                         )
                     ):
                         continue  # BLOCKED_DC4 twin (LONG band-entry exempt, like live)
-                    if _bt_veto is not None and bool(_bt_veto[i]):
+                    if _fx_G["_bt_veto"] is not None and bool(_fx_G["_bt_veto"][i]):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
                     if _gm_rebuy:
@@ -20470,6 +20737,27 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _aal_fire = bool(
             _aal_struct is not None and live_pnl_pct <= 0 and bool(_aal_struct[i])
         )
+        # V17 FILTER_EXEMPTIONS 'AUGMENT[_SRC]': active augment sources of this bar; a gate is bypassed when any active source is exempt from it (empty map -> no-op)
+        _fx_src = ()
+        if _fx_aug:
+            _fx_src = tuple(
+                _s
+                for _s, _on in (
+                    ("LADDER", _gl_fire),
+                    ("SIGNAL", bool(augment_sig[i])),
+                    ("FAST_RISER", _fr_fire),
+                    ("AT_LOSS", _aal_fire),
+                    ("HAIKU", _hq_fire),
+                    ("DD_BOUNCE", _dd_fire),
+                    ("STOCK_LIVE", _n4_fire),
+                )
+                if _on
+            )
+        _fx_uag_ex = bool(_fx_src) and _fxm.aug_exempt(
+            _fx_aug,
+            [_s for _s in ("SIGNAL", "FAST_RISER") if _s in _fx_src],
+            "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
+        )
         _uag_src_ok = (
             _hq_fire
             or _dd_fire
@@ -20479,6 +20767,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 not _n4_live_only
                 and (
                     _gl_fire
+                    or (
+                        (augment_sig[i] or _fr_fire)
+                        and _fx_uag_ex
+                    )
                     or (
                         (augment_sig[i] or _fr_fire)
                         and vec_decisions.uagain_gate.uagain_gate_pass(
@@ -20502,6 +20794,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             and _agg_on
             and (_gl_fire or bool(augment_sig[i]) or _fr_fire)
             and not (_hq_fire or _dd_fire or _n4_fire or _aal_fire)
+            and not (
+                _fx_src
+                and _fxm.aug_exempt(_fx_aug, _fx_src, "AUG_GAIN_GATE_LIVE_TWIN_ENABLED")
+            )
         ):
             _agg_exit = float(trades[-1].get("exit_price", 0) or 0) if trades else 0.0
             if not vec_decisions.aug_gain_gate.passes(
@@ -20524,11 +20820,39 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _sg_obuf is not None
                 and bool(_sg_obuf[i])
                 and bool(getattr(cfg, "STOCKS_OPENING_BUFFER_ENTRY_ENABLED", True))
+                and not (
+                    _fx_src
+                    and _fxm.aug_exempt(_fx_aug, _fx_src, "STOCKS_OPENING_BUFFER_ENTRY_ENABLED")
+                )
             )
-            and (_htf_aug_ok is None or bool(_htf_aug_ok[i]))
-            and not (_qta_ct_block is not None and bool(_qta_ct_block[i]))
+            and (
+                _htf_aug_ok is None
+                or bool(_htf_aug_ok[i])
+                or bool(
+                    _fx_src
+                    and (
+                        _fxm.aug_exempt(_fx_aug, _fx_src, "HTF_GATE_APPLY_TO_AUGMENT")
+                        or _fxm.aug_exempt(_fx_aug, _fx_src, "HTF_DIRECTION_GATE_ENABLED")
+                    )
+                )
+            )
+            and not (
+                _fx_qta_pre is not None
+                and bool(_fx_qta_pre[i])
+                and not (
+                    _fx_src
+                    and _fxm.aug_exempt(_fx_aug, _fx_src, "COUNTER_TREND_ADD_BLOCK_ENABLED")
+                )
+            )
             and (
                 _augment_allowed(cfg, live_pnl_pct)
+                or bool(
+                    _fx_src
+                    and (
+                        _fxm.aug_exempt(_fx_aug, _fx_src, "AUGMENT_ONLY_WHEN_PROFITABLE")
+                        or _fxm.aug_exempt(_fx_aug, _fx_src, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER")
+                    )
+                )
                 or _n4_bypass_profit
                 or _dd_fire
                 or _hq_fire

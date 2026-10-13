@@ -51899,6 +51899,19 @@ class TradierTradeManager:
                     longs = getattr(self, f"symbols_long_{account_key}", [])
                     shorts = getattr(self, f"symbols_short_{account_key}", [])
                     open_set = set(position_keys)
+                    try:
+                        # 2026-10-13 STORM GUARD: prime per_sym JSON views ONCE
+                        # per revision for this cycle's whole universe (opens +
+                        # candidates) off the event loop — otherwise every
+                        # _cfg in the hot path re-parses 58-109MB per sym and
+                        # freezes the loop for minutes (zero fills).
+                        import per_sym_store as _pss_prime
+                        _prime_syms = {str(_pk).split(":", 1)[1] for _pk in open_set if ":" in str(_pk)}
+                        _prime_syms |= {f"{_s}_LONG" for _s in longs}
+                        _prime_syms |= {f"{_s}_SHORT" for _s in shorts}
+                        await asyncio.to_thread(_pss_prime.prime_json_working_set, _prime_syms)
+                    except Exception:
+                        pass
                     candidates = [
                         f"{account_key}:{s}_LONG"
                         for s in longs

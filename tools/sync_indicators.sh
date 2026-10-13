@@ -26,6 +26,13 @@ if [ -f "$HOME/binance-sandbox/tools/npz_freshness_gate.py" ]; then
 else
   echo "$(date -u +%FT%TZ) GATE_MISSING npz_freshness_gate.py not on S1 — pushing ungated (deploy gate!)" >> /tmp/sync_indicators.log
 fi
+# 2026-10-13 RULE#4 resume guard: never mirror a newer NPZ under an unfinished board / running pilot (the pilot
+# archives the whole board on NPZ change at resume — 44 boards archived in 24h). tools/v15_npz_freeze.py --list.
+_FRZ=$(python3 "$HOME/binance-sandbox/tools/v15_npz_freeze.py" --list 2>/dev/null)
+if [ -n "$_FRZ" ]; then
+  for _s in $_FRZ; do echo "${_s}.npz"; done >> "$EXCL"
+  echo "$(date -u +%FT%TZ) FROZEN $(echo $_FRZ | wc -w) symbols excluded (unfinished boards)" >> /tmp/sync_indicators.log
+fi
 for ip in 10.0.0.6 10.0.0.5 10.0.0.4; do
   _excl_arg=""
   [ -f "$EXCL" ] && _excl_arg="--exclude-from=$EXCL"

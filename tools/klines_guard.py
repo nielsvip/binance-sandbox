@@ -148,6 +148,15 @@ def tripwire(restore=True):
     alert = None
     if shrunk:
         alert = {"ts": now, "shrunk": [{"file": k, "was": a, "now": b, "restored": k in restored} for k, a, b in shrunk]}
+        # USER 2026-10-13 "find out what cuts them": snapshot every process at detection time so the writer is named, not guessed.
+        try:
+            import subprocess
+            alert["ps"] = subprocess.run(["ps", "-eo", "pid,ppid,lstart,args"], capture_output=True, text=True, timeout=10).stdout[-60000:]
+            hist = ROOT / "data" / "klines_guard_alerts.jsonl"
+            with open(hist, "a") as fh:
+                fh.write(json.dumps(alert) + "\n")
+        except Exception:
+            pass
         try:
             ALERT.write_text(json.dumps(alert, indent=1))
         except Exception:

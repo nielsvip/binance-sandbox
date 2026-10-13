@@ -336,13 +336,30 @@ class VecExactOracle:
 ORACLE = VecExactOracle()
 
 
+def _carry_live_on() -> bool:
+    try:
+        from config_tradier import TradierConfig as _TC
+
+        return bool(getattr(_TC, "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", False))
+    except Exception:
+        return False
+
+
 def live_action_for(event: Dict[str, Any], position_amt: float) -> Optional[tuple]:
     """vec event -> (queue_trade_action action, override_qty) given the live position.  None = nothing to send
     (vec OPEN while live already holds / vec exit while live is flat: the divergence stays visible in the trip report)."""
     typ = event["type"]
     held = abs(float(position_amt or 0.0)) > 0
     if typ == "OPEN":
-        return None if held else ("OPEN", float(event["qty"]))
+        if held:
+            return None
+        _q = float(event["qty"])
+        # V17 AUGMENT_INTO_REENTRY: the vec OPEN qty already includes the carried augment; live sends it only when
+        # config_tradier.AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED is True, otherwise the plain open (carry divided out).
+        _cq = float(event.get("carry_aug_qty") or 0.0)
+        if _cq > 0 and not _carry_live_on():
+            _q = max(0.0, _q - _cq)
+        return ("OPEN", _q)
     if typ == "AUGMENT":
         return ("AUGMENT", float(event["qty"])) if held else None
     if typ == "REDUCE":

@@ -11,8 +11,11 @@ What: every run picks ONLY the sym_sides about to be dispatched — the schedule
 (data/autopilot/sched_snapshot.json pending_stocks/pending_crypto) ordered by the director priority file
 (~/v15_priority_syms.txt) — that still lack an acceptable base, and runs the REAL tools/v15_autopsy_first.py on them
 (engine-verified, never a fabricated set; NO_RESCUE writes a report, not a base).
-NPZ LAW (§91): NPZs are read-only here — a side without an NPZ on S1 is skipped (`no_npz`) and never rebuilt; the
-dispatch path refreshes NPZs right before the board loads them. V15_AF_PUSH (S1 cron */2) copies new bases to the workers.
+NPZ LAW (§91): an existing NPZ is used read-only (never refreshed here — the dispatch path refreshes it right before the
+board loads it). A picked side whose symbol has NO NPZ on S1 (39 of the waiting sides on 2026-10-13: they could never get a
+base, and never dispatch without one -> deadlock) gets ONE build through the dispatch path's own single-flight builder
+(`flock /tmp/v15_npz_prep.lock tools/v15_npz_prep.py --symbol SYM`) immediately before the autopsy loads it — i.e. within
+minutes of a load, exactly what §91 allows; at most V15_AF_JIT_NPZ_MAX (2) builds per run, V15_AF_JIT_NPZ=0 disables. V15_AF_PUSH (S1 cron */2) copies new bases to the workers.
 Throttles: S1 load1 < V15_AF_JIT_MAXLOAD (default 0.75 x cores), nice 15, V15_AF_JIT_MAX sides per run (4),
 V15_AF_JIT_WORKERS (2), V15_AF_JIT_RETRY_H (6) h back-off per side after an attempt that produced nothing.
 
@@ -64,14 +67,15 @@ def candidates(snapshot, priority, afd, npz_dir, state, now, retry_h):
             if side == "SHORT" and sym in nonshort:
                 skipped[ss] = "non_shortable"
                 continue
-            if not (npz_dir / f"{sym}.npz").exists():
-                skipped[ss] = "no_npz"
-                continue
             last = (state.get("attempts") or {}).get(ss)
             if last and now - float(last) < retry_h * 3600:
                 skipped[ss] = "backoff"
                 continue
-            out.append(ss)
+            if not (npz_dir / f"{sym}.npz").exists():
+                skipped[ss] = "no_npz"
+                out.append((ss, True))
+                continue
+            out.append((ss, False))
     return out, skipped
 
 
@@ -107,7 +111,20 @@ def main(argv=None):
     except Exception:
         state = {"attempts": {}}
     cands, skipped = candidates(snap, prio, afd, Path(a.npz_dir), state, now, a.retry_h)
-    pick = cands[: max(0, a.max)]
+    npz_on = os.environ.get("V15_AF_JIT_NPZ", "1") == "1"
+    npz_max = int(os.environ.get("V15_AF_JIT_NPZ_MAX", "2"))
+    pick, need_npz = [], []
+    for ss, missing in cands:
+        if len(pick) >= max(0, a.max):
+            break
+        sym = ss.rsplit("_", 1)[0]
+        if missing:
+            if not npz_on or (sym not in need_npz and len(need_npz) >= npz_max):
+                continue
+            if sym not in need_npz:
+                need_npz.append(sym)
+            skipped.pop(ss, None)
+        pick.append(ss)
     load1 = os.getloadavg()[0]
     rep = {"at": stamp, "snapshot_at": snap.get("at"), "candidates": len(cands), "picked": pick, "skipped": skipped, "load1": round(load1, 2), "max_load": a.max_load}
     if not pick:
@@ -119,6 +136,24 @@ def main(argv=None):
         print(f"[af-jit] {stamp} DRY-RUN would run autopsy-first on {pick} (candidates={len(cands)})", flush=True)
     else:
         print(f"[af-jit] {stamp} autopsy-first on {pick} (candidates={len(cands)} load1={load1:.1f})", flush=True)
+        built = {}
+        for sym in need_npz:
+            try:
+                r0 = subprocess.run(["flock", "-w", os.environ.get("V15_NPZ_LOCK_WAIT_S", "600"), "/tmp/v15_npz_prep.lock", sys.executable, "tools/v15_npz_prep.py", "--symbol", sym], cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
+                built[sym] = {"rc": r0.returncode, "out": (r0.stdout or "").strip().splitlines()[-1:] }
+            except Exception as e:
+                built[sym] = {"rc": "error", "out": [repr(e)[:200]]}
+            print(f"[af-jit] JIT NPZ {sym}: {built[sym]}", flush=True)
+        rep["npz_built"] = built
+        pick = [ss for ss in pick if (Path(a.npz_dir) / f"{ss.rsplit('_', 1)[0]}.npz").exists()]
+        if not pick:
+            print("[af-jit] no picked side has an NPZ after the JIT build — nothing to run", flush=True)
+            for sym in need_npz:
+                for side in ("LONG", "SHORT"):
+                    state.setdefault("attempts", {})[f"{sym}_{side}"] = now
+            Path(str(state_p) + ".tmp").write_text(json.dumps(state, indent=1))
+            os.replace(str(state_p) + ".tmp", state_p)
+            return 0
         env = dict(os.environ, V12_NPZ_CACHE=os.environ.get("V12_NPZ_CACHE", "2"), V12_ALLOW_STALE_NPZ="1")
         cmd = ["nice", "-n", "15", sys.executable, "-u", "tools/v15_autopsy_first.py", "--symsides", ",".join(pick), "--out", str(afd), "--workers", str(a.workers)]
         try:

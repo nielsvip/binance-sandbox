@@ -82,6 +82,7 @@ def test_summarise_and_ingest_outcomes(tmp_path):
     assert rows[1][4] == "AUSDT_LONG|SW_TF=1h" and {r[0] for r in rows} == {"rescue_ablation"}
     # learner's disable_switch confirm logic keys on 'hurt'/'helped' only -> untouched by rescue verdicts
     assert cx.execute("SELECT COUNT(*) FROM fix_outcomes WHERE verdict IN ('helped','hurt')").fetchone()[0] == 0
+    assert cx.execute("SELECT status FROM fixes WHERE kind='rescue_ablation'").fetchone()[0] == "measured"
 
 
 def _seed_db(path, n_lessons=60):

@@ -28469,7 +28469,10 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
             ):  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT)
                 _px = safe_fetch_float(_a.get("vec_price"), 0.0)
                 _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
-                _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
+                try:
+                    _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config, carry_mult=_a.get("carry_mult", 0.0))  # V17 AUGMENT_INTO_REENTRY carry (inert unless AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED)
+                except TypeError:
+                    _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)  # older live_twins/vec_exact without carry_mult (deploy-order safety)
                 _vx.owned_add(
                     _pk, _a.get("reason", "")
                 )  # 2026-10-06: register BEFORE sending (results like UNCONFIRMED_BY_BROKER_* still fill); a failed OPEN leaves the key flat -> the hook drops it

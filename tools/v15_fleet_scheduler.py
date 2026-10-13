@@ -229,6 +229,7 @@ if mode == "probe":
             o["started"].append(ss)
             try:
                 stt = os.stat(f)
+                o.setdefault("started_mt", {})[ss] = stt.st_mtime
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
                 if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
@@ -418,8 +419,8 @@ elif mode == "reap":
             mem = int(l.split()[1]) // 1024
     dead = set()
     for ss, i in info.items():
-        if i["age"] > arg["hard_min"] * 60:
-            kill(i["pids"], "hardcap %.0fmin" % (i["age"] / 60), ss); dead.add(ss)
+        if i["age"] > arg["hard_min"] * 60 and i["idle"] > 20 * 60:  # 2026-10-13 RESUME (d): a pilot still writing rows/logs is never hard-capped
+            kill(i["pids"], "hardcap %.0fmin (idle %.0fmin)" % (i["age"] / 60, i["idle"] / 60), ss); dead.add(ss)
         elif i["age"] > arg["stall_min"] * 60 and i["idle"] > arg["stall_min"] * 60:
             kill(i["pids"], "stuck: no progress/log/xlsx write for %.0fmin" % (i["idle"] / 60), ss); dead.add(ss)
         elif len(i["roots"]) > 1 and sum(1 for r in i["roots"] if i["kids"][r]) == 1:
@@ -499,8 +500,11 @@ _LAUNCH_CAPS = {"30D": 3, "365D": 2, "REPAIR": 1, "GS": 1}  # USER 2026-10-09: s
 _SLICE_RESUME_CAP = 20  # USER 2026-10-12: sliced-board resume budget (BG_SHORT stalled 23+ min at 3/3 attempts with 1769/3383 rows done — slices are resumes, not fresh attempts; 20x40min bounds any board, crash-loops still die at 20 quick spawns)
 
 
-def _launch_exhausted(key, window, ss, st, started, redo):
-    """True = no launch budget left. Redo resumes free; started (sliced) 30D sides draw the slice budget; everything else draws attempts."""
+def _launch_exhausted(key, window, ss, st, started, redo, pinned=None):
+    """True = no launch budget left. Redo resumes free; started (sliced) 30D sides draw the slice budget; everything else draws attempts.
+    Pinned 30D sides (operator queue) draw slices+attempts against _PIN_SLICE_CAP only (crash loops still stop)."""
+    if window == "30D" and ss in (pinned or set()):
+        return (st.get("slices", {}) or {}).get(key, 0) + (st.get("attempts", {}) or {}).get(key, 0) >= _PIN_SLICE_CAP
     if window == "30D" and ss in (redo or set()):
         return False
     if window == "30D" and ss in (started or set()):
@@ -854,7 +858,7 @@ def _repair_allowed_for_tier(tier, measured):
     return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset()):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
@@ -867,7 +871,10 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
     attempt N before any sym gets attempt N+1. Attempts reset at the midnight rollover (daily rotation)."""
     seq = [(s, False) for s in held_ordered] + [(s, True) for s in adopted_owned] + [(s, True) for s in new_syms]
     _rs = redo or set()
-    _rk = lambda b: 0 if f"{b}_LONG" in _rs or f"{b}_SHORT" in _rs else 1
+    _cs, _ps = cont or set(), pinned or set()
+    # 2026-10-13 RESUME: operator-pinned sides first, then needs_redo AND every other unfinished board (started, no
+    # final) before any fresh pair — an unfinished board resumes from its done dict before new work takes the slot.
+    _rk = lambda b: 0 if f"{b}_LONG" in _ps or f"{b}_SHORT" in _ps else (1 if any(x in _rs or x in _cs for x in (f"{b}_LONG", f"{b}_SHORT")) else 2)
     _min_att, _old_ts = {}, {}
     for _k, _v in (attempts or {}).items():
         try: _sym, _vv = _k.split("|")[0].rsplit("_", 1)[0], float(_v)
@@ -1297,6 +1304,7 @@ def npz_prep(host, symbol):
 
 
 _ASYNC_DISPATCH = os.environ.get("V15_SCHED_ASYNC_DISPATCH", "1") == "1"
+_PAIR_ALWAYS = os.environ.get("V15_SCHED_PAIR_ALWAYS", "1") == "1"
 
 
 def _parity_gate_ok(venue, side, template_dir, cache, gate=None):
@@ -1333,6 +1341,104 @@ def _dispatch_q_mark(st, keys, now_ts, grace_s=None):
     for k in keys:
         dq[k] = now_ts
     return dq
+
+
+DRAIN_FILE = ROOT / "data" / "fleet_drain_hosts.json"
+PIN_FILE = ROOT / "data" / "v15_sched_pinned_sides.json"
+FREEZE_FILE = ROOT / "data" / "npz_frozen_syms.json"
+_PIN_SLICE_CAP = 40
+
+
+def _load_drain(path=None):
+    """2026-10-13: hosts that get NO new launches (running pilots finish untouched). Lives OUTSIDE
+    fleet_hosts_final.json because the autopilot self-heal rewrites that file from hcloud. Union of
+    data/fleet_drain_hosts.json {"hosts": [...]} and env V15_SCHED_DRAIN_HOSTS (comma list). Reversible: empty the list."""
+    out = {x.strip() for x in os.environ.get("V15_SCHED_DRAIN_HOSTS", "").split(",") if x.strip()}
+    try:
+        out |= {str(x) for x in (json.loads(pathlib.Path(path or DRAIN_FILE).read_text()).get("hosts") or [])}
+    except Exception:
+        pass
+    return out
+
+
+def _load_pinned(path=None):
+    """2026-10-13: operator-pinned sym_sides {"sides": [...], "hosts": [...]} — launched before everything else,
+    exempt from tier deferral / fresh-skip / base wait / venue phase / quota / allowlist, only on "hosts"
+    (empty = any non-drained host). A pinned side that is done (final_gain in the round) is left alone."""
+    try:
+        d = json.loads(pathlib.Path(path or PIN_FILE).read_text())
+        return {str(x) for x in (d.get("sides") or [])}, {str(x) for x in (d.get("hosts") or [])}
+    except Exception:
+        return set(), set()
+
+
+def _slice_progress_reset(st, key, progress_mt):
+    """2026-10-13 RESUME: the 20-slice budget exists to stop crash loops. A board whose progress json advanced since
+    its previous launch is making progress, so its slice counter restarts — an unfinished board that writes rows is
+    never exhausted (measured: DOGEUSDC_LONG at 15/20 slices burned by start-up refusals, not by work)."""
+    if progress_mt is None:
+        return
+    sm = st.setdefault("slice_mt", {})
+    prev = sm.get(key)
+    if prev is not None and float(prev) != float(progress_mt):
+        st.setdefault("slices", {})[key] = 0
+    sm[key] = float(progress_mt)
+
+
+def _live_dispatch_syms():
+    """Symbols with a v15_dispatch_job.py process alive on this host (the scheduler host runs every job)."""
+    try:
+        out = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return None
+    syms = set()
+    for line in out.splitlines():
+        if "v15_dispatch_job.py" in line and "--symbol" in line:
+            a = line.split()
+            try:
+                syms.add(a[a.index("--symbol") + 1])
+            except (ValueError, IndexError):
+                pass
+    return syms
+
+
+def _prune_finished_dispatches(st, now_ts, live, min_age_s=180.0):
+    """A dispatch whose job has exited (launched -> the pilot is visible as running/started; skipped -> retry) leaves
+    the grace at once: the 40-min grace blocked the relaunch of ABBV_LONG after its pilot died (17:06Z)."""
+    if live is None:
+        return []
+    dq, dh = st.get("dispatch_q") or {}, st.get("dispatch_host") or {}
+    gone = []
+    for k in list(dq):
+        sym = k.split("|")[0].rsplit("_", 1)[0]
+        try:
+            age = now_ts - float(dq[k] or 0)
+        except (TypeError, ValueError):
+            age = 1e9
+        if age > min_age_s and sym not in live:
+            dq.pop(k, None)
+            gone.append(k)
+    for sym in [x for x in dh if x not in {k.split("|")[0].rsplit("_", 1)[0] for k in dq}]:
+        dh.pop(sym, None)
+    return gone
+
+
+def _dispatching_syms(st, now_ts, grace_s=None):
+    """{sym: host} for async dispatches still inside their grace (NPZ being built, pilot not yet running)."""
+    g = _DISPATCH_GRACE_S if grace_s is None else float(grace_s)
+    dq, dh = st.get("dispatch_q") or {}, st.get("dispatch_host") or {}
+    out = {}
+    for k, ts in dq.items():
+        try:
+            fresh = (now_ts - float(ts or 0)) <= g
+        except (TypeError, ValueError):
+            fresh = False
+        sym = k.split("|")[0].rsplit("_", 1)[0]
+        if fresh and sym in dh:
+            out[sym] = dh[sym]
+    for sym in [x for x in dh if x not in {k.split("|")[0].rsplit("_", 1)[0] for k in dq}]:
+        dh.pop(sym, None)
+    return out
 
 
 def _dispatch_async(host, symbol, acts, pdir, workers, tag):
@@ -1383,6 +1489,11 @@ def tick(args, cfg, now):
         uni = U.build(ROOT, now); how = "rebuilt-tradeable-changed"
         print(f"[sched] universe rebuilt: tradeable_keys.json newer than universe build", flush=True)
     stocks, crypto = list(uni["stocks"]), list(uni["crypto"])
+    for _pss in sorted(_load_pinned()[0]):  # 2026-10-13: operator-pinned sides are scheduled even outside today's universe
+        _psym = _pss.rsplit("_", 1)[0]
+        _plst = crypto if venue_of(_psym) == "crypto" else stocks
+        if _psym not in _plst:
+            _plst.append(_psym)
     rank = {v: legacy_rank(cfg, v) for v in ("stocks", "crypto")}
     for v, lst in (("stocks", stocks), ("crypto", crypto)):
         lst.sort(key=lambda s: (rank[v].get(s, 10 ** 6), s))  # worst-first per the previous order file, unknown last
@@ -1432,14 +1543,26 @@ def tick(args, cfg, now):
     # ---- merge host views
     running, owner, started, done, quar, redo, v365, repair, gs, gains = {}, {}, set(), set(), set(), set(), {}, {}, {}, {}
     done_host, v365_host, rep_host = {}, {}, {}
+    _drained = _load_drain()
+    _pin_sides, _pin_hosts = _load_pinned()
+    started_mt = {}
+    _newest_mt = {}
     for n, s in stats.items():
         if not s:
             continue
         for ss, r in s["running"].items():
             running[ss] = {**r, "host": n}
             owner.setdefault(ss.rsplit("_", 1)[0], n)
+        for ss, _mt in (s.get("started_mt") or {}).items():
+            if n not in _drained and _mt is not None and _mt > started_mt.get(ss, -1):
+                started_mt[ss] = _mt
         for ss in s["started"]:
-            started.add(ss); owner.setdefault(ss.rsplit("_", 1)[0], n)
+            started.add(ss)
+            if n not in _drained:  # 2026-10-13: a draining host (s5/s6 about to be deleted) owns nothing new — its boards re-home on s1/s2
+                owner.setdefault(ss.rsplit("_", 1)[0], n)
+        for ss, _mt in (s.get("started_mt") or {}).items():
+            if _mt is not None and _mt > _newest_mt.get(ss, (-1, None))[0]:
+                _newest_mt[ss] = (_mt, n)
         for ss in s["done"]:
             done.add(ss); done_host.setdefault(ss, n)
         quar |= set(s.get("quarantined", []))
@@ -1466,6 +1589,13 @@ def tick(args, cfg, now):
                 _curt = -1.0
             if _cur is None or _gmt > _curt:
                 gains[ss] = {"gain": g.get("gain"), "mtime": _gmt}
+    # 2026-10-13 RESUME (newest board wins): a side counts as done only when its NEWEST progress (any host, drained
+    # included) is the finished one — an older final elsewhere must not hide a newer half-filled board (GALAUSDT_LONG:
+    # s5 final 39.26 at 3280 rows vs a newer 289-row S1 board).
+    _stale_done = sorted(ss for ss in done if ss in _newest_mt and ss not in set((stats.get(_newest_mt[ss][1]) or {}).get("done") or []))
+    for ss in _stale_done:
+        done.discard(ss)
+        done_host.pop(ss, None)
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
     all_syms = stocks + crypto
     # ---- readiness (per host, only for symbols that could be placed there)
@@ -1665,6 +1795,9 @@ def tick(args, cfg, now):
             print(f"[sched] PAIR-NPZ-STALE {sym}_{_stale_sd}: manifest NPZ != current NPZ -> requeue need30 (pair calculated on same data)", flush=True)
             _st[_stale_sd] = ("need30", 1)
             _pair_stale.append(f"{sym}_{_stale_sd}")
+        for side in ("LONG", "SHORT"):
+            if f"{sym}_{side}" in _pin_sides and f"{sym}_{side}" not in done and _st[side][0] != "running":
+                _st[side] = ("need30", 1)  # 2026-10-13 operator pin: bypass deferral/fresh-skip/base-wait/allowlist
         chain_state[sym] = _st
     _phase, _phase_pending = _venue_phase(chain_state, launchable=lambda _s, _sd: not _launch_exhausted(f"{_s}_{_sd}|30D", "30D", f"{_s}_{_sd}", st, started, redo))  # USER 2026-10-12: stocks first until every tradeable stock has passed
     _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12]}
@@ -1683,6 +1816,15 @@ def tick(args, cfg, now):
             held[hn][sym] = "running"
         elif sym in st["held"].get(hn, {}) and not terminal(sym):
             held[hn][sym] = "chain"
+    if not (args.dry_run or sim):
+        _pruned = _prune_finished_dispatches(st, _now_ts, _live_dispatch_syms())
+        if _pruned:
+            print(f"[sched] dispatch finished -> grace released: {_pruned}", flush=True)
+    for sym, hn in _dispatching_syms(st, _now_ts).items():
+        # 2026-10-13: an async dispatch builds its NPZ for up to ~25 min before the pilot runs; without this the slot
+        # looked free (no progress, no process) and the next ticks over-dispatched the host (s2: 6 jobs for 4 slots).
+        if hn in held and sym in all_syms and not terminal(sym) and not any(sym in d for d in held.values()):
+            held[hn][sym] = "dispatching"
     st["held"] = {hn: {s: st["held"].get(hn, {}).get(s, now.isoformat()) for s in d} for hn, d in held.items()}
     foreign = {ss: r for ss, r in running.items() if ss.rsplit("_", 1)[0] not in universe_syms["stocks"] | universe_syms["crypto"]}
     # USER 2026-10-10 ZERO WASTE: auto-kill double-confirmed dead pilots — running sym_side absent from
@@ -1730,9 +1872,9 @@ def tick(args, cfg, now):
             if s in ("need30", "need365", "needrepair", "needgs"):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
-                if _launch_exhausted(key, w, f"{sym}_{side}", st, started, redo):
+                if _launch_exhausted(key, w, f"{sym}_{side}", st, started, redo, _pin_sides):
                     continue
-                if w == "30D" and not _parity_gate_ok(venue_of(sym), side, _tmpl_dir_by_host.get(host_name) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
+                if w == "30D" and not sim and not _parity_gate_ok(venue_of(sym), side, _tmpl_dir_by_host.get(host_name) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
                     log.setdefault("skipped_parity_gate", {}).setdefault(f"{'CRYPTO' if venue_of(sym) == 'crypto' else 'STOCKS'}_{side}", _parity_cache.get((venue_of(sym), side), (None, ""))[1])
                     continue  # 2026-10-13: the pilot refuses to fill (PARITY-GATE hard disparity) -> launching only burned a slice/attempt per tick  # USER 2026-10-09: 30D 6->3 fresh (hopeless sides stop burning slots); USER 2026-10-10: redo resume FREE; USER 2026-10-12: sliced (started) 30D sides draw the 20-slice budget, not attempts
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
@@ -1770,11 +1912,24 @@ def tick(args, cfg, now):
     HB, launched_keys = {}, set()
     npz_prefetch = []  # USER 2026-10-13: (host, [next candidate syms]) — s1 pre-generates their NPZ after the launch pass
     log["venue_phase"] = _phase_log
+    _pin_syms = {x.rsplit("_", 1)[0] for x in _pin_sides}
+    _cont_all = (started - done) | redo
+    try:  # 2026-10-13 RULE#4 resume guard registry (tools/v15_npz_freeze.py): every NPZ writer on S1 skips these symbols
+        if not (args.dry_run or sim):
+            import v15_npz_freeze as _nf
+            _frz = _nf.build(started, done, redo, running)
+            _nf.write(_frz, FREEZE_FILE)
+            log["npz_frozen_syms"] = len(_frz)
+    except Exception as _nfe:
+        log["npz_freeze_error"] = str(_nfe)[:120]
     for h in _host_order(hosts, held):  # USER 2026-10-12: most free capacity first (load divided across s1/s2/s5/s6)
         s = stats[h["name"]]
         if not s:
             log["hosts"][h["name"]] = "UNREACHABLE"
             continue
+        if h["name"] in _drained:
+            log["hosts"][h["name"]] = {"draining": True, "running": sorted(s.get("running", {}))}
+            continue  # 2026-10-13: no new launches of any kind (30D/365D/GS/backfill/steal); running pilots finish
         cap = max(2, min(12, int(h.get("max_pairs", 3))))
         workers = int(h.get("workers_per_side", 3))
         cpu = float(s["busy_nonnice_pct"]) if s.get("busy_nonnice_pct") is not None else float(s["busy_pct"]) if s.get("busy_pct") is not None else 100.0 * s["load1"] / max(1, s["nproc"])  # real busy% (load1 lags and over-reads stalled threads)
@@ -1789,6 +1944,10 @@ def tick(args, cfg, now):
         swap_ok = _swap_admit_ok(s)
         disk_ok = _disk_admit_ok(s)
         used = len(held[h["name"]])
+        if os.environ.get("V15_SCHED_MEM_CAP", "1") == "1":
+            # 2026-10-13 USER "all servers at full capacity": max_pairs is the floor; free memory (after reserve + growth
+            # debt of running pairs) buys more pair slots up to 12. The cpu target + mem/swap/disk guards still gate each admission.
+            cap = max(cap, min(12, used + int(max(0.0, proj_mem) // max(1.0, est_pair))))
         info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
                 "workers_per_side": workers, "launched_pairs": 0}
         launched = 0
@@ -1801,20 +1960,30 @@ def tick(args, cfg, now):
         nonw_used = sum(1 for s in held[h["name"]] if _sym_quota_hit(s, _gtiers))
         nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri)
+                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides)
+        # 2026-10-13 USER LAW: a server never takes a new symbol while one of its own boards is unfinished — enforced by
+        # _place_order (pinned=0, unfinished/redo=1, fresh=2): every unfinished board this host owns is evaluated and
+        # admitted before any fresh pair in the same tick; slots/mem/cpu/budget that stop it stop the fresh pairs too.
+        # Boards that cannot launch (parity-gated, budget-exhausted, NPZ unready) are logged, never a host-wide deadlock.
+        _own_cont = sorted({ss for ss in _cont_all if owner.get(ss.rsplit("_", 1)[0]) == h["name"] and ss not in running})
+        if _own_cont:
+            log.setdefault("own_unfinished", {})[h["name"]] = _own_cont
         for sym, needs_slot in order:
+            _pinned_sym = sym in _pin_syms
+            if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
+                continue
             if needs_slot and new_launched >= args.max_launch:
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
             if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
-            if needs_slot and not _venue_allowed(sym, _native_syms, phase=_phase):
+            if needs_slot and not _pinned_sym and not _venue_allowed(sym, _native_syms, phase=_phase):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
                 continue
-            if needs_slot and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
+            if needs_slot and not _pinned_sym and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
             if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok or not disk_ok):
@@ -1827,6 +1996,11 @@ def tick(args, cfg, now):
                 # USER 2026-10-13 V16: an unfinished board resumes on the NPZ it was measured on (RULE#4) — a tail-stale
                 # gate would hold it forever, a rebuild would wipe it. Frozen resume is consistent by construction.
                 log.setdefault("cont_npz_frozen", []).append(f"{h['name']}:{sym}:{','.join(_cont_ss)}:{rd.get('reason')}")
+                rd = dict(rd, ok=True)
+            if not rd.get("ok") and rd.get("reason") == "npz missing" and needs_slot and not _cont_ss and _ASYNC_DISPATCH and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and not (args.dry_run or sim):
+                # 2026-10-13: a worker without the NPZ is not unready — the async dispatch job builds/pushes it (md5-verified)
+                # right before launch, and skips the launch itself when S1 cannot produce it (MRK/V idled s2 at 16:54Z).
+                log.setdefault("npz_missing_jit", []).append(f"{h['name']}:{sym}")
                 rd = dict(rd, ok=True)
             if not rd.get("ok"):
                 _rsn = rd.get("reason") or ""
@@ -1842,6 +2016,14 @@ def tick(args, cfg, now):
                 # USER 2026-10-13: never drop a candidate silently — an idling fleet must name its own blocker.
                 log.setdefault("skipped_no_actions", []).append(f"{h['name']}:{sym}")
                 continue
+            if needs_slot and _PAIR_ALWAYS and len(acts) == 1 and acts[0]["window"] == "30D":
+                # USER 2026-10-13: "HOW CAN IT ONLY BE CALCULATING SHORT AND NOT LONG IF IT HAS THE NPZ IN MEMORY" — the sibling
+                # side always rides along on the same NPZ load (unless it is running or was just dispatched).
+                _sib = "LONG" if acts[0]["side"] == "SHORT" else "SHORT"
+                _sk = f"{sym}_{_sib}|30D"
+                if f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts):
+                    acts.append({"sym": sym, "side": _sib, "window": "30D", "attempt": 1, "key": _sk})
+                    log.setdefault("pair_sibling_added", []).append(f"{h['name']}:{sym}_{_sib}")
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
                 log.setdefault("skipped_pair_gate", []).append(f"{h['name']}:{sym}:" + str([a.get('side') for a in acts]))
                 continue
@@ -1871,6 +2053,7 @@ def tick(args, cfg, now):
                 if _async_npz:
                     _dispatch_async(h, sym, acts, pd, workers, tag)
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
+                    st.setdefault("dispatch_host", {})[sym] = h["name"]
                     log.setdefault("dispatch_async", []).append(tag)
                 else:
                     try:
@@ -1878,6 +2061,8 @@ def tick(args, cfg, now):
                     except subprocess.TimeoutExpired:
                         print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
+                    if a["window"] == "30D":
+                        _slice_progress_reset(st, a["key"], started_mt.get(f"{a['sym']}_{a['side']}"))
                     _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started)
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]
                     st["launched_at"][a["key"]] = _now_ts
@@ -2003,6 +2188,15 @@ def tick(args, cfg, now):
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
             info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_pair else "no eligible ready symbol for this host"
         log["hosts"][h["name"]] = info
+    if _pin_sides:  # 2026-10-13: every pinned side names its state each tick (an idle pin must explain itself)
+        _ps_log = {}
+        for _pss in sorted(_pin_sides):
+            _psym, _pside = _pss.rsplit("_", 1)
+            _cs = (chain_state.get(_psym) or {}).get(_pside)
+            _ps_log[_pss] = {"chain": _cs[0] if _cs else "not-in-universe", "owner": owner.get(_psym), "running": (running.get(_pss) or {}).get("host"),
+                             "done": _pss in done, "started": _pss in started, "dispatching": _psym in _dispatching_syms(st, _now_ts),
+                             "launched": any(t.split(":")[1] == _psym for t in log["launched"] if t.count(":") >= 2) or any(t.split(":")[1] == _psym for t in log.get("dispatch_async", []))}
+        log["pin_status"] = _ps_log
     # ---- pass 2 (USER 2026-10-08): steal adopted chain stages (365D, REPAIR-a1) onto hosts
     # with free capacity. Owner had first refusal in pass 1; the thief fetches the small
     # inputs tick-side (S1-relayed, no new keys) and holds the slot where the work RUNS.
@@ -2272,6 +2466,12 @@ def main():
     ap.add_argument("--apply-kill", action="store_true", help="with --kill-out-of-universe: actually SIGTERM them")
     args = ap.parse_args()
     cfg = json.load(open(args.hosts))
+    # 2026-10-13 USER full capacity: the hosts file is rewritten by the autopilot self-heal; an env floor keeps the cpu target
+    # (50 there idled s1/s5/s6 at 13-69% busy). V15_SCHED_CPU_TARGET_MIN=0 restores the file value.
+    try:
+        cfg["cpu_target_pct"] = max(float(cfg.get("cpu_target_pct", 90)), float(os.environ.get("V15_SCHED_CPU_TARGET_MIN", "90")))
+    except (TypeError, ValueError):
+        pass
     now0 = datetime.datetime.fromisoformat(args.now).astimezone(datetime.timezone.utc) if args.now else datetime.datetime.now(datetime.timezone.utc)
     if args.kill_out_of_universe:
         return kill_out_of_universe(args, cfg, now0)

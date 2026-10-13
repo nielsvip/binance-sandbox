@@ -67,14 +67,57 @@ def restore_one(sym, apply, min_gain_days):
     return res
 
 
+def restore_from_json(src, apply, min_gain_days):
+    """Union a deep klines JSON copy (e.g. staged from s2) into S1's own file of the same name: existing rows win, grow-only write."""
+    from klines_guard import guarded_write
+
+    p = KC / src.name
+    try:
+        new = json.loads(src.read_text())
+        old = json.loads(p.read_text()) if p.exists() else []
+    except Exception as e:
+        return {"file": src.name, "action": "skip", "why": f"unreadable {e}"[:80]}
+    have = {r.get("timestamp") for r in old if isinstance(r, dict)}
+    add = [r for r in new if isinstance(r, dict) and r.get("timestamp") and r.get("timestamp") not in have]
+    merged = sorted(list(old) + add, key=lambda r: r.get("timestamp", ""))
+    from klines_guard import span_of
+
+    res = {"file": src.name, "rows_before": len(old), "rows_after": len(merged), "added": len(add), "days_before": round(span_of(old)), "days_after": round(span_of(merged))}
+    if span_of(merged) - span_of(old) < min_gain_days:
+        res["action"] = "already_deep"
+        return res
+    if not apply:
+        res["action"] = "would_restore"
+        return res
+    ok, why = guarded_write(p, merged)
+    res["action"] = "restored" if ok else f"guard_refused {why}"[:120]
+    return res
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbols", default=None)
     ap.add_argument("--min-days", type=float, default=30.0, help="only rewrite when the union adds at least this many days")
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--npz-dir", default=None, help="read NPZs from this staging dir (e.g. copied from a worker) instead of S1's indicators")
+    ap.add_argument("--source-dir", default=None, help="union deep klines JSONs from this staging dir instead of NPZs")
     a = ap.parse_args()
     if platform.system() == "Darwin":
         sys.exit("S1 only: the Mac keeps <=1800 klines by design")
+    global IND
+    if a.npz_dir:
+        IND = Path(a.npz_dir).expanduser()
+    if a.source_dir:
+        tally = {}
+        for src in sorted(Path(a.source_dir).glob("*.json")):
+            try:
+                r = restore_from_json(src, a.apply, a.min_days)
+            except Exception as e:
+                r = {"file": src.name, "action": "error", "why": f"{type(e).__name__}: {e}"[:120]}
+            tally[r["action"].split(" ")[0]] = tally.get(r["action"].split(" ")[0], 0) + 1
+            print(json.dumps(r), flush=True)
+        print(json.dumps({"summary": tally, "apply": a.apply}), flush=True)
+        return
     syms = a.symbols.split(",") if a.symbols else sorted(p.stem for p in IND.glob("*.npz") if p.stem.endswith(("USDT", "USDC")))
     tally = {}
     for s in syms:

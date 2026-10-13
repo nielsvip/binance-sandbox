@@ -388,7 +388,7 @@ def ingest_outcomes(path, db=None):
                 payload = json.dumps(pl)
                 reason = f"rescue ablation {e.get('verdict')} {e.get('ablation_helps')}+/{e.get('ablation_hurts')}- n={e.get('n_loo')} {e.get('label') or ''}".strip()
                 cur = cx.execute("INSERT OR IGNORE INTO fixes(kind, scope, target, payload, status, reason, created) VALUES (?,?,?,?,?,?,?)",
-                                 ("rescue_ablation", f"cat:{cs}", sw, payload, "proposed", reason, ts))
+                                 ("rescue_ablation", f"cat:{cs}", sw, payload, "measured", reason, ts))  # not "proposed": keeps the learner fixes_proposed export clean
                 n_fix += cur.rowcount or 0
                 cx.execute("UPDATE fixes SET payload = ?, reason = ? WHERE kind = 'rescue_ablation' AND scope = ? AND target = ?", (payload, reason, f"cat:{cs}", sw))
                 fid = cx.execute("SELECT id FROM fixes WHERE kind = 'rescue_ablation' AND scope = ? AND target = ?", (f"cat:{cs}", sw)).fetchone()[0]
