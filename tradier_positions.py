@@ -3230,6 +3230,28 @@ class TradierPositionManager:
         return deteriorated_qty
 
 
+    async def _supervise_loop(self, coro_fn, name):
+        """A core sync loop can NEVER die: relaunch on ANY exit (exception,
+        cancellation, plain return) while running. Shutdown (running=False) only."""
+        while getattr(self, "running", False):
+            try:
+                await coro_fn()
+                _why = "returned"
+            except asyncio.CancelledError:
+                if not getattr(self, "running", False):
+                    return
+                _why = "cancelled"
+            except BaseException as _e:
+                _why = f"died: {_e!r}"
+            if not getattr(self, "running", False):
+                return
+            logger.critical(f"[{self.account_key}] [SyncSupervisor] {name} {_why} — restarting in 2s")
+            try:
+                await asyncio.sleep(2.0)
+            except asyncio.CancelledError:
+                if not getattr(self, "running", False):
+                    return
+
     async def start(self):
         logger.info(f"[{self.account_key}] Starting Manager...")
         await self.api_client.connect()
@@ -3253,7 +3275,7 @@ class TradierPositionManager:
             self.min_qty[symbol] = 1.0
 
         self.background_tasks = [
-            asyncio.create_task(self.update_positions_loop()),           # CORE: API Sync
+            asyncio.create_task(self._supervise_loop(self.update_positions_loop, "API_SYNC")),  # CORE: API Sync (supervised: can never die)
             asyncio.create_task(self.update_all_prices_loop()),          # CORE: Prices
             asyncio.create_task(self._reentry_maintenance_loop()),       # LOGIC: Reentry Decay
             asyncio.create_task(self.update_prev_gain_periodically()),   # LOGIC: Prev Gain Snapshot

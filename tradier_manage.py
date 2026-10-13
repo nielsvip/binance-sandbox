@@ -25618,6 +25618,7 @@ class PositionReader:
         self.written_at: Dict[str, float] = (
             {}
         )  # 2026-10-06 USER POSITIONS_TRUTH: acc -> broker-sync written_at (Redis wrapper ts / file meta)
+        self._last_sync_ok_ts: float = 0.0  # last successful Redis broker-truth sync (sync gate for order placement)
 
     async def connect(self):
         """Fix: Added strict socket timeouts to prevent startup hang."""
@@ -25790,6 +25791,8 @@ class PositionReader:
             except Exception as e:
                 logger.warning(f"[Reader] Redis sync failed for {acc}: {e}")
                 self.redis_client = None
+            if data_found:
+                self._last_sync_ok_ts = time.time()
             if not data_found:
                 await self._load_from_disk(acc)
 
@@ -43345,12 +43348,53 @@ class TradierTradeManager:
         except Exception:
             pass
 
+    async def _broker_holds_position(self, account_key, symbol, position_side):
+        """Live one-shot broker truth for ONE symbol. True=held (qty sign matches
+        side), False=confirmed flat/absent, None=check failed (unverified)."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return None
+            client = TradierAPIClient(config, account_key=account_key)
+            _pos = await asyncio.wait_for(client.get_account_positions(account_key), timeout=10.0)
+            _sym = str(symbol or "").upper()
+            _want_long = str(position_side or "").upper() != "SHORT"
+            for _p in (_pos or []):
+                if str((_p or {}).get("symbol", "")).upper() != _sym:
+                    continue
+                try:
+                    _q = float((_p or {}).get("quantity", 0) or 0)
+                except Exception:
+                    _q = 0.0
+                if _q == 0:
+                    return False
+                return (_q > 0) if _want_long else (_q < 0)
+            return False
+        except Exception as _e:
+            logger.warning(f"[FIXED_STOP_BROKER_VERIFY_TR] {account_key}:{symbol}: verify failed ({_e}) — unverified")
+            return None
+
     async def ensure_fixed_stop_backstop_tradier(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price):
         """Self-healing reconcile: exactly one live Tradier stop backstop per open position. Never raises."""
         try:
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 return "SKIPPED_STOP_PYTEST"
             reg = self._fixed_stop_registry_load()
+            # SYNC GATE (NVDA trb 2026-10-13, USER correction): stale sync must NOT
+            # leave a real position unprotected, and must NOT place for a phantom.
+            # Stale (>30s) -> verify THIS symbol directly at the broker, live:
+            # held -> proceed (close/protect); flat -> never place; check fails ->
+            # proceed anyway (broker rejects safely if flat; not placing is the
+            # dangerous branch). Fresh sync -> memory is broker truth, proceed.
+            try:
+                _sync_age = time.time() - float(getattr(getattr(self, "position_manager", None), "_last_sync_ok_ts", 0) or 0)
+            except Exception:
+                _sync_age = 1e9
+            if _sync_age > 30.0:
+                _held = await self._broker_holds_position(account_key, symbol, position_side)
+                if _held is False:
+                    logger.error(f"[FIXED_STOP_BROKER_FLAT_TR] {position_key}: sync stale {_sync_age:.0f}s, broker confirms FLAT — never placing")
+                    return "SKIPPED_STOP_BROKER_FLAT"
+                logger.critical(f"[FIXED_STOP_STALE_SYNC_TR] {position_key}: sync stale {_sync_age:.0f}s, broker verify={'HELD' if _held else 'UNVERIFIED'} — proceeding (position must stay protected)")
             try:
                 amt = abs(float(getattr(position, "positionAmt", 0) or 0))
             except Exception:
@@ -43363,7 +43407,15 @@ class TradierTradeManager:
             _side_u = str(position_side or "").upper()
             _close_side = "sell" if _side_u == "LONG" else "buy_to_cover"
             have = reg.get(position_key) if isinstance(reg.get(position_key), dict) else None
+            if have and str(have.get("orderId", "")) in ("", "SUCCESS_STOP_PLACED"):
+                # Legacy fake-success entries (no real exchange order id) are not
+                # proof of a working stop — treat as unplaced and re-place for real.
+                reg.pop(position_key, None)
+                have = None
             if amt <= 0:
+                for _d in (getattr(self, "_fx_stop_retry_ts", None), getattr(self, "_fx_stop_attempts", None)):
+                    if isinstance(_d, dict):
+                        _d.pop(position_key, None)
                 if have and have.get("orderId"):
                     _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
                     if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
@@ -43386,12 +43438,31 @@ class TradierTradeManager:
             if _lvl <= 0:
                 return "SKIPPED_STOP_NO_LEVEL"
             _qty = max(1, int(amt))
+            # NEVER-KILL RETRY (USER 2026-10-13): sync above proved this position is
+            # broker-confirmed NOW, so a failed/unexecuted placement is RE-PLACED
+            # relentlessly (paced 5s, counted to 500+, never dropped) until it lands
+            # or the position is observed flat. Only out-of-sync placement (gate
+            # above) is forbidden — an in-sync order is never killed.
+            _rts = getattr(self, "_fx_stop_retry_ts", None)
+            if not isinstance(_rts, dict):
+                _rts = self._fx_stop_retry_ts = {}
+            _att = getattr(self, "_fx_stop_attempts", None)
+            if not isinstance(_att, dict):
+                _att = self._fx_stop_attempts = {}
+            if time.time() - float(_rts.get(position_key, 0) or 0) < 5.0:
+                return "SKIPPED_STOP_BACKOFF"
             _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", stop_price=_lvl, quantity=_qty, current_price=float(current_price or 0.0))
             _rs = str(_r)
             if _rs.startswith("SUCCESS_STOP_PLACED"):
                 _oid = _rs.replace("SUCCESS_STOP_PLACED_", "")
                 reg[position_key] = {"orderId": _oid, "stopPrice": _lvl, "entry_sig": _sig, "symbol": symbol, "side": position_side}
                 self._fixed_stop_registry_save()
+                _rts.pop(position_key, None)
+                _att.pop(position_key, None)
+            elif _rs.startswith("FAILED") or _rs.startswith("REFUSED"):
+                _rts[position_key] = time.time()
+                _att[position_key] = int(_att.get(position_key, 0) or 0) + 1
+                logger.error(f"[FIXED_STOP_RETRY_TR] {position_key}: placement {_rs} attempt={_att[position_key]} — will RE-PLACE in 5s (never killed while in sync)")
             return _rs
         except Exception as _e:
             try:
@@ -43444,8 +43515,14 @@ class TradierTradeManager:
                     _oid = str(_resp.get("id", "") or "")
             except Exception:
                 _oid = ""
+            if not _oid:
+                # Broker returned no order id = the order was NOT accepted (e.g.
+                # rejected: no such position). Never fake success — the registry
+                # must not record a stop that does not exist at the exchange.
+                logger.error(f"[FIXED_STOP_PLACE_TR] {position_key}: broker returned no order id (rejected?) resp={str(_resp)[:200]}")
+                return "FAILED_STOP_NO_ORDER_ID"
             logger.critical(f"🛡️ [FIXED_STOP_PLACED_TR] {position_key}: exchange backstop {_oid} stop={lvl:.2f} ({'LONG' if is_long else 'SHORT'})")
-            return f"SUCCESS_STOP_PLACED_{_oid}" if _oid else "SUCCESS_STOP_PLACED"
+            return f"SUCCESS_STOP_PLACED_{_oid}"
         except Exception as _e:
             try:
                 logger.error(f"[FIXED_STOP_WIRE_TR] {position_key}: {_e}")
@@ -53784,8 +53861,36 @@ class TradierTradeManager:
             except Exception:
                 await asyncio.sleep(5)
 
+    async def _sync_supervisor(self):
+        """The broker-truth sync can NEVER die (NVDA trb 2026-10-13: sync loop died
+        silently and order paths acted on stale memory for hours). Relaunch
+        sync_positions_loop on ANY exit — exception, cancellation, plain return —
+        while the manager is running. Exits only on shutdown (running=False)."""
+        while getattr(self, "running", False):
+            try:
+                await self.sync_positions_loop()
+                _why = "returned"
+            except asyncio.CancelledError:
+                if not getattr(self, "running", False):
+                    return
+                _why = "cancelled"
+            except BaseException as _e:
+                _why = f"died: {_e!r}"
+            if not getattr(self, "running", False):
+                return
+            try:
+                _age = time.time() - float(getattr(getattr(self, "reader", None), "_last_sync_ok_ts", 0) or 0)
+            except Exception:
+                _age = -1.0
+            logger.critical(f"[SyncSupervisor] sync loop {_why} — broker-truth age {_age:.0f}s — restarting in 2s (orders stay sync-gated until healed)")
+            try:
+                await asyncio.sleep(2.0)
+            except asyncio.CancelledError:
+                if not getattr(self, "running", False):
+                    return
+
     async def sync_positions_loop(self):
-        """Continuous sync from tradier_positions via Redis (every 5s). Falls back to disk if Redis unavailable."""
+        """Continuous sync from tradier_positions via Redis (every 5s). Falls back to disk if Redis unavailable. Launched ONLY via _sync_supervisor."""
         logger.info("[SyncLoop] Started — source: Redis (tradier_positions) every 5s")
         while self.running:
             try:
@@ -56147,7 +56252,7 @@ class TradierTradeManager:
                 monitor_direct_high_gain_positions(self, self.order_queue)
             )
         )
-        self.background_tasks.append(asyncio.create_task(self.sync_positions_loop()))
+        self.background_tasks.append(asyncio.create_task(self._sync_supervisor()))
         self.background_tasks.append(
             asyncio.create_task(self.validate_positions_periodic())
         )
