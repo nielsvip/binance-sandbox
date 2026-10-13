@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-13T06:40:10Z",
+ "generated_utc": "2026-10-13T12:35:52Z",
  "window": "live-ending 7d",
- "start_utc": "2026-10-06T06:39Z",
- "end_utc": "2026-10-13T06:39Z",
+ "start_utc": "2026-10-06T12:35Z",
+ "end_utc": "2026-10-13T12:35Z",
  "keys": 786,
  "syms": 406,
- "elapsed_s": 309.4,
+ "elapsed_s": 51.9,
  "legs": {
   "VEC15": {
    "exits": 336,
@@ -15,9 +15,9 @@
    "pos_days": 7
   },
   "NO_TWIN": {
-   "exits": 596,
-   "total_pct": 380.105,
-   "per_trade": 0.6378,
+   "exits": 594,
+   "total_pct": 378.74,
+   "per_trade": 0.6376,
    "active_days": 8,
    "pos_days": 5
   },
@@ -5021,13 +5021,13 @@
    }
   },
   "men:AVAXUSDC_LONG": {
-   "exits": 3,
+   "exits": 1,
    "entries": 14,
    "entries_ltf": 7,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 4.5686,
+    "NO_TWIN": 3.2035,
     "VEC15": 0
    }
   },
@@ -8698,8 +8698,8 @@
    "trades": 42
   },
   "1000PEPEUSDC_LONG": {
-   "gain_pct": 13.094075183815029,
-   "trades": 253
+   "gain_pct": 12.635506221491557,
+   "trades": 249
   },
   "1000SATSUSDT_LONG": {
    "gain_pct": 11.092105020295266,
@@ -8749,8 +8749,8 @@
    "trades": 193
   },
   "AMATUSDT_SHORT": {
-   "gain_pct": 6.341214225233687,
-   "trades": 119
+   "gain_pct": 6.107254998991347,
+   "trades": 121
   },
   "AMDUSDT_LONG": {
    "error": "prepare-None npz_flags=[NONE_ANYWHERE]"
@@ -8767,12 +8767,12 @@
    "trades": 0
   },
   "API3USDT_LONG": {
-   "gain_pct": 10.02911653106342,
-   "trades": 309
+   "gain_pct": 5.47962857916514,
+   "trades": 337
   },
   "API3USDT_SHORT": {
-   "gain_pct": -0.548899521182715,
-   "trades": 200
+   "gain_pct": -2.373073201650575,
+   "trades": 215
   },
   "ARBUSDC_SHORT": {
    "gain_pct": 5.808852266727006,
@@ -8787,8 +8787,8 @@
    "trades": 159
   },
   "ARMUSDT_SHORT": {
-   "gain_pct": 1.94307640730712,
-   "trades": 201
+   "gain_pct": 1.5081215450274734,
+   "trades": 203
   },
   "ARPAUSDT_SHORT": {
    "gain_pct": -1.4159487304113327,
@@ -8799,8 +8799,8 @@
  "entries_ltf_total": 2917,
  "price_guard": {
   "checked": 67936,
-  "ok": 15249,
+  "ok": 15199,
   "fake": 667,
-  "unchecked": 52020
+  "unchecked": 52070
  }
 }
