@@ -6117,31 +6117,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress.pop("unprotected", None)
                     print(f"[ESSENTIAL-GATE] {new_symside} all {len(_eg)} essential filters proven non-zero", flush=True)
             _result_stamp(progress, new_symside)
-        # USER 2026-10-13 BELOW-BH ROUND 2 ("never a result < BH", vv for shorts — bh is side-adjusted): a compliant board
-        # on the WINNING side (bh > 0) that finished below B&H is NOT published; it is re-filled from its own best set (one
-        # more full round, bigger BH-CHASE focus) up to V15_BH_REDO_MAX times. Past the cap the REAL number publishes,
-        # flagged below_bh — no number is ever invented (NO-LIES).
-        if _compliant and not _impossible and os.environ.get("V15_BH_REDO", "1") == "1":
-            try:
-                _bfg = float((_fresh_final or {}).get("gain_pct"))
-            except Exception:
-                _bfg = None
-            try:
-                _bbh = float(bh) if bh is not None else None
-            except Exception:
-                _bbh = None
-            _bd = int(progress.get("bh_redo_depth", 0) or 0)
-            if _bfg is not None and _bbh is not None and _bbh > 0 and _bfg < _bbh:
-                if _bd < int(os.environ.get("V15_BH_REDO_MAX", "2")):
-                    progress["needs_redo"] = {"overrides": dict(cumulative_overrides), "result": {k: (_fresh_final or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}, "depth": int(progress.get("redo_depth", 0)) + 1, "reason": f"BELOW_BH gain {_bfg:.4f} < bh {_bbh:.4f} — round 2 from the best set"}
-                    progress["bh_redo_depth"] = _bd + 1
-                    progress.pop("final_path", None)
-                    _maybe_write_json(force=True)
-                    _compliant = False
-                    print(f"[BELOW-BH-REDO] {new_symside} gain {_bfg:.4f} < bh {_bbh:.4f} — no publish, round {_bd + 2} from the best set", flush=True)
-                else:
-                    progress["below_bh"] = {"gain": _bfg, "bh": _bbh, "rounds": _bd + 1}
-                    print(f"[BELOW-BH-CAP] {new_symside} gain {_bfg:.4f} < bh {_bbh:.4f} after {_bd + 1} rounds — real number published, flagged below_bh", flush=True)
+        # USER 2026-10-13 BELOW-BH: results below B&H still GO LIVE (like negative-gain results, small entry quantity via
+        # the size tiers; winners up to 4x START_POS). Never withheld, never re-run here: the extra round-2 search already
+        # ran in this run (BH-CHASE focus). The real number publishes, flagged below_bh for sizing/ledger.
+        try:
+            _bfg = float((_fresh_final or {}).get("gain_pct"))
+            _bbh = float(bh) if bh is not None else None
+            if _compliant and not _impossible and _bbh is not None and _bfg < _bbh:
+                progress["below_bh"] = {"gain": _bfg, "bh": _bbh}
+                print(f"[BELOW-BH] {new_symside} gain {_bfg:.4f} < bh {_bbh:.4f} — publishing (goes live with small entry size)", flush=True)
+            else:
+                progress.pop("below_bh", None)
+        except Exception:
+            pass
         if _impossible:
             _stand = _standing_best(OUT_DIR, new_symside)
             if _stand is not None:
