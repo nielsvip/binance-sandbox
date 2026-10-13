@@ -1296,6 +1296,59 @@ def npz_prep(host, symbol):
         return None
 
 
+_ASYNC_DISPATCH = os.environ.get("V15_SCHED_ASYNC_DISPATCH", "1") == "1"
+
+
+def _parity_gate_ok(venue, side, template_dir, cache, gate=None):
+    """2026-10-13: run the pilot's own startup parity gate (switch_parity.startup_gate, cached, ~0.07 s) once per
+    cat_side per tick. A cat_side whose defaults are disparate makes every v15_pilot exit at startup ("[PARITY-GATE]
+    ... NOT running") — measured 16:38Z: all crypto 30D launches refused, each burning a resume slice of an
+    unfinished board. Gate crash = allow (same as the pilot). Kill switch V15_SCHED_PARITY_PREFLIGHT=0."""
+    if os.environ.get("V15_SCHED_PARITY_PREFLIGHT", "1") != "1":
+        return True
+    k = (venue, side)
+    if k not in cache:
+        cs = f"{'CRYPTO' if venue == 'crypto' else 'STOCKS'}_{side}"
+        try:
+            if gate is None:
+                if str(ROOT) not in sys.path:
+                    sys.path.insert(0, str(ROOT))
+                import switch_parity as _spg
+                gate = _spg.startup_gate
+            g = gate(cs, template_path=str(ROOT / template_dir / f"TEMPLATE_{cs}.xlsx"))
+            cache[k] = (bool(g.get("ok")), "; ".join(str(x) for x in (g.get("hard") or [])[:3])[:300])
+        except Exception as e:
+            cache[k] = (True, f"gate-crash {type(e).__name__}")
+    return cache[k][0]
+_DISPATCH_GRACE_S = float(os.environ.get("V15_DISPATCH_GRACE_S", "2400"))
+
+
+def _dispatch_q_mark(st, keys, now_ts, grace_s=None):
+    """2026-10-13: remember async dispatches (key -> ts) so later ticks never re-dispatch while the job builds the NPZ;
+    entries older than 2x grace are pruned (a job that died without launching frees the side again)."""
+    g = _DISPATCH_GRACE_S if grace_s is None else float(grace_s)
+    dq = st.setdefault("dispatch_q", {})
+    for k in [k for k, v in dq.items() if (now_ts - float(v or 0)) > 2 * g]:
+        dq.pop(k, None)
+    for k in keys:
+        dq[k] = now_ts
+    return dq
+
+
+def _dispatch_async(host, symbol, acts, pdir, workers, tag):
+    """2026-10-13: hand NPZ rebuild + md5 push + pilot launch to tools/v15_dispatch_job.py (detached, setsid) so the
+    tick returns in seconds. The job launches only after its NPZ is ready (JIT law). The caller holds the slot + a
+    dispatch grace (st["dispatch_q"]) so the next tick never double-dispatches."""
+    import tempfile
+    tgt = (host.get("ssh") or [None])[0]
+    push = str(tgt) if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1") else ""
+    fd, cmd_file = tempfile.mkstemp(prefix=f"v15_dispatch_{symbol}_", suffix=".sh", dir="/tmp")
+    with os.fdopen(fd, "w") as f:
+        f.write(pair_launch_cmd(host, acts, pdir, workers))
+    cmd = [sys.executable, str(ROOT / "tools" / "v15_dispatch_job.py"), "--symbol", str(symbol), "--push", push, "--via", host.get("_via", host["ssh"][0]), "--cmd-file", cmd_file, "--tag", tag]
+    subprocess.Popen(cmd, cwd=str(ROOT), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=open("/tmp/v15_dispatch_job.err", "a"), start_new_session=True)
+
+
 def load_state():
     try:
         return json.loads(STATE.read_text())
@@ -1668,6 +1721,9 @@ def tick(args, cfg, now):
 
     # ---- candidate work
     # (A) adopted chain work: owner host known, not terminal, not currently running anything for that side; (B) brand-new symbols
+    _tmpl_dir_by_host = {h_["name"]: h_.get("template_dir", "SPREADSHEETS") for h_ in hosts}
+    _parity_cache = {}
+
     def pending_actions(sym, host_name):
         acts = []
         for side, (s, att) in chain_state[sym].items():
@@ -1675,7 +1731,10 @@ def tick(args, cfg, now):
                 w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[s]
                 key = f"{sym}_{side}|{w}{att if w in ('REPAIR', 'GS') else ''}"
                 if _launch_exhausted(key, w, f"{sym}_{side}", st, started, redo):
-                    continue  # USER 2026-10-09: 30D 6->3 fresh (hopeless sides stop burning slots); USER 2026-10-10: redo resume FREE; USER 2026-10-12: sliced (started) 30D sides draw the 20-slice budget, not attempts
+                    continue
+                if w == "30D" and not _parity_gate_ok(venue_of(sym), side, _tmpl_dir_by_host.get(host_name) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
+                    log.setdefault("skipped_parity_gate", {}).setdefault(f"{'CRYPTO' if venue_of(sym) == 'crypto' else 'STOCKS'}_{side}", _parity_cache.get((venue_of(sym), side), (None, ""))[1])
+                    continue  # 2026-10-13: the pilot refuses to fill (PARITY-GATE hard disparity) -> launching only burned a slice/attempt per tick  # USER 2026-10-09: 30D 6->3 fresh (hopeless sides stop burning slots); USER 2026-10-10: redo resume FREE; USER 2026-10-12: sliced (started) 30D sides draw the 20-slice budget, not attempts
                 acts.append({"sym": sym, "side": side, "window": w, "attempt": att or 1, "key": key})
         return acts
 
@@ -1777,7 +1836,7 @@ def tick(args, cfg, now):
                 continue
             acts = pending_actions(sym, h["name"])
             acts = [a for a in acts if _repair_sticky_ok(a, rep_host, h["name"])]
-            acts = [a for a in acts if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts)]
+            acts = [a for a in acts if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and not _launched_recently(a["key"], st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S)]
             acts = [a for a in acts if f"{a['sym']}_{a['side']}" not in running]  # USER 2026-10-11: never launch a side with a live pilot anywhere (kills 5x dup stacks; backfill had this, steal gained it same turn)
             if not acts:
                 # USER 2026-10-13: never drop a candidate silently — an idling fleet must name its own blocker.
@@ -1786,16 +1845,20 @@ def tick(args, cfg, now):
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
                 log.setdefault("skipped_pair_gate", []).append(f"{h['name']}:{sym}:" + str([a.get('side') for a in acts]))
                 continue
+            _async_npz = False
             _frz_why = ("continuation " + ",".join(_cont_ss)) if _cont_ss else ("sibling running " + ",".join(x for x in (f"{sym}_LONG", f"{sym}_SHORT") if x in running) if any(x in running for x in (f"{sym}_LONG", f"{sym}_SHORT")) else "")
             if needs_slot and _CONT_FREEZE_ON and _frz_why and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
                 # USER 2026-10-13 V16: a rebuild here archived whole boards (NPZ-CHANGED-REFILL, 120k rows wiped fleet-wide)
                 # or tripped the FINAL midrun-swap refusal of a running sibling. Fresh boards still get the JIT NPZ.
                 log.setdefault("npz_frozen", []).append(f"{h['name']}:{sym}:{_frz_why}")
             elif needs_slot and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: NPZ is calculated on the latest S1 klines right before a symbol is sent  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
-                pr = npz_prep(h, sym)
-                if pr is not None and not pr.get("ok"):
-                    log["skipped_unready"][sym] = f"{h['name']}: npz_prep {pr.get('reason')}"
-                    continue
+                if _ASYNC_DISPATCH:
+                    _async_npz = True  # 2026-10-13: rebuild+push+launch run in a detached job (a synchronous rebuild outlived the 110 s tick timeout -> zero launches)
+                else:
+                    pr = npz_prep(h, sym)
+                    if pr is not None and not pr.get("ok"):
+                        log["skipped_unready"][sym] = f"{h['name']}: npz_prep {pr.get('reason')}"
+                        continue
             tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" + (f"#a{a['attempt']}" if a["window"] == "REPAIR" else "") for a in acts)
             if args.dry_run or sim:
                 log["launched"].append(tag + " (dry)")
@@ -1805,10 +1868,15 @@ def tick(args, cfg, now):
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
                     continue
-                try:
-                    subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
-                except subprocess.TimeoutExpired:
-                    print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
+                if _async_npz:
+                    _dispatch_async(h, sym, acts, pd, workers, tag)
+                    _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
+                    log.setdefault("dispatch_async", []).append(tag)
+                else:
+                    try:
+                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
+                    except subprocess.TimeoutExpired:
+                        print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
                     _burn_launch(a["key"], a["window"], f"{a['sym']}_{a['side']}", st, started)
                     st.setdefault("last_act", {})[a["key"].split("|")[0]] = a["key"]

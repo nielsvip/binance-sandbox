@@ -7,7 +7,7 @@
 # (each cat_side's promotions pass the COMBINED trade-floor guard tools/v15_promotion_floor_guard.py before saving; refused keys keep the old bold)
 # (code-surface sync DISABLED: S1 never edits config.py/config_tradier.py/v12_quick_engine.py; the Mac follow-up
 # tools/v15_daily_chain_mac_apply.sh syncs report promoted_keys at 13:20Z) -> 3 cat_side_defaults_4 (+ sweep copy)
-# -> 4 avg_delta_pos_sym.json -> 4c causal export -> 5 zero-delta watchdog (non-fatal) -> 6 push to s2/s5 + kv sync + md5 verify
+# -> 4 avg_delta_pos_sym.json -> 4c causal export -> 4e endgame fleet knowledge -> 5 zero-delta watchdog (non-fatal) -> 6 push to s2/s5 + kv sync + md5 verify
 # -> 6b tradeable check (non-fatal; SYSTEM_ERROR rows for tradeable keys with <10 trades/30D or TIM<20%) -> 7 done-stamp json.
 # 4b (2026-10-07): cell-evidence regen (zero-skip maps) over ALL local progress dirs (campaign dirs move; glob, don't pin)
 # + push data/avg_delta_pos_sym_cell.json + data/cell_evidence/*.json to s2/s5 so every host's pilots skip condemned cells.
@@ -140,6 +140,12 @@ log "step4d switch causal profile + sym_side ledger"
 timeout 1200 nice -n 10 python3 -u tools/v15_switch_causal_profile.py || log "step4d causal profile rc=$? (non-fatal, previous profile kept)"
 timeout 600 nice -n 10 python3 -u tools/v15_symside_ledger.py || log "step4d symside ledger rc=$? (non-fatal)"
 STEPS_OK="$STEPS_OK,4d"
+
+# 4e. USER 2026-10-13: fleet-wide ENDGAME knowledge (bible §69) — merges every host x campaign endgame_ledger.jsonl into
+# data/endgame/endgame_knowledge_fleet.json and pushes it to the workers (md5-verified). Non-fatal; same lock as the hourly cron.
+log "step4e endgame knowledge merge"
+flock -w 600 /tmp/v15_endgame_merge.lock timeout 900 nice -n 10 python3 -u tools/v15_endgame_knowledge_merge.py --pull --push || log "step4e endgame knowledge merge rc=$? (non-fatal, previous fleet file kept)"
+STEPS_OK="$STEPS_OK,4e"
 
 # 5. zero-delta watchdog (non-fatal)
 log "step5 zero-delta watchdog"

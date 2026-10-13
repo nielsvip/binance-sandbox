@@ -296,6 +296,9 @@ def golive(a):
 
     sel = json.loads(Path(a.selection).read_text())
     hosts = {h["name"]: h for h in json.loads(Path(a.hosts).read_text())["hosts"]}
+    # USER 2026-10-13 "are all calculated sym_sides live?": under the NPZ JIT law worker NPZs lag by hours, so the fresh re-eval
+    # hit STALE_NPZ_SKIPPED -> 0 trades -> 542/571 sets refused (0 applied at 14:09Z). The re-eval runs the set on the board's own
+    # NPZ (npz_id recorded in evidence), like the pilot launches (V12_ALLOW_STALE_NPZ=1). Kill switch V15_GOLIVE_ALLOW_STALE=0.
     per_host = {}
     for ss, r in sel.items():
         per_host.setdefault(r["host"], []).append(r["path"])
@@ -318,7 +321,7 @@ def golive(a):
             _scp(str(lf), f"{via}:/tmp/v15_persym_golive_files.txt")
             _, out = _ssh(
                 [via],
-                f"cd ~/binance-sandbox && {'V15_COLLECT_ALL_FINISHED=1 ' if a.all_finished else ''}timeout {a.collect_timeout} .venv/bin/python -u tools/v15_persym_golive.py collect --files /tmp/v15_persym_golive_files.txt --out /tmp/v15_persym_golive_out.json --workers {a.workers} 2>&1 | grep -v Warning | tail -3",
+                f"cd ~/binance-sandbox && {'V15_COLLECT_ALL_FINISHED=1 ' if a.all_finished else ''}{'V12_ALLOW_STALE_NPZ=1 ' if os.environ.get('V15_GOLIVE_ALLOW_STALE', '1') == '1' else ''}timeout {a.collect_timeout} .venv/bin/python -u tools/v15_persym_golive.py collect --files /tmp/v15_persym_golive_files.txt --out /tmp/v15_persym_golive_out.json --workers {a.workers} 2>&1 | grep -v Warning | tail -3",
                 a.collect_timeout + 60,
             )
             print(f"[golive] {hn} via {via}: {out.strip()}", flush=True)

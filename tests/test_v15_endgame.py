@@ -23,7 +23,7 @@ def _pos(needle, n=0):
 
 def test_endgame_defined_and_called_in_order():
     d = _pos("def _endgame_filter_cycle():")
-    call = _pos("\n        _endgame_filter_cycle()\n")
+    call = _pos("            _endgame_filter_cycle()\n")
     assert call > d
     assert _pos("\n        _final_filter_recheck()\n") < call < _pos("\n            _diagnose_repair()\n")
 
@@ -112,3 +112,65 @@ def test_merge_behavior():
     k = merge(k, [("S1", -4.0)], [], [], -2.0, False, False)
     assert k["keys"]["S1"]["n"] == 2 and k["workbooks"]["pos_lift"] == 1
     assert k["workbooks"]["n"] == 2 and abs(k["workbooks"]["sum_lift"] - (-0.5)) < 1e-9
+
+
+def test_adopt_guard_rejects_worse_accepts_better():
+    ns = _exec_pure()
+    v = ns["_endgame_adopt_verdict"]
+    ok_res = {"gain_pct": 12.0, "valid": True, "trades": 30, "tim_pct": 40.0}
+    assert v(ok_res, 10.0, 40.0, 30) == (True, "ok")
+    assert v(dict(ok_res, gain_pct=10.0), 10.0, 40.0, 30)[0]  # equal = not worse
+    ok, why = v(dict(ok_res, gain_pct=9.5), 10.0, 40.0, 30)
+    assert not ok and why.startswith("worse lift -0.5")
+    assert not v(dict(ok_res, valid=False), 1.0)[0]
+    assert not v(None, 1.0)[0] and not v({"gain_pct": None}, 1.0)[0]
+    assert not v(dict(ok_res, trades=5), 1.0, 40.0, 30)[0]
+    assert v(dict(ok_res, trades=6), 1.0, 40.0, 5)[0]  # below-floor ref may move toward health
+    assert not v(dict(ok_res, tim_pct=90.0), 1.0, 40.0, 30)[0]
+    assert v(dict(ok_res, tim_pct=85.0), 1.0, 95.0, 30)[0]  # out-of-band ref moving toward band
+    assert v(dict(ok_res, gain_pct=-1.0), None)[0]  # no reference -> health checks only
+
+
+def test_best_seen_note_and_npz_reset():
+    ns = _exec_pure()
+    note = ns["_endgame_best_seen_note"]
+    r = lambda g, **kw: dict({"gain_pct": g, "valid": True, "trades": 30, "tim_pct": 40.0}, **kw)
+    b = note(None, "ENTRY", {"A": 1}, r(10.0), "npz1")
+    assert b["gain"] == 10.0 and b["stage"] == "ENTRY" and b["overrides"] == {"A": 1}
+    b = note(b, "ADOPT", {"A": 2}, r(8.0), "npz1")
+    assert b["gain"] == 10.0 and b["overrides"] == {"A": 1}  # worse never replaces best
+    b = note(b, "DIAG", {"A": 3}, r(15.0, tim_pct=95.0), "npz1")
+    assert b["gain"] == 10.0  # guard-failing set never recorded
+    b = note(b, "DIAG", {"A": 4}, r(11.0), "npz1")
+    assert b["gain"] == 11.0 and b["stage"] == "DIAG"
+    b = note(b, "ENTRY", {"A": 5}, r(3.0), "npz2")
+    assert b["npz"] == "npz2" and b["gain"] == 3.0  # new window resets
+
+
+def test_fleet_view_prefers_cat_side():
+    ns = _exec_pure()
+    view = ns["_endgame_fleet_view"]
+    fleet = {"workbooks": {"n": 9}, "keys": {"A": {"n": 5, "sum": 5.0}, "B": {"n": 4, "sum": -4.0}},
+             "by_cat_side": {"CRYPTO_LONG": {"keys": {"A": {"n": 3, "sum": -9.0}, "B": {"n": 2, "sum": 50.0}}}}}
+    v = view(fleet, "CRYPTO_LONG")
+    assert ns["_endgame_ev"]("A", v) == -3.0 and ns["_endgame_ev"]("B", v) == -1.0
+    assert v["workbooks"]["n"] == 9 and view({}, "X") == {"keys": {}, "workbooks": {}}
+
+
+def test_merge_knowledge_reject_fields():
+    ns = _exec_pure()
+    k = ns["_endgame_merge_knowledge"]({}, [], [], [], 0.0, False, False, -2.5, True)
+    assert k["workbooks"]["rejected"] == 1 and k["workbooks"]["sum_cand_lift"] == -2.5 and k["workbooks"]["adopted"] == 0
+
+
+def test_adopt_guard_wiring_pins():
+    for k in ("V15_ENDGAME_ADOPT_GUARD", "[ENDGAME-REJECT]", "V15_DIAG_ADOPT_GUARD", "[DIAG-REJECT]", "V15_BEST_SEEN_GATE",
+              "[BEST-SEEN-FALLBACK]", 'progress["best_seen"]', "ENDGAME_ENTRY", "REPAIR_CEIL", "V15_ENDGAME_KNOWLEDGE",
+              "endgame_knowledge_fleet.json", "_endgame_fleet_view(_eg_fleet"):
+        assert k in SRC, k
+    adopt = _pos('ares, aerr = _eg_eval("ENDGAME_ADOPT"')
+    assert _pos("_endgame_adopt_verdict(ares, _eg_ref_gain", 0) > adopt
+    # the stripped discovery base is never assigned to the cumulative set
+    assert "cumulative_overrides = sanitize_overrides(stripped" not in SRC and "cumulative_overrides = base" not in SRC
+    gate = _pos("[BEST-SEEN-FALLBACK]")
+    assert _pos("\n            _diagnose_repair()\n") < gate < _pos('print("[DONE-STEP] atomic save start"')

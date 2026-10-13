@@ -83,6 +83,35 @@ def out(d, code=0):
     sys.exit(code)
 
 
+def push_verified(live, sym, hosts):
+    """2026-10-13: ship S1's NPZ to every target whenever it is usable (not only after a regen: a current S1 tail
+    used to exit before the push, so the target kept its own stale/missing copy). md5 verified; returns per-host status."""
+    res = {}
+    if not hosts:
+        return res
+    m = md5(live)
+    for h in hosts:
+        try:
+            chk = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", h, f"md5sum ~/binance-sandbox/backtest_v8/indicators/{sym}.npz 2>/dev/null | cut -c1-32"], capture_output=True, text=True, timeout=60)
+            if (chk.stdout or "").strip() == m:
+                res[h] = "same"
+                continue
+            subprocess.run(["rsync", "-a", "-e", "ssh -o BatchMode=yes", str(live), f"{h}:~/binance-sandbox/backtest_v8/indicators/.{sym}.prep.npz"], timeout=300)
+            ver = subprocess.run(["ssh", "-o", "BatchMode=yes", h, f"cd ~/binance-sandbox/backtest_v8/indicators && [ \"$(md5sum .{sym}.prep.npz | cut -c1-32)\" = {m} ] && mv .{sym}.prep.npz {sym}.npz && echo OK"], capture_output=True, text=True, timeout=60)
+            res[h] = "pushed" if "OK" in (ver.stdout or "") else "md5-mismatch"
+        except Exception as e:
+            res[h] = f"push-fail {type(e).__name__}"
+    return res
+
+
+def finish(r, live, sym, hosts, code=0):
+    if r.get("ok") is not False and live.exists():
+        r["push"] = push_verified(live, sym, hosts)
+        if any(v not in ("same", "pushed") for v in r["push"].values()):
+            r.update(ok=None, reason=r.get("reason", "") + " | push failed: target keeps its own copy")
+    out(r, code)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", required=True)
@@ -98,8 +127,32 @@ def main():
     now = time.time()
     r = {"symbol": sym, "action": "none", "ok": False, "reason": "", "venue": venue}
     if not live.exists():
-        r["reason"] = "no live NPZ"
-        out(r, 3)
+        # 2026-10-13: a symbol in the dispatch universe without an S1 NPZ (e.g. RIO) was refused forever ("no live NPZ").
+        # JIT law: build it now, for exactly this dispatch.
+        if a.dry_run:
+            r.update(ok=True, action="would_build", reason="no live NPZ")
+            out(r)
+        stg = Path(os.path.expanduser(f"~/npzprep/{sym}"))
+        shutil.rmtree(stg, ignore_errors=True)
+        (stg / "out").mkdir(parents=True)
+        if mode == "tradier":
+            os.environ.setdefault("FORCE_TRADIER_15M_BASE", "1")
+        import backtest_v8_precompute as M
+        M.OUT_DIR = stg / "out"
+        ok = M.compute_symbol(sym, mode)
+        cand = stg / "out" / f"{sym}.npz"
+        if not ok or not cand.exists():
+            r.update(action="build_failed", reason="no live NPZ and the builder failed")
+            out(r, 3)
+        c0, c1, cn, ck = last_bar(cand)
+        if cn < 500 or (c1 - c0) < 30 * 86400:
+            r.update(action="build_blocked", reason=f"new NPZ too short: {cn} bars span {(c1 - c0) / 86400:.1f}d")
+            out(r, 3)
+        tmp = IND / f".{sym}.prep.npz"
+        shutil.copy2(cand, tmp)
+        os.replace(tmp, live)
+        r.update(action="built", ok=True, reason=f"built new NPZ bars {cn} last bar {c1} md5 {md5(live)[:8]}", npz_last_bar=c1)
+        finish(r, live, sym, a.push)
     t0, t1, n0, k0 = last_bar(live)
     age_h = (now - live.stat().st_mtime) / 3600
     r.update(npz_age_h_before=round(age_h, 2), npz_last_bar=t1, npz_bars=n0)
@@ -112,7 +165,7 @@ def main():
     r["tail_check"] = _twhy
     if _tok:
         r.update(ok=True, reason="tail current to latest closed bar")
-        out(r)
+        finish(r, live, sym, a.push)
     kl = kline_last(sym, venue)
     if kl is None:
         r["reason"] = f"no {venue} 15m cache"
@@ -121,7 +174,7 @@ def main():
     r["kline_lag_h"] = round(lag_h, 2)
     if kl <= t1:
         r.update(ok=True, reason="npz tail already at newest klines (no newer bars exist)")
-        out(r)
+        finish(r, live, sym, a.push)
     # klines lag counts only trading time loosely: >30h wall covers a weekend-less gap; weekends are tolerated up to 80h
     wd = time.gmtime(now).tm_wday
     allowed = a.max_kline_lag_h + (50 if wd in (5, 6, 0) else 0)
@@ -158,14 +211,14 @@ def main():
     ok = M.compute_symbol(sym, mode)
     cand = stg / "out" / f"{sym}.npz"
     if not ok or not cand.exists():
-        r.update(action="regen_failed", reason="builder returned failure; live NPZ untouched")
-        out(r, 0 if age_h < 48 else 3)
+        r.update(action="regen_failed", reason="builder returned failure; live NPZ untouched", ok=None if age_h < 48 else False)
+        finish(r, live, sym, a.push, 0 if age_h < 48 else 3)
     c0, c1, cn, ck = last_bar(cand)
     import npz_guard as G
     allow, why = G.should_allow_overwrite(live, (c1 - c0) / 86400, 900.0, ck, cn, (c1 - c0) / 86400)
     if not allow or cn < 0.95 * n0 or c0 > t0 + 86400 * 3 or c1 < t1:
-        r.update(action="regen_blocked", reason=f"guard: {why}; bars {n0}->{cn} first {t0}->{c0} last {t1}->{c1}; live NPZ untouched")
-        out(r, 0 if age_h < 48 else 3)
+        r.update(action="regen_blocked", reason=f"guard: {why}; bars {n0}->{cn} first {t0}->{c0} last {t1}->{c1}; live NPZ untouched", ok=None if age_h < 48 else False)
+        finish(r, live, sym, a.push, 0 if age_h < 48 else 3)
     bk = Path(os.path.expanduser("~/npzprep/backup"))
     bk.mkdir(parents=True, exist_ok=True)
     shutil.copy2(live, bk / f"{sym}.{int(now)}.npz")
@@ -173,11 +226,8 @@ def main():
     shutil.copy2(cand, tmp)
     os.replace(tmp, live)
     m = md5(live)
-    for h in a.push:
-        subprocess.run(["rsync", "-a", "-e", "ssh -o BatchMode=yes", str(live), f"{h}:~/binance-sandbox/backtest_v8/indicators/.{sym}.prep.npz"], timeout=300)
-        subprocess.run(["ssh", "-o", "BatchMode=yes", h, f"cd ~/binance-sandbox/backtest_v8/indicators && mv .{sym}.prep.npz {sym}.npz"], timeout=60)
     r.update(action="regenerated", ok=True, reason=f"installed bars {n0}->{cn} last bar {t1}->{c1} md5 {m[:8]}", npz_last_bar=c1)
-    out(r)
+    finish(r, live, sym, a.push)
 
 
 if __name__ == "__main__":

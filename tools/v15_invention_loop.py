@@ -16,6 +16,23 @@ State: data/invention/backlog.json (+ orders/, proofs/). Statuses: OBSERVED -> S
 TESTED -> PROMOTED | RETIRED. RETIRED never deletes code (DEATH PENALTY) — it records the verdict
 so no future cycle re-proposes the same dead end; the eval-time skipping (zero-formula/unwired/
 possym/inert) remains the discard mechanism.
+
+2026-10-13 fixes (self-improvement lane):
+- autopsy schema: the trade autopsy writes `missing_entry_filters` / `missing_exit_confirmations`
+  (feature, op, thr, at, bad_removed/bad_total, good_removed/good_total, net_pnl [gain_pp], family,
+  status MISSING|FAMILY_EXISTS_NO_FIX). The old reader looked for `missing_functions` and produced 0
+  observations ever. Rules are aggregated by (at, cat_side, feature, op) over DISTINCT sym_sides
+  (newest autopsy file per sym_side wins when several dirs hold the same board).
+- score = move magnitude x distinct sym_side count. Autopsy: mean net_pnl (pp) x n distinct syms.
+  Missed-trend: max move_pct x n distinct sym_sides. Gaps / coverage: fixed unit (2 / 5 / 1) x syms.
+- evidence is deduped by an evidence signature (replace in place, never blind append); `symsides`
+  is the UNION of everything ever seen (not recomputed from the truncated evidence tail).
+- every autopsy-sourced proposal is `[DIAGNOSTIC ONLY]`: single-feature, in-sample thresholds per
+  sym_side; nothing is promoted from it without a real v12_quick_engine + backtest_v12_engine proof.
+- template ROW status is never claimed: `rows_status` comes from opening the templates read-only
+  (ROWS_INSTALLED / ROWS_PARTIAL / ROWS_QUEUED via data/template_row_queue.json / ROWS_MISSING).
+- source dirs: --autopsy-dirs / --progress-dirs / --missed-dirs (comma list, globs ok) or env
+  V15_INVENT_AUTOPSY_DIRS / V15_INVENT_PROGRESS_DIRS / V15_INVENT_MISSED_DIRS; absent dirs fail open.
 """
 
 import argparse
@@ -142,44 +159,153 @@ def scan_missed_trend(dirs):
     return obs
 
 
-def scan_autopsy(dirs):
-    obs = []
-    for dd in dirs:
+CRYPTO_QUOTES = ("USDT", "USDC", "BUSD", "FDUSD")
+AUTOPSY_RULE_KEYS = ("missing_entry_filters", "missing_exit_confirmations")
+DIAG = "[DIAGNOSTIC ONLY]"
+
+
+def _direction(ss):
+    u = str(ss or "").upper()
+    return "SHORT" if u.endswith("_SHORT") else ("LONG" if u.endswith("_LONG") else "")
+
+
+def cat_side_of(ss):
+    u = str(ss or "").upper()
+    d = _direction(u)
+    sym = u.rsplit("_", 1)[0] if d else u
+    venue = "CRYPTO" if sym.endswith(CRYPTO_QUOTES) else "STOCKS"
+    return f"{venue}_{d}" if d else venue
+
+
+def _expand_dirs(dirs):
+    out = []
+    for dd in dirs or []:
+        for x in sorted(glob.glob(os.path.expanduser(str(dd)))) or []:
+            if os.path.isdir(x) and x not in out:
+                out.append(x)
+    return out
+
+
+def _median(xs):
+    xs = sorted(xs)
+    if not xs:
+        return None
+    m = len(xs) // 2
+    return xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2.0
+
+
+def scan_autopsy(dirs, min_syms=1):
+    """Aggregate autopsy missing rules by (at, cat_side, feature, op) over DISTINCT sym_sides.
+
+    Newest `*_autopsy.json` per sym_side wins (the same board can sit in several autopsy dirs).
+    One observation per rule key: score = mean net_pnl (pp) x n distinct sym_sides. [DIAGNOSTIC ONLY].
+    """
+    newest = {}
+    for dd in _expand_dirs(dirs):
         for f in glob.glob(os.path.join(dd, "*_autopsy.json")):
             try:
-                d = json.load(open(f))
-            except Exception:
+                mt = os.path.getmtime(f)
+            except OSError:
                 continue
-            mfs = d.get("missing_functions") or []
-            ss = d.get("symside", "")
-            direction = (
-                "SHORT"
-                if ss.upper().endswith("_SHORT")
-                else ("LONG" if ss.upper().endswith("_LONG") else "")
-            )
-            for mf in mfs if isinstance(mfs, list) else []:
-                name = mf.get("name") if isinstance(mf, dict) else str(mf)
-                w = 1.0
-                if isinstance(mf, dict):
-                    for k in ("losers", "n_losers", "weight", "trades"):
-                        if isinstance(mf.get(k), (int, float)):
-                            w = max(w, float(mf[k]))
-                obs.append(
+            ss = os.path.basename(f)[: -len("_autopsy.json")]
+            if ss not in newest or mt > newest[ss][0]:
+                newest[ss] = (mt, f)
+    agg = {}
+    for ss, (_mt, f) in sorted(newest.items()):
+        try:
+            d = json.load(open(f))
+        except Exception:
+            continue
+        ss = d.get("symside") or ss
+        cs = cat_side_of(ss)
+        seen = set()
+        for rk in AUTOPSY_RULE_KEYS:
+            rules = d.get(rk) or []
+            for r in rules if isinstance(rules, list) else []:
+                if not isinstance(r, dict) or not r.get("feature") or not r.get("op"):
+                    continue
+                at = str(r.get("at") or ("entry" if "entry" in rk else "exit")).lower()
+                key = (at, cs, str(r["feature"]), str(r["op"]))
+                if (key, ss) in seen:
+                    continue
+                seen.add((key, ss))
+                a = agg.setdefault(
+                    key,
                     {
-                        "sig": ("NEW_SWITCH", direction, _slug(name)),
-                        "kind": "NEW_SWITCH",
-                        "title": f"autopsy missing: {str(name)[:120]}",
-                        "symside": ss,
-                        "direction": direction,
-                        "score": w,
-                        "evidence": {
-                            "src": "autopsy",
-                            "file": f,
-                            "symside": ss,
-                            "missing": mf,
-                        },
-                    }
+                        "syms": set(),
+                        "net": [],
+                        "thr": [],
+                        "bad_removed": 0,
+                        "bad_total": 0,
+                        "good_removed": 0,
+                        "good_total": 0,
+                        "status": defaultdict(int),
+                        "family": defaultdict(int),
+                        "files": 0,
+                    },
                 )
+                a["syms"].add(ss)
+                a["files"] += 1
+                for k in ("bad_removed", "bad_total", "good_removed", "good_total"):
+                    if isinstance(r.get(k), (int, float)):
+                        a[k] += r[k]
+                if isinstance(r.get("net_pnl"), (int, float)):
+                    a["net"].append(float(r["net_pnl"]))
+                if isinstance(r.get("thr"), (int, float)):
+                    a["thr"].append(float(r["thr"]))
+                a["status"][str(r.get("status") or "?")] += 1
+                a["family"][str(r.get("family") or "?")] += 1
+    obs = []
+    for (at, cs, feat, op), a in sorted(agg.items()):
+        n = len(a["syms"])
+        if n < min_syms:
+            continue
+        mean_net = (sum(a["net"]) / len(a["net"])) if a["net"] else 0.0
+        missing = a["status"].get("MISSING", 0) > 0
+        kind = "AUTOPSY_NEW_RULE" if missing else "AUTOPSY_FAMILY_EXTEND"
+        fam = max(a["family"].items(), key=lambda kv: kv[1])[0] if a["family"] else "?"
+        thr = _median(a["thr"])
+        verb = "block entry" if at == "entry" else "hold (do not exit)"
+        title = (
+            f"{DIAG} {cs} {verb} when {feat} {op} ~{thr:.4g} ({n} syms, mean {mean_net:+.2f}pp in-sample, family {fam})"
+            if thr is not None
+            else f"{DIAG} {cs} {verb} on {feat} {op} ({n} syms)"
+        )
+        obs.append(
+            {
+                "sig": ("AUTOPSY_RULE", at.upper(), cs, feat, op),
+                "kind": kind,
+                "title": title,
+                "symside": "",
+                "symsides": sorted(a["syms"]),
+                "direction": cs.rsplit("_", 1)[-1] if "_" in cs else "",
+                "score": round(mean_net * n, 4),
+                "score_mode": "replace",
+                "diagnostic_only": True,
+                "evidence": {
+                    "src": "autopsy",
+                    "ev_sig": f"autopsy|{at}|{cs}|{feat}|{op}",
+                    "cat_side": cs,
+                    "at": at,
+                    "feature": feat,
+                    "op": op,
+                    "thr_median": thr,
+                    "thr_min": min(a["thr"]) if a["thr"] else None,
+                    "thr_max": max(a["thr"]) if a["thr"] else None,
+                    "n_syms": n,
+                    "mean_net_pp": round(mean_net, 4),
+                    "bad_removed": a["bad_removed"],
+                    "bad_total": a["bad_total"],
+                    "good_removed": a["good_removed"],
+                    "good_total": a["good_total"],
+                    "status": dict(a["status"]),
+                    "family": fam,
+                    "symsides_sample": sorted(a["syms"])[:25],
+                    "note": f"{DIAG} single-feature in-sample thresholds per sym_side; removes good trades too — engine-verify via v12_quick_engine + backtest_v12_engine before any promotion",
+                    "mined_utc": utcnow(),
+                },
+            }
+        )
     return obs
 
 
@@ -269,30 +395,110 @@ def scan_coverage(verify_path, bible):
     return obs
 
 
+EVIDENCE_CAP = 50
+
+
+def ev_sig(e):
+    """Stable identity of one piece of evidence (dedupe key; re-mining the same file never duplicates)."""
+    if not isinstance(e, dict):
+        return json.dumps(e, sort_keys=True, default=str)[:200]
+    if e.get("ev_sig"):
+        return str(e["ev_sig"])
+    src = e.get("src") or "?"
+    if src.startswith("missed_trend"):
+        t = e.get("trend") or {}
+        return (
+            f"{src}|{e.get('symside')}|{t.get('b0')}|{t.get('b1')}|{t.get('move_pct')}"
+        )
+    if src == "gaps":
+        g = e.get("gap") or {}
+        return f"gaps|{e.get('symside')}|{g.get('fault')}|{g.get('metric')}|{g.get('status')}|{g.get('best')}"
+    if src == "coverage":
+        return f"coverage|{e.get('switch')}"
+    if src == "autopsy":
+        m = e.get("missing")
+        return f"autopsy|{e.get('symside')}|{json.dumps(m, sort_keys=True, default=str)[:160]}"
+    return f"{src}|{e.get('symside') or e.get('switch')}|{json.dumps(e, sort_keys=True, default=str)[:160]}"
+
+
+def _merge_evidence(p, new_ev):
+    """Replace-or-append by ev_sig; returns True when the signature is new."""
+    evs = p.get("evidence") or []
+    sigs = [ev_sig(e) for e in evs]
+    s = ev_sig(new_ev)
+    known = set(p.get("ev_sigs") or sigs)
+    is_new = s not in known
+    if s in sigs:
+        evs[sigs.index(s)] = new_ev
+    else:
+        evs.append(new_ev)
+    p["evidence"] = evs[-EVIDENCE_CAP:]
+    known.add(s)
+    p["ev_sigs"] = sorted(known)
+    p["n_evidence"] = len(known)
+    return is_new
+
+
+def normalize_proposal(p):
+    """One-time repair of pre-2026-10-13 blind appends: dedupe evidence, symsides = union, n_evidence = distinct."""
+    evs = p.get("evidence") or []
+    seen, out = {}, []
+    for e in evs:
+        s = ev_sig(e)
+        if s in seen:
+            out[seen[s]] = e
+        else:
+            seen[s] = len(out)
+            out.append(e)
+    p["evidence"] = out[-EVIDENCE_CAP:]
+    p["ev_sigs"] = sorted(set(p.get("ev_sigs") or []) | set(seen))
+    p["n_evidence"] = len(p["ev_sigs"])
+    ss = set(p.get("symsides") or [])
+    ss |= {e.get("symside") for e in out if isinstance(e, dict) and e.get("symside")}
+    p["symsides"] = sorted(x for x in ss if x)
+    return p
+
+
+def _rescore(p, o):
+    if o.get("score_mode") == "replace":
+        p["score"] = float(o["score"])
+        return
+    p["unit_score"] = max(
+        float(p.get("unit_score") or 0.0), float(o.get("score") or 0.0)
+    )
+    p["score"] = round(p["unit_score"] * max(1, len(p.get("symsides") or [])), 4)
+
+
 def upsert(backlog, observations):
     by_sig = {}
     for pid, p in backlog["proposals"].items():
         by_sig[tuple(p.get("sig") or ())] = pid
+        normalize_proposal(p)
     added = updated = 0
     for o in observations:
         sig = tuple(o["sig"])
+        new_ss = set(o.get("symsides") or []) | (
+            {o["symside"]} if o.get("symside") else set()
+        )
         if sig in by_sig:
             p = backlog["proposals"][by_sig[sig]]
             if p["status"] in ("PROMOTED", "RETIRED"):
                 continue
-            p["evidence"].append(o["evidence"])
-            p["evidence"] = p["evidence"][-20:]
-            p["n_evidence"] = p.get("n_evidence", 1) + 1
-            p["score"] = max(p.get("score", 0), o["score"])
-            p["symsides"] = sorted(
-                {e.get("symside") for e in p["evidence"] if e.get("symside")}
-            )
-            updated += 1
+            changed = _merge_evidence(p, o["evidence"])
+            before = set(p.get("symsides") or [])
+            p["symsides"] = sorted(before | new_ss)
+            if o.get("score_mode") == "replace":
+                p["title"] = o["title"]
+            _rescore(p, o)
+            if o.get("diagnostic_only"):
+                p["diagnostic_only"] = True
+            if changed or set(p["symsides"]) != before:
+                updated += 1
         else:
             backlog["counter"] += 1
             pid = f"INV-{backlog['counter']:04d}"
             by_sig[sig] = pid
-            backlog["proposals"][pid] = {
+            p = {
                 "id": pid,
                 "sig": list(sig),
                 "kind": o["kind"],
@@ -300,18 +506,124 @@ def upsert(backlog, observations):
                 "symside": o.get("symside", ""),
                 "direction": o.get("direction", ""),
                 "status": "OBSERVED",
-                "score": o["score"],
-                "evidence": [o["evidence"]],
-                "n_evidence": 1,
-                "symsides": [o["symside"]] if o.get("symside") else [],
+                "score": 0.0,
+                "evidence": [],
+                "n_evidence": 0,
+                "symsides": sorted(new_ss),
                 "spec_path": None,
                 "switch": None,
                 "history": [
                     {"ts": utcnow(), "from": None, "to": "OBSERVED", "note": "mined"}
                 ],
             }
+            if o.get("diagnostic_only"):
+                p["diagnostic_only"] = True
+            _merge_evidence(p, o["evidence"])
+            _rescore(p, o)
+            backlog["proposals"][pid] = p
             added += 1
     return added, updated
+
+
+TEMPLATE_SETS = (
+    os.path.join("SPREADSHEETS", "TEMPLATE_FINAL_NORM"),
+    "SPREADSHEETS",
+)
+TEMPLATE_FILES = (
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx",
+)
+
+
+def template_row_counts(data_dir, switches):
+    """READ-ONLY: count column-A rows per switch in each of the 8 templates. Never writes."""
+    out = {}
+    want = set(switches or [])
+    if not want:
+        return out
+    try:
+        import openpyxl
+    except Exception:
+        return out
+    for tset in TEMPLATE_SETS:
+        for fn in TEMPLATE_FILES:
+            path = os.path.join(data_dir, tset, fn)
+            if not os.path.exists(path):
+                continue
+            rel = os.path.join(tset, fn)
+            counts = {sw: 0 for sw in want}
+            try:
+                wb = openpyxl.load_workbook(path, read_only=True)
+            except Exception:
+                continue
+            try:
+                for ws in wb.worksheets:
+                    for (v,) in ws.iter_rows(min_row=3, max_col=1, values_only=True):
+                        if v in want:
+                            counts[v] += 1
+            finally:
+                wb.close()
+            out[rel] = counts
+    return out
+
+
+def queued_switches(data_dir):
+    p = os.path.join(data_dir, "data", "template_row_queue.json")
+    try:
+        q = json.load(open(p))
+    except Exception:
+        return set()
+    items = (
+        q
+        if isinstance(q, list)
+        else (q.get("queue") or q.get("entries") or q.get("rows") or [])
+    )
+    if isinstance(items, dict):
+        items = list(items.values())
+    return {
+        str(e.get("switch")) for e in items if isinstance(e, dict) and e.get("switch")
+    }
+
+
+def rows_status_for(counts, switches, queued):
+    """ROWS_INSTALLED only when every switch has rows in all 4 FINAL_NORM files present (opened, counted)."""
+    norm = {k: v for k, v in counts.items() if "TEMPLATE_FINAL_NORM" in k}
+    if norm and all(all(v.get(sw, 0) > 0 for v in norm.values()) for sw in switches):
+        return "ROWS_INSTALLED"
+    if any(v.get(sw, 0) > 0 for v in counts.values() for sw in switches):
+        return "ROWS_PARTIAL"
+    if switches and all(sw in queued for sw in switches):
+        return "ROWS_QUEUED"
+    return "ROWS_MISSING"
+
+
+def rows_check(data_dir, backlog):
+    """Annotate every WIRED+ proposal with real template row counts (read-only) -> rows_status."""
+    queued = queued_switches(data_dir)
+    res = {}
+    for pid, p in backlog["proposals"].items():
+        sws = list(p.get("switches") or ([p["switch"]] if p.get("switch") else []))
+        if not sws or p.get("status") not in ("WIRED", "TESTED", "PROMOTED"):
+            continue
+        counts = template_row_counts(data_dir, sws)
+        st = rows_status_for(counts, sws, queued)
+        prev = p.get("rows_status")
+        p["template_rows"] = counts
+        p["rows_status"] = st
+        p["rows_checked_utc"] = utcnow()
+        if prev != st:
+            p["history"].append(
+                {
+                    "ts": utcnow(),
+                    "from": prev,
+                    "to": st,
+                    "note": "rows-check (templates opened read-only)",
+                }
+            )
+        res[pid] = st
+    return res
 
 
 ORDER_PREAMBLE = """Paste this file into a Muse session running in the repo root. It is a complete §71 work
@@ -378,7 +690,7 @@ def render_order(prop, bible):
             f"1. Confirm `{sw}` is wired (SWITCH_BIBLE status + live/vec reads below)."
         )
         L.append(
-            f"2. `python3 tools/v15_switch_add.py --switch {sw} --tab {tab} --candidates {cands} --default <config-default> --venues both --sides both` (dry-run), review, then `--apply` after user unlocks the template."
+            f"2. Queue the rows in `data/template_row_queue.json` (switch {sw}, tab {tab}, candidates {cands}, default = config default); S1 chain step 1b (`tools/v15_template_row_intake.py`) installs them through `tools/v15_switch_add.py` on the template source host BEFORE the Mac pull, so they can never be overwritten."
         )
         L.append(
             "3. `python3 tools/build_switch_bible.py && python3 tools/verify_switch_bible.py` green for the switch; ledger-flip proof; pilot smoke."
@@ -401,6 +713,18 @@ def render_order(prop, bible):
         L.append(
             "4. Proof: re-screen shows cost gone (or retirement note with numbers)."
         )
+    elif p["kind"].startswith("AUTOPSY_"):
+        L.append(
+            f"## Task ({DIAG} autopsy rule — engine verification required before anything else)"
+        )
+        L.append("")
+        L.append(
+            "1. Re-measure the rule on real autopsy bases with v12_quick_engine evaluate_prepared_sanitized (tools/v15_switch_flip_study.py path); report d_gain/d_tim/d_dd/d_wr per cat_side."
+        )
+        L.append(
+            "2. If it holds out-of-sample (365D), extend the existing family (AUTOPSY_FAMILY_EXTEND: new TF/threshold candidates) or wire a new §71 switch (AUTOPSY_NEW_RULE). Hold rules must NEVER suppress FIXED_STOP / DC loss exits / hard stops."
+        )
+        L.append("3. Locked engine/config files need the user's unlock first.")
     else:
         fam = (p.get("sig") or ["", "", "GENERIC"])[2]
         L.append("## Task (full §71 new switch — Muse intelligence required)")
@@ -415,7 +739,7 @@ def render_order(prop, bible):
             "3. Registry + index: data/wiring/vec_function_registry.json entry, then build_switch_bible.py + verify_switch_bible.py green."
         )
         L.append(
-            "4. Rows: v15_switch_add.py dry-run, review, --apply (template unlock needed)."
+            "4. Rows: queue in data/template_row_queue.json (S1 chain step 1b -> tools/v15_template_row_intake.py -> v15_switch_add.py on S1); never write Mac template copies (the Mac pull overwrites them)."
         )
         L.append(
             "5. Proofs: backtest_v12_engine ledger-flip (flipped vs default) saved to data/invention/proofs/<id>.json {switch, symside, npz, gain_before, gain_after, valid}; pilot smoke; bible green; --fleet sync + md5."
@@ -542,13 +866,45 @@ def sweep_evidence(progress_dir, switch):
     }
 
 
+def sweep_evidence_multi(progress_dirs, switch):
+    """Union over several progress dirs: per sym_side, any positive delta in any dir counts once."""
+    per_pos, per_n, alld = set(), set(), []
+    dirs = (
+        [progress_dirs] if isinstance(progress_dirs, str) else list(progress_dirs or [])
+    )
+    for pd in _expand_dirs(dirs):
+        for f in glob.glob(os.path.join(pd, "*_v14_progress.json")):
+            try:
+                d = json.load(open(f))
+            except Exception:
+                continue
+            ss = d.get("symside") or os.path.basename(f)
+            for key, v in (d.get("done") or {}).items():
+                if not isinstance(v, dict) or f":{switch}=" not in key:
+                    continue
+                dl = v.get("naked_delta")
+                if dl is None:
+                    dl = v.get("delta")
+                if dl is None:
+                    continue
+                per_n.add(ss)
+                alld.append(float(dl))
+                if float(dl) > 1e-9:
+                    per_pos.add(ss)
+    return {
+        "n_syms": len(per_n),
+        "pos_sym": len(per_pos),
+        "mean_delta": (sum(alld) / len(alld)) if alld else 0.0,
+    }
+
+
 def promote_check(data_dir, progress_dir, pos_min=3, mean_min=0.0, retire_n=10):
     d = load_backlog(data_dir)
     out = []
     for pid, p in d["proposals"].items():
         if p["status"] != "TESTED" or not p.get("switch"):
             continue
-        ev = sweep_evidence(progress_dir, p["switch"])
+        ev = sweep_evidence_multi(progress_dir, p["switch"])
         p["sweep"] = ev
         if ev["pos_sym"] >= pos_min and ev["mean_delta"] > mean_min:
             p["history"].append(
@@ -601,18 +957,76 @@ def report(data_dir):
             )
             for p in top
         ],
+        "rows": {p["id"]: p.get("rows_status") for p in ps if p.get("rows_status")},
+        "diagnostic_only": sum(1 for p in ps if p.get("diagnostic_only")),
     }
+
+
+def _split(v):
+    return [x.strip() for x in str(v or "").split(",") if x.strip()]
+
+
+def default_dirs(dd):
+    home = os.path.expanduser("~")
+    return {
+        "autopsy": _split(os.environ.get("V15_INVENT_AUTOPSY_DIRS"))
+        or [
+            os.path.join(home, "v15_autopsy_*"),
+            os.path.join(dd, "data", "reports", "v15_autopsy_first"),
+        ],
+        "missed": _split(os.environ.get("V15_INVENT_MISSED_DIRS"))
+        or [
+            os.path.join(dd, "data", "reports", "v15_missed_trend"),
+            os.path.join(home, "v15_missed_trend"),
+        ],
+        "progress": _split(os.environ.get("V15_INVENT_PROGRESS_DIRS"))
+        or [os.path.join(dd, "data", "reports", "lifecycle_pilot")]
+        + newest_run_progress(int(os.environ.get("V15_INVENT_PROGRESS_RUNS", "3"))),
+    }
+
+
+def newest_run_progress(n):
+    home = os.path.expanduser("~")
+    runs = [
+        d
+        for d in glob.glob(os.path.join(home, "v15_run*", "progress"))
+        if os.path.isdir(d)
+    ]
+    runs.sort(key=lambda d: os.path.getmtime(d), reverse=True)
+    return runs[: max(0, n)]
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="observation-to-tested-switch invention backlog"
+        description="observation-to-tested-switch invention backlog (score = move x distinct sym_sides)"
     )
     ap.add_argument("--data-dir", default=str(ROOT))
+    ap.add_argument(
+        "--autopsy-dirs",
+        default=None,
+        help="comma list/globs (env V15_INVENT_AUTOPSY_DIRS; default ~/v15_autopsy_*)",
+    )
+    ap.add_argument(
+        "--progress-dirs",
+        default=None,
+        help="comma list/globs (env V15_INVENT_PROGRESS_DIRS; default lifecycle_pilot + newest 3 ~/v15_run*/progress)",
+    )
+    ap.add_argument(
+        "--missed-dirs",
+        default=None,
+        help="comma list/globs (env V15_INVENT_MISSED_DIRS; default data/reports/v15_missed_trend + ~/v15_missed_trend)",
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
     p1 = sub.add_parser("mine", help="scan observation sources into the backlog")
     p1.add_argument("--write", action="store_true")
     p1.add_argument("--progress-dir", default=None)
+    p1.add_argument(
+        "--min-syms",
+        type=int,
+        default=int(os.environ.get("V15_INVENT_MIN_SYMS", "3")),
+        help="autopsy rule needs >= N distinct sym_sides",
+    )
+    p1.add_argument("--no-rows-check", action="store_true")
     p2 = sub.add_parser("spec", help="render a §71 Muse work order")
     p2.add_argument("pid")
     p3 = sub.add_parser("ingest", help="validate a wired/tested landing")
@@ -625,10 +1039,21 @@ def main(argv=None):
     p4.add_argument("--progress-dir", default=None)
     p4.add_argument("--pos-min", type=int, default=3)
     p4.add_argument("--retire-n", type=int, default=10)
+    sub.add_parser(
+        "rows-check",
+        help="open the templates read-only and record real rows_status per WIRED proposal",
+    )
     sub.add_parser("report", help="backlog counts + top opportunities")
     a = ap.parse_args(argv)
     dd = a.data_dir
-    home = os.path.expanduser("~")
+    dflt = default_dirs(dd)
+    autopsy_dirs = _split(a.autopsy_dirs) or dflt["autopsy"]
+    missed_dirs = _split(a.missed_dirs) or dflt["missed"]
+    progress_dirs = (
+        ([a.progress_dir] if getattr(a, "progress_dir", None) else [])
+        or _split(a.progress_dirs)
+        or dflt["progress"]
+    )
     bible = {}
     try:
         bible = json.load(open(os.path.join(dd, "data", "SWITCH_BIBLE.json")))
@@ -636,20 +1061,10 @@ def main(argv=None):
         pass
     if a.cmd == "mine":
         obs = []
-        obs += scan_missed_trend(
-            [
-                os.path.join(dd, "data", "reports", "v15_missed_trend"),
-                os.path.join(home, "v15_missed_trend"),
-            ]
-        )
-        obs += scan_autopsy(
-            [
-                os.path.join(home, "v15_autopsy_first"),
-                os.path.join(dd, "data", "reports", "v15_autopsy_first"),
-            ]
-        )
-        pdir = a.progress_dir or os.path.join(dd, "data", "reports", "lifecycle_pilot")
-        obs += scan_gaps(sorted(glob.glob(os.path.join(pdir, "*_v14_progress.json"))))
+        obs += scan_missed_trend(_expand_dirs(missed_dirs))
+        obs += scan_autopsy(autopsy_dirs, min_syms=a.min_syms)
+        for pd in _expand_dirs(progress_dirs):
+            obs += scan_gaps(sorted(glob.glob(os.path.join(pd, "*_v14_progress.json"))))
         obs += scan_gaps(
             sorted(
                 glob.glob(
@@ -661,20 +1076,33 @@ def main(argv=None):
             os.path.join(dd, "data", "reports", "switch_bible_verify_latest.json"),
             bible,
         )
+        kinds = defaultdict(int)
+        for o in obs:
+            kinds[o["kind"]] += 1
+        n_auto = sum(
+            1 for o in obs if (o.get("evidence") or {}).get("src") == "autopsy"
+        )
+        print(
+            f"[mine] sources autopsy={_expand_dirs(autopsy_dirs)[:6]}{'...' if len(_expand_dirs(autopsy_dirs)) > 6 else ''} progress={len(_expand_dirs(progress_dirs))} dirs missed={_expand_dirs(missed_dirs)}"
+        )
         if not a.write:
-            kinds = defaultdict(int)
-            for o in obs:
-                kinds[o["kind"]] += 1
             print(
-                f"[mine] dry-run: {len(obs)} observations {dict(kinds)} (use --write to persist)"
+                f"[mine] dry-run: {len(obs)} observations {dict(kinds)} autopsy_rules={n_auto} (use --write to persist)"
             )
             return 0
         d = load_backlog(dd)
         added, updated = upsert(d, obs)
+        rows = {} if a.no_rows_check else rows_check(dd, d)
         save_backlog(dd, d)
         print(
-            f"[mine] observations={len(obs)} added={added} updated={updated} proposals={len(d['proposals'])}"
+            f"[mine] observations={len(obs)} {dict(kinds)} autopsy_rules={n_auto} added={added} updated={updated} proposals={len(d['proposals'])} rows={rows}"
         )
+        return 0
+    if a.cmd == "rows-check":
+        d = load_backlog(dd)
+        rows = rows_check(dd, d)
+        save_backlog(dd, d)
+        print(f"[rows-check] {rows}")
         return 0
     if a.cmd == "spec":
         out, msg = spec_proposal(dd, bible, a.pid)
@@ -687,17 +1115,21 @@ def main(argv=None):
     if a.cmd == "promote-check":
         out = promote_check(
             dd,
-            a.progress_dir or os.path.join(dd, "data", "reports", "lifecycle_pilot"),
+            progress_dirs,
             a.pos_min,
             0.0,
             a.retire_n,
         )
-        print(f"[promote-check] transitions={len(out)}")
+        print(
+            f"[promote-check] transitions={len(out)} progress_dirs={len(_expand_dirs(progress_dirs))}"
+        )
         for pid, to, ev in out:
             print(f"  {pid} -> {to} {ev}")
         return 0
     r = report(dd)
-    print(f"[report] n={r['n']} {r['by_status']} updated={r['updated']}")
+    print(
+        f"[report] n={r['n']} {r['by_status']} updated={r['updated']} diagnostic_only={r['diagnostic_only']} rows={r['rows']}"
+    )
     for t in r["top"]:
         print(f"  {t[0]} {t[1]} {t[2]} score={t[3]} :: {t[4]}")
     return 0

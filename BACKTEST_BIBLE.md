@@ -1489,6 +1489,29 @@ Mon 2026-10-05 06:00 UTC: best (newest-round) 30D sheet of every sym_side → 36
   sequence with step deltas, drops) and merges `endgame_knowledge.json`. No look-ahead: knowledge loads at cycle entry
   from PRIOR workbooks only; the current run appends at exit. Resume-keyed `(symside|set-hash)`, corrupt files fall back
   to alphabetical, never fatal. Guard tests: `tests/test_v15_endgame.py`.
+- **ADOPT GUARD (USER 2026-10-13 — measured: run31/32 endgame ledger sum lift −1046.5pp over 551 boards on 4 hosts, 258
+  negative boards ALL adopted; s2/s5/s6 logs since 10-11: ENDGAME-PROOF Σ −1209.1pp (364 negative), REPAIR int-truncation
+  Σ −205.4pp, DIAG `status_up` accepts Σ −398.5pp on 84 boards; FOCUS +169.4, FINAL_RECHECK +835.6, COMPLIANCE 0 events,
+  all never negative).** The STRIP base is DISCOVERY ONLY — never adopted. The reapplied set replaces the entry set only
+  when a fresh eval of exactly that set (`ENDGAME_ADOPT`) is valid, passes the trades floor + TIM band (same escapes as
+  `trades_guard_veto`/`tim_guard_veto`) and gain ≥ the fresh legal entry gain (`ENDGAME_ENTRY`, or the post-REPAIR gain
+  when illegal values were repaired — REPAIR now also tries the ceil variant of int counts and keeps the better legal set).
+  Otherwise the entry set stays unchanged: `[ENDGAME-REJECT] lift x`. Same guard on `_diagnose_repair` adoption
+  (`[DIAG-REJECT]`), whose only exception is a status repair of an origin that fails `_qualifies_30d` (365D
+  qualification alone never buys 30D gain — live before 365D). `progress["best_seen"]` holds the best fresh-verified
+  guard-passing set of the board (same NPZ; FINAL_RECHECK / ENDGAME_ENTRY / ENDGAME_ADOPT / DIAG_BASE / DIAG_ADOPT); the
+  BEST-SEEN publish gate (after diagnose, before DONE save) re-evaluates both fresh and publishes best_seen when it is
+  strictly better and qualifies (`[BEST-SEEN-FALLBACK]`, C dropped for keys back at default, rest in `c_unplaced`).
+  Kill switches: `V15_ENDGAME_ADOPT_GUARD`, `V15_DIAG_ADOPT_GUARD`, `V15_BEST_SEEN_GATE` (all default 1). Pure helpers
+  `_endgame_adopt_verdict` / `_endgame_best_seen_note` are unit-tested.
+- **FLEET KNOWLEDGE (USER 2026-10-13).** EV order reads `data/endgame/endgame_knowledge_fleet.json` first (override
+  `V15_ENDGAME_KNOWLEDGE`; per key the cat_side stats when n≥3, else fleet-global — `_endgame_fleet_view`), falling back to the
+  per-campaign `PROGRESS_DIR/endgame_knowledge.json` (still the local write target). Built by
+  `tools/v15_endgame_knowledge_merge.py --pull --push` on S1 (chain step 4e + hourly cron `23 * * * *` `# V15_ENDGAME_MERGE`,
+  flock `/tmp/v15_endgame_merge.lock`, nice): rsyncs every worker's `~/v15_run*/progress/endgame_ledger.jsonl` to
+  `data/endgame/ledgers/<host>/`, dedupes by (key, ts), writes `workbooks`/`keys`/`by_cat_side`, pushes to every worker's
+  `<root>/data/endgame/` md5-verified. Consumer API: `load_ev(cat_side) -> {key: (n, mean_delta, pos_rate)}`. Ledger rows now
+  carry `cat_side, ref_gain, cand_gain, cand_lift, rejected`. Tests: `tests/test_v15_endgame_knowledge_merge.py`.
 
 ---
 
