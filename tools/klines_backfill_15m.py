@@ -81,9 +81,9 @@ def _ms(ts: str) -> int:
 TF_SUFFIX = {"15m": "15m", "1h": "1h", "4h": "4h", "1d": "D"}
 
 
-def backfill(sym: str, target: int, apply: bool, cache_dir: str = "klines_cache", max_pages: int = 6, interval: str = "15m") -> dict:
+def backfill(sym: str, target: int, apply: bool, cache_dir: str = "klines_cache", max_pages: int = 6, interval: str = "15m", suffix: str = "") -> dict:
     suf = TF_SUFFIX.get(interval, interval)
-    p = ROOT / cache_dir / f"{sym}_{suf}.json"
+    p = ROOT / cache_dir / f"{sym}_{suf}{suffix}.json"
     try:
         rows = json.loads(p.read_text())
     except Exception:
@@ -123,25 +123,27 @@ def main():
     ap.add_argument("--pages", type=int, default=6, help="max REST pages (1500 bars each) to fetch backwards")
     ap.add_argument("--interval", default="15m", choices=("15m", "1h", "4h", "1d"), help="Binance interval to backfill")
     ap.add_argument("--forward", action="store_true", help="forward-fill tails newer than cache tail (default: backward backfill older than cache head)")
+    ap.add_argument("--suffix", default="", help="filename suffix before .json (e.g. .usdc_pure)")
     a = ap.parse_args()
     if a.forward and not a.symbols:
         suf = TF_SUFFIX.get(a.interval, a.interval)
-        a.symbols = sorted(p.name[: -len(f"_{suf}.json")] for p in (ROOT / a.cache_dir).glob(f"*_{suf}.json"))
+        pat = f"*_{suf}{a.suffix}.json"
+        a.symbols = sorted(p.name[: -len(f"_{suf}{a.suffix}.json")] for p in (ROOT / a.cache_dir).glob(pat))
     for s in a.symbols or universe():
         tgt = max(a.target, TOKENISED_TARGET) if _is_tokenised(s) else a.target
         try:
             if a.forward:
-                print(json.dumps(forward_fill(s, a.apply, a.cache_dir, a.pages, a.interval)), flush=True)
+                print(json.dumps(forward_fill(s, a.apply, a.cache_dir, a.pages, a.interval, a.suffix)), flush=True)
             else:
-                print(json.dumps(backfill(s, tgt, a.apply, a.cache_dir, a.pages, a.interval)), flush=True)
+                print(json.dumps(backfill(s, tgt, a.apply, a.cache_dir, a.pages, a.interval, a.suffix)), flush=True)
         except Exception as e:
             print(json.dumps({"sym": s, "error": repr(e)[:160]}), flush=True)
 
 
-def forward_fill(sym: str, apply: bool, cache_dir: str = "klines_cache_backtest", max_pages: int = 6, interval: str = "15m") -> dict:
+def forward_fill(sym: str, apply: bool, cache_dir: str = "klines_cache_backtest", max_pages: int = 6, interval: str = "15m", suffix: str = "") -> dict:
     """Fetch bars NEWER than the cache tail (startTime=tail+1). Missing file -> no-op (nothing to extend)."""
     suf = TF_SUFFIX.get(interval, interval)
-    p = ROOT / cache_dir / f"{sym}_{suf}.json"
+    p = ROOT / cache_dir / f"{sym}_{suf}{suffix}.json"
     try:
         rows = json.loads(p.read_text())
     except Exception:

@@ -1948,3 +1948,55 @@ no longer fills first). `tools/v15_director.py` leads the priority file with the
 phase) and prints phase + DAILY list in `DIRECTOR_STATUS.md`. `tools/v15_daily_chain_s1.sh` step 4d regenerates the causal
 profile + ledger daily (ancillary, never fails the chain) and step 6 pushes `data/causal/switch_causal_profile.json` to the
 workers. Tests `tests/test_v15_sched_venue_phase.py`.
+
+## 88. FIXED_STOP — NON-NEGOTIABLE FROZEN-AT-ENTRY STOP (USER 2026-10-12/13 — ang ALGOUSDT_LONG −46% with no stop anywhere)
+
+**Rule (simple fact, not a switch):** at first entry, freeze LONG `dc_low_15m × 0.9975` (SHORT `dc_high_15m × 1.0025`); entry-price fallback when the channel is missing. Evaluated on EVERY vec bar, EVERY live bar, and the live backtest (same `vec_decisions/fixed_stop.py` core — zero config/QuickConfig/template surface, so §17 parity is vacuous and §14 greedy/delta mechanics are unchanged in shape). NO veto, NO min-hold, NO mode gate.
+
+**Two legs:** (1) software leg exits the regular (maker-first) way at the frozen level, reason `FIXED_STOP`; (2) exchange leg presets a STOP_MARKET backstop 0.05% beyond (`×0.9995` LONG / `×1.0005` SHORT, `closePosition`, `MARK_PRICE`) so a dead system still exits taker. Crypto wires via Binance **algo-conditional** orders (`-4120` on `/fapi/v1/order`); stocks via Tradier GTC stop. Live loops self-heal (adopt/peer-dedupe, cancel-on-close, orphan sweep); `positions_truth` bypasses PLACE/CANCEL (no position change expected); parity gates treat `FIXED_STOP` as emergency.
+
+**Baseline honesty (§15/§19):** the stop is a REAL ledger change — baselines and finals recomputed under it WILL differ from pre-stop sheets. That is the fix working, not drift. Never present pre-stop gains as current; the hold-up batch (`data/reports/fixed_stop_holdup/`) recomputes baseline+final per sym_side under the stop (HOLDS = recomputed final ≥ recomputed baseline). Vec models the software leg only (perfect execution); the 0.05% is a live-only placement offset.
+
+**Provenance:** engine md5 `27489154` (v12), tests `tests/test_fixed_stop.py` (14 green Mac+S1), A/B old-vs-new on S1 NPZs (FIXED_STOP binds with exact frozen math), live algo backstops verified on the exchange per account.
+
+
+## 89. ILLEGAL RE-STAMP + JIT NPZ DISPATCH + THROUGHPUT (USER 2026-10-13)
+
+**(1) The illegal re-stamp — STOPPED.** `tools/v15_red_fixer.py` (S1 cron `*/10`) and `tools/red_cell_monitor_and_fixer.py`
+re-opened PUBLISHED `SPREADSHEETS/V15_V16_CELL_BY_CELL/*_30d_matrix.xlsx` and re-saved them, giving OLD results (crypto
+included) a fresh mtime with no recomputation. Measured 2026-10-13 00:45Z: **38 sheets re-stamped in 2 h while only 2
+boards actually finished** (`lsof` caught the writer mid-save on `DOGEUSDC_SHORT_30d_matrix.xlsx.<pid>.tmp`). Beyond the
+provenance lie it corrupted scheduling: `_fresh_computed_sides` (the 4-day skip) and the cadence ledger both read mtime,
+so re-stamped boards looked freshly computed and were skipped. **Both crons are disabled** (`#RESTAMP_STOPPED_20261013#`,
+crontab backup `backups/crontab_s1_before_stop_restamp_*`). **Law: a published sheet is immutable provenance — nothing but
+a real recomputation may change its mtime.** Any tool that must touch one restores the original mtime (`os.utime`).
+`tools/v15_symside_ledger.py` is now re-stamp-proof: it takes the board's own `result_done_utc` as the cadence clock
+(`mtime_src`, `file_mtime` kept for audit) and only falls back to file mtime when the board recorded none.
+
+**(2) JIT NPZ travels WITH the dispatch (USER: "the npz goes WITH THE PUSH of the sym_side, it gets calculated on s1
+before dispatching").** `npz_prep()` in `tools/v15_fleet_scheduler.py` used to run `tools/v15_npz_prep.py` ON THE TARGET
+host and only for stocks. It now runs on S1 (the scheduler host = the NPZ source) and **pushes** the refreshed NPZ to the
+target with the tool's own md5 verify (`--push <ip>`; a local target needs no push), for **every venue**
+(`V15_SCHED_NPZ_REFRESH` defaults to 1). `ok=False` holds the sym_side out of the dispatch instead of burning hours on a
+stale tail. NOTE `tools/v15_npz_prep.py` is the Tradier/stocks gate (klines cache -> regen -> guard -> atomic install ->
+push); crypto tails are owned by the Binance refresher, so for crypto the dispatcher verifies the tail age instead of
+running the Tradier gate (which has no crypto cache and would falsely hold it).
+
+**(3) Throughput — why the fleet produced ~1 board/hour on 4 hosts.** Measured on PEP_SHORT (3 h, zero output):
+`V15_POSSYM_SAMPLING=1` in the launch env skipped **2412 of 3383 rows entirely**, leaving 568 hollow rows ->
+`[COMPLETENESS-GATE] RULE#3 refusing publish` -> `[RUN-FAILED-KEPT-BEST]`. §86 had already established this
+("one full fill publishes first try") and the flag had been set back to 1. **The launch env now carries
+`V15_POSSYM_SAMPLING=0`** — the §87 prior policy does the pruning and its skips are SETTLED (never hollow), so speed no
+longer depends on sampling. Post-stages are capped in the launch env (`V15_DIAG_REPAIR_S=300`, `V15_ENDGAME_S=240`,
+`V15_FOCUS_S_WINNER=300`, `V15_FOCUS_S_MEDIOCRE=150`) after DIAG spent 816 s / 4313 evals on PEP_SHORT and changed
+nothing. Queue depth: cadence deferral is env-tuned for a push (`V15_TIER_DEFER_M_D=1 V15_TIER_DEFER_L_D=2`) and the
+non-winner quota is now tunable (`V15_NONW_QUOTA_DIV`, 1 = no quota) so a free paid host is never starved while
+winners still sort first. Measured after the fix: fills run 15-30 min (EGLDUSDT_SHORT 1200 rows / 345 s).
+
+**(4) The fleet scheduler is the ONLY organizer (USER 2026-10-13).** It owns dispatch + JIT NPZ + the chain; the daily
+chain (§87 step 4d) owns avg-delta, template rewrites, the causal profile and the ledger. A second cron that merely
+"keeps N tests running" is forbidden — one was added during this push and removed the same hour. Admission no longer
+drops a candidate silently: `skipped_no_actions` and `skipped_pair_gate` join `skipped_unready` / `skipped_venue_only` /
+`skipped_quota` in the tick log, so an idling fleet always names its own blocker.
+`tools/v15_push_dispatch.sh` + `tools/v15_push_topup.sh` remain as MANUAL operator tools (NPZ-verified push, OOM/load
+throttled from `fleet_hosts_final.json`); they are never crons.

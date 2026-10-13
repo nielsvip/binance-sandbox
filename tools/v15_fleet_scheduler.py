@@ -1699,8 +1699,11 @@ def tick(args, cfg, now):
             acts = [a for a in acts if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts)]
             acts = [a for a in acts if f"{a['sym']}_{a['side']}" not in running]  # USER 2026-10-11: never launch a side with a live pilot anywhere (kills 5x dup stacks; backfill had this, steal gained it same turn)
             if not acts:
+                # USER 2026-10-13: never drop a candidate silently — an idling fleet must name its own blocker.
+                log.setdefault("skipped_no_actions", []).append(f"{h['name']}:{sym}")
                 continue
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
+                log.setdefault("skipped_pair_gate", []).append(f"{h['name']}:{sym}:" + str([a.get('side') for a in acts]))
                 continue
             if needs_slot and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
                 pr = npz_prep(h, sym)

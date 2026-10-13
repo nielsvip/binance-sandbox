@@ -58,7 +58,16 @@ EOF
   else
     echo "[npz-local] $SS tail_lag=${LAG}min (s1 is the source, no push needed)"
   fi
-  # 3) launch
+  # 3) OOM floor on the target right before launching (USER 2026-10-13): a host under its floor gets no new board,
+  # whatever the caller asked for. Cheap and fail-closed — an OOM kill costs a whole board plus an attempt.
+  OOM_FLOOR="${V15_PUSH_OOM_FLOOR_MB:-2500}"
+  if [ "$IS_LOCAL" = 1 ]; then MEMAV=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+  else MEMAV=$($SSH "niels@$H" "awk '/MemAvailable/{print int(\$2/1024)}' /proc/meminfo" 2>/dev/null); fi
+  MEMAV="${MEMAV:-0}"
+  if [ "$MEMAV" -lt "$OOM_FLOOR" ] 2>/dev/null; then
+    echo "[oom-hold] $SS -> $H MemAvailable=${MEMAV}MB < floor ${OOM_FLOOR}MB — not launched"
+    continue
+  fi
   ENVV="V15_START_OVERRIDES=\$(test -f ~/v15_autopsy_first/${SS}_autopsy_base.json && echo ~/v15_autopsy_first/${SS}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_DIAG_REPAIR_S=300 V15_ENDGAME_S=240 V15_FOCUS_S_WINNER=300 V15_FOCUS_S_MEDIOCRE=150 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR=$PDIR V15_DEFAULTS_ROUND=\$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=\$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"
   TPL="SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_${CAT}_${SIDE}.xlsx"
   BODY="cd ~/binance-sandbox && mkdir -p logs && $ENVV nice -n 5 .venv/bin/python -u v15_pilot.py --sym-side $SS --template $TPL --seq-mode worst2best --window-days 30 --vector-only --workers $W"

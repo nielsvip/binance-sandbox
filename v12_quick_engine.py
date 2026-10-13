@@ -16648,6 +16648,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _atf_entry_block = _atv_block
     except Exception:
         _atf_entry_block = None
+    # 2026-10-13 VETO-FINAL stashes (parity): hard-veto masks computed at their home blocks, re-applied after every OR-source just before the sim loop (post-veto ORs otherwise restore veto-removed bars — measured AAPL_SHORT teda-restore 187 bars).
+    _lks_ok_final = None
+    _kg2_ok_final = None
+    _e921_ok_final = None
     # b6: STOCKS live KINDERGARTEN/EMA_9_21 hard veto (tradier_manage.should_enter_long/short) applied on the FINAL entry signal (after every OR'd family) — see vec_decisions/live_kindergarten_stocks.py
     if (
         str(getattr(cfg, "MODE", "crypto")) == "tradier"
@@ -16661,6 +16665,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _lks_ok is not None:
                 entry_sig = entry_sig & _lks_ok
                 _entry_filter_masks.append(_lks_ok)
+                _lks_ok_final = np.asarray(_lks_ok, dtype=bool)
         except Exception:
             pass
     # N5 006: STOCK trend gates (WT_D_EXHAUST, HTF_ALIGNMENT/D_TREND, STRENGTH_FILTER, CT_*, CLENOW) — optional, default OFF, on the FINAL entry signal (inside the pure-AND region captured by REENTRY_APPLY_ENTRY_GATES_ENABLED => reentries pass them only when that switch is ON)
@@ -16726,6 +16731,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _kg2_ok = ~_lkg2.kg_block_mask(npz, n, is_long, close, _safe, cfg)
             entry_sig = entry_sig & _kg2_ok
             _entry_filter_masks.append(_kg2_ok)
+            _kg2_ok_final = np.asarray(_kg2_ok, dtype=bool)
         except Exception:
             pass
     # [FLT2 q001] crypto EMA_9_21 cumulative entry gate (live: ez_manage.execute_now fresh-OPEN chokepoint, vec_decisions.kg_entry_gate.ema921_pass) on the FINAL entry signal.
@@ -16737,6 +16743,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _e921_ok is not None:
                 entry_sig = entry_sig & np.asarray(_e921_ok, dtype=bool)
                 _entry_filter_masks.append(np.asarray(_e921_ok, dtype=bool))
+                _e921_ok_final = np.asarray(_e921_ok, dtype=bool)
         except Exception:
             pass
     # [FLT q001] live execute_now (ez_manage 29868 COUNTER_TREND_ADD_BLOCK, 29914 EMA_BLANKET_FILTER) gates EVERY fresh OPEN incl. MOMENTUM_WATCHDOG; the vector only masked
@@ -18053,6 +18060,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _entry_or_srcs.append(("B_WT_TOP", _wte_pre_mask))
     except Exception:
         pass
+    # 2026-10-13 VETO-FINAL (parity): re-apply the stashed KINDERGARTEN/EMA_9_21 hard-veto masks on the FINAL entry signal, after every OR-source (twin_entries_dead_a/b, twin_yellow_filters, ported_reentry, gr_htf_direct, wt_top_entry). Live vetoes the entry DECISION (tradier_manage.should_enter_long/short, ez_manage check_entry_alignment/execute_now); a veto applied before later ORs is silently undone (measured: AAPL_SHORT TF=D veto mask all-False yet 30 trades — teda OR restored 187 bars). No-op when vetoes disabled (stashes None) or later ORs inert. Masks NOT re-appended to _entry_filter_masks (single-count for REENTRY_ENTRY_FILTER_MIN_PASS; RAG capture above already includes the first application).
+    if _lks_ok_final is not None:
+        entry_sig = entry_sig & _lks_ok_final
+    if _kg2_ok_final is not None:
+        entry_sig = entry_sig & _kg2_ok_final
+    if _e921_ok_final is not None:
+        entry_sig = entry_sig & _e921_ok_final
     for i in range(n):
         px = close[i]
         if px <= 0:
