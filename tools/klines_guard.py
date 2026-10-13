@@ -25,6 +25,8 @@ STATE = ROOT / "data" / "klines_guard_state.json"
 SNAP = ROOT / "klines_cache_backtest" / ".guard_snap"
 ALERT = ROOT / "data" / "klines_guard_alert.json"
 MIN_KEEP_DAYS = 400
+# USER 2026-10-13: staging copies (gateway/Mac feeds) roll by design — guarding them reverted fresh bars every 5 min
+STAGING_DIRS = {"gateway", "macbook", "backups", "consolidated_klines"}
 
 
 def span_of(rows):
@@ -69,7 +71,7 @@ def snapshot_files():
     out = []
     for t in TARGETS:
         if t.is_dir():
-            out += [p for p in t.rglob("*.json") if ".guard_snap" not in p.parts and ".tmp" not in p.name]
+            out += [p for p in t.rglob("*.json") if ".guard_snap" not in p.parts and ".tmp" not in p.name and not (set(p.relative_to(t).parts[:-1]) & STAGING_DIRS)]
     return out
 
 

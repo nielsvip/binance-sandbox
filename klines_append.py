@@ -17,8 +17,11 @@ import argparse, json, sys, time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
-PRIMARY = REPO / "klines_cache"
+# USER 2026-10-13: S1 never fetches — it appends the always-current gateway + Mac klines onto its own big files.
+# (klines_cache_backtest is a symlink to klines_cache on S1, so the old PRIMARY=klines_cache appended a file onto itself.)
+PRIMARY = REPO / "klines_cache" / "gateway"
 BACKUP = REPO / "klines_cache_gateway"
+MACBOOK = REPO / "klines_cache_macbook"
 TARGET = REPO / "klines_cache_backtest"
 SYMBOLS_JSON = REPO / "symbols.json"
 VALID_TFS = ("1m", "3m", "15m", "1h", "4h", "D", "W", "M")
@@ -57,7 +60,7 @@ def merge_klines(existing: list[dict], fresh: list[dict]) -> tuple[list[dict], i
 def gather_fresh(name: str) -> list[dict]:
     """Read primary; fill any timestamp gaps from backup."""
     primary = load_json_list(PRIMARY / name)
-    backup = load_json_list(BACKUP / name)
+    backup = load_json_list(BACKUP / name) + load_json_list(MACBOOK / name)
     if not primary:
         return backup
     if not backup:
@@ -77,7 +80,7 @@ def filenames_to_process(symbols: list[str] | None) -> list[str]:
     else:
         roots = None
     seen: set[str] = set()
-    for d in (PRIMARY, BACKUP):
+    for d in (PRIMARY, BACKUP, MACBOOK):
         if not d.exists():
             continue
         for p in d.glob("*_*.json"):

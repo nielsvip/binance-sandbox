@@ -1791,7 +1791,7 @@ def tick(args, cfg, now):
                 # USER 2026-10-13 V16: a rebuild here archived whole boards (NPZ-CHANGED-REFILL, 120k rows wiped fleet-wide)
                 # or tripped the FINAL midrun-swap refusal of a running sibling. Fresh boards still get the JIT NPZ.
                 log.setdefault("npz_frozen", []).append(f"{h['name']}:{sym}:{_frz_why}")
-            elif needs_slot and os.environ.get("V15_SCHED_DISPATCH_NPZ", "0") == "1" and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: never wait on an NPZ at dispatch — run on what the host has  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
+            elif needs_slot and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: NPZ is calculated on the latest S1 klines right before a symbol is sent  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
                 pr = npz_prep(h, sym)
                 if pr is not None and not pr.get("ok"):
                     log["skipped_unready"][sym] = f"{h['name']}: npz_prep {pr.get('reason')}"
