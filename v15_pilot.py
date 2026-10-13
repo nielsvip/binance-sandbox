@@ -8648,6 +8648,13 @@ def main():
             flags_md.unlink()
     except Exception:
         pass
+    # USER 2026-10-12: NO missing bar up to pilot start — refresh-and-go the run's NPZ
+    # to the latest bar BEFORE stamping (loud on failure, never blocks the pilot).
+    try:
+        from tools.v15_npz_ensure import ensure as _npz_ensure0
+        _npz_ensure0([new_symside])
+    except Exception as _npz_e0:
+        print(f"[NPZ-ENSURE-LOUD] {new_symside}: hook failed ({_npz_e0}) — proceeding", flush=True)
     # USER 2026-10-03 RULE#4: stamp the NPZ this run measures on — done rows are valid only on it
     try:
         from tools.v15_row_guards import npz_identity_for_symside as _npz_id0, short_npz_id as _short_npz0

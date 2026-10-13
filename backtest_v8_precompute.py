@@ -931,7 +931,7 @@ def _source_score(df, tf, mode, now_ts):
     else:
         sec = {"15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "W": 604800, "M": 2592000}.get(tf, 900)
         latest_closed = (now_ts // sec) * sec - sec
-        tail_ok = 0 <= (latest_closed - last) <= 2 * sec
+        tail_ok = (latest_closed - 2 * sec) <= last <= now_ts
     return (tail_ok, len(df), last)
 
 

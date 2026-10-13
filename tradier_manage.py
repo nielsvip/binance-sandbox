@@ -34,6 +34,7 @@ from zoneinfo import ZoneInfo
 import vec_decisions.shared_zone
 import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
 import vec_decisions.noloss_hold as _noloss_hold  # 2026-10-04 NOLOSS/STOP_LOSS twins (shared with v12_quick_engine)
+import vec_decisions.fixed_stop as _fixed_stop_core  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core (shared with v12/ez_manage/service)
 import vec_decisions.bb_stoch_exits as _bb_stoch_exits  # 2026-10-04 BB band-touch/stoch-cross twins (shared with v12_quick_engine)
 import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
 import vec_decisions.twin_exits_dead as _twin_exits_dead  # 2026-10-04 DEAD exit/entry twins (shared with v12_quick_engine)
@@ -14593,6 +14594,71 @@ async def process_position(
                         return f"VIGILANCE_DC4_{_vg_tf}_CLOSED"
         except Exception as _vg_e:
             logger.warning(f"[VIGILANCE] probe err {position_key}: {_vg_e}")
+        # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no veto, evaluated on EVERY bar. Maker-first software leg; Tradier stop-market backstop (GTC, 0.05% beyond) ensured below.
+        try:
+            if (
+                has_position
+                and position is not None
+                and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
+            ):
+                try:
+                    _fx_lvmap = getattr(trade_manager, "_fixed_stop_levels", None)
+                    if not isinstance(_fx_lvmap, dict):
+                        _fx_lvmap = {}
+                        trade_manager._fixed_stop_levels = _fx_lvmap
+                except Exception:
+                    _fx_lvmap = {}
+                try:
+                    _fx_oa = getattr(position, "opened_at", "")
+                    _fx_sig = str(_fx_oa) if _fx_oa else f"ep{safe_float(getattr(position, 'entry_price', 0))}"
+                except Exception:
+                    _fx_sig = ""
+                _fx_have = _fx_lvmap.get(position_key) if isinstance(_fx_lvmap.get(position_key), dict) else None
+                _fx_lvl = float((_fx_have or {}).get("level", 0) or 0) if (_fx_have and str(_fx_have.get("sig", "")) == _fx_sig) else 0.0
+                if _fx_lvl <= 0:
+                    _fx_lvl = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0)))
+                    if _fx_lvl > 0:
+                        _fx_lvmap[position_key] = {"level": _fx_lvl, "sig": _fx_sig}
+                        try:
+                            trade_manager._fixed_stop_registry_save()
+                        except Exception:
+                            pass
+                if _fixed_stop_core.breached(is_long, current_price, _fx_lvl):
+                    _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+                    logger.critical(
+                        f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_lvl:.6f} g={_fx_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)"
+                    )
+                    await queue_trade_action(
+                        order_queue,
+                        trade_manager,
+                        position_key,
+                        "CLOSE",
+                        f"FIXED_STOP_{'LONG' if is_long else 'SHORT'}_px{current_price:.6f}_lvl{_fx_lvl:.6f}_g{_fx_gain:.2f}",
+                        100.0,
+                        override_qty=999999,
+                    )
+                    return f"FIXED_STOP_CLOSED"
+                try:
+                    _fx_ens = getattr(trade_manager, "ensure_fixed_stop_backstop_tradier", None)
+                    if _fx_ens is not None:
+                        asyncio.create_task(_fx_ens(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_fx_lvl, current_price=current_price))
+                except Exception:
+                    pass
+                try:
+                    _fx_now = time.time()
+                    _fx_smap = getattr(trade_manager, "_fixed_stop_sweep_ts", None)
+                    if not isinstance(_fx_smap, dict):
+                        _fx_smap = {}
+                        trade_manager._fixed_stop_sweep_ts = _fx_smap
+                    if _fx_now - float(_fx_smap.get(account_key, 0.0) or 0.0) > 60:
+                        _fx_smap[account_key] = _fx_now
+                        _fx_sw = getattr(trade_manager, "sweep_fixed_stops_tradier", None)
+                        if _fx_sw is not None:
+                            asyncio.create_task(_fx_sw(account_key))
+                except Exception:
+                    pass
+        except Exception as _fx_e:
+            logger.warning(f"[FIXED_STOP] {position_key} probe err: {_fx_e}")
         # 2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP: DC CHANNEL BREACH (ALL ACCOUNTS).
         # LONG close <= dc_low_TF, SHORT close >= dc_high_TF where TF = DC_HARD_STOP_TF (4h|D) per sym_side. Gain/age-agnostic, no veto, HARD_STOP.
         # Monitor: if 4h kills results for some symbols, D (wider) is chosen per sym_side via TEMPLATE/hustle.
@@ -43225,6 +43291,211 @@ class TradierTradeManager:
             # Critical log to see why it crashed if it gets past the internal tries
             logger.error(f"get_current_price crash for {symbol}: {e}")
             return None, None
+
+    def _fixed_stop_registry_path(self):
+        try:
+            import pathlib as _pl
+            base = getattr(config, "BASE_PATH", None) or getattr(config_tradier, "BASE_PATH", None) or "."
+            return str(_pl.Path(str(base)) / "data" / "fixed_stop_registry_tradier.json")
+        except Exception:
+            return "data/fixed_stop_registry_tradier.json"
+
+    def _fixed_stop_registry_load(self):
+        try:
+            reg = getattr(self, "_fixed_stop_orders", None)
+            if isinstance(reg, dict) and reg:
+                return reg
+            reg = {}
+            try:
+                with open(self._fixed_stop_registry_path(), "r") as _f:
+                    _d = json.load(_f) or {}
+                if isinstance(_d, dict):
+                    for _k, _v in (_d.get("orders") or {}).items():
+                        if isinstance(_v, dict) and _v.get("orderId"):
+                            reg[str(_k)] = _v
+                    _lv = getattr(self, "_fixed_stop_levels", None)
+                    if not isinstance(_lv, dict) or not _lv:
+                        _lv = {}
+                        for _k, _v in (_d.get("levels") or {}).items():
+                            if isinstance(_v, dict) and float(_v.get("level", 0) or 0) > 0:
+                                _lv[str(_k)] = _v
+                        self._fixed_stop_levels = _lv
+            except Exception:
+                pass
+            self._fixed_stop_orders = reg
+            return reg
+        except Exception:
+            return {}
+
+    def _fixed_stop_registry_save(self):
+        try:
+            import json as _js
+            import os as _os
+            _p = self._fixed_stop_registry_path()
+            _d = {"orders": getattr(self, "_fixed_stop_orders", {}) or {}, "levels": getattr(self, "_fixed_stop_levels", {}) or {}}
+            _tmp = _p + ".tmp"
+            with open(_tmp, "w") as _f:
+                _f.write(_js.dumps(_d))
+            _os.replace(_tmp, _p)
+        except Exception:
+            pass
+
+    async def ensure_fixed_stop_backstop_tradier(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price):
+        """Self-healing reconcile: exactly one live Tradier stop backstop per open position. Never raises."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return "SKIPPED_STOP_PYTEST"
+            reg = self._fixed_stop_registry_load()
+            try:
+                amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+            except Exception:
+                amt = 0.0
+            try:
+                _oa = getattr(position, "opened_at", "")
+                _sig = str(_oa) if _oa else f"ep{float(getattr(position, 'entry_price', 0) or 0)}"
+            except Exception:
+                _sig = ""
+            _side_u = str(position_side or "").upper()
+            _close_side = "sell" if _side_u == "LONG" else "buy_to_cover"
+            have = reg.get(position_key) if isinstance(reg.get(position_key), dict) else None
+            if amt <= 0:
+                if have and have.get("orderId"):
+                    _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
+                    if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
+                        reg.pop(position_key, None)
+                        self._fixed_stop_registry_save()
+                    return str(_r)
+                return "NONE_FLAT"
+            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig:
+                return "OK_ALREADY_PLACED"
+            if have and have.get("orderId"):
+                try:
+                    await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
+                except Exception:
+                    pass
+                reg.pop(position_key, None)
+            _soft = float(soft_level or 0.0)
+            if _soft <= 0:
+                return "SKIPPED_STOP_NO_LEVEL"
+            _lvl = _fixed_stop_core.round_to_tick(_side_u == "LONG", _fixed_stop_core.exchange_level(_side_u == "LONG", _soft), 0.01)
+            if _lvl <= 0:
+                return "SKIPPED_STOP_NO_LEVEL"
+            _qty = max(1, int(amt))
+            _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", stop_price=_lvl, quantity=_qty, current_price=float(current_price or 0.0))
+            _rs = str(_r)
+            if _rs.startswith("SUCCESS_STOP_PLACED"):
+                _oid = _rs.replace("SUCCESS_STOP_PLACED_", "")
+                reg[position_key] = {"orderId": _oid, "stopPrice": _lvl, "entry_sig": _sig, "symbol": symbol, "side": position_side}
+                self._fixed_stop_registry_save()
+            return _rs
+        except Exception as _e:
+            try:
+                logger.warning(f"[FIXED_STOP_ENSURE_TR] {position_key}: {_e}")
+            except Exception:
+                pass
+            return "FAILED_STOP_ENSURE"
+
+    async def _fixed_stop_order_action_tradier(self, *, position_key, account_key, symbol, position_side, action, stop_price=0.0, stop_order_id="", quantity=0, current_price=0.0):
+        """Wire leg of FIXED_STOP for stocks (Tradier stop-market backstop, GTC). Uses module-global TradierAPIClient (backtest rebinds to sim). Never raises."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return "SKIPPED_STOP_PYTEST"
+            try:
+                client = TradierAPIClient(config, account_key=account_key)
+            except Exception as _ce:
+                logger.error(f"[FIXED_STOP_WIRE_TR] {position_key}: no client ({_ce})")
+                return "FAILED_STOP_NO_CLIENT"
+            if action == "CANCEL_STOP":
+                oid = str(stop_order_id or "").strip()
+                if not oid:
+                    return "SKIPPED_STOP_CANCEL_NO_ID"
+                try:
+                    await client.cancel_order(account_key, oid)
+                    logger.critical(f"🛡️ [FIXED_STOP_CANCEL_TR] {position_key}: exchange backstop {oid} cancelled")
+                    return f"SUCCESS_STOP_CANCELLED_{oid}"
+                except Exception as _e:
+                    if "Unknown" in str(_e) or "not found" in str(_e).lower() or "404" in str(_e):
+                        return f"SUCCESS_STOP_ALREADY_GONE_{oid}"
+                    logger.error(f"[FIXED_STOP_CANCEL_TR] {position_key}: cancel {oid} failed: {_e}")
+                    return f"FAILED_STOP_CANCEL_{oid}"
+            lvl = float(stop_price or 0.0)
+            cur = float(current_price or 0.0)
+            is_long = str(position_side or "").upper() == "LONG"
+            if lvl <= 0:
+                return "REFUSED_STOP_NO_LEVEL"
+            if cur > 0 and ((is_long and lvl >= cur) or ((not is_long) and lvl <= cur)):
+                logger.critical(f"⛔ [FIXED_STOP_REFUSE_TR] {position_key}: backstop {lvl:.2f} wrong side of {cur:.2f} — refusing (would trigger instantly)")
+                return "REFUSED_STOP_WRONG_SIDE"
+            try:
+                _resp = await client.place_order(account_key, symbol, ("sell" if is_long else "buy_to_cover"), max(1, int(quantity or 0)), order_type="stop", stop=lvl, duration="gtc")
+            except Exception as _e:
+                logger.error(f"[FIXED_STOP_PLACE_TR] {position_key}: place failed lvl={lvl}: {_e}")
+                return "FAILED_STOP_PLACE"
+            _oid = ""
+            try:
+                _o = (_resp or {}).get("order", {}) if isinstance(_resp, dict) else {}
+                _oid = str((_o or {}).get("id", "") or "") if isinstance(_o, dict) else ""
+                if not _oid and isinstance(_resp, dict):
+                    _oid = str(_resp.get("id", "") or "")
+            except Exception:
+                _oid = ""
+            logger.critical(f"🛡️ [FIXED_STOP_PLACED_TR] {position_key}: exchange backstop {_oid} stop={lvl:.2f} ({'LONG' if is_long else 'SHORT'})")
+            return f"SUCCESS_STOP_PLACED_{_oid}" if _oid else "SUCCESS_STOP_PLACED"
+        except Exception as _e:
+            try:
+                logger.error(f"[FIXED_STOP_WIRE_TR] {position_key}: {_e}")
+            except Exception:
+                pass
+            return "FAILED_STOP_WIRE"
+
+    async def sweep_fixed_stops_tradier(self, account_key):
+        """Cancel backstops for flat/missing positions (covers every close path). Never raises."""
+        try:
+            reg = self._fixed_stop_registry_load()
+            if not reg:
+                return "SWEEP_EMPTY"
+            out = []
+            for _pk, _ent in list(reg.items()):
+                if not isinstance(_ent, dict) or not _ent.get("orderId"):
+                    continue
+                if not str(_pk).startswith(f"{account_key}:"):
+                    continue
+                _pos = None
+                try:
+                    _pm = getattr(self, "position_manager", None)
+                    if _pm is not None and hasattr(_pm, "get_position"):
+                        _pos = _pm.get_position(_pk)
+                except Exception:
+                    _pos = None
+                try:
+                    _amt = abs(float(getattr(_pos, "positionAmt", 0) or 0)) if _pos is not None else 0.0
+                except Exception:
+                    _amt = 0.0
+                if _pos is None or _amt <= 0:
+                    _sym = str(_ent.get("symbol") or "")
+                    _pside = str(_ent.get("side") or "LONG")
+                    if not _sym:
+                        reg.pop(_pk, None)
+                        continue
+                    try:
+                        _r = await self._fixed_stop_order_action_tradier(position_key=_pk, account_key=account_key, symbol=_sym, position_side=_pside, action="CANCEL_STOP", stop_order_id=str(_ent.get("orderId")))
+                    except Exception as _e:
+                        _r = f"FAILED_SWEEP_{_e}"
+                    if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
+                        reg.pop(_pk, None)
+                    out.append(f"{_pk}={_r}")
+            try:
+                _lv = getattr(self, "_fixed_stop_levels", None)
+                if isinstance(_lv, dict):
+                    for _pk in list(_lv.keys()):
+                        if str(_pk).startswith(f"{account_key}:") and _pk not in reg:
+                            _lv.pop(_pk, None)
+            except Exception:
+                pass
+            self._fixed_stop_registry_save()
+            return "SWEEP_OK:" + ",".join(out) if out else "SWEEP_CLEAN"
+        except Exception as _e:
+            return f"FAILED_SWEEP_{_e}"
 
     async def place_order(
         self,
