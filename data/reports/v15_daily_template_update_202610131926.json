@@ -1,0 +1,42 @@
+{
+ "round_id": "e4ee9f9fdb0b05730bd58a4aa740ab8f",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "refused": {
+  "CRYPTO_LONG": [],
+  "CRYPTO_SHORT": [],
+  "STOCKS_LONG": [],
+  "STOCKS_SHORT": []
+ },
+ "CRYPTO_LONG": {
+  "rows_with_stats": 1749,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": []
+ },
+ "CRYPTO_SHORT": {
+  "rows_with_stats": 1543,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": []
+ },
+ "STOCKS_LONG": {
+  "rows_with_stats": 1401,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": []
+ },
+ "STOCKS_SHORT": {
+  "rows_with_stats": 1235,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": []
+ }
+}

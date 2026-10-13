@@ -115,11 +115,6 @@ def apply_tab(ws, stats: dict, ledger: dict, rep: dict):
         if not cand:
             continue
         best_avg, best = max(cand)
-        import switch_types as _ST  # BIBLE §96: a bold/default value must pass the ONE validator (fail-closed, recorded)
-        _ok, _cv, _why = _ST.coerce(str(sw).strip(), ws.cell(row=best, column=2).value, rep.get("venue"))
-        if not _ok:
-            rep.setdefault("refused_type", []).append([ws.title, sw, ws.cell(row=best, column=2).value, round(best_avg, 4), _why])
-            continue
         if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION":
             try:
                 _mav = float(str(ws.cell(row=best, column=2).value).strip())
@@ -128,6 +123,11 @@ def apply_tab(ws, stats: dict, ledger: dict, rep: dict):
             if _mav is not None and _mav < 1:
                 rep.setdefault("refused_mandate", []).append([ws.title, sw, ws.cell(row=best, column=2).value, round(best_avg, 4), "MAXAUG_NEVER_ZERO"])
                 continue
+        import switch_types as _ST  # BIBLE §96: a bold/default value must pass the ONE validator (fail-closed, recorded)
+        _ok, _cv, _why = _ST.coerce(str(sw).strip(), ws.cell(row=best, column=2).value, rep.get("venue"))
+        if not _ok:
+            rep.setdefault("refused_type", []).append([ws.title, sw, ws.cell(row=best, column=2).value, round(best_avg, 4), _why])
+            continue
         cur = [r for r in rows if str(ws.cell(row=r, column=c_isd).value or "").strip().upper() == "YES"]
         if cur == [best]:
             continue

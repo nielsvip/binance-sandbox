@@ -2313,3 +2313,45 @@ md5 d14a97a7); opt in per launch with `V15_V17_ROUNDS=1`. Root cause measured in
 868–1582 s, so the 900 s board budget left P3 (focus/ablation/retest) no time at all — the abbreviated pass is not yet short
 enough on crypto/slow stocks and the pinpoint round never ran there. Next: guarantee P3 a minimum budget independent of P2,
 shrink P2 further (sampling pos_top, inline revives), then re-run this A/B.
+
+## 96. TYPED SWITCH VALUES — ONE VALIDATOR, FAIL-CLOSED (2026-10-13)
+
+**Trigger (USER):** "'0.0' on a true/false switch — that is TERRIBLE but an easy fix, just make sure it can never happen again."
+A go-live audit found ~215 template rows (FINAL_NORM set; 348 refused + ~7.4k non-canonical cells over all 8 files) whose value
+did not match its field type: `'0.0'`/`'0.5'`/`'2.0'` text on bools (multiplier artefacts), `False` on float thresholds and TF
+fields, `20/50/80` on TF fields, `'0.5'` on int counts/modes (the pilot silently truncated them to 0 — the `MAX_AUGMENTS` phantom
+of §90), numeric text on enum fields, and refused BOLD values (`BALANCE_FLOOR_USD='D'`, `STALE_HOLD_ENABLED='0.10'`).
+Root cause: every writer typed against `QuickConfig` annotations, which declare most fields `float` (lax).
+
+**The one validator — `tools/switch_types.py`:** `coerce(field, value, venue) -> (ok, value, reason)`. Kind comes from the LIVE
+venue default (`config.Config` crypto / `config_tradier.TradierConfig` stocks), then the other venue, then QuickConfig (never lets
+a float annotation override a live bool/int/str). Kinds: bool (0/1, '0'/'1'/'0.0'/'1.0', 'True'/'False', yes/no only — '2.0',
+'0.5', 'OFF', 30 refused), bool01 (bool on one venue, 0.0/1.0 float on the other), int (integral only; non-integral refused —
+`allow_quick_float=True` keeps the registrar's documented float-kept path), float (bools refused), tf (tokens in
+OFF/1m..12h/D/W/M, combos with , + _, plus BOTH/ALL/ANY/EITHER; False -> 'OFF'), str/enum (numeric or bool-word text refused unless
+the default is one), dict (FILTER_EXEMPTIONS rules), list, grey (live dict/list + vec scalar: only the QuickConfig default),
+unknown (accepted 'untyped'; `strict_unknown` refuses). 'K=V' text refused; 'X=X' dup typos collapse. `canonical()` = the cell
+already holds the native type; `to_cell()` = what a template cell must hold.
+
+**Call sites (fail-closed — refuse/flag, never silently write):** `tools/v15_switch_add.py` (`validate_switch`: every candidate +
+default, both venues; `parse_opt` int no longer truncates), `--queue` (via validate_switch), NEW `--fix-types`;
+`tools/v15_template_row_intake.py` (`merge_entries` refuses mistyped entries, `rescue-lost` never re-queues refused values);
+`tools/v15_daily_template_update.py` (`_coercible` -> promotions, `add_tab_level_rows` -> typed cells, refused options reported);
+`tools/v15_avg_delta_apply.py` (promotion gate, after the MAXAUG mandate); `switch_parity.register_workbook_result` (every key,
+before any surface; validator missing = refuse). `v15_pilot.py` (owned by another lane): hook spec in the 2026-10-13 report —
+`_cand_compatible` already rejects bool-field garbage but MISSES int truncation, bool->float and anything->TF/str.
+
+**Repair (`python3 tools/v15_switch_add.py --fix-types [--apply]`, S1 source host, both dirs):** unambiguous coercions written in
+place; ambiguous candidate rows dropped (never guessed) and listed; a refused BOLD row is realigned to the cat_side default (= the
+value live + the store already run, §90 builder placeholders): bold moves onto the row carrying it, else the cell is rewritten; a
+typed row that duplicates a kept row (same value AND all other cells identical) is dropped. Guards: bookkeeper flock, backup per
+file (`backups/before_fix_types_*`), template_row_guard fingerprints (lost == dropped, gained == 0), one-default rule, post-save
+validator rescan (any leftover = file untouched), zip-validated atomic save. Idempotent (2nd run: 0 changes).
+2026-10-13 run: per file ~850-970 cells coerced, 46-70 rows dropped, 2-4 bolds realigned, 0-2 bolds moved, 0 unresolved; daily
+writer layout verify 0 violations on the result. Report: `data/reports/v15_fix_types_20261013.json` (S1).
+
+**Never again — chain step 2b** (`tools/v15_daily_chain_s1.sh`, after the row intake): `switch_types.py --scan` over all 8
+templates; any refused or non-canonical value = step FAILED loudly (`data/alerts/SWITCH_TYPE_ALERT.json`, `[chain] step2b
+FAILED`, steps_ok `2b!TYPE_ALERT`); the chain continues (writers/registrar are fail-closed on their own); the alert file is removed
+on a clean scan. Tests: `tests/test_switch_types.py` (17: bool/int/float/TF/enum/dict/grey cases, the '0.0'-on-bool regression,
+fix-types on a fixture workbook, switch_add / intake / daily-writer / registrar refusals).

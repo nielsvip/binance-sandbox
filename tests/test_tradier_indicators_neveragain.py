@@ -162,3 +162,17 @@ def test_guarded_run_bumps_generation():
     assert orch._tf_inflight["15m"] is False
     asyncio.run(ti.TradierIndicatorOrchestrator._run_tf_guarded(orch, "15m", False))
     assert orch._tf_gen["15m"] == 2
+
+
+def test_guarded_run_clears_inflight_on_crash():
+    import asyncio
+    orch = _bare_orchestrator()
+    orch._tf_inflight = {"1m": True}
+
+    async def boom(tf, force=False):
+        raise RuntimeError("wedged pass")
+
+    orch._process_timeframe = boom
+    asyncio.run(ti.TradierIndicatorOrchestrator._run_tf_guarded(orch, "1m", False))
+    assert orch._tf_inflight["1m"] is False
+    assert orch._tf_gen["1m"] == 1

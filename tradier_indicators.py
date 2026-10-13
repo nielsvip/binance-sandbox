@@ -3106,8 +3106,18 @@ class TradierIndicatorOrchestrator:
             for tf in self._schedule_order:
                 if self._shutdown.is_set():
                     break
+                # 2026-10-13 NEVER-AGAIN: fast TFs ALSO run single-flight in
+                # background. Awaiting 1m/5m inline wedged this 39s loop for
+                # minutes per iteration (186 symbols x 2 lane slots), so
+                # gated-TF windows were evaluated late or never — 15m/1h
+                # starved while 1m looked healthy. Overlap is impossible
+                # (inflight guard); a slow pass just skips ticks gracefully.
                 if tf in ("1m", "5m"):
-                    await self._process_timeframe(tf, force=False)
+                    if self._tf_inflight.get(tf):
+                        continue
+                    self._tf_inflight[tf] = True
+                    self._tf_last_start[tf] = now_ts
+                    asyncio.create_task(self._run_tf_guarded(tf, force=False))
                     continue
                 # 2026-10-13 NEVER-AGAIN: gated TFs launch single-flight in
                 # background on window match OR overdue catch-up (force=True
@@ -4148,9 +4158,13 @@ def _release_instance() -> None:
         pass
 
 
+CODE_REV = "2026-10-13F-schedsplit-lanesplit-racefree"
+
+
 async def main():
     import signal
     from functools import partial
+    logger.critical(f"tradier_indicators boot CODE_REV={CODE_REV} pid={os.getpid()}")
     while not _try_claim_instance():
         logger.critical("DUPLICATE tradier_indicators refused: live holder present — idling 60s (no dual writers)")
         await asyncio.sleep(60)

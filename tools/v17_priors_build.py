@@ -133,7 +133,7 @@ def build_blocks(rows, exemptions, top):
         })
     for cs in out:
         out[cs].sort(key=lambda e: (-e["pos_sym"], -(e["mean_unlock"] or 0)))
-        out[cs] = out[cs][:top]
+        out[cs] = [e for i, e in enumerate(out[cs]) if i < top or e["has_exemption_key"]]
     return out, dict(totals)
 
 
