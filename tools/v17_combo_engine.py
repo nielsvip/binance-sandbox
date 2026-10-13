@@ -62,7 +62,7 @@ TIGHTEN = frozenset({"losers", "tim_high", "churn"})
 TF_SPAN = {"15m": 1, "30m": 2, "1h": 4, "2h": 8, "4h": 16, "6h": 24, "8h": 32, "12h": 48, "D": 96, "1d": 96, "3d": 288, "W": 672, "1w": 672}
 AIR_FAMILY = {"REENTRY_AUGMENT_SIZE_MULT": (0.5, 1.0, 1.5, 2.0), "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW": (True, False), "REENTRY_AUGMENT_HL_REF": ("entry", "low"), "REENTRY_AUGMENT_WINDOW_SEC": (0.0, 43200.0, 86400.0, 172800.0), "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": (True, False)}
 NUM_GRID = (0.5, 0.75, 1.25, 1.5, 2.0)
-ORIGIN_QUOTA = {"lib_regime": 0.06, "lib_same_sym": 0.12, "lib_neighbour": 0.16, "lib_symptom": 0.08, "prior_synergy": 0.04, "prior_block_exempt": 0.04, "symptom_path": 0.12, "filter_path": 0.08, "exempt_path": 0.06, "numeric": 0.05, "air": 0.02, "pair": 0.08, "explore": 0.15}
+ORIGIN_QUOTA = {"tf_coherent": 0.05, "lib_regime": 0.06, "lib_same_sym": 0.12, "lib_neighbour": 0.16, "lib_symptom": 0.08, "prior_synergy": 0.04, "prior_block_exempt": 0.04, "symptom_path": 0.12, "filter_path": 0.08, "exempt_path": 0.06, "numeric": 0.05, "air": 0.02, "pair": 0.08, "explore": 0.15}
 RECENT_DAYS = 7  # the only short window evaluate_v12._exact_30d_slice honours (crypto 7 calendar days / stocks 7 sessions); 8 = full 30D
 
 
@@ -305,34 +305,68 @@ def tf_features(delta, full=None):
     return {"tfs": sorted(set(tfs), key=lambda t: TF_SPAN.get(t, 0)), "htf": htf, "ltf_confirm": ltf, "window_bars": win, "rearm": sorted(rearm)}
 
 
-def coherence_reason(delta, full, sem=None):
-    """'' = coherent. Rules (data/v17_tf_semantics.json "rules", applied by id; built-in fallbacks when absent):
-    R_WINDOW_LE_SPAN  a validity window (bars) set by the combo must not exceed the span of the HTF the combo sets;
-    R_HTF_NEEDS_LTF   a combo that switches ON an HTF (D/4h) trigger must leave an LTF (<=1h) confirm active in the full set;
-    R_LTF_VETO_HTF    a combo must not add an LTF (15m) permission filter while its only trigger change is an HTF-only path.
-    Rules are skipped when the semantics file declares them disabled ("enabled": false)."""
+C2_LTF_CONFIRMS = ("DC_BREAK_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "CIRCUIT_SHARPE_GATES_FILTER_TF", "BT_WT_CROSS_LADDER_FILTER_TF", "BAR_PATTERNS_FILTER_TF", "BREAKOUT_RETEST_FILTER_TF", "BB_RECOVERY_FILTER_TF", "EMA_BLANKET_FILTER_FILTER_TF", "DELTA_ENGINE_FILTER_TF")
+
+
+def _span(tf, venue=None):
+    """15m bars per HTF bar (data/v17_tf_semantics.json C5/C6): crypto D 96 / 4h 16 / 1h 4; stocks D 26 RTH bars, 4h ~13."""
+    if str(venue or "").upper().startswith("STOCK"):
+        return {"D": 26, "1d": 26, "4h": 13}.get(tf, TF_SPAN.get(tf, 1))
+    return TF_SPAN.get(tf, 1)
+
+
+def htf_state_triggers(full):
+    """HTF (D/4h) STATE triggers switched on in a full set (C1: re-fire on every flat 15m bar inside the HTF bar)."""
+    out = []
+    if full.get("DC_BREAKOUT_ENTRY_ENABLED") is True and _tf_token(full.get("DC_BREAKOUT_TF_EXPANDED")) in ("D", "4h"):
+        out.append(("DC_BREAKOUT_TF_EXPANDED", _tf_token(full.get("DC_BREAKOUT_TF_EXPANDED"))))
+    if _tf_token(full.get("BB_BREAKOUT_ENTRY_TF")) in ("D", "4h"):
+        out.append(("BB_BREAKOUT_ENTRY_TF", _tf_token(full.get("BB_BREAKOUT_ENTRY_TF"))))
+    return out
+
+
+def coherence_reason(delta, full, sem=None, venue=None):
+    """'' = coherent, else the rule that rejects the combo BEFORE evaluation (rules + evidence: data/v17_tf_semantics.json,
+    docs/v17_tf_semantics.md; only ERROR-class rules reject, WARN-class rules only shape generation — coherence_warnings):
+    C4  BB_BOUNCE_ENTRY_TF != OFF is also a global AND entry filter (generic_filter_tf.py:34/90-98) — measured opens 133->0;
+        an HTF event trigger that lives one 15m bar (C3) — rejected as a path change.
+    C9  WT_15M_BOUNCE_MAX_BARS_AGO has no decision reader (delta 0 by construction) — never spend an eval on it.
+    C5  a validity window in BARS set by the combo must not exceed the span of the TF that arms it (stocks D = 26, C6)."""
     sem = sem if sem is not None else tf_semantics()
-    rules = {r.get("id"): r for r in (sem.get("rules") or []) if isinstance(r, dict) and r.get("id")} if isinstance(sem, dict) else {}
-    on = lambda rid: (rules.get(rid) or {}).get("enabled", True) is not False  # noqa: E731
-    f = tf_features(delta, full)
-    if on("R_WINDOW_LE_SPAN") and f["htf"] and f["window_bars"] is not None:
-        span = TF_SPAN.get(f["htf"], 1)
-        wk = [k for k in delta if key_role(k, sem) == "window"]
-        unit_bars = all("SEC" not in k.upper() for k in wk)
-        if unit_bars and f["window_bars"] > span:
-            return f"R_WINDOW_LE_SPAN window {f['window_bars']:g} bars > {f['htf']} span {span}"
-    trig_on = [k for k, v in delta.items() if key_role(k, sem) == "trigger" and (_tf_token(v) in ("D", "4h"))]
-    if on("R_HTF_NEEDS_LTF") and trig_on:
-        conf = [k for k, v in (full or {}).items() if key_role(k, sem) in ("confirm", "permission") and _tf_token(v) in ("15m", "1h")]
-        if not conf and not any(key_role(k, sem) == "confirm" for k in (full or {})):
-            return f"R_HTF_NEEDS_LTF {trig_on[0]} HTF trigger with no LTF confirm in the set"
-    if on("R_LTF_VETO_HTF") and trig_on:
-        add15 = [k for k, v in delta.items() if key_role(k, sem) == "permission" and _tf_token(v) == "15m"]
-        ltf_trig = [k for k, v in delta.items() if key_role(k, sem) == "trigger" and _tf_token(v) in ("15m", "1h")]
-        if add15 and not ltf_trig:
-            return f"R_LTF_VETO_HTF {add15[0]}=15m vetoes HTF-only trigger {trig_on[0]}"
+    if "BB_BOUNCE_ENTRY_TF" in delta and _tf_token(delta["BB_BOUNCE_ENTRY_TF"]) not in (None, "OFF"):
+        return f"C4 BB_BOUNCE_ENTRY_TF={delta['BB_BOUNCE_ENTRY_TF']} is a one-bar HTF event AND a global entry filter"
+    if "WT_15M_BOUNCE_MAX_BARS_AGO" in delta:
+        return "C9 WT_15M_BOUNCE_MAX_BARS_AGO has no decision reader"
+    keys = (sem.get("keys") or {}) if isinstance(sem, dict) else {}
+    arm = [_tf_token(v) for k, v in (full or delta).items() if key_role(k, sem) == "trigger" and _tf_token(v) not in (None, "OFF")]
+    arm_tf = max(arm, key=lambda t: TF_SPAN.get(t, 0)) if arm else None
+    for k, v in delta.items():
+        if key_role(k, sem) != "window" or "BARS" not in str(k).upper() or isinstance(v, bool) or not isinstance(v, (int, float)):
+            continue
+        e = keys.get(k) or {}
+        tf = _tf_token(e.get("tf")) or _key_tf(k) or arm_tf
+        if tf and float(v) > _span(tf, venue):
+            return f"C5 {k}={v:g} bars > {tf} span {_span(tf, venue)}"
     return ""
 
+
+def coherence_warnings(delta, full, venue=None):
+    """WARN-class rules (shape generation, never reject): C1 HTF state trigger with COOLDOWN 0 = unbounded re-open inside one
+    HTF instance; C2 HTF state trigger without any 15m timing confirm."""
+    out = []
+    trig = htf_state_triggers(full or {})
+    if not trig:
+        return out
+    cdk = "COOLDOWN_BARS_TRADIER" if str(venue or "").upper().startswith("STOCK") else "COOLDOWN_BARS"
+    try:
+        cd = float((full or {}).get(cdk) or 0)
+    except (TypeError, ValueError):
+        cd = 0.0
+    if cd <= 0 and not (full or {}).get("COOLDOWN_FROM_LIVE_SECONDS_ENABLED"):
+        out.append("C1_UNBOUNDED_REOPEN")
+    if not any(_tf_token((full or {}).get(k)) == "15m" for k in C2_LTF_CONFIRMS) and (full or {}).get("WT_15M_BOUNCE_OPEN_ENABLED") is not True:
+        out.append("C2_NO_LTF_CONFIRM")
+    return out
 
 # --------------------------------------------------------------------------------------------------------------- the space
 def template_path(cat_side):
@@ -1063,7 +1097,7 @@ def generate(space, sym_side, base, symptoms, feats, lib=None, rng=None, max_n=4
             stats["blocked"] += 1
             return
         full = apply_delta(base, eff)
-        inc = coherence_reason(eff, full)
+        inc = coherence_reason(eff, full, venue=venue)
         if inc:
             stats["incoherent"] += 1
             return
@@ -1072,9 +1106,13 @@ def generate(space, sym_side, base, symptoms, feats, lib=None, rng=None, max_n=4
         seen.add(ck)
         cats = sorted({c for c in (space.category(k) for k in eff) if c})
         sc = score + 0.15 * sum(hot_cats.get(c, 0.0) for c in cats) / max(1.0, sum(hot_cats.values()) or 1.0)
-        out.append(_cand(eff, origin, why, sc, cats))
+        warn = coherence_warnings(eff, full, venue) if any(k in eff for k in ("DC_BREAKOUT_TF_EXPANDED", "BB_BREAKOUT_ENTRY_TF", "DC_BREAKOUT_ENTRY_ENABLED")) else []
+        out.append(_cand(eff, origin, why, sc - 0.3 * len(warn), cats))
         stats["by_origin"][origin] = stats["by_origin"].get(origin, 0) + 1
+        if warn and origin != "tf_coherent":
+            tf_fix.append((eff, warn, sc))
 
+    tf_fix = []
     # (1) library: same sym_side history, regime neighbours, symptom fixes
     if lib is not None:
         same = [b["board_id"] for b in lib.boards_of(cs) if b["sym_side"] == sym_side]
@@ -1171,6 +1209,24 @@ def generate(space, sym_side, base, symptoms, feats, lib=None, rng=None, max_n=4
             add(d, "pair", f"pair {combo_key(a['delta'])} + {combo_key(b['delta'])}", 0.5 * (a["score"] + b["score"]))
         if len(out) >= max_n:
             break
+    # (6b) TF-coherent variants (USER: HTF = permission/validity, LTF = timing, one open per HTF instance): every HTF state
+    # trigger combo flagged C1/C2 is re-offered WITH a consumption rule (cooldown <= the HTF span, template values) and/or an
+    # explicit 15m confirm (C2 list, template values).
+    cdk = "COOLDOWN_BARS_TRADIER" if venue == "STOCKS" else "COOLDOWN_BARS"
+    for eff, warn, sc in tf_fix[: int(_env_f("V17_COMBO_TF_FIX_N", 300))]:
+        trig = htf_state_triggers(apply_delta(base, eff))
+        span = max((_span(t, venue) for _k, t in trig), default=16)
+        cds = [v for v in space.values.get(cdk, []) if isinstance(v, (int, float)) and not isinstance(v, bool) and 0 < float(v) <= span]
+        confs = [(f, v) for f in C2_LTF_CONFIRMS for v in space.values.get(f, []) if _tf_token(v) == "15m"][:3]
+        if "C1_UNBOUNDED_REOPEN" in warn:
+            for v in cds[:3]:
+                add(dict(eff, **{cdk: v}), "tf_coherent", f"{combo_key(eff)[:60]} + consumption {cdk}={v} (<= {span}-bar HTF span)", sc + 0.4)
+        if "C2_NO_LTF_CONFIRM" in warn:
+            for f, v in confs:
+                d = dict(eff, **{f: v})
+                add(d, "tf_coherent", f"{combo_key(eff)[:60]} + LTF confirm {f}=15m", sc + 0.3)
+                if cds and "C1_UNBOUNDED_REOPEN" in warn:
+                    add(dict(d, **{cdk: cds[0]}), "tf_coherent", f"{combo_key(eff)[:60]} + 15m confirm + {cdk}={cds[0]}", sc + 0.5)
     # (7) exploration: random valid 1-3 changes from different categories (+ optional filter, + optional exemption)
     keys = space.path_keys()
     fkeys = space.filter_keys()
@@ -1509,7 +1565,7 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
         # is the improved set. One fresh NO-LIES verify of the final joint set vs the ORIGINAL base at the end.
         tol = _env_f("V15_V17_RECENT_TOL", 0.25)
         adopt_old = os.environ.get("V17_COMBO_ADOPT_OLD_REGIME", "0") == "1"  # pilot ANTICIPATE parity: 30D-only winners are flagged, not adopted
-        max_adopt = int(_env_f("V17_COMBO_MAX_ADOPT", 8))
+        max_adopt = int(_env_f("V17_COMBO_MAX_ADOPT", 12))
         min_round = min(_env_f("V17_COMBO_MIN_ROUND_S", 12.0), 0.2 * float(budget_s))
         wave = max(8, evaluator.workers * 6 if hasattr(evaluator, "workers") else 64)
         cur, cur_res, cur_g, cur_g7 = dict(base), dict(base30), bg, bg7
@@ -1560,14 +1616,19 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
                 adopt_old_ = os.environ.get("V17_COMBO_ADOPT_OLD_REGIME", "0") == "1"
                 chk = [x for x in top if adopt_old_ or "OLD_REGIME_ONLY" not in x["flags"]]
                 n_ok = n_chk = 0
+                rej = []  # canonical item sets of long-window rejects: a superset combo is skipped (pruned, flagged unchecked)
                 for x in chk:
                     if time.time() > deadline - verify_reserve or n_ok >= n365 or n_chk >= 3 * n365:
                         break
+                    xi = {f"{k}={canon(v)}" for k, v in x["delta"].items()}
+                    if any(r_ <= xi for r_ in rej):
+                        continue
                     n_chk += 1
                     g, okk, attr = long_check(apply_delta(rb, x["delta"]), cur365, x["delta"])
                     x["w365"], x["regime_attr"] = (None if not g else {k: g.get(k) for k in ("gain", "trades", "tim", "dd", "valid")}), attr
                     if not okk:
                         x["flags"].append("LONG_WINDOW_REJECT")
+                        rej.append(xi)
                     else:
                         n_ok += 1
                 for x in top:
@@ -1786,6 +1847,7 @@ def main(argv=None):
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--out")
     p.add_argument("--seed", type=int)
+    p.add_argument("--dual", action="store_true", help="dual-window mode: 30D + 365D (default accept: 365D gain up or DD down)")
     a = ap.parse_args(argv)
     if a.cmd == "build-library":
         pg, dg = _default_globs()
@@ -1814,7 +1876,7 @@ def main(argv=None):
             print(json.dumps({"sym_side": a.sym_side, "error": "no published set"}))
             return 2
         st = {}
-        ranked = search(None, a.sym_side, d["cumulative_overrides"], budget_s=a.budget, workers=a.workers, stats_out=st, seed=a.seed)
+        ranked = search(None, a.sym_side, d["cumulative_overrides"], budget_s=a.budget, workers=a.workers, stats_out=st, seed=a.seed, windows=(30, 365) if a.dual else (30,))
         rep = {"sym_side": a.sym_side, "start_src": src, "start_published_gain": d.get("final_gain_fresh_vec", d.get("cumulative_gain")), "start_npz": d.get("npz_id"), "stats": st, "ranked": ranked[:40]}
         try:
             from tools.opt.evaluate_v12 import _npz_path_for

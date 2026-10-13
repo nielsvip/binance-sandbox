@@ -1,5 +1,5 @@
 {
- "broken": 36,
+ "broken": 48,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [
@@ -27,13 +27,30 @@
    "vec_decisions/stock_live_frames.py: was reachable from simulate_one in the baseline, not any more"
   ],
   "NOT_IN_CAT_SIDE_DEFAULTS": [
+   "AUGMENT_INTO_REENTRY_ENABLED [CRYPTO_LONG]",
+   "AUGMENT_INTO_REENTRY_ENABLED [CRYPTO_SHORT]",
+   "AUGMENT_INTO_REENTRY_ENABLED [STOCKS_SHORT]",
+   "REENTRY_AUGMENT_HL_REF [CRYPTO_LONG]",
+   "REENTRY_AUGMENT_HL_REF [CRYPTO_SHORT]",
+   "REENTRY_AUGMENT_HL_REF [STOCKS_SHORT]",
+   "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW [CRYPTO_LONG]",
+   "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW [CRYPTO_SHORT]",
+   "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW [STOCKS_SHORT]",
+   "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT [CRYPTO_LONG]",
+   "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT [CRYPTO_SHORT]",
+   "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT [STOCKS_SHORT]",
+   "REENTRY_AUGMENT_SIZE_MULT [CRYPTO_LONG]",
+   "REENTRY_AUGMENT_SIZE_MULT [CRYPTO_SHORT]",
+   "REENTRY_AUGMENT_SIZE_MULT [STOCKS_SHORT]",
+   "REENTRY_AUGMENT_WINDOW_SEC [CRYPTO_LONG]",
+   "REENTRY_AUGMENT_WINDOW_SEC [CRYPTO_SHORT]",
+   "REENTRY_AUGMENT_WINDOW_SEC [STOCKS_SHORT]",
    "WT_15M_BOUNCE_BB_MAX [CRYPTO_LONG]",
    "WT_15M_BOUNCE_HIGH_1H_GT_PREV [CRYPTO_LONG]",
    "WT_15M_BOUNCE_LOW_1H_GT_PREV [CRYPTO_LONG]"
   ],
   "DUPLICATE_SWITCH_ROWS": [],
   "COVERAGE": [
-   "AUGMENT_INTO_REENTRY_ENABLED: wired live+vec (['ez_manage.py:8078(_air_native_carry)'] / ['v12_quick_engine.py:17738(simulate_one)']) but in no template",
    "MAX_ORDER_VALUE_FIN: wired live+vec (['ez_manage.py:11539(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:111(max_order_usd_for)']) but in no template",
    "MAX_ORDER_VALUE_MEN: wired live+vec (['ez_manage.py:11537(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:109(max_order_usd_for)']) but in no template",
    "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8096(_air_native_carry)'] / ['v12_quick_engine.py:17799(simulate_one._open)']) but in no template",
@@ -41,11 +58,6 @@
    "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11071(in_opening_buffer)'] / ['v12_quick_engine.py:18091(simulate_one)']) but in no template",
    "R2_TF_LIST: wired live+vec (['ez_manage.py:51687(process_position)'] / ['v12_quick_engine.py:17051(simulate_one)']) but in no template",
    "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34261(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
-   "REENTRY_AUGMENT_HL_REF: wired live+vec (['ez_manage.py:8081(_air_native_carry)'] / ['v12_quick_engine.py:17740(simulate_one)']) but in no template",
-   "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW: wired live+vec (['ez_manage.py:8080(_air_native_carry)'] / ['v12_quick_engine.py:17772(simulate_one._air_carry_mult)']) but in no template",
-   "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT: wired live+vec (['ez_manage.py:8083(_air_native_carry)'] / ['v12_quick_engine.py:17758(simulate_one._air_carry_mult)']) but in no template",
-   "REENTRY_AUGMENT_SIZE_MULT: wired live+vec (['ez_manage.py:8079(_air_native_carry)'] / ['v12_quick_engine.py:17783(simulate_one._air_carry_mult)']) but in no template",
-   "REENTRY_AUGMENT_WINDOW_SEC: wired live+vec (['ez_manage.py:8082(_air_native_carry)'] / ['v12_quick_engine.py:17755(simulate_one._air_carry_mult)']) but in no template",
    "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:21807(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
    "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19053(process_position)'] / ['v12_quick_engine.py:19296(simulate_one)']) but in no template"
   ],

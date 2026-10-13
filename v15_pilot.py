@@ -3593,6 +3593,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress.pop("v17", None)
     _v17_t = {"p2_start": None}
     _v17_ptop = [1.0]
+    _v17_hv_filters: set = set()
     _v17_ystats = {"evaluated": 0, "skipped": 0}
     _v17_evals = [0]
     if _v17_on:
@@ -5014,7 +5015,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # prior-ranked yellows; the rest join the coarse deferral (settled, inline on moving rows, FOCUS in P3). Canary
             # 2026-10-13: naked-only P2 lost most of the joint lift (RLC A 48.7 at row 2000 vs naked-only 22.5 at P2 end).
             _v17_cap = int(os.environ.get("V15_V17_P2_YELLOWS", "8"))
-            _v17_p2_cap_hit = bool(_v17_t.get("p2")) and (_t.time() - _v17_t["p2"]["t0"]) > float(os.environ.get("V15_V17_P2_YELLOW_S", str(0.35 * float(os.environ.get("V15_V17_BOARD_S", "1500")))))
+            _v17_p2_cap_hit = bool(_v17_t.get("p2")) and float(os.environ.get("V15_V17_P2_YELLOW_S", "0") or 0) > 0 and (_t.time() - _v17_t["p2"]["t0"]) > float(os.environ.get("V15_V17_P2_YELLOW_S", "0"))  # default OFF: forensics 2026-10-13 — a load-dependent cap dropped exactly the joint cells that won the old arm
             if _v17_p2_cap_hit:
                 # V17 main-pass yellow cap: past V15_V17_P2_YELLOW_S of P2 the remaining rows run naked (+ full revive on a
                 # positive naked); their cells are coarse-deferred (settled) for the pinpoint round, which is never starved.
@@ -5030,7 +5031,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _v17_pool = list(dict.fromkeys(list(info["hdrs"]) + list(info.get("coarse_deferred_filters") or []) + list(info.get("prior_skipped") or []) + list(info.get("inert_filters") or [])))
                 _v17_keep, _v17_skip = [], {}
                 for _h in _v17_pool:
-                    _p = v17_cell_p(_prior_entry(_v17_prior, "filter_opt", str(_h).strip()), _v17_ptop[0], _PRIOR_MIN_N)
+                    _p = 1.0 if str(_h).split("=", 1)[0].strip() in _v17_hv_filters else v17_cell_p(_prior_entry(_v17_prior, "filter_opt", str(_h).strip()), _v17_ptop[0], _PRIOR_MIN_N)
                     if v17_cell_keep(_v17_cs, sname, switch, cand, _h, _inert_seq, _p):
                         _v17_keep.append(_h)
                     else:
@@ -5707,6 +5708,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v17_prior = v17_merge_priors(_prior_load(_v17_cs), v17_load_priors(_v17_cs)) if _v17_on else {}
     _v17_know = v17_load_knowledge(_v17_cs) if _v17_on else {}
     _v17_ptop[0] = v17_pos_top(_v17_prior, _PRIOR_MIN_N) if _v17_on else 1.0
+    # high-value filters (forensics 2026-10-13: the old arm's joint wins were COUNTER_TREND / KINDERGARTEN / DC_BREAK /
+    # MTF_DC_REJECT / CIRCUIT_SHARPE / MOMENTUM_BREAKOUT cells that sampling dropped): every cell of a top-K filter or of a
+    # filter promoted anywhere in the cat_side is always evaluated (p = 1)
+    _v17_hv_filters.update(v17_top_filters(_v17_prior, _v17_know, int(os.environ.get("V15_V17_HV_K", "30"))) if _v17_on else [])
+    if _v17_on:
+        for _hk, _he in ((_v17_prior or {}).get("filter_opt") or {}).items():
+            if isinstance(_he, dict) and int(_he.get("promoted_sym") or 0) > 0:
+                _v17_hv_filters.add(str(_hk).split("=", 1)[0].strip())
     _v17_touched: set = set()
     _v17_focus_cap = [None]
     _v17_focus_iter = [0]
@@ -6611,6 +6620,133 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if lift / max(1e-6, (_t.time() - t_r) / 60.0) < float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3")) and _t.time() > deadline - 60.0:
                 break
         _v17_phase_end(ph, rounds=rnd)
+    def _v17_regime365(tag: str = "P3_REGIME365"):
+        # 365D SURGEON STEP (USER 2026-10-13: "how 365D was different from 30D … its technicals show exactly what has to change
+        # in the 30D settings to also be prepared for a different market … minutes of work"). Replaces the old 365D
+        # repair -> REDO path (record-only now): hard time box V15_V17_365_S (240 s), never REDO, never quarantine, never blocks
+        # publish. (1) the current 30D set evaluated once on the 365D slice (ledger); (2) 365D cut into weekly segments, each
+        # classified by the same regime classifier, trades' P&L / losers / churn attributed per regime and per exit path; (3) the
+        # failing regimes' trades become surgeon symptoms -> paths (same mapper); (4) a path is adopted only if its 30D delta
+        # >= -V15_V17_365_TOL_30D (0: never lower the 30D best) AND the 365D result improves (gain up, or DD down at no gain loss),
+        # valid on 365D. Book progress["v17"]["regime365"] + SURGEON tab; every tried path goes to the combo library.
+        if _v17_phase_done(tag) or os.environ.get("V15_V17_365", "1") != "1":
+            return
+        box = float(os.environ.get("V15_V17_365_S", "240"))
+        t0 = _t.time()
+        dl = t0 + box
+        ph = _v17_phase_start(tag)
+        book = _v17.setdefault("regime365", {"at": utcnow()})
+        try:
+            from tools import v15_trade_autopsy as _TA
+            from tools.opt.v12_pilot import prepare_batch as _pb3, evaluate_prepared_sanitized as _eps3
+            import collections as _col3
+            if _v17_rg.get("prep365") is None:
+                _p3 = _pb3(new_symside, 365)
+                if not isinstance(_p3, dict) or _p3.get("_stale"):
+                    book["skipped"] = f"365D prepare failed ({(_p3 or {}).get('_stale') if isinstance(_p3, dict) else 'none'})"
+                    return
+                _v17_rg["prep365"] = _p3
+            P3 = _v17_rg["prep365"]
+            ev365 = lambda ov, led=False: _eps3(P3, sanitize_overrides(dict(ov), defaults)[0], 365, include_ledger=led)
+            r0 = ev365(cumulative_overrides, True)
+            book["before"] = {k: r0.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason")}
+            rows = _TA.scaled_rows(r0)
+            npz = P3.get("npz_prepared") or {}
+            cl = [float(x) for x in (npz.get("close") if npz.get("close") is not None else [])]
+            ts = [float(x) for x in (npz.get("timestamps") if npz.get("timestamps") is not None else [])]
+            ts = [t / 1000.0 if t > 1e12 else t for t in ts]
+            is_long = new_symside.upper().endswith("_LONG")
+            base = _TA.classify(rows, cl, is_long) if cl else rows
+            # weekly segments -> regime label per bar index range
+            seg_of = [None] * len(cl)
+            segs = []
+            if ts:
+                full = _v17_seg_feats(cl)
+                i0 = 0
+                while i0 < len(cl) - 8:
+                    t_end = ts[i0] + 7 * 86400.0
+                    i1 = next((j for j in range(i0 + 1, len(ts)) if ts[j] >= t_end), len(cl))
+                    lab = _v17_classify(_v17_seg_feats(cl[i0:i1]), full)
+                    segs.append((i0, i1, lab))
+                    for j in range(i0, i1):
+                        seg_of[j] = lab
+                    i0 = i1
+            per = {}
+            for t in base:
+                be = int(t.get("be", -1))
+                lab = seg_of[be] if 0 <= be < len(seg_of) and seg_of[be] else "UNKNOWN"
+                e = per.setdefault(lab, {"trades": 0, "pnl": 0.0, "losers": 0, "loss": 0.0, "churn": 0, "premature": 0, "exit_reasons": _col3.Counter()})
+                e["trades"] += 1
+                e["pnl"] += float(t["pnl"])
+                if t["pnl"] < 0:
+                    e["losers"] += 1
+                    e["loss"] += -float(t["pnl"])
+                    e["exit_reasons"][t.get("exit_reason") or ""] += 1
+                if int(t.get("bx", 0)) - int(t.get("be", 0)) <= 1:
+                    e["churn"] += 1
+                if "PREMATURE_EXIT" in (t.get("cls") or []):
+                    e["premature"] += 1
+            tot_loss = sum(e["loss"] for e in per.values()) or 1e-9
+            breakdown = {lab: {"trades": e["trades"], "pnl_pp": round(e["pnl"], 3), "loss_share": round(e["loss"] / tot_loss, 3), "losers": e["losers"], "churn": e["churn"], "premature": e["premature"], "top_exit_reasons": e["exit_reasons"].most_common(3), "weeks": sum(1 for s_ in segs if s_[2] == lab)} for lab, e in per.items()}
+            failing = [lab for lab, b in sorted(breakdown.items(), key=lambda kv: kv[1]["pnl_pp"]) if b["pnl_pp"] < 0 or b["loss_share"] >= 0.4]
+            book["breakdown_before"] = breakdown
+            book["failing_regimes"] = failing
+            print(f"[REGIME365] {new_symside} 365D gain={r0.get('gain_pct')} dd={r0.get('max_dd_pct')} trades={r0.get('trades')} failing={failing} breakdown={ {k: (v['pnl_pp'], v['loss_share']) for k, v in breakdown.items()} }", flush=True)
+            if not failing:
+                return
+            # symptoms of the failing regimes -> paths (same mapper as the 30D surgeon)
+            fb = [t for t in base if (seg_of[int(t['be'])] if 0 <= int(t.get('be', -1)) < len(seg_of) else None) in failing]
+            sym = {"losers": {"n": sum(1 for t in fb if t["pnl"] < 0), "size": round(-sum(min(0.0, t["pnl"]) for t in fb), 3)},
+                   "churn": {"n": sum(1 for t in fb if int(t.get("bx", 0)) - int(t.get("be", 0)) <= 1), "size": round(-sum(min(0.0, t["pnl"]) for t in fb if int(t.get("bx", 0)) - int(t.get("be", 0)) <= 1), 3)},
+                   "premature_exits": {"n": sum(1 for t in fb if "PREMATURE_EXIT" in (t.get("cls") or [])), "size": round(sum(t.get("post_pct", 0.0) for t in fb if "PREMATURE_EXIT" in (t.get("cls") or [])), 3)},
+                   "giveback": {"n": sum(1 for t in fb if "GIVEBACK" in (t.get("cls") or [])), "size": round(sum(t.get("mfe_pct", 0.0) - t.get("pnl_pct", 0.0) for t in fb if "GIVEBACK" in (t.get("cls") or [])), 3)}}
+            reasons = {"exit": _col3.Counter(t.get("exit_reason") or "" for t in fb if t["pnl"] < 0), "entry": _col3.Counter(t.get("entry_reason") or "" for t in fb if t["pnl"] < 0)}
+            paths = _v17_surgeon_paths(sym, reasons)[: int(os.environ.get("V15_V17_365_PATHS", "80"))]
+            for p_ in paths:
+                p_["label"] = p_["label"].replace("SURGEON:", "REGIME365:")
+            # 30D side in one parallel batch, then 365D serially for the 30D-safe ones (best 30D first) inside the box
+            cb30 = float(cumulative_gain)
+            items = [dict(p_, ov=sanitize_overrides({**cumulative_overrides, **p_["delta_ov"]}, defaults)[0]) for p_ in paths]
+            _v17_batch(items, cb30, dl - 30.0)
+            tol = float(os.environ.get("V15_V17_365_TOL_30D", "0"))
+            safe = sorted([it for it in items if it.get("d") is not None and float(it["d"]) >= -tol and bool((it.get("res") or {}).get("valid")) and int((it.get("res") or {}).get("trades") or 0) >= ADAPT_FLOOR_TRADES and not _v17_blocked(it.get("delta_ov") or {})], key=lambda it: -float(it["d"]))
+            g365, dd365 = r0.get("gain_pct"), r0.get("max_dd_pct")
+            tried, best = [], None
+            for it in safe:
+                if _t.time() > dl - 5.0:
+                    break
+                r3 = ev365(it["ov"])
+                rec = {"path": it["label"], "d30": round(float(it["d"]), 4), "g365": r3.get("gain_pct"), "dd365": r3.get("max_dd_pct"), "valid365": r3.get("valid"), "trades365": r3.get("trades")}
+                try:
+                    better = bool(r3.get("valid")) and r3.get("gain_pct") is not None and g365 is not None and (float(r3["gain_pct"]) > float(g365) + 1e-6 or (float(r3["gain_pct"]) >= float(g365) - 1e-9 and dd365 is not None and r3.get("max_dd_pct") is not None and float(r3["max_dd_pct"]) < float(dd365) - 1e-6))
+                except Exception:
+                    better = False
+                rec["better365"] = better
+                tried.append(rec)
+                it["res365"] = r3
+                if better and (best is None or float(r3["gain_pct"]) > float(best["res365"]["gain_pct"])):
+                    best = it
+            book["tried"] = tried
+            if best is not None:
+                # adopt: the 30D eval of the exact set is the fresh verify; a 30D delta of 0 is allowed here (365D robustness
+                # at an unchanged 30D best, USER rule), never a 30D loss beyond the tolerance
+                _gate = _v17_ok(best.get("res"), best.get("err"), max(float(best["d"]), 1e-6), best.get("delta_ov"))  # all other gates (valid, floor, TIM/trades, blocks)
+                if not _gate:
+                    book["rejected_by_gates"] = best["label"]
+                    return
+                best = dict(best, d=max(0.0, float(best["d"])) if float(best["d"]) > 1e-9 else 0.0)
+                _v17_promote(best, "v17_regime365" if float(best["d"]) > 1e-9 else "v17_regime365_robust", "REGIME365", ph)
+                book["adopted"] = {"path": best["label"], "d30": best["d"], "g365_before": g365, "g365_after": best["res365"].get("gain_pct"), "dd365_before": dd365, "dd365_after": best["res365"].get("max_dd_pct")}
+                print(f"[REGIME365] {new_symside} adopted {best['label']} 30D {best['d']:+.4f} | 365D {g365} -> {best['res365'].get('gain_pct')} dd {dd365} -> {best['res365'].get('max_dd_pct')}", flush=True)
+            _v17_combo_append([dict(it, symptom="regime365:" + ",".join(failing)) for it in items if it.get("d") is not None])
+        except V15Shutdown:
+            raise
+        except Exception as _r3e:
+            book["error"] = f"{_r3e}"[:200]
+            print(f"[V17-WARN] regime365 {_r3e}", flush=True)
+        finally:
+            book["wall_s"] = round(_t.time() - t0, 1)
+            _v17_phase_end(ph, box_s=box)
     def _v17_sheet():
         try:
             if "V17_ROUNDS" in wb.sheetnames:
@@ -6629,6 +6765,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 sws = wb.create_sheet("SURGEON")
                 _rgx = _v17.get("regime") or {}
                 sws.append(["REGIME then", _rgx.get("regime_then"), "now", _rgx.get("regime_now"), "recent_days", _rgx.get("recent_days"), "since_prev_days", _rgx.get("since_previous_days"), "current_set_recent_gain", (_rgx.get("current_set_recent") or {}).get("gain_pct"), "previous_set_recent_gain", ((_rgx.get("previous") or {}).get("recent_slice") or {}).get("gain_pct"), "old_regime_only_flags", len(_v17.get("regime_flags") or [])])
+                _r365 = _v17.get("regime365") or {}
+                sws.append(["REGIME365 before", json.dumps(_r365.get("before"), default=str)[:200], "failing", ",".join(_r365.get("failing_regimes") or []), "adopted", json.dumps(_r365.get("adopted"), default=str)[:200], "tried", len(_r365.get("tried") or []), "wall_s", _r365.get("wall_s")])
+                for _lab, _bd in (_r365.get("breakdown_before") or {}).items():
+                    sws.append(["REGIME365 regime", _lab, "pnl_pp", _bd.get("pnl_pp"), "loss_share", _bd.get("loss_share"), "losers", _bd.get("losers"), "churn", _bd.get("churn"), "weeks", _bd.get("weeks"), "exit", json.dumps(_bd.get("top_exit_reasons"))[:120]])
                 sws.append(["phase", "round", "gain", "tim", "dd", "bh", "symptom", "size", "n", "paths_tried", "positive", "best_path", "best_delta", "best_tim", "best_dd", "best_trades", "adopted"])
                 for _stag, _sb in (_v17.get("surgeon") or {}).items():
                     for _rd in (_sb or {}).get("rounds") or []:
@@ -6653,6 +6793,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         nonlocal _tier_focus_s
         t0 = _t.time()
         budget = v17_p3_budget(_tier_name, t0 - _PILOT_T0)
+        if os.environ.get("V15_V17_P3_FROM_SAVED", "1") == "1":
+            # pinpoint budget = the time the abbreviated pass SAVED (hustle evals not run + yellow cells sampled out), at this
+            # board's measured P2 seconds per eval — so V17 is never slower than the old board; floor per tier, hard cap.
+            try:
+                _p2 = (_v17.get("phases") or {}).get("P2_WORST_FIRST") or {}
+                _spe = float(_p2.get("wall_s") or 0.0) / max(1, int(_p2.get("evals") or 0))
+                _hus = sum(1 for _k, _v in (progress.get("done") or {}).items() if isinstance(_v, dict) and str(_k).split("!", 1)[0] in SWITCH_SHEETS and _v.get("naked_delta") is not None and not _v.get("v17_phase"))
+                _saved = (_hus + int(_v17_ystats.get("skipped") or 0)) * _spe
+                _floor = {"WINNER": 180.0, "MEDIOCRE": 120.0, "LOSER": 60.0, "LOST_CAUSE": 30.0}.get(_tier_name, 60.0) * float(os.environ.get("V15_V17_P3_FLOOR_X", "1"))
+                budget = max(_floor, min(float(os.environ.get("V15_V17_P3_MAX_S", "900")), _saved))
+                _v17["p3_saved_est"] = {"hustle_skipped": _hus, "yellows_skipped": int(_v17_ystats.get("skipped") or 0), "p2_secs_per_eval": round(_spe, 4), "saved_s": round(_saved, 1), "floor_s": _floor}
+            except Exception as _bse:
+                print(f"[V17-WARN] saved-budget {_bse}", flush=True)
         _v17["p3_budget_s"] = round(budget, 1)
         deadline = t0 + budget
         print(f"[V17] {new_symside} P3 PINPOINT tier={_tier_name} budget={budget:.0f}s (elapsed {t0 - _PILOT_T0:.0f}s)", flush=True)
@@ -6684,6 +6837,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     deadline = min(_hard, _t.time() + max(120.0, _t.time() - _t_it))  # still lifting: the round continues
                     _v17["p3_extended"] = _v17.get("p3_extended", 0) + 1
                     print(f"[V17] {new_symside} P3 extended (iteration {_it} lifted {_rate:.2f} pp/min) -> {deadline - t0:.0f}s", flush=True)
+            _v17_regime365()  # own hard time box (V15_V17_365_S), replaces the 365D repair -> REDO path
             _v17_tim_fix(max(deadline, _t.time() + 60.0), "P3_TIMFIX")
             _v17_essential_proof(_t.time() + float(os.environ.get("V15_V17_ESSENTIAL_S", "120")))
         except V15Shutdown:
@@ -6706,7 +6860,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[V17] {new_symside} post-stages capped endgame={os.environ['V15_ENDGAME_S']}s diag={os.environ['V15_DIAG_REPAIR_S']}s (board left {left:.0f}s)", flush=True)
         except Exception:
             pass
-    if _v17_on:
+    if _v17_on and os.environ.get("V15_V17_PROBE_FIRST", "0") == "1":  # forensics: probing before P2 diverged the chain (RLC TIM 7.5 -> TIM-guard blocks); default = probe after P2 (P3_PROBE)
         try:
             _v17_filter_probe()
         except V15Shutdown:
@@ -7176,6 +7330,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if st.get("v17_deferred"):
             progress["done"][key]["v17_deferred_filters"] = list(st["v17_deferred"])
             _v17_note(sname, rr, f"DEFERRED_V17:{len(st['v17_deferred'])}")
+        if st.get("sampled_skip_p"):
+            progress["done"][key]["sampled_skip_p"] = dict(st["sampled_skip_p"])
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
         _maybe_write_json(force=promote)

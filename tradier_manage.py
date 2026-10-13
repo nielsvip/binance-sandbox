@@ -225,6 +225,9 @@ _GAP_RISK_STATE: Dict[str, Dict[str, Any]] = (
 # OBLIGATORY_GAP_CLOSE state — once per position per day (USER 2026-10-13:
 # bad overnight gappers MUST close at the open; hedge PROHIBITED)
 _OB_GAP_FIRED: Dict[str, str] = {}  # key = position_key, val = YYYY-MM-DD
+# Broker-verify throttle (USER 2026-10-13: stop bombarding Tradier — the fleet
+# throttled itself, then exits failed). HELD=True cached per TTL only.
+_BROKER_HOLDS_CACHE: Dict[tuple, tuple] = {}  # key = (acct, sym, side), val = (ts, True)
 
 
 def _ob_gap_should_close(is_long: bool, open_px: float, prev_px: float, min_adverse_pct: float) -> tuple:
@@ -43485,12 +43488,34 @@ class TradierTradeManager:
 
     async def _broker_holds_position(self, account_key, symbol, position_side):
         """Live one-shot broker truth for ONE symbol. True=held (qty sign matches
-        side), False=confirmed flat/absent, None=check failed (unverified)."""
+        side), False=confirmed flat/absent, None=check failed (unverified).
+        2026-10-13 NEVER-AGAIN throttle: every call built an UNCLOSED client
+        and fired a full positions listing — the fleet bombarded Tradier into
+        throttling itself, then all exits failed. HELD=True is cached per TTL
+        (fail toward protection); FLAT/failed are NEVER cached (a stale FLAT
+        would leave a real position unprotected). Client always closed."""
         try:
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 return None
+            _ck = (str(account_key or ""), str(symbol or "").upper(), str(position_side or "").upper())
+            try:
+                _cttl = float(getattr(config, "TRADIER_BROKER_VERIFY_TTL_SEC", 60.0) or 60.0)
+            except Exception:
+                _cttl = 60.0
+            try:
+                _hit = _BROKER_HOLDS_CACHE.get(_ck)
+                if _hit is not None and (time.time() - float(_hit[0])) < _cttl and _hit[1] is True:
+                    return True
+            except Exception:
+                pass
             client = TradierAPIClient(config, account_key=account_key)
-            _pos = await asyncio.wait_for(client.get_account_positions(account_key), timeout=10.0)
+            try:
+                _pos = await asyncio.wait_for(client.get_account_positions(account_key), timeout=10.0)
+            finally:
+                try:
+                    await client.close()
+                except Exception:
+                    pass
             _sym = str(symbol or "").upper()
             _want_long = str(position_side or "").upper() != "SHORT"
             for _p in (_pos or []):
@@ -43502,7 +43527,13 @@ class TradierTradeManager:
                     _q = 0.0
                 if _q == 0:
                     return False
-                return (_q > 0) if _want_long else (_q < 0)
+                _held = (_q > 0) if _want_long else (_q < 0)
+                if _held is True:
+                    try:
+                        _BROKER_HOLDS_CACHE[_ck] = (time.time(), True)
+                    except Exception:
+                        pass
+                return _held
             return False
         except Exception as _e:
             logger.warning(f"[FIXED_STOP_BROKER_VERIFY_TR] {account_key}:{symbol}: verify failed ({_e}) — unverified")
@@ -45655,7 +45686,14 @@ class TradierTradeManager:
                     logger.critical(
                         f"[GFV_SETTLED_CASH] {account_key}: API connect failed ({_ce}) — FAIL CLOSED, returning 0.0"
                     )
+                    try:
+                        await _client.close()
+                    except Exception:
+                        pass
                     return 0.0
+            # 2026-10-13 NEVER-AGAIN: close temp clients — unclosed sessions
+            # accumulate until the broker throttles the IP, then exits fail.
+            _own_cash_client = _client is not _existing
             try:
                 _balances = await asyncio.wait_for(
                     _client.get_account_balances(account_key), timeout=5.0
@@ -45664,6 +45702,11 @@ class TradierTradeManager:
                 logger.critical(
                     f"[GFV_SETTLED_CASH] {account_key}: balances fetch failed ({_be}) — FAIL CLOSED, returning 0.0"
                 )
+                if _own_cash_client:
+                    try:
+                        await _client.close()
+                    except Exception:
+                        pass
                 return 0.0
             _cash_block = _balances.get("cash", {})
             _cash_available = float(
@@ -45682,6 +45725,11 @@ class TradierTradeManager:
             logger.info(
                 f"[GFV_SETTLED_CASH] {account_key}: cash_available=${_cash_available:.2f} unsettled=${_unsettled:.2f} settled=${_settled:.2f}"
             )
+            if _own_cash_client:
+                try:
+                    await _client.close()
+                except Exception:
+                    pass
             return _settled
         except Exception as _err:
             logger.critical(

@@ -73,18 +73,33 @@ def test_schedule_quota_interleaves():
 
 
 def test_coherence_rules(tmp_path, monkeypatch):
-    sem = {"keys": {"X_ENTRY_TF": {"role": "trigger", "tf": "var"}, "X_MAX_BARS_AGO": {"role": "window"}, "X_FILTER_TF": {"role": "permission"}, "X_CONFIRM_TF": {"role": "confirm"}}, "rules": []}
+    sem = {"keys": {"X_ENTRY_TF": {"role": "trigger", "tf": "var(X_ENTRY_TF)"}, "X_MAX_BARS_AGO": {"role": "window", "tf": "4h"}, "Y_WINDOW_BARS": {"role": "window", "tf": "var"}, "X_CONFIRM_TF": {"role": "confirm"}}, "coherence_rules": []}
     p = tmp_path / "sem.json"
     p.write_text(json.dumps(sem))
     monkeypatch.setattr(CE, "TF_SEM_PATH", p)
     CE._SEM.update(memo=None, doc=None)
-    assert CE.coherence_reason({"X_ENTRY_TF": "4h", "X_MAX_BARS_AGO": 40}, {"X_CONFIRM_TF": "15m"}).startswith("R_WINDOW_LE_SPAN")
-    assert CE.coherence_reason({"X_ENTRY_TF": "4h", "X_MAX_BARS_AGO": 12}, {"X_CONFIRM_TF": "15m"}) == ""
-    assert CE.coherence_reason({"X_ENTRY_TF": "D", "X_FILTER_TF": "15m"}, {"X_CONFIRM_TF": "15m"}).startswith("R_LTF_VETO_HTF")
-    assert CE.coherence_reason({"X_ENTRY_TF": "D"}, {}).startswith("R_HTF_NEEDS_LTF")
+    assert CE.coherence_reason({"BB_BOUNCE_ENTRY_TF": "D"}, {}).startswith("C4")
+    assert CE.coherence_reason({"BB_BOUNCE_ENTRY_TF": "OFF"}, {}) == ""
+    assert CE.coherence_reason({"WT_15M_BOUNCE_MAX_BARS_AGO": 3}, {}).startswith("C9")
+    assert CE.coherence_reason({"X_MAX_BARS_AGO": 40}, {}).startswith("C5")  # 4h span 16
+    assert CE.coherence_reason({"X_MAX_BARS_AGO": 12}, {}) == ""
+    assert CE.coherence_reason({"Y_WINDOW_BARS": 30}, {"X_ENTRY_TF": "D"}, venue="STOCKS").startswith("C5")  # stocks D = 26
+    assert CE.coherence_reason({"Y_WINDOW_BARS": 30}, {"X_ENTRY_TF": "D"}, venue="CRYPTO") == ""
+    w = CE.coherence_warnings({"BB_BREAKOUT_ENTRY_TF": "D"}, {"BB_BREAKOUT_ENTRY_TF": "D", "COOLDOWN_BARS": 0}, "CRYPTO")
+    assert w == ["C1_UNBOUNDED_REOPEN", "C2_NO_LTF_CONFIRM"]
+    assert CE.coherence_warnings({}, {"BB_BREAKOUT_ENTRY_TF": "D", "COOLDOWN_BARS": 6, "DC_BREAK_FILTER_TF": "15m"}, "CRYPTO") == []
     f = CE.tf_features({"X_ENTRY_TF": "D", "X_CONFIRM_TF": "1h", "X_MAX_BARS_AGO": 30})
     assert f["htf"] == "D" and f["ltf_confirm"] == "1h" and f["window_bars"] == 30.0
     CE._SEM.update(memo=None, doc=None)
+
+
+def test_tf_coherent_variants_generated(space):
+    base = {"BB_BREAKOUT_ENTRY_TF": "OFF", "COOLDOWN_BARS": 0}
+    cands, st = CE.generate(space, "AVAXUSDC_LONG", base, {}, {}, None, random.Random(2), 8000)
+    tfc = [c for c in cands if c["origin"] == "tf_coherent"]
+    assert tfc, st["by_origin"]
+    assert all(any(k in c["delta"] for k in ("COOLDOWN_BARS",) + CE.C2_LTF_CONFIRMS) for c in tfc)
+    assert not any("BB_BOUNCE_ENTRY_TF" in c["delta"] and c["delta"]["BB_BOUNCE_ENTRY_TF"] != "OFF" for c in cands)
 
 
 def test_library_append_query_merge(tmp_path):

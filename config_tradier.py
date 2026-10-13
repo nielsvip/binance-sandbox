@@ -3286,6 +3286,11 @@ class TradierConfig:
     # stays PROHIBITED. Above UNIVERSAL_NOLOSS_GATE so losers can close.
     OB_GAP_CLOSE_ENABLED: bool = True
     OB_GAP_CLOSE_MIN_ADVERSE_PCT: float = 2.0
+    # 2026-10-13 USER ORDER: throttle broker verifies — the fleet bombarded
+    # Tradier with unclosed clients + full listings per verify until it got
+    # throttled, then exits failed. HELD=True cached this long; FLAT/failed
+    # never cached (fail toward protection, never toward naked).
+    TRADIER_BROKER_VERIFY_TTL_SEC: float = 60.0
     OBLIGATORY_HEDGE_PCT: float = 0.0
     OBLIGATORY_HEDGE_WT_TFS: int = 2
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0

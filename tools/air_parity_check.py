@@ -241,7 +241,7 @@ def scalar(ss: str, knob: str, window_days: int, mode: str) -> dict:
             src = "vec_exact_qty"
         else:
             lm, src = 0.0, "native_untagged"
-        pairs.append({"entry_ts": p["vec"]["entry_ts"], "vec_mult": round(ve.get("carry", 0.0), 3), "live_mult": lm, "src": src,
+        pairs.append({"entry_ts": p["vec"]["entry_ts"], "d_entry_s": p["d_entry_s"], "same_bar": abs(p["d_entry_s"]) < 1.0, "vec_mult": round(ve.get("carry", 0.0), 3), "live_mult": lm, "src": src,
                       "agree": abs(round(ve.get("carry", 0.0), 3) - lm) <= 0.002, "live_reason": lr[:90]})
     n_carry_pairs = sum(1 for x in pairs if x["vec_mult"] > 0 or x["live_mult"] > 0)
     return {"sym_side": ss, "knob": knob, "mode": mode, "window_days": window_days, "secs_live": round(secs, 1), "n_set_overrides": len(base_set),
@@ -249,6 +249,8 @@ def scalar(ss: str, knob: str, window_days: int, mode: str) -> dict:
             "vec_trips": len(vt), "live_trips": len(lt), "matched": len(m["pairs"]),
             "vec_match_rate": round(len(m["pairs"]) / len(vt), 3) if vt else None, "live_match_rate": round(len(m["pairs"]) / len(lt), 3) if lt else None,
             "matched_opens_compared": len(pairs), "matched_opens_with_carry": n_carry_pairs, "carry_agree": sum(1 for x in pairs if x["agree"]),
+            "same_bar_pairs": sum(1 for x in pairs if x["same_bar"]), "same_bar_carry_agree": sum(1 for x in pairs if x["same_bar"] and x["agree"]),
+            "same_bar_with_carry": sum(1 for x in pairs if x["same_bar"] and (x["vec_mult"] > 0 or x["live_mult"] > 0)),
             "carry_disagree": [x for x in pairs if not x["agree"]][:25], "carry_examples": [x for x in pairs if x["vec_mult"] > 0][:10],
             "vec_carried_opens_total": sum(1 for r in vrows if r.get("carry", 0) > 0), "live_tagged_opens_total": sum(1 for e in lopens if RA.CARRY_TAG in str(e.get("reason") or ""))}
 
@@ -272,7 +274,7 @@ def main():
         print(json.dumps(rep[:40]))
     else:
         rep = scalar(a.sym_side, a.knobs.split(",")[0], a.window_days, a.mode)
-        print("AIR_SCALAR " + json.dumps({k: rep[k] for k in ("sym_side", "knob", "mode", "n_set_overrides", "vec_trips", "live_trips", "matched", "matched_opens_compared", "matched_opens_with_carry", "carry_agree", "vec_carried_opens_total", "live_tagged_opens_total", "secs_live")}))
+        print("AIR_SCALAR " + json.dumps({k: rep[k] for k in ("sym_side", "knob", "mode", "n_set_overrides", "vec_trips", "live_trips", "matched", "matched_opens_compared", "matched_opens_with_carry", "carry_agree", "same_bar_pairs", "same_bar_with_carry", "same_bar_carry_agree", "vec_carried_opens_total", "live_tagged_opens_total", "secs_live")}))
     if a.out:
         pathlib.Path(a.out).write_text(json.dumps(rep, indent=1, default=str))
 

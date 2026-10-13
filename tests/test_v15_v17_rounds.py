@@ -183,3 +183,11 @@ def test_regime_wiring():
 def test_combo_engine_wiring_fail_open():
     for tok in ("def _v17_combo_search(", "def _v17_combo_append(", "import tools.v17_combo_engine as _ce", "_v17_combo_append(first)", "SURGEON:combo:"):
         assert tok in SRC, tok
+
+
+def test_regime365_step_wiring():
+    for tok in ("def _v17_regime365(", "V15_V17_365_S", "V15_V17_365_TOL_30D", '_v17.setdefault("regime365"', "[REGIME365]", "REGIME365 regime", "_v17_regime365()  # own hard time box"):
+        assert tok in SRC, tok
+    i = SRC.index("    def _v17_regime365(")
+    body = SRC[i:SRC.index("    def _v17_sheet():", i)]
+    assert "needs_redo" not in body and "quarantine(" not in body  # never REDO, never quarantine

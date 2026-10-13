@@ -73,7 +73,14 @@ def _engine_metrics(symside: str, overrides: dict, prep_cache: dict) -> dict:
         ps_txt = mg.validate_and_format_sharpe(float(ps or 0.0), label="pool_sharpe", n_syms=1, years=30 / 365.0, trades=int(res.get("trades") or 0), mode="crypto" if "USD" in symside else "stocks") if ps is not None else "pool_sharpe=n/a [UNVERIFIED: no per-trade returns]"
     except Exception as e:
         ps_txt = f"pool_sharpe refused: {e}"[:120]
-    return {"gain_pct": res.get("gain_pct"), "trades": res.get("trades"), "tim_pct": res.get("tim_pct"), "max_dd_pct": res.get("max_dd_pct"), "wr_pct": None if wr is None else round(float(wr), 2), "pool_sharpe": ps_txt, "valid": res.get("valid"), "invalid_reason": res.get("invalid_reason"), "n_returns": len(rets)}
+    k365 = symside + "#365"
+    if k365 not in prep_cache:
+        try:
+            prep_cache[k365] = prepare_batch(symside, 365)
+        except Exception:
+            prep_cache[k365] = None
+    r365 = evaluate_prepared_sanitized(prep_cache[k365], dict(overrides), 365) if prep_cache.get(k365) else {}
+    return {"gain_365d": r365.get("gain_pct"), "dd_365d": r365.get("max_dd_pct"), "valid_365d": r365.get("valid"), "gain_pct": res.get("gain_pct"), "trades": res.get("trades"), "tim_pct": res.get("tim_pct"), "max_dd_pct": res.get("max_dd_pct"), "wr_pct": None if wr is None else round(float(wr), 2), "pool_sharpe": ps_txt, "valid": res.get("valid"), "invalid_reason": res.get("invalid_reason"), "n_returns": len(rets)}
 
 
 def main():
@@ -99,11 +106,11 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / f"v17_ab_{ts}.json").write_text(json.dumps({"generated_utc": ts, "base": str(base), "rows": rows}, indent=1, default=str))
-    md = [f"# V17 A/B {ts}", "", "Same sym_side, same frozen NPZ / template / start set / env; old = pilot bab5e0ce (V17 off), new = V17.", "Metrics re-evaluated from each final override set with the real engine (evaluate_prepared_sanitized).", "", "| sym_side | arm | final gain | bh | gain/bh | trades | TIM | max DD | WR | pool_sharpe | promoted rows | evals | wall min | RSS MB | REDO |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    md = [f"# V17 A/B {ts}", "", "Same sym_side, same frozen NPZ / template / start set / env; old = pilot bab5e0ce (V17 off), new = V17.", "Metrics re-evaluated from each final override set with the real engine (evaluate_prepared_sanitized).", "", "| sym_side | arm | final gain | bh | gain/bh | trades | TIM | max DD | WR | pool_sharpe | 365D gain | 365D DD | promoted rows | evals | wall min | RSS MB | REDO |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in sorted(rows, key=lambda r: (r["sym_side"], r["arm"])):
         e = r["engine_reeval"] or {}
         f = lambda x, n=2: "" if x is None else (f"{float(x):.{n}f}" if isinstance(x, (int, float)) else str(x))
-        md.append(f"| {r['sym_side']} | {r['arm']} | {f(r['final_gain'])} | {f(r['bh'])} | {f(r['gain_over_bh'])} | {e.get('trades', '')} | {f(e.get('tim_pct'))} | {f(e.get('max_dd_pct'))} | {f(e.get('wr_pct'))} | {e.get('pool_sharpe', '')} | {r['promoted_rows']} | {r['evals']} | {f((r['wall_s'] or 0) / 60.0, 1) if r['wall_s'] else ''} | {f(r['max_rss_mb_parent'], 0)} | {(r['redo_scheduled'] or '')[:40]} |")
+        md.append(f"| {r['sym_side']} | {r['arm']} | {f(r['final_gain'])} | {f(r['bh'])} | {f(r['gain_over_bh'])} | {e.get('trades', '')} | {f(e.get('tim_pct'))} | {f(e.get('max_dd_pct'))} | {f(e.get('wr_pct'))} | {e.get('pool_sharpe', '')} | {f(e.get('gain_365d'))}{'' if e.get('valid_365d') in (None, True) else ' (invalid)'} | {f(e.get('dd_365d'))} | {r['promoted_rows']} | {r['evals']} | {f((r['wall_s'] or 0) / 60.0, 1) if r['wall_s'] else ''} | {f(r['max_rss_mb_parent'], 0)} | {(r['redo_scheduled'] or '')[:40]} |")
     md += ["", "## V17 phases (new arm)", ""]
     for r in rows:
         if r["arm"] == "new" and r.get("v17_phases"):

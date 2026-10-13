@@ -2389,3 +2389,22 @@ previous test and anticipate what is ahead"):**
   a set with FILTER_EXEMPTIONS evaluates bit-identically before/after a JSON round trip.
 - **Window boards** published 17:27–19:15Z with V17 default ON: `data/v17_window_requeue.json` (best-wins kept the higher
   same-window active, e.g. BWXT_SHORT 28.68 next to V17 23.71; 6 requeue candidates + the full window list).
+- **A/B #2 (same host s2, both arms at the same time, load 30–50; `data/reports/v17_ab_202610132049.md`; new = V17 with the
+  surgeon v1, no regime/365 step yet):** 30D final gain new vs old — ALGOUSDT_SHORT 19.05 vs 17.13, COIN_LONG 29.63 vs 13.97,
+  IOTXUSDT_SHORT 39.12 vs 18.68, RLCUSDT_LONG 46.82 vs 71.44, UNIUSDC_SHORT 17.86 vs 29.92, VALE_SHORT 18.17 vs 22.84 → 3/6;
+  wall: V17 slower on every finished pair (30–53 vs 27–46 min — the guaranteed pinpoint minimum is added on top of a main pass
+  that is only ~25% shorter). 365D of the final sets: V17 better on ALGO/IOTX, worse on COIN/RLC/UNI/VALE. → V17 stays
+  default OFF. The regime-aware surgeon canary (COIN_LONG) reached 33.62. Next: make the pinpoint budget = the time the
+  abbreviated pass saves (not extra), surgeon before generic steps, re-run the A/B with 1 old + 1 new board at a time
+  (resource rule: ≤2 A/B boards, nice 10, s2 only).
+- **Loser forensics (A/B #2, `data/reports/v17_loser_forensics_20261013.txt`, `tools/v17_ab_forensics.py`):** every promotion
+  of the old arm on RLC / UNI / VALE traced to the V17 arm. Lost pp by cause — RLC (−24.6): old sacred-repass win
+  GOLDEN_RULE_BASE_USD=0.0 +19.8 (V17 chain had diverged, row naked −2.76), rows tested at a very different chain (naked ≤0,
+  10.5), joint filter cells sampled out / capped (8.8), joint cells on rows already running after the pre-P2 probe never
+  evaluated (7.1), old focus (6.3); UNI (−12.1): running-row joint cells (5.3: MOM3=OFF + CIRCUIT_SHARPE/DC_MOMENTUM cells),
+  UNIVERSAL_NOLOSS_GATE at a different chain (3.8); VALE (−4.7): different chain (3.7), sampled-out COUNTER_TREND / MTF_DC
+  cells (3.2). Fixes (v6, ce1937e7): the main-pass yellow time cap is OFF by default (it dropped exactly those cells under
+  load), every cell of a top-30 / ever-promoted filter is always evaluated (p = 1), the filter probe runs after P2 (no early
+  chain divergence; `V15_V17_PROBE_FIRST=1` restores), skipped cells record their p (`sampled_skip_p`), and the pinpoint
+  budget = the time the abbreviated pass saved at this board's P2 seconds/eval (tier floor 180/120/60/30 s, extension while
+  it lifts) so V17 is not slower than the old board. A/B #3 runs one pair at a time on s2 (nice 10).
