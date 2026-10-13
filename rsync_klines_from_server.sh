@@ -9,11 +9,15 @@ DST="/Users/niels/Documents/binance/klines_cache/"
 
 mkdir -p "$DST"
 mkdir -p "$(dirname "$LOG")"
+# USER 2026-10-13: TradFi perps (AAPLUSDT etc., data/excluded_tokenized_stocks.json) are not tradeable — never pull/push their files
+_DENYX="/tmp/excluded_tokenized_stocks_rsync_$$.txt"
+_deny_refresh() { : > "$_DENYX"; python3 -c 'import json,sys;[print(f"{s}_*\n{s}.*\n{s}") for s in json.load(open(sys.argv[1])).get("symbols",[])]' "/Users/niels/Documents/binance/data/excluded_tokenized_stocks.json" > "$_DENYX" 2>/dev/null || : ; }
+_deny_refresh
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') — klines sync from server started (pid $$)" >> "$LOG"
 
 while true; do
-    rsync -a --update --timeout=110 "$SRC" "$DST" >> "$LOG" 2>&1
+    _deny_refresh; rsync -a --update --timeout=110 --exclude-from="$_DENYX" "$SRC" "$DST" >> "$LOG" 2>&1
     EXIT_CODE=$?
     if [ $EXIT_CODE -ne 0 ]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') — rsync failed (exit $EXIT_CODE)" >> "$LOG"

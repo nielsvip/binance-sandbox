@@ -6494,6 +6494,58 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             d2[_ek] = v17_merge_exemptions(d2.get(_ek), _ev_) if _ek == "FILTER_EXEMPTIONS" else _ev_
                         out.append({"label": f"SURGEON:{sname}:{_w}={_c}+EXEMPT{_ei}", "delta_ov": d2, "sw": _w, "cand": _c, "sheet": _s, "row": _r, "symptom": sname, "score": round(score, 3), "parts": [f"{_w}={_c}"] + [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in _ex.items()]})
         return out
+    def _v17_combo_mod():
+        try:
+            import tools.v17_combo_engine as _ce
+            return _ce
+        except Exception:
+            return None
+    def _v17_combo_search(sym: dict, deadline: float) -> list:
+        # tools/v17_combo_engine.search (combo lane: learned library + priors + exploration, successive halving over real
+        # evals) — fail-open when absent. Its combos become surgeon paths; nothing is adopted without our own fresh eval.
+        _ce = _v17_combo_mod()
+        if _ce is None or not hasattr(_ce, "search") or os.environ.get("V15_V17_COMBO_ENGINE", "1") != "1":
+            return []
+        left = max(0.0, deadline - _t.time())
+        if left < 30.0:
+            return []
+        try:
+            res = _ce.search(prepared, new_symside, dict(cumulative_overrides), dict(sym), dict(_v17.get("regime") or {}), budget_s=left * float(os.environ.get("V15_V17_COMBO_SHARE", "0.4")), workers=_n_proc)
+        except Exception as _cee:
+            print(f"[V17-WARN] combo engine search failed: {_cee}", flush=True)
+            return []
+        out = []
+        for i, c in enumerate(res or []):
+            if not isinstance(c, dict):
+                continue
+            dov = next((c.get(k) for k in ("delta_ov", "overrides", "changes", "ov") if isinstance(c.get(k), dict)), None)
+            if not dov:
+                continue
+            dov = {k: v for k, v in dov.items() if not (k in cumulative_overrides and _same_val(cumulative_overrides.get(k), v))}
+            if not dov or _v17_blocked(dov):
+                continue
+            k0 = next(iter(dov))
+            lab = str(c.get("label") or "+".join(f"{k}={v}" for k, v in list(dov.items())[:4]))[:160]
+            _rw = _v17_find_row(k0, dov[k0])
+            out.append({"label": f"SURGEON:combo:{lab}", "delta_ov": dov, "sw": k0, "cand": dov[k0], "sheet": _rw[0] if _rw else "V17", "row": _rw[1] if _rw else None, "symptom": str(c.get("symptom") or "combo_engine"), "score": float(c.get("score") or c.get("delta") or 0.0), "parts": [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in dov.items()]})
+        print(f"[SURGEON] {new_symside} combo engine offered {len(out)} combos", flush=True)
+        return out
+    def _v17_combo_append(items: list):
+        # every surgeon-evaluated path goes to the combo library so V17 keeps learning board after board (fail-open)
+        _ce = _v17_combo_mod()
+        if _ce is None or not items:
+            return
+        fn = next((getattr(_ce, n) for n in ("append", "append_results", "library_append", "record") if callable(getattr(_ce, n, None))), None)
+        if fn is None:
+            return
+        recs = []
+        for it in items:
+            r_ = it.get("res") or {}
+            recs.append({"sym_side": new_symside, "cat_side": _v17_cs, "label": it.get("label"), "delta_ov": it.get("delta_ov"), "symptom": it.get("symptom"), "delta": it.get("d"), "gain_pct": r_.get("gain_pct"), "trades": r_.get("trades"), "tim_pct": r_.get("tim_pct"), "max_dd_pct": r_.get("max_dd_pct"), "valid": r_.get("valid"), "regime_now": (_v17.get("regime") or {}).get("regime_now"), "base_gain": float(cumulative_gain), "npz": _run_npz_short, "at": utcnow()})
+        try:
+            fn(recs)
+        except Exception as _cae:
+            print(f"[V17-WARN] combo library append failed: {_cae}", flush=True)
     def _v17_surgeon(deadline: float, tag: str):
         # SURGEON (USER 2026-10-13 pinpoint redefinition): diagnose -> map symptoms to paths -> evaluate on top of the current
         # best set (greedy vs the latest cumulative, fresh evals, same guards) -> re-diagnose after every adoption round;
@@ -6524,6 +6576,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if ((_rgo or {}).get("previous") or {}).get("old_set_better_recent_by") and _v17_rg.get("prev_diff"):
                 sym["old_set_recent"] = {"n": len(_v17_rg["prev_diff"]), "size": float(_rgo["previous"]["old_set_better_recent_by"])}
             paths = _v17_surgeon_paths(sym, reasons)
+            _cmb = _v17_combo_search(sym, deadline)
+            if _cmb:
+                paths = _cmb + paths  # verified-by-the-engine combos first; adopted only through the same greedy gates
             rec = {"round": rnd, "symptoms": sym, "ctx": ctx, "top_exit_reasons": reasons["exit"].most_common(5), "paths": len(paths), "adopted": []}
             print(f"[SURGEON] {new_symside} round {rnd}: gain={ctx['gain']} tim={ctx['tim']} dd={ctx['dd']} bh={ctx['bh']} symptoms={ {k: v['size'] for k, v in sym.items()} } paths={len(paths)}", flush=True)
             n0 = len(_v17.get("promotions") or [])
@@ -6539,6 +6594,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     if e["best"] is None or float(it["d"]) > e["best"][1]:
                         e["best"] = (it["label"], round(float(it["d"]), 4), (it.get("res") or {}).get("tim_pct"), (it.get("res") or {}).get("max_dd_pct"), (it.get("res") or {}).get("trades"))
             rec["by_symptom"] = by_sym
+            rec["combo_engine"] = {"offered": len(_cmb or []), "available": _v17_combo_mod() is not None}
+            _v17_combo_append(first)
             book["rounds"].append(rec)
             _maybe_write_json(force=True)
             lift = float(cumulative_gain) - g_r

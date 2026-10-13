@@ -119,6 +119,12 @@ def crypto_symbols():
             for k in tk if (k.endswith("_LONG") or k.endswith("_SHORT"))
         })
         syms = [s for s in syms if s.endswith("USDT") or s.endswith("USDC")]
+        try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never fetch/append their klines
+            __import__("sys").path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+            from excluded_tokenized_stocks import filter_syms as _excl_filter
+            syms = _excl_filter(syms)
+        except ImportError:
+            pass
         if syms:
             return syms
     return ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "ADAUSDC",

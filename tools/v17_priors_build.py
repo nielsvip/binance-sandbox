@@ -12,6 +12,12 @@ import json
 import os
 import statistics
 import time
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — excluded from priors/causal aggregation
+    __import__("sys").path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
+    from excluded_tokenized_stocks import is_denied as _excl_denied
+except ImportError:
+    def _excl_denied(_x):
+        return False
 
 EPS = 1e-9
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
@@ -332,6 +338,7 @@ def main():
         srows += d["single"]
         qrows += d["quart"]
         brows += d["blocks"]
+    srows, qrows, brows = ([r for r in rows if not _excl_denied(r[-2])] for rows in (srows, qrows, brows))
     cl = json.load(open(args.cl)) if args.cl and os.path.exists(args.cl) else None
     single = build_single(srows)
     blocks, btot = build_blocks(brows, exemptions, args.top)

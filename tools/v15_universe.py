@@ -25,7 +25,7 @@ def _quorum_check(allowed, root):
         lg = json.loads(lgp.read_text()) if lgp.exists() else {}
     except Exception:
         lg = {}
-    lg_allowed = set(lg.get("allowed_sym_sides") or [])
+    lg_allowed = deny_filter(set(lg.get("allowed_sym_sides") or []), root)
     n, m = len(allowed), len(lg_allowed)
     if n == 0 and m > 0:
         return False, f"empty build vs last_good {m}"
@@ -133,7 +133,15 @@ def tradeable_sym_sides(root):
     except Exception:
         pass
     allowed |= open_position_sym_sides(root)  # USER 2026-10-06: an OPEN position is always computed, even when excluded / not tradeable
-    return allowed
+    return deny_filter(allowed, root)
+
+
+def deny_filter(sym_sides, root):
+    """USER 2026-10-13: tokenized stocks (data/excluded_tokenized_stocks.json, Binance TRADIFI_PERPETUAL) are NOT tradeable at all — the deny beats everything, open positions included."""
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from excluded_tokenized_stocks import load_denied, symbol_of
+    deny = load_denied(root)
+    return {s for s in sym_sides if symbol_of(s) not in deny}
 
 
 def open_position_sym_sides(root):
@@ -156,7 +164,7 @@ def open_position_sym_sides(root):
 def build(root=ROOT, now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     allowed = tradeable_sym_sides(root)
-    openpos = open_position_sym_sides(root)
+    openpos = deny_filter(open_position_sym_sides(root), root)
     degraded = None
     ok, why = _quorum_check(allowed, root)
     if ok:
@@ -165,7 +173,7 @@ def build(root=ROOT, now=None):
     else:
         try:
             lg = json.loads((root / "data" / "daily_universe" / "last_good.json").read_text())
-            allowed = set(lg.get("allowed_sym_sides") or [])
+            allowed = deny_filter(set(lg.get("allowed_sym_sides") or []), root)
             openpos = set()
             degraded = f"quorum-rejected fresh build ({why}); serving last_good ({len(allowed)}). Delete last_good.json to force a fresh take."
             print(f"[universe] WARN {degraded}", file=sys.stderr)
@@ -196,7 +204,25 @@ def build(root=ROOT, now=None):
     }
 
 
+def _deny_universe(u, root):
+    """USER 2026-10-13: a cached/pushed universe file built before the deny existed must never re-admit tokenized stocks."""
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from excluded_tokenized_stocks import load_denied, symbol_of
+    deny = load_denied(root)
+    for k in ("allowed_sym_sides", "open_position_sym_sides", "crypto"):
+        if isinstance(u.get(k), list):
+            u[k] = [s for s in u[k] if symbol_of(s) not in deny]
+    if isinstance(u.get("crypto_lists"), dict):
+        u["crypto_lists"] = {s: v for s, v in u["crypto_lists"].items() if symbol_of(s) not in deny}
+    return u
+
+
 def load_or_build(root=ROOT, now=None, write=True):
+    u, how = _load_or_build(root, now, write)
+    return _deny_universe(u, root), how
+
+
+def _load_or_build(root=ROOT, now=None, write=True):
     """latest file <= today if it is from today, else (re)build locally. Returns (universe, how)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     today = OUT / f"{now.strftime('%Y%m%d')}.json"

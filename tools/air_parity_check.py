@@ -141,6 +141,7 @@ def scan(limit: int, window_days: int) -> list:
 
 def scalar(ss: str, knob: str, window_days: int, mode: str) -> dict:
     os.environ["TRADE_PARITY_VEC_EXACT"] = "1" if mode == "vec_exact" else "0"
+    os.environ.setdefault("TEST_RATE_GUARD_MIN_PER_DAY", "0")  # RateGuard low-rate sys.exit is a harness guard, not a result (as tools/v15_trade_parity main)
     import tools.v15_trade_parity as T
 
     T.harness_env(ss)

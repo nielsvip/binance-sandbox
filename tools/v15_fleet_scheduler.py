@@ -519,6 +519,16 @@ def _burn_launch(key, window, ss, st, started, n=1):
     else:
         st.setdefault("attempts", {})[key] = st.get("attempts", {}).get(key, 0) + n
 _VENUE_ONLY = os.environ.get("V15_SCHED_VENUE_ONLY", "").strip().lower()  # TEMPORARY USER 2026-10-10: stocks-only weekend push (all stocks rereun before Monday) — gates NEW pairs only; held chains drain, running pilots untouched. Unset/unknown = no gate.
+def _deny_tokenized(syms):
+    """USER 2026-10-13: drop symbols in data/excluded_tokenized_stocks.json (Binance TRADIFI_PERPETUAL). Missing module -> no-op."""
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        from excluded_tokenized_stocks import filter_syms
+    except ImportError:
+        return list(syms)
+    return filter_syms(syms, ROOT)
+
+
 def _venue_allowed(sym, native_syms=None, phase=None):
     """Venue gate. V15_SCHED_VENUE_ONLY=stocks (USER 2026-10-10): only native-stocks pairs launch. USER 2026-10-12
     `auto`: the gate is the current VENUE PHASE (`_venue_phase`): "stocks" while any tradeable stock sym_side is still
@@ -1596,6 +1606,7 @@ def tick(args, cfg, now):
     for ss in _stale_done:
         done.discard(ss)
         done_host.pop(ss, None)
+    stocks, crypto = _deny_tokenized(stocks), _deny_tokenized(crypto)  # USER 2026-10-13: tokenized stocks (AAPLUSDT…) are NOT tradeable — never scheduled, never held
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
     all_syms = stocks + crypto
     # ---- readiness (per host, only for symbols that could be placed there)

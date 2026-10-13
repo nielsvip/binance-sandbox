@@ -55,6 +55,12 @@ def candidates(snapshot, priority, afd, npz_dir, state, now, retry_h):
     running = set(snapshot.get("running") or [])
     nonshort = set(snapshot.get("non_shortable") or [])
     order = [s for s in priority if s in pend] + [s for s in pend if s not in priority]
+    try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — no autopsy bases, no JIT NPZ build
+        sys.path.insert(0, str(ROOT / "tools"))
+        from excluded_tokenized_stocks import filter_syms as _excl_filter
+        order = _excl_filter(order)
+    except ImportError:
+        pass
     out, skipped = [], {}
     for sym in order:
         if sym in running:

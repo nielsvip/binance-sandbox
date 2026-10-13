@@ -1193,6 +1193,11 @@ def split_universe(a):
         stocks = []
     elif a.mode == "stocks":
         crypto = []
+    try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never refresh/build their NPZ
+        from excluded_tokenized_stocks import filter_syms as _excl_filter
+        crypto = _excl_filter(crypto)
+    except ImportError:
+        pass
     return crypto, stocks
 
 

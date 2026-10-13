@@ -27,6 +27,14 @@ import re
 import sqlite3
 import sys
 from datetime import datetime, timezone
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — excluded from priors/causal aggregation
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+    from excluded_tokenized_stocks import is_denied as _excl_denied, name_hits as _excl_name_hits
+except ImportError:
+    def _excl_denied(_x):
+        return False
+    def _excl_name_hits(_x):
+        return None
 
 ROOT = next(
     (
@@ -289,6 +297,8 @@ def ingest_progress(pdirs, db_path=None, root=None):
         except Exception:
             continue
         ss = d.get("symside") or os.path.basename(f).replace("_v14_progress.json", "")
+        if _excl_denied(ss):
+            continue
         for k, v in (d.get("done") or {}).items():
             if not isinstance(v, dict):
                 continue

@@ -96,7 +96,13 @@ def main(argv=None):
     for d in a.progress_dirs.split(","):
         dirs += glob.glob(os.path.expanduser(d.strip())) or [os.path.expanduser(d.strip())]
     results = []
-    for ss in [s for s in a.symsides.split(",") if s]:
+    try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never produce autopsy bases for them
+        sys.path.insert(0, str(ROOT / "tools"))
+        from excluded_tokenized_stocks import filter_syms as _excl_filter
+    except ImportError:
+        def _excl_filter(x):
+            return list(x)
+    for ss in _excl_filter([s for s in a.symsides.split(",") if s]):
         if not a.force and (out / f"{ss}_autopsy_base.json").exists() and "effective_switches" in (out / f"{ss}_autopsy_base.json").read_text():
             print(f"[autopsy-first] {ss} base exists with effective_switches — skipped (--force to redo)", flush=True)
             continue

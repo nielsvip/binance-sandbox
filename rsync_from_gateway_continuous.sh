@@ -8,12 +8,16 @@ MACBOOK_TARGET="/Users/niels/Documents/binance/klines_cache_gateway/"
 LOG_FILE="$HOME/logs/rsync_from_gateway.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$MACBOOK_TARGET"
+# USER 2026-10-13: TradFi perps (AAPLUSDT etc., data/excluded_tokenized_stocks.json) are not tradeable — never pull/push their files
+_DENYX="/tmp/excluded_tokenized_stocks_rsync_$$.txt"
+_deny_refresh() { : > "$_DENYX"; python3 -c 'import json,sys;[print(f"{s}_*\n{s}.*\n{s}") for s in json.load(open(sys.argv[1])).get("symbols",[])]' "/Users/niels/Documents/binance/data/excluded_tokenized_stocks.json" > "$_DENYX" 2>/dev/null || : ; }
+_deny_refresh
 echo "$(date '+%Y-%m-%d %H:%M:%S') - 🔄 Starting continuous rsync from gateway..." | tee -a "$LOG_FILE"
 while true; do
     check_local_size "$MACBOOK_TARGET"
     if ! check_remote_size "$GATEWAY_HOST" "$GATEWAY_SOURCE"; then sleep 60; continue; fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 📥 Syncing from gateway..." >> "$LOG_FILE"
-    rsync -av --whole-file --delay-updates --timeout=30 --exclude="*.tmp" --exclude="*.lock" --exclude="backups*" --exclude=".rsync-partial*" --max-size=1G "${GATEWAY_HOST}:${GATEWAY_SOURCE}" "$MACBOOK_TARGET" >> "$LOG_FILE" 2>&1
+    _deny_refresh; rsync -av --whole-file --delay-updates --timeout=30 --exclude-from="$_DENYX" --exclude="*.tmp" --exclude="*.lock" --exclude="backups*" --exclude=".rsync-partial*" --max-size=1G "${GATEWAY_HOST}:${GATEWAY_SOURCE}" "$MACBOOK_TARGET" >> "$LOG_FILE" 2>&1
     # Also sync mark prices + latest_market_data from gateway (bidirectional fallback)
     rsync -av --whole-file --delay-updates --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "${GATEWAY_HOST}:/home/niels/binance/price_cache*.json" "/Users/niels/Documents/binance/" >> "$LOG_FILE" 2>&1
     rsync -av --whole-file --delay-updates --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "${GATEWAY_HOST}:/home/niels/binance/data/latest_market_data.json" "/Users/niels/Documents/binance/data/latest_market_data.json.gateway" >> "$LOG_FILE" 2>&1

@@ -126,6 +126,13 @@ def main():
     live = IND / f"{sym}.npz"
     now = time.time()
     r = {"symbol": sym, "action": "none", "ok": False, "reason": "", "venue": venue}
+    try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never build/push their NPZ, never launch
+        from excluded_tokenized_stocks import is_denied as _excl_denied
+        if _excl_denied(sym):
+            r.update(action="denied", reason="denied TradFi symbol (data/excluded_tokenized_stocks.json)")
+            out(r, 3)
+    except ImportError:
+        pass
     try:
         from tools.v15_npz_freeze import is_frozen as _is_frozen
         if _is_frozen(sym):

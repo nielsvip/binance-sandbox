@@ -41,6 +41,16 @@ SELF = os.getpid()
 # Same staging exclusion as klines_guard: rolling feed dirs shrink by design —
 # sealing/enforcing them would false-positive on every refresh (and kill feeders).
 STAGING_DIRS = {"gateway", "macbook", "backups", "consolidated_klines"}
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never seal/restore their klines
+    sys.path.insert(0, str(ROOT / "tools"))
+    from excluded_tokenized_stocks import is_denied as _excl_denied
+except Exception:
+    def _excl_denied(_symbol):
+        return False
+
+
+def _denied_rel(rel):
+    return _excl_denied(Path(rel).name.split(".")[0].rsplit("_", 1)[0])
 
 
 def _is_staging(rel):
@@ -172,7 +182,7 @@ def _vault_rels():
                 rels.add(s[:-len(".gz")])
             elif s.endswith(".json"):
                 rels.add(s)
-    return sorted(r for r in rels if not _is_staging(r))
+    return sorted(r for r in rels if not _is_staging(r) and not _denied_rel(r))
 
 
 def prune_staging():
@@ -207,7 +217,7 @@ def seal():
         if ".tmp" in p.name or p.name.startswith("."):
             continue
         rel = str(p.relative_to(LIVE))
-        if _is_staging(rel):
+        if _is_staging(rel) or _denied_rel(rel):
             continue
         try:
             st = p.stat()

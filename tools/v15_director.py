@@ -157,6 +157,12 @@ def main():
             pass
     prio += [s for s in live_todo if s in _bases] + [s for s in live_todo if s not in _bases]
     prio += [b["symside"].rsplit("_", 1)[0] for b in bad365]
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        from excluded_tokenized_stocks import filter_syms
+        prio = filter_syms(prio, ROOT)  # USER 2026-10-13: tokenized stocks are not tradeable — never prioritised
+    except ImportError as _de:
+        print(f"[director] deny filter unavailable: {_de}")
     seen, ordered = set(), []
     for s in prio:
         if s not in seen:

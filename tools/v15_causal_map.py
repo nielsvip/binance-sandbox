@@ -19,6 +19,12 @@ import statistics
 import sys
 from collections import defaultdict
 from pathlib import Path
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — excluded from priors/causal aggregation
+    __import__("sys").path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
+    from excluded_tokenized_stocks import is_denied as _excl_denied
+except ImportError:
+    def _excl_denied(_x):
+        return False
 
 
 def cat_side(symside):
@@ -35,6 +41,8 @@ def load(paths):
         except Exception:
             continue
         ss = (r.get("summary") or {}).get("symside") or Path(p).stem
+        if _excl_denied(ss):
+            continue
         if not r.get("lever_map"):
             continue
         if ss not in runs or len(r.get("lever_map")) >= len(runs[ss].get("lever_map")):

@@ -21,6 +21,14 @@ import os
 import statistics
 import sys
 import time
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — excluded from priors/causal aggregation
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+    from excluded_tokenized_stocks import is_denied as _excl_denied, name_hits as _excl_name_hits
+except ImportError:
+    def _excl_denied(_x):
+        return False
+    def _excl_name_hits(_x):
+        return None
 
 EPS = 1e-9
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
@@ -221,7 +229,7 @@ def main():
     files = []
     for g in globs:
         files.extend(glob.glob(g))
-    files = sorted(set(files), key=lambda p: os.path.getmtime(p))
+    files = sorted({f for f in files if not _excl_name_hits(os.path.basename(f))}, key=lambda p: os.path.getmtime(p))
     if args.limit:
         files = files[-args.limit:]
     if not files:

@@ -85,6 +85,12 @@ def universe():
             if (s.endswith("USDT") or s.endswith("USDC")) and s not in seen:
                 seen.add(s)
                 syms.append(s)
+    try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never fetch/append their klines
+        __import__("sys").path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+        from excluded_tokenized_stocks import filter_syms as _excl_filter
+        syms = _excl_filter(syms)
+    except ImportError:
+        pass
     # keep only those with an existing backtest 15m file
     return [s for s in syms if os.path.exists(os.path.join(BT, f"{s}_{TF}.json"))]
 

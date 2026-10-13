@@ -178,3 +178,8 @@ def test_switch_types_validator_wired():
 def test_regime_wiring():
     for tok in ("def _v17_regime():", "def _v17_recent_eval(", "def _v17_regime_pick(", "OLD_REGIME_ONLY", "old_set_recent", '_v17["regime"] = out', "[REGIME]", "pick=_v17_regime_pick"):
         assert tok in SRC, tok
+
+
+def test_combo_engine_wiring_fail_open():
+    for tok in ("def _v17_combo_search(", "def _v17_combo_append(", "import tools.v17_combo_engine as _ce", "_v17_combo_append(first)", "SURGEON:combo:"):
+        assert tok in SRC, tok

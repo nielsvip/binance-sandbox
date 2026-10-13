@@ -25,6 +25,12 @@ MACBOOK = REPO / "klines_cache_macbook"
 TARGET = REPO / "klines_cache_backtest"
 SYMBOLS_JSON = REPO / "symbols.json"
 VALID_TFS = ("1m", "3m", "15m", "1h", "4h", "D", "W", "M")
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never append/create their klines
+    sys.path.insert(0, str(REPO / "tools"))
+    from excluded_tokenized_stocks import is_denied as _excl_denied
+except Exception:
+    def _excl_denied(_symbol):
+        return False
 
 
 def load_json_list(p: Path) -> list[dict]:
@@ -92,6 +98,8 @@ def filenames_to_process(symbols: list[str] | None) -> list[str]:
             if tf not in VALID_TFS:
                 continue
             if roots is not None and sym not in roots:
+                continue
+            if _excl_denied(sym):
                 continue
             seen.add(name)
     return sorted(seen)

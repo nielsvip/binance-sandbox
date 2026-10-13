@@ -18,6 +18,14 @@ import json
 import os
 import sys
 from pathlib import Path
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — excluded from priors/causal aggregation
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+    from excluded_tokenized_stocks import is_denied as _excl_denied, name_hits as _excl_name_hits
+except ImportError:
+    def _excl_denied(_x):
+        return False
+    def _excl_name_hits(_x):
+        return None
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -63,6 +71,8 @@ def fold(bases_dir, exclude, tdir):
         stats["bases"] += 1
         if ss in exclude:
             stats["excluded_has_board"] += 1
+            continue
+        if _excl_denied(ss):
             continue
         cs = cat_side_of(ss)
         full = Path(p).with_name(f"{ss}_autopsy.json")

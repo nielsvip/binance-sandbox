@@ -156,6 +156,12 @@ def main():
     with cf.ThreadPoolExecutor(len(HOSTS)) as ex:
         scans = list(ex.map(scan_host, HOSTS))
     allrows = [r for _, rows in scans for r in rows]
+    try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — excluded from avg-delta aggregation
+        sys.path.insert(0, str(ROOT / "tools"))
+        from excluded_tokenized_stocks import is_denied as _excl_denied
+        allrows = [r for r in allrows if not _excl_denied(r[0])]
+    except ImportError:
+        pass
     sel = R.select_latest(allrows)
     per_host = {}
     for ss, r in sel.items():

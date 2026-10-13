@@ -33,6 +33,12 @@ if [ -n "$_FRZ" ]; then
   for _s in $_FRZ; do echo "${_s}.npz"; done >> "$EXCL"
   echo "$(date -u +%FT%TZ) FROZEN $(echo $_FRZ | wc -w) symbols excluded (unfinished boards)" >> /tmp/sync_indicators.log
 fi
+# USER 2026-10-13: TradFi perps (AAPLUSDT etc., data/excluded_tokenized_stocks.json) are not tradeable — never push their NPZs
+_DENY=$(python3 -c 'import json,os;print("\n".join(json.load(open(os.path.expanduser("~/binance-sandbox/data/excluded_tokenized_stocks.json"))).get("symbols",[])))' 2>/dev/null || true)
+if [ -n "$_DENY" ]; then
+  for _s in $_DENY; do echo "${_s}.npz"; echo "${_s}_*"; done >> "$EXCL"
+  echo "$(date -u +%FT%TZ) DENY $(echo $_DENY | wc -w) TradFi symbols excluded" >> /tmp/sync_indicators.log
+fi
 for ip in 10.0.0.4; do  # 2026-10-13 s5/s6 destroyed
   _excl_arg=""
   [ -f "$EXCL" ] && _excl_arg="--exclude-from=$EXCL"

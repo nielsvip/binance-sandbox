@@ -27,6 +27,12 @@ ALERT = ROOT / "data" / "klines_guard_alert.json"
 MIN_KEEP_DAYS = 400
 # USER 2026-10-13: staging copies (gateway/Mac feeds) roll by design — guarding them reverted fresh bars every 5 min
 STAGING_DIRS = {"gateway", "macbook", "backups", "consolidated_klines"}
+try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never (re)create their klines
+    sys.path.insert(0, str(ROOT / "tools"))
+    from excluded_tokenized_stocks import is_denied as _excl_denied
+except Exception:
+    def _excl_denied(_symbol):
+        return False
 
 
 def span_of(rows):
@@ -47,6 +53,8 @@ def guarded_write(path, rows, min_keep_days=MIN_KEEP_DAYS):
     """Write rows to path unless it destroys <min_keep_days history. Returns (ok, reason). Never raises."""
     try:
         p = Path(path)
+        if _excl_denied(p.name.split(".")[0].rsplit("_", 1)[0]):
+            return (False, "REFUSED denied TradFi symbol (data/excluded_tokenized_stocks.json, USER 2026-10-13)")
         old = []
         if p.exists():
             try:
