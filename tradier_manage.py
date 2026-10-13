@@ -2295,8 +2295,13 @@ def _ordinary_bottom_a_params(account_key, symbol, side):
 
 
 # Confluence: rsi_4h + rsi_1h + bb_pct_b_4h. Pure function — never raises.
-def _parabolic_state(ind: dict, cfg) -> tuple:
-    if not bool(getattr(cfg, "PARABOLIC_PROTECTION_ENABLED", True)):
+def _parabolic_state(ind: dict, cfg, enabled=None) -> tuple:
+    if enabled is None:
+        try:
+            enabled = bool(getattr(cfg, "PARABOLIC_PROTECTION_ENABLED", True))
+        except Exception:
+            enabled = True
+    if not bool(enabled):
         return (False, False, False, False)
     try:
         r4 = float((ind or {}).get("rsi_4h", 50) or 50)
@@ -35580,7 +35585,7 @@ class StockStrategy:
                     (_wt1_1h < _wt2_1h) or (_wt1_4h < _wt2_4h) or (_wt1_D < _wt2_D)
                 )
                 if _ltf_down and _15m_confirm and _htf_against:
-                    _pp_up_d, _pp_dn_d, _, _ = _parabolic_state(_d_ind or {}, config)
+                    _pp_up_d, _pp_dn_d, _, _ = _parabolic_state(_d_ind or {}, config, enabled=_cfg("PARABOLIC_PROTECTION_ENABLED", True, None, symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else "LONG")))
                     if _pp_up_d:
                         logger.warning(
                             f"🌟 [WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS] {symbol} L: parabolic uptrend → skip close, let LONG ride"
@@ -35607,7 +35612,7 @@ class StockStrategy:
                     (_wt1_1h > _wt2_1h) or (_wt1_4h > _wt2_4h) or (_wt1_D > _wt2_D)
                 )
                 if _ltf_up and _15m_confirm and _htf_against:
-                    _pp_up_d, _pp_dn_d, _, _ = _parabolic_state(_d_ind or {}, config)
+                    _pp_up_d, _pp_dn_d, _, _ = _parabolic_state(_d_ind or {}, config, enabled=_cfg("PARABOLIC_PROTECTION_ENABLED", True, None, symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else "LONG")))
                     if _pp_dn_d:
                         logger.warning(
                             f"🌟 [WT_CROSSOVER_FINAL_PARABOLIC_BYPASS] {symbol} S: parabolic downtrend → skip close, let SHORT ride"
@@ -35704,7 +35709,7 @@ class StockStrategy:
                     (_wt1_1h < _wt2_1h) or (_wt1_4h < _wt2_4h) or (_wt1_D < _wt2_D)
                 )
                 if _ltf_down and _15m_confirm and _htf_against:
-                    _pp_up_x, _pp_dn_x, _, _ = _parabolic_state(_xu_ind or {}, config)
+                    _pp_up_x, _pp_dn_x, _, _ = _parabolic_state(_xu_ind or {}, config, enabled=_cfg("PARABOLIC_PROTECTION_ENABLED", True, None, symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else "LONG")))
                     if _pp_up_x:
                         logger.warning(
                             f"🌟 [WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS] {symbol} L (standalone): parabolic uptrend → skip close"
@@ -35728,7 +35733,7 @@ class StockStrategy:
                     (_wt1_1h > _wt2_1h) or (_wt1_4h > _wt2_4h) or (_wt1_D > _wt2_D)
                 )
                 if _ltf_up and _15m_confirm and _htf_against:
-                    _pp_up_x, _pp_dn_x, _, _ = _parabolic_state(_xu_ind or {}, config)
+                    _pp_up_x, _pp_dn_x, _, _ = _parabolic_state(_xu_ind or {}, config, enabled=_cfg("PARABOLIC_PROTECTION_ENABLED", True, None, symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else "LONG")))
                     if _pp_dn_x:
                         logger.warning(
                             f"🌟 [WT_CROSSOVER_FINAL_PARABOLIC_BYPASS] {symbol} S (standalone): parabolic downtrend → skip close"
@@ -35836,7 +35841,7 @@ class StockStrategy:
                 pass
             return False, f"STALE_DATA_age={_ind_age:.0f}s>{_stale_max}s", 0
         if _wtdc_exit_enabled and _exit_score >= _exit_threshold:
-            _pp_up_e, _pp_dn_e, _, _ = _parabolic_state(_exit_ind or {}, config)
+            _pp_up_e, _pp_dn_e, _, _ = _parabolic_state(_exit_ind or {}, config, enabled=_cfg("PARABOLIC_PROTECTION_ENABLED", True, None, symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else "LONG")))
             if (is_long and _pp_up_e) or ((not is_long) and _pp_dn_e):
                 logger.warning(
                     f"🌟 [WT_DC_EXIT_PARABOLIC_BYPASS] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% — parabolic {'UP' if is_long else 'DOWN'}trend, skipping close, let trend run"
@@ -49437,7 +49442,7 @@ class TradierTradeManager:
                                     continue
                                 if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
                                     _rm_pp_up, _rm_pp_dn, _, _ = _parabolic_state(
-                                        i, config
+                                        i, config, enabled=_cfg_auto("PARABOLIC_PROTECTION_ENABLED", True)
                                     )
                                     if _rm_pp_up:
                                         logger.warning(
@@ -49457,7 +49462,7 @@ class TradierTradeManager:
                                     continue
                                 if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
                                     _rm_pp_up, _rm_pp_dn, _, _ = _parabolic_state(
-                                        i, config
+                                        i, config, enabled=_cfg_auto("PARABOLIC_PROTECTION_ENABLED", True)
                                     )
                                     if _rm_pp_dn:
                                         logger.warning(

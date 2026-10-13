@@ -933,10 +933,12 @@ def universe_stocks():
     """stock candidates from symbols_tradier.json (Tradier universe); refresh_symbol reports NO_NPZ for missing files."""
     try:
         syms = json.loads((ROOT / "symbols_tradier.json").read_text())
-        return [str(s).upper() for s in syms if str(s).strip()]
+        out = [str(s).upper() for s in syms if str(s).strip()]
     except Exception as e:
         log(f"universe_stocks failed: {e}")
-        return []
+        out = []
+    out += [s for s in sorted(pilot_syms()) if not (s.endswith("USDT") or s.endswith("USDC"))]
+    return list(dict.fromkeys(out))
 
 
 def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto, w15, last_ts_map=None, stamp_path=None):
@@ -1062,6 +1064,45 @@ def next_cycle_wait(now=None):
     return max(5.0, float(nxt - now))
 
 
+def pilot_syms():
+    """Extra refresh coverage: daily universe + pilot progress syms (crypto + stocks). Missing files -> empty set."""
+    out = set()
+    try:
+        ud = ROOT / "data" / "daily_universe"
+        u = None
+        for c in [ud / "last_good.json"] + sorted(ud.glob("[0-9]*.json")):
+            try:
+                u = json.loads(c.read_text())
+                break
+            except Exception:
+                continue
+        def grab(o):
+            if isinstance(o, str):
+                s = o.upper()
+                for suf in ("_LONG", "_SHORT"):
+                    if s.endswith(suf):
+                        s = s[: -len(suf)]
+                if s and 1 <= len(s) <= 14 and all(ch.isdigit() or "A" <= ch <= "Z" for ch in s):
+                    out.add(s)
+            elif isinstance(o, dict):
+                for v in o.values():
+                    grab(v)
+            elif isinstance(o, (list, tuple)):
+                for v in o:
+                    grab(v)
+        if u is not None:
+            grab(u)
+        for f in (ROOT / "data" / "reports" / "lifecycle_pilot").glob("*_progress.json"):
+            b = f.name
+            for suf in ("_LONG_v14_progress.json", "_SHORT_v14_progress.json", "_LONG_v13_progress.json", "_SHORT_v13_progress.json"):
+                if b.endswith(suf):
+                    out.add(b[: -len(suf)])
+                    break
+    except Exception:
+        pass
+    return out
+
+
 def universe():
     def jl(p, d=None):
         try:
@@ -1079,6 +1120,7 @@ def universe():
         pri += [k.rsplit("_", 1)[0] for k in (c if isinstance(c, dict) else [])]
     act = jl(ROOT / "symbols_active.json", []) or []
     rest += [s for s in (act if isinstance(act, list) else list(act))]
+    rest += sorted(pilot_syms())
     seen, out = set(), []
     for s in pri + rest:
         s = str(s).upper()

@@ -13530,6 +13530,28 @@ def calculate_tier_mult(i: dict, is_long: bool) -> int:
                         tier_mult = 8
     return tier_mult
 
+_SVC_CSD_MISSING = object()
+
+def _svc_psym_get(symbol: str, side: str, knob: str, default):
+    """2026-10-13 chain-route: per-sym override > cat_side default > global (mirrors ez_manage._psym_get; local copy avoids a circular import since ez_manage imports this module)."""
+    if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1" and os.environ.get("V8_DISABLE_PER_SYM") != "1" and bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
+        try:
+            import per_sym_store as _pss
+            _ov = _pss.get_overrides(f"{symbol}_{side}")
+            if _ov is not None and knob in _ov:
+                return _ov[knob]
+        except Exception:
+            pass
+    if symbol and side and bool(getattr(config, "CAT_SIDE_DEFAULTS_ENABLED", True)):
+        try:
+            import cat_side_defaults as _csd
+            _v = _csd.get_for(knob, symbol, side, _SVC_CSD_MISSING, venue="crypto")
+            if _v is not _SVC_CSD_MISSING:
+                return _v
+        except Exception:
+            pass
+    return getattr(config, knob, default)
+
 async def check_position_reductions(service, position_key: str, account_key: str, position: Any):
     if not config.SERVICE_REDUCE: return
     if not service.trade_manager:
@@ -14038,7 +14060,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                             if reduced_amount > 0 and position.gain > reentry_info.get('reduced_gain', 0):
                                 logger.info(f"[GAIN_RECOVERY] {position_key}: Gain recovered ({position.gain:.2f}% > {position.prev_gain:.2f}%), reentrying {reduced_amount:.6f}")
                                 reentry_qty = min(reduced_amount, position.positionAmt * 0.8)
-                                max_order_value_usd = config.MAX_ORDER_VALUE_MEN if account_key == 'men' else config.MAX_ORDER_VALUE_FIN if account_key == 'fin' else config.MAX_ORDER_VALUE
+                                max_order_value_usd = config.MAX_ORDER_VALUE_MEN if account_key == 'men' else config.MAX_ORDER_VALUE_FIN if account_key == 'fin' else _svc_psym_get(symbol, position_side, "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
                                 if reentry_qty * current_price > max_order_value_usd:
                                     reentry_qty = max_order_value_usd / current_price
                                 max_pos_size_usd = get_max_position_size(symbol, account_key=account_key)
@@ -14078,7 +14100,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                             was_large_position = pre_reduction_value > 3.0 * START_USD
                             if was_large_position:
                                 reentry_qty = max(position.last_reduction_amount, config.START_POSITION_SIZE/current_price)
-                                max_order_value_usd = config.MAX_ORDER_VALUE_MEN if account_key == 'men' else config.MAX_ORDER_VALUE_FIN if account_key == 'fin' else config.MAX_ORDER_VALUE
+                                max_order_value_usd = config.MAX_ORDER_VALUE_MEN if account_key == 'men' else config.MAX_ORDER_VALUE_FIN if account_key == 'fin' else _svc_psym_get(symbol, position_side, "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
                                 if reentry_qty * current_price > max_order_value_usd:
                                     reentry_qty = max_order_value_usd / current_price
                                 max_pos_size_usd = get_max_position_size(symbol, account_key=account_key)

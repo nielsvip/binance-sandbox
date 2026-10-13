@@ -453,11 +453,24 @@ def _parity_filter_tf_gates(indicators: Dict[str, Any], is_long: bool, current_p
 def _kindergarten_ema_gate(indicators: Dict[str, Any], is_long: bool, current_price: float = 0, enabled=None, scan_tf=None) -> Tuple[bool, str]:
     """KINDERGARTEN 2026-09-10 — any-or-all of 200SMA/EMA, 9/21 cross, 50 EMA/SMA cross are they still in all scripts and tested on every run? YES — now tests all 3. Wired in live via check_entry_alignment. Disabled when KINDERGARTEN_EMA_GATE_ENABLED=False."""
     try:
-        if not bool(getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False) if enabled is None else enabled):
+        # 2026-10-13 chain-route: resolve via per-sym > cat_side > global (was direct config read, ignored per-sym overrides e.g. ETHUSDC_SHORT E921=True)
+        _kg_sym = str(indicators.get("symbol") or indicators.get("sym") or "")
+        _kg_side = "LONG" if is_long else "SHORT"
+        if enabled is None:
+            try:
+                enabled = _psym_get(_kg_sym, _kg_side, "KINDERGARTEN_EMA_GATE_ENABLED", getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False))
+            except Exception:
+                enabled = getattr(config, "KINDERGARTEN_EMA_GATE_ENABLED", False)
+        if not bool(enabled):
             return True, "KG_OFF"
         price = float(current_price) if current_price else float(indicators.get("close") or indicators.get("close_3m") or 0)
         # 2026-10-01 FLT2: KINDERGARTEN_FILTER_TF in D/4h/1h/15m restricts the scan to that TF (twin: vec_decisions/live_kindergarten_gate.kg_block_mask); anything else = legacy D,4h,1h,15m scan
-        _kg_tf1 = str((getattr(config, "KINDERGARTEN_FILTER_TF", "OFF") if scan_tf is None else scan_tf) or "OFF").strip()
+        if scan_tf is None:
+            try:
+                scan_tf = _psym_get(_kg_sym, _kg_side, "KINDERGARTEN_FILTER_TF", getattr(config, "KINDERGARTEN_FILTER_TF", "OFF"))
+            except Exception:
+                scan_tf = getattr(config, "KINDERGARTEN_FILTER_TF", "OFF")
+        _kg_tf1 = str((scan_tf) or "OFF").strip()
         for tf in ([_kg_tf1] if _kg_tf1 in ("D", "4h", "1h", "15m") else ["D", "4h", "1h", "15m"]):
             ema = indicators.get(f"ema_200_{tf}")
             sma = indicators.get(f"sma_200_{tf}")
@@ -8237,7 +8250,7 @@ def _psym_sps(symbol: str, side: str):
         return _raw
     try:
         import perf_tier_sizing as _pts
-        return _pts.apply_usd(_raw, symbol, side, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)), float(getattr(config, "MAX_ORDER_VALUE", 300.0)))
+        return _pts.apply_usd(_raw, symbol, side, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)), float(_psym_get(symbol, side, "MAX_ORDER_VALUE", getattr(config, "MAX_ORDER_VALUE", 300.0))))
     except Exception:
         return _raw
 
@@ -25390,7 +25403,7 @@ class MultiAccountTradeManager:
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
         if is_augment and not _original_action_was_reentry and position:
             _aug_count = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)
-            _max_augs = getattr(config, "MAX_AUGMENTS_PER_POSITION", 3)
+            _max_augs = _psym_get(symbol, position_side, "MAX_AUGMENTS_PER_POSITION", getattr(config, "MAX_AUGMENTS_PER_POSITION", 3))
             if _aug_count >= _max_augs:
                 logger.warning(
                     f"[MAX_AUGMENTS_CAP] {position_key}: BLOCKED — augmented_count={int(_aug_count)} >= max={_max_augs}"
@@ -28681,7 +28694,7 @@ class MultiAccountTradeManager:
             if account_key == "men"
             else config.MAX_ORDER_VALUE_FIN
             if account_key == "fin"
-            else config.MAX_ORDER_VALUE
+            else _psym_get(symbol, position_side, "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
         )
         # REAL POSITION PROTECTION: REENTRY restoring a real reported position bypasses caps
         _is_reentry_bypass = ("REENTRY" in (action or "").upper() or "REENTRY" in (reason or "").upper()) and not _vec_exact_reason_ok(reason)  # 2026-10-06 live guardian: a vec-decided order (|VEC_EXACT, e.g. HARDCODED_RALLY_REENTRY) is never grandfathered past MAX_ORDER_VALUE / MAX_POSITION_SIZE
@@ -29279,7 +29292,7 @@ class MultiAccountTradeManager:
             if account_key == "men"
             else config.MAX_ORDER_VALUE_FIN
             if account_key == "fin"
-            else config.MAX_ORDER_VALUE
+            else _psym_get(symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else ("SHORT" if str(position_key).endswith("_SHORT") else "LONG")), "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
         )
         if qty * current_price > max_order_value_usd:
             qty = max_order_value_usd / current_price
@@ -29369,7 +29382,7 @@ class MultiAccountTradeManager:
             if account_key == "men"
             else config.MAX_ORDER_VALUE_FIN
             if account_key == "fin"
-            else config.MAX_ORDER_VALUE
+            else _psym_get(symbol, (position.position_side if position is not None and getattr(position, "position_side", None) else ("SHORT" if str(position_key).endswith("_SHORT") else "LONG")), "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
         )
         if qty * current_price > max_order_value_usd:
             qty = max_order_value_usd / current_price
@@ -35258,7 +35271,7 @@ class MultiAccountTradeManager:
                 if account_key == "men"
                 else config.MAX_ORDER_VALUE_FIN
                 if account_key == "fin"
-                else config.MAX_ORDER_VALUE
+                else _psym_get(symbol, position_side, "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
             )
             max_pos_size_usd = get_max_position_size(symbol, account_key=account_key)
             current_notional = current_real_amt * current_price
@@ -35939,7 +35952,7 @@ class MultiAccountTradeManager:
 
                 # USER 2026-10-06 VEC-SIZE PARITY: deleted inf/fin/men 0.15x/price mutilation (mixed coin/USD units → ~100x dust → min-notional reject loop; no vec twin; ang/flz never had it and fill).
                 _order_usd = abs(quantity * current_price)
-                _max_order_usd = getattr(config, "MAX_ORDER_VALUE", 120.0)
+                _max_order_usd = float(_psym_get(symbol, position_side, "MAX_ORDER_VALUE", getattr(config, "MAX_ORDER_VALUE", 120.0)))
                 if _order_usd > _max_order_usd:
                     logger.warning(
                         f"[ORDER_SIZE_CAP] {position_key}: ${_order_usd:.2f} > MAX_ORDER_VALUE ${_max_order_usd:.2f} — capping"
@@ -43797,9 +43810,9 @@ async def calculate_final_order_quantity(
         _close_5 = float(i.get(f"close_5bar_{config.TF_FOCUS}", 0) or 0)
         if _close_5 > 0:
             _mom5 = (current_price - _close_5) / _close_5 * 100
-            if is_long and _mom5 < config.MOM5_LONG_THRESHOLD:
+            if is_long and _mom5 < float(_psym_get(symbol, position.position_side, "MOM5_LONG_THRESHOLD", config.MOM5_LONG_THRESHOLD)):
                 factors.append(
-                    (22, True, f"MOM5_LONG({_mom5:.2f}%<{config.MOM5_LONG_THRESHOLD})")
+                    (22, True, f"MOM5_LONG({_mom5:.2f}%<{float(_psym_get(symbol, position.position_side, 'MOM5_LONG_THRESHOLD', config.MOM5_LONG_THRESHOLD))})")
                 )
             elif not is_long and _mom5 > config.MOM5_SHORT_THRESHOLD:
                 factors.append(
@@ -44149,7 +44162,7 @@ async def calculate_final_order_quantity(
     if (is_long and k_15m > 85) or (not is_long and k_15m < 15):
         sizing_score *= 0.6
     # BACKTEST_CHANGE_141: Fear & Greed sizing multiplier (1,240% vs 680% B&H documented)
-    if getattr(config, "FG_SIZING_ENABLED", False):
+    if bool(_psym_get(symbol, position.position_side, "FG_SIZING_ENABLED", getattr(config, "FG_SIZING_ENABLED", False))):
         try:
             _fg_raw = (
                 await trade_manager.redis_client.get("news_sentiment_meta")
@@ -44213,7 +44226,7 @@ async def calculate_final_order_quantity(
             )
     # BACKTEST_CHANGE_135: ATR Adaptive Sizing — high vol = smaller, low vol = larger
     if getattr(config, "ATR_ADAPTIVE_SIZING_ENABLED", False):
-        _atr_sz_tf = getattr(config, "ATR_ADAPTIVE_STOP_TF", "1h")
+        _atr_sz_tf = str(_psym_get(symbol, position.position_side, "ATR_ADAPTIVE_STOP_TF", getattr(config, "ATR_ADAPTIVE_STOP_TF", "1h")))
         _atr_sz_val = float(i.get(f"atr_{_atr_sz_tf}", 0) or 0)
         if _atr_sz_val > 0 and current_price > 0:
             _atr_sz_pct = (_atr_sz_val / current_price) * 100
@@ -44230,7 +44243,7 @@ async def calculate_final_order_quantity(
                 )
     # BACKTEST_CHANGE_130: ATR-based risk distance — penalize sizing when risk is extreme
     if getattr(config, "ATR_ADAPTIVE_STOP_ENABLED", False):
-        _atr_stop_tf = getattr(config, "ATR_ADAPTIVE_STOP_TF", "1h")
+        _atr_stop_tf = str(_psym_get(symbol, position.position_side, "ATR_ADAPTIVE_STOP_TF", getattr(config, "ATR_ADAPTIVE_STOP_TF", "1h")))
         _atr_stop_val = float(i.get(f"atr_{_atr_stop_tf}", 0) or 0)
         if _atr_stop_val > 0 and current_price > 0:
             _atr_risk_dist = (
@@ -44284,7 +44297,7 @@ async def calculate_final_order_quantity(
         if _ema20_sz > 0:
             _ema_dist_sz = abs((current_price - _ema20_sz) / _ema20_sz * 100)
             _ema_sz_mult = min(
-                _ema_dist_sz, getattr(config, "EMA_DIST_SIZING_MULT", 2.0)
+                _ema_dist_sz, float(_psym_get(symbol, position.position_side, "EMA_DIST_SIZING_MULT", getattr(config, "EMA_DIST_SIZING_MULT", 2.0)))
             )
             if _ema_sz_mult > 1.0:
                 final_add_qty *= _ema_sz_mult
@@ -44312,7 +44325,7 @@ async def calculate_final_order_quantity(
         else (
             config.MAX_ORDER_VALUE_FIN
             if account_key == "fin"
-            else config.MAX_ORDER_VALUE
+            else _psym_get(symbol, position.position_side, "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
         )
     )
     if final_add_qty * current_price > max_order_value_usd:
@@ -46551,7 +46564,7 @@ async def direct_high_gain_augmentation(
                             if account_key == "men"
                             else config.MAX_ORDER_VALUE_FIN
                             if account_key == "fin"
-                            else config.MAX_ORDER_VALUE
+                            else _psym_get(symbol, position_side, "MAX_ORDER_VALUE", config.MAX_ORDER_VALUE)
                         )
                         if quantity * current_price > max_order_value_usd:
                             quantity = max_order_value_usd / max(current_price, 1e-9)
