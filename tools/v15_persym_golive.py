@@ -131,6 +131,15 @@ def _collect_one(path):
         if _mav is not None and _mav < 1:
             rec["mandate_stripped"] = [f"MAX_AUGMENTS_PER_POSITION={ov['MAX_AUGMENTS_PER_POSITION']}"]
             ov.pop("MAX_AUGMENTS_PER_POSITION", None)
+    # 2026-10-13 fishnet: a per-sym MAX_ORDER_VALUE of 0 blocks every order (FCN_LONG/SHORT poison this turn) — never live.
+    if "MAX_ORDER_VALUE" in ov:
+        try:
+            _mov = float(str(ov["MAX_ORDER_VALUE"]).strip())
+        except Exception:
+            _mov = None
+        if _mov is not None and _mov <= 0:
+            rec["mandate_stripped"].append(f"MAX_ORDER_VALUE={ov['MAX_ORDER_VALUE']}")
+            ov.pop("MAX_ORDER_VALUE", None)
     rec["overrides"] = ov
     sg = rec["stored_final_gain"]
     finished = bool(
@@ -390,10 +399,20 @@ def golive(a):
             continue
         ok365, why365 = gate_365d(ss, rec, conf)
         row["gate_365d"] = why365
-        if not ok365 and not a.all_finished:
-            row.update(result="REFUSED", reason=f"365D verdict fails: {why365}")
-            rows[ss] = row
-            continue
+        # USER 2026-10-13 NEW RULE: "we now apply live BEFORE 365D and backtest_v12_live verification, which does not
+        # make them obsolete — they need to run also, but meanwhile the newest settings trade immediately." The 365D
+        # verdict is therefore RECORDED, never a blocker. Verification keeps running in the fleet chain, and a
+        # 2-consecutive-losing-trade streak on the new settings escalates that sym_side to prioritized 365D
+        # optimization (tools/v15_loss_streak_watch.py). Restore the old hard gate with V15_GOLIVE_REQUIRE_365D=1.
+        # Every INTEGRITY refusal above/below stays: blocklist, artefact keys, zero-trade sets, engine-rejected sets,
+        # secret/type gates. Those protect against junk, not against being unverified.
+        if not ok365:
+            if os.environ.get("V15_GOLIVE_REQUIRE_365D", "0") == "1" and not a.all_finished:
+                row.update(result="REFUSED", reason=f"365D verdict fails: {why365} (V15_GOLIVE_REQUIRE_365D=1)")
+                rows[ss] = row
+                continue
+            row["applied_before_365d"] = True
+            print(f"[golive] {ss} applying BEFORE 365D verification (USER 2026-10-13 rule): {why365}", flush=True)
         dr = sp.register_workbook_result(
             ss,
             dict(ov),

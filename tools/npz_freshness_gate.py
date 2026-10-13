@@ -169,11 +169,15 @@ def classify(path, now=None, exempt_maxdays=None):
         if is_crypto(stem):
             lag = (latest_15m - ts[-1]) / 900.0
             if lag > MAX_LAG_BARS_CRYPTO:
-                return ("stale", f"lag{lag:.0f}bars") if span_days >= MIN_DAYS else ("short", f"{span_days:.0f}d STALE_TAIL lag{lag:.0f}bars")
+                if span_days >= MIN_DAYS:
+                    return ("stale", f"lag{lag:.0f}bars")
+                return ("stale", f"lag{lag:.0f}bars [MAXHIST depth-ok]") if _x else ("short", f"{span_days:.0f}d STALE_TAIL lag{lag:.0f}bars")
         else:
             lagd = (now - ts[-1]) / 86400.0
             if lagd > STOCK_MAX_LAG_DAYS:
-                return ("stale", f"stock-lag{lagd:.1f}d") if span_days >= MIN_DAYS else ("short", f"{span_days:.0f}d STALE_TAIL stock-lag{lagd:.1f}d")
+                if span_days >= MIN_DAYS:
+                    return ("stale", f"stock-lag{lagd:.1f}d")
+                return ("stale", f"stock-lag{lagd:.1f}d [MAXHIST depth-ok]") if _x else ("short", f"{span_days:.0f}d STALE_TAIL stock-lag{lagd:.1f}d")
         if span_days < MIN_DAYS:
             return ("shortx", f"{span_days:.0f}d [MAXHIST]")
         return ("ok", "")
@@ -382,10 +386,13 @@ def main(argv=None):
                 res2["short"] = [s for s in res2["short"] if is_tradeable_file(s.split()[0], tsyms)]
                 res2["stale"] = [s for s in res2["stale"] if is_tradeable_file(s.split()[0], tsyms)]
                 res2["bad"] = [s for s in res2["bad"] if is_tradeable_file(s.split()[0], tsyms)]
-            left = len(res2["short"]) + len(res2["stale"]) + len(res2["bad"])
-            print(f"RE-AUDIT files={len(res2['files'])} ok={res2['ok']} residual={left}")
+            left = len(res2["short"]) + len(res2["bad"])
+            print(f"RE-AUDIT files={len(res2['files'])} ok={res2['ok']} residual={left} (stale={len(res2['stale'])} JIT-healed at dispatch)")
             return 0 if left == 0 else 1
-    return 0 if not (short or stale or bad) else 1
+    # USER 2026-10-13 JIT doctrine: STALE tails are healed at dispatch (v15_npz_prep rebuilds <=15m before pilot use).
+    # Holdings staleness between dispatches is normal, NOT a violation: exit counts depth/structural (short+bad) only.
+    # STALE stays LOUD in output (counted + listed) so prep failures stay visible.
+    return 0 if not (short or bad) else 1
 
 
 if __name__ == "__main__":

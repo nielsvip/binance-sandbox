@@ -165,6 +165,19 @@ def test_reverse_venue_tolerance():
     assert G.is_tradeable_file("AAPL_BF.npz", {"AAPL"}) is False
 
 
+def test_jit_stale_nonblocking(tmp_path, monkeypatch, capsys):
+    import time
+    now = time.time()
+    latest = (now // 900) * 900
+    _w(tmp_path / "DEEPUSDT.npz", 400, latest - 10 * 900)
+    monkeypatch.setattr(G, "ROOT", str(tmp_path))
+    assert G.main(["gate", "--dir", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "stale=1" in out and "STALE DEEPUSDT" in out
+    _w(tmp_path / "SHALLOWUSDT.npz", 40, latest)
+    assert G.main(["gate", "--dir", str(tmp_path)]) == 1
+
+
 def test_shortx_exempt_maxhistory(tmp_path, monkeypatch):
     import json, time
     now = time.time()
@@ -178,7 +191,7 @@ def test_shortx_exempt_maxhistory(tmp_path, monkeypatch):
     assert G.load_shorthist_exempt() == {"MAXUSDT": 120.0, "MAXSTALEUSDT": 120.0, "TRUNCUSDT": 120.0}
     assert G.classify(str(tmp_path / "MAXUSDT.npz"), exempt_maxdays=120.0)[0] == "shortx"
     v, det = G.classify(str(tmp_path / "MAXSTALEUSDT.npz"), exempt_maxdays=120.0)
-    assert v == "short" and "STALE_TAIL" in det
+    assert v == "stale" and "MAXHIST depth-ok" in det
     assert G.classify(str(tmp_path / "TRUNCUSDT.npz"), exempt_maxdays=120.0)[0] == "short"
     assert G.classify(str(tmp_path / "MAXUSDT.npz"))[0] == "short"
     res = G.audit(str(tmp_path))

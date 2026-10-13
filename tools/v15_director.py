@@ -114,6 +114,21 @@ def main():
     live_todo = sorted(s for s in live if s not in done_syms)
     # priority file: a) one 365D away, b) live universe not yet done, c) 365D-failed once
     prio = []
+    # USER 2026-10-13 NEW RULE (highest priority): live applies BEFORE 365D, and a sym_side whose NEW live settings
+    # just took 2 consecutive losing trades gets its 365D verification/optimization FIRST — it is trading unverified
+    # and losing right now. Written by tools/v15_loss_streak_watch.py (Mac, where the live trades are) and pushed here.
+    streak_syms = []
+    try:
+        _sp = jload(ROOT / "data" / "v15_365_priority.json", {}) or {}
+        _ss_map = _sp.get("sym_sides") or {}
+        _ranked = sorted(_ss_map.items(), key=lambda kv: -int((kv[1] or {}).get("streak") or 0))
+        streak_syms = list(dict.fromkeys(ss.rsplit("_", 1)[0] for ss, _v in _ranked))
+        if streak_syms:
+            print(f"[director] 2-loss escalation: {len(streak_syms)} symbols lead the queue for 365D ({streak_syms[:8]})")
+    except Exception as _se:
+        print(f"[director] loss-streak priority unavailable: {_se}")
+        streak_syms = []
+    prio += streak_syms
     # USER 2026-10-12: (0) the best performers (ledger W tier = DAILY adjustment) always lead; in the stocks phase
     # (scheduler venue_phase: every tradeable stock passes before crypto) stocks lead and crypto waits.
     phase = ((tick.get("venue_phase") or {}).get("phase")) or "any"
@@ -228,9 +243,12 @@ def main():
           f"hosts: " + ", ".join(f"{h} {s} cpu {c}%" + (f" ({r})" if r else "") for h, (s, c, r) in hosts.items()),
           f"NPZ last bar: {npz_last}",
           f"venue phase: {phase} (stocks launchable: {(tick.get('venue_phase') or {}).get('stocks_launchable')}) · ledger W (daily): {len(w_syms)} · gain tiers: {json.dumps({k: (tick.get('gain_tiers') or {}).get(k) for k in ('W', 'M', 'L', 'deferred_sides')})}",
-          "", "## Blockers", ""] + ([f"- {b}" for b in blockers] or ["- none"]) + ["", "## Priority (written to ~/v15_priority_syms.txt)", "", ", ".join(ordered) or "(none)", "", "## DAILY tier (ledger W, best performers first)", "", ", ".join(w_syms[:48]) or "(ledger missing)"]
+          "", "## Blockers", ""] + ([f"- {b}" for b in blockers] or ["- none"]) + ["", "## Priority (written to ~/v15_priority_syms.txt)", "", ", ".join(ordered) or "(none)", "", "## DAILY tier (ledger W, best performers first)", "", ", ".join(w_syms[:48]) or "(ledger missing)",
+          "", "## 2-LOSS ESCALATION — live settings applied before 365D, now losing (365D prioritized)", "",
+          ", ".join(streak_syms[:24]) or "(none)"]
     status["venue_phase"] = phase
     status["daily_w_syms"] = w_syms[:48]
+    status["loss_streak_365d_priority"] = streak_syms[:24]
     (OUT / "DIRECTOR_STATUS.md").write_text("\n".join(md) + "\n")
     print(f"[director] finished={len(done)} pos={len(pos)} need365={len(need365)} ok365={len(ok365)} last_h={len(done_last_h)} prio={len(ordered)} blockers={len(blockers)}")
     return 0

@@ -130,6 +130,7 @@ def main():
         suf = TF_SUFFIX.get(a.interval, a.interval)
         pat = f"*_{suf}{a.suffix}.json"
         a.symbols = sorted(p.name[: -len(f"_{suf}{a.suffix}.json")] for p in (ROOT / a.cache_dir).glob(pat))
+    ban_hits = 0
     for s in a.symbols or universe():
         tgt = max(a.target, TOKENISED_TARGET) if _is_tokenised(s) else a.target
         try:
@@ -138,7 +139,14 @@ def main():
             else:
                 print(json.dumps(backfill(s, tgt, a.apply, a.cache_dir, a.pages, a.interval, a.suffix)), flush=True)
         except Exception as e:
-            print(json.dumps({"sym": s, "error": repr(e)[:160]}), flush=True)
+            msg = repr(e)[:160]
+            print(json.dumps({"sym": s, "error": msg}), flush=True)
+            if "418" in msg or "-1003" in msg or "banned" in msg:
+                ban_hits += 1
+                if ban_hits >= 2:
+                    print(json.dumps({"abort": "IP_BANNED stop hammering fapi, retry after ban lifts"}), flush=True)
+                    break
+        time.sleep(0.25)
 
 
 def forward_fill(sym: str, apply: bool, cache_dir: str = "klines_cache_backtest", max_pages: int = 6, interval: str = "15m", suffix: str = "") -> dict:

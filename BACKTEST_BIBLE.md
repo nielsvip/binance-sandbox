@@ -2058,3 +2058,46 @@ the full `overrides_json` (~27 KB), gain/baseline/delta/bh/trades/tim/dd, `defau
 a promotion, and live per-sym settings stay behind the go-live gate (365D verification, artefact stripping, blocklists).
 The fleet scheduler fires it detached (`flock /tmp/v15_settings_history.lock`) on any tick that sees a sym_side publish
 since the last tick (`st["hist_seen"]`, `log["settings_history"]`) — no extra cron, the orchestrator owns it.
+
+## 92. APPLY LIVE BEFORE 365D + 2-LOSS ESCALATION (USER 2026-10-13, AUTHORITATIVE — supersedes every "365D before live" gate)
+
+**The rule, verbatim intent:** "We now apply live BEFORE 365D and backtest_v12_live verification, which does not make
+them obsolete — they need to run also, but meanwhile the newest settings trade immediately, and as soon as 2 consecutive
+losing trades occur with the new settings, the 365D gets prioritized and optimized until new settings replace the
+current ones."
+
+**(1) Live application no longer waits for 365D.** `tools/v15_persym_golive.py`: `gate_365d()` still MEASURES the verdict
+and records it in the row (`gate_365d`, plus `applied_before_365d: true`), but it never refuses. Restore the old hard
+gate with `V15_GOLIVE_REQUIRE_365D=1`. The live entry gate in `ez_manage._confirm_365d_allows`
+(`CONFIRM_365D_GATE_ENABLED`) already defaults OFF since the 2026-10-02 user order, so live opens are not gated either —
+consistent with this rule, nothing to change there.
+**Every INTEGRITY refusal stays** — they protect against junk, not against being unverified: the go-live blocklist
+(`data/golive_blocklist.json`), `ARTEFACT_KEYS` + `ABLATION_*` stripping (§77), zero-trade sets, engine-rejected sets,
+secret/type gates, `_NEG_BLOCK`. A set that the engine cannot reproduce is still refused.
+
+**(2) Verification is NOT obsolete — it still runs.** The fleet chain keeps `need365` -> 365D -> repair/GS exactly as
+before. What changed is only the ORDER relative to live application.
+
+**(3) 2 consecutive losing trades -> prioritized 365D.** NEW `tools/v15_loss_streak_watch.py` (Mac cron
+`V15_LOSS_STREAK`, every 5 min, `--push s1-pub`; tests `tests/test_v15_loss_streak.py` 8/8):
+- the anchor is **when the current settings went live** — `per_sym_active.updated_at` in `per_sym_store.db`;
+- trades come from the live ledgers `data/per_trade_returns/{acct}_{YYYYMMDD}.jsonl`, `net = pnl_pct - fees_pct`
+  (identical to `v15_causal_learner.ingest_live`, so a fee-eaten "win" counts as the loss it is);
+- only trades NEWER than the anchor count, so "with the new settings" is exact and **"until new settings replace the
+  current ones" is automatic**: a new apply moves the anchor and the counter restarts at zero;
+- the TRAILING run is what matters — any win resets it (`trailing_loss_streak`, pure + unit-tested, order-independent);
+- `streak >= V15_LOSS_STREAK_N` (2) -> `data/v15_365_priority.json` with the offending trades, their net %, exit reason
+  and the `applied_at`/`winning_tag` anchor.
+- `tools/v15_director.py` puts those symbols **FIRST** in `~/v15_priority_syms.txt` (ahead of the ledger W/DAILY tier)
+  and reports them under "2-LOSS ESCALATION" in `DIRECTOR_STATUS.md/.json`; the scheduler reads that file as
+  `V15_SCHED_PRIORITY_SYMS`, so their 365D verification/optimization takes the next free slots.
+- The watcher is strictly read-only with respect to trading: it never blocks, closes or sizes anything — it only ranks
+  verification work. First run (2026-10-13 03:58Z): 145 sym_sides with live trades, 86 traded since their apply,
+  **12 flagged** (WLDUSDC_LONG/SHORT, SANDUSDT_LONG, QTUMUSDT_LONG, THETAUSDT_LONG, AIAUSDT_LONG, BNBUSDC_LONG,
+  IOTXUSDT_LONG, KSMUSDT_LONG/SHORT, SOLUSDC_LONG, XLMUSDT_SHORT).
+
+**(4) OPEN ITEM — the cadence of live application.** Go-live still runs on the Mac daily chain (step 5b). "Trade
+immediately" is satisfied in the sense that 365D no longer gates it, but a set calculated at 03:00Z still waits for the
+next go-live slot. Making it apply per publish means applying unverified settings to real money many times a day; that
+is a live-money cadence decision for the operator, not a silent change. To enable, run
+`tools/v15_persym_golive.py --all-finished` on a tighter Mac cron (it is idempotent and diff-only).
