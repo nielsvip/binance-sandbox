@@ -62,7 +62,9 @@ TIGHTEN = frozenset({"losers", "tim_high", "churn"})
 TF_SPAN = {"15m": 1, "30m": 2, "1h": 4, "2h": 8, "4h": 16, "6h": 24, "8h": 32, "12h": 48, "D": 96, "1d": 96, "3d": 288, "W": 672, "1w": 672}
 AIR_FAMILY = {"REENTRY_AUGMENT_SIZE_MULT": (0.5, 1.0, 1.5, 2.0), "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW": (True, False), "REENTRY_AUGMENT_HL_REF": ("entry", "low"), "REENTRY_AUGMENT_WINDOW_SEC": (0.0, 43200.0, 86400.0, 172800.0), "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": (True, False)}
 NUM_GRID = (0.5, 0.75, 1.25, 1.5, 2.0)
-ORIGIN_QUOTA = {"tf_coherent": 0.05, "lib_regime": 0.06, "lib_same_sym": 0.12, "lib_neighbour": 0.16, "lib_symptom": 0.08, "prior_synergy": 0.04, "prior_block_exempt": 0.04, "symptom_path": 0.12, "filter_path": 0.08, "exempt_path": 0.06, "numeric": 0.05, "air": 0.02, "pair": 0.08, "explore": 0.15}
+INSIGHTS_PATH = Path(os.environ.get("V17_INSIGHTS_PATH") or (ROOT / "data" / "learn" / "insights_latest.json"))
+INSIGHTS_MAX_AGE_DAYS = float(os.environ.get("V17_INSIGHTS_MAX_AGE_DAYS", 3))
+ORIGIN_QUOTA = {"daily_insight": 1.0, "tf_coherent": 0.05, "lib_regime": 0.06, "lib_same_sym": 0.12, "lib_neighbour": 0.16, "lib_symptom": 0.08, "prior_synergy": 0.04, "prior_block_exempt": 0.04, "symptom_path": 0.12, "filter_path": 0.08, "exempt_path": 0.06, "numeric": 0.05, "air": 0.02, "pair": 0.08, "explore": 0.15}
 RECENT_DAYS = 7  # the only short window evaluate_v12._exact_30d_slice honours (crypto 7 calendar days / stocks 7 sessions); 8 = full 30D
 
 
@@ -559,6 +561,9 @@ CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS regime_evidence (board_id INTEGER, combo_id INTEGER, regime TEXT, n_seg INTEGER, d_pnl REAL, d_dd REAL,
   base_pnl REAL, cand_pnl REAL, window_days INTEGER, ts TEXT, PRIMARY KEY (board_id, combo_id, regime, window_days));
 CREATE INDEX IF NOT EXISTS ix_rev_regime ON regime_evidence(regime);
+CREATE TABLE IF NOT EXISTS insight_outcomes (insight_id TEXT, insight_date TEXT, sym_side TEXT, cat_side TEXT, status TEXT,
+  ckey TEXT, d30 REAL, gate TEXT, d7 REAL, d365 REAL, adopted INTEGER, ts TEXT);
+CREATE INDEX IF NOT EXISTS ix_io_id ON insight_outcomes(insight_id);
 """
 FEATS = ("side_net_pct", "vol_bar_pct", "chop", "range_pct", "bh", "tim", "trades")
 
@@ -1055,6 +1060,40 @@ def _cand(delta, origin, why, score, cats=()):
     return {"delta": delta, "origin": origin, "why": why, "score": float(score), "cats": tuple(cats)}
 
 
+_INSIGHT_ID = re.compile(r"^daily_insight\[([^\]]+)\]")
+
+
+def load_daily_insights(cat_side, sym_side=None, regime=None, path=None, max_age_days=None):
+    """data/learn/insights_latest.json candidate_paths for this board (BIBLE §99 DAILY LEARN LOOP): same cat_side, sym_side null or
+    this sym_side, regime null or a prefix match of the board's regime label. Already validated by tools/v17_daily_learn_prep.py
+    (template keys/values + switch_types); generate() re-coerces every value anyway. Stale (> max_age_days) or absent -> []."""
+    p = Path(path or os.environ.get("V17_INSIGHTS_PATH") or INSIGHTS_PATH)
+    if os.environ.get("V17_INSIGHTS_OFF") == "1":
+        return []
+    try:
+        doc = json.loads(p.read_text())
+    except (OSError, ValueError):
+        return []
+    age = float(INSIGHTS_MAX_AGE_DAYS if max_age_days is None else max_age_days)
+    try:
+        d0 = datetime.datetime.strptime(str(doc.get("date"))[:8], "%Y%m%d").replace(tzinfo=datetime.timezone.utc)
+        if (datetime.datetime.now(datetime.timezone.utc) - d0).total_seconds() > (age + 1.0) * 86400.0:
+            return []
+    except ValueError:
+        return []
+    reg = str(regime or "").upper()
+    out = []
+    for c in doc.get("candidate_paths") or []:
+        if not isinstance(c, dict) or str(c.get("cat_side") or "").upper() != cat_side or not isinstance(c.get("overrides_delta"), dict) or not c["overrides_delta"]:
+            continue
+        if c.get("sym_side") and sym_side and str(c["sym_side"]).upper() != str(sym_side).upper():
+            continue
+        if c.get("regime") and not (reg and reg.startswith(str(c["regime"]).upper())):
+            continue
+        out.append({"insight_id": str(c.get("insight_id") or "?"), "date": str(doc.get("date")), "delta": dict(c["overrides_delta"]), "why": str(c.get("why") or "")[:120], "specific": bool(c.get("sym_side"))})
+    return out
+
+
 def generate(space, sym_side, base, symptoms, feats, lib=None, rng=None, max_n=40000, log=None):
     """Ranked, typed, coherent, deduplicated candidate combos (origin-tagged) for one board."""
     rng = rng or random.Random(0)
@@ -1128,6 +1167,15 @@ def generate(space, sym_side, base, symptoms, feats, lib=None, rng=None, max_n=4
             tf_fix.append((eff, warn, sc))
 
     tf_fix = []
+    # (0) DAILY LEARN LOOP insights (BIBLE §99): high-priority proposals, still typed/blocked/coherence-checked here and proven by
+    # the real engine + the caller's 30D/365D gates; per-insight status kept for the library outcome table (closing the loop)
+    stats["daily_insight"] = []
+    for ins in load_daily_insights(cs, sym_side, (feats or {}).get("regime_now")):
+        before = {k: stats[k] for k in ("refused_type", "identity", "blocked", "incoherent")}
+        n0 = len(out)
+        add(ins["delta"], "daily_insight", f"daily_insight[{ins['insight_id']}] {ins['why']}", 8.0 + (1.0 if ins["specific"] else 0.0))
+        status = "offered" if len(out) > n0 else next((k for k in ("refused_type", "identity", "blocked", "incoherent") if stats[k] > before[k]), "duplicate_or_capped")
+        stats["daily_insight"].append({"insight_id": ins["insight_id"], "date": ins["date"], "status": status, "ckey": combo_key(effective_delta(base, ins["delta"]) or ins["delta"])})
     # (1) library: same sym_side history, regime neighbours, symptom fixes
     if lib is not None:
         same = [b["board_id"] for b in lib.boards_of(cs) if b["sym_side"] == sym_side]
@@ -1787,7 +1835,7 @@ def search(prepared, sym_side, base_overrides, symptoms=None, regime=None, budge
         log(f"[combo-search] {sym_side} base={bg:.4f} screened={len(res1)} pos={st['stage1']['positive']} adopted={len(adopted)} lift={st['lift']} evals={n_evals[0]} wall={wall:.0f}s ({st['evals_per_s']}/s)")
         if record and lib is not None:
             try:
-                _record(lib, sym_side, cs, feats, symptoms, base30, bg, bg7, res1, top, out, base365)
+                _record(lib, sym_side, cs, feats, symptoms, base30, bg, bg7, res1, top, out, base365, insight_status=(st.get("generated") or {}).get("daily_insight"))
             except sqlite3.Error as e:
                 st["library_error"] = str(e)[:120]
         return out
@@ -1807,7 +1855,39 @@ def _engine_md5():
         return None
 
 
-def _record(lib, sym_side, cs, feats, symptoms, base30, bg, bg7, res1, top, out, base365=None):
+def _record_insights(lib, sym_side, cs, res1, top, out, insight_status, base365=None):
+    """one insight_outcomes row per daily insight seen by this board: 'evaluated' (d30 vs the round base, gate, recent-7D delta,
+    365D delta when the long window was checked, adopted into the verified joint set) or its generation status ('identity' =
+    already in the board's set, 'refused_type', 'blocked', 'incoherent', 'not_reached' = budget ran out before its slot)."""
+    ts = _utc()
+    dates = {s_.get("insight_id"): str(s_.get("date") or "") for s_ in insight_status or []}
+    adopted = set()
+    if out and out[0]["kind"] == "joint":
+        for s_ in out[0].get("steps") or []:
+            m = _INSIGHT_ID.match(str(s_.get("why") or ""))
+            if m:
+                adopted.add(m.group(1))
+    top_d = {combo_key(x["delta"]): x for x in top or []}
+    b365 = (base365 or {}).get("gain")
+    seen = set()
+    for x in res1 or []:
+        m = _INSIGHT_ID.match(str(x.get("why") or ""))
+        if not m or x.get("origin") != "daily_insight" or m.group(1) in seen:
+            continue
+        iid = m.group(1)
+        t = top_d.get(combo_key(x["delta"])) or {}
+        w = t.get("w365") or {}
+        d365 = float(w["gain"]) - float(b365) if w.get("gain") is not None and b365 is not None else None
+        lib.db.execute("INSERT INTO insight_outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (iid, dates.get(iid) or iid.split("-")[0], sym_side, cs, "evaluated", combo_key(x["delta"]), x.get("d"), x.get("gate") or "", t.get("recent_delta"), d365, int(iid in adopted), ts))
+        seen.add(iid)
+    for s_ in insight_status or []:
+        if s_.get("insight_id") in seen:
+            continue
+        st_ = s_.get("status") if s_.get("status") != "offered" else "not_reached"
+        lib.db.execute("INSERT INTO insight_outcomes VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (s_.get("insight_id"), str(s_.get("date") or ""), sym_side, cs, st_, s_.get("ckey"), None, None, None, None, 0, ts))
+
+
+def _record(lib, sym_side, cs, feats, symptoms, base30, bg, bg7, res1, top, out, base365=None, insight_status=None):
     em = _engine_md5()
     syms = [k for k, v in (symptoms or {}).items() if float((v or {}).get("size") or 0) > 0]
     bid = lib.board(f"{sym_side}|combo_engine|{_utc()}|{round(bg, 4)}", sym_side=sym_side, cat_side=cs, src="v17_combo_engine", run="v17_combo_engine", ts_last=time.time(), gain=bg, bh=base30.get("bh"), tim=base30.get("tim"), dd=base30.get("dd"), trades=base30.get("trades"), side_net_pct=feats.get("side_net_pct"), vol_bar_pct=feats.get("vol_bar_pct"), chop=feats.get("chop"), range_pct=feats.get("range_pct"), regime=classify_regime(feats), symptoms=syms, engine_md5=em)
@@ -1831,6 +1911,8 @@ def _record(lib, sym_side, cs, feats, symptoms, base30, bg, bg7, res1, top, out,
         if j.get("regime_attr_365"):
             lib.add_regime_attr(bid, j["overrides_delta"], j["regime_attr_365"])
         lib.add_evidence(bid, j["overrides_delta"], "v17_combo_engine_joint", j["delta"], origin=j["origin"], symptom=sym0, gain=j["gain"], base_gain=bg, trades=j["trades"], tim=j["tim"], dd=j["dd"], wr=j["wr"], valid=True, recent_delta=j.get("recent_delta"), engine_md5=em)
+    if insight_status or any(x.get("origin") == "daily_insight" for x in res1 or []):
+        _record_insights(lib, sym_side, cs, res1, top, out, insight_status, base365)
     lib.commit()
 
 
@@ -1882,7 +1964,24 @@ def main(argv=None):
     p.add_argument("--out")
     p.add_argument("--seed", type=int)
     p.add_argument("--dual", action="store_true", help="dual-window mode: 30D + 365D (default accept: 365D gain up or DD down)")
+    ins = sub.add_parser("insights", help="DAILY LEARN LOOP: which insights_latest.json paths each cat_side board would offer (no evals)")
+    ins.add_argument("--sym-side", action="append", help="board(s) to generate for (default: one probe per cat_side, empty base)")
+    ins.add_argument("--path")
     a = ap.parse_args(argv)
+    if a.cmd == "insights":
+        boards = a.sym_side or ["BTCUSDC_LONG", "BTCUSDC_SHORT", "AAPL_LONG", "AAPL_SHORT"]
+        rep = {"path": str(a.path or INSIGHTS_PATH), "boards": {}}
+        for ss in boards:
+            cs = cat_side_of(ss)
+            loaded = load_daily_insights(cs, ss, None, a.path)
+            src, d = latest_published_set(ss) if a.sym_side else (None, None)
+            base = sanitize(d["cumulative_overrides"], ss) if d else {}
+            if a.path:
+                os.environ["V17_INSIGHTS_PATH"] = str(a.path)
+            _c, gst = generate(ComboSpace(cs, ss), ss, base, {}, {}, None, random.Random(1), 2000, None)
+            rep["boards"][ss] = {"cat_side": cs, "base_src": src, "loaded": len(loaded), "status": gst.get("daily_insight"), "offered_first": [c["why"][:90] for c in schedule(_c)[:5] if c["origin"] == "daily_insight"]}
+        print(json.dumps(rep, indent=1, default=str))
+        return 0
     if a.cmd == "build-library":
         pg, dg = _default_globs()
         lib = ComboLibrary(a.out)

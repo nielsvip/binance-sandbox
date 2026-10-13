@@ -118,7 +118,7 @@ def path_label(reason):
         return "UNKNOWN"
     if s.upper().startswith(("CLOSE ", "REDUCE ")):
         s = s.split(" ", 1)[1].strip()
-    tok = re.split(r"[\s(:,=]|_(?:px|lvl|qty|g|tgt|close|open)[-+]?\d|_[-+]\d|_\d+\.\d|@", s)[0].strip()
+    tok = re.split(r"[\s(:,=]|_(?:px|lvl|qty|g|tgt|close|open|cur|exit|now|k|s)[-+]?\d|_[-+]\d|_\d+\.\d|@", s)[0].strip()
     tok = re.sub(r"_FOR_[a-z]+$", "_FOR", re.sub(r"[-+]?\d+\.\d+%?$|[-+]?\d+%$", "", tok)).rstrip("_") or s[:24]
     if tok in ("DAYTRADE_TARGET", "TECHNICAL_TARGET") and " " in s and not re.match(r"^[sg]?[-+]?[0-9]", s.split(" ", 2)[1]):
         tok = f"{tok} {s.split(' ', 2)[1]}"
@@ -267,6 +267,9 @@ def trade_metrics(tr, kl, is_long, n=WIN_N):
     sgn = 1.0 if is_long else -1.0
     m = {"t_entry": a0["t"], "entry_px": a0["px"], "entry_kind": tr["start_kind"], "entry_path": path_label(a0["reason"]), "vec_exact": "VEC_EXACT" in a0["reason"], "n_adds": len(tr["adds"]) - 1, "n_augments": sum(1 for x in tr["adds"][1:] if x["type"] == "AUGMENT"), "closed": bool(tr.get("closed"))}
     first_val = a0["qty"] * a0["px"]
+    if first_val < 0.1 * tr["peak_cost"]:  # dust/probe starter fill (e.g. 3 units then 8249): size growth is measured from the first meaningful fill
+        m["dust_starter_usd"] = _r(first_val, 4)
+        first_val = next((x["qty"] * x["px"] for x in tr["adds"] if x["qty"] * x["px"] >= 0.1 * tr["peak_cost"]), first_val)
     m["size_first_usd"] = _r(first_val)
     m["size_peak_usd"] = _r(tr["peak_cost"])
     m["size_ratio_peak_first"] = _r(tr["peak_cost"] / first_val, 2) if first_val > 0 else None
@@ -773,7 +776,7 @@ def build_packet(live, bt, date, top=12):
 
 
 def _packet_md(date, live, agg, boards, phases, prom, starts, cs_fin, symp, exits, bysym, libs, bt, n):
-    L = [f"# DAILY LEARN PACKET {date} (UTC)", "All numbers are real ledger fills / real v12_quick_engine evals copied from progress JSONs + combo library. One-day samples -> DIAGNOSTIC ONLY. No Sharpe here.", "Conventions: entry_vs_ext% = distance of the first fill from the local LOW (LONG) / HIGH (SHORT) within +-16 x 15m bars; entry_bars = bars entry came AFTER that extreme (<0 = before it, i.e. knife). exit_vs_ext% = distance of the last exit from the local HIGH (LONG) / LOW (SHORT); exit_bars >0 = exited after the top (gave back), <0 = before (premature). giveback% = MFE - realised move. peak/first = peak position cost / first fill cost (size growth). HL = add whose prior-16-bar low was ABOVE the trade's entry low (LONG; SHORT: lower high).", ""]
+    L = [f"# DAILY LEARN PACKET {date} (UTC)", "All numbers are real ledger fills / real v12_quick_engine evals copied from progress JSONs + combo library. One-day samples -> DIAGNOSTIC ONLY. No Sharpe here.", "Conventions: entry_vs_ext% = distance of the first fill from the local LOW (LONG) / HIGH (SHORT) within +-16 x 15m bars; entry_bars = bars entry came AFTER that extreme (<0 = before it, i.e. knife). exit_vs_ext% = distance of the last exit from the local HIGH (LONG) / LOW (SHORT); exit_bars >0 = exited after the top (gave back), <0 = before (premature). giveback% = MFE - realised move. peak/first = peak position cost / first meaningful fill cost (>=10% of peak; dust starters skipped). HL = add whose prior-16-bar low was ABOVE the trade's entry low (LONG; SHORT: lower high).", ""]
     if live:
         L.append(f"## A. LIVE TRADES (ledger {live.get('generated_utc')}, {live.get('n_trades')} lifecycles in 7d, klines missing for {live.get('n_klines_missing')} / not covering the entry for {live.get('n_klines_stale')} symbols)")
         for h in ("24h", "168h"):
