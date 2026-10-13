@@ -1,58 +1,37 @@
 {
-  "ang:SANDUSDT_LONG": {
-    "orderId": "4000001964757801",
+  "fin:BTCDOMUSDT_LONG": {
+    "orderId": "3000002248325493",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 18:52:28.969644+00:00",
-    "symbol": "SANDUSDT",
+    "entry_sig": "2026-10-13 18:52:04.558977+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "ang:DASHUSDT_LONG": {
-    "orderId": "4000001964702038",
+  "fin:AVAXUSDC_SHORT": {
+    "orderId": "3000002248377733",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 18:52:11.606036+00:00",
-    "symbol": "DASHUSDT",
-    "side": "LONG"
-  },
-  "ang:TRBUSDT_LONG": {
-    "orderId": "4000001964477870",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 18:52:22.159118+00:00",
-    "symbol": "TRBUSDT",
-    "side": "LONG"
-  },
-  "ang:FARTCOINUSDT_LONG": {
-    "orderId": "4000001964373289",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 18:52:46.119049+00:00",
-    "symbol": "FARTCOINUSDT",
-    "side": "LONG"
-  },
-  "ang:ENSUSDT_LONG": {
-    "orderId": "4000001964373287",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 18:52:43.446811+00:00",
-    "symbol": "ENSUSDT",
-    "side": "LONG"
-  },
-  "ang:AMATUSDT_SHORT": {
-    "orderId": "4000001964537643",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 02:35:43.086948+00:00",
-    "symbol": "AMATUSDT",
+    "entry_sig": "2026-10-13 20:09:26.941464+00:00",
+    "symbol": "AVAXUSDC",
     "side": "SHORT"
   },
-  "ang:ACEUSDT_LONG": {
-    "orderId": "4000001964484574",
+  "fin:AVAXUSDC_LONG": {
+    "orderId": "3000002248386072",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 18:52:18.058015+00:00",
-    "symbol": "ACEUSDT",
+    "entry_sig": "2026-10-13 20:20:21.725609+00:00",
+    "symbol": "AVAXUSDC",
     "side": "LONG"
   },
-  "ang:ARMUSDT_SHORT": {
-    "orderId": "4000001966212146",
+  "fin:XTZUSDT_LONG": {
+    "orderId": "3000002248388079",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 20:09:47.659765+00:00",
-    "symbol": "ARMUSDT",
-    "side": "SHORT"
+    "entry_sig": "2026-10-13 20:23:14.488866+00:00",
+    "symbol": "XTZUSDT",
+    "side": "LONG"
+  },
+  "fin:MANAUSDT_LONG": {
+    "orderId": "3000002248422090",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 21:07:21.577084+00:00",
+    "symbol": "MANAUSDT",
+    "side": "LONG"
   }
 }
