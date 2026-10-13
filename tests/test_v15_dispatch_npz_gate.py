@@ -10,6 +10,7 @@ import datetime as dt
 import inspect
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 
@@ -69,3 +70,62 @@ def test_hold_triage_missing_and_never_raises(monkeypatch):
     assert Sched._npz_hold_triage("DEFINITELY_NOT_A_SYMBOL_XYZ") == "s1:missing"
     monkeypatch.setattr(Sched, "ROOT", _P("/nonexistent-root-xyz"))
     assert Sched._npz_hold_triage("AAPL") == "s1:missing"
+
+
+def test_peer_gate_reads_timestamps_not_first_time_key(tmp_path):
+    """Keys[0] regression (sync outage 2026-10-12): z.files order put timestamp_W first, the
+    weekly grid read as the bar clock (99-bar phantom lag on a fresh NPZ), GATE_REFUSED every
+    worker sync. classify() must use the exact `timestamps` key."""
+    import numpy as np
+    import npz_freshness_gate as G
+    now = time.time()
+    latest = (now // 900) * 900
+    n = 40000
+    ts = np.linspace(latest - n * 900, latest, n)
+    tw = np.linspace(latest - 100 * 7 * 86400, latest - 99 * 900, 100)
+    p = tmp_path / "MULTIUSDT.npz"
+    np.savez(p, timestamp_W=tw, timestamps=ts)
+    z = np.load(p, allow_pickle=False)
+    assert [k for k in z.files if "time" in k.lower()][0] != "timestamps"
+    got, detail = G.classify(str(p))
+    assert (got, detail) == ("ok", "")
+
+
+def _gate_fixture(d):
+    import numpy as np
+    now = time.time()
+    latest = (now // 900) * 900
+    n = 40000
+    np.savez(d / "FRESHUSDT.npz", timestamps=np.linspace(latest - n * 900, latest, n))
+    np.savez(d / "STALEUSDT.npz", timestamps=np.linspace(latest - n * 900, latest - 10 * 900, n))
+    np.savez(d / "SHORTUSDT.npz", timestamps=np.linspace(latest - 100 * 86400, latest, 9600))
+
+
+def test_gate_exclude_file_lists_stale_bad_never_short(tmp_path):
+    import npz_freshness_gate as G
+    _gate_fixture(tmp_path)
+    xf = tmp_path / "excl.txt"
+    rc = G.main(["prog", "--dir", str(tmp_path), "--exclude-file", str(xf)])
+    assert rc == 1
+    got = xf.read_text().split()
+    assert got == ["STALEUSDT.npz"]
+
+
+def test_gate_crash_leaves_no_exclude_file(tmp_path):
+    import npz_freshness_gate as G
+    xf = tmp_path / "excl.txt"
+    assert G.main(["prog", "--dir", str(tmp_path / "nope"), "--exclude-file", str(xf)]) == 1
+    assert not xf.exists()  # crash/disturbance is detectable: no exclude file (sync refuses)
+    _gate_fixture(tmp_path)
+    assert G.main(["prog", "--dir", str(tmp_path)]) == 1
+
+
+def test_sync_script_partial_push_shape():
+    import subprocess
+    root = os.path.join(os.path.dirname(__file__), "..")
+    p = os.path.join(root, "tools", "sync_indicators.sh")
+    r = subprocess.run(["bash", "-n", p], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    src = open(p).read()
+    assert "GATE_PARTIAL" in src and "--exclude-from=" in src
+    assert "no exclude file) — no push (fail-closed)" in src  # fail-closed only on crash, never on per-file violations

@@ -135,7 +135,11 @@ def classify(path, now=None):
     try:
         z = np.load(path, allow_pickle=False)
         keys = [k for k in z.files if "time" in k.lower() or k in ("ts", "t")]
-        ts = np.asarray(z[keys[0]], dtype=np.float64).ravel() if keys else np.array([])
+        # USER 2026-10-12 keys[0] fix: z.files order is arbitrary — timestamp_W/M first reads the
+        # WEEKLY grid (99-bar phantom lag on a 3-bar-fresh NPZ) and GATE_REFUSED all worker syncs.
+        # The bar clock is ALWAYS the exact `timestamps` key; other time-like keys are fallback only.
+        tkey = "timestamps" if "timestamps" in z.files else (keys[0] if keys else None)
+        ts = np.asarray(z[tkey], dtype=np.float64).ravel() if tkey else np.array([])
         ts = ts[np.isfinite(ts)]
         if ts.size == 0:
             return ("bad", "no-timestamps")
@@ -296,6 +300,23 @@ def main(argv=None):
         purged_n = (len(res["short"]) - len(short)) + (len(res["stale"]) - len(stale)) + (len(res["bad"]) - len(bad))
     else:
         purged_n = 0
+    if "--exclude-file" in argv:
+        # USER 2026-10-12: all-or-nothing sync starves 770 fresh NPZs over a handful of violators (proven
+        # outage: GATE_REFUSED every push 90+ min). Write stale+bad basenames for rsync --exclude-from so the
+        # push flows minus violators. SHORT is NOT excluded: short-but-current NPZs (43d listings) must sync —
+        # workers run 30D sweeps on them fine, and the scheduler's tail dispatch gate holds short+stale tails.
+        try:
+            xp = argv[argv.index("--exclude-file") + 1]
+            with open(xp, "w") as _xf:
+                for s in stale + bad:
+                    _xf.write(s.split()[0] + "\n")
+        except Exception as e:
+            print(f"EXCLUDE_FAIL {e}")
+            try:
+                os.remove(xp)
+            except Exception:
+                pass
+            return 1
     print(f"GATE files={len(res['files'])} ok={res['ok']} short={len(short)} stale={len(stale)} bad={len(bad)}" + (f" purge_candidates={purged_n} (tradeable-only)" if t_only else ""))
     for lst, tag in ((short, "SHORT"), (stale, "STALE"), (bad, "BAD")):
         for s in lst[:60]:

@@ -21187,6 +21187,49 @@ class MultiAccountTradeManager:
                 return "NONE_FLAT"
             if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig:
                 return "OK_ALREADY_PLACED"
+            if not (have and have.get("orderId")):
+                try:
+                    _chk = getattr(self, "_fixed_stop_exchange_check_ts", None)
+                    if not isinstance(_chk, dict):
+                        _chk = {}
+                        self._fixed_stop_exchange_check_ts = _chk
+                    _now0 = time.time()
+                    if _now0 - float(_chk.get(position_key, 0.0) or 0.0) < 60:
+                        return "DEFERRED_STOP_RETRY"
+                    _chk[position_key] = _now0
+                    try:
+                        _cli0 = self.get_client(account_key)
+                        if _cli0 is not None and not os.environ.get("PYTEST_CURRENT_TEST"):
+                            try:
+                                _oo = await asyncio.wait_for(asyncio.to_thread(_cli0.futures_get_open_orders, symbol=symbol), timeout=15.0) or []
+                            except Exception:
+                                _oo = []
+                            for _o in _oo:
+                                try:
+                                    if not isinstance(_o, dict):
+                                        continue
+                                    if str(_o.get("type", "")).upper() != "STOP_MARKET":
+                                        continue
+                                    _cid0 = str(_o.get("clientOrderId") or _o.get("origClientOrderId") or "")
+                                    if not (_cid0.startswith(_fixed_stop_core.STOP_ORDER_PREFIX) or _cid0.startswith("EZMSTOP_")):
+                                        continue
+                                    if str(_o.get("positionSide", "")).upper() != _side_u:
+                                        continue
+                                    _oid0 = str(_o.get("orderId", "") or "")
+                                    if _oid0:
+                                        reg[position_key] = {"orderId": _oid0, "stopPrice": float(_o.get("stopPrice", 0) or 0), "entry_sig": _sig, "symbol": symbol, "side": position_side}
+                                        try:
+                                            position.exchange_stop_order_id = _oid0
+                                        except Exception:
+                                            pass
+                                        logger.critical(f"🛡️ [FIXED_STOP_ADOPTED] {position_key}: adopted exchange backstop {_oid0} (placed by peer/restart)")
+                                        return "OK_ADOPTED_STOP"
+                                except Exception:
+                                    continue
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
             if have and have.get("orderId"):
                 try:
                     await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0.0, side=_close_side, position_side=position_side, quantity=0.0, old_price=float(current_price or 0.0), unique_id=f"FXR_{int(time.time())}", reason="FIXED_STOP_REOPEN_REPLACE", is_full_close=False, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))

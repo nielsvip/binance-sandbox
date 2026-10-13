@@ -70,6 +70,21 @@ def read_progress(path):
     }
 
 
+def _done_ts(s):
+    """epoch seconds of a recorded result_done_utc ('2026-10-12T22:31:05Z'), else None. Pure."""
+    try:
+        t = str(s or "").strip().replace("Z", "+00:00")
+        if not t:
+            return None
+        import datetime
+        d = datetime.datetime.fromisoformat(t)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=datetime.timezone.utc)
+        return d.timestamp()
+    except Exception:
+        return None
+
+
 def potential_of(e):
     vals = [v for v in (e.get("final_gain"), e.get("cumulative_gain"), e.get("baseline_gain")) if v is not None]
     return max(vals) if vals else None
@@ -111,7 +126,12 @@ def build(progress_globs, daily_cap, now=None):
             continue
         e["sym_side"] = ss
         e["cat_side"] = cat_side_of(ss)
-        e["mtime"] = mt
+        # USER 2026-10-13 (illegal re-stamp): file mtime is NOT provenance — tools that re-save a published
+        # board (v15_red_fixer did, every 10 min) give an OLD result a fresh timestamp and corrupt the cadence.
+        # The board's own recorded completion time wins; mtime is only the fallback when it is absent.
+        e["mtime"] = _done_ts(e.get("result_done_utc")) or mt
+        e["mtime_src"] = "result_done_utc" if _done_ts(e.get("result_done_utc")) else "file_mtime"
+        e["file_mtime"] = mt
         e["path"] = p
         e["potential"] = potential_of(e)
         e["sched_tier"], e["tier_why"] = sched_tier(e)
