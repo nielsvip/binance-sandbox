@@ -5756,7 +5756,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _ct = float((res or {}).get("tim_pct"))
         except Exception:
             _ct = None
-        if tim_guard_veto(_ct, chain_tim):
+        if tim_guard_veto(_ct, chain_tim) and not (_ct is not None and chain_tim is not None and float(chain_tim) < QUAL_TIM_MIN and _ct >= float(chain_tim) - 1e-9):
+            # V17: an out-of-band (low-TIM) chain may take a positive delta that does not move TIM further away (canary
+            # ALGOUSDT_SHORT: TIM 9.55 chain, every +delta path at TIM 9.55 was vetoed as "outside the band")
             return False
         try:
             _ctr = int((res or {}).get("trades") or 0)
@@ -6323,18 +6325,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         prev = {"src": str(Path(pth).parent.parent.name), "ts_last": tl, "final_gain": pj.get("final_gain"), "bh": pj.get("bh"), "ov": {k: v for k, v in pj["cumulative_overrides"].items() if not (isinstance(v, str) and " + " in v)}}
                         break
             days_since = ((cur_last - prev["ts_last"]) / 86400.0) if (prev and cur_last) else None
-            rd = int(max(3, min(15, round(days_since)))) if days_since and days_since >= 2.5 else int(os.environ.get("V15_V17_RECENT_D", "8"))
+            rd = 7  # the engine slicer supports 1/7/30/365 windows only (tools/opt/evaluate_v12._exact_30d_slice): 7 calendar days crypto / 7 sessions stocks
             _v17_rg["days"] = rd
             cut = None
-            if ts and cur_last:
-                b0 = cur_last - rd * 86400.0
+            _cur_r0 = _v17_recent_eval(cumulative_overrides)  # prepares the recent slice
+            try:
+                _rts = (_v17_rg.get("prep") or {}).get("npz_prepared", {}).get("timestamps")
+                b0 = float(_rts[0]) / (1000.0 if float(_rts[0]) > 1e12 else 1.0) if _rts is not None and len(_rts) else (cur_last - rd * 86400.0 if cur_last else None)
+            except Exception:
+                b0 = (cur_last - rd * 86400.0) if cur_last else None
+            if ts and b0 is not None:
                 cut = next((i for i, t in enumerate(ts) if t >= b0), None)
             if cl and cut is not None and 8 <= cut < len(cl) - 8:
                 f_then, f_now = _v17_seg_feats(cl[:cut]), _v17_seg_feats(cl[cut:])
                 out.update({"recent_days": rd, "since_previous_days": None if days_since is None else round(days_since, 2), "then": f_then, "now": f_now, "regime_then": _v17_classify(f_then), "regime_now": _v17_classify(f_now, f_then)})
             else:
                 out.update({"recent_days": rd, "since_previous_days": None if days_since is None else round(days_since, 2), "regime_then": "UNKNOWN", "regime_now": "UNKNOWN"})
-            cur_r = _v17_recent_eval(cumulative_overrides)
+            cur_r = _cur_r0
             _v17_rg["cur_recent"] = (cur_r or {}).get("gain_pct")
             out["current_set_recent"] = {k: (cur_r or {}).get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid")}
             if prev:
@@ -7978,6 +7985,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             except Exception as _q365e:
                 _q365_reasons = [f"365D eval failed: {_q365e}"[:100]]
                 print(f"[365-qual-warn] {new_symside}: {_q365e}", flush=True)
+            if not _q365_ok and os.environ.get("V15_365D_RECORD_ONLY", "1") == "1":
+                # USER 2026-10-13 (bible §92): 365D never gates — verdict recorded only. The old path re-filled the whole
+                # board (REDO) and deleted the published 30D final, re-running one side alone on a newer NPZ (SNDK_SHORT x3).
+                progress["verdict_365d"] = {"ok": False, "reasons": list(_q365_reasons), "recorded_utc": utcnow()}
+                _maybe_write_json(force=True)
+                print(f"[365-RECORD-ONLY] {new_symside} 365D: {'; '.join(_q365_reasons)} — recorded, published 30D stands (no REDO/quarantine)", flush=True)
+                _q365_ok = True
             if not _q365_ok:
                 _depth365 = int(progress.get("redo_depth", 0))
                 _fixed365 = None

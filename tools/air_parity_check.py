@@ -36,6 +36,8 @@ KNOB_SETS = {
     "window_0": {"AUGMENT_INTO_REENTRY_ENABLED": True, "REENTRY_AUGMENT_WINDOW_SEC": 0.0},
     "prior_aug_ok": {"AUGMENT_INTO_REENTRY_ENABLED": True, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": False, "MIN_GAIN_TO_BUY_AGGRESSIVELY": 0.3, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": False},
     "prior_aug_block": {"AUGMENT_INTO_REENTRY_ENABLED": True, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": True, "MIN_GAIN_TO_BUY_AGGRESSIVELY": 0.3, "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": False},
+    "prior_aug_ok_atloss": {"AUGMENT_INTO_REENTRY_ENABLED": True, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": False, "AUGMENT_AT_LOSS_ENABLED": True},
+    "prior_aug_block_atloss": {"AUGMENT_INTO_REENTRY_ENABLED": True, "REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT": True, "AUGMENT_AT_LOSS_ENABLED": True},
     "no_hl_mult_half": {"AUGMENT_INTO_REENTRY_ENABLED": True, "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW": False, "REENTRY_AUGMENT_SIZE_MULT": 0.5},
 }
 
@@ -95,6 +97,9 @@ def identity(ss: str, knob: str, window_days: int) -> dict:
         bars = npz_bars(sym)
     n_open = n_carry_vec = n_carry_fn = agree = 0
     mism = []
+    native = _native_fn(mode, cfg, sym, side, bars) if os.environ.get("AIR_IDENTITY_NATIVE", "1") == "1" else None
+    n_native_agree = 0
+    native_mism = []
     for i, r in enumerate(rows):
         if r["action"] != "OPEN" or r["reason"] == "SEED_BH":
             continue
@@ -114,9 +119,53 @@ def identity(ss: str, knob: str, window_days: int) -> dict:
         agree += ok
         if not ok:
             mism.append({"ts": r["ts"], "px": r["price"], "vec_mult": m_vec, "fn_mult_capped": m_eff, "fn_mult_raw": m_fn, "fn_why": why, "qty0_usd": qty0 * r["price"], "cap_usd": cap})
+        if native is not None:
+            # the REAL live function (ez_manage._air_native_carry / tradier_manage._air_native_carry_t) on the same state
+            nq, nreason, ninfo = native(r["price"], qty0, r["ts"], log)
+            n_m = (nq / qty0 - 1.0) if qty0 > 0 else 0.0
+            n_ok = abs(m_vec - n_m) <= 1e-6 * max(1.0, n_m) and ((m_vec > 0) == (RA.CARRY_TAG in str(nreason)))
+            n_native_agree += n_ok
+            if not n_ok:
+                native_mism.append({"ts": r["ts"], "vec_mult": m_vec, "native_mult": n_m, "native_why": ninfo.get("why"), "reason": str(nreason)[-24:]})
     return {"sym_side": ss, "knob": knob, "overrides": ov, "valid": res.get("valid"), "trades": res.get("trades"), "gain_pct": res.get("gain_pct"),
-            "n_open": n_open, "n_carry_vec": int(n_carry_vec), "n_carry_fn": int(n_carry_fn), "decision_agree": agree,
-            "cap_usd": cap, "identical": agree == n_open, "mismatches": mism[:20]}
+            "n_open": n_open, "n_augment_events": sum(1 for x in rows if x["action"] == "AUGMENT"), "n_carry_vec": int(n_carry_vec), "n_carry_fn": int(n_carry_fn), "decision_agree": agree,
+            "cap_usd": cap, "identical": agree == n_open, "mismatches": mism[:20],
+            "native_fn": (None if native is None else ("ez_manage._air_native_carry" if mode != "tradier" else "tradier_manage._air_native_carry_t")),
+            "native_agree": n_native_agree if native is not None else None, "native_identical": (n_native_agree == n_open) if native is not None else None, "native_mismatches": native_mism[:20]}
+
+
+def _native_fn(mode, cfg, sym, side, bars):
+    """Bind the live native function to the vec's effective config (per-sym lookup -> cfg) with the live kill switch on.
+    Stocks: the live-only account/HARD symbol caps are neutralised (1e12) so only the vec cap (MAX_SYMBOL_VALUE_TRADIER) binds."""
+    if mode != "tradier":
+        import ez_manage as E
+
+        def _call(px, qty0, ts, log):
+            saved = (E._psym_get, getattr(E.config, RA.LIVE_KEY, None), E._AIR_BARS_LOADER)
+            try:
+                E._psym_get = lambda s, sd, k, d: getattr(cfg, k, d)
+                setattr(E.config, RA.LIVE_KEY, True)
+                E._AIR_BARS_LOADER = (lambda s, sd: bars) if bars is not None else (lambda s, sd: None)
+                return E._air_native_carry(sym, side, px, qty0, "VEC_OPEN", ts, log)
+            finally:
+                E._psym_get, _lv, E._AIR_BARS_LOADER = saved
+                setattr(E.config, RA.LIVE_KEY, _lv)
+        return _call
+    import tradier_manage as TM
+
+    def _call_t(px, qty0, ts, log):
+        saved = (TM._cfg, getattr(TM.config, RA.LIVE_KEY, None), getattr(TM.config, "TRB_MAX_SYMBOL_VALUE", None), TM._AIR_BARS_LOADER)
+        try:
+            TM._cfg = lambda k, d=None, a=None, s=None, sd=None, **kw: (1e12 if k == "HARD_MAX_SYMBOL_VALUE_TRADIER" else getattr(cfg, k, d))
+            setattr(TM.config, RA.LIVE_KEY, True)
+            setattr(TM.config, "TRB_MAX_SYMBOL_VALUE", 1e12)
+            TM._AIR_BARS_LOADER = (lambda s, sd: bars) if bars is not None else (lambda s, sd: None)
+            return TM._air_native_carry_t("trb", sym, side, px, qty0, "VEC_OPEN", ts, log, 0.0)
+        finally:
+            TM._cfg, _lv, _tc, TM._AIR_BARS_LOADER = saved
+            setattr(TM.config, RA.LIVE_KEY, _lv)
+            setattr(TM.config, "TRB_MAX_SYMBOL_VALUE", _tc)
+    return _call_t
 
 
 def scan(limit: int, window_days: int) -> list:
@@ -217,7 +266,7 @@ def main():
     a = ap.parse_args()
     if a.cmd == "identity":
         rep = [identity(ss, k, a.window_days) for ss in a.sym_sides.split(",") if ss for k in a.knobs.split(",") if k]
-        print(json.dumps([{k: r[k] for k in ("sym_side", "knob", "n_open", "n_carry_vec", "n_carry_fn", "decision_agree", "identical")} for r in rep], indent=0))
+        print(json.dumps([{k: r[k] for k in ("sym_side", "knob", "n_open", "n_augment_events", "n_carry_vec", "n_carry_fn", "decision_agree", "identical", "native_agree", "native_identical")} for r in rep]))
     elif a.cmd == "scan":
         rep = scan(a.limit, a.window_days)
         print(json.dumps(rep[:40]))

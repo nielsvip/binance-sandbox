@@ -16,7 +16,7 @@
 6. **PARITY_PROVEN** is reserved for scalar-vs-vec parity evidence (list in `data/wiring/parity_proven.json`). `ledger_flip_proven` = a real NPZ ledger flip (data/wiring/wired_proven.json) only.
 
 
-_Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reached from simulate_one: 129/284_
+_Generated 2026-10-13T20:38:29.411602Z · 3676 names · vec modules never reached from simulate_one: 129/284_
 
 ## Status counts (all names)
 
@@ -35,7 +35,7 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 - `c5_stdev_trace.py` `ccc581c8ad`
 - `classic_formations.py` `4780e48c48`
 - `config.py` `04b6a10454`
-- `config_tradier.py` `8489633a45`
+- `config_tradier.py` `0316f4156e`
 - `entry_bounce_deep_turn_composite_v1.py` `2473d56142`
 - `entry_engine_dc.py` `1867aaa203`
 - `entry_engine_htf.py` `4195a92866`
@@ -399,7 +399,7 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 - `wt_dc_exit_scorer.py` `4081b7cb88`
 
 
-## (not in any template) (2437)
+## (not in any template) (2431)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
@@ -464,7 +464,6 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 | `ATR_TRAIL_ENABLED_TRADIER` | unclassified | False / False / False | — | DEAD+STAGED_VEC | DEAD+STAGED_VEC | — · — | — |
 | `AUGMENT_BLOWPAST_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:41832(evaluate_augmentation) · — | — |
 | `AUGMENT_HTF_TREND_ENABLED` | augment | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:41869(evaluate_augmentation) · — | — |
-| `AUGMENT_INTO_REENTRY_ENABLED` | per_sym | False / False / False | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8078(_air_native_carry)<br>(+1) · tradier_manage.py:7705(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17738(simulate_one) |
 | `AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:8075(_air_native_carry) · tradier_manage.py:7702(_air_native_carry_t)<br>(+1) | — |
 | `AUGMENT_PYRAMID_ENABLED` | augment | True / True / True | — | DEAD | DEAD | — · — | — |
 | `AUGMENT_PYRAMID_TRADIER` | augment | False / False / False | — | DEAD | DEAD | — · — | — |
@@ -502,7 +501,7 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 | `BB_SQUEEZE_COOLDOWN` | unclassified | 300.0 / 300.0 / 300.0 | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:30336(check_entry_candidates_for_account.worker) · ez_positions_quick.py:30336(check_entry_candidates_for_account.worker) | — |
 | `BB_SQUEEZE_THRESHOLD_15M` | unclassified | 0.025 / 0.025 / 0.025 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26570(_apply_research_only_live_gates) | — |
 | `BB_SQUEEZE_THRESHOLD_1H` | unclassified | 0.03 / 0.03 / 0.03 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:26583(_apply_research_only_live_gates) | — |
-| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'VXX', 'CDE', 'BTG', 'UVXY', 'RGLD', 'AEM', 'HL', 'MAG', ' | — | DEAD | LIVE_ONLY | — · tradier_manage.py:48011(TradierTradeManager.execute_now) | — |
+| `BEAR_SCENARIO_SYMBOLS` | unclassified | <absent> / {'BOIL', 'AU', 'UNG', 'AG', 'XLE', 'HL', 'USO', 'VXX', 'AEM | — | DEAD | LIVE_ONLY | — · tradier_manage.py:48011(TradierTradeManager.execute_now) | — |
 | `BINANCE_API_BASE` | unclassified | https://fapi.binance.com / <absent> / https://fapi.binance.com | — | LIVE_ONLY | LIVE_ONLY | ez_rankings.py:98(<module>) · ez_rankings.py:98(<module>) | — |
 | `BLACKLIST` | unclassified | <absent> / ['SLV', 'COPX', 'PYPL', 'QBTS', 'DINO', 'RBLX', 'MPC'] / <a | — | DEAD | LIVE_ONLY | — · tradier_manage.py:41014(TradierTradeManager.__init__) | — |
 | `BLACKLIST_SYMBOLS` | unclassified | [] / [] / [] | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:25661(MultiAccountTradeManager.execute_trade_action)<br>(+1) · tradier_manage.py:21953(process_position) | vec_decisions/blacklist_strand.py:37(is_blacklisted) |
@@ -1550,7 +1549,7 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 | `NOLOSS_BB1H_GATE_ENABLED` | unclassified | False / False / False | — | DEAD | LIVE_ONLY | — · tradier_manage.py:34091(StockStrategy.evaluate_stop) | vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:44(check_noloss_bb1h) [UNREACHABLE]<br>vec_decisions/check_exit_candidates_stocks__noloss_bb1h.py:65(check_noloss_bb1h_vec) [UNREACHABLE] |
 | `NOLOSS_DC4H_GATE_ENABLED` | unclassified | True / True / True | — | LIVE_ONLY | LIVE_ONLY | ez_positions_quick.py:27230(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:27230(check_exit_candidates_for_account.process_single_exit) | — |
 | `NOLOSS_MIN_PROFIT_PCT_TRADIER_LIVE` | unclassified | <absent> / <absent> / 0.01 | — | VEC_ONLY | VEC_ONLY | — · — | vec_decisions/noloss_gate.py:20(noloss_blocks) |
-| `NON_SHORTABLE` | unclassified | <absent> / {'MARA', 'ETHE', 'SBIT', 'MAG', 'USO', 'BLOK', 'BOIL', 'COP | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30493(StockStrategy.__init__)<br>(+6) | — |
+| `NON_SHORTABLE` | unclassified | <absent> / {'BITO', 'CAN', 'UAN', 'COPX', 'ICL', 'XIACF', 'GLD', 'AGCO | — | DEAD | LIVE_ONLY | — · tradier_manage.py:30493(StockStrategy.__init__)<br>(+6) | — |
 | `OBLIGATORY_EMA50_15M_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | DEAD | ez_manage.py:38902(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_EMA50_15M_PCT` | unclassified | 1.0 / 1.0 / 1.0 | — | LIVE_ONLY | DEAD | ez_manage.py:38903(MultiAccountTradeManager.momentum_sma_watchdog_loop) · — | — |
 | `OBLIGATORY_HEDGE_ENABLED` | unclassified | False / False / False | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:34921(MultiAccountTradeManager.execute_now)<br>(+3) · ez_positions_quick.py:23999(execute_trade_wrapper) | — |
@@ -1908,11 +1907,6 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 | `REENTRY_60MIN_UNCONDITIONAL_ENABLED` | reentry | True / True / True | — | DEAD | LIVE_ONLY | — · tradier_manage.py:49563(TradierTradeManager.reentry_monitor_loop) | — |
 | `REENTRY_60MIN_WINDOW_MIN` | reentry | 1440.0 / 1440.0 / 1440.0 | — | DEAD | LIVE_ONLY | — · tradier_manage.py:49566(TradierTradeManager.reentry_monitor_loop) | — |
 | `REENTRY_AGGRESSIVE_WINDOW_MIN` | reentry | 30.0 / 30.0 / 30.0 | — | LIVE_ONLY | LIVE_ONLY | ez_manage.py:39332(MultiAccountTradeManager.reentry_enforcement_loop) · tradier_manage.py:49539(TradierTradeManager.reentry_monitor_loop) | — |
-| `REENTRY_AUGMENT_HL_REF` | per_sym | entry / entry / entry | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8081(_air_native_carry)<br>(+1) · tradier_manage.py:7708(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17740(simulate_one) |
-| `REENTRY_AUGMENT_REQUIRE_HIGHER_LOW` | per_sym | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8080(_air_native_carry)<br>(+1) · tradier_manage.py:7707(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17772(simulate_one._air_carry_mult) |
-| `REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT` | per_sym | True / True / True | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8083(_air_native_carry)<br>(+1) · tradier_manage.py:7710(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17758(simulate_one._air_carry_mult) |
-| `REENTRY_AUGMENT_SIZE_MULT` | per_sym | 1.0 / 1.0 / 1.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8079(_air_native_carry)<br>(+1) · tradier_manage.py:7706(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17783(simulate_one._air_carry_mult) |
-| `REENTRY_AUGMENT_WINDOW_SEC` | per_sym | 86400.0 / 86400.0 / 86400.0 | — | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8082(_air_native_carry)<br>(+1) · tradier_manage.py:7709(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17755(simulate_one._air_carry_mult) |
 | `REENTRY_B16_MIDRANGE_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | position_evaluator.py:222(evaluate_reentry_core)<br>(+1) · — | — |
 | `REENTRY_BAR_STRUCTURE_ENABLED` | reentry | True / True / True | — | LIVE_ONLY | DEAD | ez_manage.py:45184(process_single_reentry_evaluation) · — | — |
 | `REENTRY_BAR_STRUCTURE_TF` | reentry | 3m / 5m / 3m | — | LIVE_ONLY | DEAD | ez_manage.py:45185(process_single_reentry_evaluation) · — | — |
@@ -3343,15 +3337,21 @@ _Generated 2026-10-13T20:05:22.880201Z · 3676 names · vec modules never reache
 | `STDEV_BREAKOUT_RETEST_SIZE_MULT` | sizing | 1.5 / 1.5 / 1.5 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:21736(detect_stdev_breakout)<br>(+1) · ez_positions_quick.py:21736(detect_stdev_breakout)<br>(+3) | v12_quick_engine.py:14180(compute_regime_sizing_mult)<br>vec_decisions/stocks_live_twins.py:38(StdevSizer.__init__) |
 | `WT_15M_BOUNCE_BB_MIN` | entry | 0.05 / 0.05 / 0.05 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/twin_entry_ports_b.py:94(wt_15m_bounce)<br>(+1) · tradier_manage.py:1746(_shared_direct_entry_claim)<br>(+2) | v12_quick_engine.py:13077(compute_entry_signals)<br>vec_decisions/twin_entry_ports_b.py:94(wt_15m_bounce)<br>(+1) |
 
-## AUGMENT_TREND (7)
+## AUGMENT_TREND (13)
 
 | switch | kind | defaults cfg / tradier / quick | templates | crypto | stocks | live reads (ez · tradier) | vec reads |
 |---|---|---|---|---|---|---|---|
 | `AUGMENT_BULL_KILL_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) · vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) | v12_quick_engine.py:14003(compute_augment_signals_ex)<br>vec_decisions/live_unw_gates.py:70(augment_bull_kill_blocked) |
+| `AUGMENT_INTO_REENTRY_ENABLED` | per_sym | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8078(_air_native_carry)<br>(+1) · tradier_manage.py:7705(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17738(simulate_one) |
 | `BOUNCE_AUGMENT_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:26245(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:26245(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:13943(compute_augment_signals_ex) |
 | `BOUNCE_AUGMENT_K_D_CROSSING_UP` | augment | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_positions_quick.py:26273(check_exit_candidates_for_account.process_single_exit) · ez_positions_quick.py:26273(check_exit_candidates_for_account.process_single_exit) | v12_quick_engine.py:13944(compute_augment_signals_ex) |
 | `HAIKU_WINNER_AUGMENT_ENABLED` | augment | False / <absent> / False | CL,CS | VEC_ONLY | VEC_ONLY | — · — | v12_quick_engine.py:20549(simulate_one) |
 | `PYRAMID_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | strategy_enhancements.py:252(check_pyramid_signal)<br>(+1) · vec_decisions/twin_sizing_reduce.py:412(pyramid_fires) | v12_quick_engine.py:13961(compute_augment_signals_ex)<br>v12_quick_engine.py:14022(compute_augment_signals_ex)<br>(+1) |
+| `REENTRY_AUGMENT_HL_REF` | per_sym | entry / entry / entry | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8081(_air_native_carry)<br>(+1) · tradier_manage.py:7708(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17740(simulate_one) |
+| `REENTRY_AUGMENT_REQUIRE_HIGHER_LOW` | per_sym | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8080(_air_native_carry)<br>(+1) · tradier_manage.py:7707(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17772(simulate_one._air_carry_mult) |
+| `REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT` | per_sym | True / True / True | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8083(_air_native_carry)<br>(+1) · tradier_manage.py:7710(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17758(simulate_one._air_carry_mult) |
+| `REENTRY_AUGMENT_SIZE_MULT` | per_sym | 1.0 / 1.0 / 1.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8079(_air_native_carry)<br>(+1) · tradier_manage.py:7706(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17783(simulate_one._air_carry_mult) |
+| `REENTRY_AUGMENT_WINDOW_SEC` | per_sym | 86400.0 / 86400.0 / 86400.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:8082(_air_native_carry)<br>(+1) · tradier_manage.py:7709(_air_native_carry_t)<br>(+1) | v12_quick_engine.py:17755(simulate_one._air_carry_mult) |
 | `SHORT_DC_LOW_BREAK_ENABLED` | augment | False / False / False | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41883(evaluate_augmentation) · tradier_manage.py:39089(StockStrategy.evaluate_augment) | v12_quick_engine.py:13977(compute_augment_signals_ex) |
 | `SHORT_DC_LOW_BREAK_SIZE_MULT` | augment | 2.0 / 2.0 / 2.0 | CL,CS,SL,SS | WIRED_BOTH_UNPROVEN | WIRED_BOTH_UNPROVEN | ez_manage.py:41886(evaluate_augmentation) · tradier_manage.py:39093(StockStrategy.evaluate_augment) | v12_quick_engine.py:13981(compute_augment_signals_ex) |
 
