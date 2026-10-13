@@ -13,7 +13,10 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def _expected(key, sym_side, venue):
+_MISSING = object()
+
+
+def _expected(key, sym_side, venue, default=None):
     import per_sym_settings as pss
     try:
         import per_sym_store as store
@@ -23,7 +26,10 @@ def _expected(key, sym_side, venue):
     except Exception:
         pass
     sym, _, side = sym_side.rpartition("_")
-    return pss.get_for(key, sym, side, None, venue=venue)
+    v = pss.get_for(key, sym, side, _MISSING, venue=venue)
+    # exact chain contract: per-sym > cat_side > global fallback (grey fishnets with
+    # live!=quick conflicts are absent from the store — the fallback serves live)
+    return default if v is _MISSING else v
 
 
 def test_chain_serves_store_over_literal_crypto():
@@ -33,7 +39,7 @@ def test_chain_serves_store_over_literal_crypto():
     for sym_side, key in [("BTCUSDC_LONG", "MAX_ORDER_VALUE"), ("BTCUSDC_SHORT", "MAX_AUGMENTS_PER_POSITION"), ("BTCUSDC_LONG", "MOM5_LONG_THRESHOLD"), ("BTCUSDC_SHORT", "FG_SIZING_ENABLED"), ("BTCUSDC_LONG", "EMA_DIST_SIZING_MULT")]:
         sym, _, side = sym_side.rpartition("_")
         got = _psym_get(sym, side, key, getattr(cfg, key, None))
-        assert got == _expected(key, sym_side, "crypto"), (sym_side, key, got)
+        assert got == _expected(key, sym_side, "crypto", getattr(cfg, key, None)), (sym_side, key, got)
 
 
 def test_chain_serves_store_over_literal_stocks():
@@ -61,7 +67,7 @@ def test_service_resolver_mirrors_chain():
     for sym_side in ["BTCUSDC_LONG", "BTCUSDC_SHORT"]:
         sym, _, side = sym_side.rpartition("_")
         got = _svc_psym_get(sym, side, "MAX_ORDER_VALUE", getattr(cfg, "MAX_ORDER_VALUE", None))
-        assert got == _expected("MAX_ORDER_VALUE", sym_side, "crypto"), (sym_side, got)
+        assert got == _expected("MAX_ORDER_VALUE", sym_side, "crypto", getattr(cfg, "MAX_ORDER_VALUE", None)), (sym_side, got)
 
 
 def test_kg_gate_chain_wired():
