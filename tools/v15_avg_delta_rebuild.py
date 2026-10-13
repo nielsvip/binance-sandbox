@@ -20,6 +20,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import v15_vector_delta_rebuild as R  # noqa: E402
 
+import glob  # noqa: E402
 import os  # noqa: E402
 
 HOSTS_FILE = os.environ.get("V15_FLEET_HOSTS") or str(
@@ -233,6 +234,26 @@ def main():
         )
         if _pr.returncode == 0 and _pp.exists():
             parts.append(str(_pp))
+    # USER 2026-10-13 V17 self-improvement (bible §93): missed-trend screens write engine-verified priors in the same
+    # partial shape ({SS}_missed_trend_priors.json) and nobody read them. Folded here for sym_sides with NO board in this
+    # selection and no autopsy prior (never double-counted). V15_MISSED_TREND_PRIORS=0 disables.
+    if os.environ.get("V15_MISSED_TREND_PRIORS", "1") != "0":
+        _have = set(sel.keys())
+        try:
+            _ap = json.loads((tmp / "autopsy_priors.json").read_text())
+            for _l in (_ap.get("_symsides") or {}).values():
+                _have.update(_l or [])
+        except Exception:
+            pass
+        _mt_n = 0
+        for _mt in sorted(glob.glob(os.path.join(os.environ.get("V15_MISSED_TREND_DIR", os.path.expanduser("~/v15_missed_trend")), "*_missed_trend_priors.json"))):
+            _ss = os.path.basename(_mt)[: -len("_missed_trend_priors.json")]
+            if _ss in _have:
+                continue
+            parts.append(_mt)
+            _have.add(_ss)
+            _mt_n += 1
+        print(f"[missed-trend-priors] folded {_mt_n} sym_sides", flush=True)
     agg, seen = R.merge_partials(parts)
     for cs in R.CAT_SIDES:
         print(f"[avg] {cs}: sym_sides={len(seen[cs])}")

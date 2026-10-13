@@ -2103,3 +2103,106 @@ immediately" is satisfied in the sense that 365D no longer gates it, but a set c
 next go-live slot. Making it apply per publish means applying unverified settings to real money many times a day; that
 is a live-money cadence decision for the operator, not a silent change. To enable, run
 `tools/v15_persym_golive.py --all-finished` on a tighter Mac cron (it is idempotent and diff-only).
+## 93. V17 SCOUT + ROUTE ROUND — WORST_FIRST ABBREVIATED, PINPOINT ENLARGED, SELF-IMPROVEMENT WIRED (USER 2026-10-13)
+
+**User order:** "4-12 sym_sides completely resolved per hour per server 24/7/365; the worst_first round abbreviated, the
+pinpoint round enlarged and improved BY A LOT; smart routes = filter ablation first, then all entry and exit paths that
+never had a chance because filters disabled them; the self-improving part is not working — add the code it should have
+generated + the documentation."
+
+**Evidence (mined from the finished boards in this checkout, KMNOUSDT_SHORT + MELANIAUSDT_SHORT, 2026-10-13):**
+- Main row-by-row pass = **~97% of all evals** (KMNO 109.5k, MELANIA 84.5k); rows with any positive delta 1.1% / 1.45%;
+  yellow cells positive 0.42% / 0.24%, 92-94% exactly 0. **916 of 1004 switch names were exactly 0 on every row on both
+  boards** (non-binding). ~30-45% of all yellow cells sat on switch=value rows repeated across tabs.
+- STRIP all filters: KMNO 12.19 -> -14.32, MELANIA 6.67 -> 0.22 — the filters carry the edge AND mask paths: on the
+  stripped base EXIT_VELOCITY_WT_TFS moved +6.77 and COOLDOWN_BARS=0 +3.57 (0/negative on the filtered set).
+- The post stages found the largest single lifts with ~3% of the evals (+2.17/+3.48 recheck, +0.88/+1.52 diagnose).
+  FINAL_FILTER_RECHECK found **19 valid positives on MELANIA and chained only the best one**.
+- Focus round, endgame, sacred re-pass evaluated **one cell at a time** (fork pool idle); DIAGNOSE 1802 evals / 943 s.
+- Gains came ~75-80% from exits loosened/removed, ~20% from entry filters; no new entry path ever promoted.
+
+**Round 1 — SCOUT (abbreviated worst_first, `v15_pilot.py`, kill switch `V15_SCOUT=0`):**
+- Every row keeps its NAKED eval (§77 law unchanged, real G every row).
+- Yellows run only where the naked BINDS (behavior fingerprint != the running set's) or the row is exempt
+  (sacred prefixes, ESSENTIAL_GATE_SWITCHES, `new` rows) or the fingerprint is unknown / the naked errored (fail-open):
+  `scout_wants_yellows()`. A non-binding row's yellow cells are the filter's standalone effect (the existing dup rule
+  blanked them anyway; orange rows + FINAL_FILTER_RECHECK + the ROUTE round measure filters). Deferred cells are
+  SETTLED (never hollow, RULE#3 untouched): done-row `scout_deferred_filters`, `progress["scout"]` stats.
+- Prefetch speculates naked evals only; binding rows submit their yellows as one batch when reached.
+- Round-1 yellow cap `V15_SCOUT_YELLOW_CAP` 6 (was coarse 24); inline expansion of a MOVING row capped at
+  `V15_SCOUT_INLINE_CAP` 48 (prior-ranked), the rest go to round 2. Hustle/F eval off (`V15_SCOUT_HUSTLE=1` restores;
+  F was never used by worst_first, §56).
+- Sacred re-pass is batched-sequential (all candidates vs the current set in one parallel batch, walked in row order,
+  first accepted positive promotes, the rest re-batch) — identical decisions to the serial loop, n_proc x faster.
+- FINAL_FILTER_RECHECK **chains every positive** (batched greedy vs the grown set, same gates; `V15_RECHECK_CHAIN=0`
+  restores best-only; budget `V15_RECHECK_CHAIN_S` 300).
+
+**Round 2 — ROUTE (the enlarged PINPOINT round, `tools/v15_route_round.py` + `_route_round()` in the pilot, after
+FINAL_FILTER_RECHECK, replaces the focus round; kill switch `V15_ROUTE=0` -> legacy focus):**
+- P0 deferred yellows (prior/coarse/scout/inert) on the rows that moved this sym_side (focus step 1, now batched),
+  `V15_ROUTE_YELLOW_FRAC` 0.25 of the budget.
+- S0 KNOWN — this cat_side's proven moves (route knowledge, pos >= 2 sym_sides, mean > 0) replayed first.
+- S1 ABLATE — leave-one-out every ACTIVE filter (name says FILTER/GATE/VETO/BLOCK/KILL/REQUIRE/CONFIRM/GUARD/NOLOSS;
+  TF -> OFF only when the template offers OFF; bool gate -> False; never parity/execute_now/enforce flags, TF selectors,
+  bypasses, mandatory paths, sacred keys) + ALL-OFF; d_gain/d_trades/d_tim per filter; helpful drops chained.
+- S2 UNMASK — every entry/exit/reentry/augment/reduce template row (single-key, evaluable, not running) measured on the
+  ALL-OFF stripped base (one parallel batch, EV-ordered, `V15_ROUTE_MAX_PATHS` 1500). Binding + valid + positive =
+  UNMASKED (the paths the filters had disabled).
+- S3 GRAFT — top-K unmasked paths onto the CURRENT set, alone and paired with each likely blocker turned off (filters
+  ranked by trades their removal added in S1, then by knowledge `masked_by`).
+- S4 REBUILD (WINNER/MEDIOCRE, >45% budget left) — stripped base + unmasked paths greedy, then every filter option greedy;
+  adopted only if a fresh eval beats the current set and passes the gates.
+- S5 GRID — every switch promoted on this board (cap `V15_ROUTE_GRID_KEYS` 40): template candidates + x0.5..x2 grid,
+  TF ladder, bool flip.
+- S6 ROWLESS — wired live+vec switches with NO template row (switch-bible COVERAGE, e.g. the invented SHORT
+  first-lower-high `ENTRY_LH_TRIGGER_*`): flip / TF ladder / x0.5,x2. Deny-listed: `DELTA_*` (10-10 user order: no
+  flip, no rows), `DG_*` + `MAX_ORDER_VALUE*` + `MAX_AUGMENTS*` (fishnets §90), `GOLDEN_RULE_*`, safety guards,
+  `USE_1M_3M_*`, `ABLATION_*`, identity keys. `V15_ROUTE_ROWLESS=0` disables.
+- S7 PAIRS — near-miss singles (−0.5 < d <= 0) of S0/S1/S3/S5/S6 paired (greedy blind spot).
+- Every step = one parallel batch per greedy round (`batched_greedy`: best accepted positive promotes, the rest are
+  re-measured vs the grown set; candidates more than 0.5pp under water leave the pool after a promotion — logged
+  heuristic). Every promotion is the fresh measured gain of the exact set (§14.2/§19), gates = `_route_accept`
+  (valid, trade floor, block reasons, TIM/trades guards). Done-keys `ROUTE!<n>:<label>` carry cumulative_before/after
+  (E-chain validator holds); C written on the template row when the value has one; `ROUTE_ROUND` tab (promotions,
+  filter ablation table, stripped base, unmasked paths, rebuild, steps). Resume-safe (`route_done.result_key`).
+- Budget per tier `V15_ROUTE_S_{WINNER,MEDIOCRE,LOSER,LOST_CAUSE}` 1500/900/420/180 s (LOST_CAUSE gets a short round:
+  a flat/0-trade board may be a masked board), BH-chase `V15_ROUTE_S_BHCHASE`, clamped to the 90-min herd cap and to
+  the fill time-slice. The endgame is skipped after a ROUTE round (S1/S2/S4 cover strip/naked/reapply;
+  `V15_ENDGAME_AFTER_ROUTE=1` runs it anyway). DIAGNOSE unchanged (already batched).
+
+**Measured (fake-engine harness on the REAL `_spec_fill_workbook` + real TEMPLATE_CRYPTO_SHORT, 2026-10-13,
+`tests/v15_fake_engine_harness.py`, `tests/test_v15_scout.py`):** V16 path 48,377 engine calls -> final 4.75;
+V17 7,568 engine calls (**6.4x fewer**) -> final 6.95: the round found the entry path masked by
+`STRENGTH_FILTER_ENABLED` (S2 unmasked 1, S3 grafted path + blocker off). Round 1 deferred 2,200 rows / 39k cells;
+board publishable (no RULE#3 holes, honest E-chain). Real-engine wall time scales with eval count: ~6x fewer evals ->
+a ~110k-eval board (~2-3 h at 4 workers) becomes ~10-15 min round 1 + the tier ROUTE budget -> ~25-40 min per board
+-> with 3-5 pairs (6-10 boards) per host, 6-12 boards/h/host. Not yet measured on the fleet — verify with the
+`[SCOUT]`/`[ROUTE]` log lines (round1_secs, evals, promotions) after deployment.
+
+**Self-improvement — what was broken and is now wired (audit 2026-10-13):**
+- Endgame knowledge lived in the per-campaign `PROGRESS_DIR` (reset every round, n>=3 EV threshold rarely held),
+  pooled LONG/SHORT/crypto/stocks, raced (load at entry, blind overwrite at exit), counted every reapply step as
+  positive and never recorded failed tries. Now `data/route_knowledge/endgame_knowledge_{CAT_SIDE}.json`
+  (`V15_KNOWLEDGE_DIR`), flock-merged with a fresh re-read, failed tries recorded as `TRY:<key>` negatives.
+- ROUTE knowledge (NEW): `data/route_knowledge/{CAT_SIDE}.json` + `ledger_{CAT_SIDE}.jsonl` — every measured move
+  (positive AND negative), unmask deltas, `masked_by` (path -> filters whose removal let it promote), board lifts.
+  Consumers: S0 replay, EV ordering of S2/S5/S6/S4 candidates, S3 blocker ordering. Daily chain step 4e pulls every
+  worker's ledgers, `tools/v15_route_round.py merge` rebuilds the fleet knowledge (deduped per board), step 6 pushes it,
+  `report` writes `data/route_knowledge/ROUTE_KNOWLEDGE.md` incl. the **SWITCH-ADD PLAN** (rowless switches with
+  positive evidence on >= 2 sym_sides -> run `tools/v15_switch_add.py` on S1 per SWITCH_ADD_GUIDE.md).
+- The code the invention loop produced (65 COVERAGE switches, incl. INV-0001 `ENTRY_LH_TRIGGER_*`, wired live+vec)
+  had no template row, so it was NEVER swept and could never reach PROMOTED: S6 sweeps it on every board now.
+- `tools/v15_invention_loop.py`: read `missing_functions`/`mf['name']` (every observation collapsed to GENERIC) ->
+  reads `missing_entry_filters` / `missing_exit_confirmations` (feature/op/thr); diagnose files read from
+  `{progress_dir}/v15_diag_repair/` (where the pilot writes them); default progress dirs = newest 3
+  `~/v15_run*/progress` + lifecycle_pilot. Chain step 4e runs `mine --write` + `promote-check` daily.
+- Missed-trend priors (`{SS}_missed_trend_priors.json`, merge_partials shape) had no reader: `v15_avg_delta_rebuild`
+  folds them for sym_sides without a board/autopsy prior (`V15_MISSED_TREND_PRIORS=0` disables).
+- The causal profile ignores `ROUTE*` / `RECHECK*` delta-log labels (they are not row/cell deltas).
+- Still open (operator decisions, not silently changed): flip-study output has no consumer; graph search
+  (`V15_GRAPH_SEARCH`) stays off; `V15_TIER_BIG_MOVER=8` in the launch env vs 25 documented in §87; template rows for
+  rowless switches still need the S1 switch-add run (the template one-script rule forbids any other writer).
+
+**Tests:** `tests/test_v15_route_round.py` (8, pure module), `tests/test_v15_scout.py` (5, 4 run the real fill with the
+fake engine, `V15_SKIP_SLOW=1` skips them), `tests/test_v15_selfimprove_wiring.py` (6), `tests/test_v15_endgame.py`
+pin updated for the tier branch indentation (pre-existing failure).

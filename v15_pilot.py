@@ -2626,6 +2626,39 @@ _COARSE_CAP = int(os.environ.get("V15_COARSE_YELLOW_CAP", "24"))
 _COARSE_ON = os.environ.get("V15_COARSE_SWEEP", "1") == "1"
 _COARSE_FIRST_PASS = _COARSE_ON and os.environ.get("V15_COARSE_NO_SAMPLING", "1") == "1"  # USER 2026-10-13 V16: coarse cap independent of possym sampling
 _COARSE_INLINE = _COARSE_ON and os.environ.get("V15_COARSE_INLINE", "1") == "1"  # USER 2026-10-13 V16: a moving row evaluates its deferred yellows on the spot
+# USER 2026-10-13 V17 SCOUT + ROUTE ("worst_first abbreviated, pinpoint enlarged BY A LOT", 4-12 sym_sides/h/server; bible §93).
+# Mined KMNO/MELANIA finals: the main pass spent ~97% of evals, ~99% returned 0/neg; 916/1004 switch names were exactly 0
+# on every row (non-binding). SCOUT (round 1): every row keeps its NAKED eval (§77); yellows only where the naked binds
+# (behavior fingerprint != running set) or the row is sacred/essential/new — a non-binding row's yellows are the filter's
+# standalone effect (blanked as dups anyway) and go to the ROUTE round; F/hustle off; inline expansion of a moving row
+# capped. ROUTE (round 2, tools/v15_route_round.py): known moves -> filter ablation -> path unmasking on the stripped base
+# -> graft -> rebuild -> grid -> rowless switches -> pairs, all batched in parallel. Kill switches V15_SCOUT=0 / V15_ROUTE=0.
+_SCOUT_ON = os.environ.get("V15_SCOUT", "1") == "1"
+_SCOUT_CAP = int(os.environ.get("V15_SCOUT_YELLOW_CAP", "6"))
+_SCOUT_INLINE_CAP = int(os.environ.get("V15_SCOUT_INLINE_CAP", "48"))
+_SCOUT_HUSTLE = os.environ.get("V15_SCOUT_HUSTLE", "0") == "1"
+_ROUTE_ON = os.environ.get("V15_ROUTE", "1") == "1"
+_ROUTE_S = {t: float(os.environ.get(f"V15_ROUTE_S_{t}", d)) for t, d in (("WINNER", "1500"), ("MEDIOCRE", "900"), ("LOSER", "420"), ("LOST_CAUSE", "180"))}
+
+
+def scout_wants_yellows(is_running: bool, naked_fp, ref_fp, exempt: bool, naked_err: bool = False) -> bool:
+    """SCOUT yellow gate (pure, tests/test_v15_scout.py): yellows run for exempt rows, on unknown fingerprints / naked
+    errors (fail-open), and when the naked flip BINDS (fingerprint differs from the running set). A running-identity row
+    or a non-binding naked defers its yellows to the ROUTE round (their value would be the filter's standalone effect)."""
+    if exempt or naked_err:
+        return True
+    if is_running:
+        return False
+    if naked_fp is None or ref_fp is None:
+        return True
+    return naked_fp != ref_fp
+
+
+def scout_effective_cap(coarse_cap: int) -> int:
+    """round-1 yellow cap: SCOUT cap when SCOUT is on (never larger than the coarse cap), else the coarse cap."""
+    if _SCOUT_ON and _SCOUT_CAP > 0:
+        return min(_SCOUT_CAP, coarse_cap) if coarse_cap > 0 else _SCOUT_CAP
+    return coarse_cap
 
 
 def _coarse_trim(kept, ev, cap):
@@ -3433,8 +3466,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _final_filter_recheck():
         # Before closing: re-run EVERY distinct orange filter=opt against the FINAL cumulative "just in case" (earlier
         # tabs tested them vs an older cumulative). All deltas (pos/neg) -> FINAL_FILTER_RECHECK sheet + progress + log;
-        # the single best positive is promoted. This is the per-filter data for row reduction / 365D runs.
-        nonlocal cumulative_gain, cumulative_overrides
+        # the single best positive is promoted, then (V17) every other positive is chained greedily vs the grown set.
+        nonlocal cumulative_gain, cumulative_overrides, chain_tim, chain_trades
         cum0 = float(cumulative_gain)
         t0 = _t.time()
         seen = {}
@@ -3500,6 +3533,35 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for rec in recs:
                 if rec[0] == sw2 and rec[1] == c2:
                     rec[6] = True
+        # V17 CHAIN-ALL (MELANIA_SHORT: 19 valid positives, only the best was ever chained): every other positive is
+        # re-measured vs the grown set in parallel batches and chained greedily (fresh gain of the exact set, same gates).
+        _chained = []
+        if best is not None and os.environ.get("V15_RECHECK_CHAIN", "1") == "1" and _pool is not None:
+            try:
+                from tools import v15_route_round as _RR
+                _pos = [r_ for r_ in recs if isinstance(r_[5], (int, float)) and r_[5] > 1e-9 and r_[4] and not (r_[0] == best[1] and r_[1] == best[2]) and not promotion_block_reason(r_[0])]
+                _pos.sort(key=lambda r_: -r_[5])
+                _cc = [{"label": f"{r_[0]}={r_[1]}", "delta": _switch_overrides(r_[0], _parse_opt_value(r_[1], defaults.get(r_[0]))), "key": r_[0]} for r_ in _pos]
+                def _rc_promote(ov, res, d, how, label, c):
+                    nonlocal cumulative_gain, cumulative_overrides, chain_tim, chain_trades
+                    cumulative_overrides = sanitize_overrides(dict(ov), defaults)[0]
+                    cumulative_gain = float((res or {}).get("gain_pct"))
+                    try:
+                        chain_tim = float((res or {}).get("tim_pct"))
+                        chain_trades = int((res or {}).get("trades") or 0)
+                    except Exception:
+                        pass
+                    _chained.append((label, round(float(d), 4)))
+                    for rec in recs:
+                        if f"{rec[0]}={rec[1]}" == label:
+                            rec[6] = True
+                _rc_t0 = _t.time()
+                _rc_budget = float(os.environ.get("V15_RECHECK_CHAIN_S", "300"))
+                _RR.batched_greedy(_cc, dict(cumulative_overrides), float(cumulative_gain), lambda its: _eval_items([("RECHECK_CHAIN:" + l.split(":", 1)[1], o) for l, o in its], "FINAL_FILTER_RECHECK", float(cumulative_gain)), _route_accept, lambda: _t.time() - _rc_t0 < _rc_budget, max_rounds=len(_cc), on_promote=_rc_promote, how="recheck")
+            except V15Shutdown:
+                raise
+            except Exception as _rce:
+                print(f"[final-recheck-warn] chain-all: {_rce}", flush=True)
         recs.sort(key=lambda x: (x[5] is None, -(x[5] or 0)))
         for i, rec in enumerate(recs, 2):
             for j, val in enumerate(rec, 1):
@@ -3508,7 +3570,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             dcell = fws.cell(row=i, column=6)
             if isinstance(rec[5], (int, float)):
                 dcell.font = Font(name="Arial", size=10, color="006100" if rec[5] > 1e-9 else "9C0006")
-        progress["final_filter_recheck"] = {"cumulative_before": cum0, "cumulative_after": float(cumulative_gain), "n": len(recs), "promoted": [best[1], best[2], best[0]] if best else None, "deltas": {f"{r[0]}={r[1]}": r[5] for r in recs}}
+        progress["final_filter_recheck"] = {"cumulative_before": cum0, "cumulative_after": float(cumulative_gain), "n": len(recs), "promoted": [best[1], best[2], best[0]] if best else None, "chained": _chained, "deltas": {f"{r[0]}={r[1]}": r[5] for r in recs}}
+        progress["cumulative_overrides"] = dict(cumulative_overrides)
         progress["cumulative_gain"] = float(cumulative_gain)
         progress["cumulative_overrides"] = dict(cumulative_overrides)
         print(f"[final-recheck] {len(recs)} distinct orange filters vs final cum {cum0:.4f} computed={len(futs)} cached={len(recs)-len(futs)} best={'%s=%s %+.4f' % (best[1], best[2], best[0]) if best else 'none'} -> cum {cumulative_gain:.4f} ({_t.time()-t0:.1f}s)", flush=True)
@@ -3557,7 +3620,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _eg_know, _eg_know_n = {}, 0
             if _eg_ev_on or _eg_ledger_on:
                 try:
-                    _eg_kp = PROGRESS_DIR / "endgame_knowledge.json"
+                    _eg_kp = _endgame_knowledge_path(new_symside)
                     if _eg_kp.exists():
                         _eg_know = json.loads(_eg_kp.read_text()) or {}
                         _eg_know_n = int((_eg_know.get("workbooks") or {}).get("n", 0))
@@ -3640,6 +3703,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # 5. REAPPLY filters one-by-one greedy toward bh+target
             working, work_gain = dict(base), base_gain
             remaining = dict(F)
+            _eg_tries = []
             applied, target_step = [], None
             tgt = (float(bh) + target_pts) if bh is not None else None
             while remaining and _t.time() < deadline and _n_eval[0] < max_evals and not _SHUTDOWN["v"]:
@@ -3654,6 +3718,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     if cres is None or cres.get("gain_pct") is None:
                         continue
                     g = float(cres["gain_pct"])
+                    _eg_tries.append((fk, g - work_gain))  # V17: every try is evidence (negatives too — no survivorship bias)
                     if g - work_gain > 1e-9 and (best_g is None or g > best_g):
                         best_f, best_g, best_res = fk, g, cres
                 if best_f is None:
@@ -3740,7 +3805,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if _eg_ledger_on:
                 try:
                     _rec_key = f"{new_symside}|{_sk(dict(cumulative_overrides))}"
-                    _eg_lp = PROGRESS_DIR / "endgame_ledger.jsonl"
+                    _eg_lp = _endgame_knowledge_path(new_symside).with_name(_endgame_knowledge_path(new_symside).stem.replace("endgame_knowledge", "endgame_ledger") + ".jsonl")
                     _seen = False
                     if _eg_lp.exists():
                         try:
@@ -3760,14 +3825,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _rec = {"symside": new_symside, "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(), "key": _rec_key, "ev_order": bool(_eg_ev_on), "know_n": _eg_know_n, "entry_gain": _eg_entry_gain, "strip_gain": base_gain, "final_gain": float(cumulative_gain), "lift": _eg_lift, "adopted": adopted, "target_met": target_met,
                                 "naked": [{"switch": r[0], "value": str(r[1])[:60], "delta": r[2], "cause": r[3] if len(r) > 3 else ""} for r in naked_rows],
                                 "reapply_seq": _seq, "dropped": sorted(remaining.keys()), "tier_share": tier_share, "evals": _n_eval[0]}
+                        _eg_lp.parent.mkdir(parents=True, exist_ok=True)
                         with open(_eg_lp, "a") as _lf:
                             _lf.write(json.dumps(_rec) + "\n")
                         _naked_items = []
                         for r in naked_rows:
                             _naked_items.append((r[0], r[2]))
                             _naked_items.append((f"{r[0]}={str(r[1])[:60]}", r[2]))
-                        _endgame_merge_knowledge(_eg_know, _naked_items, [(_s["filter"], _s["step_delta"]) for _s in _seq], list(remaining.keys()), _eg_lift, target_met, adopted)
-                        _atomic_write_json(PROGRESS_DIR / "endgame_knowledge.json", _eg_know)
+                        # V17: merged under an exclusive lock with a fresh re-read (concurrent pilots never lose merges), in the
+                        # persistent cross-campaign knowledge dir (the per-campaign PROGRESS_DIR reset it every round).
+                        from tools import v15_route_round as _RRk
+                        _eg_kp2 = _endgame_knowledge_path(new_symside)
+                        with _RRk._locked(_eg_kp2):
+                            try:
+                                _eg_know = json.loads(_eg_kp2.read_text()) if _eg_kp2.exists() else {}
+                            except Exception:
+                                _eg_know = {}
+                            _endgame_merge_knowledge(_eg_know, _naked_items + [(f"TRY:{_k}", _d) for _k, _d in _eg_tries], [(_s["filter"], _s["step_delta"]) for _s in _seq], list(remaining.keys()), _eg_lift, target_met, adopted)
+                            _atomic_write_json(_eg_kp2, _eg_know)
                         _wb = _eg_know.get("workbooks") or {}
                         _ml = (float(_wb.get("sum_lift", 0.0)) / _wb["n"]) if _wb.get("n") else 0.0
                         print(f"[ENDGAME-PROOF] {new_symside} lift {_eg_lift:+.4f} (entry {_eg_entry_gain:.4f} -> final {float(cumulative_gain):.4f}); aggregate n={_wb.get('n', 0)} mean_lift={_ml:+.4f} P(lift>0)={_wb.get('pos_lift', 0)}/{_wb.get('n', 0)} targets={_wb.get('target_met', 0)} adopted={_wb.get('adopted', 0)}", flush=True)
@@ -4378,6 +4453,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception:
         _inert_seq = int(datetime.datetime.utcnow().strftime("%j"))
     _inert_stats = {"pruned": 0, "sampled": 0, "revived": 0, "yellows_skipped": 0}
+    _scout_stats = {"bound": 0, "deferred_rows": 0, "deferred_cells": 0, "inline_capped": 0}
     if _inert_effective:
         print(f"[AUTOPSY-INERT] {new_symside}: {len(_inert_effective)} effective switches from the autopsy base; other rows naked-only, full yellows 1/{_inert_every} (seq {_inert_seq})", flush=True)
     # PRIOR POLICY (USER 2026-10-12): fleet causal profile decides which yellow matrices are worth computing (see prior_row_policy)
@@ -4512,8 +4588,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _kept_ev[_h] = (int(_fp), int(_fn))
                         except Exception:
                             _kept_ev[_h] = (0, 0)
-                    if (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
-                        _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
+                    if (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > scout_effective_cap(_COARSE_CAP) > 0:
+                        _kept, _deferred = _coarse_trim(_kept, _kept_ev, scout_effective_cap(_COARSE_CAP))
                         for _dh in _deferred:
                             info.setdefault("coarse_deferred_filters", []).append(_dh)
                             _ps_count(sname, "coarse_deferred", False, "cell")
@@ -4574,8 +4650,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                                     _kept_ev[_h] = (0, 0)
                             else:
                                 info.setdefault("sampled_filters", []).append(_h)
-                        if _COARSE_ON and not _redo_heal and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
-                            _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
+                        if _COARSE_ON and not _redo_heal and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > scout_effective_cap(_COARSE_CAP) > 0:
+                            _kept, _deferred = _coarse_trim(_kept, _kept_ev, scout_effective_cap(_COARSE_CAP))
                             for _dh in _deferred:
                                 info.setdefault("coarse_deferred_filters", []).append(_dh)
                                 _ps_count(sname, "coarse_deferred", False, "cell")
@@ -4624,14 +4700,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         hv = dict(initial_overrides)
         hv.update(sw_ov)
         hv, _ = sanitize_overrides(hv, defaults)
-        if not is_running and any(not _same_val(initial_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+        if (not _SCOUT_ON or _SCOUT_HUSTLE) and not is_running and any(not _same_val(initial_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
             items.append(("hustle", hv))
+        # V17 SCOUT: yellows of a non-exempt row wait for its naked verdict (binding gate in the row loop) — prefetch
+        # then only speculates naked evals; exempt rows (sacred / essential / new) keep their yellows in the prefetch.
+        _defer_y = _SCOUT_ON and not _scout_exempt(sname, switch, cand)
+        yitems = []
         for hdr in st["hdrs"]:
             f = st["h2f"][hdr]
             v = dict(sv)
             v[f["filter"]] = _parse_opt_value(f["opt"], defaults.get(f["filter"]))
-            items.append((hdr, sanitize_overrides(v, defaults)[0]))
-        return {"static": st, "cand_parsed": cand_parsed, "sw_ov": sw_ov, "is_running": is_running, "switch_variant": sv, "items": items}
+            (yitems if _defer_y else items).append((hdr, sanitize_overrides(v, defaults)[0]))
+        return {"static": st, "cand_parsed": cand_parsed, "sw_ov": sw_ov, "is_running": is_running, "switch_variant": sv, "items": items, "yellow_items": yitems}
+    def _scout_exempt(sname: str, switch, cand) -> bool:
+        _sw = str(switch).strip()
+        return _sw.startswith(SACRED_ZERO_EXEMPT_PREFIXES) or _sw in ESSENTIAL_GATE_SWITCHES or bool(((_prior_psj or {}).get(f"{sname}!{_sw}={str(cand).strip()}") or {}).get("new")) or (sname, _sw, str(cand).strip()) in _ps_new
     inflight: dict = {}
     _slow_secs: dict = {}
     _SLOW_RED_S = float(os.environ.get("V15_SLOW_CELL_S", "2.0"))  # USER 2026-10-10 throughput hotfix (0.1 -> 2.0: 0.2s cells are normal, were all going RED + 120s retry); re-applied 2026-10-12 after it was lost
@@ -4745,6 +4828,45 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})
         return res, err
     _delta_vs = delta_vs_result  # module-level pure twin (test_v15_row_guards covers the verdict/settle composition)
+    def _eval_items(items, sheet_label: str, cum_before: float, deadline: float | None = None):
+        # V17: one PARALLEL batch of independent evals (submit all to the fork pool, then collect) -> [(res, err)].
+        # Same _get path (cache, delta-log line, hard deadline) as every other eval. Labels "PREFIX:switch=cand" log
+        # their switch/cand so the causal profile can parse them.
+        _ovs = [(lab, sanitize_overrides(dict(ov), defaults)[0]) for lab, ov in items]
+        for _lab, _ov in _ovs:
+            _submit(_ov)
+        _flush_batch()
+        _dl = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_ovs) // max(1, _n_proc))) + 2)
+        if deadline is not None:
+            _dl = max(min(_dl, deadline), _t.time() + YELLOW_TIMEOUT)
+        out_ = []
+        for _lab, _ov in _ovs:
+            _sw, _, _cd = str(_lab).partition(":")[2].partition("=")
+            out_.append(_get(sheet_label, None, _sw, _cd, _lab, _ov, _dl, float(cum_before)))
+        _harvest()
+        return out_
+    def _route_accept(res, err, d, cand=None):
+        # promotion gates of every post-stage (same as focus/sacred repass): valid, trade floor, block reason, TIM/trades guards
+        if err or d is None or float(d) <= 1e-9:
+            return False
+        if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) < ADAPT_FLOOR_TRADES:
+            return False
+        for _k in list(((cand or {}).get("delta") or {}).keys()) or [str((cand or {}).get("key") or "")]:
+            if _k and promotion_block_reason(str(_k).strip(), None):
+                return False
+        try:
+            _ct = float((res or {}).get("tim_pct"))
+        except Exception:
+            _ct = None
+        if tim_guard_veto(_ct, chain_tim):
+            return False
+        try:
+            _ctr = int((res or {}).get("trades") or 0)
+        except Exception:
+            _ctr = None
+        if trades_guard_veto(_ctr, chain_trades):
+            return False
+        return True
     def _num_cell(ws, rr: int, col: int, value, good: bool, bold: bool = True):
         cell = ws.cell(row=rr, column=col)
         cell.value = float(value)
@@ -4841,39 +4963,62 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return 0
         upto = _sacred_tab_order if upto_tab_inclusive is None else (_sacred_tab_order[:_sacred_tab_order.index(upto_tab_inclusive) + 1] if upto_tab_inclusive in _sacred_tab_order else [])
         n_prom = 0
+        # V17: batched-sequential — every remaining candidate is evaluated vs the CURRENT set in one parallel batch, walked
+        # in row order; the first accepted positive promotes and the rest re-batch vs the grown set. Same decisions as the
+        # serial loop (each candidate is judged vs exactly the set it would have seen), n_proc times faster.
+        _cands = []
         for (s, r, sw, c) in [t for t in _sacred_rows if t[0] in upto]:
             if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(c)):
                 continue  # MAXAUG_NEVER_ZERO applies to the repass too
             try:
-                sw_ov = _switch_overrides(str(sw).strip(), _parse_opt_value(c, defaults.get(str(sw).strip())))
+                _cands.append((s, r, sw, c, _switch_overrides(str(sw).strip(), _parse_opt_value(c, defaults.get(str(sw).strip())))))
             except Exception:
                 continue
-            if all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
-                continue  # identity: already running, delta 0 by construction
-            ov = dict(cumulative_overrides)
-            ov.update(sw_ov)
-            ov, _ = sanitize_overrides(ov, defaults)
-            cum_before = float(cumulative_gain)
-            res, err = _get(s, r, str(sw).strip(), str(c), "SACRED_REPASS", ov, _t.time() + YELLOW_TIMEOUT * 2, cum_before)
-            d, ok, why = _delta_vs(res, cum_before)
-            if err or d is None or float(d) <= 1e-9 or not ok:
-                continue
-            if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) <= 0:
-                continue
-            if promotion_block_reason(str(sw).strip(), s):
-                continue
-            try:
-                _ct = float((res or {}).get("tim_pct"))
-            except Exception:
-                _ct = None
-            if tim_guard_veto(_ct, chain_tim):
-                continue
-            try:
-                _ctr = int((res or {}).get("trades") or 0)
-            except Exception:
-                _ctr = None
-            if trades_guard_veto(_ctr, chain_trades):
-                continue
+        _i0 = 0
+        while _i0 < len(_cands):
+            _batch = []
+            for _j in range(_i0, len(_cands)):
+                s, r, sw, c, sw_ov = _cands[_j]
+                if all(_same_val(cumulative_overrides.get(k2, defaults.get(k2)), v2) for k2, v2 in sw_ov.items()):
+                    continue  # identity: already running, delta 0 by construction
+                ov = dict(cumulative_overrides)
+                ov.update(sw_ov)
+                ov, _ = sanitize_overrides(ov, defaults)
+                _batch.append((_j, ov))
+                _submit(ov)
+            _flush_batch()
+            _bdl = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_batch) // max(1, _n_proc))) + 2)
+            _hit = None
+            for _j, ov in _batch:
+                s, r, sw, c, sw_ov = _cands[_j]
+                cum_before = float(cumulative_gain)
+                res, err = _get(s, r, str(sw).strip(), str(c), "SACRED_REPASS", ov, max(_bdl, _t.time() + YELLOW_TIMEOUT * 2), cum_before)
+                d, ok, why = _delta_vs(res, cum_before)
+                if err or d is None or float(d) <= 1e-9 or not ok:
+                    continue
+                if not bool((res or {}).get("valid")) or int((res or {}).get("trades") or 0) <= 0:
+                    continue
+                if promotion_block_reason(str(sw).strip(), s):
+                    continue
+                try:
+                    _ct = float((res or {}).get("tim_pct"))
+                except Exception:
+                    _ct = None
+                if tim_guard_veto(_ct, chain_tim):
+                    continue
+                try:
+                    _ctr = int((res or {}).get("trades") or 0)
+                except Exception:
+                    _ctr = None
+                if trades_guard_veto(_ctr, chain_trades):
+                    continue
+                _hit = (_j, ov, res, d, cum_before)
+                break
+            if _hit is None:
+                break
+            _j, ov, res, d, cum_before = _hit
+            s, r, sw, c, sw_ov = _cands[_j]
+            _i0 = _j + 1
             cumulative_overrides = dict(ov)
             cumulative_gain = float((res or {}).get("gain_pct"))
             e_next = cumulative_gain
@@ -4913,7 +5058,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             fws.append(["steps", json.dumps(out.get("steps") or {})])
         except Exception as _se:
             print(f"[FOCUS-WARN] sheet write failed: {_se}", flush=True)
-    def _focus_round():
+    def _focus_round(only_yellows: bool = False, budget_override: float | None = None):
         # USER 2026-10-12 FOCUS ROUND ("second round more specific and larger, multiplies gains"): after the prior-driven
         # worst_first pass, spend the TIER budget only on what moved THIS sym_side (promoted rows + positive naked rows):
         #   1. the full yellow matrix on those rows where it was prior-skipped / coarse-deferred / inert (joint promote);
@@ -4925,7 +5070,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
         import hashlib as _fh
         t0 = _t.time()
-        budget = float(_tier_focus_s)
+        budget = float(_tier_focus_s) if budget_override is None else float(budget_override)
         # USER 2026-10-13 V16 BH-CHASE ("every sym_side beats bh"): a board still below B&H after round 1 gets the
         # larger round-2 budget + wider top_k (same honest greedy gates — the target is a goal, never forced).
         _bh_chase = False
@@ -4933,7 +5078,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _bh_f = float(bh) if bh is not None else None
         except Exception:
             _bh_f = None
-        if os.environ.get("V15_BH_CHASE", "1") == "1" and _bh_f is not None and float(cumulative_gain) < _bh_f and _tier_name != "LOST_CAUSE":
+        if budget_override is None and os.environ.get("V15_BH_CHASE", "1") == "1" and _bh_f is not None and float(cumulative_gain) < _bh_f and _tier_name != "LOST_CAUSE":
             _bh_chase = True
             budget = max(budget, float(os.environ.get("V15_FOCUS_S_BHCHASE", "900")))
         n_eval = [0]
@@ -5037,7 +5182,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             for _, tab, rr_, sw, c, k, v in eff[: top_k * 2]:
                 if not _left():
                     break
-                deferred = [h for h in list(v.get("prior_skipped_filters") or []) + list(v.get("coarse_deferred_filters") or []) + list(v.get("inert_filters") or []) if h not in (v.get("yellows") or {})]
+                deferred = [h for h in list(v.get("prior_skipped_filters") or []) + list(v.get("coarse_deferred_filters") or []) + list(v.get("scout_deferred_filters") or []) + list(v.get("inert_filters") or []) if h not in (v.get("yellows") or {})]
                 deferred = list(dict.fromkeys(deferred))
                 if not deferred:
                     continue
@@ -5057,6 +5202,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         continue  # the switch no longer helps on the grown set — its yellows cannot be credited
                 s1["rows"] += 1
                 pos = []
+                for h in deferred:  # V17: the whole row to the pool first (parallel), then collected in order below
+                    f_, _, o_ = str(h).partition("=")
+                    if f_.strip() in known_config_fields() and f_.strip() not in UNWIRED_FILTERS and f_.strip() not in UNWIRED_SWITCHES:
+                        _pov = dict(base)
+                        _pov[f_.strip()] = _parse_opt_value(o_.strip(), defaults.get(f_.strip()))
+                        _submit(sanitize_overrides(_pov, defaults)[0])
+                _flush_batch()
                 for h in deferred:
                     if not _left():
                         break
@@ -5109,6 +5261,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 except Exception as _se:
                     print(f"[FOCUS-WARN] {tab}!{rr_} C write failed: {_se}", flush=True)
             out["steps"]["yellows"] = s1
+            if only_yellows:
+                return  # V17: the ROUTE round owns grid/pairs (batched, larger)
             # STEP 2 — finer numeric grid around every promoted/positive numeric value (x0.5 .. x2 inside the template span)
             s2 = {"switches": 0, "evals": 0, "promoted": 0}
             seen_sw = set()
@@ -5233,6 +5387,228 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _focus_sheet(out)
             _maybe_write_json(force=True)
             print(f"[FOCUS] {new_symside} tier={_tier_name} {out['secs']}s evals={n_eval[0]} promotions={len(out['promotions'])} {out['entry_gain']:.4f}->{float(cumulative_gain):.4f} steps={out['steps']}{' skipped=' + str(out.get('skipped')) if out.get('skipped') else ''}", flush=True)
+    def _route_sheet(res):
+        try:
+            if "ROUTE_ROUND" in wb.sheetnames:
+                del wb["ROUTE_ROUND"]
+            rws = wb.create_sheet("ROUTE_ROUND")
+            _B = Font(name="Arial", size=10, bold=True)
+            def _rrow(vals, bold=False):
+                rws.append([v if isinstance(v, (int, float, str, type(None))) else json.dumps(v, default=str)[:900] for v in vals])
+                if bold:
+                    for cc in rws[rws.max_row]:
+                        cc.font = _B
+            _rrow(["ROUTE_ROUND", new_symside, "tier", _tier_name, "budget_s", (progress.get("route") or {}).get("budget_s"), "secs", (progress.get("route") or {}).get("secs"), "evals", res.get("evals"), "entry_gain", res.get("entry_gain"), "final_gain", res.get("final_gain"), "lift", res.get("lift")], True)
+            _rrow(["PROMOTIONS", "how", "label", "delta", "before", "after", "trades", "tim", "dd"], True)
+            for p_ in res.get("promotions") or []:
+                _rrow(["", p_.get("how"), p_.get("label"), p_.get("delta"), p_.get("before"), p_.get("after"), p_.get("trades"), p_.get("tim"), p_.get("dd")])
+            _rrow([])
+            _rrow(["FILTER_ABLATION", "filter", "off", "delta_vs_current", "trades", "d_trades", "tim", "valid"], True)
+            for a_ in sorted(res.get("ablation") or [], key=lambda a: -(a.get("delta") or -1e9)):
+                _rrow(["", a_.get("filter"), a_.get("off"), a_.get("delta"), a_.get("trades"), a_.get("d_trades"), a_.get("tim"), a_.get("valid")])
+            _rrow([])
+            _st = res.get("stripped") or {}
+            _rrow(["STRIPPED_BASE", "gain", _st.get("gain"), "trades", _st.get("trades"), "tim", _st.get("tim"), "filters_off", ",".join(_st.get("filters_off") or [])[:900]], True)
+            _rrow(["UNMASKED_PATHS", "tab", "key", "value", "class", "delta_on_stripped", "trades"], True)
+            for u_ in (res.get("unmask") or [])[:80]:
+                _rrow(["", u_.get("tab"), u_.get("key"), u_.get("val"), u_.get("cls"), u_.get("d_stripped"), u_.get("trades")])
+            _rrow([])
+            if res.get("rebuild"):
+                _rrow(["REBUILD", json.dumps(res["rebuild"], default=str)[:900]], True)
+            _rrow(["STEPS", json.dumps(res.get("steps") or {}, default=str)[:900]], True)
+        except Exception as _se:
+            print(f"[ROUTE-WARN] sheet write failed: {_se}", flush=True)
+    def _route_round():
+        # USER 2026-10-13 V17 ROUTE ROUND = the enlarged PINPOINT round (tools/v15_route_round.py, bible §93): deferred
+        # yellows on the rows that moved (batched), then S0 known moves -> S1 filter ablation -> S2 path unmasking on the
+        # filter-stripped base -> S3 graft (path + its blocker off) -> S4 rebuild -> S5 grid -> S6 rowless switches ->
+        # S7 pairs. Every promotion = fresh real eval of the exact set vs the LATEST cumulative, same gates as the main
+        # pass (§14.2/§19). Knowledge persists per cat_side in data/route_knowledge (cross-campaign, flock-merged).
+        nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
+        import hashlib as _rh
+        from tools import v15_route_round as _RR
+        t0 = _t.time()
+        rec = {"tier": _tier_name, "at": utcnow()}
+        progress["route"] = rec
+        _skr = lambda ov: _rh.md5(json.dumps(sorted((k, str(v)) for k, v in ov.items())).encode()).hexdigest()
+        n_ev = [0]
+        try:
+            if not _ROUTE_ON or prepared is None or fast_switches is not None or _pool is None:
+                rec["skipped"] = f"V15_ROUTE={int(_ROUTE_ON)} prepared={prepared is not None} fast={fast_switches is not None} pool={_pool is not None}"
+                print(f"[ROUTE] {new_symside} skipped ({rec['skipped']}) -> legacy focus round", flush=True)
+                _focus_round()
+                return
+            budget = float(_ROUTE_S.get(_tier_name, 600.0))
+            try:
+                _bh_r = float(bh) if bh is not None else None
+            except Exception:
+                _bh_r = None
+            if _bh_r is not None and float(cumulative_gain) < _bh_r and _tier_name != "LOST_CAUSE" and os.environ.get("V15_BH_CHASE", "1") == "1":
+                budget = max(budget, float(os.environ.get("V15_ROUTE_S_BHCHASE", "1800")))
+                rec["bh_chase"] = True
+            budget = min(budget, 5400.0 - (t0 - _PILOT_T0) - 900.0)
+            _slice_r = float(os.environ.get("V15_FILL_SLICE_S", "2400"))
+            if _slice_r > 0:
+                budget = min(budget, _slice_r - (t0 - _PILOT_T0) - 120.0)  # never let the fill time-slice exit cut the round
+            rec["budget_s"] = round(budget, 1)
+            if budget < 30:
+                rec["skipped"] = f"only {budget:.0f}s left inside the 90-min herd cap"
+                print(f"[ROUTE] {new_symside} skipped: {rec['skipped']}", flush=True)
+                return
+            if (progress.get("route_done") or {}).get("result_key") == _skr(cumulative_overrides):
+                rec["skipped"] = "already ran on this exact set (resume)"
+                return
+            deadline = t0 + budget
+            max_evals = int(os.environ.get("V15_ROUTE_MAX_EVALS", "40000"))
+            print(f"[ROUTE] {new_symside} tier={_tier_name} budget={budget:.0f}s cum={float(cumulative_gain):.4f} bh={bh}", flush=True)
+            # P0: deferred yellows (prior/coarse/scout/inert) on the rows that moved this sym_side — batched focus step 1
+            try:
+                _focus_round(only_yellows=True, budget_override=budget * float(os.environ.get("V15_ROUTE_YELLOW_FRAC", "0.25")))
+            except V15Shutdown:
+                raise
+            except Exception as _fy:
+                print(f"[ROUTE-warn] deferred yellows: {_fy}", flush=True)
+            filt_names = set()
+            for _sn in tabs:
+                for (_rr, _sw, _cd) in per_tab_rows.get(_sn, []):
+                    if (_sn, _rr) in orange_rows:
+                        filt_names.add(str(_sw).strip())
+                for _hdr in header_maps.get(_sn, {}):
+                    filt_names.add(str(_hdr).split("=", 1)[0].strip())
+            options, path_rows, cand_str, row_of = {}, [], {}, {}
+            for (_sn, _rr, _sw, _cd) in queue:
+                _sw = str(_sw).strip()
+                try:
+                    _pv = _parse_opt_value(_cd, defaults.get(_sw))
+                except Exception:
+                    continue
+                if _pv == DEFAULT_MARKER:
+                    continue
+                if not any(_RR.same(_pv, x) for x in options.setdefault(_sw, [])):
+                    options[_sw].append(_pv)
+                row_of.setdefault((_sw, _RR.canon(_pv)), (_sn, _rr))
+                cand_str[(_sw, _RR.canon(_pv))] = str(_cd).strip()
+                try:
+                    _st = _row_static(_sn, _rr, _sw, _cd)
+                except Exception:
+                    continue
+                if _st.get("kind") != "eval":
+                    continue
+                try:
+                    if list(_switch_overrides(_sw, _pv).keys()) != [_sw]:
+                        continue
+                except Exception:
+                    continue
+                path_rows.append((_sn, _sw, _pv))
+            for _sn in tabs:
+                for _hdr in header_maps.get(_sn, {}):
+                    _f, _, _o = str(_hdr).partition("=")
+                    _f = _f.strip()
+                    try:
+                        _pv = _parse_opt_value(_o.strip(), defaults.get(_f))
+                    except Exception:
+                        continue
+                    if not any(_RR.same(_pv, x) for x in options.setdefault(_f, [])):
+                        options[_f].append(_pv)
+            def _validate(k, v):
+                try:
+                    k = str(k).strip()
+                    if k not in known_config_fields() or k in UNWIRED_FILTERS or k in UNWIRED_SWITCHES or promotion_block_reason(k):
+                        return False
+                    if k == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(v)):
+                        return False
+                    if k.startswith("ABLATION_") and str(v).strip().lower() in ("true", "1", "yes", "on"):
+                        return False
+                    if not _cand_compatible(k, v, defaults)[0]:
+                        return False
+                    return not _switch_type_violation(k, v, defaults)
+                except Exception:
+                    return False
+            rowless = []
+            if os.environ.get("V15_ROUTE_ROWLESS", "1") == "1":
+                try:
+                    rowless = _RR.rowless_candidates([k for k in _RR.rowless_keys() if k in known_config_fields()], defaults, cumulative_overrides, _validate)
+                except Exception as _rle:
+                    print(f"[ROUTE-warn] rowless: {_rle}", flush=True)
+            eff = []
+            for _k, _v in list((progress.get("done") or {}).items()):
+                if not isinstance(_v, dict) or not _v.get("promoted"):
+                    continue
+                _rest = _k.split("!", 1)[-1].split(":", 1)[-1]
+                _sw = _rest.split("=", 1)[0].strip()
+                if _sw and _sw not in eff:
+                    eff.append(_sw)
+                for _pf in _v.get("promoted_filters") or []:
+                    _fk = str(_pf).split("=", 1)[0].strip()
+                    if _fk and _fk not in eff:
+                        eff.append(_fk)
+            for _fc in ((progress.get("final_filter_recheck") or {}).get("chained") or []):
+                _fk = str(_fc[0]).split("=", 1)[0].strip()
+                if _fk and _fk not in eff:
+                    eff.append(_fk)
+            eff = [k for k in eff if k in options or k in defaults][: int(os.environ.get("V15_ROUTE_GRID_KEYS", "40"))]
+            def _eval_batch(items):
+                n_ev[0] += len(items)
+                return _eval_items([("ROUTE_" + str(lab), ov) for lab, ov in items], "ROUTE", float(cumulative_gain), deadline)
+            def _promote_r(ov, res, d, how, label, cand):
+                nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
+                cb = float(cumulative_gain)
+                cumulative_overrides = sanitize_overrides(dict(ov), defaults)[0]
+                cumulative_gain = float((res or {}).get("gain_pct"))
+                e_next = cumulative_gain
+                _spec_state["ver"] += 1
+                progress["cumulative_overrides"] = dict(cumulative_overrides)
+                progress["cumulative_gain"] = float(cumulative_gain)
+                try:
+                    chain_tim = float((res or {}).get("tim_pct"))
+                except Exception:
+                    pass
+                try:
+                    chain_trades = int((res or {}).get("trades") or 0)
+                except Exception:
+                    pass
+                _n = 1 + sum(1 for _k in (progress.get("done") or {}) if str(_k).startswith("ROUTE!"))
+                progress.setdefault("done", {})[f"ROUTE!{_n}:{label}"] = {"delta": float(d), "promoted": True, "promoted_how": how, "reason": "", "vec_gain": float(cumulative_gain), "trades": (res or {}).get("trades"), "yellows": {}, "cumulative_before": cb, "cumulative_after": float(cumulative_gain), "npz": _run_npz_short, "policy": _policy_stamp("ROUTE"), "complete": True}
+                for _mk, _mv in ((cand or {}).get("delta") or {}).items():
+                    _loc = row_of.get((_mk, _RR.canon(_mv)))
+                    if _loc is None:
+                        continue  # rowless / off-grid value: the ROUTE_ROUND tab + progress carry it
+                    try:
+                        _ws = wb[_loc[0]]
+                        _set_override(_ws, _loc[0], _loc[1], _resolve_cols(_ws), [f"{_mk}={cand_str.get((_mk, _RR.canon(_mv)), _mv)}"])
+                    except Exception as _se:
+                        print(f"[ROUTE-WARN] {_loc} C write failed: {_se}", flush=True)
+                print(f"[ROUTE-PROMOTE] {new_symside} {how} {label} +{float(d):.4f} {cb:.4f}->{cumulative_gain:.4f} trades={(res or {}).get('trades')} tim={(res or {}).get('tim_pct')}", flush=True)
+                _maybe_write_json(force=True)
+            _cat = map_key_for_symside(new_symside)
+            ctx = {"symside": new_symside, "cat_side": _cat, "tier": _tier_name, "running": dict(cumulative_overrides), "gain": float(cumulative_gain), "defaults": defaults,
+                   "filter_names": filt_names, "path_rows": path_rows, "options": options, "rowless": rowless, "effective_keys": eff,
+                   "eval_batch": _eval_batch, "accept": _route_accept, "promote": _promote_r, "validate": _validate,
+                   "left": lambda: (deadline - _t.time()) > 5.0 and n_ev[0] < max_evals and not _SHUTDOWN["v"],
+                   "frac_left": lambda: max(0.0, (deadline - _t.time()) / max(1.0, budget)),
+                   "know": _RR.load_knowledge(_cat), "log": lambda m: print(m, flush=True), "parse": _parse_opt_value,
+                   "top_k": int(os.environ.get("V15_ROUTE_TOP_K", "24" if _tier_name in ("WINNER", "MEDIOCRE") else "12")), "chain_trades": chain_trades,
+                   "max_paths": int(os.environ.get("V15_ROUTE_MAX_PATHS", "1500"))}
+            print(f"[ROUTE] {new_symside} filters={len(filt_names)} path_rows={len(path_rows)} rowless={len(rowless)} grid_keys={len(eff)} know_boards={(ctx['know'].get('boards') or {}).get('n', 0)}", flush=True)
+            res = _RR.run_route_round(ctx)
+            rec.update({"entry_gain": res.get("entry_gain"), "final_gain": res.get("final_gain"), "lift": res.get("lift"), "promotions": res.get("promotions"), "steps": res.get("steps"), "ablation": res.get("ablation"), "unmask": (res.get("unmask") or [])[:60], "stripped": res.get("stripped"), "rebuild": res.get("rebuild")})
+            if os.environ.get("V15_ROUTE_KNOWLEDGE", "1") == "1":
+                _board = dict(res.get("board") or {})
+                _board.update({"key": _skr(cumulative_overrides), "ts": utcnow(), "npz": _run_npz_short, "host": os.uname().nodename if hasattr(os, "uname") else ""})
+                _RR.save_board(_cat, _board)
+            progress["route_done"] = {"result_key": _skr(cumulative_overrides), "at": utcnow()}
+            _route_sheet(res)
+        except V15Shutdown:
+            raise
+        except Exception as _rre:
+            import traceback as _tb_r
+            rec["error"] = f"{_rre}"[:200]
+            print(f"[ROUTE-warn] {new_symside}: {_rre}\n{_tb_r.format_exc()[-1500:]}", flush=True)
+        finally:
+            rec["secs"] = round(_t.time() - t0, 1)
+            rec["evals"] = n_ev[0]
+            _maybe_write_json(force=True)
+            print(f"[ROUTE] {new_symside} tier={_tier_name} {rec['secs']}s evals={n_ev[0]} promotions={len(rec.get('promotions') or [])} {rec.get('entry_gain')}->{rec.get('final_gain')}{' skipped=' + str(rec.get('skipped')) if rec.get('skipped') else ''}", flush=True)
     _sacred_prev_tab = [None]
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
@@ -5299,6 +5675,33 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flag_to_md(flags_md, sname, rr, switch, cand, f"slow/failed naked: {nerr}", 0.0, 0.0, cumulative_before)
                 _red_retry.append({"sheet": sname, "row": rr, "col": cols["G"], "label": "naked", "ov": switch_variant, "cum_before": cumulative_before, "key": key})
                 _zr_log({"kind": "RED", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "col": "F/G", "reason": nerr, "cum_before": cumulative_before})
+        if plan.get("yellow_items"):
+            # V17 SCOUT binding gate (bible §93): yellows only where the naked flip binds (ledger fingerprint != the running
+            # set) — a non-binding row's yellow cells would be the filter's standalone effect (blanked as dups anyway, the
+            # orange rows + FINAL_FILTER_RECHECK + ROUTE round measure filters). Deferred cells are SETTLED, booked in
+            # scout_deferred_filters, and evaluated by the ROUTE round when the row moves this sym_side. Fail-open.
+            _sc_run = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
+            _sc_ck = _ck(_sc_run)
+            if _sc_ck not in _ref_cache:
+                _ref_cache[_sc_ck] = _peek(sname, rr, switch, cand, "REF_BASELINE", _sc_run, cumulative_before)
+            _sc_ref = _fp_of(_ref_cache[_sc_ck])
+            _sc_nfp = _sc_ref if is_running else _fp_of((results.get("naked") or (None, ""))[0])
+            _sc_err = bool((results.get("naked") or (None, ""))[1]) if not is_running else False
+            if scout_wants_yellows(is_running, _sc_nfp, _sc_ref, False, _sc_err):
+                _sc_dl = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(plan["yellow_items"]) // max(1, _n_proc))) + 2)
+                for _lab_y, _ov_y in plan["yellow_items"]:
+                    _submit(_ov_y)
+                _flush_batch()
+                for _lab_y, _ov_y in plan["yellow_items"]:
+                    plan["items"].append((_lab_y, _ov_y))
+                    results[_lab_y] = _get(sname, rr, switch, cand, _lab_y, _ov_y, _sc_dl, cumulative_before)
+                n_items = len(plan["items"])
+                _scout_stats["bound"] += 1
+            else:
+                st["scout_deferred"] = list(st["hdrs"])
+                st["hdrs"] = []
+                _scout_stats["deferred_rows"] += 1
+                _scout_stats["deferred_cells"] += len(st["scout_deferred"])
         if st.get("inert_filters") and not is_running and naked_delta is not None and abs(float(naked_delta)) > 1e-9 and (float(naked_delta) > _revive_min or str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES)):
             # AUTOPSY-INERT-REVIVED: the autopsy saw no trade touched on the BASE, but on the running set the naked eval moved
             # the ledger -> this row is alive: run its full yellow pass right now (nothing dead-but-alive can hide).
@@ -5358,8 +5761,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         break
             if _cz_move:
                 _cz_hdrs = [h for h in st["coarse_deferred_filters"] if h not in st["hdrs"] and h in st["h2f"]]
+                _cz_rest = []
+                if _SCOUT_ON and _SCOUT_INLINE_CAP > 0 and len(_cz_hdrs) > _SCOUT_INLINE_CAP:
+                    # V17 SCOUT: inline expansion keeps the top prior-ranked cells (coarse order); the rest -> ROUTE round
+                    _cz_hdrs, _cz_rest = _cz_hdrs[:_SCOUT_INLINE_CAP], _cz_hdrs[_SCOUT_INLINE_CAP:]
+                    _scout_stats["inline_capped"] += len(_cz_rest)
                 st["coarse_revived"] = list(_cz_hdrs)
-                st["coarse_deferred_filters"] = []
+                st["coarse_deferred_filters"] = list(_cz_rest)
                 _cz_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_cz_hdrs) // max(1, _n_proc))) + 2)
                 _cz_ovs = {}
                 for _czh in _cz_hdrs:
@@ -5676,7 +6084,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "scout_deferred_filters": st.get("scout_deferred") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
@@ -5696,9 +6104,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["prior_policy"]["stats"] = dict(_prior_stats)
         except Exception:
             pass
-    # USER 2026-10-12 FOCUS ROUND: tier budget on what moved this sym_side (runs with the fork pool still hot)
+    # USER 2026-10-12 FOCUS ROUND: tier budget on what moved this sym_side (runs with the fork pool still hot).
+    # V17: with V15_ROUTE=1 (default) the ROUTE round replaces it (after FINAL_FILTER_RECHECK, below).
     try:
-        _focus_round()
+        if not _ROUTE_ON:
+            _focus_round()
     except V15Shutdown:
         raise
     except Exception as _fre:
@@ -5784,12 +6194,26 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
+    if _ROUTE_ON:
+        print(f"[SCOUT] {new_symside}: rows with bound yellows={_scout_stats['bound']} deferred rows={_scout_stats['deferred_rows']} cells={_scout_stats['deferred_cells']} inline-capped={_scout_stats['inline_capped']} round-1 secs={round(_t.time() - _start_t, 1)}", flush=True)
+        progress["scout"] = dict(_scout_stats, round1_secs=round(_t.time() - _start_t, 1))
+        try:
+            _route_round()
+        except V15Shutdown:
+            raise
+        except Exception as _rre2:
+            print(f"[ROUTE-warn] outer {_rre2}", flush=True)
     # USER 2026-10-07 ENDGAME: strip filters -> naked switch retest -> one-by-one reapply to bh+10.
     # Deterministic audit BEFORE the beam-search repair. V15_ENDGAME=0 disables.
     try:
         if _tier_skip_post:
             print(f"[ENDGAME] {new_symside} skipped (tier {_tier_name}: lightning board, USER 2026-10-12)", flush=True)
             progress["endgame"] = {"skipped": f"tier {_tier_name}"}
+        elif (progress.get("route") or {}).get("steps") and os.environ.get("V15_ENDGAME_AFTER_ROUTE", "0") != "1":
+            # V17: the ROUTE round already ran STRIP (S2), leave-one-out ablation (S1) and greedy filter reapply (S4) on
+            # this set — the endgame would repeat them serially. V15_ENDGAME_AFTER_ROUTE=1 runs it anyway.
+            print(f"[ENDGAME] {new_symside} skipped (ROUTE round covered strip/ablation/reapply)", flush=True)
+            progress["endgame"] = {"skipped": "route round covered strip/ablation/reapply"}
         else:
             _endgame_filter_cycle()
     except V15Shutdown:
@@ -6765,6 +7189,13 @@ def _atomic_write_json(path: Path, data: dict):
         except Exception:
             pass
 
+def _endgame_knowledge_path(symside: str) -> Path:
+    """V17: persistent cross-campaign endgame knowledge, one file per cat_side (LONG/SHORT/crypto/stocks never pooled).
+    Was PROGRESS_DIR/endgame_knowledge.json — reset by every new campaign dir, so the n>=3 EV threshold rarely held."""
+    from tools.v15_route_round import knowledge_dir as _kd
+    return _kd() / f"endgame_knowledge_{map_key_for_symside(symside)}.json"
+
+
 def _endgame_ev(key, know):
     # USER 2026-10-07 ENDGAME self-improvement: mean historical marginal delta of one switch/filter key, or None until n>=3 (no fake EVs).
     try:
@@ -6801,7 +7232,7 @@ def _endgame_merge_knowledge(know, naked_items, seq_items, dropped_keys, lift, t
             st = ks.setdefault(kk, {"n": 0, "sum": 0.0, "pos": 0})
             st["n"] += 1
             st["sum"] = float(st["sum"]) + float(d)
-            st["pos"] += 1
+            st["pos"] += 1 if float(d) > 1e-9 else 0
         except Exception:
             pass
     for kk in dropped_keys:

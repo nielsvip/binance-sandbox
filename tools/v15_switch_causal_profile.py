@@ -173,7 +173,7 @@ def mine_file(path, switch_agg, filter_agg, name_agg, stats):
                         marg, marg_t, marg_tr = d, dt, dtr
                     filter_agg[cs][hdr].add(sym_side, marg, marg_t, marg_tr, valid, secs, False)
                 continue
-            if label is None or label.startswith(("FINAL_", "DIAG_", "REPAIR365", "SACRED", "COARSE", "JOINT:", "STANDALONE:", "REF_BASELINE", "RECALC", "ENDGAME", "FOCUS")) or label == "hustle":
+            if label is None or label.startswith(("FINAL_", "DIAG_", "REPAIR365", "SACRED", "COARSE", "JOINT:", "STANDALONE:", "REF_BASELINE", "RECALC", "ENDGAME", "FOCUS", "ROUTE", "RECHECK")) or label == "hustle":
                 stats["other_labels"] += 1
                 continue
             if label.startswith("RED_RETRY:"):

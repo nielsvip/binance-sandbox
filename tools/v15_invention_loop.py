@@ -142,6 +142,17 @@ def scan_missed_trend(dirs):
     return obs
 
 
+def _progress_dirs(dd, home, explicit=None):
+    """production progress dirs: explicit, else the newest 3 ~/v15_run*/progress campaigns + lifecycle_pilot (2026-10-13
+    fix: the default was lifecycle_pilot only, which production boards never write)."""
+    if explicit:
+        return [explicit]
+    runs = [p for p in glob.glob(os.path.join(home, "v15_run*", "progress")) if os.path.isdir(p)]
+    runs.sort(key=lambda p: -os.path.getmtime(p))
+    out = runs[:3] + [os.path.join(dd, "data", "reports", "lifecycle_pilot")]
+    return [p for p in out if os.path.isdir(p)] or [os.path.join(dd, "data", "reports", "lifecycle_pilot")]
+
+
 def scan_autopsy(dirs):
     obs = []
     for dd in dirs:
@@ -150,7 +161,10 @@ def scan_autopsy(dirs):
                 d = json.load(open(f))
             except Exception:
                 continue
-            mfs = d.get("missing_functions") or []
+            # 2026-10-13 fix: the autopsy writes missing_entry_filters / missing_exit_confirmations (feature/op/thr/rule
+            # dicts, v15_trade_autopsy.missing_functions) — the old 'missing_functions' key + mf['name'] collapsed every
+            # observation to slug GENERIC. Legacy key still read.
+            mfs = list(d.get("missing_functions") or []) + list(d.get("missing_entry_filters") or []) + list(d.get("missing_exit_confirmations") or [])
             ss = d.get("symside", "")
             direction = (
                 "SHORT"
@@ -158,10 +172,13 @@ def scan_autopsy(dirs):
                 else ("LONG" if ss.upper().endswith("_LONG") else "")
             )
             for mf in mfs if isinstance(mfs, list) else []:
-                name = mf.get("name") if isinstance(mf, dict) else str(mf)
+                if isinstance(mf, dict):
+                    name = mf.get("name") or (f"{mf.get('at', '')} {mf.get('feature', '')} {mf.get('op', '')} {mf.get('thr', '')}".strip() if mf.get("feature") else mf.get("rule") or "GENERIC")
+                else:
+                    name = str(mf)
                 w = 1.0
                 if isinstance(mf, dict):
-                    for k in ("losers", "n_losers", "weight", "trades"):
+                    for k in ("losers", "n_losers", "weight", "trades", "bad_removed", "net_pnl"):
                         if isinstance(mf.get(k), (int, float)):
                             w = max(w, float(mf[k]))
                 obs.append(
@@ -648,15 +665,12 @@ def main(argv=None):
                 os.path.join(dd, "data", "reports", "v15_autopsy_first"),
             ]
         )
-        pdir = a.progress_dir or os.path.join(dd, "data", "reports", "lifecycle_pilot")
-        obs += scan_gaps(sorted(glob.glob(os.path.join(pdir, "*_v14_progress.json"))))
-        obs += scan_gaps(
-            sorted(
-                glob.glob(
-                    os.path.join(dd, "data", "reports", "v15_diag_repair", "*.json")
-                )
-            )
-        )
+        pdirs = _progress_dirs(dd, home, a.progress_dir)
+        for pdir in pdirs:
+            obs += scan_gaps(sorted(glob.glob(os.path.join(pdir, "*_v14_progress.json"))))
+            # 2026-10-13 fix: the pilot writes {progress_dir}/v15_diag_repair/{SS}.json (not data/reports/...)
+            obs += scan_gaps(sorted(glob.glob(os.path.join(pdir, "v15_diag_repair", "*.json"))))
+        obs += scan_gaps(sorted(glob.glob(os.path.join(dd, "data", "reports", "v15_diag_repair", "*.json"))))
         obs += scan_coverage(
             os.path.join(dd, "data", "reports", "switch_bible_verify_latest.json"),
             bible,
@@ -687,7 +701,7 @@ def main(argv=None):
     if a.cmd == "promote-check":
         out = promote_check(
             dd,
-            a.progress_dir or os.path.join(dd, "data", "reports", "lifecycle_pilot"),
+            a.progress_dir or (_progress_dirs(dd, os.path.expanduser("~"), None) or [os.path.join(dd, "data", "reports", "lifecycle_pilot")])[0],
             a.pos_min,
             0.0,
             a.retire_n,

@@ -141,6 +141,21 @@ timeout 1200 nice -n 10 python3 -u tools/v15_switch_causal_profile.py || log "st
 timeout 600 nice -n 10 python3 -u tools/v15_symside_ledger.py || log "step4d symside ledger rc=$? (non-fatal)"
 STEPS_OK="$STEPS_OK,4d"
 
+# 4e. USER 2026-10-13 V17 self-improvement (bible §93): fleet ROUTE knowledge — pull every worker's route ledgers,
+# rebuild the per-cat_side knowledge from ALL ledgers (deduped per board), write the report + rowless switch-add plan,
+# and mine the invention backlog from the production progress dirs. Ancillary: never fails the chain.
+log "step4e route knowledge merge + invention mine"
+mkdir -p data/route_knowledge/hosts
+for H in $TARGETS; do
+  mkdir -p "data/route_knowledge/hosts/$H"
+  rsync -az -e "$SSH" "$H:binance-sandbox/data/route_knowledge/ledger_*.jsonl" "data/route_knowledge/hosts/$H/" 2>/dev/null || log "step4e no route ledgers on $H (non-fatal)"
+done
+timeout 600 nice -n 10 python3 -u tools/v15_route_round.py merge || log "step4e route merge rc=$? (non-fatal)"
+timeout 300 nice -n 10 python3 -u tools/v15_route_round.py report --out data/route_knowledge/ROUTE_KNOWLEDGE.md > /dev/null || log "step4e route report rc=$? (non-fatal)"
+timeout 600 nice -n 10 python3 -u tools/v15_invention_loop.py mine --write || log "step4e invention mine rc=$? (non-fatal)"
+timeout 600 nice -n 10 python3 -u tools/v15_invention_loop.py promote-check || log "step4e invention promote-check rc=$? (non-fatal)"
+STEPS_OK="$STEPS_OK,4e"
+
 # 5. zero-delta watchdog (non-fatal)
 log "step5 zero-delta watchdog"
 timeout 600 "$PY" -u tools/v15_zero_delta_watchdog.py --agg "$AGG" --apply || log "step5 watchdog rc=$? (non-fatal, chain continues)"
@@ -152,6 +167,7 @@ FILES="$FILES SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADS
 FILES="$FILES data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
 FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json data/causal_condemned.json"
 [ -f data/causal/switch_causal_profile.json ] && FILES="$FILES data/causal/switch_causal_profile.json"  # USER 2026-10-12 pilot priors (step4d)
+for _RK in data/route_knowledge/CRYPTO_LONG.json data/route_knowledge/CRYPTO_SHORT.json data/route_knowledge/STOCKS_LONG.json data/route_knowledge/STOCKS_SHORT.json; do [ -f "$_RK" ] && FILES="$FILES $_RK"; done  # V17 route knowledge (step4e)
 FILES="$FILES $AGG SPREADSHEETS/v15_avg_delta_latest.xlsx SPREADSHEETS/v15_vector_delta_latest.xlsx"
 FILES="$FILES data/reports/lifecycle_pilot/disabled_switches_never_pos_per_category.json data/cat_side_promotions.json data/avg_delta_round_ledger.json"
 for F in $FILES; do [ -f "$F" ] || fail 6 "push file missing: $F"; done
