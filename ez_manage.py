@@ -8147,7 +8147,7 @@ def _fixed_stop_freeze_level(is_long: bool, dc_low_15m: float, dc_high_15m: floa
         _ch = float(dc_low_15m) if is_long else float(dc_high_15m)
     except (TypeError, ValueError):
         _ch = 0.0
-    if _ch > 0 and _ep > 0 and abs(_ch - _ep) / _ep * 100.0 <= _tol:
+    if _ch > 0:  # USER 2026-10-13: "NO 5% OR ANY% EXISTS" — the stop IS the dc_15m channel at entry, never substituted by distance
         return _fixed_stop_core.freeze_software_level(is_long, dc_low_15m, dc_high_15m, entry_price), "CHANNEL"
     if _ep > 0:
         return (_ep * 0.9975 if is_long else _ep * 1.0025), "ENTRY_FALLBACK"
@@ -8173,7 +8173,7 @@ def _fixed_stop_level_absurd(is_long: bool, level: float, entry_price: float) ->
         return True
     if (not is_long) and _lv <= _ep:
         return True
-    return abs(_lv - _ep) / _ep * 100.0 > _tol
+    return False  # USER 2026-10-13: "NO 5% OR ANY% EXISTS" — only a wrong-side level is absurd; distance never re-freezes
 
 
 def _vec_exact_families() -> set:
@@ -21511,8 +21511,24 @@ class MultiAccountTradeManager:
                                     if str(_o.get("positionSide", "")).upper() != _side_u:
                                         continue
                                     _oid0 = str(_o.get("algoId", "") or _o.get("orderId", "") or "")
+                                    _trig0 = float(_o.get("triggerPrice", 0) or _o.get("stopPrice", 0) or 0)
+                                    _soft0 = float(soft_level or 0.0)
+                                    try:
+                                        _sc0 = self.get_symbol_config(symbol) or {}
+                                        _tk0 = float(_sc0.get("tick_size") or _sc0.get("tickSize") or 0.0)
+                                    except Exception:
+                                        _tk0 = 0.0
+                                    _want0 = float(_fixed_stop_core.build_stop_params(_side_u == "LONG", _soft0, _tk0).get("stopPrice") or 0.0) if (_soft0 > 0 and _tk0 > 0) else 0.0
+                                    if _oid0 and _want0 > 0 and (_trig0 <= 0 or abs(_trig0 - _want0) > _tk0 * 1.5):  # exact exchange level (tick-rounded), no % tolerance
+                                        # 2026-10-13 men AVAX: a resting stop at 9.779 (frozen 25h after a 10.942 entry) was adopted for hours — never adopt a wrong level
+                                        logger.critical(f"🛡️ [FIXED_STOP_WRONG_LEVEL] {position_key}: resting stop {_oid0} at {_trig0} vs frozen level {_soft0:.6f} — cancelling, placing correct level")
+                                        try:
+                                            await self._fixed_stop_algo_call(_cli0, "cancel", symbol=symbol, algoId=_oid0)
+                                        except Exception:
+                                            pass
+                                        continue
                                     if _oid0:
-                                        reg[position_key] = {"orderId": _oid0, "stopPrice": float(_o.get("stopPrice", 0) or 0), "entry_sig": _sig, "symbol": symbol, "side": position_side}
+                                        reg[position_key] = {"orderId": _oid0, "stopPrice": _trig0, "entry_sig": _sig, "symbol": symbol, "side": position_side}
                                         try:
                                             position.exchange_stop_order_id = _oid0
                                         except Exception:
@@ -49920,6 +49936,11 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 break
             _px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0) or safe_fetch_float(_a.get("vec_price"), 0.0)
             _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
+            if _act == "AUGMENT":
+                _lb_ok, _lb_why = _vx.latest_board_ok(_sym, _side)  # USER 2026-10-13: adds ONLY on the exact latest vectorized set; exits never gated
+                if not _lb_ok:
+                    logger.info(f"[VEC_EXACT_ENTRY_REFUSED] {position_key} AUGMENT {_a['reason'][:40]}: {_lb_why}")
+                    continue
             if _qty <= 0:  # vec action of zero size on the live position (e.g. a vec REDUCE fraction of 0) -> nothing to send, never a SUCCESS
                 logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED_BLOCKED_ZERO_QTY (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
                 continue

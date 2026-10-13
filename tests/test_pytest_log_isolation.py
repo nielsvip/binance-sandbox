@@ -8,6 +8,7 @@ without matching context, which is orthogonal)."""
 import logging
 import os
 import tempfile
+from types import SimpleNamespace
 
 
 def _live_dirs():
@@ -24,25 +25,75 @@ def _file_targets(logger_obj):
     return out
 
 
-def test_tradier_test_run_never_touches_live_logs():
-    import tradier_manage as tm
-    targets = _file_targets(tm.logger)
-    assert targets, "expected file handlers on tradier logger"
+def _assert_no_live_targets(logger_obj, who):
+    targets = _file_targets(logger_obj)
+    assert targets, f"expected file handlers on {who} logger"
+    # At least one handler must be ours under the temp dir (the redirect ran).
     tmp = os.path.realpath(tempfile.gettempdir())
-    for t in targets:
-        assert os.path.realpath(t).startswith(tmp), t
+    assert any(os.path.realpath(t).startswith(tmp) for t in targets), targets
+    # And NONE may point at live log dirs (/dev/null + pytest capture
+    # handlers are harmless and explicitly allowed).
     for t in targets:
         for live in _live_dirs():
             assert not os.path.realpath(t).startswith(live + os.sep), t
+
+
+def test_tradier_test_run_never_touches_live_logs():
+    import tradier_manage as tm
+    _assert_no_live_targets(tm.logger, "tradier")
 
 
 def test_ez_test_run_never_touches_live_logs():
     import ez_manage as em
-    targets = _file_targets(em.logger)
-    assert targets, "expected file handlers on ez logger"
-    tmp = os.path.realpath(tempfile.gettempdir())
-    for t in targets:
-        assert os.path.realpath(t).startswith(tmp), t
-    for t in targets:
-        for live in _live_dirs():
-            assert not os.path.realpath(t).startswith(live + os.sep), t
+    _assert_no_live_targets(em.logger, "ez")
+
+
+def test_positions_test_run_never_touches_live_logs():
+    import tradier_positions as tp
+    _assert_no_live_targets(tp.logger, "tradier_positions")
+
+
+def test_positions_redis_writes_carry_ttl():
+    import asyncio
+    import tradier_positions as tp
+
+    seen = {}
+
+    class FakeRedis:
+        async def set(self, key, value, ex=None):
+            seen[key] = ex
+            return True
+
+        async def publish(self, channel, message):
+            return 1
+
+    mgr = object.__new__(tp.TradierPositionManager)
+    mgr.account_key = "trb"
+    mgr.config = SimpleNamespace(POSITIONS_REDIS_TTL_SEC=300, REDIS_CHANNEL_POSITIONS="ch")
+    mgr.redis_manager = FakeRedis()
+
+    class P:
+        def to_dict(self):
+            return {"qty": 1}
+
+    asyncio.run(mgr.broadcast_to_redis({"trb:A_LONG": P()}, should_log=False))
+    assert seen == {"tradier:positions:trb": 300}, seen
+
+
+def test_positions_redis_manager_set_passes_expiry():
+    import asyncio
+    import tradier_positions as tp
+
+    got = {}
+
+    class Raw:
+        async def set(self, key, value, ex=None):
+            got.update(key=key, ex=ex)
+            return True
+
+    m = tp.RedisPositionManager(SimpleNamespace())
+    m.redis_client = Raw()
+    asyncio.run(m.set("k", b"v", ex=123))
+    assert got == {"key": "k", "ex": 123}, got
+    asyncio.run(m.set("k", b"v"))
+    assert got == {"key": "k", "ex": None}, got

@@ -2553,3 +2553,8 @@ vec-decided OPEN/AUGMENT outside the 10 `_vec_exact_reason_ok` exemptions (e.g. 
 - **A/B #3 first pair (legacy-P2 V17, same host, nice 10):** RLCUSDT_LONG old 72.11 published in 20:14 min; V17 main pass ended
   at 67.15 (16 min elapsed) and the pinpoint round took it to 119.76 (surgeon +31.04 in 109 s, retest +11.31, ablation
   +1.55, probe +4.77; extended 3x while lifting). Final/365D numbers: `data/reports/v17_ab_*` when the pair completes.
+- **v12 (2e10f436, 22:4xZ):** per-tier pinpoint cap (USER "extend time cap for winners"): `v17_p3_cap` —
+  `V15_V17_P3_MAX_S_WINNER` 1500 s / `_MEDIOCRE` 540 / `_LOSER` 300 / `_LOST_CAUSE` 120 (an explicitly set `V15_V17_P3_MAX_S`
+  overrides all tiers); the round still only extends while it lifts ≥ `V15_V17_MIN_LIFT_PM`. Pool guard: a failed pool submit
+  (broken / SIGTERM-ed workers) is a missing verdict, never a KeyError that aborts the pinpoint round (production AMZN_LONG
+  lost its round + failed the ESSENTIAL gate that way); the ESSENTIAL proof now also runs after any pinpoint error.

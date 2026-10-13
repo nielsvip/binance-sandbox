@@ -91,7 +91,16 @@ os.makedirs(config.LOG_DIR, exist_ok=True)
 
 from logging.handlers import RotatingFileHandler
 
-file_handler = RotatingFileHandler(config.LOG_FILE_TRADIER_POSITIONS, maxBytes=config.LOG_MAX_BYTES, backupCount=config.LOG_BACKUP_COUNT, encoding='utf-8', mode='a')
+# 2026-10-13 NEVER-AGAIN: tests (e.g. test_sync_supervisor's "api exploded"
+# fixture) wrote into the LIVE positions log — indistinguishable from a real
+# writer crash-loop and triggered a false incident response. Under pytest the
+# file handler goes to a temp dir; live service never imports pytest.
+_positions_log_file = config.LOG_FILE_TRADIER_POSITIONS
+if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
+    import tempfile as _tf
+    _positions_log_file = os.path.join(os.environ.get("TRADIER_TEST_LOG_DIR") or os.path.join(_tf.gettempdir(), "tradier_positions_test_logs"), "tradier_positions.log")
+    os.makedirs(os.path.dirname(_positions_log_file), exist_ok=True)
+file_handler = RotatingFileHandler(_positions_log_file, maxBytes=config.LOG_MAX_BYTES, backupCount=config.LOG_BACKUP_COUNT, encoding='utf-8', mode='a')
 file_handler.setLevel(logging.DEBUG)
 file_formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(message)s")
 file_handler.setFormatter(file_formatter)
@@ -430,8 +439,10 @@ class RedisPositionManager:
             return False
 
     # --- ADDED WRAPPER METHODS HERE ---
-    async def set(self, key, value):
+    async def set(self, key, value, ex=None):
         if self.redis_client:
+            if ex is not None:
+                return await self.redis_client.set(key, value, ex=ex)
             return await self.redis_client.set(key, value)
         return False
 
@@ -466,7 +477,13 @@ class RedisPositionManager:
                 if k.startswith(f"{account_key}:")   }
             
             data_wrapper = {'timestamp': time.time(), 'account': account_key, 'positions': positions_dict}
-            await self.redis_client.set(redis_key, pickle.dumps(data_wrapper))
+            # 2026-10-13 NEVER-AGAIN: same expiry as broadcast — no path may
+            # leave a TTL-less key behind (SET without EX clears TTL).
+            try:
+                _sttl = int(getattr(self.config, "POSITIONS_REDIS_TTL_SEC", 300) or 300)
+            except Exception:
+                _sttl = 300
+            await self.redis_client.set(redis_key, pickle.dumps(data_wrapper), ex=_sttl)
             
             channel = self.config.REDIS_CHANNEL_POSITIONS
             ui_payload = {"LONG": {}, "SHORT": {}}
@@ -1344,12 +1361,19 @@ class TradierPositionManager:
 
             # 2. Save to Redis Key (Pickle)
             redis_key = f"tradier:positions:{self.account_key}"
-            
+
             wrapper = {
-                'timestamp': time.time(), 
-                'account': self.account_key, 
+                'timestamp': time.time(),
+                'account': self.account_key,
                 'positions': flat_payload  }
-            await self.redis_manager.set(redis_key, pickle.dumps(wrapper))
+            # 2026-10-13 NEVER-AGAIN: stale positions must EXPIRE, never
+            # masquerade as fresh. A dead writer's key vanishes instead of
+            # poisoning readers for days (found 2.6h-stale keys, no TTL).
+            try:
+                _pttl = int(getattr(self.config, "POSITIONS_REDIS_TTL_SEC", 300) or 300)
+            except Exception:
+                _pttl = 300
+            await self.redis_manager.set(redis_key, pickle.dumps(wrapper), ex=_pttl)
             channel_payload = {self.account_key: flat_payload}
             channel = self.config.REDIS_CHANNEL_POSITIONS
             

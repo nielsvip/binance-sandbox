@@ -3244,6 +3244,17 @@ def v17_killers(eff_without, eff_by_filter: dict, frac: float = 0.5) -> list:
 
 
 V17_P3_MIN_SHARE = {"WINNER": 0.5, "MEDIOCRE": 0.4, "LOSER": 0.25, "LOST_CAUSE": 0.1}
+V17_P3_MAX_DEFAULT = {"WINNER": 1500.0, "MEDIOCRE": 540.0, "LOSER": 300.0, "LOST_CAUSE": 120.0}
+
+
+def v17_p3_cap(tier: str) -> float:
+    """USER 2026-10-13 "extend time cap for winners": hard pinpoint cap per tier (the round still extends only while it lifts
+    >= V15_V17_MIN_LIFT_PM): V15_V17_P3_MAX_S_<TIER> (WINNER 1500 / MEDIOCRE 540 / LOSER 300 / LOST_CAUSE 120 s); an explicitly
+    set V15_V17_P3_MAX_S overrides every tier. Tier = symside_tier (big movers |bh| >= V15_TIER_BIG_MOVER are WINNER)."""
+    if os.environ.get("V15_V17_P3_MAX_S"):
+        return float(os.environ["V15_V17_P3_MAX_S"])
+    t = str(tier or "LOSER").upper()
+    return float(os.environ.get(f"V15_V17_P3_MAX_S_{t}", V17_P3_MAX_DEFAULT.get(t, 300.0)))
 
 
 def v17_p3_budget(tier: str, elapsed: float, board_s: float | None = None, tail_s: float | None = None) -> float:
@@ -3255,7 +3266,7 @@ def v17_p3_budget(tier: str, elapsed: float, board_s: float | None = None, tail_
     t = float(tail_s if tail_s is not None else os.environ.get("V15_V17_TAIL_S", "210"))
     share = float(os.environ.get(f"V15_V17_P3_SHARE_{tier}", V17_P3_MIN_SHARE.get(str(tier), 0.25)))
     guaranteed = b * share
-    return max(0.0, min(float(os.environ.get("V15_V17_P3_MAX_S", "900")), max(guaranteed, b - float(elapsed) - t)))
+    return max(0.0, min(v17_p3_cap(tier), max(guaranteed, b - float(elapsed) - t)))
 
 
 def same_val(a, b) -> bool:
@@ -5159,7 +5170,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         elif _pool is not None:
             _submit(ov)
             _flush_batch()
-            fut, _ = inflight[ck]
+            if ck in inflight:
+                fut, _ = inflight[ck]
+            else:
+                # submit failed (broken / shutting-down pool, e.g. SIGTERM reached the workers): an honest missing verdict,
+                # never a KeyError that aborts the whole phase (production AMZN_LONG 2026-10-13 lost its pinpoint round)
+                fut = _cf.Future()
+                fut.set_exception(RuntimeError("pool unavailable (submit failed)"))
             try:
                 _bres = fut.result(timeout=max(0.01, deadline - _t.time()))
                 if isinstance(_bres, dict):
@@ -6878,7 +6895,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _hus = sum(1 for _k, _v in (progress.get("done") or {}).items() if isinstance(_v, dict) and str(_k).split("!", 1)[0] in SWITCH_SHEETS and _v.get("naked_delta") is not None and not _v.get("v17_phase"))
                 _saved = (_hus + int(_v17_ystats.get("skipped") or 0)) * _spe
                 _floor = {"WINNER": 180.0, "MEDIOCRE": 120.0, "LOSER": 60.0, "LOST_CAUSE": 30.0}.get(_tier_name, 60.0) * float(os.environ.get("V15_V17_P3_FLOOR_X", "1"))
-                budget = max(_floor, min(float(os.environ.get("V15_V17_P3_MAX_S", "900")), _saved))
+                budget = max(_floor, min(v17_p3_cap(_tier_name), _saved))
                 _v17["p3_saved_est"] = {"hustle_skipped": _hus, "yellows_skipped": int(_v17_ystats.get("skipped") or 0), "p2_secs_per_eval": round(_spe, 4), "saved_s": round(_saved, 1), "floor_s": _floor}
             except Exception as _bse:
                 print(f"[V17-WARN] saved-budget {_bse}", flush=True)
@@ -6888,7 +6905,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         try:
             # iterations until the budget is spent or an iteration adds nothing: FOCUS (most productive per eval: yellows of the
             # moved rows, numeric grid, pairs) -> ABLATION ROUTE -> moved-chain RETEST -> top-K filter re-probe vs the new chain
-            _hard = t0 + float(os.environ.get("V15_V17_P3_MAX_S", "900"))
+            _hard = t0 + v17_p3_cap(_tier_name)
             for _it in range(1, int(os.environ.get("V15_V17_P3_MAX_ITERS", "6")) + 1):
                 if deadline - _t.time() < 20.0:
                     break
@@ -6926,7 +6943,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             raise
         except Exception as _pe:
             import traceback as _tb_v
-            print(f"[V17-WARN] pinpoint {_pe}\n{_tb_v.format_exc()[-1500:]}", flush=True)
+            print(f"[V17-WARN] pinpoint {type(_pe).__name__}: {str(_pe)[:200]}\n{_tb_v.format_exc()[-1500:]}", flush=True)
+            try:
+                _v17_essential_proof(_t.time() + float(os.environ.get("V15_V17_ESSENTIAL_S", "120")))  # never skip the gate proof
+            except V15Shutdown:
+                raise
+            except Exception as _epe:
+                print(f"[V17-WARN] essential proof after pinpoint error: {_epe}", flush=True)
         finally:
             _v17["p3_wall_s"] = round(_t.time() - t0, 1)
             _v17_sheet()

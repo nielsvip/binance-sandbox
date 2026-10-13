@@ -567,14 +567,15 @@ def gate(ctx: Optional[Dict[str, Any]], cfg: Any, i: int, trades) -> bool:
     return ok
 
 
-def commit(ctx: Optional[Dict[str, Any]], i: int) -> None:
-    """An open happened at bar i: every HTF path whose mask is true counts the attempt on its instance."""
+def commit(ctx: Optional[Dict[str, Any]], i: int, via_entry_sig: bool = True) -> None:
+    """An open happened at bar i: every HTF path whose mask is true counts the attempt on its instance.
+    via_entry_sig=False: the open came from an in-loop reentry pathway (its own trigger), not from the entry signal."""
     if ctx is None:
         return
     now = [(p["path"], int(p["inst"][i])) for p in ctx["paths"] if p["mask"][i]]
     if now:
         ctx["book"].commit(now)
-        ctx["trace"].append({"bar": int(i), "open": True, "htf_only": bool(ctx["htf_only"][i]), "attempts": {pth: ctx["book"].opens(pth, inst) for pth, inst in now}, "insts": {pth: inst for pth, inst in now}})
+        ctx["trace"].append({"bar": int(i), "open": True, "htf_only": bool(ctx["htf_only"][i]) and bool(via_entry_sig), "via_entry_sig": bool(via_entry_sig), "attempts": {pth: ctx["book"].opens(pth, inst) for pth, inst in now}, "insts": {pth: inst for pth, inst in now}})
 
 
 def dump_trace(ctx: Optional[Dict[str, Any]], sym: str, is_long: bool) -> None:

@@ -8552,6 +8552,9 @@ class QuickConfig:
     UNTESTED_FLAT_SPS_MULT: float = (
         0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).
     )
+    VEC_CONVERGE_OPEN_ENABLED: bool = (
+        True  # USER 2026-10-13: mirror of config.py (live follows the vec position: vec holds + live flat -> open; the vec sim IS that position, no vec path).
+    )
     SUBSTITUTION_CLOSE_ENABLED: bool = (
         False  # USER 2026-10-13 "NOTHING can ever be live only": mirror of config.py (live-only substitution close OFF both sides; no vec path).
     )
@@ -19354,7 +19357,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if _fx_G["_bt_veto"] is not None and bool(_fx_G["_bt_veto"][i]):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
-                    vec_decisions.htf_signal_consume.commit(_hsc, i)
+                    vec_decisions.htf_signal_consume.commit(_hsc, i, bool(entry_sig[i]))
                     if _gm_rebuy:
                         _gap_pending = None  # WIRING LANE E: rebuy executed, pending resolved (live 9992-9993)
                     elif _gap_pending is not None:

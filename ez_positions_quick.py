@@ -28433,6 +28433,13 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
             )
             if _side not in ("LONG", "SHORT"):
                 return f"SKIP_BAD_SIDE_{_pk}"
+            _lb_ok, _lb_why = _vx.latest_board_ok(_sym, _side)  # USER 2026-10-13: entries ONLY on the exact latest (<=1 week) vectorized set
+            if not _lb_ok:
+                _lb_tag = (_pk, int(time.time() // 900))
+                if _lb_tag not in _VX_HOLD_SKIP_LOGGED:
+                    _VX_HOLD_SKIP_LOGGED.add(_lb_tag)
+                    logger.info(f"[VEC_EXACT_ENTRY_REFUSED] {_pk}: {_lb_why} — no entry (exits unaffected)")
+                return f"SKIP_NO_LATEST_BOARD_{_pk}"
             _pos = (
                 trade_manager.positions.get(_pk)
                 if hasattr(trade_manager, "positions")
@@ -28464,6 +28471,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 except Exception:
                     pass
                 return f"SKIP_LIVE_HOLDS_{_pk}"
+            _vx_sent = False
             for _a in await __import__("positions_truth").offloop_serialized(
                 _vx.take, _sym, _side, time.time(), ("OPEN",)
             ):  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT)
@@ -28494,6 +28502,29 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 logger.info(
                     f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}"
                 )
+                _vx_sent = True
+            if not _vx_sent and bool(getattr(config, "VEC_CONVERGE_OPEN_ENABLED", True)):
+                # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … EXIT FAST AND REENTER FAST" +
+                # "vector has to have the 100% guarantee so when live follows vector it also has": live follows the vec POSITION,
+                # not only its one-shot OPEN event. Vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> open now.
+                _cv = _vx.actions_at(_sym, _side, time.time())
+                if _cv.get("status") == "OK" and _cv.get("vec_holds") is True:
+                    _cv_tag = ("CVOPEN", _pk, float(_cv.get("bar_ts") or 0.0))
+                    if _cv_tag not in _VX_HOLD_SKIP_LOGGED:
+                        _VX_HOLD_SKIP_LOGGED.add(_cv_tag)
+                        _cv_px = 0.0
+                        try:
+                            _cv_px = float((await asyncio.wait_for(trade_manager.get_current_price(_sym), timeout=10.0))[0] or 0.0)
+                        except Exception:
+                            _cv_px = 0.0
+                        if _cv_px > 0:
+                            _cv_a = {"n": "cv", "type": "OPEN", "reason": "VEC_CONVERGE_OPEN vec-holds-live-flat", "qty_frac": 1.0, "vec_qty": 0.0, "vec_price": _cv_px, "to_flat": False, "bar_ts": float(_cv.get("bar_ts") or 0.0)}
+                            _act, _oside, _qty, _full = _vx.order_args(_cv_a, _side, 0.0, _cv_px)
+                            _lq, _lov = _vx.live_sizing_args(_act, _qty, _cv_px, config)
+                            _vx.owned_add(_pk, _cv_a["reason"])
+                            logger.warning(f"[VEC_CONVERGE_OPEN] {_pk}: vec paper HOLDS at bar {int(_cv_a['bar_ts'])}, live flat -> OPEN now @ {_cv_px}")
+                            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_lq, current_price=_cv_px, side=_oside, position_side=_side, unique_id=f"VXCV{int(_cv_a['bar_ts'])}", is_full_close=False, action=_act, reason=_vx.tagged_reason(_cv_a), override_qty=_lov, is_hedge=False)
+                            logger.info(f"[VEC_EXACT] {_pk} OPEN VEC_CONVERGE_OPEN -> {str(_res)[:120]}")
             return f"DISPATCHED_{_pk}"
         except asyncio.CancelledError:
             logger.warning(f"[VEC_EXACT] {_pk} ENTRY worker CANCELLED (dispatch timeout/stale sweep) — in-flight broker order, if any, stays tracked for NUKE/ODG verify; next fresh vec act governs")

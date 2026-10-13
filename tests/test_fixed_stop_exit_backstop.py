@@ -47,11 +47,14 @@ def test_freeze_fresh_channel():
     assert src == "CHANNEL" and lvl == 100.25
 
 
-def test_freeze_stale_channel_falls_back_to_entry():
+def test_freeze_always_uses_channel_no_pct_rule():
+    """USER 2026-10-13: "NO 5% OR ANY% EXISTS" — the stop is the dc_15m channel at entry, whatever its distance."""
     lvl, src = _fixed_stop_freeze_level(True, 50.0, 0.0, 100.0)
-    assert src == "ENTRY_FALLBACK" and lvl == 99.75
+    assert src == "CHANNEL" and abs(lvl - 50.0 * 0.9975) < 1e-9
     lvl, src = _fixed_stop_freeze_level(False, 0.0, 200.0, 100.0)
-    assert src == "ENTRY_FALLBACK" and lvl == 100.25
+    assert src == "CHANNEL" and abs(lvl - 200.0 * 1.0025) < 1e-9
+    lvl, src = _fixed_stop_freeze_level(True, 0.0, 0.0, 100.0)
+    assert src == "ENTRY_FALLBACK" and lvl == 99.75  # no channel at all -> entry
 
 
 def test_freeze_nothing_to_anchor():
@@ -59,8 +62,8 @@ def test_freeze_nothing_to_anchor():
 
 
 def test_absurd_detector():
-    assert _fixed_stop_level_absurd(True, 50.0, 100.0) is True
-    assert _fixed_stop_level_absurd(False, 200.0, 100.0) is True
+    assert _fixed_stop_level_absurd(True, 50.0, 100.0) is False  # distance never makes a level absurd (no % rule)
+    assert _fixed_stop_level_absurd(False, 200.0, 100.0) is False
     assert _fixed_stop_level_absurd(True, 99.75, 100.0) is False
     assert _fixed_stop_level_absurd(False, 100.25, 100.0) is False
     assert _fixed_stop_level_absurd(True, 100.5, 100.0) is True

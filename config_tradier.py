@@ -3297,6 +3297,13 @@ class TradierConfig:
     BROKER_DISTRESS_ENTRY_BLOCK_ENABLED: bool = True
     BROKER_DISTRESS_MAX_UNREACHABLE: int = 3
     BROKER_DISTRESS_WINDOW_SEC: float = 300.0
+    # 2026-10-13 NEVER-AGAIN: positions Redis keys expire (writer cadence
+    # 15s; 300s = 20 missed beats) so a dead writer vanishes instead of
+    # poisoning readers with days-old positions.
+    POSITIONS_REDIS_TTL_SEC: int = 300
+    # 2026-10-13 NEVER-AGAIN: cap per-pass follow-up order GETs in the dedupe
+    # guard (blackout backlog fired N sequential 25s GETs per verify).
+    ORDER_DEDUPE_MAX_VERIFY_GETS: int = 3
     OBLIGATORY_HEDGE_PCT: float = 0.0
     OBLIGATORY_HEDGE_WT_TFS: int = 2
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0

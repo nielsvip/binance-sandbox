@@ -77,9 +77,9 @@ def test_ev_ranking_sources():
 def test_p3_budget_guaranteed_minimum_never_starved():
     # a long main pass can no longer starve the pinpoint round (A/B 2026-10-13: 3 of 4 boards got 0 s)
     assert P.v17_p3_budget("WINNER", 1400.0, 1500, 210) == 750.0
-    assert P.v17_p3_budget("LOSER", 5000.0, 1500, 210) == 375.0
-    assert P.v17_p3_budget("LOST_CAUSE", 5000.0, 1500, 210) == 150.0
-    assert P.v17_p3_budget("WINNER", 0.0, 1500, 210) == 900.0  # ahead of target -> more, capped by V15_V17_P3_MAX_S
+    assert P.v17_p3_budget("LOSER", 5000.0, 1500, 210) == 300.0  # guaranteed 375 clipped by the LOSER cap
+    assert P.v17_p3_budget("LOST_CAUSE", 5000.0, 1500, 210) == 120.0  # clipped by the LOST_CAUSE cap
+    assert P.v17_p3_budget("WINNER", 0.0, 1500, 210) == 1290.0  # ahead of target -> more, capped by the tier cap
     assert "V15_V17_MIN_LIFT_PM" in SRC and "V15_V17_P2_YELLOW_S" in SRC
 
 
@@ -221,3 +221,15 @@ def test_higher_out_of_band_set_publishes_flagged():
     assert "ADAPT_FLOOR_TRADES, (-1e18, 1e18))" in SRC  # best_seen note: valid + trade floor, no TIM veto
     bad = P._endgame_best_seen_note({}, "START", {"A": 1}, {"gain_pct": 30.0, "trades": 3, "tim_pct": 40.0, "valid": True}, "n", 10, (-1e18, 1e18))
     assert bad.get("gain") is None  # below the trade floor is never a publish floor
+
+
+def test_per_tier_pinpoint_cap(monkeypatch):
+    # USER 2026-10-13 "extend time cap for winners"
+    monkeypatch.delenv("V15_V17_P3_MAX_S", raising=False)
+    assert P.v17_p3_cap("WINNER") == 1500.0 and P.v17_p3_cap("MEDIOCRE") == 540.0
+    assert P.v17_p3_cap("LOSER") == 300.0 and P.v17_p3_cap("LOST_CAUSE") == 120.0
+    monkeypatch.setenv("V15_V17_P3_MAX_S_WINNER", "1800")
+    assert P.v17_p3_cap("WINNER") == 1800.0
+    monkeypatch.setenv("V15_V17_P3_MAX_S", "600")  # explicit global override wins
+    assert P.v17_p3_cap("WINNER") == 600.0 and P.v17_p3_cap("LOSER") == 600.0
+    assert "_hard = t0 + v17_p3_cap(_tier_name)" in SRC

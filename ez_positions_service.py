@@ -6909,6 +6909,32 @@ class PositionService:
                         _lvl = float(getattr(position, "fixed_stop_price", 0) or 0)
                     except Exception:
                         _lvl = 0.0
+                    _fx_done = self.__dict__.setdefault("_fx_entry_anchored", set())
+                    if position_key not in _fx_done:
+                        # 2026-10-13 men AVAX: positions opened BEFORE the FIXED_STOP mandate (10-13 ~01:00Z) were frozen at the moment the stop
+                        # code first saw them (AVAX entry 10.942 10-11 23:48, frozen 10-13 01:07 from the 00:45 crash low 9.792 -> stop 9.779),
+                        # not at entry. Rebuild dc_15m (20 bars) AT ENTRY from Binance klines, once per position; frozen-at-entry positions untouched.
+                        try:
+                            _oa = getattr(position, "opened_at", None)
+                            _oa_ep = _oa.timestamp() if hasattr(_oa, "timestamp") else None
+                        except Exception:
+                            _oa_ep = None
+                        _mandate = float(getattr(config, "FIXED_STOP_MANDATE_TS", 1791853200.0) or 1791853200.0)  # 2026-10-13T01:00:00Z
+                        if _oa_ep is not None and _oa_ep < _mandate:
+                            try:
+                                _cli = self.get_client(account_key)
+                                _kl = await asyncio.wait_for(asyncio.to_thread(_cli.futures_klines, symbol=_sym, interval="15m", endTime=int(_oa_ep * 1000), limit=20), timeout=15.0)
+                                _ch = min(float(x[3]) for x in _kl) if _is_long else max(float(x[2]) for x in _kl)
+                                _new = _ch * 0.9975 if _is_long else _ch * 1.0025
+                                if _ch > 0 and (_lvl <= 0 or abs(_new - _lvl) / _new > 0.001):
+                                    logger.critical(f"🛡️ [FIXED_STOP_REFREEZE] {position_key}: opened {time.strftime('%m-%d %H:%M', time.gmtime(_oa_ep))}Z before the mandate, frozen late at {_lvl:.6f} -> dc_15m {'low' if _is_long else 'high'} AT ENTRY {_ch:.6f} -> {_new:.6f}")
+                                    _lvl = _new
+                                    position.fixed_stop_price = _lvl
+                                _fx_done.add(position_key)
+                            except Exception as _fx_ke:
+                                logger.warning(f"[FIXED_STOP_REFREEZE] {position_key}: entry-channel rebuild failed ({_fx_ke}) — retry next cycle")
+                        else:
+                            _fx_done.add(position_key)
                     if _lvl <= 0:
                         try:
                             _ind = ii(self, _sym) or {}

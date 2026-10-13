@@ -1753,6 +1753,9 @@ class Config:
     VEC_STALE_FLATTEN_BARS: float = (
         8.0  # 2026-10-10 (forest-bellatrix): stale-flatten persistence — 8x15m bars (2h), far beyond pipeline p99 (~20min), far below churn timescales.
     )
+    VEC_CONVERGE_OPEN_ENABLED: bool = (
+        True  # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … REENTER FAST": live follows the vec POSITION — vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> OPEN now (latest-board sym_sides only, once per bar). False = event-only.
+    )
     SUBSTITUTION_CLOSE_ENABLED: bool = (
         False  # USER 2026-10-13 "NOTHING can ever be live only": >=18-position SUBSTITUTION close of the lowest-gain position (115 closes 10-07..13, avg -5.6%) has no vec twin -> OFF. True = legacy.
     )

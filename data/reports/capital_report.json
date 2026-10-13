@@ -1,54 +1,32 @@
 {
- "generated_at": "2026-10-13 22:24 UTC",
- "total_capital_usd": 78.52,
+ "generated_at": "2026-10-13 22:38 UTC",
+ "total_capital_usd": 45.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 78.52,
-  "C": 0.0
+  "B": 0.0,
+  "C": 45.96
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "inf:TRUMPUSDC_LONG"
+  "flz:SOLUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:PUMPUSDT_SHORT",
-   "symbol": "PUMPUSDT",
-   "account": "inf",
-   "value_usd": 44.94,
-   "gain_pct": -0.321,
-   "tier": "B",
-   "perf_mult": 3.84,
-   "amt": 8976.0,
-   "mark": 0.005007
-  },
-  {
-   "pk": "inf:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "inf",
-   "value_usd": 22.41,
-   "gain_pct": -0.45,
-   "tier": "B",
-   "perf_mult": 7.85,
-   "amt": 112.5,
-   "mark": 0.19922
-  },
-  {
-   "pk": "inf:TRUMPUSDC_LONG",
-   "symbol": "TRUMPUSDC",
-   "account": "inf",
-   "value_usd": 11.17,
-   "gain_pct": -0.68,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 5.87,
-   "mark": 1.90249203
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 45.96,
+   "gain_pct": 0.699,
+   "tier": "C",
+   "perf_mult": 0.19,
+   "amt": 0.43,
+   "mark": 106.87722061
   }
  ]
 }

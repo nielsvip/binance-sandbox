@@ -61,6 +61,7 @@ DEFAULTS = {
     "ORDER_DEDUPE_INTENT_WINDOW_SEC": 20.0,  # covers maker-unverified -> market-fallback (~7-12s after the fill)
     "ORDER_DEDUPE_BLOCK_BACKOFF_SEC": 2.0,  # repeat checks inside this window return BLOCK without new broker calls (no REST hammering)
     "ORDER_DEDUPE_QUERY_TIMEOUT_SEC": 10.0,
+    "ORDER_DEDUPE_MAX_VERIFY_GETS": 3,  # 2026-10-13 NEVER-AGAIN: cap per-pass follow-up order GETs (blackout backlog fired N sequential 25s GETs per verify)
     "ORDER_DEDUPE_LEDGER_KEEP": 40,
     "ORDER_DEDUPE_IGNORE_ORDER_TYPES": (),  # e.g. ("STOP_MARKET",) — empty = strict (every open order blocks)
     "ORDER_DEDUPE_AUTO_CANCEL_OWN_AFTER_SEC": 120.0,  # cancel-and-confirm for OUR OWN ledger orders left working this long (0 = off). Foreign orders: never.
@@ -1084,7 +1085,7 @@ class TradierDedupeGuard(_GuardBase):
     def akey_lock(self, symbol: str) -> asyncio.Lock:
         return self._alocks.setdefault(symbol.upper(), asyncio.Lock())
 
-    async def _list_orders(self, client) -> List[Dict[str, Any]]:
+    async def _fetch_orders(self, client) -> List[Dict[str, Any]]:
         """Raw listing that DISTINGUISHES 'no orders' from 'query failed' (TradierAPIClient.get_orders returns [] for both)."""
         acct_id = getattr(client, "_current_id", None)
         if not acct_id:
@@ -1099,6 +1100,38 @@ class TradierDedupeGuard(_GuardBase):
             o = inner["order"]
             return o if isinstance(o, list) else [o]
         raise RuntimeError(f"orders payload unparseable: {str(inner)[:200]}")
+
+    async def _list_orders(self, client) -> List[Dict[str, Any]]:
+        # 2026-10-13 NEVER-AGAIN single-flight: concurrent verifies share one
+        # in-flight listing instead of each firing a full GET — the bombardment
+        # throttled the account and then exits failed. Each waiter keeps its
+        # own timeout (shielded shared task: one waiter's timeout never kills
+        # the fetch for the rest). Fail-closed preserved: shared failure raises
+        # for every waiter.
+        try:
+            _q = float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC"))
+        except Exception:
+            _q = 10.0
+        try:
+            _fly = getattr(self, "_list_inflight", None)
+            if not isinstance(_fly, dict):
+                _fly = {}
+                self._list_inflight = _fly
+            _key = str(getattr(self, "account", "") or "")
+            _task = _fly.get(_key)
+            if _task is None or _task.done():
+                _task = asyncio.ensure_future(self._fetch_orders(client))
+                _fly[_key] = _task
+                _mine = True
+            else:
+                _mine = False
+            try:
+                return await asyncio.wait_for(asyncio.shield(_task), timeout=_q)
+            finally:
+                if _mine:
+                    _fly.pop(_key, None)
+        except Exception:
+            raise
 
     async def _get_order(self, client, order_id) -> Dict[str, Any]:
         acct_id = getattr(client, "_current_id", None)
@@ -1133,6 +1166,15 @@ class TradierDedupeGuard(_GuardBase):
         by_id = {str(o.get("id")): o for o in sym_orders}
         claimed = {str(o.get("order_id")) for o in rows if o.get("order_id")}
         grace = float(_cfg(self.cfg, "ORDER_DEDUPE_NOTFOUND_GRACE_SEC"))
+        # 2026-10-13 NEVER-AGAIN: cap per-pass follow-up GETs — a ledger full
+        # of non-final entries (blackout backlog) fired N sequential 25s GETs
+        # per verify, so every order burned the queue budget. Oldest first;
+        # grace final-marking drains the rest on later passes. Fail-closed.
+        try:
+            _verify_cap = int(_cfg(self.cfg, "ORDER_DEDUPE_MAX_VERIFY_GETS") or 3)
+        except Exception:
+            _verify_cap = 3
+        _verify_used = 0
         for entry in [o for o in rows if not o.get("final") and not tradier_protective_stop(o.get("type"), o.get("side"))]:
             ident = {"order_id": entry.get("order_id"), "local_id": entry.get("local_id"), "state": entry.get("state"), "submitted_at": entry.get("submitted_at")}
             age = now - _f(entry.get("submitted_at"), now)
@@ -1140,6 +1182,9 @@ class TradierDedupeGuard(_GuardBase):
             if entry.get("order_id"):
                 bo = by_id.get(str(entry["order_id"]))
                 if bo is None:
+                    if _verify_used >= _verify_cap:
+                        return Decision(False, "LAST_ORDER_STATUS_UNKNOWN", {**ident, "note": f"verify budget spent ({_verify_cap}/pass); deferred to next pass"}), False
+                    _verify_used += 1
                     try:
                         bo = await self._get_order(client, entry["order_id"])
                     except Exception as e:
