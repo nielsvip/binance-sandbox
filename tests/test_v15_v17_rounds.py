@@ -191,3 +191,19 @@ def test_regime365_step_wiring():
     i = SRC.index("    def _v17_regime365(")
     body = SRC[i:SRC.index("    def _v17_sheet():", i)]
     assert "needs_redo" not in body and "quarantine(" not in body  # never REDO, never quarantine
+
+
+def test_final_never_below_best_start_both_paths():
+    # USER 2026-10-13 ABSOLUTE: the best-start set is noted as best_seen before anything can lower the chain (shared by the
+    # V17 and the old board), so the BEST-SEEN publish gate falls back to it whenever a later chain ends lower
+    res = lambda g, tr=40, tim=35.0: {"gain_pct": g, "trades": tr, "tim_pct": tim, "valid": True, "max_dd_pct": 2.0}
+    bs = P._endgame_best_seen_note({}, "START", {"A": 1}, res(20.0), "npzX")
+    bs = P._endgame_best_seen_note(bs, "FINAL_RECHECK", {"A": 2}, res(15.0), "npzX")  # a lower later chain
+    assert bs["stage"] == "START" and bs["gain"] == 20.0
+    bs = P._endgame_best_seen_note(bs, "DIAG_ADOPT", {"A": 3}, res(25.0), "npzX")
+    assert bs["stage"] == "DIAG_ADOPT" and bs["gain"] == 25.0
+    i_note = SRC.index('_bs_note("START", cumulative_overrides, _st_res)')
+    i_e3 = SRC.index('"E3_DEFAULT_BASE"')
+    i_loop = SRC.index("    for qi, (sname, rr, switch, cand) in enumerate(pending_queue):")
+    assert i_note < i_e3 < i_loop  # before the only chain-lowering start step and before every phase (both paths)
+    assert "V15_BEST_SEEN_GATE" in SRC and "[BEST-SEEN-FALLBACK]" in SRC

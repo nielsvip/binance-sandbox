@@ -1753,6 +1753,15 @@ class Config:
     VEC_STALE_FLATTEN_BARS: float = (
         8.0  # 2026-10-10 (forest-bellatrix): stale-flatten persistence — 8x15m bars (2h), far beyond pipeline p99 (~20min), far below churn timescales.
     )
+    SUBSTITUTION_CLOSE_ENABLED: bool = (
+        False  # USER 2026-10-13 "NOTHING can ever be live only": >=18-position SUBSTITUTION close of the lowest-gain position (115 closes 10-07..13, avg -5.6%) has no vec twin -> OFF. True = legacy.
+    )
+    MARGIN_FREE_CLOSE_ENABLED: bool = (
+        False  # USER 2026-10-13 "NOTHING can ever be live only": -2019 _emergency_margin_cleanup closing the smallest winner + cross-account request (142 closes 10-07..13) has no vec twin -> OFF. True = legacy.
+    )
+    CB_HTF_EXHAUST_EXIT_ENABLED: bool = (
+        False  # USER 2026-10-13 "NOTHING can ever be live only": circuit-breaker CB_HTF_EXHAUST_* queued CLOSE of other positions on an OPEN (42 closes 10-07..13) has no vec twin -> OFF. The block-path half (is_blocked) is untouched. True = legacy.
+    )
     PARITY_VEC_EXACT_SOURCE: str = (
         "live_klines"  # 2026-10-06 twin data source: npz (15m NPZ store; servers/replay) | live_klines (NPZ builder in memory on live klines_cache; needs staged backtest_v8_precompute return_arrays) | live_snapshots (rolling buffer of live ii() dicts at closed 15m bars)
     )

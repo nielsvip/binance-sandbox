@@ -377,8 +377,13 @@ class BrokerPositions:
         try:
             await await_abandonable(_slock.acquire(), timeout=3.0)
         except AbandonTimeout:
-            self.log.warning(f"[POSITIONS_SNAPSHOT_LOCK_BUSY] {self.broker}:{self.account} single-flight held >3s — using last (stale-or-None) reason={reason[:60]}")
-            return self.last
+            # 2026-10-13 NEAR ang post-mortem: an hours-old `last` (pre-OPEN, amt 0) was returned here as broker truth -> the vec CLOSE
+            # was skipped as "broker flat" while the broker held the position for 25h. Busy lock = only a FRESH snapshot may stand in.
+            if self._fresh():
+                self.log.warning(f"[POSITIONS_SNAPSHOT_LOCK_BUSY] {self.broker}:{self.account} single-flight held >3s — using last (fresh) reason={reason[:60]}")
+                return self.last
+            self.log.warning(f"[POSITIONS_SNAPSHOT_LOCK_BUSY] {self.broker}:{self.account} single-flight held >3s — last snapshot stale -> UNKNOWN (None) reason={reason[:60]}")
+            return None
         try:
             if not force and self._fresh():
                 return self.last
@@ -677,6 +682,8 @@ async def ez_pre_order_check(mgr: Any, account_key: str, symbol: str, position_k
         return None
     log.warning(f"[POSITIONS_STALE_FALLBACK] {position_key}: local positions age {age:.2f}s > {float(cfg(config, 'POSITIONS_MAX_AGE_S')):.2f}s — polling broker directly (action={action})")
     snap = await ez_broker(mgr, account_key, config, log).snapshot(reason=f"pre_order {position_key} {action}")
+    if snap is not None and exit_like and (t - float(snap.fetched_at or 0.0)) > float(cfg(config, "POSITIONS_BROKER_CACHE_S")):
+        snap = None  # 2026-10-13: a stale snapshot may never veto an exit as "broker flat" (NEAR ang 25h stranding)
     if snap is None:
         store[position_key] = {"pre": None, "local": local_amt, "source": "none", "ts": t, **({"call": _call} if _call is not None else {})}
         if exit_like:

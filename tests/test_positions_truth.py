@@ -114,6 +114,38 @@ def test_broker_snapshot_cached_and_single_flight():
     assert fb.position_calls == 2
 
 
+def test_busy_lock_never_returns_stale_snapshot():
+    """2026-10-13 NEAR ang: single-flight busy >3s returned an hours-old pre-OPEN snapshot (amt 0) as broker truth."""
+    fb = FakeBinance()
+    bp = pt.BrokerPositions("binance", "ang", pt.binance_fetcher(fb), config=CFG)
+    bp.last = pt.BrokerSnapshot("binance", "ang", time.time() - 3600.0, {}, {})
+
+    async def go():
+        await bp._alock().acquire()  # another caller holds the single-flight
+        return await bp.snapshot(force=True, reason="test")
+
+    assert run(go()) is None
+
+
+def test_stale_flat_snapshot_never_skips_exit():
+    """2026-10-13 NEAR ang: local=4, stale broker snapshot=0 -> exit was SKIP_BROKER_FLAT and the position rode -10.8% for 25h."""
+    fb = FakeBinance()
+    fb.amts[("NEARUSDC", "LONG")] = 4.0  # the broker really holds
+    mgr = FakeMgr(fb, account="ang")
+    mgr.positions_service.positions["ang:NEARUSDC_LONG"] = _pos(4.0)
+    mgr.positions_service.positions_last_sync = time.time() - 36.0
+    bp = pt.ez_broker(mgr, "ang", CFG)
+    bp.last = pt.BrokerSnapshot("binance", "ang", time.time() - 7200.0, {}, {})  # pre-OPEN snapshot: flat
+
+    async def go():
+        await bp._alock().acquire()  # POSITIONS_SNAPSHOT_LOCK_BUSY, as in the ang log
+        return await pt.ez_pre_order_check(mgr, "ang", "NEARUSDC", "ang:NEARUSDC_LONG", "LONG", "CLOSE", config=CFG)
+
+    res = run(go())
+    assert res != "SKIP_BROKER_FLAT"
+    assert res is None  # exits proceed when broker truth is unknown
+
+
 def test_ip_ban_refuses_poll_entries_blocked_exits_proceed(monkeypatch):
     fb = FakeBinance()
     monkeypatch.setattr(pt, "_ban_remaining_binance", lambda: 300.0)

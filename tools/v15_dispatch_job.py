@@ -105,6 +105,53 @@ def fast_push(symbol, push):
     return {"ok": True if ok else None, "action": "fast30d-push", "reason": f"pushed S1 NPZ md5 {h[:8]} verified={ok}", "prep_s": round(time.time() - t0, 1)}
 
 
+def ship_prev_best(symbol, tag, push):
+    """USER 2026-10-13: the first baseline is ALWAYS the best of last round's best settings and the cat_side defaults.
+    Write the top distinct published sets of every 30D side in this dispatch from S1's per_sym_history (orchestrator
+    publish history) to ~/v15_prev_best/{ss}.json and push them with the job; the pilot re-measures them at baseline."""
+    import sqlite3
+    db = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
+    out_dir = pathlib.Path(os.path.expanduser("~/v15_prev_best"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    sides = [("LONG" if l[0] == "L" else "SHORT") for l in tag.split(":", 2)[-1].split("+") if l[1:].startswith("30D")]
+    files = []
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=10)
+        for side in sides:
+            ss = f"{symbol}_{side}"
+            rows = con.execute("select gain_pct, overrides_json, updated_at from per_sym_history where sym_side=? and overrides_json is not null and gain_pct is not null order by gain_pct desc limit 40", (ss,)).fetchall()
+            sets, seen = [], set()
+            for g, oj, ts in rows:
+                try:
+                    ov = json.loads(oj)
+                except ValueError:
+                    continue
+                if not isinstance(ov, dict) or len(ov) < 5:
+                    continue
+                key = json.dumps(ov, sort_keys=True, default=str)
+                if key in seen:
+                    continue
+                seen.add(key)
+                sets.append({"gain_recorded": g, "updated_at": ts, "overrides": ov})
+                if len(sets) >= 5:
+                    break
+            if sets:
+                f = out_dir / f"{ss}.json"
+                f.write_text(json.dumps({"sym_side": ss, "sets": sets, "source": "per_sym_history", "written_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}))
+                files.append(str(f))
+        con.close()
+    except Exception as e:
+        log({"event": "prev_best_warn", "symbol": symbol, "err": str(e)[:160]})
+        return 0
+    if push and files:
+        try:
+            subprocess.run(["ssh", "-o", "BatchMode=yes", push, "mkdir -p ~/v15_prev_best"], timeout=30)
+            subprocess.run(["rsync", "-a", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=15"] + files + [f"{push}:v15_prev_best/"], timeout=120)
+        except subprocess.SubprocessError:
+            pass
+    return len(files)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", required=True)
@@ -132,6 +179,8 @@ def main():
         log({"event": "skip", "symbol": a.symbol, "tag": a.tag, "prep": res})
         cmd_path.unlink(missing_ok=True)
         return 3
+    if os.environ.get("V15_PREV_BEST_SHIP", "1") == "1":
+        res["prev_best_files"] = ship_prev_best(a.symbol, a.tag, a.push)
     try:
         r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", a.via, remote], timeout=60)
         rc = r.returncode

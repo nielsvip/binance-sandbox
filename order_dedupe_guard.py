@@ -272,9 +272,12 @@ class _GuardBase:
             return Decision(False, rec[1].code, {"backoff": True, **rec[1].evidence})
         return None
 
+    def _intent_rows(self, symbol: str) -> List[Dict[str, Any]]:
+        return self.ledger.orders(symbol)
+
     def intent_check(self, symbol: str, side: str, position_side: str, qty: float) -> Decision:
         """Same-direction chain inside the intent window: refuse once the broker-confirmed fills cover the intent; clamp otherwise."""
-        orders = self.ledger.orders(symbol)
+        orders = self._intent_rows(symbol)
         window = float(_cfg(self.cfg, "ORDER_DEDUPE_INTENT_WINDOW_SEC"))
         if window <= 0 or not orders:
             return Decision(True)
@@ -1060,6 +1063,13 @@ def _parse_ts(s: Any) -> Optional[float]:
         return None
 
 
+def tradier_protective_stop(order_type: Any, side: Any) -> bool:
+    """2026-10-13 USER GUARANTEED STOP (stocks): a resting stop / stop_limit on the CLOSING side (sell / buy_to_cover) can only
+    reduce exposure. It is the broker-side backstop that must survive every system outage, so it never blocks later orders on the
+    symbol (OPEN_ORDER_EXISTS / LAST_ORDER_NOT_FINAL), is never auto-cancelled as a stale order, and never joins an intent chain."""
+    return str(order_type or "").lower() in ("stop", "stop_limit") and str(side or "").lower() in ("sell", "buy_to_cover")
+
+
 class TradierDedupeGuard(_GuardBase):
     broker = "tradier"
     final_set = TRADIER_FINAL
@@ -1067,6 +1077,9 @@ class TradierDedupeGuard(_GuardBase):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self._alocks: Dict[str, asyncio.Lock] = {}
+
+    def _intent_rows(self, symbol: str) -> List[Dict[str, Any]]:
+        return [o for o in self.ledger.orders(symbol) if not tradier_protective_stop(o.get("type"), o.get("side"))]
 
     def akey_lock(self, symbol: str) -> asyncio.Lock:
         return self._alocks.setdefault(symbol.upper(), asyncio.Lock())
@@ -1113,14 +1126,14 @@ class TradierDedupeGuard(_GuardBase):
         except Exception as e:
             return Decision(False, "BROKER_UNREACHABLE_ORDERS", {"error": repr(e)[:300]}), False
         sym_orders = [o for o in orders if str(o.get("symbol", "")).upper() == sym]
-        live = [o for o in sym_orders if str(o.get("status", "")).lower() not in TRADIER_FINAL and str(o.get("type", "")).lower() not in ignore]
+        live = [o for o in sym_orders if str(o.get("status", "")).lower() not in TRADIER_FINAL and str(o.get("type", "")).lower() not in ignore and not tradier_protective_stop(o.get("type"), o.get("side"))]
         if live:
             own = all(str(o.get("id")) in own_cancel_ids for o in live)
             return Decision(False, "OPEN_ORDER_EXISTS", {"open_orders": [self._order_ev(o) for o in live]}), own
         by_id = {str(o.get("id")): o for o in sym_orders}
         claimed = {str(o.get("order_id")) for o in rows if o.get("order_id")}
         grace = float(_cfg(self.cfg, "ORDER_DEDUPE_NOTFOUND_GRACE_SEC"))
-        for entry in [o for o in rows if not o.get("final")]:
+        for entry in [o for o in rows if not o.get("final") and not tradier_protective_stop(o.get("type"), o.get("side"))]:
             ident = {"order_id": entry.get("order_id"), "local_id": entry.get("local_id"), "state": entry.get("state"), "submitted_at": entry.get("submitted_at")}
             age = now - _f(entry.get("submitted_at"), now)
             bo = None
@@ -1134,7 +1147,7 @@ class TradierDedupeGuard(_GuardBase):
             else:
                 # submit result unknown (timeout / gateway error): adopt any unclaimed same-side order for the symbol created around the submit
                 t0 = _f(entry.get("submitted_at"), now) - 15.0
-                cands = [o for o in sym_orders if str(o.get("id")) not in claimed and str(o.get("side", "")).lower() == str(entry.get("side", "")).lower() and (_parse_ts(o.get("create_date")) or 0) >= t0]
+                cands = [o for o in sym_orders if str(o.get("id")) not in claimed and str(o.get("side", "")).lower() == str(entry.get("side", "")).lower() and (_parse_ts(o.get("create_date")) or 0) >= t0 and not tradier_protective_stop(o.get("type"), o.get("side"))]
                 if cands:
                     cands.sort(key=lambda o: _parse_ts(o.get("create_date")) or 0)
                     extra = cands[1:]
@@ -1234,7 +1247,7 @@ class TradierDedupeGuard(_GuardBase):
                     qty = new_q
             else:
                 self.log.critical(f"⚠️ [WIRE_EXPOSURE_GATE_DISABLED] tradier:{self.account}:{sym} — open-from-zero / execute_now token NOT enforced")
-            if dec.code != "DISABLED" and qty > 0:
+            if dec.code != "DISABLED" and qty > 0 and not tradier_protective_stop(order_type, side):
                 idec = self.intent_check(sym, side, "", qty)
                 if not idec.allowed:
                     d2 = self._block(sym, idec.code, idec.evidence, origin)

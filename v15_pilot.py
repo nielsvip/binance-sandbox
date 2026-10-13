@@ -5205,6 +5205,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cell.font = Font(name="Arial", size=10, bold=bold, color="006100" if good else "9C0006")
         cell.fill = PatternFill(fill_type=None)  # USER 2026-09-30: red paint ONLY for stuck/slow cells, never for a negative value
         cell.alignment = VISUAL_ALIGN
+    # USER 2026-10-13 (ABSOLUTE) "a worse result is PHYSICALLY IMPOSSIBLE": the best-start set (best of last round vs template
+    # defaults, [BEST-START]) is recorded as best_seen BEFORE anything can lower the chain (E3-DEFAULT-BASE below, compliance
+    # repair, endgame, diagnose, any V17 phase) — the BEST-SEEN publish gate then never publishes below it. Fresh eval.
+    if not (progress.get("best_seen") or {}).get("start_noted"):
+        try:
+            _st_res, _st_err = _get("START", None, "BEST_START", "", "BEST_START_SET", sanitize_overrides(dict(cumulative_overrides), defaults)[0], _t.time() + YELLOW_TIMEOUT * 6, float(cumulative_gain))
+            if _st_res and not _st_err:
+                _bs_note("START", cumulative_overrides, _st_res)
+                progress.setdefault("best_seen", {})["start_noted"] = True
+                progress["best_seen"]["start_gain"] = _st_res.get("gain_pct")
+        except Exception as _ste:
+            print(f"[BEST-SEEN-warn] {new_symside} start note: {_ste}", flush=True)
     # USER 2026-09-30: the FIRST row is the DEFAULT row. If the override set changes that switch, E3 = the baseline WITHOUT
     # that override (switch at its bold default); the overridden value is re-earned by its own row's delta further down.
     if not progress.get("done") and pending_queue:
@@ -10145,6 +10157,46 @@ def main():
                 _zero_trades_early = False
         prepared_for_fallback = prepared
 
+    # USER 2026-10-13 (ABSOLUTE): the FIRST baseline is ALWAYS the best of last round's best settings and the
+    # TEMPLATE_CAT_SIDE defaults, re-measured on THIS NPZ — whichever wins. The chain only adds positive deltas,
+    # so a final below the previous best is impossible. Candidates: the incumbent (start/challenger winner, which
+    # already competed against cat_side defaults + per-sym), the top published sets from S1 per_sym_history
+    # (shipped with the dispatch: ~/v15_prev_best/{ss}.json) and earlier finals on this host. V15_PREV_BEST_START=0 disables.
+    if prepared is not None and os.environ.get("V15_PREV_BEST_START", "1") == "1" and not locals().get("_nr_applied"):
+        try:
+            from baseline_select import score as _pb_score
+            _pb_list = []
+            _pb_file = os.environ.get("V15_PREV_BEST_SETS") or os.path.expanduser(f"~/v15_prev_best/{new_symside}.json")
+            if os.path.exists(_pb_file):
+                for _i, _ov in enumerate((json.loads(Path(_pb_file).read_text()).get("sets") or [])[:5]):
+                    _pb_list.append((f"history_{_i}", _ov))
+            for _src, _ov in _prior_final_sets(new_symside)[:3]:
+                _pb_list.append((f"prior_{_src}", _ov))
+            _pb_best = (_pb_score(baseline_vec, ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT), "incumbent")
+            for _lbl, _ov in _pb_list:
+                _ov = dict(_ov.get("overrides") if isinstance(_ov, dict) and "overrides" in _ov else _ov)
+                if isinstance(_ov.get("FILTER_EXEMPTIONS"), str):
+                    try:
+                        _ov["FILTER_EXEMPTIONS"] = json.loads(_ov["FILTER_EXEMPTIONS"])
+                    except Exception:
+                        _ov.pop("FILTER_EXEMPTIONS", None)
+                _ov.pop("AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", None)
+                _ov = {k: v for k, v in _clean_ingested_overrides(_ov).items() if not str(k).startswith("ABLATION_") and k not in ("MODE", "VENUE", "IS_TRADIER", "SIMPLE_PRICE_GT0_ENABLED")}
+                _ov = sanitize_overrides(_ov, defaults)[0]
+                _pv = evaluate_prepared_sanitized(prepared, _ov, window_days=args.window_days)
+                _ps = _pb_score(_pv, ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT)
+                print(f"[BEST-START] {new_symside} {_lbl}: gain={_pv.get('gain_pct')} trades={_pv.get('trades')} valid={_pv.get('valid')} vs incumbent={baseline_vec.get('gain_pct')}", flush=True)
+                if _ps > _pb_best[0]:
+                    _pb_best = (_ps, _lbl)
+                    overrides = dict(_ov)
+                    baseline_vec = dict(_pv)
+            _best_start_record = {"chosen": _pb_best[1], "gain": baseline_vec.get("gain_pct"), "n_candidates": len(_pb_list) + 1}
+            if _pb_best[1] != "incumbent":
+                _zero_trades_early = int(baseline_vec.get("trades") or 0) == 0
+                print(f"[BEST-START] {new_symside} starting from {_pb_best[1]} gain={baseline_vec.get('gain_pct')} (beats incumbent)", flush=True)
+        except Exception as _e_pb:
+            print(f"[BEST-START-warn] {new_symside} {_e_pb}", flush=True)
+
     if args.vector_only:
         baseline_live = baseline_vec
         reason = "vector-only"
@@ -10863,6 +10915,8 @@ def main():
     try:
         if locals().get("_defaults_challenger_record") and isinstance(progress, dict):
             progress["defaults_challenger"] = _defaults_challenger_record
+        if locals().get("_best_start_record") and isinstance(progress, dict):
+            progress["best_start"] = locals().get("_best_start_record")
     except Exception:
         pass
     # RESPECT s3/s5 shuffles and stdev: fetch latest progress from S1 peer if on s3/s5 to avoid overwriting better numbers

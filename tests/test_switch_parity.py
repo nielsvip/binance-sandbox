@@ -123,7 +123,8 @@ def test_register_refuses_secrets_and_unknown_and_type(iso):
     assert not (iso / "data").exists()
 
 
-def test_neg_block_preserved_then_lifted(iso):
+def test_neg_block_never_preserved(iso):
+    """USER 2026-10-13 "NEG_BLOCK does NOT exist": an old _NEG_BLOCK tag is dropped by the next registration (no lift needed)."""
     book_p = iso / "data" / "hourly_reconfig" / "per_sym_active_config.json"
     book_p.parent.mkdir(parents=True, exist_ok=True)
     book_p.write_text(
@@ -137,13 +138,20 @@ def test_neg_block_preserved_then_lifted(iso):
         )
     )
     r1 = SP.register_workbook_result("BTCUSDC_LONG", {"SW_BOOL": True}, dict(EVIDENCE))
-    assert r1["registered"] is True and r1["neg_block_preserved"] is True
-    assert _book(iso)["BTCUSDC_LONG"]["winning_tag"].endswith("_NEG_BLOCK")
-    r2 = SP.register_workbook_result(
-        "BTCUSDC_LONG", {"SW_BOOL": True}, dict(EVIDENCE), lift_block=True
-    )
+    assert r1["registered"] is True and r1["neg_block_preserved"] is False
+    assert "_NEG_BLOCK" not in _book(iso)["BTCUSDC_LONG"]["winning_tag"]
+    r2 = SP.register_workbook_result("BTCUSDC_LONG", {"SW_BOOL": True}, dict(EVIDENCE), tag="x_NEG_BLOCK")
     assert r2["registered"] is True and "_NEG_BLOCK" not in r2["tag"]
     assert (iso / "backups").exists()
+
+
+def test_pin_all_pins_keys_equal_to_default(iso):
+    """USER 2026-10-13 exact-board parity: diff_only drops keys equal to today's default; pin_all keeps them per-sym."""
+    ov = {"SW_BOOL": CAT_FIXTURE["CRYPTO_LONG"]["SW_BOOL"], "SW_TF": "1h"}
+    d = SP.register_workbook_result("BTCUSDC_LONG", dict(ov), dict(EVIDENCE), dry_run=True, diff_only=True)
+    p = SP.register_workbook_result("BTCUSDC_LONG", dict(ov), dict(EVIDENCE), dry_run=True, diff_only=True, pin_all=True)
+    assert "SW_BOOL" not in (d.get("would_register") or {})
+    assert p.get("would_register") == ov and p["diff_only"]["pin_all"] is True
 
 
 def test_verify_symside_catches_tamper(iso):

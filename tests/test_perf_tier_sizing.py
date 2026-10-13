@@ -1,5 +1,5 @@
 """PERF_TIER_SIZING (USER 2026-10-06) — mocked tests: negative sym_side -> minimal size, top gainer -> larger but capped,
-_NEG_BLOCK tag still blocks, acc_gain<=0 no longer blocks with tier sizing ON, and the live patch applies cleanly + compiles."""
+_NEG_BLOCK tag never blocks (USER 2026-10-13), acc_gain<=0 no longer blocks with tier sizing ON, and the live patch applies cleanly + compiles."""
 import importlib
 import json
 import shutil
@@ -51,8 +51,9 @@ def test_stock_qty_tiers_skip_below_one_share(pts):
     assert pts.apply_qty(-3, "LOSER", "SHORT") == 0
 
 
-def test_negbook_tag_still_blocks_and_negative_gain_only_sizes(pts):
-    assert pts.negbook_blocks({"winning_tag": "parity_20261006_NEG_BLOCK", "acc_gain_pct": 5.0}, True) is True
+def test_negbook_tag_never_blocks_and_negative_gain_only_sizes(pts):
+    assert pts.negbook_blocks({"winning_tag": "parity_20261006_NEG_BLOCK", "acc_gain_pct": 5.0}, True) is False  # USER 2026-10-13: NEG_BLOCK does not exist
+    assert pts.negbook_blocks({"winning_tag": "parity_20261006_NEG_BLOCK", "acc_gain_pct": -5.0}, True) is False
     assert pts.negbook_blocks({"winning_tag": "parity_20261006", "acc_gain_pct": -3.0}, True) is False
     assert pts.negbook_blocks({"winning_tag": "parity_20261006", "acc_gain_pct": -3.0}, False) is True  # legacy when switch OFF
     assert pts.negbook_blocks({"winning_tag": "x", "acc_gain_pct": 2.0}, False) is False

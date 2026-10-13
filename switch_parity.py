@@ -30,9 +30,9 @@ Gates (fail-closed, never loosened — BACKTEST_BIBLE §51/§58):
   * every override value must type-coerce against its cat_side default
     (bool/int/float/str families; dict/list values refused) — refuse ALL on
     any mismatch, because a partial set is unproven.
-  * existing _NEG_BLOCK is preserved unless lift_block=True with 365D
-    evidence (values register everywhere immediately; live-trading enablement
-    keeps its own 365D/parity gates).
+  * _NEG_BLOCK no longer exists (USER 2026-10-13): never appended/preserved;
+    a negative set trades at minimal perf-tier size (lift_block kept for
+    signature compatibility only).
 
 verify_symside(sym_side) re-checks stored-surface agreement any time.
 verify_default_surfaces(cat_side) audits the DEFAULT layer per cat_side:
@@ -351,6 +351,7 @@ def register_workbook_result(
     root: Path = None,
     diff_only: bool = False,
     require_qualified: bool = True,
+    pin_all: bool = False,
 ) -> dict:
     """Register a workbook-end positive result on every surface. See module doc.
 
@@ -451,7 +452,7 @@ def register_workbook_result(
             ok_s, sv = coerce_structured(k, v)
             if not ok_s:
                 bad[k] = sv
-            elif diff_only and sv == _structured_default(k, snap, live_vals):
+            elif diff_only and sv == _structured_default(k, snap, live_vals) and not pin_all:
                 same.append(k)  # equal to the effective default ({} on every surface today)
             elif not sv:
                 pass  # full mode: {} is the no-exemption value, nothing to pin
@@ -492,10 +493,10 @@ def register_workbook_result(
             floatkept.append(k)
         if not ok_c:
             bad[k] = cv
-        elif _same_val(cv, ref):
+        elif _same_val(cv, ref) and not pin_all:
             same.append(k)
         else:
-            coerced[k] = cv
+            coerced[k] = cv  # pin_all (USER 2026-10-13 exact-board parity): equal-to-default keys are pinned too, so a later default move can never drift live off the board
     if diff_only:
         rep["diff_only"] = {
             "n_in": len(overrides),
@@ -505,6 +506,7 @@ def register_workbook_result(
             "noop_nonlive": noop[:20],
             "float_kept_for_int": floatkept,
             "global_only_dropped": global_only,
+            "pin_all": bool(pin_all),
         }
         if not bad and not coerced:
             rep["reason"] = (
@@ -524,12 +526,11 @@ def register_workbook_result(
         old_tag = str((old_entry or {}).get("winning_tag") or "")
     except Exception:
         pass
-    keep_block = "_NEG_BLOCK" in old_tag and not lift_block
-    new_tag = tag or f"{TAG_PREFIX}_{_today()}"
-    if keep_block and "_NEG_BLOCK" not in new_tag:
-        new_tag = f"{new_tag}_NEG_BLOCK"
+    keep_block = False  # USER 2026-10-13 "NEG_BLOCK does NOT exist": never appended, never preserved (negative sets trade at minimal tier size)
+    new_tag = (tag or f"{TAG_PREFIX}_{_today()}").replace("_NEG_BLOCK", "")
     rep["tag"] = new_tag
-    rep["neg_block_preserved"] = bool(keep_block)
+    rep["neg_block_preserved"] = False
+    rep["old_tag"] = old_tag
     try:
         gain = float(ev.get("gain_pct"))
         base = float(

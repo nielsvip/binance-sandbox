@@ -12,7 +12,7 @@ Two modes:
       python tools/v15_persym_golive.py [--selection data/avg_delta_selection.json] [--apply]
     selection = the rebuild's ONE-latest-file-per-sym_side map (host + path). Runs collect on every host, then per sym_side applies the
     gates: switch_parity.register_workbook_result (dry_run) = n_promoted >= 1, valid, TIM 20-80, >= 10 trades, DD <= 30 (via valid),
-    gain > 0, no secrets, every key type-coerces against the Mac cat_side snapshot, _NEG_BLOCK preserved; plus 365D: a sym_side with a
+    gain > 0, no secrets, every key type-coerces against the Mac cat_side snapshot (no _NEG_BLOCK, USER 2026-10-13); plus 365D: a sym_side with a
     365D verdict must pass it (data/confirmed_365d.json entry, else progress final_365d: valid + gain > 0); plus no
     SIMPLE_PRICE_GT0_ENABLED=True. Report data/daily_chain/persym_golive_<date>.json: per sym_side gate result, renamed/dropped keys,
     and what would change vs the current Mac book (old vs new keys/values). Registration is diff_only (director 2026-10-06): only keys
@@ -111,36 +111,7 @@ def _collect_one(path):
     if not co and not EVAL_ALL:
         rec["skip"] = "no cumulative_overrides"
         return ss, rec
-    ov, rec["renamed"], rec["dropped"] = migrate(co)
-    # 2026-10-08 CONTAMINATION FIX: engine-level artefacts never go live — MODE (venue engine mode; 71 stocks sets were "rescued"
-    # by MODE=crypto), SIMPLE_PRICE_GT0_ENABLED (pseudo-gate), ABLATION_* (engine kills). Stripped BEFORE the fresh eval below, so
-    # the evidence that qualifies the set is measured without them (never the contaminated number).
-    rec["artefact_stripped"] = [
-        k for k in ov if k in ARTEFACT_KEYS or k.startswith("ABLATION_")
-    ]
-    for k in rec["artefact_stripped"]:
-        ov.pop(k, None)
-    # 2026-10-13 MAXAUG_NEVER_ZERO (USER 2026-10-10 no-cap mandate): per-sym MAX_AUGMENTS<1 never goes live
-    # (104 poison keys stripped Mac+S1 this turn from pre-guard sheets; the pilot guard alone does not cover golive).
-    rec["mandate_stripped"] = []
-    if "MAX_AUGMENTS_PER_POSITION" in ov:
-        try:
-            _mav = float(str(ov["MAX_AUGMENTS_PER_POSITION"]).strip())
-        except Exception:
-            _mav = None
-        if _mav is not None and _mav < 1:
-            rec["mandate_stripped"] = [f"MAX_AUGMENTS_PER_POSITION={ov['MAX_AUGMENTS_PER_POSITION']}"]
-            ov.pop("MAX_AUGMENTS_PER_POSITION", None)
-    # 2026-10-13 fishnet: a per-sym MAX_ORDER_VALUE of 0 blocks every order (FCN_LONG/SHORT poison this turn) — never live.
-    if "MAX_ORDER_VALUE" in ov:
-        try:
-            _mov = float(str(ov["MAX_ORDER_VALUE"]).strip())
-        except Exception:
-            _mov = None
-        if _mov is not None and _mov <= 0:
-            rec["mandate_stripped"].append(f"MAX_ORDER_VALUE={ov['MAX_ORDER_VALUE']}")
-            ov.pop("MAX_ORDER_VALUE", None)
-    rec["overrides"] = ov
+    ov = sanitize(co, rec)
     sg = rec["stored_final_gain"]
     finished = bool(
         d.get("verdict")
@@ -187,6 +158,42 @@ def _collect_one(path):
     except Exception as e:
         rec["skip"] = f"fresh eval failed: {e}"
     return ss, rec
+
+
+def sanitize(co, rec):
+    """Integrity stripping shared by the progress-file collect and the published-board source: VEC_ONLY renames/removals,
+    engine artefacts (MODE/SIMPLE_PRICE_GT0/VENUE/IS_TRADIER/ABLATION_*), MAX_AUGMENTS<1, MAX_ORDER_VALUE<=0. Fills rec."""
+    ov, rec["renamed"], rec["dropped"] = migrate(co)
+    # 2026-10-08 CONTAMINATION FIX: engine-level artefacts never go live — MODE (venue engine mode; 71 stocks sets were "rescued"
+    # by MODE=crypto), SIMPLE_PRICE_GT0_ENABLED (pseudo-gate), ABLATION_* (engine kills). Stripped BEFORE the fresh eval below, so
+    # the evidence that qualifies the set is measured without them (never the contaminated number).
+    rec["artefact_stripped"] = [
+        k for k in ov if k in ARTEFACT_KEYS or k.startswith("ABLATION_")
+    ]
+    for k in rec["artefact_stripped"]:
+        ov.pop(k, None)
+    # 2026-10-13 MAXAUG_NEVER_ZERO (USER 2026-10-10 no-cap mandate): per-sym MAX_AUGMENTS<1 never goes live
+    # (104 poison keys stripped Mac+S1 this turn from pre-guard sheets; the pilot guard alone does not cover golive).
+    rec["mandate_stripped"] = []
+    if "MAX_AUGMENTS_PER_POSITION" in ov:
+        try:
+            _mav = float(str(ov["MAX_AUGMENTS_PER_POSITION"]).strip())
+        except Exception:
+            _mav = None
+        if _mav is not None and _mav < 1:
+            rec["mandate_stripped"] = [f"MAX_AUGMENTS_PER_POSITION={ov['MAX_AUGMENTS_PER_POSITION']}"]
+            ov.pop("MAX_AUGMENTS_PER_POSITION", None)
+    # 2026-10-13 fishnet: a per-sym MAX_ORDER_VALUE of 0 blocks every order (FCN_LONG/SHORT poison this turn) — never live.
+    if "MAX_ORDER_VALUE" in ov:
+        try:
+            _mov = float(str(ov["MAX_ORDER_VALUE"]).strip())
+        except Exception:
+            _mov = None
+        if _mov is not None and _mov <= 0:
+            rec["mandate_stripped"].append(f"MAX_ORDER_VALUE={ov['MAX_ORDER_VALUE']}")
+            ov.pop("MAX_ORDER_VALUE", None)
+    rec["overrides"] = ov
+    return ov
 
 
 def collect(files, out, workers):
@@ -291,9 +298,35 @@ def book_diff(ss, new):
     }
 
 
+def published_collected(path):
+    """USER 2026-10-13: go-live source = the latest PUBLISHED board per sym_side (tools/v15_published_selection.py on S1). The set and
+    its evidence are the board's own (md5-verified against the sheet manifest); integrity stripping identical to the collect path."""
+    doc = json.loads(Path(path).read_text())
+    src = doc.get("sym_sides", doc) if isinstance(doc, dict) else {}
+    out = {}
+    for ss, r in (src or {}).items():
+        if not isinstance(r, dict) or str(ss).startswith("_"):
+            continue
+        rec = {"host": r.get("host"), "path": r.get("progress"), "verdict": None, "n_promoted": None, "final_365d": None, "published_at": r.get("published_at"), "overrides_md5": r.get("overrides_md5"), "manifest": r.get("manifest")}
+        if r.get("refuse"):
+            rec["skip"] = f"published: {r['refuse']}"
+        elif not r.get("manifest_ok"):
+            rec["skip"] = "published: manifest md5 not verified"
+        else:
+            sanitize(r.get("overrides") or {}, rec)
+            rec["evidence"] = dict(r.get("evidence") or {})
+        out[str(ss).upper()] = rec
+    return doc.get("_meta", {}), out
+
+
 def golive(a):
     import switch_parity as sp
 
+    if a.published:
+        a.all_finished = True  # published boards are finished by definition; risk carried by size (require_qualified=False)
+        _pmeta, collected = published_collected(a.published)
+        print(f"[golive] PUBLISHED source {a.published}: {_pmeta}", flush=True)
+        return golive_rows(a, sp, collected, {}, {"source": "published", "path": a.published, "meta": _pmeta})
     sel = json.loads(Path(a.selection).read_text())
     hosts = {h["name"]: h for h in json.loads(Path(a.hosts).read_text())["hosts"]}
     # USER 2026-10-13 "are all calculated sym_sides live?": under the NPZ JIT law worker NPZs lag by hours, so the fresh re-eval
@@ -340,6 +373,10 @@ def golive(a):
                 host_err[hn] = err
             else:
                 collected.update(got)
+    return golive_rows(a, sp, collected, host_err, {"source": "selection", "path": a.selection, "selected": len(sel)})
+
+
+def golive_rows(a, sp, collected, host_err, src):
     conf = {}
     try:
         conf = json.loads((ROOT / "data" / "confirmed_365d.json").read_text())
@@ -423,6 +460,7 @@ def golive(a):
             dry_run=True,
             diff_only=True,
             require_qualified=not a.all_finished,
+            pin_all=bool(getattr(a, "pin_all", False)),
         )
         if "gates passed" not in str(dr.get("reason")):
             row.update(
@@ -440,7 +478,7 @@ def golive(a):
         row.update(
             qualified_30d=dr.get("qualified_30d"),
             unqualified_reasons=dr.get("unqualified_reasons"),
-            negbook_blocked_live=(float(ev.get("gain_pct") or 0) <= 0),
+            negative_gain_minimal_tier=(float(ev.get("gain_pct") or 0) <= 0),  # USER 2026-10-13: never blocked, minimal perf-tier size
         )
         row.update(
             result="PASS",
@@ -459,6 +497,7 @@ def golive(a):
                 dry_run=False,
                 diff_only=True,
                 require_qualified=not a.all_finished,
+                pin_all=bool(getattr(a, "pin_all", False)),
             )
             row["applied"] = {
                 k: rr.get(k)
@@ -480,7 +519,9 @@ def golive(a):
     from collections import Counter
 
     summary = {
-        "selected": len(sel),
+        "selected": src.get("selected", len(collected)),
+        "source": src.get("source"),
+        "pin_all": bool(getattr(a, "pin_all", False)),
         "collected": len(collected),
         "evaluated": sum(1 for r in collected.values() if "evidence" in r),
         "results": dict(Counter(r["result"] for r in rows.values())),
@@ -503,10 +544,10 @@ def golive(a):
             for r in rows.values()
             if r["result"] == "PASS" and not r.get("qualified_30d")
         ),
-        "pass_negative_gain_negbook_blocked_live": sum(
+        "pass_negative_gain_minimal_tier": sum(
             1
             for r in rows.values()
-            if r["result"] == "PASS" and r.get("negbook_blocked_live")
+            if r["result"] == "PASS" and r.get("negative_gain_minimal_tier")
         ),
     }
     summary["blocklisted"] = sorted(
@@ -518,7 +559,7 @@ def golive(a):
         "date": a.date,
         "at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "mode": "APPLY" if a.apply else "DRY_RUN",
-        "selection": a.selection,
+        "selection": src.get("path"),
         "renames": RENAMES,
         "removed": sorted(REMOVED),
         "blocklist": blocklist,
@@ -563,6 +604,15 @@ def main():
         "--apply",
         action="store_true",
         help="LIVE WRITE: only after director/user confirmation",
+    )
+    ap.add_argument(
+        "--published",
+        help="USER 2026-10-13: go-live source = data/published_selection.json from tools/v15_published_selection.py (latest published board per sym_side, md5-verified vs sheet manifest, board evidence, no re-eval); implies --all-finished",
+    )
+    ap.add_argument(
+        "--pin-all",
+        action="store_true",
+        help="USER 2026-10-13 exact-board parity: pin EVERY board key per-sym (also keys equal to today's default) so later default moves cannot drift live off the board",
     )
     ap.add_argument(
         "--all-finished",

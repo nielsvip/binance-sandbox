@@ -10584,6 +10584,14 @@ def setup_logger_per_account(
     logger_obj.setLevel(logging.DEBUG)
     logger_obj.propagate = False
     logger_obj.addFilter(InjectAccountFilter())
+    # 2026-10-13: tests importing this module wrote fixture lines (oid 123456, "broker rejected: no position") into the LIVE
+    # ~/logs/tradier_manage_{acct}.log — indistinguishable from real broker events. Under pytest every handler goes to a temp dir.
+    _live_log_dir = config.LOG_DIR
+    if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
+        import tempfile as _tf
+        _live_log_dir = os.environ.get("TRADIER_TEST_LOG_DIR") or os.path.join(_tf.gettempdir(), "tradier_manage_test_logs")
+        os.makedirs(_live_log_dir, exist_ok=True)
+        base_path = _live_log_dir
 
     # 1. Console (Stdout) - Filtered to clean weather
     stream_handler = logging.StreamHandler(sys.stdout)
@@ -10629,7 +10637,7 @@ def setup_logger_per_account(
         )
         logger_obj.addHandler(g_h)
         # --- WATCHDOG HEARTBEAT LOG: ~/logs/tradier_manage_trb.log (NEVER binance/logs/) ---
-        wd_path = os.path.join(config.LOG_DIR, f"tradier_manage_{acct_l}.log")
+        wd_path = os.path.join(_live_log_dir, f"tradier_manage_{acct_l}.log")
         wd_h = RotatingFileHandler(
             wd_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8"
         )
@@ -43478,8 +43486,20 @@ class TradierTradeManager:
             import json as _js
             import os as _os
             _p = self._fixed_stop_registry_path()
-            _d = {"orders": getattr(self, "_fixed_stop_orders", {}) or {}, "levels": getattr(self, "_fixed_stop_levels", {}) or {}}
-            _tmp = _p + ".tmp"
+            _d = {"orders": dict(getattr(self, "_fixed_stop_orders", {}) or {}), "levels": dict(getattr(self, "_fixed_stop_levels", {}) or {})}
+            # 2026-10-13 GUARANTEED STOP: one shared file, one process per account — merge, never clobber. Rows of accounts this
+            # process does not own are taken from disk (tra's frozen levels/stop ids were wiped by trb's saves: tra had NO levels).
+            try:
+                _own = {str(a).lower() for a in (_own_accounts or [])}
+                with open(_p, "r") as _f0:
+                    _disk = _js.load(_f0) or {}
+                for _sec in ("orders", "levels"):
+                    for _k, _v in ((_disk.get(_sec) or {}) if isinstance(_disk, dict) else {}).items():
+                        if str(_k).split(":", 1)[0].lower() not in _own:
+                            _d[_sec][_k] = _v
+            except Exception:
+                pass
+            _tmp = f"{_p}.{_os.getpid()}.tmp"
             with open(_tmp, "w") as _f:
                 _f.write(_js.dumps(_d))
             _os.replace(_tmp, _p)
@@ -43516,6 +43536,9 @@ class TradierTradeManager:
                     await client.close()
                 except Exception:
                     pass
+            if _pos is None:  # 2026-10-13 GUARANTEED STOP: a failed positions query is UNVERIFIED, never "flat" (flat = no stop placed / stop cancelled)
+                logger.warning(f"[FIXED_STOP_BROKER_VERIFY_TR] {account_key}:{symbol}: positions query returned None — unverified")
+                return None
             _sym = str(symbol or "").upper()
             _want_long = str(position_side or "").upper() != "SHORT"
             for _p in (_pos or []):
@@ -43539,8 +43562,89 @@ class TradierTradeManager:
             logger.warning(f"[FIXED_STOP_BROKER_VERIFY_TR] {account_key}:{symbol}: verify failed ({_e}) — unverified")
             return None
 
+    async def _fixed_stop_broker_stops(self, account_key, symbol, position_side):
+        """2026-10-13 GUARANTEED STOP: live broker listing of this position's protective stops (stop/stop_limit on the closing
+        side, open/pending/partially_filled). Returns list of order dicts, or None when the listing failed (unverified). Read-only."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return None
+            client = TradierAPIClient(config, account_key=account_key)
+            try:
+                _acct_id = getattr(client, "_current_id", None)
+                if not _acct_id:
+                    return None
+                _res = await asyncio.wait_for(client._request("GET", f"/accounts/{_acct_id}/orders", use_data_context=False), timeout=10.0)
+            finally:
+                try:
+                    await client.close()
+                except Exception:
+                    pass
+            if not isinstance(_res, dict) or "orders" not in _res:
+                return None
+            _inner = _res.get("orders")
+            if _inner in ("null", None):
+                return []
+            if not isinstance(_inner, dict) or "order" not in _inner:
+                return None
+            _ol = _inner["order"] if isinstance(_inner["order"], list) else [_inner["order"]]
+            _close_side = "sell" if str(position_side or "").upper() == "LONG" else "buy_to_cover"
+            _sym = str(symbol or "").upper()
+            return [o for o in _ol if isinstance(o, dict) and str(o.get("symbol", "")).upper() == _sym and str(o.get("side", "")).lower() == _close_side and _odg.tradier_protective_stop(o.get("type"), o.get("side")) and str(o.get("status", "")).lower() in ("open", "pending", "partially_filled")]
+        except Exception as _e:
+            logger.warning(f"[FIXED_STOP_BROKER_LIST_TR] {account_key}:{symbol}: order listing failed ({_e}) — unverified")
+            return None
+
+    async def _fixed_stop_clear_for_exit(self, account_key, symbol, position_side, reason=""):
+        """2026-10-13 GUARANTEED STOP exit handoff: cancel this position's resting backstop(s) right before an exit order (a sell /
+        buy_to_cover stop reserves the shares the exit needs). Waits up to ~3s for the broker to stop listing them. The registry
+        entry is dropped so ensure_fixed_stop_backstop_tradier re-places a stop sized to whatever remains on the next cycle.
+        Never raises; never blocks the exit."""
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return "SKIPPED_PYTEST"
+        _pk = f"{account_key}:{str(symbol).upper()}_{str(position_side).upper()}"
+        reg = self._fixed_stop_registry_load()
+        ids = []
+        _live = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+        for _o in (_live or []):
+            if str(_o.get("id", "")):
+                ids.append(str(_o.get("id")))
+        _have = reg.get(_pk) if isinstance(reg.get(_pk), dict) else None
+        if _have and str(_have.get("orderId", "")) and str(_have.get("orderId")) not in ids and _live is None:
+            ids.append(str(_have.get("orderId")))
+        try:
+            _hm = getattr(self, "_fx_stop_handoff_ts", None)
+            if not isinstance(_hm, dict):
+                _hm = self._fx_stop_handoff_ts = {}
+            _hm[_pk] = time.time()
+        except Exception:
+            pass
+        if not ids:
+            return "NO_STOP"
+        for _oid in ids:
+            await self._fixed_stop_order_action_tradier(position_key=_pk, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=_oid)
+        for _i in range(6):
+            _left = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+            if _left is not None and not any(str(o.get("id")) in ids for o in _left):
+                break
+            await asyncio.sleep(0.5)
+        reg.pop(_pk, None)
+        try:
+            _vm = getattr(self, "_fx_stop_verify_ts", None)
+            if isinstance(_vm, dict):
+                _vm.pop(_pk, None)
+        except Exception:
+            pass
+        self._fixed_stop_registry_save()
+        logger.critical(f"🛡️ [FIXED_STOP_EXIT_HANDOFF_TR] {_pk}: backstop(s) {ids} cancelled for exit ({str(reason)[:60]}) — ensure re-places if shares remain")
+        return "HANDED_OFF"
+
     async def ensure_fixed_stop_backstop_tradier(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price):
-        """Self-healing reconcile: exactly one live Tradier stop backstop per open position. Never raises."""
+        """Self-healing reconcile: exactly one live Tradier stop backstop per open position, sized to the position. Never raises.
+        2026-10-13 GUARANTEED STOP (USER): a broker stop exists as soon as a stock position opens, so the broker exits even when every
+        system is down. A stop is only ever cancelled when the BROKER confirms flat (a stale local snapshot never removes protection);
+        a recorded order id is re-verified at the broker every TRADIER_FIXED_STOP_VERIFY_TTL_SEC; a stop already resting at the broker
+        is adopted (never duplicated); a quantity change (augment/reduce) re-places the stop; a missing frozen level falls back to the
+        entry-price level of the shared core."""
         try:
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 return "SKIPPED_STOP_PYTEST"
@@ -43555,23 +43659,23 @@ class TradierTradeManager:
                 _sync_age = time.time() - float(getattr(getattr(self, "position_manager", None), "_last_sync_ok_ts", 0) or 0)
             except Exception:
                 _sync_age = 1e9
-            if _sync_age > 30.0:
+            try:
+                amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+            except Exception:
+                amt = 0.0
+            if _sync_age > 30.0 and amt > 0:
                 _held = await self._broker_holds_position(account_key, symbol, position_side)
                 if _held is False:
                     logger.error(f"[FIXED_STOP_BROKER_FLAT_TR] {position_key}: sync stale {_sync_age:.0f}s, broker confirms FLAT — never placing")
                     return "SKIPPED_STOP_BROKER_FLAT"
                 logger.critical(f"[FIXED_STOP_STALE_SYNC_TR] {position_key}: sync stale {_sync_age:.0f}s, broker verify={'HELD' if _held else 'UNVERIFIED'} — proceeding (position must stay protected)")
             try:
-                amt = abs(float(getattr(position, "positionAmt", 0) or 0))
-            except Exception:
-                amt = 0.0
-            try:
                 _oa = getattr(position, "opened_at", "")
                 _sig = str(_oa) if _oa else f"ep{float(getattr(position, 'entry_price', 0) or 0)}"
             except Exception:
                 _sig = ""
             _side_u = str(position_side or "").upper()
-            _close_side = "sell" if _side_u == "LONG" else "buy_to_cover"
+            _is_long = _side_u == "LONG"
             have = reg.get(position_key) if isinstance(reg.get(position_key), dict) else None
             if have and str(have.get("orderId", "")) in ("", "SUCCESS_STOP_PLACED"):
                 # Legacy fake-success entries (no real exchange order id) are not
@@ -43583,27 +43687,67 @@ class TradierTradeManager:
                     if isinstance(_d, dict):
                         _d.pop(position_key, None)
                 if have and have.get("orderId"):
+                    # GUARANTEED STOP: local flat is a claim — only a BROKER-confirmed flat may remove the backstop.
+                    _held0 = await self._broker_holds_position(account_key, symbol, position_side)
+                    if _held0 is not False:
+                        logger.critical(f"🛡️ [FIXED_STOP_KEPT_TR] {position_key}: local shows flat but broker verify={'HELD' if _held0 else 'UNVERIFIED'} — backstop {have.get('orderId')} KEPT")
+                        return "KEPT_STOP_BROKER_NOT_FLAT"
                     _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
                     if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
                         reg.pop(position_key, None)
                         self._fixed_stop_registry_save()
                     return str(_r)
                 return "NONE_FLAT"
-            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig:
-                return "OK_ALREADY_PLACED"
+            _qty = max(1, int(amt))
+            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig and int(have.get("qty", _qty) or _qty) == _qty:
+                # NEVER-AGAIN (crypto twin): a recorded oid is a claim, not proof — re-verify at the broker on a TTL.
+                _vmap = getattr(self, "_fx_stop_verify_ts", None)
+                if not isinstance(_vmap, dict):
+                    _vmap = self._fx_stop_verify_ts = {}
+                try:
+                    _vttl = float(_cfg_auto("TRADIER_FIXED_STOP_VERIFY_TTL_SEC", 300.0) or 300.0)
+                except Exception:
+                    _vttl = 300.0
+                _vnow = time.time()
+                if _vnow - float(_vmap.get(position_key, 0.0) or 0.0) < _vttl:
+                    return "OK_ALREADY_PLACED"
+                _vmap[position_key] = _vnow
+                _live = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+                if _live is None:
+                    _vmap[position_key] = _vnow - _vttl + 60.0  # listing failed: keep the claim, retry in 60s
+                    return "OK_ALREADY_PLACED"
+                if any(str(o.get("id")) == str(have.get("orderId")) for o in _live):
+                    return "OK_ALREADY_PLACED"
+                logger.critical(f"🛡️ [FIXED_STOP_GONE_TR] {position_key}: recorded backstop {have.get('orderId')} absent at broker — re-placing")
+                reg.pop(position_key, None)
+                have = None
             if have and have.get("orderId"):
+                # entry signature or quantity changed (re-open / augment / reduce): the old stop no longer matches the position
                 try:
                     await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
                 except Exception:
                     pass
                 reg.pop(position_key, None)
+                have = None
             _soft = float(soft_level or 0.0)
             if _soft <= 0:
+                try:
+                    _lvm = getattr(self, "_fixed_stop_levels", None) or {}
+                    _lve = _lvm.get(position_key) if isinstance(_lvm.get(position_key), dict) else None
+                    if _lve and str(_lve.get("sig", "")) == _sig:
+                        _soft = float(_lve.get("level", 0) or 0)
+                except Exception:
+                    _soft = 0.0
+            if _soft <= 0:
+                _soft = _fixed_stop_core.freeze_software_level(_is_long, 0.0, 0.0, float(getattr(position, "entry_price", 0) or 0))
+                if _soft > 0:
+                    logger.critical(f"🛡️ [FIXED_STOP_LEVEL_FALLBACK_TR] {position_key}: no frozen channel level — entry-based level {_soft:.4f}")
+            if _soft <= 0:
+                logger.critical(f"⛔ [FIXED_STOP_NO_LEVEL_TR] {position_key}: no frozen level and no entry price — position UNPROTECTED at broker")
                 return "SKIPPED_STOP_NO_LEVEL"
-            _lvl = _fixed_stop_core.round_to_tick(_side_u == "LONG", _fixed_stop_core.exchange_level(_side_u == "LONG", _soft), 0.01)
+            _lvl = _fixed_stop_core.round_to_tick(_is_long, _fixed_stop_core.exchange_level(_is_long, _soft), 0.01)
             if _lvl <= 0:
                 return "SKIPPED_STOP_NO_LEVEL"
-            _qty = max(1, int(amt))
             # NEVER-KILL RETRY (USER 2026-10-13): sync above proved this position is
             # broker-confirmed NOW, so a failed/unexecuted placement is RE-PLACED
             # relentlessly (paced 5s, counted to 500+, never dropped) until it lands
@@ -43617,11 +43761,36 @@ class TradierTradeManager:
                 _att = self._fx_stop_attempts = {}
             if time.time() - float(_rts.get(position_key, 0) or 0) < 5.0:
                 return "SKIPPED_STOP_BACKOFF"
+            try:
+                _hm2 = getattr(self, "_fx_stop_handoff_ts", None) or {}
+                if time.time() - float(_hm2.get(position_key, 0) or 0) < float(_cfg_auto("TRADIER_FIXED_STOP_EXIT_HANDOFF_HOLD_SEC", 30.0) or 30.0):
+                    return "SKIPPED_STOP_EXIT_HANDOFF"  # an exit is in flight on this position; re-place after it (next cycle)
+            except Exception:
+                pass
+            # ADOPT before placing: a stop already resting at the broker for this exact position (restart / peer) is reused, never duplicated.
+            _live0 = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+            for _o in (_live0 or []):
+                try:
+                    _oq = int(float(_o.get("quantity", 0) or 0))
+                except Exception:
+                    _oq = 0
+                if _oq == _qty and not have:
+                    _oid0 = str(_o.get("id", "") or "")
+                    if _oid0:
+                        have = {"orderId": _oid0, "stopPrice": float(_o.get("stop_price", 0) or 0), "entry_sig": _sig, "symbol": symbol, "side": position_side, "qty": _qty}
+                        reg[position_key] = have
+                        self._fixed_stop_registry_save()
+                        logger.critical(f"🛡️ [FIXED_STOP_ADOPTED_TR] {position_key}: adopted broker backstop {_oid0} stop={have['stopPrice']} qty={_qty}")
+                        continue
+                # any other resting closing-side stop on this position is stale (wrong qty / duplicate): cancel it
+                await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(_o.get("id", "")))
+            if have:
+                return "OK_ADOPTED_STOP"
             _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", stop_price=_lvl, quantity=_qty, current_price=float(current_price or 0.0))
             _rs = str(_r)
             if _rs.startswith("SUCCESS_STOP_PLACED"):
                 _oid = _rs.replace("SUCCESS_STOP_PLACED_", "")
-                reg[position_key] = {"orderId": _oid, "stopPrice": _lvl, "entry_sig": _sig, "symbol": symbol, "side": position_side}
+                reg[position_key] = {"orderId": _oid, "stopPrice": _lvl, "entry_sig": _sig, "symbol": symbol, "side": position_side, "qty": _qty}
                 self._fixed_stop_registry_save()
                 _rts.pop(position_key, None)
                 _att.pop(position_key, None)
@@ -43652,7 +43821,14 @@ class TradierTradeManager:
                 if not oid:
                     return "SKIPPED_STOP_CANCEL_NO_ID"
                 try:
-                    await client.cancel_order(account_key, oid)
+                    with _odg.execute_now_context("tradier", position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", reason="FIXED_STOP_BACKSTOP_CANCEL"):
+                        _cr = await client.cancel_order(account_key, oid)
+                    _cerr = (_cr or {}).get("errors") if isinstance(_cr, dict) else None
+                    if _cerr:
+                        if "not found" in str(_cerr).lower() or "unknown" in str(_cerr).lower() or "already" in str(_cerr).lower():
+                            return f"SUCCESS_STOP_ALREADY_GONE_{oid}"
+                        logger.error(f"[FIXED_STOP_CANCEL_TR] {position_key}: cancel {oid} rejected: {str(_cerr)[:200]}")
+                        return f"FAILED_STOP_CANCEL_{oid}"
                     logger.critical(f"🛡️ [FIXED_STOP_CANCEL_TR] {position_key}: exchange backstop {oid} cancelled")
                     return f"SUCCESS_STOP_CANCELLED_{oid}"
                 except Exception as _e:
@@ -43660,6 +43836,11 @@ class TradierTradeManager:
                         return f"SUCCESS_STOP_ALREADY_GONE_{oid}"
                     logger.error(f"[FIXED_STOP_CANCEL_TR] {position_key}: cancel {oid} failed: {_e}")
                     return f"FAILED_STOP_CANCEL_{oid}"
+                finally:
+                    try:
+                        await client.close()
+                    except Exception:
+                        pass
             lvl = float(stop_price or 0.0)
             cur = float(current_price or 0.0)
             is_long = str(position_side or "").upper() == "LONG"
@@ -43669,10 +43850,18 @@ class TradierTradeManager:
                 logger.critical(f"⛔ [FIXED_STOP_REFUSE_TR] {position_key}: backstop {lvl:.2f} wrong side of {cur:.2f} — refusing (would trigger instantly)")
                 return "REFUSED_STOP_WRONG_SIDE"
             try:
-                _resp = await client.place_order(account_key, symbol, ("sell" if is_long else "buy_to_cover"), max(1, int(quantity or 0)), order_type="stop", stop=lvl, duration="gtc")
+                # 2026-10-13 GUARANTEED STOP: the backstop is an execute_now-sanctioned order (wire guard WIRE_REQUIRE_EXECUTE_NOW_ALL
+                # refused it as NOT_VIA_EXECUTE_NOW, so no stock position ever had a broker stop). Token scoped to this symbol only.
+                with _odg.execute_now_context("tradier", position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", reason="FIXED_STOP_BACKSTOP_PLACE"):
+                    _resp = await client.place_order(account_key, symbol, ("sell" if is_long else "buy_to_cover"), max(1, int(quantity or 0)), order_type="stop", stop=lvl, duration="gtc")
             except Exception as _e:
                 logger.error(f"[FIXED_STOP_PLACE_TR] {position_key}: place failed lvl={lvl}: {_e}")
                 return "FAILED_STOP_PLACE"
+            finally:
+                try:
+                    await client.close()
+                except Exception:
+                    pass
             _oid = ""
             try:
                 _o = (_resp or {}).get("order", {}) if isinstance(_resp, dict) else {}
@@ -43724,6 +43913,13 @@ class TradierTradeManager:
                     _pside = str(_ent.get("side") or "LONG")
                     if not _sym:
                         reg.pop(_pk, None)
+                        continue
+                    # 2026-10-13 GUARANTEED STOP: a local flat/missing row is a claim — the backstop is removed ONLY when the
+                    # BROKER confirms flat. HELD or UNVERIFIED keeps it (the stale-snapshot class that stranded crypto exits).
+                    _held_sw = await self._broker_holds_position(account_key, _sym, _pside)
+                    if _held_sw is not False:
+                        logger.critical(f"🛡️ [FIXED_STOP_KEPT_TR] {_pk}: sweep sees local flat but broker verify={'HELD' if _held_sw else 'UNVERIFIED'} — backstop {_ent.get('orderId')} KEPT")
+                        out.append(f"{_pk}=KEPT_BROKER_NOT_FLAT")
                         continue
                     try:
                         _r = await self._fixed_stop_order_action_tradier(position_key=_pk, account_key=account_key, symbol=_sym, position_side=_pside, action="CANCEL_STOP", stop_order_id=str(_ent.get("orderId")))
@@ -44037,6 +44233,12 @@ class TradierTradeManager:
                 tradier_side = "buy" if position_side == "LONG" else "sell_short"
             elif action in _EXIT_ACTIONS:
                 tradier_side = "sell" if position_side == "LONG" else "buy_to_cover"
+                # 2026-10-13 GUARANTEED STOP exit handoff: the resting backstop reserves the shares this exit sells — hand it off
+                # (cancel, broker-confirmed) before the exit; ensure re-places a correctly sized stop next cycle if shares remain.
+                try:
+                    await self._fixed_stop_clear_for_exit(account_key, symbol, position_side, reason)
+                except Exception as _fxh_e:
+                    logger.warning(f"[FIXED_STOP_EXIT_HANDOFF_TR] {account_key}:{symbol}_{position_side}: handoff err {_fxh_e}")
             else:
                 logger.critical(
                     f"[UNMAPPED_ACTION_BLOCK] {account_key}:{symbol}_{position_side}: action='{action}' not entry or exit — BLOCKING order"

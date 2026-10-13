@@ -31,9 +31,12 @@ def test_add_makes_due_immediately_no_bar_clock():
     assert vx.exit_owed_due(PK, 682.7) is True
 
 
-def test_flat_observation_clears():
+def test_local_flat_does_not_clear():
+    """2026-10-13 NEAR ang: a stale local 0 must never erase the obligation — only a broker-verified flat (exit_owed_drop) may."""
     vx.exit_owed_add(PK, "CLOSE X")
     assert vx.exit_owed_due(PK, 0.0) is False
+    assert vx.exit_owed_has(PK) is True
+    vx.exit_owed_drop(PK)
     assert vx.exit_owed_has(PK) is False
 
 

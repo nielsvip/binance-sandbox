@@ -246,8 +246,20 @@ if [ "$DRYRUN" != 1 ] && grep -q "PERF_TIER_SIZING" ez_manage.py && grep -q "PER
 else
   log "step5b go-live stays DRY-RUN (DRYRUN=$DRYRUN or PERF_TIER_SIZING not live in ez_manage/tradier_manage/config)"
 fi
-log "step5b per-sym go-live --all-finished ${GAPPLY:-DRY-RUN} (selection $SEL -> $GOUT)"
-timeout 2400 "$PY" -u tools/v15_persym_golive.py --all-finished $GAPPLY --selection "$SEL" --out "$GOUT" --date "$DATE" 2>&1 | grep -v "Warning\|Loaded 1 symbols\|  PASS" || log "step5b per-sym go-live rc=$? (non-fatal)"
+# USER 2026-10-13: live trades EXACTLY the latest published board per sym_side -> source = S1 per_sym_history publish rows
+# (md5-verified vs the sheet manifest, board evidence, no re-eval), every board key pinned per-sym (--pin-all).
+# Fallback (S1 build/pull failed): the legacy avg_delta selection, logged.
+PSEL=$DEST/data/published_selection.json
+mkdir -p "$(dirname "$PSEL")"
+if rsync -az -e "$SSH" tools/v15_published_selection.py "$S1:binance-sandbox/tools/v15_published_selection.py" 2>/dev/null \
+  && $SSH "$S1" "cd ~/binance-sandbox && rm -f data/published_selection.json && .venv/bin/python -u tools/v15_published_selection.py --out data/published_selection.json" 2>&1 | tail -1 | sed 's/^/[mac-apply] step5b /' \
+  && rsync -az -e "$SSH" "$S1:binance-sandbox/data/published_selection.json" "$PSEL" 2>/dev/null && [ -s "$PSEL" ]; then
+  log "step5b per-sym go-live PUBLISHED --pin-all ${GAPPLY:-DRY-RUN} (source $PSEL -> $GOUT)"
+  timeout 2400 "$PY" -u tools/v15_persym_golive.py --published "$PSEL" --pin-all $GAPPLY --out "$GOUT" --date "$DATE" 2>&1 | grep -v "Warning\|Loaded 1 symbols\|  PASS" || log "step5b per-sym go-live rc=$? (non-fatal)"
+else
+  log "step5b WARN: published selection build/pull FAILED -> legacy per-sym go-live --all-finished ${GAPPLY:-DRY-RUN} (selection $SEL -> $GOUT)"
+  timeout 2400 "$PY" -u tools/v15_persym_golive.py --all-finished $GAPPLY --selection "$SEL" --out "$GOUT" --date "$DATE" 2>&1 | grep -v "Warning\|Loaded 1 symbols\|  PASS" || log "step5b per-sym go-live rc=$? (non-fatal)"
+fi
 TOUT=$ROOT/data/persym_size_tiers.json
 [ "$DRYRUN" = 1 ] && TOUT=$DEST/persym_size_tiers.json
 if [ -s "$GOUT" ]; then

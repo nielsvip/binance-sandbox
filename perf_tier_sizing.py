@@ -5,7 +5,7 @@ SYM_SIDE -> {"mult": m, ...}. Negative on 30D and 365D -> minimal multiplier; ra
 Live callers (behind config PERF_TIER_SIZING_ENABLED):
   * ez_manage._psym_sps (crypto START_POSITION_SIZE): apply_usd(base_usd, ...) — floor = exchange minimum, cap = MAX_ORDER_VALUE
   * tradier_manage queue sizing (stocks quantity): apply_qty(qty, ...) — round DOWN, 0 = skip below one share; MAX_ORDER_VALUE cap stays downstream
-  * negbook_blocks(entry, tier_sizing_on): with tier sizing ON only an explicit _NEG_BLOCK tag blocks; acc_gain_pct <= 0 -> minimal size
+  * negbook_blocks(entry, tier_sizing_on): with tier sizing ON nothing blocks (no _NEG_BLOCK, USER 2026-10-13); acc_gain_pct <= 0 -> minimal size
 Missing/unreadable file or sym_side -> multiplier 1.0 (fail-open = unchanged sizing).
 """
 import json
@@ -75,11 +75,10 @@ def apply_qty(qty: float, symbol: str, side: str) -> float:
 
 
 def negbook_blocks(entry: dict, tier_sizing_on: bool) -> bool:
-    """True = refuse trading. Tier sizing ON: only an explicit _NEG_BLOCK tag; OFF: legacy (acc_gain_pct <= 0 or _NEG_BLOCK)."""
+    """True = refuse trading. Tier sizing ON: never (risk carried by size; USER 2026-10-13 "NEG_BLOCK does NOT exist" — the tag
+    blocks nothing). OFF: legacy acc_gain_pct <= 0 kill switch."""
     if not isinstance(entry, dict):
         return False
-    if "_NEG_BLOCK" in str(entry.get("winning_tag", "")):
-        return True
     if tier_sizing_on:
         return False
     g = entry.get("acc_gain_pct")

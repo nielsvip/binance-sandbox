@@ -21417,6 +21417,13 @@ class MultiAccountTradeManager:
             have = reg.get(position_key) if isinstance(reg.get(position_key), dict) else None
             if amt <= 0:
                 if have and have.get("orderId"):
+                    try:  # 2026-10-13 GUARANTEED STOP: local flat never cancels — forced broker read must confirm flat
+                        _fx_bs = await _ptruth.ez_broker(self, account_key, config, logger).snapshot(force=True, reason=f"fixed_stop_flat {position_key}")
+                    except Exception:
+                        _fx_bs = None
+                    if _fx_bs is None or abs(float(_fx_bs.amount(symbol, _side_u))) > 0:
+                        logger.critical(f"🛡️ [FIXED_STOP_KEPT] {position_key}: local flat, broker {'UNKNOWN' if _fx_bs is None else 'HOLDS ' + str(_fx_bs.amount(symbol, _side_u))} — stop kept")
+                        return "KEPT_STOP_BROKER_NOT_FLAT"
                     _r = await self.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0.0, side=_close_side, position_side=position_side, quantity=0.0, old_price=float(current_price or 0.0), unique_id=f"FXX_{int(time.time())}", reason="FIXED_STOP_FLAT_CANCEL", is_full_close=False, action="CANCEL_STOP", stop_order_id=str(have.get("orderId")))
                     if "SUCCESS" in str(_r) or "SKIPPED" in str(_r):
                         reg.pop(position_key, None)
@@ -21648,6 +21655,7 @@ class MultiAccountTradeManager:
                 except Exception:
                     pass
             out = []
+            _sw_snap = False  # 2026-10-13 GUARANTEED STOP: a local flat never cancels a stop — one forced broker read per sweep decides (None = unknown -> keep)
             for _pk, _ent in list(reg.items()):
                 if not isinstance(_ent, dict) or not _ent.get("orderId"):
                     continue
@@ -21662,6 +21670,18 @@ class MultiAccountTradeManager:
                     _sym = str(_ent.get("symbol") or "")
                     _pside = str(_ent.get("side") or "LONG")
                     if not _sym:
+                        continue
+                    if _sw_snap is False:
+                        try:
+                            _sw_snap = await _ptruth.ez_broker(self, account_key, config, logger).snapshot(force=True, reason="fixed_stop_sweep")
+                        except Exception:
+                            _sw_snap = None
+                    if _sw_snap is None:
+                        out.append(f"{_pk}=KEPT_BROKER_UNKNOWN")
+                        continue
+                    if abs(float(_sw_snap.amount(_sym, _pside))) > 0:
+                        logger.critical(f"🛡️ [FIXED_STOP_KEPT] {_pk}: local flat but broker HOLDS {_sw_snap.amount(_sym, _pside)} — stop kept")
+                        out.append(f"{_pk}=KEPT_BROKER_HOLDS")
                         continue
                     try:
                         _r = await self.execute_now(position_key=_pk, account_key=account_key, symbol=_sym, original_positionAmt=0.0, side=("SELL" if _pside.upper() == "LONG" else "BUY"), position_side=_pside, quantity=0.0, old_price=0.0, unique_id=f"FXSW_{int(now)}", reason="FIXED_STOP_SWEEP_CANCEL", is_full_close=False, action="CANCEL_STOP", stop_order_id=str(_ent.get("orderId")))
@@ -21695,6 +21715,12 @@ class MultiAccountTradeManager:
                 _open = (_ol.get("orders") or []) if isinstance(_ol, dict) else (_ol or [])
             except Exception as _e:
                 return f"SKIPPED_LIST_{_e}"
+            try:  # 2026-10-13 GUARANTEED STOP: orphan = broker flat (forced read), never local flat; unknown -> cancel nothing
+                _rc_snap = await _ptruth.ez_broker(self, account_key, config, logger).snapshot(force=True, reason="fixed_stop_reconcile")
+            except Exception:
+                _rc_snap = None
+            if _rc_snap is None:
+                return "SKIPPED_BROKER_UNKNOWN"
             for _o in _open:
                 try:
                     if not isinstance(_o, dict):
@@ -21706,12 +21732,10 @@ class MultiAccountTradeManager:
                     _sym = str(_o.get("symbol", ""))
                     _pside = str(_o.get("positionSide", "")).upper()
                     _pk = f"{account_key}:{_sym}_{_pside}" if _pside in ("LONG", "SHORT") else ""
-                    _pos = positions_by_key.get(_pk) if _pk else None
-                    try:
-                        _amt = abs(float(getattr(_pos, "positionAmt", 0) or 0)) if _pos is not None else 0.0
-                    except Exception:
-                        _amt = 0.0
-                    if _pos is None or _amt <= 0:
+                    if not _pk:
+                        continue
+                    _amt = abs(float(_rc_snap.amount(_sym, _pside)))
+                    if _amt <= 0:
                         _aoid = str(_o.get("algoId", "") or _o.get("orderId", "") or "")
                         if not _aoid or not _sym:
                             continue
@@ -26133,7 +26157,9 @@ class MultiAccountTradeManager:
                     > 0.0001
                 ]
             )
-            if active_count >= 18:
+            if active_count >= 18 and not bool(getattr(config, "SUBSTITUTION_CLOSE_ENABLED", False)):
+                logger.info(f"[SUBSTITUTION_OFF] {account_key} has {active_count} positions — SUBSTITUTION_CLOSE_ENABLED=False (no vec twin), nothing closed for {position_key}")
+            elif active_count >= 18:
                 logger.warning(
                     f"🎰 [MARGIN_MANAGEMENT] {account_key} has {active_count} positions. Substitution Logic Triggered."
                 )
@@ -33997,6 +34023,9 @@ class MultiAccountTradeManager:
                 self.positions, get_indicators_fn=_cb_get_ind
             )
             for _exit_pk, _exit_diag in exits:
+                if not bool(getattr(config, "CB_HTF_EXHAUST_EXIT_ENABLED", False)):
+                    logger.info(f"[CIRCUIT_BREAKER_EXIT_OFF] {_exit_pk}: {_exit_diag} — CB_HTF_EXHAUST_EXIT_ENABLED=False (no vec twin), not closed")
+                    continue
                 logger.critical(
                     f"[CIRCUIT_BREAKER_EXIT] {_exit_pk}: {_exit_diag} → queuing CLOSE"
                 )
@@ -36680,6 +36709,9 @@ class MultiAccountTradeManager:
     async def _emergency_margin_cleanup(self, account_key: str, triggering_key: str):
         """When -2019 (insufficient margin) hits, close the SMALLEST WINNER to free margin.
         NEVER close a loser. Then retry the hedge. Also signal other accounts via request file."""
+        if not bool(getattr(config, "MARGIN_FREE_CLOSE_ENABLED", False)):
+            logger.warning(f"[MARGIN_FREE_OFF] {triggering_key}: -2019 on {account_key} — MARGIN_FREE_CLOSE_ENABLED=False (no vec twin), no position closed, no cross-account request")
+            return
         try:
             _parts = triggering_key.split(":")
             _sym = (
@@ -49759,6 +49791,33 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             return False
         _pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
         _amt = abs(safe_fetch_float(getattr(_pos, "positionAmt", 0), 0)) if _pos is not None else 0.0
+        if _amt <= 0 and "EXIT" in fams and bool(getattr(config, "VEC_EXIT_OWED_ENABLED", True)) and _vx.exit_owed_has(position_key):
+            # 2026-10-13 NEAR ang post-mortem: local flat is NOT proof — a stale snapshot said 0 while the broker held 25h after the vec
+            # CLOSE. An owed vec exit is cleared ONLY by a forced broker read showing flat; broker holds -> the close is re-sent now.
+            _ob_snap = await _ptruth.ez_broker(trade_manager, _acct or account_key, config, logger).snapshot(force=True, reason=f"exit_owed {position_key}")
+            if _ob_snap is None:
+                logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: local flat but broker UNREACHABLE — owed exit kept, retry next sweep")
+                return True
+            _ob_amt = abs(float(_ob_snap.amount(_sym, _side)))
+            if _ob_amt <= 0:
+                _vx.exit_owed_drop(position_key)
+                logger.info(f"[VEC_EXACT_EXIT_OWED] {position_key}: broker confirms FLAT — owed exit cleared")
+            else:
+                _ob_px = 0.0
+                try:
+                    _ob_px = float((await asyncio.wait_for(trade_manager.get_current_price(_sym), timeout=10.0))[0] or 0.0)
+                except Exception:
+                    _ob_px = 0.0
+                _ob_oside = "SELL" if _side == "LONG" else "BUY"
+                logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: local flat but BROKER HOLDS {_ob_amt:.6f} — re-sending owed vec CLOSE")
+                try:
+                    _ob_tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
+                except Exception:
+                    _ob_tmo = 600.0
+                from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_b, fire_exit_market as _vx_tmo_mkt_b
+                _res_b = await _vx_dsp_b(position_key, "CLOSE VEC_EXIT_OWED_BROKER", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_ob_amt, current_price=_ob_px, side=_ob_oside, position_side=_side, unique_id=f"VXOWB{int(time.time())}", is_full_close=True, action="CLOSE", reason=_vx.tagged_reason({"reason": "VEC_EXIT_OWED broker-holds-local-flat"}), override_qty=_ob_amt, is_hedge=False), _ob_tmo, on_timeout=lambda: _vx_tmo_mkt_b(trade_manager, position_key, _sym, _ob_oside, _side))
+                logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_EXIT_OWED_BROKER qty={_ob_amt:.6f} -> {str(_res_b)[:120]}")
+                return True
         if _amt <= 0:
             # USER 2026-10-10: 300 tradeable is plenty — flat + non-tradeable keys get ZERO compute
             # (no observe, no twin eval, no dispatch). Live holdings always keep their exits.
@@ -49773,11 +49832,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         if _vx.source() == "live_snapshots":
             _vx.observe(_sym, await ii(trade_manager, _sym), time.time())
         if _amt <= 0:
-            _vx.owned_drop(position_key)
-            try:
-                _vx.exit_owed_drop(position_key)
-            except Exception:
-                pass
+            _vx.owned_drop(position_key)  # exit_owed is cleared ONLY by the broker-verified branch above (2026-10-13), never by local flat
             return "ENTRY" in fams
         if "EXIT" not in fams:
             return False
@@ -49813,6 +49868,11 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         _vx_exit_attempted = False
         for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
+            if _amt <= 0 and (_a.get("type") == "CLOSE" or (_a.get("type") == "REDUCE" and _a.get("to_flat"))):
+                try:  # 2026-10-13: local flat is not proof — owe the full close; the broker-verified branch clears or re-sends it next sweep
+                    _vx.exit_owed_add(position_key, f"{_a.get('type')} {_a['reason'][:60]} (local-flat at hand-out)")
+                except Exception:
+                    pass
             if _amt <= 0:
                 # USER 2026-10-10 PARITY: never silent — vec CLOSE/REDUCE with live flat is a visible
                 # DIVERGENT_FLAT skip (one-shot: acts already consumed, no spam). Nothing to exit.
