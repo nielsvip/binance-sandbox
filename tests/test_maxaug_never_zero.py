@@ -18,10 +18,17 @@ def test_maxaug_is_zero_predicate():
 
 
 def test_writer_refuses_maxaug_zero():
+    import importlib.util
+    # NOTE: never sys.path.insert tools/ — tools/cat_side_defaults.py is a Sep-28 fossil that shadows the real shim and silently breaks the chain.
     import sys
-    sys.path.insert(0, str(ROOT / "tools"))
+    spec = importlib.util.spec_from_file_location("v15_avg_delta_apply", str(ROOT / "tools" / "v15_avg_delta_apply.py"))
+    W = importlib.util.module_from_spec(spec)
+    _sp = list(sys.path)
+    try:
+        spec.loader.exec_module(W)  # writer inserts tools/ into sys.path at import; restored below
+    finally:
+        sys.path[:] = _sp
     import openpyxl
-    import v15_avg_delta_apply as W
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "AUGMENT_RISK_SIZING"
