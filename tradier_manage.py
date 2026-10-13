@@ -228,6 +228,32 @@ _OB_GAP_FIRED: Dict[str, str] = {}  # key = position_key, val = YYYY-MM-DD
 # Broker-verify throttle (USER 2026-10-13: stop bombarding Tradier — the fleet
 # throttled itself, then exits failed). HELD=True cached per TTL only.
 _BROKER_HOLDS_CACHE: Dict[tuple, tuple] = {}  # key = (acct, sym, side), val = (ts, True)
+# Broker-distress ring (USER 2026-10-13: vitals first — while the broker is
+# unreachable, new OPENs must fail fast instead of burning 120s queue slots
+# that CLOSEs need. Exits never read this ring.)
+_BROKER_DISTRESS_TS: list = []  # wall-clock timestamps of unreachable verdicts
+
+
+def _note_broker_distress() -> None:
+    try:
+        _BROKER_DISTRESS_TS.append(time.time())
+        _cut = time.time() - 3600.0
+        while _BROKER_DISTRESS_TS and _BROKER_DISTRESS_TS[0] < _cut:
+            _BROKER_DISTRESS_TS.pop(0)
+    except Exception:
+        pass
+
+
+def _broker_in_distress(max_events: int, window_sec: float) -> bool:
+    try:
+        _n = int(max_events or 0)
+        _w = float(window_sec or 0.0)
+        if _n <= 0 or _w <= 0:
+            return False
+        _cut = time.time() - _w
+        return sum(1 for _t in _BROKER_DISTRESS_TS if _t >= _cut) >= _n
+    except Exception:
+        return False
 
 
 def _ob_gap_should_close(is_long: bool, open_px: float, prev_px: float, min_adverse_pct: float) -> tuple:
@@ -21814,7 +21840,7 @@ async def process_position(
                                     _ftf_ps("BREAKOUT_RETEST_ARMED_ENABLED", False),
                                 )
                             # BB_BOUNCE_ENTRY_TF: vec generic_filter_tf FILTER_TF_MAP ('entry','bb_bounce') AND-mask on every entry.
-                            if _veto is None:
+                            if _veto is None and bool(_ftf_ps("BB_BOUNCE_ENTRY_FILTER_ENABLED", True)):  # 2026-10-13 WO-V17TF-002: False = trigger-only (same switch as vec generic_filter_tf)
                                 _veto = _ftf_twins.bb_bounce_filter_block(
                                     _ftf_get,
                                     _px_ftf,
@@ -31163,6 +31189,17 @@ class StockStrategy:
                 _bb_breakout = (_bb_pct > 0.95) and (g(f"bb_upper_{_bb_tf}", 0.0) > 0)
             else:
                 _bb_breakout = (_bb_pct < 0.05) and (g(f"bb_lower_{_bb_tf}", 0.0) > 0)
+        if _bb_breakout and _bb_tf in ("1h", "4h", "D") and not ((stoch_long or kzone_long or rsi_long) if is_long else (stoch_short or kzone_short or rsi_short)):
+            # 2026-10-13 V17 TF law native mirror (vec_decisions/htf_signal_consume; vec engine + tradier_vec_exact are the authority):
+            # an HTF-only setup needs a fresh LTF confirmation (scoring path: attempt-1 requirement, no attempt book — see HTF_CONSUME_CHANGES.md).
+            try:
+                import vec_decisions.htf_signal_consume as _hsc_t
+                _hsc_keys = {k: getattr(self.config, k, None) for k in ("HTF_SIGNAL_CONSUME_ENABLED", "HTF_SIGNAL_MAX_ATTEMPTS", "HTF_SIGNAL_VALID_BARS_D", "HTF_SIGNAL_VALID_BARS_4H", "HTF_SIGNAL_VALID_BARS_1H", "HTF_RETRY_LTF_WINDOW_BARS", "HTF_RETRY_TIGHTEN_WINDOW", "HTF_RETRY_TIGHTEN_CONFIRMS", "HTF_RETRY_TIGHTEN_SIZE")}
+                _hsc_ok, _ = _hsc_t.live_gate(lambda k, d: _hsc_keys.get(k) if _hsc_keys.get(k) is not None else d, f"{account_key}:{symbol}:{_side}:score", f"BB_BREAKOUT_ENTRY_{_bb_tf}", _bb_tf, i or {}, is_long, time.time(), "tradier")
+                if not _hsc_ok:
+                    _bb_breakout = False
+            except Exception:
+                pass
         if is_long:
             good_entry = stoch_long or kzone_long or rsi_long or _bb_breakout
         else:
@@ -46108,6 +46145,18 @@ class TradierTradeManager:
         # Never call this for REDUCE/CLOSE/HEDGE_CLOSE — exits must remain unobstructed.
         if not bool(_cfg_auto("DISASTER_GUARD_ENABLED", True)):
             return (False, "")
+        # ═══ 2026-10-13 VITALS-FIRST (USER: exits must never starve behind
+        # doomed OPENs) — while the broker is unreachable, new entries fail
+        # fast here (no 120s queue burn) so CLOSE/REDUCE keep the bandwidth.
+        # Exits never call this guard — entry-only by contract. ═══
+        if bool(_cfg_auto("BROKER_DISTRESS_ENTRY_BLOCK_ENABLED", True)):
+            _db_n = int(_cfg_auto("BROKER_DISTRESS_MAX_UNREACHABLE", 3) or 3)
+            _db_w = float(_cfg_auto("BROKER_DISTRESS_WINDOW_SEC", 300.0) or 300.0)
+            if _broker_in_distress(_db_n, _db_w):
+                logger.critical(
+                    f"🛑 [DG_BROKER_DISTRESS_BLOCK] {position_key}: {_db_n}+ unreachable verdicts in {_db_w:.0f}s — REFUSING OPEN (broker distress; exits unaffected). reason={reason}"
+                )
+                return (True, "DG_BROKER_DISTRESS_BLOCK")
         # ═══ 2026-05-17 PATCH A — PENNY STOCK LONG BLOCK (DEFAULT OFF behind PENNY_STOCK_LONG_BLOCK_ENABLED) ═══
         # Live 30d evidence: LEXX LONG lost -8.33% (trc:404) and -5.65% (trb:425) on a $0.60 stock.
         # Both were RATIO_BOOST_L(R=0.00) LONG entries on sub-$1 names. SHORTs unaffected (they
@@ -48694,6 +48743,13 @@ class TradierTradeManager:
             if not _odg_dec.allowed:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
+                # 2026-10-13 vitals-first: unreachable verdicts feed the
+                # distress ring that blocks new OPENs (exits never gated).
+                try:
+                    if "UNREACHABLE" in str(_odg_dec.code or "") or "TIMEOUT" in str(_odg_dec.code or ""):
+                        _note_broker_distress()
+                except Exception:
+                    pass
                 return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"
             result = await self.place_order(
                 symbol,

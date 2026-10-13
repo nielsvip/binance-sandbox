@@ -2540,3 +2540,16 @@ skipped AT ALL for ANY REASON."
 vec-decided OPEN/AUGMENT outside the 10 `_vec_exact_reason_ok` exemptions (e.g. HARD_SIZE_GATE); live sizing multipliers
 (BREAKOUT_SIZE_LADDER ×3, LS_REBALANCE) still apply per §68.3a; partial vec REDUCEs skipped while in flight are not owed;
 `data/per_trade_returns` ledger must be rebuilt from Binance fills; Mac v12_quick_engine mirror fields not yet pushed to S1.
+- **TIM publish law (USER ABSOLUTE):** the best-seen publish floor records every engine-valid set above the trade floor (no TIM
+  veto); the publish gate takes a higher best-seen set even when it is outside [20,80] (`progress["tim_out_of_band"]` + value);
+  a TIM-only miss at the DONE-stage 30D gate no longer runs the compliance repair / REDO (`[TIM-OUT-OF-BAND]`,
+  `V15_TIM_PUBLISH_LAW=0` restores). TIM still guards promotions during the fill. Test `test_higher_out_of_band_set_publishes_flagged`.
+- **Combo engine wired (v10, bb3eb5d1):** `_v17_combo_step` = first pinpoint step of iteration 1 with a fixed share
+  (`V15_V17_COMBO_SHARE` 0.35 of the pinpoint budget): `tools/v17_combo_engine.search(... windows=(30,365), prepared_365,
+  recent_prepared=7D)` through `_V17PilotEval` (30D evals on the pilot's pre-forked pool, 7D/365D/ledger evals in the main
+  process — no second fork pool); its joint set + singles are adopted greedily with the pilot's gates and ANTICIPATE; the
+  engine records every evaluation in `data/v17_combo_library.sqlite` itself (`record=True`). Fail-open (absent module / error
+  = skipped, `[V17-WARN]`). Recent slice = 7 days (the engine slicer honours 1/7/30/365 only).
+- **A/B #3 first pair (legacy-P2 V17, same host, nice 10):** RLCUSDT_LONG old 72.11 published in 20:14 min; V17 main pass ended
+  at 67.15 (16 min elapsed) and the pinpoint round took it to 119.76 (surgeon +31.04 in 109 s, retest +11.31, ablation
+  +1.55, probe +4.77; extended 3x while lifting). Final/365D numbers: `data/reports/v17_ab_*` when the pair completes.

@@ -121,7 +121,7 @@ def test_route_contract_vec_exact_reason():
 def test_tradier_manage_hooks_default_off_and_no_gates():
     """source pins: master default False; exact orders bypass queue/execute_trade_action/execute_now decision gates; NOLOSS exception."""
     import config_tradier
-    assert config_tradier.TradierConfig.PARITY_VEC_EXACT_MODE is False
+    assert config_tradier.TradierConfig.PARITY_VEC_EXACT_MODE is True  # USER 2026-10-13 (A): stocks trade only on vector decisions
     assert config_tradier.TradierConfig.PARITY_VEC_EXACT_SET_DIR == ""
     src = (ROOT / "tradier_manage.py").read_text()
     assert "if bool(_cfg('PARITY_VEC_EXACT_MODE', False, account_key, symbol, position_side)):\n            return await _vec_exact_process(" in src

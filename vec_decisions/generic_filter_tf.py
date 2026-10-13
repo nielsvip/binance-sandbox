@@ -145,6 +145,8 @@ def build_masks(npz, n, is_long, config, close, safe):
         tf = str(getattr(config, name, "OFF") or "OFF").strip()
         if tf.upper() == "OFF":
             continue
+        if name == "BB_BOUNCE_ENTRY_TF" and not bool(getattr(config, "BB_BOUNCE_ENTRY_FILTER_ENABLED", True)):
+            continue  # 2026-10-13 WO-V17TF-002: trigger-only mode (default True = filter role kept)
         m = _cond(kind, npz, n, tf, is_long, close, safe)
         if m is None:
             continue

@@ -1230,9 +1230,12 @@ def _steal_fetch(hosts, thief_host, sym, specs, log):
 
 
 def _spawn_guard(ss, window, body):
-    """USER 2026-10-11 (5x dup stacks + burned attempt caps): every remote launch is guarded by a real pgrep — the old 'pgrep dedups' comments had no implementation. FIX 21:50Z: patterns are ^-ANCHORED to a python argv[0] — the first version matched its own bash -c wrapper (whose cmdline contains the literal pilot invocation) and self-skipped every launch fleet-wide. Skip logs [spawnguard] to the sweep log."""
+    """USER 2026-10-11 (5x dup stacks + burned attempt caps): every remote launch is guarded by a real pgrep — the old 'pgrep dedups' comments had no implementation. FIX 21:50Z: patterns are ^-ANCHORED to a python argv[0] — the first version matched its own bash -c wrapper (whose cmdline contains the literal pilot invocation) and self-skipped every launch fleet-wide. Skip logs [spawnguard] to the sweep log. 2026-10-13 (2x5 live dup stacks, TERM-immune): the pgrep-or-launch was not atomic — two wrappers racing inside the same minute both saw an empty ps and both launched. FIX: serialize guard+launch per side+window under a non-blocking flock; the launcher holds the lock 3s after forking so the child python is visible in ps before the next contender's pgrep runs. Lock contention skips silently (scheduler retries next tick)."""
     pat = {"30D": f"^[^ ]*python[^ ]* -u v15_pilot.py --sym-side {ss}( |$)", "365D": f"^[^ ]*python[^ ]* -u tools/v15_365_cycle.py --sym-side {ss}( |$)", "REPAIR": f"^[^ ]*python[^ ]* -u tools/v15_365_cycle.py --sym-side {ss}( |$)", "GS": f"^[^ ]*python[^ ]* -u tools/v15_graph_search.py --symsides {ss}( |$)"}[window]
-    return f"pgrep -f \"{pat}\" >/dev/null 2>&1 && echo \"[spawnguard] {ss} {window} already running on $(hostname)\" || {{ {body}; }}"
+    inner = f"pgrep -f \"{pat}\" >/dev/null 2>&1 && echo \"[spawnguard] {ss} {window} already running on $(hostname)\" || {{ {body}; sleep 3; }}"
+    # flock(1) ships on the Linux workers (atomic guard+launch); macOS dev/test has no flock -> plain guard there.
+    return (f"if command -v flock >/dev/null 2>&1; then flock -n /tmp/v15_launch_{ss}_{window}.lock bash -c {shlex.quote(inner)} "
+            f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
 
 
 def side_cmd(host, sym, side, window, pdir, attempt, workers):

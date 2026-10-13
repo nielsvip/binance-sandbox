@@ -4270,6 +4270,18 @@ class Config:
         False  # WIRING LANE C M1c: TTM compression exit (squeeze turning ON); OFF = live fallback
     )
     # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss + filter TFs — TESTABLE 15m+ in NPZ ---
+    # 2026-10-13 V17 TF law (USER "b" + correction): HTF signal instance stays valid for its span; HTF-only opens need a FRESH LTF confirmation;
+    # each further attempt on the same instance tightens monotonically (vec_decisions/htf_signal_consume.py, docs/v17_tf_semantics.md).
+    HTF_SIGNAL_CONSUME_ENABLED: bool = True  # master; False = pre-2026-10-13 behaviour (state re-fires every flat bar, HTF events live one bar)
+    HTF_SIGNAL_MAX_ATTEMPTS: int = 12  # max opens per HTF instance per path (each one LTF-confirmed, tighter than the last)
+    HTF_SIGNAL_VALID_BARS_D: int = 96  # validity window in 15m bars (= venue span: crypto 96, stocks RTH 26)
+    HTF_SIGNAL_VALID_BARS_4H: int = 16  # crypto 16, stocks RTH 14 (session-anchored 4h)
+    HTF_SIGNAL_VALID_BARS_1H: int = 4
+    HTF_RETRY_LTF_WINDOW_BARS: int = 4  # attempt-1 freshness window of the LTF confirmation (15m bars)
+    HTF_RETRY_TIGHTEN_WINDOW: float = 0.75  # window multiplier per attempt (4,3,2,1,1.. bars)
+    HTF_RETRY_TIGHTEN_CONFIRMS: float = 0.25  # extra confirmations per attempt (attempts 1-4 need 1 of 15m-WT/1h-WT/15m-stoch, 5-8 need 2, 9-12 need 3)
+    HTF_RETRY_TIGHTEN_SIZE: float = 1.0  # size multiplier per attempt; 1.0 = off (live sizing is live's job, BIBLE 68.3a)
+    BB_BOUNCE_ENTRY_FILTER_ENABLED: bool = True  # True = BB_BOUNCE_ENTRY_TF also ANDs the generic bb_bounce filter into every entry (current, promoted sets use it); False = trigger only
     BB_BOUNCE_ENTRY_TF: str = (
         "OFF"  # ENTRY_REVERSAL_BOUNCE OFF/15m/1h/4h/D — long bounce off bb_lower, short off bb_upper
     )

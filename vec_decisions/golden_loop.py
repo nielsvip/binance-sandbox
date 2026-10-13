@@ -137,6 +137,7 @@ def trigger_masks(arrays: Mapping, ts: np.ndarray, is_long: bool, mode: str, cfg
     out["phase"] = phase
     out["mult"] = mult
     out["breakout_fire"] = fire1
+    out["last_cross_ts"] = last_cross_ts  # 2026-10-13 HTF instance id (vec_decisions/htf_signal_consume): the 1h breakout that armed the window
     return out
 
 
@@ -308,7 +309,7 @@ def golden_entry(arrays: Mapping, ts: np.ndarray, is_long: bool, mode: str, cfg:
     fire = trig["fire"] & cons & (~veto)
     base_usd = float(_cfg(cfg, "GOLDEN_RULE_BASE_USD", 5.0))
     mult = np.where(fire, trig["mult"], 0.0)
-    return {"fire": fire, "phase": np.where(fire, trig["phase"], 0).astype(np.int8), "mult": mult, "target_usd": mult * base_usd, "consensus": cons, "vetoed": veto & trig["fire"]}
+    return {"fire": fire, "phase": np.where(fire, trig["phase"], 0).astype(np.int8), "mult": mult, "target_usd": mult * base_usd, "consensus": cons, "vetoed": veto & trig["fire"], "last_cross_ts": trig.get("last_cross_ts")}
 
 
 def golden_reason(is_long: bool, mult: float) -> str:

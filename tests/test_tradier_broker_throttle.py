@@ -88,3 +88,25 @@ def test_pytest_env_short_circuits(monkeypatch):
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "1")
     m = _mgr()
     assert asyncio.run(m("trb", "AAPL", "LONG")) is None
+
+
+def test_distress_ring_blocks_after_threshold():
+    tm._BROKER_DISTRESS_TS.clear()
+    assert tm._broker_in_distress(3, 300.0) is False
+    tm._note_broker_distress()
+    tm._note_broker_distress()
+    assert tm._broker_in_distress(3, 300.0) is False
+    tm._note_broker_distress()
+    assert tm._broker_in_distress(3, 300.0) is True
+    assert tm._broker_in_distress(3, 0.0) is False
+    assert tm._broker_in_distress(0, 300.0) is False
+    tm._BROKER_DISTRESS_TS.clear()
+    assert tm._broker_in_distress(1, 300.0) is False
+
+
+def test_distress_knobs_present():
+    from config_tradier import TradierConfig
+    cfg = TradierConfig()
+    assert cfg.BROKER_DISTRESS_ENTRY_BLOCK_ENABLED is True
+    assert int(cfg.BROKER_DISTRESS_MAX_UNREACHABLE) == 3
+    assert float(cfg.BROKER_DISTRESS_WINDOW_SEC) == 300.0

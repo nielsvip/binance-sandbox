@@ -50173,6 +50173,22 @@ async def _pp_ang_timing_exits(trade_manager, account_key, position_key) -> bool
         return False
 
 
+def _htf_retry_native_gate(symbol, position_side, position_key, path, tf, ind, now_ts):
+    """2026-10-13 V17 TF law — native live mirror of vec_decisions.htf_signal_consume (the vec engine + live_twins/vec_exact
+    are the authority; this only guards a native HTF producer that still acts). An HTF-only OPEN needs a fresh LTF
+    confirmation; attempt k on the same HTF candle needs the tightened window/confirmation count. Returns (allowed, diag)."""
+    try:
+        import vec_decisions.htf_signal_consume as _hsc_l
+        _keys = {k: _psym_get(symbol, position_side, k, getattr(config, k, None)) for k in (
+            "HTF_SIGNAL_CONSUME_ENABLED", "HTF_SIGNAL_MAX_ATTEMPTS", "HTF_SIGNAL_VALID_BARS_D", "HTF_SIGNAL_VALID_BARS_4H",
+            "HTF_SIGNAL_VALID_BARS_1H", "HTF_RETRY_LTF_WINDOW_BARS", "HTF_RETRY_TIGHTEN_WINDOW", "HTF_RETRY_TIGHTEN_CONFIRMS",
+            "HTF_RETRY_TIGHTEN_SIZE")}
+        return _hsc_l.live_gate(lambda k, d: _keys.get(k, d) if _keys.get(k) is not None else d, position_key, path, tf, ind or {}, position_side == "LONG", now_ts, "crypto")
+    except Exception as _hsc_e:
+        logger.warning(f"[HTF_RETRY] {position_key} gate err (fail-open): {_hsc_e}")
+        return True, {}
+
+
 @timed_function("process_position")
 async def process_position(
     account_key: Optional[str] = None,
@@ -51073,6 +51089,11 @@ async def process_position(
                         else:
                             _bb_lvl = safe_fetch_float(_pp_shared_ind.get(f"bb_lower_{_bb_tf}", 0), 0.0)
                             _bb_fire = (_bb_pct_f < 0.05) and (_bb_lvl > 0)
+                        if _bb_fire and _bb_tf in ("1h", "4h", "D"):
+                            _bb_hok, _bb_hdiag = _htf_retry_native_gate(symbol, position_side, position_key, f"BB_BREAKOUT_ENTRY_{_bb_tf}", _bb_tf, _pp_shared_ind, time.time())
+                            if not _bb_hok:
+                                logger.info(f"[HTF_RETRY] {position_key}: BB_BREAKOUT_ENTRY_{_bb_tf} held — no fresh LTF confirmation for the attempt {_bb_hdiag.get('paths')}")
+                                _bb_fire = False
                         if _bb_fire:
                             trade_manager._l1_bb_breakout_cd[position_key] = time.time()
                             _bb_reason = f"BB_BREAKOUT_ENTRY_{_bb_tf}_{position_side}_pctB{_bb_pct_f:.3f}_lvl{_bb_lvl:.6f}_px{current_price:.6f}"
@@ -51081,6 +51102,11 @@ async def process_position(
                             trade_manager.processing_keys.discard(position_key)
                             if _bb_res is False or str(_bb_res or "").startswith(("BLOCKED", "SKIPPED")):
                                 return f"{EvalStatus.NO_ACTION}:BB_BREAKOUT_ENTRY_BLOCKED"
+                            try:
+                                import vec_decisions.htf_signal_consume as _hsc_c
+                                _hsc_c.live_commit(position_key, f"BB_BREAKOUT_ENTRY_{_bb_tf}", _bb_tf, time.time(), "crypto")
+                            except Exception:
+                                pass
                             return f"{EvalStatus.ACTION_TAKEN}:BB_BREAKOUT_ENTRY_OPENED"
         except Exception as _bb_e:
             logger.warning(f"[BB_BREAKOUT_ENTRY] {position_key} probe err: {_bb_e}")

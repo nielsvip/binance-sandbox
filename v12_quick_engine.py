@@ -66,6 +66,7 @@ import numpy as np
 # Every switch predicate must live in vec_decisions and be called by v12_quick,
 # not re-implemented inline. This block is verified by tools/hooks/persistent_v12_hooks.py.
 import vec_decisions.breakout_opener
+import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
@@ -5580,6 +5581,8 @@ class QuickConfig:
     def apply_tradier_defaults(self):
         self.MODE = "tradier"
         self.BASE_TF = "5m"
+        self.HTF_SIGNAL_VALID_BARS_D = 26  # 2026-10-13 V17: stocks RTH span (config_tradier)
+        self.HTF_SIGNAL_VALID_BARS_4H = 14  # 2026-10-13 V17: session-anchored 4h (config_tradier)
         self.LIVE_ENTRY_ENGINE_ENABLED = True  # 2026-10-04 parity cut: config_tradier True (crypto live False = raw default)
         self.LIVE_ENTRY_ENGINE_DC_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
         self.LIVE_ENTRY_ENGINE_HTF_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
@@ -10261,6 +10264,18 @@ class QuickConfig:
     REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS: int = 2
     REENTRY_15M_BETTER_PCT: float = 0.002
     # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss per TF ---
+    # 2026-10-13 V17 TF law (USER "b" + correction): HTF signal instance stays valid for its span; HTF-only opens need a FRESH LTF confirmation;
+    # each further attempt on the same instance tightens monotonically (vec_decisions/htf_signal_consume.py, docs/v17_tf_semantics.md).
+    HTF_SIGNAL_CONSUME_ENABLED: bool = True  # master; False = pre-2026-10-13 behaviour (state re-fires every flat bar, HTF events live one bar)
+    HTF_SIGNAL_MAX_ATTEMPTS: int = 12  # max opens per HTF instance per path (each one LTF-confirmed, tighter than the last)
+    HTF_SIGNAL_VALID_BARS_D: int = 96  # validity window in 15m bars (= venue span: crypto 96, stocks RTH 26)
+    HTF_SIGNAL_VALID_BARS_4H: int = 16  # crypto 16, stocks RTH 14 (session-anchored 4h)
+    HTF_SIGNAL_VALID_BARS_1H: int = 4
+    HTF_RETRY_LTF_WINDOW_BARS: int = 4  # attempt-1 freshness window of the LTF confirmation (15m bars)
+    HTF_RETRY_TIGHTEN_WINDOW: float = 0.75  # window multiplier per attempt (4,3,2,1,1.. bars)
+    HTF_RETRY_TIGHTEN_CONFIRMS: float = 0.25  # extra confirmations per attempt (attempts 1-4 need 1 of 15m-WT/1h-WT/15m-stoch, 5-8 need 2, 9-12 need 3)
+    HTF_RETRY_TIGHTEN_SIZE: float = 1.0  # size multiplier per attempt; 1.0 = off (live sizing is live's job, BIBLE 68.3a)
+    BB_BOUNCE_ENTRY_FILTER_ENABLED: bool = True  # True = BB_BOUNCE_ENTRY_TF also ANDs the generic bb_bounce filter into every entry (current, promoted sets use it); False = trigger only
     BB_BOUNCE_ENTRY_TF: str = "OFF"
     BB_BREAKOUT_ENTRY_TF: str = "OFF"
     BB_EXIT_AT_LOSS_TF: str = "OFF"
@@ -11742,6 +11757,9 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 blocks[_blk + f"_{_bb_tf}"] = (
                     (_pct_prev > 0.80) & (_pct < 0.75) & (_upper > 0)
                 )
+            if _bb_tf in ("1h", "4h", "D") and vec_decisions.htf_signal_consume.enabled(cfg):  # 2026-10-13 V17 TF law: the one-bar HTF event stays armed for its validity window (never discarded after one hit)
+                _hsc_ids = vec_decisions.htf_signal_consume.instance_ids(npz, npz.get("timestamps", np.arange(n) * 900.0), _bb_tf, n)
+                blocks[_blk + f"_{_bb_tf}"] = vec_decisions.htf_signal_consume.extend_event(blocks[_blk + f"_{_bb_tf}"], _hsc_ids, vec_decisions.htf_signal_consume.valid_bars(cfg, _bb_tf, str(getattr(cfg, "MODE", "crypto"))))
         elif _blk == "BB_BREAKOUT_ENTRY":
             blocks[_blk + f"_{_bb_tf}"] = (
                 (_pct > 0.95) & (_upper > 0)
@@ -11985,6 +12003,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     )  # defensive init for exhaustive wrapper
     # Get all enabled reentry blocks
     blocks = compute_reentry_blocks(npz, n, is_long, cfg)
+    vec_decisions.htf_signal_consume.apply_strip(blocks, getattr(cfg, "_HTF_STRIP_BLOCKS", None))  # 2026-10-13 V17: non-HTF recompute (simulate_one) only; None = no-op
     if not blocks:
         return np.zeros(n, dtype=bool)
     # WIRING LANE C L1d: WT_DC direct-entry twin (live _shared_direct_entry_claim); -1 = no block.
@@ -15445,6 +15464,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         cfg
     )  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = compute_entry_signals(npz, n, is_long, cfg)
+    _hsc_core = vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals)  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
     # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
@@ -18342,6 +18362,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         "_rag_pass": _rag_pass,
         "_entry_filter_masks": _entry_filter_masks,
     }
+    _hsc = vec_decisions.htf_signal_consume.build_ctx(cfg, npz, n, is_long, ts, entry_sig, _hsc_core, _entry_or_srcs, _safe)  # 2026-10-13 V17 TF law: HTF-only fires need a fresh LTF confirmation, attempts tighten (None = inert)
+    if _hsc is not None:
+        entry_sig = np.array(entry_sig, dtype=bool, copy=True)  # a gated bar's entry_sig[i] is cleared in-loop (reentry pathways stay evaluable)
     for i in range(n):
         px = close[i]
         if px <= 0:
@@ -18481,6 +18504,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _vig_scan_start = len(trades)
                 else:
                     continue
+            if _hsc is not None and entry_sig[i] and not vec_decisions.htf_signal_consume.gate(_hsc, cfg, i, trades):
+                entry_sig[i] = False
             fire = entry_sig[i]
             _fx_G = (
                 _fx_re_g
@@ -19056,6 +19081,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     )  # WIRING LANE C L1e (DCB 1.5 boost)
                 _dollar = (
                     float(cfg.START_POSITION_SIZE) * float(regime_mult[i]) * float(mult)
+                    * (float(_hsc["size"]) if _hsc is not None and entry_sig[i] else 1.0)
                 )
                 if _wirec_size_mult is not None and i < len(_wirec_size_mult):
                     _dollar = _dollar * float(_wirec_size_mult[i])  # WIRING LANE C L1c
@@ -19328,6 +19354,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if _fx_G["_bt_veto"] is not None and bool(_fx_G["_bt_veto"][i]):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
                     pos = _open(qty0, px, i, entry_reason)
+                    vec_decisions.htf_signal_consume.commit(_hsc, i)
                     if _gm_rebuy:
                         _gap_pending = None  # WIRING LANE E: rebuy executed, pending resolved (live 9992-9993)
                     elif _gap_pending is not None:
@@ -22408,6 +22435,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     }
     if _seeded_active:
         _res["seeded"] = {"active": True, "trace": list(_seeded_trace)}
+    vec_decisions.htf_signal_consume.dump_trace(_hsc if "_hsc" in dir() else None, sym, is_long)
     return _res
 
 

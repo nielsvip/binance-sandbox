@@ -617,7 +617,7 @@ class TradierConfig:
         False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_a:277, v12:9899/12835) to field; = QuickConfig False; neutral
     )
     PARITY_VEC_EXACT_MODE: bool = (
-        False  # PARITY LOOP STOCKS 2026-10-06: True = process_position executes the vec (v12_quick_engine) decision of each bar via tradier_vec_exact; every live-only path suppressed. False = unchanged live.
+        True  # USER 2026-10-13 (A): NO live trade the vector did not authorize — stocks trade only on the v12 decision via tradier_vec_exact (every live-only path suppressed; stale-twin fallback = native EXITS only). Was False (native live).
     )
     PARITY_VEC_EXACT_SET_DIR: str = (
         ""  # PARITY LOOP STOCKS 2026-10-06: exact-mode set source. '' = per_sym_store.get_overrides (promoted row); a dir = <dir>/<SYM_SIDE>.json cumulative_overrides (frozen sheet set; parity proofs).
@@ -3291,6 +3291,12 @@ class TradierConfig:
     # throttled, then exits failed. HELD=True cached this long; FLAT/failed
     # never cached (fail toward protection, never toward naked).
     TRADIER_BROKER_VERIFY_TTL_SEC: float = 60.0
+    # 2026-10-13 USER ORDER (vitals first): while the broker is unreachable,
+    # new OPENs fail fast in the disaster guard so CLOSE/REDUCE keep the
+    # queue bandwidth. Exits never read this ring.
+    BROKER_DISTRESS_ENTRY_BLOCK_ENABLED: bool = True
+    BROKER_DISTRESS_MAX_UNREACHABLE: int = 3
+    BROKER_DISTRESS_WINDOW_SEC: float = 300.0
     OBLIGATORY_HEDGE_PCT: float = 0.0
     OBLIGATORY_HEDGE_WT_TFS: int = 2
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0
@@ -6794,6 +6800,18 @@ class TradierConfig:
         True  # V15 PROMOTED: stocks_short True wins +1.33 (CATEGORY r70) — template STOCKS_SHORT bold (< threshold) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     )
     # --- 2026-09-19 BB 15m/1h/4h/D family — bounce / breakout / profit-take / exit-at-loss + filter TFs — TESTABLE 15m+ ---
+    # 2026-10-13 V17 TF law (USER "b" + correction): HTF signal instance stays valid for its span; HTF-only opens need a FRESH LTF confirmation;
+    # each further attempt on the same instance tightens monotonically (vec_decisions/htf_signal_consume.py, docs/v17_tf_semantics.md).
+    HTF_SIGNAL_CONSUME_ENABLED: bool = True  # master; False = pre-2026-10-13 behaviour (state re-fires every flat bar, HTF events live one bar)
+    HTF_SIGNAL_MAX_ATTEMPTS: int = 12  # max opens per HTF instance per path (each one LTF-confirmed, tighter than the last)
+    HTF_SIGNAL_VALID_BARS_D: int = 26  # validity window in 15m bars (= venue span: crypto 96, stocks RTH 26)
+    HTF_SIGNAL_VALID_BARS_4H: int = 14  # crypto 16, stocks RTH 14 (session-anchored 4h)
+    HTF_SIGNAL_VALID_BARS_1H: int = 4
+    HTF_RETRY_LTF_WINDOW_BARS: int = 4  # attempt-1 freshness window of the LTF confirmation (15m bars)
+    HTF_RETRY_TIGHTEN_WINDOW: float = 0.75  # window multiplier per attempt (4,3,2,1,1.. bars)
+    HTF_RETRY_TIGHTEN_CONFIRMS: float = 0.25  # extra confirmations per attempt (attempts 1-4 need 1 of 15m-WT/1h-WT/15m-stoch, 5-8 need 2, 9-12 need 3)
+    HTF_RETRY_TIGHTEN_SIZE: float = 1.0  # size multiplier per attempt; 1.0 = off (live sizing is live's job, BIBLE 68.3a)
+    BB_BOUNCE_ENTRY_FILTER_ENABLED: bool = True  # True = BB_BOUNCE_ENTRY_TF also ANDs the generic bb_bounce filter into every entry (current, promoted sets use it); False = trigger only
     BB_BOUNCE_ENTRY_TF: str = "OFF"
     BB_BREAKOUT_ENTRY_TF: str = "OFF"
     BB_EXIT_AT_LOSS_TF: str = "15m"
