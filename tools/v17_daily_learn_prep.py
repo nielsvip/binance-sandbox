@@ -520,7 +520,7 @@ def library_summary(lib_path, since_iso, top=40):
         out["top_combos_24h"] = [{"cat_side": r[0], "combo": json.loads(r[1]), "w": r[2], "n_boards": r[3], "mean_delta": _r(r[4], 3), "max_delta": _r(r[5], 3), "tim": _r(r[6], 1), "dd": _r(r[7], 2), "trades": _r(r[8], 0), "origins": (r[9] or "")[:60]} for r in db.execute(q, (since_iso, top * 3)).fetchall()]
         has = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='insight_outcomes'").fetchone()
         if has:
-            q = "SELECT insight_id, insight_date, cat_side, status, COUNT(*), COUNT(DISTINCT sym_side), AVG(d30), MAX(d30), SUM(d30 > 1e-9 AND (gate IS NULL OR gate='')), AVG(d365), SUM(adopted) FROM insight_outcomes WHERE ts >= ? GROUP BY insight_id, cat_side, status ORDER BY insight_date DESC, insight_id"
+            q = "SELECT insight_id, insight_date, cat_side, CASE WHEN gate LIKE 'INVALID%' THEN 'eval_invalid_base' ELSE status END AS st, COUNT(*), COUNT(DISTINCT sym_side), AVG(d30), MAX(d30), SUM(d30 > 1e-9 AND (gate IS NULL OR gate='')), AVG(d365), SUM(adopted) FROM insight_outcomes WHERE ts >= ? GROUP BY insight_id, cat_side, st ORDER BY insight_date DESC, insight_id"
             out["insight_outcomes"] = [{"insight_id": r[0], "date": r[1], "cat_side": r[2], "status": r[3], "n": r[4], "boards": r[5], "d30_mean": _r(r[6], 3), "d30_max": _r(r[7], 3), "pos_gated": r[8] or 0, "d365_mean": _r(r[9], 3), "adopted": r[10] or 0} for r in db.execute(q, (since_iso[:10] if len(since_iso) > 10 else since_iso,)).fetchall()]
         else:
             out["insight_outcomes"] = []

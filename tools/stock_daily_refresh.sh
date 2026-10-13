@@ -3,12 +3,16 @@
 # 5m/15m/1h/4h caches of today's stock universe (tradier_klines.py times out for most symbols), (2) rsync those klines s1 -> s2 (update-only, with backup),
 # (3) refresh s2's stock NPZs (validated with the sweep loader, never replaces a good/longer file with a worse one, backups in ~/npz_backup_<date>).
 # Idempotent + flock singleton. Log: ~/binance-sandbox/logs/stock_daily_refresh.log
+# 2026-10-13: universe pick pinned to dated 20*.json (today first) + stocks-list validation — the old
+# `ls -t *.json | head -1` grabbed last_good.json (a sym_side allowlist, no 'stocks' key) -> KeyError ->
+# exit 5 with zero gapfill/rsync/refresh. last_good.json is another lane's artifact: never pick it.
 exec 9>/tmp/stock_daily_refresh.lock; flock -n 9 || exit 0
 cd ~/binance-sandbox || exit 3
 S1=niels@10.0.0.3
 D=$(date -u +%Y%m%d)
-U=$(ssh -o BatchMode=yes $S1 'ls -t ~/binance-sandbox/data/daily_universe/*.json | head -1')
-[ -n "$U" ] || { echo "no universe json on s1"; exit 4; }
+U=$(ssh -o BatchMode=yes $S1 "F=\$HOME/binance-sandbox/data/daily_universe/$D.json; [ -f \"\$F\" ] || F=\$(ls -t \$HOME/binance-sandbox/data/daily_universe/20*.json 2>/dev/null | head -1); echo \$F")
+[ -n "$U" ] || { echo "no dated universe json on s1"; exit 4; }
+ssh -o BatchMode=yes $S1 "python3 -c \"import json,sys; d=json.load(open('$U')); sys.exit(0 if isinstance(d.get('stocks'),list) and len(d['stocks'])>10 else 1)\"" || { echo "universe $U unusable (no stocks list)"; exit 6; }
 ssh -o BatchMode=yes $S1 "python3 -c \"import json;print('\n'.join(json.load(open('$U'))['stocks']))\"" > /tmp/stock_universe_daily.txt
 [ -s /tmp/stock_universe_daily.txt ] || { echo "empty universe"; exit 5; }
 python3 - <<'PY' > /tmp/klines_files_daily.txt

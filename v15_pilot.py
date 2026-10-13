@@ -482,8 +482,23 @@ def _apply_visual(ws, r, c, fill=None, font=None, is_bold=False):
     except Exception:
         pass
 
+_HDR_MAP_CACHE: dict = {}
+
+
 def _hdr_col_map(ws) -> dict:
-    """Header lookup by row2 names — robust to column inserts per spec § TEMPLATE_*.xlsx."""
+    """Header lookup by row2 names — robust to column inserts per spec § TEMPLATE_*.xlsx. Cached per worksheet object (the
+    pilot never writes headers, USER 2026-09-30): the per-row max_column walk was ~48% of the main thread's GIL time."""
+    _hit = _HDR_MAP_CACHE.get(id(ws))
+    if _hit is not None and _hit[0] is ws:
+        return dict(_hit[1])
+    m = _hdr_col_map_scan(ws)
+    if len(_HDR_MAP_CACHE) > 256:
+        _HDR_MAP_CACHE.clear()
+    _HDR_MAP_CACHE[id(ws)] = (ws, m)  # holds the ws: its id can never be reused while cached
+    return dict(m)
+
+
+def _hdr_col_map_scan(ws) -> dict:
     m = {}
     try:
         for c in range(1, ws.max_column + 1):
@@ -3542,7 +3557,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
     _tier_focus_s = float(_tier_meta.get("focus_s") or 0.0)
     _tier_strict = _tier_name in ("LOSER", "LOST_CAUSE") and os.environ.get("V15_TIER_STRICT", "1") == "1"
-    _tier_skip_post = (_tier_name == "LOST_CAUSE" or bool(_tier_meta.get("bh_opposing"))) and os.environ.get("V15_TIER_SKIP_POST", "1") == "1"
+    _tier_skip_post = (_tier_name in ("LOST_CAUSE", "LOSER") or bool(_tier_meta.get("bh_opposing"))) and os.environ.get("V15_TIER_SKIP_POST", "1") == "1"  # 2026-10-13 throughput: LOSER too
     progress["tier"] = {"tier": _tier_name, **_tier_meta, "strict": _tier_strict, "skip_post": _tier_skip_post, "at": utcnow()}
     print(f"[TIER] {new_symside} {_tier_name}: {_tier_meta.get('why')} -> focus {_tier_focus_s:.0f}s strict={_tier_strict} skip_post={_tier_skip_post}", flush=True)
     import random as _rnd
@@ -3732,6 +3747,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return hm["DELTA_VS_INITIAL_BASELINE"]
         c = max((cc for cc in range(1, ws.max_column + 1) if ws.cell(row=2, column=cc).value not in (None, "")), default=ws.max_column) + 1
         ws.cell(row=2, column=c).value = "DELTA_VS_INITIAL_BASELINE"
+        _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
         ws.cell(row=2, column=c).font = Font(name="Arial", size=10, bold=True)
         return c
     div_cols = {sname: _div_col(wb[sname]) for sname in tabs}
@@ -4580,6 +4596,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if col_ is None:
                     col_ = max((cc for cc in range(1, ws_.max_column + 1) if ws_.cell(row=2, column=cc).value not in (None, "")), default=ws_.max_column) + 1
                     ws_.cell(row=2, column=col_).value = "AUTOPSY_FIX"
+                    _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
                     ws_.cell(row=2, column=col_).font = Font(name="Arial", size=10, bold=True)
                 cell_ = ws_.cell(row=int(r_["row"]), column=col_)
                 cell_.value = f"L{r_['losers_fixed']} P{r_['premature_fixed']} A{r_['aug_fixed']} net{r_['net_pp']:+.2f} real{r_['real_d_gain']:+.2f}"
@@ -5187,11 +5204,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         if _spec_state["ptr_ver"] != _spec_state["ver"] or _spec_state["ptr"] <= qi:
             _spec_state["ptr"], _spec_state["ptr_ver"] = qi, _spec_state["ver"]
-        while _spec_state["ptr"] < len(pending_queue) and _spec_state["ptr"] < qi + 60 and sum(1 for f, _ in inflight.values() if not f.done()) < 2 * _n_proc:
+        # 2026-10-13 THROUGHPUT (USER ">12 boards/server/hour"): the cap counts distinct pool TASKS — with V15_POOL_BATCH_N=8
+        # (scheduler env) 8 evals share one future, and counting entries capped the pipeline at ONE task (S1 HOOD_SHORT: 4
+        # workers 87% idle, main 88% waiting, ~1 core per board). Pending partial batches are flushed at the end.
+        _ahead = int(os.environ.get("V15_PREFETCH_ROWS", "200"))
+        while _spec_state["ptr"] < len(pending_queue) and _spec_state["ptr"] < qi + _ahead and len({id(f) for f, _ in inflight.values() if not f.done()}) < 2 * _n_proc:
             plan = _row_plan(*pending_queue[_spec_state["ptr"]])
             for _lab, _ov in plan.get("items", []):
                 _submit(_ov)
             _spec_state["ptr"] += 1
+        _flush_batch()
     def _get(sname: str, rr: int, switch, cand, label: str, ov: dict, deadline: float, cum_before: float):
         # one real evaluate_prepared_sanitized result (pool / cache / serial thread), hard deadline, one DELTA-LOG line
         ck = _ck(ov)
@@ -5366,7 +5388,22 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return 0
         upto = _sacred_tab_order if upto_tab_inclusive is None else (_sacred_tab_order[:_sacred_tab_order.index(upto_tab_inclusive) + 1] if upto_tab_inclusive in _sacred_tab_order else [])
         n_prom = 0
-        for (s, r, sw, c) in [t for t in _sacred_rows if t[0] in upto]:
+        _sq = [t for t in _sacred_rows if t[0] in upto]
+        def _sacred_presubmit(rows_left):
+            for (s9, r9, sw9, c9) in rows_left:
+                try:
+                    o9 = dict(cumulative_overrides)
+                    o9.update(_switch_overrides(str(sw9).strip(), _parse_opt_value(c9, defaults.get(str(sw9).strip()))))
+                    _submit(sanitize_overrides(o9, defaults)[0])
+                except Exception:
+                    pass
+            _flush_batch()
+        _sacred_presubmit(_sq)
+        _sq_prom0 = 0
+        for _sqi, (s, r, sw, c) in enumerate(_sq):
+            if n_prom != _sq_prom0:
+                _sq_prom0 = n_prom
+                _sacred_presubmit(_sq[_sqi:])  # the running set moved: speculate the rest against the new one
             if str(sw).strip() == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(c)):
                 continue  # MAXAUG_NEVER_ZERO applies to the repass too
             try:
@@ -5802,6 +5839,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if not c:
                     c = max((cc for cc in range(1, ws_.max_column + 1) if ws_.cell(row=2, column=cc).value not in (None, "")), default=ws_.max_column) + 1
                     ws_.cell(row=2, column=c).value = "V17_NOTE"
+                    _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
                     ws_.cell(row=2, column=c).font = Font(name="Arial", size=10, bold=True)
                 _v17_note_cols[sname] = c
             cell = ws_.cell(row=rr, column=c)
@@ -7092,6 +7130,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         switch_variant = plan["switch_variant"]
         n_items = len(plan["items"])
         deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-n_items // max(1, _n_proc))) + 2)
+        for _lab_ps, _ov_ps in plan["items"]:
+            _submit(_ov_ps)  # whole row to the pool first (was one-by-one for cells the prefetch had not reached)
+        _flush_batch()
         results = {lab: _get(sname, rr, switch, cand, lab, ov, deadline, cumulative_before) for lab, ov in plan["items"]}
         reasons = {}
         if is_running:
@@ -7116,13 +7157,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             st["inert_revived"] = True
             _inert_stats["revived"] += 1
             _rv_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(st["hdrs"]) // max(1, _n_proc))) + 2)
+            _rv_ovs = {}
             for _rv_hdr in st["hdrs"]:
                 _rv_f = st["h2f"][_rv_hdr]
                 _rv_ov = dict(switch_variant)
                 _rv_ov[_rv_f["filter"]] = _parse_opt_value(_rv_f["opt"], defaults.get(_rv_f["filter"]))
-                _rv_ov = sanitize_overrides(_rv_ov, defaults)[0]
-                plan["items"].append((_rv_hdr, _rv_ov))
-                results[_rv_hdr] = _get(sname, rr, switch, cand, _rv_hdr, _rv_ov, _rv_deadline, cumulative_before)
+                _rv_ovs[_rv_hdr] = sanitize_overrides(_rv_ov, defaults)[0]
+                _submit(_rv_ovs[_rv_hdr])  # whole revived pass to the pool first (was serial: 174 cells one at a time)
+            _flush_batch()
+            for _rv_hdr in st["hdrs"]:
+                plan["items"].append((_rv_hdr, _rv_ovs[_rv_hdr]))
+                results[_rv_hdr] = _get(sname, rr, switch, cand, _rv_hdr, _rv_ovs[_rv_hdr], _rv_deadline, cumulative_before)
             n_items = len(plan["items"])
             print(f"[AUTOPSY-INERT-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> full yellow pass ({len(st['hdrs'])} cells)", flush=True)
         if st.get("prior_skipped") and not is_running and naked_ok and naked_delta is not None and float(naked_delta) > 1e-9:
@@ -8999,6 +9044,7 @@ def ensure_lbI_headers(wb_path: Path):
         for c in stale:
             try:
                 ws.cell(row=2, column=c).value = None
+                _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
             except Exception:
                 pass
         existing = set()
@@ -10591,6 +10637,7 @@ def main():
                     for hdr in sorted(union)[:12]:
                         if hdr not in existing:
                             ws.cell(row=2, column=col).value = hdr
+                            _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
                             col += 1
             except Exception as _e_hdr:
                 print(f"[headers-warn] {_e_hdr}", flush=True)
@@ -10644,6 +10691,7 @@ def main():
                 e2_val = ws_fix.cell(row=2, column=e_col).value
                 if e2_val is None or (isinstance(e2_val, str) and e2_val.strip().upper() not in ("BASELINE", "VECTOR", "HUSTLE")):
                     ws_fix.cell(row=2, column=e_col).value = "BASELINE"
+                    _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
                 # Always write E3 value
                 # E3 (chain start) is written by the sequential filler on the first row it fills — never on every tab
         # BADZIP FIX 2026-09-29: the old fallback saved IN PLACE after a FAILED zip
@@ -10673,7 +10721,7 @@ def main():
         def _baseline_self_monitor():
             _fails = 0
             while True:
-                _t_mon.sleep(8)
+                _t_mon.sleep(float(os.environ.get("V15_SELF_MONITOR_S", "120")))
                 try:
                     import openpyxl as _op_mon
                     _wb_m = _op_mon.load_workbook(str(wb_path), data_only=True, read_only=True)
@@ -10700,6 +10748,7 @@ def main():
                                 # restore header if overwritten by prior buggy runs
                                 if isinstance(_ws_f.cell(row=2, column=5).value, (int,float)) or _ws_f.cell(row=2, column=5).value is None:
                                     _ws_f.cell(row=2, column=5).value = "BASELINE"
+                                    _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
                                 _atomic_save(_wb_f, Path(wb_path))  # BADZIP FIX 2026-09-29
                         except: pass
                         if _fails >= 3:
@@ -10768,7 +10817,7 @@ def main():
         def _check2():
             _start2 = _t2.time()
             while True:
-                _t2.sleep(30)
+                _t2.sleep(float(os.environ.get("V15_STUCK_GUARD_S", "120")))
                 _elapsed = _t2.time() - _start2
                 try:
                     _done = len(progress.get("done", {}))
@@ -13047,6 +13096,7 @@ def main():
                         if _bname in wb_keep.sheetnames:
                             _bws = wb_keep[_bname]
                             _bws.cell(row=2, column=2).value = float(cumulative_gain)
+                            _HDR_MAP_CACHE.clear()  # header written: header maps re-scan
                             _bws.cell(row=2, column=2).font = Font(name="Arial", bold=True, color="006100")
                     except Exception:
                         pass

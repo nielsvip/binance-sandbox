@@ -1,6 +1,9 @@
 #!/bin/bash
-# v17_daily_learn — DAILY LEARN LOOP (BIBLE §99, USER 2026-10-13). Mac cron, once a day after the S1 12:15Z chain + 13:00Z Mac apply:
-#   40 13 * * * /bin/bash /Users/niels/Documents/binance/tools/v17_daily_learn.sh >> /tmp/v17_daily_learn.log 2>&1 # V17_DAILY_LEARN
+# v17_daily_learn — DAILY LEARN LOOP (BIBLE §99, USER 2026-10-13). Once a day after the S1 12:15Z chain + 13:00Z Mac apply:
+#   primary  launchd com.binance.v17-daily-learn 13:40Z (launchd/com.binance.v17-daily-learn.plist; has the login keychain)
+#   fallback 10 14 * * * /bin/bash /Users/niels/Documents/binance/tools/v17_daily_learn.sh >> /tmp/v17_daily_learn.log 2>&1 # V17_DAILY_LEARN
+#   (cron alone cannot call claude: "Not logged in" — the preflight below exits 5 there; a done day exits 0 at once)
+# Overlap guard: /usr/bin/lockf (macOS flock equivalent) on /tmp/v17_daily_learn.lock.
 # 1 S1 leg (ssh s1-int, nice): fleet progress JSONs S1 + s2 (10.0.0.4) + combo library + A/B reports -> bt_leg_<date>.json, rsync back
 # 2 Mac leg: live ledgers + klines -> live_leg_<date>.json; packet (<=30 KB) + valid keys
 # 3 ONE headless LLM call: claude -p, NO tools (--tools ""), budget-capped, cwd outside the repo (no CLAUDE.md/memory load),
@@ -31,6 +34,9 @@ log() { echo "$(date -u +%FT%TZ) [v17_daily_learn] $*"; }
 log "start date=$D model=$MODEL budget=\$$BUDGET"
 if [ -s "$LD/insights_$D.json" ] && [ "${V17_LEARN_FORCE:-0}" != "1" ]; then
   log "insights_$D.json exists — day done (V17_LEARN_FORCE=1 to rerun)"; exit 0
+fi
+if [ "${V17_LEARN_SKIP_LLM:-0}" != "1" ] && ! "$CLAUDE" auth status 2>/dev/null | grep -q '"loggedIn": *true'; then
+  log "claude NOT LOGGED IN in this context (cron has no login keychain) — skip; launchd com.binance.v17-daily-learn owns the run"; exit 5
 fi
 # 1 S1 leg
 if timeout 1800 $SSH s1-int "cd ~/binance-sandbox && nice -n 15 python3 tools/v17_daily_learn_prep.py --leg backtest --hosts local,10.0.0.4 --date $D"; then
