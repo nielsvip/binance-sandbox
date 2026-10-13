@@ -57,8 +57,8 @@ def _is_tokenised(sym: str) -> bool:
         return False
 
 
-def fetch_before(sym: str, end_ms: int, limit: int = 1500) -> list:
-    q = urllib.parse.urlencode({"symbol": sym, "interval": "15m", "limit": limit, "endTime": end_ms})
+def fetch_before(sym: str, end_ms: int, limit: int = 1500, interval: str = "15m") -> list:
+    q = urllib.parse.urlencode({"symbol": sym, "interval": interval, "limit": limit, "endTime": end_ms})
     with urllib.request.urlopen(f"{URL}?{q}", timeout=20) as r:
         rows = json.loads(r.read().decode())
     return [{"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S.000000Z", time.gmtime(int(k[0]) / 1000)), "open": float(k[1]), "high": float(k[2]),
@@ -70,8 +70,12 @@ def _ms(ts: str) -> int:
     return int(calendar.timegm(time.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S")) * 1000)
 
 
-def backfill(sym: str, target: int, apply: bool) -> dict:
-    p = ROOT / "klines_cache" / f"{sym}_15m.json"
+TF_SUFFIX = {"15m": "15m", "1h": "1h", "4h": "4h", "1d": "D"}
+
+
+def backfill(sym: str, target: int, apply: bool, cache_dir: str = "klines_cache", max_pages: int = 6, interval: str = "15m") -> dict:
+    suf = TF_SUFFIX.get(interval, interval)
+    p = ROOT / cache_dir / f"{sym}_{suf}.json"
     try:
         rows = json.loads(p.read_text())
     except Exception:
@@ -84,8 +88,8 @@ def backfill(sym: str, target: int, apply: bool) -> dict:
     by_ts = {r["timestamp"]: r for r in rows}
     oldest = min((_ms(t) for t in by_ts), default=int(time.time() * 1000))
     pages = 0
-    while len(by_ts) < target and pages < 6:
-        got = fetch_before(sym, oldest - 1)
+    while len(by_ts) < target and pages < max_pages:
+        got = fetch_before(sym, oldest - 1, interval=interval)
         pages += 1
         if not got:
             break
@@ -94,10 +98,12 @@ def backfill(sym: str, target: int, apply: bool) -> dict:
         oldest = min(_ms(r["timestamp"]) for r in got)
         time.sleep(0.25)
     merged = [by_ts[k] for k in sorted(by_ts)]
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(merged, indent=2))
-    os.replace(tmp, p)
-    return {"sym": sym, "have": have, "now": len(merged), "pages": pages, "action": "written"}
+    reached = len(merged) >= target
+    if len(merged) > have:
+        tmp = p.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(merged))
+        os.replace(tmp, p)
+    return {"sym": sym, "have": have, "now": len(merged), "pages": pages, "action": "written" if reached else "short"}
 
 
 def main():
@@ -105,11 +111,14 @@ def main():
     ap.add_argument("--target", type=int, default=3600, help="15m bars to hold (30D window 2880 + warm-up)")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--symbols", nargs="*")
+    ap.add_argument("--cache-dir", default="klines_cache", help="cache subdir under ROOT (e.g. klines_cache_backtest for 400D canonical)")
+    ap.add_argument("--pages", type=int, default=6, help="max REST pages (1500 bars each) to fetch backwards")
+    ap.add_argument("--interval", default="15m", choices=("15m", "1h", "4h", "1d"), help="Binance interval to backfill")
     a = ap.parse_args()
     for s in a.symbols or universe():
         tgt = max(a.target, TOKENISED_TARGET) if _is_tokenised(s) else a.target
         try:
-            print(json.dumps(backfill(s, tgt, a.apply)), flush=True)
+            print(json.dumps(backfill(s, tgt, a.apply, a.cache_dir, a.pages, a.interval)), flush=True)
         except Exception as e:
             print(json.dumps({"sym": s, "error": repr(e)[:160]}), flush=True)
 

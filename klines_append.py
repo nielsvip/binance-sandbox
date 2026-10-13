@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse, json, sys, time
 from pathlib import Path
 
-REPO = Path("/Users/niels/Documents/binance")
+REPO = Path(__file__).resolve().parent
 PRIMARY = REPO / "klines_cache"
 BACKUP = REPO / "klines_cache_gateway"
 TARGET = REPO / "klines_cache_backtest"

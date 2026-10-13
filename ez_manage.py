@@ -21097,8 +21097,37 @@ class MultiAccountTradeManager:
                 return position
         return None
 
+    async def _fixed_stop_algo_call(self, client, op, **params):
+        """Algo-order endpoint with named-method-or-raw fallback (old python-binance lacks futures algo methods). Returns response dict ({} on transport error — caller parses). Never raises."""
+        try:
+            import asyncio as _aio
+            if op == "create":
+                fn = getattr(client, "futures_create_algo_order", None)
+                if callable(fn):
+                    return await _aio.wait_for(_aio.to_thread(fn, **params), timeout=15.0) or {}
+                raw = getattr(client, "_request_futures_api", None)
+                if callable(raw):
+                    return await _aio.wait_for(_aio.to_thread(raw, "post", "algoOrder", True, data=params), timeout=15.0) or {}
+            elif op == "cancel":
+                fn = getattr(client, "futures_cancel_algo_order", None)
+                if callable(fn):
+                    return await _aio.wait_for(_aio.to_thread(fn, **params), timeout=15.0) or {}
+                raw = getattr(client, "_request_futures_api", None)
+                if callable(raw):
+                    return await _aio.wait_for(_aio.to_thread(raw, "delete", "algoOrder", True, data=params), timeout=15.0) or {}
+            elif op == "list":
+                fn = getattr(client, "futures_get_open_algo_orders", None)
+                if callable(fn):
+                    return await _aio.wait_for(_aio.to_thread(fn, **params), timeout=15.0) or []
+                raw = getattr(client, "_request_futures_api", None)
+                if callable(raw):
+                    return await _aio.wait_for(_aio.to_thread(raw, "get", "openAlgoOrders", True, data=params), timeout=15.0) or []
+        except Exception as _e:
+            return {"__transport_error__": str(_e)}
+        return {}
+
     async def _fixed_stop_order_action(self, *, position_key, account_key, symbol, position_side, side, quantity, old_price, unique_id, reason, action, stop_price=0.0, stop_order_id=""):
-        """Wire leg of FIXED_STOP (called ONLY via the execute_now PLACE_STOP/CANCEL_STOP branch). Never raises."""
+        """Wire leg of FIXED_STOP via Binance ALGO conditional orders (STOP_MARKET requires algo endpoints, -4120 on /fapi/v1/order). Called ONLY via the execute_now PLACE_STOP/CANCEL_STOP branch. Never raises."""
         try:
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 return "SKIPPED_STOP_PYTEST"
@@ -21119,11 +21148,13 @@ class MultiAccountTradeManager:
                 if not oid:
                     return "SKIPPED_STOP_CANCEL_NO_ID"
                 try:
-                    await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=oid), timeout=15.0)
+                    _cr = await self._fixed_stop_algo_call(client, "cancel", symbol=symbol, algoId=oid)
+                    if isinstance(_cr, dict) and _cr.get("__transport_error__"):
+                        raise RuntimeError(str(_cr["__transport_error__"]))
                     logger.critical(f"🛡️ [FIXED_STOP_CANCEL] {position_key}: exchange backstop {oid} cancelled")
                     return f"SUCCESS_STOP_CANCELLED_{oid}"
                 except Exception as _e:
-                    if "Unknown order" in str(_e) or "-2011" in str(_e):
+                    if "Unknown order" in str(_e) or "-2011" in str(_e) or "-2013" in str(_e) or "No such order" in str(_e):
                         return f"SUCCESS_STOP_ALREADY_GONE_{oid}"
                     logger.error(f"[FIXED_STOP_CANCEL] {position_key}: cancel {oid} failed: {_e}")
                     return f"FAILED_STOP_CANCEL_{oid}"
@@ -21138,13 +21169,42 @@ class MultiAccountTradeManager:
             import hashlib as _hl
             _cid = f"{_fixed_stop_core.STOP_ORDER_PREFIX}{_hl.sha1(f'{position_key}:{time.time_ns()}'.encode()).hexdigest()[:12].upper()}"
             try:
-                _resp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=("SELL" if is_long else "BUY"), positionSide=str(position_side).upper(), type="STOP_MARKET", stopPrice=str(lvl), closePosition=True, workingType="MARK_PRICE", newClientOrderId=_cid), timeout=15.0)
+                _resp = await self._fixed_stop_algo_call(client, "create", algoType="CONDITIONAL", symbol=symbol, side=("SELL" if is_long else "BUY"), positionSide=str(position_side).upper(), type="STOP_MARKET", triggerPrice=str(lvl), closePosition="true", workingType="MARK_PRICE", clientAlgoId=_cid)
             except Exception as _e:
                 logger.error(f"[FIXED_STOP_PLACE] {position_key}: place failed lvl={lvl}: {_e}")
                 return "FAILED_STOP_PLACE"
-            _oid = str((_resp or {}).get("orderId", "") or "") if isinstance(_resp, dict) else ""
-            logger.critical(f"🛡️ [FIXED_STOP_PLACED] {position_key}: exchange backstop {_oid} stop={lvl:.6f} ({'LONG' if is_long else 'SHORT'})")
-            return f"SUCCESS_STOP_PLACED_{_oid}" if _oid else "SUCCESS_STOP_PLACED"
+            if isinstance(_resp, dict) and _resp.get("__transport_error__"):
+                _terr = str(_resp["__transport_error__"])
+                if "-4130" in _terr:
+                    try:
+                        _ol2 = await self._fixed_stop_algo_call(client, "list", symbol=symbol)
+                        _oo2 = (_ol2.get("orders") or []) if isinstance(_ol2, dict) else (_ol2 or [])
+                        for _o2 in _oo2:
+                            try:
+                                if not isinstance(_o2, dict):
+                                    continue
+                                if str(_o2.get("orderType", "") or _o2.get("origType", "") or _o2.get("type", "")).upper() not in ("STOP_MARKET", "STOP"):
+                                    continue
+                                if str(_o2.get("positionSide", "")).upper() != ("LONG" if is_long else "SHORT"):
+                                    continue
+                                _a2 = str(_o2.get("algoId", "") or _o2.get("orderId", "") or "")
+                                if _a2:
+                                    logger.critical(f"🛡️ [FIXED_STOP_ADOPTED] {position_key}: adopted peer backstop {_a2} after -4130")
+                                    return f"SUCCESS_STOP_PLACED_{_a2}"
+                            except Exception:
+                                continue
+                    except Exception:
+                        pass
+                    return "ALREADY_EXISTS_STOP"
+                logger.error(f"[FIXED_STOP_PLACE] {position_key}: place failed lvl={lvl}: {_terr}")
+                return "FAILED_STOP_PLACE"
+            _oid = ""
+            try:
+                _oid = str((_resp or {}).get("algoId", "") or (_resp or {}).get("orderId", "") or "") if isinstance(_resp, dict) else ""
+            except Exception:
+                _oid = ""
+            logger.critical(f"🛡️ [FIXED_STOP_PLACED] {position_key}: exchange backstop {_oid or _cid} stop={lvl:.6f} ({'LONG' if is_long else 'SHORT'})")
+            return f"SUCCESS_STOP_PLACED_{_oid or _cid}"
         except Exception as _e:
             try:
                 logger.error(f"[FIXED_STOP_WIRE] {position_key}: {_e}")
@@ -21201,21 +21261,19 @@ class MultiAccountTradeManager:
                         _cli0 = self.get_client(account_key)
                         if _cli0 is not None and not os.environ.get("PYTEST_CURRENT_TEST"):
                             try:
-                                _oo = await asyncio.wait_for(asyncio.to_thread(_cli0.futures_get_open_orders, symbol=symbol), timeout=15.0) or []
+                                _ol = await self._fixed_stop_algo_call(_cli0, "list", symbol=symbol)
+                                _oo = (_ol.get("orders") or []) if isinstance(_ol, dict) else (_ol or [])
                             except Exception:
                                 _oo = []
                             for _o in _oo:
                                 try:
                                     if not isinstance(_o, dict):
                                         continue
-                                    if str(_o.get("type", "")).upper() != "STOP_MARKET":
-                                        continue
-                                    _cid0 = str(_o.get("clientOrderId") or _o.get("origClientOrderId") or "")
-                                    if not (_cid0.startswith(_fixed_stop_core.STOP_ORDER_PREFIX) or _cid0.startswith("EZMSTOP_")):
+                                    if str(_o.get("orderType", "") or _o.get("origType", "") or _o.get("type", "")).upper() not in ("STOP_MARKET", "STOP"):
                                         continue
                                     if str(_o.get("positionSide", "")).upper() != _side_u:
                                         continue
-                                    _oid0 = str(_o.get("orderId", "") or "")
+                                    _oid0 = str(_o.get("algoId", "") or _o.get("orderId", "") or "")
                                     if _oid0:
                                         reg[position_key] = {"orderId": _oid0, "stopPrice": float(_o.get("stopPrice", 0) or 0), "entry_sig": _sig, "symbol": symbol, "side": position_side}
                                         try:
@@ -21378,17 +21436,17 @@ class MultiAccountTradeManager:
             if client is None:
                 return "SKIPPED_NO_CLIENT"
             try:
-                _open = await asyncio.wait_for(asyncio.to_thread(client.futures_open_orders), timeout=20.0) or []
+                _ol = await self._fixed_stop_algo_call(client, "list")
+                _open = (_ol.get("orders") or []) if isinstance(_ol, dict) else (_ol or [])
             except Exception as _e:
                 return f"SKIPPED_LIST_{_e}"
             for _o in _open:
                 try:
                     if not isinstance(_o, dict):
                         continue
-                    if str(_o.get("type", "")).upper() != "STOP_MARKET":
+                    if str(_o.get("orderType", "") or _o.get("origType", "") or _o.get("type", "")).upper() not in ("STOP_MARKET", "STOP"):
                         continue
-                    _cid = str(_o.get("clientOrderId") or _o.get("origClientOrderId") or "")
-                    if not (_cid.startswith(_fixed_stop_core.STOP_ORDER_PREFIX) or _cid.startswith("EZMSTOP_")):
+                    if not (_o.get("closePosition") or _o.get("reduceOnly")):
                         continue
                     _sym = str(_o.get("symbol", ""))
                     _pside = str(_o.get("positionSide", "")).upper()
@@ -21399,11 +21457,14 @@ class MultiAccountTradeManager:
                     except Exception:
                         _amt = 0.0
                     if _pos is None or _amt <= 0:
+                        _aoid = str(_o.get("algoId", "") or _o.get("orderId", "") or "")
+                        if not _aoid or not _sym:
+                            continue
                         try:
-                            await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=_sym, orderId=_o.get("orderId")), timeout=15.0)
-                            logger.critical(f"🛡️ [FIXED_STOP_ORPHAN] {_pk or _sym}: cancelled orphaned exchange stop {_o.get('orderId')}")
+                            await self._fixed_stop_algo_call(client, "cancel", symbol=_sym, algoId=_aoid)
+                            logger.critical(f"🛡️ [FIXED_STOP_ORPHAN] {_pk or _sym}: cancelled orphaned exchange stop {_aoid}")
                         except Exception as _ce:
-                            if "Unknown order" not in str(_ce) and "-2011" not in str(_ce):
+                            if "Unknown order" not in str(_ce) and "-2011" not in str(_ce) and "-2013" not in str(_ce):
                                 logger.warning(f"[FIXED_STOP_ORPHAN] cancel failed: {_ce}")
                 except Exception:
                     continue
