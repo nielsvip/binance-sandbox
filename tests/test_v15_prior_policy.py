@@ -79,7 +79,13 @@ def test_symside_tier_rules(monkeypatch):
     monkeypatch.delenv("V15_TIER_FORCE", raising=False)
     assert P.symside_tier(12.0, 8.0, 40)[0] == "WINNER"
     assert P.symside_tier(2.0, 40.0, 40)[0] == "WINNER"  # big mover: the opportunity is there
-    assert P.symside_tier(-3.0, -40.0, 40)[0] == "WINNER"  # big mover down = SHORT opportunity
+    # USER 2026-10-13 BH-side priority: bh here is SIDE-CORRECT (this side's own B&H). bh <= -BIG_MOVER
+    # means B&H made its money on the OPPOSITE side -> this side is calculated but quick, never WINNER.
+    assert P.symside_tier(-3.0, -40.0, 40)[0] == "LOSER"  # opposing big mover, no own gain: quick
+    tier, meta = P.symside_tier(57.0, -100.0, 219)  # ONEUSDT_SHORT shape: real own gain vs a 2x pump
+    assert tier == "MEDIOCRE" and meta["bh_opposing"] is True and meta["focus_s"] < P._TIER_FOCUS_S["WINNER"]
+    tier, meta = P.symside_tier(124.0, 213.0, 444)  # ONEUSDT_LONG shape: BH-aligned side gets the time
+    assert tier == "WINNER" and not meta.get("bh_opposing")
     assert P.symside_tier(1.0, 0.5, 40)[0] == "LOST_CAUSE"
     assert P.symside_tier(1.0, 0.5, 40, prior_best=9.0)[0] == "MEDIOCRE"  # earlier evidence of real gain lifts it
     assert P.symside_tier(-2.0, 6.0, 40)[0] == "LOSER"

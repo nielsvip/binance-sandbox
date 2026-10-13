@@ -633,6 +633,54 @@ def _fresh_computed_sides(matrix_dir, days=_FRESH_SKIP_DAYS, now=None, min_ts=0.
             ss = f"{m.group(1)}_{m.group(2)}"
             out[ss] = max(out.get(ss, 0.0), mt)
     return out
+def _pair_stale_sibling(sym, st, matrix_dir, current_npz_md5):
+    """USER 2026-10-13 pair currency: side to re-queue, or None. Exactly one side wants a fresh 30D
+    (need30/waiting_base) while the other sits in a CALCULATED terminal (terminal_ok/terminal_fresh)
+    whose newest publish manifest ran on a DIFFERENT NPZ than the current one -> that side was never
+    calculated on this data (ONEUSDT_LONG stayed on the Oct-10 NPZ while SHORT re-ran). Missing
+    manifest / missing current md5 fails open (never blocks a launch, never invents work)."""
+    if not current_npz_md5:
+        return None
+    import glob as _glob
+
+    needy = [sd for sd, v in (st or {}).items() if v and v[0] in ("need30", "waiting_base")]
+    if len(needy) != 1:
+        return None
+    for sd, v in (st or {}).items():
+        if sd in needy or not v or v[0] not in ("terminal_ok", "terminal_fresh"):
+            continue
+        mans = sorted(_glob.glob(os.path.join(str(matrix_dir), f"{sym}_{sd}_*_manifest.json")), key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0.0)
+        if not mans:
+            return None
+        try:
+            md5 = str((json.loads(pathlib.Path(mans[-1]).read_text()) or {}).get("npz_md5") or "")
+        except Exception:
+            return None
+        return sd if md5 and md5 != str(current_npz_md5) else None
+    return None
+
+
+def _npz_md5_cached(sym, cache):
+    """md5 of the S1-source NPZ for sym (the file JIT prep pushes to workers), cached per tick. Missing -> "" (fail open)."""
+    if sym in cache:
+        return cache[sym]
+    import hashlib as _hl
+
+    out = ""
+    try:
+        p = ROOT / "backtest_v8" / "indicators" / f"{sym}.npz"
+        if p.exists():
+            h = _hl.md5()
+            with open(p, "rb") as f:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(chunk)
+            out = h.hexdigest()
+    except Exception:
+        out = ""
+    cache[sym] = out
+    return out
+
+
 # USER 2026-10-13 throughput: the quota must never idle a paid host. V15_NONW_QUOTA_DIV=1 = no quota (every free
 # slot admits work, winners still FIRST via _place_order tier rank); 4 = the 2026-10-09 "90% on winners" default.
 try:
@@ -1529,6 +1577,8 @@ def tick(args, cfg, now):
     except Exception:
         _fresh_map = {}
     _fresh_skipped = []
+    _pair_stale = []
+    _npz_md5_cache = {}
     _fresh_pri = priority_syms()
     _refresh_tick_n = [0]
     _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
@@ -1554,6 +1604,14 @@ def tick(args, cfg, now):
             if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and f"{sym}_{side}" in _fresh_map and sym not in _fresh_pri and _side_tier(f"{sym}_{side}", _gtiers) != "W":
                 _st[side] = ("terminal_fresh", None)
                 _fresh_skipped.append(f"{sym}_{side}")
+        # USER 2026-10-13 pair currency: one side re-queues while its sibling's only board ran on an
+        # older NPZ -> the sibling was never calculated on this data; re-queue it too (both sides of a
+        # tradeable symbol are calculated on the same NPZ; BH then decides where the time goes, in-pilot).
+        _stale_sd = _pair_stale_sibling(sym, _st, os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), _npz_md5_cached(sym, _npz_md5_cache))
+        if _stale_sd and f"{sym}_{_stale_sd}" not in started and f"{sym}_{_stale_sd}" not in redo:
+            print(f"[sched] PAIR-NPZ-STALE {sym}_{_stale_sd}: manifest NPZ != current NPZ -> requeue need30 (pair calculated on same data)", flush=True)
+            _st[_stale_sd] = ("need30", 1)
+            _pair_stale.append(f"{sym}_{_stale_sd}")
         chain_state[sym] = _st
     _phase, _phase_pending = _venue_phase(chain_state)  # USER 2026-10-12: stocks first until every tradeable stock has passed
     _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12]}

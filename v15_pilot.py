@@ -2809,8 +2809,10 @@ def _possym_decide(sym_side: str, tab: str, rkey: str, round_id: str, pos, n, ne
 # (blank, settled, booked in progress["prior_policy"], NOT hollow — RULE#3 does not refill it) except (a) a rotating
 # 1/V15_PRIOR_ROTATE_EVERY slice per round (priors self-correct), (b) sacred / essential-gate / new rows (never pruned),
 # (c) PRIOR-REVIVED: a positive naked delta on THIS sym_side runs the skipped yellows on the spot.
-# Tiers (progress["tier"]): WINNER = potential >= max(bh, V15_TIER_WIN_GAIN) or |bh| >= V15_TIER_BIG_MOVER (big movers get
-# the time); LOST_CAUSE = |bh| < V15_TIER_BH_LOST and no evidence of > V15_TIER_LOST_GAIN; LOSER = potential <= 0 or below
+# Tiers (progress["tier"]): bh is SIDE-CORRECT (this side's own B&H). WINNER = potential >= max(bh, V15_TIER_WIN_GAIN) or
+# bh >= V15_TIER_BIG_MOVER (BH-aligned big movers get the time). USER 2026-10-13: bh <= -V15_TIER_BIG_MOVER means B&H made
+# its money on the OPPOSITE side — this side is still calculated in full, but quick (MEDIOCRE/LOSER, post-stages skipped);
+# LOST_CAUSE = |bh| < V15_TIER_BH_LOST and no evidence of > V15_TIER_LOST_GAIN; LOSER = potential <= 0 or below
 # the trade floor; else MEDIOCRE. LOSER/LOST_CAUSE run STRICT (yellows only on USEFUL/SOMETIMES rows); LOST_CAUSE skips
 # the post-stages. The FOCUS round (after the main pass) spends a tier budget only on what moved THIS sym_side.
 # Kill switches: V15_PRIOR_POLICY=0 (full board), V15_TIER_FORCE=<tier>, V15_FOCUS_S_<TIER>=0.
@@ -2896,8 +2898,9 @@ def prior_row_policy(prior: dict, tab: str, switch, cand, hdrs, rr: int, seq: in
 
 def symside_tier(baseline_gain, bh, trades, prior_best=None, floor_trades=10, force=None):
     """Pure (tested). -> (tier, meta). potential = max(baseline gain, best earlier final gain of this sym_side).
-    WINNER: potential >= max(bh, WIN_GAIN) with the sample floor, or a BIG MOVER (|bh| >= BIG_MOVER: big opportunity either
-    way). LOST_CAUSE: flat month (|bh| < BH_LOST) and nothing ever showed > LOST_GAIN. LOSER: potential <= 0 or below the
+    WINNER: potential >= max(bh, WIN_GAIN) with the sample floor, or a BH-ALIGNED BIG MOVER (bh >= BIG_MOVER: B&H made its
+    money on THIS side). OPPOSING big mover (bh <= -BIG_MOVER): calculated in full but quick (MEDIOCRE with own gain, else
+    LOSER; meta bh_opposing). LOST_CAUSE: flat month (|bh| < BH_LOST) and nothing ever showed > LOST_GAIN. LOSER: potential <= 0 or below the
     trade floor. Else MEDIOCRE. force (V15_TIER_FORCE) overrides for tests/ops."""
     f = (force if force is not None else os.environ.get("V15_TIER_FORCE", "")).strip().upper()
     g = float(baseline_gain or 0.0)
@@ -2910,8 +2913,12 @@ def symside_tier(baseline_gain, bh, trades, prior_best=None, floor_trades=10, fo
         meta["why"] = f"forced {f}"
         meta["focus_s"] = _TIER_FOCUS_S[f]
         return f, meta
-    if abs(b) >= _TIER_BIG_MOVER:
-        tier, why = "WINNER", f"big mover |bh| {b:.2f} >= {_TIER_BIG_MOVER}"
+    if b >= _TIER_BIG_MOVER:
+        tier, why = "WINNER", f"big mover bh {b:.2f} >= {_TIER_BIG_MOVER} (BH favours this side)"
+    elif b <= -_TIER_BIG_MOVER:
+        meta["bh_opposing"] = True
+        tier = "MEDIOCRE" if potential > 0.0 and t >= int(floor_trades) else "LOSER"
+        why = f"opposing big mover bh {b:.2f} <= -{_TIER_BIG_MOVER}: B&H favours the other side — full board, quick pass"
     elif abs(b) < _TIER_BH_LOST and potential < _TIER_LOST_GAIN:
         tier, why = "LOST_CAUSE", f"flat month |bh| {b:.2f} < {_TIER_BH_LOST} and potential {potential:.2f} < {_TIER_LOST_GAIN}"
     elif potential >= max(b, _TIER_WIN_GAIN) and t >= int(floor_trades):
@@ -3193,7 +3200,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
     _tier_focus_s = float(_tier_meta.get("focus_s") or 0.0)
     _tier_strict = _tier_name in ("LOSER", "LOST_CAUSE") and os.environ.get("V15_TIER_STRICT", "1") == "1"
-    _tier_skip_post = _tier_name == "LOST_CAUSE" and os.environ.get("V15_TIER_SKIP_POST", "1") == "1"
+    _tier_skip_post = (_tier_name == "LOST_CAUSE" or bool(_tier_meta.get("bh_opposing"))) and os.environ.get("V15_TIER_SKIP_POST", "1") == "1"
     progress["tier"] = {"tier": _tier_name, **_tier_meta, "strict": _tier_strict, "skip_post": _tier_skip_post, "at": utcnow()}
     print(f"[TIER] {new_symside} {_tier_name}: {_tier_meta.get('why')} -> focus {_tier_focus_s:.0f}s strict={_tier_strict} skip_post={_tier_skip_post}", flush=True)
     import random as _rnd

@@ -97,13 +97,6 @@
     "symbol": "AMATUSDT",
     "side": "SHORT"
   },
-  "ang:RVNUSDT_SHORT": {
-    "orderId": "4000001964676304",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 04:02:25.365494+00:00",
-    "symbol": "RVNUSDT",
-    "side": "SHORT"
-  },
   "ang:ALTUSDT_LONG": {
     "orderId": "4000001964684158",
     "stopPrice": 0.0,
@@ -123,6 +116,13 @@
     "stopPrice": 0.0,
     "entry_sig": "2026-10-13 04:20:04.109674+00:00",
     "symbol": "DASHUSDT",
+    "side": "LONG"
+  },
+  "ang:EDUUSDT_LONG": {
+    "orderId": "4000001964744488",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 04:51:31.517534+00:00",
+    "symbol": "EDUUSDT",
     "side": "LONG"
   }
 }
