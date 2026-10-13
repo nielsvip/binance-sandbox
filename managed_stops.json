@@ -41,13 +41,6 @@
     "symbol": "ENSUSDT",
     "side": "LONG"
   },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001964513299",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 02:20:23.395830+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
   "ang:COTIUSDT_SHORT": {
     "orderId": "4000001964469480",
     "stopPrice": 0.0,
@@ -130,6 +123,13 @@
     "stopPrice": 0.0,
     "entry_sig": "2026-10-13 04:09:20.086745+00:00",
     "symbol": "EGLDUSDT",
+    "side": "LONG"
+  },
+  "ang:DASHUSDT_LONG": {
+    "orderId": "4000001964702038",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 04:20:06.754200+00:00",
+    "symbol": "DASHUSDT",
     "side": "LONG"
   }
 }

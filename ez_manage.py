@@ -49491,6 +49491,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             _vx.observe(_sym, await ii(trade_manager, _sym), time.time())
         if _amt <= 0:
             _vx.owned_drop(position_key)
+            try:
+                _vx.exit_owed_drop(position_key)
+            except Exception:
+                pass
             return "ENTRY" in fams
         if "EXIT" not in fams:
             return False
@@ -49537,6 +49541,11 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED_BLOCKED_ZERO_QTY (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
                 continue
             _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
+            if _full:
+                try:
+                    _vx.exit_owed_add(position_key, f"{_act} {_a['reason'][:60]}")
+                except Exception:
+                    pass
             _vx_exit_attempted = True
             # USER 2026-10-10 TOTAL PARITY: time-boxed dispatch — a hung exit must surface as a logged
             # BLOCKED_DISPATCH_TIMEOUT, never stall this position's exits silently (parity ghost class).
@@ -49551,6 +49560,36 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             except asyncio.CancelledError:
                 raise
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")
+        # EXIT-OWED (2026-10-13, ALGOUSDT_LONG post-mortem): a vec full-close act is consumed
+        # at hand-out (_EMITTED) before any broker outcome exists. If its dispatch was
+        # cancelled/blocked/lost, the twin will never re-emit it — re-dispatch the owed
+        # close EVERY sweep until the broker is observed flat. No bar clock, no exceptions.
+        try:
+            _owed_on = bool(getattr(config, "VEC_EXIT_OWED_ENABLED", True))
+        except Exception:
+            _owed_on = True
+        if _owed_on:
+            try:
+                _amt_owed = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
+                if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed):
+                    _owed_reason = _vx.tagged_reason({"reason": "VEC_EXIT_OWED paper-flat-live-holds-retry"})
+                    logger.warning(f"[VEC_EXACT_EXIT_OWED] {position_key}: live holds {_amt_owed:.6f}, vec full-close owed -> CLOSE retry")
+                    try:
+                        _owed_tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
+                    except Exception:
+                        _owed_tmo = 600.0
+                    _owed_px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
+                    _owed_oside = "SELL" if _side == "LONG" else "BUY"
+                    try:
+                        from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_o, fire_exit_market as _vx_tmo_mkt_o
+                        _res_o = await _vx_dsp_o(position_key, "CLOSE VEC_EXIT_OWED", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_owed, current_price=_owed_px, side=_owed_oside, position_side=_side, unique_id=f"VXOWED{int(_now_vx)}", is_full_close=True, action="CLOSE", reason=_owed_reason, override_qty=_amt_owed, is_hedge=False), _owed_tmo, on_timeout=lambda: _vx_tmo_mkt_o(trade_manager, position_key, _sym, _owed_oside, _side))
+                    except asyncio.CancelledError:
+                        raise
+                    logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_EXIT_OWED qty={_amt_owed:.6f} -> {str(_res_o)[:120]}")
+            except asyncio.CancelledError:
+                raise
+            except Exception as _owed_e:
+                logger.warning(f"[VEC_EXACT_EXIT_OWED] {position_key} probe err: {_owed_e}")
         # USER 2026-10-10 TOTAL PARITY convergence: live holds but the twin's paper
         # is flat at a fresh OK bar and no exit was attempted above -> close to flat.
         # Chart-flat must become live-flat; paper state is the chart's end state.
@@ -49571,6 +49610,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             if _cvg_on and _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
                 _px_c = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
                 _oside_c = "SELL" if _side == "LONG" else "BUY"
+                try:
+                    _vx.exit_owed_add(position_key, "CLOSE VEC_CONVERGE_TO_FLAT paper-flat-live-holds")
+                except Exception:
+                    pass
                 _cvg_reason = _vx.tagged_reason({"reason": "VEC_CONVERGE_TO_FLAT paper-flat-live-holds"})
                 logger.warning(f"[VEC_EXACT_CONVERGE] {position_key}: live holds {_amt_end:.6f} but vec paper flat at bar {int(float(_vx_st.get('bar_ts') or 0))} -> CLOSE to flat")
                 try:
@@ -49608,6 +49651,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                     _stf_tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
                 except Exception:
                     _stf_tmo = 600.0
+                try:
+                    _vx.exit_owed_add(position_key, "CLOSE VEC_STALE_FLATTEN paper-flat-live-holds-no-act")
+                except Exception:
+                    pass
                 _stf_px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
                 _stf_oside = "SELL" if _side == "LONG" else "BUY"
                 try:

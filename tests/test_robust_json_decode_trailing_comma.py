@@ -45,7 +45,7 @@ def _load_robust():
 def test_symbols_flz_parses_as_valid_json():
     data = orjson.loads((ROOT / "symbols_flz.json").read_bytes())
     assert isinstance(data, list)
-    assert len(data) == 13
+    assert len(data) == 12  # 2026-10-13: 13 - fake symbol purged 2026-10-13 (no Binance market)
     assert "BTCUSDC" in data
     # Must not have trailing comma artefact
     raw = (ROOT / "symbols_flz.json").read_text()
@@ -73,7 +73,7 @@ def test_robust_decode_preserves_valid_json():
 
 def test_robust_decode_old_corrupted_symbols_flz():
     robust = _load_robust()
-    old = b'[\n  "BTCUSDC",\n  "BTCDOMUSDT",\n  "ETHUSDC",\n  "BNBUSDC",\n  "SOLUSDC",\n  "XRPUSDC",\n  "DOGEUSDC",\n  "ZECUSDC",\n  "GRAMUSDT",\n  "WLDUSDC",\n  "DASHUSDT",\n  "HYPEUSDT",\n  "100PEPEUSDC",\n]\n'
+    old = b'[\n  "BTCUSDC",\n  "BTCDOMUSDT",\n  "ETHUSDC",\n  "BNBUSDC",\n  "SOLUSDC",\n  "XRPUSDC",\n  "DOGEUSDC",\n  "ZECUSDC",\n  "GRAMUSDT",\n  "WLDUSDC",\n  "DASHUSDT",\n  "HYPEUSDT",\n  "1000PEPEUSDC",\n]\n'
     result = robust(old)
     assert result == [
         "BTCUSDC",
@@ -88,7 +88,7 @@ def test_robust_decode_old_corrupted_symbols_flz():
         "WLDUSDC",
         "DASHUSDT",
         "HYPEUSDT",
-        "100PEPEUSDC",
+        "1000PEPEUSDC",
     ]
 
 
@@ -97,4 +97,4 @@ def test_robust_decode_current_file_via_robust():
     raw = (ROOT / "symbols_flz.json").read_bytes()
     result = robust(raw)
     assert result is not None
-    assert len(result) == 13
+    assert len(result) == 12  # 2026-10-13: 13 - fake symbol purged 2026-10-13 (no Binance market)
