@@ -903,13 +903,18 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
     return seq
 
 
-def _pair_gate_ok(sym, acts, owner, chain_state, attempts):
+def _pair_gate_ok(sym, acts, owner, chain_state, attempts, pend_sides=None):
     """USER 2026-10-03 (drain stall): fresh (unowned) syms launch when EVERY launchable side has an
     action — terminal/capped sides don't block their sibling (half-quarantined pairs used to stall
     forever: the live side could never launch alone). Owned syms always pass (stickiness). Mirrors
     pending_actions caps exactly via _LAUNCH_CAPS (30D:3, 365D:2, REPAIR:1, GS:1)."""
     if sym in owner:
         return True
+    if pend_sides is not None:
+        # 2026-10-14: compare with the sides that actually HAVE a pending action (same budget rules as pending_actions:
+        # slices for started boards, pin cap, redo-free). The attempts-only view below declared pinned/sliced sides
+        # "not needy" (attempts >= 3) -> needy empty -> 39 stock symbols gated forever on s2 (QBTS, SHOP, ABBV, MDT ...).
+        return bool(acts) and {a["side"] for a in acts} >= set(pend_sides)
     caps = {"need30": ("30D", _LAUNCH_CAPS["30D"]), "need365": ("365D", _LAUNCH_CAPS["365D"]), "needrepair": ("REPAIR", _LAUNCH_CAPS["REPAIR"]), "needgs": ("GS", _LAUNCH_CAPS["GS"])}
     needy = set()
     for side, (s, att) in (chain_state.get(sym) or {}).items():
@@ -1721,6 +1726,8 @@ def tick(args, cfg, now):
                 if not _ok:
                     return "waiting_base", None
             return "need30", 1
+        if os.environ.get("V15_SCHED_30D_ONLY", "1") == "1":
+            return "terminal_ok", None  # 2026-10-14 365D LAW: 365D never gates and never REDOs -> no 365D verify / REPAIR / GS chain launches (running ones finish). V15_SCHED_30D_ONLY=0 restores the chain.
         if os.environ.get("V15_SCHED_NO_CHAIN") == "1" and not (ROOT / "data" / "autopilot" / "chain_mode.flag").exists():  # FINAL PHASE 2026-10-02: the autopilot creates this flag Mon 08:00Z -> 365D verify + REPAIR chains run
             return "terminal_ok", None  # USER 2026-10-01: 365D verify/REPAIR chains not needed now: release the slot after 30D
         rd = is_ready(host_name, sym) if host_name else {}
@@ -1852,8 +1859,8 @@ def tick(args, cfg, now):
             continue
         if any(f"{sym}_{sd}" in running for sd in ("LONG", "SHORT")) and not terminal(sym):
             held[hn][sym] = "running"
-        elif sym in st["held"].get(hn, {}) and not terminal(sym):
-            held[hn][sym] = "chain"
+        elif sym in st["held"].get(hn, {}) and not terminal(sym) and os.environ.get("V15_SCHED_CHAIN_HOLD", "0") == "1":
+            held[hn][sym] = "chain"  # 2026-10-14 USER: a slot is a RUNNING pilot; persisted holds without a process (365D/REPAIR waits) idled s2 at 26% with 8/9 "held". Opt-in only.
     if not (args.dry_run or sim):
         _pruned = _prune_finished_dispatches(st, _now_ts, _live_dispatch_syms())
         if _pruned:
@@ -1976,7 +1983,7 @@ def tick(args, cfg, now):
             pairs.setdefault(ss.rsplit("_", 1)[0], 0.0)
             pairs[ss.rsplit("_", 1)[0]] += r["pss_mb"]
         pair_measure = [v for k, v in pairs.items() if k in universe_syms["stocks"] | universe_syms["crypto"] and v > 0]
-        est_pair = _est_pair_mb(pair_measure, cfg.get("pair_floor_mb", 12000))  # USER 2026-10-08 #2: AUTOPSY-INERT boards peak ~4GB/pair -> floor from cfg (measured max x1.25 still wins)
+        est_pair = _est_pair_mb(pair_measure, float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000))  # 2026-10-14: measured 1.7-3.7 GB/side at 2 workers -> floor 4000 via env (max measured x1.25 still wins)  # USER 2026-10-08 #2: AUTOPSY-INERT boards peak ~4GB/pair -> floor from cfg (measured max x1.25 still wins)
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
         swap_ok = _swap_admit_ok(s)
@@ -2006,6 +2013,26 @@ def tick(args, cfg, now):
         _own_cont = sorted({ss for ss in _cont_all if owner.get(ss.rsplit("_", 1)[0]) == h["name"] and ss not in running})
         if _own_cont:
             log.setdefault("own_unfinished", {})[h["name"]] = _own_cont
+        # 2026-10-14: the stocks phase holds crypto back ONLY while a stock side can really launch on this host now and
+        # the US market is open; otherwise it falls through to "any" (05:06Z deadlock: market closed, 34 "launchable" stock
+        # sides all pair-gated, 23 crypto venue-blocked, s2 at 26% cpu).
+        _host_phase = _phase
+        if _phase == "stocks" and os.environ.get("V15_SCHED_PHASE_FALLTHROUGH", "1") == "1":
+            if not is_open:
+                _host_phase = "any"
+            else:
+                _can_stock = False
+                for _ps, _pns in order:
+                    if not _pns or venue_of(_ps) != "stocks" or (_ps in owner and owner[_ps] != h["name"]):
+                        continue
+                    _pa = [a for a in pending_actions(_ps, h["name"]) if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and not _launched_recently(a["key"], st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and f"{a['sym']}_{a['side']}" not in running]
+                    if _pa and _pair_gate_ok(_ps, _pa, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(_ps, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):
+                        _can_stock = True
+                        break
+                if not _can_stock:
+                    _host_phase = "any"
+            if _host_phase != _phase:
+                log.setdefault("venue_fallthrough", []).append(h["name"])
         for sym, needs_slot in order:
             _pinned_sym = sym in _pin_syms
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
@@ -2016,7 +2043,7 @@ def tick(args, cfg, now):
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
-            if needs_slot and not _pinned_sym and not _venue_allowed(sym, _native_syms, phase=_phase):
+            if needs_slot and not _pinned_sym and not _venue_allowed(sym, _native_syms, phase=_host_phase):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
@@ -2062,7 +2089,7 @@ def tick(args, cfg, now):
                 if f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts):
                     acts.append({"sym": sym, "side": _sib, "window": "30D", "attempt": 1, "key": _sk})
                     log.setdefault("pair_sibling_added", []).append(f"{h['name']}:{sym}_{_sib}")
-            if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
+            if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(sym, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
                 log.setdefault("skipped_pair_gate", []).append(f"{h['name']}:{sym}:" + str([a.get('side') for a in acts]))
                 continue
             _async_npz = False
@@ -2264,7 +2291,7 @@ def tick(args, cfg, now):
             rd = is_ready(h["name"], sym)
             if not rd.get("ok"):
                 continue
-            if not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"]):
+            if not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(sym, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):
                 continue
             pd = s.get("pdir") or cfg.get("fallback_pdir")
             if not pd:

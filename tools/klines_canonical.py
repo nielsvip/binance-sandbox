@@ -739,7 +739,8 @@ def cmd_import(a):
                 files += 1
     marks = []
     try:
-        marks = list(json.loads((src / COMPLETE).read_text()))
+        # marks must be fetched BEFORE the data files (a mark copied after a not-yet-copied file would switch a symbol on a shallow store)
+        marks = list(json.loads(Path(a.marks or (src / COMPLETE)).read_text()))
     except Exception:
         pass
     if marks:
@@ -781,6 +782,7 @@ def main():
     sr.add_argument("--apply", action="store_true")
     im = sub.add_parser("import")
     im.add_argument("--src", required=True)
+    im.add_argument("--marks", default="", help="a _complete.json snapshot taken before the data files were copied")
     a = ap.parse_args()
     if a.cmd == "import":
         return cmd_import(a)

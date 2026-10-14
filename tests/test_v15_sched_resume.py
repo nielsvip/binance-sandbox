@@ -145,3 +145,14 @@ def test_dispatch_job_dedup_and_slots(tmp_path, monkeypatch):
     assert s1 is not None
     assert J._acquire_slot(1, 0) is None  # all build slots busy -> wait times out
     s1.close()
+
+
+def test_pair_gate_uses_pending_sides_not_attempts():
+    acts = [{"side": "LONG"}, {"side": "SHORT"}]
+    cs = {"QBTS": {"LONG": ("need30", 1), "SHORT": ("need30", 1)}}
+    att = {"QBTS_LONG|30D": 5, "QBTS_SHORT|30D": 5}  # pinned/sliced sides past the fresh attempts cap
+    assert S._pair_gate_ok("QBTS", acts, {}, cs, att) is False  # legacy view: needy empty -> gated forever
+    assert S._pair_gate_ok("QBTS", acts, {}, cs, att, pend_sides={"LONG", "SHORT"}) is True
+    assert S._pair_gate_ok("QBTS", acts[:1], {}, cs, att, pend_sides={"LONG", "SHORT"}) is False  # pair still launches together
+    assert S._pair_gate_ok("QBTS", acts[:1], {}, cs, att, pend_sides={"LONG"}) is True
+    assert S._pair_gate_ok("QBTS", [], {}, cs, att, pend_sides=set()) is False

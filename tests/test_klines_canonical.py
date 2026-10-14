@@ -130,3 +130,19 @@ def test_stocks_repair_correct_only(tmp_path):
     plan = kc.stocks_repair_file(c15, cd, truth)
     rows, n = plan[c15]
     assert n == 1 and len(rows) == 2 and rows[0]["close"] == 1.2 and rows[1]["close"] == 2.0  # no insert of t+1800
+
+
+def test_vec_exact_frozen_store_reanchors_on_kline_source(tmp_path, monkeypatch):
+    import numpy as np
+    import live_twins.vec_exact as ve
+    monkeypatch.setattr(ve, "_FROZEN_DIR", str(tmp_path))
+    ve._FROZEN.clear() if hasattr(ve, "_FROZEN") else None
+    ts = np.arange(10, dtype=np.float64) * 900 + 1_790_000_100
+    def raw(close, src):
+        return {"timestamps": ts.copy(), "close": np.full(10, close), "htf_align": np.array(["causal_v3"]), "kline_source": np.array([src])}
+    a = ve._freeze("ZZZUSDC", raw(1.0, "mixed:15m=klines_cache"))
+    assert float(a["close"][0]) == 1.0
+    b = ve._freeze("ZZZUSDC", raw(2.0, "mixed:15m=klines_cache"))
+    assert float(b["close"][0]) == 1.0  # same source: past bars stay frozen
+    c = ve._freeze("ZZZUSDC", raw(3.0, "canonical_v1"))
+    assert float(c["close"][0]) == 3.0  # source changed -> re-anchored on the canonical build
