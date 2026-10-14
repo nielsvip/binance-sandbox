@@ -110,6 +110,19 @@ def fast_push(symbol, push):
     """S1 NPZ exists -> tail-refresh it to the latest closed bar, push it (rsync, md5 verify) and launch; None -> fall back to the builder (no NPZ on S1)."""
     import hashlib
     live = ROOT / "backtest_v8" / "indicators" / f"{symbol}.npz"
+    if not live.exists() and os.environ.get("V15_NPZ_PEER_SEED", "1") != "0":
+        # 2026-10-14: S1 had lost ~390 NPZs that s2 still holds; seed from the peer and tail-refresh (seconds) instead of a 40-min full build
+        seed = live.with_name(f".{symbol}.npz.peerseed")
+        for peer in [h for h in os.environ.get("V15_NPZ_PEERS", "10.0.0.4").split(",") if h]:
+            try:
+                rc = subprocess.run(["rsync", "-a", "--timeout=60", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=8", f"{peer}:binance-sandbox/backtest_v8/indicators/{symbol}.npz", str(seed)], capture_output=True, timeout=180).returncode
+                if rc == 0 and seed.exists() and seed.stat().st_size > 100000:
+                    os.replace(seed, live)
+                    break
+            except (OSError, subprocess.SubprocessError):
+                pass
+            finally:
+                seed.unlink(missing_ok=True)
     if not live.exists():
         return None
     tr = tail_refresh(symbol) if os.environ.get("V15_DISPATCH_TAIL_REFRESH", "1") == "1" else {"tail": "off"}
