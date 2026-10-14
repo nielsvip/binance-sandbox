@@ -1880,7 +1880,7 @@ class TradierPositionManager:
                     _dt = isoparse(str(_last_aug)) if isinstance(_last_aug, str) else _last_aug
                     if _dt and getattr(_dt, 'tzinfo', None) is None:
                         _dt = _dt.replace(tzinfo=timezone.utc)
-                    if _dt and (now - _dt).total_seconds() < 600:
+                    if _dt and (now - _dt).total_seconds() < 600 and bool(getattr(config, "TRADIER_ABSENT_HOLD_RECENT_AUG", False)):
                         logger.warning(f"[ABSENT_HOLD_RECENT_AUG] {pk}: absent but aug {(now - _dt).total_seconds():.0f}s ago — holding (amt={amt:.4f})")
                         continue
                 # 2026-10-14 USER "positionAmt must ALWAYS match the exchange": last_updated is refreshed by price ticks, so this hold
@@ -1895,8 +1895,11 @@ class TradierPositionManager:
                 pass
             self._api_absence_count[pk] = self._api_absence_count.get(pk, 0) + 1
             count = self._api_absence_count[pk]
-            if count < 5:
-                logger.warning(f"[ABSENT_HOLD_{count}/5] {pk}: absent from Tradier API — holding state, will zero after 5 consecutive absences (amt={amt:.4f})")
+            # 2026-10-14 USER "NO POSITION CAN BE OUTDATED FOR OVER A SECOND": a successful listing that holds this account's other
+            # positions is exchange truth -> absent = flat now. Only an entirely empty listing (possible glitch) needs 2 polls.
+            _need = 1 if updated_keys_in_api else int(getattr(config, "TRADIER_ABSENT_CONFIRM_EMPTY_LISTING", 2) or 2)
+            if count < _need:
+                logger.warning(f"[ABSENT_HOLD_{count}/{_need}] {pk}: absent from an EMPTY Tradier listing — confirming next poll (amt={amt:.4f})")
                 continue
             current_price = float(getattr(pos, 'mark_price', 0) or getattr(pos, 'entry_price', 0) or 0)
             entry_price = float(getattr(pos, 'entry_price', 0) or 0)

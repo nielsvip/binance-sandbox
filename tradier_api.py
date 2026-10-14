@@ -21,6 +21,7 @@ _ODG_RAW_OK: ContextVar = ContextVar("tradier_odg_raw_ok", default=False)  # PHA
 
 current_account = ContextVar("current_account", default="unknown")
 logger = logging.getLogger("tradier_api")
+_GET_ORDERS_CACHE = {}  # 2026-10-14: account id -> (ts, orders); 3 s TTL (a full listing is ~7 s with 2700+ orders)
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
 config=TradierConfig()
@@ -135,6 +136,10 @@ class TradierAPIClient:
         # 2026-10-14: Tradier pages the order list (1500/page). 1500+ rejected overnight stops filled page 1, so every
         # current open order (resting backstops) sat on page 2 and was invisible -> exits rejected, stops duplicated. Read all pages.
         if not self._current_id: return []
+        _ck = str(self._current_id)
+        _hit = _GET_ORDERS_CACHE.get(_ck)
+        if _hit and time.time() - _hit[0] < 3.0:
+            return list(_hit[1])
         out = []
         for page in range(1, 11):
             res = await self._request("GET", f"/accounts/{self._current_id}/orders", params={"page": page} if page > 1 else None, use_data_context=False)
@@ -149,6 +154,7 @@ class TradierAPIClient:
             out.extend(got)
             if len(got) < 1500:
                 break
+        _GET_ORDERS_CACHE[_ck] = (time.time(), list(out))
         return out
 
     async def get_order_status(self, account_key: str, order_id: Any) -> Dict:
@@ -403,11 +409,7 @@ class TradierAPIClient:
                     await self.cancel_order(account_key, _o.get("id"))
                 if _open:
                     logger.critical(f"[EXIT_STOP_CLEAR] {data['symbol']} {data['side']}: cancelled resting stop(s) {[o.get('id') for o in _open]} before {data['type']} exit qty {data['quantity']}")
-                    for _i in range(6):
-                        await asyncio.sleep(0.5)
-                        _ids = {str(o.get("id")) for o in _open}
-                        if not any(str(o.get("id")) in _ids and str(o.get("status", "")).lower() in ("open", "pending", "partially_filled") for o in (await self.get_orders(account_key))):
-                            break
+                    await asyncio.sleep(1.0)  # one full order listing is ~7 s (2 pages) — never re-list here (exits stalled past 120 s)
             except Exception as _sce:
                 logger.error(f"[EXIT_STOP_CLEAR] {data['symbol']}: stop clear failed ({_sce}) — sending exit anyway")
         res = await self._request("POST", f"/accounts/{self._current_id}/orders", data=data, use_data_context=False)

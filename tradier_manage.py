@@ -14829,7 +14829,10 @@ async def process_position(
                     )
                     return f"FIXED_STOP_CLOSED"
                 try:
-                    _fx_ens = getattr(trade_manager, "ensure_fixed_stop_backstop_tradier", None)
+                    # 2026-10-14: broker-side GTC backstop OFF by default — it spawned a task per position per cycle, each pulling the full
+                    # order list (2700+ orders, ~7 s); 2500+ rejected stops, exits stalled past 120 s, Tradier listing timed out.
+                    # The software FIXED_STOP above (breach -> CLOSE via execute_now) stays active.
+                    _fx_ens = getattr(trade_manager, "ensure_fixed_stop_backstop_tradier", None) if bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)) else None
                     if _fx_ens is not None:
                         asyncio.create_task(_fx_ens(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_fx_lvl, current_price=current_price))
                 except Exception:
@@ -43977,11 +43980,7 @@ class TradierTradeManager:
             return "NO_STOP"
         for _oid in ids:
             await self._fixed_stop_order_action_tradier(position_key=_pk, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=_oid)
-        for _i in range(6):
-            _left = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
-            if _left is not None and not any(str(o.get("id")) in ids for o in _left):
-                break
-            await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)  # 2026-10-14: no re-listing loop (each listing ~7 s; exits stalled past 120 s)
         reg.pop(_pk, None)
         try:
             _vm = getattr(self, "_fx_stop_verify_ts", None)
