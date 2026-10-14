@@ -1,43 +1,45 @@
 {
- "generated_at": "2026-10-14 17:35 UTC",
- "total_capital_usd": 71.89,
+ "generated_at": "2026-10-14 17:41 UTC",
+ "total_capital_usd": 108.89,
  "tier_capital": {
-  "A": 0.0,
-  "B": 44.75,
-  "C": 27.14
+  "A": 21.78,
+  "B": 0.0,
+  "C": 87.1
  },
  "tier_count": {
-  "A": 0,
-  "B": 1,
+  "A": 1,
+  "B": 0,
   "C": 1
  },
- "winners": [],
+ "winners": [
+  "fin:XRPUSDC_SHORT"
+ ],
  "losers": [
-  "men:GALAUSDT_SHORT"
+  "fin:EGLDUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:MELANIAUSDT_SHORT",
-   "symbol": "MELANIAUSDT",
-   "account": "men",
-   "value_usd": 44.75,
-   "gain_pct": 0.383,
-   "tier": "B",
-   "perf_mult": 5.45,
-   "amt": 522.32,
-   "mark": 0.08567631
+   "pk": "fin:EGLDUSDT_SHORT",
+   "symbol": "EGLDUSDT",
+   "account": "fin",
+   "value_usd": 87.1,
+   "gain_pct": 3.154,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 24.1,
+   "mark": 3.61431034
   },
   {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 27.14,
-   "gain_pct": 3.713,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 13416.0,
-   "mark": 0.002023
+   "pk": "fin:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "fin",
+   "value_usd": 21.78,
+   "gain_pct": 2.91,
+   "tier": "A",
+   "perf_mult": 8.57,
+   "amt": 16.4,
+   "mark": 1.3281
   }
  ]
 }

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-14 17:37:46 UTC
+# Copilot Status — 2026-10-14 17:53:01 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:34:42
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T17:35:43
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T17:35:43
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:35:43
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T17:36:44
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T17:36:44
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:36:44
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T17:37:45
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T17:37:45
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:37:45
+- **STALE_INDICATORS** [tradier]  — 2026-10-14T17:50:18
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T17:50:59
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T17:50:59
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:50:59
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T17:52:00
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T17:52:00
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:52:00
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T17:53:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T17:53:01
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T17:53:01
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +29,15 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **CRWD** SHORT (tradier) peak +13.0%, now +0.3%
-- HELD: **WDAY** SHORT (tradier) peak +7.8%, now +1.7%
-- HELD: **SNDK** SHORT (tradier) peak +7.7%, now +1.9%
-- HELD: **APO** SHORT (tradier) peak +4.5%, now +4.1%
+- HELD: **CRWD** SHORT (tradier) peak +13.0%, now +0.6%
+- HELD: **TSLA** SHORT (tradier) peak +10.9%, now +0.6%
+- HELD: **WDAY** SHORT (tradier) peak +7.8%, now +1.4%
+- HELD: **SNDK** SHORT (tradier) peak +7.7%, now +2.2%
 - HELD: **MELANIAUSDT** SHORT (crypto) peak +3.6%, now +3.3%
 
-- WATCHING: **GALAUSDT** SHORT (crypto) peaked +6.0%, exited 0m ago
-- WATCHING: **EGLDUSDT** SHORT (crypto) peaked +4.1%, exited 0m ago
-- WATCHING: **XRPUSDC** SHORT (crypto) peaked +3.2%, exited 0m ago
+- WATCHING: **GALAUSDT** SHORT (crypto) peaked +6.0%, exited 1m ago
+- WATCHING: **EGLDUSDT** SHORT (crypto) peaked +4.1%, exited 1m ago
+- WATCHING: **XRPUSDC** SHORT (crypto) peaked +3.2%, exited 1m ago
 
 ## Supervisor
 
