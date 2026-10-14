@@ -358,9 +358,17 @@ def cache_bar_final(symbol, cutoff):
     import backtest_v8_precompute as bvp
     _canon = getattr(bvp, "CANONICAL_KLINES", None)
     if _canon is not None and os.environ.get("NPZ_CANONICAL_SOURCE", "1") != "0" and (_canon / f"{symbol}_15m.json").exists() and bvp._canonical_complete(symbol):
-        # 2026-10-14: the builder reads klines_canonical (tools/klines_canonical.py); its rows are closed exchange bars by construction
-        df = bvp.load_klines(_canon / f"{symbol}_15m.json")
-        return bool(df is not None and len(df) and (_epoch_s(df.index) == cutoff).any())
+        # 2026-10-14: the builder reads klines_canonical (tools/klines_canonical.py); its rows are closed exchange bars by construction.
+        # The Mac daemon pushes the just-closed bar ~45 s after the close; while S1's own REST is refused (418) wait for it instead of
+        # missing every cycle (bounded: NPZ_CANONICAL_WAIT_S, only for a bar that closed less than 3 min ago).
+        deadline = time.time() + float(os.environ.get("NPZ_CANONICAL_WAIT_S", "90"))
+        while True:
+            df = bvp.load_klines(_canon / f"{symbol}_15m.json")
+            if df is not None and len(df) and (_epoch_s(df.index) == cutoff).any():
+                return True
+            if time.time() >= deadline or time.time() - (cutoff + BAR) > 180:
+                return False
+            time.sleep(5)
     df = bvp.load_klines(bvp.CRYPTO_KLINES / f"{symbol}_15m.json")
     if df is None or not len(df):
         return False

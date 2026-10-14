@@ -386,6 +386,16 @@ def cmd_tail(a, api=None, tfs=None):
     return tot
 
 
+def _push():
+    if not PUSH.exists() or os.environ.get("KLINES_CANONICAL_PUSH", "1") == "0":
+        return
+    try:
+        import subprocess
+        subprocess.Popen(["/bin/bash", str(PUSH)], stdout=open(ROOT / "data" / "klines_canonical_push.log", "a"), stderr=subprocess.STDOUT, start_new_session=True)
+    except Exception as e:
+        log(f"push spawn failed: {e}")
+
+
 def cmd_daemon(a):
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     fh = open(LOCK, "w")
@@ -404,20 +414,21 @@ def cmd_daemon(a):
         tfs = ["15m"] + [tf for tf in ("1h", "4h", "D") if t % TFS[tf][1] < 900]
         t0 = time.time()
         a.symbols = ""
-        tot = cmd_tail(a, api=api, tfs=tfs)
-        st = {"at": iso(int(time.time() * 1000)), "tfs": tfs, "took_s": round(time.time() - t0, 1), "calls": api.calls, "weight": api.weight, **tot}
+        tot = cmd_tail(a, api=api, tfs=["15m"])
+        t15 = round(time.time() - t0, 1)
+        _push()  # the 15m bar reaches S1 first (npz_bar_refresh waits for it while S1's own REST is refused)
+        if len(tfs) > 1:
+            th = cmd_tail(a, api=api, tfs=tfs[1:])
+            for k in tot:
+                tot[k] += th.get(k, 0)
+            _push()
+        st = {"at": iso(int(time.time() * 1000)), "tfs": tfs, "took_s": round(time.time() - t0, 1), "took_15m_s": t15, "calls": api.calls, "weight": api.weight, **tot}
         try:
             STATE.parent.mkdir(parents=True, exist_ok=True)
             STATE.write_text(json.dumps(st))
         except Exception:
             pass
         log(f"cycle {st}")
-        if PUSH.exists() and os.environ.get("KLINES_CANONICAL_PUSH", "1") != "0":
-            try:
-                import subprocess
-                subprocess.Popen(["/bin/bash", str(PUSH)], stdout=open(ROOT / "data" / "klines_canonical_push.log", "a"), stderr=subprocess.STDOUT, start_new_session=True)
-            except Exception as e:
-                log(f"push spawn failed: {e}")
         if a.once:
             return 0
 

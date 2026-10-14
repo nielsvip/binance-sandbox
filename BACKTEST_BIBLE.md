@@ -2770,3 +2770,67 @@ Agent template writes the same night (all on S1, all backed up): 00:05-01:22 swi
 3 REENTRY_ON_*), 00:12 two concurrent v15_switch_remove runs deleted 2 STOCKS_SHORT rows -> restored by hand from the 00:05 backup;
 03:16 a bookkeeper --rules-only INSTRUCTIONS write that diverged S1 from S2/Mac (and was auto-synced to S2) -> undone on S1 and S2
 from the identical 01:22 state, bookkeeper edit reverted (4bcf8d3d). Final templates S1=S2=Mac 0418f1e0 f0fb401d 221e9e86 3fdf7610.
+
+## 104. CASH-ACCOUNT SETTLEMENT (GFV) PARITY + EXIT-GUARANTEE FILL MODEL (USER 2026-10-14 "no violations accepted; make sure it works identically in the vectorized backtests")
+
+**One rule, one module:** `vec_decisions/cash_settlement.py` (stdlib; covered by the eval-cache engine fingerprint) is used by live
+`tradier_manage.GFVTracker`, `v12_quick_engine.simulate_one` and the `backtest_v12_engine` replay. Switch
+`CASH_ACCOUNT_SETTLEMENT_ENABLED` (True; QuickConfig + config_tradier; never False outside an investigative backtest — live GFV
+gates are a legal rule and do not read it). No template row (not sweepable).
+
+**Who is a cash account:** `ACCOUNT_TYPE_<ACCT>` — tra=cash, trb=margin, trc=paper (QuickConfig now carries all three, = config_tradier);
+unknown -> cash (fail closed, = `_gfv_guard_applies`). **tra is hard entry-banned** (`order_dedupe_guard.HARD_ENTRY_BANNED_ACCOUNTS`,
+`TRA_ALLOW_BUYS=False`): it holds legacy positions only (VT/META/MSTR/NEM LONG on 2026-10-13) and opens no board. Every live board
+trades on trb (margin) and/or trc (paper) -> **the settlement rule is inert for every published board** (proof below).
+
+**The rule (cash account):** (1) entry-banned account -> no buy leg ever (any account type); (2) a buy leg on ET date D is refused
+while this board's own sale proceeds are unsettled (strict board-local reading of live's broker settled-cash gate); (3) every buy
+leg restricts selling until `next_settlement_day(D)` (T+1; worst-case reading of the GFVTracker restriction); (4) a sell requested
+while restricted is OWED and executed at the first regular-session bar whose ET date >= settlement, at that bar's price.
+Settlement calendar = weekdays minus NYSE holidays (rule-based + one-off closures) minus Fed settlement holidays (Columbus Day,
+Veterans Day — exchange open, no DTC settlement). Live `_next_business_day` was weekends-only before 2026-10-14.
+
+**Board account (pilot hook, V17 owns v15_pilot):** `cash_settlement.board_account(sym, side, TradierConfig())` -> the STRICTEST
+account that can actually open the sym_side (entry-banned and side-restricted accounts skipped; any settling account wins).
+tradier_vec_exact emits ONE decision stream per sym_side for all accounts, so a board traded on cash + margin is evaluated as cash.
+Pass it as `sim_account=` / overrides `SIM_ACCOUNT` at EVALUATION time only (never into cumulative_overrides / per-sym sets).
+Today it returns trb for every stock sym_side.
+
+**Live mechanics:** GFV refusals (`GFV_BLOCKED`, `BLOCKED_GFV_ACCOUNT_RULE`, `GFV_SETTLED_CASH_BLOCK`) are POLICY in exit_guarantee
+(a FORCE cannot sell before settlement); the refused sell is registered `GFVTracker.owe_exit` (persisted `owed_exits` in
+data/tradier/gfv_tracker.json) and `process_position` executes it at the first RTH tick after settlement
+(`CASH_SETTLEMENT_DEFERRED[...]`, an exit_guarantee AUTH token) — nothing else happens on that position meanwhile (vector skips the
+bar). Cash buy legs: strict T+1 restriction (`record_buy_settlement`); trb/trc keep the old inert bookkeeping.
+
+**Stock whole-share twin (same cut):** live tradier execute_now sends `max(1, int(round(q)))` shares on every order; the vector
+reduced fractional shares (358/464 stock REDUCE events, 17/73 boards). simulate_one now normalises each stock REDUCE to the live
+share count (a reduce that rounds to the whole position = `WHOLE_SHARE_REDUCE_TO_FLAT` close). Tokenised Binance stocks (MODE
+crypto) stay fractional. **15 of 72 valid stock boards change** (s2, current published sets, 30D): ADBE_L -2.48->-4.04 (19->20
+trades), AMAT_S 15.88->15.07 (13->15), AMD_L 1.38->1.37, AMZN_L 0.02->-0.15, BABA_S 5.13->5.13, DELL_L 9.38->9.51, LAC_L,
+LOW_S 10.05->10.03, NEM_S 3.44->3.40, NFLX_L 2.79->2.77, PLTR_L 2.08->0.71 (6->10), PYPL_S, STZ_L, WDAY_L 0.70->0.66, ZCSH_L.
+57 boards bit-identical; the settlement rule changes 0 of them (trb).
+
+**Exit-guarantee vs fill model:** vector fills every decision at the decision-bar close, zero slippage (stocks fee 0, crypto
+0.02%/leg), reduces instantly, no dust. Live: exit_guarantee makes decided exits fill (FORCE market reduce-only on refused/unconfirmed
+full closes, reduce retries 15-240 s, dust force-close only after a confirmed FULL close) -> it moves live TOWARD the vector
+assumption. Remaining honest gap = slippage/latency: crypto VEC_EXACT exits 2026-10-11..14 (Mac order ledgers, heuristic pairing)
+filled earliest 134 s after bar close; n=54 (lag<=300 s) median +2.9 bps against the position, mean -2.5, p90 +42.6; MARKET fills
+(n=76) median +7.9 bps; stocks 0 pairs (no live VEC_EXACT stock fills yet) = unknown. Not modelled in the vector.
+**Replay rule:** `backtest_v12_engine` sets `EXIT_GUARANTEE_REPLAY=1` -> exit_guarantee pass-through (it used to run the real wrapper
+in V12_REAL_EXECUTE replays: live per_trade_returns / vigilance / stale-set / alert writes, desktop notifications, crypto FORCE
+fills at price 0, stock watchers on REAL-time sleeps). Would-escalate / would-retry outcomes are counted in
+`run_one()["exit_guarantee_replay"]`.
+
+**Replay harness fixes (same cut, pre-existing breakage):** `_check_live_drawdown_ceiling` answered without broker I/O (sim equity 0
+-> DD 100% blocked every stock OPEN, rate guard aborted -> every stock trade-parity live leg UNAVAILABLE); VEC_EXACT stale fallback
+off in replays (wall-clock vs frozen NPZ -> VEC_EXACT_STALE on 810/810 bars; reader `float(_cfg() or 4.0)` -> wrapped `_cfg`).
+OPEN (pre-existing, proven on the pre-edit code): APO_LONG stock twin emits no OPEN in replay (only ULTIMATE_DC hard-stop CLOSEs on
+a flat book) while the vector opens 8; in-process `tools/v15_trade_parity.run` (vec leg first) contaminates the live twin
+(0 opens) -> run legs in separate processes; `tools/cat_side_defaults.py` shadows root `cat_side_defaults.py` when tools/ is on
+sys.path first.
+
+**Proof (s2, frozen NPZ ~/parity_loop_stocks/.../indicators_frozen_20261006, split-process legs, current published sets):**
+AAPL_LONG trb 24/24 trips identical entry+exit timestamps; AAPL_LONG as cash (REAL execute) 9/9 identical, 0 unsettled sells
+either leg, deferred exits on the same bars; META_LONG trb 25/28 (pre-existing twin divergence 09-08 + 09-24), as cash 6/9 (all 3 deferred vec
+exits identical in live; the 3 unmatched 09-09..09-16 cascade from the same 09-08 twin exit divergence seen on trb), 0 unsettled sells either leg;
+tra (AAPL/APO/META) 0 trades both legs. Unit tests `tests/test_cash_settlement_parity.py` (13).
