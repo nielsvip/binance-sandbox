@@ -172,7 +172,7 @@ LIVE_ONLY_SWITCHES = frozenset({
     "INTRADAY_RATIO_MAX_TRIMS_PER_DAY", "EOD_SLIM_RATIO_ENABLED",
     "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", "SENTIMENT_REBAL_COOLDOWN_MIN",
 })
-PROGRESS_JSON_EVERY_S = 15.0
+PROGRESS_JSON_EVERY_S = float(os.environ.get("V15_PROGRESS_JSON_EVERY_S", "60"))  # 2026-10-14 profile: 15 s full dumps of the 3-35 MB JSON cost ~0.17 s/row; delta log keeps every eval, promotions force a write
 # 2026-09-28 OOM FIX: unbounded eval cache grew for the pilot's lifetime (~72k evals/sym_side of result
 # dicts) and contributed to OOM kills that truncated workbook saves (19 BadZip files quarantined
 # backups/corrupt_xlsx_20260928/). Bounded FIFO: oldest quarter evicted when the cap is hit — identical
@@ -768,7 +768,7 @@ _FILTER_DICT_CACHE = None
 MAX_ROWS = 50000
 
 # S1 NPZ locations (sandbox + gateway)
-S1_NPZ_DIRS = [Path("/home/niels/binance-sandbox/backtest_v8/indicators"), ROOT / "backtest_v8" / "indicators"]
+S1_NPZ_DIRS = [ROOT / "backtest_v8" / "indicators", Path("/home/niels/binance-sandbox/backtest_v8/indicators")]  # 2026-10-14 frozen-NPZ bench: own ROOT first (identical on S1/S2 where ROOT is the sandbox)
 S1_SSH = "niels@157.90.168.35"
 S1_SSH_SANDBOX = "niels@157.180.125.52"
 CHARTS_1M_DIR = ROOT / "data" / "reports" / "charts_1M"
@@ -1742,14 +1742,15 @@ def _paint_tab_status(wb, measured=None) -> dict:
         ws = wb[sname]
         rows = filled = red = 0
         _ordered, _by_sw, _skipped = [], {}, {}
-        for r in range(3, ws.max_row + 1):
+        _mr, _mc = ws.max_row, ws.max_column  # 2026-10-14 profile: ws.max_column is a full-sheet scan; per-row reads made each save ~41 s (141 s of a 480 s slice)
+        for r in range(3, _mr + 1):
             if ws.cell(row=r, column=1).value in (None, ""):
                 continue
             rows += 1
             f_cell = ws.cell(row=r, column=6)
             g_cell = ws.cell(row=r, column=7)
             # running-default rows keep F/G blank by design — they count as filled once their yellows are
-            if isinstance(f_cell.value, (int, float)) or isinstance(g_cell.value, (int, float)) or any(isinstance(ws.cell(row=r, column=c).value, (int, float)) for c in range(12, ws.max_column + 1)):
+            if isinstance(f_cell.value, (int, float)) or isinstance(g_cell.value, (int, float)) or any(isinstance(ws.cell(row=r, column=c).value, (int, float)) for c in range(12, _mc + 1)):
                 filled += 1
             if _is_red_cell(f_cell) or _is_red_cell(g_cell) or g_cell.value == -1.0:
                 red += 1
@@ -2277,7 +2278,7 @@ def _npz_path(symside):
     """Resolve the symside's NPZ file (S1 sandbox first, then local). None if missing."""
     try:
         sym = symside.rsplit("_", 1)[0] if symside.rsplit("_", 1)[-1] in ("LONG", "SHORT") else symside
-        for _p in (Path("/home/niels/binance-sandbox/backtest_v8/indicators") / f"{sym}.npz", Path(ROOT) / "backtest_v8" / "indicators" / f"{sym}.npz"):
+        for _p in (Path(ROOT) / "backtest_v8" / "indicators" / f"{sym}.npz", Path("/home/niels/binance-sandbox/backtest_v8/indicators") / f"{sym}.npz"):  # 2026-10-14 bench: own ROOT first
             if _p.exists():
                 return _p
     except Exception:
@@ -3876,6 +3877,31 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _delta_log_fh.write(json.dumps({"ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
     except Exception as _bce:
         print(f"[BRAIN-WARN] board ctx {_bce}", flush=True)
+    # BRAIN (USER 2026-10-14 "like a neural network … lower the number of times per 1000 tests low scorers are calculated"):
+    # one learned model (tools/v15_brain.py, nightly export data/brain/brain_<CAT_SIDE>.json) decides per cell — and with
+    # V15_BRAIN_NAKED=1 per row — p_eval = clip(P(pos)/p_ref, floor/1000, 1); deterministic draw, propensity booked in
+    # progress["brain"]; skipped cells ride prior_skipped (PRIOR-REVIVED on a positive naked); skipped rows are settled
+    # BRAIN_SAMPLED_OUT (like CARRIED_DEAD). Never: sacred / essential-gate / new / coarse-expand rows, WINNER-tier rows.
+    # Default OFF until the frozen-NPZ bench (tools/v15_npz_bench.py) proves no loss. Bible §108.
+    _brain = None
+    if os.environ.get("V15_BRAIN", "0") == "1":
+        try:
+            from tools.v15_brain import PilotBrain as _PilotBrain, draw as _brain_draw
+            _brain_path = Path(os.environ.get("V15_BRAIN_DIR") or (ROOT / "data" / "brain")) / f"brain_{map_key_for_symside(new_symside)}.json"
+            if _brain_path.exists():
+                _brain = _PilotBrain(str(_brain_path), new_symside)
+                print(f"[BRAIN] {new_symside} model {_brain_path.name} built {_brain.meta.get('at')} p_ref {_brain.p_ref} floor {_brain.floor * 1000:.1f}/1000 naked={os.environ.get('V15_BRAIN_NAKED', '0')}", flush=True)
+            else:
+                print(f"[BRAIN] no model {_brain_path} — full board", flush=True)
+        except Exception as _bre:
+            print(f"[BRAIN-WARN] load {_bre} — full board", flush=True)
+            _brain = None
+    _brain_naked = _brain is not None and os.environ.get("V15_BRAIN_NAKED", "0") == "1" and (_tier_name != "WINNER" or os.environ.get("V15_BRAIN_NAKED_WINNER", "0") == "1")
+    _brain_rid = f"{os.environ.get('V15_DEFAULTS_ROUND', '')}|{utcnow()[:10]}"
+    _brain_book = progress.setdefault("brain", {"rows": {}, "cells": {}, "stats": {}}) if _brain is not None else {"rows": {}, "cells": {}, "stats": {}}
+    _brain_stats = _brain_book.setdefault("stats", {})
+    for _bk in ("rows_seen", "rows_out", "cells_seen", "cells_out", "observed"):
+        _brain_stats.setdefault(_bk, 0)
     # Row-parallel evals: naked + every yellow of a row are independent (all vs the same cumulative_before), so they are
     # prefetched in a forked process pool; results keyed by label, failures -> None + reason (never -1/0). Joint stays serial.
     global _POOL_PREPARED
@@ -5028,6 +5054,26 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[PRIOR-POLICY] {new_symside} cat={map_key_for_symside(new_symside)} tier={_tier_name} strict={_tier_strict} switch_cand={len(_prior.get('switch_cand') or {})} filter_opt={len(_prior.get('filter_opt') or {})} min_n={_PRIOR_MIN_N} rotate=1/{_PRIOR_ROTATE_EVERY} (seq {_inert_seq})", flush=True)
     elif _PRIOR_ON:
         print(f"[PRIOR-POLICY] {new_symside} no causal profile for {map_key_for_symside(new_symside)} (data/causal/switch_causal_profile.json) — full board", flush=True)
+    def _brain_exempt(sname: str, switch, cand) -> bool:
+        _sw = str(switch).strip()
+        _rk = f"{sname}!{_sw}={str(cand).strip()}"
+        return _sw.startswith(SACRED_ZERO_EXEMPT_PREFIXES) or _sw in ESSENTIAL_GATE_SWITCHES or _rk in _coarse_expand or bool(((_prior_psj or {}).get(_rk) or {}).get("new"))
+    def _brain_row_out(sname: str, switch, cand):
+        # -> settled skip reason when the row's naked eval is sampled out, else None (row evaluated)
+        try:
+            if _brain_exempt(sname, switch, cand):
+                return None
+            _rk = f"{str(switch).strip()}={str(cand).strip()}"
+            _pe, _pp, _n = _brain.p_row(sname, _rk)
+            _brain_stats["rows_seen"] += 1
+            if _brain_draw(new_symside, sname, _rk, _brain_rid) < _pe:
+                return None
+            _brain_stats["rows_out"] += 1
+            _brain_book["rows"][f"{sname}!{_rk}"] = {"p_eval": round(_pe, 5), "p_pos": round(_pp, 5), "n": _n}
+            return f"BRAIN_SAMPLED_OUT: p_pos={_pp:.4f} p_eval={_pe:.4f} n={_n} (settled; floor-sampled {_brain.floor * 1000:.0f}/1000, never a fake 0)"
+        except Exception as _bre:
+            print(f"[BRAIN-WARN] row {sname} {switch}={cand} {_bre} — row calculated", flush=True)
+            return None
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
         k = (sname, rr)
@@ -5065,6 +5111,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         elif (_tm_why := _switch_type_violation(str(switch).strip(), cand, defaults)):
             info.update(kind="skip", reason=f"{_tm_why} — grey, not calculated", g=None)
             ws.cell(row=rr, column=1).font = Font(name="Arial", size=10, color="FFBFBFBF")
+        elif _brain_naked and (_bro := _brain_row_out(sname, switch, cand)):
+            info.update(kind="skip", reason=_bro, g=None)
         else:
             # USER 2026-09-30: grey / DEAD_VEC / LIVE_ONLY rows are calculated like every other row (real engine deltas);
             # DEAD_VEC / LIVE_ONLY promotion stays blocked by promotion_block_reason
@@ -5133,6 +5181,25 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["prior_rank"] = {h: _prior_rank(_prior_entry(_prior, "filter_opt", str(h).strip())) for h in info["hdrs"]}
             except Exception as _pre:
                 print(f"[PRIOR-WARN] {sname}!{rr} {_pre} — row calculated", flush=True)
+        if _brain is not None and info["kind"] == "eval" and info["hdrs"] and not _brain_exempt(sname, switch, cand):
+            try:
+                _rk = f"{str(switch).strip()}={str(cand).strip()}"
+                _bkeep, _bskip = [], []
+                for _h in info["hdrs"]:
+                    _pe, _pp, _n = _brain.p_cell(sname, _rk, _h)
+                    _brain_stats["cells_seen"] += 1
+                    if _brain_draw(new_symside, sname, _rk + "|" + str(_h), _brain_rid) < _pe:
+                        _bkeep.append(_h)
+                    else:
+                        _bskip.append(_h)
+                        _brain_book["cells"][f"{sname}!{_rk}@{_h}"] = round(_pe, 5)
+                if _bskip:
+                    _brain_stats["cells_out"] += len(_bskip)
+                    info["hdrs"] = _bkeep
+                    info["prior_skipped"] = list(info.get("prior_skipped") or []) + _bskip  # PRIOR-REVIVED path: a positive naked runs them on the spot
+                    info["brain_skipped"] = list(_bskip)
+            except Exception as _bre:
+                print(f"[BRAIN-WARN] cells {sname}!{rr} {_bre} — cells calculated", flush=True)
         if info["kind"] == "eval" and (_ps_on or _redo_heal or _COARSE_FIRST_PASS):
             try:
                 _pp, _nn, _isd = _ps_row_ev(ws, rr, sname, switch, cand)
@@ -7382,6 +7449,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 results[_rv_hdr] = _get(sname, rr, switch, cand, _rv_hdr, _rv_ovs[_rv_hdr], _rv_deadline, cumulative_before)
             n_items = len(plan["items"])
             print(f"[AUTOPSY-INERT-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> full yellow pass ({len(st['hdrs'])} cells)", flush=True)
+        if _brain is not None and not is_running and naked_ok and naked_delta is not None:
+            try:
+                _brain.observe_naked(sname, f"{str(switch).strip()}={str(cand).strip()}", float(naked_delta))
+                _brain_stats["observed"] += 1
+            except Exception:
+                pass
         if st.get("prior_skipped") and not is_running and naked_ok and naked_delta is not None and float(naked_delta) > 1e-9:
             # PRIOR-REVIVED (USER 2026-10-12): the fleet prior called this switch dead/useless, but on THIS sym_side the naked
             # flip is positive -> it binds here; its prior-skipped yellows run now (a positive row may carry positive filters).

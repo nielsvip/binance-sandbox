@@ -12,7 +12,7 @@ import hashlib
 import hmac
 import json
 import os
-import socket
+import platform
 import sys
 import time
 import urllib.parse
@@ -33,8 +33,8 @@ class BanStop(Exception):
 
 
 def _get(session, key, secret, path, params):
-    if socket.gethostname().lower().startswith(("s1", "niels", "ubuntu")):
-        raise SystemExit("refusing to run off the Mac")
+    if platform.system() != "Darwin":
+        raise SystemExit("refusing to run off the Mac (S1 IP is Binance-banned; servers never call Binance from this tool)")
     resp = None
     for attempt in range(3):
         signed = dict(params)

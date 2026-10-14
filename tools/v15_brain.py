@@ -36,6 +36,7 @@ import math
 import os
 import sys
 import time
+from pathlib import Path
 
 EPS = 1e-9
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
@@ -403,6 +404,289 @@ def cmd_replay(args):
     return 0
 
 
+def _lo(pos, n, a=0.5):
+    """smoothed log-odds of a hit rate"""
+    return math.log((pos + a) / (max(0.0, n - pos) + a))
+
+
+class Online:
+    """One learned layer over graph evidence (USER 2026-10-14 "like a neural network that keeps making connections"):
+    logistic regression, SGD, predict-THEN-learn on every real eval (prequential = honest out-of-sample at every step).
+    Features per candidate (kind R = naked row, F = yellow cell):
+      bias, key log-odds @GLOBAL / @cat_side / @sym_side (shrunk by n), switch-name log-odds @cat_side (sibling cands),
+      filter-on-row pair log-odds (F), log1p(n) evidence mass, board running hit-rate logit (EMA), tab-on-board running
+      logit (EMA), naked-result features for F (sign + clipped delta: the row's own naked eval, known before deferred yellows)."""
+    NF = 12
+
+    def __init__(self, lr=0.03, l2=1e-5):
+        self.w = {"R": [0.0] * self.NF, "F": [0.0] * self.NF, "F0": [0.0] * self.NF}
+        self.w["R"][0] = self.w["F"][0] = self.w["F0"][0] = -4.0
+        self.lr, self.l2 = lr, l2
+        self.ema = collections.defaultdict(lambda: 0.02)
+
+    @staticmethod
+    def _sig(z):
+        return 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, z))))
+
+    def feats(self, brain, kind, sym_side, sheet, row_key, hdr, naked_d):
+        cs = cat_side_of(sym_side)
+        a = ("R:" + row_key) if kind == "R" else ("F:" + str(hdr).strip())
+        x = [1.0] + [0.0] * (self.NF - 1)
+        def ev(scope, k, b=""):
+            e = brain.edges.get((scope, k, b))
+            return (e.pos, max(0, e.n - e.inv)) if e is not None else (0, 0)
+        gp, gn = ev(GLOBAL, a)
+        cp, cn = ev(cs, a)
+        sp, sn = ev(sym_side, a)
+        x[1] = _lo(gp, gn) * gn / (gn + 3.0)
+        x[2] = _lo(cp, cn) * cn / (cn + 3.0)
+        x[3] = (_lo(sp, sn) - x[2]) * sn / (sn + 2.0)
+        name = "N:" + row_key.split("=", 1)[0] if kind == "R" else "N:" + str(hdr).split("=", 1)[0].strip()
+        np_, nn = ev(cs, name)
+        x[4] = _lo(np_, nn) * nn / (nn + 3.0)
+        if kind == "F":
+            pp, pn = ev(cs, a, "R:" + row_key)
+            x[5] = _lo(pp, pn) * pn / (pn + 2.0)
+        x[6] = math.log1p(cn)
+        x[7] = 1.0 if cn < 3 else 0.0
+        be = self.ema[sym_side]
+        x[8] = math.log(be / (1.0 - be))
+        te = self.ema[(sym_side, sheet)]
+        x[9] = math.log(te / (1.0 - te))
+        if kind == "F" and naked_d is not None:
+            x[10] = 1.0 if naked_d > EPS else (-1.0 if naked_d < -EPS else 0.0)
+            x[11] = max(-3.0, min(3.0, naked_d))
+        return x
+
+    def predict(self, kind, x):
+        return self._sig(sum(w * v for w, v in zip(self.w[kind], x)))
+
+    def learn(self, kind, x, y, p):
+        g = y - p
+        w = self.w[kind]
+        for i, v in enumerate(x):
+            w[i] += self.lr * (g * v - self.l2 * w[i])
+
+    def bump(self, sym_side, sheet, y, alpha=0.02):
+        for k in (sym_side, (sym_side, sheet)):
+            self.ema[k] = min(0.98, max(0.002, (1 - alpha) * self.ema[k] + alpha * y))
+
+
+def observe_names(brain, sym_side, ts, row_key, naked, marg):
+    cs = cat_side_of(sym_side)
+    if naked is not None:
+        brain.edges[(cs, "N:" + row_key.split("=", 1)[0], "")].add(sym_side, naked, ts)
+    for hdr, m in marg.items():
+        brain.edges[(cs, "N:" + str(hdr).split("=", 1)[0].strip(), "")].add(sym_side, m, ts)
+
+
+def cmd_prequential(args):
+    """Predict-then-learn over the whole chronological stream. Every logged real eval is scored BEFORE the graph and the
+    weights learn from it. Report for evals at/after --cut (warm-up before): the cost/recall frontier of
+    p_eval = clip(pred / p_ref, floor/1000, 1) for many p_ref, vs today's verdict rule; AUC-style capture curve."""
+    files = collect_files(args.glob or DEFAULT_GLOBS)
+    items = []
+    for f in files:
+        try:
+            for it in iter_rows(f):
+                if it[1] >= (args.since or ""):
+                    items.append(it)
+        except Exception as e:
+            print(f"[warn] {f}: {e}", file=sys.stderr)
+    items.sort(key=lambda x: x[1])
+    brain, model = Brain(), Online()
+    prof_sw = collections.defaultdict(lambda: collections.defaultdict(lambda: [set(), set(), set()]))
+    rec = {"R": [], "F": [], "F0R": []}
+    for sym_side, ts, sheet, row_key, naked, marg in items:
+        cs = cat_side_of(sym_side)
+        test = ts >= args.cut
+        nd = naked["d"] if (naked is not None and naked["valid"]) else None
+        cand = []
+        if naked is not None:
+            cand.append(("R", None, naked))
+        cand.extend(("F", h, m) for h, m in marg.items())
+        for kind, hdr, r in cand:
+            x = model.feats(brain, kind, sym_side, sheet, row_key, hdr, nd)
+            p = model.predict(kind, x)
+            d = r["d"] if r["valid"] else None
+            y = 1.0 if (d is not None and d > EPS) else 0.0
+            if kind == "F":
+                x0 = x[:10] + [0.0, 0.0]
+                p0 = model.predict("F0", x0)
+            if test:
+                key = row_key if kind == "R" else str(hdr).strip()
+                ps = prof_sw[cs][(kind, key)]
+                n_sym, pos_sym = len(ps[0]), len(ps[1])
+                cur_skip = n_sym >= 10 and pos_sym <= max(1, int(0.05 * n_sym)) and (pos_sym == 0 or pos_sym / n_sym < 0.05)
+                rec[kind].append((p, r["secs"] or 0.0, y, d if y else 0.0, cur_skip))
+                if kind == "F":
+                    rec["F0R"].append((p0, r["secs"] or 0.0, y, d if y else 0.0, cur_skip, nd is not None and nd > EPS))
+            model.learn(kind, x, y, p)
+            if kind == "F":
+                model.learn("F0", x0, y, p0)
+            ps = prof_sw[cs][(kind, row_key if kind == "R" else str(hdr).strip())]
+            ps[0].add(sym_side)
+            if y:
+                ps[1].add(sym_side)
+        brain.observe_row(sym_side, ts, row_key, naked, marg)
+        observe_names(brain, sym_side, ts, row_key, naked, marg)
+        if naked is not None:
+            model.bump(sym_side, sheet, 1.0 if (nd is not None and nd > EPS) else 0.0)
+    out = {"_meta": {"since": args.since, "cut": args.cut, "items": len(items), "weights": model.w, "floor_per_1000": args.floor, "note": "prequential: each eval predicted before learned; current rule = never-positive / <5% pos on >=10 sym_sides (profile DEAD/USELESS/HARMFUL proxy) applied to rows AND cells"}, "kinds": {}}
+    for kind in ("R", "F", "F0R"):
+        R = rec[kind]
+        if not R:
+            continue
+        if kind == "F0R":  # static cell model + revive-all on a positive naked (the pilot's PRIOR-REVIVED path): weight 1 when revived
+            R = [(1.0 if rv else p, sec, y, d, c) for p, sec, y, d, c, rv in R]
+        S = sum(r[1] for r in R) or 1.0
+        P = sum(r[2] for r in R) or 1.0
+        D = sum(r[3] for r in R) or 1.0
+        cur = [r for r in R if not r[4]]
+        curve = []
+        for pr in [float(v) for v in args.prefs.split(",")]:
+            fl = args.floor / 1000.0
+            ks = kp = kd = 0.0
+            for p, sec, y, d, _c in R:
+                w = 1.0 if p >= 1.0 else max(fl, min(1.0, p / pr))
+                ks += w * sec
+                kp += w * y
+                kd += w * d
+            curve.append({"p_ref": pr, "secs_kept": round(ks / S, 4), "pos_kept": round(kp / P, 4), "pos_delta_kept": round(kd / D, 4)})
+        ranked = sorted(R, key=lambda r: -r[0])
+        cap = {}
+        cs_ = cp_ = 0.0
+        targets = [0.9, 0.95, 0.98, 0.99]
+        for p, sec, y, d, _c in ranked:
+            cs_ += sec
+            cp_ += y
+            for t in targets:
+                if t not in cap and cp_ / P >= t:
+                    cap[t] = round(cs_ / S, 4)
+        out["kinds"][kind] = {"n": len(R), "pos": int(P), "secs": round(S, 1), "current_rule": {"secs_kept": round(sum(r[1] for r in cur) / S, 4), "pos_kept": round(sum(r[2] for r in cur) / P, 4), "pos_delta_kept": round(sum(r[3] for r in cur) / D, 4)}, "brain_curve": curve, "oracle_rank_secs_for_pos_share": {str(k): v for k, v in cap.items()}}
+    print(json.dumps(out, indent=1))
+    if args.out:
+        with open(args.out, "w") as fh:
+            json.dump(out, fh, indent=1)
+    return 0
+
+
+def cmd_export(args):
+    """Prequential-train over every log, then write one runtime file per cat_side for the pilot: weights + the evidence
+    tables the features read (GLOBAL/cat/name/pair/sym edges as [pos, n]). data/brain/brain_<CAT_SIDE>.json"""
+    files = collect_files(args.glob or DEFAULT_GLOBS)
+    items = []
+    for f in files:
+        try:
+            items.extend(it for it in iter_rows(f) if it[1] >= (args.since or ""))
+        except Exception as e:
+            print(f"[warn] {f}: {e}", file=sys.stderr)
+    items.sort(key=lambda x: x[1])
+    brain, model = Brain(), Online()
+    for sym_side, ts, sheet, row_key, naked, marg in items:
+        nd = naked["d"] if (naked is not None and naked["valid"]) else None
+        cand = ([("R", None, naked)] if naked is not None else []) + [("F", h, m) for h, m in marg.items()]
+        for kind, hdr, r in cand:
+            x = model.feats(brain, kind, sym_side, sheet, row_key, hdr, nd)
+            d = r["d"] if r["valid"] else None
+            y = 1.0 if (d is not None and d > EPS) else 0.0
+            model.learn(kind, x, y, model.predict(kind, x))
+            if kind == "F":
+                x0 = x[:10] + [0.0, 0.0]
+                model.learn("F0", x0, y, model.predict("F0", x0))
+        brain.observe_row(sym_side, ts, row_key, naked, marg)
+        observe_names(brain, sym_side, ts, row_key, naked, marg)
+        if naked is not None:
+            model.bump(sym_side, sheet, 1.0 if (nd is not None and nd > EPS) else 0.0)
+    out_dir = Path(args.out_dir) if args.out_dir else Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "data" / "brain"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    per = collections.defaultdict(lambda: {"cat": {}, "pair": {}, "sym": collections.defaultdict(dict)})
+    glob_t = {}
+    for (scope, a, b), e in brain.edges.items():
+        pn = [e.pos, max(0, e.n - e.inv)]
+        if scope == GLOBAL:
+            glob_t[a] = pn
+        elif scope.startswith(("CRYPTO_", "STOCKS_")):
+            (per[scope]["pair"] if b else per[scope]["cat"])[(a + "|" + b) if b else a] = pn
+        else:
+            per[cat_side_of(scope)]["sym"][scope][a] = pn
+    meta = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "rows": len(items), "since": args.since, "p_ref": {"R": args.p_ref_r, "F": args.p_ref_f}, "floor_per_1000": args.floor}
+    for cs, blk in per.items():
+        blob = {"_meta": dict(meta, cat_side=cs), "w": model.w, "global": glob_t, "cat": blk["cat"], "pair": blk["pair"], "sym": blk["sym"], "ema": {k: v for k, v in model.ema.items() if isinstance(k, str) and cat_side_of(k) == cs}}
+        p = out_dir / f"brain_{cs}.json"
+        with open(str(p) + ".tmp", "w") as fh:
+            json.dump(blob, fh)
+        os.replace(str(p) + ".tmp", p)
+        print(json.dumps({"out": str(p), "cat": len(blk["cat"]), "pair": len(blk["pair"]), "sym_sides": len(blk["sym"]), "bytes": p.stat().st_size}))
+    return 0
+
+
+class PilotBrain:
+    """Runtime twin of Online for one board (the pilot imports this). Loads data/brain/brain_<CAT_SIDE>.json; learns online
+    inside the board (board/tab EMA + this sym_side's own evidence) from every naked it sees. Pure decisions: p_row / p_cell
+    return (p_eval, p_pos, n_evidence); the caller draws with draw() and books the propensity."""
+
+    def __init__(self, path, sym_side):
+        blob = json.load(open(path))
+        self.sym_side, self.cs = sym_side, cat_side_of(sym_side)
+        self.w = blob["w"]
+        self.glob, self.cat, self.pair = blob.get("global") or {}, blob.get("cat") or {}, blob.get("pair") or {}
+        self.sym = dict((blob.get("sym") or {}).get(sym_side) or {})
+        self.meta = blob.get("_meta") or {}
+        self.ema = collections.defaultdict(lambda: 0.02)
+        e0 = (blob.get("ema") or {}).get(sym_side)
+        if e0:
+            self.ema[sym_side] = float(e0)
+        self.p_ref = {"R": float(os.environ.get("V15_BRAIN_PREF_R", self.meta.get("p_ref", {}).get("R", 0.002))), "F": float(os.environ.get("V15_BRAIN_PREF_F", self.meta.get("p_ref", {}).get("F", 0.002)))}
+        self.floor = float(os.environ.get("V15_BRAIN_FLOOR", self.meta.get("floor_per_1000", 5.0))) / 1000.0
+
+    def _x(self, kind, sheet, row_key, hdr):
+        a = ("R:" + row_key) if kind == "R" else ("F:" + str(hdr).strip())
+        x = [1.0] + [0.0] * (Online.NF - 1)
+        gp, gn = self.glob.get(a, (0, 0))
+        cp, cn = self.cat.get(a, (0, 0))
+        sp, sn = self.sym.get(a, (0, 0))
+        x[1] = _lo(gp, gn) * gn / (gn + 3.0)
+        x[2] = _lo(cp, cn) * cn / (cn + 3.0)
+        x[3] = (_lo(sp, sn) - x[2]) * sn / (sn + 2.0)
+        name = "N:" + (row_key.split("=", 1)[0] if kind == "R" else str(hdr).split("=", 1)[0].strip())
+        np_, nn = self.cat.get(name, (0, 0))
+        x[4] = _lo(np_, nn) * nn / (nn + 3.0)
+        if kind != "R":
+            pp, pn = self.pair.get(a + "|R:" + row_key, (0, 0))
+            x[5] = _lo(pp, pn) * pn / (pn + 2.0)
+        x[6] = math.log1p(cn)
+        x[7] = 1.0 if cn < 3 else 0.0
+        be, te = self.ema[self.sym_side], self.ema[(self.sym_side, sheet)]
+        x[8] = math.log(be / (1.0 - be))
+        x[9] = math.log(te / (1.0 - te))
+        return x, cn
+
+    def _p(self, kind, x):
+        return Online._sig(sum(w * v for w, v in zip(self.w[kind], x)))
+
+    def p_row(self, sheet, row_key):
+        x, cn = self._x("R", sheet, row_key, None)
+        p = self._p("R", x)
+        pe = 1.0 if cn < 3 else max(self.floor, min(1.0, p / self.p_ref["R"]))
+        return pe, p, cn
+
+    def p_cell(self, sheet, row_key, hdr):
+        x, cn = self._x("F", sheet, row_key, hdr)
+        p = self._p("F0", x)
+        pe = 1.0 if cn < 3 else max(self.floor, min(1.0, p / self.p_ref["F"]))
+        return pe, p, cn
+
+    def observe_naked(self, sheet, row_key, delta, alpha=0.02):
+        y = 1.0 if (delta is not None and delta > EPS) else 0.0
+        for k in (self.sym_side, (self.sym_side, sheet)):
+            self.ema[k] = min(0.98, max(0.002, (1 - alpha) * self.ema[k] + alpha * y))
+        if delta is not None:
+            a = "R:" + row_key
+            pos, n = self.sym.get(a, (0, 0))
+            self.sym[a] = (pos + int(y), n + 1)
+
+
 def cmd_suggest(args):
     """Top nodes for a metric from brain_edges.json (scope sym_side if evidenced, else its cat_side). Ranking = P(pos) x E[d|pos]
     for gain, mean metric difference for tim/trades/dd/sharpe (dd: most negative first). Research view — never a delta."""
@@ -445,6 +729,20 @@ def main(argv=None):
     r.add_argument("--floors", default="1,2,5,10,20,50")
     r.add_argument("--qref", type=float, default=Q_REF)
     r.add_argument("--out")
+    q = sub.add_parser("prequential")
+    q.add_argument("--glob", action="append")
+    q.add_argument("--since", default="")
+    q.add_argument("--cut", required=True)
+    q.add_argument("--floor", type=float, default=5.0, help="evals per 1000 for the weakest candidates")
+    q.add_argument("--prefs", default="0.002,0.005,0.01,0.02,0.03,0.05,0.08,0.12,0.2")
+    q.add_argument("--out")
+    e = sub.add_parser("export")
+    e.add_argument("--glob", action="append")
+    e.add_argument("--since", default="")
+    e.add_argument("--out-dir")
+    e.add_argument("--p-ref-r", type=float, default=0.002)
+    e.add_argument("--p-ref-f", type=float, default=0.002)
+    e.add_argument("--floor", type=float, default=5.0)
     s = sub.add_parser("suggest")
     s.add_argument("--edges", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "brain", "brain_edges.json"))
     s.add_argument("--scope", required=True, help="sym_side (e.g. BTCUSDC_LONG) or cat_side (CRYPTO_LONG)")
@@ -452,7 +750,7 @@ def main(argv=None):
     s.add_argument("--min-n", type=int, default=5)
     s.add_argument("--top", type=int, default=25)
     args = ap.parse_args(argv)
-    return {"build": cmd_build, "replay": cmd_replay, "suggest": cmd_suggest}[args.cmd](args)
+    return {"build": cmd_build, "replay": cmd_replay, "prequential": cmd_prequential, "export": cmd_export, "suggest": cmd_suggest}[args.cmd](args)
 
 
 if __name__ == "__main__":

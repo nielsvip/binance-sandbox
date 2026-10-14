@@ -2917,6 +2917,38 @@ vector results as we do now" → "only on s2, give it plenty of time to finish e
 - Dead workers: chain TARGETS, Mac apply HOSTS and bookkeeper V15_BOOK_HOSTS no longer list s5/s6 (destroyed 2026-10-13; the 10-14
   15:56Z run failed at step 6 on 10.0.0.5).
 
+## 106. LIVE (BINANCE) vs BOARD TRADE PARITY 2026-10-14
+
+USER: "put each sym_side's board next to its actual Binance trades since that board went live, taken from the exchange rather
+than our internal ledger … immediately fix the disparities". Report `data/reports/live_vs_board_parity_20261014.md` (+ `.csv`
+one row per sym_side, `.json` trip detail with Binance trade/order ids and log lines).
+
+- **Method.** Exchange truth = `tools/binance_fills_fetch.py` (Mac only, GET only, 418/429 hard stop): userTrades + income +
+  allOrders + positionRisk -> round trips per account/positionSide (start position reconstructed from positionRisk, so carried
+  positions are never fake entries). Live set = `per_sym_store.per_sym_active` (327 crypto rows; the JSON
+  `per_sym_active_config.json` holds only 155). Board = that set through `evaluate_v12.evaluate_prepared(include_ledger)` on the
+  live twin's frozen store (`/tmp/vec_exact_frozen`), i.e. the bars live decided on; S2 NPZs end 06:30Z (S1 ban) and only
+  cross-check history. Window = first `per_sym_history` row with the current md5, cap 7 d. Match = same account, entry ±30 min.
+  Tool `tools/live_vs_board_parity.py`. Never `data/per_trade_returns` (men: 2,393 rows, 2,349 with entry_price 0, sum pnl_pct
+  +3,194.8 vs Binance REALIZED_PNL −14.35 $ over 7 d).
+- **Result (diagnostic, 1 day).** 264 live trips since boards went live, 144 matched, 120 LIVE_ONLY, 941 BOARD_ONLY (per
+  account), 50 exit disagreements; Binance net −21.51 $; on matched trips live −17.30 $ vs board −9.00 $ at live size.
+- **Causes, ranked by $:** (C1) exchange FIXED_STOP is a MARK-price STOP_MARKET (intrabar) while the vector checks the frozen
+  stop on the 15m CLOSE (`v12_quick_engine.py:20112-20132`) — 39 stop-fill trips = −14.78 $ (69%); board stopped on only 7 of
+  17 matched ones. (C2) entries refused as `BLOCKED_POSITIONS_BROKER_UNREACHABLE` (181 dispatches vs 173 SUCCESS) because
+  single-flight waiters gave up after 3 s while the read may take 8 s — FIXED. (C3) twin vs clean board run divergence / keys
+  not evaluated (set switches, pins, store rebuilds, 11:53–15:2xZ avg_delta set churn §105.1). (C4) late exits:
+  SKIPPED_VX_INFLIGHT + EXIT_OWED retries; execute_now 83 s (redis lock 17.5 s, 2×20 s price timeouts). (C5) VEC_CONVERGE_OPEN
+  38 trips. (C6) S1 failover started traders 14:20–15:16Z and 16:02–16:14Z while Mac traders ran (`live_failover_s1.py:408-414`,
+  `mac_silent = hb_absent`) -> FIXED_STOP war. (C7) 50 live sets != latest board (go-live refused the board: zero trades,
+  invalid types, set drift) + 132 without a published board. (C8) live sizing multipliers on vec opens (§98 open item).
+- **Fix F1 (positions_truth.py:376-397, unlocked):** waiters wait `POSITIONS_BROKER_TIMEOUT_S + 1` and share the in-flight read
+  (forced readers only accept a read started after their request); NEAR-ang stale rule unchanged. Test
+  `tests/test_positions_snapshot_singleflight_wait.py`. md5 59525818 Mac = S1 = S2 (binance + sandbox). Restart ez_manage
+  ang/fin/flz/inf/men + ez_positions_service_main inf/men (+ tradier processes) to load it.
+- **Open (user decisions):** C1 stop semantics (proposed engine diff in the report, re-measure all boards), C6 takeover rule,
+  C5/C8 converge-open + sizing, per-bar twin evaluated-key logging for C3. No LOCKED file was edited.
+
 ## 107. HISTORY DB — EVERY BOARD'S SETTINGS + METRICS, KEPT FOREVER + FINALIZE DD GATE (USER 2026-10-14)
 
 USER: "make sure the db gets filled correctly from now on so we have the daily settings and metrics for each sym_side after every

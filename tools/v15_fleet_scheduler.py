@@ -161,7 +161,11 @@ def _progress_marks(path):
         return False, False, None, False
     _fg = _jd.get("final_gain")
     _fg_ok = isinstance(_fg, (int, float)) and not isinstance(_fg, bool)
-    _done = bool(_fg_ok and not _jd.get("needs_redo"))
+    # 2026-10-14 SOFT-SKIP loop (42% of 24h launches): a board with a terminal verdict AND a final gain whose needs_redo is
+    # still set was relaunched every ~4 min on its frozen NPZ, and the pilot soft-skipped it every time (same NPZ). Terminal
+    # verdict + final gain = done; the daily refresh re-measures it on a fresh NPZ. V15_SCHED_SOFTSKIP_DONE=0 restores the old rule.
+    _terminal = _jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT") and __import__("os").environ.get("V15_SCHED_SOFTSKIP_DONE", "1") == "1"
+    _done = bool(_fg_ok and (not _jd.get("needs_redo") or _terminal))
     _q = _jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT")
     return _done, _q, (float(_fg) if _fg_ok else None), bool(_jd.get("needs_redo"))
 
@@ -806,14 +810,30 @@ _REFRESH_W_STALE_SEC = 86400.0
 _REFRESH_MAX_RM_PER_TICK = 3
 
 
-def _refresh_due(ss, tiers, now_ts):
+def _refresh_due(ss, tiers, now_ts, windows=None):
     """USER 2026-10-09: True = W-tier (big gainer) side whose measured 30D gain is older than 24h.
-    The 30D window lacks longer-TF info so it goes stale fast — due sides get a FRESH 30D board."""
+    The 30D window lacks longer-TF info so it goes stale fast — due sides get a FRESH 30D board.
+    USER 2026-10-13 "EVERY symbol daily (1d for every tier) — the tier gates per-board BUDGET and ORDER, not frequency" +
+    2026-10-14 "run all sym_sides every 24 hours": M/L sides refresh too once older than their defer window (V15_TIER_DEFER_M_D /
+    _L_D). Before this, a finished M/L side was terminal_ok for the whole round (171/278 sides idle on 10-14, S2 starved).
+    V15_SCHED_REFRESH_ALL=0 restores W-only."""
     e = (tiers or {}).get(ss)
-    if not e or e.get("tier") != "W":
+    if not e:
+        return False
+    tier = e.get("tier")
+    if tier == "W":
+        win_s = _REFRESH_W_STALE_SEC
+    elif tier in ("M", "L") and os.environ.get("V15_SCHED_REFRESH_ALL", "1") == "1":
+        try:
+            win_s = float((windows if windows is not None else _GAIN_TIER_DEFER_DAYS).get(tier) or 0) * 86400.0
+        except (TypeError, ValueError, AttributeError):
+            return False
+        if win_s <= 0:
+            return False
+    else:
         return False
     try:
-        return (float(now_ts) - float(e.get("mtime", 0) or 0)) > _REFRESH_W_STALE_SEC
+        return (float(now_ts) - float(e.get("mtime", 0) or 0)) > win_s
     except (TypeError, ValueError):
         return False
 
@@ -1694,7 +1714,7 @@ def tick(args, cfg, now):
                     if _rm_out and "RMDONE" in _rm_out:
                         _rd[_rkey] = cur_pdir
                         _refresh_tick_n[0] += 1
-                        print(f"[sched] 30D-REFRESH {ss} on {_rm_host['name']} (W-tier, gain older than 24h) -> progress+chain cleared, requeue need30", flush=True)
+                        print(f"[sched] 30D-REFRESH {ss} on {_rm_host['name']} ({(_tiers.get(ss) or {}).get('tier')}-tier, gain older than its refresh window) -> progress+chain cleared, requeue need30", flush=True)
                         if len(_rd) > 2000:
                             for _dk in list(_rd.keys())[:500]:
                                 _rd.pop(_dk, None)

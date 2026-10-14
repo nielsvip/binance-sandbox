@@ -2002,11 +2002,10 @@ class IndicatorsBridge:
         except Exception as e:
             logger.error(f"IndicatorsBridge refresh failed: {e}")
     def _connect_shared_memory(self):
+        # 2026-10-14: never block the event loop on a wedged ez_share_ind server (bootstrap froze 75 s+) — shared_mem_safe
         try :
-            from ez_share_ind import get_shared_memory_client
-            client = get_shared_memory_client()
-            if client:
-                self.shared_proxy = client.get_store() 
+            from shared_mem_safe import connect_store
+            self.shared_proxy = connect_store(timeout=3.0)
         except Exception: pass
 
     async def initialize(self, force: bool = False, enable_auto_fetch: bool = True) -> None:

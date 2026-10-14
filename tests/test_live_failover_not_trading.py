@@ -13,7 +13,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from tests.test_live_failover import Env, REPO, T_SATURDAY, T_SESSION, TOOLS, arm, gate, run_pair, touch
+try:
+    from tests.test_live_failover import Env, REPO, T_SATURDAY, T_SESSION, TOOLS, arm, gate, run_pair, touch
+except ImportError:  # S1 copy: tests/ is not a package there
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from test_live_failover import Env, REPO, T_SATURDAY, T_SESSION, TOOLS, arm, gate, run_pair, touch
 
 ALL_PROCS = "ang,inf,flz,men,fin,trb,trc,tra"
 

@@ -1,30 +1,30 @@
 {
-  "ang:MELANIAUSDT_SHORT": {
-    "orderId": "4000001967911139",
-    "stopPrice": 0.09063,
-    "entry_sig": "2026-10-14 09:20:37.904000+00:00",
+  "men:GALAUSDT_SHORT": {
+    "orderId": "2000001510797540",
+    "stopPrice": 0.002173,
+    "entry_sig": "2026-10-14 11:20:03.089000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "men:MELANIAUSDT_SHORT": {
+    "orderId": "2000001511357433",
+    "stopPrice": 0.08928,
+    "entry_sig": "2026-10-14 13:21:32.714000+00:00",
     "symbol": "MELANIAUSDT",
     "side": "SHORT"
   },
-  "ang:COTIUSDT_SHORT": {
-    "orderId": "4000001967914610",
-    "stopPrice": 0.012598,
-    "entry_sig": "2026-10-14 12:50:19.810000+00:00",
-    "symbol": "COTIUSDT",
+  "men:ATOMUSDT_SHORT": {
+    "orderId": "2000001511983713",
+    "stopPrice": 1.905,
+    "entry_sig": "2026-10-14 20:00:15.008000+00:00",
+    "symbol": "ATOMUSDT",
     "side": "SHORT"
   },
-  "ang:1000BONKUSDC_SHORT": {
-    "orderId": "4000001967914620",
-    "stopPrice": 0.003255,
-    "entry_sig": "2026-10-14 13:05:58.350000+00:00",
-    "symbol": "1000BONKUSDC",
-    "side": "SHORT"
-  },
-  "ang:GALAUSDT_SHORT": {
-    "orderId": "4000001967917513",
-    "stopPrice": 0.002175,
-    "entry_sig": "2026-10-14 08:20:21.309000+00:00",
-    "symbol": "GALAUSDT",
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001511982946",
+    "stopPrice": 0.03083,
+    "entry_sig": "2026-10-14 20:00:01.249000+00:00",
+    "symbol": "ENJUSDT",
     "side": "SHORT"
   }
 }

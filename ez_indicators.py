@@ -2740,16 +2740,14 @@ class IndicatorOrchestrator:
         self._shared_mem_last_attempt = now
         try:
             if get_shared_memory_client:
-                # Use 127.0.0.1 for local connection
-                client = get_shared_memory_client(address=('127.0.0.1', 50005))
-                if client:
-                    self.shared_proxy = client.get_store()  # pylint: disable=no-member
-                    # Test connection
-                    self.shared_proxy.health_check()
+                # 2026-10-14: connect + get_store + health_check off-thread with a hard timeout (shared_mem_safe) — a wedged server
+                # used to freeze the event loop (ez_manage startup / positions bootstrap TimeoutError loops)
+                from shared_mem_safe import connect_store
+                self.shared_proxy = connect_store(address=('127.0.0.1', 50005), timeout=3.0)
+                if self.shared_proxy is not None:
                     logger.info("✅ [ORCHESTRATOR] Connected to Shared Indicator Memory")
                 else:
-                    logger.warning("⚠️ [ORCHESTRATOR] Could not connect to Shared Memory (Client None)")
-                    self.shared_proxy = None
+                    logger.warning("⚠️ [ORCHESTRATOR] Could not connect to Shared Memory (timeout/None) — fallback paths")
         except Exception as e:
             logger.error(f"Shared Memory connect fail: {e}")
             self.shared_proxy = None
