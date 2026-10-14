@@ -8951,6 +8951,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 tm_mod.datetime = _SimDatetimeCls
         except Exception as _gfv_e:
             v8_logger.warning(f"[V12_REAL_EXECUTE] gfv/sim-datetime patch failed: {_gfv_e}")
+    # 2026-10-14: live HARD RISK CEILING (tradier _check_live_drawdown_ceiling) reads BROKER equity + writes a live state file. In the
+    # replay that is broker I/O: the sim broker reported equity 0 -> DD 100% -> every OPEN BLOCKED_DRAWDOWN_CEILING_100.00PCT and the
+    # rate guard aborted the run (0 trades, every stock trade-parity live leg UNAVAILABLE). The vector has no account-equity ceiling
+    # (single-board book) -> the replay answers DD_OK without I/O (account-level gate, like LS_RATIO / settled cash).
+    async def _v12_dd_ceiling(_acct, *a, **kw):
+        return True, "DD_SIM_REPLAY"
+    manager._check_live_drawdown_ceiling = _v12_dd_ceiling
+    # 2026-10-14: tradier _vec_exact_process stale fallback compares the twin buffer's last bar with WALL-CLOCK time; on a frozen NPZ
+    # every replay bar is days old -> VEC_EXACT_STALE on every bar (APO_LONG: 810/810) -> the VEC_EXACT live leg silently ran native
+    # paths. The replay feed is the sim clock (never stale) -> fallback off in the replay process only (live keeps its 4-bar guard).
+    # (0 cannot express "off": the reader does `float(_cfg(...) or 4.0)` -> an effectively infinite bar budget instead.)
+    try:
+        tm_mod.config.VEC_EXACT_STALE_FALLBACK_BARS = 1e12
+    except Exception:
+        pass
     async def _fresh(sym, pk=None, *_a, **_kw): return True, "NPZ", True, manager.market_snapshot.get(sym.upper(), {})
     manager.is_data_fresh = _fresh
     async def _price(sym, *_a, **_kw): return price_cache.get(sym.upper(), 0.0), _sim_ts[0]
