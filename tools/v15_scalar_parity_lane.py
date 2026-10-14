@@ -11,10 +11,15 @@ with TRADE_PARITY_VEC_EXACT=0: the live leg does NOT ingest the vector's actions
 on their own, so a divergence is measured, not overridden. nice 19, timeout PARITY_LANE_TIMEOUT_H (default 12 h) per job.
 Results: data/parity/scalar_lane/<SS>__<md5_8>/<SS>_trade_parity.json (+ job.log, job.json); one result per (sym_side, set md5) —
 a new published set re-queues it. STATUS.json / STATUS.md summarise the lane.
+JIT NPZ (USER 2026-10-12/13 freshness + JIT law): each job is handed to S1's tools/v15_dispatch_job.py (the herd's own path:
+tail refresh + md5-verified push of the symbol NPZ to S2), which then launches `--run-job` here; the job freezes a private copy
+of that fresh NPZ (other NPZs symlinked) as TRADE_PARITY_NPZ_DIR so both legs read identical bytes. Never V12_ALLOW_STALE_NPZ.
 """
+import hashlib
 import json
 import os
 import pathlib
+import shutil
 import socket
 import subprocess
 import sys
@@ -27,6 +32,10 @@ MAX_JOBS = int(os.environ.get("PARITY_LANE_MAX_JOBS", "3"))
 MAX_LOAD = float(os.environ.get("PARITY_LANE_MAX_LOAD", "14"))
 TIMEOUT_H = float(os.environ.get("PARITY_LANE_TIMEOUT_H", "12"))
 ALLOWED_HOSTS = ("s2",)
+S1 = os.environ.get("PARITY_LANE_S1", "niels@10.0.0.3")
+SELF = os.environ.get("PARITY_LANE_SELF", "niels@10.0.0.4")
+DISPATCH_GRACE_H = float(os.environ.get("PARITY_LANE_DISPATCH_GRACE_H", "3"))
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
 
 
 def _host_ok():
@@ -49,6 +58,10 @@ def _jobdir(item):
 def _state(d):
     j = d / "job.json"
     if not j.exists():
+        dj = d / "dispatch.json"
+        if dj.exists():
+            m = json.loads(dj.read_text())
+            return ("DISPATCHED", m) if time.time() - m.get("t", 0) < DISPATCH_GRACE_H * 3600 else ("DIED", dict(m, why="dispatch never launched the job"))
         return "PENDING", {}
     meta = json.loads(j.read_text())
     if (d / f"{meta['sym_side']}_trade_parity.json").exists():
@@ -58,24 +71,61 @@ def _state(d):
     return "DIED", meta
 
 
-def launch(item):
+def dispatch(item):
+    """Hand the job to S1's dispatcher: fresh NPZ pushed md5-verified to S2 first, then `--run-job` launched here."""
     d = _jobdir(item)
     d.mkdir(parents=True, exist_ok=True)
     (d / "overrides.json").write_text(json.dumps({"cumulative_overrides": item["overrides"]}, default=str))
-    env = dict(os.environ, TRADE_PARITY_VEC_EXACT="0", V15_PARITY_FORCE_REAL="1", PYTHONUNBUFFERED="1")
-    py = str(ROOT / ".venv" / "bin" / "python")
-    cmd = ["nice", "-n", "19", "timeout", str(int(TIMEOUT_H * 3600)), py, "-u", "tools/v15_trade_parity.py", "--sym-side", item["sym_side"],
-           "--overrides-json", str(d / "overrides.json"), "--out-dir", str(d)]
-    log = open(d / "job.log", "ab")
-    p = subprocess.Popen(cmd, cwd=str(ROOT), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     meta = {k: item[k] for k in ("sym_side", "tier", "overrides_md5", "published_at", "history_id", "open_position", "trades_recent", "streak")}
-    meta.update({"pid": p.pid, "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "timeout_h": TIMEOUT_H, "vec_exact_ingest": False, "host": socket.gethostname()})
-    (d / "job.json").write_text(json.dumps(meta, indent=1))
+    (d / "item.json").write_text(json.dumps(meta, indent=1))
+    sym = item["sym_side"].rsplit("_", 1)[0]
+    rel = d.relative_to(ROOT)
+    remote = f"cd ~/binance-sandbox && setsid -f .venv/bin/python tools/v15_scalar_parity_lane.py --run-job {rel} < /dev/null > /dev/null 2>&1"
+    cmd_file = f"/tmp/v15_parity_dispatch_{item['sym_side']}_{item['overrides_md5'][:8]}.sh"
+    subprocess.run(SSH + [S1, f"cat > {cmd_file}"], input=remote, text=True, check=True, timeout=60)
+    subprocess.run(SSH + [S1, f"cd ~/binance-sandbox && V15_PREV_BEST_SHIP=0 setsid -f .venv/bin/python tools/v15_dispatch_job.py --symbol {sym} --push {SELF} --via {SELF} --cmd-file {cmd_file} --tag parity:{item['sym_side']} < /dev/null > /dev/null 2>&1"], check=True, timeout=60)
+    (d / "dispatch.json").write_text(json.dumps({"t": time.time(), "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "via": S1, "cmd_file": cmd_file}))
     return meta
 
 
+def _freeze(d, symside):
+    """Private NPZ dir for this job: the job symbol's fresh NPZ copied (immutable for the run), every other NPZ symlinked."""
+    from tools.opt.evaluate_v12 import split_symside, resolve_tokenised
+    npz_sym, _ = resolve_tokenised(split_symside(symside)[0])
+    src = ROOT / "backtest_v8" / "indicators"
+    fz = d / "npz"
+    if fz.exists():
+        shutil.rmtree(fz)
+    fz.mkdir()
+    for f in src.glob("*.npz"):
+        if f.stem != npz_sym:
+            os.symlink(f, fz / f.name)
+    tgt = src / f"{npz_sym}.npz"
+    if tgt.exists():
+        shutil.copy2(tgt, fz / tgt.name)
+    return str(fz), hashlib.md5((fz / tgt.name).read_bytes()).hexdigest() if tgt.exists() else None
+
+
+def run_job(rel):
+    d = ROOT / rel
+    meta = json.loads((d / "item.json").read_text())
+    fz, md5 = _freeze(d, meta["sym_side"])
+    env = dict(os.environ, TRADE_PARITY_VEC_EXACT="0", V15_PARITY_FORCE_REAL="1", PYTHONUNBUFFERED="1", TRADE_PARITY_NPZ_DIR=fz)
+    py = str(ROOT / ".venv" / "bin" / "python")
+    cmd = ["nice", "-n", "19", "timeout", str(int(TIMEOUT_H * 3600)), py, "-u", "tools/v15_trade_parity.py", "--sym-side", meta["sym_side"],
+           "--overrides-json", str(d / "overrides.json"), "--out-dir", str(d)]
+    meta.update({"pid": os.getpid(), "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "timeout_h": TIMEOUT_H, "vec_exact_ingest": False,
+                 "host": socket.gethostname(), "npz_frozen_dir": fz, "npz_md5_at_start": md5})
+    (d / "job.json").write_text(json.dumps(meta, indent=1))
+    with open(d / "job.log", "ab") as log:
+        rc = subprocess.call(cmd, cwd=str(ROOT), env=env, stdout=log, stderr=subprocess.STDOUT)
+    shutil.rmtree(d / "npz", ignore_errors=True)
+    meta.update({"rc": rc, "ended": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+    (d / "job.json").write_text(json.dumps(meta, indent=1))
+
+
 def status(items):
-    rows, counts = [], {"DONE": 0, "RUNNING": 0, "DIED": 0, "PENDING": 0}
+    rows, counts = [], {"DONE": 0, "RUNNING": 0, "DISPATCHED": 0, "DIED": 0, "PENDING": 0}
     for it in items:
         st, meta = _state(_jobdir(it))
         counts[st] += 1
@@ -84,26 +134,35 @@ def status(items):
             rep = json.loads((_jobdir(it) / f"{it['sym_side']}_trade_parity.json").read_text())
             r.update({k: rep.get(k) for k in ("verdict", "vec_trips", "live_trips", "matched", "vec_match_rate", "live_match_rate", "exit_agree_rate")})
             r["secs"] = rep.get("secs")
-        elif st in ("RUNNING", "DIED"):
-            r["started"] = meta.get("started")
+        elif st in ("RUNNING", "DIED", "DISPATCHED"):
+            r["started"] = meta.get("started") or meta.get("at")
+            if meta.get("why"):
+                r["why"] = meta["why"]
         rows.append(r)
     return counts, rows
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "--run-job":
+        sys.path.insert(0, str(ROOT))
+        return run_job(sys.argv[2])
     if not _host_ok():
         sys.exit(f"[lane] refused: S2-only lane (host {socket.gethostname()})")
     q = json.loads(QUEUE.read_text()) if QUEUE.exists() else {"items": []}
     items = q.get("items") or []
     load1 = os.getloadavg()[0]
-    running = sum(1 for it in items if _state(_jobdir(it))[0] == "RUNNING")
+    running = sum(1 for it in items if _state(_jobdir(it))[0] in ("RUNNING", "DISPATCHED"))
     started = []
     for it in items:
         if running >= MAX_JOBS or os.getloadavg()[0] >= MAX_LOAD:
             break
         if _state(_jobdir(it))[0] != "PENDING":
             continue  # DONE, RUNNING, or DIED (a died/timed-out job is reported, not silently retried)
-        started.append(launch(it)["sym_side"])
+        try:
+            started.append(dispatch(it)["sym_side"])
+        except Exception as e:
+            print(f"[lane] dispatch {it['sym_side']} failed: {e}", flush=True)
+            break
         running += 1
     counts, rows = status(items)
     st = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": socket.gethostname(), "load1": round(load1, 1), "max_jobs": MAX_JOBS,

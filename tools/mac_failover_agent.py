@@ -205,7 +205,9 @@ class Agent:
         local = C.read_json(LF / "lease_local.json", {}) or {}
         if local.get("holder") == "s1":
             ok = self.pull_state_back(host)
-            seeded = self.seed_from_s1(host)
+            # 2026-10-14: S1's files carried takeover-time opened_at + phantom March crypto rows; the Mac writers re-read the broker
+            # themselves, so failback never seeds from S1 (LF_UNFENCE_SEED=1 re-enables).
+            seeded = self.seed_from_s1(host) if os.environ.get("LF_UNFENCE_SEED", "0") == "1" else {}
             log(f"UNFENCE identity seeds from S1 writer (opened_at carried, positions files untouched): {seeded}")
             if not ok:
                 log("UNFENCE deferred: S1 account state pull failed — staying fenced")
