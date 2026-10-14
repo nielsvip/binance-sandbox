@@ -1,67 +1,32 @@
 {
- "generated_at": "2026-10-14 12:26 UTC",
- "total_capital_usd": 197.16,
+ "generated_at": "2026-10-14 12:35 UTC",
+ "total_capital_usd": 9.99,
  "tier_capital": {
-  "A": 22.58,
-  "B": 174.58,
-  "C": 0.0
+  "A": 0.0,
+  "B": 0.0,
+  "C": 9.99
  },
  "tier_count": {
-  "A": 1,
-  "B": 3,
-  "C": 0
+  "A": 0,
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:ZENUSDT_LONG"
+  "inf:NEARUSDC_LONG"
  ],
- "mediocre": [
-  "fin:RLCUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:EGLDUSDT_SHORT",
-   "symbol": "EGLDUSDT",
-   "account": "fin",
-   "value_usd": 89.87,
-   "gain_pct": 0.08,
-   "tier": "B",
-   "perf_mult": 1.05,
-   "amt": 24.1,
-   "mark": 3.729
-  },
-  {
-   "pk": "fin:ZENUSDT_LONG",
-   "symbol": "ZENUSDT",
-   "account": "fin",
-   "value_usd": 43.87,
-   "gain_pct": -1.483,
-   "tier": "B",
-   "perf_mult": 4.55,
-   "amt": 7.1,
-   "mark": 6.179
-  },
-  {
-   "pk": "fin:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 40.84,
-   "gain_pct": 0.115,
-   "tier": "B",
-   "perf_mult": 0.75,
-   "amt": 46.8,
-   "mark": 0.8726
-  },
-  {
-   "pk": "fin:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "fin",
-   "value_usd": 22.58,
-   "gain_pct": -0.664,
-   "tier": "A",
-   "perf_mult": 8.96,
-   "amt": 16.4,
-   "mark": 1.3769824
+   "pk": "inf:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "inf",
+   "value_usd": 9.99,
+   "gain_pct": -1.089,
+   "tier": "C",
+   "perf_mult": 0.25,
+   "amt": 2.0,
+   "mark": 4.995
   }
  ]
 }
