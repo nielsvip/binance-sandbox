@@ -2131,6 +2131,18 @@ locked engine/config files, needs `unlock`), each refusal burning a resume slice
 
 Tests: `tests/test_v15_sched_resume.py` (+ all `tests/test_v15_sched*.py`, `tests/test_sched_done_marks.py`).
 
+**Amendment 2026-10-14 05:1xZ (throughput deadlock, s2 26% cpu with 8/9 "held").**
+- Slots = RUNNING pilots + in-flight dispatches only; persisted holds without a process are no longer slots (`V15_SCHED_CHAIN_HOLD=1` restores).
+- 365D LAW in the scheduler: after a 30D final the side is `terminal_ok` — no 365D verify / REPAIR / GS launches
+  (`V15_SCHED_30D_ONLY=1` default; running chain jobs finish). Cron env dropped `V15_GS_FLEET=1 V15_SCHED_FORCE_REPAIR=1 V15_REPAIR_ALL_TIERS=1`.
+- Venue phase falls through to crypto per host when the US market is closed or no stock side can actually launch on that host
+  this tick (`venue_fallthrough` in the tick log; `V15_SCHED_PHASE_FALLTHROUGH=0` disables).
+- Pair gate compares the launched sides with the sides that HAVE a pending action (same budget rules); the old attempts-only
+  view made pinned/sliced sides "not needy" -> 39 stock symbols gated forever.
+- Pair memory floor via `V15_SCHED_PAIR_FLOOR_MB=4000` (measured 1.7–3.7 GB per side at 2 workers; max measured x1.25 still wins).
+- One organizer: S1 crons `V15_PUSHSUP_S1_20261010` (v15_pusher_supervisor -> v15_pusher_worker) and `V15_PUSHCOORD`
+  (v15_pusher_coordinator -> v15_gain_pusher) commented `#PUSHER_OFF_20261014#`; no systemd/@reboot starter found.
+
 ## 94. SELF-IMPROVEMENT LOOP CLOSED (2026-10-13)
 
 **USER:** "the self improving part is not working correctly so you will need to add all code that it should have generated in
