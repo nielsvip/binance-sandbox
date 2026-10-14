@@ -1,32 +1,78 @@
 {
- "generated_at": "2026-10-14 12:35 UTC",
- "total_capital_usd": 9.99,
+ "generated_at": "2026-10-14 13:04 UTC",
+ "total_capital_usd": 245.69,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 9.99
+  "B": 175.13,
+  "C": 70.56
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 3,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "inf:NEARUSDC_LONG"
+  "ang:KMNOUSDT_LONG",
+  "ang:COTIUSDT_SHORT",
+  "ang:GALAUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "inf",
-   "value_usd": 9.99,
-   "gain_pct": -1.089,
+   "pk": "ang:EGLDUSDT_SHORT",
+   "symbol": "EGLDUSDT",
+   "account": "ang",
+   "value_usd": 88.11,
+   "gain_pct": 1.998,
+   "tier": "B",
+   "perf_mult": 1.05,
+   "amt": 24.0,
+   "mark": 3.67116965
+  },
+  {
+   "pk": "ang:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "ang",
+   "value_usd": 67.34,
+   "gain_pct": 0.856,
    "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 2.0,
-   "mark": 4.995
+   "perf_mult": 0.38,
+   "amt": 5630.0,
+   "mark": 0.011961
+  },
+  {
+   "pk": "ang:MELANIAUSDT_SHORT",
+   "symbol": "MELANIAUSDT",
+   "account": "ang",
+   "value_usd": 44.11,
+   "gain_pct": 1.892,
+   "tier": "B",
+   "perf_mult": 5.45,
+   "amt": 507.27,
+   "mark": 0.08696308
+  },
+  {
+   "pk": "ang:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "ang",
+   "value_usd": 42.91,
+   "gain_pct": -4.914,
+   "tier": "B",
+   "perf_mult": 2.45,
+   "amt": 1141.0,
+   "mark": 0.03760648
+  },
+  {
+   "pk": "ang:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "ang",
+   "value_usd": 3.22,
+   "gain_pct": 3.964,
+   "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 1563.0,
+   "mark": 0.0020619
   }
  ]
 }
