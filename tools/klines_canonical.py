@@ -687,6 +687,56 @@ def cmd_stocks_repair(a):
     return 0
 
 
+def cmd_import(a):
+    """merge another canonical dir (a fill run on a different IP, e.g. s2) into the store: bars the store lacks are added, identical bars
+    skipped, differing bars keep the store's value and are journaled (import_conflict). Its _complete.json marks are carried over."""
+    src = Path(a.src)
+    added = conflicts = files = 0
+    for sp in sorted(src.glob("*_*.json")):
+        if sp.name.startswith("_"):
+            continue
+        rows = load_rows(sp)
+        if not rows:
+            continue
+        path = STORE / sp.name
+        WLOCK.parent.mkdir(parents=True, exist_ok=True)
+        with open(WLOCK, "a+") as lk:
+            fcntl.flock(lk.fileno(), fcntl.LOCK_EX)
+            cur = load_rows(path)
+            by = {}
+            for r in cur:
+                try:
+                    by[ts_ms(r["timestamp"])] = r
+                except Exception:
+                    pass
+            n_add = 0
+            for r in rows:
+                t = ts_ms(r["timestamp"])
+                o = by.get(t)
+                if o is None:
+                    by[t] = {"timestamp": iso(t), **{c: float(r[c]) for c in KEYS}}
+                    n_add += 1
+                elif any(float(o.get(c, 0) or 0) != float(r[c]) for c in KEYS):
+                    conflicts += 1
+                    journal({"at": iso(int(time.time() * 1000)), "event": "import_conflict", "file": sp.name, "ts": o["timestamp"], "store": {c: o.get(c) for c in KEYS}, "import": {c: r.get(c) for c in KEYS}})
+            if n_add:
+                ok, why = write_rows(path, [by[t] for t in sorted(by)])
+                if not ok:
+                    log(f"import {sp.name}: {why}")
+                    continue
+                added += n_add
+                files += 1
+    marks = []
+    try:
+        marks = list(json.loads((src / COMPLETE).read_text()))
+    except Exception:
+        pass
+    if marks:
+        mark_complete(marks)
+    log(f"import {src}: {files} files grew, {added} bars added, {conflicts} conflicts (store kept), {len(marks)} completion marks")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -718,7 +768,11 @@ def main():
     sr.add_argument("--truth", required=True)
     sr.add_argument("--dir", required=True)
     sr.add_argument("--apply", action="store_true")
+    im = sub.add_parser("import")
+    im.add_argument("--src", required=True)
     a = ap.parse_args()
+    if a.cmd == "import":
+        return cmd_import(a)
     if a.cmd == "stocks-fetch":
         return cmd_stocks_fetch(a)
     if a.cmd == "stocks-repair":

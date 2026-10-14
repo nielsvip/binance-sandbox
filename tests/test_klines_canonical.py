@@ -79,6 +79,13 @@ def test_pick_best_source_prefers_canonical(tmp_path, monkeypatch):
     (legacy / "XUSDC_15m.json").write_text(json.dumps(longer))
     monkeypatch.setattr(bvp, "CANONICAL_KLINES", canon)
     monkeypatch.delenv("NPZ_CANONICAL_SOURCE", raising=False)
+    monkeypatch.delenv("NPZ_CANONICAL_REQUIRE_COMPLETE", raising=False)
+    df, src = bvp._pick_best_source("XUSDC", "15m", [legacy], "crypto")
+    assert src == "klines_cache"  # not complete yet (no _complete.json) -> legacy, one-time switch later
+    (canon / "_complete.json").write_text(json.dumps({f"XUSDC_{t}": "x" for t in ("15m", "1h", "4h")}))
+    df, src = bvp._pick_best_source("XUSDC", "15m", [legacy], "crypto")
+    assert src == "klines_cache"  # D still missing
+    (canon / "_complete.json").write_text(json.dumps({f"XUSDC_{t}": "x" for t in ("15m", "1h", "4h", "D")}))
     df, src = bvp._pick_best_source("XUSDC", "15m", [legacy], "crypto")
     assert src == "klines_canonical" and len(df) == n
     monkeypatch.setenv("NPZ_CANONICAL_SOURCE", "0")
@@ -100,3 +107,26 @@ def test_klines_append_canonical_correction():
     assert n == 1 and out[0]["volume"] == 999.0  # legacy: append-only, never corrects
     out, n = ka.merge_klines(existing, canon, correct=True)
     assert n == 2 and out[0]["volume"] == 10.0 and len(out) == 2
+
+
+def test_mark_complete_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setattr(kc, "WLOCK", tmp_path / "w.lock")
+    kc.mark_complete(["AUSDT_15m"], store=tmp_path)
+    first = json.loads((tmp_path / "_complete.json").read_text())
+    kc.mark_complete(["AUSDT_15m", "AUSDT_1h"], store=tmp_path)
+    cur = json.loads((tmp_path / "_complete.json").read_text())
+    assert cur["AUSDT_15m"] == first["AUSDT_15m"] and "AUSDT_1h" in cur
+
+
+def test_stocks_repair_correct_only(tmp_path):
+    c15 = tmp_path / "AAA_15m.json"
+    cd = tmp_path / "AAA_D.json"
+    t = 1790000100 // 900 * 900
+    c15.write_text(json.dumps([{"timestamp": kc.iso(t * 1000), "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 5.0},
+                               {"timestamp": kc.iso((t + 900) * 1000), "open": 2.0, "high": 2.0, "low": 2.0, "close": 2.0, "volume": 6.0}]))
+    cd.write_text(json.dumps([]))
+    truth = {"window": ["2026-01-01", "2026-12-31"], "m15": [{"timestamp": t, "open": 1.0, "high": 1.5, "low": 0.9, "close": 1.2, "volume": 50},
+                                                                 {"timestamp": t + 1800, "open": 3, "high": 3, "low": 3, "close": 3, "volume": 1}], "daily": []}
+    plan = kc.stocks_repair_file(c15, cd, truth)
+    rows, n = plan[c15]
+    assert n == 1 and len(rows) == 2 and rows[0]["close"] == 1.2 and rows[1]["close"] == 2.0  # no insert of t+1800

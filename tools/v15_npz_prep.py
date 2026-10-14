@@ -60,6 +60,12 @@ def canonical_ready(sym):
     if not all((d / f"{sym}_{tf}.json").exists() for tf in ("15m", "1h", "4h", "D")):
         return False
     try:
+        done = json.load(open(d / "_complete.json"))
+        if not all(f"{sym}_{tf}" in done for tf in ("15m", "1h", "4h", "D")):
+            return False
+    except Exception:
+        return False
+    try:
         with open(d / f"{sym}_15m.json", "rb") as fh:
             fh.seek(max(0, os.path.getsize(d / f"{sym}_15m.json") - 300))
             tail = fh.read().decode("utf8", "ignore")

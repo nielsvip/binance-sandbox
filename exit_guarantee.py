@@ -359,6 +359,8 @@ def wrap_execute_now(venue: str, hooks_getter: Callable[[], Hooks]):
                     if cls_r in ("REFUSED", "VERIFY") and action != FORCE_ACTION:
                         w = "WOULD_ESCALATE_FORCE" if full_r else "WOULD_RETRY_REDUCE"
                         _REPLAY_STATS[w] = _REPLAY_STATS.get(w, 0) + 1
+                        rk = "RESULT:" + str(res)[:48]
+                        _REPLAY_STATS[rk] = _REPLAY_STATS.get(rk, 0) + 1
                 except Exception:
                     pass
                 return res

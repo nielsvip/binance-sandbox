@@ -357,7 +357,7 @@ def cache_bar_final(symbol, cutoff):
     """REST fallback: the cutoff bar in the builder's primary 15m cache is final only if a NEWER row exists (the writer fetched after it closed)."""
     import backtest_v8_precompute as bvp
     _canon = getattr(bvp, "CANONICAL_KLINES", None)
-    if _canon is not None and os.environ.get("NPZ_CANONICAL_SOURCE", "1") != "0" and (_canon / f"{symbol}_15m.json").exists():
+    if _canon is not None and os.environ.get("NPZ_CANONICAL_SOURCE", "1") != "0" and (_canon / f"{symbol}_15m.json").exists() and bvp._canonical_complete(symbol):
         # 2026-10-14: the builder reads klines_canonical (tools/klines_canonical.py); its rows are closed exchange bars by construction
         df = bvp.load_klines(_canon / f"{symbol}_15m.json")
         return bool(df is not None and len(df) and (_epoch_s(df.index) == cutoff).any())

@@ -939,10 +939,32 @@ CANONICAL_KLINES = BASE_PATH / "klines_canonical"
 CANONICAL_TFS = ("15m", "1h", "4h", "D")
 
 
+_CANONICAL_COMPLETE = {"mtime": None, "names": frozenset()}
+
+
+def _canonical_complete(symbol):
+    """all four TFs of the symbol reached their target depth (klines_canonical/_complete.json, written by the fill): the switch to the store
+    happens once per symbol, never per build. NPZ_CANONICAL_REQUIRE_COMPLETE=0 skips the gate."""
+    if os.environ.get("NPZ_CANONICAL_REQUIRE_COMPLETE", "1") == "0":
+        return True
+    p = CANONICAL_KLINES / "_complete.json"
+    try:
+        mt = p.stat().st_mtime
+        if _CANONICAL_COMPLETE["mtime"] != mt:
+            with open(p) as fh:
+                _CANONICAL_COMPLETE["names"] = frozenset(json.load(fh))
+            _CANONICAL_COMPLETE["mtime"] = mt
+    except Exception:
+        return False
+    return all(f"{symbol}_{t}" in _CANONICAL_COMPLETE["names"] for t in CANONICAL_TFS)
+
+
 def _canonical_frame(symbol, tf, mode):
     """USER 2026-10-14 "REAL prices": exchange-native closed bars written only by tools/klines_canonical.py (fapi, exact symbol, base volume).
     Crypto 15m/1h/4h/D only. NPZ_CANONICAL_SOURCE=0 restores the legacy per-build picker."""
     if mode == "tradier" or tf not in CANONICAL_TFS or os.environ.get("NPZ_CANONICAL_SOURCE", "1") == "0":
+        return None
+    if not _canonical_complete(symbol):
         return None
     df = load_klines(CANONICAL_KLINES / f"{symbol}_{tf}.json")
     if df is None or len(df) < 30:
@@ -960,7 +982,7 @@ def _pick_best_source(symbol, tf, sources, mode):
         logger.info(f"  {symbol} {tf}: source klines_canonical {len(cdf)} bars (exchange-native, closed-only)")
         return cdf, "klines_canonical"
     if mode != "tradier" and tf in CANONICAL_TFS and os.environ.get("NPZ_CANONICAL_SOURCE", "1") != "0":
-        logger.warning(f"  {symbol} {tf}: NON-CANONICAL — no klines_canonical/{symbol}_{tf}.json, legacy picker used")
+        logger.warning(f"  {symbol} {tf}: NON-CANONICAL — klines_canonical/{symbol}_* not complete yet (_complete.json), legacy picker used")
     cands = []
     for d in sources:
         df = load_klines(d / f"{symbol}_{tf}.json")
