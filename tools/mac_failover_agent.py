@@ -166,7 +166,25 @@ class Agent:
                 return lease, state, host
         return None, None, None
 
-    def fence(self, lease):
+    def seed_from_s1(self, host):
+        """While S1 holds the lease its ez_positions_service is the authoritative writer: pull its position files
+        to a stage (never into the account dirs) and hand the Mac writer their opened_at via .identity_seed.json."""
+        stage = STAGE / "s1_positions"
+        seeded = {}
+        for account in ACCOUNTS:
+            target = stage / account
+            target.mkdir(parents=True, exist_ok=True)
+            if os.environ.get("LF_NO_SSH") == "1":
+                src = Path(os.environ.get("LF_REMOTE_ACCOUNTS", str(LF / "_fake_remote_accounts"))) / account
+                result = subprocess.run(["rsync", "-a", "--include=long_positions.json", "--include=short_positions.json", "--exclude=*", str(src) + "/", str(target) + "/"], capture_output=True, text=True)
+            else:
+                result = rsync(["--include=long_positions.json", "--include=short_positions.json", "--exclude=*", f"{host}:{REMOTE_LIVE}/{account}/", str(target) + "/"])
+            files = [target / "long_positions.json", target / "short_positions.json"]
+            if result.returncode in (0, 23, 24) and any(f.exists() for f in files) and (BASE / account).is_dir():
+                seeded[account] = C.write_identity_seed(BASE / account, files, f"S1 lease writer via {host}")
+        return seeded
+
+    def fence(self, lease, host=None):
         local = C.read_json(LF / "lease_local.json", {}) or {}
         if local.get("holder") != "s1" or local.get("gen") != lease.get("gen"):
             C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
@@ -179,12 +197,16 @@ class Agent:
                 pass
         if pids:
             log(f"FENCE: SIGTERM {len(pids)} gated trader pids {pids}")
+        if host:
+            self.seed_from_s1(host)
         return 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids())
 
     def unfence(self, lease, host):
         local = C.read_json(LF / "lease_local.json", {}) or {}
         if local.get("holder") == "s1":
             ok = self.pull_state_back(host)
+            seeded = self.seed_from_s1(host)
+            log(f"UNFENCE identity seeds from S1 writer (opened_at carried, positions files untouched): {seeded}")
             if not ok:
                 log("UNFENCE deferred: S1 account state pull failed — staying fenced")
                 return False
@@ -355,7 +377,7 @@ class Agent:
             log(f"S1 unreachable via {HOSTS} — keeping local lease {local.get('holder')} gen={local.get('gen')}")
             return heartbeat
         if lease and lease.get("holder") == "s1":
-            left = self.fence(lease)
+            left = self.fence(lease, host)
             heartbeat["trading_procs"] = left
         elif lease and lease.get("holder") == "mac":
             if self.unfence(lease, host):

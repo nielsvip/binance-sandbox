@@ -209,7 +209,7 @@ def _cat_defaults(cat_side: str) -> dict:
 def _template_md5(cat_side: str, root: Path = None) -> str:
     root = root or _ROOT()
     try:
-        p = root / "SPREADSHEETS" / f"TEMPLATE_{cat_side}.xlsx"
+        p = root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / f"TEMPLATE_{cat_side}.xlsx"
         return hashlib.md5(p.read_bytes()).hexdigest() if p.exists() else ""
     except Exception:
         return ""
@@ -1438,13 +1438,13 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
     tpath = (
         Path(template_path)
         if template_path
-        else root / "SPREADSHEETS" / f"TEMPLATE_{cat_side}.xlsx"
+        else root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / f"TEMPLATE_{cat_side}.xlsx"
     )
     if tpath.name != f"TEMPLATE_{cat_side}.xlsx":
         rep["warnings"].append(
             f"non-standard template name {tpath.name} — gate audits by cat_side file"
         )
-        tpath = root / "SPREADSHEETS" / f"TEMPLATE_{cat_side}.xlsx"
+        tpath = root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / f"TEMPLATE_{cat_side}.xlsx"
     try:
         sig = hashlib.md5(tpath.read_bytes()).hexdigest()
         for f in (

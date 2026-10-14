@@ -286,7 +286,12 @@ def merge_mac_state():
         shutil.copy2(staged, tmp)
         os.replace(tmp, dst)
         merged += 1
-    log(f"STATE_MERGE: {merged} newer Mac state files applied to {LIVE}")
+    seeded = {}
+    for acct_dir in sorted(p for p in staged_root.iterdir() if p.is_dir() and p.name != "root"):
+        files = [acct_dir / "long_positions.json", acct_dir / "short_positions.json"]
+        if any(f.exists() for f in files):
+            seeded[acct_dir.name] = C.write_identity_seed(LIVE / acct_dir.name, files, f"mac_state staged {C.iso(max(f.stat().st_mtime for f in files if f.exists()))}")
+    log(f"STATE_MERGE: {merged} newer Mac state files applied to {LIVE}; identity seeds (held opened_at carried, positions files untouched): {seeded}")
     return merged
 
 

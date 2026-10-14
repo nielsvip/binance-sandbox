@@ -112,6 +112,42 @@ def _atomic_json(path, data):
     os.replace(tmp, p)
 
 
+SEED_NAME = ".identity_seed.json"
+
+
+def seeded_disk_rows(path, disk_rows=None):
+    """LIVE FAILOVER (USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED"): on a lease takeover (S1) or
+    failback (Mac) the new single writer's own file can be stale or empty. live_failover writes
+    <acct>/.identity_seed.json with the last authoritative writer's HELD rows (opened_at/entry/max_gain/qty).
+    While the seed is newer than this positions file, a held seed row is the identity reference for its key
+    (missing/flat disk row, or a disk row of another lifecycle) -> the real opened_at is carried through,
+    never the takeover time. Never written by this function; the seed lapses after the writer's first save."""
+    disk_rows = read_json(path) if disk_rows is None else disk_rows
+    try:
+        seed_path = Path(path).parent / SEED_NAME
+        if not seed_path.exists():
+            return disk_rows
+        seed = read_json(seed_path)
+        written = float(seed.get("written_epoch") or 0)
+        try:
+            disk_mtime = Path(path).stat().st_mtime
+        except OSError:
+            disk_mtime = 0.0
+        if not written or disk_mtime >= written:
+            return disk_rows
+        side = "LONG" if Path(path).name.lower().startswith("long") else "SHORT"
+        merged = dict(disk_rows)
+        for k, r in (seed.get("rows") or {}).items():
+            if not isinstance(r, dict) or _amt(r) <= 0 or to_epoch(r.get("opened_at")) is None or not str(k).upper().endswith("_" + side):
+                continue
+            o = merged.get(k)
+            if not isinstance(o, dict) or _amt(o) <= 0 or not _same_lifecycle(o.get("opened_at"), r.get("opened_at")):
+                merged[k] = dict(o or {}, **r)
+        return merged
+    except Exception:
+        return disk_rows
+
+
 def heartbeat_path(account_dir):
     return Path(account_dir) / HEARTBEAT_NAME
 
@@ -269,7 +305,7 @@ def identity_rows(account_dir, max_age_s=2.0):
         return hit[1]
     rows = {}
     for side in ("long", "short"):
-        rows.update(read_json(Path(account_dir) / f"{side}_positions.json"))
+        rows.update(seeded_disk_rows(Path(account_dir) / f"{side}_positions.json"))
     _identity_cache[key] = (time.time(), rows)
     return rows
 
@@ -347,7 +383,7 @@ def before_write(path, rows, role=None, log=None, overlay=True):
             log.info(f"[SINGLE_WRITER] {role} write to {path} skipped: {why}")
         return False
     apply_overlay(rows, read_json(overlay_path(path)))
-    disk = read_json(path)
+    disk = seeded_disk_rows(path)
     rejected = enforce_identity(rows, disk)
     for k, disk_mg, new_mg in enforce_max_gain(rows, disk):
         if _rate_limited(f"mg:{k}", 300.0):
@@ -391,7 +427,7 @@ def resync_memory_from_files(account_positions, account_dir, log=None, require_f
         return []
     rows = {}
     for side in ("long", "short"):
-        rows.update(read_json(Path(account_dir) / f"{side}_positions.json"))
+        rows.update(seeded_disk_rows(Path(account_dir) / f"{side}_positions.json"))
     changes = []
     for k, pos in list((account_positions or {}).items()):
         r = rows.get(k)

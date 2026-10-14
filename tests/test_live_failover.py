@@ -465,3 +465,61 @@ def test_wrapper_intentional_restart_vs_crash_loop(tmp_path):
     assert "[RESTART_BACKOFF] consecutive failure #2" in crash and "INTENTIONAL_RESTART" not in crash
     stable = run({"WD_STABLE_RUN_S": "1"}, 14)
     assert stable.count("[INTENTIONAL_RESTART]") >= 2 and "RESTART_BACKOFF" not in stable
+
+
+# ---------------------------------------------------------------- USER: opened_at carried through takeover + handback, byte-identical
+def _sim_service_write(acct_dir, side, broker_rows, stamp_now):
+    """A worst-case single writer: builds rows from the broker and stamps opened_at=NOW for anything it does
+    not know; position_writer_guard.before_write (role=service) must restore the real opened_at."""
+    import position_writer_guard as pwg
+    rows = {k: dict(v, opened_at=v.get("opened_at") or stamp_now) for k, v in broker_rows.items()}
+    path = acct_dir / f"{side}_positions.json"
+    assert pwg.before_write(path, rows, role="service", overlay=False)
+    path.write_text(json.dumps(rows))
+    return rows
+
+
+def test_opened_at_byte_identical_through_takeover_and_handback(world):
+    sys.path.insert(0, str(REPO))
+    import importlib as _il
+    pwg = _il.import_module("position_writer_guard")
+    real = {"ang:AAAUSDT_LONG": "2026-10-10T09:00:00.123456Z", "ang:BBBUSDT_LONG": "2026-10-10T10:00:00.654321Z"}
+    t_mac_last = T_SATURDAY
+    # Mac single writer's last output, staged on S1 (mtime-preserving) before the Mac died
+    mac_rows = {k: {"symbol": k.split(":")[1].rsplit("_", 1)[0], "position_side": "LONG", "positionAmt": 1.0, "entry_price": 1.0, "max_gain": 0.5, "opened_at": oa} for k, oa in real.items()}
+    staged = world.s1 / "data" / "live_failover" / "mac_state" / "ang" / "long_positions.json"
+    touch(staged, t_mac_last, json.dumps(mac_rows))
+    # S1's own file is STALE: AAA from an older lifecycle (07:00), BBB unknown
+    s1_file = world.s1 / "ang" / "long_positions.json"
+    touch(s1_file, t_mac_last - 7200, json.dumps({"ang:AAAUSDT_LONG": dict(mac_rows["ang:AAAUSDT_LONG"], opened_at="2026-10-10T07:00:00Z")}))
+    before_bytes = s1_file.read_bytes()
+    world.S1.merge_mac_state()
+    assert s1_file.read_bytes() == before_bytes  # takeover never copies/edits a positions file
+    seed = json.loads((world.s1 / "ang" / ".identity_seed.json").read_text())
+    assert set(seed["rows"]) == set(real)
+    # S1's service takes over and writes from the broker, stamping the takeover time where it knows nothing
+    broker = {k: {kk: vv for kk, vv in v.items() if kk != "opened_at"} for k, v in mac_rows.items()}
+    broker["ang:AAAUSDT_LONG"]["opened_at"] = "2026-10-10T07:00:00Z"  # writer memory carries the stale lifecycle
+    _sim_service_write(world.s1 / "ang", "long", broker, "2026-10-10T14:06:00Z")
+    s1_after = json.loads(s1_file.read_text())
+    for key, oa in real.items():
+        assert s1_after[key]["opened_at"] == oa, (key, s1_after[key]["opened_at"])
+    # a genuinely NEW position opened by S1 while it trades (broker opening-fill time 11:00)
+    s1_after["ang:CCCUSDT_LONG"] = dict(mac_rows["ang:AAAUSDT_LONG"], symbol="CCCUSDT", opened_at="2026-10-10T11:00:00.000001Z")
+    s1_file.write_text(json.dumps(s1_after))
+    real["ang:CCCUSDT_LONG"] = "2026-10-10T11:00:00.000001Z"
+    # handback: the Mac writer restarted with stale/empty knowledge; the agent seeds from the S1 writer's files
+    mac_file = world.mac / "ang" / "long_positions.json"
+    touch(mac_file, t_mac_last, json.dumps(mac_rows))
+    world.monkeypatch.setenv("LF_REMOTE_ACCOUNTS", str(world.s1))
+    agent = world.MA.Agent()
+    mac_before = mac_file.read_bytes()
+    seeded = agent.seed_from_s1("s1-pub")
+    assert seeded == {"ang": 3} and mac_file.read_bytes() == mac_before  # seeding never touches positions files
+    broker_mac = {k: {kk: vv for kk, vv in v.items() if kk != "opened_at"} for k, v in s1_after.items()}
+    _sim_service_write(world.mac / "ang", "long", broker_mac, "2026-10-10T15:00:00Z")
+    mac_after = json.loads(mac_file.read_text())
+    for key, oa in real.items():
+        assert mac_after[key]["opened_at"] == oa, (key, mac_after[key]["opened_at"])
+    # the seed lapses after the writer's first save: a later genuine re-open is not overridden
+    assert pwg.seeded_disk_rows(mac_file) == mac_after

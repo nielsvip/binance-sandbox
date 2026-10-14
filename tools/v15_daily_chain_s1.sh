@@ -3,7 +3,7 @@
 # Replaces the Mac 05:00Z tools/v15_daily_selfimprove.sh (cron PATH had no `timeout` -> died every day since 10-04).
 # Cron (S1, 12:15Z, director 2026-10-06; full run ~45 min):
 #   15 12 * * * cd /home/niels/binance-sandbox && flock -n /tmp/v15_daily_chain.lock bash tools/v15_daily_chain_s1.sh >> /home/niels/logs/v15_daily_chain.log 2>&1 # V15_DAILY_CHAIN_S1
-# Steps: 1 avg-delta rebuild (hosts as seen from S1) -> 2 the ONE template writer on SPREADSHEETS + TEMPLATE_FINAL_NORM
+# Steps: 1 avg-delta rebuild (hosts as seen from S1) -> 2 the ONE template writer on TEMPLATE_FINAL_NORM (no generic set)
 # (each cat_side's promotions pass the COMBINED trade-floor guard tools/v15_promotion_floor_guard.py before saving; refused keys keep the old bold)
 # (code-surface sync DISABLED: S1 never edits config.py/config_tradier.py/v12_quick_engine.py; the Mac follow-up
 # tools/v15_daily_chain_mac_apply.sh syncs report promoted_keys at 13:20Z) -> 3 cat_side_defaults_4 (+ sweep copy)
@@ -102,11 +102,13 @@ fi
 "$PY" -c "import openpyxl,sys; wb=openpyxl.load_workbook(sys.argv[1],read_only=True); print('[chain] agg sheets', {s: wb[s].max_row-1 for s in wb.sheetnames})" "$AGG" || fail 1 "aggregate unreadable"
 STEPS_OK="1"
 
-# 2. template defaults (ONE writer; main dir first: only the main run writes cat_side_promotions + round ledger)
+# 2. template defaults (ONE writer) on the FLEET template set ONLY: SPREADSHEETS/TEMPLATE_FINAL_NORM (4 independent templates).
+#    2026-10-14 USER: there is NO generic template — the abandoned SPREADSHEETS/TEMPLATE_* pass ("main") is removed; it wrote
+#    promotions + round ledger from the wrong set and fed step 3 (live + sweep cat_side defaults). BIBLE §101.3.
 APPLY_FLAG="--apply"
 [ "$DRYRUN" = 1 ] && APPLY_FLAG=""
 CUR_STEP=2
-for KIND in main norm; do
+for KIND in norm; do
   TD=SPREADSHEETS
   [ "$KIND" = norm ] && TD=SPREADSHEETS/TEMPLATE_FINAL_NORM
   OUT=$WORK/template_$KIND.out
@@ -133,7 +135,7 @@ CUR_STEP=2a
 if [ -f data/template_row_queue.json ]; then
   log "step2a template row intake ${APPLY_FLAG:-REPORT-ONLY}"
   [ "$DRYRUN" = 1 ] || timeout 120 "$PY" -u tools/v15_template_row_intake.py merge-inbox || log "step2a merge-inbox rc=$? (non-fatal)"
-  timeout 1800 nice -n 10 "$PY" -u tools/v15_switch_add.py --queue data/template_row_queue.json --templates-dirs SPREADSHEETS/TEMPLATE_FINAL_NORM,SPREADSHEETS $APPLY_FLAG --summary-out "$WORK/row_intake.json" 2>&1 | tee "$WORK/row_intake.out" | grep -E '^\[queue\] (installed|summary|REFUSED|dry-run)' | sed 's/^/[chain] step2a /'
+  timeout 1800 nice -n 10 "$PY" -u tools/v15_switch_add.py --queue data/template_row_queue.json --templates-dirs SPREADSHEETS/TEMPLATE_FINAL_NORM $APPLY_FLAG --summary-out "$WORK/row_intake.json" 2>&1 | tee "$WORK/row_intake.out" | grep -E '^\[queue\] (installed|summary|REFUSED|dry-run)' | sed 's/^/[chain] step2a /'
   RC=${PIPESTATUS[0]}
   [ "$RC" -eq 0 ] || log "step2a row intake rc=$RC (non-fatal; templates untouched on refusal)"
 else
@@ -150,7 +152,7 @@ CUR_STEP=2b
 TYPE_ALERT=data/alerts/SWITCH_TYPE_ALERT.json
 [ "$DRYRUN" = 1 ] && TYPE_ALERT=$WORK/SWITCH_TYPE_ALERT.json
 log "step2b switch_types template scan"
-timeout 900 nice -n 10 "$PY" -u tools/switch_types.py --scan SPREADSHEETS/TEMPLATE_FINAL_NORM SPREADSHEETS --alert-file "$TYPE_ALERT" --json "$WORK/switch_types_scan.json" 2>&1 | sed 's/^/[chain] step2b /'
+timeout 900 nice -n 10 "$PY" -u tools/switch_types.py --scan SPREADSHEETS/TEMPLATE_FINAL_NORM --alert-file "$TYPE_ALERT" --json "$WORK/switch_types_scan.json" 2>&1 | sed 's/^/[chain] step2b /'
 RC=${PIPESTATUS[0]}
 if [ "$RC" -eq 0 ]; then
   STEPS_OK="$STEPS_OK,2b"
@@ -249,8 +251,7 @@ timeout 600 "$PY" -u tools/v15_zero_delta_watchdog.py --agg "$AGG" --apply || lo
 STEPS_OK="$STEPS_OK,5"
 
 # 6. push to s2/s5 + kv sync + md5 verify
-FILES="SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx"
-FILES="$FILES SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
+FILES="SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx"
 FILES="$FILES data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json data/avg_delta_pos_sym.json"
 FILES="$FILES data/avg_delta_pos_sym_cell.json data/cell_evidence/*.json data/causal_condemned.json"
 [ -f data/causal/switch_causal_profile.json ] && FILES="$FILES data/causal/switch_causal_profile.json"  # USER 2026-10-12 pilot priors (step4d)

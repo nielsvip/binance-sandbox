@@ -347,3 +347,22 @@ def apply_newer_klines(stage_dir, dest_dir, log_rows=None, provenance="S1"):
         if log_rows is not None:
             log_rows.append({"file": str(dest), "newest_bar": iso(staged_ts), "prev_newest_bar": iso(dest_ts) if dest_ts else None, "src": provenance})
     return replaced
+
+
+def write_identity_seed(account_dir, position_files, source):
+    """USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED": hand the next single writer the real opened_at of
+    every HELD position from the last authoritative writer's files. Writes ONLY <acct>/.identity_seed.json
+    (consumed by position_writer_guard.seeded_disk_rows); never touches a *_positions.json file."""
+    rows = {}
+    for path in position_files:
+        data = read_json(path, {}) or {}
+        for key, row in data.items():
+            try:
+                held = isinstance(row, dict) and abs(float(row.get("positionAmt") or 0)) > 0 and row.get("opened_at")
+            except (TypeError, ValueError):
+                held = False
+            if held:
+                rows[key] = {field: row.get(field) for field in ("opened_at", "entry_price", "max_gain", "positionAmt", "symbol", "position_side") if field in row}
+    payload = {"written_epoch": time.time(), "written_at": iso(time.time()), "source": source, "rows": rows}
+    atomic_write_json(Path(account_dir) / ".identity_seed.json", payload)
+    return len(rows)
