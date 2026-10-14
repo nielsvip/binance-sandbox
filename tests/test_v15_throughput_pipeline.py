@@ -46,4 +46,4 @@ def test_hdr_col_map_cache_matches_scan_and_invalidates():
 
 def test_loser_skips_post_and_guard_intervals():
     assert '_tier_name in ("LOST_CAUSE", "LOSER")' in SRC
-    assert 'os.environ.get("V15_SELF_MONITOR_S", "120")' in SRC and 'os.environ.get("V15_STUCK_GUARD_S", "120")' in SRC
+    assert 'environ.get("V15_SELF_MONITOR_S", "120")' in SRC and 'environ.get("V15_STUCK_GUARD_S", "120")' in SRC

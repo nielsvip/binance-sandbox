@@ -1,5 +1,5 @@
 {
- "broken": 89,
+ "broken": 92,
  "checks": {
   "TEMPLATE_NO_CONFIG": [],
   "LINK_LOST": [
@@ -94,13 +94,16 @@
   "COVERAGE": [
    "MAX_ORDER_VALUE_FIN: wired live+vec (['ez_manage.py:11557(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:111(max_order_usd_for)']) but in no template",
    "MAX_ORDER_VALUE_MEN: wired live+vec (['ez_manage.py:11555(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:109(max_order_usd_for)']) but in no template",
-   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8097(_air_native_carry)'] / ['v12_quick_engine.py:17843(simulate_one._open)']) but in no template",
+   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8097(_air_native_carry)'] / ['v12_quick_engine.py:17858(simulate_one._open)']) but in no template",
    "MIN_GAIN: wired live+vec (['ez_manage.py:23164(MultiAccountTradeManager._handle_signal_message)'] / ['vec_decisions/aug_gain_gate.py:18(threshold)']) but in no template",
-   "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11109(in_opening_buffer)'] / ['v12_quick_engine.py:18140(simulate_one)']) but in no template",
-   "R2_TF_LIST: wired live+vec (['ez_manage.py:51875(process_position)'] / ['v12_quick_engine.py:17086(simulate_one)']) but in no template",
-   "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34338(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
+   "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11109(in_opening_buffer)'] / ['v12_quick_engine.py:18155(simulate_one)']) but in no template",
+   "R2_TF_LIST: wired live+vec (['ez_manage.py:51914(process_position)'] / ['v12_quick_engine.py:17095(simulate_one)']) but in no template",
+   "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34354(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
+   "REENTRY_ON_DC4_15M_BREAK_ENABLED: wired live+vec (['ez_manage.py:41577(evaluate_reentry)'] / ['v12_quick_engine.py:17646(simulate_one)']) but in no template",
+   "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: wired live+vec (['ez_manage.py:41577(evaluate_reentry)'] / ['v12_quick_engine.py:17646(simulate_one)']) but in no template",
+   "REENTRY_ON_HIGHER_LOW_ENABLED: wired live+vec (['ez_manage.py:41577(evaluate_reentry)'] / ['v12_quick_engine.py:17646(simulate_one)']) but in no template",
    "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:21807(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
-   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19111(process_position)'] / ['v12_quick_engine.py:19370(simulate_one)']) but in no template"
+   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19111(process_position)'] / ['v12_quick_engine.py:19386(simulate_one)']) but in no template"
   ],
   "TAB_FIRST_ROW_NOT_DEFAULT": [],
   "TAB_NO_ORANGE_ROWS": []

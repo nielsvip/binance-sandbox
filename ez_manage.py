@@ -31561,6 +31561,7 @@ class MultiAccountTradeManager:
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
 
     @_odg.execute_now_gate("binance")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
+    @_xg.wrap_execute_now("ez", lambda: _XG_EZ_HOOKS)  # 2026-10-14 USER EXITS NEVER COMPROMISED: refused full close -> FORCE_CLOSE_MARKET, reduce retry, ledger once per confirmed fill
     @_ptruth.ez_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: zero qty never sent; SUCCESS only when the broker-confirmed position matches
     async def execute_now(
         self,
@@ -31591,6 +31592,12 @@ class MultiAccountTradeManager:
             _fx_act0 = ""
         if _fx_act0 in ("PLACE_STOP", "CANCEL_STOP"):
             return await self._fixed_stop_order_action(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, side=side, quantity=quantity, old_price=old_price, unique_id=unique_id, reason=reason, action=_fx_act0, stop_price=stop_price, stop_order_id=stop_order_id)
+        # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
+        # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or a stuck one): exchange truth ->
+        # cancel own working orders on the leg -> ONE market reduce-only close of the broker qty -> verify flat. Inside execute_now.
+        if _fx_act0 == _xg.FORCE_ACTION:
+            return await self._exit_force_market(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, reason=reason, old_price=old_price)
+        _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         # ─── EXIT-ENGINE PARITY INSTRUMENTATION (2026-09-28) ────────────────────
         # Log EVERY attempted trade (reason/family/gate) BEFORE any downstream gate
         # (broker-sync, emergency_brake, quarantine) so exit-trigger parity is
@@ -31714,7 +31721,9 @@ class MultiAccountTradeManager:
                         _last_order_dt = datetime.fromtimestamp(_last_order_time, tz=_tz.utc)
                         if _last_order_dt > _sync_ts:
                             _wait = (datetime.now(_tz.utc) - _last_order_dt).total_seconds()
-                            if _wait < 90:
+                            if _wait < 90 and _xg_full:
+                                logger.warning(f"[BROKER_SYNC_DEMAND] {position_key}: last order {_wait:.0f}s ago not yet in sync — FULL close {action} proceeds (exit guarantee: the wire clamps to the fresh broker qty, exchange caps reduce)")
+                            elif _wait < 90:
                                 logger.critical(f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last crypto order {_wait:.0f}s ago not yet in broker sync (sync age {_age:.0f}s) — REFUSING repeat {action} until broker confirms (80× prevention)")
                                 return "BLOCKED_BROKER_SYNC_PENDING_CONFIRMATION"
             else:
@@ -31744,6 +31753,9 @@ class MultiAccountTradeManager:
                 _o_side = str(_ex_o.get('side', '')).upper()
                 _o_status = str(_ex_o.get('status', '')).upper()
                 # Binance side is BUY/SELL, status is NEW/PARTIALLY_FILLED etc.
+                if _o_sym == _ex_sym and _o_side == _ex_side and _o_status in ('NEW', 'PARTIALLY_FILLED', 'PENDING', 'OPEN') and _xg_full:
+                    logger.warning(f"[EXCHANGE_OPEN_ORDER_CHECK] {position_key}: {_o_status} {_o_side} order {_ex_o.get('orderId', '?')} positionSide={_ex_o.get('positionSide', '?')} exists — FULL close {action} not refused here (exit guarantee: the wire blocks only a working order on THIS leg; FORCE cancels it)")
+                    break
                 if _o_sym == _ex_sym and _o_side == _ex_side and _o_status in ('NEW', 'PARTIALLY_FILLED', 'PENDING', 'OPEN'):
                     logger.critical(f"🛑 [EXCHANGE_OPEN_ORDER_BLOCK] {position_key}: Binance still has {_o_status} {_o_side} order for {_ex_sym} id={_ex_o.get('orderId', '?')} — REFUSING duplicate {action} {side} {quantity} within 3s (AMD 2× / 80× prevention) — VERIFY WITH EXCHANGE FIRST")
                     return "BLOCKED_EXCHANGE_OPEN_ORDER_EXISTS"
@@ -34242,7 +34254,9 @@ class MultiAccountTradeManager:
                 or "DELTA_EXIT" in _reason_upper
                 or "DC_BREACH" in _reason_upper
             )
-            if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close and not _vd_exempt:
+            # 2026-10-14 USER EXITS NEVER COMPROMISED: men:XTZUSDT_LONG FIXED_STOP CLOSE refused 22:14->22:19+ "last reduce 11s ago" —
+            # every refused-downstream attempt re-stamped the lock, so the close blocked itself forever. A FULL close is never cooled down.
+            if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close and not _vd_exempt and not _xg_full and not _fixed_stop_reason(reason):
                 logger.warning(
                     f"[HARD_REDUCE_LOCK] {position_key}: BLOCKED - last reduce {_since_red:.0f}s ago (need {_DUPLICATE_REDUCE_COOLDOWN}s). action={action} reason={reason}"
                 )
@@ -35491,6 +35505,11 @@ class MultiAccountTradeManager:
                 if not _odg_dec.allowed:
                     if _fixed_stop_preflight_failopen(reason, _odg_dec.code):
                         logger.critical(f"🛡️ [FIXED_STOP_PREFLIGHT_FAILOPEN] {position_key}: preflight {_odg_dec.code} is unverifiable broker state (no evidence of a live order) — FIXED_STOP emergency exit attempts anyway (wire guard re-checks at submit)")
+                    elif _xg_full:
+                        # 2026-10-14 USER EXITS NEVER COMPROMISED (ang:SNXUSDT_SHORT 10-13: 5 vec CLOSEs refused BROKER_UNREACHABLE_OPEN_ORDERS,
+                        # held until FIXED_STOP): a FULL close is never refused by the symbol-wide preflight. The wire exit path
+                        # (order_dedupe_guard.guarded_exit_create) re-checks THIS leg, clamps to the fresh broker qty, proceeds if unreachable.
+                        logger.critical(f"🧯 [EXIT_PREFLIGHT_BYPASS] {position_key}: preflight {_odg_dec.code} — FULL close {action} proceeds to the wire exit path (reason={(reason or '')[:60]})")
                     else:
                         logger.critical(f"[ORDER_DEDUPE_BLOCK_CALLER] {position_key}: preflight refused code={_odg_dec.code} action={action} reason={(reason or '')[:80]} — order NOT placed (safety, stays; now visible)")
                         return f"ORDER_DEDUPE_BLOCK_{_odg_dec.code}"

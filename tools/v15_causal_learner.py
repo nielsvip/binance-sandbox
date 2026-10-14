@@ -142,11 +142,22 @@ def ingest_live(db_path=None, day=None, root=None):
         glob.glob(str(root / "data" / "per_trade_returns" / f"*_{day}.jsonl"))
     ):
         acct = os.path.basename(f).split("_")[0]
+        _raw = []
         for ln in open(f):
             try:
-                e = json.loads(ln)
+                _raw.append(json.loads(ln))
             except Exception:
                 continue
+        try:  # 2026-10-14: distinct confirmed trades (close-retry storms collapsed per lifecycle, dust dropped)
+            import sys as _sys
+            _sys.path.insert(0, str(root))
+            import per_trade_ledger as _ptl
+            for _r in _raw:
+                _r.setdefault("account", acct)
+            _rows = [_ptl.strip(r) for r in _ptl.final_closes(_ptl.distinct_rows(_raw))]
+        except Exception:
+            _rows = _raw
+        for e in _rows:
             net = float(e.get("pnl_pct") or 0.0) - float(e.get("fees_pct") or 0.0)
             if net >= 0:
                 continue

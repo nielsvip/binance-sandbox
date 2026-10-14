@@ -6,8 +6,8 @@ system". Goals: 10x bh for every sym_side; >=12 then >30 boards/hour/server on S
 
 Stdlib only (S1 python 3.12, s2 python 3.10). Every number is copied/derived from progress JSONs (result_* stamps, v17 phase
 book, best_start, final_365d, best_seen) and delta logs (per-eval `secs`, `cached`) — nothing estimated except the flagged
-`core_min_est` = wall x workers (the pilot does not record CPU; `eval_core_min` = sum of the delta log's non-cached eval
-seconds is the MEASURED lower bound). No Sharpe anywhere (not a Sharpe surface; DIAGNOSTIC aggregates).
+`core_min` = the pilot's own `result_cpu_s` (v16+, measured) else wall x workers (flagged `cpu_est_wall_x_workers`);
+`eval_core_min` = sum of the delta log's non-cached eval seconds (measured lower bound). No Sharpe anywhere (not a Sharpe surface; DIAGNOSTIC aggregates).
 
 Modes:
   (default) collect   S1 cron every 30 min: extract finished boards from S1 (local) + s2 (ssh, this file piped to python3 -)
@@ -219,8 +219,17 @@ def board_record(d, path, host, workers, workers_src):
     for e in phases.values():
         e["wall_s"] = round(e["wall_s"], 1)
         e["lift"] = round(e["lift"], 4)
-    flags.append("cpu_est_wall_x_workers")
-    if workers_src not in ("dispatch_log", "sched_log"):
+    rw = d.get("result_workers")
+    if isinstance(rw, int) and not isinstance(rw, bool) and rw > 0:
+        workers, workers_src = rw, "result_workers"
+    cpu_s = _num(d.get("result_cpu_s"))
+    if cpu_s is not None and cpu_s > 0 and wall > 0:
+        cores_avg, core_min, cpu_src = cpu_s / wall, cpu_s / 60.0, "result_cpu_s"
+        flags.append("cpu_measured")
+    else:
+        cpu_s, cores_avg, core_min, cpu_src = None, float(workers), wall * workers / 60.0, "wall_x_workers"
+        flags.append("cpu_est_wall_x_workers")
+    if workers_src not in ("dispatch_log", "sched_log", "result_workers"):
         flags.append("workers_assumed")
     if not dl["dl_found"]:
         flags.append("no_delta_log")
@@ -230,7 +239,7 @@ def board_record(d, path, host, workers, workers_src):
         "key": f"{host}|{ss}|{d.get('result_done_utc')}", "sym_side": ss, "cat_side": cat_side_of(ss), "tier": tier, "host": host,
         "run": pdir.parent.name, "pilot_md5": d.get("result_pilot_md5"), "engine_md5": d.get("result_engine_md5"), "config_md5": d.get("result_config_md5"),
         "start_utc": _iso(t0), "done_utc": _iso(t1), "start_ts": t0, "done_ts": t1, "wall_s": round(wall, 1), "workers": workers, "workers_src": workers_src,
-        "core_min_est": round(wall * workers / 60.0, 2), "eval_core_min": round(dl["eval_secs"] / 60.0, 2), "evals": dl["evals"], "evals_cached": dl["evals_cached"],
+        "core_min_est": round(wall * workers / 60.0, 2), "cpu_s": cpu_s, "core_min": round(core_min, 2), "cpu_source": cpu_src, "cores_avg": round(cores_avg, 3), "eval_core_min": round(dl["eval_secs"] / 60.0, 2), "evals": dl["evals"], "evals_cached": dl["evals_cached"],
         "final_gain": final, "bh": bh, "gain_bh": (final / bh) if (final is not None and bh is not None and bh > 0) else None,
         "trades": d.get("final_trades") if d.get("final_trades") is not None else d.get("run_trades"), "tim": tim, "dd": dd,
         "g365": _num(f365.get("gain_pct")), "dd365": _num(f365.get("max_dd_pct")), "tim365": _num(f365.get("tim_pct")), "trades365": f365.get("trades"), "valid365": f365.get("valid"),
@@ -357,7 +366,7 @@ def extract_remote(ssh_target, host, globs, since_ts, workers_default, wmap, tim
 
 
 # --------------------------------------------------------------------------------------------------------------- sqlite
-COLS = ["key", "sym_side", "cat_side", "tier", "host", "run", "pilot_md5", "engine_md5", "config_md5", "start_utc", "done_utc", "start_ts", "done_ts", "wall_s", "workers", "workers_src", "core_min_est", "eval_core_min", "evals", "evals_cached", "final_gain", "bh", "gain_bh", "trades", "tim", "dd", "g365", "dd365", "tim365", "trades365", "valid365", "best_start", "best_start_gain", "final_below_best_start", "v17_on", "phases_json", "flags", "run_class", "ingested_utc"]
+COLS = ["key", "sym_side", "cat_side", "tier", "host", "run", "pilot_md5", "engine_md5", "config_md5", "start_utc", "done_utc", "start_ts", "done_ts", "wall_s", "workers", "workers_src", "core_min_est", "cpu_s", "core_min", "cpu_source", "cores_avg", "eval_core_min", "evals", "evals_cached", "final_gain", "bh", "gain_bh", "trades", "tim", "dd", "g365", "dd365", "tim365", "trades365", "valid365", "best_start", "best_start_gain", "final_below_best_start", "v17_on", "phases_json", "flags", "run_class", "ingested_utc"]
 
 
 def db_open(path=None):
@@ -365,6 +374,10 @@ def db_open(path=None):
     p.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(p), timeout=60)
     con.execute(f"CREATE TABLE IF NOT EXISTS boards ({', '.join(c + (' TEXT PRIMARY KEY' if c == 'key' else '') for c in COLS)})")
+    have = {r[1] for r in con.execute("PRAGMA table_info(boards)").fetchall()}
+    for c in COLS:
+        if c not in have:  # forward migration (e.g. cpu_s/core_min added 2026-10-14 when the pilot began stamping result_cpu_s)
+            con.execute(f"ALTER TABLE boards ADD COLUMN {c}")
     con.execute("CREATE INDEX IF NOT EXISTS boards_done ON boards(done_ts)")
     con.execute("CREATE TABLE IF NOT EXISTS runs (ts TEXT, hosts_json TEXT, n_new INTEGER, n_seen INTEGER)")
     return con
@@ -422,7 +435,7 @@ def phase_table(boards):
     """{family: {boards, pos, lift, wall_min, core_min, lift_per_core_min, lift_per_wall_min}} (core-min = phase wall x workers)."""
     out = {}
     for b in boards:
-        w = b.get("workers") or 1
+        w = b.get("cores_avg") or b.get("workers") or 1  # measured average cores (result_cpu_s / wall) when stamped
         for fam, e in (b.get("phases") or {}).items():
             if not e.get("wall_s") and not e.get("lift"):
                 continue
@@ -443,7 +456,7 @@ def phase_table(boards):
 def summarize(boards, hours):
     hosts = sorted({b["host"] for b in boards})
     gb = [b["gain_bh"] for b in boards if b.get("gain_bh") is not None]
-    out = {"n": len(boards), "hours": _r(hours, 2), "hosts": {}, "median_wall_min": _r(median([b["wall_s"] / 60.0 for b in boards]), 1), "median_core_min_est": _r(median([b["core_min_est"] for b in boards]), 1), "median_eval_core_min": _r(median([b["eval_core_min"] for b in boards if "no_delta_log" not in b["flags"]]), 2), "median_gain_bh": _r(median(gb), 3), "p90_gain_bh": _r(pctl(gb, 0.9), 3), "n_bh_pos": len(gb), "n_bh_nonpos": len(boards) - len(gb), "median_final_minus_best_start": _r(median([b["final_gain"] - b["best_start_gain"] for b in boards if b.get("final_gain") is not None and b.get("best_start_gain") is not None]), 3), "n_below_best_start": sum(1 for b in boards if b.get("final_below_best_start")), "median_final": _r(median([b.get("final_gain") for b in boards]), 2), "median_g365": _r(median([b.get("g365") for b in boards]), 2), "median_dd365": _r(median([b.get("dd365") for b in boards]), 2)}
+    out = {"n": len(boards), "hours": _r(hours, 2), "hosts": {}, "median_wall_min": _r(median([b["wall_s"] / 60.0 for b in boards]), 1), "median_core_min_est": _r(median([b["core_min_est"] for b in boards]), 1), "median_core_min": _r(median([b.get("core_min") if b.get("core_min") is not None else b["core_min_est"] for b in boards]), 1), "n_cpu_measured": sum(1 for b in boards if b.get("cpu_source") == "result_cpu_s"), "median_eval_core_min": _r(median([b["eval_core_min"] for b in boards if "no_delta_log" not in b["flags"]]), 2), "median_gain_bh": _r(median(gb), 3), "p90_gain_bh": _r(pctl(gb, 0.9), 3), "n_bh_pos": len(gb), "n_bh_nonpos": len(boards) - len(gb), "median_final_minus_best_start": _r(median([b["final_gain"] - b["best_start_gain"] for b in boards if b.get("final_gain") is not None and b.get("best_start_gain") is not None]), 3), "n_below_best_start": sum(1 for b in boards if b.get("final_below_best_start")), "median_final": _r(median([b.get("final_gain") for b in boards]), 2), "median_g365": _r(median([b.get("g365") for b in boards]), 2), "median_dd365": _r(median([b.get("dd365") for b in boards]), 2)}
     for k in (1, 2, 5, 10):
         out[f"share_ge_{k}x_bh"] = _r(sum(1 for x in gb if x >= k) / len(gb), 3) if gb else None
     for h in hosts:
@@ -503,7 +516,7 @@ def regression_check(con, now, min_n=5):
         w = {"n_current": len(cur_b), "n_baseline": len(base_b), "checks": [], "insufficient": len(cur_b) < min_n or len(base_b) < min_n}
         below = [{"sym_side": b["sym_side"], "host": b["host"], "final": _r(b["final_gain"], 3), "best_start_gain": _r(b["best_start_gain"], 3), "pilot_md5": b.get("pilot_md5"), "done_utc": b["done_utc"]} for b in cur_b if b.get("final_below_best_start")]
         if not w["insufficient"]:
-            for c in (_cmp(cur, base, "median_wall_min", rise_pct=0.15), _cmp(cur, base, "median_core_min_est", rise_pct=0.15), _cmp(cur, base, "median_eval_core_min", rise_pct=0.15), _cmp(cur, base, "median_gain_bh", fall_pct=0.10)):
+            for c in (_cmp(cur, base, "median_wall_min", rise_pct=0.15), _cmp(cur, base, "median_core_min_est", rise_pct=0.15), _cmp(cur, base, "median_core_min", rise_pct=0.15), _cmp(cur, base, "median_eval_core_min", rise_pct=0.15), _cmp(cur, base, "median_gain_bh", fall_pct=0.10)):
                 if c:
                     w["checks"].append(c)
         w["finals_below_best_start"] = below
@@ -639,6 +652,8 @@ def autotune(boards, prev_doc=None, now=None, days=3.0):
                     why = f"hold: P2 {p2r:.4f} vs P3 {p3r:.4f} lift/core-min within [0.5x, 1.5x]"
         # hard guard: never more than STEP away from prev, never outside bounds
         new = _clamp(_clamp(new, prev * (1 - STEP) - 1e-12, prev * (1 + STEP) + 1e-12), spec["lo"], spec["hi"])
+        if new == prev and why.startswith(("cut", "raise")):
+            why = f"hold (at hard bound {spec['lo']}..{spec['hi']}): {why}"
         doc["knobs"][knob] = {"value": new, "prev": prev, "default": spec["default"], "bounds": [spec["lo"], spec["hi"]], "why": why, "evidence": ev}
         doc["env"][knob] = new
     return doc
@@ -684,14 +699,14 @@ PH_ORDER = ["p0", "probe", "p2", "combo", "surgeon", "focus", "ablation", "retes
 
 def report_md(roll, reg, at_doc, hosts_status):
     L = [f"# V17 KPI — {roll['generated_utc']}", "", "Source: progress JSONs (result_* stamps, v17 phase book, best_start, final_365d) + delta logs of S1 + s2. DIAGNOSTIC aggregates, no Sharpe. "
-         "`core_min_est` = wall x pilot --workers (the pilot records no CPU; flagged `cpu_est_wall_x_workers`); `eval_core_min` = measured sum of non-cached eval seconds from the delta log (lower bound). "
+         "`core-min` = measured `result_cpu_s`/60 (pilot v16+, self + reaped pool workers; phase core-min = phase wall x the board's measured average cores) else wall x workers (flagged `cpu_est_wall_x_workers`); `core_min_est` = wall x pilot --workers for every board; `eval_core_min` = measured sum of non-cached eval seconds from the delta log (lower bound). "
          "gain/bh only for bh > 0. Phase lift = gain points added inside the phase; `p2` on legacy-P2 boards = first P3 entry gain - best_start gain (derived); `other` = wall not covered by a recorded phase.", "",
          "Hosts: " + ", ".join(f"{h}: {s}" for h, s in hosts_status.items()) + f" · boards in DB: {roll['n_db']}", "", "## 1. Throughput + quality by window (targets: >=12 then >30 boards/h/server; 10x bh every sym_side)"]
     rows = []
     for w, s in roll["windows"].items():
         bph = ", ".join(f"{h} {x['boards_per_h']}" for h, x in s["hosts"].items()) or "-"
-        rows.append([w, s["n"], bph, s["median_wall_min"], s["median_core_min_est"], s["median_eval_core_min"], s["median_gain_bh"], s["p90_gain_bh"], f"{s['n_bh_pos']}/{s['n']}", s["share_ge_1x_bh"], s["share_ge_2x_bh"], s["share_ge_5x_bh"], s["share_ge_10x_bh"], s["median_final_minus_best_start"], s["n_below_best_start"], s["median_g365"], s["median_dd365"]])
-    L.append(_tbl(["window", "boards", "boards/h/server", "med wall min", "med core-min est", "med eval core-min", "med gain/bh", "p90 gain/bh", "bh>0", ">=1x", ">=2x", ">=5x", ">=10x", "med final-best_start", "final<best_start", "med 365D gain", "med 365D DD"], rows))
+        rows.append([w, s["n"], bph, s["median_wall_min"], s["median_core_min"], s["n_cpu_measured"], s["median_core_min_est"], s["median_eval_core_min"], s["median_gain_bh"], s["p90_gain_bh"], f"{s['n_bh_pos']}/{s['n']}", s["share_ge_1x_bh"], s["share_ge_2x_bh"], s["share_ge_5x_bh"], s["share_ge_10x_bh"], s["median_final_minus_best_start"], s["n_below_best_start"], s["median_g365"], s["median_dd365"]])
+    L.append(_tbl(["window", "boards", "boards/h/server", "med wall min", "med core-min", "cpu measured", "med core-min est", "med eval core-min", "med gain/bh", "p90 gain/bh", "bh>0", ">=1x", ">=2x", ">=5x", ">=10x", "med final-best_start", "final<best_start", "med 365D gain", "med 365D DD"], rows))
     for w in ("24h", "3d"):
         s = roll["windows"].get(w) or {}
         ph = s.get("phases") or {}

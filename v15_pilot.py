@@ -7705,11 +7705,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])}{' inert=' + str(len(st['inert_filters'])) if st.get('inert_filters') else ''}{' SAMPLED' if st.get('inert_sampled') else ''}{' prior=' + str(st.get('prior_mode')) + ':' + str(len(st.get('prior_skipped') or [])) if st.get('prior_mode') in ('naked_only', 'trimmed') else ''}{' PRIOR-REVIVED' if st.get('prior_revived') else ''} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
         _maybe_save()
         processed += 1
-    if _v17_on and _v17_t.get("p2") and (pending_queue or not _v17_phase_done("P2_WORST_FIRST")):
-        _v17_t["p2"]["prom"] = sum(1 for _pk, _pv in (progress.get("done") or {}).items() if isinstance(_pv, dict) and _pv.get("promoted") and str(_pk).split("!", 1)[0] in SWITCH_SHEETS and not str(_pk).endswith(":REPASS") and not _pv.get("v17_phase"))
-        _v17["yellow_sample"] = {**_v17_ystats, "pos_top": _v17_ptop[0], "p_min": float(os.environ.get("V15_V17_P_MIN", "0.005")), "seq": _inert_seq}
-        print(f"[YELLOW-SAMPLE] {new_symside} evaluated={_v17_ystats['evaluated']} skipped={_v17_ystats['skipped']} pos_top={_v17_ptop[0]} (p = max(1/200, pos_sym/pos_top), unevidenced p=1)", flush=True)
-        _v17_phase_end(_v17_t["p2"], rows_pending=_v17_t["p2"].get("rows_pending"), resumed_segment=bool(_v17_phase_done("P2_WORST_FIRST")), carried=sum(1 for _v in _carry_rows.values() if _v[0] == "carried"))
+    if _v17_on and pending_queue:
         try:  # carry book: this board's evaluated naked deltas + carried rows -> ~/v15_carry/<sym_side>.json
             for _dk, _dv in (progress.get("done") or {}).items():
                 if not isinstance(_dv, dict) or _dv.get("v17_phase") or ":" not in str(_dk) or "!" not in str(_dk):
@@ -7722,7 +7718,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _ck2 = carry_key(_sh, _sw, _cd)
                 if _ck2 in _carry_rows:
                     continue
-                if _dv.get("naked_delta") is not None:
+                if str(_dv.get("reason") or "").startswith("CARRIED_DEAD"):
+                    _carry_rows[_ck2] = ("carried", None)  # carried in an earlier slice of this board (resume)
+                elif _dv.get("naked_delta") is not None:
                     _carry_rows[_ck2] = ("eval", _dv.get("naked_delta"))
             _cbp = carry_book_path(new_symside)
             _cbp.parent.mkdir(parents=True, exist_ok=True)
@@ -7732,6 +7730,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[V17-CARRY] {new_symside} carried={sum(1 for _v in _carry_rows.values() if _v[0] == 'carried')} evaluated={sum(1 for _v in _carry_rows.values() if _v[0] == 'eval')} book_boards={_nb.get('boards')} streak>=2={sum(1 for _v in _nb['rows'].values() if _v[0] >= 2)}", flush=True)
         except Exception as _cwe:
             print(f"[V17-CARRY-WARN] book write {_cwe}", flush=True)
+    if _v17_on and _v17_t.get("p2") and (pending_queue or not _v17_phase_done("P2_WORST_FIRST")):
+        _v17_t["p2"]["prom"] = sum(1 for _pk, _pv in (progress.get("done") or {}).items() if isinstance(_pv, dict) and _pv.get("promoted") and str(_pk).split("!", 1)[0] in SWITCH_SHEETS and not str(_pk).endswith(":REPASS") and not _pv.get("v17_phase"))
+        _v17["yellow_sample"] = {**_v17_ystats, "pos_top": _v17_ptop[0], "p_min": float(os.environ.get("V15_V17_P_MIN", "0.005")), "seq": _inert_seq}
+        print(f"[YELLOW-SAMPLE] {new_symside} evaluated={_v17_ystats['evaluated']} skipped={_v17_ystats['skipped']} pos_top={_v17_ptop[0]} (p = max(1/200, pos_sym/pos_top), unevidenced p=1)", flush=True)
+        _v17_phase_end(_v17_t["p2"], rows_pending=_v17_t["p2"].get("rows_pending"), resumed_segment=bool(_v17_phase_done("P2_WORST_FIRST")), carried=sum(1 for _v in _carry_rows.values() if _v[0] == "carried"))
     if _sacred_on:
         _sacred_final_n = _sacred_repass(None)
         print(f"[SACRED-REPASS] {new_symside} final pass: {_sacred_final_n} promotions, cumulative {float(cumulative_gain):.4f}", flush=True)
@@ -10909,7 +10912,7 @@ def main():
         def _baseline_self_monitor():
             _fails = 0
             while True:
-                _t_mon.sleep(float(os.environ.get("V15_SELF_MONITOR_S", "120")))
+                _t_mon.sleep(float(__import__("os").environ.get("V15_SELF_MONITOR_S", "120")))
                 try:
                     import openpyxl as _op_mon
                     _wb_m = _op_mon.load_workbook(str(wb_path), data_only=True, read_only=True)
@@ -11005,7 +11008,7 @@ def main():
         def _check2():
             _start2 = _t2.time()
             while True:
-                _t2.sleep(float(os.environ.get("V15_STUCK_GUARD_S", "120")))
+                _t2.sleep(float(__import__("os").environ.get("V15_STUCK_GUARD_S", "120")))
                 _elapsed = _t2.time() - _start2
                 try:
                     _done = len(progress.get("done", {}))

@@ -605,6 +605,31 @@ def _remember_order(ident: Optional[str]) -> None:
         tok.setdefault("orders", []).append(ident)
 
 
+EXIT_FORCE_ACTION = "FORCE_CLOSE_MARKET"
+_NO_BACKOFF_CODES.update({"NOTHING_TO_CLOSE", "EXIT_LEG_ORDER_WORKING"})
+
+
+def is_decreasing(side: str, ps: str, params: Dict[str, Any]) -> bool:
+    reduce_only = str(params.get("reduceOnly", "")).lower() == "true" or params.get("reduceOnly") is True
+    close_pos = str(params.get("closePosition", "")).lower() == "true" or params.get("closePosition") is True
+    if reduce_only or close_pos:
+        return True
+    return (ps == "LONG" and side == "SELL") or (ps == "SHORT" and side == "BUY")
+
+
+def exit_priority_mode(symbol: str, side: str, ps: str, params: Dict[str, Any]) -> Optional[str]:
+    """'FORCE' / 'FULL' when this wire call is a decreasing order of an execute_now full close (token stamped by
+    exit_guarantee: exit_priority / FORCE_CLOSE_MARKET action) on the token's own symbol; else None (legacy guard)."""
+    tok = _token_for(symbol)
+    if tok is None or not is_decreasing(str(side).upper(), str(ps).upper(), params):
+        return None
+    if tok.get("exit_force") or str(tok.get("action") or "").upper() == EXIT_FORCE_ACTION:
+        return "FORCE"
+    if tok.get("exit_priority"):
+        return "FULL"
+    return None
+
+
 # ───────────────────────────── Binance futures ─────────────────────────────
 class BinanceDedupeGuard(_GuardBase):
     broker = "binance"
@@ -741,6 +766,9 @@ class BinanceDedupeGuard(_GuardBase):
         symbol = str(params.get("symbol", "")).upper()
         side = str(params.get("side", "")).upper()
         ps = str(params.get("positionSide", "") or "").upper()
+        xp = exit_priority_mode(symbol, side, ps, params)
+        if xp and self.enabled():
+            return self.guarded_exit_create(inner_client, params, origin, force=(xp == "FORCE"))
         with self.key_lock(symbol):
             dec = self.preflight(inner_client, symbol, ps, origin=origin or f"create {side}/{ps}")
             if not dec.allowed:
@@ -794,6 +822,84 @@ class BinanceDedupeGuard(_GuardBase):
             else:
                 self._mark(symbol, entry, state="UNKNOWN", evidence=repr(e)[:200])
                 self.log.critical(f"🚨 [ORDER_DEDUPE_UNKNOWN] binance:{self.account}:{symbol} submit raised {e!r} — status UNKNOWN; key frozen until broker confirms cid={cid}")
+            raise
+        st = str((resp or {}).get("status", "")).upper()
+        exq = (resp or {}).get("executedQty")
+        final = st in BINANCE_FINAL and exq is not None
+        self._mark(symbol, entry, state="FINAL" if final else "SUBMITTED", order_id=(resp or {}).get("orderId"), status=st or None, executed_qty=_f(exq, 0.0), final=final, avg_price=_f((resp or {}).get("avgPrice"), 0.0), fill_ts=(_f((resp or {}).get("updateTime"), 0.0) / 1000.0) or self.clock())
+        return resp
+
+    def guarded_exit_create(self, inner_client, params: Dict[str, Any], origin: str = "", force: bool = False) -> Dict[str, Any]:
+        """EXIT GUARANTEE (USER 2026-10-14 "exits never compromised"): a DECREASING order of an execute_now FULL close (or the
+        FORCE_CLOSE_MARKET leg) needs only: correct side/qty from the exchange truth, reduce semantics, the exchange's own rules.
+          * broker unreachable (open orders / positionRisk) -> proceed (exchange rejects an over-close; 160 vec CLOSEs were
+            refused BROKER_UNREACHABLE_OPEN_ORDERS 10-11..14 and held until FIXED_STOP);
+          * orders on the OTHER hedge leg never block; FORCE: resting orders on this leg were cancelled by the caller -> proceed;
+            normal full close: a working order on THIS leg still blocks (no two concurrent closes of one leg) unless it is ours
+            and already cancel-requested;
+          * no positions-file reflection wait, no intent window: qty is clamped to the FRESH broker amount instead
+            (broker flat -> NOTHING_TO_CLOSE, which is a no-op, not a block of a real position);
+          * the ledger row (SUBMITTING before the wire, FINAL from the response) is kept — the post-trade verification and the
+            next order still see it."""
+        symbol = str(params.get("symbol", "")).upper()
+        side = str(params.get("side", "")).upper()
+        ps = str(params.get("positionSide", "") or "").upper()
+        with self.key_lock(symbol):
+            try:
+                oo = inner_client.futures_get_open_orders(symbol=symbol)
+                if not isinstance(oo, list):
+                    raise RuntimeError(f"unparseable {str(oo)[:120]}")
+            except Exception as e:
+                oo = None
+                self.log.critical(f"⚠️ [EXIT_PREFLIGHT_UNREACHABLE] binance:{self.account}:{symbol} {side}/{ps} open-orders query failed ({e!r:.160}) — exit proceeds (exits never refused for an unreachable broker)")
+            if oo:
+                rows = self.ledger.orders(symbol)
+                now = self.clock()
+                cancel_recent = float(_cfg(self.cfg, "ORDER_DEDUPE_CANCEL_RECENT_SEC"))
+                own_cxl = {str(r.get("order_id")) for r in rows if r.get("cancel_requested_at") and now - _f(r.get("cancel_requested_at")) < cancel_recent} | {str(r.get("client_order_id")) for r in rows if r.get("cancel_requested_at") and now - _f(r.get("cancel_requested_at")) < cancel_recent}
+                same_leg = [o for o in oo if str(o.get("symbol", "")).upper() == symbol and (not ps or str(o.get("positionSide", "")).upper() in ("", "BOTH", ps))]
+                live = [o for o in same_leg if str(o.get("orderId")) not in own_cxl and str(o.get("clientOrderId")) not in own_cxl]
+                if live and not force:
+                    raise OrderDedupeBlockedBinance(self._block(symbol, "EXIT_LEG_ORDER_WORKING", {"open_orders": [self._order_ev(o) for o in live]}, origin))
+                if live:
+                    self.log.critical(f"⚠️ [EXIT_FORCE_OVER_WORKING] binance:{self.account}:{symbol} {ps}: {len(live)} working order(s) on the leg — FORCE close proceeds (exchange caps reduce at the position)")
+            qty_raw = params.get("quantity")
+            closing_flag = str(params.get("closePosition", "")).lower() == "true" or params.get("closePosition") is True
+            if not closing_flag and _bad_qty(qty_raw):
+                raise OrderDedupeBlockedBinance(self._block(symbol, "BAD_QTY", {"quantity": str(qty_raw)}, origin))
+            qty = _f(qty_raw, 0.0)
+            try:
+                bp = self._broker_position_uncached(inner_client, symbol, ps or "BOTH")
+                amt = abs(_f(bp.get("amt")))
+                if amt <= 0:
+                    raise OrderDedupeBlockedBinance(self._block(symbol, "NOTHING_TO_CLOSE", {"broker": bp, "requested": qty_raw}, origin))
+                if not closing_flag and qty > amt * 1.0000001:
+                    new_q = _fmt_like(qty_raw, amt)
+                    self.log.warning(f"✂️ [EXIT_QTY_CLAMP_BROKER] binance:{self.account}:{symbol} {side}/{ps} qty {qty_raw} -> {new_q} (fresh broker amount)")
+                    params["quantity"] = new_q
+                    qty = _f(new_q)
+            except OrderDedupeBlocked:
+                raise
+            except Exception as e:
+                self.log.critical(f"⚠️ [EXIT_BROKER_POSITION_UNREACHABLE] binance:{self.account}:{symbol} {ps}: positionRisk failed ({e!r:.160}) — exit proceeds with qty {qty_raw} (exchange caps reduce at the position)")
+            if not ps or ps == "BOTH":
+                params.setdefault("reduceOnly", "true")
+            cid = params.get("newClientOrderId") or self.new_client_order_id()
+            params["newClientOrderId"] = cid
+            entry = {"client_order_id": cid, "order_id": None, "side": side, "position_side": ps, "qty": qty, "type": str(params.get("type", "")), "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": ("EXIT_FORCE|" if force else "EXIT|") + origin[:110]}
+            self.ledger.mutate(symbol, lambda orders: orders.append(entry))
+            _remember_order(cid)
+            self._backoff.pop(symbol, None)
+        try:
+            resp = _raw_binance_create(inner_client, params)
+        except Exception as e:
+            code = getattr(e, "code", None)
+            status_code = getattr(e, "status_code", None)
+            definitive = code is not None and code not in BINANCE_UNKNOWN_CODES and isinstance(status_code, int) and 400 <= status_code < 500 and code != 0
+            if definitive:
+                self._mark(symbol, entry, state="FINAL", status="REJECTED_BY_BROKER", final=True, executed_qty=0.0, evidence=f"code={code} {str(e)[:160]}")
+            else:
+                self._mark(symbol, entry, state="UNKNOWN", evidence=repr(e)[:200])
             raise
         st = str((resp or {}).get("status", "")).upper()
         exq = (resp or {}).get("executedQty")

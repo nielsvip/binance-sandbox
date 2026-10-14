@@ -881,7 +881,7 @@ def kpi_compact(kpi):
     regression verdict, autotune knobs that moved. None when there is no KPI file."""
     if not isinstance(kpi, dict) or not kpi.get("windows"):
         return None
-    keep = ("n", "median_wall_min", "median_core_min_est", "median_eval_core_min", "median_gain_bh", "p90_gain_bh", "share_ge_1x_bh", "share_ge_10x_bh", "median_final_minus_best_start", "n_below_best_start")
+    keep = ("n", "median_wall_min", "median_core_min", "median_core_min_est", "median_eval_core_min", "median_gain_bh", "p90_gain_bh", "share_ge_1x_bh", "share_ge_10x_bh", "median_final_minus_best_start", "n_below_best_start")
     out = {"generated_utc": kpi.get("generated_utc"), "windows": {w: {**{k: s.get(k) for k in keep}, "boards_per_h": {h: x.get("boards_per_h") for h, x in (s.get("hosts") or {}).items()}} for w, s in kpi["windows"].items()}}
     ph = (kpi["windows"].get("3d") or {}).get("phases") or {}
     rated = sorted([(p, x) for p, x in ph.items() if p in KPI_PHASES and x.get("lift_per_core_min") is not None and (x.get("core_min") or 0) >= 5], key=lambda kv: -kv[1]["lift_per_core_min"])
@@ -900,8 +900,8 @@ def kpi_section(kpi, n=12):
     c = kpi_compact(kpi)
     if not c:
         return ""
-    L = ["", f"## C. FLEET KPI (tools/v17_kpi.py {c['generated_utc']}; core-min = wall x workers, flagged estimate; gain/bh only bh>0) — target 10x bh every sym_side, >=12 then >30 boards/h/server"]
-    L.append(_tbl(["window", "boards", "boards/h/server", "med wall min", "med core-min", "med gain/bh", "p90 gain/bh", ">=1x", ">=10x", "med final-best_start", "final<best_start"], [[w, s["n"], ", ".join(f"{h} {v}" for h, v in s["boards_per_h"].items()), s["median_wall_min"], s["median_core_min_est"], s["median_gain_bh"], s["p90_gain_bh"], s["share_ge_1x_bh"], s["share_ge_10x_bh"], s["median_final_minus_best_start"], s["n_below_best_start"]] for w, s in c["windows"].items()]))
+    L = ["", f"## C. FLEET KPI (tools/v17_kpi.py {c['generated_utc']}; core-min = pilot result_cpu_s where stamped, else wall x workers; gain/bh only bh>0) — target 10x bh every sym_side, >=12 then >30 boards/h/server"]
+    L.append(_tbl(["window", "boards", "boards/h/server", "med wall min", "med core-min", "med gain/bh", "p90 gain/bh", ">=1x", ">=10x", "med final-best_start", "final<best_start"], [[w, s["n"], ", ".join(f"{h} {v}" for h, v in s["boards_per_h"].items()), s["median_wall_min"], s.get("median_core_min", s["median_core_min_est"]), s["median_gain_bh"], s["p90_gain_bh"], s["share_ge_1x_bh"], s["share_ge_10x_bh"], s["median_final_minus_best_start"], s["n_below_best_start"]] for w, s in c["windows"].items()]))
     if c["phases_3d"]:
         L.append("### C.lift per core-minute per phase (3d; best first) — spend where it lifts")
         L.append(_tbl(["phase", "boards", "lift>0", "sum lift", "core-min", "lift/core-min"], [[p, x["boards"], x["pos"], x["lift"], x["core_min"], x["lift_per_core_min"]] for p, x in list(c["phases_3d"].items())[: n + 2]]))

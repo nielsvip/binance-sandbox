@@ -2650,3 +2650,90 @@ sym_sides resolve PARITY_VEC_EXACT_MODE=True through per-sym > cat_side > global
     pushed to hosts); a cuttable phase (P1_PROBE, P3_FOCUS/ABLATION/RETEST/PROBE/COMBO/SURGEON — never REGIME365/TIMFIX/
     ESSENTIAL) with n >= 20 new-build boards and 0 lifts is skipped (`V15_V17_PHASE_CUT=0` disables).
   * Per board: `result_cpu_s` (self + reaped pool workers), `result_workers`, `[V17-SUMMARY]` line (lift by phase, final/bh).
+
+### 101.1 CORRECTION (USER 2026-10-14): the re-entry rule is THREE switches, not B00
+"re-enters on the first closed 15m bar that reclaims the exit price by the 0.2% buffer <- this was never the rule it is a switch
+either breaking exit price or dc_high4_15m or a higher low (vv short) … all 3 can be true!" The B00/H2 twin shipped at 51d666ff
+was withdrawn (engine patch reversed; REENTRY_EXIT_RECLAIM is inert in the vec again, its predicate stays unused). Shipped instead
+(engine a7651c1b, Mac = S1/S2 sandbox md5-identical): `vec_decisions/reentry_triggers.py` — ONE function for vec + native live —
+successor of the USER's precise rule VEC_REENTRY_DC4_EXITPRICE_ENABLED (v12_wide_engine.py:7698, never ported), as 3 independent
+OR-ed switches, default True, REENTRY_WINDOWED rows True/False in all 4 templates:
+- REENTRY_ON_EXIT_PRICE_BREAK_ENABLED — close crosses back through the last exit price.
+- REENTRY_ON_DC4_15M_BREAK_ENABLED — close crosses the prior closed bar's dc_high4_15m (vv dc_low4_15m short).
+- REENTRY_ON_HIGHER_LOW_ENABLED — bar low above the lowest 15m low since the exit + up close (vv lower high + down close short).
+All require the original 15m WT confirm (wt1 > wt2, velocity >= 0; short mirrored); armed after ANY exit (FIXED_STOP incl.) while
+flat; normal entry gates apply; label = the trigger name. Live: crypto ez_manage.evaluate_reentry + stocks tradier_manage
+StockStrategy.evaluate_reentry call fire_live() (same predicate; native, acts when the vec twin is not deciding); in exact mode
+live = the vec twin. Switch bible: WIRED_BOTH on both venues. Flip proof 30d default set: ALGOUSDT_LONG none -1.09 / exit -2.23 /
+dc4 -2.13 / hl -4.95 / all3 -5.32; ALGOUSDT_SHORT exit +1.51 (vs +0.52); BTCUSDC_LONG all3 -4.02 (vs -3.48); AAPL_LONG hl +7.86
+(vs +6.26); NVDA_SHORT no fires. Defaults ON per the original mandate; per-sym sweeps decide via the rows. Tests:
+tests/test_reentry_triggers.py. Template integrity verified (exactly 6 new rows per template, 0 missing); allowlist =
+data/reports/ALL_PATHS_ALLOWLIST.csv (S1/S2/Mac).
+
+## 103. V17 KPI + AUTO-TUNE (2026-10-14)
+
+USER 2026-10-14: "make sure the results keep improving and processing times per sym_side keep reducing by the self learning
+system". Goals: 10x bh for every sym_side; >=12 then >30 boards/hour/server on S1 + s2. Tool `tools/v17_kpi.py` (stdlib; S1
+python 3.12, s2 3.10). DIAGNOSTIC aggregates only, no Sharpe anywhere; every number is copied/derived from progress JSONs +
+delta logs.
+
+- **Collect (S1 cron `3,33 * * * *` `# V17_KPI`, flock `/tmp/v17_kpi.cron.lock` + internal `/tmp/v17_kpi.lock`, nice 15).**
+  S1 `~/v15_run*/progress` locally + s2 (10.0.0.4) by piping the tool itself to `ssh 10.0.0.4 python3 - --extract` (no deploy
+  skew). Every finished board (`result_done_utc`; live files + `*.npzprev_*.json` archives) -> `data/kpi/v17_kpi.sqlite`
+  table `boards` (key `host|sym_side|result_done_utc`, upsert; incremental from the host's last finish - 2 h, backfill
+  `--days`). Fields: sym_side, cat_side, tier, host, pilot/engine/config md5 (`result_*_md5`), start/finish/wall, workers
+  (`result_workers` > dispatch-log `workers` > scheduler `hosts.<h>.workers_per_side` timeline > default, flagged
+  `workers_assumed`), CPU: `core_min` = pilot `result_cpu_s`/60 (v16+, measured) else wall x workers (flag
+  `cpu_est_wall_x_workers`), `core_min_est` = wall x workers always, `eval_core_min` = measured sum of non-cached eval `secs`
+  in the delta log inside [start, done] (lower bound), evals/cached, final gain, bh, gain/bh (bh > 0 only), trades, TIM/DD
+  (best_seen when it equals the final, else the last promotion/delta-log row equal to the final), 365D gain/DD/TIM/trades
+  (`final_365d`), best_start choice + gain, `final_below_best_start`, per-phase {wall, lift, evals, promotions} folded into
+  families `p0, probe, p2, combo, surgeon, focus, ablation, retest, probe_p3, regime365, ffr, endgame_diag, other`
+  (+ p3_timfix/p3_essential...). Legacy-P2 boards record no P2 phase: `p2` = wall from v17 start to the first P3 phase,
+  lift = first P3 entry gain - best_start gain (flag `p2_derived`); `other` = wall not covered by any recorded phase. Phase
+  core-min = phase wall x the board's measured average cores (cpu_s / wall) or x workers.
+- **Rollups -> `data/kpi/v17_kpi_latest.md/.json`** (windows 6h / 24h / today / 3d, hourly 48 h, daily 7 d): boards/h/server,
+  median wall, median core-min (measured / est / eval), median + p90 gain/bh, share of boards >= 1x/2x/5x/10x bh, median final
+  - best_start, finals below best_start, median 365D gain/DD, lift / core-min / lift-per-core-min / lift-per-wall-min per phase
+  and per phase x tier, pilot md5 set. Mac pull cron `8,38 * * * *` `# V17_KPI_PULL` -> `data/kpi/` + `data/alerts/`.
+- **Regression guard (every collect).** Last 24 h and last 6 h vs the 72 h before each window (min 5 boards each side, else
+  "insufficient", no verdict): median wall / core-min / core-min est / eval core-min rise > 15 %, median gain/bh fall > 10 %,
+  or ANY final below its best_start -> `data/alerts/V17_KPI_REGRESSION.json` with the evidence, tier mix, and the pilot/engine
+  md5s present in the window but not in its baseline (the coinciding change). Cleared -> renamed
+  `V17_KPI_REGRESSION.resolved_<ts>.json` (evidence kept).
+- **Bounded auto-tuner (S1 cron `30 14 * * *` `# V17_AUTOTUNE`, after the 13:40Z daily learn; once per UTC day, `--force`
+  reruns).** Last `V17_AT_DAYS` 3 days of v17 boards (>= 8, else every knob held). Knobs (default -> hard bounds):
+  `V15_V17_COMBO_SHARE_WINNER` 0.5 [0.15, 0.7], `V15_V17_COMBO_SHARE` 0.35 [0.1, 0.6], `V15_V17_SHARE_SURGEON_WINNER` 0.75
+  [0.3, 0.9], `V15_V17_SHARE_SURGEON` 0.6 [0.2, 0.85], `V15_V17_SHARE_FOCUS` 0.5 [0.1, 0.8], `V15_V17_SHARE_ABLATION` 0.6
+  [0.15, 0.85], `V15_V17_SHARE_RETEST` 0.7 [0.2, 0.9], `V15_V17_P3_MAX_S_WINNER` 1500 [1500, 3600] (USER "extend time cap
+  for winners": raise only), `_MEDIOCRE` 540 [180, 1500], `_LOSER` 300 [90, 900], `_LOST_CAUSE` 120 [30, 300], `V15_V17_P_MIN`
+  0.005 [0.001, 0.02]. Rules: share knob = phase lift/core-min vs the P3 pool (combo+surgeon+focus+ablation+retest) of its tier
+  group; deadband 0.8-1.25x hold, else x sqrt(ratio) clamped to +-20 %. Tier budget = tier P3 lift per wall-minute: >= 0.6
+  (2x the 0.3 rule) +20 %, < 0.3 -20 % (never cut while the tier lifts >= 0.3 pp/min; the pilot's 0.3 extension still extends
+  any lifting window), else hold. P_MIN = P2 vs P3 lift/core-min: < 0.5x -20 %, > 1.5x +20 %. Per knob >= 3 boards and >= 10
+  core-min of evidence else hold. Every value: <= 20 % from prev, inside its bounds. NEVER written: `V15_V17_MIN_LIFT_PM`
+  (0.3 rule), `V15_V17_P3_MAX_S` (absolute cap), best-start, 365D record-only, typed values, never-lower.
+  Output `data/kpi/v17_autotune.json` {apply, knobs: {value, prev, default, bounds, why, evidence}, env}; history
+  `data/kpi/autotune_history/v17_autotune_<ts>.json` + `data/kpi/v17_autotune_history.jsonl`. **Rollback (one command):**
+  `python3 tools/v17_kpi.py --rollback` (restores the snapshot before the one in effect; none -> apply=false). **Off:**
+  `python3 tools/v17_kpi.py --disable` or `V17_AUTOTUNE_APPLY=0` in the scheduler cron env.
+- **Reader hook = `tools/v15_dispatch_job.py` `_autotune_exports(tag)`** (the scheduler hands every launch to the dispatch
+  job): for a tag with a 30D leg, an apply=true file <= `V17_AUTOTUNE_MAX_AGE_D` 3 days old, only whitelisted knob names
+  (regex) with finite values inside hard bounds -> the remote launch command is prefixed `export K=V; ...` (inherited by the
+  setsid/bash -c/pilot chain; an inline `VAR=` in the scheduler's env string still wins). Launch log rows now carry
+  `workers` (parsed `--workers N`) and `autotune` {generated_utc, n}. Any problem -> no prefix (pilot defaults).
+  Direct launches that bypass the dispatch job do not get the knobs (hook for their owner: prefix `side_cmd()`'s 30D `env`
+  with the same exports).
+- **Daily learn packet:** `tools/v17_daily_learn_prep.py` `kpi_section()` / `kpi_compact()` -> packet section "C. FLEET KPI"
+  (window trends, lift per core-minute per phase best-first, best/worst phases, regression verdict + new md5s, autotune moved
+  knobs) from the Mac copy `data/kpi/v17_kpi_latest.json`; JSON twin `data.kpi`. Same 30 KB cap. Also fixed: the packet's
+  365D columns read `final_365d.gain_pct / max_dd_pct` (were always None).
+- **First run 2026-10-14 01:1xZ** (347 boards backfilled 10 d): 24 h: 120 boards, s1 1.17 / s2 3.83 boards/h, median wall
+  28.0 min, median gain/bh 1.705 (p90 6.55), >= 1x 0.81, >= 10x 0.059; 3 finals below best_start (ONEUSDT_SHORT s2
+  22.55 -> 0.62 f71ab606; FILUSDC_SHORT 3.42 -> 3.09 53bb952f; JASMYUSDT_LONG 3.98 -> 3.74 ce1937e7) -> alert written.
+  3 d lift/core-min: probe 10.8, focus 0.36, surgeon 0.19, p2 0.12, retest 0.11, combo 0.031, ablation 0.023, regime365 0
+  (record-only by law). First proposal: COMBO_SHARE_WINNER 0.5->0.4, SHARE_SURGEON_WINNER 0.75->0.9, SHARE_FOCUS 0.5->0.6,
+  SHARE_ABLATION 0.6->0.48, SHARE_RETEST 0.7->0.84, P3_MAX_S_MEDIOCRE 540->648, P_MIN 0.005->0.006 (WINNER budget held at
+  the 1500 floor; LOSER/LOST_CAUSE/non-winner combo held: thin evidence).
+- Cron installer `tools/v17_kpi_install_cron.sh` (refuses an empty/short crontab, backup
+  `backups/crontab_s1_before_v17_kpi_<ts>.txt`, idempotent). Tests `tests/test_v17_kpi.py` (12).

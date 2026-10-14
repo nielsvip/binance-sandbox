@@ -93,28 +93,17 @@ def applied_at_map(db_path=DB):
 
 
 def load_trades(days, root=ROOT):
-    """{sym_side: [trade, ...]} from the live per-trade ledgers of the last `days` days."""
+    """{sym_side: [trade, ...]} from the live per-trade ledgers of the last `days` days — DISTINCT confirmed trades
+    (2026-10-14: per_trade_ledger collapses close-retry storms to one trade per position lifecycle; dust < $5 dropped)."""
+    import sys as _sys
+    _sys.path.insert(0, str(root))
+    import per_trade_ledger as _ptl
     by_ss = {}
-    today = datetime.datetime.now(datetime.timezone.utc)
-    for i in range(int(days) + 1):
-        day = (today - datetime.timedelta(days=i)).strftime("%Y%m%d")
-        for f in glob.glob(os.path.join(root, "data", "per_trade_returns", f"*_{day}.jsonl")):
-            acct = os.path.basename(f).split("_")[0]
-            try:
-                fh = open(f)
-            except Exception:
-                continue
-            with fh:
-                for ln in fh:
-                    try:
-                        e = json.loads(ln)
-                    except Exception:
-                        continue
-                    sym, side = e.get("symbol"), str(e.get("side") or "").upper()
-                    if not sym or side not in ("LONG", "SHORT"):
-                        continue
-                    e["account"] = e.get("account") or acct
-                    by_ss.setdefault(f"{sym}_{side}", []).append(e)
+    for e in _ptl.final_closes(_ptl.load_distinct(root, None, int(days) + (1 if days % 1 else 0))):
+        sym, side = e.get("symbol"), str(e.get("side") or "").upper()
+        if not sym or side not in ("LONG", "SHORT"):
+            continue
+        by_ss.setdefault(f"{sym}_{side}", []).append(_ptl.strip(e))
     return by_ss
 
 

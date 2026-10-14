@@ -39,6 +39,8 @@ DEFAULT_FEE_PCT = {"ez": 0.04, "tradier": 0.0}  # same fees_pct the per_trade_lo
 ENTRY_TOKENS = ("OPEN", "AUGMENT", "REENTRY", "ENTRY", "REVERSE")
 EXIT_TOKENS = ("CLOSE", "REDUCE", "EXIT", "STOP", "PROFIT_TAKE")
 PARTIAL_TOKENS = ("TIERED", "PARTIAL", "SCALE_OUT")
+DUST_USD = 5.0  # 2026-10-14: closes below this notional never count as a win or a loss (MANAUSDT_SHORT 708 rows of $3 dust)
+HOOK_DEDUPE_S = 900.0  # legacy hook rows (written per attempt before 2026-10-14) of one account+sym_side within 15 min = one close
 _LOCK = threading.Lock()
 _CACHE: Dict[str, Any] = {}
 
@@ -259,7 +261,7 @@ def mark_hooks_started(venue: str, cfg: Any = None) -> None:
         pass
 
 
-def record_close(venue: str, account: str, symbol: str, position_side: str, gain_pct: float, reason: str = "", cfg: Any = None, ts: Optional[float] = None, fee_pct: Optional[float] = None) -> Optional[dict]:
+def record_close(venue: str, account: str, symbol: str, position_side: str, gain_pct: float, reason: str = "", cfg: Any = None, ts: Optional[float] = None, fee_pct: Optional[float] = None, lifecycle: Optional[str] = None, notional_usd: Optional[float] = None) -> Optional[dict]:
     """execute_now full-close hook. Appends {ts, account, sym_side, gain_pct, net_pct, reason} (O_APPEND, multi-process safe),
     then re-evaluates the sym_side so a halt (and its S1 pin) fires right after the 2nd loss instead of at the next entry."""
     try:
@@ -273,6 +275,16 @@ def record_close(venue: str, account: str, symbol: str, position_side: str, gain
         fee =DEFAULT_FEE_PCT.get(venue, 0.0) if fee_pct is None else float(fee_pct)
         g = float(gain_pct or 0.0)
         rec = {"ts": _iso(ts or time.time()), "account": str(account or ""), "sym_side": sym_side(symbol, position_side), "gain_pct": round(g, 4), "net_pct": round(g - fee, 4), "reason": str(reason or "")[:120], "src": "hook"}
+        # 2026-10-14 USER "exits never compromised": one record per CONFIRMED close per lifecycle (retries of the same close never
+        # count twice), dust closes (< DUST_USD notional) recorded but never counted as a win or a loss.
+        if lifecycle:
+            rec["lifecycle"] = str(lifecycle)
+            if any(str(e.get("lifecycle", "")) == str(lifecycle) for e in _hook_closes(venue, cfg).get(rec["sym_side"], [])):
+                return None
+        if notional_usd is not None:
+            rec["notional_usd"] = round(float(notional_usd), 4)
+            if float(notional_usd) < DUST_USD:
+                rec["dust"] = True
         with open(f, "a") as fh:
             fh.write(json.dumps(rec) + "\n")
         _CACHE.pop(f"hook:{venue}", None)
@@ -304,8 +316,34 @@ def _hook_closes(venue: str, cfg: Any = None) -> Dict[str, List[dict]]:
                 out.setdefault(str(e.get("sym_side", "")).upper(), []).append(e)
     except Exception:
         out = {}
+    out = {ss: dedupe_hook_rows(rows) for ss, rows in out.items()}
     _CACHE[key] = (mt, out)
     return out
+
+
+def dedupe_hook_rows(rows: List[dict]) -> List[dict]:
+    """Pure: one record per lifecycle (last wins); legacy records without lifecycle: same account within HOOK_DEDUPE_S of the
+    previous record of that account = the same close re-recorded by a retry (last wins)."""
+    keep: List[dict] = []
+    by_life: Dict[str, int] = {}
+    last_legacy: Dict[str, int] = {}
+    for e in sorted(rows, key=lambda r: iso_epoch(r.get("ts")) or 0.0):
+        life = str(e.get("lifecycle") or "")
+        if life:
+            if life in by_life:
+                keep[by_life[life]] = e
+            else:
+                by_life[life] = len(keep)
+                keep.append(e)
+            continue
+        acct = str(e.get("account") or "")
+        j = last_legacy.get(acct)
+        if j is not None and (iso_epoch(e.get("ts")) or 0.0) - (iso_epoch(keep[j].get("ts")) or 0.0) <= HOOK_DEDUPE_S:
+            keep[j] = e
+            continue
+        last_legacy[acct] = len(keep)
+        keep.append(e)
+    return keep
 
 
 _G_IN_REASON = re.compile(r"(?:^|[_ \-(])g(-?\d+(?:\.\d+)?)%?")
@@ -346,27 +384,16 @@ def _ledger_closes(venue: str, cfg: Any = None, days: int = 45) -> Dict[str, Lis
     if c and time.time() - c[0] < 120:
         return c[1]
     out: Dict[str, List[dict]] = {}
-    d = base_path(cfg) / "data" / "per_trade_returns"
-    today = _dt.datetime.now(_dt.timezone.utc)
-    for i in range(int(days) + 1):
-        day = (today - _dt.timedelta(days=i)).strftime("%Y%m%d")
-        for acct in VENUE_ACCOUNTS.get(venue, ()):
-            p = d / f"{acct}_{day}.jsonl"
-            if not p.exists():
-                continue
-            try:
-                with open(p) as fh:
-                    for ln in fh:
-                        try:
-                            e = json.loads(ln)
-                        except Exception:
-                            continue
-                        e.setdefault("account", acct)
-                        rec = ledger_row_to_close(e, venue)
-                        if rec:
-                            out.setdefault(rec["sym_side"], []).append(rec)
-            except Exception:
-                continue
+    try:  # 2026-10-14: distinct confirmed trades only — one close per lifecycle (retry storms collapsed), dust excluded
+        import per_trade_ledger as _ptl
+        rows = _ptl.final_closes(_ptl.load_distinct(base_path(cfg), VENUE_ACCOUNTS.get(venue, ()), int(days)), DUST_USD)
+    except Exception:
+        rows = []
+    for e in rows:
+        rec = ledger_row_to_close(_ptl.strip(e), venue)
+        if rec:
+            rec["lifecycle"] = e.get("lifecycle")
+            out.setdefault(rec["sym_side"], []).append(rec)
     _CACHE[key] = (time.time(), out)
     return out
 
@@ -383,7 +410,7 @@ def closes_for(venue: str, ss: str, cfg: Any = None) -> List[dict]:
 
 def trailing_losses(closes: Iterable[dict], since_epoch: Optional[float], n: int) -> Tuple[bool, List[dict]]:
     """Pure: the last n closes newer than since_epoch are ALL net losses? -> (hit, those closes)."""
-    rows = sorted([c for c in closes if (iso_epoch(c.get("ts")) or 0) > (since_epoch or 0)], key=lambda c: iso_epoch(c.get("ts")))
+    rows = sorted([c for c in closes if (iso_epoch(c.get("ts")) or 0) > (since_epoch or 0) and not c.get("dust")], key=lambda c: iso_epoch(c.get("ts")))
     last = rows[-n:] if n > 0 else []
     hit = n > 0 and len(last) == n and all(float(c.get("net_pct", c.get("gain_pct", 0.0)) or 0.0) < 0 for c in last)
     return hit, last

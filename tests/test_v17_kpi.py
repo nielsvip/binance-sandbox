@@ -215,3 +215,17 @@ def test_packet_kpi_section(tmp_path):
     assert P.kpi_section(None) == ""
     md2, data = P.build_packet(None, None, "20261014", kpi=roll)
     assert "## C. FLEET KPI" in md2 and data["kpi"]["windows"]["24h"]["n"] == 6 and len(md2.encode()) <= P.PACKET_CAP
+
+
+def test_measured_cpu_preferred(tmp_path):
+    t0 = 1_791_900_000.0
+    d = _progress("AAPL_LONG", t0, 1200.0, 5.0, 1.0, 4.0, phases=PH)
+    d["result_cpu_s"], d["result_workers"] = 1560.0, 2
+    _write_board(tmp_path / "v15_run9" / "progress", d)
+    r = K.extract([str(tmp_path / "v15_run*" / "progress")], "s1", t0 - 10, 4)["boards"][0]
+    assert r["workers"] == 2 and r["workers_src"] == "result_workers" and r["cpu_source"] == "result_cpu_s"
+    assert r["core_min"] == 26.0 and r["cores_avg"] == 1.3 and r["core_min_est"] == 40.0 and "cpu_measured" in r["flags"]
+    con = K.db_open(tmp_path / "k.sqlite")
+    K.db_upsert(con, [r])
+    t = K.phase_table(K.db_boards(con, 0))
+    assert t["surgeon"]["core_min"] == round(120.0 * 1.3 / 60, 1)  # phase wall x measured average cores
