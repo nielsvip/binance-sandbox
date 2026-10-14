@@ -1,51 +1,9 @@
 {
-  "ang:DASHUSDT_LONG": {
-    "orderId": "4000001966657240",
-    "stopPrice": 49.49,
-    "entry_sig": "2026-10-14 02:04:36.010786+00:00",
-    "symbol": "DASHUSDT",
+  "men:YFIUSDT_LONG": {
+    "orderId": "2000001509965328",
+    "stopPrice": 2255.0,
+    "entry_sig": "2026-10-13 23:57:35.752858+00:00",
+    "symbol": "YFIUSDT",
     "side": "LONG"
-  },
-  "ang:KMNOUSDT_LONG": {
-    "orderId": "4000001966646137",
-    "stopPrice": 0.03685,
-    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
-    "symbol": "KMNOUSDT",
-    "side": "LONG"
-  },
-  "ang:ZENUSDT_LONG": {
-    "orderId": "4000001966646136",
-    "stopPrice": 6.121,
-    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
-    "symbol": "ZENUSDT",
-    "side": "LONG"
-  },
-  "ang:ETHUSDC_LONG": {
-    "orderId": "4000001967113845",
-    "stopPrice": 2488.73,
-    "entry_sig": "2026-10-14 08:05:25.760000+00:00",
-    "symbol": "ETHUSDC",
-    "side": "LONG"
-  },
-  "ang:GALAUSDT_SHORT": {
-    "orderId": "4000001967142861",
-    "stopPrice": 0.002175,
-    "entry_sig": "2026-10-14 08:20:21.309000+00:00",
-    "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "ang:BATUSDT_LONG": {
-    "orderId": "4000001967162691",
-    "stopPrice": 0.18107,
-    "entry_sig": "2026-10-14 08:35:57.197000+00:00",
-    "symbol": "BATUSDT",
-    "side": "LONG"
-  },
-  "ang:MELANIAUSDT_SHORT": {
-    "orderId": "4000001967226397",
-    "stopPrice": 0.09063,
-    "entry_sig": "2026-10-14 09:20:37.904000+00:00",
-    "symbol": "MELANIAUSDT",
-    "side": "SHORT"
   }
 }
