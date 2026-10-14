@@ -335,3 +335,10 @@ def test_seed_row_is_identity_reference_for_cold_writer(acct):
     rows = {"fin:SOLUSDC_LONG": _row(oa=OA_RESTAMP, ep=107.6, symbol="SOLUSDC")}
     pwg.before_write(acct / "long_positions.json", rows, role="service")
     assert rows["fin:SOLUSDC_LONG"]["opened_at"] == "2026-10-14T00:48:56.023801Z"
+
+
+def test_file_row_of_closed_lifecycle_not_carried():
+    from ez_positions_service import choose_new_lifecycle_opened_at as choose
+    now = datetime(2026, 10, 14, 3, 45, tzinfo=timezone.utc)
+    v, src = choose(pwg.to_epoch(OA_TRUE), None, OA_TRUE, "2026-10-14T01:00:00Z", now)  # a close was recorded after it
+    assert v == now

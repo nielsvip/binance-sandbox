@@ -230,6 +230,28 @@ def _merge_exchange(path, klines, now_ms):
     return added, corrected, out
 
 
+COMPLETE = "_complete.json"
+
+
+def mark_complete(names, store=STORE):
+    """record symbol_TF files whose history reached the target depth (or the listing). Readers (backtest_v8_precompute, v15_npz_prep)
+    switch a symbol to the canonical store only when all four TFs are complete — a one-time switch per symbol, never per build."""
+    WLOCK.parent.mkdir(parents=True, exist_ok=True)
+    with open(WLOCK, "a+") as lk:
+        fcntl.flock(lk.fileno(), fcntl.LOCK_EX)
+        p = store / COMPLETE
+        try:
+            cur = json.loads(p.read_text())
+        except Exception:
+            cur = {}
+        now = iso(int(time.time() * 1000))
+        for n in names:
+            cur.setdefault(n, now)
+        tmp = p.with_name(f".{COMPLETE}.tmp{os.getpid()}")
+        tmp.write_text(json.dumps(cur, indent=0, sort_keys=True))
+        os.replace(tmp, p)
+
+
 def fill_symbol_tf(api, symbol, tf, since_ms, store=STORE):
     """page backwards from now to since_ms (or the listing), then forward-merge; closed bars only."""
     path = store / f"{symbol}_{tf}.json"
@@ -248,7 +270,7 @@ def fill_symbol_tf(api, symbol, tf, since_ms, store=STORE):
     if first_have is not None:
         if first_have <= since_ms:
             r = tail_symbol_tf(api, symbol, tf, store=store)
-            return {"symbol": symbol, "tf": tf, "status": "covered", "pages": 0, "added": r["added"] if r else 0, "corrected": r["corrected"] if r else 0, "rows": len(load_rows(path))}
+            return {"symbol": symbol, "tf": tf, "status": "covered", "pages": 0, "added": r["added"] if r else 0, "corrected": r["corrected"] if r else 0, "rows": len(load_rows(path)), "reached": True}
         end = first_have + sec_ms * 3  # extend history backwards from the stored head (3-bar overlap re-verifies the seam); tail covers newer
     while True:
         d = api.klines(symbol, tf, 1000, end=end)
@@ -264,9 +286,11 @@ def fill_symbol_tf(api, symbol, tf, since_ms, store=STORE):
             break
         end = oldest - 1
     now_ms = int(time.time() * 1000)
+    oldest_got = min((int(k[0]) for k in got), default=None)
+    reached = (oldest_got is not None and oldest_got <= since_ms) or (pages > 0 and len(d or []) < 1000)
     got = [k for k in got if int(k[0]) >= since_ms - sec_ms]
     a, c, rows = merge_exchange(path, got, now_ms)
-    return {"symbol": symbol, "tf": tf, "status": "ok", "pages": pages, "added": a, "corrected": c, "rows": len(rows)}
+    return {"symbol": symbol, "tf": tf, "status": "ok", "pages": pages, "added": a, "corrected": c, "rows": len(rows), "reached": reached}
 
 
 def tail_symbol_tf(api, symbol, tf, recheck=3, store=STORE):
@@ -320,6 +344,8 @@ def cmd_fill(a):
                 log(f"{s} {tf}: {type(e).__name__} {e}")
                 continue
             log(f"[{i}/{len(syms)}] {s} {tf} {r} calls={api.calls} w={api.weight}")
+            if a.mark_complete and r.get("reached"):
+                mark_complete([f"{s}_{tf}"])
     log(f"fill done {len(syms)} syms in {time.time()-t0:.0f}s calls={api.calls}")
     return 0
 
@@ -670,6 +696,7 @@ def main():
     f.add_argument("--since", default="2025-08-01")
     f.add_argument("--htf-since", default="2022-01-01")
     f.add_argument("--rps", type=float, default=1.0)
+    f.add_argument("--mark-complete", action="store_true", help="record files that reached --since (or the listing) in klines_canonical/_complete.json")
     t = sub.add_parser("tail")
     t.add_argument("--symbols", default="")
     t.add_argument("--rps", type=float, default=4.0)

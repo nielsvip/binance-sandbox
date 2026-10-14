@@ -1678,11 +1678,11 @@ def choose_new_lifecycle_opened_at(e_file, t_fill, mem_oa, last_reduction_time, 
     was recorded after it; the fill-seen time ('now') only when none of these exists. Returns (value, source)."""
     import position_writer_guard as _pwg
     e_fill = t_fill.timestamp() if t_fill is not None else None
-    if e_file is not None and (e_fill is None or e_file >= e_fill - 5.0):
+    e_mem, e_lr = _pwg.to_epoch(mem_oa), _pwg.to_epoch(last_reduction_time)
+    if e_file is not None and (e_fill is None or e_file >= e_fill - 5.0) and (e_lr is None or e_file > e_lr):
         return datetime.fromtimestamp(e_file, timezone.utc), "seed/file held row"
     if t_fill is not None:
         return t_fill, "broker opening fill"
-    e_mem, e_lr = _pwg.to_epoch(mem_oa), _pwg.to_epoch(last_reduction_time)
     if e_mem is not None and (e_lr is None or e_lr < e_mem):
         return mem_oa, "memory (no close recorded after it)"
     return now, "fill seen now (no broker fill / file / memory value)"
