@@ -59547,7 +59547,17 @@ async def _loop_lag_watchdog():
     try:
         import time as _t
         while True:
+            try:  # 2026-10-14: dump the main-thread stack DURING a freeze (>20 s), not after it
+                if _fh is not None:
+                    _fh.dump_traceback_later(20.0, repeat=False)
+            except Exception:
+                pass
             await asyncio.sleep(5.0)
+            try:
+                if _fh is not None:
+                    _fh.cancel_dump_traceback_later()
+            except Exception:
+                pass
             try:
                 _now = _t.monotonic()
                 if _prev is not None:

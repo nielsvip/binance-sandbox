@@ -551,11 +551,21 @@ def get_full_config(sym_side: str) -> Optional[dict]:
         return dict(overrides) if overrides else None
 
 
+_OVR_MEMO: dict = {}  # 2026-10-14: sym_side -> (monotonic ts, overrides dict); live _cfg called this thousands of times per cycle and
+# every call deep-copied the full entry (full_config) -> tradier_manage event loop frozen up to 179 s -> no exits reached the broker.
+
+
 def get_overrides(sym_side: str) -> Optional[dict]:
+    import time as _time
+    _k = str(sym_side).strip()
+    _hit = _OVR_MEMO.get(_k)
+    _now = _time.monotonic()
+    if _hit is not None and _now - _hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "2.0")):
+        return None if _hit[1] is None else dict(_hit[1])
     e = get(sym_side)
-    if e is None:
-        return None
-    return dict(e.get("overrides") or {})
+    ov = None if e is None else dict(e.get("overrides") or {})
+    _OVR_MEMO[_k] = (_now, ov)
+    return None if ov is None else dict(ov)
 
 
 def get_knob(symbol: str, side: str, knob: str, default=None, venue: str = None):
