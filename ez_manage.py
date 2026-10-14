@@ -13408,7 +13408,7 @@ class IndicatorsBridge:
                 data_found = False
                 if self.shared_proxy:
                     try:
-                        hot_snapshot = self.shared_proxy.get_all()
+                        hot_snapshot = await asyncio.to_thread(self.shared_proxy.get_all)  # 2026-10-14: sync Manager IPC blocked the event loop
                         if hot_snapshot:
                             self._merge_into_cache(hot_snapshot, "bridge")
                             data_found = True

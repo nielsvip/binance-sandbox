@@ -23,6 +23,9 @@ import sqlite3
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+import sys  # noqa: E402
+
+sys.path.insert(0, str(ROOT))
 TOL_S = 1800.0
 BAR_S = 900.0
 ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
@@ -274,9 +277,9 @@ def main():
             if since is None:
                 since = max(horizon, dt.datetime.fromisoformat(v["updated_at"].replace("Z", "+00:00")).timestamp())
             pb = pub.get(ss) or {}
-            pb_ov = {k: x for k, x in (pb.get("overrides") or {}).items() if not (k in ("MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER", "MAX_AUGMENTS_PER_POSITION") or k.startswith("ABLATION_"))}
-            live_cmp = {k: x for k, x in v["overrides"].items() if not (k in ("MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER", "MAX_AUGMENTS_PER_POSITION") or k.startswith("ABLATION_"))}
-            n_diff = sum(1 for k in set(pb_ov) | set(live_cmp) if json.dumps(pb_ov.get(k), default=str) != json.dumps(live_cmp.get(k), default=str)) if pb else None
+            from live_twins import vec_exact as _vx  # same normalisation/skip set as the live entry gate latest_board_ok
+
+            n_diff = sum(1 for k, x in (pb.get("overrides") or {}).items() if not (k in _vx._LB_SKIP or k.startswith("ABLATION_")) and _vx._lb_norm(v["overrides"].get(k, "<MISSING>")) != _vx._lb_norm(x)) if pb else None
             set_status = "NO_PUBLISHED_BOARD" if not pb else ("LIVE_EQ_LATEST_BOARD" if n_diff == 0 else f"LIVE_NE_LATEST_BOARD_{n_diff}keys")
             rec.update(set_md5=cur[:8], set_updated_at=v["updated_at"], set_status=set_status, published_at=pb.get("published_at"), golive=golive.get(ss), board_live_since=iso(since), board_gain_pct=v.get("acc_gain_pct"), stale_set_gaps=[(iso(g0), iso(g1), (m or "")[:8]) for g0, g1, m in gaps])
         else:
@@ -301,8 +304,8 @@ def main():
         per_acct = {}
         for acct in accts:
             lts = [t for t in by_ss.get(ss, []) if t["acct"] == acct and (t["entry_ts"] >= since or (t["exit_ts"] or now) >= since)]
-            lts_in = [t for t in lts if t["entry_ts"] >= since and not t["pre_window"]]
-            carried = [t for t in lts if t not in lts_in]
+            lts_in = [t for t in lts if t["entry_ts"] >= since and not t["pre_window"] and (store_last is None or t["entry_ts"] <= store_last + TOL_S)]
+            carried = [t for t in lts if t["pre_window"] or t["entry_ts"] < since]
             bt = [t for t in btrips if store_last is None or t["entry_ts"] <= store_last]
             matched, used = [], set()
             for t in sorted(lts_in, key=lambda x: x["entry_ts"]):

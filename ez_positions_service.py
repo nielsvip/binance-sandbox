@@ -2033,7 +2033,7 @@ class IndicatorsBridge:
                 updates = {}
                 if self.shared_proxy:
                     try : 
-                        updates = self.shared_proxy.get_all()
+                        updates = await asyncio.to_thread(self.shared_proxy.get_all)  # 2026-10-14: sync Manager IPC blocked the event loop
                     except Exception: 
                         self.shared_proxy = None
                 if updates:
