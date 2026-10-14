@@ -374,8 +374,14 @@ class BrokerPositions:
         if not force and self._fresh():
             return self.last
         _slock = self._alock()
+        _t_req = self.clock()
+        _waited = _slock.locked()
+        # 2026-10-14 live-vs-board parity: the holder's fetch is bounded by POSITIONS_BROKER_TIMEOUT_S (8 s) but waiters gave up after
+        # 3 s -> 1598 LOCK_BUSY -> None -> 181 vec OPENs BLOCKED_POSITIONS_BROKER_UNREACHABLE (13-14 Oct) while the in-flight read
+        # succeeded seconds later. Waiters now outwait the holder's bounded fetch and share its result (single-flight).
+        _wait_s = max(3.0, float(cfg(self.config, "POSITIONS_BROKER_TIMEOUT_S")) + 1.0)
         try:
-            await await_abandonable(_slock.acquire(), timeout=3.0)
+            await await_abandonable(_slock.acquire(), timeout=_wait_s)
         except AbandonTimeout:
             # 2026-10-13 NEAR ang post-mortem: an hours-old `last` (pre-OPEN, amt 0) was returned here as broker truth -> the vec CLOSE
             # was skipped as "broker flat" while the broker held the position for 25h. Busy lock = only a FRESH snapshot may stand in.
@@ -387,6 +393,8 @@ class BrokerPositions:
         try:
             if not force and self._fresh():
                 return self.last
+            if _waited and self.last is not None and float(self.last.fetched_at) >= _t_req - (0.0 if force else float(cfg(self.config, "POSITIONS_BROKER_TIMEOUT_S"))):
+                return self.last  # forced: a read that STARTED after this request; else: the read that was in flight when this request came
             try:
                 ban = float(self.ban_remaining()) if self.ban_remaining else 0.0
             except Exception:

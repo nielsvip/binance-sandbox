@@ -62629,8 +62629,36 @@ class ManipulationDetector:
             await asyncio.sleep(self.SCAN_INTERVAL)
 
 
+async def _ez_loop_lag_watchdog():
+    """2026-10-14: same probe as tradier_manage — logs event-loop freezes and dumps the main-thread stack DURING a freeze (>20 s)."""
+    import faulthandler as _fh
+    import time as _t
+    _prev = None
+    while True:
+        try:
+            _fh.dump_traceback_later(20.0, repeat=False)
+        except Exception:
+            pass
+        await asyncio.sleep(5.0)
+        try:
+            _fh.cancel_dump_traceback_later()
+        except Exception:
+            pass
+        _now = _t.monotonic()
+        if _prev is not None and _now - _prev - 5.0 > 10.0:
+            try:
+                logger.critical(f"🛑 [LOOP_LAG] event loop frozen {_now - _prev - 5.0:.1f}s — orders/evaluations starve while loop parked")
+            except Exception:
+                pass
+        _prev = _now
+
+
 async def main():
     global logger
+    try:
+        asyncio.get_running_loop().create_task(_ez_loop_lag_watchdog())
+    except Exception:
+        pass
     args = parse_arguments()
     selected_account = args.account
     all_possible_accounts = ["ang", "inf", "flz", "men", "fin"]

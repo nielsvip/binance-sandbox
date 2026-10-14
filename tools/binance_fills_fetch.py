@@ -35,12 +35,20 @@ class BanStop(Exception):
 def _get(session, key, secret, path, params):
     if socket.gethostname().lower().startswith(("s1", "niels", "ubuntu")):
         raise SystemExit("refusing to run off the Mac")
-    params = dict(params)
-    params["timestamp"] = int(time.time() * 1000)
-    params["recvWindow"] = 10000
-    query = urllib.parse.urlencode(params)
-    sig = hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
-    resp = session.get(f"{BASE}{path}?{query}&signature={sig}", headers={"X-MBX-APIKEY": key}, timeout=15)
+    resp = None
+    for attempt in range(3):
+        signed = dict(params)
+        signed["timestamp"] = int(time.time() * 1000)
+        signed["recvWindow"] = 10000
+        query = urllib.parse.urlencode(signed)
+        sig = hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+        try:
+            resp = session.get(f"{BASE}{path}?{query}&signature={sig}", headers={"X-MBX-APIKEY": key}, timeout=15)
+            break
+        except requests.exceptions.RequestException:
+            if attempt == 2:
+                raise
+            time.sleep(5 * (attempt + 1))
     if resp.status_code in (418, 429):
         raise BanStop(f"HTTP {resp.status_code} {resp.text[:200]}")
     resp.raise_for_status()
@@ -103,7 +111,7 @@ def main():
             for symbol in symbols:
                 trades[symbol] = fetch_trades(session, key, secret, symbol, start_ms, end_ms)
                 if args.orders and trades[symbol]:
-                    orders[symbol] = _get(session, key, secret, "/fapi/v1/allOrders", {"symbol": symbol, "startTime": start_ms, "endTime": end_ms, "limit": 1000})
+                    orders[symbol] = _get(session, key, secret, "/fapi/v1/allOrders", {"symbol": symbol, "startTime": max(start_ms, end_ms - 7 * 86400000 + 60000), "endTime": end_ms, "limit": 1000})
             out["accounts"][acct] = {"income_realized": pnl, "income_commission": fee, "trades": trades, "orders": orders, "positions": [r for r in positions if abs(float(r.get("positionAmt") or 0)) > 0], "end_ms": end_ms}
             print(f"{acct}: {len(pnl)} pnl rows, {len(fee)} fee rows, {len(symbols)} symbols, {sum(len(v) for v in trades.values())} fills, {sum(len(v) for v in orders.values())} orders", flush=True)
     except BanStop as exc:

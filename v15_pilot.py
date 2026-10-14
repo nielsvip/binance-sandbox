@@ -2074,6 +2074,8 @@ _ADAPT_TREND_KIND = ("FILTER", "GATE", "VETO")
 # valid, trades floored; BH recorded (filename/manifest) but NEVER gating; 365D valid + gain > 0 + >= 80 trades.
 # Failure -> revise (§58 repair, diagnosis-phased) -> REDO (re-fill from repaired set, max 2) -> IMPOSSIBLE quarantine.
 QUAL_TIM_MIN, QUAL_TIM_MAX = 20.0, 80.0
+# USER 2026-10-14: "no xlsx should be able to finalize with <10 trades, >30%dd" — max DD is a hard finish gate (never a near-miss)
+QUAL_DD_MAX = float(os.environ.get("V15_QUAL_DD_MAX", "30"))
 QUAL_365D_FLOOR_TRADES = 80
 QUAL_MAX_REDOS = int(os.environ.get("V15_QUAL_MAX_REDOS", "2"))
 QUAL_365D_TIMEOUT = float(os.environ.get("V15_QUAL_365D_TIMEOUT", "600"))
@@ -2102,6 +2104,12 @@ def _qualifies_30d(v, bh):
     g = float(g) if g is not None else None
     if g is None or g <= 0:
         r.append(f"gain {g}")
+    try:
+        dd = float(v.get("max_dd_pct")) if v.get("max_dd_pct") is not None else None
+    except (TypeError, ValueError):
+        dd = None
+    if dd is None or dd > QUAL_DD_MAX:
+        r.append(f"DD {dd:.1f}>{QUAL_DD_MAX:.0f}" if dd is not None else "DD unknown")
     return (len(r) == 0, r)
 
 
@@ -2119,6 +2127,11 @@ def _nearmiss_30d(v, bh):
     except Exception:
         return (False, [])
     if g is None or g <= 0:
+        return (False, [])
+    try:
+        if v.get("max_dd_pct") is None or float(v.get("max_dd_pct")) > QUAL_DD_MAX:
+            return (False, [])  # DD over the limit (or unknown) is never a publishable near-miss
+    except (TypeError, ValueError):
         return (False, [])
     r = []
     try:

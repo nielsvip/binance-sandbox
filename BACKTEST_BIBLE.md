@@ -2916,3 +2916,32 @@ vector results as we do now" → "only on s2, give it plenty of time to finish e
   now reads the norm report and writes the stamp atomically (tmp + mv, non-empty check).
 - Dead workers: chain TARGETS, Mac apply HOSTS and bookkeeper V15_BOOK_HOSTS no longer list s5/s6 (destroyed 2026-10-13; the 10-14
   15:56Z run failed at step 6 on 10.0.0.5).
+
+## 107. HISTORY DB — EVERY BOARD'S SETTINGS + METRICS, KEPT FOREVER + FINALIZE DD GATE (USER 2026-10-14)
+
+USER: "make sure the db gets filled correctly from now on so we have the daily settings and metrics for each sym_side after every
+calc and hold on to it infinitely (at least on ext drive) for stats and development and self learning" + "no xlsx should be able
+to finalize with <10 trades, >30%dd, etc".
+
+- **Writer** `tools/v15_settings_history.py` (S1): source = publish manifests (`SPREADSHEETS/V15_V16_CELL_BY_CELL*/…_manifest.json`
+  on S1 + S2, plus `data/manifest_archive*`); the exact set from the progress JSON whose md5(cumulative_overrides) == manifest
+  `overrides_md5`. Row: sym_side, updated_at = published_utc, cat_side, FINAL_NORM template md5, gain, baseline, delta, bh,
+  trades, max DD, TIM, valid, overrides_json; meta = publish_class, gain_vs_bh, pilot/engine md5, npz md5, manifest/progress paths.
+  pool_sharpe stays NULL (no per-trade returns in a manifest — NO-LIES rule 6). Sources: `fleet_orchestrator_publish` (set
+  matched — the ONLY go-live source), `fleet_orchestrator_publish_noset`, `manifest_backfill`. Triggers: fleet scheduler on every
+  publish (--window-h 6) + S1 cron `V15_SETTINGS_HISTORY_SWEEP` hourly (--window-h 48). Idempotent per (sym_side, published_utc,
+  overrides_md5) and against the 10-13 writer's rows (same day + gain). Backfill 10-14: 19 eligible + 348 backfill rows (248 with
+  metrics only — their progress files had been overwritten); 13 distinct days from 10-02.
+- **Go-live order**: `tools/v15_published_selection.py` picks the latest row per sym_side by `updated_at` (was by id: an
+  after-the-fact insert would have won). Check vs the old tool: 383 same set, 10 move to a NEWER board the old writer had
+  missed (e.g. BA_SHORT 10-12 → 10-14 06:59Z), 10 sym_sides newly covered.
+- **Retention**: `per_sym_store._prune_history` (35 d / 45 rows cap) is OFF unless `PER_SYM_HISTORY_PRUNE=1`.
+- **Archive** `tools/v15_history_archive.sh` (Mac cron `V15_HISTORY_ARCHIVE` 23:40Z) → `/Volumes/E3T/binance_history/`:
+  `per_sym_history/<date>_<from>-<to>.jsonl.gz` (append-only, LAST_ID advances after row-count + gzip verify),
+  `db_snapshots/per_sym_store_<YYYYMM>.db.gz` (monthly, md5-verified), `manifests/` (never --delete). First run: 4,907 rows,
+  217 MB snapshot, 832 manifests. (SSD2T is full; E3T had 216 GB free.)
+- **Finalize gate** (`v15_pilot._qualifies_30d` / `_nearmiss_30d`): valid, trades >= 10, gain > 0, **max DD <= 30 (NEW, hard,
+  unknown = fail)**; TIM 20–80 miss alone publishes flagged BEST_EFFORT (USER 10-13 law); edge vs bh is recorded, not gating
+  (USER 10-03). Failure → §58 repair → REDO (max `V15_QUAL_MAX_REDOS` 2) → IMPOSSIBLE quarantine, no publish.
+- Not gating today (operator decision): 30-trade sample floor (175 of 785 published boards had 10–29 trades), pool_sharpe > 0.2
+  (no per-trade list in the publish path).
