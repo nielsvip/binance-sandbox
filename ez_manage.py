@@ -3,6 +3,7 @@ import argparse
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode native block + local dedup claim
+import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §100): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
@@ -31854,6 +31855,20 @@ class MultiAccountTradeManager:
         except Exception as _vg_be:
             logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_be}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🛑 STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): vector not refreshed for > STALE_SET_HALT_DAYS AND the
+        # last STALE_SET_HALT_LOSSES full closes net losses -> the sym_side refuses ALL new exposure (vec-decided included)
+        # until a new board on the latest NPZ is published + applied. CLOSE/REDUCE never touched. Kill switch:
+        # STALE_SET_HALT_ENABLED (read inside stale_set_halt — live-only operational guard, no vec twin by design).
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or "AUGMENT" in _kill_act or "REVERSE" in _kill_act or _kill_act == "BUY") and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act:
+                _ssh_blk, _ssh_why = _stale_set_halt.entry_gate("ez", symbol, position_side, _kill_act, cfg=config, logger=logger)
+                if _ssh_blk:
+                    logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
+                    return "BLOCKED_STALE_SET_HALT"
+        except Exception as _ssh_be:
+            logger.warning(f"[STALE_SET_HALT] entry check err (fail-open): {_ssh_be}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 COUNTER_TREND_ADD_BLOCK (USER 2026-05-30 ABSOLUTE): NO open/augment/reentry against wt1_1h.
         # Reads LIVE wt1_1h (NOT averaged gain — a martingaled-to-breakeven loser can't dodge it). This single
         # chokepoint DESTROYS martingale: a counter-1h add/open is refused from EVERY path (FIN_AGENT force-open,
@@ -35970,6 +35985,16 @@ class MultiAccountTradeManager:
                     ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason, exit_price=float(current_price or 0.0))
             except Exception as _vg_rce:
                 logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
+            # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): every realized FULL close feeds the sym_side's loss window —
+            # gain from the REAL entry price (position.gain can be stale), runs independent of VIGILANCE_GUARD_ENABLED.
+            try:
+                if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
+                    _ssh_ep = safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
+                    _ssh_px = safe_fetch_float(current_price, 0.0)
+                    _ssh_g = (((_ssh_px - _ssh_ep) / _ssh_ep * 100.0) if position_side == "LONG" else ((_ssh_ep - _ssh_px) / _ssh_ep * 100.0)) if (_ssh_ep > 0 and _ssh_px > 0) else safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
+                    _stale_set_halt.record_close("ez", account_key, symbol, position_side, _ssh_g, reason, cfg=config)
+            except Exception as _ssh_rce:
+                logger.warning(f"[STALE_SET_HALT] close-record err {position_key}: {_ssh_rce}")
             if is_sandbox_account(config, account_key):
                 sandbox_fill_price = current_price
                 # 2026-05-23 USER MANDATE: execute_trade_action MUST NOT touch positionAmt.

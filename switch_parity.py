@@ -125,7 +125,9 @@ FOSSIL_HELD = frozenset(
 # the type gate used to refuse ANY dict value -> one swept FILTER_EXEMPTIONS refused the WHOLE set at go-live.
 STRUCTURED_KEYS = frozenset({"FILTER_EXEMPTIONS"})
 # Live kill switches that are global-only and never swept: a per-sym value is dropped (reported), never registered.
-GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED"})
+# 2026-10-14 USER law "NO live trade the vector didn't authorize": PARITY_VEC_EXACT_* is a GLOBAL safety key — a per-sym
+# PARITY_VEC_EXACT_MODE=False made ETCUSDT_LONG/ETHFIUSDC_LONG/ACEUSDT_LONG trade native. Never registered per-sym.
+GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "PARITY_VEC_EXACT_SOURCE"})
 
 
 def coerce_structured(key: str, value):

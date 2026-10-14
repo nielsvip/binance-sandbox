@@ -1,7 +1,7 @@
-"""FIXED_STOP_SESSION_REFREEZE (USER 2026-10-13, stocks): at each market open a position carried overnight gets a NEW
+"""SESSION_OPEN_STOP_REFREEZE (USER 2026-10-13, stocks): at each market open a position carried overnight gets a NEW
 FIXED_STOP at the current dc_15m_low -0.25% (vv short), using the unchanged math of vec_decisions/fixed_stop.py.
 
-Switch FIXED_STOP_SESSION_REFREEZE_ENABLED (config_tradier.py + QuickConfig, default False, TEMPLATE_STOCKS_{LONG,SHORT}).
+Switch SESSION_OPEN_STOP_REFREEZE_ENABLED (config_tradier.py + QuickConfig, default False, TEMPLATE_STOCKS_{LONG,SHORT}).
 Live twin: tradier_manage.process_position FIXED_STOP block (once per position per ET date while RTH; opened before today).
 Vec: session_open_mask() marks the first RTH bar of every ET trading date; simulate_one re-freezes pos["fixed_stop"] on that
 bar when the position was entered on an earlier bar (= carried into the session), then the normal breach check runs.

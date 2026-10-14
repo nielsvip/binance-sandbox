@@ -2593,6 +2593,14 @@ class Config:
     # block-exit price, or a bounce (wt1_15m rising + 3m stoch momentum with the side).
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = False
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
+    # ═══ STALE-SET 2-LOSS HALT — USER 2026-10-14 (BACKTEST_BIBLE §100) ═══
+    # "NO blocking loss closes if the vector tells you to" + "but if the vector has not been refreshed for over 10 days and 2
+    # consecutive trades close at a loss, trading needs to be halted for the sym_side until recalculated with latest npz."
+    # Halt = new exposure (OPEN/AUGMENT/REENTRY) refused in execute_now; closes never. Persisted in data/stale_set_halt/,
+    # S1 scheduler pin, auto-release on a new published+applied board. Live-only operational guard (no vec twin by design).
+    STALE_SET_HALT_ENABLED: bool = True
+    STALE_SET_HALT_DAYS: float = 10.0
+    STALE_SET_HALT_LOSSES: int = 2
     # USER 2026-09-28: a NEG-blocked sym_side (per_sym book acc_gain_pct<=0 / _NEG_BLOCK tag) with an
     # OPEN position holds while WT is with the position and closes at the next WT turn against it.
     NEGBOOK_WT_TURN_EXIT_ENABLED: bool = True

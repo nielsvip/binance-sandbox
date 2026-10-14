@@ -2536,3 +2536,10 @@ starts understanding how to get out at the top and in at the bottom with bigger 
 - Tests: `tests/test_v17_daily_learn.py` (live leg on fixtures, path labels, packet ≤ 30 KB on oversized inputs, progress row
   shape, validator drops invalid keys, LLM output parse, insight loading filters, insights scheduled first, outcome recorded +
   summarised).
+
+## 100. LIVE FAILOVER S1 (2026-10-13)
+
+Full spec, triggers, fencing and fail-back: [`INFRASTRUCTURE.md` § LIVE FAILOVER S1 (2026-10-13)](INFRASTRUCTURE.md). Backtest-relevant facts only:
+* Live data inputs can now come from S1 while a venue is ACTIVE (`data/live_failover/delivery.jsonl` on the Mac names every file, provenance `S1:<host>`; crypto snapshots arrive as `data/market_data_<ts>_s1.json`). Klines are only replaced by strictly newer bars — never older, never deleted. The vec twin (`PARITY_VEC_EXACT_SOURCE=live_klines`) reads the same `klines_cache`, so its inputs are refreshed by the same delivery.
+* `VEC_STALE_FLATTEN` is NOT a stale-data exit: it runs only when the twin status is OK and its bar is ≤ `VEC_EXACT_STALE_FALLBACK_BARS` (4 × 15m) old, and needs 8 bars (`VEC_STALE_FLATTEN_BARS`) of paper-flat + live-holds with no act. Over the retained ez_manage logs `VEC_EXACT_STALE_FALLBACK` (the real "twin data stale" event) fired 0 times; native fallbacks were `NO_STORE` only (21). Data failover therefore avoids 0 of the stale-flatten closes by construction; their driver is paper/live divergence, not input staleness.
+* Proof harness: `tests/test_live_failover.py` (14 tests, Mac + S1).

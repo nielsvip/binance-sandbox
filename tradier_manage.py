@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
+import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §100): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty refusal, broker-confirmed SUCCESS, local!=broker refuses entries
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
@@ -14759,10 +14760,10 @@ async def process_position(
                             trade_manager._fixed_stop_registry_save()
                         except Exception:
                             pass
-                # 2026-10-13 USER (stocks): FIXED_STOP_SESSION_REFREEZE — at each market open a position carried overnight gets a NEW stop at
+                # 2026-10-13 USER (stocks): SESSION_OPEN_STOP_REFREEZE — at each market open a position carried overnight gets a NEW stop at
                 # the current dc_15m_low -0.25% (vv short); breached -> exit (re-entry via the re-entry pathways). Once per position per ET date.
                 try:
-                    if _fx_lvl > 0 and bool(_cfg_auto("FIXED_STOP_SESSION_REFREEZE_ENABLED", False)) and is_regular_trading_hours():
+                    if _fx_lvl > 0 and bool(_cfg_auto("SESSION_OPEN_STOP_REFREEZE_ENABLED", False)) and is_regular_trading_hours():
                         from zoneinfo import ZoneInfo as _fx_ZI
                         _fx_today = datetime.now(_fx_ZI("America/New_York")).date().isoformat()
                         _fx_e = _fx_lvmap.get(position_key) or {}
@@ -14773,12 +14774,12 @@ async def process_position(
                         if _fx_e.get("sess") != _fx_today and _fx_oa_day < _fx_today:
                             _fx_new = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0)))
                             if _fx_new > 0:
-                                logger.critical(f"🛡️ [FIXED_STOP_SESSION_REFREEZE] {position_key}: session {_fx_today} open — stop {_fx_lvl:.4f} -> new dc_15m {'low' if is_long else 'high'} level {_fx_new:.4f}")
+                                logger.critical(f"🛡️ [SESSION_OPEN_STOP_REFREEZE] {position_key}: session {_fx_today} open — stop {_fx_lvl:.4f} -> new dc_15m {'low' if is_long else 'high'} level {_fx_new:.4f}")
                                 _fx_lvl = _fx_new
                                 _fx_lvmap[position_key] = {"level": _fx_lvl, "sig": _fx_sig, "sess": _fx_today}
                                 trade_manager._fixed_stop_registry_save()
                 except Exception as _fx_se:
-                    logger.warning(f"[FIXED_STOP_SESSION_REFREEZE] {position_key}: {_fx_se}")
+                    logger.warning(f"[SESSION_OPEN_STOP_REFREEZE] {position_key}: {_fx_se}")
                 if _fixed_stop_core.breached(is_long, current_price, _fx_lvl):
                     _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     logger.critical(
@@ -43788,7 +43789,7 @@ class TradierTradeManager:
                     return str(_r)
                 return "NONE_FLAT"
             _qty = max(1, int(amt))
-            try:  # 2026-10-13: the resting stop must sit at the CURRENT frozen level (FIXED_STOP_SESSION_REFREEZE moves it) — tick-exact
+            try:  # 2026-10-13: the resting stop must sit at the CURRENT frozen level (SESSION_OPEN_STOP_REFREEZE moves it) — tick-exact
                 _lv_long = str(position_side or "").upper() == "LONG"
                 _lv_want = _fixed_stop_core.round_to_tick(_lv_long, _fixed_stop_core.exchange_level(_lv_long, float(soft_level or 0.0)), 0.01) if float(soft_level or 0.0) > 0 else 0.0
             except Exception:
@@ -46808,6 +46809,19 @@ class TradierTradeManager:
                             return "BLOCKED_VIGILANCE"
             except Exception as _vg_e2:
                 logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_e2}")
+            # ═══ STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): vector > STALE_SET_HALT_DAYS old AND last
+            # STALE_SET_HALT_LOSSES full closes net losses -> ALL new exposure refused (vec-decided included) until a new
+            # board on the latest NPZ is published + applied. Exits/reduces/hedge-closes never touched. ═══
+            try:
+                if (not _is_exit_or_reduce) and (not is_reduce) and (action or "").upper() != "HEDGE_CLOSE":
+                    _ssh_blk, _ssh_why = _stale_set_halt.entry_gate("tradier", symbol, position_side, action, cfg=config, logger=logger, is_entry=True)
+                    if _ssh_blk:
+                        logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_STALE_SET_HALT"
+            except Exception as _ssh_e2:
+                logger.warning(f"[STALE_SET_HALT] entry check err (fail-open): {_ssh_e2}")
             # ═══ DC HARD-STOP REENTRY COOLDOWN (CHURN_FIX #2): after ULTIMATE_DC/TRA_DC hard stop,
             # same sym_side re-open refused for DC_HARD_STOP_REENTRY_COOLDOWN_HOURS. ═══
             try:
@@ -49105,6 +49119,13 @@ class TradierTradeManager:
                                             logger.warning(
                                                 f"[VIGILANCE] close-record err {position_key}: {_vg_ce}"
                                             )
+                                        # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): realized full close feeds the sym_side loss window.
+                                        try:
+                                            if _ep > 0 and current_price:
+                                                _ssh_g = ((float(current_price) - _ep) / _ep * 100.0) if position_side == "LONG" else ((_ep - float(current_price)) / _ep * 100.0)
+                                                _stale_set_halt.record_close("tradier", account_key, symbol, position_side, _ssh_g, reason or action, cfg=config)
+                                        except Exception as _ssh_ce:
+                                            logger.warning(f"[STALE_SET_HALT] close-record err {position_key}: {_ssh_ce}")
                                     if order_id == "GHOST_CLEARED":
                                         # ONLY zero positionAmt + gain + cycle_peak_gain. NEVER zero entry_price/max_gain — they are sacred.
                                         # max_gain has its own decay function for reentry; cycle_peak_gain resets per cycle for exit logic.

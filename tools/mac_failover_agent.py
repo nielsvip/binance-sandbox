@@ -112,7 +112,7 @@ class Agent:
             return C.read_json(remote / "lease.json"), C.read_json(remote / "state.json"), "fixture"
         payload = json.dumps(heartbeat, default=str)
         command = (f"D={REMOTE_LF}; mkdir -p $D && cat > $D/.mac_hb.tmp && mv -f $D/.mac_hb.tmp $D/mac_data_heartbeat.json"
-                   f" && echo \"$SSH_CONNECTION\" > $D/mac_peer.txt; echo ===LEASE; cat $D/lease.json 2>/dev/null; echo; echo ===STATE; cat $D/state.json 2>/dev/null")
+                   f" && echo \"$SSH_CONNECTION\" > $D/mac_peer.txt; echo ===LEASE; cat $D/lease.json 2>/dev/null; echo; echo ===STATE; cat $D/state.json 2>/dev/null; true")
         for attempt in range(len(HOSTS)):
             host = HOSTS[(self.host_idx + attempt) % len(HOSTS)]
             try:

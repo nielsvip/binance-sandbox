@@ -105,6 +105,14 @@ class TradierConfig:
     # block-exit price, or a bounce (wt1_15m rising + 5m stoch momentum with the side — stocks use 5m).
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = True
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
+    # ═══ STALE-SET 2-LOSS HALT — USER 2026-10-14 (BACKTEST_BIBLE §100) ═══
+    # "NO blocking loss closes if the vector tells you to" + "but if the vector has not been refreshed for over 10 days and 2
+    # consecutive trades close at a loss, trading needs to be halted for the sym_side until recalculated with latest npz."
+    # Halt = new exposure (OPEN/AUGMENT/REENTRY) refused in execute_now; closes never. Persisted in data/stale_set_halt/,
+    # S1 scheduler pin, auto-release on a new published+applied board. Live-only operational guard (no vec twin by design).
+    STALE_SET_HALT_ENABLED: bool = True
+    STALE_SET_HALT_DAYS: float = 10.0
+    STALE_SET_HALT_LOSSES: int = 2
     # USER 2026-09-28: a NEG-blocked sym_side (per_sym book acc_gain_pct<=0 / _NEG_BLOCK tag) with an
     # OPEN position holds while WT is with the position and closes at the next WT turn against it.
     NEGBOOK_WT_TURN_EXIT_ENABLED: bool = True
@@ -3559,7 +3567,7 @@ class TradierConfig:
     REENTRY_EXHAUSTED_PARTIAL_ENABLED: bool = True
     REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.2
     REENTRY_EXIT_RECLAIM_ENABLED: bool = True
-    FIXED_STOP_SESSION_REFREEZE_ENABLED: bool = False  # USER 2026-10-13 (stocks): at each market open re-freeze a carried position's FIXED_STOP to the NEW dc_15m_low -0.25% (vv short); breached -> exit, re-entry via the re-entry pathways. OFF until swept (TEMPLATE_STOCKS_{LONG,SHORT}).
+    SESSION_OPEN_STOP_REFREEZE_ENABLED: bool = False  # USER 2026-10-13 (stocks): at each market open re-freeze a carried position's FIXED_STOP to the NEW dc_15m_low -0.25% (vv short); breached -> exit, re-entry via the re-entry pathways. OFF until swept (TEMPLATE_STOCKS_{LONG,SHORT}).
     REENTRY_FAVORABLE_HTF_MIN: int = 2
     REENTRY_FAVORABLE_MOVE_PCT: float = 1.0
     REENTRY_FAVORABLE_QTY_MULT: float = 1.0

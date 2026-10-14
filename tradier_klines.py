@@ -173,10 +173,12 @@ async def process_symbol(symbol, repair=False):
         except Exception:
             return []
     def cached_start(tf, fallback):
-        # Tradier reads naive datetimes as America/New_York (proven 2026-10-13: response 'time'
-        # strings are ET-naive while epoch is true UTC). Our cache stamps are UTC, so convert the
-        # tail to ET wall time before asking — a UTC wall time is read 4-5h late and the RTH tail
-        # segment is never returned (tails froze fleet-wide at 17:30Z). Overlap is harmless (merge dedups).
+        # UTC ONLY (2026-10-13 revision): Tradier misreads a UTC wall clock 4-5h late and rejects
+        # UTC offsets outright (0 rows back), so the RTH tail was never returned (tails froze
+        # fleet-wide at 17:30Z). We therefore ask by UTC calendar DATE only — midnight-to-now
+        # covers the whole session under any vendor reading — and do all filtering client-side
+        # in UTC. Overlap is harmless (merge dedups by UTC stamp). Never add a time component
+        # or any non-UTC zone to these request strings.
         path = config.KLINES_CACHE_DIR / f"{symbol}_{tf}.json"
         try:
             with path.open(encoding="utf-8") as handle:
@@ -184,7 +186,7 @@ async def process_symbol(symbol, repair=False):
             if rows:
                 stamp = rows[-1].get("timestamp")
                 if stamp:
-                    return pd.to_datetime(stamp, utc=True).tz_convert(ET).strftime("%Y-%m-%d %H:%M")
+                    return pd.to_datetime(stamp, utc=True).strftime("%Y-%m-%d")
         except Exception:
             pass
         return fallback
@@ -200,7 +202,7 @@ async def process_symbol(symbol, repair=False):
     daily = daily_frame(load_cached("D"))
     # Fetch each intraday TF natively via Time & Sales (1min/5min/15min) — each has authoritative volume.
     # Only resample as fallback when native returns <10 bars (API failure).
-    f1 = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="1min", start=cached_start("1m", (now-timedelta(days=1)).strftime("%Y-%m-%d %H:%M"))), "1m"))
+    f1 = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="1min", start=cached_start("1m", (now-timedelta(days=1)).strftime("%Y-%m-%d"))), "1m"))
     if f1.empty:
         f1 = parse_intraday(load_cached("1m"))
     f5_native = parse_intraday(await fetch(api_client.get_timesales(symbol, interval="5min", start=(rwin if repair else cached_start("5m", (now-timedelta(days=5)).strftime("%Y-%m-%d")))), "5m"))

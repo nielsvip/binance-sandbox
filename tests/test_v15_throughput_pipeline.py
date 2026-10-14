@@ -18,11 +18,11 @@ SRC = (ROOT / "v15_pilot.py").read_text()
 
 def test_prefetch_counts_tasks_and_flushes():
     assert "len({id(f) for f, _ in inflight.values() if not f.done()})" in SRC
-    assert 'os.environ.get("V15_PREFETCH_TASKCAP", "1") == "1"' in SRC and 'os.environ.get("V15_PREFETCH_ROWS", "200")' in SRC
+    assert 'os.environ.get("V15_PREFETCH_TASKCAP", "0") == "1"' in SRC and 'os.environ.get("V15_PREFETCH_ROWS", "200")' in SRC
 
 
 def test_presubmit_everywhere_with_kill_switch():
-    assert 'os.environ.get("V15_ROW_PRESUBMIT", "1") == "1"' in SRC
+    assert 'os.environ.get("V15_ROW_PRESUBMIT", "0") == "1"' in SRC
     assert "_submit(_ov_ps)" in SRC and "_submit(_rv_ovs[_rv_hdr])" in SRC and "_sacred_presubmit(_sq)" in SRC
 
 

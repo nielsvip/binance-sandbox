@@ -1364,7 +1364,29 @@ def _mandatory_summary() -> str:
         parts.append(f"{_s}:{sum(_d.values())}cells/{len(_d)}bases")
     return ", ".join(parts) if parts else "none"
 
-GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED"})
+# GLOBAL_ONLY (USER 2026-10-13): never a row, never in a board's cumulative/final set, stripped on every ingest + progress write.
+# 2026-10-14: 3 live per-sym rows carried PARITY_VEC_EXACT_MODE=False -> crypto sym_sides traded without vector authorization.
+GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR"})
+
+
+def strip_global_only(ov):
+    """Copy of an override dict without GLOBAL_ONLY keys (non-dicts pass through)."""
+    if not isinstance(ov, dict):
+        return ov
+    return {k: v for k, v in ov.items() if str(k).strip() not in GLOBAL_ONLY_KEYS}
+
+
+def strip_global_only_progress(data):
+    """In place: every override set a progress JSON carries (cumulative/final/initial/needs_redo/best) loses GLOBAL_ONLY keys."""
+    if not isinstance(data, dict):
+        return data
+    for k in ("cumulative_overrides", "final_overrides", "initial_overrides", "hustler_overrides", "overrides"):
+        if isinstance(data.get(k), dict):
+            data[k] = strip_global_only(data[k])
+    for k in ("needs_redo", "best_seen", "final", "best"):
+        if isinstance(data.get(k), dict) and isinstance(data[k].get("overrides"), dict):
+            data[k]["overrides"] = strip_global_only(data[k]["overrides"])
+    return data
 
 
 def sanitize_overrides(overrides: dict, defaults: dict) -> tuple[dict, list]:
@@ -1943,6 +1965,8 @@ def _clean_ingested_overrides(ov: dict) -> dict:
     strings are column-C display text, never real values. 'X=X' dup typos collapse to X."""
     clean = {}
     for k, v in dict(ov or {}).items():
+        if str(k).strip() in GLOBAL_ONLY_KEYS:
+            continue  # GLOBAL_ONLY never ingested from start/history/needs_redo/sheets
         if isinstance(v, str) and " + " in v:
             continue
         if isinstance(v, str) and "=" in v:
@@ -5197,7 +5221,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flush_batch()
         return ck
     _spec_state = {"ptr": 0, "ver": 0, "ptr_ver": 0}
-    _ROW_PRESUBMIT = os.environ.get("V15_ROW_PRESUBMIT", "1") == "1"  # 2026-10-13 throughput; 0 = old one-by-one (A/B kill switch)
+    _ROW_PRESUBMIT = os.environ.get("V15_ROW_PRESUBMIT", "0") == "1"  # 2026-10-14 throughput lane: default OFF (A/B: +33% CPU, same wall on saturated hosts)
     def _prefetch(qi: int):
         # speculative: rows ahead are submitted vs the CURRENT running set. A promotion changes the running set, so a
         # speculated result can never be used for a different baseline (cache key = the full override set).
@@ -5208,7 +5232,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # 2026-10-13 THROUGHPUT (USER ">12 boards/server/hour"): the cap counts distinct pool TASKS — with V15_POOL_BATCH_N=8
         # (scheduler env) 8 evals share one future, and counting entries capped the pipeline at ONE task (S1 HOOD_SHORT: 4
         # workers 87% idle, main 88% waiting, ~1 core per board). Pending partial batches are flushed at the end.
-        _taskcap = os.environ.get("V15_PREFETCH_TASKCAP", "1") == "1"  # 0 = the old entry-counting cap (A/B kill switch)
+        # A/B S1 2026-10-14 UNIUSDC_SHORT (same file, frozen inputs, concurrent): identical result 26.3989 and wall 25:05 vs 25:04,
+        # but +33% CPU (2558 vs 1928 user-s) — the hosts are CPU-saturated (0% idle), so deeper speculation only burns cores.
+        # Default OFF; V15_PREFETCH_TASKCAP=1 / V15_ROW_PRESUBMIT=1 for an idle host.
+        _taskcap = os.environ.get("V15_PREFETCH_TASKCAP", "0") == "1"
         _ahead = int(os.environ.get("V15_PREFETCH_ROWS", "200")) if _taskcap else 60
         def _busy():
             return len({id(f) for f, _ in inflight.values() if not f.done()}) if _taskcap else sum(1 for f, _ in inflight.values() if not f.done())
@@ -5861,6 +5888,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     def _v17_blocked(delta_ov: dict) -> str:
         for _k, _v in (delta_ov or {}).items():
             _k = str(_k).strip()
+            if _k in GLOBAL_ONLY_KEYS:
+                return "GLOBAL_ONLY"
             if _k == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(_v)):
                 return "MAXAUG_NEVER_ZERO"
             if _k.startswith("ABLATION_") and str(_v).strip().lower() in ("true", "1", "yes", "on"):
@@ -8711,6 +8740,11 @@ def _atomic_write_json(path: Path, data: dict):
     except Exception:
         pass
     try:
+        if isinstance(data, dict) and ("done" in data or "cumulative_overrides" in data or "needs_redo" in data):
+            strip_global_only_progress(data)  # GLOBAL_ONLY never persisted in a board's set
+    except Exception:
+        pass
+    try:
         Path(tmp).write_text(_json.dumps(data, indent=2))
         try:
             fd = _os.open(tmp, _os.O_RDONLY)
@@ -9990,6 +10024,7 @@ def main():
         # or a plain {switch: value} json) — it becomes the sheet's live-recipe baseline
         _so = json.load(open(os.environ["V15_START_OVERRIDES"]))
         _so = (_so.get("final") or {}).get("overrides", _so) if isinstance(_so, dict) else {}
+        _so = strip_global_only(_so)
         print(f"[START-OVERRIDES] {new_symside}: {len(_so)} overrides from {os.environ['V15_START_OVERRIDES']} (365D-repaired set)", flush=True)
         overrides = {**_tpl_defaults, **_so}
         _recipe_only_overrides = dict(overrides)
@@ -10005,7 +10040,7 @@ def main():
             _nr_pj = json.loads(_nr_pp.read_text())
             _nr = _nr_pj.get("needs_redo") or {}
             if _nr.get("overrides") and _nr_pj.get("verdict") != "IMPOSSIBLE":
-                _so2 = dict(_nr["overrides"])
+                _so2 = strip_global_only(dict(_nr["overrides"]))
                 print(f"[REDO-START] {new_symside}: {len(_so2)} overrides from needs_redo depth {_nr.get('depth')} ({(_nr.get('reason') or '')[:100]})", flush=True)
                 overrides = {**_tpl_defaults, **_so2}
                 _recipe_only_overrides = dict(overrides)

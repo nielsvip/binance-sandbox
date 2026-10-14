@@ -265,7 +265,12 @@ def record_close(venue: str, account: str, symbol: str, position_side: str, gain
     try:
         f = _closes_file(venue, cfg)
         f.parent.mkdir(parents=True, exist_ok=True)
-        fee = DEFAULT_FEE_PCT.get(venue, 0.0) if fee_pct is None else float(fee_pct)
+        if hooks_started_epoch(venue, cfg) is None:
+            try:
+                _hooks_marker(venue, cfg).write_text(_iso(time.time() - 2.0))  # ledger rows of this very close (logged ms earlier) are excluded
+            except Exception:
+                pass
+        fee =DEFAULT_FEE_PCT.get(venue, 0.0) if fee_pct is None else float(fee_pct)
         g = float(gain_pct or 0.0)
         rec = {"ts": _iso(ts or time.time()), "account": str(account or ""), "sym_side": sym_side(symbol, position_side), "gain_pct": round(g, 4), "net_pct": round(g - fee, 4), "reason": str(reason or "")[:120], "src": "hook"}
         with open(f, "a") as fh:
@@ -273,7 +278,7 @@ def record_close(venue: str, account: str, symbol: str, position_side: str, gain
         _CACHE.pop(f"hook:{venue}", None)
         if not settings(cfg)["enabled"]:
             return None
-        return check(venue, symbol, position_side, cfg=cfg, trigger="close")
+        return check(venue, symbol, position_side, cfg=cfg, trigger="close", now=ts)  # ts given only by backfills/tests: evaluate as of the close
     except Exception:
         return None
 
