@@ -33,11 +33,59 @@ def _tiers():
     return _CACHE["tiers"]
 
 
+_TRIG = {"checked": 0.0, "sig": None, "set": frozenset()}
+_ROOT = Path(os.environ.get("PERF_TIER_ROOT") or Path(__file__).resolve().parent)
+
+
+def _trigger_files():
+    d = _ROOT / "data"
+    return [d / "stale_set_halt" / "halts_ez.json", d / "stale_set_halt" / "halts_tradier.json", d / "vigilance_blocks_ez.json", d / "vigilance_blocks_tradier.json", d / "v15_365_priority.json"]
+
+
+def _triggered():
+    """V17 CONVICTION (USER 2026-10-14): sym_sides under a live drawdown guard RIGHT NOW (stale-set 2-loss halt, vigilance block,
+    2-loss 365D escalation). Re-read on mtime change, checked every 30 s. Any IO error -> previous set (never raises)."""
+    now = time.time()
+    if now - _TRIG["checked"] < 30.0:
+        return _TRIG["set"]
+    _TRIG["checked"] = now
+    files = _trigger_files()
+    sig = []
+    for p in files:
+        try:
+            sig.append(p.stat().st_mtime)
+        except Exception:
+            sig.append(None)
+    if sig == _TRIG["sig"]:
+        return _TRIG["set"]
+    out = set()
+    for p, key in zip(files, ("halts", "halts", "blocks", "blocks", "sym_sides")):
+        try:
+            out.update(str(k).upper() for k in (json.loads(p.read_text()).get(key) or {}))
+        except Exception:
+            pass
+    _TRIG["sig"], _TRIG["set"] = sig, frozenset(out)
+    return _TRIG["set"]
+
+
+def _conviction_disabled() -> bool:
+    return os.environ.get("V17_CONVICTION_DISABLED") == "1" or (_ROOT / "data" / "conviction" / "DISABLED").exists()
+
+
 def get_mult(symbol: str, side: str) -> float:
+    """Tier multiplier (data/persym_size_tiers.json "mult" = tier x v17 conviction, tools/v17_conviction.combine_entry).
+    Kill switch data/conviction/DISABLED -> the tier rule's own "tier_mult". Live drawdown guard active -> capped at 1.0 immediately."""
     try:
-        e = _tiers().get(f"{str(symbol).upper()}_{str(side).upper()}")
-        m = float((e or {}).get("mult", 1.0))
-        return m if m > 0 else 1.0
+        ss = f"{str(symbol).upper()}_{str(side).upper()}"
+        e = _tiers().get(ss) or {}
+        m = float(e.get("mult", 1.0))
+        if "tier_mult" in e and _conviction_disabled():
+            m = float(e.get("tier_mult") or 1.0)
+        if m <= 0:
+            return 1.0
+        if m > 1.0 and ss in _triggered():
+            return 1.0
+        return m
     except Exception:
         return 1.0
 

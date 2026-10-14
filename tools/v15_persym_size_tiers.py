@@ -169,6 +169,16 @@ def main():
         print(f"[tiers] WARNING: per_sym_store check failed, keeping ranked sizes (fail-open): {_nse}")
     for v in tiers.values():
         v.pop("ss", None)
+    _conv_n = 0
+    try:  # V17 CONVICTION (USER 2026-10-14): fresh tier -> tier_mult, mult = combine_entry(tier_mult, data/conviction/conviction_latest.json). Fail-open = tier only.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import v17_conviction as _v17c
+        _conv_n = _v17c.apply_conviction_to_tiers(tiers, _v17c.latest_conviction(ROOT))
+        print(f"[tiers] v17 conviction applied to {_conv_n} entries")
+    except Exception as _ce:
+        for v in tiers.values():
+            v["tier_mult"] = v.get("mult", 1.0)
+        print(f"[tiers] WARNING: v17 conviction not applied (tier only): {_ce}")
     out = {"_meta": {"at": dt.datetime.now(dt.timezone.utc).isoformat(), "report": str(a.report), "rules": {"min_mult": a.min_mult, "min_mult_stocks": a.min_mult_stocks, "neg30_mult": a.neg30_mult, "max_mult": a.max_mult, "gain_cap": a.gain_cap, "unconfirmed_mult": a.unconfirmed_mult},
                      "counts": {t: sum(1 for v in tiers.values() if v["tier"] == t) for t in ("MIN", "NEG30_POS365", "RANKED", "RANKED_NO365_SMALL", "RANKED_NEG365_SMALL", "BOOK_NEG", "BOOK_POS_HOLD", "UNLISTED_MIN", "NOSTORE_MIN")}, "consumer": "perf_tier_sizing.py (PERF_TIER_SIZING_ENABLED)"}, "tiers": tiers}
     srt = sorted(tiers.items(), key=lambda kv: -kv[1]["mult"])

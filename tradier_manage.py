@@ -23488,6 +23488,26 @@ def _qta_entry_sizing(
                 return 0
         except Exception as _pte:
             logger.warning(f"[PERF_TIER_SIZING] {position_key}: fail-open {_pte}")
+    if (
+        (not _absolute_target_order)
+        and "WT_3M_FORCE_OPEN" not in (reason or "").upper()
+        and quantity
+        and quantity > 0
+        and current_price
+        and current_price > 0
+        and action.upper() in ("OPEN", "AUGMENT", "REENTRY", "REENTER", "QUICK_OPEN", "QUICK_AUGMENT", "BUY")
+    ):
+        try:  # USER 2026-10-14: MAX_ORDER_SIZE = OPEN_CEIL_SPS_MAX_MULT (6) x per-sym START_POSITION_SIZE — stocks twin of ez_manage OPEN_CEIL_SPS hard cap (absolute-target ladder + WT_3M_FORCE_OPEN keep their own caps)
+            _oc_sps = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side) or config.START_POSITION_SIZE)
+            _oc_hard = float(getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 6.0) or 6.0) * _oc_sps
+            if _oc_hard > 0 and quantity * current_price > _oc_hard:
+                _oc_q0 = quantity
+                quantity = int(_oc_hard / current_price)
+                logger.warning(f"[OPEN_CEIL_SPS] {position_key} {action}: qty {_oc_q0}->{quantity} (${_oc_q0 * current_price:.0f} > {getattr(config, 'OPEN_CEIL_SPS_MAX_MULT', 6.0)}x SPS ${_oc_sps:.0f})")
+                if quantity < 1:
+                    return 0
+        except Exception as _oce:
+            logger.warning(f"[OPEN_CEIL_SPS] {position_key}: fail-open {_oce}")
     # USER 2026-06-03 NO-EXCEPTIONS: WT_3M_FORCE_OPEN (with-trend, above-200MA, WT-favor build)
     # must NOT be clamped to the small MAX_ORDER_VALUE — that's the "$100 dribble" cap. It is
     # bounded instead by DG_MAX_FORCE_OPEN_NOTIONAL_USD (per fire) + WT_3M_FORCE_OPEN_TARGET_USD.

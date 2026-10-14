@@ -8671,6 +8671,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
+    try:  # USER 2026-10-14: per board lift per phase + gain vs bh (the path to 10x bh); tools/v17_hourly_report.py aggregates
+        import re as _re_sum
+        _agg = {}
+        for _pn, _pr in ((_v17.get("phases") or {}) if _v17_on else {}).items():
+            _b = _re_sum.sub(r"_\d+$", "", _pn)
+            _agg[_b] = round(_agg.get(_b, 0.0) + float(_pr.get("lift") or 0.0), 3)
+        _xbh = (float(cumulative_gain) / float(bh)) if bh is not None and float(bh) >= 2.0 else None
+        print(f"[V17-SUMMARY] {new_symside} tier={_tier_name} bh={float(bh):.2f} base={float(baseline_gain):.2f} final={float(cumulative_gain):.2f} x_bh={'n/a' if _xbh is None else round(_xbh, 2)} lift_by_phase={ {k: v for k, v in _agg.items() if abs(v) > 1e-6} }", flush=True)
+    except Exception:
+        pass
     _parity_register_at_done("done")
     return cumulative_gain, cumulative_overrides, progress
 

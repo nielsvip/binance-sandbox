@@ -25572,6 +25572,22 @@ class MultiAccountTradeManager:
             if _flat_amt <= self.min_qty.get(symbol, 0.0001):
                 is_augment = False
                 logger.critical(f"[FLAT_NOT_AUGMENT] {position_key}: positionAmt={_flat_amt:.8f}≈0 → REENTRY/OPEN not augment; cleared is_augment so augment gates can't block it. action={action} reason={(reason or '')[:60]}")
+        # ═══ V17 CONVICTION OPEN/REENTRY BOOST (USER 2026-10-14 "bolder entry/reentry quantities on proven winners") ═══
+        # Flat entries only (OPEN / REENTRY / flat AUGMENT-named), never hedge/augment/reduce. Multiplier = perf_tier_sizing.get_mult
+        # (data/persym_size_tiers.json mult = tier x tools/v17_conviction; >1 only for proven gainers, capped at 1.0 while a live
+        # drawdown guard is active). Only the >1 part scales the starting qty (<1 is already enforced by the OPEN_CEIL_SPS ceiling).
+        # execute_now OPEN_CEIL_SPS (SPS x mult, <= OPEN_CEIL_SPS_MAX_MULT x SPS), MAX_ORDER_VALUE, MAX_POSITION_SIZE still bind.
+        # ROLLBACK: CONVICTION_SIZING_ENABLED=False, or touch data/conviction/DISABLED (tier-only multipliers).
+        if not is_reduce and not is_augment and not is_hedge and bool(getattr(config, "CONVICTION_SIZING_ENABLED", False)) and bool(getattr(config, "PERF_TIER_SIZING_ENABLED", False)):
+            try:
+                import perf_tier_sizing as _cv_pts
+                _cv_m = float(_cv_pts.get_mult(symbol, position_side or ("LONG" if side == "BUY" else "SHORT")))
+                if _cv_m > 1.0 and quantity is not None and float(quantity) > 0:
+                    _cv_q0 = float(quantity)
+                    quantity = _cv_q0 * _cv_m
+                    logger.info(f"[V17_CONVICTION_BOOST] {position_key} {action}: qty {_cv_q0:.6f}->{quantity:.6f} (x{_cv_m:.2f}; caps downstream) reason={(reason or '')[:60]}")
+            except Exception as _cv_e:
+                logger.warning(f"[V17_CONVICTION_BOOST] {position_key}: fail-open {_cv_e}")
         # ═══ HARD DUPLICATE OPEN GUARD — gain-based per USER 2026-05-09 ═══
         # Replaces the 900s time-cooldown with a gain gate. Augments require
         # gain > DUP_GUARD_GAIN_MULTIPLIER * config.MIN_GAIN (default 0.5*3.0=1.5%).
