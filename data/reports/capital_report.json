@@ -1,32 +1,45 @@
 {
- "generated_at": "2026-10-14 10:06 UTC",
- "total_capital_usd": 43.74,
+ "generated_at": "2026-10-14 10:20 UTC",
+ "total_capital_usd": 26.5,
  "tier_capital": {
-  "A": 0.0,
-  "B": 43.74,
-  "C": 0.0
+  "A": 15.42,
+  "B": 0.0,
+  "C": 11.08
  },
  "tier_count": {
-  "A": 0,
-  "B": 1,
-  "C": 0
+  "A": 1,
+  "B": 0,
+  "C": 1
  },
- "winners": [],
+ "winners": [
+  "flz:XRPUSDC_SHORT"
+ ],
  "losers": [
-  "fin:ZENUSDT_LONG"
+  "flz:DOGEUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ZENUSDT_LONG",
-   "symbol": "ZENUSDT",
-   "account": "fin",
-   "value_usd": 43.74,
-   "gain_pct": -1.775,
-   "tier": "B",
-   "perf_mult": 4.55,
-   "amt": 7.1,
-   "mark": 6.16067917
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 15.42,
+   "gain_pct": 0.333,
+   "tier": "A",
+   "perf_mult": 8.54,
+   "amt": 11.3,
+   "mark": 1.36424825
+  },
+  {
+   "pk": "flz:DOGEUSDC_LONG",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 11.08,
+   "gain_pct": -0.976,
+   "tier": "C",
+   "perf_mult": 0.69,
+   "amt": 132.0,
+   "mark": 0.0839526
   }
  ]
 }
