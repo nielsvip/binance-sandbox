@@ -35,6 +35,17 @@ async def fire_exit_market(trade_manager, position_key, symbol, side, position_s
     """
     try:
         acct = str(position_key).split(":", 1)[0] if ":" in str(position_key) else None
+        # 2026-10-14 USER EXITS NEVER COMPROMISED: the timed-out exit becomes the execute_now FORCE_CLOSE_MARKET leg (exchange
+        # truth with retry + last-snapshot fallback, own working orders cancelled, one market reduce-only, broker-flat verified) —
+        # no order path outside execute_now, and a stale local "flat" can no longer skip it. Legacy body below = fallback only.
+        if callable(getattr(trade_manager, "_exit_force_market", None)) and callable(getattr(trade_manager, "execute_now", None)):
+            try:
+                import exit_guarantee as _xg
+                r = await trade_manager.execute_now(position_key=position_key, account_key=acct, symbol=symbol, original_positionAmt=0.0, side=str(side).upper(), position_side=str(position_side).upper(), quantity=0.0, old_price=0.0, unique_id=f"VXTMO{int(time.time())}", reason="VEC_TIMEOUT_EXIT_MARKET |VEC_EXACT", is_full_close=True, action=_xg.FORCE_ACTION)
+                logger.critical(f"[VEC_EXACT] {position_key} TIMEOUT_EXIT_FORCE -> {str(r)[:160]}")
+                return f"TIMEOUT_EXIT_FORCE {r}"
+            except Exception as e:
+                logger.error(f"[VEC_EXACT] {position_key} TIMEOUT_EXIT_FORCE error {e} — legacy market fallback")
         pos = None
         try:
             pos = (trade_manager.positions or {}).get(position_key)

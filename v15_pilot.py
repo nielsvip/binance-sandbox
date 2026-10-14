@@ -5423,6 +5423,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _bs_note("START", cumulative_overrides, _st_res)
                 progress.setdefault("best_seen", {})["start_noted"] = True
                 progress["best_seen"]["start_gain"] = _st_res.get("gain_pct")
+                progress["best_seen"]["start_overrides"] = sanitize_overrides(dict(cumulative_overrides), defaults)[0]  # the BEST-START-FLOOR set
         except Exception as _ste:
             print(f"[BEST-SEEN-warn] {new_symside} start note: {_ste}", flush=True)
     # USER 2026-09-30: the FIRST row is the DEFAULT row. If the override set changes that switch, E3 = the baseline WITHOUT
@@ -7883,11 +7884,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _bs_npz_now = str(_run_npz_short)
         except NameError:
             _bs_npz_now = ""
-        if prepared is not None and fast_switches is None and _bsx.get("overrides") is not None and _bsx.get("npz") == _bs_npz_now and os.environ.get("V15_BEST_SEEN_GATE", "1") == "1":
+        if prepared is not None and fast_switches is None and _bsx.get("overrides") is not None and os.environ.get("V15_BEST_SEEN_GATE", "1") == "1":
+            # 2026-10-14 KPI law violation: the START note is written before _run_npz_short exists (npz '') and the gate required
+            # npz equality -> skipped (JASMYUSDT_LONG 3.98 -> 3.74, FILUSDC_SHORT 3.42 -> 3.09). Both sets are re-evaluated on THIS
+            # board's prepared NPZ below = the same NPZ by construction; the chain value is never trusted (fresh evals decide).
             from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_bs
             _cur_ov = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
             _bs_ov = sanitize_overrides(dict(_bsx["overrides"]), defaults)[0]
-            if _cur_ov != _bs_ov and float(_bsx.get("gain") or -1e18) > float(cumulative_gain) + 1e-6:
+            if _cur_ov != _bs_ov:
                 _cur_r = _eps_bs(prepared, dict(_cur_ov), args.window_days) or {}
                 _bs_r = _eps_bs(prepared, dict(_bs_ov), args.window_days) or {}
                 _cg_, _bg_ = _cur_r.get("gain_pct"), _bs_r.get("gain_pct")
@@ -8028,6 +8032,43 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _ff_e:
             print(f"[final-fresh-warn] {new_symside}: {_ff_e}", flush=True)
             _fresh_final = {}
+        # USER 2026-10-14 HARD LAW "a final below the best start is PHYSICALLY IMPOSSIBLE": the published final is >= the best-start
+        # set (and the best-seen set) re-evaluated fresh on THIS board's NPZ; otherwise refuse and publish that set [BEST-START-FLOOR].
+        try:
+            if prepared is not None and fast_switches is None and _fresh_final and os.environ.get("V15_BEST_START_FLOOR", "1") == "1":
+                from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_fl
+                _fl_bs = progress.get("best_seen") or {}
+                _fl_cands = [(lab, sanitize_overrides(dict(ov), defaults)[0]) for lab, ov in (("best_start", _fl_bs.get("start_overrides")), ("best_seen:" + str(_fl_bs.get("stage")), _fl_bs.get("overrides"))) if isinstance(ov, dict)]
+                _fl_cur = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
+                _fl_g = float(_fresh_final.get("gain_pct")) if _fresh_final.get("gain_pct") is not None else -1e18
+                _fl_best = None
+                for _fl_lab, _fl_ov in _fl_cands:
+                    if _fl_ov == _fl_cur:
+                        continue
+                    _fl_r = _eps_fl(prepared, dict(_fl_ov), args.window_days) or {}
+                    if _fl_r.get("valid") and _fl_r.get("gain_pct") is not None and int(_fl_r.get("trades") or 0) > 0 and float(_fl_r["gain_pct"]) > max(_fl_g, float((_fl_best or (None, None, {"gain_pct": -1e18}))[2]["gain_pct"])) + 1e-6:
+                        _fl_best = (_fl_lab, _fl_ov, _fl_r)
+                if _fl_best is not None:
+                    _fl_lab, _fl_ov, _fl_r = _fl_best
+                    print(f"[BEST-START-FLOOR] {new_symside} REFUSED final {_fl_g:.4f} < {_fl_lab} {float(_fl_r['gain_pct']):.4f} (fresh, same NPZ) — publishing {_fl_lab}", flush=True)
+                    progress["best_start_floor"] = {"refused_gain": _fl_g, "published": _fl_lab, "gain": float(_fl_r["gain_pct"]), "trades": _fl_r.get("trades"), "tim": _fl_r.get("tim_pct")}
+                    for _k in sorted(set(_fl_cur) | set(_fl_ov)):
+                        _nv = _fl_ov.get(_k, defaults.get(_k))
+                        if not _same_val(_fl_cur.get(_k, defaults.get(_k)), _nv) and _same_val(_nv, defaults.get(_k)) and _k in _c_where:
+                            try:
+                                _c_drop(*_c_where.pop(_k), _k)
+                            except Exception:
+                                pass
+                    cumulative_overrides = dict(_fl_ov)
+                    _fresh_final = dict(_fl_r)
+                    final_gain = cumulative_gain = float(_fl_r["gain_pct"])
+                    progress["cumulative_overrides"] = dict(cumulative_overrides)
+                    progress["cumulative_gain"] = float(cumulative_gain)
+                    progress["final_gain_fresh_vec"] = float(cumulative_gain)
+        except V15Shutdown:
+            raise
+        except Exception as _fle:
+            print(f"[BEST-START-FLOOR-warn] {new_symside}: {_fle}", flush=True)
         # USER 2026-10-03 (pos-gain go-live): a sheet FINISHES when the final set qualifies — 30D:
         # valid, TIM in [20, 80], trades >= floor, gain > 0 (BH recorded, never gating). Failure -> revise with the
         # §58 repair (diagnosis-phased: TRADES/HOLDS/EXITS/GAIN), cycling bases across rounds; still failing ->

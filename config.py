@@ -1741,6 +1741,11 @@ class Config:
     PARITY_VEC_EXACT_MODE: bool = (
         True  # 2026-10-06 parity-loop-crypto (USER ruling via director): True = live decides with the SAME v12 code at each closed 15m bar (live_twins/vec_exact.py) and suppresses the native paths of the twinned families (EPQ candidate scoring for ENTRY); False = byte-identical live
     )
+    EXIT_GUARANTEE_ENABLED: bool = True  # 2026-10-14 USER "make sure at least EXITS will never be compromised again": exit_guarantee wrapper on execute_now (refused/unconfirmed FULL close -> FORCE_CLOSE_MARKET from exchange truth; partial REDUCE retried; ledger once per confirmed fill). Live-only operational guard (no vec twin by design: vec has no broker).
+    EXIT_GUARANTEE_FORCE_ENABLED: bool = True  # FORCE leg (market reduce-only close of the broker qty after the normal path refused / did not confirm)
+    EXIT_GUARANTEE_REDUCE_RETRY_SEC: str = "15,30,60,120,240"  # partial REDUCE refused -> retry schedule (stops when the broker shows the reduce / lifecycle changed)
+    EXIT_GUARANTEE_STUCK_CHECK_SEC: str = "20,60,180"  # FULL close still open -> FORCE re-check schedule, then ALERT (data/alerts/exit_never_blocked.jsonl + desktop notify)
+    EXIT_DUST_USD: float = 5.0  # closes below this notional never count as a win/loss in VIGILANCE / STALE-SET / per_trade_ledger
     PARITY_VEC_EXACT_FAMILIES: str = (
         "ENTRY,EXIT,AUGMENT"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
     )

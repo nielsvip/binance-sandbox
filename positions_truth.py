@@ -747,7 +747,7 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
         _fx_pa = str(action or "").upper()
     except Exception:
         _fx_pa = ""
-    if _fx_pa in ("PLACE_STOP", "CANCEL_STOP"):
+    if _fx_pa in ("PLACE_STOP", "CANCEL_STOP", "FORCE_CLOSE_MARKET"):  # FORCE_CLOSE_MARKET (exit guarantee 2026-10-14) verifies broker-flat itself
         return await core(*args, **kwargs)
     if bool(cfg(config, "POSITIONS_REFUSE_ZERO_QTY")) and is_zero_qty(qty) and not full:
         log.critical(f"🛑 [POSITIONS_ZERO_QTY_REFUSED] {position_key}: action={action} qty={qty!r} reason={str(reason)[:80]} — zero/invalid quantity is never sent and never SUCCESS")

@@ -354,6 +354,13 @@ def wrap_execute_now(venue: str, hooks_getter: Callable[[], Hooks]):
                         _INFLIGHT.pop(key, None)
                 _CTX.reset(ct)
             if force:
+                if depth == 0 and classify(res, reason, True) == "OK":  # direct FORCE caller (vec timeout leg): ledger once here
+                    try:
+                        c["force"] = parse_force_result(res)
+                        await _safe(hooks.confirmed(self, args, c, res))
+                        log_event(venue, "CONFIRMED", cfg, key=key, full=True, result=str(res)[:160], via="DIRECT_FORCE")
+                    except Exception:
+                        pass
                 return res
             try:
                 return await _after(self, hooks, cfg, venue, args, c, res, depth)
@@ -396,6 +403,9 @@ async def _after(mgr, hooks: Hooks, cfg, venue: str, args: Dict[str, Any], c: Di
         if classify(fres, reason, True) == "OK":
             return fres
         if str(fres or "").upper().startswith("FORCE_NOTHING_OPEN"):
+            if c.get("orders"):  # our order of this call filled after the confirmation window: broker flat = confirmed close
+                await _safe(hooks.confirmed(mgr, args, c, res))
+                log_event(venue, "CONFIRMED", cfg, key=key, full=True, result=str(res)[:160], via="LATE_FILL_BROKER_FLAT")
             return res
         _arm_watcher(mgr, hooks, cfg, venue, args, c, f"FORCE_FAILED:{str(fres)[:60]}")
         return res
@@ -460,6 +470,9 @@ async def _watch(mgr, hooks: Hooks, cfg, venue: str, args: Dict[str, Any], c: Di
             if b is not None:
                 amt, entry = float(b.get("amt") or 0.0), float(b.get("entry") or 0.0)
                 if amt <= 0:
+                    if full and c.get("orders"):
+                        await _safe(hooks.confirmed(mgr, args, c, "BROKER_FLAT"))
+                        log_event(venue, "CONFIRMED", cfg, key=key, full=True, via="WATCH_BROKER_FLAT")
                     log_event(venue, "WATCH_DONE", cfg, key=key, why="BROKER_FLAT", attempt=i)
                     return "FLAT"
                 if base_entry and entry and abs(entry - float(base_entry)) / float(base_entry) > 0.002 and (base_amt is None or amt > float(base_amt) * 1.001):

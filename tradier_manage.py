@@ -3,6 +3,7 @@
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
+import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty refusal, broker-confirmed SUCCESS, local!=broker refuses entries
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
@@ -23687,10 +23688,13 @@ def _trad_id_status(response):
     return str(o.get("id") or ""), str(o.get("status") or "").lower()
 
 
-def _sanction_execution(position_key, action="", side="", quantity=0.0, reason=""):
+def _sanction_execution(position_key, action="", side="", quantity=0.0, reason="", exit_force=False):
     """Issue a wire sanction for ONE wire call. Refuses (None) while a broker order for
     this key is still unconfirmed. MUST be called immediately before the wire; the returned
-    seq MUST be passed to _confirm_wire_result after. No clock involved."""
+    seq MUST be passed to _confirm_wire_result after. No clock involved.
+    exit_force (2026-10-14 EXIT GUARANTEE FORCE leg only): the caller cancelled its working orders on the symbol and sends a
+    market sell/buy_to_cover of the fresh broker qty — an unconfirmed earlier order cannot make it an over-close, never refused."""
+    global _EXEC_WIRE_SEQ
     if not position_key or not _wire_guard_enabled():
         return 0
     try:
@@ -23700,6 +23704,14 @@ def _sanction_execution(position_key, action="", side="", quantity=0.0, reason="
             for oid, o in (rec.get("orders") or {}).items()
             if o.get("state") == _WIRE_STATE_OPEN
         ]
+        if unconfirmed and exit_force:
+            logger.critical(f"🧯 [WIRE_SANCTION_EXIT_FORCE] {position_key}: unconfirmed {unconfirmed} kept tracked — FORCE close sanctioned (broker qty)")
+            _EXEC_WIRE_SEQ += 1
+            rec["seq"] = _EXEC_WIRE_SEQ
+            rec["action"], rec["side"] = action, side
+            rec.setdefault("orders", {})
+            _EXEC_WIRE_SANCTIONS[position_key] = rec
+            return _EXEC_WIRE_SEQ
         if unconfirmed:
             logger.critical(
                 f"🛑 [WIRE_SANCTION_REFUSED] {position_key}: broker order(s) {unconfirmed} still unconfirmed — refusing re-place until execution/cancel confirms"
@@ -23708,7 +23720,6 @@ def _sanction_execution(position_key, action="", side="", quantity=0.0, reason="
     except Exception:
         pass
     try:
-        global _EXEC_WIRE_SEQ
         _EXEC_WIRE_SEQ += 1
         _EXEC_WIRE_SANCTIONS[position_key] = {
             "seq": _EXEC_WIRE_SEQ,
@@ -44093,7 +44104,9 @@ class TradierTradeManager:
         current_account.set(account_key)
         now = time.time()
         _wx_pk = position_key or _pk_for(account_key, symbol, position_side)
-        if symbol in self.rejection_cooldowns:
+        # 2026-10-14 EXITS NEVER COMPROMISED: the 900 s symbol BACK-OFF (set by ANY rejection, e.g. an exit rejected while the
+        # protective stop still held the shares) never applies to an exit — it silently stranded every close on the symbol.
+        if symbol in self.rejection_cooldowns and str(action or "").upper() not in {"CLOSE", "REDUCE", "SELL", "PROFIT_TAKE", "HEDGE_CLOSE", "QUICK_CLOSE", "FULL_CLOSE"}:
             if now < self.rejection_cooldowns[symbol]:
                 wait_remaining = int(self.rejection_cooldowns[symbol] - now)
                 logger.warning(
@@ -44125,6 +44138,7 @@ class TradierTradeManager:
                 "PROFIT_TAKE",
                 "HEDGE_CLOSE",
                 "QUICK_CLOSE",
+                "FULL_CLOSE",  # 2026-10-14 EXIT GUARANTEE: execute_now classifies FULL_CLOSE as an exit; place_order refused it as unmapped
             }
             if not _exit_like and not self.is_symbol_tradeable(
                 symbol, account_key, position_side
@@ -44362,6 +44376,7 @@ class TradierTradeManager:
                 "PROFIT_TAKE",
                 "HEDGE_CLOSE",
                 "QUICK_CLOSE",
+                "FULL_CLOSE",  # 2026-10-14 EXIT GUARANTEE: was "Unmapped action" -> refused
             }
             if action in _ENTRY_ACTIONS:
                 tradier_side = "buy" if position_side == "LONG" else "sell_short"
@@ -46556,6 +46571,7 @@ class TradierTradeManager:
     @_odg.execute_now_gate(
         "tradier"
     )  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
+    @_xg.wrap_execute_now("tradier", lambda: _XG_TR_HOOKS)  # 2026-10-14 USER EXITS NEVER COMPROMISED: refused full close -> FORCE_CLOSE_MARKET, reduce retry, ledger once per confirmed fill
     @_ptruth.tradier_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: SUCCESS only when the broker-confirmed position matches (order id alone is not a fill)
     async def execute_now(
         self,
@@ -46575,6 +46591,13 @@ class TradierTradeManager:
     ) -> (
         str
     ):  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
+        # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
+        # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or the stuck watcher): broker holdings ->
+        # cancel our working orders + protective stop handoff -> ONE market sell / buy_to_cover of the broker qty -> verify flat.
+        if str(action or "").upper() == _xg.FORCE_ACTION:
+            return await self._exit_force_market_stocks(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, reason=reason, old_price=old_price)
+        _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
+        _xg_exit = _xg.is_exit_action(action, is_full_close) or (str(side).upper() == "SELL" and str(position_side).upper() == "LONG") or (str(side).upper() == "BUY" and str(position_side).upper() == "SHORT")
         if _odg.entry_banned(account_key, config) and (
             str(action or "").upper()
             in (
@@ -46622,7 +46645,11 @@ class TradierTradeManager:
                 except Exception:
                     pass
                 _age = (datetime.now(timezone.utc) - _sync_ts).total_seconds()
-                if _age > 90:
+                if _age > 90 and _xg_exit:
+                    # 2026-10-14 EXITS NEVER COMPROMISED (crypto parity 2026-10-02): an exit is never refused for a stale local sync —
+                    # place_order clamps an exit to the TRUE API holdings it fetches itself.
+                    logger.warning(f"[BROKER_SYNC_DEMAND] {position_key}: sync {_age:.0f}s stale but {action} is an EXIT — allowing (exits never blocked)")
+                elif _age > 90:
                     logger.critical(
                         f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last broker sync { _age:.0f}s ago (>90s) — REFUSING {action} {side} {quantity} until fresh broker positions (80× repeat prevention)"
                     )
@@ -46647,7 +46674,9 @@ class TradierTradeManager:
                             _wait = (
                                 datetime.now(timezone.utc) - _last_order_dt
                             ).total_seconds()
-                            if _wait < 90:
+                            if _wait < 90 and _xg_full:
+                                logger.warning(f"[BROKER_SYNC_DEMAND] {position_key}: last order {_wait:.0f}s ago not yet in sync — FULL close {action} proceeds (exit guarantee: exit qty clamped to the TRUE API holdings, wire guard checks the symbol)")
+                            elif _wait < 90:
                                 logger.critical(
                                     f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last order {_wait:.0f}s ago not yet in broker sync (sync age {_age:.0f}s) — REFUSING repeat {action} until broker confirms (80× prevention)"
                                 )
@@ -46679,6 +46708,8 @@ class TradierTradeManager:
                     # stop (sell / buy_to_cover stop|stop_limit, §98 GUARANTEED STOP) is NOT a duplicate order — it refused every
                     # LONG exit here before the cancel-before-exit handoff in place_order could run. Same exemption as ODG.
                     if _odg.tradier_protective_stop(_ex_o.get("type"), _ex_o.get("side")):
+                        continue
+                    if _xg_full:  # 2026-10-14 EXIT GUARANTEE: a FULL close is never refused here — the wire exit path blocks only a working non-stop order on the symbol; FORCE cancels it
                         continue
                     if (
                         _ex_sym == symbol.upper()
@@ -46771,7 +46802,11 @@ class TradierTradeManager:
                     logger.error(
                         f"[EXECUTE_NOW_LOCK_ERROR] {position_key}: Error during lock acquisition: {lock_err}"
                     )
-                    return "LOCK_ACQUISITION_ERROR"
+                    if not _xg_exit:
+                        return "LOCK_ACQUISITION_ERROR"
+                    # 2026-10-14 EXITS NEVER COMPROMISED: a redis outage never strands an exit (the order dedupe guard is the real dup gate)
+                    logger.critical(f"🧯 [EXECUTE_NOW_LOCK_ERROR_EXIT_PROCEEDS] {position_key}: {action} is an exit — proceeding without the redis exec lock")
+                    lock_acquired = False
 
             # Check cooldowns
             recent_signal_ts = self.recently_processed_signals.get(position_key, 0)
@@ -47746,6 +47781,7 @@ class TradierTradeManager:
                 is_reduce
                 and not _e02_contract_reduce
                 and not _vx_ex
+                and not _xg_full  # 2026-10-14 EXIT GUARANTEE: a FULL close is never cooled down (the stamp is set by any submit, entries included)
                 and recent_signal_ts > 0
                 and time.time() - recent_signal_ts
                 < _cfg_auto("REDUCTION_COOLDOWN_SECONDS", 30.0)
@@ -48214,6 +48250,7 @@ class TradierTradeManager:
                     if (
                         bool(_cfg_auto("LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False))
                         and not _vx_ex
+                        and not _xg_full  # 2026-10-14 EXIT GUARANTEE: churn brake is for entries; a FULL close is never braked
                     ):
                         if _vec_eb_blocked:
                             logger.critical(
@@ -48227,7 +48264,7 @@ class TradierTradeManager:
                     logger.warning(
                         f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}"
                     )
-                if _live_eb_blocked and not _vx_ex:
+                if _live_eb_blocked and not _vx_ex and not _xg_full:  # 2026-10-14 EXIT GUARANTEE: FULL close never braked
                     if _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
                         logger.critical(
                             f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected."
@@ -48312,6 +48349,7 @@ class TradierTradeManager:
                 if (
                     bool(_cfg_auto("LIVE_VEC_QUARANTINE_STRATEGY_ENABLED", False))
                     and not _vx_ex
+                    and not _xg_full  # 2026-10-14 EXIT GUARANTEE: a quarantined strategy name in a FULL close reason never strands the position
                 ):
                     if _vec_q_blocked:
                         logger.warning(
@@ -48325,7 +48363,7 @@ class TradierTradeManager:
                 logger.warning(
                     f"[LIVE_VEC_QUARANTINE_SHADOW_ERR] {type(_q_sh_err).__name__}: {_q_sh_err}"
                 )
-            if _live_q_blocked:
+            if _live_q_blocked and not _xg_full:  # 2026-10-14 EXIT GUARANTEE: FULL close never quarantined
                 logger.warning(
                     f"⛔ [QUARANTINE_BLOCK] {position_key}: reason '{_reason_key}' matches quarantined '{_live_q_name}'"
                 )
@@ -48350,6 +48388,15 @@ class TradierTradeManager:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 return "INVALID_QUANTITY"
+            # 2026-10-14 USER EXITS NEVER COMPROMISED / ledger: decision-time position facts for the exit-guarantee confirmed hook
+            # (the ONLY place a stock close/reduce is written to data/per_trade_returns — once per broker-confirmed fill).
+            if is_reduce:
+                try:
+                    _xg_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
+                    _xg_amt = abs(float(getattr(_xg_pos, "positionAmt", 0.0) or 0.0)) if _xg_pos is not None else abs(float(original_position_amt or 0.0))
+                    _xg.stash(entry_price=float(getattr(_xg_pos, "entry_price", 0.0) or 0.0) if _xg_pos is not None else 0.0, opened_at=getattr(_xg_pos, "opened_at", None) if _xg_pos is not None else None, gain=float(getattr(_xg_pos, "gain", 0.0) or 0.0) if _xg_pos is not None else 0.0, qty=float(quantity), price=float(current_price or 0.0), real_amt=_xg_amt, full_by_qty=bool(is_full_close or (_xg_amt > 0 and float(quantity) >= _xg_amt * 0.999)), symbol=symbol, position_side=str(position_side), account=account_key, reason=str(reason or action or ""))
+                except Exception as _xg_se:
+                    logger.warning(f"[EXIT_GUARANTEE] stash err {position_key}: {_xg_se}")
 
             # Place market order directly
             # Stock analogue of ez_manage's breakout timeframe sizing.  Apply
@@ -48855,7 +48902,17 @@ class TradierTradeManager:
                 cfg=config,
                 logger=logger,
             )
-            if not _odg_dec.allowed:
+            if not _odg_dec.allowed and _xg_full:
+                # 2026-10-14 USER EXITS NEVER COMPROMISED: a FULL close is never refused by the symbol-wide preflight (unreachable
+                # broker, stale ledger row). The wire exit path (order_dedupe_guard TradierDedupeGuard.guarded_exit_place) re-checks
+                # the symbol, clamps to the fresh broker qty and proceeds when the broker listing is unreachable.
+                try:
+                    if "UNREACHABLE" in str(_odg_dec.code or "") or "TIMEOUT" in str(_odg_dec.code or ""):
+                        _note_broker_distress()
+                except Exception:
+                    pass
+                logger.critical(f"🧯 [EXIT_PREFLIGHT_BYPASS] {position_key}: preflight {_odg_dec.code} — FULL close {action} proceeds to the wire exit path (reason={(reason or '')[:60]})")
+            elif not _odg_dec.allowed:
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
                 # 2026-10-13 vitals-first: unreachable verdicts feed the
@@ -48975,9 +49032,13 @@ class TradierTradeManager:
                                 )
                                 # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
                                 try:
-                                    from per_trade_logger import (
-                                        log_close as _ptl_log_close,
-                                    )
+                                    from per_trade_logger import log_attempt as _ptl_log_attempt
+                                    from per_trade_logger import log_close as _ptl_log_close_raw
+
+                                    def _ptl_log_close(**_ptl_kw):  # 2026-10-14 USER ledger: this is order SUBMIT, not a fill — with the exit guarantee active the confirmed hook writes the trade row once; here only the attempt
+                                        if _xg.active():
+                                            return _ptl_log_attempt(account=_ptl_kw.get("account"), symbol=_ptl_kw.get("symbol"), side=_ptl_kw.get("side"), action=action, reason=_ptl_kw.get("reason"), qty=_ptl_kw.get("qty"), price=_ptl_kw.get("exit_price"), stage="SUBMIT", result=str(order_id))
+                                        return _ptl_log_close_raw(**_ptl_kw)
 
                                     _ptl_pnl_pct = (
                                         ((current_price - _ep) / _ep * 100.0)
@@ -49130,7 +49191,7 @@ class TradierTradeManager:
                                         # VIGILANCE (USER 2026-09-28): realized full-close feeds the loss-streak guard —
                                         # two consecutive losing trades block the sym_side until further analysis.
                                         try:
-                                            if _ep > 0 and current_price:
+                                            if _ep > 0 and current_price and not _xg.active():  # 2026-10-14: with the exit guarantee active the confirmed hook feeds VIGILANCE once per lifecycle (this is SUBMIT, not fill)
                                                 _vg_g = (
                                                     (
                                                         (float(current_price) - _ep)
@@ -49159,7 +49220,7 @@ class TradierTradeManager:
                                             )
                                         # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): realized full close feeds the sym_side loss window.
                                         try:
-                                            if _ep > 0 and current_price:
+                                            if _ep > 0 and current_price and not _xg.active():  # 2026-10-14: confirmed hook records once per lifecycle
                                                 _ssh_g = ((float(current_price) - _ep) / _ep * 100.0) if position_side == "LONG" else ((_ep - float(current_price)) / _ep * 100.0)
                                                 _stale_set_halt.record_close("tradier", account_key, symbol, position_side, _ssh_g, reason or action, cfg=config)
                                         except Exception as _ssh_ce:

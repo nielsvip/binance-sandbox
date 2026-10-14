@@ -1,65 +1,37 @@
 {
-  "fin:BTCDOMUSDT_LONG": {
-    "orderId": "3000002248488723",
-    "stopPrice": 5445.8,
-    "entry_sig": "2026-10-13 22:43:38.378649+00:00",
-    "symbol": "BTCDOMUSDT",
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002619710527",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 22:46:08.290044+00:00",
+    "symbol": "DOGEUSDC",
     "side": "LONG"
   },
-  "fin:ETHUSDC_LONG": {
-    "orderId": "3000002248492633",
+  "flz:ETHUSDC_LONG": {
+    "orderId": "1000002619712878",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:50:13.017278+00:00",
+    "entry_sig": "2026-10-13 22:50:26.337631+00:00",
     "symbol": "ETHUSDC",
     "side": "LONG"
   },
-  "fin:DASHUSDT_LONG": {
-    "orderId": "3000002248538068",
+  "flz:DASHUSDT_LONG": {
+    "orderId": "1000002619762233",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 23:35:29.106090+00:00",
+    "entry_sig": "2026-10-13 23:49:32.798893+00:00",
     "symbol": "DASHUSDT",
     "side": "LONG"
   },
-  "fin:THETAUSDT_LONG": {
-    "orderId": "3000002248572925",
+  "flz:SOLUSDC_LONG": {
+    "orderId": "1000002619828350",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-14 00:20:06.157697+00:00",
-    "symbol": "THETAUSDT",
-    "side": "LONG"
-  },
-  "fin:COMPUSDT_SHORT": {
-    "orderId": "3000002248624072",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-14 01:09:05.857928+00:00",
-    "symbol": "COMPUSDT",
-    "side": "SHORT"
-  },
-  "fin:ZENUSDT_LONG": {
-    "orderId": "3000002248503854",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 23:05:57.231867+00:00",
-    "symbol": "ZENUSDT",
-    "side": "LONG"
-  },
-  "fin:SNXUSDT_LONG": {
-    "orderId": "3000002248644817",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-14 00:05:37.220316+00:00",
-    "symbol": "SNXUSDT",
-    "side": "LONG"
-  },
-  "fin:UNIUSDC_SHORT": {
-    "orderId": "3000002248644851",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-14 01:04:43.092509+00:00",
-    "symbol": "UNIUSDC",
-    "side": "SHORT"
-  },
-  "fin:SOLUSDC_LONG": {
-    "orderId": "3000002248644850",
-    "stopPrice": 0.0,
-    "entry_sig": "2026-10-14 00:48:57.456795+00:00",
+    "entry_sig": "2026-10-14 00:49:48.497803+00:00",
     "symbol": "SOLUSDC",
     "side": "LONG"
+  },
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002619867519",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-14 01:20:54.155636+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
   }
 }

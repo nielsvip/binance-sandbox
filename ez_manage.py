@@ -4,6 +4,7 @@ import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode native block + local dedup claim
 import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
+import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
@@ -1041,22 +1042,33 @@ def _wire_guard_enabled() -> bool:
         return True
 
 
-def _sanction_execution(position_key, action="", side="", quantity=0.0, reason=""):
+def _sanction_execution(position_key, action="", side="", quantity=0.0, reason="", exit_force=False):
     """Issue a wire sanction for ONE wire call. Refuses (None) while a broker order for
     this key is still unconfirmed. MUST be called immediately before the wire; the returned
-    seq MUST be passed to _confirm_wire_result after. No clock involved."""
+    seq MUST be passed to _confirm_wire_result after. No clock involved.
+    exit_force (2026-10-14 EXIT GUARANTEE FORCE leg only): the caller cancelled its working orders on the leg and sends a
+    reduce-only market of the fresh broker qty — an unconfirmed earlier order cannot make it an over-close, never refused."""
+    global _EXEC_WIRE_SEQ
     if not position_key or not _wire_guard_enabled():
         return 0
     try:
         rec = _EXEC_WIRE_SANCTIONS.get(position_key) or {}
         unconfirmed = [oid for oid, o in (rec.get("orders") or {}).items() if o.get("state") == _WIRE_STATE_OPEN]
+        if unconfirmed and exit_force:
+            logger.critical(f"🧯 [WIRE_SANCTION_EXIT_FORCE] {position_key}: unconfirmed {unconfirmed} kept tracked — FORCE close sanctioned (reduce-only, broker qty)")
+            unconfirmed = []
+            _EXEC_WIRE_SEQ += 1
+            rec["seq"] = _EXEC_WIRE_SEQ
+            rec["action"], rec["side"] = action, side
+            rec.setdefault("orders", {})
+            _EXEC_WIRE_SANCTIONS[position_key] = rec
+            return _EXEC_WIRE_SEQ
         if unconfirmed:
             logger.critical(f"🛑 [WIRE_SANCTION_REFUSED] {position_key}: broker order(s) {unconfirmed} still unconfirmed — refusing re-place until execution/cancel confirms")
             return None
     except Exception:
         pass
     try:
-        global _EXEC_WIRE_SEQ
         _EXEC_WIRE_SEQ += 1
         _EXEC_WIRE_SANCTIONS[position_key] = {"seq": _EXEC_WIRE_SEQ, "action": action, "side": side, "orders": {}}
         return _EXEC_WIRE_SEQ
@@ -3454,13 +3466,23 @@ def ez_vigilance_try_recover(symbol: str, position_side: str, ind: Optional[dict
         logger.warning(f"[VIGILANCE] recovery check err {_key}: {_e}")
     return False, str(_b.get("reason", "VIGILANCE_BLOCK"))
 
-def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "", exit_price: float = 0.0) -> bool:
+def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, reason: str = "", exit_price: float = 0.0, lifecycle: Optional[str] = None, notional_usd: Optional[float] = None) -> bool:
     # Realized full-close result feeds the loss-streak guard. Returns True when this close triggers the block.
+    # 2026-10-14 USER EXITS NEVER COMPROMISED: one count per position lifecycle (a retried close is the same trade), dust skipped.
     if not bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
         return False
     _ez_vigilance_load(force=True)
     _key = ez_vigilance_sym_side(symbol, position_side)
     _st = _EZ_VIGILANCE_STATE["streaks"].setdefault(_key, {"consec_losses": 0, "last": []})
+    if lifecycle and str(_st.get("last_lifecycle", "")) == str(lifecycle):
+        return False
+    try:
+        if notional_usd is not None and 0.0 < float(notional_usd) < float(getattr(config, "EXIT_DUST_USD", 5.0) or 5.0):
+            return False
+    except Exception:
+        pass
+    if lifecycle:
+        _st["last_lifecycle"] = str(lifecycle)
     _g = float(gain_pct or 0.0)
     _st["consec_losses"] = (int(_st.get("consec_losses", 0)) + 1) if _g < 0 else 0
     _st.setdefault("last", []).append({"ts": datetime.now(timezone.utc).isoformat(), "gain_pct": round(_g, 4), "reason": str(reason)[:120]})
@@ -3472,6 +3494,102 @@ def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, 
     _ez_vigilance_save()
     return _blocked
 
+
+# ═══ EXIT GUARANTEE venue hooks (2026-10-14 USER "make sure at least EXITS will never be compromised again") ═══
+# exit_guarantee.wrap_execute_now("ez", ...) calls these: FORCE leg (via execute_now FORCE_CLOSE_MARKET), fresh broker truth,
+# and the confirmed hook — the ONLY place a crypto close/reduce is written to data/per_trade_returns (once per confirmed fill,
+# idem_key = account|lifecycle|fill) and fed to VIGILANCE + STALE-SET (once per lifecycle, dust skipped).
+async def _xg_ez_force(mgr, a, c, why):
+    _ps = str(a.get("position_side") or c.get("position_side") or "").upper()
+    _pk = a.get("position_key") or c.get("key")
+    _acct = a.get("account_key") or (str(_pk).split(":", 1)[0] if _pk and ":" in str(_pk) else None)
+    return await mgr.execute_now(position_key=_pk, account_key=_acct, symbol=a.get("symbol"), original_positionAmt=0.0, side=("SELL" if _ps == "LONG" else "BUY"), position_side=_ps, quantity=0.0, old_price=safe_fetch_float(a.get("old_price"), 0.0), unique_id=f"XGF_{int(time.time())}", reason=f"EXIT_GUARANTEE_FORCE[{str(why)[:40]}] {str(a.get('reason') or '')[:100]}", is_full_close=True, action=_xg.FORCE_ACTION)
+
+
+async def _xg_ez_broker(mgr, account_key, symbol, position_side):
+    try:
+        _snap = await _ptruth.ez_broker(mgr, account_key, config, logger).snapshot(force=True, reason=f"exit_guarantee {symbol}_{position_side}")
+    except Exception:
+        _snap = None
+    if _snap is None:
+        return None
+    _ps = str(position_side or "").upper()
+    try:
+        _ent = safe_fetch_float((getattr(_snap, "entries", {}) or {}).get((str(symbol).upper(), _ps), 0.0), 0.0)
+    except Exception:
+        _ent = 0.0
+    return {"amt": abs(safe_fetch_float(_snap.amount(symbol, _ps), 0.0)), "entry": _ent}
+
+
+def _xg_ez_fill_from_ledger(account_key, symbol, client_ids):
+    """(fill_id, avg_px, executed_qty) of OUR broker-confirmed orders of this execute_now call (order_dedupe_guard ledger)."""
+    try:
+        if not client_ids:
+            return None, 0.0, 0.0
+        _ids = set(client_ids)
+        _rows = [r for r in _odg.get_binance_guard(account_key, cfg=config, logger=logger).ledger.orders(str(symbol).upper()) if r.get("client_order_id") in _ids]
+        _q = sum(safe_fetch_float(r.get("executed_qty"), 0.0) for r in _rows)
+        _n = sum(safe_fetch_float(r.get("executed_qty"), 0.0) * safe_fetch_float(r.get("avg_price"), 0.0) for r in _rows)
+        _oids = [str(r.get("order_id")) for r in _rows if safe_fetch_float(r.get("executed_qty"), 0.0) > 0 and r.get("order_id")]
+        return (",".join(_oids) or None), (_n / _q if _q > 0 and _n > 0 else 0.0), _q
+    except Exception:
+        return None, 0.0, 0.0
+
+
+async def _xg_ez_confirmed(mgr, a, c, result):
+    _pk = a.get("position_key") or c.get("key")
+    _acct = a.get("account_key") or (str(_pk).split(":", 1)[0] if _pk and ":" in str(_pk) else "")
+    _sym = a.get("symbol") or c.get("symbol")
+    _ps = str(a.get("position_side") or c.get("position_side") or "").upper()
+    _reason = str(a.get("reason") or "")
+    _force = c.get("force") or {}
+    _fid, _fpx, _fq = (str(_force.get("oid") or "") or None), safe_fetch_float(_force.get("px"), 0.0), safe_fetch_float(_force.get("qty"), 0.0)
+    if not _fid:
+        _fid, _fpx, _fq = _xg_ez_fill_from_ledger(_acct, _sym, c.get("orders"))
+    _entry = safe_fetch_float(c.get("entry_price"), 0.0) or safe_fetch_float(_force.get("entry"), 0.0)
+    _opened = c.get("opened_at")
+    if (_entry <= 0 or not _opened) and mgr is not None:
+        try:
+            _p = await mgr.get_position(_pk)
+            _entry = _entry or safe_fetch_float(getattr(_p, "entry_price", 0.0), 0.0) or safe_fetch_float(getattr(_p, "entryPrice", 0.0), 0.0)
+            _opened = _opened or getattr(_p, "opened_at", None)
+        except Exception:
+            pass
+    _px = _fpx or safe_fetch_float(c.get("price"), 0.0) or safe_fetch_float(a.get("old_price"), 0.0)
+    _qty = _fq or safe_fetch_float(c.get("qty"), 0.0) or abs(safe_fetch_float(a.get("quantity"), 0.0))
+    _full = bool(c.get("full") or c.get("full_by_qty") or _force)
+    if _entry > 0 and _px > 0:
+        _pnl = ((_px - _entry) / _entry * 100.0) if _ps == "LONG" else ((_entry - _px) / _entry * 100.0)
+    else:
+        _pnl = safe_fetch_float(c.get("gain"), 0.0)
+    _hold = 0.0
+    try:
+        if _opened:
+            _od = _opened if isinstance(_opened, datetime) else datetime.fromisoformat(str(_opened).replace("Z", "+00:00"))
+            _od = _od if _od.tzinfo else _od.replace(tzinfo=timezone.utc)
+            _hold = max(0.0, (datetime.now(timezone.utc) - _od).total_seconds() / 60.0)
+    except Exception:
+        _hold = 0.0
+    _life = _xg.lifecycle_id(_acct, _sym, _ps, _opened, _entry)
+    _idem = f"{_life}|FULL" if _full else f"{_life}|{_fid or round(float(c.get('t0') or time.time()), 3)}"
+    _notional = _qty * _px if (_qty > 0 and _px > 0) else None
+    try:
+        from per_trade_logger import log_close as _ptl_log_close
+        _ptl_log_close(account=_acct, symbol=_sym, side=_ps, entry_price=_entry, exit_price=_px, pnl_pct=_pnl, fees_pct=0.04, hold_minutes=_hold, qty=_qty, reason=_reason, idem_key=_idem, lifecycle=_life, fill_id=_fid, full_close=_full, confirmed=True, notional_usd=_notional)
+    except Exception as _le:
+        logger.warning(f"[EXIT_GUARANTEE_LEDGER] {_pk}: {_le}")
+    if _full:
+        try:
+            ez_vigilance_record_close(_sym, _ps, _pnl, _reason, exit_price=_px, lifecycle=_life, notional_usd=_notional)
+        except Exception as _ve:
+            logger.warning(f"[VIGILANCE] close-record err {_pk}: {_ve}")
+        try:
+            _stale_set_halt.record_close("ez", _acct, _sym, _ps, _pnl, _reason, cfg=config, lifecycle=_life, notional_usd=_notional)
+        except Exception as _se:
+            logger.warning(f"[STALE_SET_HALT] close-record err {_pk}: {_se}")
+
+
+_XG_EZ_HOOKS = _xg.Hooks(force=_xg_ez_force, broker=_xg_ez_broker, confirmed=_xg_ez_confirmed, cfg=lambda: config, logger=lambda: logger)
 
 _EZ_NEGBOOK_CACHE: Dict[str, Any] = {"loaded_at": 0.0, "keys": {}}
 
@@ -31560,8 +31678,162 @@ class MultiAccountTradeManager:
     # 0E
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
 
+    async def _exit_force_market(self, *, position_key, account_key, symbol, position_side, reason="", old_price=0.0):
+        """EXIT GUARANTEE FORCE leg (2026-10-14 USER "make sure at least EXITS will never be compromised again"). Called ONLY from
+        the execute_now FORCE_CLOSE_MARKET branch (wire token action=FORCE_CLOSE_MARKET -> order_dedupe_guard exit path).
+        1. exchange truth: positionRisk (retry 0/0.5/1.5/3 s); unreachable -> last confirmed broker snapshot (any age) -> local amt
+        2. broker flat -> FORCE_NOTHING_OPEN (nothing to close is not a failure)
+        3. cancel OUR working regular orders on this leg (maker chase leftovers); algo FIXED_STOP stays as backstop
+        4. ONE MARKET close of the broker qty (hedge leg = positionSide, else reduceOnly) — the exchange caps reduce at the position
+        5. verify flat (fresh reads); remainder (partial / dust) re-sent once; still open -> FAILED_FORCE_CLOSE_STILL_OPEN (watcher+alert)
+        Returns SUCCESS_FORCE_CLOSE_CONFIRMED|oid=..|px=..|qty=..|entry=.. on broker-confirmed flat. Never raises."""
+        ps = str(position_side or "").upper()
+        acct = account_key or (str(position_key).split(":", 1)[0] if position_key and ":" in str(position_key) else None)
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST") and not getattr(self, "_xg_allow_force_in_tests", False):
+                return "SKIPPED_FORCE_PYTEST"
+            try:
+                if is_sandbox_account(config, acct):
+                    return "SKIPPED_FORCE_SANDBOX"
+            except Exception:
+                pass
+            try:
+                if current_env["env"] != "server" and bool(getattr(config, "SERVER_HEARTBEAT_BLOCK_ENABLED", True)) and await safe_check_server_heartbeat(acct):
+                    logger.warning(f"🛑 [EXIT_FORCE_HEARTBEAT] {position_key}: another box live-trades {acct} — it owns the FORCE close")
+                    return "BLOCKED_SERVER_HEARTBEAT_ACTIVE"
+            except Exception:
+                pass
+            client = getattr(self.accounts.get(acct), "client", None) if getattr(self, "accounts", None) else None
+            if client is None:
+                _xg.alert("ez", str(position_key), "FORCE close: no broker client", config, logger)
+                return "FAILED_FORCE_NO_CLIENT"
+            inner = getattr(client, "odg_inner", client)
+            close_side = "SELL" if ps == "LONG" else "BUY"
+
+            async def _read(backoffs=(0.0, 0.5, 1.5, 3.0)):
+                for _bo in backoffs:
+                    if _bo:
+                        await asyncio.sleep(_bo)
+                    try:
+                        _rows = await asyncio.wait_for(asyncio.to_thread(inner.futures_position_information, symbol=symbol), timeout=10.0)
+                        for _r in _rows or []:
+                            if str(_r.get("symbol", "")).upper() == str(symbol).upper() and str(_r.get("positionSide", "BOTH")).upper() == (ps or "BOTH"):
+                                return {"amt_str": str(_r.get("positionAmt", "0")).strip().lstrip("-"), "amt": abs(safe_fetch_float(_r.get("positionAmt"), 0.0)), "entry": safe_fetch_float(_r.get("entryPrice"), 0.0), "src": "broker"}
+                        return {"amt_str": "0", "amt": 0.0, "entry": 0.0, "src": "broker"}
+                    except Exception as _re:
+                        logger.warning(f"[EXIT_FORCE_READ] {position_key}: positionRisk failed ({_re}) — retrying")
+                return None
+
+            def _qty_str(_amt):
+                try:
+                    _step = safe_fetch_float((self.get_symbol_config(symbol) or {}).get("step_size", 0), 0.0)
+                except Exception:
+                    _step = 0.0
+                if _step > 0:
+                    from decimal import Decimal, ROUND_DOWN
+                    _q = (Decimal(str(_amt)) / Decimal(str(_step))).to_integral_value(rounding=ROUND_DOWN) * Decimal(str(_step))
+                    return format(_q.normalize(), "f")
+                return format(float(_amt), ".8f").rstrip("0").rstrip(".")
+
+            b = await _read()
+            if b is None:
+                _fb_amt, _fb_src = 0.0, "none"
+                try:
+                    _bp = getattr(_ptruth, "_CACHES", {}).get(("binance", acct))
+                    if _bp is not None and getattr(_bp, "last", None) is not None:
+                        _fb_amt, _fb_src = abs(float(_bp.last.amount(symbol, ps))), "last_broker_snapshot"
+                except Exception:
+                    pass
+                if _fb_amt <= 0:
+                    try:
+                        _lp = await self.get_position(position_key)
+                        _fb_amt, _fb_src = abs(safe_fetch_float(getattr(_lp, "positionAmt", 0.0), 0.0)), "local_position"
+                    except Exception:
+                        pass
+                logger.critical(f"🧯 [EXIT_FORCE_BROKER_UNREACHABLE] {position_key}: positionRisk unreachable after retries — using {_fb_src} qty {_fb_amt} (exchange caps a reduce at the real position)")
+                if _fb_amt <= 0:
+                    _xg.alert("ez", str(position_key), "FORCE close: broker unreachable and no last known qty", config, logger)
+                    return "FAILED_FORCE_BROKER_UNREACHABLE"
+                b = {"amt_str": _qty_str(_fb_amt), "amt": _fb_amt, "entry": 0.0, "src": _fb_src}
+            if b["amt"] <= 0:
+                logger.info(f"[EXIT_FORCE] {position_key}: broker FLAT — nothing to close")
+                return "FORCE_NOTHING_OPEN"
+            entry0, amt0 = b["entry"], b["amt"]
+            try:
+                _oo = await asyncio.wait_for(asyncio.to_thread(inner.futures_get_open_orders, symbol=symbol), timeout=10.0)
+            except Exception as _oe:
+                _oo = []
+                logger.warning(f"[EXIT_FORCE] {position_key}: open-orders unreachable ({_oe}) — close proceeds")
+            for _o in _oo or []:
+                try:
+                    if str(_o.get("positionSide", "")).upper() not in ("", "BOTH", ps):
+                        continue
+                    if str(_o.get("status", "")).upper() not in ("NEW", "PARTIALLY_FILLED"):
+                        continue
+                    await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_o.get("orderId")), timeout=10.0)
+                    logger.critical(f"🧹 [EXIT_FORCE_CANCEL] {position_key}: cancelled working {_o.get('type')} {_o.get('side')} {_o.get('origQty')} id={_o.get('orderId')} on the leg before the FORCE close")
+                except Exception as _ce:
+                    logger.warning(f"[EXIT_FORCE_CANCEL] {position_key}: cancel {_o.get('orderId')} failed ({_ce}) — close proceeds")
+            oid, px, qty_done = "", 0.0, 0.0
+            for _pass in range(3):
+                _qs = b["amt_str"] if b.get("src") == "broker" and b.get("amt_str") else _qty_str(b["amt"])
+                if safe_fetch_float(_qs, 0.0) <= 0:
+                    _qs = _qty_str(b["amt"])
+                _params = {"symbol": symbol, "side": close_side, "type": "MARKET", "quantity": _qs}
+                if ps in ("LONG", "SHORT"):
+                    _params["positionSide"] = ps
+                else:
+                    _params["reduceOnly"] = "true"
+                _seq = _sanction_execution(position_key, "CLOSE", close_side, safe_fetch_float(_qs, 0.0), reason, exit_force=True)
+                logger.critical(f"🧯 [EXIT_FORCE_SEND] {position_key}: MARKET {close_side} {_qs} ({ps or 'one-way reduceOnly'}) pass {_pass + 1} src={b.get('src')} reason={(reason or '')[:80]}")
+                try:
+                    _resp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, **_params), timeout=15.0)
+                except Exception as _se:
+                    if "NOTHING_TO_CLOSE" in str(_se):
+                        return f"SUCCESS_FORCE_CLOSE_CONFIRMED|oid={oid}|px={px}|qty={qty_done}|entry={entry0}" if qty_done > 0 else "FORCE_NOTHING_OPEN"
+                    logger.error(f"[EXIT_FORCE_SEND_FAIL] {position_key}: {_se}")
+                    _resp = None
+                if isinstance(_resp, dict):
+                    _confirm_wire_result("futures_create_order:exit_force_market", position_key, _resp, _seq, "CLOSE", reason)
+                    oid = str(_resp.get("orderId") or oid)
+                    _px = safe_fetch_float(_resp.get("avgPrice"), 0.0)
+                    _eq = safe_fetch_float(_resp.get("executedQty"), 0.0)
+                    if _resp.get("orderId") and (_px <= 0 or _eq <= 0):
+                        try:
+                            await asyncio.sleep(0.5)
+                            _go = await asyncio.wait_for(asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=int(_resp.get("orderId"))), timeout=10.0)
+                            _px = safe_fetch_float((_go or {}).get("avgPrice"), _px)
+                            _eq = safe_fetch_float((_go or {}).get("executedQty"), _eq)
+                        except Exception:
+                            pass
+                    if _px > 0:
+                        px = _px
+                    qty_done += _eq
+                b2 = None
+                for _w in (1.0, 2.0, 3.0):
+                    await asyncio.sleep(_w)
+                    b2 = await _read((0.0, 0.5))
+                    if b2 is not None and (b2["amt"] <= 0 or b2["amt"] < b["amt"]):
+                        break
+                if b2 is not None and b2["amt"] <= 0:
+                    logger.critical(f"✅ [EXIT_FORCE_CONFIRMED] {position_key}: broker FLAT after FORCE close (oid={oid} px={px} qty={qty_done})")
+                    return f"SUCCESS_FORCE_CLOSE_CONFIRMED|oid={oid}|px={px}|qty={qty_done or amt0}|entry={entry0}"
+                if b2 is not None:
+                    if entry0 > 0 and b2["entry"] > 0 and abs(b2["entry"] - entry0) / entry0 > 0.002 and b2["amt"] > amt0 * 1.001:
+                        logger.critical(f"[EXIT_FORCE] {position_key}: leg re-opened under us (entry {entry0} -> {b2['entry']}) — stop")
+                        return f"FAILED_FORCE_LIFECYCLE_CHANGED|amt={b2['amt']}"
+                    b = b2
+            _xg.alert("ez", str(position_key), f"FORCE close sent but broker still holds {b.get('amt')} (oid={oid})", config, logger, reason=str(reason)[:120])
+            return f"FAILED_FORCE_CLOSE_STILL_OPEN|amt={b.get('amt')}|oid={oid}"
+        except Exception as _fe:
+            try:
+                _xg.alert("ez", str(position_key), f"FORCE close crashed: {_fe!r}", config, logger)
+            except Exception:
+                pass
+            return f"FAILED_FORCE_CLOSE_ERROR_{str(_fe)[:60]}"
+
     @_odg.execute_now_gate("binance")  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
-    @_xg.wrap_execute_now("ez", lambda: _XG_EZ_HOOKS)  # 2026-10-14 USER EXITS NEVER COMPROMISED: refused full close -> FORCE_CLOSE_MARKET, reduce retry, ledger once per confirmed fill
+    @_xg.wrap_execute_now("ez", lambda: _XG_EZ_HOOKS)  # 2026-10-14 EXITS NEVER COMPROMISED (exit_guarantee.py)
     @_ptruth.ez_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: zero qty never sent; SUCCESS only when the broker-confirmed position matches
     async def execute_now(
         self,
@@ -35976,60 +36248,74 @@ class MultiAccountTradeManager:
                 except Exception:
                     pass
             logger.info(f"[EXEC_TRACE] {position_key}: STEP3a_DECCTX {_xs_who} elapsed={time.time() - _xs_t0:.1f}s")
-            # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
-            # Fires only for reduces/closes; never blocks the trade.
+            # 2026-10-14 USER EXITS NEVER COMPROMISED / ledger: this point is BEFORE the order is sent — it ran once per attempt, so a
+            # close retried every minute became 600+ ledger "trades" and one losing close could count as 2 consecutive losers.
+            # With the exit guarantee wrapper active: stash the decision-time facts (the wrapper's confirmed hook writes the ledger
+            # row ONCE per broker-confirmed fill and feeds VIGILANCE / STALE-SET once per lifecycle) + log the attempt separately.
+            _xg_active = False
             try:
                 if is_reduce:
-                    from per_trade_logger import log_close as _ptl_log_close
+                    _xg_active = _xg.stash(entry_price=safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0) or safe_fetch_float(getattr(position, "entryPrice", 0.0), 0.0), opened_at=getattr(position, "opened_at", None), gain=safe_fetch_float(getattr(position, "gain", 0.0), 0.0), qty=float(quantity), price=float(current_price or 0.0), real_amt=float(current_real_amt or 0.0), baseline_amt=float(abs(baseline_amt or 0.0)), full_by_qty=bool(is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)), symbol=symbol, position_side=str(position_side), account=account_key, reason=str(reason))
+                    if _xg_active:
+                        from per_trade_logger import log_attempt as _ptl_log_attempt
+                        _ptl_log_attempt(account=account_key, symbol=symbol, side=str(position_side), action=action, reason=str(reason), qty=float(quantity), price=float(current_price or 0.0), stage="SEND")
+            except Exception as _xg_se:
+                logger.warning(f"[EXIT_GUARANTEE] stash err {position_key}: {_xg_se}")
+            if not _xg_active:
+                # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
+                # Fires only for reduces/closes; never blocks the trade.
+                try:
+                    if is_reduce:
+                        from per_trade_logger import log_close as _ptl_log_close
 
-                    _ptl_entry = float(getattr(position, "entryPrice", 0.0) or 0.0)
-                    _ptl_gain = safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
-                    _ptl_opened = getattr(position, "opened_at", None)
-                    _ptl_hold_min = 0.0
-                    if _ptl_opened is not None:
-                        try:
-                            _now = datetime.now(timezone.utc)
-                            _opn = (
-                                _ptl_opened
-                                if isinstance(_ptl_opened, datetime)
-                                else datetime.fromisoformat(str(_ptl_opened))
-                            )
-                            _ptl_hold_min = max(
-                                0.0, (_now - _opn).total_seconds() / 60.0
-                            )
-                        except Exception:
-                            _ptl_hold_min = 0.0
-                    _ptl_log_close(
-                        account=account_key,
-                        symbol=symbol,
-                        side=str(position_side),
-                        entry_price=_ptl_entry,
-                        exit_price=float(current_price),
-                        pnl_pct=_ptl_gain,
-                        fees_pct=0.04,
-                        hold_minutes=_ptl_hold_min,
-                        qty=float(quantity),
-                        reason=str(reason),
-                    )
-            except Exception:
-                pass
-            # VIGILANCE (USER 2026-09-28): realized full-close result feeds the crypto loss-streak
-            # guard — two consecutive losing trades block the sym_side until further analysis.
-            try:
-                if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
-                    ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason, exit_price=float(current_price or 0.0))
-            except Exception as _vg_rce:
-                logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
-            # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): every realized FULL close feeds the sym_side's loss window —
-            # gain from the REAL entry price (position.gain can be stale), runs independent of VIGILANCE_GUARD_ENABLED.
-            try:
-                if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
-                    _ssh_ep = safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
-                    _ssh_px = safe_fetch_float(current_price, 0.0)
-                    _ssh_g = (((_ssh_px - _ssh_ep) / _ssh_ep * 100.0) if position_side == "LONG" else ((_ssh_ep - _ssh_px) / _ssh_ep * 100.0)) if (_ssh_ep > 0 and _ssh_px > 0) else safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
-                    _stale_set_halt.record_close("ez", account_key, symbol, position_side, _ssh_g, reason, cfg=config)
-            except Exception as _ssh_rce:
-                logger.warning(f"[STALE_SET_HALT] close-record err {position_key}: {_ssh_rce}")
+                        _ptl_entry = float(getattr(position, "entryPrice", 0.0) or 0.0)
+                        _ptl_gain = safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
+                        _ptl_opened = getattr(position, "opened_at", None)
+                        _ptl_hold_min = 0.0
+                        if _ptl_opened is not None:
+                            try:
+                                _now = datetime.now(timezone.utc)
+                                _opn = (
+                                    _ptl_opened
+                                    if isinstance(_ptl_opened, datetime)
+                                    else datetime.fromisoformat(str(_ptl_opened))
+                                )
+                                _ptl_hold_min = max(
+                                    0.0, (_now - _opn).total_seconds() / 60.0
+                                )
+                            except Exception:
+                                _ptl_hold_min = 0.0
+                        _ptl_log_close(
+                            account=account_key,
+                            symbol=symbol,
+                            side=str(position_side),
+                            entry_price=_ptl_entry,
+                            exit_price=float(current_price),
+                            pnl_pct=_ptl_gain,
+                            fees_pct=0.04,
+                            hold_minutes=_ptl_hold_min,
+                            qty=float(quantity),
+                            reason=str(reason),
+                        )
+                except Exception:
+                    pass
+                # VIGILANCE (USER 2026-09-28): realized full-close result feeds the crypto loss-streak
+                # guard — two consecutive losing trades block the sym_side until further analysis.
+                try:
+                    if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
+                        ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason, exit_price=float(current_price or 0.0))
+                except Exception as _vg_rce:
+                    logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
+                # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): every realized FULL close feeds the sym_side's loss window —
+                # gain from the REAL entry price (position.gain can be stale), runs independent of VIGILANCE_GUARD_ENABLED.
+                try:
+                    if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
+                        _ssh_ep = safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
+                        _ssh_px = safe_fetch_float(current_price, 0.0)
+                        _ssh_g = (((_ssh_px - _ssh_ep) / _ssh_ep * 100.0) if position_side == "LONG" else ((_ssh_ep - _ssh_px) / _ssh_ep * 100.0)) if (_ssh_ep > 0 and _ssh_px > 0) else safe_fetch_float(getattr(position, "gain", 0.0), 0.0)
+                        _stale_set_halt.record_close("ez", account_key, symbol, position_side, _ssh_g, reason, cfg=config)
+                except Exception as _ssh_rce:
+                    logger.warning(f"[STALE_SET_HALT] close-record err {position_key}: {_ssh_rce}")
             if is_sandbox_account(config, account_key):
                 sandbox_fill_price = current_price
                 # 2026-05-23 USER MANDATE: execute_trade_action MUST NOT touch positionAmt.
