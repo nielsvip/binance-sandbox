@@ -520,9 +520,11 @@ main() {
         kill_duplicate_python
         # ═══ LIVE FAILOVER LEASE GATE (2026-10-13 USER, Mac only, applies even with TRADIER_LOCAL_ONLY=1) ═══
         # S1 holds the live-trading lease -> the Mac never spawns a gated trader (tools/live_failover_lease_gate.sh).
-        if [[ "$(uname)" == "Darwin" && -f "$WORKDIR/tools/live_failover_lease_gate.sh" ]]; then
+        # 2026-10-14: also on S1's live dir (has data/live_failover/): ez_copilot's wrapper kept spawning tradier_positions.py
+        # on S1 WITHOUT the lease, so S1's own stock files (not the Mac's seed) decided opened_at at takeover.
+        if [[ -f "$WORKDIR/tools/live_failover_lease_gate.sh" ]] && [[ "$(uname)" == "Darwin" || -d "$WORKDIR/data/live_failover" ]]; then
             source "$WORKDIR/tools/live_failover_lease_gate.sh"
-            if lf_lease_fenced "$SCRIPT" "$WORKDIR"; then log "[LEASE_FENCED] S1 holds the live-trading lease (data/live_failover/lease_local.json) — MacBook will NOT spawn $SCRIPT. Retrying in 30s..."; sleep 30; continue; fi
+            if lf_lease_fenced "$SCRIPT" "$WORKDIR"; then log "[LEASE_FENCED] the other machine holds the live-trading lease for this venue (data/live_failover/lease_local.json on the Mac, lease.json run_venues on S1) — NOT spawning $SCRIPT on $(uname). Retrying in 30s..."; sleep 30; continue; fi
         fi
         # ═══ S1 FAILOVER GATE (MacBook only) ═══
         # Local-only launches must never SSH to S1.  start_everything_3.command

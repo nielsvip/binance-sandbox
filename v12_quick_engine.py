@@ -15438,6 +15438,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         ):
             setattr(cfg, _lane_k, False)
     close = _base_safe(npz, "close", n, cfg)
+    # 2026-10-14 FIXED_STOP intrabar (BIBLE §106 C1, USER "vector has to have the 100% guarantee so when live follows vector it also
+    # has a 100% guarantee"): live closes on the live price every ~6 s (software leg, 0.25%) + exchange STOP_MARKET backstop -> the
+    # vector checks the 15m bar low/high, not only the close. Missing/0 arrays never fire.
+    _fx_bar_lo = _base_safe(npz, "low", n, cfg)
+    _fx_bar_hi = _base_safe(npz, "high", n, cfg)
+    _fx_bar_op = _base_safe(npz, "open", n, cfg)
     # HARD_STOP TF switch: 4h (tight) vs D (wide) per sym_side
     _hs_tf_v12 = str(getattr(cfg, "DC_HARD_STOP_TF", "4h") or "4h").strip().upper()
     _hs_tf_v12 = "D" if _hs_tf_v12 in ("D", "1D", "DAILY") else "4h"
@@ -20128,9 +20134,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if _fx_new > 0:
                         _fx_lvl = _fx_new
                         pos["fixed_stop"] = _fx_lvl
+                _fx_px = px
                 if vec_decisions.fixed_stop.breached(is_long, px, _fx_lvl):
                     _fx_fire = "FIXED_STOP"
+                if int(pos.get("entry_bar", i)) < i and _fx_lvl > 0 and i < len(_fx_bar_lo):
+                    _fx_wick = float(_fx_bar_lo[i]) if is_long else float(_fx_bar_hi[i])
+                    if _fx_wick > 0 and vec_decisions.fixed_stop.breached(is_long, _fx_wick, _fx_lvl):
+                        # filled at the stop level, or at the bar open when the bar gapped through it (never better than the open)
+                        _fx_o = float(_fx_bar_op[i]) if i < len(_fx_bar_op) else 0.0
+                        _fx_px = (min(_fx_lvl, _fx_o) if is_long else max(_fx_lvl, _fx_o)) if _fx_o > 0 else _fx_lvl
+                        _fx_fire = "FIXED_STOP"
             if _fx_fire:
+                px = _fx_px
                 pos["fees"] += abs(pos["qty"] * px) * half_fee
                 _pnl = (
                     pos["realized"]

@@ -26,6 +26,18 @@ live-failover-watchdog.service (enabled, nice 10, ~15 s tick, stdlib + live_fail
    LF_FAILBACK_S (600 s) or pin=mac -> stop the trading unit, verify no S1 trader is left, THEN
    lease holder=mac gen+1 (the Mac agent pulls S1 account state before un-fencing).
    Manual override: tools/live_failover_ctl.sh {status|force-s1|force-mac|auto|arm|disarm}.
+3. NOT-TRADING TAKEOVER (2026-10-14 USER "s1 ... should also detect other reasons (like ip bans) so it starts trading
+   whenever macbook doesnt for whatever reason"): the Mac heartbeat carries trading_health per venue
+   (live_failover_common.TradingHealth). While the Mac is REACHABLE (fresh heartbeat) a venue whose kinds persist —
+   broker_unreachable >= LF_NT_BROKER_S (60 s, after the Mac's own 120 s no-successful-poll threshold = ~3 min total),
+   order_path_dead >= LF_NT_ORDER_S (300 s), traders_dead >= LF_TRADING_DEAD_S — for >= LF_TAKEOVER_CONFIRM ticks is taken
+   over ONLY after S1 verified its OWN broker access for that venue (tools/live_failover_state_check.py --probe: one
+   read-only positions call per account; S1 may share the ban). The lease then carries venues="crypto" / "stocks" /
+   "crypto,stocks": the Mac fences only those venues' gated traders; S1 runs a venue only once it is in run_venues, which
+   is set after the Mac acknowledged the fence for that gen (or is silent >= LF_FENCE_WAIT_S). A held lease grows (gen+1)
+   when another venue stops trading or the Mac goes fully down. pin=mac blocks every takeover; the arm file is required.
+   Failback: Mac heartbeat + data fresh AND no not-trading kind in any leased venue for LF_FAILBACK_S x backoff
+   (x2 per earlier not-trading takeover in the last 6 h, max x8 = no ping-pong).
 Every switch -> ~/logs/live_failover.log + data/live_failover/ALERTS.jsonl + ALERT_LATEST.json.
 Fixtures/tests: LF_LIVE_DIR / LF_SANDBOX_DIR / LF_LOG / LF_DRY_RUN=1 / LF_FAKE_NOW.
 """
@@ -60,6 +72,13 @@ TRADING_DEAD_S = float(os.environ.get("LF_TRADING_DEAD_S", "600"))  # > max norm
 UNITS = {"crypto": "live-failover-crypto-producers.service", "stocks": "live-failover-stocks-producers.service", "trading": "live-failover-trading.service"}
 TRADER_PATTERN = r"python.*(ez_manage\.py --account|tradier_manage\.py --accounts)"
 HOST = socket.gethostname()
+NT_BROKER_S = float(os.environ.get("LF_NT_BROKER_S", "60"))
+NT_ORDER_S = float(os.environ.get("LF_NT_ORDER_S", "300"))
+NT_PROBE_EVERY_S = float(os.environ.get("LF_NT_PROBE_EVERY_S", "120"))
+NT_BACKOFF_WINDOW_S = float(os.environ.get("LF_NT_BACKOFF_WINDOW_S", "21600"))
+NT_BACKOFF_MAX = int(os.environ.get("LF_NT_BACKOFF_MAX", "3"))
+NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S}
+STATE_CHECK = Path(__file__).resolve().parent / "live_failover_state_check.py"
 
 
 def log(msg):
@@ -112,6 +131,20 @@ class Actions:
             rc = self._systemctl("stop", unit)
             log(f"systemctl stop {unit} rc={rc}")
 
+    def probe(self, venue):
+        """S1's OWN broker access for a venue (read-only positions call per account). Fixture: LF_FAKE_PROBE[_<VENUE>]=ok|fail."""
+        if self.dry:
+            verdict = os.environ.get(f"LF_FAKE_PROBE_{venue.upper()}", os.environ.get("LF_FAKE_PROBE", "ok"))
+            self.calls.append(("probe", venue))
+            return {"ok": verdict == "ok", "detail": f"fixture {verdict}"}
+        try:
+            result = subprocess.run([sys.executable, str(STATE_CHECK), "--probe", "--venue", venue, "--json"], capture_output=True, text=True, timeout=150)
+            report = json.loads(result.stdout or "{}")
+            verdict = (report.get("venues") or {}).get(venue) or {}
+            return {"ok": result.returncode == 0 and bool(verdict.get("ok")), "detail": verdict.get("summary") or result.stderr[-300:]}
+        except Exception as exc:
+            return {"ok": False, "detail": repr(exc)[:300]}
+
     def traders_alive(self):
         if self.dry:
             return 1 if UNITS["trading"] in self.fake_active else 0
@@ -127,10 +160,26 @@ def load_lease():
     return lease
 
 
-def write_lease(lease, holder, reason):
+def write_lease(lease, holder, reason, venues=None, nt=False):
+    """holder=s1: venues = what the Mac must fence (default all); run_venues = what S1 may run, set by set_run_venues()
+    only once the Mac acknowledged the fence for this gen. A growing S1 lease keeps its current run_venues."""
     new = dict(lease, holder=holder, gen=int(lease.get("gen", 0)) + 1, since=C.iso(), since_epoch=C.now_s(), reason=reason, by=HOST)
+    if holder == "s1":
+        new["venues"] = C.venues_str(venues or C.VENUES)
+        new["run_venues"] = lease.get("run_venues", "") if lease.get("holder") == "s1" else ""
+        new["nt"] = bool(nt or (lease.get("holder") == "s1" and lease.get("nt")))
+    else:
+        for key in ("venues", "run_venues", "nt"):
+            new.pop(key, None)
     C.atomic_write_json(LF / "lease.json", new)
-    alert("LEASE_" + holder.upper(), gen=new["gen"], reason=reason)
+    alert("LEASE_" + holder.upper(), gen=new["gen"], reason=reason, venues=new.get("venues"))
+    return new
+
+
+def set_run_venues(lease, venues):
+    new = dict(lease, run_venues=C.venues_str(venues))
+    C.atomic_write_json(LF / "lease.json", new)
+    alert("LEASE_RUN_VENUES", gen=new["gen"], run_venues=new["run_venues"])
     return new
 
 
@@ -302,6 +351,9 @@ class Watchdog:
         self.state.setdefault("venues", {"crypto": {"mode": "NORMAL"}, "stocks": {"mode": "NORMAL"}})
         self.state.setdefault("takeover", {"confirm": 0})
         self.state.setdefault("failback", {})
+        self.state.setdefault("not_trading", {})
+        self.state.setdefault("probe", {})
+        self.state.setdefault("nt_history", [])
 
     def armed(self):
         return (LF / "TRADING_FAILOVER_ENABLED").exists()
@@ -328,7 +380,7 @@ class Watchdog:
         vstate = self.state["venues"].setdefault(venue, {"mode": "NORMAL"})
         unit = UNITS[venue]
         need = reading["applicable"] and reading["stale"]
-        hold = lease["holder"] == "s1" and reading["applicable"]
+        hold = lease["holder"] == "s1" and reading["applicable"] and venue in C.lease_venues(lease)
         if vstate.get("mode") != "ACTIVE":
             requested = bool(((view_hb or {}).get("pull_request") or {}).get(venue)) and reading["applicable"]
             if requested and not (need or hold):
@@ -367,6 +419,66 @@ class Watchdog:
         vstate.update(mode="NORMAL", outbox=False, since=C.iso(now), since_epoch=now, fresh_since=None)
         alert("DATA_FAILOVER_OFF", venue=venue, reason=why)
 
+    def not_trading(self, view, now):
+        """Per venue: is the REACHABLE Mac not trading (trading_health kinds), for how long, and is it takeover-ready."""
+        hb = view["hb"] if (view["hb"] is not None and view["hb_age"] is not None and view["hb_age"] <= HB_FRESH_S) else None
+        health = (hb or {}).get("trading_health") or {}
+        out = {}
+        for venue in C.VENUES:
+            st = self.state["not_trading"].setdefault(venue, {})
+            reading = health.get(venue) or {}
+            kinds = [k for k in reading.get("kinds") or [] if k in NT_NEED and not (reading.get("fenced") and k == "traders_dead")]
+            bad = bool(hb) and bool(reading.get("applicable")) and bool(kinds)
+            if bad:
+                st["since"] = st.get("since") or now
+                st["confirm"] = int(st.get("confirm", 0)) + 1
+                st.update(kinds=kinds, reasons=reading.get("reasons"))
+            else:
+                if st.get("alerted"):
+                    alert("MAC_TRADING_AGAIN", venue=venue, after_s=int(now - (st.get("since") or now)))
+                st.update(since=None, confirm=0, kinds=[], reasons=None, alerted=False)
+            need = min(NT_NEED[k] for k in kinds) if bad else None
+            st["need_s"] = need
+            st["ready"] = bool(bad and now - st["since"] >= need and st["confirm"] >= TAKEOVER_CONFIRM)
+            if st["ready"] and not st.get("alerted"):
+                alert("MAC_NOT_TRADING", venue=venue, kinds=kinds, reasons=reading.get("reasons"), for_s=int(now - st["since"]))
+                st["alerted"] = True
+            out[venue] = st
+        return out
+
+    def s1_broker_ok(self, venue, now):
+        """S1 must reach the broker itself before it takes a venue (it may share the Mac's IP ban). Cached NT_PROBE_EVERY_S."""
+        cache = self.state["probe"].get(venue) or {}
+        if now - float(cache.get("epoch", 0)) < NT_PROBE_EVERY_S:
+            return bool(cache.get("ok"))
+        result = self.actions.probe(venue)
+        if bool(result.get("ok")) != bool(cache.get("ok")) or not cache:
+            alert("S1_BROKER_PROBE_OK" if result.get("ok") else "S1_BROKER_PROBE_FAILED", venue=venue, detail=result.get("detail"))
+        self.state["probe"][venue] = {"epoch": now, "at": C.iso(now), "ok": bool(result.get("ok")), "detail": result.get("detail")}
+        return bool(result.get("ok"))
+
+    def nt_candidates(self, nt, pin, scope, now):
+        if pin == "mac":
+            return []
+        wanted = [v for v, st in nt.items() if st.get("ready") and v not in scope]
+        if wanted and not self.armed():
+            for venue in wanted:
+                st = nt[venue]
+                if not st.get("disarmed_alerted"):
+                    alert("TRADING_FAILOVER_WOULD_TAKE_OVER_DISARMED", venue=venue, kinds=st.get("kinds"), reasons=st.get("reasons"))
+                    st["disarmed_alerted"] = True
+            return []
+        return [v for v in wanted if self.s1_broker_ok(v, now)]
+
+    def failback_needed_s(self, lease, now):
+        if not lease.get("nt"):
+            return FAILBACK_S
+        recent = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S]
+        return FAILBACK_S * (2 ** min(max(len(recent) - 1, 0), NT_BACKOFF_MAX))
+
+    def _nt_reason(self, nt, venues):
+        return "Mac reachable but NOT TRADING: " + "; ".join(f"{v}: {', '.join(nt[v].get('reasons') or nt[v].get('kinds') or [])} for {int(C.now_s() - (nt[v].get('since') or C.now_s()))}s" for v in venues)
+
     def trading_failover(self, view, readings, lease, now):
         tk = self.state["takeover"]
         fb = self.state["failback"]
@@ -381,6 +493,7 @@ class Watchdog:
         trading_dead = bool(tk.get("dead_since")) and now - tk["dead_since"] >= TRADING_DEAD_S
         cond = hb_absent and pushes_stopped and (unreachable or trading_dead)
         tk.update(hb_absent=hb_absent, pushes_stopped=pushes_stopped, unreachable=unreachable, trading_dead=trading_dead, cond=cond)
+        nt = self.not_trading(view, now)
         pin = lease.get("pin")
         if pin == "mac_once":
             pin = "mac"
@@ -398,27 +511,53 @@ class Watchdog:
                 return lease
             if want:
                 lease = write_lease(lease, "s1", "manual force-s1" if pin == "s1" else f"Mac down: hb_age={None if hb_age is None else int(hb_age)}s pushes_stopped unreachable={unreachable} trading_dead={trading_dead}")
-                merge_mac_state()
-                build_outbox("crypto", now)
-                if C.stocks_applicable(now) or readings["stocks"]["applicable"]:
-                    build_outbox("stocks", now)
-                bridge_local(now)
+                taken = list(C.VENUES)
             else:
-                return lease
+                taken = self.nt_candidates(nt, pin, [], now)
+                if not taken:
+                    return lease
+                lease = write_lease(lease, "s1", self._nt_reason(nt, taken), venues=taken, nt=True)
+                self.state["nt_history"] = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S] + [now]
+            merge_mac_state()
+            build_outbox("crypto", now)
+            if C.stocks_applicable(now) or readings["stocks"]["applicable"]:
+                build_outbox("stocks", now)
+            bridge_local(now)
         # holder == s1
+        scope = C.lease_venues(lease)
+        grow = []
+        if pin != "mac" and set(scope) != set(C.VENUES):
+            if cond:
+                grow = [v for v in C.VENUES if v not in scope]
+                why = f"Mac down while S1 held {scope}: grow to all venues"
+            else:
+                grow = self.nt_candidates(nt, pin, scope, now)
+                why = self._nt_reason(nt, grow) if grow else ""
+            if grow:
+                lease = write_lease(lease, "s1", why, venues=scope + grow, nt=not cond)
+                if not cond:
+                    self.state["nt_history"] = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S] + [now]
+                merge_mac_state()
+                scope = C.lease_venues(lease)
         mac_fenced = isinstance(view["hb"], dict) and view["hb"].get("fence_ack_gen") == lease["gen"] and view["hb"].get("trading_procs") == 0
         mac_silent = hb_absent or (hb_age is not None and hb_age >= FENCE_WAIT_S)
-        healthy = (hb_age is not None and hb_age <= HB_FRESH_S and not any(r["applicable"] and r["stale"] for r in readings.values()))
+        nt_left = [v for v in scope if nt.get(v, {}).get("kinds")]
+        healthy = (hb_age is not None and hb_age <= HB_FRESH_S and not any(r["applicable"] and r["stale"] for r in readings.values()) and not nt_left)
         if pin == "mac" or (pin != "s1" and healthy):
             fb["healthy_since"] = fb.get("healthy_since") or now
-            if pin == "mac" or now - fb["healthy_since"] >= FAILBACK_S:
-                return self.failback(lease, "manual force-mac" if pin == "mac" else f"Mac healthy {int(now - fb['healthy_since'])}s")
+            need = self.failback_needed_s(lease, now)
+            fb["needed_s"] = need
+            if pin == "mac" or now - fb["healthy_since"] >= need:
+                return self.failback(lease, "manual force-mac" if pin == "mac" else f"Mac healthy {int(now - fb['healthy_since'])}s (needed {int(need)}s) venues={scope}")
         else:
             fb["healthy_since"] = None
+            fb["blocked_by"] = nt_left
         if mac_fenced or mac_silent:
+            if C.lease_venues(dict(venues=lease.get("run_venues"))) != scope or lease.get("run_venues") is None:
+                lease = set_run_venues(lease, scope)
             self.actions.start(UNITS["trading"])
         else:
-            log(f"TRADING_FAILOVER: lease gen {lease['gen']} held by S1 but Mac not yet fenced (hb_age={hb_age}) — waiting before starting S1 traders")
+            log(f"TRADING_FAILOVER: lease gen {lease['gen']} held by S1 (venues={scope}) but Mac not yet fenced (hb_age={hb_age}) — waiting before S1 runs them")
         return lease
 
     def failback(self, lease, why):
@@ -432,6 +571,7 @@ class Watchdog:
             return lease
         self.state["failback"] = {}
         self.state["takeover"] = {"confirm": 0}
+        self.state["not_trading"] = {}
         return write_lease(lease, "mac", why)
 
 

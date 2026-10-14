@@ -8,6 +8,8 @@
 #           ez_reentry_daemon.py (the Mac runs both).
 #   stocks: tradier_manage --accounts {trb,trc,tra} (+ tradier feeds) on NYSE session days from
 #           open-35 min (same as the Mac's 13:00Z start_stocks.sh).
+# 2026-10-14 per-venue lease: a venue runs only while lease.json run_venues contains it (lf_lease_fenced
+# per venue); s1_failover_start.sh refuses a trader until S1's own position writer matches the broker.
 # Lease lost -> exit 0 (systemd then stops the unit and SIGTERMs every child in its cgroup).
 # All children live in this unit's cgroup (setsid does not leave it), so `systemctl stop`
 # is the single clean stop path. Never flattens or closes anything.
@@ -29,22 +31,24 @@ s = C.nyse_session()
 sys.exit(0 if s and s[0] - 2100 <= C.now_s() <= s[1] + 1800 else 1)
 EOF
 }
-log "START pid=$$ lease=$(cat "$BIN/data/live_failover/lease.json" 2>/dev/null | tr -d '\n ' | cut -c1-200)"
+log "START pid=$$ lease=$(cat "$BIN/data/live_failover/lease.json" 2>/dev/null | tr -d '\n ' | cut -c1-260)"
 while true; do
-    if lf_lease_fenced ez_manage.py "$BIN"; then
+    if ! grep -q '"holder": *"s1"' "$BIN/data/live_failover/lease.json" 2>/dev/null; then
         log "lease no longer held by S1 — exiting (systemd stops all S1 traders)"
         exit 0
     fi
-    for acct in ang inf flz men fin; do
-        pgrep -f "ez_manage.py --account $acct" >/dev/null || { log "starting crypto:$acct"; bash "$BIN/tools/s1_failover_start.sh" crypto "$acct"; }
-    done
-    for extra in ez_positions_watchdog.py ez_reentry_daemon.py; do
-        if [ -f "$BIN/$extra" ] && ! pgrep -f "python.*$extra" >/dev/null; then
-            setsid nohup "$PY" -u "$extra" >> "/home/niels/logs/failover_${extra}.log" 2>&1 </dev/null &
-            log "started $extra"
-        fi
-    done
-    if stocks_window; then
+    if ! lf_lease_fenced ez_manage.py "$BIN"; then
+        for acct in ang inf flz men fin; do
+            pgrep -f "ez_manage.py --account $acct" >/dev/null || { log "starting crypto:$acct"; bash "$BIN/tools/s1_failover_start.sh" crypto "$acct"; }
+        done
+        for extra in ez_positions_watchdog.py ez_reentry_daemon.py; do
+            if [ -f "$BIN/$extra" ] && ! pgrep -f "python.*$extra" >/dev/null; then
+                setsid nohup "$PY" -u "$extra" >> "/home/niels/logs/failover_${extra}.log" 2>&1 </dev/null &
+                log "started $extra"
+            fi
+        done
+    fi
+    if ! lf_lease_fenced tradier_manage.py "$BIN" && stocks_window; then
         for acct in trb trc tra; do
             pgrep -f "tradier_manage.py --accounts $acct" >/dev/null || { log "starting stocks:$acct"; bash "$BIN/tools/s1_failover_start.sh" stocks "$acct"; }
         done

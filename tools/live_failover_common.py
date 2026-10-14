@@ -22,6 +22,7 @@ Freshness model (per venue):
 bar in the file), clamped at 0; bar timestamps are OPEN times (klines_cache convention).
 """
 import json
+import math
 import os
 import re
 import time
@@ -366,3 +367,307 @@ def write_identity_seed(account_dir, position_files, source):
     payload = {"written_epoch": time.time(), "written_at": iso(time.time()), "source": source, "rows": rows}
     atomic_write_json(Path(account_dir) / ".identity_seed.json", payload)
     return len(rows)
+
+
+# ---------------------------------------------------------------- TRADING HEALTH (USER 2026-10-14)
+# "s1 is supposed to take over immediately if macbook stops trading ... it should also detect other reasons (like ip bans)".
+# Measured on the Mac from the logs its live processes already write (no extra broker calls, no API weight):
+#   crypto : per account the single position writer's REST poll (ez_positions_service_<acct>.log + the failover writer
+#            ez_positions_realtime_<acct>.log): "FETCHED and SYNCED" = broker reachable, "Fetch error" = failed poll
+#            (-2015/401 IP-or-key, 418/-1003 ban, 429 rate limit). ez_manage_<acct>.log: OPENs refused with
+#            BLOCKED_POSITIONS_BROKER_UNREACHABLE, POSITIONS_BROKER_FETCH_FAILED. ez_manage process alive.
+#   stocks : (NYSE session only) per account tradier_manage_<acct>.log: ORDER_STALL_SKIP (order exceeded 120 s), LOOP_LAG
+#            "event loop frozen Xs", ORDER_RESULT ... SUBMITTED (an order reached the broker), POSITIONS_BROKER_FETCH_FAILED,
+#            401/Unauthorized; tradier_manage process alive; log silence while alive (frozen).
+# Venue kinds: broker_unreachable | order_path_dead | traders_dead. S1 (tools/live_failover_s1.py) turns a sustained kind
+# into a venue takeover after verifying its OWN broker access.
+BROKER_DEAD_S = float(os.environ.get("LF_BROKER_DEAD_S", "120"))
+BROKER_ERR_MIN = int(os.environ.get("LF_BROKER_ERR_MIN", "3"))
+BROKER_DEAD_FRAC = float(os.environ.get("LF_BROKER_DEAD_FRAC", "0.6"))
+ORDER_WINDOW_S = float(os.environ.get("LF_ORDER_WINDOW_S", "300"))
+LOOP_LAG_DEAD_S = float(os.environ.get("LF_LOOP_LAG_DEAD_S", "60"))
+STOCK_SILENT_S = float(os.environ.get("LF_STOCK_SILENT_S", "180"))
+ORDER_DEAD_FRAC = float(os.environ.get("LF_ORDER_DEAD_FRAC", "0.5"))
+HEALTH_KEEP_S = 3600.0
+VENUES = ("crypto", "stocks")
+STOCK_SCRIPTS = ("tradier_manage.py", "tradier_positions.py")
+_TS_FULL = re.compile(r"^\[?(\d{4})-(\d\d)-(\d\d)[ T](\d\d):(\d\d):(\d\d)")
+_TS_MD = re.compile(r"^(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d) - ")
+_TS_D = re.compile(r"^(\d\d) (\d\d):(\d\d):(\d\d) - ")
+_LAG_RX = re.compile(r"event loop frozen ([0-9.]+)s")
+AUTH_RX = re.compile(r"-2015|Invalid API-key|status 401|<Response \[401\]>|\b401\b.*Unauthori|Unauthorized", re.I)
+BANLINE_RX = re.compile(r"\b418\b|-1003|banned until|Way too many requests")
+RATE_RX = re.compile(r"\b429\b|Too Many Requests|-1015")
+
+
+def script_venue(script):
+    return "stocks" if os.path.basename(str(script)) in STOCK_SCRIPTS else "crypto"
+
+
+def lease_venues(lease):
+    """Venues a holder=s1 lease covers. A lease without the field (pre-2026-10-14 / heartbeat-absent takeover) = all."""
+    raw = (lease or {}).get("venues")
+    if raw is None or raw == "":
+        return list(VENUES) if raw is None else []
+    return [v for v in VENUES if v in str(raw).split(",")]
+
+
+def venues_str(venues):
+    return ",".join(v for v in VENUES if v in set(venues))
+
+
+def line_epoch(line, now):
+    """Epoch of a log line in any of the live formats: [YYYY-MM-DD HH:MM:SS..., 'MM-DD HH:MM:SS - ' (tradier_manage),
+    'DD HH:MM:SS - ' (ez_manage). Year/month are inferred from `now` (all logs are UTC on the Mac)."""
+    ref = datetime.fromtimestamp(now, tz=timezone.utc)
+    try:
+        m = _TS_FULL.match(line)
+        if m:
+            return datetime(*map(int, m.groups()), tzinfo=timezone.utc).timestamp()
+        m = _TS_MD.match(line)
+        if m:
+            mo, d, hh, mi, ss = map(int, m.groups())
+            year = ref.year - (1 if mo > ref.month else 0)
+            return datetime(year, mo, d, hh, mi, ss, tzinfo=timezone.utc).timestamp()
+        m = _TS_D.match(line)
+        if m:
+            d, hh, mi, ss = map(int, m.groups())
+            year, mo = ref.year, ref.month
+            if d > ref.day:
+                mo -= 1
+                if mo == 0:
+                    year, mo = year - 1, 12
+            return datetime(year, mo, d, hh, mi, ss, tzinfo=timezone.utc).timestamp()
+    except ValueError:
+        return None
+    return None
+
+
+def classify_error(text):
+    if AUTH_RX.search(text):
+        return "auth_ip"
+    if BANLINE_RX.search(text):
+        return "ban"
+    if RATE_RX.search(text):
+        return "rate"
+    return "other"
+
+
+def _crypto_pos_events(line):
+    if "FETCHED and SYNCED" in line:
+        return [("ok", None)]
+    if "Fetch error" in line:
+        return [("err", classify_error(line))]
+    return []
+
+
+def _crypto_manage_events(line):
+    out = []
+    if "BLOCKED_POSITIONS_BROKER_UNREACHABLE" in line and "WH_TRACE_2_done" in line:
+        out.append(("blocked", None))
+    if "POSITIONS_BROKER_FETCH_FAILED" in line:
+        out.append(("fetch_failed", classify_error(line)))
+    return out
+
+
+def _stock_events(line):
+    out = []
+    if "[ORDER_STALL_SKIP]" in line:
+        out.append(("stall", None))
+    if "[LOOP_LAG]" in line:
+        m = _LAG_RX.search(line)
+        if m:
+            out.append(("lag", float(m.group(1))))
+    if "[ORDER_RESULT]" in line and "SUBMITTED" in line:
+        out.append(("submitted", None))
+    if "POSITIONS_BROKER_FETCH_FAILED" in line:
+        out.append(("fetch_failed", classify_error(line)))
+    elif "tradier" in line.lower() and AUTH_RX.search(line):
+        out.append(("auth", None))
+    return out
+
+
+class LogFollower:
+    """Incremental tail of one log: first read = last `initial_bytes`, then only appended bytes (rotation/truncation aware).
+    Keeps (epoch, kind, value) events for HEALTH_KEEP_S plus the last epoch per kind and of any timestamped line."""
+
+    def __init__(self, path, extractor, initial_bytes=524288):
+        self.path = Path(path)
+        self.extractor = extractor
+        self.initial_bytes = initial_bytes
+        self.offset = None
+        self.inode = None
+        self.partial = b""
+        self.events = []
+        self.last = {}
+        self.last_any = None
+        self.first_seen = None
+
+    def poll(self, now):
+        try:
+            st = self.path.stat()
+        except OSError:
+            return self
+        if self.inode != st.st_ino or self.offset is None or st.st_size < self.offset:
+            self.inode, self.partial = st.st_ino, b""
+            self.offset = max(0, st.st_size - self.initial_bytes) if self.offset is None else 0
+            skip_first = self.offset > 0
+        else:
+            skip_first = False
+        if st.st_size > self.offset:
+            try:
+                with open(self.path, "rb") as handle:
+                    handle.seek(self.offset)
+                    chunk = handle.read(min(st.st_size - self.offset, 8 * 1048576))
+            except OSError:
+                return self
+            self.offset += len(chunk)
+            data = self.partial + chunk
+            lines = data.split(b"\n")
+            self.partial = lines.pop()
+            if skip_first and lines:
+                lines = lines[1:]
+            for raw in lines:
+                line = raw.decode("utf-8", "replace")
+                stamp = line_epoch(line, now)
+                if stamp is None:
+                    continue
+                self.last_any = stamp if self.last_any is None else max(self.last_any, stamp)
+                if self.first_seen is None:
+                    self.first_seen = stamp
+                for kind, value in self.extractor(line):
+                    self.events.append((stamp, kind, value))
+                    self.last[kind] = max(self.last.get(kind, 0.0), stamp)
+        cutoff = now - HEALTH_KEEP_S
+        if self.events and self.events[0][0] < cutoff:
+            self.events = [e for e in self.events if e[0] >= cutoff]
+        return self
+
+    def window(self, now, seconds, kind):
+        return [e for e in self.events if e[1] == kind and now - e[0] <= seconds]
+
+
+def trader_procs(ps_text=None):
+    """{'crypto': {acct: n}, 'stocks': {acct: n}} from ONE `ps` call (live traders are `... ez_manage.py --account X`)."""
+    if ps_text is None:
+        try:
+            import subprocess
+            ps_text = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, timeout=10).stdout
+        except Exception:
+            ps_text = ""
+    out = {"crypto": {a: 0 for a in CRYPTO_ACCOUNTS}, "stocks": {a: 0 for a in STOCK_ACCOUNTS}}
+    for line in ps_text.splitlines():
+        if "python" not in line:
+            continue
+        m = re.search(r"ez_manage\.py --account (\w+)", line)
+        if m and m.group(1) in out["crypto"]:
+            out["crypto"][m.group(1)] += 1
+            continue
+        m = re.search(r"tradier_manage\.py --accounts (\w+)", line)
+        if m and m.group(1) in out["stocks"]:
+            out["stocks"][m.group(1)] += 1
+    return out
+
+
+class TradingHealth:
+    """Mac-side trading-health meter (one instance lives in the Mac agent so the log tails stay incremental)."""
+
+    def __init__(self, logdir):
+        logdir = Path(logdir)
+        self.crypto = {a: {"svc": LogFollower(logdir / f"ez_positions_service_{a}.log", _crypto_pos_events),
+                           "rt": LogFollower(logdir / f"ez_positions_realtime_{a}.log", _crypto_pos_events),
+                           "mgr": LogFollower(logdir / f"ez_manage_{a}.log", _crypto_manage_events, 1048576)} for a in CRYPTO_ACCOUNTS}
+        self.stocks = {a: LogFollower(logdir / f"tradier_manage_{a}.log", _stock_events, 1048576) for a in STOCK_ACCOUNTS}
+
+    def measure(self, now=None, procs=None, fenced=()):
+        now = now_s() if now is None else now
+        procs = trader_procs() if procs is None else procs
+        return {"crypto": self._crypto(now, procs.get("crypto", {}), "crypto" in fenced),
+                "stocks": self._stocks(now, procs.get("stocks", {}), "stocks" in fenced), "measured_at": iso(now)}
+
+    def _crypto(self, now, alive, fenced):
+        accounts, dead, considered = {}, [], 0
+        for acct, f in self.crypto.items():
+            for follower in f.values():
+                follower.poll(now)
+            svc, rt, mgr = f["svc"], f["rt"], f["mgr"]
+            oks = [x for x in (svc.last.get("ok"), rt.last.get("ok")) if x]
+            last_ok = max(oks) if oks else None
+            errs = [e for e in svc.events + rt.events if e[1] == "err"]
+            consec = sum(1 for e in errs if last_ok is None or e[0] > last_ok)
+            seen = [x for x in (svc.first_seen, rt.first_seen) if x]
+            anys = [x for x in (svc.last_any, rt.last_any) if x]
+            if last_ok is not None:
+                no_ok_s = now - last_ok
+            elif seen:
+                no_ok_s = now - min(seen)  # lower bound: no success anywhere in the tail
+            else:
+                no_ok_s = None
+            silent_s = (now - max(anys)) if anys else None
+            classes = {}
+            for e in errs:
+                if now - e[0] <= ORDER_WINDOW_S:
+                    classes[e[2]] = classes.get(e[2], 0) + 1
+            n_alive = int(alive.get(acct, 0))
+            active = n_alive > 0 or (silent_s is not None and silent_s < HEALTH_KEEP_S)
+            broker_dead = bool(active and no_ok_s is not None and no_ok_s >= BROKER_DEAD_S and (consec >= BROKER_ERR_MIN or (silent_s is not None and silent_s >= BROKER_DEAD_S)))
+            considered += 1 if active else 0
+            if broker_dead:
+                dead.append(acct)
+            accounts[acct] = {"trader_alive": n_alive, "last_broker_ok_age_s": None if last_ok is None else round(now - last_ok, 1),
+                              "no_broker_ok_s": None if no_ok_s is None else round(no_ok_s, 1), "consec_broker_errors": consec,
+                              "writer_log_silent_s": None if silent_s is None else round(silent_s, 1), "error_classes_window": classes,
+                              "opens_blocked_broker_unreachable_window": len(mgr.window(now, ORDER_WINDOW_S, "blocked")),
+                              "manage_broker_fetch_failed_window": len(mgr.window(now, ORDER_WINDOW_S, "fetch_failed")), "broker_dead": broker_dead}
+        kinds, reasons = [], []
+        need = max(1, math.ceil(BROKER_DEAD_FRAC * considered - 1e-9)) if considered else 0
+        if considered and len(dead) >= need:
+            kinds.append("broker_unreachable")
+            reasons.append(f"broker_unreachable {len(dead)}/{considered} accounts ({','.join(dead)}) no successful broker poll >= {int(BROKER_DEAD_S)}s")
+        traders = sum(1 for a in accounts.values() if a["trader_alive"])
+        if not fenced and traders == 0:
+            kinds.append("traders_dead")
+            reasons.append("no crypto ez_manage alive")
+        return {"applicable": True, "fenced": fenced, "not_trading": bool(kinds), "kinds": kinds, "reasons": reasons,
+                "traders_alive": traders, "accounts_considered": considered, "broker_dead_accounts": dead, "accounts": accounts}
+
+    def _stocks(self, now, alive, fenced):
+        for follower in self.stocks.values():
+            follower.poll(now)
+        if not stocks_applicable(now):
+            return {"applicable": False, "fenced": fenced, "not_trading": False, "kinds": [], "reasons": ["market_closed"]}
+        accounts, opd, bun, considered = {}, [], [], 0
+        for acct, f in self.stocks.items():
+            n_alive = int(alive.get(acct, 0))
+            stalls = len(f.window(now, ORDER_WINDOW_S, "stall"))
+            lags = [e[2] for e in f.window(now, ORDER_WINDOW_S, "lag")]
+            submitted = len(f.window(now, ORDER_WINDOW_S, "submitted"))
+            fetch_failed = len(f.window(now, ORDER_WINDOW_S, "fetch_failed"))
+            auth = len(f.window(now, ORDER_WINDOW_S, "auth")) + sum(1 for e in f.window(now, ORDER_WINDOW_S, "fetch_failed") if e[2] == "auth_ip")
+            silent_s = (now - f.last_any) if f.last_any else None
+            last_sub = f.last.get("submitted")
+            lag_max = max(lags) if lags else 0.0
+            order_dead = bool(n_alive and submitted == 0 and (stalls >= 1 or lag_max >= LOOP_LAG_DEAD_S or (silent_s is not None and silent_s >= STOCK_SILENT_S)))
+            broker_bad = bool(n_alive and submitted == 0 and (auth >= 1 or fetch_failed >= BROKER_ERR_MIN))
+            considered += 1 if n_alive else 0
+            if order_dead:
+                opd.append(acct)
+            if broker_bad:
+                bun.append(acct)
+            accounts[acct] = {"trader_alive": n_alive, "order_stall_skips_window": stalls, "loop_lag_max_s_window": lag_max,
+                              "orders_submitted_window": submitted, "last_order_submitted_age_s": None if last_sub is None else round(now - last_sub, 1),
+                              "broker_fetch_failed_window": fetch_failed, "auth_errors_window": auth,
+                              "log_silent_s": None if silent_s is None else round(silent_s, 1), "order_path_dead": order_dead, "broker_unreachable": broker_bad}
+        kinds, reasons = [], []
+        need = max(1, math.ceil(ORDER_DEAD_FRAC * considered - 1e-9)) if considered else 0
+        if considered and len(bun) >= need:
+            kinds.append("broker_unreachable")
+            reasons.append(f"broker_unreachable {len(bun)}/{considered} accounts ({','.join(bun)})")
+        if considered and len(opd) >= need:
+            kinds.append("order_path_dead")
+            reasons.append(f"order_path_dead {len(opd)}/{considered} accounts ({','.join(opd)}): 0 orders reached the broker in {int(ORDER_WINDOW_S)}s with stalls/loop lag >= {int(LOOP_LAG_DEAD_S)}s/silence")
+        if not fenced and considered == 0:
+            kinds.append("traders_dead")
+            reasons.append("no tradier_manage alive in session")
+        return {"applicable": True, "fenced": fenced, "not_trading": bool(kinds), "kinds": kinds, "reasons": reasons,
+                "traders_alive": considered, "accounts": accounts}

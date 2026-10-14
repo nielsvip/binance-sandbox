@@ -26,21 +26,46 @@ start(){ # start <pattern> <cmd...>
 }
 # 2026-10-13 LIVE FAILOVER LEASE: S1 starts traders ONLY while it holds data/live_failover/lease.json (holder s1).
 # Applies to every caller (tools/s1_trading_supervisor.sh and the legacy s1_failover_monitor.sh).
+# 2026-10-14 per-venue lease: the venue's own trader script is checked (stocks may be leased without crypto and vice versa).
+GATE_SCRIPT=ez_manage.py
+[ "$MODE" = "stocks" ] && GATE_SCRIPT=tradier_manage.py
 if [ -f tools/live_failover_lease_gate.sh ]; then
     source tools/live_failover_lease_gate.sh
-    if lf_lease_fenced ez_manage.py /home/niels/binance; then echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 does not hold the live-trading lease" >> "$LOG/s1_failover.log"; exit 3; fi
+    if lf_lease_fenced "$GATE_SCRIPT" /home/niels/binance; then echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 does not hold the live-trading lease for this venue" >> "$LOG/s1_failover.log"; exit 3; fi
 fi
+# 2026-10-14 USER (S1 held takeover-time opened_at + phantom March rows after 40 s blind sleeps): a trader starts only once
+# S1's OWN position writer has written this account since the takeover AND its held rows match a fresh broker read
+# (tools/live_failover_state_check.py --gate: no phantom, no missing row, qty equal, opened_at present). Up to
+# LF_POSITIONS_READY_S (240 s); otherwise REFUSED (exit 4) and the supervisor retries in 20 s.
+positions_ready(){
+    local waited=0 limit="${LF_POSITIONS_READY_S:-240}" out
+    while [ "$waited" -le "$limit" ]; do
+        out=$($PY tools/live_failover_state_check.py --gate --account "$ACCT" 2>&1 | tail -1)
+        if [[ "$out" == READY* ]]; then echo "[$(ts)] [FAILOVER_START] POSITIONS_READY $MODE:$ACCT after ${waited}s: $out" >> "$LOG/s1_failover.log"; return 0; fi
+        sleep 10
+        waited=$((waited + 10))
+    done
+    echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 positions not broker-true after ${limit}s: $out" >> "$LOG/s1_failover.log"
+    return 1
+}
 SKIP=" ${FAILOVER_SKIP_FEEDS:-} "
 echo "[$(ts)] [FAILOVER_START] takeover $MODE:$ACCT with live code age ${SYNC_AGE} (Mac push every 15min)" >> "$LOG/s1_failover.log"
 case "$MODE" in
   crypto)
     case "$ACCT" in ang|inf|flz|men|fin) ;; *) echo "bad crypto account: $ACCT"; exit 1 ;; esac
     started_feed=0
-    for feed in ez_market_data.py ez_orderbook.py ez_positions_service.py ez_positions_quick.py ez_prices.py ez_klines.py ez_indicators.py ez_rankings.py ez_crosses.py; do
+    # 2026-10-14: the monolithic ez_positions_service.py (+ ez_positions_quick.py) never fetched on S1 today ("FETCHED and SYNCED"
+    # 0 times, PHANTOM_KILL "API empty/invalid") so S1 traded on March position files. Mirror the Mac's single-writer law instead:
+    # ez_positions_service_main.py <acct> = THE writer (seeded opened_at), ez_positions_realtime.py <acct> = warm standby.
+    for feed in ez_market_data.py ez_orderbook.py ez_prices.py ez_klines.py ez_indicators.py ez_rankings.py ez_crosses.py; do
         [[ "$SKIP" == *" $feed "* ]] && continue
         up "$feed" || { setsid nohup $PY "$feed" >> "$LOG/failover_${feed}.log" 2>&1 </dev/null & disown; started_feed=1; echo "[$(ts)] [FAILOVER_START] started feed: $feed" >> "$LOG/s1_failover.log"; }
     done
+    for writer in ez_positions_service_main.py ez_positions_realtime.py; do
+        up "$writer $ACCT" || { setsid nohup $PY -u "$writer" "$ACCT" >> "$LOG/failover_${writer%.py}_${ACCT}.log" 2>&1 </dev/null & disown; started_feed=1; echo "[$(ts)] [FAILOVER_START] started position writer: $writer $ACCT" >> "$LOG/s1_failover.log"; }
+    done
     [ "$started_feed" = "1" ] && sleep 40
+    positions_ready || exit 4
     up "ez_manage.py --account $ACCT" || { setsid nohup $PY ez_manage.py --account "$ACCT" >> "$LOG/failover_ez_manage_${ACCT}.log" 2>&1 </dev/null & disown; echo "[$(ts)] [FAILOVER_START] started ez_manage.py --account $ACCT" >> "$LOG/s1_failover.log"; }
     ;;
   stocks)
@@ -52,6 +77,7 @@ case "$MODE" in
     done
     up "tradier_positions.py --accounts $ACCT" || { setsid nohup $PY tradier_positions.py --accounts "$ACCT" >> "$LOG/failover_tradier_positions_${ACCT}.log" 2>&1 </dev/null & disown; started_feed=1; }
     [ "$started_feed" = "1" ] && sleep 40
+    positions_ready || exit 4
     up "tradier_manage.py --accounts $ACCT" || { setsid nohup $PY tradier_manage.py --accounts "$ACCT" >> "$LOG/failover_tradier_manage_${ACCT}.log" 2>&1 </dev/null & disown; echo "[$(ts)] [FAILOVER_START] started tradier_manage.py --accounts $ACCT" >> "$LOG/s1_failover.log"; }
     ;;
   *)

@@ -3872,6 +3872,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _delta_log_path.parent.mkdir(parents=True, exist_ok=True)
     _delta_log_fh = open(_delta_log_path, "a", buffering=1)
     print(f"[delta-log] {_delta_log_path}", flush=True)
+    try:  # BRAIN 2026-10-14: one board-context line per run (tier/bh/baseline/start-set) — the context the graph conditions on
+        _delta_log_fh.write(json.dumps({"ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
+    except Exception as _bce:
+        print(f"[BRAIN-WARN] board ctx {_bce}", flush=True)
     # Row-parallel evals: naked + every yellow of a row are independent (all vs the same cumulative_before), so they are
     # prefetched in a forked process pool; results keyed by label, failures -> None + reason (never -1/0). Joint stays serial.
     global _POOL_PREPARED
@@ -5456,7 +5460,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             finally:
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
-        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})
+        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
         return res, err
     _delta_vs = delta_vs_result  # module-level pure twin (test_v15_row_guards covers the verdict/settle composition)
     def _num_cell(ws, rr: int, col: int, value, good: bool, bold: bool = True):

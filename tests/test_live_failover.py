@@ -66,7 +66,8 @@ class Env:
         env = {"LF_BASE": str(self.mac), "LF_STAGE": str(tmp / "stage"), "LF_NO_SSH": "1", "LF_NO_KILL": "1",
                "LF_REMOTE_DIR": str(self.s1 / "data" / "live_failover"), "LF_LOGDIR": str(self.logs),
                "LF_LIVE_DIR": str(self.s1), "LF_SANDBOX_DIR": str(self.sb), "LF_STACK_DIR": str(self.stack),
-               "LF_LOG": str(tmp / "live_failover.log"), "LF_DRY_RUN": "1", "LF_NO_LAUNCHCTL": "1"}
+               "LF_LOG": str(tmp / "live_failover.log"), "LF_DRY_RUN": "1", "LF_NO_LAUNCHCTL": "1",
+               "LF_FAKE_PROCS": "ang,inf,flz,men,fin,trb,trc,tra"}
         for key, value in env.items():
             monkeypatch.setenv(key, value)
         self.monkeypatch = monkeypatch
@@ -389,7 +390,7 @@ def test_run_with_watchdog_contains_lease_gate():
     assert gate_at < text.index("S1 FAILOVER GATE (MacBook only)")
     assert "lf_lease_fenced \"$SCRIPT\" \"$WORKDIR\"" in text
     start = (TOOLS / "s1_failover_start.sh").read_text()
-    assert "lf_lease_fenced ez_manage.py /home/niels/binance" in start
+    assert 'lf_lease_fenced "$GATE_SCRIPT" /home/niels/binance' in start and "GATE_SCRIPT=tradier_manage.py" in start
 
 
 # ---------------------------------------------------------------- on-demand S1 pull at >60 s (USER 2026-10-14)
@@ -489,9 +490,10 @@ def test_opened_at_byte_identical_through_takeover_and_handback(world):
     mac_rows = {k: {"symbol": k.split(":")[1].rsplit("_", 1)[0], "position_side": "LONG", "positionAmt": 1.0, "entry_price": 1.0, "max_gain": 0.5, "opened_at": oa} for k, oa in real.items()}
     staged = world.s1 / "data" / "live_failover" / "mac_state" / "ang" / "long_positions.json"
     touch(staged, t_mac_last, json.dumps(mac_rows))
-    # S1's own file is STALE: AAA from an older lifecycle (07:00), BBB unknown
+    # S1's own file is STALE: AAA from an older lifecycle (07:00, other entry price — since position_writer_guard a512fdc3
+    # a SAME-entry row is the same lifecycle and the earliest opened_at wins), BBB unknown
     s1_file = world.s1 / "ang" / "long_positions.json"
-    touch(s1_file, t_mac_last - 7200, json.dumps({"ang:AAAUSDT_LONG": dict(mac_rows["ang:AAAUSDT_LONG"], opened_at="2026-10-10T07:00:00Z")}))
+    touch(s1_file, t_mac_last - 7200, json.dumps({"ang:AAAUSDT_LONG": dict(mac_rows["ang:AAAUSDT_LONG"], opened_at="2026-10-10T07:00:00Z", entry_price=0.9)}))
     before_bytes = s1_file.read_bytes()
     world.S1.merge_mac_state()
     assert s1_file.read_bytes() == before_bytes  # takeover never copies/edits a positions file

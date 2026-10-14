@@ -13402,7 +13402,7 @@ class IndicatorsBridge:
         while not self._shutdown:
             try:
                 if self.shared_proxy is None:
-                    c = get_shared_memory_client()
+                    c = await asyncio.to_thread(get_shared_memory_client)  # 2026-10-14
                     if c:
                         self.shared_proxy = c.get_store()
                 data_found = False

@@ -15900,7 +15900,7 @@ class FastDataManager:
                 try:
                     from ez_share_ind import get_shared_memory_client
 
-                    client = get_shared_memory_client()
+                    client = await asyncio.to_thread(get_shared_memory_client)  # 2026-10-14
                     if client:
                         self.shared_proxy = getattr(client, "get_store")()
                         stats = self.shared_proxy.get_stats()
@@ -15912,7 +15912,7 @@ class FastDataManager:
                     self.shared_proxy = None
             else:
                 try:
-                    self.shared_proxy.health_check()
+                    await asyncio.to_thread(self.shared_proxy.health_check)  # 2026-10-14
                 except Exception as e:
                     logger.warning(f"[SharedMem] Connection lost: {e}. Reconnecting...")
                     self.shared_proxy = None
@@ -16133,7 +16133,7 @@ class FastDataManager:
         bridge_ts = 0.0
         if self.shared_proxy:
             try:
-                raw = self.shared_proxy.get_symbol(clean_sym)
+                raw = await asyncio.to_thread(self.shared_proxy.get_symbol, clean_sym)  # 2026-10-14: sync Manager IPC off the event loop
                 if raw:
                     hot_data = dict(raw)
                     bridge_ts = self._normalize_to_unix(

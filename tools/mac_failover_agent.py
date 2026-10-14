@@ -20,6 +20,11 @@ com.niels.live-failover-agent (KeepAlive). Every LF_TICK_S (15 s):
    data/market_data_<S1 write time>_s1.json (content gate scripts/s1_snapshot_fresh_gate.py);
    tradier_indicators_latest.json / price_cache_N.json only when the Mac's own copy is stale.
    Provenance -> data/live_failover/delivery.jsonl. Never places orders.
+6. TRADING HEALTH (2026-10-14 USER "take over whenever macbook doesnt trade for whatever reason, like ip bans"): every tick
+   heartbeat["trading_health"] = live_failover_common.TradingHealth per venue (broker reachability from the single position
+   writer's poll log incl. 401/-2015/418/429, order path ORDER_STALL_SKIP / LOOP_LAG / BLOCKED_POSITIONS_BROKER_UNREACHABLE /
+   orders SUBMITTED, trader processes alive). Read from existing logs incrementally: zero broker calls, zero API weight.
+   A holder=s1 lease may cover only some venues (lease "venues"): only those venues' gated traders are fenced.
 Fixtures/tests: LF_BASE, LF_STAGE, LF_NO_SSH=1, LF_REMOTE_DIR, LF_LOGDIR.
 """
 import json
@@ -47,7 +52,7 @@ STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
 GATED = ("ez_manage.py", "tradier_manage.py", "ez_positions_watchdog.py", "ez_positions.py", "ez_copilot.py", "ez_reentry_daemon.py", "tradier_positions.py")
 TRADER_RX = r"python[^ ]* .*(" + "|".join(name.replace(".", r"\.") for name in GATED) + r")"
 ACCOUNTS = C.CRYPTO_ACCOUNTS + C.STOCK_ACCOUNTS
-VERSION = "2026-10-14.1"
+VERSION = "2026-10-14.2"
 PULL_LAG_S = float(os.environ.get("LF_PULL_LAG_S", "60"))
 PULL_OFF_S = float(os.environ.get("LF_PULL_OFF_S", "600"))
 PULLER_LABEL = "com.binance.ez-s1-indicators-pull"
@@ -105,9 +110,26 @@ def rsync(args, timeout=60):
     return subprocess.run(["rsync", "-a", "--timeout=30", "-e", shell, *args], capture_output=True, text=True, timeout=timeout)
 
 
-def trader_pids():
+def trader_pids(venues=None):
+    """Gated trader pids, optionally only those of `venues` (tradier_* = stocks, the rest = crypto)."""
     out = subprocess.run(["pgrep", "-f", TRADER_RX], capture_output=True, text=True).stdout.split()
-    return [int(pid) for pid in out if pid.strip().isdigit() and int(pid) != os.getpid()]
+    pids = [int(pid) for pid in out if pid.strip().isdigit() and int(pid) != os.getpid()]
+    if venues is None or set(venues) >= set(C.VENUES):
+        return pids
+    keep = []
+    for pid in pids:
+        try:
+            cmd = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True).stdout
+        except Exception:
+            continue
+        name = next((g for g in GATED if g in cmd), None)
+        if name and C.script_venue(name) in venues:
+            keep.append(pid)
+    return keep
+
+
+def fenced_venues(local):
+    return C.lease_venues(local) if (local or {}).get("holder") == "s1" else []
 
 
 class Agent:
@@ -118,6 +140,7 @@ class Agent:
         self.host_idx = 0
         self.published_s1 = []
         self.pull = C.read_json(LF / "pull_state.json", {}) or {}
+        self.health = C.TradingHealth(LOGDIR)
 
     def delivered_set(self):
         live = set()
@@ -186,10 +209,11 @@ class Agent:
 
     def fence(self, lease, host=None):
         local = C.read_json(LF / "lease_local.json", {}) or {}
-        if local.get("holder") != "s1" or local.get("gen") != lease.get("gen"):
-            C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
-            alert("MAC_FENCED", gen=lease.get("gen"), reason=lease.get("reason"))
-        pids = [] if os.environ.get("LF_NO_KILL") == "1" else trader_pids()
+        venues = C.lease_venues(lease)
+        if local.get("holder") != "s1" or local.get("gen") != lease.get("gen") or C.lease_venues(local) != venues:
+            C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "venues": C.venues_str(venues), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
+            alert("MAC_FENCED", gen=lease.get("gen"), venues=venues, reason=lease.get("reason"))
+        pids = [] if os.environ.get("LF_NO_KILL") == "1" else trader_pids(venues)
         for pid in pids:
             try:
                 os.kill(pid, signal.SIGTERM)
@@ -199,12 +223,12 @@ class Agent:
             log(f"FENCE: SIGTERM {len(pids)} gated trader pids {pids}")
         if host:
             self.seed_from_s1(host)
-        return 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids())
+        return 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids(venues))
 
     def unfence(self, lease, host):
         local = C.read_json(LF / "lease_local.json", {}) or {}
         if local.get("holder") == "s1":
-            ok = self.pull_state_back(host)
+            ok = self.pull_state_back(host, fenced_venues(local))
             # 2026-10-14: S1's files carried takeover-time opened_at + phantom March crypto rows; the Mac writers re-read the broker
             # themselves, so failback never seeds from S1 (LF_UNFENCE_SEED=1 re-enables).
             seeded = self.seed_from_s1(host) if os.environ.get("LF_UNFENCE_SEED", "0") == "1" else {}
@@ -217,11 +241,13 @@ class Agent:
             C.atomic_write_json(LF / "lease_local.json", {"holder": "mac", "gen": lease.get("gen"), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
         return True
 
-    def pull_state_back(self, host):
+    def pull_state_back(self, host, venues=C.VENUES):
+        """Only the accounts of venues S1 actually traded (a partial-venue lease never touches the Mac's other venue)."""
         if os.environ.get("LF_NO_SSH") == "1":
             return True
         ok = True
-        for account in ACCOUNTS:
+        accounts = (C.CRYPTO_ACCOUNTS if "crypto" in venues else ()) + (C.STOCK_ACCOUNTS if "stocks" in venues else ())
+        for account in accounts:
             result = rsync(["--update", "--exclude=.*", "--exclude=backups/", "--exclude=*.bak", "--exclude=*_positions.json", f"{host}:{REMOTE_LIVE}/{account}/", str(BASE / account) + "/"])
             if result.returncode not in (0, 23, 24):
                 ok = False
@@ -365,14 +391,35 @@ class Agent:
             for stale in (BASE / "data").glob("market_data_*_s1.json"):
                 stale.unlink(missing_ok=True)
 
+    def fake_procs(self):
+        """Fixture: LF_FAKE_PROCS='ang,inf,trb' = trader processes alive."""
+        alive = set(os.environ.get("LF_FAKE_PROCS", "").split(","))
+        return {"crypto": {a: int(a in alive) for a in C.CRYPTO_ACCOUNTS}, "stocks": {a: int(a in alive) for a in C.STOCK_ACCOUNTS}}
+
+    def note_health(self, health):
+        """Log every change of the per-venue not-trading verdict (the S1 decision input) once."""
+        for venue in C.VENUES:
+            verdict = (health.get(venue) or {}).get("kinds") if isinstance(health, dict) else None
+            key = f"_health_{venue}"
+            if verdict != getattr(self, key, None):
+                setattr(self, key, verdict)
+                log(f"TRADING_HEALTH {venue}: kinds={verdict} reasons={(health.get(venue) or {}).get('reasons')}")
+
     def tick(self):
         now = C.now_s()
         venues = self.measure(now)
         pulls = self.update_pull(venues, now)
         local = C.read_json(LF / "lease_local.json", {}) or {}
-        procs = 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids())
+        fenced = fenced_venues(local)
+        procs = 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids(fenced or None))
+        try:
+            health = self.health.measure(now, procs=self.fake_procs() if os.environ.get("LF_FAKE_PROCS") else None, fenced=fenced)
+        except Exception as exc:  # health is advisory: never let it stop the heartbeat
+            health = {"error": repr(exc)}
         heartbeat = {"epoch": now, "ts": C.iso(now), "host": "macbook", "version": VERSION, "venues": venues, "trading_procs": procs,
-                     "lease_local": local, "pull_request": pulls, "fence_ack_gen": local.get("gen") if local.get("holder") == "s1" and procs == 0 else None}
+                     "lease_local": local, "pull_request": pulls, "fence_ack_gen": local.get("gen") if local.get("holder") == "s1" and procs == 0 else None,
+                     "trading_health": health}
+        self.note_health(health)
         C.atomic_write_json(LF / "mac_data_heartbeat.json", heartbeat)
         lease, state, host = self.exchange(heartbeat)
         if host is None:
