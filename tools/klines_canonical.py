@@ -20,6 +20,13 @@ shares the live stack); S1/s2 receive the store by rsync (tools/klines_canonical
   python3 tools/klines_canonical.py daemon [--rps 4]                     # tail at every 15m boundary + settle (flock singleton)
   python3 tools/klines_canonical.py verify --dir DIR [--json out]        # compare a cache dir against the store (per kind)
   python3 tools/klines_canonical.py repair --dir DIR [--apply]           # correct DIR's bars to the store, grow-only, gz backup first
+  python3 tools/klines_canonical.py stocks-fetch --out DIR [--symbols ...] [--days 30]   # Mac: Tradier's own 15min (all sessions) + daily bars
+  python3 tools/klines_canonical.py stocks-repair --truth DIR --dir CACHE/tradier [--apply]  # correct-only (no inserts), completed sessions only
+
+STOCKS (audit 2026-10-14, 20 symbols vs Tradier): Tradier serves 15min history for ~1 month only, so there is no full-depth stock store; the
+stock repair corrects the cached 15m/D rows inside that window to Tradier's own bars (the gateway tradier copy labels ET wall-clock times as
+UTC: +4h shifted bars, merged into the Mac/S1 copies 09-24..10-09; volumes captured before Tradier's late-print revisions). 1h/4h stock bars
+are locally built by tradier_indicators (Tradier has no 1h/4h) and are NOT touched here.
 """
 import argparse
 import datetime as dt
@@ -501,6 +508,136 @@ def cmd_repair(a):
     return 0
 
 
+def _tradier_key():
+    sys.path.insert(0, str(ROOT))
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(str(ROOT / ".env"))
+    except Exception:
+        pass
+    import config_tradier as ct
+    return ct.TradierConfig().ACCOUNTS["tra"]["key"]
+
+
+def _tradier_get(key, path, params):
+    req = urllib.request.Request("https://api.tradier.com/v1" + path + "?" + urllib.parse.urlencode(params), headers={"Authorization": f"Bearer {key}", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read())
+
+
+def cmd_stocks_fetch(a):
+    key = _tradier_key()
+    if not key:
+        log("no Tradier key")
+        return 2
+    syms = a.symbols.split(",") if a.symbols else sorted(set(json.loads((ROOT / "symbols_tradier.json").read_text())))
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    et_today = dt.datetime.now(dt.timezone(dt.timedelta(hours=-4))).date()
+    start = (et_today - dt.timedelta(days=a.days)).isoformat()
+    end = (et_today - dt.timedelta(days=1)).isoformat()  # completed sessions only (Tradier revises volumes with late prints during the day)
+    n = 0
+    for s in syms:
+        try:
+            d = _tradier_get(key, "/markets/timesales", {"symbol": s, "interval": "15min", "start": f"{start} 04:00", "end": f"{end} 20:00", "session_filter": "all"})
+            rows = ((d.get("series") or {}) or {}).get("data") if d.get("series") else []
+            rows = [rows] if isinstance(rows, dict) else (rows or [])
+            time.sleep(0.6)
+            h = _tradier_get(key, "/markets/history", {"symbol": s, "interval": "daily", "start": "2024-01-01", "end": end})
+            days = ((h.get("history") or {}) or {}).get("day") if h.get("history") else []
+            days = [days] if isinstance(days, dict) else (days or [])
+            time.sleep(0.6)
+        except Exception as e:
+            log(f"{s}: {type(e).__name__} {e}")
+            continue
+        (out / f"{s}.json").write_text(json.dumps({"fetched_at": int(time.time()), "window": [start, end], "m15": rows, "daily": days}))
+        n += 1
+    log(f"stocks-fetch {n}/{len(syms)} symbols -> {out} window {start}..{end}")
+    return 0
+
+
+def stocks_repair_file(cache15, cached, truth):
+    """correct-only: 15m rows whose epoch Tradier serves; D rows by ET date (row timestamp kept). Returns {path: (rows, n)}."""
+    import zoneinfo
+    et = zoneinfo.ZoneInfo("America/New_York")
+    out = {}
+    m15 = {int(r["timestamp"]): r for r in truth.get("m15", []) if r.get("timestamp") is not None}
+    if cache15.exists() and m15:
+        rows = load_rows(cache15)
+        n = 0
+        for i, r in enumerate(rows):
+            try:
+                t = ts_ms(r["timestamp"]) // 1000
+            except Exception:
+                continue
+            x = m15.get(t)
+            if x is None:
+                continue
+            new = {c: float(x[c]) for c in KEYS}
+            if any(abs(float(r.get(c, 0) or 0) - new[c]) > 1e-9 * max(1.0, abs(new[c])) for c in KEYS):
+                nr = dict(r)
+                nr.update(new)
+                rows[i] = nr
+                n += 1
+        if n:
+            out[cache15] = (rows, n)
+    daily = {d["date"]: d for d in truth.get("daily", []) if d.get("date")}
+    if cached.exists() and daily:
+        rows = load_rows(cached)
+        n = 0
+        for i, r in enumerate(rows):
+            try:
+                day = dt.datetime.fromtimestamp(ts_ms(r["timestamp"]) / 1000, tz=et).date().isoformat()
+            except Exception:
+                continue
+            x = daily.get(day)
+            if x is None:
+                continue
+            new = {c: float(x[c]) for c in KEYS}
+            if any(abs(float(r.get(c, 0) or 0) - new[c]) > 1e-9 * max(1.0, abs(new[c])) for c in KEYS):
+                nr = dict(r)
+                nr.update(new)
+                rows[i] = nr
+                n += 1
+        if n:
+            out[cached] = (rows, n)
+    return out
+
+
+def cmd_stocks_repair(a):
+    cache_dir = Path(a.dir).resolve()
+    plan = {}
+    for tp in sorted(Path(a.truth).glob("*.json")):
+        sym = tp.stem
+        try:
+            truth = json.loads(tp.read_text())
+        except Exception:
+            continue
+        plan.update(stocks_repair_file(cache_dir / f"{sym}_15m.json", cache_dir / f"{sym}_D.json", truth))
+    n15 = sum(n for p, (_, n) in plan.items() if p.name.endswith("_15m.json"))
+    nd = sum(n for p, (_, n) in plan.items() if p.name.endswith("_D.json"))
+    log(f"stocks-repair {cache_dir}: {len(plan)} files, 15m rows corrected {n15}, D rows corrected {nd} (apply={a.apply})")
+    if not a.apply or not plan:
+        return 0
+    stamp = time.strftime("%Y%m%d%H%M", time.gmtime())
+    bdir = ROOT / "backups"
+    bdir.mkdir(parents=True, exist_ok=True)
+    tgz = bdir / f"before_klines_canonical_stocks_repair_{cache_dir.parent.name}_{stamp}.tar.gz"
+    with tarfile.open(tgz, "w:gz") as tf:
+        for p in plan:
+            tf.add(str(p), arcname=f"{cache_dir.parent.name}/{cache_dir.name}/{p.name}")
+    done = 0
+    for p, (rows, n) in plan.items():
+        ok, why = write_rows(p, rows)
+        if ok:
+            done += 1
+            journal({"at": iso(int(time.time() * 1000)), "event": "stocks_repair", "file": str(p), "corrected": n})
+        else:
+            log(f"refused {p.name}: {why}")
+    log(f"stocks-repair applied {done}/{len(plan)}; backup {tgz}")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -523,7 +660,19 @@ def main():
     r = sub.add_parser("repair")
     r.add_argument("--dir", required=True)
     r.add_argument("--apply", action="store_true")
+    sf = sub.add_parser("stocks-fetch")
+    sf.add_argument("--out", required=True)
+    sf.add_argument("--symbols", default="")
+    sf.add_argument("--days", type=int, default=30)
+    sr = sub.add_parser("stocks-repair")
+    sr.add_argument("--truth", required=True)
+    sr.add_argument("--dir", required=True)
+    sr.add_argument("--apply", action="store_true")
     a = ap.parse_args()
+    if a.cmd == "stocks-fetch":
+        return cmd_stocks_fetch(a)
+    if a.cmd == "stocks-repair":
+        return cmd_stocks_repair(a)
     if a.cmd == "fill":
         return cmd_fill(a)
     if a.cmd == "tail":

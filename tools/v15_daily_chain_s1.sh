@@ -1,7 +1,9 @@
 #!/bin/bash
 # v15_daily_chain_s1 — the daily pre-market chain on S1 (BIBLE §68.3 steps 1+2, director design 2026-10-06).
 # Replaces the Mac 05:00Z tools/v15_daily_selfimprove.sh (cron PATH had no `timeout` -> died every day since 10-04).
-# Cron (S1, 12:15Z, director 2026-10-06; full run ~45 min):
+# Cron (S1, USER 2026-10-14: bookkeeper 11:55Z -> chain 12:15Z (full morning of herd avg deltas, waits on the lock) -> catch-up 12:55Z only
+# if no DONE stamp; Mac apply 12:30Z waits for the stamp -> applied BEFORE the 13:30Z open. 10-13 landed 13:44Z because the 12:15Z run
+# died and the generic writer still ran (removed); full run now ~30 min):
 #   15 12 * * * cd /home/niels/binance-sandbox && flock -n /tmp/v15_daily_chain.lock bash tools/v15_daily_chain_s1.sh >> /home/niels/logs/v15_daily_chain.log 2>&1 # V15_DAILY_CHAIN_S1
 # Steps: 1 avg-delta rebuild (hosts as seen from S1) -> 2 the ONE template writer on TEMPLATE_FINAL_NORM (no generic set)
 # (each cat_side's promotions pass the COMBINED trade-floor guard tools/v15_promotion_floor_guard.py before saving; refused keys keep the old bold)
@@ -54,6 +56,11 @@ fail() {
   rm -f "$STAMP_DIR/$DATE.RUNNING"
   exit 1
 }
+# 2026-10-14: a catch-up slot that waited on the lock behind a successful run is a no-op (one rewrite per day; V15_CHAIN_FORCE=1 reruns).
+if [ "$DRYRUN" != 1 ] && [ "${V15_CHAIN_FORCE:-0}" != 1 ] && grep -q '"status": "DONE"' "$STAMP_DIR/$DATE.json" 2>/dev/null; then
+  log "already DONE today ($STAMP_DIR/$DATE.json) — catch-up slot no-op"
+  exit 0
+fi
 # 2026-10-13 hardening: never die silently. Any exit without DONE writes a FAILED stamp (the Mac apply stops waiting on it).
 on_exit() {
   RC=$?
@@ -79,6 +86,9 @@ if [ "$DRYRUN" != 1 ]; then
     fi
     rm -f "$RF"
   done
+  # 2026-10-14 pre-open schedule (12:15Z primary, 12:55Z catch-up): a retry moves an earlier FAILED stamp aside so the
+  # Mac apply waits for this run instead of stopping on the old failure.
+  [ -f "$STAMP_DIR/$DATE.FAILED.json" ] && mv "$STAMP_DIR/$DATE.FAILED.json" "$STAMP_DIR/$DATE.FAILED.$(date -u +%H%M%S).prev.json"
   echo "$$ $T0" > "$STAMP_DIR/$DATE.RUNNING"
 fi
 log "=== start date=$DATE DRYRUN=$DRYRUN host=$(hostname) root=$ROOT hosts=$V15_FLEET_HOSTS targets=$TARGETS"

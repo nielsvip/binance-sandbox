@@ -57,6 +57,18 @@ if [ "$DRYRUN" != 1 ] && [ -s "$STAMP" ] && grep -q '"status":"DONE"' "$STAMP" 2
   exit 0
 fi
 
+# 0b. one apply at a time (2026-10-14: pre-open slots 10:30Z/11:45Z + 13:00Z can overlap when one waits on a late S1 stamp)
+if [ "$DRYRUN" != 1 ]; then
+  LOCKD=$ROOT/data/daily_chain/.mac_apply.lock
+  if ! mkdir "$LOCKD" 2>/dev/null; then
+    OP=$(cat "$LOCKD/pid" 2>/dev/null)
+    if [ -n "$OP" ] && kill -0 "$OP" 2>/dev/null; then log "another mac-apply (pid $OP) is running — this slot exits 0"; exit 0; fi
+    log "stale mac-apply lock (pid ${OP:-?} dead) — taking it"
+  fi
+  echo $$ > "$LOCKD/pid"
+  trap 'rm -rf "$LOCKD"' EXIT
+fi
+
 # 1. S1 done-stamp
 SJ=$DEST/data/daily_chain/$DATE.json
 mkdir -p "$(dirname "$SJ")"
