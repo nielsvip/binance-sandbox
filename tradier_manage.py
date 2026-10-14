@@ -26015,6 +26015,19 @@ class PositionReader:
                 if data:
                     wrapper = pickle.loads(data)
                     _pt_wa = _ptruth.tradier_reader_written_at(wrapper)
+                    # 2026-10-14 USER: Redis (tradier_positions) must be fresh; the JSON (written ~4 s) is the backup source.
+                    # A stale Redis snapshot is never authority: use the JSON when it is fresher.
+                    try:
+                        _rd_age = time.time() - float(_pt_wa) if _pt_wa is not None else 1e9
+                        if _rd_age > float(getattr(config, "TRADIER_READER_REDIS_MAX_AGE_SEC", 15.0) or 15.0):
+                            _acc_dir = (config.get_account_config(acc) or {}).get("account_dir") or (config.BASE_PATH / acc)
+                            _js_wa = [w for w in (_ptruth.read_written_at(os.path.join(str(_acc_dir), f)) for f in ("long_positions.json", "short_positions.json")) if w is not None]
+                            if _js_wa and (_pt_wa is None or min(_js_wa) > float(_pt_wa)):
+                                logger.warning(f"[Reader] Redis positions for {acc} stale {_rd_age:.0f}s — loading tradier_positions JSON (fresher)")
+                                data = None
+                    except Exception as _fe:
+                        logger.warning(f"[Reader] freshness check failed for {acc}: {_fe}")
+                if data:
                     if _pt_wa is not None:
                         self.written_at[acc] = _pt_wa
                     raw_pos_dict = wrapper.get("positions", {})
@@ -26051,6 +26064,12 @@ class PositionReader:
                 self._last_sync_ok_ts = time.time()
             if not data_found:
                 await self._load_from_disk(acc)
+                try:
+                    _dwa = self.written_at.get(acc)
+                    if _dwa is not None and time.time() - float(_dwa) <= float(getattr(config, "TRADIER_READER_REDIS_MAX_AGE_SEC", 15.0) or 15.0):
+                        self._last_sync_ok_ts = time.time()
+                except Exception:
+                    pass
 
     async def _load_from_disk(self, account_key: str):
         try:
@@ -44040,8 +44059,12 @@ class TradierTradeManager:
                         return "SKIPPED_STOP_BROKER_FLAT"
                     _bq_hit = _BROKER_QTY_MEMO.get((str(account_key or ""), str(symbol or "").upper()))
                 if not _bq_hit or time.time() - float(_bq_hit[0]) > 120.0 or int(_bq_hit[1]) <= 0:
-                    logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: broker qty unknown (local {amt}) — not placing this cycle")
-                    return "SKIPPED_STOP_QTY_UNVERIFIED"
+                    # broker read failed: local qty is acceptable ONLY when it was just synced from tradier_positions (fresh truth)
+                    if _sync_age <= float(getattr(config, "TRADIER_READER_REDIS_MAX_AGE_SEC", 15.0) or 15.0):
+                        _bq_hit = (time.time(), _qty)
+                    else:
+                        logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: broker qty unknown and tradier_positions sync {_sync_age:.0f}s old (local {amt}) — not placing this cycle")
+                        return "SKIPPED_STOP_QTY_UNVERIFIED"
                 if int(_bq_hit[1]) != _qty:
                     logger.critical(f"[FIXED_STOP_QTY_BROKER_TR] {position_key}: local positionAmt {amt} != broker {int(_bq_hit[1])} — using BROKER qty")
                 _qty = int(_bq_hit[1])

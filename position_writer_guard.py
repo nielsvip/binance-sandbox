@@ -141,6 +141,19 @@ def seeded_disk_rows(path, disk_rows=None):
             if not isinstance(r, dict) or _amt(r) <= 0 or to_epoch(r.get("opened_at")) is None or not str(k).upper().endswith("_" + side):
                 continue
             o = merged.get(k)
+            if isinstance(o, dict) and _amt(o) > 0:
+                # 2026-10-14 failback bug: S1 had rewritten opened_at to its takeover time; that seed replaced the Mac's real
+                # opened_at on 34 held stock rows (same entry/qty). Same entry price = same lifecycle -> the EARLIER opened_at wins.
+                try:
+                    _oe, _re = float(o.get("entry_price") or 0), float(r.get("entry_price") or 0)
+                    _same_entry = _oe > 0 and _re > 0 and abs(_oe - _re) <= 1e-9 * max(_oe, _re)
+                except (TypeError, ValueError):
+                    _same_entry = False
+                if _same_entry:
+                    _ot, _rt = to_epoch(o.get("opened_at")), to_epoch(r.get("opened_at"))
+                    if _rt is not None and (_ot is None or _rt < _ot):
+                        merged[k] = dict(o, opened_at=r.get("opened_at"))
+                    continue
             if not isinstance(o, dict) or _amt(o) <= 0 or not _same_lifecycle(o.get("opened_at"), r.get("opened_at")):
                 merged[k] = dict(o or {}, **r)
         return merged

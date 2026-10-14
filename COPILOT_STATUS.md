@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-14 15:19:16 UTC
+# Copilot Status — 2026-10-14 15:29:28 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,9 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:18:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:18:05
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:18:05
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:25:34
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:26:35
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:26:35
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:26:35
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:27:36
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:27:36
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:27:36
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:28:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:28:37
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:28:37
 
 ## Missed Trades (trader comparison)
 
@@ -22,13 +29,13 @@ _None_
 
 **Held:** 7 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **CRWD** SHORT (tradier) peak +13.0%, now +-0.3%
-- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +3.9%
-- HELD: **TSLA** SHORT (tradier) peak +10.9%, now +-0.1%
+- HELD: **CRWD** SHORT (tradier) peak +13.0%, now +-0.2%
+- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +4.0%
+- HELD: **TSLA** SHORT (tradier) peak +10.9%, now +0.1%
 - HELD: **WDAY** SHORT (tradier) peak +7.8%, now +1.2%
-- HELD: **SNDK** SHORT (tradier) peak +7.7%, now +1.9%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +3.6%, now +2.8%
-- HELD: **APO** SHORT (tradier) peak +3.6%, now +3.6%
+- HELD: **SNDK** SHORT (tradier) peak +7.7%, now +1.7%
+- HELD: **APO** SHORT (tradier) peak +4.0%, now +3.8%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +3.6%, now +3.1%
 
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +6.0%, exited 1m ago
 - WATCHING: **EGLDUSDT** SHORT (crypto) peaked +4.1%, exited 1m ago
@@ -38,9 +45,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 7
+**Issues (last 1h):** 34
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for men is NOT running
 - [HIGH] ez_manage.py for fin is NOT running
 - [HIGH] ez_manage.py for flz is NOT running
-- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
-- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)

@@ -2855,3 +2855,34 @@ tra (AAPL/APO/META) 0 trades both legs. Unit tests `tests/test_cash_settlement_p
   big mover WINNER only at bh >= `V15_TIER_WIN_BIG_MOVER` (25); 8 <= bh < 25 needs potential >= max(bh, 10). Replay on 141
   boards (2 days, s1+s2): winners 95 -> 88, expected boards/h x1.01 — winners are winners by potential (65/95 from prior
   finals), and non-winner walls were 27 min vs winners 36 min, so the tier mix is not the throughput lever.
+
+## 105. S2 SCALAR PARITY LANE — REAL LIVE-vs-VECTOR TRADE PARITY (USER 2026-10-14)
+
+USER: "run backtest_v12_engine … to get real parity between the live and vector scripts instead of just overriding live with
+vector results as we do now" → "only on s2, give it plenty of time to finish each, the order sounds perfect".
+
+- **What it measures:** `tools/v15_trade_parity.py` per sym_side on the SAME frozen 30D NPZ: vec leg = `v12_quick_engine`
+  (what the board measured), live leg = `backtest_v12_engine.run_one` → real `ez_manage` / `tradier_manage` `process_position`.
+  Trips are matched entry-by-entry (30 min tol); VEC_ONLY / LIVE_ONLY / exit-disagree lists = the gap evidence.
+- **No overriding:** the lane runs `TRADE_PARITY_VEC_EXACT=0` → `V8_VEC_EXACT_INGEST` OFF. The trade_parity default (=1) feeds
+  the vector's actions into the live leg — that hides divergence instead of measuring it. Reports carry
+  `mode_label=SEAM_DIAGNOSTIC` and `env.V8_VEC_EXACT_INGEST=None`.
+- **Set:** the exact published set live is registered with (`data/published_selection.json` overrides + `overrides_md5`).
+  One result per (sym_side, set md5); a newly published set re-queues the sym_side.
+- **Order (queue, Mac `tools/v15_scalar_parity_queue.py`, cron :40 → pushed md5-verified to S2):** 1 boards live today →
+  2 open live position / live trades last 3 d → 3 2-loss streak (`data/v15_365_priority.json`) → 4 rest; ties: position >
+  trades > streak.
+- **Runner (S2 ONLY, `tools/v15_scalar_parity_lane.py`, S2 cron `V15_SCALAR_PARITY_LANE` */10, flock):** host-guarded to s2,
+  `nice -n 19`, ≤3 jobs, starts only at load1 < 14, `PARITY_LANE_TIMEOUT_H` 12 h per job. A died/timed-out job is reported
+  (DIED), never silently retried. Output `data/parity/scalar_lane/<SS>__<md5_8>/` + `STATUS.json/.md`; Mac pull cron :50.
+- 2026-10-14 03:04Z S1 run without `V8_SWEEP_MODE` covered 5.2 of 30 days in 50 min — the lane uses `run_one` (sweep mode on,
+  live entry gates kept by `V8_KEEP_ENTRY_GATES`).
+
+### 105.1 Same day fixes (2026-10-14)
+- **Template writer crash** (`tools/v15_daily_template_update.py`): loop variable `cs` (filter columns) shadowed the cat_side
+  parameter `cs` in `pick_winners` (×2) and `apply_tab` after the 10-13 19:21Z type-coercion edit passed `cs` to `_coercible`
+  → `AttributeError: 'list' object has no attribute 'split'`; chain FAILED at step 2 at 12:15Z and 12:55Z, no new defaults at
+  the open. Loop variable renamed `cols` (8 lines); report-only run on the 20261014 aggregate: 4/4 cat_sides, 0 violations.
+- **Go-live refresh** (Mac cron `V15_GOLIVE_REFRESH` 05:20/11:20/19:20): still applied `data/avg_delta_selection.json`
+  (`--all-finished`) and overwrote the published go-live (10-14 12:03Z: 194 sets over the 235 published boards). Now
+  `tools/v15_golive_refresh_published.sh` = chain step 5b (`--published --pin-all`); a failed published build applies nothing.
