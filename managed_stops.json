@@ -6,13 +6,6 @@
     "symbol": "1INCHUSDT",
     "side": "LONG"
   },
-  "men:IOTXUSDT_SHORT": {
-    "orderId": "2000001510570466",
-    "stopPrice": 0.003897,
-    "entry_sig": "2026-10-14 08:53:44.516000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "men:BATUSDT_LONG": {
     "orderId": "2000001510571020",
     "stopPrice": 0.18618,
@@ -41,11 +34,11 @@
     "symbol": "XRPUSDC",
     "side": "SHORT"
   },
-  "men:RLCUSDT_SHORT": {
-    "orderId": "2000001510638936",
-    "stopPrice": 0.9541,
-    "entry_sig": "2026-10-14 09:36:44.592000+00:00",
-    "symbol": "RLCUSDT",
+  "men:GALAUSDT_SHORT": {
+    "orderId": "2000001510664500",
+    "stopPrice": 0.002173,
+    "entry_sig": "2026-10-14 09:53:10.026000+00:00",
+    "symbol": "GALAUSDT",
     "side": "SHORT"
   }
 }
