@@ -230,8 +230,8 @@ def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list, cs=No
     f_opts = collections.defaultdict(list)   # filter -> [set of option values per tab that has it]
     for tab in SWITCH_SHEETS:
         if tab in wb.sheetnames:
-            for f, cs in filter_cols(wb[tab]).items():
-                f_opts[f].append({norm(wb[tab].cell(row=HDR, column=c).value.split("=", 1)[1]) for c in cs})
+            for f, cols in filter_cols(wb[tab]).items():
+                f_opts[f].append({norm(wb[tab].cell(row=HDR, column=c).value.split("=", 1)[1]) for c in cols})
     f_common = {f: set.intersection(*v) for f, v in f_opts.items()}
     for tab in SWITCH_SHEETS:
         if tab not in wb.sheetnames:
@@ -256,8 +256,8 @@ def pick_winners(wb, stats: dict, min_pos: int, min_n: int, refused: list, cs=No
                 k = ("sw", a)
                 if k not in win or avg > win[k][1]:
                     win[k] = (norm(raw), avg, raw)
-        for f, cs in filter_cols(ws).items():
-            for c in cs:
+        for f, cols in filter_cols(ws).items():
+            for c in cols:
                 h = ws.cell(row=HDR, column=c).value.strip()
                 st = stats.get((tab, h))
                 if not st or st[0] <= EPS:
@@ -405,19 +405,19 @@ def apply_tab(ws, stats, win, ledger_cs, round_changed, rep, ledger_out, cleared
         rep["promoted_switch"].append([tab, a, [ws.cell(row=r, column=2).value for r in cur], ws.cell(row=best, column=2).value, round(w[1], 4)])
         rep["ledger"][a] = {"value": ws.cell(row=best, column=2).value, "avg_delta": w[1], "tab": tab, "at": datetime.datetime.utcnow().isoformat() + "Z"}
     # 2b. promotion — yellow filter headers
-    for f, cs in filter_cols(ws).items():
+    for f, cols in filter_cols(ws).items():
         w = win.get(("f", f))
         if not w:
             continue
-        tgt = [c for c in cs if norm(ws.cell(row=HDR, column=c).value.split("=", 1)[1]) == w[0]]
+        tgt = [c for c in cols if norm(ws.cell(row=HDR, column=c).value.split("=", 1)[1]) == w[0]]
         if not tgt:
             continue
         best = tgt[0]
-        cur = [c for c in cs if ws.cell(row=HDR, column=c).font is not None and ws.cell(row=HDR, column=c).font.b]
+        cur = [c for c in cols if ws.cell(row=HDR, column=c).font is not None and ws.cell(row=HDR, column=c).font.b]
         if cur == [best]:
             rep["ledger"][f] = {"value": w[2], "avg_delta": w[1], "tab": tab, "at": datetime.datetime.utcnow().isoformat() + "Z"}
             continue
-        for c in cs:
+        for c in cols:
             h = ws.cell(row=HDR, column=c)
             set_bold(h, c == best)
             if c == best:

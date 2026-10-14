@@ -231,6 +231,8 @@ _OB_GAP_FIRED: Dict[str, str] = {}  # key = position_key, val = YYYY-MM-DD
 # Broker-verify throttle (USER 2026-10-13: stop bombarding Tradier — the fleet
 # throttled itself, then exits failed). HELD=True cached per TTL only.
 _BROKER_HOLDS_CACHE: Dict[tuple, tuple] = {}  # key = (acct, sym, side), val = (ts, True)
+_BROKER_QTY_MEMO: Dict[tuple, tuple] = {}  # 2026-10-14 GOOGL trb: key = (acct, sym), val = (ts, abs broker qty) — backstop qty is broker truth, never local positionAmt
+_FIXED_STOP_PLACE_LOG: Dict[str, list] = {}  # 2026-10-14: per-position placement timestamps (581 rejected GTC stops in 90 min) — breaker
 # Broker-distress ring (USER 2026-10-13: vitals first — while the broker is
 # unreachable, new OPENs must fail fast instead of burning 120s queue slots
 # that CLOSEs need. Exits never read this ring.)
@@ -43875,6 +43877,7 @@ class TradierTradeManager:
                     _q = float((_p or {}).get("quantity", 0) or 0)
                 except Exception:
                     _q = 0.0
+                _BROKER_QTY_MEMO[(str(account_key or ""), _sym)] = (time.time(), abs(_q))
                 if _q == 0:
                     return False
                 _held = (_q > 0) if _want_long else (_q < 0)
@@ -44026,6 +44029,25 @@ class TradierTradeManager:
                     return str(_r)
                 return "NONE_FLAT"
             _qty = max(1, int(amt))
+            # 2026-10-14 USER (GOOGL trb: broker 6, stops sent for 2/4/12/24 — 581 rejected): the backstop quantity is the BROKER's
+            # held quantity. Local positionAmt is only a claim; unverified broker qty -> no placement this cycle.
+            try:
+                _bq_hit = _BROKER_QTY_MEMO.get((str(account_key or ""), str(symbol or "").upper()))
+                if not _bq_hit or time.time() - float(_bq_hit[0]) > 60.0:
+                    _BROKER_HOLDS_CACHE.pop((str(account_key or ""), str(symbol or "").upper(), str(position_side or "").upper()), None)
+                    _held_q = await self._broker_holds_position(account_key, symbol, position_side)
+                    if _held_q is False:
+                        return "SKIPPED_STOP_BROKER_FLAT"
+                    _bq_hit = _BROKER_QTY_MEMO.get((str(account_key or ""), str(symbol or "").upper()))
+                if not _bq_hit or time.time() - float(_bq_hit[0]) > 120.0 or int(_bq_hit[1]) <= 0:
+                    logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: broker qty unknown (local {amt}) — not placing this cycle")
+                    return "SKIPPED_STOP_QTY_UNVERIFIED"
+                if int(_bq_hit[1]) != _qty:
+                    logger.critical(f"[FIXED_STOP_QTY_BROKER_TR] {position_key}: local positionAmt {amt} != broker {int(_bq_hit[1])} — using BROKER qty")
+                _qty = int(_bq_hit[1])
+            except Exception as _bqe:
+                logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: {_bqe} — not placing this cycle")
+                return "SKIPPED_STOP_QTY_UNVERIFIED"
             try:  # 2026-10-13: the resting stop must sit at the CURRENT frozen level (SESSION_OPEN_STOP_REFREEZE moves it) — tick-exact
                 _lv_long = str(position_side or "").upper() == "LONG"
                 _lv_want = _fixed_stop_core.round_to_tick(_lv_long, _fixed_stop_core.exchange_level(_lv_long, float(soft_level or 0.0)), 0.01) if float(soft_level or 0.0) > 0 else 0.0
@@ -44182,6 +44204,16 @@ class TradierTradeManager:
             if cur > 0 and ((is_long and lvl >= cur) or ((not is_long) and lvl <= cur)):
                 logger.critical(f"⛔ [FIXED_STOP_REFUSE_TR] {position_key}: backstop {lvl:.2f} wrong side of {cur:.2f} — refusing (would trigger instantly)")
                 return "REFUSED_STOP_WRONG_SIDE"
+            try:  # 2026-10-14 breaker: at most TRADIER_FIXED_STOP_MAX_PLACES (3) placements per position per 600 s
+                _pl = [t for t in _FIXED_STOP_PLACE_LOG.get(str(position_key), []) if time.time() - t < 600.0]
+                if len(_pl) >= int(getattr(config, "TRADIER_FIXED_STOP_MAX_PLACES", 3) or 3):
+                    logger.critical(f"⛔ [FIXED_STOP_BREAKER_TR] {position_key}: {len(_pl)} placements in 600s — pausing placement (broker keeps rejecting; check qty/open orders)")
+                    _FIXED_STOP_PLACE_LOG[str(position_key)] = _pl
+                    return "REFUSED_STOP_BREAKER"
+                _pl.append(time.time())
+                _FIXED_STOP_PLACE_LOG[str(position_key)] = _pl
+            except Exception:
+                pass
             try:
                 # 2026-10-13 GUARANTEED STOP: the backstop is an execute_now-sanctioned order (wire guard WIRE_REQUIRE_EXECUTE_NOW_ALL
                 # refused it as NOT_VIA_EXECUTE_NOW, so no stock position ever had a broker stop). Token scoped to this symbol only.
