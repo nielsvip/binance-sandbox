@@ -12,5 +12,19 @@
     "entry_sig": "2026-10-14 12:56:43.718000+00:00",
     "symbol": "VETUSDT",
     "side": "SHORT"
+  },
+  "men:XRPUSDC_SHORT": {
+    "orderId": "2000001511068187",
+    "stopPrice": 1.3813,
+    "entry_sig": "2026-10-14 13:20:31.713000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
+  },
+  "men:MELANIAUSDT_SHORT": {
+    "orderId": "2000001511071104",
+    "stopPrice": 0.08928,
+    "entry_sig": "2026-10-14 13:21:32.714000+00:00",
+    "symbol": "MELANIAUSDT",
+    "side": "SHORT"
   }
 }

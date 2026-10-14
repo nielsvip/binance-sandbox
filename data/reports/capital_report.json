@@ -1,54 +1,32 @@
 {
- "generated_at": "2026-10-14 13:26 UTC",
- "total_capital_usd": 149.83,
+ "generated_at": "2026-10-14 13:35 UTC",
+ "total_capital_usd": 45.8,
  "tier_capital": {
-  "A": 22.19,
-  "B": 127.65,
+  "A": 0.0,
+  "B": 45.8,
   "C": 0.0
  },
  "tier_count": {
-  "A": 1,
-  "B": 2,
+  "A": 0,
+  "B": 1,
   "C": 0
  },
- "winners": [
-  "fin:XRPUSDC_SHORT"
+ "winners": [],
+ "losers": [
+  "inf:PUMPUSDT_SHORT"
  ],
- "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:EGLDUSDT_SHORT",
-   "symbol": "EGLDUSDT",
-   "account": "fin",
-   "value_usd": 88.33,
-   "gain_pct": 1.795,
+   "pk": "inf:PUMPUSDT_SHORT",
+   "symbol": "PUMPUSDT",
+   "account": "inf",
+   "value_usd": 45.8,
+   "gain_pct": -1.621,
    "tier": "B",
-   "perf_mult": 1.05,
-   "amt": 24.1,
-   "mark": 3.665
-  },
-  {
-   "pk": "fin:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 39.32,
-   "gain_pct": 3.835,
-   "tier": "B",
-   "perf_mult": 0.75,
-   "amt": 46.8,
-   "mark": 0.8401
-  },
-  {
-   "pk": "fin:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "fin",
-   "value_usd": 22.19,
-   "gain_pct": 1.097,
-   "tier": "A",
-   "perf_mult": 9.4,
-   "amt": 16.4,
-   "mark": 1.35289406
+   "perf_mult": 4.12,
+   "amt": 9314.0,
+   "mark": 0.00491745
   }
  ]
 }
