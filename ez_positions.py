@@ -1,4 +1,5 @@
 import asyncio
+import json  # 2026-10-14: atomic_save_positions guards call json.load; json was only imported when orjson was missing -> NameError swallowed -> ENTRY_PRICE_GUARD/SAVE_WATCHDOG never ran
 import logging
 import os
 import shutil
@@ -104,6 +105,15 @@ def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dic
             results[side] = "EMPTY"
             continue
         main_file = file_paths_by_side[side]
+        try:  # USER 2026-10-14 SINGLE POSITION WRITER: ez_manage never writes, realtime only while service heartbeat stale, opened_at immutable
+            import position_writer_guard as _pwg
+            if not _pwg.before_write(main_file, positions_dict, log=logger):
+                results[side] = "REFUSED_SINGLE_WRITER"
+                continue
+        except Exception as _pwg_e:
+            logger.critical(f"[SINGLE_WRITER] guard error for {main_file} — write REFUSED (fail-closed): {_pwg_e!r}")
+            results[side] = "REFUSED_SINGLE_WRITER"
+            continue
         main_file.parent.mkdir(parents=True, exist_ok=True)
         temp_file = main_file.parent / f".{main_file.name}.tmp.{int(_t.time() * 1000000)}"
         try:
@@ -127,7 +137,7 @@ def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dic
             if results[side] == "OK":  # POSITIONS REVAMP 2026-10-06: written_at sidecar AFTER the data replace (this is the real crypto writer)
                 try:
                     import positions_truth as _ptruth
-                    _ptruth.write_meta(main_file, writer=f"ez_positions.atomic_save:{_os.getpid()}")
+                    _ptruth.write_meta(main_file, writer=f"ez_positions.atomic_save:{_pwg.process_role()}:{_os.getpid()}")
                 except Exception:
                     pass
         except Exception as e:
@@ -243,6 +253,27 @@ def _atomic_save_blocking(account_key: str, all_positions_by_side: Dict[str, Dic
 #         logger.error(f"[atomic_save][{account_key}] ❌ FAILED: {e}", exc_info=True)
 #         raise
 
+_last_resync_time: Dict[str, float] = {}
+
+
+def _single_writer_resync(position_service, account_key):
+    """USER 2026-10-14: readers (ez_manage) adopt opened_at/entry_price/max_gain from the single writer's files; writers adopt the immutable opened_at back."""
+    try:
+        import position_writer_guard as _pwg
+        now = time.time()
+        if now - _last_resync_time.get(account_key, 0.0) < 5.0:
+            return
+        _last_resync_time[account_key] = now
+        account_dir = position_service.get_position_file(account_key, "LONG").parent
+        mem = position_service.positions_by_account.get(account_key, {})
+        if _pwg.process_role() == "manage":
+            _pwg.resync_memory_from_files(mem, account_dir, log=logger)
+        else:
+            _pwg.resync_memory_from_files(mem, account_dir, log=logger, require_fresh=False, fields=("opened_at",))
+    except Exception as e:
+        logger.debug(f"[SINGLE_WRITER_RESYNC][{account_key}] skipped: {e!r}")
+
+
 async def atomic_save_positions(position_service: PositionService, account_key: str, force=None) -> None:
     if account_key not in _save_locks:
         _save_locks[account_key] = asyncio.Lock()
@@ -255,6 +286,7 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
         logger.debug(f"[atomic_save][{account_key}] ⏱️ Debounced - last save {now-last_save:.1f}s ago")
         return
         
+    _single_writer_resync(position_service, account_key)
     async with lock:
         now = time.time()
         last_save = _last_save_time.get(account_key, 0.0)
@@ -367,7 +399,7 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                 for side, status in results.items():
                     if status == "OK":
                         logger.info(f"[atomic_save][{account_key}:{side}] ✅ SAVED {len(sorted_by_side.get(side, {}))} positions to {file_paths_by_side[side].name}")
-                    elif status == "EMPTY":
+                    elif status in ("EMPTY", "REFUSED_SINGLE_WRITER"):
                         continue
                     elif status == "MISSING_AFTER_MOVE":
                         logger.error(f"[atomic_save][{account_key}:{side}] ❌ File missing after move!")

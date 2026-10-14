@@ -16,6 +16,7 @@ from pathlib import Path
 from contextvars import ContextVar
 from ez_positions_service import bootstrap_position_service, WebSocketManager, save_positions_guarded
 from utils import load_environment_from_gpg, orjson_default
+import position_writer_guard as pwg
 load_environment_from_gpg(None)
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(message)s")
 logger = logging.getLogger("ez_positions_realtime")
@@ -62,6 +63,33 @@ class RealtimePositionUpdater:
         self._last_file_refresh = time.time()
         self._last_own_write = 0.0
         self._standby_skips = 0
+        # USER 2026-10-14 SINGLE POSITION WRITER: role "service" (ez_positions_service_main.py) always writes + heartbeats;
+        # role "failover" (this script) writes ONLY while the service heartbeat is stale, logging every takeover/release.
+        self.role = pwg.process_role()
+        self.account_dir = position_service.get_position_file(account_key, "LONG").parent
+        self._active = self.role != "failover"
+
+    def failover_gate(self) -> bool:
+        """True when this process may fetch+write now. Logs TAKEOVER / RELEASE transitions."""
+        if self.role != "failover":
+            return True
+        age = pwg.heartbeat_age(self.account_dir)
+        if age <= pwg.stale_after_s():
+            if self._active:
+                logger.critical(f"[FAILOVER][{self.account_key}] ✅ RELEASE — ez_positions_service is back (heartbeat {age:.0f}s); realtime stops writing")
+                pwg._alert("FAILOVER_RELEASE", {"account": self.account_key, "heartbeat_age_s": age})
+                self._active = False
+            return False
+        if not self._active:
+            logger.critical(f"[FAILOVER][{self.account_key}] 🚨 TAKEOVER — ez_positions_service heartbeat stale ({age:.0f}s > {pwg.stale_after_s():.0f}s); realtime writes until it returns")
+            pwg._alert("FAILOVER_TAKEOVER", {"account": self.account_key, "heartbeat_age_s": age if age != float('inf') else -1})
+            self._active = True
+        return True
+
+    def mark_written(self) -> None:
+        self._last_own_write = time.time()
+        if self.role == "service":
+            pwg.write_heartbeat(self.account_dir, {"account": self.account_key})
         
     async def fetch_loop(self) -> None:
         """CRITICAL: Fetch positions from API every 6 seconds and save ALL positions"""
@@ -85,11 +113,10 @@ class RealtimePositionUpdater:
                         logger.error(f"[FETCH_LOOP][{self.account_key}] Exception creating client: {client_err}", exc_info=True)
                         await asyncio.sleep(4.0)
                         continue
-                _fm = _freshest_file_mtime(self.position_service, self.account_key)
-                if should_standby(_fm, self._last_own_write, time.time()):
+                if not self.failover_gate():
                     self._standby_skips += 1
                     if self._standby_skips % 50 == 1:
-                        logger.warning(f"[FETCH_LOOP][{self.account_key}] ⏸️ standby (service primary fresh, files {time.time()-_fm:.0f}s old) — no fetch, staying warm")
+                        logger.warning(f"[FETCH_LOOP][{self.account_key}] ⏸️ standby (ez_positions_service heartbeat fresh) — no fetch, no writes, staying warm")
                     await asyncio.sleep(6.0)
                     continue
                 try:
@@ -132,7 +159,7 @@ class RealtimePositionUpdater:
                             try:
                                 _saved = await save_positions_guarded(self.position_service, self.account_key)
                                 if _saved:
-                                    self._last_own_write = time.time()
+                                    self.mark_written()
                                 logger.warning(f"[FETCH_LOOP][{self.account_key}] ✅ {'SAVED' if _saved else 'SAVE-REFUSED-STALE'} {len(account_positions)} positions")
                             except Exception as save_err:
                                 logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ Save failed: {save_err}", exc_info=True)
@@ -158,7 +185,8 @@ async def main():
     if account_key == "tra":
         logger.critical(f"[REALTIME][{account_key}] ⏭️ Skipping 'tra' account - handled by tradier_positions.py")
         sys.exit(0)
-    pid_file = Path.home() / "logs" / f"ez_positions_realtime_{account_key}.pid"
+    _proc = "ez_positions_service" if pwg.process_role() == "service" else "ez_positions_realtime"
+    pid_file = Path.home() / "logs" / f"{_proc}_{account_key}.pid"
     pid_file.parent.mkdir(parents=True, exist_ok=True)
     pid_fd = None
     try:
@@ -177,14 +205,14 @@ async def main():
         pid_fd = None
     account_file_handler = None
     try:
-        account_log_file = str(logs_dir / f"ez_positions_realtime_{account_key}.log")
+        account_log_file = str(logs_dir / f"{_proc}_{account_key}.log")
         existing_handlers = [h for h in logger.handlers if isinstance(h, RotatingFileHandler) and h.baseFilename == account_log_file]
         if not existing_handlers:
             account_file_handler = RotatingFileHandler(account_log_file, maxBytes=1*1024*1024, backupCount=3, encoding='utf-8', mode='a')
             account_file_handler.setLevel(logging.DEBUG)
             account_file_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
             logger.addHandler(account_file_handler)
-        logger.critical(f"[REALTIME] 🚨🚨🚨 Starting for: {account_key} (sys.argv={sys.argv})")
+        logger.critical(f"[REALTIME] 🚨🚨🚨 Starting for: {account_key} role={pwg.process_role()} (sys.argv={sys.argv})")
     except Exception as log_err:
         logger.warning(f"[REALTIME][{account_key}] ⚠️ Log setup error: {log_err}")
     
@@ -303,11 +331,10 @@ async def main():
                 # CRITICAL: Save ALL positions from memory after WebSocket update
                 # handle_account_update already updated memory, now save to files (skipped while service primary is fresh)
                 try:
-                    _wfm = _freshest_file_mtime(service, account_key)
-                    if should_standby(_wfm, updater._last_own_write, time.time()):
-                        logger.debug(f"[WS][{account_key}] ⏸️ save skipped (service primary is fresh)")
+                    if not updater.failover_gate():
+                        logger.debug(f"[WS][{account_key}] ⏸️ save skipped (ez_positions_service heartbeat fresh)")
                     elif await save_positions_guarded(service, account_key, force=True):
-                        updater._last_own_write = time.time()
+                        updater.mark_written()
                         logger.warning(f"[WS][{account_key}] ✅✅✅ Saved all positions from memory after WebSocket update")
                 except Exception as save_err:
                     logger.error(f"[WS][{account_key}] ❌ Failed to save positions: {save_err}", exc_info=True)

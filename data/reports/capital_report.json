@@ -1,79 +1,54 @@
 {
- "generated_at": "2026-10-14 01:48 UTC",
- "total_capital_usd": 151.13,
+ "generated_at": "2026-10-14 02:04 UTC",
+ "total_capital_usd": 39.52,
  "tier_capital": {
   "A": 0.0,
-  "B": 82.21,
-  "C": 68.92
+  "B": 34.14,
+  "C": 5.38
  },
  "tier_count": {
   "A": 0,
-  "B": 4,
+  "B": 2,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:EGLDUSDT_LONG",
-  "ang:APEUSDT_LONG"
+  "inf:SOLUSDC_SHORT"
  ],
- "mediocre": [
-  "ang:TRUMPUSDC_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:APEUSDT_LONG",
-   "symbol": "APEUSDT",
-   "account": "ang",
-   "value_usd": 68.92,
-   "gain_pct": -0.578,
-   "tier": "C",
-   "perf_mult": 0.3,
-   "amt": 455.0,
-   "mark": 0.15146931
-  },
-  {
-   "pk": "ang:KMNOUSDT_LONG",
-   "symbol": "KMNOUSDT",
-   "account": "ang",
-   "value_usd": 45.05,
-   "gain_pct": -0.121,
+   "pk": "inf:BATUSDT_LONG",
+   "symbol": "BATUSDT",
+   "account": "inf",
+   "value_usd": 22.94,
+   "gain_pct": 0.079,
    "tier": "B",
-   "perf_mult": 2.45,
-   "amt": 1141.0,
-   "mark": 0.03948483
+   "perf_mult": 8.33,
+   "amt": 113.5,
+   "mark": 0.20213
   },
   {
-   "pk": "ang:ZENUSDT_LONG",
-   "symbol": "ZENUSDT",
-   "account": "ang",
-   "value_usd": 15.02,
-   "gain_pct": 0.618,
-   "tier": "B",
-   "perf_mult": 2.88,
-   "amt": 2.4,
-   "mark": 6.258
-  },
-  {
-   "pk": "ang:TRUMPUSDC_LONG",
+   "pk": "inf:TRUMPUSDC_LONG",
    "symbol": "TRUMPUSDC",
-   "account": "ang",
-   "value_usd": 11.23,
-   "gain_pct": 0.0,
+   "account": "inf",
+   "value_usd": 11.2,
+   "gain_pct": -0.392,
    "tier": "B",
    "perf_mult": 1.0,
-   "amt": 5.9,
-   "mark": 1.904
+   "amt": 5.87,
+   "mark": 1.908
   },
   {
-   "pk": "ang:EGLDUSDT_LONG",
-   "symbol": "EGLDUSDT",
-   "account": "ang",
-   "value_usd": 10.91,
-   "gain_pct": -0.855,
-   "tier": "B",
-   "perf_mult": 1.05,
-   "amt": 2.9,
-   "mark": 3.76072414
+   "pk": "inf:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "inf",
+   "value_usd": 5.38,
+   "gain_pct": 0.097,
+   "tier": "C",
+   "perf_mult": 0.26,
+   "amt": 0.05,
+   "mark": 107.50553077
   }
  ]
 }

@@ -914,6 +914,14 @@ async def _atomic_write_json_impl(file_path: Union[str, Path], data: dict):
     except Exception:
         return False
     name_lower = file_path_obj.name.lower()
+    if name_lower in ("long_positions.json", "short_positions.json") and isinstance(data, dict):
+        try:  # USER 2026-10-14 SINGLE POSITION WRITER (fail-closed)
+            import position_writer_guard as _pwg
+            if not _pwg.before_write(file_path_obj, data, log=logger, overlay=False):
+                return False
+        except Exception as _pwg_e:
+            logger.critical(f"[SINGLE_WRITER] guard error for {file_path_obj} — write REFUSED (fail-closed): {_pwg_e!r}")
+            return False
     if ("long_positions.json" in name_lower or "short_positions.json" in name_lower) and isinstance(data, dict):
         try:
             if file_path_obj.exists():
@@ -1038,7 +1046,7 @@ POSITION AFTER (attempted write):
         if ("long_positions.json" in name_lower or "short_positions.json" in name_lower):  # 2026-10-06 USER POSITIONS_TRUTH freshness contract: .<file>.meta.json written_at AFTER the data replace
             try:
                 import positions_truth as _ptruth
-                _ptruth.write_meta(file_path_obj, writer=f"ez_positions_service:{os.getpid()}", config=config)
+                _ptruth.write_meta(file_path_obj, writer=f"ez_positions_service:{__import__('position_writer_guard').process_role()}:{os.getpid()}", config=config)
             except Exception: pass
         return True
     except Exception as e:
@@ -1664,9 +1672,27 @@ def _convert_timestamp_strings_positions(data: Any) -> Any:
     elif isinstance(data, list):
         return [_convert_timestamp_strings_positions(item) for item in data]
     return data
+def _opened_at_change_ok(pos, value):
+    """USER 2026-10-14: opened_at of a HELD position is immutable (only a fresh open after a real close re-stamps it, inside identity_write_allowed())."""
+    try:
+        import position_writer_guard as _pwg
+        old = object.__getattribute__(pos, "opened_at")
+        e_old, e_new = _pwg.to_epoch(old), _pwg.to_epoch(value)
+        if e_old is None or e_new is None or abs(e_old - e_new) <= 1.0:
+            return True
+        if abs(float(object.__getattribute__(pos, "positionAmt") or 0)) <= 0 or _pwg.identity_write_is_allowed():
+            return True
+        import traceback as _oa_tb
+        _stack = "".join(_oa_tb.format_stack()[-7:-1])
+        _key = f"{getattr(pos, 'symbol', '?')}_{getattr(pos, 'position_side', '?')}"
+        logger.critical(f"🛑 [OPENED_AT_CHANGE_REJECTED][MEMORY] {_key}: kept {old}, refused {value} PID={os.getpid()} role={_pwg.process_role()}\n{_stack}")
+        _pwg._alert("OPENED_AT_CHANGE_REJECTED_MEMORY", {"key": _key, "kept": old, "refused": value, "stack": _stack})
+        return False
+    except Exception:
+        return True
 _POSITION_PROTECTED_FIELDS = frozenset({"entry_price", "max_gain", "last_reduction_price", "last_reduction_amount", "last_augmentation_price", "last_augmentation_amount", "initial_quantity", "max_quantity", "max_positionSize", "augment_reason", "reduction_reason", "opened_at", "last_augmentation_time", "last_reduction_time", "sba_add_count", "last_sba_time", "sba_total_added_usd", "entry_price_before_sba"})
 _POSITION_SERVICE_ONLY_FIELDS = frozenset({"positionAmt", "entry_price", "last_reduction_price", "last_reduction_amount", "last_reduction_time", "last_augmentation_price", "last_augmentation_amount", "last_augmentation_time", "initial_quantity", "was_reduced", "is_reduced", "reduced_at", "was_reentered", "opened_at", "augment_reason", "reduction_reason"})
-_POSITION_WRITE_ALLOWED_FILES = frozenset({"ez_positions_service.py", "ez_positions.py", "tradier_positions.py", "ez_manage.py", "ez_positions_quick.py", "tradier_manage.py"})
+_POSITION_WRITE_ALLOWED_FILES = frozenset({"ez_positions_service.py", "ez_positions.py", "tradier_positions.py", "ez_manage.py", "ez_positions_quick.py", "tradier_manage.py", "position_writer_guard.py"})
 
 @dataclass
 
@@ -1711,6 +1737,8 @@ class Position:
     exchange_stop_order_id: str = ""
 
     def __setattr__(self, name, value):
+        if name == "opened_at" and hasattr(self, name) and not _opened_at_change_ok(self, value):
+            return
         if name in _POSITION_SERVICE_ONLY_FIELDS and hasattr(self, name):
             old_val = object.__getattribute__(self, name)
             if old_val == value:
@@ -2834,7 +2862,7 @@ class WebSocketManager:
                 elif amt_abs > prev_amt:
                     logger.critical(f"[POSAMT_WRITE][WS_AUG][{position_key}] {prev_amt} -> {amt_abs} (+{amt_abs-prev_amt}) via WS")
                     if self.service and hasattr(self.service, 'handle_augmentation'):
-                        await self.service.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price, price_is_fresh=True)
+                        await self.service.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price, price_is_fresh=True, broker_entry_price=safe_fetch_float(pos_update.get("ep"), 0.0))
                 elif amt_abs < prev_amt:
                     logger.critical(f"[POSAMT_WRITE][WS_RED][{position_key}] {prev_amt} -> {amt_abs} (-{prev_amt-amt_abs}) via WS")
                     if self.service and hasattr(self.service, 'handle_reduction'):
@@ -7091,6 +7119,10 @@ class PositionService:
                     if not _ep_credible:
                         logger.warning(f"[ENTRY_PRICE_FIX][{position_key}] Memory entry_price={_mem_ep:.8f} not credible vs API={api_entry_price:.8f}. Replacing with API value.")
                         existing_position.entry_price = api_entry_price
+                    elif abs(_mem_ep - api_entry_price) > api_entry_price * 1e-7 and abs(abs(safe_fetch_float(existing_position.positionAmt, 0)) - amt_abs) <= max(1e-12, amt_abs * 1e-6):
+                        # USER 2026-10-14: same quantity as the broker -> the broker's entryPrice (real fill average) is the truth
+                        logger.warning(f"[ENTRY_PRICE_BROKER_TRUTH][{position_key}] entry_price {_mem_ep:.8f} -> broker {api_entry_price:.8f}")
+                        existing_position.entry_price = api_entry_price
                 prev_amt = abs(existing_position.positionAmt) if existing_position.positionAmt else 0.0
                 # 2026-04-24: DISTINGUISH FRESH vs STALE price sources. Previously any price
                 # source could overwrite mark_price — including quick_price() returning the cached
@@ -7145,7 +7177,7 @@ class PositionService:
                     await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price, price_is_fresh=_price_is_fresh)
                 elif amt_abs > prev_amt:
                     logger.critical(f"[POSAMT_WRITE][API_AUG][{position_key}] {prev_amt} -> {amt_abs} (+{amt_abs-prev_amt}) via API")
-                    await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price, price_is_fresh=_price_is_fresh)
+                    await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price, price_is_fresh=_price_is_fresh, broker_entry_price=api_entry_price or 0.0)
                 elif amt_abs < prev_amt:
                     if trade_just_executed:
                         logger.warning(f"[API_SYNC_BLOCKED][{position_key}] API says amt={amt_abs} < prev={prev_amt} but a trade was JUST executed (120s cooldown). Keeping local amt. API data is stale.")
@@ -7489,7 +7521,24 @@ class PositionService:
             pass
         self._mark_positions_dirty()
 
-    async def handle_augmentation(self, position, position_key, positionAmt, positionAmt_abs, augment_qty, current_price, entry_price, price_is_fresh: bool = False):
+    def _fresh_open_restamp_ok(self, position, position_key):
+        try:
+            import position_writer_guard as _pwg
+            oa = _pwg.to_epoch(getattr(position, "opened_at", None))
+            if oa is None:
+                return True
+            lr = _pwg.to_epoch(getattr(position, "last_reduction_time", None))
+            if lr is not None and lr >= oa and abs(float(getattr(position, "last_reduction_amount", 0) or 0)) > 0:
+                return True
+            account_key, _, side = parse_position_key(position_key)
+            row = _pwg.read_json(self.get_position_file(account_key, side)).get(position_key) or {}
+            if abs(float(row.get("positionAmt", 0) or 0)) > 0 and _pwg._same_lifecycle(row.get("opened_at"), getattr(position, "opened_at", None)):
+                return False
+            return True
+        except Exception:
+            return True
+
+    async def handle_augmentation(self, position, position_key, positionAmt, positionAmt_abs, augment_qty, current_price, entry_price, price_is_fresh: bool = False, broker_entry_price: float = 0.0):
         now = datetime.now(timezone.utc)
         if current_price and current_price > 0:
             # 2026-04-30: Removed inline get_current_price() — at ~200 positions × 0.5s
@@ -7558,7 +7607,15 @@ class PositionService:
             # and made RIDICULOUS_HOLD_GUARD see age=1000+ hours on a fresh hedge, killing it
             # 17 seconds after open. opened_at is in _POSITION_PROTECTED_FIELDS so cross-merge
             # alone can't repair it — must explicitly stamp here.
-            position.opened_at = now
+            # USER 2026-10-14: ...but a HELD position whose memory merely looked tiny (restart/reload artefact) keeps its
+            # opened_at. Re-stamp only when empty, or when a close was recorded after it opened, or the writer's file
+            # does not show it held with that same opened_at.
+            if self._fresh_open_restamp_ok(position, position_key):
+                import position_writer_guard as _pwg_aug
+                with _pwg_aug.identity_write_allowed():
+                    position.opened_at = now
+            else:
+                logger.critical(f"🛡️ [OPENED_AT_KEPT] {position_key}: tiny->held transition but position was continuously held (file) — opened_at {position.opened_at} kept")
         else:
             try :
                 indicators_now = await self.get_indicators_for_symbol(position.symbol, force_refresh=True)
@@ -7575,7 +7632,12 @@ class PositionService:
         position.positionAmt = positionAmt_abs
         position.max_positionSize = float(config.get_account_setting(account_key, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
         logger.critical(f"[POSAMT_WRITE][HANDLE_AUG][{position_key}] {_old_aug} -> {positionAmt_abs} (augment_qty={augment_qty})")
-        if augment_qty > 0 and position.positionAmt > 0:
+        if augment_qty > 0 and position.positionAmt > 0 and safe_fetch_float(broker_entry_price, 0) > 0:
+            # USER 2026-10-14: the broker's entryPrice IS the real fill-weighted average — never the mark price.
+            if was_tiny_position or position.positionAmt - augment_qty <= pos_min_qty:
+                position.initial_quantity = augment_qty
+            position.entry_price = safe_fetch_float(broker_entry_price, 0)
+        elif augment_qty > 0 and position.positionAmt > 0:
             old_quantity = position.positionAmt - augment_qty
             # 2026-04-26 GUARD: entry_price is SACRED per CLAUDE.md. Refuse to write 0 — log and keep prior value.
             if old_quantity > pos_min_qty:
