@@ -1222,7 +1222,14 @@ class TradierDedupeGuard(_GuardBase):
             raise RuntimeError("tradier client has no account id")
         # 2026-10-14: newest orders only (limit=100 pages, ~1 s each) — a full 2700-order listing took 30 s and timed out every exit.
         from tradier_api import tradier_recent_orders
-        return await asyncio.wait_for(tradier_recent_orders(client._request, acct_id, pages=3, raise_on_fail=True), timeout=float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")))
+        _t0 = time.time()
+        try:
+            _r = await asyncio.wait_for(tradier_recent_orders(client._request, acct_id, pages=3, raise_on_fail=True), timeout=float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")))
+            self.log.warning(f"[ODG_LIST_TIMING] {self.account}: {len(_r)} orders in {time.time() - _t0:.1f}s")
+            return _r
+        except BaseException as _le:
+            self.log.critical(f"[ODG_LIST_TIMING] {self.account}: FAILED after {time.time() - _t0:.1f}s: {_le!r}")
+            raise
 
     async def _list_orders(self, client) -> List[Dict[str, Any]]:
         # 2026-10-13 NEVER-AGAIN single-flight: concurrent verifies share one
