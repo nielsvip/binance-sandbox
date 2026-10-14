@@ -613,7 +613,11 @@ def _template_md5_for(cat_side: str) -> str:
 
 
 def _prune_history(con: sqlite3.Connection) -> int:
-    """Keep ≥30d of history; prune >35d and cap 45 per sym_side. Returns deleted count."""
+    """Keep ≥30d of history; prune >35d and cap 45 per sym_side. Returns deleted count.
+    USER 2026-10-14: "hold on to it infinitely … for stats and development and self learning" -> history is NEVER pruned unless
+    PER_SYM_HISTORY_PRUNE=1 is set explicitly (archive copies: tools/v15_history_archive.sh on the external drive)."""
+    if os.environ.get("PER_SYM_HISTORY_PRUNE") != "1":
+        return 0
     try:
         now = time.time()
         cutoff = now - _HISTORY_PRUNE_AFTER_DAYS * 86400

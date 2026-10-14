@@ -2,30 +2,37 @@
 """v15_settings_history — USER 2026-10-13: "make sure the db written by the fleet orchestrator with each sym_side's
 historical settings day by day is intact and updated when the json is written for any sym_side as soon as its new
 settings have been calculated."
+USER 2026-10-14: "make sure the db gets filled correctly from now on so we have the daily settings and metrics for each
+sym_side after every calc and hold on to it infinitely (at least on ext drive) for stats and development and self learning".
 
-Runs on the orchestrator (s1). Scans every host's round progress JSONs, and for each board that has just PUBLISHED a
-final set (top-level numeric `final_gain`, no `needs_redo`) appends ONE row to `per_sym_history` in
-`data/hourly_reconfig/per_sym_store.db` — the same table + columns `per_sym_store.upsert()` writes, so the day-by-day
-trail stays queryable by the existing readers.
+Runs on the orchestrator (s1). Source = the PUBLISH MANIFESTS (SPREADSHEETS/V15_V16_CELL_BY_CELL*/{SS}_*_matrix_manifest.json
+on every host): one manifest = one published board with its complete metrics (gain, trades, TIM, max DD, bh, gain_vs_bh,
+valid, publish_class, engine/pilot md5, npz md5, overrides_md5). The board's exact SET comes from the round progress JSON
+whose md5(cumulative_overrides) == the manifest overrides_md5 (same hash as v15_pilot). One row per board is appended to
+`per_sym_history` in `data/hourly_reconfig/per_sym_store.db` (same table/columns as per_sym_store.upsert()).
+(2026-10-13 version read the progress JSONs only: TIM/DD came from diagnose_repair.after and were mostly empty; a progress
+file overwritten by the next round lost the board.)
 
-Deliberately HISTORY-ONLY: it never touches `per_sym_active`. Live per-sym settings stay behind the go-live gate
-(365D verification, artefact stripping, blocklists) — a freshly calculated 30D set is evidence, not a promotion.
+Sources written to meta_json.source:
+  fleet_orchestrator_publish      — set matched; tools/v15_published_selection.py (latest-board go-live) reads ONLY these.
+  fleet_orchestrator_publish_noset — metrics recorded but the exact set could not be recovered (never a go-live source).
+  manifest_backfill               — --backfill rows (older boards recorded after the fact; never a go-live source).
 
-Idempotent: a board is recorded once per (sym_side, final_gain, npz id, day). Re-running is a no-op. Integrity is
-checked before writing and the DB is left untouched on any failure.
+Deliberately HISTORY-ONLY: it never touches `per_sym_active`. Never deletes (per_sym_store pruning is off, USER 2026-10-14).
+Idempotent per (sym_side, published_utc, overrides_md5). Integrity is checked before writing; the DB is untouched on failure.
 
 Usage:
-  python3 tools/v15_settings_history.py [--hosts 127.0.0.1,10.0.0.4,10.0.0.5,10.0.0.6] [--window-h 24] [--dry-run]
+  python3 tools/v15_settings_history.py [--hosts 127.0.0.1,10.0.0.4] [--window-h 24] [--backfill] [--dry-run]
+  --window-h 0 = every manifest on disk.
 """
 import argparse
 import datetime
-import glob
+import hashlib
 import json
 import os
 import sqlite3
 import subprocess
 import sys
-import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.environ.get("PER_SYM_STORE_DB") or os.path.join(ROOT, "data", "hourly_reconfig", "per_sym_store.db")
@@ -33,56 +40,58 @@ CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=accept-new"]
 
 COLLECT = r'''
-import glob, json, os, time
-out = []
+import glob, hashlib, json, os, time
 win = float(%(win)s)
 now = time.time()
-for d in glob.glob(os.path.expanduser("~/v15_run*/progress")) + [os.path.expanduser("~/binance-sandbox/data/reports/lifecycle_pilot")]:
-    for f in glob.glob(os.path.join(d, "*_v14_progress.json")):
+home = os.path.expanduser("~")
+mans = []
+for d in glob.glob(home + "/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL*") + glob.glob(home + "/binance-sandbox/data/manifest_archive*"):
+    for f in glob.glob(d + "/*_matrix_manifest.json"):
         try:
-            if now - os.path.getmtime(f) > win * 3600.0:
+            if win > 0 and now - os.path.getmtime(f) > win * 3600.0:
                 continue
-            j = json.load(open(f))
+            m = json.load(open(f))
         except Exception:
             continue
-        fg = j.get("final_gain")
-        if not isinstance(fg, (int, float)) or isinstance(fg, bool) or j.get("needs_redo"):
-            continue
-        ov = j.get("cumulative_overrides") or {}
-        if not isinstance(ov, dict) or not ov:
-            continue
-        dr = j.get("diagnose_repair") or {}
-        after = dr.get("after") if isinstance(dr.get("after"), dict) else {}
-        out.append({
-            "sym_side": os.path.basename(f)[: -len("_v14_progress.json")],
-            "final_gain": float(fg),
-            "baseline_gain": j.get("baseline_gain"),
-            "bh": j.get("bh"),
-            "trades": j.get("final_trades") or after.get("trades"),
-            "tim": after.get("tim"),
-            "dd": after.get("dd"),
-            "pool_sharpe": (j.get("final_365d") or {}).get("pool_sharpe") if isinstance(j.get("final_365d"), dict) else None,
-            "verdict": j.get("verdict"),
-            "defaults_round": j.get("defaults_round"),
-            "npz": (j.get("npz_id") or {}).get("md5") or (j.get("npz_id") or {}).get("mtime_ns"),
-            "result_done_utc": j.get("result_done_utc"),
-            "mtime": os.path.getmtime(f),
-            "path": f,
-            "overrides": ov,
-            "n_overrides": len(ov),
-        })
-print(json.dumps(out))
+        if m.get("symside") and m.get("published_utc") and m.get("overrides_md5"):
+            m["_path"] = f
+            mans.append(m)
+want = {}
+for m in mans:
+    want.setdefault(m["symside"], set()).add(m["overrides_md5"])
+sets = {}
+pdirs = glob.glob(home + "/v15_run*/progress") + glob.glob(home + "/v15_*/progress") + [home + "/binance-sandbox/data/reports/lifecycle_pilot"]
+for d in set(pdirs):
+    for ss in want:
+        for f in glob.glob(os.path.join(d, ss + "_v14_progress.json")) + glob.glob(os.path.join(d, ss + "_v14_progress.json.*")):
+            try:
+                j = json.load(open(f))
+            except Exception:
+                continue
+            ov = j.get("cumulative_overrides")
+            if not isinstance(ov, dict) or not ov:
+                continue
+            h = hashlib.md5(json.dumps(ov, sort_keys=True, default=str).encode()).hexdigest()
+            if h in want[ss] and (ss, h) not in sets:
+                npz = j.get("npz_id") or {}
+                sets[(ss, h)] = {"overrides": ov, "progress": f, "baseline_gain": j.get("baseline_gain"), "verdict": j.get("verdict"),
+                                 "defaults_round": j.get("defaults_round"), "result_done_utc": j.get("result_done_utc"),
+                                 "npz": npz.get("md5") or npz.get("mtime_ns") if isinstance(npz, dict) else None}
+out = []
+for m in mans:
+    s = sets.get((m["symside"], m["overrides_md5"])) or {}
+    out.append({"manifest": m, "set": s})
+print(json.dumps(out, default=str))
 '''
 
 
 def collect(host, win):
     code = COLLECT % {"win": win}
     if host in ("127.0.0.1", "localhost", "local"):
-        r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300)
+        r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=900)
     else:
-        # the collector is piped on STDIN: shell-quoting a multi-line script through ssh mangles it (observed:
-        # every remote host silently returned 0 boards while s2/s5/s6 had published results).
-        r = subprocess.run(SSH + [f"niels@{host}", "python3 -"], input=code, capture_output=True, text=True, timeout=300)
+        # piped on STDIN: shell-quoting a multi-line script through ssh mangles it
+        r = subprocess.run(SSH + [f"niels@{host}", "python3 -"], input=code, capture_output=True, text=True, timeout=900)
     try:
         return json.loads((r.stdout or "").strip().splitlines()[-1])
     except Exception:
@@ -94,73 +103,12 @@ def cat_side_of(ss):
     return f"{'CRYPTO' if sym.upper().endswith(CRYPTO_SUFFIX) else 'STOCKS'}_{side}"
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--hosts", default=os.environ.get("V15_HIST_HOSTS", "127.0.0.1,10.0.0.4,10.0.0.5,10.0.0.6"))
-    ap.add_argument("--window-h", type=float, default=float(os.environ.get("V15_HIST_WINDOW_H", "24")))
-    ap.add_argument("--db", default=DB)
-    ap.add_argument("--dry-run", action="store_true")
-    args = ap.parse_args()
-    if not os.path.exists(args.db):
-        print(json.dumps({"error": f"db missing: {args.db}"}))
-        return 2
-    con = sqlite3.connect(args.db, timeout=30.0)
-    ok = con.execute("PRAGMA integrity_check").fetchone()[0]
-    if ok != "ok":
-        print(json.dumps({"error": f"integrity_check={ok} — refusing to write", "db": args.db}))
-        return 3
-    cols = {r[1] for r in con.execute("PRAGMA table_info(per_sym_history)").fetchall()}
-    if not cols:
-        print(json.dumps({"error": "per_sym_history table missing — run per_sym_store ensure first"}))
-        return 3
-    found, wrote, dup = 0, 0, 0
-    per_host = {}
-    for host in [h for h in args.hosts.split(",") if h.strip()]:
-        rows = collect(host.strip(), args.window_h)
-        per_host[host] = len(rows)
-        for r in rows:
-            found += 1
-            ss = r["sym_side"]
-            day = (str(r.get("result_done_utc") or "")[:10]) or datetime.datetime.utcfromtimestamp(r["mtime"]).strftime("%Y-%m-%d")
-            # idempotency: same sym_side + same measured gain + same day already recorded -> skip
-            hit = con.execute(
-                "SELECT 1 FROM per_sym_history WHERE sym_side=? AND substr(updated_at,1,10)=? AND gain_pct IS NOT NULL "
-                "AND abs(gain_pct - ?) < 1e-9 LIMIT 1", (ss, day, float(r["final_gain"]))).fetchone()
-            if hit:
-                dup += 1
-                continue
-            if args.dry_run:
-                wrote += 1
-                continue
-            now_iso = datetime.datetime.utcfromtimestamp(r["mtime"]).strftime("%Y-%m-%dT%H:%M:%SZ")
-            meta = {"source": "fleet_orchestrator_publish", "host": host, "progress": r["path"], "npz": r.get("npz"),
-                    "verdict": r.get("verdict"), "n_overrides": r.get("n_overrides"), "recorded_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
-            try:
-                delta = (float(r["final_gain"]) - float(r["baseline_gain"])) if r.get("baseline_gain") is not None else None
-            except (TypeError, ValueError):
-                delta = None
-            con.execute(
-                "INSERT INTO per_sym_history (sym_side, updated_at, epoch, cat_side, template_md5, defaults_round, "
-                "winning_tag, gain_pct, baseline_gain, delta_pct, bh_pct, trades, pool_sharpe, max_dd_pct, tim_pct, "
-                "valid, overrides_json, full_config_json, defaults_snapshot_json, meta_json) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (ss, now_iso, float(r["mtime"]), cat_side_of(ss), "", str(r.get("defaults_round") or ""),
-                 f"pilot30d_{day}", float(r["final_gain"]),
-                 _f(r.get("baseline_gain")), delta, _f(r.get("bh")), _i(r.get("trades")), _f(r.get("pool_sharpe")),
-                 _f(r.get("dd")), _f(r.get("tim")), 1 if r.get("verdict") not in ("IMPOSSIBLE", "NO_TRADES") else 0,
-                 json.dumps(r["overrides"], sort_keys=True), None, None, json.dumps(meta)))
-            wrote += 1
-    if not args.dry_run:
-        con.commit()
-    total = con.execute("SELECT COUNT(*) FROM per_sym_history").fetchone()[0]
-    days = con.execute("SELECT COUNT(DISTINCT substr(updated_at,1,10)) FROM per_sym_history").fetchone()[0]
-    syms = con.execute("SELECT COUNT(DISTINCT sym_side) FROM per_sym_history").fetchone()[0]
-    newest = con.execute("SELECT MAX(updated_at) FROM per_sym_history").fetchone()[0]
-    con.close()
-    print(json.dumps({"db": args.db, "integrity": ok, "per_host_boards": per_host, "found": found,
-                      "written": wrote, "already_recorded": dup, "history_rows": total, "distinct_days": days,
-                      "distinct_sym_sides": syms, "newest_row": newest, "dry_run": bool(args.dry_run)}, indent=1))
-    return 0
+def template_md5(cs):
+    p = os.path.join(ROOT, "SPREADSHEETS", "TEMPLATE_FINAL_NORM", f"TEMPLATE_{cs}.xlsx")
+    try:
+        return hashlib.md5(open(p, "rb").read()).hexdigest()
+    except OSError:
+        return ""
 
 
 def _f(x):
@@ -175,6 +123,91 @@ def _i(x):
         return int(float(x)) if x is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--hosts", default=os.environ.get("V15_HIST_HOSTS", "127.0.0.1,10.0.0.4"))
+    ap.add_argument("--window-h", type=float, default=float(os.environ.get("V15_HIST_WINDOW_H", "24")))
+    ap.add_argument("--backfill", action="store_true", help="tag rows manifest_backfill (never a go-live source)")
+    ap.add_argument("--db", default=DB)
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+    if not os.path.exists(args.db):
+        print(json.dumps({"error": f"db missing: {args.db}"}))
+        return 2
+    con = sqlite3.connect(args.db, timeout=60.0)
+    ok = con.execute("PRAGMA quick_check").fetchone()[0]
+    if ok != "ok":
+        print(json.dumps({"error": f"quick_check={ok} — refusing to write", "db": args.db}))
+        return 3
+    if not {r[1] for r in con.execute("PRAGMA table_info(per_sym_history)").fetchall()}:
+        print(json.dumps({"error": "per_sym_history table missing — run per_sym_store ensure first"}))
+        return 3
+    boards = {}
+    per_host = {}
+    for host in [h.strip() for h in args.hosts.split(",") if h.strip()]:
+        rows = collect(host, args.window_h)
+        per_host[host] = len(rows)
+        for r in rows:
+            m = r["manifest"]
+            k = (m["symside"], m["published_utc"], m["overrides_md5"])
+            if k not in boards or (r["set"] and not boards[k]["set"]):
+                boards[k] = dict(r, host=host)
+    tpl = {cs: template_md5(cs) for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
+    wrote, dup, noset = 0, 0, 0
+    for (ss, pub, ovm), r in sorted(boards.items(), key=lambda kv: kv[0][1]):
+        hit = con.execute("SELECT 1 FROM per_sym_history WHERE sym_side=? AND updated_at=? AND json_extract(meta_json,'$.overrides_md5')=? LIMIT 1",
+                          (ss, pub, ovm)).fetchone()
+        mt0 = r["manifest"].get("metrics") or {}
+        if not hit and mt0.get("gain_pct") is not None:
+            # the 2026-10-13 progress-based writer already recorded this board (same sym_side, same day, same final gain)
+            hit = con.execute("SELECT 1 FROM per_sym_history WHERE sym_side=? AND substr(updated_at,1,10)=? AND gain_pct IS NOT NULL AND abs(gain_pct-?)<1e-6 "
+                              "AND json_extract(meta_json,'$.source')='fleet_orchestrator_publish' LIMIT 1", (ss, pub[:10], float(mt0["gain_pct"]))).fetchone()
+        if hit:
+            dup += 1
+            continue
+        m, s = r["manifest"], r["set"]
+        mt = m.get("metrics") or {}
+        ov = s.get("overrides")
+        source = "manifest_backfill" if args.backfill else ("fleet_orchestrator_publish" if ov else "fleet_orchestrator_publish_noset")
+        noset += 0 if ov else 1
+        if args.dry_run:
+            wrote += 1
+            continue
+        cs = cat_side_of(ss)
+        try:
+            epoch = datetime.datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            epoch = None
+        gain, base = _f(mt.get("gain_pct")), _f(s.get("baseline_gain"))
+        meta = {"source": source, "host": r["host"], "manifest": m.get("_path"), "progress": s.get("progress"), "final_name": m.get("final_name"),
+                "overrides_md5": ovm, "overrides_matched": bool(ov), "publish_class": m.get("publish_class"), "gain_vs_bh": _f(mt.get("gain_vs_bh")),
+                "invalid_reason": mt.get("invalid_reason"), "counts": m.get("counts"), "pilot_md5": m.get("pilot_md5"), "file_md5": m.get("file_md5"),
+                "npz": m.get("npz_md5") or s.get("npz"), "npz_name": m.get("npz_name"), "span_days": m.get("span_days"), "template": m.get("template"),
+                "verdict": s.get("verdict"), "result_done_utc": s.get("result_done_utc"), "n_overrides": len(ov) if ov else None,
+                "template_md5_at_record": tpl.get(cs), "recorded_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+        con.execute(
+            "INSERT INTO per_sym_history (sym_side, updated_at, epoch, cat_side, template_md5, defaults_round, "
+            "winning_tag, gain_pct, baseline_gain, delta_pct, bh_pct, trades, pool_sharpe, max_dd_pct, tim_pct, "
+            "valid, overrides_json, full_config_json, defaults_snapshot_json, meta_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (ss, pub, epoch, cs, tpl.get(cs, ""), str(s.get("defaults_round") or ""), f"pilot30d_{pub[:10]}", gain, base,
+             (gain - base) if gain is not None and base is not None else None, _f(mt.get("bh")), _i(mt.get("trades")),
+             None,  # no per-trade return list in the manifest -> no pool_sharpe (NO-LIES rule 6), never a placeholder
+             _f(mt.get("max_dd_pct")), _f(mt.get("tim_pct")), 1 if mt.get("valid") else 0,
+             json.dumps(ov, sort_keys=True, default=str) if ov else None, None, None, json.dumps(meta, default=str)))
+        wrote += 1
+    if not args.dry_run:
+        con.commit()
+    total = con.execute("SELECT COUNT(*) FROM per_sym_history").fetchone()[0]
+    days = con.execute("SELECT COUNT(DISTINCT substr(updated_at,1,10)) FROM per_sym_history").fetchone()[0]
+    syms = con.execute("SELECT COUNT(DISTINCT sym_side) FROM per_sym_history").fetchone()[0]
+    newest = con.execute("SELECT MAX(updated_at) FROM per_sym_history").fetchone()[0]
+    con.close()
+    print(json.dumps({"db": args.db, "check": ok, "per_host_manifests": per_host, "boards": len(boards), "written": wrote, "written_without_set": noset,
+                      "already_recorded": dup, "history_rows": total, "distinct_days": days, "distinct_sym_sides": syms, "newest_row": newest,
+                      "backfill": bool(args.backfill), "dry_run": bool(args.dry_run)}, indent=1))
+    return 0
 
 
 if __name__ == "__main__":

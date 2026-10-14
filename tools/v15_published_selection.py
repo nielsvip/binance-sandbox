@@ -46,7 +46,7 @@ def manifest_md5s(symside: str, sheet_dir: Path) -> dict:
 
 def latest_published(db: Path) -> dict:
     c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-    rows = c.execute("select id, sym_side, updated_at, cat_side, winning_tag, gain_pct, baseline_gain, bh_pct, trades, pool_sharpe, max_dd_pct, tim_pct, valid, defaults_round, overrides_json, meta_json from per_sym_history where json_extract(meta_json, '$.source') = 'fleet_orchestrator_publish' order by id").fetchall()
+    rows = c.execute("select id, sym_side, updated_at, cat_side, winning_tag, gain_pct, baseline_gain, bh_pct, trades, pool_sharpe, max_dd_pct, tim_pct, valid, defaults_round, overrides_json, meta_json from per_sym_history where json_extract(meta_json, '$.source') = 'fleet_orchestrator_publish' order by updated_at, id").fetchall()  # 2026-10-14: latest = latest PUBLISH time (an after-the-fact insert must never win by id)
     c.close()
     latest = {}
     for r in rows:

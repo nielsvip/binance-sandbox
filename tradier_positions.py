@@ -1546,11 +1546,11 @@ class TradierPositionManager:
                         await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
                     elif diff > 0:
                         if prev_amt <= 0:
-                            # ── 2026-09-03 STRICT BROKER-SYNC FILTER ──
-                            # Previous code blindly adopted ANY broker position appearing while
-                            # local was flat as a new OPEN with empty indicators and 0 gain.
-                            # That opened thousands of $ of dumb shorts (AXON/ETN/BABA etc)
-                            # with no entry validation. Now gate it like a real entry.
+                            # ── 2026-10-14 PARITY LAW (replaces 2026-09-03 STRICT FILTER) ──
+                            # Broker is truth: a broker holding is adopted at EXACT qty, always.
+                            # The advisory checks below never touch qty/age/peak — they are logged
+                            # + tagged only. A clamped local copy is a divergence by construction
+                            # (AXON 8 / CVX 16 / XOM 20 held by broker while local showed flat).
                             _adopt_allowed = True
                             _adopt_veto = ""
                             _adopt_value = amt_abs * (current_price or entry_price)
@@ -1618,23 +1618,15 @@ class TradierPositionManager:
                                     except Exception as _ie:
                                         logger.debug(f"[FLAT_STUB_VALIDATE_ERR] {position_key}: {_ie}")
                             if not _adopt_allowed:
-                                # 2026-09-08 FIX: CLAMP to cap instead of blind 69k adopt (CRWV) — veto must not create oversized position
-                                _clamped_flat = min(amt_abs, (_cap / max(1e-9, (current_price or entry_price)))) if '_cap' in locals() else amt_abs
-                                # Also respect total cap
-                                try:
-                                    _total_cap_f = float(getattr(self.config, "BROKER_SYNC_MAX_TOTAL_VALUE_USD", 2500.0))
-                                except Exception:
-                                    _total_cap_f = 2500.0
-                                _clamped_flat = min(_clamped_flat, (_total_cap_f / max(1e-9, (current_price or entry_price))))
-                                logger.warning(f"[FLAT_STUB_REJECTED] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f} value=${_adopt_value:.0f} veto={_adopt_veto} — REFUSING blind adopt; CLAMPING to {_clamped_flat:.2f} and flagging UNVALIDATED")
-                                existing_position.positionAmt = _clamped_flat
+                                # 2026-10-14 PARITY LAW: adopt EXACT broker qty. The advisory veto is
+                                # telemetry only — it never clamps qty, never resets age/peak.
+                                logger.warning(f"[FLAT_STUB_ADOPTED_EXACT] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f} value=${_adopt_value:.0f} advisory={_adopt_veto} — adopted EXACT (parity law)")
+                                existing_position.positionAmt = amt_abs
                                 existing_position.entry_price = entry_price
                                 existing_position.opened_at = now
                                 existing_position.entry_time = now.isoformat()
                                 existing_position.last_signal = "OPEN"
-                                existing_position.augment_reason = f"BROKER_SYNC_REJECTED_{_adopt_veto}"
-                                existing_position._broker_sync_vetoed = True
-                                # preserve real gain, don't fake 0.0
+                                existing_position.augment_reason = f"BROKER_SYNC_ADOPTED_EXACT_{_adopt_veto}"
                                 try:
                                     from utils import calculate_gain
                                     _real_gain = calculate_gain(position_side, current_price or entry_price, entry_price or current_price)
@@ -1642,10 +1634,13 @@ class TradierPositionManager:
                                     _real_gain = 0.0
                                 existing_position.gain = _real_gain
                                 existing_position.prev_gain = _real_gain
-                                existing_position.max_gain = max(0.0, _real_gain)
+                                try:
+                                    existing_position.max_gain = max(float(existing_position.max_gain or 0.0), _real_gain)
+                                except Exception:
+                                    existing_position.max_gain = max(0.0, _real_gain)
                                 await self.append_to_position_history_file(
-                                    position_key, "OPEN", _clamped_flat, current_price or entry_price,
-                                    {"reason": f"BROKER_SYNC_REJECTED_{_adopt_veto}", "indicators": {"veto": _adopt_veto, "adopt_value": _adopt_value, "clamped_qty": _clamped_flat}},
+                                    position_key, "OPEN", amt_abs, current_price or entry_price,
+                                    {"reason": f"BROKER_SYNC_ADOPTED_EXACT_{_adopt_veto}", "indicators": {"advisory": _adopt_veto, "adopt_value": _adopt_value}},
                                 )
                             else:
                                 existing_position.positionAmt = amt_abs
@@ -1654,9 +1649,17 @@ class TradierPositionManager:
                                 existing_position.entry_time = now.isoformat()
                                 existing_position.last_signal = "OPEN"
                                 existing_position.augment_reason = "BROKER_SYNC_OPEN_FROM_FLAT_STUB"
-                                existing_position.gain = 0.0
-                                existing_position.prev_gain = 0.0
-                                existing_position.max_gain = 0.0
+                                try:
+                                    from utils import calculate_gain
+                                    _adopt_gain = calculate_gain(position_side, current_price or entry_price, entry_price or current_price)
+                                except Exception:
+                                    _adopt_gain = 0.0
+                                existing_position.gain = _adopt_gain
+                                existing_position.prev_gain = _adopt_gain
+                                try:
+                                    existing_position.max_gain = max(float(existing_position.max_gain or 0.0), _adopt_gain)
+                                except Exception:
+                                    existing_position.max_gain = max(0.0, _adopt_gain)
                                 logger.warning(f"[FLAT_STUB_ADOPT_OPEN] {position_key}: broker qty={amt_abs:.6f} entry={entry_price:.4f}; treating as OPEN, not AUGMENT")
                                 await self.append_to_position_history_file(
                                     position_key, "OPEN", amt_abs, current_price or entry_price,
@@ -1708,13 +1711,12 @@ class TradierPositionManager:
                                     except Exception:
                                         pass
                             if not _aug_allowed:
-                                logger.critical(f"[BROKER_SYNC_AUG_REJECTED] {position_key}: broker diff={diff:.2f} total={amt_abs:.2f} diff_val=${_aug_diff_value:.0f} total_val=${_aug_total_value:.0f} veto={_aug_veto} — CLAMPING to cap, NOT adopting blind")
-                                # Clamp to cap instead of blind adopt; will be reconciled via broker reduce next loop
-                                _clamped_total = min(amt_abs, (_cap_total / max(1e-9, (current_price or entry_price))))
-                                existing_position.positionAmt = _clamped_total
+                                # 2026-10-14 PARITY LAW: adopt EXACT broker total. Advisory is telemetry only.
+                                logger.warning(f"[BROKER_SYNC_ADOPTED_EXACT] {position_key}: broker diff={diff:.2f} total={amt_abs:.2f} diff_val=${_aug_diff_value:.0f} total_val=${_aug_total_value:.0f} advisory={_aug_veto} — adopted EXACT (parity law)")
+                                existing_position.positionAmt = amt_abs
                                 existing_position.entry_price = entry_price
                                 existing_position.last_updated = now
-                                existing_position.augment_reason = f"BROKER_SYNC_REJECTED_{_aug_veto}"
+                                existing_position.augment_reason = f"BROKER_SYNC_ADOPTED_EXACT_{_aug_veto}"
                                 try:
                                     from utils import calculate_gain
                                     _real_gain_a = calculate_gain(position_side, current_price or entry_price, entry_price or current_price)
@@ -1722,14 +1724,16 @@ class TradierPositionManager:
                                     _real_gain_a = 0.0
                                 existing_position.gain = _real_gain_a
                                 existing_position.prev_gain = _real_gain_a
+                                try:
+                                    existing_position.max_gain = max(float(existing_position.max_gain or 0.0), _real_gain_a)
+                                except Exception:
+                                    existing_position.max_gain = max(0.0, _real_gain_a)
                                 await self.append_to_position_history_file(
-                                    position_key, "OPEN", _clamped_total, current_price or entry_price,
-                                    {"reason": f"BROKER_SYNC_REJECTED_{_aug_veto}", "indicators": {"veto": _aug_veto, "diff_value": _aug_diff_value, "total_value": _aug_total_value}},
+                                    position_key, "AUGMENT", amt_abs, current_price or entry_price,
+                                    {"reason": f"BROKER_SYNC_ADOPTED_EXACT_{_aug_veto}", "indicators": {"advisory": _aug_veto, "diff_value": _aug_diff_value, "total_value": _aug_total_value}},
                                 )
-                                # Do NOT call handle_augmentation; update last_updated and skip finally override via flag
+                                # Do NOT call handle_augmentation; adopt is bookkeeping, not a fresh entry signal.
                                 existing_position.last_updated = now
-                                # mark veto so finally doesn't overwrite
-                                existing_position._broker_sync_vetoed = True
                             else:
                                 await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
                     elif diff < 0:
@@ -1737,15 +1741,10 @@ class TradierPositionManager:
                 except Exception as _upd_err:
                     logger.error(f"[POSITION_UPDATE_ERR] {position_key}: handle_* raised: {_upd_err}")
                 finally:
-                    # 2026-09-08 FIX: do NOT overwrite veto-clamped positionAmt — veto already set correct clamped value
-                    if bool(_ptruth.cfg(self.config, "POSITIONS_FILE_BROKER_TRUTH_ONLY")) or not getattr(existing_position, '_broker_sync_vetoed', False):  # 2026-10-06 USER POSITIONS_TRUTH: file = broker qty always (veto only logs)
+                    # 2026-10-14 PARITY LAW (keeps 2026-10-06 USER POSITIONS_TRUTH): file = broker qty
+                    # always. No veto carve-outs remain — every branch above already adopts exact.
+                    if bool(_ptruth.cfg(self.config, "POSITIONS_FILE_BROKER_TRUTH_ONLY")):
                         existing_position.positionAmt = amt_abs
-                    if getattr(existing_position, '_broker_sync_vetoed', False):
-                        # clear flag for next sync
-                        try:
-                            delattr(existing_position, '_broker_sync_vetoed')
-                        except Exception:
-                            existing_position._broker_sync_vetoed = False
                     existing_position.last_updated = now
 
         # Handle Missing
