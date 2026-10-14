@@ -1153,7 +1153,7 @@ async def binance_execute_now_preflight(client, account: str, symbol: str, posit
     inner = client.odg_inner if isinstance(client, GuardedBinanceClient) else client
     guard = client._odg_guard if isinstance(client, GuardedBinanceClient) else get_binance_guard(account, cfg, logger)
     try:
-        return await asyncio.wait_for(asyncio.to_thread(guard.preflight, inner, str(symbol).upper(), position_side, origin), timeout=float(_cfg(cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")) + float(_cfg(cfg, "ORDER_DEDUPE_CONFIRM_WAIT_SEC")))
+        return await asyncio.wait_for(asyncio.to_thread(guard.preflight, inner, str(symbol).upper(), position_side, origin), timeout=float(_cfg(cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")) * 3 + float(_cfg(cfg, "ORDER_DEDUPE_CONFIRM_WAIT_SEC")))
     except Exception as e:
         return guard._block(str(symbol), "PREFLIGHT_TIMEOUT_OR_ERROR", {"error": repr(e)[:300]}, origin)
 
@@ -1220,24 +1220,9 @@ class TradierDedupeGuard(_GuardBase):
         acct_id = getattr(client, "_current_id", None)
         if not acct_id:
             raise RuntimeError("tradier client has no account id")
-        # 2026-10-14: Tradier pages orders (1500/page); page 1 alone hid every current order after 1500+ rejected stops. Read all pages.
-        out = []
-        for page in range(1, 11):
-            res = await asyncio.wait_for(client._request("GET", f"/accounts/{acct_id}/orders", params={"page": page} if page > 1 else None, use_data_context=False), timeout=float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")))
-            if not isinstance(res, dict) or "orders" not in res:
-                raise RuntimeError(f"orders query failed/unparseable: {str(res)[:200]}")
-            inner = res["orders"]
-            if inner in ("null", None):
-                break
-            if isinstance(inner, dict) and "order" in inner:
-                o = inner["order"]
-                got = o if isinstance(o, list) else [o]
-            else:
-                raise RuntimeError(f"orders payload unparseable: {str(inner)[:200]}")
-            out.extend(got)
-            if len(got) < 1500:
-                break
-        return out
+        # 2026-10-14: newest orders only (limit=100 pages, ~1 s each) — a full 2700-order listing took 30 s and timed out every exit.
+        from tradier_api import tradier_recent_orders
+        return await asyncio.wait_for(tradier_recent_orders(client._request, acct_id, pages=3, raise_on_fail=True), timeout=float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")))
 
     async def _list_orders(self, client) -> List[Dict[str, Any]]:
         # 2026-10-13 NEVER-AGAIN single-flight: concurrent verifies share one
@@ -1264,7 +1249,7 @@ class TradierDedupeGuard(_GuardBase):
             else:
                 _mine = False
             try:
-                return await asyncio.wait_for(asyncio.shield(_task), timeout=_q)
+                return await asyncio.wait_for(asyncio.shield(_task), timeout=_q * 3)  # 2026-10-14: listing spans pages (2700+ orders, ~30 s); _q is per page
             finally:
                 if _mine:
                     _fly.pop(_key, None)

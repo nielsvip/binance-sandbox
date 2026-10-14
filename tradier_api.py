@@ -22,6 +22,45 @@ _ODG_RAW_OK: ContextVar = ContextVar("tradier_odg_raw_ok", default=False)  # PHA
 current_account = ContextVar("current_account", default="unknown")
 logger = logging.getLogger("tradier_api")
 _GET_ORDERS_CACHE = {}  # 2026-10-14: account id -> (ts, orders); 3 s TTL (a full listing is ~7 s with 2700+ orders)
+
+_RECENT_LAST_PAGE = {}  # 2026-10-14: account id -> last non-empty page at limit=100 (orders are listed oldest-first)
+
+
+async def tradier_recent_orders(request_fn, acct_id, pages=2, raise_on_fail=False):
+    """Newest orders only: the order list is oldest-first and 2700+ junk rejects made a full listing take 30 s (guard timed out ->
+    every exit blocked). Page size 100 (~1 s/page): find the last page (cached, probed upward/downward) and return the last
+    `pages` pages. Raises on a failed/unparseable response when raise_on_fail, else returns None."""
+    async def _get(pg):
+        res = await request_fn("GET", f"/accounts/{acct_id}/orders", params={"page": pg, "limit": 100}, use_data_context=False)
+        if not isinstance(res, dict) or "orders" not in res:
+            raise RuntimeError(f"orders query failed/unparseable: {str(res)[:200]}")
+        inner = res["orders"]
+        if inner in ("null", None):
+            return []
+        if isinstance(inner, dict) and "order" in inner:
+            o = inner["order"]
+            return o if isinstance(o, list) else [o]
+        raise RuntimeError(f"orders payload unparseable: {str(inner)[:200]}")
+    try:
+        last = int(_RECENT_LAST_PAGE.get(str(acct_id), 25) or 25)
+        got = await _get(last)
+        while not got and last > 1:
+            last = max(1, last // 2)
+            got = await _get(last)
+        while len(got) >= 100:
+            nxt = await _get(last + 1)
+            if not nxt:
+                break
+            last, got = last + 1, nxt
+        _RECENT_LAST_PAGE[str(acct_id)] = last
+        out = list(got)
+        for pg in range(last - 1, max(0, last - pages), -1):
+            out = (await _get(pg)) + out
+        return out
+    except Exception:
+        if raise_on_fail:
+            raise
+        return None
 logger.setLevel(logging.DEBUG)
 logger.propagate = False
 config=TradierConfig()
@@ -140,20 +179,7 @@ class TradierAPIClient:
         _hit = _GET_ORDERS_CACHE.get(_ck)
         if _hit and time.time() - _hit[0] < 3.0:
             return list(_hit[1])
-        out = []
-        for page in range(1, 11):
-            res = await self._request("GET", f"/accounts/{self._current_id}/orders", params={"page": page} if page > 1 else None, use_data_context=False)
-            got = []
-            if res and isinstance(res, dict) and 'orders' in res:
-                inner = res['orders']
-                if isinstance(inner, dict) and 'order' in inner:
-                    o = inner['order']
-                    got = o if isinstance(o, list) else [o]
-            if not got:
-                break
-            out.extend(got)
-            if len(got) < 1500:
-                break
+        out = await tradier_recent_orders(self._request, self._current_id, pages=3) or []
         _GET_ORDERS_CACHE[_ck] = (time.time(), list(out))
         return out
 
@@ -398,7 +424,7 @@ class TradierAPIClient:
             "quantity": str(int(quantity)), "type": order_type.lower(), "duration": duration.lower()  }
         if price: data["price"] = f"{float(price):.2f}"
         if stop: data["stop"] = f"{float(stop):.2f}"
-        if data["side"] in ("sell", "buy_to_cover") and data["type"] in ("market", "limit"):
+        if data["side"] in ("sell", "buy_to_cover") and data["type"] in ("market", "limit") and bool(getattr(getattr(self, "config", None), "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)):
             # 2026-10-14: a resting protective stop on the same symbol/side reserves the shares -> Tradier rejects the exit
             # ("more shares than your current position"; CLS 61x, A 24x, NKE 23x, ULTA 18x). Cancel it first, every caller.
             try:
