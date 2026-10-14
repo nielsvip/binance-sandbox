@@ -44633,7 +44633,10 @@ class TradierTradeManager:
                 # 2026-10-13 GUARANTEED STOP exit handoff: the resting backstop reserves the shares this exit sells — hand it off
                 # (cancel, broker-confirmed) before the exit; ensure re-places a correctly sized stop next cycle if shares remain.
                 try:
-                    await self._fixed_stop_clear_for_exit(account_key, symbol, position_side, reason)
+                    # 2026-10-14: with the broker backstop OFF this listing only slows exits (stalls >120 s); tradier_api's send layer
+                    # still cancels any resting stop on this symbol/side right before the exit.
+                    if bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)):
+                        await self._fixed_stop_clear_for_exit(account_key, symbol, position_side, reason)
                 except Exception as _fxh_e:
                     logger.warning(f"[FIXED_STOP_EXIT_HANDOFF_TR] {account_key}:{symbol}_{position_side}: handoff err {_fxh_e}")
             else:

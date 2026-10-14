@@ -294,12 +294,13 @@ STEPS_OK="$STEPS_OK,6b"
 
 # 7. done-stamp + summary
 CUR_STEP=7
-"$PY" - "$DATE" "$AGG" "$WORK" "$T0" "$STEPS_OK" "$TARGETS" > "$STAMP_DIR/$DATE.json" <<'EOF' || fail 7 "summary json"
+# 2026-10-14: atomic — a failed summary used to leave an EMPTY <date>.json that the Mac apply pulled as "the stamp" and stopped on
+"$PY" - "$DATE" "$AGG" "$WORK" "$T0" "$STEPS_OK" "$TARGETS" > "$STAMP_DIR/$DATE.json.tmp" <<'EOF' || { rm -f "$STAMP_DIR/$DATE.json.tmp"; fail 7 "summary json"; }
 import json, sys, datetime, pathlib
 date, agg, work, t0, steps, targets = sys.argv[1:7]
 w = pathlib.Path(work)
-main = json.loads((w / "template_main.json").read_text())
 norm = json.loads((w / "template_norm.json").read_text())
+main = norm  # 2026-10-14: the generic "main" writer is gone (FINAL_NORM is the ONE template set) — the stamp summarises the norm writer
 cs = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 md5 = dict(reversed(l.split(None, 1)) for l in (w / "push_local.md5").read_text().splitlines())
 print(json.dumps({"date": date, "status": "DONE", "started": t0, "ended": datetime.datetime.utcnow().isoformat() + "Z", "steps_ok": steps, "agg": agg,
@@ -308,10 +309,11 @@ print(json.dumps({"date": date, "status": "DONE", "started": t0, "ended": dateti
                   "norm_promoted": {c: {"switch": len(norm.get(c, {}).get("promoted_switch", [])), "filter": len(norm.get(c, {}).get("promoted_filter", [])), "violations": norm.get(c, {}).get("violations")} for c in cs},
                   "floor_guard": {c: main.get(c, {}).get("floor_guard") for c in cs},
                   "floor_guard_refused": {c: (main.get(c, {}).get("floor_guard") or {}).get("refused_keys") for c in cs if (main.get(c, {}).get("floor_guard") or {}).get("refused_keys")},
-                  "parity_sync": main.get("parity_sync"), "reports": {"main": str(w / "template_main.json"), "norm": str(w / "template_norm.json")},
+                  "parity_sync": main.get("parity_sync"), "reports": {"norm": str(w / "template_norm.json")},
                   "pushed_to": targets.split(), "pushed_md5": {k.strip(): v for k, v in md5.items()},
                   "tradeable_check": ({"report": str(w / "tradeable_check.json"), "summary": json.loads((w / "tradeable_check.json").read_text()).get("summary")} if (w / "tradeable_check.json").exists() else None)}, indent=1, default=str))
 EOF
+[ -s "$STAMP_DIR/$DATE.json.tmp" ] && mv "$STAMP_DIR/$DATE.json.tmp" "$STAMP_DIR/$DATE.json" || fail 7 "summary json empty"
 log "step7 done-stamp $STAMP_DIR/$DATE.json promoted_keys=$("$PY" -c "import json,sys;print(len(json.load(open(sys.argv[1]))['promoted_keys']))" "$STAMP_DIR/$DATE.json")"
 rm -f "$STAMP_DIR/$DATE.FAILED.json"
 CHAIN_STATUS=DONE
