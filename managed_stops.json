@@ -76,18 +76,18 @@
     "symbol": "DOTUSDT",
     "side": "SHORT"
   },
-  "men:SOLUSDC_SHORT": {
-    "orderId": "2000001509980235",
-    "stopPrice": 108.08,
-    "entry_sig": "2026-10-14 00:49:15.518677+00:00",
-    "symbol": "SOLUSDC",
-    "side": "SHORT"
-  },
   "men:COMPUSDT_LONG": {
     "orderId": "2000001509965317",
     "stopPrice": 22.73,
     "entry_sig": "2026-10-14 02:18:11.512131+00:00",
     "symbol": "COMPUSDT",
+    "side": "LONG"
+  },
+  "men:NEARUSDC_LONG": {
+    "orderId": "2000001510053135",
+    "stopPrice": 4.95,
+    "entry_sig": "2026-10-14 03:27:50.114857+00:00",
+    "symbol": "NEARUSDC",
     "side": "LONG"
   }
 }

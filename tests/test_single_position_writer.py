@@ -275,3 +275,39 @@ def test_tradier_rows_opened_at_immutable(tmp_path):
     rows = {"tra:META_LONG": {"symbol": "META", "positionAmt": 1.0, "entry_price": 606.92, "opened_at": "2026-09-01T15:29:44.907202Z", "max_gain": 1.0}}
     assert pwg.before_write(d / "long_positions.json", rows, role="other", overlay=False) is True
     assert rows["tra:META_LONG"]["opened_at"] == "2026-08-10T13:39:15.121Z" and rows["tra:META_LONG"]["max_gain"] == 4.0
+
+
+def test_pull_never_overwrites_opened_at_of_held_position(acct):
+    inc = acct / "incoming_long.json"
+    inc.write_text(json.dumps({"fin:ETHUSDC_LONG": _row(oa=OA_RESTAMP, ep=2500.72, mg=0.2), "fin:NEWUSDT_LONG": _row(oa="2026-10-14T01:00:00Z", ep=1.5), "fin:GONEUSDT_LONG": _row(amt=0.0)}))
+    lp = acct / "long_positions.json"
+    d = json.loads(lp.read_text())
+    d["fin:GONEUSDT_LONG"] = _row(oa="2026-10-13T10:00:00Z", ep=3.0)
+    d["fin:KEEPUSDT_LONG"] = _row(oa="2026-10-13T11:00:00Z", ep=4.0)
+    lp.write_text(json.dumps(d))
+    ev = pwg.merge_file(lp, inc)
+    out = json.loads(lp.read_text())
+    assert out["fin:ETHUSDC_LONG"]["opened_at"] == OA_TRUE and out["fin:ETHUSDC_LONG"]["entry_price"] == 2509.33 and out["fin:ETHUSDC_LONG"]["max_gain"] == 0.5
+    assert ("OPENED_AT_PULL_REJECTED", "fin:ETHUSDC_LONG", OA_TRUE, OA_RESTAMP) in ev
+    assert out["fin:NEWUSDT_LONG"]["opened_at"] == "2026-10-14T01:00:00Z"  # new lifecycle keeps the opening time it carries
+    assert out["fin:GONEUSDT_LONG"]["positionAmt"] == 0.0 and out["fin:GONEUSDT_LONG"]["opened_at"] == "2026-10-13T10:00:00Z"
+    assert out["fin:KEEPUSDT_LONG"]["opened_at"] == "2026-10-13T11:00:00Z"
+    alerts = (acct.parent / "data" / "alerts" / "position_writer_guard.jsonl").read_text()
+    assert "OPENED_AT_PULL_REJECTED" in alerts
+
+
+def test_pull_qty_change_takes_incoming_qty_but_keeps_opened_at(acct):
+    merged, ev = pwg.merge_incoming({"fin:ETHUSDC_LONG": _row()}, {"fin:ETHUSDC_LONG": _row(amt=0.05, oa=OA_RESTAMP, ep=2520.0, mg=0.1)})
+    r = merged["fin:ETHUSDC_LONG"]
+    assert r["positionAmt"] == 0.05 and r["entry_price"] == 2520.0 and r["opened_at"] == OA_TRUE and r["max_gain"] == 0.5
+
+
+def test_new_lifecycle_gets_broker_opening_fill_time_not_now():
+    import asyncio
+    import types
+    from ez_positions_service import PositionService
+    fills = [{"time": 1791932401888, "id": 1, "side": "BUY", "qty": "0.025", "positionSide": "LONG"}, {"time": 1791900000000, "id": 0, "side": "SELL", "qty": "0.01", "positionSide": "LONG"}, {"time": 1791899000000, "id": -1, "side": "BUY", "qty": "0.01", "positionSide": "LONG"}]
+    cli = types.SimpleNamespace(futures_account_trades=lambda **kw: fills)
+    svc = types.SimpleNamespace(accounts={"fin": types.SimpleNamespace(client=cli)})
+    t = asyncio.run(PositionService._broker_open_fill_time(svc, "fin", "ETHUSDC", "LONG", 0.025))
+    assert t is not None and abs(t.timestamp() - 1791932401.888) < 0.01

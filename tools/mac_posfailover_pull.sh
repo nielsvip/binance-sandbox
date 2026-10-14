@@ -21,7 +21,16 @@ for acct in ang inf flz men fin; do
             continue
         fi
     fi
-    rsync -az --update --timeout=15 -e "ssh $SSH_OPTS" "s1-pub:/home/niels/binance/${acct}/{long,short}_positions.json" "$REPO/${acct}/" >>"$LOG" 2>&1 || true
-    echo "$(date -u +%FT%TZ) pulled $acct (S1 takeover active)" >>"$LOG"
+    # USER 2026-10-14 "opened_at can NEVER be overwritten by a positions pull": never copy over the live files — pull into a
+    # staging dir and merge PER POSITION through position_writer_guard (held positions keep their opened_at; a pulled file
+    # may only add a genuinely new position or mark a close).
+    STAGE="$REPO/data/posfailover_incoming/${acct}"
+    mkdir -p "$STAGE"
+    rsync -az --timeout=15 -e "ssh $SSH_OPTS" "s1-pub:/home/niels/binance/${acct}/{long,short}_positions.json" "$STAGE/" >>"$LOG" 2>&1 || true
+    for side in long short; do
+        [ -s "$STAGE/${side}_positions.json" ] || continue
+        (cd "$REPO" && /opt/anaconda3/envs/binance_env/bin/python position_writer_guard.py merge "$REPO/${acct}/${side}_positions.json" "$STAGE/${side}_positions.json") >>"$LOG" 2>&1 || echo "$(date -u +%FT%TZ) MERGE FAILED $acct $side" >>"$LOG"
+    done
+    echo "$(date -u +%FT%TZ) merged $acct from S1 (S1 takeover active, per-position merge)" >>"$LOG"
 done
 exit 0

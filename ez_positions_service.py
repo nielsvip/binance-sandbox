@@ -7077,7 +7077,7 @@ class PositionService:
                                     "initial_quantity": amt_abs,
                                     "max_quantity": amt_abs,
                                     "max_positionSize": amt_abs * (_mk or 0),
-                                    "opened_at": _orphan_opened_at(pos_api_data, now),
+                                    "opened_at": (await self._broker_open_fill_time(account_key, symbol, position_side, amt_abs)) or _orphan_opened_at(pos_api_data, now),
                                     "last_updated": now,
                                     "augment_reason": "API_ORPHAN_ADOPTED",
                                 }
@@ -7512,6 +7512,39 @@ class PositionService:
             pass
         self._mark_positions_dirty()
 
+    async def _broker_open_fill_time(self, account_key, symbol, position_side, amt):
+        """USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED": a new lifecycle gets the broker's OPENING FILL time (READ-ONLY
+        GET userTrades, replayed back from the current amount), never 'now'. Budgeted (8 lookups/min/account, 4 s each)."""
+        try:
+            if not amt or amt <= 0:
+                return None
+            bud = self.__dict__.setdefault("_open_fill_budget", {})
+            now_ts = time.time()
+            win = [t for t in bud.get(account_key, []) if now_ts - t < 60]
+            if len(win) >= 8:
+                return None
+            win.append(now_ts)
+            bud[account_key] = win
+            cli = getattr(self.accounts.get(account_key), "client", None)
+            if cli is None:
+                return None
+            end = int(now_ts * 1000)
+            trades = await asyncio.wait_for(asyncio.to_thread(cli.futures_account_trades, symbol=symbol, startTime=end - 7 * 86400000 + 1, endTime=end, limit=1000), timeout=4.0)
+            trades = sorted([t for t in (trades or []) if (t.get("positionSide") or position_side) == position_side], key=lambda t: (int(t["time"]), int(t["id"])))
+            rem = abs(float(amt))
+            for t in reversed(trades):
+                q = float(t["qty"])
+                if (t["side"] == "BUY") == (position_side == "LONG"):
+                    rem -= q
+                    if rem <= abs(float(amt)) * 1e-6 + 1e-12:
+                        return datetime.fromtimestamp(int(t["time"]) / 1000.0, timezone.utc)
+                else:
+                    rem += q
+            return None
+        except Exception as e:
+            logger.debug(f"[OPEN_FILL_TIME] {account_key}:{symbol}_{position_side}: {e!r}")
+            return None
+
     def _fresh_open_restamp_ok(self, position, position_key):
         try:
             import position_writer_guard as _pwg
@@ -7603,8 +7636,10 @@ class PositionService:
             # does not show it held with that same opened_at.
             if self._fresh_open_restamp_ok(position, position_key):
                 import position_writer_guard as _pwg_aug
+                _t_open = await self._broker_open_fill_time(account_key, symbol, position_side, positionAmt_abs)
                 with _pwg_aug.identity_write_allowed():
-                    position.opened_at = now
+                    position.opened_at = _t_open or now
+                logger.critical(f"[OPENED_AT_NEW_LIFECYCLE] {position_key}: opened_at={position.opened_at} ({'broker opening fill' if _t_open else 'fill seen now (no broker fill found)'})")
             else:
                 logger.critical(f"🛡️ [OPENED_AT_KEPT] {position_key}: tiny->held transition but position was continuously held (file) — opened_at {position.opened_at} kept")
         else:

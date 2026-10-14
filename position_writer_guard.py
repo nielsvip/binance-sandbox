@@ -468,3 +468,95 @@ def resync_memory_from_files(account_positions, account_dir, log=None, require_f
     for c in changes:
         log.warning(f"[SINGLE_WRITER_RESYNC] {c[0]}.{c[1]}: memory {c[2]} -> file {c[3]}")
     return changes
+
+
+def merge_incoming(live_rows, incoming_rows):
+    """USER 2026-10-14 "opened_at can NEVER be overwritten by a positions pull": merge a pulled/handed-back/restored set of
+    rows into the live rows PER POSITION (account+symbol+side+lifecycle). Never a whole-file copy.
+      live held  + incoming held -> same position: live opened_at kept (non-empty), qty/entry from incoming only if the
+                                    quantity changed, max_gain = max; differing opened_at -> alert.
+      live held  + incoming flat -> close (incoming qty 0) accepted; live opened_at/entry kept as history.
+      live flat/absent + incoming held -> genuinely new lifecycle: incoming row as carried (its own opening time).
+      keys only in live          -> untouched.
+    Returns (merged_rows, events)."""
+    merged = {k: (dict(v) if isinstance(v, dict) else v) for k, v in (live_rows or {}).items()}
+    events = []
+    for k, inc in (incoming_rows or {}).items():
+        if not isinstance(inc, dict):
+            continue
+        live = merged.get(k)
+        if not isinstance(live, dict):
+            merged[k] = dict(inc)
+            if _amt(inc) > 0:
+                events.append(("NEW_POSITION", k, None, inc.get("opened_at")))
+            continue
+        l_held, i_held = _amt(live) > 0, _amt(inc) > 0
+        if l_held and i_held:
+            row = dict(live)
+            if to_epoch(live.get("opened_at")) is not None:
+                if not _same_lifecycle(live.get("opened_at"), inc.get("opened_at")):
+                    events.append(("OPENED_AT_PULL_REJECTED", k, live.get("opened_at"), inc.get("opened_at")))
+            elif to_epoch(inc.get("opened_at")) is not None:
+                row["opened_at"] = inc.get("opened_at")
+            if abs(_amt(inc) - _amt(live)) > max(1e-12, _amt(live) * 1e-9):
+                row["positionAmt"] = inc.get("positionAmt")
+                try:
+                    if float(inc.get("entry_price") or 0) > 0:
+                        row["entry_price"] = float(inc.get("entry_price"))
+                except Exception:
+                    pass
+                events.append(("QTY_CHANGE", k, live.get("positionAmt"), inc.get("positionAmt")))
+            try:
+                row["max_gain"] = max(float(live.get("max_gain") or 0), float(inc.get("max_gain") or 0))
+            except Exception:
+                pass
+            merged[k] = row
+        elif l_held and not i_held:
+            row = dict(live)
+            row["positionAmt"] = inc.get("positionAmt", 0.0)
+            for f in ("last_reduction_time", "last_reduction_price", "last_reduction_amount", "reduction_reason", "realized_pnl", "last_updated"):
+                if f in inc:
+                    row[f] = inc[f]
+            merged[k] = row
+            events.append(("CLOSE", k, live.get("positionAmt"), inc.get("positionAmt")))
+        elif i_held:
+            merged[k] = dict(inc)
+            events.append(("NEW_POSITION", k, live.get("opened_at"), inc.get("opened_at")))
+    return merged, events
+
+
+def merge_file(live_path, incoming_path, log=None):
+    """Merge an incoming positions file (e.g. pulled from S1) into the live file through merge_incoming. Atomic + meta."""
+    log = log or logger
+    live_path, incoming_path = Path(live_path), Path(incoming_path)
+    if not is_position_file(live_path):
+        raise ValueError(f"not a positions file: {live_path}")
+    incoming = read_json(incoming_path)
+    if not incoming:
+        return []
+    live = read_json(live_path)
+    merged, events = merge_incoming(live, incoming)
+    for kind, k, a, b in events:
+        if kind == "OPENED_AT_PULL_REJECTED":
+            log.critical(f"🛑 [OPENED_AT_PULL_REJECTED] {k}: kept {a}, pulled {b} ({incoming_path})")
+            _alert("OPENED_AT_PULL_REJECTED", {"key": k, "kept": a, "refused": b, "source": str(incoming_path)}, live_path.parent.parent)
+        else:
+            log.warning(f"[PULL_MERGE] {kind} {k}: {a} -> {b}")
+    if merged != live:
+        _atomic_json(live_path, merged)
+        try:
+            import positions_truth as _pt
+            _pt.write_meta(live_path, writer=f"pull_merge:{process_role()}:{os.getpid()}")
+        except Exception:
+            pass
+    return events
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 4 and sys.argv[1] == "merge":
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+        ev = merge_file(sys.argv[2], sys.argv[3])
+        print(json.dumps([list(e) for e in ev], default=str))
+    else:
+        print("usage: position_writer_guard.py merge <live_positions.json> <incoming_positions.json>")
+        sys.exit(2)

@@ -20,37 +20,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx", "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx", "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx"}
 SHEET = "ZERO_FORMULA_BOOK"
-RULES_SHEET = "INSTRUCTIONS"
-RULES_MARKER = "BOOKKEEPER RULES (data/template_switch_rules.json — maintained by tools/v15_template_bookkeeper.py, never edit by hand)"
-RULES_FILE = ROOT / "data" / "template_switch_rules.json"
+PROTOCOL_SHEET = "PROTOCOL"
+PROTOCOL_FILE = ROOT / "data" / "TEMPLATE_PROTOCOL.md"
 
 
-def write_rules_section(wb, cat):
-    """2026-10-14 USER: switch/live rules added by agents must be in the template protocol tab. Idempotent: rows from the
-    marker down are replaced by the current rule list (one row per rule, rules that apply to this cat_side only)."""
+def write_protocol_sheet(wb):
+    """USER 2026-10-14: the template protocol lives INSIDE each of the 4 templates. Replaced whole from data/TEMPLATE_PROTOCOL.md
+    (one line per row, first tab) on every bookkeeper run, so it can never drift or be lost by a pull/push."""
     try:
-        rules = json.loads(RULES_FILE.read_text()).get("rules") or []
+        lines = PROTOCOL_FILE.read_text().splitlines()
     except Exception as e:
-        print(f"[bookkeeper] rules file unreadable ({e}) — INSTRUCTIONS untouched", flush=True)
+        print(f"[bookkeeper] {PROTOCOL_FILE} unreadable ({e}) — PROTOCOL tab untouched", flush=True)
         return 0
-    if RULES_SHEET not in wb.sheetnames:
-        return 0
-    ws = wb[RULES_SHEET]
-    start = None
-    for r in range(1, ws.max_row + 1):
-        if str(ws.cell(row=r, column=1).value or "").startswith("BOOKKEEPER RULES"):
-            start = r
-            break
-    if start is not None:
-        ws.delete_rows(start, ws.max_row - start + 1)
-    ws.cell(row=ws.max_row + 2, column=1).value = RULES_MARKER
-    n = 0
-    for ru in rules:
-        if cat not in (ru.get("cat_sides") or [cat]):
-            continue
-        ws.cell(row=ws.max_row + 1, column=1).value = f"{ru.get('id')} ({ru.get('date', '')}) — {ru.get('rule')}"
-        n += 1
-    return n
+    if PROTOCOL_SHEET in wb.sheetnames:
+        wb.remove(wb[PROTOCOL_SHEET])
+    ws = wb.create_sheet(PROTOCOL_SHEET, 0)
+    ws.column_dimensions["A"].width = 180
+    for i, ln in enumerate(lines, start=1):
+        ws.cell(row=i, column=1).value = ln
+    return len(lines)
 
 
 def merge_ledgers(ledgers):
@@ -126,7 +114,7 @@ def main():
     ap.add_argument("--ledger-root", default=str(ROOT / "data" / "zero_formula_book"))
     ap.add_argument("--hosts", default=os.environ.get("V15_BOOK_HOSTS", ""))
     ap.add_argument("--timeout-s", type=int, default=300)
-    ap.add_argument("--rules-only", action="store_true", help="only (re)write the INSTRUCTIONS rules section, no ledger booking")
+    ap.add_argument("--protocol-only", action="store_true", help="only (re)write the PROTOCOL tab (backs up each template first)")
     a = ap.parse_args()
     try:
         import fcntl
@@ -156,15 +144,17 @@ def main():
         if a.dry_run:
             continue
         tpath = os.path.join(a.templates, fname)
-        if a.rules_only:
+        if a.protocol_only:
             if os.path.exists(tpath):
+                import datetime as _dt, shutil as _sh
+                _sh.copy2(tpath, ROOT / "backups" / f"before_bookkeeper_protocol_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{fname}")
                 wb = openpyxl.load_workbook(tpath)
                 try:
-                    nr = write_rules_section(wb, cat)
+                    np_ = write_protocol_sheet(wb)
                     atomic_save_xlsx(wb, tpath)
                 finally:
                     wb.close()
-                print(f"[bookkeeper] {cat}: rules-only — {nr} rules -> {fname}!{RULES_SHEET}", flush=True)
+                print(f"[bookkeeper] {cat}: protocol-only — {np_} lines -> {fname}!{PROTOCOL_SHEET}", flush=True)
             continue
         if not os.path.exists(tpath):
             print(f"[bookkeeper] missing {tpath} — skipped", flush=True)
@@ -172,7 +162,7 @@ def main():
         wb = openpyxl.load_workbook(tpath)
         try:
             nlines = write_book_sheet(wb, cat, merged, len(leds))
-            write_rules_section(wb, cat)
+            write_protocol_sheet(wb)
             atomic_save_xlsx(wb, tpath)
         finally:
             wb.close()

@@ -2747,3 +2747,24 @@ delta logs.
   a higher valid set is published instead (`progress["best_start_floor"]`, `V15_BEST_START_FLOOR=0` disables).
   Combo: 7,800 s of combo wall -> 16.5 pp on s1+s2 (repeats mostly 0) -> WINNER first share 0.5 -> 0.3 and a combo repeat
   runs only while its own last call lifted >= 0.3 pp/min. Guard-thread interval fix (`os` shadowing killed _check2).
+
+### 101.3 NO GENERIC TEMPLATE — CHAIN WAS BUILDING LIVE DEFAULTS FROM THE ABANDONED SET (USER 2026-10-14)
+"THERE IS NO SUCH THING AS A GENERIC TEMPLATE WE ABANDONED THAT MONTHS AGO … SPREADSHEETS/TEMPLATE_FINAL_NORM has the 4 templates
+they are independent." Found 2026-10-14: `tools/v15_daily_chain_s1.sh` (since at least the 2026-10-07 runs in ~/logs/v15_daily_chain.log)
+ran step 2 TWICE ("template writer main (SPREADSHEETS)" + "norm (TEMPLATE_FINAL_NORM)"), installed queued rows into BOTH dirs (2a),
+type-scanned both (2b), built step 3 live + sweep cat_side defaults (data/per_sym_settings.json, read by live AND by every board via
+CAT_SIDE_DEFAULTS_PATH) from the GENERIC `SPREADSHEETS/TEMPLATE_*` set, and pushed/pulled the generic files (S1 step 6, Mac apply).
+Promotion records (cat_side_promotions) were written by both passes = a mix of both sets. switch_parity.py read the generic set for
+the template md5 + gate audit. FIXED 2026-10-14 03:2x-03:3xZ: chain step 2/2a/2b/3/6 = TEMPLATE_FINAL_NORM only (S1 96f1dba4); Mac
+apply pulls FINAL_NORM only; switch_parity -> FINAL_NORM (6b9de0d5, S1/S2/Mac); per_sym_settings rebuilt from FINAL_NORM and
+propagated S1=S2=Mac (be612200, sweep copy identical, SQL kv verified): 8 value changes (CL ATR_ADAPTIVE_SIZING_TARGET_PCT 3->2,
+REGIME_RANGING_POSITION_SIZE_MULT 0.25->0.5, REGIME_TRENDING_POSITION_SIZE_MULT 3->2.25; SL BB_EXIT_AT_LOSS_TF 15m->OFF,
+FORMATION_DOUBLE_TOP_BOTTOM_EXIT_ENABLED True->False, LH_HL_FILTER_DC_THRESHOLD_PCT 1.0->0.5, RZ_BOT_BB_THRESHOLD 0.225->0.375;
+SS GAP_CLOSE_MOC_EXIT_ENABLED False->True) + new keys. STILL OPEN: (a) v15_pilot.py fallbacks at :9249 / :14370 name the generic
+files (unused while the scheduler passes --template FINAL_NORM); (b) cat_side_promotions contains records decided on the generic
+set; (c) 225-328 groups per template are grey (wire_status_paint: vector-blind) and 19-47 of them carry promotion records —
+bold != live for those by design until they are wired.
+Agent template writes the same night (all on S1, all backed up): 00:05-01:22 switch adds via v15_switch_add (SESSION_OPEN_STOP_REFREEZE,
+3 REENTRY_ON_*), 00:12 two concurrent v15_switch_remove runs deleted 2 STOCKS_SHORT rows -> restored by hand from the 00:05 backup;
+03:16 a bookkeeper --rules-only INSTRUCTIONS write that diverged S1 from S2/Mac (and was auto-synced to S2) -> undone on S1 and S2
+from the identical 01:22 state, bookkeeper edit reverted (4bcf8d3d). Final templates S1=S2=Mac 0418f1e0 f0fb401d 221e9e86 3fdf7610.

@@ -1194,8 +1194,8 @@ def rewrite_row_from_broker(venue: str, account: str, symbol: str, position_side
         if amt > 0 and entry > 0 and mark > 0:
             pnl = (mark - entry) * amt if ps == "LONG" else (entry - mark) * amt
             fields["unrealized_pnl_USD" if venue == "binance" else "unrealized_pnl"] = pnl
-        if not row.get("opened_at") and amt > 0:
-            fields["opened_at"] = iso
+        # USER 2026-10-14: a broker rewrite never stamps opened_at with the current time — the positions service sets a new
+        # lifecycle's opened_at from the broker opening fill.
         row.update(fields)
         data[key] = row
         if venue == "binance":  # USER 2026-10-14 SINGLE POSITION WRITER: only ez_positions_service writes crypto position files
