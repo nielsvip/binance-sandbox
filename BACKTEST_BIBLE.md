@@ -2977,3 +2977,68 @@ to finalize with <10 trades, >30%dd, etc".
   (USER 10-03). Failure → §58 repair → REDO (max `V15_QUAL_MAX_REDOS` 2) → IMPOSSIBLE quarantine, no publish.
 - Not gating today (operator decision): 30-trade sample floor (175 of 785 published boards had 10–29 trades), pool_sharpe > 0.2
   (no per-trade list in the publish path).
+
+## 108. V15 BRAIN — ONE LEARNED GRAPH + ONE PER-1000 ALLOCATOR + FROZEN-NPZ BENCH GATE (USER 2026-10-14)
+
+USER: "revise v15_pilot self-learning … a framework … like a neural network that keeps making more connections between
+switches and filters and their settings relative to gain, trades, dd, tim, sharpe … lower the number of times per 1000 tests
+low scorers are calculated … ≥4 sym_sides/server/hour, then all sym_sides every 24 h … leave nothing on the table" +
+"keep an archive of npz files on s2 … compare new versions of v15_pilot with old ones on the same npz … apples with apples".
+
+### 108.1 Measured state before (S1+S2 logs 10-07..10-14, read-only)
+- Learning was ~14 disconnected components (causal profile, avg_delta pos_sym, cell_evidence, v17_priors, combo library,
+  causal_learner, autopsy priors …) feeding **six competing sampling rules** in the main pass (POSSYM, coarse cap 24, prior
+  verdicts, ZERO-FORMULA, AUTOPSY-INERT rotation, V17 carry/p) with four evidence sources and four thresholds.
+- Predictive check (chronological split): pos_rate predicts the next board (Spearman +0.55..+0.73) but **mean_delta is
+  anti-predictive (−0.50..−0.75)** — the USEFUL verdict and V17 EV ranking leaned on it. Row-level prior verdicts did not
+  separate rescue rates (pruned 7.7% vs kept 5.6%); cell level did (2.1% vs 8–10%).
+- Delta logs carried gain/trades/tim only — no DD, Sharpe, WR, no board context → the system could not learn DD/Sharpe.
+- Wall/board ~2700 s while evals/board fell 12x: board ≈ 1 effective worker (prefetch cap counts entries, batch 8), main
+  thread 30% bookkeeping; cProfile (TRXUSDT_SHORT, 480 s slice): `_paint_tab_status` read `ws.max_column` per row (full-sheet
+  scan) → each xlsx save ~41 s (141 s of 480 s); progress JSON full dump every 15 s ≈ 0.17 s/row.
+- Fleet supply: 171/278 sides finished and never re-queued under 30D_ONLY (only W-tier refreshed), SOFT-SKIP relaunch loop
+  = 42% of 24 h launches, short stock NPZs (13–20 sessions) = 25%; S1 idle on disk guard (disk 100%).
+
+### 108.2 Framework (tools/v15_brain.py)
+1. **Experience** = every real engine eval (delta log). Now also `max_dd_pct`, `pool_sharpe`, `wr_pct` per eval and one
+   `BOARD_CTX` line per board (tier, bh, baseline, start fingerprint, round) — zero extra compute.
+2. **Graph** = nodes SWITCH=cand / FILTER=opt / switch-name; edges at GLOBAL, cat_side, sym_side scope plus
+   filter-on-row pairs (the yellow's marginal effect ON THAT ROW); each edge stores real outcomes (n, pos, neg, Σ+delta,
+   mean d_tim / d_trades / d_dd / d_sharpe, secs, last seen). Connections grow only where evidence exists.
+3. **Model** = one learned layer (online logistic, predict-then-learn) over graph features: key log-odds per scope (shrunk by
+   n), sibling-candidate (switch-name) log-odds, pair log-odds, evidence mass, board/tab running hit-rate (EMA). Separate
+   heads R (naked row), F (cell given the naked), F0 (cell before the naked = what the pilot can use).
+4. **Allocator** = `p_eval = clip(P(pos)/p_ref, floor/1000, 1)`, deterministic draw per (sym_side, tab, key, round),
+   propensity booked → unbiased re-learning; unevidenced keys always run; floor (default 5/1000) keeps every dead key
+   re-tested; skipped cells revive on a positive naked (PRIOR-REVIVED path); skipped rows are settled `BRAIN_SAMPLED_OUT`.
+   Never pruned: sacred / essential-gate / new / coarse-expand rows; WINNER-tier rows (`V15_BRAIN_NAKED_WINNER=0`).
+5. **Metric steering**: `v15_brain.py suggest --scope SYM_SIDE --metric gain|tim|trades|dd|sharpe` ranks nodes by the
+   learned effect (dd/sharpe fill in as enriched logs accumulate).
+6. **Gate** = `tools/v15_npz_bench.py` (S2 `~/v15_bench`): frozen NPZ + data/ + templates + start bases + production env;
+   versions run concurrently on identical inputs (real code copies — engine ROOT resolves symlinks), compare final gain /
+   trades / DD / TIM / Sharpe / wall / evals; PASS = Σgain_B ≥ Σgain_A and no side loses > 0.5 pp. A config/code change
+   that skips more rows ships only with a PASS.
+
+### 108.3 Offline evidence (prequential, S2 logs, 393k evals, scored from 10-12 on, each predicted before learned)
+| policy | eval-secs kept | positives kept | positive delta kept |
+|---|---|---|---|
+| cells: today's verdict rule (proxy) | 70% | 95.5% | 96.1% |
+| cells: brain F0 + revive, p_ref 0.002 | 69% | 97.5% | 96.6% |
+| cells: brain F0 + revive, p_ref 0.005 | 60% | 95.2% | 94.4% |
+| naked rows: today (all) | 100% | 100% | 100% |
+| naked rows: brain p_ref 0.001 | 69% | 97.5% | 97.9% |
+| naked rows: brain p_ref 0.002 | 57% | 95.5% | 96.1% |
+Defaults: cells 0.002, naked 0.001, floor 5/1000. Percentages are of evals production already ran (the brain stacks on the
+existing policy). Not yet proven on boards → §108.5.
+
+### 108.4 Switches (all default OFF in the pilot until the bench PASSes)
+`V15_BRAIN=1` (cells), `V15_BRAIN_NAKED=1` (rows), `V15_BRAIN_PREF_R/_F`, `V15_BRAIN_FLOOR` (per 1000), `V15_BRAIN_DIR`
+(model dir, default data/brain), `V15_BRAIN_NAKED_WINNER`. Model: `python3 tools/v15_brain.py export --since <7-14 d>`
+on a worker → `data/brain/brain_<CAT_SIDE>.json` (~6 MB each), rsync to workers. Progress JSON `brain` block books every
+skip with its propensity.
+Speed fixes ON (behaviour-identical): `_paint_tab_status` hoists max_row/max_column; `V15_PROGRESS_JSON_EVERY_S` default
+15→60 (promotions still force a write). Scheduler: `V15_SCHED_REFRESH_ALL=1` (M/L refresh after their defer window, max 3
+rm/tick as W), `V15_SCHED_SOFTSKIP_DONE=1` (verdict IMPOSSIBLE/NO_TRADES/BEST_EFFORT + final_gain = done in the host probe).
+
+### 108.5 Bench results
+(filled from `~/v15_bench/runs/20261014__*` when the 3-version run completes)

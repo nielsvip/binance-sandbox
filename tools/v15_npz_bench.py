@@ -31,7 +31,7 @@ CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_ca
 DATA_EXCLUDE_DIRS = {"eval_cache_v1.db", "klines_3m_hist_w2", "klines_5m_hist_w2", "matrix_npz", "reports", "tradier", "sweep_results", "vec_live", "hourly_reconfig", "yellow_discovery", "s6_365", "causal_learner.db", "kpi"}
 DATA_MAX_FILE = 150 * 1024 * 1024
 ENV_KEEP_PREFIX = ("V15_", "V12_")
-ENV_DROP = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISOLATED_PROOF", "V15_EVAL_CACHE_DB", "V15_FILL_SLICE_S"}
+ENV_DROP = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISOLATED_PROOF", "V15_EVAL_CACHE_DB", "V15_FILL_SLICE_S", "V15_V17_CARRY_DIR"}
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
 
 
@@ -139,6 +139,7 @@ def cmd_snapshot(args):
                 continue
     env, how = capture_env(args.pid)
     if args.env_json:
+        env = {}
         env.update(json.load(open(args.env_json)))
         how += f" + {args.env_json}"
     man["env"], man["env_source"] = env, how
@@ -244,7 +245,7 @@ def cmd_run(args):
             (sd / "progress").mkdir(parents=True, exist_ok=True)
             (sd / "out").mkdir(exist_ok=True)
             env = dict(env_base)
-            env.update(V15_PROGRESS_DIR=str(sd / "progress"), V15_OUT_DIR=str(sd / "out"), V15_ISOLATED_PROOF="1", V15_FILL_SLICE_S="0", V15_FRESH_RUN="1", V15_EVAL_CACHE_DB=str(sd / "eval_cache.db"))
+            env.update(V15_PROGRESS_DIR=str(sd / "progress"), V15_OUT_DIR=str(sd / "out"), V15_ISOLATED_PROOF="1", V15_FILL_SLICE_S="0", V15_FRESH_RUN="1", V15_EVAL_CACHE_DB=str(sd / "eval_cache.db"), V15_V17_CARRY_DIR=str(sd / "carry"))
             st = snap / "starts" / f"{ss}_autopsy_base.json"
             if st.exists():
                 env["V15_START_OVERRIDES"] = str(st)

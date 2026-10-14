@@ -320,6 +320,22 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
             
             # Group by side (use fresh_positions, not account_positions)
             all_positions_by_side: Dict[str, Dict[str, Any]] = {"LONG": {}, "SHORT": {}}
+            # 2026-10-14: parse each side's disk file ONCE per save (was re-opened + json.load-ed per position: ~650 full-file parses
+            # per save on the event loop = 8-9 s stalls every cycle -> heartbeat stale -> 23 realtime takeovers on 10-14). Same data.
+            _disk_side_cache: Dict[str, Any] = {}
+
+            def _disk_side(_side):
+                if _side not in _disk_side_cache:
+                    _d = {}
+                    try:
+                        _f = position_service.get_position_file(account_key, _side)
+                        if _f.exists():
+                            with open(_f) as _fh:
+                                _d = json.load(_fh)
+                    except Exception:
+                        _d = {}
+                    _disk_side_cache[_side] = _d if isinstance(_d, dict) else {}
+                return _disk_side_cache[_side]
             for pos_key, pos_obj in fresh_positions.items():
                 if not pos_obj or not hasattr(pos_obj, "to_dict"):
                     continue
@@ -337,10 +353,8 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                         # Guard: if entry_price zeroed but other fields exist, restore from disk
                         if ep == 0 and (oa is not None or mg > 0):
                             try:
-                                disk_file = position_service.get_position_file(account_key, side)
-                                if disk_file.exists():
-                                    with open(disk_file) as _df2:
-                                        _disk2 = json.load(_df2)
+                                _disk2 = _disk_side(side)
+                                if _disk2:
                                     _dpos = _disk2.get(pos_key, {})
                                     _dep = float(_dpos.get('entry_price', 0))
                                     if _dep > 0:
@@ -352,10 +366,8 @@ async def atomic_save_positions(position_service: PositionService, account_key: 
                         if amt == 0 and ep == 0 and oa is None and mg == 0:
                             existing_on_disk = None
                             try:
-                                disk_file = position_service.get_position_file(account_key, side)
-                                if disk_file.exists():
-                                    with open(disk_file) as _df:
-                                        disk_data = json.load(_df)
+                                disk_data = _disk_side(side)
+                                if disk_data:
                                     existing_on_disk = disk_data.get(pos_key, {})
                             except Exception:
                                 pass

@@ -1,54 +1,30 @@
 {
- "generated_at": "2026-10-14 19:56 UTC",
- "total_capital_usd": 94.26,
+ "generated_at": "2026-10-14 20:17 UTC",
+ "total_capital_usd": 11.06,
  "tier_capital": {
-  "A": 0.0,
-  "B": 66.9,
-  "C": 27.37
+  "A": 11.06,
+  "B": 0.0,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 0,
-  "B": 2,
-  "C": 1
+  "A": 1,
+  "B": 0,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:GALAUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:MELANIAUSDT_SHORT",
-   "symbol": "MELANIAUSDT",
-   "account": "men",
-   "value_usd": 44.83,
-   "gain_pct": 0.228,
-   "tier": "B",
-   "perf_mult": 5.45,
-   "amt": 522.32,
-   "mark": 0.08582
-  },
-  {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 27.37,
-   "gain_pct": 2.999,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 13416.0,
-   "mark": 0.00204
-  },
-  {
-   "pk": "men:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "men",
-   "value_usd": 22.07,
-   "gain_pct": 0.776,
-   "tier": "B",
-   "perf_mult": 0.46,
-   "amt": 26.6,
-   "mark": 0.8296
+   "pk": "inf:ZROUSDT_SHORT",
+   "symbol": "ZROUSDT",
+   "account": "inf",
+   "value_usd": 11.06,
+   "gain_pct": -0.174,
+   "tier": "A",
+   "perf_mult": 9.91,
+   "amt": 5.8,
+   "mark": 1.9064533
   }
  ]
 }

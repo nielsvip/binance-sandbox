@@ -18,8 +18,18 @@ def test_rate_has_indicators_alias():
     src = Path("ez_positions_quick.py").read_text()
     # rate's param is ind, but body must alias indicators = ind before first use of indicators
     assert "def rate(" in src and "indicators = ind" in src, "rate must alias indicators = ind to avoid NameError for indicators.get"
-    # ensure the inner datetime import was renamed
-    assert "from datetime import datetime as _dt_inner" in src, "inner datetime import must be renamed to _dt_inner to avoid shadowing"
+    # rate must never bind `datetime` locally (an inner `from datetime import datetime` shadowed the module import -> UnboundLocalError).
+    # 2026-10-14: checked on the AST — the renamed import is multi-line (`from datetime import (\n datetime as _dt_inner,`).
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "rate":
+            for n in ast.walk(node):
+                assert not (isinstance(n, ast.Name) and n.id == "datetime" and isinstance(n.ctx, ast.Store)), f"datetime stored in rate at line {n.lineno}"
+                if isinstance(n, ast.ImportFrom) and n.module == "datetime":
+                    assert all(a.name != "datetime" or a.asname not in (None, "datetime") for a in n.names), f"rate shadows datetime at line {n.lineno}"
+            break
+    else:
+        raise AssertionError("rate not found")
 
 def test_backtest_golden_rule_no_missing_import():
     src = Path("backtest_v12_engine.py").read_text()
