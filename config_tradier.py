@@ -5094,6 +5094,7 @@ class TradierConfig:
     ACCOUNT_TYPE_TRC: str = (
         "paper"  # USER 2026-10-09: trc = paper replication -> no real settlement -> guard skipped
     )
+    CASH_ACCOUNT_SETTLEMENT_ENABLED: bool = True  # 2026-10-14 USER "no violations": T+1 GFV rule for boards evaluated on a cash account (vec_decisions/cash_settlement; QuickConfig twin). Live GFV gates are a legal rule and never read this off-switch.
     TRC_SWING_LONG_BUDGET: float = 100000.0  # was 50000 / orig 100000
     TRC_SWING_SHORT_BUDGET: float = 100000.0  # was 50000 / orig 100000
     TRC_SCALP_LONG_BUDGET: float = 1250.0  # was 2500 / orig 5000

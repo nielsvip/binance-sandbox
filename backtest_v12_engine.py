@@ -40,6 +40,7 @@ import json
 import logging
 import os
 import platform
+os.environ.setdefault("EXIT_GUARANTEE_REPLAY", "1")  # 2026-10-14: exit_guarantee pass-through in replays (no FORCE/watchers/live-dir writes); fills = decision bar, as the vector
 import signal
 import sys
 import threading
@@ -8886,8 +8887,24 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         # settled cash = effectively unlimited: the vec qty (vec notional, e.g. $13.8k CRWD) exceeds the harness's 10k
         # bookkeeping capital, and account-level cash is not a per-sym decision (GFV_SETTLED_CASH_BLOCK_10000 on AAPL).
         async def _v12_settled_cash(_acct, *a, **kw):
+            # 2026-10-14 CASH SETTLEMENT twin (vec_decisions/cash_settlement rule 2): on a settling (cash) account the board never
+            # buys with its OWN unsettled sale proceeds (board-local reading of live's broker settled-cash gate). Margin/paper
+            # accounts never reach this gate (_gfv_guard_applies False).
+            try:
+                _gt = getattr(manager, "gfv_tracker", None)
+                if _gt is not None and _gt.get_unsettled_total(_acct) > 0:
+                    return 0.0
+            except Exception:
+                pass
             return float(os.environ.get("V12_SIM_SETTLED_CASH", "1e12"))
         manager._get_settled_cash_from_broker = _v12_settled_cash
+        try:  # CASH_ACCOUNT_SETTLEMENT_ENABLED (shared switch, vec_decisions/cash_settlement) gates the replay's GFV rule like the vector
+            import vec_decisions.cash_settlement as _cs_bt
+            _orig_gfv_applies = getattr(tm_mod, "_v12_orig_gfv_guard_applies", None) or tm_mod._gfv_guard_applies
+            tm_mod._v12_orig_gfv_guard_applies = _orig_gfv_applies
+            tm_mod._gfv_guard_applies = lambda _a: bool(_orig_gfv_applies(_a)) and bool(getattr(tm_mod.config, _cs_bt.SWITCH, True))
+        except Exception as _cs_e:
+            v8_logger.warning(f"[V12_REAL_EXECUTE] cash-settlement switch patch failed: {_cs_e}")
 
         # real tradier execute_now builds fresh TradierAPIClient()s (order_dedupe_guard preflight via factory, settled cash,
         # wrap_tradier_client): broker I/O. Sim broker: connects, has no open orders, every order lookup is filled.
@@ -8928,6 +8945,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if _gfv is not None:
                 _gfv.unsettled_sales = []
                 _gfv.restricted_positions = {}
+                _gfv.owed_exits = {}
                 _gfv._save = lambda *a, **kw: None
             if getattr(tm_mod, "datetime", None) is datetime:
                 tm_mod.datetime = _SimDatetimeCls
@@ -18143,6 +18161,12 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     import datetime as _dt
     from pathlib import Path as _Path
     overrides = dict(overrides or {})
+    _run_one_sim_account = overrides.get("SIM_ACCOUNT")  # kept in the set: tradier_vec_exact.build_cfg reads it for the twin
+    try:
+        import exit_guarantee as _xg_rp
+        _xg_rp.replay_stats(reset=True)
+    except Exception:
+        _xg_rp = None
     # F1: LS_RATIO_ENFORCE_TRADIER is a PORTFOLIO gate (long$/max(short$,1)): a single-sym_side replay has no opposite book, so every short is
     # BLOCKED_LS_RATIO_SHORT_0.00lt0.2 (v15_verify_365_parity forced it False harness-side; run_one never did). Keep live default unless asked.
     if os.environ.get("V12_F1_SINGLE_SIDE_PORTFOLIO_GATES_OFF", "1") == "1" and str(symside).upper().endswith(('_SHORT', '_LONG')) and not str(symside).split('_')[0].upper().endswith(('USDT','USDC','USD1','BUSD','FDUSD','TUSD','DAI')):
@@ -18252,7 +18276,10 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                 # run_simulation is async; it returns executed_trades list
                 executed = _asyncio.run(run_simulation(mode, "ang", start_date, 10000.0, stores, resolution))
             else:
-                executed = _asyncio.run(run_simulation_tradier("trb", start_date, 10000.0, stores, resolution))
+                # 2026-10-14 cash-settlement parity: the replay account = the board account (SIM_ACCOUNT override / V12_SIM_ACCOUNT;
+                # default trb). tra -> live entry ban (0 trades); a cash account -> live GFV rule on the sim clock.
+                _sim_acct = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower()
+                executed = _asyncio.run(run_simulation_tradier(_sim_acct, start_date, 10000.0, stores, resolution))
         finally:
             if _prev_sweep is None:
                 __import__("os").environ.pop("V8_SWEEP_MODE", None)
@@ -18402,6 +18429,8 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         # 2026-10-06 trade-parity (tools/v15_trade_parity.py): every executed live-path event with its action + reason,
         # so vec and live ledgers can be matched trade-by-trade. Output only — no simulation change.
         m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or "")} for e, ev in zip(events, executed or [])]
+        m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower() if mode == "tradier" else None
+        m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m
     except Exception as _e2:
         import traceback as _tb2

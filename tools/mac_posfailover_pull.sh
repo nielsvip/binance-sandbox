@@ -11,6 +11,16 @@ FLAGS=$(ssh $SSH_OPTS s1-pub "ls /home/niels/binance/data/s1_posfailover_active_
 mkdir -p "$(dirname "$LOG")"
 for acct in ang inf flz men fin; do
     echo "$FLAGS" | grep -q "_${acct}$" || continue
+    # USER 2026-10-14 SINGLE POSITION WRITER: ez_positions_service is the only writer. S1 copies (whose realtime re-stamps
+    # opened_at on every takeover) may land on the Mac ONLY while the Mac service heartbeat is stale (> 90 s).
+    HB="$REPO/${acct}/.positions_service_heartbeat.json"
+    if [ -f "$HB" ]; then
+        HB_TS=$(/usr/bin/python3 -c "import json,sys;print(int(float(json.load(open(sys.argv[1])).get('ts',0))))" "$HB" 2>/dev/null || echo 0)
+        if [ $(( $(date +%s) - HB_TS )) -le 90 ]; then
+            echo "$(date -u +%FT%TZ) SKIP $acct pull — Mac ez_positions_service alive (heartbeat $(( $(date +%s) - HB_TS ))s)" >>"$LOG"
+            continue
+        fi
+    fi
     rsync -az --update --timeout=15 -e "ssh $SSH_OPTS" "s1-pub:/home/niels/binance/${acct}/{long,short}_positions.json" "$REPO/${acct}/" >>"$LOG" 2>&1 || true
     echo "$(date -u +%FT%TZ) pulled $acct (S1 takeover active)" >>"$LOG"
 done

@@ -42,6 +42,36 @@ def kline_last(symbol, venue):
     return best
 
 
+def npz_kline_source(p):
+    import numpy as np
+    try:
+        z = np.load(p, allow_pickle=True)
+        return str(np.asarray(z["kline_source"]).ravel()[0]) if "kline_source" in z.files else None
+    except Exception:
+        return None
+
+
+def canonical_ready(sym):
+    """USER 2026-10-14: crypto NPZs must be built from klines_canonical (exchange-native closed bars). True when the store holds all 4 TFs
+    with a current 15m tail; V15_NPZ_CANONICAL_REGEN=0 disables the provenance regen."""
+    if os.environ.get("V15_NPZ_CANONICAL_REGEN", "1") == "0" or os.environ.get("NPZ_CANONICAL_SOURCE", "1") == "0":
+        return False
+    d = ROOT / "klines_canonical"
+    if not all((d / f"{sym}_{tf}.json").exists() for tf in ("15m", "1h", "4h", "D")):
+        return False
+    try:
+        with open(d / f"{sym}_15m.json", "rb") as fh:
+            fh.seek(max(0, os.path.getsize(d / f"{sym}_15m.json") - 300))
+            tail = fh.read().decode("utf8", "ignore")
+        import re
+        from datetime import datetime, timezone
+        ts = re.findall(r'"timestamp":\s*"([^"]+)"', tail)[-1]
+        last = datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+        return time.time() - last < 3 * 3600
+    except Exception:
+        return False
+
+
 def venue_of(sym):
     s = str(sym).upper()
     return "crypto" if (s.endswith("USDT") or s.endswith("USDC")) else "stocks"
@@ -179,10 +209,18 @@ def main():
     except Exception as _e:
         _tok, _twhy = False, f"cutoffs-fail {str(_e)[:60]}"
     r["tail_check"] = _twhy
-    if _tok:
+    _ksrc = npz_kline_source(live) if venue == "crypto" else None
+    _canon_regen = venue == "crypto" and _ksrc != "canonical_v1" and canonical_ready(sym)
+    r["kline_source"] = _ksrc
+    if _tok and not _canon_regen:
         r.update(ok=True, reason="tail current to latest closed bar")
         finish(r, live, sym, a.push)
     kl = kline_last(sym, venue)
+    if _canon_regen:
+        # USER 2026-10-14 "boards backtest on the same REAL prices": JIT (at dispatch, single-flight) full rebuild of an NPZ whose past bars came
+        # from the mixed cache copies; the guarded install below keeps the old NPZ if the canonical build is shorter / older-headed.
+        kl = max(kl or 0, t1 + 1)
+        r["canonical_regen"] = True
     if kl is None:
         r["reason"] = f"no {venue} 15m cache"
         out(r, 3)

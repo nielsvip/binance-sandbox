@@ -36,6 +36,7 @@ from zoneinfo import ZoneInfo
 import vec_decisions.shared_zone
 import vec_decisions.dc_channel_exits as _dc_channel_exits  # 2026-09-29 grey-switch rewire (shared with v12_quick_engine)
 import vec_decisions.noloss_hold as _noloss_hold  # 2026-10-04 NOLOSS/STOP_LOSS twins (shared with v12_quick_engine)
+import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with v12_quick_engine + backtest_v12_engine
 import vec_decisions.fixed_stop as _fixed_stop_core  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core (shared with v12/ez_manage/service)
 import vec_decisions.bb_stoch_exits as _bb_stoch_exits  # 2026-10-04 BB band-touch/stoch-cross twins (shared with v12_quick_engine)
 import vec_decisions.lh_ll_top_exit as _lhll_top_exit  # 2026-10-04 LH/LL top exit (shared with v12_quick_engine)
@@ -14001,6 +14002,23 @@ async def process_position(
         last_mon = trade_manager.last_monitored_positions.get(position_key, 0.0)
         position = trade_manager.position_manager.get_position(position_key)
         has_position = position and abs(float(getattr(position, "positionAmt", 0))) > 0
+        _cs_trk = getattr(trade_manager, "gfv_tracker", None)
+        _cs_owed = _cs_trk.owed_exit(position_key) if _cs_trk is not None and getattr(_cs_trk, "owed_exits", None) else None
+        if _cs_owed is not None:  # CASH SETTLEMENT owed sell (2026-10-14; twin of v12_quick_engine owed exit, vec_decisions/cash_settlement)
+            if not has_position:
+                _cs_trk.clear_owed(position_key)
+            else:
+                _cs_ok, _cs_why = _cs_trk.can_sell(position_key)
+                if not _cs_ok or not is_regular_trading_hours():
+                    return  # hold: nothing else happens on this position until the owed sell can execute (vector skips the bar)
+                _cs_amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+                _cs_full = bool(_cs_owed.get("full")) or float(_cs_owed.get("qty") or 0.0) >= _cs_amt - 1e-9
+                _cs_reason = f"{_cash_settle.DEFERRED_TAG}[{str(_cs_owed.get('reason') or '')[:80]}]"
+                _cs_res = await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE" if _cs_full else "REDUCE", _cs_reason, 100.0, override_qty=None if _cs_full else min(_cs_amt, float(_cs_owed.get("qty") or 0.0)))
+                logger.critical(f"[GFV_OWED_EXIT] {position_key}: settled -> {'CLOSE' if _cs_full else 'REDUCE'} {_cs_reason} -> {_cs_res}")
+                if str(_cs_res or "").upper().startswith("SUCCESS") or str(_cs_res or "").upper() in ("QUEUED", "TRUE"):
+                    _cs_trk.clear_owed(position_key)
+                return
         _agent_hold_deferred = None
         if account_key in ("tra", "trb", "trc"):
             try:
@@ -40999,17 +41017,48 @@ class GFVTracker:
         self.file_path = Path(data_dir) / "gfv_tracker.json"
         self.unsettled_sales = []  # [{account, symbol, amount, sold_at, settles_at}]
         self.restricted_positions = {}  # position_key -> {restricted_until, bought_at}
+        self.owed_exits = {}  # position_key -> {full, qty, reason, since} (2026-10-14: sell refused by the GFV rule, executed at settlement)
         self._load()
 
     @staticmethod
     def _next_business_day(from_date=None):
+        # 2026-10-14: settlement calendar (weekends + NYSE holidays + Fed settlement holidays Columbus/Veterans Day) shared
+        # with the backtest engines (vec_decisions/cash_settlement). Was weekends-only: a Friday-before-Columbus-Day sale
+        # was treated as settled on the (non-settling) Monday.
         d = from_date or datetime.now(ZoneInfo("US/Eastern"))
         if isinstance(d, datetime):
             d = d.date()
-        d += timedelta(days=1)
-        while d.weekday() >= 5:
-            d += timedelta(days=1)
-        return d
+        return _cash_settle.next_settlement_day(d)
+
+    def record_buy_settlement(self, position_key):
+        """CASH account (2026-10-14 USER "no violations"): every buy leg restricts selling the position until the buy
+        settles (T+1 settlement day) — the strict reading shared with v12_quick_engine/backtest_v12_engine."""
+        _until = self._next_business_day()
+        _cur = self.restricted_positions.get(position_key)
+        if _cur:
+            try:
+                _until = max(_until, datetime.fromisoformat(_cur["restricted_until"]).date())
+            except Exception:
+                pass
+        self.record_buy_with_unsettled(position_key, _until)
+
+    def owe_exit(self, position_key, full, qty, reason):
+        _prev = self.owed_exits.get(position_key) or {}
+        self.owed_exits[position_key] = {
+            "full": bool(full) or bool(_prev.get("full")),
+            "qty": float(qty or 0.0) + (0.0 if full else float(_prev.get("qty") or 0.0)),
+            "reason": str(reason or _prev.get("reason") or "")[:120],
+            "since": _prev.get("since") or datetime.now(timezone.utc).isoformat(),
+        }
+        self._save()
+        logger.critical(f"[GFV_OWED_EXIT] {position_key}: sell refused by the cash-account GFV rule — OWED, executed at the first regular-session tick after settlement ({self.owed_exits[position_key]})")
+
+    def owed_exit(self, position_key):
+        return self.owed_exits.get(position_key)
+
+    def clear_owed(self, position_key):
+        if self.owed_exits.pop(position_key, None) is not None:
+            self._save()
 
     def _load(self):
         try:
@@ -41018,6 +41067,7 @@ class GFVTracker:
                     data = json.load(f)
                 self.unsettled_sales = data.get("unsettled_sales", [])
                 self.restricted_positions = data.get("restricted_positions", {})
+                self.owed_exits = data.get("owed_exits", {}) or {}
                 self._cleanup()
         except Exception as e:
             logger.error(f"[GFV] Load error: {e}")
@@ -41029,6 +41079,7 @@ class GFVTracker:
                     {
                         "unsettled_sales": self.unsettled_sales,
                         "restricted_positions": self.restricted_positions,
+                        "owed_exits": self.owed_exits,
                     },
                     f,
                     indent=2,
@@ -46717,7 +46768,8 @@ class TradierTradeManager:
                     if _gfv_guard_applies(acct):
                         _gok, _gwhy = self.gfv_tracker.can_sell(position_key)
                         if not _gok:
-                            _xg.alert("tradier", str(position_key), f"FORCE close held by cash-account GFV rule ({_gwhy}) — sells once the buy settles", config, logger)
+                            self.gfv_tracker.owe_exit(position_key, True, 0.0, reason)
+                            _xg.alert("tradier", str(position_key), f"FORCE close held by cash-account GFV rule ({_gwhy}) — OWED: sells at the first regular-session tick after settlement", config, logger)
                             return "BLOCKED_GFV_ACCOUNT_RULE"
                 except Exception:
                     pass
@@ -49070,6 +49122,10 @@ class TradierTradeManager:
                     logger.critical(
                         f"[GFV_BLOCK] {position_key}: {_gfv_reason} — SELL BLOCKED to prevent Good Faith Violation"
                     )
+                    try:  # 2026-10-14: the refused sell is OWED (process_position executes it once the buy settles; v12/scalar identical)
+                        self.gfv_tracker.owe_exit(position_key, bool(_xg_full) or str(action or "").upper() in ("CLOSE", "FULL_CLOSE", "QUICK_CLOSE"), quantity, reason)
+                    except Exception as _owe_e:
+                        logger.error(f"[GFV_OWED_EXIT] {position_key}: register failed {_owe_e}")
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return "GFV_BLOCKED"
@@ -49281,6 +49337,8 @@ class TradierTradeManager:
                     _trade_value = quantity * current_price
                     if is_reduce and order_id != "GHOST_CLEARED":
                         self.gfv_tracker.record_sale(account_key, symbol, _trade_value)
+                    elif is_augment and _gfv_guard_applies(account_key):
+                        self.gfv_tracker.record_buy_settlement(position_key)  # 2026-10-14 strict T+1: no sell before this buy settles
                     elif is_augment:
                         _unsettled = self.gfv_tracker.get_unsettled_total(account_key)
                         if _unsettled > 0:

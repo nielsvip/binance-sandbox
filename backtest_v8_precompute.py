@@ -2765,6 +2765,9 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     if mode == "crypto" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
         # AUDIT/NPZB 2026-10-01: marker read by vec_decisions.htf_causal_align (skip the engine-load shift: never a double lag)
         merged["htf_align"] = np.array(["causal_v3" if os.environ.get("NPZ_WM_LEGACY") != "1" else "causal_v2"])
+    if mode == "crypto":
+        # USER 2026-10-14: input-bar provenance (non-row key, like htf_align); tools/v15_npz_prep.py regenerates JIT at dispatch when it is not canonical_v1.
+        merged["kline_source"] = np.array(["canonical_v1" if all(_srcs.get(t) == "klines_canonical" for t in CANONICAL_TFS) else "mixed:" + ",".join(f"{t}={_srcs.get(t)}" for t in CANONICAL_TFS)])
     np.savez_compressed(str(tmp_path), **merged)
     os.replace(str(tmp_path), str(out_path))
     elapsed = time.time() - t0

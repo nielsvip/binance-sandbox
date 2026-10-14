@@ -23,10 +23,6 @@ PRIMARY = REPO / "klines_cache" / "gateway"
 BACKUP = REPO / "klines_cache_gateway"
 MACBOOK = REPO / "klines_cache_macbook"
 TARGET = REPO / "klines_cache_backtest"
-# USER 2026-10-14 "REAL prices": exchange-native closed bars (tools/klines_canonical.py, pushed from the Mac). When a file exists there it is
-# the ONLY source for that symbol/TF (the gateway/Mac feeds carried USDT-perp bars under USDC names and 3m right-label resamples), and its
-# values CORRECT bars already in the target (canonical repair path; grow-only — rows are never removed). KLINES_APPEND_CANONICAL=0 = legacy.
-CANONICAL = REPO / "klines_canonical"
 SYMBOLS_JSON = REPO / "symbols.json"
 VALID_TFS = ("1m", "3m", "15m", "1h", "4h", "D", "W", "M")
 try:  # USER 2026-10-13: TradFi perps (AAPLUSDT etc.) are not tradeable — never append/create their klines
@@ -47,24 +43,14 @@ def load_json_list(p: Path) -> list[dict]:
         return []
 
 
-def merge_klines(existing: list[dict], fresh: list[dict], correct: bool = False) -> tuple[list[dict], int]:
+def merge_klines(existing: list[dict], fresh: list[dict]) -> tuple[list[dict], int]:
     """Append entries from `fresh` whose timestamp is not already in `existing`.
-    Sort by timestamp. Returns (merged, n_added). correct=True (canonical exchange rows only): a bar already present
-    with different OHLCV is overwritten by the exchange values; corrections count into n_added so the write happens."""
+    Sort by timestamp. Returns (merged, n_added)."""
     if not fresh:
         return existing, 0
     seen = {b.get("timestamp") for b in existing if b.get("timestamp")}
     n_added = 0
     out = list(existing)
-    if correct:
-        canon = {b.get("timestamp"): b for b in fresh if b.get("timestamp")}
-        for i, b in enumerate(out):
-            c = canon.get(b.get("timestamp"))
-            if c is not None and any(b.get(k) != c.get(k) for k in ("open", "high", "low", "close", "volume")):
-                nb = dict(b)
-                nb.update({k: c[k] for k in ("open", "high", "low", "close", "volume")})
-                out[i] = nb
-                n_added += 1
     for b in fresh:
         ts = b.get("timestamp")
         if not ts or ts in seen:
@@ -77,18 +63,8 @@ def merge_klines(existing: list[dict], fresh: list[dict], correct: bool = False)
     return out, n_added
 
 
-def canonical_rows(name: str) -> list[dict]:
-    import os
-    if os.environ.get("KLINES_APPEND_CANONICAL", "1") == "0":
-        return []
-    return load_json_list(CANONICAL / name)
-
-
 def gather_fresh(name: str) -> list[dict]:
-    """Read primary; fill any timestamp gaps from backup. A canonical file, when present, is the only source."""
-    canon = canonical_rows(name)
-    if canon:
-        return canon
+    """Read primary; fill any timestamp gaps from backup."""
     primary = load_json_list(PRIMARY / name)
     backup = load_json_list(BACKUP / name) + load_json_list(MACBOOK / name)
     if not primary:
@@ -110,7 +86,7 @@ def filenames_to_process(symbols: list[str] | None) -> list[str]:
     else:
         roots = None
     seen: set[str] = set()
-    for d in (CANONICAL, PRIMARY, BACKUP, MACBOOK):
+    for d in (PRIMARY, BACKUP, MACBOOK):
         if not d.exists():
             continue
         for p in d.glob("*_*.json"):
@@ -136,7 +112,7 @@ def append_one(name: str, dry_run: bool = False) -> dict:
     target = TARGET / name
     existed = target.exists()
     existing = load_json_list(target)
-    merged, n_added = merge_klines(existing, fresh, correct=bool(canonical_rows(name)))
+    merged, n_added = merge_klines(existing, fresh)
     if n_added == 0:
         return {"file": name, "status": "up_to_date", "n_added": 0,
                 "total": len(merged), "created": False}

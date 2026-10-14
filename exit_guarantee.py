@@ -21,6 +21,12 @@ For every exit-class call (CLOSE / REDUCE / FULL_CLOSE / HEDGE_CLOSE / KILL / PR
 Every decision/result/escalation is appended to data/safety/exit_events/{venue}_{YYYYMMDD}.jsonl — the input of
 tools/exit_never_blocked_monitor.py (close decision without a confirmed fill within N minutes -> alert + desktop notify).
 Kill switch: EXIT_GUARANTEE_ENABLED (config); FORCE leg: EXIT_GUARANTEE_FORCE_ENABLED. Never raises into execute_now.
+Cash-account GFV refusals (GFV_BLOCKED / BLOCKED_GFV_ACCOUNT_RULE) are POLICY (2026-10-14): a FORCE cannot sell before the buy
+settles; tradier_manage registers the sell as OWED (GFVTracker.owe_exit) and process_position executes it at the first
+regular-session tick after settlement — the same rule v12_quick_engine/backtest_v12_engine apply (vec_decisions/cash_settlement).
+REPLAY (EXIT_GUARANTEE_REPLAY=1, set by backtest_v12_engine): pass-through — no FORCE leg, no watcher (real-time sleeps), no
+ledger/vigilance/alert writes into the live data dirs; the broker stub fills every order at the decision bar exactly as the
+vectorized engine assumes. Would-escalate / would-retry outcomes are only counted (replay_stats()).
 """
 from __future__ import annotations
 
@@ -55,7 +61,7 @@ DEFAULTS = {
     "EXIT_DUST_USD": 5.0,
 }
 # result codes that are deliberate policy (never escalated): the decision is not authorised to trade on this box / key
-POLICY_PREFIXES = ("BLOCKED_PARITY_NATIVE_", "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VEC_PARITY_", "SKIPPED_SCALP_REDUCE_DISABLED", "BLOCKED_SERVER_HEARTBEAT_ACTIVE", "BLOCK WRONG ACCOUNT KEY", "BLOCKED_ACCOUNT_NOT_MANAGED", "SKIPPED_SANDBOX", "MARKET_CLOSED", "BLOCKED_MARKET_CLOSED")
+POLICY_PREFIXES = ("GFV_BLOCKED", "BLOCKED_GFV_ACCOUNT_RULE", "GFV_SETTLED_CASH_BLOCK", "BLOCKED_PARITY_NATIVE_", "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VEC_PARITY_", "SKIPPED_SCALP_REDUCE_DISABLED", "BLOCKED_SERVER_HEARTBEAT_ACTIVE", "BLOCK WRONG ACCOUNT KEY", "BLOCKED_ACCOUNT_NOT_MANAGED", "SKIPPED_SANDBOX", "MARKET_CLOSED", "BLOCKED_MARKET_CLOSED")
 POLICY_CONTAINS = ("WAIT MEANS WAIT",)
 # strategy refusals of a NATIVE close (noloss / hedge regime / newborn / exit confirmation gates). A vec-decided, emergency,
 # stop, sync or flatten close is authorised -> these become ordinary refusals and are escalated.
@@ -71,6 +77,18 @@ _WATCHERS: Dict[str, Any] = {}
 _LAST_VERIFY: Dict[str, float] = {}
 _NOTIFY_LAST: Dict[str, float] = {}
 _LOCK = threading.Lock()
+_REPLAY_STATS: Dict[str, int] = {}
+
+
+def replay_mode() -> bool:
+    return os.environ.get("EXIT_GUARANTEE_REPLAY") == "1"
+
+
+def replay_stats(reset: bool = False) -> Dict[str, int]:
+    out = dict(_REPLAY_STATS)
+    if reset:
+        _REPLAY_STATS.clear()
+    return out
 
 
 def _cfg(cfg: Any, name: str):
@@ -331,6 +349,19 @@ def wrap_execute_now(venue: str, hooks_getter: Callable[[], Hooks]):
             full_flag = bool(args.get("is_full_close"))
             if not bool(_cfg(cfg, "EXIT_GUARANTEE_ENABLED")) or not is_exit_action(action, full_flag):
                 return await fn(self, *a, **kw)
+            if replay_mode():  # backtest replay: pass-through, outcomes counted only (no FORCE / watcher / live-dir writes)
+                res = await fn(self, *a, **kw)
+                try:
+                    full_r = is_full_close(action, full_flag)
+                    cls_r = classify(res, args.get("reason"), full_r)
+                    k = ("FULL_" if full_r else "REDUCE_") + cls_r
+                    _REPLAY_STATS[k] = _REPLAY_STATS.get(k, 0) + 1
+                    if cls_r in ("REFUSED", "VERIFY") and action != FORCE_ACTION:
+                        w = "WOULD_ESCALATE_FORCE" if full_r else "WOULD_RETRY_REDUCE"
+                        _REPLAY_STATS[w] = _REPLAY_STATS.get(w, 0) + 1
+                except Exception:
+                    pass
+                return res
             force = action == FORCE_ACTION
             key = _pk(args)
             full = is_full_close(action, full_flag)
