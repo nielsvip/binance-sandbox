@@ -2543,3 +2543,93 @@ Full spec, triggers, fencing and fail-back: [`INFRASTRUCTURE.md` § LIVE FAILOVE
 * Live data inputs can now come from S1 while a venue is ACTIVE (`data/live_failover/delivery.jsonl` on the Mac names every file, provenance `S1:<host>`; crypto snapshots arrive as `data/market_data_<ts>_s1.json`). Klines are only replaced by strictly newer bars — never older, never deleted. The vec twin (`PARITY_VEC_EXACT_SOURCE=live_klines`) reads the same `klines_cache`, so its inputs are refreshed by the same delivery.
 * `VEC_STALE_FLATTEN` is NOT a stale-data exit: it runs only when the twin status is OK and its bar is ≤ `VEC_EXACT_STALE_FALLBACK_BARS` (4 × 15m) old, and needs 8 bars (`VEC_STALE_FLATTEN_BARS`) of paper-flat + live-holds with no act. Over the retained ez_manage logs `VEC_EXACT_STALE_FALLBACK` (the real "twin data stale" event) fired 0 times; native fallbacks were `NO_STORE` only (21). Data failover therefore avoids 0 of the stale-flatten closes by construction; their driver is paper/live divergence, not input staleness.
 * Proof harness: `tests/test_live_failover.py` (14 tests, Mac + S1).
+- **v14 (0704b44a) signal law:** `_sig_shutdown` acts only in the parent pid (`_MAIN_PID`); a forked worker re-raises SIG_DFL.
+  Pilot pool + combo PoolEvaluator use a SIG_DFL initializer; `V17_COMBO_IN_PILOT=1` makes `search()` refuse to fork its own
+  pool inside the pilot (AMZN_LONG RUN-FAILED root cause). Test `tests/test_v15_pool_signals.py`.
+- **v15 (404a3881, 2026-10-14):** GLOBAL_ONLY_KEYS += PARITY_VEC_EXACT_MODE/_FAMILIES/_SET_DIR (never rows, never adopted —
+  `_v17_blocked`, stripped in `_clean_ingested_overrides`, START/needs_redo ingest and every progress write). LOSER skips
+  endgame+diag. Header-map cache per worksheet; self-monitor/stuck guards 8 s/30 s -> 120 s. Prefetch task-cap + presubmit
+  exist behind `V15_PREFETCH_TASKCAP=1` / `V15_ROW_PRESUBMIT=1` (default OFF: S1 A/B UNIUSDC_SHORT identical result + wall,
+  +33% CPU — hosts are CPU-saturated). Tests `test_v15_global_only_keys.py`, `test_v15_throughput_pipeline.py`.
+
+## 101. RE-ENTRY AFTER A STOP + STOCKS SESSION-OPEN STOP RE-FREEZE (USER 2026-10-13/14)
+
+**(1) REENTRY_EXIT_RECLAIM (existing switch, REENTRY_WINDOWED, bold True / buffer 0.2 in all 4 templates) was NEVER modelled
+by simulate_one** — its vec twin `vec_decisions/lane_vec_reentry2.reclaim_buffer_mask` had no caller (VEC_UNSUPPORTED), so every
+board measured it as OFF while live B00 (ez_manage evaluate_reentry) / H2 (tradier_manage) declare it ON (both native = inactive
+under PARITY_VEC_EXACT_MODE). Wiring prepared and PROVEN, NOT shipped: `reclaim_ready_mask()` (exact B00/H2 legs: close vs
+ema_9_15m side + 15m WT wt1>wt2, velocity>0, k_15m<80, shorts mirrored) + armed-after-ANY-exit price leg (close beyond last exit
+x (1 +/- BUFFER)) + label REENTRY_EXIT_RECLAIM. Flip proof (30d, default set): ALGOUSDT_LONG -1.09% -> -4.20% (71 re-entries),
+ALGOUSDT_SHORT +0.52 -> -0.09, BTCUSDC_LONG -3.48 -> -3.49, stocks unchanged (PRICE_CROSS_BACK fires first). Patch:
+`backups/exit_reclaim_wire_v12_quick_engine_202610132355.patch` (engine held at measured md5 891ecc85 at that time). Shipping it
+activates the pathway on every pinned board at once (all boards pin True) — awaiting the user's choice: ship + re-measure, or
+ship with default False everywhere and let the sweep promote it.
+
+**(2) SESSION_OPEN_STOP_REFREEZE_ENABLED (NEW, stocks only, default False, EXIT_STRUCTURAL rows False/True in TEMPLATE_STOCKS_
+LONG/SHORT).** First RTH bar of each ET date: a position carried overnight gets a NEW FIXED_STOP at the current dc_15m_low -0.25%
+(vv short) with the unchanged math of vec_decisions/fixed_stop.py; breached -> FIXED_STOP exit; re-entry through the re-entry
+pathways. Vec: `vec_decisions/fixed_stop_session.session_open_mask` (single call site in the stocks session setup) + re-freeze in
+the FIXED_STOP block. Live: tradier_manage FIXED_STOP block (once per position per ET date, RTH, opened before today; level map
+carries `sess`), and ensure_fixed_stop_backstop_tradier now re-places when the resting stop price != the frozen level (tick-exact).
+Name avoids "FIXED_STOP" on purpose: tests/test_fixed_stop.py pins the 10-12 mandate that no config field may switch the stop.
+Flip proof: AAPL_LONG +6.26 -> +6.52, NVDA_LONG 6 -> 10 trades (FIXED_STOP exits 4 -> 7), NVDA_SHORT stops 1 -> 0, crypto unchanged.
+Registry + SWITCH_BIBLE green; rows added on S1 via v15_switch_add, synced S2+Mac (md5 abc0e4fe / 071ad735); MASTER_switches.csv
+line appended (S1/S2/Mac). INCIDENT: a first rename attempt ran two v15_switch_remove processes concurrently (dropped ssh session
++ relaunch) and deleted 2 original STOCKS_SHORT EXIT_STRUCTURAL rows (DC_DAYTRADE_TARGET_PCT=0.01, MOM3_FILTER_TF=D); restored
+from the 00:05 pre-add backup (no other writer in between, md5 ceb49f39), then re-added; final diff vs original = exactly the 2
+new rows per file, 0 missing. Lesson: template tools on S1 run detached (setsid) and ONE at a time — check pgrep first.
+
+## 102. STALE-SET 2-LOSS HALT (2026-10-13)
+
+**User rules (verbatim):** "NO blocking loss closes if the vector tells you to" + "but if the vector has not been refreshed
+for over 10 days and 2 consecutive trades close at a loss, trading needs to be halted for the sym_side until recalculated
+with latest npz." Live follows the winning vectorized board exactly, INCLUDING loss closes.
+
+**(1) Vec-decided closes are never refused for being at a loss (audit 2026-10-14).**
+- ez `execute_now`: `UNIVERSAL_NOLOSS_GATE` / `NOLOSS_MIN` already bypassed for `_vd_exempt` (2026-10-06). **Fixed:** the
+  EMERGENCY_BRAKE (10/min churn, 500 entries/h, 1000 trades/h, 50/h per key) refused every close with tracker gain <= 0.1 —
+  i.e. exactly the losing vec closes. Now `_eb_vec_exit = _is_close and _vd_exempt` skips the live brake and the
+  `LIVE_VEC_EMERGENCY_BRAKE` enforcement for vec-decided exits.
+- tradier `execute_now`: **Fixed:** `EXCHANGE_OPEN_ORDER_EXISTS` matched our own resting protective stop (§98 GUARANTEED STOP,
+  `sell` for a LONG) against every LONG exit (`SELL`) and refused it before `place_order`'s cancel-before-exit handoff could run.
+  Protective stops (`order_dedupe_guard.tradier_protective_stop`) are now skipped there, same exemption as the ODG.
+- Not loss-driven, left as is (reported): ez `BROKER_SYNC_PENDING_CONFIRMATION` (90 s repeat guard, also on exits), ez
+  `STALE_MARK_PRICE` on a partial REDUCE with no price anywhere, ez `MAKER_SUPPRESS_WEBHOOK` (maker lock / dust), tradier queue
+  90 s `DUPLICATE` and redis exec lock (REDUCE->CLOSE back-to-back), tradier `GFV_BLOCKED` (cash account). Partial vec REDUCEs
+  refused by these are not re-sent (only full exits are owed, §98).
+
+**(2) The halt (`stale_set_halt.py`, both venues).** Per sym_side:
+- *vector age* = now − `recalc_anchor(active per_sym_active row)`: (a) dated board tag (`v15_30D_YYYYMMDD`, `pilot30d_`,
+  `continuous_<epoch>`, `..._YYYYMMDD`) + `data/published_selection.json` `published_at` <= apply → board publish time (board
+  finished on a JIT NPZ, §91); (b) dated tag only → the tag date (apply day 00:00Z, conservative); (c) undated tag (mandate /
+  artefact strip, backfill) → latest DATED `per_sym_history` row at/before the apply; (d) nothing dated → earliest of
+  campaign_ts / meta.updated_at / meta.promoted_at. **`updated_at` alone is NOT used** — the 2026-10-08 rename re-stamped every
+  row; `campaign_ts` = apply time (switch_parity), not recalculation. No row → cat_side defaults (daily template) → fresh.
+- *last 2 closes* = the last `STALE_SET_HALT_LOSSES` FULL closes of the sym_side (all accounts of the venue) since the active
+  set was applied; net = gain − fee (crypto 0.04, stocks 0.0, same as `per_trade_returns`). Source: the new execute_now
+  full-close hooks (`data/stale_set_halt/closes_{ez|tradier}.jsonl`, gain from the REAL entry price, independent of
+  `VIGILANCE_GUARD_ENABLED`) from `hooks_started_*.txt` on; before that the `data/per_trade_returns` ledgers (partials
+  TIERED/PARTIAL/REDUCE excluded; crypto gain = the exit's `g<x>%` stamp when present, else `pnl_pct` — flagged `src`).
+- age > `STALE_SET_HALT_DAYS` (10) AND both closes net < 0 → **HALT**: execute_now refuses OPEN/AUGMENT/REENTRY/ENTRY/REVERSE/BUY
+  (vec-decided included) with `BLOCKED_STALE_SET_HALT`; CLOSE/REDUCE/HEDGE_CLOSE never. Persisted in
+  `data/stale_set_halt/halts_{venue}.json`, alert line in `data/alerts/stale_set_halt_{venue}.jsonl`, `[STALE_SET_HALT]`
+  critical log, and the sym_side is inserted at `sides[0]` of S1 `data/v15_sched_pinned_sides.json` (ssh s1-int from a daemon
+  thread, JSON-validated + md5; the scheduler treats pins as a set = priority 0; `tools/stale_set_halt_ctl.py --sync-pins`
+  retries PENDING pins). The halt is evaluated at the 2nd losing close and at every entry attempt (fresh vectors exit
+  early without ledger IO).
+- **Release** (automatic): active row applied after `halted_at` AND overrides fingerprint changed AND the board behind it
+  published after the halt (`published_at`, or a dated tag on a later day). A re-stamp of the same set never releases. The
+  loss window restarts at the new apply (counter reset); the S1 pin is removed.
+- Kill switch `STALE_SET_HALT_ENABLED` (True) + `STALE_SET_HALT_DAYS` 10 + `STALE_SET_HALT_LOSSES` 2 in `config.py` and
+  `config_tradier.py`, read inside the module (live-only operational guard reacting to realized live losses — no vec twin by
+  design; vec twins originate opens only through execute_now, so they are covered by the same gate).
+- Tests `tests/test_stale_set_halt.py` (13). Read-only status: `python3 tools/stale_set_halt_ctl.py --dry-run`.
+- First dry-run 2026-10-14 00:1xZ (Mac ledgers): **0 sym_sides would halt**; 24 crypto sets older than 10 days (23 with no
+  closes since apply, BTCUSDT_LONG last 2 closes wins); 14 crypto + 1 stock sym_sides have 2 trailing losses on a fresh set
+  (earliest halt-eligible ZROUSDT_SHORT 2026-10-16 if no new board).
+
+**(3) Global-only safety key.** `PARITY_VEC_EXACT_MODE/_FAMILIES/_SET_DIR/_SOURCE` are GLOBAL: 3 crypto per-sym rows
+(ETCUSDT_LONG, ETHFIUSDC_LONG, ACEUSDT_LONG) carried MODE=False and traded native. Stripped via `per_sym_store.upsert` (backup
+`backups/before_strip_parity_vec_exact_persym_*.json`, meta `global_key_strip_20261014`); added to
+`switch_parity.GLOBAL_ONLY_KEYS`; golive `ARTEFACT_KEYS` patch proposed in `backups/proposed_patches/`. All 672 active
+sym_sides resolve PARITY_VEC_EXACT_MODE=True through per-sym > cat_side > global.

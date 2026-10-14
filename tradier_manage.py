@@ -2,7 +2,7 @@
 #!/usr/bin/env python3
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
-import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §100): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
+import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty refusal, broker-confirmed SUCCESS, local!=broker refuses entries
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
@@ -46809,7 +46809,7 @@ class TradierTradeManager:
                             return "BLOCKED_VIGILANCE"
             except Exception as _vg_e2:
                 logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_e2}")
-            # ═══ STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): vector > STALE_SET_HALT_DAYS old AND last
+            # ═══ STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): vector > STALE_SET_HALT_DAYS old AND last
             # STALE_SET_HALT_LOSSES full closes net losses -> ALL new exposure refused (vec-decided included) until a new
             # board on the latest NPZ is published + applied. Exits/reduces/hedge-closes never touched. ═══
             try:
@@ -49119,7 +49119,7 @@ class TradierTradeManager:
                                             logger.warning(
                                                 f"[VIGILANCE] close-record err {position_key}: {_vg_ce}"
                                             )
-                                        # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): realized full close feeds the sym_side loss window.
+                                        # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): realized full close feeds the sym_side loss window.
                                         try:
                                             if _ep > 0 and current_price:
                                                 _ssh_g = ((float(current_price) - _ep) / _ep * 100.0) if position_side == "LONG" else ((_ep - float(current_price)) / _ep * 100.0)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""stale_set_halt_ctl — BACKTEST_BIBLE §100 STALE-SET 2-LOSS HALT operator tool.
+"""stale_set_halt_ctl — BACKTEST_BIBLE §102 STALE-SET 2-LOSS HALT operator tool.
 
   --dry-run      read-only: which sym_sides WOULD be halted now (venue ez + tradier), with vector age, anchor and the losers
   --list         show persisted halts (data/stale_set_halt/halts_*.json)

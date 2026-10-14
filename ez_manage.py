@@ -3,7 +3,7 @@ import argparse
 import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode native block + local dedup claim
-import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §100): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
+import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
@@ -31855,7 +31855,7 @@ class MultiAccountTradeManager:
         except Exception as _vg_be:
             logger.warning(f"[VIGILANCE] entry check err (fail-open): {_vg_be}")
         # ═══════════════════════════════════════════════════════════════════════════
-        # 🛑 STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): vector not refreshed for > STALE_SET_HALT_DAYS AND the
+        # 🛑 STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): vector not refreshed for > STALE_SET_HALT_DAYS AND the
         # last STALE_SET_HALT_LOSSES full closes net losses -> the sym_side refuses ALL new exposure (vec-decided included)
         # until a new board on the latest NPZ is published + applied. CLOSE/REDUCE never touched. Kill switch:
         # STALE_SET_HALT_ENABLED (read inside stale_set_halt — live-only operational guard, no vec twin by design).
@@ -35985,7 +35985,7 @@ class MultiAccountTradeManager:
                     ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason, exit_price=float(current_price or 0.0))
             except Exception as _vg_rce:
                 logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
-            # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §100): every realized FULL close feeds the sym_side's loss window —
+            # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): every realized FULL close feeds the sym_side's loss window —
             # gain from the REAL entry price (position.gain can be stale), runs independent of VIGILANCE_GUARD_ENABLED.
             try:
                 if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):

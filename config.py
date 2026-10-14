@@ -2593,7 +2593,7 @@ class Config:
     # block-exit price, or a bounce (wt1_15m rising + 3m stoch momentum with the side).
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = False
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
-    # ═══ STALE-SET 2-LOSS HALT — USER 2026-10-14 (BACKTEST_BIBLE §100) ═══
+    # ═══ STALE-SET 2-LOSS HALT — USER 2026-10-14 (BACKTEST_BIBLE §102) ═══
     # "NO blocking loss closes if the vector tells you to" + "but if the vector has not been refreshed for over 10 days and 2
     # consecutive trades close at a loss, trading needs to be halted for the sym_side until recalculated with latest npz."
     # Halt = new exposure (OPEN/AUGMENT/REENTRY) refused in execute_now; closes never. Persisted in data/stale_set_halt/,

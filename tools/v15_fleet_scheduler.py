@@ -1969,7 +1969,7 @@ def tick(args, cfg, now):
             log["hosts"][h["name"]] = {"draining": True, "running": sorted(s.get("running", {}))}
             continue  # 2026-10-13: no new launches of any kind (30D/365D/GS/backfill/steal); running pilots finish
         cap = max(2, min(12, int(h.get("max_pairs", 3))))
-        workers = int(h.get("workers_per_side", 3))
+        workers = int(os.environ.get("V15_SCHED_WORKERS_PER_SIDE") or h.get("workers_per_side", 3))  # 2026-10-14: boards use ~1.3 cores (measured) — 2 workers halve RAM -> more boards per host
         cpu = float(s["busy_nonnice_pct"]) if s.get("busy_nonnice_pct") is not None else float(s["busy_pct"]) if s.get("busy_pct") is not None else 100.0 * s["load1"] / max(1, s["nproc"])  # real busy% (load1 lags and over-reads stalled threads)
         pairs = {}
         for ss, r in s["running"].items():

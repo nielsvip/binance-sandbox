@@ -1,4 +1,4 @@
-"""STALE-SET 2-LOSS HALT (USER 2026-10-13/14, BACKTEST_BIBLE §100).
+"""STALE-SET 2-LOSS HALT (USER 2026-10-13/14, BACKTEST_BIBLE §102).
 
 USER (verbatim): "NO blocking loss closes if the vector tells you to" + "but if the vector has not been refreshed for over
 10 days and 2 consecutive trades close at a loss, trading needs to be halted for the sym_side until recalculated with
@@ -435,7 +435,7 @@ def _save_halts(venue: str, halts: Dict[str, dict], cfg: Any = None) -> None:
     p = _halts_file(venue, cfg)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(f".tmp{os.getpid()}")
-    tmp.write_text(json.dumps({"halts": halts, "_meta": {"saved_at": _iso(time.time()), "rule": "BACKTEST_BIBLE §100 STALE-SET 2-LOSS HALT"}}, indent=1, default=str))
+    tmp.write_text(json.dumps({"halts": halts, "_meta": {"saved_at": _iso(time.time()), "rule": "BACKTEST_BIBLE §102 STALE-SET 2-LOSS HALT"}}, indent=1, default=str))
     os.replace(tmp, p)
 
 
