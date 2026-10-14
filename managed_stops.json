@@ -1,37 +1,16 @@
 {
-  "men:XRPUSDC_SHORT": {
-    "orderId": "2000001510613130",
-    "stopPrice": 1.3813,
-    "entry_sig": "2026-10-14 09:22:28.726000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
-  "men:YFIUSDT_SHORT": {
-    "orderId": "2000001510712539",
-    "stopPrice": 2350.0,
-    "entry_sig": "2026-10-14 10:21:46.039000+00:00",
-    "symbol": "YFIUSDT",
-    "side": "SHORT"
-  },
-  "men:NEARUSDC_LONG": {
-    "orderId": "2000001510713196",
-    "stopPrice": 4.95,
-    "entry_sig": "2026-10-14 10:21:52.110000+00:00",
-    "symbol": "NEARUSDC",
+  "ang:ZENUSDT_LONG": {
+    "orderId": "4000001966646136",
+    "stopPrice": 6.121,
+    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
+    "symbol": "ZENUSDT",
     "side": "LONG"
   },
-  "men:IOTXUSDT_SHORT": {
-    "orderId": "2000001510717560",
-    "stopPrice": 0.003897,
-    "entry_sig": "2026-10-14 10:25:11.989000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
-  "men:COTIUSDT_SHORT": {
-    "orderId": "2000001510734394",
-    "stopPrice": 0.012758,
-    "entry_sig": "2026-10-14 10:36:15.770000+00:00",
-    "symbol": "COTIUSDT",
-    "side": "SHORT"
+  "ang:KMNOUSDT_LONG": {
+    "orderId": "4000001966646137",
+    "stopPrice": 0.03685,
+    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
   }
 }
