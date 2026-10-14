@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-10-14 11:20 UTC",
- "total_capital_usd": 26.61,
+ "generated_at": "2026-10-14 11:35 UTC",
+ "total_capital_usd": 10.19,
  "tier_capital": {
-  "A": 15.5,
+  "A": 0.0,
   "B": 0.0,
-  "C": 11.11
+  "C": 10.19
  },
  "tier_count": {
-  "A": 1,
+  "A": 0,
   "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:DOGEUSDC_LONG"
+  "inf:NEARUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 15.5,
-   "gain_pct": -0.192,
-   "tier": "A",
-   "perf_mult": 8.54,
-   "amt": 11.3,
-   "mark": 1.37142456
-  },
-  {
-   "pk": "flz:DOGEUSDC_LONG",
-   "symbol": "DOGEUSDC",
-   "account": "flz",
-   "value_usd": 11.11,
-   "gain_pct": -0.708,
+   "pk": "inf:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "inf",
+   "value_usd": 10.19,
+   "gain_pct": 0.911,
    "tier": "C",
-   "perf_mult": 0.69,
-   "amt": 132.0,
-   "mark": 0.08418
+   "perf_mult": 0.25,
+   "amt": 2.0,
+   "mark": 5.096
   }
  ]
 }
