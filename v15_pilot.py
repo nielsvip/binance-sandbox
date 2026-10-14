@@ -3170,6 +3170,32 @@ def symside_tier(baseline_gain, bh, trades, prior_best=None, floor_trades=10, fo
     return tier, meta
 
 
+_LEDGER_CACHE = {}
+
+
+def _ledger_entry(symside: str):
+    """USER 2026-10-14 "winner boards … simply take the best gainers from the previous test round … need almost no resources":
+    one read of data/v15_symside_ledger.json (built in 0.1 s from the KPI board table on S1, pushed to the workers) -> this
+    sym_side's {sched_tier W/M/L, potential, tier_why}. None when absent (legacy tiering)."""
+    try:
+        if "d" not in _LEDGER_CACHE:
+            f = Path(os.environ.get("V15_LEDGER_JSON") or (ROOT / "data" / "v15_symside_ledger.json"))
+            _LEDGER_CACHE["d"] = (json.loads(f.read_text()).get("sym_sides") or {}) if f.exists() else {}
+        e = _LEDGER_CACHE["d"].get(symside)
+        return e if isinstance(e, dict) and e.get("sched_tier") in ("W", "M", "L") else None
+    except Exception:
+        return None
+
+
+def ledger_tier_name(sched_tier: str, bh) -> str:
+    """Pure: ledger tier -> pilot tier. W = previous round's best gainers -> WINNER; L -> LOST_CAUSE on a flat month, else LOSER."""
+    if sched_tier == "W":
+        return "WINNER"
+    if sched_tier == "L":
+        return "LOST_CAUSE" if abs(float(bh or 0.0)) < _TIER_BH_LOST else "LOSER"
+    return "MEDIOCRE"
+
+
 def _prior_best_gain(symside: str):
     """Highest top-level final_gain of earlier finished runs of this sym_side (newest 4 progress files + the size-tier
     ledger). Tier evidence only — never a baseline, never a setting."""
@@ -3713,7 +3739,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception:
         _tier_trades = 0
     _TYPES_VENUE[0] = "STOCKS" if map_key_for_symside(new_symside).startswith("STOCKS") else "CRYPTO"
-    _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
+    _led = _ledger_entry(new_symside) if os.environ.get("V15_TIER_SOURCE", "ledger") == "ledger" and not os.environ.get("V15_TIER_FORCE") else None
+    if _led is not None:
+        _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _led.get("potential"), floor_trades=ADAPT_FLOOR_TRADES, force=ledger_tier_name(_led.get("sched_tier"), bh))
+        _tier_meta["why"] = f"ledger {_led.get('sched_tier')} (previous round): {_led.get('tier_why')}"
+        _tier_meta["source"] = "ledger"
+    else:
+        _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
+        _tier_meta["source"] = "legacy"
     _carry_book, _carry_rows, _carry_fp = {}, {}, ""
     try:
         _carry_fp = carry_start_fp(sanitize_overrides(dict(cumulative_overrides), defaults)[0])

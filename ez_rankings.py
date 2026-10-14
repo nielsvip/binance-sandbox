@@ -91,6 +91,10 @@ if sys.platform == "win32":
 redis_manager = None
 redis = None  # Direct Redis client for resilient connections
 
+# 2026-10-14 BATCH INTERVAL: Full ranking computation every 15 minutes max to avoid CPU burn
+BATCH_INTERVAL_S = 900  # 15 minutes
+_last_full_ranking_time = 0
+
 API_KEY = os.getenv('ang_API_KEY')
 API_SECRET = os.getenv('ang_API_SECRET')
 
@@ -7564,7 +7568,7 @@ async def get_market_index_ticker() -> dict:
 
 # Quick access function for other scripts
 async def ranking_loop(symbols_list_arg: List[str]):
-    global RANKING_DATA, RANKING_INFO, LAST_RANKING_TIME, _subscribers_started, mark_price_cache
+    global RANKING_DATA, RANKING_INFO, LAST_RANKING_TIME, _subscribers_started, mark_price_cache, _last_full_ranking_time
     redis_manager_instance = await get_simple_redis_manager()
     async def _handle_klines_update(data: dict):
         """Handle klines updates from coordinated Redis"""

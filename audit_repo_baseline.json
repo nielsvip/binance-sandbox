@@ -1,6 +1,92 @@
 {
-  "generated_utc": "2026-04-30T01:48:29.966038Z",
-  "n_findings": 0,
-  "keys": [],
-  "details": []
+  "generated_utc": "2026-10-14T22:06:10.131852Z",
+  "n_findings": 12,
+  "keys": [
+    "BARE_SHARPE_KEY|.claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py|\"sharpe\": round(float(np.mean(sharpe_vals)) if sharpe_vals else 0.0, 4),",
+    "BARE_SHARPE_KEY|.claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py|print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \"",
+    "BARE_SHARPE_KEY|.claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py|return {\"sharpe\": 0, \"pnl\": 0, \"trades\": all_trades, \"wins\": 0, \"losses\": 0, \"avg_pnl_pct\": 0, \"wr\": 0, \"tim_pct\": 0}",
+    "BARE_SHARPE_KEY|v8_quick_engine.py|\"sharpe\": round(float(np.mean(sharpe_vals)) if sharpe_vals else 0.0, 4),",
+    "BARE_SHARPE_KEY|v8_quick_engine.py|print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \"",
+    "BARE_SHARPE_KEY|v8_quick_engine.py|return {\"sharpe\": 0, \"pnl\": 0, \"trades\": all_trades, \"wins\": 0, \"losses\": 0, \"avg_pnl_pct\": 0, \"wr\": 0, \"tim_pct\": 0}",
+    "FSTRING_SHARPE|.claude/worktrees/agent-a648ce089d9bf09bf/backtest_v8_engine.py|_v8_result_line = f\"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.4f} g",
+    "FSTRING_SHARPE|.claude/worktrees/agent-a648ce089d9bf09bf/backtest_v8_engine.py|f\"sharpe={pool_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} \"",
+    "FSTRING_SHARPE|.claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py|print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \"",
+    "FSTRING_SHARPE|backtest_v8_engine.py|_v8_result_line = f\"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.4f} g",
+    "FSTRING_SHARPE|backtest_v8_engine.py|f\"sharpe={pool_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} \"",
+    "FSTRING_SHARPE|v8_quick_engine.py|print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \""
+  ],
+  "details": [
+    {
+      "file": ".claude/worktrees/agent-a648ce089d9bf09bf/backtest_v8_engine.py",
+      "line": 2266,
+      "pattern": "FSTRING_SHARPE",
+      "code": "f\"sharpe={pool_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} \""
+    },
+    {
+      "file": ".claude/worktrees/agent-a648ce089d9bf09bf/backtest_v8_engine.py",
+      "line": 6170,
+      "pattern": "FSTRING_SHARPE",
+      "code": "_v8_result_line = f\"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.4f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins"
+    },
+    {
+      "file": ".claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py",
+      "line": 11591,
+      "pattern": "BARE_SHARPE_KEY",
+      "code": "return {\"sharpe\": 0, \"pnl\": 0, \"trades\": all_trades, \"wins\": 0, \"losses\": 0, \"avg_pnl_pct\": 0, \"wr\": 0, \"tim_pct\": 0}"
+    },
+    {
+      "file": ".claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py",
+      "line": 11598,
+      "pattern": "BARE_SHARPE_KEY",
+      "code": "\"sharpe\": round(float(np.mean(sharpe_vals)) if sharpe_vals else 0.0, 4),"
+    },
+    {
+      "file": ".claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py",
+      "line": 11748,
+      "pattern": "BARE_SHARPE_KEY",
+      "code": "print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \""
+    },
+    {
+      "file": ".claude/worktrees/agent-a648ce089d9bf09bf/v8_quick_engine.py",
+      "line": 11748,
+      "pattern": "FSTRING_SHARPE",
+      "code": "print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \""
+    },
+    {
+      "file": "backtest_v8_engine.py",
+      "line": 2266,
+      "pattern": "FSTRING_SHARPE",
+      "code": "f\"sharpe={pool_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} \""
+    },
+    {
+      "file": "backtest_v8_engine.py",
+      "line": 6170,
+      "pattern": "FSTRING_SHARPE",
+      "code": "_v8_result_line = f\"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.4f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins"
+    },
+    {
+      "file": "v8_quick_engine.py",
+      "line": 11591,
+      "pattern": "BARE_SHARPE_KEY",
+      "code": "return {\"sharpe\": 0, \"pnl\": 0, \"trades\": all_trades, \"wins\": 0, \"losses\": 0, \"avg_pnl_pct\": 0, \"wr\": 0, \"tim_pct\": 0}"
+    },
+    {
+      "file": "v8_quick_engine.py",
+      "line": 11598,
+      "pattern": "BARE_SHARPE_KEY",
+      "code": "\"sharpe\": round(float(np.mean(sharpe_vals)) if sharpe_vals else 0.0, 4),"
+    },
+    {
+      "file": "v8_quick_engine.py",
+      "line": 11748,
+      "pattern": "BARE_SHARPE_KEY",
+      "code": "print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \""
+    },
+    {
+      "file": "v8_quick_engine.py",
+      "line": 11748,
+      "pattern": "FSTRING_SHARPE",
+      "code": "print(f\"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} \""
+    }
+  ]
 }

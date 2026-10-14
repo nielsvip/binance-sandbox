@@ -486,6 +486,23 @@ def get_broker_positions(broker: str, account: str, fetch: Callable[[], Awaitabl
     return bp
 
 
+_BROKER_EXEC = None
+
+
+async def _broker_io(fn, *args, **kwargs):
+    """2026-10-14: broker reads run on their OWN small thread pool. On the default executor they queued behind twin evals
+    (offloop_serialized: up to ~20 s CPU each, every worker parked on _OFFLOOP_LOCK) -> futures_position_information
+    AbandonTimeout 8 s -> vec OPENs BLOCKED_POSITIONS_BROKER_UNREACHABLE (men 20:48Z x3) although Binance answered in ~0.9 s."""
+    global _BROKER_EXEC
+    if _BROKER_EXEC is None:
+        import concurrent.futures as _cf
+        _BROKER_EXEC = _cf.ThreadPoolExecutor(max_workers=6, thread_name_prefix="broker_io")
+    import functools as _ft
+    loop = asyncio.get_running_loop()
+    ctx = _contextvars.copy_context()
+    return await loop.run_in_executor(_BROKER_EXEC, _ft.partial(ctx.run, fn, *args, **kwargs))
+
+
 def binance_fetcher(client: Any, config: Any = None) -> Callable[[], Awaitable[Optional[List[Dict[str, Any]]]]]:
     """positionRisk via the SAME python-binance client object order_dedupe_guard wraps (non-order call, passes through)."""
     inner = getattr(client, "odg_inner", client)
@@ -493,7 +510,7 @@ def binance_fetcher(client: Any, config: Any = None) -> Callable[[], Awaitable[O
     async def _fetch():
         if inner is None:
             raise RuntimeError("no binance client")
-        return await asyncio.to_thread(inner.futures_position_information)
+        return await _broker_io(inner.futures_position_information)
 
     return _fetch
 
@@ -813,7 +830,7 @@ async def ez_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[Any]], 
 
         async def _refresh(row: Dict[str, Any]):
             kw = {"orderId": int(row["order_id"])} if row.get("order_id") else {"origClientOrderId": row.get("client_order_id")}
-            resp = await asyncio.to_thread(inner.futures_get_order, symbol=str(symbol).upper(), **kw)
+            resp = await _broker_io(inner.futures_get_order, symbol=str(symbol).upper(), **kw)
             guard.observe(str(symbol).upper(), resp, order_id=row.get("order_id"), client_order_id=row.get("client_order_id"))
 
         async def filled_fn():
@@ -1018,6 +1035,7 @@ def tradier_confirmed(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaita
 import threading as _threading
 
 _OFFLOOP_LOCK = _threading.Lock()
+_OFFLOOP_ALOCK = None  # asyncio.Lock, created lazily inside the running loop (one loop per process)
 
 
 async def offloop_serialized(fn: Callable[..., Any], *args, **kwargs) -> Any:
@@ -1029,9 +1047,15 @@ async def offloop_serialized(fn: Callable[..., Any], *args, **kwargs) -> Any:
         with _OFFLOOP_LOCK:
             return fn(*args, **kwargs)
 
+    global _OFFLOOP_ALOCK
+    if _OFFLOOP_ALOCK is None:
+        _OFFLOOP_ALOCK = asyncio.Lock()
     _t0 = time.time()
     try:
-        return await asyncio.to_thread(_run)
+        # 2026-10-14: queue on an asyncio lock FIRST — waiters cost no thread. Before, every queued twin eval parked a default-executor
+        # thread on _OFFLOOP_LOCK (convoy) and starved broker reads of threads.
+        async with _OFFLOOP_ALOCK:
+            return await asyncio.to_thread(_run)
     finally:
         _dt = time.time() - _t0
         if _dt > 5.0:

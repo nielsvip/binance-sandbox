@@ -85,6 +85,10 @@ def get_mult(symbol: str, side: str) -> float:
             return 1.0
         if m > 1.0 and ss in _triggered():
             return 1.0
+        # USER 2026-10-14 "no more capital will be applied until binance gains reflect imaginary gains": data/conviction/NO_BOOST caps every
+        # boost at 1.0 (reductions < 1 still apply). Remove the file to re-allow boosts once Binance P&L confirms the boards.
+        if m > 1.0 and (_ROOT / "data" / "conviction" / "NO_BOOST").exists():
+            return 1.0
         return m
     except Exception:
         return 1.0

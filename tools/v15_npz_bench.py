@@ -179,6 +179,7 @@ def build_root(snap, run_dir, code):
     tdir.mkdir(parents=True)
     for f in (snap / "templates").glob("*.xlsx"):
         shutil.copy2(f, tdir / f.name)
+        shutil.copy2(f, root / "SPREADSHEETS" / f.name)  # pending-rows reader looks in SPREADSHEETS/ directly
     return root
 
 
@@ -252,6 +253,8 @@ def cmd_run(args):
         while queue and len(running) < args.parallel and mem_avail_mb() >= args.min_free_mb:
             ss = queue.pop(0)
             sd = run_dir / ss
+            if sd.exists():
+                shutil.rmtree(sd)  # 2026-10-14: a killed run's partial progress/xlsx was ingested as "previous best" on relaunch -> every version started from a different set
             (sd / "progress").mkdir(parents=True, exist_ok=True)
             (sd / "out").mkdir(exist_ok=True)
             env = dict(env_base)

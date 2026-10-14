@@ -2541,7 +2541,7 @@ class ResamplingAndGapFillEngine:
             df_3m_indexed = df_3m_filtered.set_index(pd.to_datetime(df_3m_filtered['timestamp'])).sort_index()
             df_15m = (
                 df_3m_indexed
-                .resample("15min", label='right', closed='right')
+                .resample("15min", label='left', closed='left')
                 .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
             ).dropna()
             
@@ -2587,7 +2587,7 @@ class ResamplingAndGapFillEngine:
             df_3m_indexed = df_3m_filtered.set_index(pd.to_datetime(df_3m_filtered['timestamp'])).sort_index()
             df_1h = (
                 df_3m_indexed
-                .resample("1h", label='right', closed='right')
+                .resample("1h", label='left', closed='left')
                 .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
             ).dropna()
             
@@ -2632,7 +2632,7 @@ class ResamplingAndGapFillEngine:
             df_3m_indexed = df_3m_filtered.set_index(pd.to_datetime(df_3m_filtered['timestamp'])).sort_index()
             df_4h = (
                 df_3m_indexed
-                .resample("4h", label='right', closed='right')
+                .resample("4h", label='left', closed='left')
                 .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
             ).dropna()
             
@@ -2663,7 +2663,7 @@ class ResamplingAndGapFillEngine:
             df_3m_indexed = df_3m_filtered.set_index(pd.to_datetime(df_3m_filtered['timestamp'])).sort_index()
             df_D = (
                 df_3m_indexed
-                .resample("D", label='right', closed='right')
+                .resample("D", label='left', closed='left')
                 .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
             ).dropna()
             
@@ -2697,7 +2697,7 @@ class ResamplingAndGapFillEngine:
 
             df_resampled = (
                 df_source_indexed
-                .resample(resample_rule, label='right', closed='right')
+                .resample(resample_rule, label='left', closed='left')
                 .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
             ).dropna()
 
@@ -2815,7 +2815,7 @@ class ResamplingAndGapFillEngine:
                 df_3m_indexed = df_3m.set_index(pd.to_datetime(df_3m['timestamp'])).sort_index()
                 df_15m_new = (
                     df_3m_indexed
-                    .resample("15min", label='right', closed='right')
+                    .resample("15min", label='left', closed='left')
                     .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                 ).dropna()
             else:
@@ -2829,7 +2829,7 @@ class ResamplingAndGapFillEngine:
                     df_3m_new_indexed = df_3m_new.set_index(pd.to_datetime(df_3m_new['timestamp'])).sort_index()
                     df_15m_new = (
                         df_3m_new_indexed
-                        .resample("15min", label='right', closed='right')
+                        .resample("15min", label='left', closed='left')
                         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                     ).dropna()
                 else:
@@ -2857,7 +2857,7 @@ class ResamplingAndGapFillEngine:
                 df_15m_indexed = df_15m.set_index(pd.to_datetime(df_15m['timestamp'])).sort_index()
                 df_1h_new = (
                     df_15m_indexed
-                    .resample("1h", label='right', closed='right')
+                    .resample("1h", label='left', closed='left')
                     .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                 ).dropna()
             else:
@@ -2871,7 +2871,7 @@ class ResamplingAndGapFillEngine:
                     df_15m_new_indexed = df_15m_new.set_index(pd.to_datetime(df_15m_new['timestamp'])).sort_index()
                     df_1h_new = (
                         df_15m_new_indexed
-                        .resample("1h", label='right', closed='right')
+                        .resample("1h", label='left', closed='left')
                         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                     ).dropna()
                 else:
@@ -2899,7 +2899,7 @@ class ResamplingAndGapFillEngine:
                 df_1h_indexed = df_1h.set_index(pd.to_datetime(df_1h['timestamp'])).sort_index()
                 df_4h_new = (
                     df_1h_indexed
-                    .resample("4h", label='right', closed='right')
+                    .resample("4h", label='left', closed='left')
                     .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                 ).dropna()
             else:
@@ -2913,7 +2913,7 @@ class ResamplingAndGapFillEngine:
                     df_1h_new_indexed = df_1h_new.set_index(pd.to_datetime(df_1h_new['timestamp'])).sort_index()
                     df_4h_new = (
                         df_1h_new_indexed
-                        .resample("4h", label='right', closed='right')
+                        .resample("4h", label='left', closed='left')
                         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                     ).dropna()
                 else:
@@ -2936,13 +2936,13 @@ class ResamplingAndGapFillEngine:
                 return
             if df_D.empty:
                 df_4h_indexed = df_4h.set_index(pd.to_datetime(df_4h['timestamp'])).sort_index()
-                df_D_new = (df_4h_indexed.resample("D", label='right', closed='right').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})).dropna()
+                df_D_new = (df_4h_indexed.resample("D", label='left', closed='left').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})).dropna()
             else:
                 latest_D = pd.to_datetime(df_D['timestamp']).max()
                 df_4h_new = df_4h[pd.to_datetime(df_4h['timestamp']) > latest_D]
                 if len(df_4h_new) >= 6:
                     df_4h_new_indexed = df_4h_new.set_index(pd.to_datetime(df_4h_new['timestamp'])).sort_index()
-                    df_D_new = (df_4h_new_indexed.resample("D", label='right', closed='right').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})).dropna()
+                    df_D_new = (df_4h_new_indexed.resample("D", label='left', closed='left').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})).dropna()
                 else:
                     df_D_new = pd.DataFrame()
             if not df_D_new.empty:
@@ -3163,7 +3163,7 @@ class ResamplingAndGapFillEngine:
                     df_3m_indexed = df_3m.set_index(pd.to_datetime(df_3m['timestamp'])).sort_index()
                     df_15m = (
                         df_3m_indexed
-                        .resample("15min", label='right', closed='right')
+                        .resample("15min", label='left', closed='left')
                         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
                     ).dropna()
                     
@@ -3217,7 +3217,7 @@ class ResamplingAndGapFillEngine:
         
     #     df_15m = (
     #         df_3m_indexed
-    #         .resample("15min", label='right', closed='right')
+    #         .resample("15min", label='left', closed='left')
     #         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
     #     ).dropna()
         
@@ -3240,7 +3240,7 @@ class ResamplingAndGapFillEngine:
         
     #     df_1h = (
     #         df_3m_indexed
-    #         .resample("1h", label='right', closed='right')
+    #         .resample("1h", label='left', closed='left')
     #         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
     #     ).dropna()
         
@@ -3263,7 +3263,7 @@ class ResamplingAndGapFillEngine:
         
     #     df_4h = (
     #         df_3m_indexed
-    #         .resample("4h", label='right', closed='right')
+    #         .resample("4h", label='left', closed='left')
     #         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
     #     ).dropna()
         
@@ -3286,7 +3286,7 @@ class ResamplingAndGapFillEngine:
         
     #     df_D = (
     #         df_3m_indexed
-    #         .resample("D", label='right', closed='right')
+    #         .resample("D", label='left', closed='left')
     #         .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
     #     ).dropna()
         
@@ -3604,7 +3604,7 @@ class ResamplingAndGapFillEngine:
 
     async def _fast_resample_tf(self, symbol: str, df_indexed: pd.DataFrame, tf: str):
         try:
-            bars = df_indexed.resample(self._tf_resample_args[tf], label='right', closed='right').agg({'open':'first','high':'max','low':'min','close':'last','volume':'sum'}).dropna()
+            bars = df_indexed.resample(self._tf_resample_args[tf], label='left', closed='left').agg({'open':'first','high':'max','low':'min','close':'last','volume':'sum'}).dropna()
             if bars.empty:return
             bars = bars[bars.index <= datetime.now(timezone.utc)]
             if bars.empty:return
@@ -3695,7 +3695,7 @@ class ResamplingAndGapFillEngine:
             df_3m_indexed = df_3m.set_index(pd.to_datetime(df_3m['timestamp'])).sort_index()
             df_15m = (
                 df_3m_indexed
-                .resample("15min", label='right', closed='right')
+                .resample("15min", label='left', closed='left')
                 .agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
             ).dropna()
             
@@ -6271,13 +6271,13 @@ async def emergency_update_all_htf():
 
                 for interval in ['15m', '1h', '4h', 'D']:
                     if interval == '15m':
-                        df_resampled = df_3m_indexed.resample("15min", label='right', closed='right')
+                        df_resampled = df_3m_indexed.resample("15min", label='left', closed='left')
                     elif interval == '1h':
-                        df_resampled = df_3m_indexed.resample("1h", label='right', closed='right')
+                        df_resampled = df_3m_indexed.resample("1h", label='left', closed='left')
                     elif interval == '4h':
-                        df_resampled = df_3m_indexed.resample("4h", label='right', closed='right')
+                        df_resampled = df_3m_indexed.resample("4h", label='left', closed='left')
                     elif interval == 'D':
-                        df_resampled = df_3m_indexed.resample("D", label='right', closed='right')
+                        df_resampled = df_3m_indexed.resample("D", label='left', closed='left')
 
                     df_htf = df_resampled.agg({
                         'open': 'first',

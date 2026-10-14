@@ -129,6 +129,17 @@ def fast_push(symbol, push):
     if tr.get("tail") == "frozen":
         # a board on this symbol is unfinished/running: its host keeps the NPZ it started on (never push a different one)
         return {"ok": True, "action": "frozen-keep", "reason": "frozen symbol: target keeps its board's NPZ", "prep_s": 0.0}
+    if not symbol.endswith(("USDT", "USDC")):
+        # 2026-10-14 (BIBLE §109): never ship a short/holed stock NPZ to a 30D board (alert data/alerts/stock_npz_gap_<SYM>.json)
+        try:
+            sys.path.insert(0, str(ROOT))
+            from tools.stock_npz_gap_guard import gate_npz
+            gap_ok, gap_info = gate_npz(symbol, live, "v15_dispatch_job.fast_push")
+        except ImportError as exc:
+            gap_ok, gap_info = True, {"reason": f"guard unavailable: {exc}"}
+        if not gap_ok:
+            log({"event": "stock-npz-gap-refused", "symbol": symbol, "gap": gap_info})
+            return {"ok": False, "action": "gap-refused", "reason": f"STOCK_NPZ_GAP {gap_info.get('reason')}", "prep_s": 0.0}
     t0 = time.time()
     if not push:
         return {"ok": True, "action": "fast30d-local", "reason": f"S1 NPZ tail {tr.get('tail')}", "prep_s": tr.get("tail_s", 0.0)}

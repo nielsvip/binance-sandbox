@@ -15902,8 +15902,8 @@ class FastDataManager:
 
                     client = await asyncio.to_thread(get_shared_memory_client)  # 2026-10-14
                     if client:
-                        self.shared_proxy = getattr(client, "get_store")()
-                        stats = self.shared_proxy.get_stats()
+                        self.shared_proxy = await asyncio.to_thread(getattr(client, "get_store"))  # 2026-10-14: connect handshake off the loop
+                        stats = await asyncio.to_thread(self.shared_proxy.get_stats)
                         logger.info(
                             f"[SharedMem] Connected — {stats.get('count', 0)} symbols available"
                         )
@@ -28489,7 +28489,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 # parity monitor counts a divergent hold, not a ghost. The OPEN stays unconsumed; the EXIT-side
                 # converge-close flattens live and the entry fires on a later sweep once flat. ROLLBACK: delete block.
                 try:
-                    _st = _vx.actions_at(_sym, _side, time.time())
+                    _st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-14: was ON the event loop -> live_klines rebuild ~20 s/symbol froze process_account_update > 120 s (BROKEN_POSITIONS_MANAGEMENT ang/inf/fin 20:58-21:11Z)
                     _bts = float(_st.get("bar_ts") or 0.0)
                     _has_open = any((a.get("type") or "").upper() == "OPEN" for a in _st.get("actions") or [])
                     if _has_open and _bts > 0:
@@ -28544,7 +28544,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … EXIT FAST AND REENTER FAST" +
                 # "vector has to have the 100% guarantee so when live follows vector it also has": live follows the vec POSITION,
                 # not only its one-shot OPEN event. Vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> open now.
-                _cv = _vx.actions_at(_sym, _side, time.time())
+                _cv = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-14: off the event loop (live_klines rebuild ~20 s)
                 if _cv.get("status") == "OK" and _cv.get("vec_holds") is True and _vx.owned_has(_pk):
                     # 2026-10-13 men EGLD double open: a twin OPEN dispatched 22:54:54 was still in flight (local still flat) when
                     # converge fired 22:55:26. owned_add() runs BEFORE every twin OPEN is sent -> owned = an OPEN is in flight/recent.

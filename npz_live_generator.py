@@ -433,6 +433,15 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
                 if data is not None and int(data["timestamps"][-1]) >= int(row["timestamps"]):
                     return True
                 # If still behind, fall through to append
+            elif mode == "tradier":
+                # 2026-10-14 (BIBLE §109): never create a 1-row stock stub (ALMU/CDW/AXTI/AEM/ADP were 1-bar NPZs fed to 30D boards)
+                logger.error(f"NPZ missing for {sym} and full precompute failed — NOT creating a 1-row stock stub")
+                try:
+                    from tools.stock_npz_gap_guard import alert as _gap_alert
+                    _gap_alert(sym, {"ok": False, "sessions": 0, "max_gap_days": None, "gaps": [], "last": None, "reason": "NPZ missing and full precompute failed (1-row stub refused)"}, "npz_live_generator", True)
+                except Exception:
+                    pass
+                return False
             else:
                 # Create minimal NPZ with just this row
                 minimal = {}
@@ -450,6 +459,9 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
                 _save_npz_atomic(npz_path, minimal)
                 return True
         except Exception as e:
+            if not npz_path.stem.endswith(("USDT", "USDC")):
+                logger.error(f"full rebuild failed for {npz_path.stem}: {e} — NOT creating a 1-row stock stub (BIBLE §109)")
+                return False
             logger.warning(f"full rebuild failed for {npz_path.stem}: {e}, creating minimal")
             minimal = {}
             for k, v in row.items():

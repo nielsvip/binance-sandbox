@@ -101,9 +101,15 @@ def fetch_fapi(symbol, tf, limit, end_open):
     return df
 
 
+LOCAL_ONLY = os.environ.get("NPZ_LOCAL_ONLY", "1") == "1"  # USER 2026-10-14: "klines need to be APPENDED to s1 without it actively fetching" — bars come from the appended klines (klines_append.py / canonical push); NPZ_LOCAL_ONLY=0 restores REST
+
+
 def fetch_fresh(symbol, last_ts, cutoff):
     """closed 15m bars from Binance futures REST (weight 1-2 at steady state). HTF frames come from the builder's own sources
-    (s1 klines_cache written by ez_klines) — no HTF REST calls (s1 shares its IP with the ez stack; Binance -1003 bans hit everyone)."""
+    (s1 klines_cache written by ez_klines) — no HTF REST calls (s1 shares its IP with the ez stack; Binance -1003 bans hit everyone).
+    LOCAL_ONLY: no REST at all -> {} -> refresh_symbol takes the cache path (cache_bar_final: canonical / appended klines)."""
+    if LOCAL_ONLY:
+        return {}
     gap = max(1, (cutoff - last_ts) // BAR)
     try:
         return {"15m": fetch_fapi(symbol, "15m", gap + 3, cutoff)}
@@ -1220,7 +1226,7 @@ def one_cycle(a, w15, state, in_loop):
     ind_dir = a.ind_dir
     crypto_syms, stock_syms_all = split_universe(a)
     cutoff_crypto = last_closed_bar()
-    fng = {"status": "SKIPPED_FLAG"} if a.no_fng else refresh_fng_cache(dry_run=a.dry_run)
+    fng = {"status": "SKIPPED_FLAG"} if (a.no_fng or LOCAL_ONLY) else refresh_fng_cache(dry_run=a.dry_run)
     if fng.get("status") not in ("FRESH", "SKIPPED_FLAG", "SKIPPED_DRY_RUN"):
         log(f"F&G cache: {json.dumps(fng, default=str)}")
     stock_prefetch, last_ts_map, gate_note = {}, {}, ""
@@ -1245,7 +1251,12 @@ def one_cycle(a, w15, state, in_loop):
                 gate_note = f"gate-skip({reason})"
                 stock_syms = []
         t_pf = time.time()
-        if fetch_syms:
+        if fetch_syms and LOCAL_ONLY:
+            # no Tradier REST: every stale stock is a job whose 15m comes from the appended tradier caches (cache_bar_final_stocks)
+            stock_prefetch = {s: ((None, cutoff_stocks, None) if last_ts_map.get(s) < cutoff_stocks else (None, None, None)) for s in fetch_syms if last_ts_map.get(s) is not None}
+            stock_syms = list(fetch_syms if (in_loop and not attempt) else stock_syms_all)
+            gate_note = (gate_note + " local-only").strip()
+        elif fetch_syms:
             try:
                 stock_prefetch = asyncio.run(prefetch_tradier_15m(fetch_syms, last_ts_map, cutoff_stocks))
             except Exception as e:

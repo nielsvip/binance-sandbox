@@ -152,15 +152,65 @@ def build(progress_globs, daily_cap, now=None):
     return ledger
 
 
+def build_from_kpi(db_path, prev, daily_cap, now=None):
+    """USER 2026-10-14 "the winner boards … simply take the best gainers from the previous test round … need almost no
+    resources": one SQL read of the KPI boards table (v17_kpi already ingests every finished board) instead of re-parsing
+    ~480 progress JSONs of 3–35 MB every 30 min (68 s CPU). Newest board per sym_side; sides without a KPI row keep their
+    previous ledger entry unchanged (never re-parsed). Same tiering (sched_tier + daily-cap W ranking) as build()."""
+    import sqlite3
+    now = now or time.time()
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=10)
+    q = ("select sym_side, final_gain, bh, trades, tim, dd, g365, valid365, best_start_gain, done_ts, done_utc, tier, flags "
+         "from boards b where done_ts = (select max(done_ts) from boards b2 where b2.sym_side = b.sym_side) and final_gain is not null")
+    ledger = {}
+    for ss, fg, bh, tr, tim, dd, g365, v365, bsg, dts, dutc, ptier, flags in con.execute(q):
+        if not str(ss).endswith(("_LONG", "_SHORT")):
+            continue
+        e = {"sym_side": ss, "cat_side": cat_side_of(ss), "final_gain": _f(fg), "cumulative_gain": None, "baseline_gain": _f(bsg), "bh": _f(bh), "trades": _f(tr), "tim": _f(tim), "dd": _f(dd), "wr": None,
+             "gain_365d": _f(g365), "valid_365d": v365, "verdict": None, "pilot_tier": ptier, "needs_redo": False, "result_done_utc": dutc, "mtime": float(dts or 0.0), "mtime_src": "kpi_done_ts", "source": "kpi"}
+        e["potential"] = potential_of(e)
+        e["sched_tier"], e["tier_why"] = sched_tier(e)
+        ledger[ss] = e
+    con.close()
+    for ss, e in ((prev or {}).get("sym_sides") or {}).items():
+        if ss not in ledger and isinstance(e, dict):
+            e = dict(e)
+            e["source"] = "carried"
+            if e.get("sched_tier") == "W":
+                e["sched_tier"] = "M"  # W is re-ranked below from the current evidence only
+            ledger[ss] = e
+    cands = [e for e in ledger.values() if e["sched_tier"] == "M" and e.get("potential") is not None and e["potential"] > 0 and (e.get("trades") or 0) >= 10]
+    cands.sort(key=lambda e: -(e["potential"] - max(0.0, 0.5 * (e.get("bh") or 0.0))))
+    for e in cands[:daily_cap]:
+        e["sched_tier"] = "W"
+        e["tier_why"] = f"daily: potential {e['potential']:.2f} (rank cap {daily_cap}, previous round's best gainers)"
+    for e in ledger.values():
+        e["cadence_d"] = CADENCE_D[e["sched_tier"]]
+        e["next_due"] = float(e.get("mtime") or 0.0) + e["cadence_d"] * 86400.0
+        e["due"] = now >= e["next_due"]
+    return ledger
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "v15_symside_ledger.json"))
     ap.add_argument("--daily-cap", type=int, default=int(os.environ.get("V15_DAILY_CAP", "48")))
     ap.add_argument("--glob", action="append", default=None)
+    ap.add_argument("--push", action="append", default=None, help="rsync the ledger to these hosts (e.g. 10.0.0.4)")
     args = ap.parse_args()
     globs = args.glob or [os.path.expanduser("~/v15_run*/progress/*_v14_progress.json"), os.path.join(ROOT, "data", "reports", "lifecycle_pilot", "*_v14_progress.json")]
     t0 = time.time()
-    ledger = build(globs, args.daily_cap)
+    kpi = os.path.join(ROOT, "data", "kpi", "v17_kpi.sqlite")
+    src = os.environ.get("V15_LEDGER_SOURCE", "kpi")
+    if src == "kpi" and os.path.exists(kpi):
+        try:
+            prev = json.load(open(args.out)) if os.path.exists(args.out) else {}
+        except Exception:
+            prev = {}
+        ledger = build_from_kpi(kpi, prev, args.daily_cap)
+        globs = [f"kpi:{kpi}"]
+    else:
+        ledger = build(globs, args.daily_cap)
     counts = {}
     for e in ledger.values():
         k = f"{e['cat_side']}|{e['sched_tier']}"
@@ -176,6 +226,12 @@ def main():
         md.append(f"| {e['sym_side']} | {e['potential']:.2f} | {e['bh']} | {e['trades']} | {e['tim']} | {e['dd']} | {e['pilot_tier']} | {(time.time()-e['mtime'])/3600:.1f} |")
     with open(args.out[:-5] + ".md", "w") as fh:
         fh.write("\n".join(md))
+    for host in args.push or []:  # pilots on the workers read the same tiers (no per-board progress parsing)
+        try:
+            import subprocess
+            subprocess.run(["rsync", "-az", "-e", "ssh -o ConnectTimeout=10 -o BatchMode=yes", args.out, f"{host}:binance-sandbox/data/v15_symside_ledger.json"], timeout=60, check=False)
+        except Exception as _pe:
+            print(f"[push-warn] {host} {_pe}")
     print(json.dumps(out["_meta"], indent=1))
 
 

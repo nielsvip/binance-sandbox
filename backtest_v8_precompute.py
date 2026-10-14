@@ -2776,6 +2776,19 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     # Also allow n to be satisfied by D-derived coverage: if D has >=200 bars, 15m n check is waived for W/M fix
     # AU has 1016 ET days (4yr) -> still enough for 200W; BG has 1377 raw -> 688 ET days etc.
     _has_long_d = mode == "tradier" and dfs.get("D") is not None and len(dfs["D"]) >= 200 and _span_d >= 300
+    # 2026-10-14 STOCK NPZ GAP GUARD (BIBLE §109): 33/162 stock NPZs were saved with a 2026-08-26..09-30 hole in the 15m base
+    # (or as 1-row stubs) -> 30D boards failed or measured over a hole. Refuse to save < 30 sessions / > 5-day gap in the last
+    # 60d; alert data/alerts/stock_npz_gap_<SYM>.json. STOCK_NPZ_GAP_GUARD=0 flags without refusing.
+    if mode == "tradier":
+        try:
+            from tools.stock_npz_gap_guard import gate as _gap_gate
+            _gap_ok, _gap_info = _gap_gate(symbol, ts_epoch, "backtest_v8_precompute")
+        except ImportError as _ge:
+            _gap_ok, _gap_info = True, {"reason": f"guard unavailable: {_ge}"}
+            logger.error(f"  {symbol}: STOCK_NPZ_GAP guard import failed ({_ge}) — saving unguarded")
+        if not _gap_ok:
+            logger.error(f"  {symbol}: SKIP save — STOCK_NPZ_GAP {_gap_info.get('reason')} (15m source {_srcs.get('15m')}); refill klines_cache/tradier with tools/stock_klines_hole_fill.py")
+            return False
     if mode == "tradier" and (n < 20000 or _span_days < 300) and not _has_long_d and symbol not in ["SNDK","SNDK_LONG","SNDK_SHORT","ZCSH","ZCSH_LONG","ZCSH_SHORT"]:
         logger.warning(f"  {symbol}: SKIP save — insufficient coverage n={n} span_days={_span_days:.1f} (need 20000 bars / 300d for 1yr tradier parity)")
         return False
