@@ -1883,7 +1883,9 @@ class TradierPositionManager:
                     if _dt and (now - _dt).total_seconds() < 600:
                         logger.warning(f"[ABSENT_HOLD_RECENT_AUG] {pk}: absent but aug {(now - _dt).total_seconds():.0f}s ago — holding (amt={amt:.4f})")
                         continue
-                _last_upd = getattr(pos, 'last_updated', None)
+                # 2026-10-14 USER "positionAmt must ALWAYS match the exchange": last_updated is refreshed by price ticks, so this hold
+                # delayed every broker-confirmed close by 300 s+ (CLS/ULTA trb). Off by default; the 5-absence count + recent-aug hold remain.
+                _last_upd = getattr(pos, 'last_updated', None) if bool(getattr(config, "TRADIER_ABSENT_HOLD_RECENT_UPDATE", False)) else None
                 if _last_upd and isinstance(_last_upd, datetime):
                     _lu = _last_upd if _last_upd.tzinfo else _last_upd.replace(tzinfo=timezone.utc)
                     if (now - _lu).total_seconds() < 300:

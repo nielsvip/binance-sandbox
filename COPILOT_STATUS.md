@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-14 15:29:28 UTC
+# Copilot Status — 2026-10-14 15:43:55 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:25:34
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:26:35
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:26:35
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:26:35
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:27:36
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:27:36
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:27:36
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:28:37
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:28:37
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:28:37
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:40:51
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:41:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:41:53
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:41:53
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:42:54
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:42:54
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:42:54
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T15:43:55
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T15:43:55
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T15:43:55
 
 ## Missed Trades (trader comparison)
 
@@ -29,13 +29,13 @@ _None_
 
 **Held:** 7 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **CRWD** SHORT (tradier) peak +13.0%, now +-0.2%
-- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +4.0%
-- HELD: **TSLA** SHORT (tradier) peak +10.9%, now +0.1%
-- HELD: **WDAY** SHORT (tradier) peak +7.8%, now +1.2%
-- HELD: **SNDK** SHORT (tradier) peak +7.7%, now +1.7%
-- HELD: **APO** SHORT (tradier) peak +4.0%, now +3.8%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +3.6%, now +3.1%
+- HELD: **CRWD** SHORT (tradier) peak +13.0%, now +-0.4%
+- HELD: **HOOD** SHORT (tradier) peak +12.2%, now +4.2%
+- HELD: **TSLA** SHORT (tradier) peak +10.9%, now +0.5%
+- HELD: **WDAY** SHORT (tradier) peak +7.8%, now +1.7%
+- HELD: **SNDK** SHORT (tradier) peak +7.7%, now +1.2%
+- HELD: **APO** SHORT (tradier) peak +4.2%, now +4.0%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +3.6%, now +3.0%
 
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +6.0%, exited 1m ago
 - WATCHING: **EGLDUSDT** SHORT (crypto) peaked +4.1%, exited 1m ago
@@ -45,7 +45,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 34
+**Issues (last 1h):** 50
 - [HIGH] ez_manage.py for ang is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for men is NOT running

@@ -132,15 +132,24 @@ class TradierAPIClient:
         except Exception: return False
     
     async def get_orders(self, account_key: str = None) -> List[Dict]:
+        # 2026-10-14: Tradier pages the order list (1500/page). 1500+ rejected overnight stops filled page 1, so every
+        # current open order (resting backstops) sat on page 2 and was invisible -> exits rejected, stops duplicated. Read all pages.
         if not self._current_id: return []
-        res = await self._request("GET", f"/accounts/{self._current_id}/orders", use_data_context=False)
-        if res and isinstance(res, dict) and 'orders' in res:
-            inner = res['orders']
-            if inner == 'null' or inner is None: return []
-            if isinstance(inner, dict) and 'order' in inner:
-                o = inner['order']
-                return o if isinstance(o, list) else [o]
-        return []
+        out = []
+        for page in range(1, 11):
+            res = await self._request("GET", f"/accounts/{self._current_id}/orders", params={"page": page} if page > 1 else None, use_data_context=False)
+            got = []
+            if res and isinstance(res, dict) and 'orders' in res:
+                inner = res['orders']
+                if isinstance(inner, dict) and 'order' in inner:
+                    o = inner['order']
+                    got = o if isinstance(o, list) else [o]
+            if not got:
+                break
+            out.extend(got)
+            if len(got) < 1500:
+                break
+        return out
 
     async def get_order_status(self, account_key: str, order_id: Any) -> Dict:
         if not self._current_id: return {}
@@ -383,6 +392,24 @@ class TradierAPIClient:
             "quantity": str(int(quantity)), "type": order_type.lower(), "duration": duration.lower()  }
         if price: data["price"] = f"{float(price):.2f}"
         if stop: data["stop"] = f"{float(stop):.2f}"
+        if data["side"] in ("sell", "buy_to_cover") and data["type"] in ("market", "limit"):
+            # 2026-10-14: a resting protective stop on the same symbol/side reserves the shares -> Tradier rejects the exit
+            # ("more shares than your current position"; CLS 61x, A 24x, NKE 23x, ULTA 18x). Cancel it first, every caller.
+            try:
+                _open = [o for o in (await self.get_orders(account_key)) if isinstance(o, dict) and str(o.get("symbol", "")).upper() == data["symbol"]
+                         and str(o.get("side", "")).lower() == data["side"] and str(o.get("type", "")).lower() in ("stop", "stop_limit")
+                         and str(o.get("status", "")).lower() in ("open", "pending", "partially_filled")]
+                for _o in _open:
+                    await self.cancel_order(account_key, _o.get("id"))
+                if _open:
+                    logger.critical(f"[EXIT_STOP_CLEAR] {data['symbol']} {data['side']}: cancelled resting stop(s) {[o.get('id') for o in _open]} before {data['type']} exit qty {data['quantity']}")
+                    for _i in range(6):
+                        await asyncio.sleep(0.5)
+                        _ids = {str(o.get("id")) for o in _open}
+                        if not any(str(o.get("id")) in _ids and str(o.get("status", "")).lower() in ("open", "pending", "partially_filled") for o in (await self.get_orders(account_key))):
+                            break
+            except Exception as _sce:
+                logger.error(f"[EXIT_STOP_CLEAR] {data['symbol']}: stop clear failed ({_sce}) — sending exit anyway")
         res = await self._request("POST", f"/accounts/{self._current_id}/orders", data=data, use_data_context=False)
         if not res:
             return {"status": "error", "reason": "Gateway Rejected / Bad Request"}

@@ -1220,16 +1220,24 @@ class TradierDedupeGuard(_GuardBase):
         acct_id = getattr(client, "_current_id", None)
         if not acct_id:
             raise RuntimeError("tradier client has no account id")
-        res = await asyncio.wait_for(client._request("GET", f"/accounts/{acct_id}/orders", use_data_context=False), timeout=float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")))
-        if not isinstance(res, dict) or "orders" not in res:
-            raise RuntimeError(f"orders query failed/unparseable: {str(res)[:200]}")
-        inner = res["orders"]
-        if inner in ("null", None):
-            return []
-        if isinstance(inner, dict) and "order" in inner:
-            o = inner["order"]
-            return o if isinstance(o, list) else [o]
-        raise RuntimeError(f"orders payload unparseable: {str(inner)[:200]}")
+        # 2026-10-14: Tradier pages orders (1500/page); page 1 alone hid every current order after 1500+ rejected stops. Read all pages.
+        out = []
+        for page in range(1, 11):
+            res = await asyncio.wait_for(client._request("GET", f"/accounts/{acct_id}/orders", params={"page": page} if page > 1 else None, use_data_context=False), timeout=float(_cfg(self.cfg, "ORDER_DEDUPE_QUERY_TIMEOUT_SEC")))
+            if not isinstance(res, dict) or "orders" not in res:
+                raise RuntimeError(f"orders query failed/unparseable: {str(res)[:200]}")
+            inner = res["orders"]
+            if inner in ("null", None):
+                break
+            if isinstance(inner, dict) and "order" in inner:
+                o = inner["order"]
+                got = o if isinstance(o, list) else [o]
+            else:
+                raise RuntimeError(f"orders payload unparseable: {str(inner)[:200]}")
+            out.extend(got)
+            if len(got) < 1500:
+                break
+        return out
 
     async def _list_orders(self, client) -> List[Dict[str, Any]]:
         # 2026-10-13 NEVER-AGAIN single-flight: concurrent verifies share one

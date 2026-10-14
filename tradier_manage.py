@@ -43922,20 +43922,26 @@ class TradierTradeManager:
                 _acct_id = getattr(client, "_current_id", None)
                 if not _acct_id:
                     return None
-                _res = await asyncio.wait_for(client._request("GET", f"/accounts/{_acct_id}/orders", use_data_context=False), timeout=10.0)
+                # 2026-10-14: all pages (1500/page) — page 1 alone hid the resting stops behind 1500+ rejected overnight orders
+                _ol = []
+                for _pg in range(1, 11):
+                    _res = await asyncio.wait_for(client._request("GET", f"/accounts/{_acct_id}/orders", params={"page": _pg} if _pg > 1 else None, use_data_context=False), timeout=10.0)
+                    if not isinstance(_res, dict) or "orders" not in _res:
+                        return None
+                    _inner = _res.get("orders")
+                    if _inner in ("null", None):
+                        break
+                    if not isinstance(_inner, dict) or "order" not in _inner:
+                        return None
+                    _got = _inner["order"] if isinstance(_inner["order"], list) else [_inner["order"]]
+                    _ol.extend(_got)
+                    if len(_got) < 1500:
+                        break
             finally:
                 try:
                     await client.close()
                 except Exception:
                     pass
-            if not isinstance(_res, dict) or "orders" not in _res:
-                return None
-            _inner = _res.get("orders")
-            if _inner in ("null", None):
-                return []
-            if not isinstance(_inner, dict) or "order" not in _inner:
-                return None
-            _ol = _inner["order"] if isinstance(_inner["order"], list) else [_inner["order"]]
             _close_side = "sell" if str(position_side or "").upper() == "LONG" else "buy_to_cover"
             _sym = str(symbol or "").upper()
             return [o for o in _ol if isinstance(o, dict) and str(o.get("symbol", "")).upper() == _sym and str(o.get("side", "")).lower() == _close_side and _odg.tradier_protective_stop(o.get("type"), o.get("side")) and str(o.get("status", "")).lower() in ("open", "pending", "partially_filled")]
