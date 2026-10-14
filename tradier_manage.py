@@ -55146,7 +55146,7 @@ class TradierTradeManager:
             orb_range = float(data.get("orb_range", 0) or 0)
             if orb_high <= 0 or orb_low <= 0 or orb_range <= 0:
                 # Try from enriched cache
-                extras = self._get_extras(sym)
+                extras = (await asyncio.to_thread(self._get_extras, sym))
                 orb_high = float(extras.get("orb_high", 0) or 0)
                 orb_low = float(extras.get("orb_low", 0) or 0)
                 orb_range = float(extras.get("orb_range", 0) or 0)
@@ -55356,7 +55356,7 @@ class TradierTradeManager:
             if price <= 0:
                 continue
             # Check EP from enriched indicators cache
-            extras = self._get_extras(sym)
+            extras = (await asyncio.to_thread(self._get_extras, sym))
             ep_detected = extras.get("ep_detected", False)
             if not ep_detected:
                 continue
@@ -55432,7 +55432,7 @@ class TradierTradeManager:
         if _cfg_auto("VIX_REGIME_FILTER_ENABLED", False) and _cfg_auto(
             "CLENOW_REGIME_FILTER", True
         ):
-            spy_data = self._get_extras("SPY")
+            spy_data = (await asyncio.to_thread(self._get_extras, "SPY"))
             spy_sma200 = float(
                 self.market_snapshot.get("SPY", {}).get("sma_200_D", 0) or 0
             )
@@ -55458,7 +55458,7 @@ class TradierTradeManager:
             price = safe_fetch_float(data.get("current_price", 0))
             if price <= 0:
                 continue
-            extras = self._get_extras(sym)
+            extras = (await asyncio.to_thread(self._get_extras, sym))
             cs = float(
                 data.get("clenow_score", 0) or extras.get("clenow_score", 0) or 0
             )
@@ -55581,7 +55581,7 @@ class TradierTradeManager:
             price = safe_fetch_float(data.get("current_price", 0))
             if price <= 0:
                 continue
-            extras = self._get_extras(sym)
+            extras = (await asyncio.to_thread(self._get_extras, sym))
             signal = data.get("smfi_signal") or extras.get("smfi_signal", "NEUTRAL")
             smfi_max_hold = _cfg_auto("SMFI_MAX_HOLD_DAYS", 7)
             if signal == "LONG" and smfi_long_count < max_per_side and long_pct < 0.67:
@@ -55733,7 +55733,7 @@ class TradierTradeManager:
             price = safe_fetch_float(data.get("current_price", 0))
             if price <= 0:
                 continue
-            extras = self._get_extras(sym)
+            extras = (await asyncio.to_thread(self._get_extras, sym))
             sepa_pass = data.get("sepa_pass") or extras.get("sepa_pass", False)
             sepa_score = int(
                 data.get("sepa_score", 0) or extras.get("sepa_score", 0) or 0
@@ -55840,7 +55840,7 @@ class TradierTradeManager:
             price = safe_fetch_float(data.get("current_price", 0))
             if price <= 0:
                 continue
-            extras = self._get_extras(sym)
+            extras = (await asyncio.to_thread(self._get_extras, sym))
             crsi = float(
                 data.get("connors_rsi", 0) or extras.get("connors_rsi", 50) or 50
             )
