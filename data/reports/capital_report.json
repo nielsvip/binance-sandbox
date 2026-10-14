@@ -1,32 +1,114 @@
 {
- "generated_at": "2026-10-14 11:35 UTC",
- "total_capital_usd": 10.19,
+ "generated_at": "2026-10-14 12:04 UTC",
+ "total_capital_usd": 231.33,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 10.19
+  "B": 222.93,
+  "C": 8.42
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 6,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "inf:NEARUSDC_LONG"
+  "ang:KMNOUSDT_LONG",
+  "ang:1000BONKUSDC_SHORT",
+  "ang:NEARUSDC_LONG",
+  "ang:GALAUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "ang:YFIUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:NEARUSDC_LONG",
+   "pk": "ang:EGLDUSDT_SHORT",
+   "symbol": "EGLDUSDT",
+   "account": "ang",
+   "value_usd": 89.99,
+   "gain_pct": -0.091,
+   "tier": "B",
+   "perf_mult": 1.05,
+   "amt": 24.0,
+   "mark": 3.74939314
+  },
+  {
+   "pk": "ang:MELANIAUSDT_SHORT",
+   "symbol": "MELANIAUSDT",
+   "account": "ang",
+   "value_usd": 45.1,
+   "gain_pct": -0.293,
+   "tier": "B",
+   "perf_mult": 6.2,
+   "amt": 507.27,
+   "mark": 0.08889996
+  },
+  {
+   "pk": "ang:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "ang",
+   "value_usd": 44.4,
+   "gain_pct": -1.618,
+   "tier": "B",
+   "perf_mult": 2.45,
+   "amt": 1141.0,
+   "mark": 0.03891
+  },
+  {
+   "pk": "ang:1000BONKUSDC_SHORT",
+   "symbol": "1000BONKUSDC",
+   "account": "ang",
+   "value_usd": 28.19,
+   "gain_pct": -0.9,
+   "tier": "B",
+   "perf_mult": 0.61,
+   "amt": 8799.0,
+   "mark": 0.00320359
+  },
+  {
+   "pk": "ang:YFIUSDT_LONG",
+   "symbol": "YFIUSDT",
+   "account": "ang",
+   "value_usd": 11.53,
+   "gain_pct": 0.222,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.005,
+   "mark": 2305.10479521
+  },
+  {
+   "pk": "ang:NEARUSDC_LONG",
    "symbol": "NEARUSDC",
-   "account": "inf",
-   "value_usd": 10.19,
-   "gain_pct": 0.911,
+   "account": "ang",
+   "value_usd": 5.11,
+   "gain_pct": 1.11,
    "tier": "C",
    "perf_mult": 0.25,
-   "amt": 2.0,
-   "mark": 5.096
+   "amt": 1.0,
+   "mark": 5.10604336
+  },
+  {
+   "pk": "ang:ZENUSDT_LONG",
+   "symbol": "ZENUSDT",
+   "account": "ang",
+   "value_usd": 3.72,
+   "gain_pct": -0.285,
+   "tier": "B",
+   "perf_mult": 4.55,
+   "amt": 0.6,
+   "mark": 6.20230104
+  },
+  {
+   "pk": "ang:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "ang",
+   "value_usd": 3.31,
+   "gain_pct": 1.446,
+   "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 1563.0,
+   "mark": 0.00211595
   }
  ]
 }
