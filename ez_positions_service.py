@@ -1973,7 +1973,7 @@ class IndicatorsBridge:
         self._initialized = False
         self._shutdown = False
         self.shared_proxy = None
-        self._connect_shared_memory()
+        # 2026-10-14: no synchronous connect here (constructed on the event loop) — _hot_path_loop connects off-loop
     
     @property
     def cache(self):
@@ -2028,7 +2028,7 @@ class IndicatorsBridge:
         """Reads High-Frequency data from Shared Memory."""
         while not self._shutdown:
             try :
-                if self.shared_proxy is None: self._connect_shared_memory()
+                if self.shared_proxy is None: await asyncio.to_thread(self._connect_shared_memory)  # 2026-10-14: off the event loop
                 updates = {}
                 if self.shared_proxy:
                     try : 
@@ -2038,7 +2038,9 @@ class IndicatorsBridge:
                 if updates:
                     self._hot_data = updates
             except Exception: pass
-            await asyncio.sleep(0.1)
+            # 2026-10-14: was 0.1 s = 10 full-store copies/s per process from ~10 processes -> ez_share_ind wedged (82 threads, 158 conns,
+            # handshakes hanging 138 s). Indicators change per bar; 1 s is plenty.
+            await asyncio.sleep(float(getattr(config, "POSITIONS_HOT_PATH_INTERVAL_S", 1.0)))
 
     async def _redis_fallback_loop(self) -> None:
         """Reads from Redis if Shared Memory is failing."""

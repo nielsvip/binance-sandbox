@@ -188,6 +188,11 @@ async def main():
         logger.critical(f"[REALTIME][{account_key}] ⏭️ Skipping 'tra' account - handled by tradier_positions.py")
         sys.exit(0)
     _proc = "ez_positions_service" if pwg.process_role() == "service" else "ez_positions_realtime"
+    try:  # 2026-10-14: dump all thread stacks when the event loop is blocked > 8 s (finds what stalls the positions loop)
+        import loop_stall_watch
+        loop_stall_watch.start(f"{_proc}_{account_key}")
+    except Exception:
+        pass
     pid_file = Path.home() / "logs" / f"{_proc}_{account_key}.pid"
     pid_file.parent.mkdir(parents=True, exist_ok=True)
     pid_fd = None
