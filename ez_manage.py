@@ -31870,6 +31870,19 @@ class MultiAccountTradeManager:
         if _fx_act0 == _xg.FORCE_ACTION:
             return await self._exit_force_market(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, reason=reason, old_price=old_price)
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
+        # ─── HERMETIC VEC-ONLY GATE (2026-10-14 USER "make this totally hermetic so for now it can ONLY trade in tandem with what the
+        # vectorized would trade") ─── an exposure increase (BUY on LONG / SELL on SHORT / hedge) must carry structural vec provenance
+        # for THIS position_key (live_twins/vec_provenance: ContextVar set by the vec twin dispatch sites — not a reason string).
+        # Exits/reductions/stops are never touched. Mode data/hermetic_mode.json: off | log | enforce (runtime, no restart).
+        try:
+            from live_twins import vec_provenance as _vprov_g
+            _hm_ok, _hm_why = _vprov_g.gate(position_key, side, position_side, is_full_close=is_full_close, action=action, is_hedge=is_hedge)
+        except Exception as _hm_e:
+            _hm_ok, _hm_why = True, f"gate error {_hm_e}"
+        if _hm_why and not str(_hm_why).startswith("vec:"):
+            logger.warning(f"[HERMETIC] {'REFUSED' if not _hm_ok else 'WOULD_REFUSE(log mode)'} {position_key} {action} {side}/{position_side} hedge={is_hedge} reason={str(reason)[:80]} — {_hm_why}")
+        if not _hm_ok:
+            return "BLOCKED_HERMETIC_NOT_VEC"
         # ─── EXIT-ENGINE PARITY INSTRUMENTATION (2026-09-28) ────────────────────
         # Log EVERY attempted trade (reason/family/gate) BEFORE any downstream gate
         # (broker-sync, emergency_brake, quarantine) so exit-trigger parity is
@@ -50334,7 +50347,12 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             try:
                 from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp, fire_exit_market as _vx_tmo_mkt
                 _vx_is_exit = bool(_full or "CLOSE" in str(_act).upper() or "REDUCE" in str(_act).upper())
-                _res = await _vx_dsp(position_key, f"{_act} {_a['reason'][:60]}", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), _vx_tmo, on_timeout=(lambda: _vx_tmo_mkt(trade_manager, position_key, _sym, _oside, _side)) if _vx_is_exit else None)
+                from live_twins import vec_provenance as _vprov  # 2026-10-14 HERMETIC: provenance of this in-position vec act
+                _vp_tok = _vprov.mark(position_key, _a.get("bar_ts", 0.0), _act, "VEC_EXACT_POSITION")
+                try:
+                    _res = await _vx_dsp(position_key, f"{_act} {_a['reason'][:60]}", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_lq, current_price=_px, side=_oside, position_side=_side, unique_id=f"VX{int(_a['bar_ts'])}{_a['n']}", is_full_close=_full, action=_act, reason=_vx.tagged_reason(_a), override_qty=_lov, is_hedge=False), _vx_tmo, on_timeout=(lambda: _vx_tmo_mkt(trade_manager, position_key, _sym, _oside, _side)) if _vx_is_exit else None)
+                finally:
+                    _vprov.reset(_vp_tok)
             except asyncio.CancelledError:
                 raise
             logger.info(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}")

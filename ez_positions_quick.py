@@ -28516,7 +28516,10 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 _vx.owned_add(
                     _pk, _a.get("reason", "")
                 )  # 2026-10-06: register BEFORE sending (results like UNCONFIRMED_BY_BROKER_* still fill); a failed OPEN leaves the key flat -> the hook drops it
-                _res = await trade_manager.execute_trade_action(
+                from live_twins import vec_provenance as _vprov  # 2026-10-14 HERMETIC: structural provenance of this vec OPEN
+                _vp_tok = _vprov.mark(_pk, _a.get("bar_ts", 0.0), _act, "VEC_EXACT_ENTRY")
+                try:
+                    _res = await trade_manager.execute_trade_action(
                     account_key=_acct or account_key,
                     position_key=_pk,
                     symbol=_sym,
@@ -28530,7 +28533,9 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                     reason=_vx.tagged_reason(_a),
                     override_qty=_lov,
                     is_hedge=False,
-                )
+                    )
+                finally:
+                    _vprov.reset(_vp_tok)
                 logger.info(
                     f"[VEC_EXACT] {_pk} {_act} {_a['reason'][:60]} qty={_qty:.6f} -> {str(_res)[:120]}"
                 )
@@ -28559,7 +28564,12 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                             _lq, _lov = _vx.live_sizing_args(_act, _qty, _cv_px, config)
                             _vx.owned_add(_pk, _cv_a["reason"])
                             logger.warning(f"[VEC_CONVERGE_OPEN] {_pk}: vec paper HOLDS at bar {int(_cv_a['bar_ts'])}, live flat -> OPEN now @ {_cv_px}")
-                            _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_lq, current_price=_cv_px, side=_oside, position_side=_side, unique_id=f"VXCV{int(_cv_a['bar_ts'])}", is_full_close=False, action=_act, reason=_vx.tagged_reason(_cv_a), override_qty=_lov, is_hedge=False)
+                            from live_twins import vec_provenance as _vprov  # 2026-10-14 HERMETIC: the vec paper holds this key
+                            _vp_tok = _vprov.mark(_pk, _cv_a["bar_ts"], _act, "VEC_CONVERGE_OPEN")
+                            try:
+                                _res = await trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=_pk, symbol=_sym, quantity=_lq, current_price=_cv_px, side=_oside, position_side=_side, unique_id=f"VXCV{int(_cv_a['bar_ts'])}", is_full_close=False, action=_act, reason=_vx.tagged_reason(_cv_a), override_qty=_lov, is_hedge=False)
+                            finally:
+                                _vprov.reset(_vp_tok)
                             logger.info(f"[VEC_EXACT] {_pk} OPEN VEC_CONVERGE_OPEN -> {str(_res)[:120]}")
             return f"DISPATCHED_{_pk}"
         except asyncio.CancelledError:

@@ -979,6 +979,32 @@ def _pick_best_source(symbol, tf, sources, mode):
     resamples, frozen unclosed snapshots). Returns (df or None, dirname or None). NPZ_SOURCE_UNION_LEGACY=1 restores merge."""
     cdf = _canonical_frame(symbol, tf, mode)
     if cdf is not None:
+        # 2026-10-14 USER "3 sources, the most recent one is auto selected on all platforms so we can never be a minute behind":
+        # the canonical daemon runs ~9 min/cycle and lagged 2 closed 15m bars -> the live twin waited ("bar not written yet").
+        # Past bars stay canonical; CLOSED bars newer than the canonical tail are appended from the freshest other source.
+        try:
+            if os.environ.get("NPZ_CANONICAL_FRESH_TAIL", "1") == "1" and len(cdf):
+                _tf_s = {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800, "1h": 3600, "4h": 14400, "D": 86400, "1d": 86400}.get(str(tf), 0)
+                _last = cdf.index[-1]
+                _now = pd.Timestamp.now(tz=_last.tz) if getattr(_last, "tz", None) is not None else pd.Timestamp.utcnow().tz_localize(None)
+                _best, _best_src = None, None
+                for _d in sources:
+                    _ldf = load_klines(_d / f"{symbol}_{tf}.json")
+                    if _ldf is None or not len(_ldf):
+                        continue
+                    _new = _ldf[_ldf.index > _last]
+                    if _tf_s:
+                        _new = _new[_new.index + pd.Timedelta(seconds=_tf_s) <= _now]
+                    if len(_new) and (_best is None or len(_new) > len(_best)):
+                        _best, _best_src = _new, _d.name
+                if _best is not None:
+                    _cols = [c for c in cdf.columns if c in _best.columns]
+                    cdf = pd.concat([cdf, _best[_cols]]).sort_index()
+                    cdf = cdf[~cdf.index.duplicated(keep="first")]
+                    logger.info(f"  {symbol} {tf}: canonical + {len(_best)} newer closed bar(s) from {_best_src} (canonical tail lagged)")
+                    return cdf, "klines_canonical+fresh_tail"
+        except Exception as _fte:
+            logger.warning(f"  {symbol} {tf}: fresh-tail append failed ({_fte}) — canonical only")
         logger.info(f"  {symbol} {tf}: source klines_canonical {len(cdf)} bars (exchange-native, closed-only)")
         return cdf, "klines_canonical"
     if mode != "tradier" and tf in CANONICAL_TFS and os.environ.get("NPZ_CANONICAL_SOURCE", "1") != "0":

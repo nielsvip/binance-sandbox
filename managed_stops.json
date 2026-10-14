@@ -12,5 +12,19 @@
     "entry_sig": "2026-10-14 11:20:03.089000+00:00",
     "symbol": "GALAUSDT",
     "side": "SHORT"
+  },
+  "men:ENJUSDT_SHORT": {
+    "orderId": "2000001511982946",
+    "stopPrice": 0.03083,
+    "entry_sig": "2026-10-14 20:00:01.249000+00:00",
+    "symbol": "ENJUSDT",
+    "side": "SHORT"
+  },
+  "men:ATOMUSDT_SHORT": {
+    "orderId": "2000001511983713",
+    "stopPrice": 1.905,
+    "entry_sig": "2026-10-14 20:00:15.008000+00:00",
+    "symbol": "ATOMUSDT",
+    "side": "SHORT"
   }
 }

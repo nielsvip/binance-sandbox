@@ -16,7 +16,7 @@
 set -u
 BIN=/home/niels/binance
 cd "$BIN" || exit 1
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python  # 2026-10-14: S1 conda env = exact copy of the Mac live env (py 3.11.14, numpy 2.4.6, pandas 3.0.0 …); old env binance_env kept for rollback
 LOG=/home/niels/logs/live_failover.log
 source "$BIN/tools/live_failover_lease_gate.sh"
 ts(){ date -u +%FT%TZ; }
