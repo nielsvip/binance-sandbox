@@ -804,7 +804,7 @@ def _venue_values(stocks: bool, root: Path) -> tuple:
 
 
 def verify_default_surfaces(
-    cat_side: str = None, root: Path = None, template_dir: str = "SPREADSHEETS"
+    cat_side: str = None, root: Path = None, template_dir: str = "SPREADSHEETS/TEMPLATE_FINAL_NORM"
 ) -> dict:
     """DEFAULT-layer audit per cat_side: TEMPLATE bold vs cat_side JSON vs venue global vs QuickConfig."""
     root = Path(root) if root else _ROOT()
@@ -990,7 +990,7 @@ def sync_default_surfaces(
     apply: bool = False,
     confirm_unlocked: bool = False,
     root: Path = None,
-    template_dir: str = "SPREADSHEETS",
+    template_dir: str = "SPREADSHEETS/TEMPLATE_FINAL_NORM",
     keys: list = None,
     only_files: list = None,
 ) -> dict:
@@ -1286,7 +1286,7 @@ def sync_cat_keys(
     keys: list = None,
     apply: bool = False,
     root: Path = None,
-    template_dir: str = "SPREADSHEETS",
+    template_dir: str = "SPREADSHEETS/TEMPLATE_FINAL_NORM",
 ) -> dict:
     """Fill stale/missing cat_side defaults from template bolds (targeted, per-key guarded).
 
@@ -1480,7 +1480,7 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
             template_dir=(
                 str(tpath.parent.relative_to(root))
                 if root in tpath.parents
-                else "SPREADSHEETS"
+                else "SPREADSHEETS/TEMPLATE_FINAL_NORM"
             ),
         )
     except Exception as _e:
@@ -1698,7 +1698,7 @@ def main(argv=None) -> int:
     p_ver.add_argument("--sym-side", required=True)
     p_def = sub.add_parser("verify-defaults", help="DEFAULT-layer audit per cat_side")
     p_def.add_argument("--cat-side", default=None)
-    p_def.add_argument("--template-dir", default="SPREADSHEETS")
+    p_def.add_argument("--template-dir", default="SPREADSHEETS/TEMPLATE_FINAL_NORM")  # 2026-10-14: never the abandoned generic set
     p_def.add_argument(
         "--strict", action="store_true", help="exit 1 on any hard mismatch"
     )
@@ -1712,7 +1712,7 @@ def main(argv=None) -> int:
         "sync-defaults", help="plan/apply template-bold -> global edits"
     )
     p_syn.add_argument("--cat-side", default=None)
-    p_syn.add_argument("--template-dir", default="SPREADSHEETS")
+    p_syn.add_argument("--template-dir", default="SPREADSHEETS/TEMPLATE_FINAL_NORM")  # 2026-10-14: never the abandoned generic set
     p_syn.add_argument(
         "--keys", default=None, help="comma-separated key filter for targeted sync"
     )
@@ -1736,7 +1736,7 @@ def main(argv=None) -> int:
         "sync-cat", help="fill stale/missing cat_side defaults from template bolds"
     )
     p_cat.add_argument("--cat-side", default=None)
-    p_cat.add_argument("--template-dir", default="SPREADSHEETS")
+    p_cat.add_argument("--template-dir", default="SPREADSHEETS/TEMPLATE_FINAL_NORM")  # 2026-10-14: never the abandoned generic set
     p_cat.add_argument(
         "--keys", default=None, help="comma-separated key filter for targeted sync"
     )

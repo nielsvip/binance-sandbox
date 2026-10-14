@@ -2902,3 +2902,17 @@ vector results as we do now" → "only on s2, give it plenty of time to finish e
   (`ez_klines` 282×418 in one burst 15:06Z, `npz_bar_refresh`, `klines_ff`, `klines_vault`, dispatch tail refreshes) each assume the
   full 2400/min IP budget → instant re-ban, longer each time. OPEN (operator decision, data-ingestion lane): one shared S1
   ban/weight governor honoured by every fetcher + a non-zero exit / "stale" label when the tail refresh fetched nothing.
+
+### 105.3 Why today's defaults did not reach config/QuickConfig + chain step 7 (2026-10-14 17:xxZ)
+- `switch_parity.py` `verify_default_surfaces` / `sync_default_surfaces` / `sync_cat_keys` + the 3 CLI `--template-dir` flags +
+  the startup_gate fallback defaulted to `template_dir="SPREADSHEETS"` = the ABANDONED generic set (§101.3 fixed only the
+  md5/gate paths). Mac apply step 3 therefore compared every promoted key against stale generic bolds → fake "side splits"
+  (CRYPTO_SHORT EMA_DIST_SIZING_MULT 2.0 generic vs 4.0 FINAL_NORM; STOCKS_SHORT ADX_REGIME_FILTER_ENABLED True vs False) →
+  `planned 0`, config/QuickConfig never synced, gates hard=1 on all 4 cat_sides. All 7 defaults → `SPREADSHEETS/TEMPLATE_FINAL_NORM`.
+  Re-plan of today's 82 keys: 4 edits + 1 manual (config_tradier multi-line ADX) — applied; startup_gate 4/4 ok, hard 0;
+  config.py / config_tradier.py / v12_quick_engine.py / switch_parity.py md5-identical Mac = S1 = S2 (sandbox + live).
+- Chain step 7 still read `template_main.json` (generic writer removed 10-14 by me without updating step 7) → FAILED after a
+  successful push, and its `>` redirect left an EMPTY `<date>.json` that the Mac apply pulled as the stamp and stopped on. Step 7
+  now reads the norm report and writes the stamp atomically (tmp + mv, non-empty check).
+- Dead workers: chain TARGETS, Mac apply HOSTS and bookkeeper V15_BOOK_HOSTS no longer list s5/s6 (destroyed 2026-10-13; the 10-14
+  15:56Z run failed at step 6 on 10.0.0.5).

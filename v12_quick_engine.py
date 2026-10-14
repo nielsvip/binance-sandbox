@@ -4699,7 +4699,7 @@ class QuickConfig:
     EMA_DIST_SIZING_ENABLED: bool = (
         False  # 2026-10-04 §17.4 C1: config.py False (PROMO run20); stocks True via overlay
     )
-    EMA_DIST_SIZING_MULT: float = 2.0
+    EMA_DIST_SIZING_MULT: float = 4.0
     ENTRY_TRIGGER_TF: str = "15m"
     WT_FORCE_OPEN_TRIGGER_TF: str = (
         "5m"  # [2026-08-22] force-open trigger TF; 15m default, supports 5m(3m crypto)/15m/1h/4h and comma-separated multi-TF
@@ -5610,7 +5610,7 @@ class QuickConfig:
         # ═══ 2026-09-29 §17.4 CURATED SYNC — every simple-typed field where TradierConfig
         #     differs from the crypto-synced defaults (live is truth); §17.3 exclusions apply
         self.ADX_RANGING_THRESHOLD = 20.0
-        self.ADX_REGIME_FILTER_ENABLED = True
+        self.ADX_REGIME_FILTER_ENABLED = False
         self.ATR_ADAPTIVE_SIZING_TARGET_PCT = 1.5
         self.ATR_ADAPTIVE_STOP_ENABLED = True  # 2026-10-04 §17.4 parity B1: live True (unswept — no template rows, overlay governs tradier); was False
         self.AUGMENTATION_COOLDOWN_SECONDS = 300.0
@@ -5829,6 +5829,8 @@ class QuickConfig:
         # parity-sync 20261013: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.DC_EDGE_SIZING_MAX_MULT = 3.0
         self.HARDCODED_RALLY_MIN_AGE_MIN = 15.0
+        # parity-sync 20261014: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.EMA_DIST_SIZING_MULT = 2.0
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625

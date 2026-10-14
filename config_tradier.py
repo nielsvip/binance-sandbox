@@ -6706,7 +6706,7 @@ class TradierConfig:
         20.0  # BACKTEST_CHANGE_137: ADX below this = ranging (only mean-reversion)
     )
     ADX_REGIME_FILTER_ENABLED: bool = (
-        True  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.
+        False  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction. 2026-10-14: STOCKS_LONG+SHORT template bold False (daily chain sync)
     )
     ADX_TF: str = "1h"
     ADX_TRENDING_THRESHOLD: float = (

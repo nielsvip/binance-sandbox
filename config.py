@@ -4399,7 +4399,7 @@ class Config:
     EMA_DIST_SIZING_ENABLED: bool = (
         False  # PROMO run20: was True | BACKTEST_CHANGE_24: scale size by ema_dist strength
     )
-    EMA_DIST_SIZING_MULT: float = 2.0  # Max 2x size when ema_dist is extreme
+    EMA_DIST_SIZING_MULT: float = 4.0  # Max 2x size when ema_dist is extreme
     # Per-symbol sizing multipliers for top backtest performers
     SYMBOL_SIZE_MULTIPLIERS: Dict[str, float] = field(
         default_factory=lambda: {

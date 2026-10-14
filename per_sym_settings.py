@@ -30,6 +30,17 @@ def cat_side_of(symbol: str, side: str, venue: str = None) -> str:
 
 
 def _load() -> dict:
+    # 2026-10-14: memo 30 s — every lookup parsed the kv_json row + opened a 2nd SQLite connection; live tradier_manage calls this
+    # thousands of times per cycle (event loop frozen 10-51 s, exits stalled past 120 s).
+    import time as _time
+    _now = _time.monotonic()
+    if _cache.get("data") and _now - float(_cache.get("memo_ts") or 0) < float(os.environ.get("PER_SYM_SETTINGS_MEMO_SEC", "30")):
+        return _cache["data"]
+    _cache["memo_ts"] = _now
+    return _load_uncached()
+
+
+def _load_uncached() -> dict:
     # SQL-primary (kv_json) → JSON fallback keeps herds alive if file vanishes.
     # Never fall back to {} silently when SQL has 172 promotions — that would sweep on globals.
     if os.environ.get("CAT_SIDE_DEFAULTS_SQLITE_DISABLED") != "1":

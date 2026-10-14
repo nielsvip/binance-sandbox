@@ -363,11 +363,9 @@ def _json_fallback_entry(p: Path, sym_side: str):
     keys = frozenset(raw.keys()) if isinstance(raw, dict) else frozenset()
     want = set(hit[2].keys()) if hit else set()
     want.add(sym_side)
-    entries: dict = {}
-    if isinstance(raw, dict):
-        for _k in want:
-            if _k in raw:
-                entries[_k] = raw[_k]
+    # 2026-10-14: keep EVERY entry of the parsed file (was: only the requested working set) — each new sym_side re-parsed the whole
+    # JSON inside live tradier_manage's event loop (frozen 10-179 s, exits never reached the broker).
+    entries: dict = dict(raw) if isinstance(raw, dict) else {}
     _JSON_FALLBACK_CACHE[key] = (sig, keys, entries)
     if sym_side not in entries:
         _absent_mark(key, (sym_side,))
@@ -560,7 +558,7 @@ def get_overrides(sym_side: str) -> Optional[dict]:
     _k = str(sym_side).strip()
     _hit = _OVR_MEMO.get(_k)
     _now = _time.monotonic()
-    if _hit is not None and _now - _hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "2.0")):
+    if _hit is not None and _now - _hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "30.0")):
         return None if _hit[1] is None else dict(_hit[1])
     e = get(sym_side)
     ov = None if e is None else dict(e.get("overrides") or {})
