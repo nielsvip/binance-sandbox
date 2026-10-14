@@ -274,7 +274,7 @@ def merge_mac_state():
         log("STATE_MERGE: no staged Mac state found (using S1 copies as-is)")
         return 0
     for staged in staged_root.rglob("*"):
-        if not staged.is_file() or staged.name.startswith("."):
+        if not staged.is_file() or staged.name.startswith(".") or staged.name.endswith("_positions.json"):  # USER law: position data only from ez_positions_service (broker), never copied
             continue
         rel = staged.relative_to(staged_root)
         dst = LIVE / (rel.relative_to("root") if rel.parts[0] == "root" else rel)

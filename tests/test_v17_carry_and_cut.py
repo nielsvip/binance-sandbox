@@ -76,3 +76,8 @@ def test_rotation_off_is_eligibility(monkeypatch):
     b = {"rows": {P.carry_key("S", f"K{i}", "1"): [2, 0] for i in range(50)}, "last_at": now, "boards": 2}
     assert all(P.carry_decide(b, k, "", now, "LOSER", rotate=False) for k in b["rows"])
     assert '"carry_sampled": bool(st.get("carry_sampled"))' in SRC
+
+
+def test_combo_repeat_gated_by_own_rate():
+    assert "(_win and _combo_rate[0] >= float(os.environ.get(\"V15_V17_MIN_LIFT_PM\", \"0.3\")))" in SRC
+    assert 'os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.3")' in SRC

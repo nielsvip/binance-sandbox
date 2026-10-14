@@ -864,6 +864,8 @@ async def tradier_execute_now_guarded(mgr: Any, core: Callable[..., Awaitable[An
     position_key = a.get("position_key") or f"{account_key}:{symbol}_{position_side}"
     qty, full = a.get("quantity"), bool(a.get("is_full_close"))
     action, reason = a.get("action"), a.get("reason") or ""
+    if str(action or "").upper() == "FORCE_CLOSE_MARKET":  # exit guarantee 2026-10-14: the FORCE leg verifies broker-flat itself
+        return await core(*args, **kwargs)
     if bool(cfg(config, "POSITIONS_REFUSE_ZERO_QTY")) and is_zero_qty(qty) and not full:
         log.critical(f"🛑 [POSITIONS_ZERO_QTY_REFUSED] {position_key}: action={action} qty={qty!r} — never sent, never SUCCESS")
         return "BLOCKED_ZERO_QTY"

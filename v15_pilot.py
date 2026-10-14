@@ -7138,6 +7138,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         deadline = t0 + budget
         _win = _tier_name == "WINNER"
         _lift_book = _v17.setdefault("p3_lift", [])
+        _combo_rate = [0.0]
         print(f"[V17] {new_symside} P3 PINPOINT tier={_tier_name} budget={budget:.0f}s (elapsed {t0 - _PILOT_T0:.0f}s)", flush=True)
         try:
             # iterations until the budget is spent or an iteration adds nothing: FOCUS (most productive per eval: yellows of the
@@ -7159,9 +7160,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _v17_regime()
                     except Exception:
                         pass
-                if _it == 1 or _win:
-                    _csh = float(os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.5")) if _win else float(os.environ.get("V15_V17_COMBO_SHARE", "0.35"))
+                if _it == 1 or (_win and _combo_rate[0] >= float(os.environ.get("V15_V17_MIN_LIFT_PM", "0.3"))):
+                    # 2026-10-14 KPI: combo 0.03 pp/core-min (s1+s2: 7,800 s of combo wall -> 16.5 pp; repeats mostly 0) -> a WINNER
+                    # repeats the combo step only while its own last call lifted >= V15_V17_MIN_LIFT_PM pp/min (the 0.3 rule per phase)
+                    _cg0, _ct0 = float(cumulative_gain), _t.time()
+                    _csh = float(os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.3")) if _win else float(os.environ.get("V15_V17_COMBO_SHARE", "0.35"))
                     _v17_combo_step(_t.time() + max(max(0.0, deadline - _t.time()) * _csh, (_cmin + 20.0) if _it == 1 and not _win else 0.0), "P3_COMBO" if _it == 1 else f"P3_COMBO_{_it}")
+                    _combo_rate[0] = (float(cumulative_gain) - _cg0) / max(1e-6, (_t.time() - _ct0) / 60.0)
                 # SURGEON first: it owns the guaranteed budget (USER 2026-10-13); generic steps use what it leaves
                 _ssh = float(os.environ.get("V15_V17_SHARE_SURGEON_WINNER", "0.75")) if _win else float(os.environ.get("V15_V17_SHARE_SURGEON", "0.6"))
                 _v17_surgeon(_t.time() + max(0.0, deadline - _t.time()) * _ssh, f"P3_SURGEON_{_it}")

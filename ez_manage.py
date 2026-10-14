@@ -36078,6 +36078,7 @@ class MultiAccountTradeManager:
                     ("OPEN" in action or "OPEN" in reason)
                     and current_real_amt > 2 * config.MIN_POSITION_SIZE / current_price
                     and "HEDGE" not in reason.upper()
+                    and not _xg.is_exit_action(action, is_full_close)  # 2026-10-14: a CLOSE whose reason says OPEN (SCALP_V3_OPEN_MAX_LOSS_CUT) is an exit
                 ):
                     return f"BLOCKED: {position_key} ${current_real_amt * current_price} over MIN QTY"
 
@@ -36121,6 +36122,8 @@ class MultiAccountTradeManager:
                 _reason_up_drain = (reason or "").upper()
                 _drain_bypass = (
                     _vd_exempt  # X3 2026-10-06: vec-decided REDUCE/CLOSE on a vec-driven live sym_side (LOW_GAIN_DRAIN + ABORT STOP draining exempt)
+                    or (_xg_full and _xg.is_authorized_close(reason))  # 2026-10-14 EXITS NEVER COMPROMISED: authorised FULL close (stop/emergency/sync/flatten) never drained
+                    or _fixed_stop_reason(reason)
                     or "SCALP_V3" in _reason_up_drain
                     or "PROTECTIVE_EXIT" in _reason_up_drain
                     or "GAIN_EROSION" in _reason_up_drain

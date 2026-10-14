@@ -55,11 +55,11 @@ DEFAULTS = {
     "EXIT_DUST_USD": 5.0,
 }
 # result codes that are deliberate policy (never escalated): the decision is not authorised to trade on this box / key
-POLICY_PREFIXES = ("BLOCKED_PARITY_NATIVE_", "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VEC_PARITY_", "SKIPPED_SCALP_REDUCE_DISABLED", "BLOCKED_SERVER_HEARTBEAT_ACTIVE", "BLOCK WRONG ACCOUNT KEY", "BLOCKED_ACCOUNT_NOT_MANAGED", "SKIPPED_SANDBOX")
+POLICY_PREFIXES = ("BLOCKED_PARITY_NATIVE_", "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VEC_PARITY_", "SKIPPED_SCALP_REDUCE_DISABLED", "BLOCKED_SERVER_HEARTBEAT_ACTIVE", "BLOCK WRONG ACCOUNT KEY", "BLOCKED_ACCOUNT_NOT_MANAGED", "SKIPPED_SANDBOX", "MARKET_CLOSED", "BLOCKED_MARKET_CLOSED")
 POLICY_CONTAINS = ("WAIT MEANS WAIT",)
 # strategy refusals of a NATIVE close (noloss / hedge regime / newborn / exit confirmation gates). A vec-decided, emergency,
 # stop, sync or flatten close is authorised -> these become ordinary refusals and are escalated.
-STRATEGY_PREFIXES = ("BLOCKED_BY_UNIVERSAL_NOLOSS_GATE", "BLOCKED_NOLOSS_MIN_", "BLOCKED_BY_HEDGE_MODE", "BLOCKED_NEWBORN_PROTECT_", "BLOCKED_EXIT_LH_LL_REQUIRED", "BLOCKED_WT_EXIT_MIN_TFS_", "BLOCKED_HEDGE_MISIDENT", "BLOCKED_LOW_GAIN_DRAIN_PROTECTION", "ABORT STOP DRAINING", "BLOCKED_NOLOSS", "NOLOSS")
+STRATEGY_PREFIXES = ("BLOCKED_BY_UNIVERSAL_NOLOSS_GATE", "BLOCKED_NOLOSS_MIN_", "BLOCKED_BY_HEDGE_MODE", "BLOCKED_NEWBORN_PROTECT_", "BLOCKED_EXIT_LH_LL_REQUIRED", "BLOCKED_WT_EXIT_MIN_TFS_", "BLOCKED_HEDGE_MISIDENT", "BLOCKED_LOW_GAIN_DRAIN_PROTECTION", "ABORT STOP DRAINING", "BLOCKED_NOLOSS", "NOLOSS", "LOSS_PROTECTION_BLOCK")
 # local state says there is nothing to close: verified with a forced broker read on a FULL close
 VERIFY_PREFIXES = ("BLOCK_POS_ALREADY_CLOSED", "SKIP_REDUCE_EMPTY_POSITION", "SKIP_BROKER_FLAT", "TIMEOUT_ALREADY_FLAT", "SKIPPED_NO_POSITION", "NO_POSITION", "SKIP_NO_POSITION")
 NOOP_PREFIXES = ("FORCE_NOTHING_OPEN", "NO QUANTITY LEFT", "SKIPPED_STOP", "SKIPPED_FORCE_", "SUCCESS_SANDBOX", "SKIPPED_VX_INFLIGHT")
@@ -386,6 +386,15 @@ async def _after(mgr, hooks: Hooks, cfg, venue: str, args: Dict[str, Any], c: Di
     if cls == "OK":
         await _safe(hooks.confirmed(mgr, args, c, res))
         log_event(venue, "CONFIRMED", cfg, key=key, full=full, result=str(res)[:160])
+        if full and depth == 0 and inflight(key) == 0:  # dust remainder of a "successful" full close is force-closed, never stranded
+            b = await _safe(hooks.broker(mgr, args.get("account_key") or key.split(":", 1)[0], args.get("symbol"), str(args.get("position_side") or "").upper()))
+            if b is not None and float(b.get("amt") or 0.0) > 0:
+                be, ce = float(b.get("entry") or 0.0), float(c.get("entry_price") or 0.0)
+                if not (be and ce and abs(be - ce) / ce > 0.002):
+                    log.critical(f"🧹 [EXIT_GUARANTEE_REMAINDER] {key}: full close confirmed but broker still holds {b.get('amt')} — FORCE the remainder")
+                    fres = await _escalate(mgr, hooks, cfg, venue, args, c, f"REMAINDER_{b.get('amt')}")
+                    if classify(fres, reason, True) != "OK" and not str(fres or "").upper().startswith("FORCE_NOTHING_OPEN"):
+                        _arm_watcher(mgr, hooks, cfg, venue, args, c, f"REMAINDER_FORCE_FAILED:{str(fres)[:60]}")
         return res
     if depth > 0 or cls in ("NOOP", "POLICY"):
         return res

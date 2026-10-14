@@ -1177,6 +1177,22 @@ def tradier_protective_stop(order_type: Any, side: Any) -> bool:
     return str(order_type or "").lower() in ("stop", "stop_limit") and str(side or "").lower() in ("sell", "buy_to_cover")
 
 
+def tradier_exit_priority_mode(symbol: str, side: Any, order_type: Any = "market") -> Optional[str]:
+    """'FORCE' / 'FULL' when this Tradier wire call is a decreasing order (sell / buy_to_cover, not a protective stop) of an
+    execute_now full close (token stamped by exit_guarantee: exit_priority / FORCE_CLOSE_MARKET) on the token's symbol; else None."""
+    s = str(side or "").lower()
+    if s not in ("sell", "buy_to_cover") or tradier_protective_stop(order_type, side):
+        return None
+    tok = _token_for(symbol)
+    if tok is None:
+        return None
+    if tok.get("exit_force") or str(tok.get("action") or "").upper() == "FORCE_CLOSE_MARKET":
+        return "FORCE"
+    if tok.get("exit_priority"):
+        return "FULL"
+    return None
+
+
 class TradierDedupeGuard(_GuardBase):
     broker = "tradier"
     final_set = TRADIER_FINAL
@@ -1371,6 +1387,9 @@ class TradierDedupeGuard(_GuardBase):
 
     async def guarded_place(self, inner_client, account_key: str, symbol: str, side: str, quantity: float, order_type: str = "market", price: float = None, stop: float = None, duration: str = "day", origin: str = "") -> Dict[str, Any]:
         sym = str(symbol).upper()
+        _xp = tradier_exit_priority_mode(sym, side, order_type)
+        if _xp and self.enabled():
+            return await self.guarded_exit_place(inner_client, account_key, sym, side, quantity, order_type, price, stop, duration, origin, force=(_xp == "FORCE"))
         async with self.akey_lock(sym):
             dec = await self.preflight(inner_client, sym, origin=origin or f"place {side} {order_type}")
             if not dec.allowed:
@@ -1433,6 +1452,69 @@ class TradierDedupeGuard(_GuardBase):
             # transport failure / non-200 / retried POST — outcome UNKNOWN; next preflight reconciles from the broker listing
             self._mark(sym, entry, state="UNKNOWN", evidence=str(res)[:200])
             self.log.critical(f"🚨 [ORDER_DEDUPE_UNKNOWN] tradier:{self.account}:{sym} place_order returned no id ({str(res)[:120]}) — key frozen until broker listing confirms")
+        return res
+
+    async def guarded_exit_place(self, inner_client, account_key: str, symbol: str, side: str, quantity: float, order_type: str = "market", price: float = None, stop: float = None, duration: str = "day", origin: str = "", force: bool = False) -> Dict[str, Any]:
+        """EXIT GUARANTEE, stocks (USER 2026-10-14 "exits never compromised"): a decreasing order (sell / buy_to_cover, not a
+        protective stop) of an execute_now FULL close or the FORCE_CLOSE_MARKET leg needs only the broker qty and Tradier's rules.
+          * order listing unreachable -> proceed (Tradier rejects selling more than held);
+          * protective stops never block (place_order hands them off first); FORCE: working orders were cancelled by the caller
+            -> proceed; normal full close: a working non-stop order on the symbol still blocks (no two concurrent closes) unless
+            it is ours and cancel-requested;
+          * no positions-file reflection wait / intent window: qty clamped to the FRESH broker holdings (flat -> NOTHING_TO_CLOSE);
+          * the ledger row (SUBMITTING before the wire) is kept for post-trade verification."""
+        sym = str(symbol).upper()
+        s_l = str(side).lower()
+        async with self.akey_lock(sym):
+            try:
+                orders = await self._list_orders(inner_client)
+            except Exception as e:
+                orders = None
+                self.log.critical(f"⚠️ [EXIT_PREFLIGHT_UNREACHABLE] tradier:{self.account}:{sym} {s_l} order listing failed ({e!r:.160}) — exit proceeds (exits never refused for an unreachable broker)")
+            if orders:
+                now = self.clock()
+                cancel_recent = float(_cfg(self.cfg, "ORDER_DEDUPE_CANCEL_RECENT_SEC"))
+                own_cxl = {str(o.get("order_id")) for o in self.ledger.orders(sym) if o.get("cancel_requested_at") and now - _f(o.get("cancel_requested_at")) < cancel_recent}
+                live = [o for o in orders if str(o.get("symbol", "")).upper() == sym and str(o.get("status", "")).lower() not in TRADIER_FINAL and not tradier_protective_stop(o.get("type"), o.get("side")) and str(o.get("id")) not in own_cxl]
+                if live and not force:
+                    d2 = self._block(sym, "EXIT_LEG_ORDER_WORKING", {"open_orders": [self._order_ev(o) for o in live]}, origin)
+                    return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+                if live:
+                    self.log.critical(f"⚠️ [EXIT_FORCE_OVER_WORKING] tradier:{self.account}:{sym}: {len(live)} working order(s) — FORCE close proceeds")
+            qty = _f(quantity, 0.0)
+            if _bad_qty(quantity) or int(qty) < 1:
+                d2 = self._block(sym, "BAD_QTY", {"quantity": str(quantity)}, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+            try:
+                bp = await self.broker_position(inner_client, sym, s_l == "sell")
+                amt = float(int(_f(bp.get("amt"))))
+                if amt < 1:
+                    d2 = self._block(sym, "NOTHING_TO_CLOSE", {"broker": bp, "requested": quantity}, origin)
+                    return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+                if qty > amt:
+                    self.log.warning(f"✂️ [EXIT_QTY_CLAMP_BROKER] tradier:{self.account}:{sym} {s_l} qty {quantity} -> {amt} (fresh broker holdings)")
+                    quantity = amt
+                    qty = amt
+            except Exception as e:
+                self.log.critical(f"⚠️ [EXIT_BROKER_POSITION_UNREACHABLE] tradier:{self.account}:{sym}: holdings read failed ({e!r:.160}) — exit proceeds with qty {quantity} (broker rejects selling more than held)")
+            entry = {"local_id": uuid.uuid4().hex, "order_id": None, "side": s_l, "position_side": "", "qty": qty, "type": order_type, "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": ("EXIT_FORCE|" if force else "EXIT|") + origin[:110]}
+            self.ledger.mutate(sym, lambda orders: orders.append(entry))
+            _remember_order(entry["local_id"])
+            self._backoff.pop(sym, None)
+        try:
+            raw = getattr(inner_client, "_odg_raw_place_order", None) or inner_client.place_order
+            res = await raw(account_key=account_key, symbol=symbol, side=side, quantity=quantity, order_type=order_type, price=price, stop=stop, duration=duration)
+        except BaseException as e:
+            self._mark(sym, entry, state="UNKNOWN", evidence=repr(e)[:200])
+            raise
+        order = (res or {}).get("order") if isinstance(res, dict) else None
+        oid = order.get("id") if isinstance(order, dict) else None
+        if oid:
+            self._mark(sym, entry, order_id=oid, status=str(order.get("status", "") or "").lower() or None, state="SUBMITTED")
+        elif isinstance(res, dict) and res.get("errors"):
+            self._mark(sym, entry, state="FINAL", status="rejected_by_broker", final=True, executed_qty=0.0, evidence=str(res.get("errors"))[:200])
+        else:
+            self._mark(sym, entry, state="UNKNOWN", evidence=str(res)[:200])
         return res
 
     async def guarded_generic(self, inner_client, symbol: str, side: str, quantity: float, call: Callable[[], Any], origin: str = "") -> Dict[str, Any]:

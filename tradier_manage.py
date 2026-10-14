@@ -463,13 +463,25 @@ def vigilance_record_close(
     gain_pct: float,
     reason: str = "",
     exit_price: float = 0.0,
+    lifecycle: Optional[str] = None,
+    notional_usd: Optional[float] = None,
 ) -> bool:
     # Realized full-close result feeds the loss-streak guard. Returns True when this close triggers the block.
+    # 2026-10-14 USER EXITS NEVER COMPROMISED: one count per position lifecycle (a retried close is the same trade), dust skipped.
     if not bool(_cfg_auto("VIGILANCE_GUARD_ENABLED", True)):
         return False
     _vigilance_load(force=True)
     _key = vigilance_sym_side(symbol, position_side)
     _st = _VIGILANCE_STATE["streaks"].setdefault(_key, {"consec_losses": 0, "last": []})
+    if lifecycle and str(_st.get("last_lifecycle", "")) == str(lifecycle):
+        return False
+    try:
+        if notional_usd is not None and 0.0 < float(notional_usd) < float(_cfg_auto("EXIT_DUST_USD", 5.0) or 5.0):
+            return False
+    except Exception:
+        pass
+    if lifecycle:
+        _st["last_lifecycle"] = str(lifecycle)
     _exit_px_for_block = float(exit_price or 0.0)
     _g = float(gain_pct or 0.0)
     _st["consec_losses"] = (int(_st.get("consec_losses", 0)) + 1) if _g < 0 else 0
@@ -41140,6 +41152,111 @@ def _breakout_tf_size_mult_tradier(reason: str) -> tuple:
     return 1.0, ""
 
 
+# ═══ EXIT GUARANTEE venue hooks, stocks (2026-10-14 USER "make sure at least EXITS will never be compromised again") ═══
+# exit_guarantee.wrap_execute_now("tradier", ...) calls these: FORCE leg (via execute_now FORCE_CLOSE_MARKET), fresh broker holdings,
+# and the confirmed hook — the ONLY place a stock close/reduce is written to data/per_trade_returns (once per broker-confirmed fill,
+# idem_key = account|lifecycle|fill) and fed to VIGILANCE + STALE-SET (once per lifecycle, dust skipped).
+async def _xg_tr_force(mgr, a, c, why):
+    _ps = str(a.get("position_side") or c.get("position_side") or "LONG").upper()
+    _pk = a.get("position_key") or c.get("key")
+    _acct = a.get("account_key") or (str(_pk).split(":", 1)[0] if _pk and ":" in str(_pk) else None)
+    return await mgr.execute_now(position_key=_pk, account_key=_acct, symbol=a.get("symbol"), original_position_amt=0.0, side=("SELL" if _ps == "LONG" else "BUY"), position_side=_ps, quantity=0.0, old_price=float(a.get("old_price") or 0.0), unique_id=f"XGF_{int(time.time())}", reason=f"EXIT_GUARANTEE_FORCE[{str(why)[:40]}] {str(a.get('reason') or '')[:100]}", is_full_close=True, action=_xg.FORCE_ACTION)
+
+
+async def _xg_tr_broker(mgr, account_key, symbol, position_side):
+    """Fresh broker holdings {amt, entry} or None (unreachable)."""
+    _ps = str(position_side or "LONG").upper()
+    _sym = str(symbol or "").upper()
+    _cl = TradierAPIClient(config, account_key=account_key)
+    try:
+        await _cl.connect()
+        _rows = await asyncio.wait_for(_cl.get_account_positions(account_key), timeout=15.0)
+        if _rows is None:
+            return None
+        _signed, _cost = 0.0, 0.0
+        for _r in _rows or []:
+            if str((_r or {}).get("symbol", "")).strip().upper() == _sym:
+                _signed += float(_r.get("quantity") or 0.0)
+                _cost += float(_r.get("cost_basis") or 0.0)
+        _same = _signed if _ps == "LONG" else -_signed
+        return {"amt": max(0.0, _same), "entry": (abs(_cost) / abs(_signed)) if _signed else 0.0}
+    except Exception:
+        return None
+    finally:
+        try:
+            await _cl.close()
+        except Exception:
+            pass
+
+
+def _xg_tr_fill_from_ledger(account_key, symbol, local_ids):
+    """(fill_id, avg_px, executed_qty) of OUR broker-confirmed orders of this execute_now call (TradierDedupeGuard ledger)."""
+    try:
+        if not local_ids:
+            return None, 0.0, 0.0
+        _ids = set(local_ids)
+        _rows = [r for r in _odg.get_tradier_guard(account_key, cfg=config, logger=logger).ledger.orders(str(symbol).upper()) if r.get("local_id") in _ids or r.get("client_order_id") in _ids]
+        _q = sum(float(r.get("executed_qty") or 0.0) for r in _rows)
+        _n = sum(float(r.get("executed_qty") or 0.0) * float(r.get("avg_price") or 0.0) for r in _rows)
+        _oids = [str(r.get("order_id")) for r in _rows if r.get("order_id")]
+        return (",".join(_oids) or None), (_n / _q if _q > 0 and _n > 0 else 0.0), _q
+    except Exception:
+        return None, 0.0, 0.0
+
+
+async def _xg_tr_confirmed(mgr, a, c, result):
+    _pk = a.get("position_key") or c.get("key")
+    _acct = a.get("account_key") or (str(_pk).split(":", 1)[0] if _pk and ":" in str(_pk) else "")
+    _sym = a.get("symbol") or c.get("symbol")
+    _ps = str(a.get("position_side") or c.get("position_side") or "LONG").upper()
+    _reason = str(a.get("reason") or a.get("action") or "")
+    _force = c.get("force") or {}
+    _fid, _fpx, _fq = (str(_force.get("oid") or "") or None), float(_force.get("px") or 0.0), float(_force.get("qty") or 0.0)
+    if not _fid:
+        _fid, _fpx, _fq = _xg_tr_fill_from_ledger(_acct, _sym, c.get("orders"))
+    _entry = float(c.get("entry_price") or 0.0) or float(_force.get("entry") or 0.0)
+    _opened = c.get("opened_at")
+    if (_entry <= 0 or not _opened) and mgr is not None:
+        try:
+            _p = mgr.position_manager.positions.get(_pk) if getattr(mgr, "position_manager", None) else None
+            _entry = _entry or float(getattr(_p, "entry_price", 0.0) or 0.0)
+            _opened = _opened or getattr(_p, "opened_at", None)
+        except Exception:
+            pass
+    _px = _fpx or float(c.get("price") or 0.0) or float(a.get("old_price") or 0.0)
+    _qty = _fq or float(c.get("qty") or 0.0) or abs(float(a.get("quantity") or 0.0))
+    _full = bool(c.get("full") or c.get("full_by_qty") or _force)
+    _pnl = (((_px - _entry) / _entry * 100.0) if _ps == "LONG" else ((_entry - _px) / _entry * 100.0)) if (_entry > 0 and _px > 0) else float(c.get("gain") or 0.0)
+    _hold = 0.0
+    try:
+        if _opened:
+            _od = _opened if isinstance(_opened, datetime) else datetime.fromisoformat(str(_opened).replace("Z", "+00:00"))
+            _od = _od if _od.tzinfo else _od.replace(tzinfo=timezone.utc)
+            _hold = max(0.0, (datetime.now(timezone.utc) - _od).total_seconds() / 60.0)
+    except Exception:
+        _hold = 0.0
+    _life = _xg.lifecycle_id(_acct, _sym, _ps, _opened, _entry)
+    _idem = f"{_life}|FULL" if _full else f"{_life}|{_fid or round(float(c.get('t0') or time.time()), 3)}"
+    _notional = _qty * _px if (_qty > 0 and _px > 0) else None
+    try:
+        from per_trade_logger import log_close as _ptl_log_close
+        _ptl_log_close(account=_acct, symbol=_sym, side=_ps, entry_price=_entry, exit_price=_px, pnl_pct=_pnl, fees_pct=0.0, hold_minutes=_hold, qty=_qty, reason=_reason, idem_key=_idem, lifecycle=_life, fill_id=_fid, full_close=_full, confirmed=True, notional_usd=_notional)
+    except Exception as _le:
+        logger.warning(f"[EXIT_GUARANTEE_LEDGER_TR] {_pk}: {_le}")
+    if _full:
+        try:
+            vigilance_record_close(_sym, _ps, _pnl, _reason, exit_price=_px, lifecycle=_life, notional_usd=_notional)
+        except Exception as _ve:
+            logger.warning(f"[VIGILANCE] close-record err {_pk}: {_ve}")
+        try:
+            _stale_set_halt.record_close("tradier", _acct, _sym, _ps, _pnl, _reason, cfg=config, lifecycle=_life, notional_usd=_notional)
+        except Exception as _se:
+            logger.warning(f"[STALE_SET_HALT] close-record err {_pk}: {_se}")
+
+
+_XG_TR_HOOKS = _xg.Hooks(force=_xg_tr_force, broker=_xg_tr_broker, confirmed=_xg_tr_confirmed, cfg=lambda: config, logger=lambda: logger)
+
+
 class TradierTradeManager:
     def __init__(self, account_list: List[str] = None):
         self.config = config
@@ -46568,10 +46685,170 @@ class TradierTradeManager:
                 return (True, "DG_EXCEPTION_SHORT_FAILCLOSED")
             return (False, "")
 
+    async def _exit_force_market_stocks(self, *, position_key, account_key, symbol, position_side, reason="", old_price=0.0):
+        """EXIT GUARANTEE FORCE leg, stocks (2026-10-14 USER "make sure at least EXITS will never be compromised again"). Called ONLY
+        from the execute_now FORCE_CLOSE_MARKET branch (wire token action=FORCE_CLOSE_MARKET -> TradierDedupeGuard exit path).
+        1. regular trading hours only (exchange rule) -> else FAILED_FORCE_MARKET_CLOSED (watcher retries, then alert)
+        2. other box live on the account (heartbeat) -> BLOCKED_SERVER_HEARTBEAT_ACTIVE (policy: that box owns the close)
+        3. cash-account GFV (selling shares bought with unsettled funds = the violation itself) -> BLOCKED_GFV_ACCOUNT_RULE
+        4. broker holdings (retry 0/0.5/1.5/3 s); unreachable -> last confirmed broker snapshot -> local amt; flat -> FORCE_NOTHING_OPEN
+        5. protective stop handoff (it reserves the shares) + cancel our other working orders on the symbol
+        6. ONE market sell (LONG) / buy_to_cover (SHORT) of the broker qty; verify flat with fresh reads; remainder re-sent once
+        Returns SUCCESS_FORCE_CLOSE_CONFIRMED|oid=..|px=..|qty=..|entry=.. on broker-confirmed flat. Never raises."""
+        ps = str(position_side or "LONG").upper()
+        acct = account_key or (str(position_key).split(":", 1)[0] if position_key and ":" in str(position_key) else None)
+        sym = str(symbol or "").upper()
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST") and not getattr(self, "_xg_allow_force_in_tests", False):
+                return "SKIPPED_FORCE_PYTEST"
+            if not is_regular_trading_hours():
+                logger.warning(f"[EXIT_FORCE_TR] {position_key}: market closed — FORCE close deferred (watcher retries)")
+                return "FAILED_FORCE_MARKET_CLOSED"
+            try:
+                import platform as _pf
+
+                if _pf.system() == "Darwin" and bool(_cfg_auto("SERVER_HEARTBEAT_BLOCK_ENABLED", True)) and await safe_check_server_heartbeat_tradier(acct):
+                    logger.warning(f"🛑 [EXIT_FORCE_HEARTBEAT_TR] {position_key}: S1 live-trades {acct} — it owns the FORCE close")
+                    return "BLOCKED_SERVER_HEARTBEAT_ACTIVE"
+            except Exception:
+                pass
+            if ps == "LONG":
+                try:
+                    if _gfv_guard_applies(acct):
+                        _gok, _gwhy = self.gfv_tracker.can_sell(position_key)
+                        if not _gok:
+                            _xg.alert("tradier", str(position_key), f"FORCE close held by cash-account GFV rule ({_gwhy}) — sells once the buy settles", config, logger)
+                            return "BLOCKED_GFV_ACCOUNT_RULE"
+                except Exception:
+                    pass
+            client = _odg.wrap_tradier_client(TradierAPIClient(config, account_key=acct), acct, cfg=config, logger=logger)
+            try:
+                await client.connect()
+            except Exception as _ce:
+                logger.warning(f"[EXIT_FORCE_TR] {position_key}: connect failed ({_ce}) — reads will retry")
+
+            async def _read(backoffs=(0.0, 0.5, 1.5, 3.0)):
+                for _bo in backoffs:
+                    if _bo:
+                        await asyncio.sleep(_bo)
+                    try:
+                        _rows = await asyncio.wait_for(client.get_account_positions(acct), timeout=15.0)
+                        if _rows is None:
+                            raise RuntimeError("positions query failed (None)")
+                        _signed, _cost = 0.0, 0.0
+                        for _r in _rows or []:
+                            if str((_r or {}).get("symbol", "")).strip().upper() == sym:
+                                _signed += float(_r.get("quantity") or 0.0)
+                                _cost += float(_r.get("cost_basis") or 0.0)
+                        _same = _signed if ps == "LONG" else -_signed
+                        return {"amt": max(0.0, _same), "entry": (abs(_cost) / abs(_signed)) if _signed else 0.0, "src": "broker"}
+                    except Exception as _re:
+                        logger.warning(f"[EXIT_FORCE_READ_TR] {position_key}: positions read failed ({_re}) — retrying")
+                return None
+
+            try:
+                b = await _read()
+                if b is None:
+                    _fb_amt, _fb_src = 0.0, "none"
+                    try:
+                        _bp = getattr(_ptruth, "_CACHES", {}).get(("tradier", acct))
+                        if _bp is not None and getattr(_bp, "last", None) is not None:
+                            _fb_amt, _fb_src = abs(float(_bp.last.amount(sym, ps))), "last_broker_snapshot"
+                    except Exception:
+                        pass
+                    if _fb_amt <= 0:
+                        try:
+                            _lp = self.position_manager.positions.get(position_key) if self.position_manager else None
+                            _fb_amt, _fb_src = abs(float(getattr(_lp, "positionAmt", 0.0) or 0.0)), "local_position"
+                        except Exception:
+                            pass
+                    logger.critical(f"🧯 [EXIT_FORCE_BROKER_UNREACHABLE_TR] {position_key}: holdings unreachable after retries — using {_fb_src} qty {_fb_amt} (broker rejects selling more than held)")
+                    if _fb_amt < 1:
+                        _xg.alert("tradier", str(position_key), "FORCE close: broker unreachable and no last known qty", config, logger)
+                        return "FAILED_FORCE_BROKER_UNREACHABLE"
+                    b = {"amt": _fb_amt, "entry": 0.0, "src": _fb_src}
+                if b["amt"] < 1:
+                    logger.info(f"[EXIT_FORCE_TR] {position_key}: broker FLAT — nothing to close")
+                    return "FORCE_NOTHING_OPEN"
+                entry0, amt0 = b["entry"], b["amt"]
+                try:
+                    await self._fixed_stop_clear_for_exit(acct, sym, ps, f"EXIT_FORCE {reason}")
+                except Exception as _he:
+                    logger.warning(f"[EXIT_FORCE_TR] {position_key}: stop handoff err {_he} — close proceeds")
+                try:
+                    _oo = await asyncio.wait_for(client.get_orders(acct), timeout=15.0)
+                except Exception as _oe:
+                    _oo = []
+                    logger.warning(f"[EXIT_FORCE_TR] {position_key}: order listing unreachable ({_oe}) — close proceeds")
+                for _o in _oo or []:
+                    try:
+                        if str(_o.get("symbol", "")).upper() != sym or str(_o.get("status", "")).lower() not in ("open", "pending", "partially_filled", "submitted"):
+                            continue
+                        await asyncio.wait_for(client.cancel_order(acct, _o.get("id")), timeout=15.0)
+                        logger.critical(f"🧹 [EXIT_FORCE_CANCEL_TR] {position_key}: cancelled working {_o.get('type')} {_o.get('side')} {_o.get('quantity')} id={_o.get('id')} before the FORCE close")
+                    except Exception as _ce2:
+                        logger.warning(f"[EXIT_FORCE_CANCEL_TR] {position_key}: cancel {_o.get('id')} failed ({_ce2}) — close proceeds")
+                _side_tr = "sell" if ps == "LONG" else "buy_to_cover"
+                oid, px, qty_done = "", 0.0, 0.0
+                for _pass in range(3):
+                    _q = int(b["amt"])
+                    if _q < 1:
+                        break
+                    _seq = _sanction_execution(position_key, "CLOSE", _side_tr, float(_q), reason, exit_force=True)
+                    logger.critical(f"🧯 [EXIT_FORCE_SEND_TR] {position_key}: MARKET {_side_tr} {_q} pass {_pass + 1} src={b.get('src')} reason={(reason or '')[:80]}")
+                    try:
+                        _res = await asyncio.wait_for(client.place_order(account_key=acct, symbol=sym, side=_side_tr, quantity=_q, order_type="market", duration="day"), timeout=20.0)
+                    except Exception as _se:
+                        logger.error(f"[EXIT_FORCE_SEND_FAIL_TR] {position_key}: {_se}")
+                        _res = None
+                    _errs = str((_res or {}).get("errors") or "") if isinstance(_res, dict) else ""
+                    if "NOTHING_TO_CLOSE" in _errs:
+                        return f"SUCCESS_FORCE_CLOSE_CONFIRMED|oid={oid}|px={px}|qty={qty_done}|entry={entry0}" if qty_done > 0 else "FORCE_NOTHING_OPEN"
+                    _order = (_res or {}).get("order") if isinstance(_res, dict) else None
+                    if isinstance(_order, dict) and _order.get("id"):
+                        _confirm_wire_result("client.place_order:exit_force_market", position_key, _res, _seq, "CLOSE", reason)
+                        oid = str(_order.get("id"))
+                        for _w in (1.0, 1.5, 2.5):
+                            await asyncio.sleep(_w)
+                            try:
+                                _st = await asyncio.wait_for(client.get_order_status(acct, oid), timeout=15.0)
+                            except Exception:
+                                _st = {}
+                            if str((_st or {}).get("status", "")).lower() in ("filled", "canceled", "rejected", "expired"):
+                                px = float((_st or {}).get("avg_fill_price") or 0.0) or px
+                                qty_done += float((_st or {}).get("exec_quantity") or 0.0)
+                                if str((_st or {}).get("status", "")).lower() == "filled":
+                                    _retire_wire_order(position_key, oid, "EXECUTED")
+                                break
+                    elif _errs:
+                        logger.error(f"[EXIT_FORCE_REJECTED_TR] {position_key}: {_errs[:200]}")
+                    b2 = await _read((0.0, 1.0))
+                    if b2 is not None and b2["amt"] < 1:
+                        logger.critical(f"✅ [EXIT_FORCE_CONFIRMED_TR] {position_key}: broker FLAT after FORCE close (oid={oid} px={px} qty={qty_done})")
+                        return f"SUCCESS_FORCE_CLOSE_CONFIRMED|oid={oid}|px={px}|qty={qty_done or amt0}|entry={entry0}"
+                    if b2 is not None:
+                        if entry0 > 0 and b2["entry"] > 0 and abs(b2["entry"] - entry0) / entry0 > 0.002 and b2["amt"] > amt0 + 0.5:
+                            logger.critical(f"[EXIT_FORCE_TR] {position_key}: position re-opened under us (entry {entry0} -> {b2['entry']}) — stop")
+                            return f"FAILED_FORCE_LIFECYCLE_CHANGED|amt={b2['amt']}"
+                        b = b2
+                _xg.alert("tradier", str(position_key), f"FORCE close sent but broker still holds {b.get('amt')} (oid={oid})", config, logger, reason=str(reason)[:120])
+                return f"FAILED_FORCE_CLOSE_STILL_OPEN|amt={b.get('amt')}|oid={oid}"
+            finally:
+                try:
+                    await client.close()
+                except Exception:
+                    pass
+        except Exception as _fe:
+            try:
+                _xg.alert("tradier", str(position_key), f"FORCE close crashed: {_fe!r}", config, logger)
+            except Exception:
+                pass
+            return f"FAILED_FORCE_CLOSE_ERROR_{str(_fe)[:60]}"
+
     @_odg.execute_now_gate(
         "tradier"
     )  # POSITIONS REVAMP 2026-10-06: execute_now token — the wire refuses exposure-increasing orders without it
-    @_xg.wrap_execute_now("tradier", lambda: _XG_TR_HOOKS)  # 2026-10-14 USER EXITS NEVER COMPROMISED: refused full close -> FORCE_CLOSE_MARKET, reduce retry, ledger once per confirmed fill
+    @_xg.wrap_execute_now("tradier", lambda: _XG_TR_HOOKS)
     @_ptruth.tradier_confirmed  # 2026-10-06 USER POSITIONS_TRUTH: SUCCESS only when the broker-confirmed position matches (order id alone is not a fill)
     async def execute_now(
         self,

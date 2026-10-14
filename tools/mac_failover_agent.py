@@ -198,7 +198,7 @@ class Agent:
             return True
         ok = True
         for account in ACCOUNTS:
-            result = rsync(["--update", "--exclude=.*", "--exclude=backups/", "--exclude=*.bak", f"{host}:{REMOTE_LIVE}/{account}/", str(BASE / account) + "/"])
+            result = rsync(["--update", "--exclude=.*", "--exclude=backups/", "--exclude=*.bak", "--exclude=*_positions.json", f"{host}:{REMOTE_LIVE}/{account}/", str(BASE / account) + "/"])
             if result.returncode not in (0, 23, 24):
                 ok = False
                 log(f"STATE_PULL {account} rc={result.returncode} {result.stderr[-200:]}")

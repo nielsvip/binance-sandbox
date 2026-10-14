@@ -150,9 +150,9 @@ class FakeMgr:
             return f"SUCCESS_FORCE_CLOSE_CONFIRMED|oid=77|px=1.1|qty={q}|entry=1.0"
         xg.stash(entry_price=1.0, opened_at="2026-10-14T00:00:00+00:00", gain=-0.5, qty=quantity, price=1.1, real_amt=self.broker["amt"], symbol=symbol, position_side=position_side, account=account_key)
         code = self.codes.pop(0) if self.codes else "SUCCESS"
-        if code == "SUCCESS" and action != "CLOSE":
-            self.broker["amt"] = max(0.0, self.broker["amt"] - quantity)
-        elif code == "SUCCESS":
+        if code.startswith("SUCCESS") and action != "CLOSE":
+            self.broker["amt"] = max(0.0, round(self.broker["amt"] - quantity, 8))
+        elif code.startswith("SUCCESS"):
             self.broker["amt"] = 0.0
         return code
 
@@ -603,3 +603,62 @@ def test_F6_vigilance_counts_a_lifecycle_once(ezm, tmp_path, monkeypatch):
     assert ezm._EZ_VIGILANCE_STATE["streaks"]["XTZUSDT_LONG"]["consec_losses"] == 1
     ezm.ez_vigilance_record_close("XTZUSDT", "LONG", -1.0, "real 2nd", lifecycle="men|XTZUSDT|LONG|c", notional_usd=50.0)
     assert "XTZUSDT_LONG" in ezm._EZ_VIGILANCE_STATE["blocks"]  # two DISTINCT losing closes still block
+
+
+# ───────────────────────────── G: live monitor ─────────────────────────────
+def _mon():
+    sys.path.insert(0, str(ROOT / "tools"))
+    import exit_never_blocked_monitor as mon
+    return mon
+
+
+def test_G1_event_episode_alerts_after_n_minutes_once(tmp_path):
+    mon = _mon()
+    d = tmp_path / "data" / "safety" / "exit_events"
+    d.mkdir(parents=True)
+    f = d / "ez_20261014.jsonl"
+    t0 = 1_791_940_000.0
+    f.write_text(json.dumps({"ts": "2026-10-14T00:00:00+00:00", "venue": "ez", "event": "RESULT", "key": "men:X_LONG", "cls": "REFUSED", "result": "FAILED_WEBHOOK"}) + "\n")
+    st = {}
+    mon.scan_events(st, tmp_path, t0)
+    since = st["episodes"]["ez:men:X_LONG"]["since"]
+    assert mon.evaluate(st, tmp_path, since + 120, 5) == []
+    a = mon.evaluate(st, tmp_path, since + 400, 5)
+    assert len(a) == 1 and a[0]["key"] == "ez:men:X_LONG"
+    assert mon.evaluate(st, tmp_path, since + 500, 5) == []  # one alert per episode
+    assert (tmp_path / "data" / "alerts" / "exit_never_blocked_monitor.jsonl").exists()
+
+
+def test_G2_confirmed_event_closes_episode(tmp_path):
+    mon = _mon()
+    d = tmp_path / "data" / "safety" / "exit_events"
+    d.mkdir(parents=True)
+    f = d / "ez_20261014.jsonl"
+    f.write_text("\n".join(json.dumps(x) for x in ({"ts": "2026-10-14T00:00:00+00:00", "venue": "ez", "event": "RESULT", "key": "men:X_LONG", "cls": "REFUSED"}, {"ts": "2026-10-14T00:00:05+00:00", "venue": "ez", "event": "CONFIRMED", "key": "men:X_LONG"})) + "\n")
+    st = {}
+    mon.scan_events(st, tmp_path, 1_791_940_000.0)
+    assert st["episodes"] == {}
+
+
+def test_G3_log_mode_decision_without_confirmation(tmp_path):
+    mon = _mon()
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    (logs / "ez_manage_men.log").write_text("14 00:10:00 - INFO - [men] 🧬 [VEC_EXACT_EXEC] men:X_LONG action=CLOSE qty=1 reason=WT |VEC_EXACT — vec\n14 00:10:01 - INFO - [men] 🧬 [VEC_EXACT_EXEC] men:Y_LONG action=CLOSE qty=1 reason=WT |VEC_EXACT — vec\n14 00:10:20 - INFO - [men] ✅ [POSITIONS_CONFIRMED] men:Y_LONG: SUCCESS kind=reduce pre=1.0 post=0.0 filled=1.0 code=MATCH_FILLED\n")
+    st = {}
+    from datetime import datetime as _dt, timezone as _tz
+    now = _dt(2026, 10, 14, 0, 30, tzinfo=_tz.utc).timestamp()
+    mon.scan_logs(st, logs, now)
+    assert set(st["episodes"]) == {"log:men:X_LONG"}
+    assert [a["key"] for a in mon.evaluate(st, tmp_path, now, 5)] == ["log:men:X_LONG"]
+
+
+def test_B12_dust_remainder_after_successful_full_close_is_forced():
+    LEDGER.clear()
+    m = FakeMgr(["SUCCESS_PARTIAL_DUST"])  # core reports success but leaves 0.3 of 10 at the broker
+    r = run(m.execute_now(position_key="men:XTZUSDT_LONG", account_key="men", symbol="XTZUSDT", position_side="LONG", side="SELL", quantity=9.7, reason=VEC, is_full_close=True, action="REDUCE"))
+    assert r == "SUCCESS_PARTIAL_DUST" and m.force_calls == 1 and m.broker["amt"] == 0.0
+    assert len([x for x in LEDGER if x[1]]) == 1  # the remainder FORCE adds no second ledger row
+    m2 = FakeMgr(["SUCCESS"])
+    assert run(m2.execute_now(position_key="men:XTZUSDT_LONG", account_key="men", symbol="XTZUSDT", position_side="LONG", side="SELL", quantity=10.0, reason=VEC, is_full_close=True, action="CLOSE")) == "SUCCESS"
+    assert m2.force_calls == 0  # clean full close: no extra order

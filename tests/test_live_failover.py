@@ -422,3 +422,21 @@ def test_on_demand_pull_at_60s_with_10min_hysteresis(world):
     assert "PULL_ON" in alerts and "PULL_OFF" in alerts
     run_pair(world, agent, watchdog, t0 + 300 + 15 * k)
     assert world.state()["venues"]["crypto"].get("outbox") is False
+
+
+# ---------------------------------------------------------------- USER law: position data only from ez_positions_service
+def test_takeover_merge_and_failback_pull_never_copy_positions_files(world, monkeypatch):
+    staged = world.s1 / "data" / "live_failover" / "mac_state" / "ang"
+    touch(staged / "long_positions.json", T_SATURDAY, '{"from_mac": "positions"}')
+    touch(staged / "tracker.json", T_SATURDAY, '{"from_mac": "tracker"}')
+    touch(world.s1 / "ang" / "long_positions.json", T_SATURDAY - 600, '{"s1": "broker"}')
+    touch(world.s1 / "ang" / "tracker.json", T_SATURDAY - 600, '{"s1": "old"}')
+    world.S1.merge_mac_state()
+    assert json.loads((world.s1 / "ang" / "long_positions.json").read_text()) == {"s1": "broker"}
+    assert json.loads((world.s1 / "ang" / "tracker.json").read_text()) == {"from_mac": "tracker"}
+    calls = []
+    monkeypatch.delenv("LF_NO_SSH", raising=False)
+    monkeypatch.setattr(world.MA, "rsync", lambda args, timeout=60: calls.append(args) or type("R", (), {"returncode": 0, "stderr": ""})())
+    assert world.MA.Agent().pull_state_back("s1-pub") is True
+    account_pulls = [a for a in calls if any(str(x).endswith("/ang/") for x in a)]
+    assert account_pulls and all("--exclude=*_positions.json" in a for a in account_pulls)
