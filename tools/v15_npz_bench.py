@@ -148,6 +148,16 @@ def cmd_snapshot(args):
     return 0
 
 
+def mem_avail_mb():
+    try:
+        for line in open("/proc/meminfo"):
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 1024.0
+    except Exception:
+        pass
+    return 1e9
+
+
 def build_root(snap, run_dir, code):
     root = run_dir / "root"
     if root.exists():
@@ -239,7 +249,7 @@ def cmd_run(args):
     queue, running, results = list(sides), {}, {}
     t_all = time.time()
     while queue or running:
-        while queue and len(running) < args.parallel:
+        while queue and len(running) < args.parallel and mem_avail_mb() >= args.min_free_mb:
             ss = queue.pop(0)
             sd = run_dir / ss
             (sd / "progress").mkdir(parents=True, exist_ok=True)
@@ -255,6 +265,21 @@ def cmd_run(args):
             running[ss] = (pr, time.time(), log)
             print(f"[bench] start {ss} pid {pr.pid}", flush=True)
         time.sleep(5)
+        if running and mem_avail_mb() < args.sacrifice_mb:
+            # never let the host OOM reaper pick a PRODUCTION board (2026-10-14: 9 bench pilots pushed S2 < 1.5 GB and the
+            # reaper TERM'd GALAUSDT_LONG / SKLUSDT_LONG): the bench kills its own newest pilot and requeues the side
+            ss_v = max(running, key=lambda k: running[k][1])
+            pr_v, _t0v, log_v = running.pop(ss_v)
+            pr_v.terminate()
+            try:
+                pr_v.wait(timeout=60)
+            except Exception:
+                pr_v.kill()
+            log_v.close()
+            queue.insert(0, ss_v)
+            print(f"[bench] MEM {mem_avail_mb():.0f} MB < {args.sacrifice_mb} -> sacrificed own {ss_v}, requeued", flush=True)
+            time.sleep(120)
+            continue
         for ss, (pr, t0, log) in list(running.items()):
             rc = pr.poll()
             if rc is None and time.time() - t0 > args.timeout_s:
@@ -314,8 +339,9 @@ def cmd_compare(args):
         fm = lambda v, n=2: ("—" if v is None else (f"{v:.{n}f}" if isinstance(v, float) else str(v)))
         print(f"{r[0]:22s} {fm(r[1]):>8s} {fm(r[2]):>8s} {fm(r[3]):>7s} {fm(r[4],0):>7s} {fm(r[5],0):>7s} {fm(r[6]):>6s} {fm(r[7]):>6s} {fm(r[8])} {fm(r[9])} {fm(r[10])} {fm(r[11])} {r[12]}")
     speed = (wa / wb) if wb else None
-    ok = (sum_b >= sum_a - args.tol_sum_pp) and not drops
-    verdict = {"sides": len(rows), "sum_gain_A": round(sum_a, 3), "sum_gain_B": round(sum_b, 3), "sum_delta": round(sum_b - sum_a, 3), "drops_gt_tol": drops, "wall_A_s": wa, "wall_B_s": wb, "speedup_x": round(speed, 3) if speed else None, "evals_A": ea, "evals_B": eb, "tol_pp": args.tol_pp, "tol_sum_pp": args.tol_sum_pp, "PASS": ok}
+    incomplete = [ss for ss in sorted(set(a) | set(b)) if _f((a.get(ss) or {}).get("final_gain")) is None or _f((b.get(ss) or {}).get("final_gain")) is None]
+    ok = (sum_b >= sum_a - args.tol_sum_pp) and not drops and not incomplete and bool(rows)
+    verdict = {"sides": len(rows), "sum_gain_A": round(sum_a, 3), "sum_gain_B": round(sum_b, 3), "sum_delta": round(sum_b - sum_a, 3), "drops_gt_tol": drops, "wall_A_s": wa, "wall_B_s": wb, "speedup_x": round(speed, 3) if speed else None, "evals_A": ea, "evals_B": eb, "tol_pp": args.tol_pp, "tol_sum_pp": args.tol_sum_pp, "incomplete": incomplete, "PASS": ok}
     print(json.dumps(verdict, indent=1))
     return 0 if ok else 1
 
@@ -340,6 +366,8 @@ def main(argv=None):
     r.add_argument("--nice", type=int, default=10)
     r.add_argument("--timeout-s", type=float, default=3 * 3600)
     r.add_argument("--force", action="store_true")
+    r.add_argument("--min-free-mb", type=float, default=10000.0, help="start a side only above this MemAvailable")
+    r.add_argument("--sacrifice-mb", type=float, default=3000.0, help="below this the bench kills its own newest pilot")
     c = sub.add_parser("compare")
     c.add_argument("--snap", required=True)
     c.add_argument("--a", required=True)

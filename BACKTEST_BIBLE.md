@@ -3042,3 +3042,53 @@ rm/tick as W), `V15_SCHED_SOFTSKIP_DONE=1` (verdict IMPOSSIBLE/NO_TRADES/BEST_EF
 
 ### 108.5 Bench results
 (filled from `~/v15_bench/runs/20261014__*` when the 3-version run completes)
+
+### 108.6 Live truth beats board gain (USER 2026-10-14: 5 accounts red on 1/7/30/365D while boards claim gains)
+A cloud session's report (`data/SESSIONS_OUTPUT_ANALYSIS_2026_10_14.md`) reads board results as money ("93.5% win rate",
+"+248% 14-day PnL", "$347K per fortnight if deployed"). NO-LIES verdict: those are 30-day IN-SAMPLE board gains (the window
+the settings were fitted on; consecutive daily boards overlap ~29/30 days, so even board-to-board persistence is not
+out-of-sample), "win rate" = share of boards with a positive vec gain, not trades; live is negative on every account.
+Its token report is also wrong: idle Claude sessions consume no tokens; the herds spawn python processes, not cloud
+sessions; the per-session token rates are invented, and `TOKEN_CONSUMPTION_REPORT.md` was never written. Capital
+deployment advice from it is void until live P&L confirms (USER).
+Integrated into the brain:
+1. **Board gain is necessary, not sufficient.** The bench gate (108.2.6) proves a pilot change does not lose BOARD gain on
+   frozen inputs; it does not prove money. The learning target gets a LIVE layer next: per sym_side and per key, board
+   trades matched to the live ledger (§106 parity: C1 FIXED_STOP timing 69% of live losses, C2 position timeout, C3 twin
+   divergence 510 missed trades, C4 latency) → a live-survival factor per key/exit reason that discounts P(pos) and
+   E[delta] for settings whose board edge does not survive execution (e.g. tight-stop / high-churn keys while C1 is open).
+2. **Forward persistence is a model feature, not an assumption.** A key promoted on board k is scored on board k+1's NPZ
+   (newer bars) — the evidence the graph stores per sym_side scope — and on live fills when they exist. Keys that only win
+   in-sample lose weight automatically (prequential learning).
+3. **Engine changes reset evidence.** v12 `754331ff` (FIXED_STOP intrabar, 2026-10-14 19:40Z) changes every stop-driven
+   delta; the brain export must be rebuilt from post-754331ff logs once ~3–5 days accumulate (until then the pre-change
+   model only ranks; the bench on 754331ff decides).
+4. No capital/position action is derived from boards here (live lane, other session; §106).
+
+## 108. LIVE STACK HARDENING + HERMETIC VEC-ONLY TRADING + IDENTICAL ENVS (USER 2026-10-14)
+
+USER: "keep going until all errors are fixed! macbook always runs conda … make sure live trading on both works identical … make this
+totally hermetic so for now it can ONLY trade in tandem with what the vectorized would trade … then total parity in the scripts
+themselves so we can opt to trade the identical trades from vectorized or switch on the non vectorizable and 1m/3m parts".
+
+- **Positions service fixed (root causes, evidence = new stall dumps `~/logs/loop_stall_<proc>.log`, `loop_stall_watch.py`):**
+  (a) `ez_share_ind` shared-memory handshake (multiprocessing BaseManager.connect, no timeout) ran on the event loop
+  (positions bootstrap + ez_indicators): server up since 10-05 with 158 connections answered after up to 138 s → ez_manage
+  flz/inf bootstrap TimeoutError loops (100+). Now `shared_mem_safe.connect_store` (off-thread, 3 s, 30 s backoff); bridge never
+  connects on the loop; hot-path pull 0.1 s → 1 s (`POSITIONS_HOT_PATH_INTERVAL_S`). (b) `ez_positions.atomic_save_positions`
+  re-parsed the whole side file per position (~650×/save) → 8–9 s loop stalls each cycle → heartbeat stale → 23 realtime
+  takeovers on 10-14. Parse once per side per save. After: 0 stalls / 0 takeovers on ang/fin/flz/inf (men: one-off 9 s import at
+  start). Bootstrap 75 s+ → 6–7 s.
+- **Envs:** Mac live = conda `binance_env` (py 3.11.14, numpy 2.4.6, pandas 3.0.0). S1 failover + data watchdog used conda with
+  numpy 1.26.4 / pandas 2.3.2 → NEW S1 env `~/.conda/envs/binance_env_mac` = exact Mac pip set (231 packages; pandas_ta 0.3.14b0
+  copied from the Mac, PyPI yanked it); `tools/s1_trading_supervisor.sh`, `tools/s1_failover_start.sh`,
+  `ez_s1_stack/run_with_watchdog.sh` point to it (old env kept for rollback). Live-stack code md5-identical Mac = S1/S2 dirs.
+  Sweeps/boards run in S1/S2 `.venv` (py 3.12, numpy 2.5.3, pandas 3.0.5) — OPEN: align with live for numeric parity.
+- **HERMETIC (phase 2):** `live_twins/vec_provenance.py` ContextVar marked at the 3 vec dispatch sites (ENTRY OPEN,
+  VEC_CONVERGE_OPEN, in-position acts); `ez_manage.execute_now` refuses an exposure increase (BUY on LONG / SELL on SHORT / any
+  hedge) without provenance for the same key → `BLOCKED_HERMETIC_NOT_VEC`. Exits/reductions/stops never gated. Runtime mode
+  `data/hermetic_mode.json` off|log|enforce (deployed log 20:42Z → enforce after the log proves no legit vec order is flagged).
+  Limit: a twin OPEN that differs from the clean board run still carries provenance — closed in phase 3 (twin == board run).
+- Also 10-14: a "Teleport auto-stash" (git stash 19:38:35Z) reverted all uncommitted tracked edits in the Mac repo; restored
+  forward (§106 text, binance_fills_fetch); traders were SIGKILLed in sequence 20:31–20:36Z by an unidentified actor (not the
+  cron watchdog, not memory pressure; a Muse agent runs on the Mac).
