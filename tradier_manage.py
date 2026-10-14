@@ -14759,6 +14759,26 @@ async def process_position(
                             trade_manager._fixed_stop_registry_save()
                         except Exception:
                             pass
+                # 2026-10-13 USER (stocks): FIXED_STOP_SESSION_REFREEZE — at each market open a position carried overnight gets a NEW stop at
+                # the current dc_15m_low -0.25% (vv short); breached -> exit (re-entry via the re-entry pathways). Once per position per ET date.
+                try:
+                    if _fx_lvl > 0 and bool(_cfg_auto("FIXED_STOP_SESSION_REFREEZE_ENABLED", False)) and is_regular_trading_hours():
+                        from zoneinfo import ZoneInfo as _fx_ZI
+                        _fx_today = datetime.now(_fx_ZI("America/New_York")).date().isoformat()
+                        _fx_e = _fx_lvmap.get(position_key) or {}
+                        _fx_oa2 = getattr(position, "opened_at", None)
+                        if isinstance(_fx_oa2, str) and _fx_oa2:
+                            _fx_oa2 = datetime.fromisoformat(_fx_oa2.replace("Z", "+00:00"))
+                        _fx_oa_day = _fx_oa2.astimezone(_fx_ZI("America/New_York")).date().isoformat() if isinstance(_fx_oa2, datetime) else _fx_today
+                        if _fx_e.get("sess") != _fx_today and _fx_oa_day < _fx_today:
+                            _fx_new = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0)))
+                            if _fx_new > 0:
+                                logger.critical(f"🛡️ [FIXED_STOP_SESSION_REFREEZE] {position_key}: session {_fx_today} open — stop {_fx_lvl:.4f} -> new dc_15m {'low' if is_long else 'high'} level {_fx_new:.4f}")
+                                _fx_lvl = _fx_new
+                                _fx_lvmap[position_key] = {"level": _fx_lvl, "sig": _fx_sig, "sess": _fx_today}
+                                trade_manager._fixed_stop_registry_save()
+                except Exception as _fx_se:
+                    logger.warning(f"[FIXED_STOP_SESSION_REFREEZE] {position_key}: {_fx_se}")
                 if _fixed_stop_core.breached(is_long, current_price, _fx_lvl):
                     _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     logger.critical(
@@ -43768,7 +43788,13 @@ class TradierTradeManager:
                     return str(_r)
                 return "NONE_FLAT"
             _qty = max(1, int(amt))
-            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig and int(have.get("qty", _qty) or _qty) == _qty:
+            try:  # 2026-10-13: the resting stop must sit at the CURRENT frozen level (FIXED_STOP_SESSION_REFREEZE moves it) — tick-exact
+                _lv_long = str(position_side or "").upper() == "LONG"
+                _lv_want = _fixed_stop_core.round_to_tick(_lv_long, _fixed_stop_core.exchange_level(_lv_long, float(soft_level or 0.0)), 0.01) if float(soft_level or 0.0) > 0 else 0.0
+            except Exception:
+                _lv_want = 0.0
+            _lv_ok = _lv_want <= 0 or not have or abs(float(have.get("stopPrice", 0) or 0) - _lv_want) < 0.0051
+            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig and int(have.get("qty", _qty) or _qty) == _qty and _lv_ok:
                 # NEVER-AGAIN (crypto twin): a recorded oid is a claim, not proof — re-verify at the broker on a TTL.
                 _vmap = getattr(self, "_fx_stop_verify_ts", None)
                 if not isinstance(_vmap, dict):
@@ -46610,6 +46636,11 @@ class TradierTradeManager:
                     _ex_side = str(_ex_o.get("side", "")).lower()
                     _ex_status = str(_ex_o.get("status", "")).lower()
                     # Tradier side is buy/sell, our side is BUY/SELL
+                    # 2026-10-14 USER "NO blocking loss closes if the vector tells you to": our own resting protective
+                    # stop (sell / buy_to_cover stop|stop_limit, §98 GUARANTEED STOP) is NOT a duplicate order — it refused every
+                    # LONG exit here before the cancel-before-exit handoff in place_order could run. Same exemption as ODG.
+                    if _odg.tradier_protective_stop(_ex_o.get("type"), _ex_o.get("side")):
+                        continue
                     if (
                         _ex_sym == symbol.upper()
                         and _ex_side == side.lower()

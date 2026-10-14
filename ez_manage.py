@@ -34520,9 +34520,11 @@ class MultiAccountTradeManager:
                 if _brake_gain > 0.1:
                     _is_profitable_close = True  # Profitable closes ALWAYS execute — never blocked by brake
                 # Losing closes/reduces are STILL subject to the brake — NO exceptions
+            # 2026-10-14 USER "NO blocking loss closes if the vector tells you to": a vec-decided CLOSE/REDUCE (_vd_exempt) is never braked.
+            _eb_vec_exit = bool(_is_close and _vd_exempt)
             _live_eb_blocked = False
             _live_eb_reason = "OK"
-            if not _is_profitable_close:
+            if not _is_profitable_close and not _eb_vec_exit:
                 _max_per_min = int(getattr(config, "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN", 10) or 10)
                 if _max_per_min > 0 and _cache.get("min_total", 0) >= _max_per_min:
                     _live_eb_blocked = True
@@ -34558,7 +34560,7 @@ class MultiAccountTradeManager:
                 with open(str(_compare_file), "a") as _cf: _cf.write(json.dumps(_compare_eb) + "\n")
                 if _divergent_eb: logger.warning(f"⚠️ [LIVE_VS_VEC_DIVERGENCE] emergency_brake divergence on {position_key} action={action}: live_blocked={_live_eb_blocked} ({_live_eb_reason}) vs vec_blocked={_vec_eb_blocked} ({_vec_eb_res})")
                 if bool(getattr(config, "LIVE_VEC_EMERGENCY_BRAKE_ENABLED", False)):
-                    if _vec_eb_blocked:
+                    if _vec_eb_blocked and not _eb_vec_exit:
                         logger.critical(f"🛑 [LIVE_VEC_EMERGENCY_BRAKE] {position_key}: VEC BRAKE ENFORCED! reason={_vec_eb_res}")
                         return f"BLOCKED_{_vec_eb_res}"
                     _live_eb_blocked = False

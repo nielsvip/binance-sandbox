@@ -8552,6 +8552,9 @@ class QuickConfig:
     UNTESTED_FLAT_SPS_MULT: float = (
         0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).
     )
+    FIXED_STOP_SESSION_REFREEZE_ENABLED: bool = (
+        False  # USER 2026-10-13 (stocks): mirror of config_tradier.py — first RTH bar of each ET session re-freezes a carried position's FIXED_STOP to the current dc_15m channel (vec_decisions/fixed_stop.session_open_mask).
+    )
     VEC_CONVERGE_OPEN_ENABLED: bool = (
         True  # USER 2026-10-13: mirror of config.py (live follows the vec position: vec holds + live flat -> open; the vec sim IS that position, no vec path).
     )
@@ -18105,6 +18108,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # lane-D 2026-10-06 STOCKS live session/hold gates (vec_decisions/stocks_live_session_gates.py, stocks_wtdc_scorer_exit.py)
     _sg_rth_off = None
     _sg_obuf = None
+    _fx_sess_open = None  # 2026-10-13 FIXED_STOP_SESSION_REFREEZE first-RTH-bar mask (stocks, switch on only)
     _htfv_sup = None
     _wsx_score = None
     _dg_block = None
@@ -18118,6 +18122,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if len(_sg_ts) == n:
                 # USER 2026-10-06: STOCKS NEVER TRADE OUTSIDE MARKET HOURS — unconditional (no switch, no template row)
                 _sg_rth_off = ~_slsg.rth_mask(_sg_ts, bmin)
+                if bool(getattr(cfg, "FIXED_STOP_SESSION_REFREEZE_ENABLED", False)):  # 2026-10-13 USER (stocks) — single call site
+                    import vec_decisions.fixed_stop_session as _fxs
+
+                    _fx_sess_open = _fxs.session_open_mask(_sg_ts, bmin)
                 _sg_obuf = _slsg.opening_buffer_mask(
                     _sg_ts,
                     float(getattr(cfg, "OPENING_BUFFER_NO_CLOSE_MINUTES", 30.0) or 0.0),
@@ -19982,6 +19990,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _fx_c15l, _fx_c15h = 0.0, 0.0
                     _fx_lvl = vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_c15l, _fx_c15h, float(pos.get("entry_price", pos.get("avg_price", px))))
                     pos["fixed_stop"] = _fx_lvl
+                if _fx_sess_open is not None and i < len(_fx_sess_open) and bool(_fx_sess_open[i]) and int(pos.get("entry_bar", i)) < i:
+                    # 2026-10-13 FIXED_STOP_SESSION_REFREEZE (stocks): carried into this session -> new stop at the current dc_15m channel
+                    _fx_new = vec_decisions.fixed_stop.freeze_software_level(is_long, float(_uh_l15[i]) if i < len(_uh_l15) else 0.0, float(_uh_h15[i]) if i < len(_uh_h15) else 0.0, float(pos.get("entry_price", pos.get("avg_price", px))))
+                    if _fx_new > 0:
+                        _fx_lvl = _fx_new
+                        pos["fixed_stop"] = _fx_lvl
                 if vec_decisions.fixed_stop.breached(is_long, px, _fx_lvl):
                     _fx_fire = "FIXED_STOP"
             if _fx_fire:

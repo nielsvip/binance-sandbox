@@ -282,6 +282,36 @@ def reclaim_buffer_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any,
         return None
 
 
+def reclaim_ready_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
+    """2026-10-13 USER "re-enter when a closed 15m bar reclaims the stop level … make sure it is guaranteed": the per-bar
+    confirmation legs of live B00 PRICE_ABOVE_EXIT (ez_manage evaluate_reentry ~41531 / tradier_manage H2 ~39858), exact
+    twin: close on the trend side of ema_9_15m (ema<=0 passes) AND 15m WT turning (LONG wt1>wt2, wt_velocity>0, k_15m<80;
+    SHORT mirrored). k_3m leg bypassed exactly like live with USE_1M_3M_SIGNALS_ENABLED=False. The stateful price leg
+    (close vs last exit x (1 +/- REENTRY_EXIT_RECLAIM_BUFFER_PCT)) is applied in simulate_one against the ledger exit price.
+    None = switch off or a field missing (no fabrication)."""
+    try:
+        if not _b(cfg, "REENTRY_EXIT_RECLAIM_ENABLED", True):
+            return None
+        px = _col(npz, "close", n)
+        ema9 = _col(npz, "ema_9_15m", n)
+        w1 = _col(npz, "wt1_15m", n)
+        w2 = _col(npz, "wt2_15m", n)
+        vel = _col(npz, "wt_velocity_15m", n)
+        k15 = _col(npz, "k_15m", n)
+        if any(a is None for a in (px, ema9, w1, w2, vel, k15)):
+            return None
+        e = np.nan_to_num(ema9, nan=0.0)
+        if is_long:
+            sma_ok = (e <= 0) | (px > e)
+            wt_ok = (w1 > w2) & (vel > 0) & (np.nan_to_num(k15, nan=50.0) < 80)
+        else:
+            sma_ok = (e <= 0) | (px < e)
+            wt_ok = (w1 < w2) & (vel < 0) & (np.nan_to_num(k15, nan=50.0) > 20)
+        return np.isfinite(px) & sma_ok & wt_ok
+    except Exception:
+        return None
+
+
 # === 10. REENTRY_POST_CONSOL_ENABLED (ez :43568) — armed gate ===
 def post_consol_armed(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
     try:

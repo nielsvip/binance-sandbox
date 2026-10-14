@@ -74,3 +74,41 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 | 21:00 | 17:00 (after-hours) |
 
 Use UTC in all cron jobs. Mac cron defaults to system time (ET local); S1 should be UTC.
+---
+
+## LIVE FAILOVER S1 (2026-10-13)
+
+USER (verbatim): "make sure tradier_indicators and ez_indicators on s1 kick in immediately if the live trading has >3min of no latest data, as this is the FIRST PRIORITY, so they immediately take over on an IP ban or whatever might be slowing them down — also that if the macbook is not producing new klines or indicators for either cat, the entire trading system in /binance/ is started immediately and follows seamlessly."
+
+### Components
+| Where | File / unit | Role |
+|---|---|---|
+| Mac | `tools/mac_failover_agent.py` (launchd `com.niels.live-failover-agent`, KeepAlive, 15 s tick) | measures Mac live-input freshness per venue, pushes `data/live_failover/mac_data_heartbeat.json` to S1 and reads back lease+state in ONE ssh (s1-pub, fallback s1-int), fences, stages Mac state on S1, pulls+applies S1 data while a venue is ACTIVE |
+| both | `tools/live_failover_common.py` | freshness model, NYSE session (holiday aware), newer-bar-only atomic apply |
+| S1 | `tools/live_failover_s1.py` (systemd `live-failover-watchdog.service`, enabled, 15 s tick) | data-failover state machine per venue + leased full-trading failover |
+| S1 | `live-failover-crypto-producers.service` → `tools/s1_producers_crypto.sh` (on demand, not enabled) | keeps the isolated `ez_s1_stack` (ez_klines/ez_prices/ez_mark_prices/ez_prices_ws/ez_indicators/merger, own Redis) running |
+| S1 | `live-failover-stocks-producers.service` → `tools/s1_producers_stocks.sh` (on demand, not enabled) | `tradier_klines.py` loop + `tradier_indicators.py` from the ~/binance live mirror (conda env) |
+| S1 | `live-failover-trading.service` → `tools/s1_trading_supervisor.sh` (on demand, not enabled) | ez_manage ang/inf/flz/men/fin (+ non-stack feeds via `tools/s1_failover_start.sh`, ez_positions_watchdog, ez_reentry_daemon), tradier_manage trb/trc/tra on session days — ONLY while S1 holds the lease |
+| both | `tools/live_failover_lease_gate.sh` | `lf_lease_fenced <script> <workdir>`; sourced by `run_with_watchdog.sh` (Mac) and `tools/s1_failover_start.sh` + supervisor (S1) |
+| S1 | `tools/live_failover_ctl.sh` | manual override |
+
+State: S1 `~/binance/data/live_failover/{lease.json (authoritative), state.json, outbox/<venue>/ (+MANIFEST.json provenance), mac_state/ (Mac account dirs + managed_stops.json, mtime-preserved), ALERTS.jsonl, ALERT_LATEST.json, TRADING_FAILOVER_ENABLED}`; log `~/logs/live_failover.log`. Mac `data/live_failover/{lease_local.json, mac_data_heartbeat.json, s1_state.json, delivery.jsonl, delivered_index.json, ALERTS.jsonl}`; log `~/logs/live_failover_agent.log`; stage `/Users/niels/live_failover_stage/`.
+
+### What triggers what
+1. **Data failover (per venue, always on):** S1 sets the venue ACTIVE on the FIRST tick where the Mac heartbeat reports the venue stale, or the heartbeat is older than 90 s. Stale =
+   * crypto: Mac-own snapshot (`data/market_data_*.json`, not `_s1`/worker) not written for >180 s; or median 15m bar >180 s behind the last closed 15m bar; or median 3m >540 s behind (Mac writes 3m in batches); or any 418/429/-1003/"banned until" line in `~/logs/ez_klines.log` in the last 180 s.
+   * stocks (NYSE session only, open+8 min .. close+5 min): `data/tradier/tradier_indicators_latest.json` not written >180 s; or median 5m/15m bar >180 s behind the last closed session bar; or ≥5 "fetch failed/timeout"/429 lines in `~/logs/tradier_klines.log` in 180 s.
+   * files the agent itself delivered from S1 are excluded from the measurement (S1 data never makes the Mac look healthy).
+   ACTIVE → `systemctl start live-failover-<venue>-producers` + outbox rebuilt every tick with the freshest S1 copy of every live symbol/TF (crypto 3m/15m/1h/4h from `ez_s1_stack/klines_cache` + `latest_market_data.json` + price_cache; stocks 1m/5m/15m/1h freshest of `~/binance` and `~/binance-sandbox` `klines_cache/tradier` + freshest `tradier_indicators_latest.json`). The Mac agent rsyncs the outbox (S1 cannot reach the Mac: NAT) and replaces a Mac file ONLY when the S1 newest bar is strictly newer (tmp+fsync+os.replace); crypto snapshot published as `data/market_data_<S1 write time>_s1.json` (content gate `scripts/s1_snapshot_fresh_gate.py`; withdrawn when the venue returns NORMAL); tradier indicators / price_cache only when the Mac's own copy is stale. NORMAL again after the Mac is fresh for 600 s continuously (stocks also at session end). Egress: S1 157.180.125.52 vs the Mac's own IP — a Mac IP ban does not hit S1. (Tradier limits are per TOKEN, not per IP: the S1 producer uses the same data token.)
+2. **Full trading failover (armed by `TRADING_FAILOVER_ENABLED`):** all of, for 4 consecutive ticks: Mac data heartbeat ≥300 s old AND Mac pushes stopped (newest Mac `market_data_2*` in `~/binance/data` and `~/binance-sandbox/klines_cache_macbook` ≥300 s) AND (Mac unreachable = no independent witness `mac_live_heartbeat.json`/`mac_order_pulse.json` <300 s, OR reachable but every crypto ez_manage dead ≥300 s). Then: lease → holder s1 gen+1 → merge `mac_state/` into `~/binance/<acct>/` (newer mtime wins, never deletes/zeroes) → bridge S1 data into `~/binance` (klines_cache, `market_data_*_s1.json`, price_cache) → `systemctl start live-failover-trading`.
+3. **Fencing (Mac and S1 never both trade):** S1 starts traders only with `lease.json` holder s1 (`s1_failover_start.sh` refuses otherwise — this also neuters the legacy disarmed `s1_failover_monitor.sh`). The Mac agent writes `lease_local.json` holder s1 FIRST, then SIGTERMs every gated trader (ez_manage, tradier_manage, ez_positions_watchdog, ez_positions, ez_copilot, ez_reentry_daemon, tradier_positions) and reports `fence_ack_gen`; `run_with_watchdog.sh` refuses to spawn gated scripts while holder s1 (LEASE_FENCED, even with TRADIER_LOCAL_ONLY=1). Third layer (pre-existing): ez_manage `execute_now` SERVER_HEARTBEAT_BLOCK refuses Mac crypto orders while S1's ez_manage heartbeat is fresh. On a manual force-s1 with the Mac alive, S1 waits for the Mac's fence ack (or 120 s silence) before starting traders.
+4. **Failback:** Mac heartbeat fresh and every applicable venue fresh for 600 s (or `force-mac`) → `systemctl stop live-failover-trading` (cgroup SIGTERM, 90 s) → verify no S1 ez_manage/tradier_manage left (else FAILBACK_BLOCKED, lease stays) → lease holder mac gen+1 → the Mac agent pulls S1 account dirs + managed_stops.json (`rsync --update`, never deletes) BEFORE writing holder mac locally → wrappers spawn again.
+
+### Manual override (from the Mac: `ssh s1-pub /home/niels/binance/tools/live_failover_ctl.sh <cmd>`)
+`status` · `force-s1` (pin S1) · `force-mac` (one-shot failback, then auto) · `pin-mac` (hold on Mac, no auto takeover) · `auto` (clear pin) · `arm` / `disarm` (full trading takeover) · `data-test <crypto|stocks>`.
+
+### Known limits
+* Wrappers started before 2026-10-13 23:4xZ run the old `run_with_watchdog.sh` (bash keeps the old inode) — without the LEASE_FENCED gate until restarted; while fenced the agent SIGTERMs their children each tick and SERVER_HEARTBEAT_BLOCK blocks orders.
+* A full Mac↔S1 AND Mac↔gateway partition while the Mac still reaches Binance would satisfy "unreachable" (both witnesses ride the same paths). Takeover additionally needs every Mac push stopped for 5 min.
+* The always-on `ez_s1_stack` is the hot crypto standby (user order 2026-10-06, ~1.3 cores); a cold start would need a klines REST burst (ban risk).
+* Proof: `tests/test_live_failover.py` (14 tests, Mac + S1).
