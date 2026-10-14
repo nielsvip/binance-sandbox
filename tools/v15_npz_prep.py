@@ -178,6 +178,24 @@ def main():
             out(r)
     except ImportError:
         pass
+    if not live.exists() and not a.dry_run and os.environ.get("V15_NPZ_PEER_SEED", "1") != "0":
+        # 2026-10-14: a from-scratch stock build ran 40+ min single-core and held a fleet slot (QBTS/DINO/MPC on S1). Seed from a peer copy
+        # first; the stale-tail refresh/regen below then brings it to the latest closed bar (JIT law unchanged).
+        for peer in [h for h in os.environ.get("V15_NPZ_PEERS", "10.0.0.4").split(",") if h]:
+            stg_seed = IND / f".{sym}.npz.peerseed"
+            try:
+                rc = subprocess.run(["rsync", "-a", "--timeout=60", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=8", f"{peer}:binance-sandbox/backtest_v8/indicators/{sym}.npz", str(stg_seed)], capture_output=True, timeout=180).returncode
+                if rc == 0 and stg_seed.exists():
+                    p0, p1, pn, _pk = last_bar(stg_seed)
+                    if pn >= 500 and (p1 - p0) >= 30 * 86400:
+                        os.replace(stg_seed, live)
+                        r["peer_seed"] = peer
+                        break
+            except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+                pass
+            finally:
+                if stg_seed.exists():
+                    stg_seed.unlink()
     if not live.exists():
         # 2026-10-13: a symbol in the dispatch universe without an S1 NPZ (e.g. RIO) was refused forever ("no live NPZ").
         # JIT law: build it now, for exactly this dispatch.
