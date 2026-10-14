@@ -1373,7 +1373,44 @@ def _mandatory_summary() -> str:
 
 # GLOBAL_ONLY (USER 2026-10-13): never a row, never in a board's cumulative/final set, stripped on every ingest + progress write.
 # 2026-10-14: 3 live per-sym rows carried PARITY_VEC_EXACT_MODE=False -> crypto sym_sides traded without vector authorization.
-GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR"})
+GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "SIM_ACCOUNT", "SIM_TRADING_ACCOUNT"})
+
+
+def install_sim_account_hook(symside: str):
+    """Settlement-parity lane (2026-10-14, vec_decisions/cash_settlement.py): a stock board is evaluated AS the account that
+    can open it (cash_settlement.board_account(sym, side, TradierConfig())) — injected into the overrides at EVALUATION time
+    only (tools.opt.v12_pilot.evaluate_prepared_sanitized / evaluate_sanitized, patched in-process so forked pool workers
+    inherit it), never into cumulative_overrides / any per-sym set (SIM_ACCOUNT is GLOBAL_ONLY). Injected only when the
+    account differs from the engine default (trb): today every stock maps to trb (tra cash is entry-banned) -> results and
+    eval-cache keys unchanged; parity is guaranteed the day a cash account can open. Returns the account (or None)."""
+    try:
+        sym, side = str(symside).rsplit("_", 1)
+        if not map_key_for_symside(symside).startswith("STOCKS") or os.environ.get("V15_SIM_ACCOUNT_HOOK", "1") != "1":
+            return None
+        from vec_decisions import cash_settlement as _cs
+        from config_tradier import TradierConfig as _TC
+        acct = str(_cs.board_account(sym, side, _TC())).lower()
+        if acct == str(_cs.sim_account(None)).lower():
+            return acct
+        from tools.opt import v12_pilot as _vp
+        if getattr(_vp, "_v15_sim_account_hooked", None) == acct:
+            return acct
+        _orig_ps, _orig_s = _vp.evaluate_prepared_sanitized, _vp.evaluate_sanitized
+        def _eps_acct(prepared, overrides, window_days=30, include_ledger=False):
+            ov = dict(overrides or {})
+            ov["SIM_ACCOUNT"] = acct
+            return _orig_ps(prepared, ov, window_days, include_ledger)
+        def _es_acct(ss, overrides, window_days=30, include_ledger=False):
+            ov = dict(overrides or {})
+            ov["SIM_ACCOUNT"] = acct
+            return _orig_s(ss, ov, window_days, include_ledger)
+        _vp.evaluate_prepared_sanitized, _vp.evaluate_sanitized = _eps_acct, _es_acct
+        _vp._v15_sim_account_hooked = acct
+        print(f"[SIM-ACCOUNT] {symside} evaluated as account {acct} (cash settlement parity; never written to a set)", flush=True)
+        return acct
+    except Exception as _sae:
+        print(f"[SIM-ACCOUNT-warn] {symside}: {_sae}", flush=True)
+        return None
 
 
 def strip_global_only(ov):
@@ -3013,7 +3050,7 @@ def prior_row_policy(prior: dict, tab: str, switch, cand, hdrs, rr: int, seq: in
 # boards, last board <= V15_V17_CARRY_MAX_AGE_D (3 d, the NPZ window shift), a carried row is re-evaluated after
 # V15_V17_CARRY_MAX_RUN (2) carried boards, rotating 1/V15_V17_CARRY_SAMPLE (10) sample, never WINNER (V15_V17_CARRY_WINNER=0),
 # never sacred rows, optional start-set fingerprint match (V15_V17_CARRY_REQUIRE_FP=1).
-V17_CUTTABLE_PHASES = frozenset({"P1_PROBE", "P3_FOCUS", "P3_ABLATION", "P3_RETEST", "P3_PROBE", "P3_COMBO", "P3_SURGEON"})  # never REGIME365 / TIMFIX / ESSENTIAL (law)
+V17_CUTTABLE_PHASES = frozenset({"P1_PROBE", "P3_FOCUS", "P3_ABLATION", "P3_RETEST", "P3_PROBE", "P3_COMBO", "P3_SURGEON", "P4_FFR", "P4_POST_ENDGAME_DIAG"})  # never REGIME365 / TIMFIX / ESSENTIAL (law); best-start floor / best-seen gate / adopt guards are not phases and always run
 
 
 def v17_phase_cut_list(path=None) -> set:
@@ -3099,8 +3136,9 @@ def symside_tier(baseline_gain, bh, trades, prior_best=None, floor_trades=10, fo
         meta["why"] = f"forced {f}"
         meta["focus_s"] = _TIER_FOCUS_S[f]
         return f, meta
-    if b >= _TIER_BIG_MOVER:
-        tier, why = "WINNER", f"big mover bh {b:.2f} >= {_TIER_BIG_MOVER} (BH favours this side)"
+    _win_big = float(os.environ.get("V15_TIER_WIN_BIG_MOVER", "25"))  # USER 2026-10-14: WINNER = real potential, or |bh| >= 25
+    if b >= _win_big:
+        tier, why = "WINNER", f"big mover bh {b:.2f} >= {_win_big} (BH favours this side)"
     elif b <= -_TIER_BIG_MOVER:
         meta["bh_opposing"] = True
         tier = "MEDIOCRE" if potential > 0.0 and t >= int(floor_trades) else "LOSER"
@@ -7165,7 +7203,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     # 2026-10-14 KPI: combo 0.03 pp/core-min (s1+s2: 7,800 s of combo wall -> 16.5 pp; repeats mostly 0) -> a WINNER
                     # repeats the combo step only while its own last call lifted >= V15_V17_MIN_LIFT_PM pp/min (the 0.3 rule per phase)
                     _cg0, _ct0 = float(cumulative_gain), _t.time()
-                    _csh = float(os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.3")) if _win else float(os.environ.get("V15_V17_COMBO_SHARE", "0.35"))
+                    _csh = float(os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.5")) if _win else float(os.environ.get("V15_V17_COMBO_SHARE", "0.35"))
                     _v17_combo_step(_t.time() + max(max(0.0, deadline - _t.time()) * _csh, (_cmin + 20.0) if _it == 1 and not _win else 0.0), "P3_COMBO" if _it == 1 else f"P3_COMBO_{_it}")
                     _combo_rate[0] = (float(cumulative_gain) - _cg0) / max(1e-6, (_t.time() - _ct0) / 60.0)
                 # SURGEON first: it owns the guaranteed budget (USER 2026-10-13); generic steps use what it leaves
@@ -7839,10 +7877,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _e_drain:
         print(f"[red-fixer-drain-warn] {_e_drain}", flush=True)
     # Now fill LIVE_DELTA and LIVE_SHARPE when entire sheet complete via backtest_v12_engine parity
-    if _v17_on:
+    _ffr_cut = bool(_v17_on and _v17_phase_cut("P4_FFR"))
+    _post_cut = bool(_v17_on and _v17_phase_cut("P4_POST_ENDGAME_DIAG"))
+    if _v17_on and not _ffr_cut:
         _v17_t["ffr"] = _v17_phase_start("P4_FFR")
     try:
-        _final_filter_recheck()
+        if _ffr_cut:
+            print(f"[V17-PHASE-CUT] {new_symside} P4_FFR skipped (0 lifts on >= {os.environ.get('V15_V17_CUT_MIN_N', '20')} new-build boards)", flush=True)
+        else:
+            _final_filter_recheck()
     except Exception as _fe:
         print(f"[final-recheck-warn] {_fe}", flush=True)
     if _v17_on:
@@ -7855,11 +7898,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _tfe:
             print(f"[V17-WARN] timfix {_tfe}", flush=True)
         _v17_cap_post()
-        _v17_t["post"] = _v17_phase_start("P4_POST_ENDGAME_DIAG")
+        if not _post_cut:
+            _v17_t["post"] = _v17_phase_start("P4_POST_ENDGAME_DIAG")
     # USER 2026-10-07 ENDGAME: strip filters -> naked switch retest -> one-by-one reapply to bh+10.
     # Deterministic audit BEFORE the beam-search repair. V15_ENDGAME=0 disables.
     try:
-        if _tier_skip_post:
+        if _post_cut:
+            print(f"[ENDGAME] {new_symside} skipped (V17 phase cut P4_POST_ENDGAME_DIAG: 0 lifts on >= {os.environ.get('V15_V17_CUT_MIN_N', '20')} new-build boards)", flush=True)
+            progress["endgame"] = {"skipped": "v17 phase cut"}
+        elif _tier_skip_post:
             print(f"[ENDGAME] {new_symside} skipped (tier {_tier_name}: lightning board, USER 2026-10-12)", flush=True)
             progress["endgame"] = {"skipped": f"tier {_tier_name}"}
         else:
@@ -7873,7 +7920,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # 365D check of the finalists, replace the final set only when compliant and better. V15_DIAG_REPAIR=0 disables,
     # V15_DIAG_REPAIR_MODE=report measures + writes the tab without changing the set.
     try:
-        if _tier_skip_post:
+        if _post_cut:
+            print(f"[DIAG] {new_symside} skipped (V17 phase cut P4_POST_ENDGAME_DIAG)", flush=True)
+            progress["diagnose_repair"] = {"skipped": "v17 phase cut"}
+        elif _tier_skip_post:
             print(f"[DIAG] {new_symside} skipped (tier {_tier_name}: lightning board, USER 2026-10-12)", flush=True)
             progress["diagnose_repair"] = {"skipped": f"tier {_tier_name}"}
         elif os.environ.get("V15_DIAG_REPAIR", "1") == "1" and fast_switches is None and prepared is not None:
@@ -9806,6 +9856,7 @@ def main():
         except Exception:
             new_symside = "AAPL_LONG"
 
+    install_sim_account_hook(new_symside)
     # ═══ DEDUP LOCK (USER 2026-09-28): PROHIBIT duplicate v15_pilot for the same sym_side ═══
     # Root cause of the S1 hang: 2+ pilots for one sym_side (e.g. 15× UUUU_LONG) raced on the same
     # SPREADSHEETS/V15_V16_CELL_BY_CELL/{SYM_SIDE}_30d_matrix.xlsx — one _atomic_save os.replace()

@@ -29,8 +29,8 @@ DEFAULT_STALE_S = 60.0  # service REST cycles reach 30+ s on slow API (men/fin 2
 FILE_FRESH_S = 30.0
 HEARTBEAT_NAME = ".positions_service_heartbeat.json"
 POSITION_FILE_NAMES = ("long_positions.json", "short_positions.json")
-OVERLAY_FIELDS = ("fixed_stop_price", "exchange_stop_order_id", "r1_stop_price", "is_hedge", "hedge_for", "last_signal", "sba_add_count", "last_sba_time", "sba_total_added_usd", "entry_price_before_sba")
-_ROLE_BY_SCRIPT = {"ez_manage.py": "manage", "ez_positions_realtime.py": "failover", "ez_positions_service_main.py": "service"}
+OVERLAY_FIELDS = ("fixed_stop_price", "exchange_stop_order_id", "r1_stop_price", "is_hedge", "hedge_for", "last_signal", "sba_add_count", "last_sba_time", "sba_total_added_usd", "entry_price_before_sba", "cycle_peak_gain", "trade_wing")  # last two: stocks (tradier_manage) bookkeeping
+_ROLE_BY_SCRIPT = {"ez_manage.py": "manage", "tradier_manage.py": "manage", "ez_positions_realtime.py": "failover", "ez_positions_service_main.py": "service"}
 _identity_write_ok = contextvars.ContextVar("pwg_identity_write_ok", default=False)
 _last_log = {}
 
@@ -382,9 +382,9 @@ def before_write(path, rows, role=None, log=None, overlay=True):
         if _rate_limited(f"deny:{path}"):
             log.info(f"[SINGLE_WRITER] {role} write to {path} skipped: {why}")
         return False
-    apply_overlay(rows, read_json(overlay_path(path)))
     disk = seeded_disk_rows(path)
-    rejected = enforce_identity(rows, disk)
+    rejected = enforce_identity(rows, disk)  # identity first, so the overlay is matched against the TRUE lifecycle
+    apply_overlay(rows, read_json(overlay_path(path)))
     for k, disk_mg, new_mg in enforce_max_gain(rows, disk):
         if _rate_limited(f"mg:{k}", 300.0):
             log.warning(f"🛡️ [MAX_GAIN_DECREASE_REJECTED] {k}: kept {disk_mg}, refused {new_mg} (role={role})")

@@ -25,7 +25,7 @@ def test_endgame_defined_and_called_in_order():
     d = _pos("def _endgame_filter_cycle():")
     call = _pos("            _endgame_filter_cycle()\n")
     assert call > d
-    assert _pos("\n        _final_filter_recheck()\n") < call < _pos("\n            _diagnose_repair()\n")
+    assert _pos("\n            _final_filter_recheck()\n") < call < _pos("\n            _diagnose_repair()\n")  # 2026-10-14: FFR call nested under the V17 phase-cut branch
 
 
 def test_env_gates_and_budget():

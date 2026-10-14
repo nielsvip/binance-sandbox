@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.." || exit 1
 LOCKD=/tmp/klines_canonical_push.lockdir
 if ! mkdir "$LOCKD" 2>/dev/null; then
     pid=$(cat "$LOCKD/pid" 2>/dev/null)
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then exit 0; fi
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then touch /tmp/klines_canonical_push.again; exit 0; fi
     rm -rf "$LOCKD"; mkdir "$LOCKD" || exit 0
 fi
 echo $$ > "$LOCKD/pid"
@@ -22,5 +22,9 @@ push() {
         echo "$(ts) push $host:$dst FAILED"
     fi
 }
-push s1-pub binance-sandbox/klines_canonical
-push 10.0.0.4 binance-sandbox/klines_canonical
+while true; do
+    rm -f /tmp/klines_canonical_push.again
+    push s1-pub binance-sandbox/klines_canonical
+    push 10.0.0.4 binance-sandbox/klines_canonical
+    [ -f /tmp/klines_canonical_push.again ] || break   # a push was requested while this one ran (HTF pass) -> one more round
+done

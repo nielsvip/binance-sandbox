@@ -80,4 +80,19 @@ def test_rotation_off_is_eligibility(monkeypatch):
 
 def test_combo_repeat_gated_by_own_rate():
     assert "(_win and _combo_rate[0] >= float(os.environ.get(\"V15_V17_MIN_LIFT_PM\", \"0.3\")))" in SRC
-    assert 'os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.3")' in SRC
+    assert 'os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.5")' in SRC
+
+
+def test_p4_cuttable_and_guards_stay():
+    assert {"P4_FFR", "P4_POST_ENDGAME_DIAG"} <= P.V17_CUTTABLE_PHASES
+    assert '_post_cut = bool(_v17_on and _v17_phase_cut("P4_POST_ENDGAME_DIAG"))' in SRC
+    i_cut = SRC.index('_post_cut = bool(_v17_on')
+    assert SRC.index("BEST-SEEN PUBLISH GATE", i_cut) > i_cut and SRC.index("[BEST-START-FLOOR] {new_symside} REFUSED") > i_cut
+
+
+def test_winner_needs_real_potential(monkeypatch):
+    monkeypatch.delenv("V15_TIER_FORCE", raising=False)
+    monkeypatch.delenv("V15_TIER_WIN_BIG_MOVER", raising=False)
+    assert P.symside_tier(3.0, 12.0, 40, None)[0] == "MEDIOCRE"  # aligned mover bh 12, potential 3 -> no longer WINNER
+    assert P.symside_tier(3.0, 12.0, 40, 15.0)[0] == "WINNER"  # previous final 15 >= max(bh 12, 10)
+    assert P.symside_tier(1.0, 30.0, 40, None)[0] == "WINNER"  # |bh| >= 25 stays WINNER

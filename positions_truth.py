@@ -1198,12 +1198,12 @@ def rewrite_row_from_broker(venue: str, account: str, symbol: str, position_side
         # lifecycle's opened_at from the broker opening fill.
         row.update(fields)
         data[key] = row
-        if venue == "binance":  # USER 2026-10-14 SINGLE POSITION WRITER: only ez_positions_service writes crypto position files
-            import position_writer_guard as _pwg
-            if _pwg.process_role() == "manage" or not _pwg.before_write(path, data, log=log):
+        import position_writer_guard as _pwg  # USER 2026-10-14 SINGLE POSITION WRITER: only ez_positions_service (crypto) / tradier_positions (stocks) write position files
+        if _pwg.process_role() == "manage" or not _pwg.before_write(path, data, log=log, overlay=False):
+            if venue == "binance":
                 _update_memory_binance(account, key, fields)
-                log.critical(f"🩹 [POSITIONS_FILE_REWRITE_DEFERRED_TO_SERVICE] {venue}:{key} positionAmt={amt} entry={entry} — role {_pwg.process_role()} may not write {path}; memory updated, the service reflects the broker on its next poll")
-                return True
+            log.critical(f"🩹 [POSITIONS_FILE_REWRITE_DEFERRED_TO_SERVICE] {venue}:{key} positionAmt={amt} entry={entry} — role {_pwg.process_role()} may not write {path}; the positions service reflects the broker on its next poll")
+            return True
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_name(f".{path.name}.broker_rewrite.{os.getpid()}.tmp")
         with open(tmp, "w") as fh:

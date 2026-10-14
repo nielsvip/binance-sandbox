@@ -25933,6 +25933,16 @@ class PositionReader:
                 continue
             for side_name, positions_dict in sides.items():
                 fpath = os.path.join(acc_dir, f"{side_name}_positions.json")
+                try:  # USER 2026-10-14 SINGLE POSITION WRITER (stocks): tradier_positions.py is the ONLY writer of the position
+                    # files; tradier_manage writes its bookkeeping (r1_stop_price, cycle_peak_gain, trade_wing, ...) to
+                    # .manage_overlay_<side>.json, which tradier_positions merges (same lifecycle) on its writes.
+                    import position_writer_guard as _pwg
+                    if _pwg.process_role() == "manage":
+                        _pwg.before_write(fpath, positions_dict, overlay=True)
+                        continue
+                except Exception as _pwg_e:
+                    logger.critical(f"[SINGLE_WRITER] overlay/guard error for {fpath} — position file NOT written (fail-closed): {_pwg_e!r}")
+                    continue
                 try:
                     disk = await load_json_safe(fpath) if os.path.exists(fpath) else {}
                     if not isinstance(disk, dict):

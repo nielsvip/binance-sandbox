@@ -342,3 +342,56 @@ def test_file_row_of_closed_lifecycle_not_carried():
     now = datetime(2026, 10, 14, 3, 45, tzinfo=timezone.utc)
     v, src = choose(pwg.to_epoch(OA_TRUE), None, OA_TRUE, "2026-10-14T01:00:00Z", now)  # a close was recorded after it
     assert v == now
+
+
+def _stock_row(oa="2026-10-13T14:12:43.228Z", **kw):
+    r = {"symbol": "A", "position_side": "LONG", "positionAmt": 3.0, "entry_price": 170.64, "opened_at": oa, "max_gain": 1.0, "cycle_peak_gain": 0.0, "r1_stop_price": 0.0, "trade_wing": "swing"}
+    r.update(kw)
+    return r
+
+
+def test_tradier_manage_role_is_manage(monkeypatch):
+    monkeypatch.delenv(pwg.ROLE_ENV, raising=False)
+    monkeypatch.setattr(sys, "argv", ["tradier_manage.py", "--accounts", "trb"])
+    assert pwg.process_role() == "manage"
+
+
+def test_tradier_manage_never_writes_stock_position_files(tmp_path, monkeypatch):
+    import asyncio
+    import tradier_manage as tm
+    from tradier_positions import TradierPosition
+    d = tmp_path / "trb"
+    d.mkdir()
+    (d / "long_positions.json").write_text(json.dumps({"trb:A_LONG": _stock_row()}))
+    before = (d / "long_positions.json").read_bytes()
+    monkeypatch.setenv(pwg.ROLE_ENV, "manage")
+    monkeypatch.setattr(tm.config, "get_account_config", lambda acc: {"account_dir": d})
+    rdr = object.__new__(tm.PositionReader)
+    rdr.positions = {"trb:A_LONG": TradierPosition(**_stock_row(oa="2026-10-14T13:31:00Z", entry_price=171.0, r1_stop_price=165.2, cycle_peak_gain=2.5, trade_wing="daytrade"))}
+    asyncio.run(rdr.save_all_positions())
+    assert (d / "long_positions.json").read_bytes() == before
+    ov = json.loads((d / ".manage_overlay_long.json").read_text())["rows"]["trb:A_LONG"]
+    assert ov["r1_stop_price"] == 165.2 and ov["cycle_peak_gain"] == 2.5 and ov["trade_wing"] == "daytrade"
+
+
+def test_tradier_positions_merges_manage_overlay_same_lifecycle(tmp_path):
+    d = tmp_path / "trb"
+    d.mkdir()
+    (d / "long_positions.json").write_text(json.dumps({"trb:A_LONG": _stock_row()}))
+    pwg.write_overlay(d / "long_positions.json", {"trb:A_LONG": _stock_row(r1_stop_price=165.2, cycle_peak_gain=2.5, trade_wing="daytrade", entry_price=999.0)})
+    rows = {"trb:A_LONG": _stock_row(oa="2026-10-14T13:31:00Z")}
+    assert pwg.before_write(d / "long_positions.json", rows, role="other", overlay=False) is True
+    r = rows["trb:A_LONG"]
+    assert r["opened_at"] == "2026-10-13T14:12:43.228Z" and r["r1_stop_price"] == 165.2 and r["cycle_peak_gain"] == 2.5 and r["trade_wing"] == "daytrade"
+    assert r["entry_price"] == 170.64  # overlay never carries identity
+
+
+def test_tradier_broker_rewrite_deferred_in_manage_role(tmp_path, monkeypatch):
+    import positions_truth
+    monkeypatch.setenv("POSITIONS_BASE_DIR", str(tmp_path))
+    monkeypatch.setenv(pwg.ROLE_ENV, "manage")
+    (tmp_path / "trb").mkdir()
+    (tmp_path / "trb" / "long_positions.json").write_text(json.dumps({"trb:A_LONG": _stock_row()}))
+    before = (tmp_path / "trb" / "long_positions.json").read_bytes()
+    assert positions_truth.rewrite_row_from_broker("tradier", "trb", "A", "LONG", {"amt": 4.0}) is True
+    assert (tmp_path / "trb" / "long_positions.json").read_bytes() == before
