@@ -1,65 +1,30 @@
 {
-  "ang:APEUSDT_LONG": {
-    "orderId": "4000001966358243",
-    "stopPrice": 0.1469,
-    "entry_sig": "2026-10-13 22:59:18.276750+00:00",
-    "symbol": "APEUSDT",
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002619710527",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 22:46:08.290044+00:00",
+    "symbol": "DOGEUSDC",
     "side": "LONG"
   },
-  "ang:ZENUSDT_LONG": {
-    "orderId": "4000001966430663",
-    "stopPrice": 6.142,
-    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
-    "symbol": "ZENUSDT",
+  "flz:ETHUSDC_LONG": {
+    "orderId": "1000002619712878",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 22:50:26.337631+00:00",
+    "symbol": "ETHUSDC",
     "side": "LONG"
   },
-  "ang:TRUMPUSDC_LONG": {
-    "orderId": "4000001966397797",
-    "stopPrice": 1.89,
-    "entry_sig": "2026-10-13 21:22:26.568669+00:00",
-    "symbol": "TRUMPUSDC",
+  "flz:DASHUSDT_LONG": {
+    "orderId": "1000002619762233",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 23:49:32.798893+00:00",
+    "symbol": "DASHUSDT",
     "side": "LONG"
   },
-  "ang:ALTUSDT_LONG": {
-    "orderId": "4000001966397798",
-    "stopPrice": 0.007927,
-    "entry_sig": "2026-10-13 23:02:31.791908+00:00",
-    "symbol": "ALTUSDT",
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002619762847",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 23:53:24.520035+00:00",
+    "symbol": "BNBUSDC",
     "side": "LONG"
-  },
-  "ang:TRBUSDT_LONG": {
-    "orderId": "4000001966355002",
-    "stopPrice": 18.561,
-    "entry_sig": "2026-10-13 18:52:22.159118+00:00",
-    "symbol": "TRBUSDT",
-    "side": "LONG"
-  },
-  "ang:PUMPUSDT_SHORT": {
-    "orderId": "4000001966332086",
-    "stopPrice": 0.0051,
-    "entry_sig": "2026-10-13 22:22:54.467672+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "SHORT"
-  },
-  "ang:BATUSDT_LONG": {
-    "orderId": "4000001966429270",
-    "stopPrice": 0.18278,
-    "entry_sig": "2026-10-13 23:49:11.151196+00:00",
-    "symbol": "BATUSDT",
-    "side": "LONG"
-  },
-  "ang:NEARUSDC_LONG": {
-    "orderId": "4000001966453685",
-    "stopPrice": 4.95,
-    "entry_sig": "2026-10-13 23:33:40.799771+00:00",
-    "symbol": "NEARUSDC",
-    "side": "LONG"
-  },
-  "ang:COTIUSDT_SHORT": {
-    "orderId": "4000001966461879",
-    "stopPrice": 0.012652,
-    "entry_sig": "2026-10-14 00:19:56.041428+00:00",
-    "symbol": "COTIUSDT",
-    "side": "SHORT"
   }
 }

@@ -47,7 +47,39 @@ STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
 GATED = ("ez_manage.py", "tradier_manage.py", "ez_positions_watchdog.py", "ez_positions.py", "ez_copilot.py", "ez_reentry_daemon.py", "tradier_positions.py")
 TRADER_RX = r"python[^ ]* .*(" + "|".join(name.replace(".", r"\.") for name in GATED) + r")"
 ACCOUNTS = C.CRYPTO_ACCOUNTS + C.STOCK_ACCOUNTS
-VERSION = "2026-10-13.1"
+VERSION = "2026-10-14.1"
+PULL_LAG_S = float(os.environ.get("LF_PULL_LAG_S", "60"))
+PULL_OFF_S = float(os.environ.get("LF_PULL_OFF_S", "600"))
+PULLER_LABEL = "com.binance.ez-s1-indicators-pull"
+PULLER_PLIST = Path(os.environ.get("LF_PULLER_PLIST", f"/Users/niels/Library/LaunchAgents/{PULLER_LABEL}.plist"))
+
+
+def pull_needed(venue, reading, lag_s=None):
+    """USER 2026-10-14: pull from S1 whenever the Mac's market data is >60 s behind the last closed bar
+    (or 418/429 / Tradier errors are seen). Returns (needed, why)."""
+    lag_s = PULL_LAG_S if lag_s is None else lag_s
+    if not reading.get("applicable"):
+        return False, "not applicable"
+    why = []
+    if venue == "crypto":
+        if reading.get("producer_ban_lines"):
+            why.append(f"ban_lines={reading['producer_ban_lines']}")
+        age = reading.get("snapshot_age_s")
+        if age is None or age > lag_s:
+            why.append(f"snapshot_age={None if age is None else int(age)}s")
+        keys = ("k15", "k3")
+    else:
+        if reading.get("producer_error_lines"):
+            why.append(f"error_lines={reading['producer_error_lines']}")
+        age = reading.get("indicators_age_s")
+        if age is None or age > lag_s:
+            why.append(f"indicators_age={None if age is None else int(age)}s")
+        keys = ("k5", "k15")
+    for key in keys:
+        lag = (reading.get(key) or {}).get("median_behind_s")
+        if lag is not None and lag > lag_s:
+            why.append(f"{key}_behind={int(lag)}s")
+    return bool(why), ",".join(why)
 
 
 def log(msg):
@@ -85,6 +117,7 @@ class Agent:
         self.last_state_push = 0.0
         self.host_idx = 0
         self.published_s1 = []
+        self.pull = C.read_json(LF / "pull_state.json", {}) or {}
 
     def delivered_set(self):
         live = set()
@@ -265,13 +298,57 @@ class Agent:
             log(f"WITHDRAW {len(self.published_s1)} S1 snapshots (crypto data failover ended)")
         self.published_s1 = []
 
+    def update_pull(self, venues, now):
+        """On-demand S1 pull per venue with 10-min hysteresis; every switch logged + alerted."""
+        for venue in ("crypto", "stocks"):
+            st = self.pull.setdefault(venue, {"on": False})
+            need, why = pull_needed(venue, venues[venue])
+            if need:
+                st["fresh_since"] = None
+                if not st.get("on"):
+                    st.update(on=True, since=C.iso(now), why=why)
+                    alert("PULL_ON", venue=venue, why=why)
+                    if venue == "crypto":
+                        self.puller(True)
+            elif st.get("on"):
+                st["fresh_since"] = st.get("fresh_since") or now
+                if now - st["fresh_since"] >= PULL_OFF_S:
+                    st.update(on=False, since=C.iso(now), why=f"fresh {int(now - st['fresh_since'])}s", fresh_since=None)
+                    alert("PULL_OFF", venue=venue, why=st["why"])
+                    if venue == "crypto":
+                        self.puller(False)
+            if venue == "crypto" and st.get("on") and not self.puller_loaded():
+                self.puller(True)
+        C.atomic_write_json(LF / "pull_state.json", self.pull)
+        return {venue: bool(self.pull[venue].get("on")) for venue in ("crypto", "stocks")}
+
+    def puller_loaded(self):
+        if os.environ.get("LF_NO_LAUNCHCTL") == "1":
+            return bool(self.pull.get("_fake_loaded"))
+        return subprocess.run(["launchctl", "list", PULLER_LABEL], capture_output=True).returncode == 0
+
+    def puller(self, on):
+        if os.environ.get("LF_NO_LAUNCHCTL") == "1":
+            self.pull["_fake_loaded"] = on
+            log(f"PULLER {'load' if on else 'unload'} (fixture)")
+            return
+        if on and not self.puller_loaded():
+            result = subprocess.run(["launchctl", "load", "-w", str(PULLER_PLIST)], capture_output=True, text=True)
+            log(f"PULLER load {PULLER_LABEL} rc={result.returncode} {result.stderr.strip()[:120]}")
+        elif not on and self.puller_loaded():
+            result = subprocess.run(["launchctl", "unload", "-w", str(PULLER_PLIST)], capture_output=True, text=True)
+            log(f"PULLER unload {PULLER_LABEL} rc={result.returncode} {result.stderr.strip()[:120]}")
+            for stale in (BASE / "data").glob("market_data_*_s1.json"):
+                stale.unlink(missing_ok=True)
+
     def tick(self):
         now = C.now_s()
         venues = self.measure(now)
+        pulls = self.update_pull(venues, now)
         local = C.read_json(LF / "lease_local.json", {}) or {}
         procs = 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids())
         heartbeat = {"epoch": now, "ts": C.iso(now), "host": "macbook", "version": VERSION, "venues": venues, "trading_procs": procs,
-                     "lease_local": local, "fence_ack_gen": local.get("gen") if local.get("holder") == "s1" and procs == 0 else None}
+                     "lease_local": local, "pull_request": pulls, "fence_ack_gen": local.get("gen") if local.get("holder") == "s1" and procs == 0 else None}
         C.atomic_write_json(LF / "mac_data_heartbeat.json", heartbeat)
         lease, state, host = self.exchange(heartbeat)
         if host is None:
@@ -285,9 +362,10 @@ class Agent:
                 self.push_state(host, now)
         if isinstance(state, dict):
             C.atomic_write_json(LF / "s1_state.json", state)
-            modes = {v: (state.get("venues") or {}).get(v, {}).get("mode") for v in ("crypto", "stocks")}
+            vstates = state.get("venues") or {}
+            modes = {v: vstates.get(v, {}).get("mode") for v in ("crypto", "stocks")}
             for venue, mode in modes.items():
-                if mode == "ACTIVE":
+                if mode == "ACTIVE" or (pulls.get(venue) and vstates.get(venue, {}).get("outbox")):
                     self.deliver(venue, host, now)
             if modes.get("crypto") != "ACTIVE" and self.published_s1:
                 self.withdraw_s1_snapshots()

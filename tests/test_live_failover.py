@@ -66,7 +66,7 @@ class Env:
         env = {"LF_BASE": str(self.mac), "LF_STAGE": str(tmp / "stage"), "LF_NO_SSH": "1", "LF_NO_KILL": "1",
                "LF_REMOTE_DIR": str(self.s1 / "data" / "live_failover"), "LF_LOGDIR": str(self.logs),
                "LF_LIVE_DIR": str(self.s1), "LF_SANDBOX_DIR": str(self.sb), "LF_STACK_DIR": str(self.stack),
-               "LF_LOG": str(tmp / "live_failover.log"), "LF_DRY_RUN": "1"}
+               "LF_LOG": str(tmp / "live_failover.log"), "LF_DRY_RUN": "1", "LF_NO_LAUNCHCTL": "1"}
         for key, value in env.items():
             monkeypatch.setenv(key, value)
         self.monkeypatch = monkeypatch
@@ -390,3 +390,35 @@ def test_run_with_watchdog_contains_lease_gate():
     assert "lf_lease_fenced \"$SCRIPT\" \"$WORKDIR\"" in text
     start = (TOOLS / "s1_failover_start.sh").read_text()
     assert "lf_lease_fenced ez_manage.py /home/niels/binance" in start
+
+
+# ---------------------------------------------------------------- on-demand S1 pull at >60 s (USER 2026-10-14)
+def test_on_demand_pull_at_60s_with_10min_hysteresis(world):
+    agent, watchdog = world.MA.Agent(), world.S1.Watchdog()
+    t0 = T_SATURDAY
+    world.mac_produce(t0)
+    world.s1_produce(t0)
+    run_pair(world, agent, watchdog, t0)
+    assert agent.pull["crypto"]["on"] is False
+    world.s1_produce(t0 + 75)
+    run_pair(world, agent, watchdog, t0 + 75)  # snapshot 75 s old -> pull ON, puller loaded, S1 builds the outbox (mode stays NORMAL)
+    assert agent.pull["crypto"]["on"] is True and agent.pull["_fake_loaded"] is True
+    state = world.state()
+    assert state["venues"]["crypto"]["mode"] == "NORMAL" and state["venues"]["crypto"]["outbox"] is True
+    world.s1_produce(t0 + 200)
+    run_pair(world, agent, watchdog, t0 + 200)  # next 3m bar on S1 -> delivered via the pull path
+    world.clock(t0 + 201)
+    agent.tick()
+    assert json.loads((world.mac / "klines_cache" / "BTCUSDC_3m.json").read_text())[-1]["close"] == 200.0
+    k = 0
+    while agent.pull["crypto"]["on"] and k < 80:  # Mac fresh again: unload only after 600 s fresh
+        now = t0 + 300 + 15 * k
+        world.mac_produce(now, price=300.0)
+        run_pair(world, agent, watchdog, now)
+        k += 1
+    assert agent.pull["crypto"]["on"] is False and agent.pull["_fake_loaded"] is False
+    assert 600 <= 15 * (k - 1) <= 615
+    alerts = (world.mac / "data" / "live_failover" / "ALERTS.jsonl").read_text()
+    assert "PULL_ON" in alerts and "PULL_OFF" in alerts
+    run_pair(world, agent, watchdog, t0 + 300 + 15 * k)
+    assert world.state()["venues"]["crypto"].get("outbox") is False

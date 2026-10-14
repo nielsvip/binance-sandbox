@@ -307,7 +307,8 @@ class Watchdog:
         readings = {}
         for venue in ("crypto", "stocks"):
             readings[venue] = venue_reading(view, venue, now)
-            self.data_failover(venue, readings[venue], lease, now)
+            hb_ok = view["hb"] if (view["hb_age"] is not None and view["hb_age"] <= HB_FRESH_S) else None
+            self.data_failover(venue, readings[venue], lease, now, hb_ok)
         lease = self.trading_failover(view, readings, lease, now)
         if lease["holder"] == "s1":
             rows = bridge_local(now)
@@ -317,14 +318,24 @@ class Watchdog:
         C.atomic_write_json(LF / "state.json", self.state)
         return self.state
 
-    def data_failover(self, venue, reading, lease, now):
+    def data_failover(self, venue, reading, lease, now, view_hb=None):
         vstate = self.state["venues"].setdefault(venue, {"mode": "NORMAL"})
         unit = UNITS[venue]
         need = reading["applicable"] and reading["stale"]
         hold = lease["holder"] == "s1" and reading["applicable"]
         if vstate.get("mode") != "ACTIVE":
+            requested = bool(((view_hb or {}).get("pull_request") or {}).get(venue)) and reading["applicable"]
+            if requested and not (need or hold):
+                build_outbox(venue, now)
+                if not vstate.get("outbox"):
+                    alert("PULL_OUTBOX_ON", venue=venue, reason="Mac pull request (>60 s behind)")
+                vstate["outbox"] = True
+            elif vstate.get("outbox") and not (need or hold):
+                clear_outbox(venue)
+                vstate["outbox"] = False
+                alert("PULL_OUTBOX_OFF", venue=venue)
             if need or hold:
-                vstate.update(mode="ACTIVE", since=C.iso(now), since_epoch=now, fresh_since=None, activations=int(vstate.get("activations", 0)) + 1, trigger=reading["reasons"])
+                vstate.update(outbox=True, mode="ACTIVE", since=C.iso(now), since_epoch=now, fresh_since=None, activations=int(vstate.get("activations", 0)) + 1, trigger=reading["reasons"])
                 alert("DATA_FAILOVER_ON", venue=venue, reasons=reading["reasons"], source=reading["source"])
                 self.actions.start(unit)
                 manifest = build_outbox(venue, now)
@@ -347,7 +358,7 @@ class Watchdog:
     def _data_off(self, venue, vstate, why, now):
         self.actions.stop(UNITS[venue])
         clear_outbox(venue)
-        vstate.update(mode="NORMAL", since=C.iso(now), since_epoch=now, fresh_since=None)
+        vstate.update(mode="NORMAL", outbox=False, since=C.iso(now), since_epoch=now, fresh_since=None)
         alert("DATA_FAILOVER_OFF", venue=venue, reason=why)
 
     def trading_failover(self, view, readings, lease, now):

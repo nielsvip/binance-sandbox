@@ -2562,8 +2562,10 @@ ema_9_15m side + 15m WT wt1>wt2, velocity>0, k_15m<80, shorts mirrored) + armed-
 x (1 +/- BUFFER)) + label REENTRY_EXIT_RECLAIM. Flip proof (30d, default set): ALGOUSDT_LONG -1.09% -> -4.20% (71 re-entries),
 ALGOUSDT_SHORT +0.52 -> -0.09, BTCUSDC_LONG -3.48 -> -3.49, stocks unchanged (PRICE_CROSS_BACK fires first). Patch:
 `backups/exit_reclaim_wire_v12_quick_engine_202610132355.patch` (engine held at measured md5 891ecc85 at that time). Shipping it
-activates the pathway on every pinned board at once (all boards pin True) — awaiting the user's choice: ship + re-measure, or
-ship with default False everywhere and let the sweep promote it.
+activates the pathway on every pinned board at once (all boards pin True). USER 2026-10-14 chose (a) SHIP NOW: patch applied
+onto the engine (md5 51d666ff, flip proofs re-run identical), pushed to S1/S2 sandboxes (md5 + import OK), crypto live restarted
+(S1 failover disarmed during the roll, re-armed after); stocks load it at the 13:01Z tradier start. Boards published before
+51d666ff were measured WITHOUT it — the next fleet round re-measures them with the re-entry active.
 
 **(2) SESSION_OPEN_STOP_REFREEZE_ENABLED (NEW, stocks only, default False, EXIT_STRUCTURAL rows False/True in TEMPLATE_STOCKS_
 LONG/SHORT).** First RTH bar of each ET date: a position carried overnight gets a NEW FIXED_STOP at the current dc_15m_low -0.25%

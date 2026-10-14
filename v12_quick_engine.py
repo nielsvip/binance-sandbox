@@ -17630,6 +17630,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _hc_wt1_15m = _safe(npz, "wt1_15m", n)
     except Exception:
         _hc_wt1_15m = close * 0
+    # 2026-10-13 USER guaranteed re-entry after any exit (FIXED_STOP incl.): live B00 / H2 PRICE_ABOVE_EXIT twin. Single call site.
+    try:
+        import vec_decisions.lane_vec_reentry2 as _xr_lvr2
+
+        _xr_ready = _xr_lvr2.reclaim_ready_mask(npz, n, is_long, cfg)
+        _xr_buf = float(getattr(cfg, "REENTRY_EXIT_RECLAIM_BUFFER_PCT", 0.2) or 0.0) / 100.0
+    except Exception:
+        _xr_ready, _xr_buf = None, 0.002
+    _xr_fired_bar = -1
     # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
     try:
         _n3_k15 = _safe(npz, "stoch_k_15m", n, 50.0)
@@ -18672,6 +18681,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             fire = True
                 except Exception:
                     pass
+            if (
+                not fire
+                and _xr_ready is not None
+                and has_closed_before
+                and trades
+            ):  # 2026-10-13 REENTRY_EXIT_RECLAIM (live B00/H2 twin): armed after ANY exit until the next entry; fires on reclaim + confirm
+                try:
+                    _xr_exit = float(trades[-1].get("exit_price", 0) or 0)
+                    if _xr_exit > 0 and bool(_xr_ready[i]) and (
+                        (is_long and px >= _xr_exit * (1.0 + _xr_buf))
+                        or ((not is_long) and px <= _xr_exit * (1.0 - _xr_buf))
+                    ):
+                        fire = True
+                        _xr_fired_bar = i
+                except Exception:
+                    pass
             _n3_tier = None
             _n3_tier_reason = None
             if (
@@ -19173,6 +19198,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     try:
                         # 2026-09-18 HARDCODED tag before generic
                         _hardcoded_fired = False
+                        if _xr_fired_bar == i and not entry_sig[i]:
+                            entry_reason = "REENTRY_EXIT_RECLAIM"  # 2026-10-13 B00/H2 twin (label = the pathway that fired)
+                            _hardcoded_fired = True
                         if (
                             has_closed_before
                             and trades
