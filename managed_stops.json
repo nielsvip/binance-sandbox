@@ -1,72 +1,9 @@
 {
-  "ang:DASHUSDT_LONG": {
-    "orderId": "4000001966657240",
-    "stopPrice": 49.49,
-    "entry_sig": "2026-10-14 02:04:36.010786+00:00",
-    "symbol": "DASHUSDT",
-    "side": "LONG"
-  },
-  "ang:KMNOUSDT_LONG": {
-    "orderId": "4000001966646137",
-    "stopPrice": 0.03685,
-    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
-    "symbol": "KMNOUSDT",
-    "side": "LONG"
-  },
-  "ang:EGLDUSDT_LONG": {
-    "orderId": "4000001966646146",
-    "stopPrice": 3.72,
-    "entry_sig": "2026-10-14 00:31:36.196148+00:00",
-    "symbol": "EGLDUSDT",
-    "side": "LONG"
-  },
-  "ang:ZENUSDT_LONG": {
-    "orderId": "4000001966646136",
-    "stopPrice": 6.121,
-    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
-    "symbol": "ZENUSDT",
-    "side": "LONG"
-  },
-  "ang:COMPUSDT_LONG": {
-    "orderId": "4000001966830609",
-    "stopPrice": 22.79,
-    "entry_sig": "2026-10-14 04:45:00.378000+00:00",
-    "symbol": "COMPUSDT",
-    "side": "LONG"
-  },
-  "ang:NEARUSDC_LONG": {
-    "orderId": "4000001967073408",
-    "stopPrice": 4.994,
-    "entry_sig": "2026-10-14 07:35:42.109000+00:00",
-    "symbol": "NEARUSDC",
-    "side": "LONG"
-  },
-  "ang:THETAUSDT_LONG": {
-    "orderId": "4000001967097152",
-    "stopPrice": 0.2032,
-    "entry_sig": "2026-10-14 07:54:58.630000+00:00",
-    "symbol": "THETAUSDT",
-    "side": "LONG"
-  },
-  "ang:ETHUSDC_LONG": {
-    "orderId": "4000001967113845",
-    "stopPrice": 2488.73,
-    "entry_sig": "2026-10-14 08:05:25.760000+00:00",
-    "symbol": "ETHUSDC",
-    "side": "LONG"
-  },
-  "ang:GALAUSDT_SHORT": {
-    "orderId": "4000001967142861",
-    "stopPrice": 0.002175,
-    "entry_sig": "2026-10-14 08:20:21.309000+00:00",
-    "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "ang:ONDOUSDT_LONG": {
-    "orderId": "4000001967151970",
-    "stopPrice": 0.46,
-    "entry_sig": "2026-10-14 08:28:10.593000+00:00",
-    "symbol": "ONDOUSDT",
+  "flz:DOGEUSDC_LONG": {
+    "orderId": "1000002620003896",
+    "stopPrice": 0.08353,
+    "entry_sig": "2026-10-14 03:24:09.792498+00:00",
+    "symbol": "DOGEUSDC",
     "side": "LONG"
   }
 }
