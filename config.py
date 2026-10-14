@@ -1780,6 +1780,18 @@ class Config:
     VEC_EXACT_STALE_FALLBACK_BARS: float = (
         4.0  # 2026-10-08 USER FIX (c): twin OK but bar older than N 15m bars -> native exits run until fresh (0 = disable stale fallback)
     )
+    VEC_EXACT_FROZEN_STORE_ENABLED: bool = (
+        True  # 2026-10-14 twin drift root cause #1: append-only twin store (live_twins/vec_exact._freeze) — a bar's values are frozen the first time it is seen (shared by the 5 accounts, survives restarts); rebuilds revised past bars for 142/154 symbols (paper ledger rewritten 32%, vec_holds flipped 4.5% per 15m rebuild). False = rebuild-as-is (pre-fix)
+    )
+    VEC_EXACT_FROZEN_MAX_DAYS: float = (
+        29.0  # frozen store span cap: above it the head is trimmed (re-anchor, logged [VEC_EXACT_FROZEN] RE-ANCHOR) before the 30d prepare slice would slide the start every bar
+    )
+    VEC_EXACT_FROZEN_KEEP_DAYS: float = (
+        21.0  # span kept at a re-anchor (one re-anchor per symbol per ~8 days)
+    )
+    VEC_EXACT_PIN_SET_PER_POSITION: bool = (
+        True  # 2026-10-14 twin drift root cause #2: a held position's exits follow the per-sym set it is held under until flat (data/vec_exact_pinned_{acct}.json); go-live set changes flipped the paper state of 28% of changed sym_sides. Entries always use the latest set; AUGMENT refused while pinned != latest. False = re-simulate held positions under the latest set (pre-fix)
+    )
     WATCHDOG_DC_VEC_ENABLED: bool = (
         False  # 2026-10-06 director: QuickConfig switch of the vec momentum-watchdog DC-breakout opener (v12 _wd_open twin); config mirror so the daily chain / TEMPLATE can sweep it. Live native watchdog is off in exact mode; vec decides when True
     )

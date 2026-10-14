@@ -79,7 +79,18 @@ async def fire_exit_market(trade_manager, position_key, symbol, side, position_s
         if qty <= 0:
             return "TIMEOUT_DUST_AFTER_CANCEL"
         try:
-            resp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=str(side).upper(), positionSide=str(position_side).upper(), quantity=str(qty), type="MARKET"), timeout=15.0)
+            # 2026-10-14 twin drift: this fallback never wired once (logs 10-11..14: 0 TIMEOUT_EXIT_MARKET; 26 refused
+            # ORDER_DEDUPE_BLOCK:NOT_VIA_EXECUTE_NOW, 160 BROKER_UNREACHABLE, 17 15s timeouts) -> timed-out vec exits stayed open. It runs as
+            # an execute_now leg of the owed vec CLOSE: same token the execute_now decorator stamps (order_dedupe_guard.execute_now_context;
+            # to_thread copies the context). Every other wire check (broker read, dedupe, file reflection) still applies.
+            import contextlib
+            try:
+                import order_dedupe_guard as _odg
+                _ctx = _odg.execute_now_context("binance", position_key=position_key, account_key=acct, symbol=symbol, position_side=str(position_side).upper(), action="CLOSE", reason="VEC_TIMEOUT_EXIT_MARKET |VEC_EXACT")
+            except Exception:
+                _ctx = contextlib.nullcontext()
+            with _ctx:
+                resp = await asyncio.wait_for(asyncio.to_thread(client.futures_create_order, symbol=symbol, side=str(side).upper(), positionSide=str(position_side).upper(), quantity=str(qty), type="MARKET"), timeout=15.0)
         except Exception as e:
             logger.error(f"[VEC_EXACT] {position_key} TIMEOUT_MARKET_FAIL qty={qty}: {e}")
             return "TIMEOUT_MARKET_FAIL"

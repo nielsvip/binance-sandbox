@@ -501,7 +501,7 @@ def board_row(d, path, host):
     f365 = d.get("final_365d") if isinstance(d.get("final_365d"), dict) else {}
     final = _num(d.get("final_gain_fresh_vec")) if d.get("final_gain_fresh_vec") is not None else _num(d.get("cumulative_gain"))
     tier = d.get("tier") if isinstance(d.get("tier"), dict) else {}
-    return {"sym_side": d.get("symside") or Path(path).name.replace("_v14_progress.json", ""), "host": host, "run": Path(path).parent.parent.name, "done_utc": d.get("result_done_utc"), "v17": bool(v.get("on")), "start": _r(_num(d.get("initial_baseline_gain")), 3), "final": _r(final, 3), "bh": _r(_num(d.get("bh")), 3), "trades": d.get("final_trades"), "tier": tier.get("tier"), "best_start": dc.get("chosen"), "best_start_gain": _r(_num(dc.get("start_gain")), 3), "phases": {k: {"lift": round(e["lift"], 4), "evals": e["evals"], "wall_s": round(e["wall_s"], 1), "promotions": e["promotions"]} for k, e in ph.items()}, "promotions": promos[:30], "surgeon": surg[-2:], "regime_now": reg.get("regime_now"), "regime_then": reg.get("regime_then"), "old_set_better_recent_by": _r(_num((reg.get("previous") or {}).get("old_set_better_recent_by")), 3), "g365": _r(_num(f365.get("gain") if f365 else None), 3), "dd365": _r(_num(f365.get("dd") if f365 else None), 2), "verdict": d.get("verdict") if isinstance(d.get("verdict"), (str, type(None))) else str(d.get("verdict"))[:60]}
+    return {"sym_side": d.get("symside") or Path(path).name.replace("_v14_progress.json", ""), "host": host, "run": Path(path).parent.parent.name, "done_utc": d.get("result_done_utc"), "v17": bool(v.get("on")), "start": _r(_num(d.get("initial_baseline_gain")), 3), "final": _r(final, 3), "bh": _r(_num(d.get("bh")), 3), "trades": d.get("final_trades"), "tier": tier.get("tier"), "best_start": dc.get("chosen"), "best_start_gain": _r(_num(dc.get("start_gain")), 3), "phases": {k: {"lift": round(e["lift"], 4), "evals": e["evals"], "wall_s": round(e["wall_s"], 1), "promotions": e["promotions"]} for k, e in ph.items()}, "promotions": promos[:30], "surgeon": surg[-2:], "regime_now": reg.get("regime_now"), "regime_then": reg.get("regime_then"), "old_set_better_recent_by": _r(_num((reg.get("previous") or {}).get("old_set_better_recent_by")), 3), "g365": _r(_num(f365.get("gain_pct", f365.get("gain")) if f365 else None), 3), "dd365": _r(_num(f365.get("max_dd_pct", f365.get("dd")) if f365 else None), 2), "verdict": d.get("verdict") if isinstance(d.get("verdict"), (str, type(None))) else str(d.get("verdict"))[:60]}
 
 
 def library_summary(lib_path, since_iso, top=40):
@@ -758,19 +758,20 @@ def summarize_bt(bt):
     return boards, phases, prom, keys, starts, cs_fin, symp, exits, bysym
 
 
-def build_packet(live, bt, date, top=12):
+def build_packet(live, bt, date, top=12, kpi=None):
     """markdown packet (dense tables, top-N) + its JSON twin. Shrinks top-N until <= PACKET_CAP."""
     agg = aggregate_live(live) if live else {}
     boards, phases, prom, keys, starts, cs_fin, symp, exits, bysym = summarize_bt(bt or {})
     libs = {h: (x or {}).get("library") or {} for h, x in ((bt or {}).get("hosts") or {}).items() if isinstance(x, dict)}
     data = {"date": date, "live": {"generated_utc": (live or {}).get("generated_utc"), "n_trades": (live or {}).get("n_trades"), "n_klines_missing": (live or {}).get("n_klines_missing"), "dispatch_24h": (live or {}).get("dispatch_24h"), "agg": agg}, "backtest": {"generated_utc": (bt or {}).get("generated_utc"), "n_boards": len(boards), "hosts": {h: {"n_files": (x or {}).get("n_files"), "error": (x or {}).get("error")} for h, x in ((bt or {}).get("hosts") or {}).items()}, "phases": phases, "final_vs_bh": {cs: {"n": x["n"], "above_bh": x["above"], "mean_edge": _r(_mean(x["edge"]), 3), "mean_final": _r(_mean(x["final"]), 3), "mean_lift_vs_start": _r(_mean(x["lift"]), 3)} for cs, x in cs_fin.items()}, "best_start": {f"{a}|{b}": n for (a, b), n in starts.items()}, "promotion_key_freq": dict(sorted(keys.items(), key=lambda kv: -kv[1])[:80]), "libraries": libs, "ab": (bt or {}).get("ab") or []}}
     for n in (top, 10, 8, 6, 4, 3, 2):
-        md = _packet_md(date, live, agg, boards, phases, prom, starts, cs_fin, symp, exits, bysym, libs, bt, n)
+        md = _packet_md(date, live, agg, boards, phases, prom, starts, cs_fin, symp, exits, bysym, libs, bt, n) + kpi_section(kpi, n)
         if len(md.encode()) <= PACKET_CAP:
             break
     if len(md.encode()) > PACKET_CAP:
         md = md.encode()[: PACKET_CAP - 80].decode(errors="ignore") + "\n\n[PACKET TRUNCATED AT HARD CAP]\n"
     data["top_n"] = n
+    data["kpi"] = kpi_compact(kpi)
     data["packet_bytes"] = len(md.encode())
     return md, data
 
@@ -867,6 +868,48 @@ def _packet_md(date, live, agg, boards, phases, prom, starts, cs_fin, symp, exit
     if ab:
         L.append("### B.V17 A/B (latest reports, 24h)")
         L.append(_tbl(["sym_side", "arm", "gain", "bh", "trades", "TIM", "DD", "365D"], [[a["sym_side"], a["arm"], a["gain"], a["bh"], a["trades"], a["tim"], a["dd"], a["g365"]] for a in ab[: n * 2]]))
+    return "\n".join(L) + "\n"
+
+
+
+# ------------------------------------------------------------------------------------------------- V17 KPI section (C)
+KPI_PHASES = ("probe", "p2", "combo", "surgeon", "focus", "ablation", "retest", "probe_p3", "regime365", "endgame_diag", "other")
+
+
+def kpi_compact(kpi):
+    """tools/v17_kpi.py data/kpi/v17_kpi_latest.json -> compact dict: window trends, phase lift/core-min (best/worst),
+    regression verdict, autotune knobs that moved. None when there is no KPI file."""
+    if not isinstance(kpi, dict) or not kpi.get("windows"):
+        return None
+    keep = ("n", "median_wall_min", "median_core_min_est", "median_eval_core_min", "median_gain_bh", "p90_gain_bh", "share_ge_1x_bh", "share_ge_10x_bh", "median_final_minus_best_start", "n_below_best_start")
+    out = {"generated_utc": kpi.get("generated_utc"), "windows": {w: {**{k: s.get(k) for k in keep}, "boards_per_h": {h: x.get("boards_per_h") for h, x in (s.get("hosts") or {}).items()}} for w, s in kpi["windows"].items()}}
+    ph = (kpi["windows"].get("3d") or {}).get("phases") or {}
+    rated = sorted([(p, x) for p, x in ph.items() if p in KPI_PHASES and x.get("lift_per_core_min") is not None and (x.get("core_min") or 0) >= 5], key=lambda kv: -kv[1]["lift_per_core_min"])
+    out["phases_3d"] = {p: {"boards": x.get("boards"), "pos": x.get("pos"), "lift": x.get("lift"), "core_min": x.get("core_min"), "lift_per_core_min": x.get("lift_per_core_min")} for p, x in rated}
+    out["best_phases"] = [p for p, _ in rated[:3]]
+    out["worst_phases"] = [p for p, x in rated[::-1][:3]]
+    reg = kpi.get("regression") or {}
+    out["regression"] = {"regression": reg.get("regression"), "hits": [f"{w}:{c['metric']} {c['change_pct']:+}%" for w, x in (reg.get("windows") or {}).items() for c in x.get("checks") or [] if c.get("regression")], "finals_below_best_start": sum(len(x.get("finals_below_best_start") or []) for x in (reg.get("windows") or {}).values()), "new_pilot_md5": sorted({m[:8] for x in (reg.get("windows") or {}).values() for m in x.get("pilot_md5_new_vs_baseline") or []})}
+    at = kpi.get("autotune") or {}
+    out["autotune"] = {"generated_utc": at.get("generated_utc"), "apply": at.get("apply"), "moved": {k: [v.get("prev"), v.get("value")] for k, v in (at.get("knobs") or {}).items() if v.get("prev") != v.get("value")}}
+    return out
+
+
+def kpi_section(kpi, n=12):
+    """markdown section C for the daily packet (compact: trends, best/worst phases per core-minute, regressions, autotune)."""
+    c = kpi_compact(kpi)
+    if not c:
+        return ""
+    L = ["", f"## C. FLEET KPI (tools/v17_kpi.py {c['generated_utc']}; core-min = wall x workers, flagged estimate; gain/bh only bh>0) — target 10x bh every sym_side, >=12 then >30 boards/h/server"]
+    L.append(_tbl(["window", "boards", "boards/h/server", "med wall min", "med core-min", "med gain/bh", "p90 gain/bh", ">=1x", ">=10x", "med final-best_start", "final<best_start"], [[w, s["n"], ", ".join(f"{h} {v}" for h, v in s["boards_per_h"].items()), s["median_wall_min"], s["median_core_min_est"], s["median_gain_bh"], s["p90_gain_bh"], s["share_ge_1x_bh"], s["share_ge_10x_bh"], s["median_final_minus_best_start"], s["n_below_best_start"]] for w, s in c["windows"].items()]))
+    if c["phases_3d"]:
+        L.append("### C.lift per core-minute per phase (3d; best first) — spend where it lifts")
+        L.append(_tbl(["phase", "boards", "lift>0", "sum lift", "core-min", "lift/core-min"], [[p, x["boards"], x["pos"], x["lift"], x["core_min"], x["lift_per_core_min"]] for p, x in list(c["phases_3d"].items())[: n + 2]]))
+        L.append(f"best phases: {', '.join(c['best_phases'])} · worst phases: {', '.join(c['worst_phases'])}")
+    r = c["regression"]
+    L.append(f"### C.regression guard: {'REGRESSION ' + '; '.join(r['hits']) if r['regression'] else 'ok'}; finals below best_start {r['finals_below_best_start']}; new pilot md5 {', '.join(r['new_pilot_md5']) or '-'}")
+    if c["autotune"]["moved"]:
+        L.append("### C.autotune moved knobs (prev -> value): " + "; ".join(f"{k} {a}->{b}" for k, (a, b) in c["autotune"]["moved"].items()))
     return "\n".join(L) + "\n"
 
 
@@ -1080,7 +1123,12 @@ def main(argv=None):
         live = json.loads(Path(a.live_json or LEARN_DIR / f"live_leg_{a.date}.json").read_text()) if Path(a.live_json or LEARN_DIR / f"live_leg_{a.date}.json").exists() else None
         btp = Path(a.bt_json or LEARN_DIR / f"bt_leg_{a.date}.json")
         bt = json.loads(btp.read_text()) if btp.exists() else None
-        md, data = build_packet(live, bt, a.date)
+        kp = ROOT / "data" / "kpi" / "v17_kpi_latest.json"
+        try:
+            kpi = json.loads(kp.read_text()) if kp.exists() else None
+        except ValueError:
+            kpi = None
+        md, data = build_packet(live, bt, a.date, kpi=kpi)
         vk = build_valid_keys()
         kref = keyref_text(vk, priority_keys_from(bt))
         LEARN_DIR.mkdir(parents=True, exist_ok=True)

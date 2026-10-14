@@ -7,7 +7,7 @@ market is open) killed every tick from 13:44Z and the fleet launched nothing. Th
 ok=False from the prep tool = sym_side must not launch (stale tail it could not heal) -> skip, the scheduler retries later.
 Prep tool crash / lock wait timeout = launch with what the host has (USER 2026-10-13: "work with what you have").
 Every outcome is one JSON line in /tmp/v15_dispatch.log."""
-import argparse, fcntl, json, os, pathlib, subprocess, sys, time
+import argparse, fcntl, json, os, pathlib, re, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LOG = pathlib.Path(os.environ.get("V15_DISPATCH_LOG", "/tmp/v15_dispatch.log"))
@@ -177,6 +177,38 @@ def ship_prev_best(symbol, tag, push):
     return len(files)
 
 
+AUTOTUNE_KNOB_RE = re.compile(r"^V15_V17_(COMBO_SHARE(_WINNER)?|SHARE_(SURGEON|SURGEON_WINNER|FOCUS|ABLATION|RETEST)|P3_MAX_S_(WINNER|MEDIOCRE|LOSER|LOST_CAUSE)|P_MIN)$")
+AUTOTUNE_BOUNDS = {"SHARE": (0.05, 0.95), "P3_MAX_S": (30.0, 3600.0), "P_MIN": (0.001, 0.05)}
+
+
+def _autotune_exports(tag, path=None):
+    """V17 KPI auto-tuner reader hook (BIBLE "V17 KPI + AUTO-TUNE"): `export K=V; ` prefix for the remote launch command from
+    data/kpi/v17_autotune.json (tools/v17_kpi.py --autotune). Only whitelisted pinpoint knobs, finite numbers inside hard
+    bounds, apply=true, file <= V17_AUTOTUNE_MAX_AGE_D (3) days old, a 30D leg in the tag; V17_AUTOTUNE_APPLY=0 = off. Never
+    the 0.3 rule (V15_V17_MIN_LIFT_PM) or the absolute cap (V15_V17_P3_MAX_S). An inline VAR=… in the scheduler's own env
+    string still wins (it is assigned after the export). Any problem -> '' (pilot defaults)."""
+    if os.environ.get("V17_AUTOTUNE_APPLY", "1") == "0" or (tag and ":" in tag and "30D" not in tag):
+        return "", None
+    p = pathlib.Path(path or (ROOT / "data" / "kpi" / "v17_autotune.json"))
+    try:
+        doc = json.loads(p.read_text())
+        if not doc.get("apply") or time.time() - p.stat().st_mtime > float(os.environ.get("V17_AUTOTUNE_MAX_AGE_D", "3")) * 86400:
+            return "", None
+        out = {}
+        for k, v in (doc.get("env") or {}).items():
+            if not AUTOTUNE_KNOB_RE.match(str(k)) or isinstance(v, bool):
+                continue
+            x = float(v)
+            lo, hi = next(b for key, b in AUTOTUNE_BOUNDS.items() if key in k)
+            if x == x and lo <= x <= hi:
+                out[k] = round(x, 6)
+    except (OSError, ValueError, TypeError, StopIteration):
+        return "", None
+    if not out:
+        return "", None
+    return "".join(f"export {k}={v}; " for k, v in sorted(out.items())), {"generated_utc": doc.get("generated_utc"), "n": len(out)}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", required=True)
@@ -206,12 +238,14 @@ def main():
         return 3
     if os.environ.get("V15_PREV_BEST_SHIP", "1") == "1":
         res["prev_best_files"] = ship_prev_best(a.symbol, a.tag, a.push)
+    at_pre, at_info = _autotune_exports(a.tag)
+    _wm = re.search(r"--workers (\d+)", remote)
     try:
-        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", a.via, remote], timeout=60)
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", a.via, at_pre + remote], timeout=60)
         rc = r.returncode
     except subprocess.TimeoutExpired:
         rc = "ssh-timeout (job may still have started; pgrep dedups)"
-    log({"event": "launched", "symbol": a.symbol, "tag": a.tag, "via": a.via, "ssh_rc": rc, "prep": res})
+    log({"event": "launched", "symbol": a.symbol, "tag": a.tag, "via": a.via, "ssh_rc": rc, "prep": res, "workers": int(_wm.group(1)) if _wm else None, "autotune": at_info})
     cmd_path.unlink(missing_ok=True)
     return 0
 

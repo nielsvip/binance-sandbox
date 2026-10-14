@@ -49904,11 +49904,13 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             if _tk and position_key not in _tk:
                 logger.debug(f"[VEC_EXACT] {position_key} prefilter: flat + non-tradeable, skipping twin eval")
                 _vx.owned_drop(position_key)
+                _vx.pin_release(position_key)
                 return "ENTRY" in fams
         if _vx.source() == "live_snapshots":
             _vx.observe(_sym, await ii(trade_manager, _sym), time.time())
         if _amt <= 0:
             _vx.owned_drop(position_key)  # exit_owed is cleared ONLY by the broker-verified branch above (2026-10-13), never by local flat
+            _vx.pin_release(position_key)  # 2026-10-14: flat -> the latest per-sym set governs this key again (entries)
             return "ENTRY" in fams
         if "EXIT" not in fams:
             return False
@@ -49916,6 +49918,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             if position_key not in _VEC_EXACT_LEGACY_LOGGED:
                 _VEC_EXACT_LEGACY_LOGGED.add(position_key)
                 logger.warning(f"[VEC_EXACT_LEGACY_ADOPTED] {position_key}: open position not opened by the vec twin -> twin manages exits to flat (native refused in exact mode)")
+        _vx.pin_activate(position_key)  # 2026-10-14 twin drift: a held position's exits follow the set it is held under until flat (go-live set changes flipped 28% of paper states)
         # SAFETY: no twin decision available for this sym_side (no store / warm-up / error) -> native exits run (never strand a position)
         _vx_st = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-06 director: off the event loop (men os._exit(42) PAU_TIMEOUT: ~20s compute blocked the loop)
         if _vx_st.get("status") != "OK":
@@ -49981,6 +49984,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
             if _act == "AUGMENT":
                 _lb_ok, _lb_why = _vx.latest_board_ok(_sym, _side)  # USER 2026-10-13: adds ONLY on the exact latest vectorized set; exits never gated
+                if _lb_ok:
+                    _lb_ok, _lb_why = _vx.pin_is_latest(_sym, _side)  # 2026-10-14: an add decided by a pinned (older) set is not the latest board
                 if not _lb_ok:
                     logger.info(f"[VEC_EXACT_ENTRY_REFUSED] {position_key} AUGMENT {_a['reason'][:40]}: {_lb_why}")
                     continue

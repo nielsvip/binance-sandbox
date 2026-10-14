@@ -224,6 +224,7 @@ class TradierConfig:
     SCALP_MIN_MOVE_PCT: float = (
         0.003  # Min 0.3% 5m deviation from ema_20_5m — 2026-07-08 GAINMO triage: 0.3→0.003 (consumer treats as FRACTION; 0.3 = 30% = scalps never qualify, unit bug)
     )
+    STOCKS_OPEN_CEIL_SPS_ENABLED: bool = False  # USER 2026-10-14: stocks keep MAX_ORDER_VALUE ($7000) as the order cap — the 6x START_POSITION_SIZE ceiling ($3000) is crypto-only
     MAX_ORDER_VALUE: float = (
         7000.0  # STDEV_SLOPE fix 2026-09-14: was 2500 (5x START) capped 10x D ladder; now 500*10=5000
     )

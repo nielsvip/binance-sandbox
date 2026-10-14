@@ -219,7 +219,7 @@ def board_record(d, path, host, workers, workers_src):
         e["wall_s"] = round(e["wall_s"], 1)
         e["lift"] = round(e["lift"], 4)
     flags.append("cpu_est_wall_x_workers")
-    if workers_src != "dispatch_log":
+    if workers_src not in ("dispatch_log", "sched_log"):
         flags.append("workers_assumed")
     if not dl["dl_found"]:
         flags.append("no_delta_log")
@@ -260,13 +260,54 @@ def dispatch_workers(log_path=DISPATCH_LOG):
     return out
 
 
+SCHED_LOG = Path(os.environ.get("V15_SCHED_LOG", "/tmp/v15_fleet_sched.log"))
+
+
+def sched_workers(log_path=SCHED_LOG):
+    """{(host_label, "*"): [(ts, workers_per_side)]} — one entry per change, from the scheduler tick JSON lines
+    (`now` + `hosts.<name>.workers_per_side` = the pilot --workers it launched with on that tick)."""
+    out, last = {}, {}
+    try:
+        fh = open(log_path, "r", errors="replace")
+    except OSError:
+        return out
+    with fh:
+        for ln in fh:
+            if "workers_per_side" not in ln:
+                continue
+            try:
+                d = json.loads(ln)
+            except ValueError:
+                continue
+            ts = parse_ts(d.get("now"))
+            hosts = d.get("hosts") if isinstance(d.get("hosts"), dict) else {}
+            for h, x in hosts.items():
+                w = (x or {}).get("workers_per_side") if isinstance(x, dict) else None
+                if ts is None or not isinstance(w, int) or last.get(h) == w:
+                    continue
+                last[h] = w
+                out.setdefault((h, "*"), []).append((ts, w))
+    return out
+
+
 def _workers_for(wmap, host, ss, start_ts, default):
+    """pilot --workers of this board: dispatch-log launch row (exact) > scheduler workers_per_side timeline > default."""
     sym = ss.rpartition("_")[0].upper()
     best = None
     for ts, w in wmap.get((host, sym), []):
         if ts <= start_ts + 600 and (best is None or ts > best[0]):
             best = (ts, w)
-    return (best[1], "dispatch_log") if best else (default, "assumed")
+    if best:
+        return best[1], "dispatch_log"
+    tl = sorted(wmap.get((host, "*"), []))
+    for ts, w in tl:
+        if ts <= start_ts:
+            best = (ts, w)
+    if best:
+        return best[1], "sched_log"
+    if tl:
+        return tl[0][1], "assumed_sched_first"
+    return default, "assumed"
 
 
 def extract(globs, host, since_ts, workers_default, wmap=None):
@@ -691,18 +732,21 @@ def _lock(name):
 
 def collect(hosts_spec, globs, days, workers_default, now=None, db=None):
     now = now or _now()
-    since = now - days * 86400
-    wmap = dispatch_workers()
+    con = db_open(db)
+    wmap = sched_workers()
+    wmap.update(dispatch_workers())
     results, status = [], {}
     for part in [p.strip() for p in hosts_spec.split(",") if p.strip()]:
         label, _, target = part.partition("=")
+        # incremental: from the last ingested finish of this host minus 2 h overlap (upsert dedups), never older than --days
+        last = con.execute("SELECT MAX(done_ts) FROM boards WHERE host=?", (label,)).fetchone()[0]
+        since = max(now - days * 86400, (last - 7200) if last else 0)
         if target in ("", "local"):
             r = extract(globs, label, since, workers_default, wmap)
         else:
             r = extract_remote(target, label, globs, since, workers_default, wmap)
         status[label] = r.get("error") or f"{len(r.get('boards') or [])} boards/{r.get('n_files')} files"
         results.extend(r.get("boards") or [])
-    con = db_open(db)
     n_new = db_upsert(con, results)
     con.execute("INSERT INTO runs VALUES (?,?,?,?)", (_iso(now), json.dumps(status), n_new, len(results)))
     con.commit()
