@@ -1,45 +1,127 @@
 {
- "generated_at": "2026-10-14 07:35 UTC",
- "total_capital_usd": 100.4,
+ "generated_at": "2026-10-14 07:52 UTC",
+ "total_capital_usd": 104.53,
  "tier_capital": {
   "A": 0.0,
-  "B": 44.87,
-  "C": 55.53
+  "B": 78.67,
+  "C": 25.84
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 1
+  "B": 5,
+  "C": 4
  },
  "winners": [],
  "losers": [
-  "inf:NEARUSDC_LONG"
+  "men:COMPUSDT_LONG",
+  "men:ZENUSDT_LONG",
+  "men:DASHUSDT_LONG",
+  "men:SNXUSDT_LONG",
+  "men:THETAUSDT_LONG"
  ],
  "mediocre": [
-  "inf:PUMPUSDT_SHORT"
+  "men:YFIUSDT_LONG",
+  "men:BTCDOMUSDT_LONG"
  ],
  "positions": [
   {
-   "pk": "inf:NEARUSDC_LONG",
-   "symbol": "NEARUSDC",
-   "account": "inf",
-   "value_usd": 55.53,
-   "gain_pct": -0.04,
-   "tier": "C",
-   "perf_mult": 0.29,
-   "amt": 11.0,
-   "mark": 5.048
+   "pk": "men:YFIUSDT_LONG",
+   "symbol": "YFIUSDT",
+   "account": "men",
+   "value_usd": 43.93,
+   "gain_pct": 0.087,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 0.019,
+   "mark": 2312.0
   },
   {
-   "pk": "inf:PUMPUSDT_SHORT",
-   "symbol": "PUMPUSDT",
-   "account": "inf",
-   "value_usd": 44.87,
-   "gain_pct": -0.24,
+   "pk": "men:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "men",
+   "value_usd": 17.12,
+   "gain_pct": -0.176,
    "tier": "B",
-   "perf_mult": 0.93,
-   "amt": 8960.0,
-   "mark": 0.005008
+   "perf_mult": 5.76,
+   "amt": 12.5,
+   "mark": 1.3697
+  },
+  {
+   "pk": "men:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "men",
+   "value_usd": 11.05,
+   "gain_pct": -1.083,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.22,
+   "mark": 50.25
+  },
+  {
+   "pk": "men:ZENUSDT_LONG",
+   "symbol": "ZENUSDT",
+   "account": "men",
+   "value_usd": 6.18,
+   "gain_pct": -1.199,
+   "tier": "B",
+   "perf_mult": 5.46,
+   "amt": 1.0,
+   "mark": 6.182
+  },
+  {
+   "pk": "men:1INCHUSDT_LONG",
+   "symbol": "1INCHUSDT",
+   "account": "men",
+   "value_usd": 5.96,
+   "gain_pct": -0.313,
+   "tier": "B",
+   "perf_mult": 0.43,
+   "amt": 62.0,
+   "mark": 0.09620788
+  },
+  {
+   "pk": "men:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
+   "account": "men",
+   "value_usd": 5.91,
+   "gain_pct": -1.204,
+   "tier": "C",
+   "perf_mult": 0.37,
+   "amt": 0.258,
+   "mark": 22.91070452
+  },
+  {
+   "pk": "men:THETAUSDT_LONG",
+   "symbol": "THETAUSDT",
+   "account": "men",
+   "value_usd": 5.75,
+   "gain_pct": -0.149,
+   "tier": "C",
+   "perf_mult": 0.33,
+   "amt": 28.0,
+   "mark": 0.20549333
+  },
+  {
+   "pk": "men:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "men",
+   "value_usd": 5.48,
+   "gain_pct": 0.069,
+   "tier": "B",
+   "perf_mult": 0.69,
+   "amt": 0.001,
+   "mark": 5480.2
+  },
+  {
+   "pk": "men:SNXUSDT_LONG",
+   "symbol": "SNXUSDT",
+   "account": "men",
+   "value_usd": 3.13,
+   "gain_pct": -0.96,
+   "tier": "C",
+   "perf_mult": 0.23,
+   "amt": 13.2,
+   "mark": 0.2372
   }
  ]
 }
