@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-14 10:26 UTC",
- "total_capital_usd": 43.88,
+ "generated_at": "2026-10-14 10:35 UTC",
+ "total_capital_usd": 10.1,
  "tier_capital": {
   "A": 0.0,
-  "B": 43.88,
-  "C": 0.0
+  "B": 0.0,
+  "C": 10.1
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:ZENUSDT_LONG"
+  "inf:NEARUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ZENUSDT_LONG",
-   "symbol": "ZENUSDT",
-   "account": "fin",
-   "value_usd": 43.88,
-   "gain_pct": -1.467,
-   "tier": "B",
-   "perf_mult": 4.55,
-   "amt": 7.1,
-   "mark": 6.18
+   "pk": "inf:NEARUSDC_LONG",
+   "symbol": "NEARUSDC",
+   "account": "inf",
+   "value_usd": 10.1,
+   "gain_pct": 0.02,
+   "tier": "C",
+   "perf_mult": 0.25,
+   "amt": 2.0,
+   "mark": 5.051
   }
  ]
 }
