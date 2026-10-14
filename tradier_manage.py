@@ -25938,7 +25938,9 @@ class PositionReader:
                     # .manage_overlay_<side>.json, which tradier_positions merges (same lifecycle) on its writes.
                     import position_writer_guard as _pwg
                     if _pwg.process_role() == "manage":
-                        _pwg.before_write(fpath, positions_dict, overlay=True)
+                        _owned = getattr(self, "owned_accounts", None)
+                        if _owned is None or acc in _owned:  # never overwrite another tradier_manage process's account overlay
+                            _pwg.before_write(fpath, positions_dict, overlay=True)
                         continue
                 except Exception as _pwg_e:
                     logger.critical(f"[SINGLE_WRITER] overlay/guard error for {fpath} — position file NOT written (fail-closed): {_pwg_e!r}")
@@ -41340,6 +41342,7 @@ class TradierTradeManager:
             setattr(self, f"symbols_short_{acc}", [])
         self.order_queue = OrderQueue(self)
         self.reader = PositionReader(config)
+        self.reader.owned_accounts = set(self.target_accounts)  # 2026-10-14: overlay writes only for this process's accounts
         self.position_manager = self.reader
         self.logger = logger
         self.api_client: Optional[TradierAPIClient] = None

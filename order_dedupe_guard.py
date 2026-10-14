@@ -561,6 +561,14 @@ def _file_gate_heal(guard, venue, symbol, position_side, broker, last_fill, ev) 
         if ok2:
             _file_ok(ev2.get("token_key") or "")
             return Decision(True, "FILE_REWRITTEN_FROM_BROKER", ev2)
+        try:  # USER 2026-10-14 SINGLE POSITION WRITER: a manager may not rewrite the file; the order proceeds on the SAME fresh
+            # broker read the rewrite would have used (identical to the pre-law outcome) — never block on the writer's lag.
+            import position_writer_guard as _pwg  # noqa: WPS433
+            if _pwg.process_role() == "manage":
+                _file_ok(ev2.get("token_key") or "")
+                return Decision(True, "BROKER_FRESH_FILE_DEFERRED_TO_SERVICE", ev2)
+        except Exception:
+            pass
         ev = ev2
     return Decision(False, "POSITIONS_FILE_NOT_REFLECTED", ev)
 

@@ -395,3 +395,33 @@ def test_tradier_broker_rewrite_deferred_in_manage_role(tmp_path, monkeypatch):
     before = (tmp_path / "trb" / "long_positions.json").read_bytes()
     assert positions_truth.rewrite_row_from_broker("tradier", "trb", "A", "LONG", {"amt": 4.0}) is True
     assert (tmp_path / "trb" / "long_positions.json").read_bytes() == before
+
+
+def test_tradier_overlay_only_for_owned_accounts(tmp_path, monkeypatch):
+    import asyncio
+    import tradier_manage as tm
+    from tradier_positions import TradierPosition
+    for a in ("trb", "trc"):
+        (tmp_path / a).mkdir()
+    pwg.write_overlay(tmp_path / "trc" / "long_positions.json", {"trc:CLS_LONG": _stock_row(symbol="CLS", r1_stop_price=90.0)})
+    monkeypatch.setenv(pwg.ROLE_ENV, "manage")
+    monkeypatch.setattr(tm.config, "get_account_config", lambda acc: {"account_dir": tmp_path / acc})
+    rdr = object.__new__(tm.PositionReader)
+    rdr.owned_accounts = {"trb"}
+    rdr.positions = {"trb:A_LONG": TradierPosition(**_stock_row(r1_stop_price=165.2)), "trc:CLS_LONG": TradierPosition(**_stock_row(symbol="CLS", positionAmt=0.0))}
+    asyncio.run(rdr.save_all_positions())
+    assert json.loads((tmp_path / "trc" / ".manage_overlay_long.json").read_text())["rows"]["trc:CLS_LONG"]["r1_stop_price"] == 90.0
+    assert json.loads((tmp_path / "trb" / ".manage_overlay_long.json").read_text())["rows"]["trb:A_LONG"]["r1_stop_price"] == 165.2
+
+
+def test_file_gate_never_blocks_manager_on_writer_lag(tmp_path, monkeypatch):
+    import logging
+    import types
+    import order_dedupe_guard as odg
+    monkeypatch.setenv("POSITIONS_BASE_DIR", str(tmp_path))
+    monkeypatch.setenv(pwg.ROLE_ENV, "manage")
+    (tmp_path / "trc").mkdir()
+    (tmp_path / "trc" / "long_positions.json").write_text(json.dumps({"trc:CLS_LONG": _stock_row(symbol="CLS", positionAmt=1.0)}))
+    g = types.SimpleNamespace(account="trc", log=logging.getLogger("t"), cfg=None)
+    d = odg._file_gate_heal(g, "tradier", "CLS", "LONG", {"amt": 0.0}, None, {"key": "trc:CLS_LONG", "token_key": "CLS|"})
+    assert d.allowed if hasattr(d, "allowed") else d[0]
