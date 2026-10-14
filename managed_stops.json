@@ -1,30 +1,16 @@
 {
-  "men:GALAUSDT_SHORT": {
-    "orderId": "2000001510797540",
-    "stopPrice": 0.002173,
-    "entry_sig": "2026-10-14 11:20:03.089000+00:00",
-    "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "men:VETUSDT_SHORT": {
-    "orderId": "2000001511001286",
-    "stopPrice": 0.007381,
-    "entry_sig": "2026-10-14 12:56:43.718000+00:00",
-    "symbol": "VETUSDT",
-    "side": "SHORT"
-  },
-  "men:XRPUSDC_SHORT": {
-    "orderId": "2000001511068187",
-    "stopPrice": 1.3813,
-    "entry_sig": "2026-10-14 13:20:31.713000+00:00",
+  "fin:XRPUSDC_SHORT": {
+    "orderId": "3000002249251773",
+    "stopPrice": 1.3891,
+    "entry_sig": "2026-10-14 10:36:36.322000+00:00",
     "symbol": "XRPUSDC",
     "side": "SHORT"
   },
-  "men:MELANIAUSDT_SHORT": {
-    "orderId": "2000001511071104",
-    "stopPrice": 0.08928,
-    "entry_sig": "2026-10-14 13:21:32.714000+00:00",
-    "symbol": "MELANIAUSDT",
+  "fin:EGLDUSDT_SHORT": {
+    "orderId": "3000002249288845",
+    "stopPrice": 3.792,
+    "entry_sig": "2026-10-14 11:07:10.638000+00:00",
+    "symbol": "EGLDUSDT",
     "side": "SHORT"
   }
 }

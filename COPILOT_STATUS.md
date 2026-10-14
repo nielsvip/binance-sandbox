@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-14 13:35:44 UTC
+# Copilot Status — 2026-10-14 13:51:00 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:32:40
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T13:33:41
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T13:33:41
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:33:41
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T13:34:42
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T13:34:42
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:34:42
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T13:35:43
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T13:35:43
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:35:43
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:47:57
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T13:48:58
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T13:48:58
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:48:58
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T13:49:59
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T13:49:59
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:49:59
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-14T13:50:59
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-14T13:50:59
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-14T13:50:59
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,12 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 2 | **Watching for reentry:** 2 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **CLS** LONG (tradier) peak +6.2%, now +2.4%
-- HELD: **AAPL** LONG (tradier) peak +3.7%, now +3.1%
+- HELD: **CLS** LONG (tradier) peak +6.2%, now +1.2%
 
-- WATCHING: **GALAUSDT** SHORT (crypto) peaked +5.2%, exited 1m ago
-- WATCHING: **RLCUSDT** SHORT (crypto) peaked +4.8%, exited 1m ago
+- WATCHING: **GALAUSDT** SHORT (crypto) peaked +5.2%, exited 0m ago
+- WATCHING: **RLCUSDT** SHORT (crypto) peaked +4.8%, exited 0m ago
 
 ## Supervisor
 
