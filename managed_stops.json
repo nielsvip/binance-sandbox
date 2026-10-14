@@ -1,58 +1,37 @@
 {
-  "ang:DASHUSDT_LONG": {
-    "orderId": "4000001966657240",
-    "stopPrice": 49.49,
-    "entry_sig": "2026-10-14 02:04:36.010786+00:00",
-    "symbol": "DASHUSDT",
+  "fin:THETAUSDT_LONG": {
+    "orderId": "3000002248725206",
+    "stopPrice": 0.2024,
+    "entry_sig": "2026-10-14 00:20:06.157697+00:00",
+    "symbol": "THETAUSDT",
     "side": "LONG"
   },
-  "ang:KMNOUSDT_LONG": {
-    "orderId": "4000001966646137",
-    "stopPrice": 0.03685,
-    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
-    "symbol": "KMNOUSDT",
+  "fin:SOLUSDC_LONG": {
+    "orderId": "3000002248950503",
+    "stopPrice": 106.26,
+    "entry_sig": "2026-10-14 00:48:56.023801+00:00",
+    "symbol": "SOLUSDC",
     "side": "LONG"
   },
-  "ang:EGLDUSDT_LONG": {
-    "orderId": "4000001966646146",
-    "stopPrice": 3.72,
-    "entry_sig": "2026-10-14 00:31:36.196148+00:00",
-    "symbol": "EGLDUSDT",
-    "side": "LONG"
-  },
-  "ang:ZENUSDT_LONG": {
-    "orderId": "4000001966646136",
+  "fin:ZENUSDT_LONG": {
+    "orderId": "3000002248868396",
     "stopPrice": 6.121,
-    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
+    "entry_sig": "2026-10-14 04:51:37.937000+00:00",
     "symbol": "ZENUSDT",
     "side": "LONG"
   },
-  "ang:COMPUSDT_LONG": {
-    "orderId": "4000001966830609",
-    "stopPrice": 22.79,
-    "entry_sig": "2026-10-14 04:45:00.378000+00:00",
-    "symbol": "COMPUSDT",
-    "side": "LONG"
-  },
-  "ang:PUMPUSDT_LONG": {
-    "orderId": "4000001966846831",
-    "stopPrice": 0.00494,
-    "entry_sig": "2026-10-14 04:58:45.659000+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "LONG"
-  },
-  "ang:MELANIAUSDT_SHORT": {
-    "orderId": "4000001966859362",
-    "stopPrice": 0.09063,
-    "entry_sig": "2026-10-14 05:07:29.032000+00:00",
-    "symbol": "MELANIAUSDT",
+  "fin:ADAUSDC_SHORT": {
+    "orderId": "3000002248816464",
+    "stopPrice": 0.2394,
+    "entry_sig": "2026-10-14 04:04:16.551000+00:00",
+    "symbol": "ADAUSDC",
     "side": "SHORT"
   },
-  "ang:ALTUSDT_LONG": {
-    "orderId": "4000001966882392",
-    "stopPrice": 0.008177,
-    "entry_sig": "2026-10-14 05:22:28.880000+00:00",
-    "symbol": "ALTUSDT",
-    "side": "LONG"
+  "fin:RLCUSDT_SHORT": {
+    "orderId": "3000002248897470",
+    "stopPrice": 0.9541,
+    "entry_sig": "2026-10-14 05:21:19.985000+00:00",
+    "symbol": "RLCUSDT",
+    "side": "SHORT"
   }
 }
