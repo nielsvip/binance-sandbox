@@ -198,7 +198,9 @@ done
 # For ez_manage, also check quick_general log (more reliable heartbeat)
 if [[ "$SCRIPT_BASE" == "ez_manage" && -n "$ACCT_SUFFIX" ]]; then
     _quick_log="$LOGDIR/ez_positions_quick_general${ACCT_SUFFIX}.log"
-    if [[ -f "$_quick_log" ]]; then
+    # 2026-10-14: the quick log went silent after the single-writer change (ez_manage no longer writes positions) -> every launch was
+    # killed at once for "no output 5497s" + 600 s SIGKILL backoff. Use it only when it is fresher than the ez_manage log.
+    if [[ -f "$_quick_log" ]] && { [[ -z "$PYTHON_LOG" ]] || [[ "$_quick_log" -nt "$PYTHON_LOG" ]]; }; then
         PYTHON_LOG="$_quick_log"
     fi
 fi

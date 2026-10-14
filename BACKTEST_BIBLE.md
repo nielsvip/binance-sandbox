@@ -2886,3 +2886,19 @@ vector results as we do now" → "only on s2, give it plenty of time to finish e
 - **Go-live refresh** (Mac cron `V15_GOLIVE_REFRESH` 05:20/11:20/19:20): still applied `data/avg_delta_selection.json`
   (`--all-finished`) and overwrote the published go-live (10-14 12:03Z: 194 sets over the 235 published boards). Now
   `tools/v15_golive_refresh_published.sh` = chain step 5b (`--published --pin-all`); a failed published build applies nothing.
+
+### 105.2 Lane data law + S1 Binance IP ban (2026-10-14 16:xxZ)
+- First 18 lane results were INVALID and moved to `data/parity/scalar_lane/_invalid_stale_npz_20261014/`: the vec leg skipped
+  (`STALE_NPZ_SKIPPED`, USER 2026-10-12 freshness law) while the live leg ran → one-sided. Never bypassed
+  (`V12_ALLOW_STALE_NPZ` is tests-only).
+- Now every job goes through S1 `tools/v15_dispatch_job.py` (the herd's JIT path: tail refresh + md5-verified push to S2), then
+  `--run-job` on S2 freezes a private copy of the job symbol's NPZ (others symlinked) as `TRADE_PARITY_NPZ_DIR`; a still-stale
+  NPZ → `STALE_WAIT` (no run, retry after 60 min, all new dispatches held meanwhile). While `ez_klines`' ban file on S1
+  (`~/binance/ez_s1_stack/data/ez_klines_ban_state.json`) shows an active ban, the lane dispatches nothing.
+- **S1 IP 157.180.125.52 is banned by Binance futures REST (418, -1003) since ≥ 10-13 18:23Z, re-banned to 1792007759 (≈19:56Z
+  10-14).** Consequences: every S1 NPZ tail refresh fetches nothing but exits 0 (`EXCHANGE_BAR_NOT_READY`) and
+  `v15_dispatch_job.fast_push` logs it as "tail current" → herd boards since ~06:00Z run on NPZs ending ~06:00Z (crypto) or are
+  STALE-skipped; S1 position-failover cannot reach Binance. Escalation pattern: when a ban lifts, independent fetchers
+  (`ez_klines` 282×418 in one burst 15:06Z, `npz_bar_refresh`, `klines_ff`, `klines_vault`, dispatch tail refreshes) each assume the
+  full 2400/min IP budget → instant re-ban, longer each time. OPEN (operator decision, data-ingestion lane): one shared S1
+  ban/weight governor honoured by every fetcher + a non-zero exit / "stale" label when the tail refresh fetched nothing.

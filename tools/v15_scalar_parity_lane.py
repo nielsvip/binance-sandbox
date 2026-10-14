@@ -35,6 +35,18 @@ ALLOWED_HOSTS = ("s2",)
 S1 = os.environ.get("PARITY_LANE_S1", "niels@10.0.0.3")
 SELF = os.environ.get("PARITY_LANE_SELF", "niels@10.0.0.4")
 DISPATCH_GRACE_H = float(os.environ.get("PARITY_LANE_DISPATCH_GRACE_H", "3"))
+STALE_RETRY_MIN = float(os.environ.get("PARITY_LANE_STALE_RETRY_MIN", "60"))
+S1_BAN_FILE = os.environ.get("PARITY_LANE_S1_BAN_FILE", "binance/ez_s1_stack/data/ez_klines_ban_state.json")
+
+
+def s1_ban_remaining_s():
+    """Binance REST ban on S1's IP (ez_klines persists it): while active, a dispatch would make S1 call Binance (tail refresh)
+    and extend the ban — the lane dispatches nothing. Unreadable -> 0 (the stale-NPZ check still protects the run)."""
+    try:
+        r = subprocess.run(SSH + [S1, f"cat ~/{S1_BAN_FILE}"], capture_output=True, text=True, timeout=30)
+        return max(0.0, float(json.loads(r.stdout).get("ban_until_ms", 0)) / 1000.0 - time.time())
+    except Exception:
+        return 0.0
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
 
 
@@ -56,6 +68,14 @@ def _jobdir(item):
 
 
 def _state(d):
+    sw = d / "stale_wait.json"
+    if sw.exists():
+        m = json.loads(sw.read_text())
+        if time.time() - m.get("t", 0) < STALE_RETRY_MIN * 60:
+            return "STALE_WAIT", m
+        for f in ("stale_wait.json", "dispatch.json", "job.json"):
+            (d / f).unlink(missing_ok=True)
+        return "PENDING", {}
     j = d / "job.json"
     if not j.exists():
         dj = d / "dispatch.json"
@@ -110,6 +130,14 @@ def run_job(rel):
     d = ROOT / rel
     meta = json.loads((d / "item.json").read_text())
     fz, md5 = _freeze(d, meta["sym_side"])
+    from tools.opt.v12_pilot import npz_freshness
+    fresh, why = npz_freshness(meta["sym_side"])
+    if not fresh:
+        # the S1 push could not bring a fresh NPZ (e.g. 2026-10-14 Binance IP ban on S1 -> tail refresh fetched nothing):
+        # never spend a run on a stale window (USER 2026-10-12) — wait, then re-dispatch
+        shutil.rmtree(d / "npz", ignore_errors=True)
+        (d / "stale_wait.json").write_text(json.dumps({"t": time.time(), "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "why": why, "npz_md5": md5}))
+        return 0
     env = dict(os.environ, TRADE_PARITY_VEC_EXACT="0", V15_PARITY_FORCE_REAL="1", PYTHONUNBUFFERED="1", TRADE_PARITY_NPZ_DIR=fz)
     py = str(ROOT / ".venv" / "bin" / "python")
     cmd = ["nice", "-n", "19", "timeout", str(int(TIMEOUT_H * 3600)), py, "-u", "tools/v15_trade_parity.py", "--sym-side", meta["sym_side"],
@@ -125,7 +153,7 @@ def run_job(rel):
 
 
 def status(items):
-    rows, counts = [], {"DONE": 0, "RUNNING": 0, "DISPATCHED": 0, "DIED": 0, "PENDING": 0}
+    rows, counts = [], {"DONE": 0, "RUNNING": 0, "DISPATCHED": 0, "STALE_WAIT": 0, "DIED": 0, "PENDING": 0}
     for it in items:
         st, meta = _state(_jobdir(it))
         counts[st] += 1
@@ -134,7 +162,7 @@ def status(items):
             rep = json.loads((_jobdir(it) / f"{it['sym_side']}_trade_parity.json").read_text())
             r.update({k: rep.get(k) for k in ("verdict", "vec_trips", "live_trips", "matched", "vec_match_rate", "live_match_rate", "exit_agree_rate")})
             r["secs"] = rep.get("secs")
-        elif st in ("RUNNING", "DIED", "DISPATCHED"):
+        elif st in ("RUNNING", "DIED", "DISPATCHED", "STALE_WAIT"):
             r["started"] = meta.get("started") or meta.get("at")
             if meta.get("why"):
                 r["why"] = meta["why"]
@@ -153,7 +181,10 @@ def main():
     load1 = os.getloadavg()[0]
     running = sum(1 for it in items if _state(_jobdir(it))[0] in ("RUNNING", "DISPATCHED"))
     started = []
-    for it in items:
+    ban_s = s1_ban_remaining_s()
+    stale_waiting = any(_state(_jobdir(it))[0] == "STALE_WAIT" for it in items)
+    hold = f"S1 Binance ban {ban_s:.0f}s more" if ban_s > 0 else ("an item is in STALE_WAIT (fresh NPZ not available yet)" if stale_waiting else "")
+    for it in ([] if hold else items):
         if running >= MAX_JOBS or os.getloadavg()[0] >= MAX_LOAD:
             break
         if _state(_jobdir(it))[0] != "PENDING":
@@ -166,15 +197,15 @@ def main():
         running += 1
     counts, rows = status(items)
     st = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": socket.gethostname(), "load1": round(load1, 1), "max_jobs": MAX_JOBS,
-          "max_load": MAX_LOAD, "timeout_h": TIMEOUT_H, "queue_built": (q.get("_meta") or {}).get("built"), "counts": counts, "started_now": started, "rows": rows}
+          "max_load": MAX_LOAD, "timeout_h": TIMEOUT_H, "dispatch_hold": hold, "queue_built": (q.get("_meta") or {}).get("built"), "counts": counts, "started_now": started, "rows": rows}
     (LANE / "STATUS.json").write_text(json.dumps(st, indent=1, default=str))
-    md = [f"# Scalar parity lane (S2) — {st['at']}", "", f"load1 {st['load1']} | jobs ≤{MAX_JOBS} | timeout {TIMEOUT_H}h | queue built {st['queue_built']} | {counts}", "",
+    md = [f"# Scalar parity lane (S2) — {st['at']}", "", f"load1 {st['load1']} | jobs ≤{MAX_JOBS} | timeout {TIMEOUT_H}h | queue built {st['queue_built']} | {counts}", f"dispatch hold: {hold or 'none'}", "",
           "| tier | sym_side | state | verdict | vec trips | live trips | matched | vec match | live match | exit agree |", "|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         if r["state"] != "PENDING":
             md.append(f"| {r['tier']} | {r['sym_side']} | {r['state']} | {r.get('verdict', '')} | {r.get('vec_trips', '')} | {r.get('live_trips', '')} | {r.get('matched', '')} | {r.get('vec_match_rate', '')} | {r.get('live_match_rate', '')} | {r.get('exit_agree_rate', '')} |")
     (LANE / "STATUS.md").write_text("\n".join(md) + "\n")
-    print(f"[lane] load1={load1:.1f} counts={counts} started={started}")
+    print(f"[lane] load1={load1:.1f} counts={counts} started={started} hold={hold or '-'}")
 
 
 if __name__ == "__main__":
