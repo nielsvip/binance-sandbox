@@ -1,44 +1,37 @@
 {
-  "men:1INCHUSDT_LONG": {
-    "orderId": "2000001510194275",
-    "stopPrice": 0.09498,
-    "entry_sig": "2026-10-14 05:08:09.484000+00:00",
-    "symbol": "1INCHUSDT",
+  "ang:DASHUSDT_LONG": {
+    "orderId": "4000001966657240",
+    "stopPrice": 49.49,
+    "entry_sig": "2026-10-14 02:04:36.010786+00:00",
+    "symbol": "DASHUSDT",
     "side": "LONG"
   },
-  "men:BATUSDT_LONG": {
-    "orderId": "2000001510571020",
-    "stopPrice": 0.18618,
-    "entry_sig": "2026-10-14 08:54:23.351000+00:00",
-    "symbol": "BATUSDT",
+  "ang:KMNOUSDT_LONG": {
+    "orderId": "4000001966646137",
+    "stopPrice": 0.03685,
+    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
+    "symbol": "KMNOUSDT",
     "side": "LONG"
   },
-  "men:ETHUSDC_LONG": {
-    "orderId": "2000001510587550",
-    "stopPrice": 2483.97,
-    "entry_sig": "2026-10-14 09:05:29.538000+00:00",
-    "symbol": "ETHUSDC",
-    "side": "LONG"
-  },
-  "men:MELANIAUSDT_SHORT": {
-    "orderId": "2000001510608636",
-    "stopPrice": 0.08928,
-    "entry_sig": "2026-10-14 09:19:41.881000+00:00",
-    "symbol": "MELANIAUSDT",
-    "side": "SHORT"
-  },
-  "men:XRPUSDC_SHORT": {
-    "orderId": "2000001510613130",
-    "stopPrice": 1.3813,
-    "entry_sig": "2026-10-14 09:22:28.726000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
-  "men:GALAUSDT_SHORT": {
-    "orderId": "2000001510664500",
-    "stopPrice": 0.002173,
-    "entry_sig": "2026-10-14 09:53:10.026000+00:00",
+  "ang:GALAUSDT_SHORT": {
+    "orderId": "4000001967142861",
+    "stopPrice": 0.002175,
+    "entry_sig": "2026-10-14 08:20:21.309000+00:00",
     "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "ang:ZENUSDT_LONG": {
+    "orderId": "4000001966646136",
+    "stopPrice": 6.121,
+    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
+    "symbol": "ZENUSDT",
+    "side": "LONG"
+  },
+  "ang:MELANIAUSDT_SHORT": {
+    "orderId": "4000001967226397",
+    "stopPrice": 0.09063,
+    "entry_sig": "2026-10-14 09:20:37.904000+00:00",
+    "symbol": "MELANIAUSDT",
     "side": "SHORT"
   }
 }
