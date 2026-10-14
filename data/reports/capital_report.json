@@ -1,55 +1,67 @@
 {
- "generated_at": "2026-10-14 08:06 UTC",
- "total_capital_usd": 103.56,
+ "generated_at": "2026-10-14 08:20 UTC",
+ "total_capital_usd": 163.04,
  "tier_capital": {
   "A": 0.0,
-  "B": 44.32,
-  "C": 59.24
+  "B": 62.89,
+  "C": 100.15
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 2
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "fin:THETAUSDT_LONG",
-  "fin:SOLUSDC_LONG"
+  "flz:DASHUSDT_LONG",
+  "flz:SOLUSDC_LONG",
+  "flz:DOGEUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:THETAUSDT_LONG",
-   "symbol": "THETAUSDT",
-   "account": "fin",
-   "value_usd": 45.19,
-   "gain_pct": 0.239,
-   "tier": "C",
-   "perf_mult": 0.33,
-   "amt": 217.8,
-   "mark": 0.20749376
-  },
-  {
-   "pk": "fin:ZENUSDT_LONG",
-   "symbol": "ZENUSDT",
-   "account": "fin",
-   "value_usd": 44.32,
-   "gain_pct": -0.481,
-   "tier": "B",
-   "perf_mult": 5.46,
-   "amt": 7.1,
-   "mark": 6.24182812
-  },
-  {
-   "pk": "fin:SOLUSDC_LONG",
+   "pk": "flz:SOLUSDC_LONG",
    "symbol": "SOLUSDC",
-   "account": "fin",
-   "value_usd": 14.05,
-   "gain_pct": 0.428,
+   "account": "flz",
+   "value_usd": 77.8,
+   "gain_pct": 0.159,
    "tier": "C",
    "perf_mult": 0.22,
-   "amt": 0.13,
-   "mark": 108.06090846
+   "amt": 0.72,
+   "mark": 108.05
+  },
+  {
+   "pk": "flz:ETHUSDC_LONG",
+   "symbol": "ETHUSDC",
+   "account": "flz",
+   "value_usd": 62.89,
+   "gain_pct": 0.008,
+   "tier": "B",
+   "perf_mult": 4.89,
+   "amt": 0.025,
+   "mark": 2515.75
+  },
+  {
+   "pk": "flz:DOGEUSDC_LONG",
+   "symbol": "DOGEUSDC",
+   "account": "flz",
+   "value_usd": 11.23,
+   "gain_pct": 0.336,
+   "tier": "C",
+   "perf_mult": 0.69,
+   "amt": 132.0,
+   "mark": 0.08506468
+  },
+  {
+   "pk": "flz:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 11.12,
+   "gain_pct": -0.512,
+   "tier": "C",
+   "perf_mult": 0.49,
+   "amt": 0.22,
+   "mark": 50.56
   }
  ]
 }
