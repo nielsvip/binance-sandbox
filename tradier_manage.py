@@ -25947,11 +25947,18 @@ class PositionReader:
                         if isinstance(row, dict) and isinstance(mrow, dict):
                             keep = {
                                 k: row[k]
-                                for k in ("positionAmt", "quantity", "cost_basis")
-                                if k in row
+                                for k in ("positionAmt", "quantity", "cost_basis", "entry_price")  # USER 2026-10-14: identity from tradier_positions (broker cost basis)
+                                if k in row and (k != "entry_price" or float(row.get(k) or 0) > 0)
                             }
                             row = {**row, **mrow, **keep}
                         merged[pk_key] = row
+                    try:  # USER 2026-10-14 SINGLE POSITION WRITER law (stocks): opened_at of a held position never changes, max_gain never drops
+                        import position_writer_guard as _pwg
+                        if not _pwg.before_write(fpath, merged, overlay=False):
+                            continue
+                    except Exception as _pwg_e:
+                        logger.critical(f"[SINGLE_WRITER] guard error for {fpath} — write REFUSED (fail-closed): {_pwg_e!r}")
+                        continue
                     if merged == disk:
                         continue
                     tmp = f"{fpath}.tmp.{os.getpid()}"

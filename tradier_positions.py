@@ -177,6 +177,13 @@ def _convert_timestamp_strings(data: Any) -> Any:
 
 
 async def atomic_write_json(file_path: Path, data: Dict):
+    try:  # USER 2026-10-14 SINGLE POSITION WRITER law (stocks): opened_at of a held position never changes, max_gain never drops
+        import position_writer_guard as _pwg
+        if not _pwg.before_write(file_path, data, overlay=False):
+            return
+    except Exception as _pwg_e:
+        logger.critical(f"[SINGLE_WRITER] guard error for {file_path} — write REFUSED (fail-closed): {_pwg_e!r}")
+        return
     random_suffix = uuid.uuid4().hex
     temp_file = file_path.with_name(f".{file_path.name}.{random_suffix}.tmp")
     
@@ -1256,6 +1263,9 @@ class TradierPositionManager:
         try:
             # Atomic Writes
             for fpath, data in [(self.long_file, longs_sorted), (self.short_file, shorts_sorted)]:
+                import position_writer_guard as _pwg  # USER 2026-10-14 immutable opened_at / monotonic max_gain
+                if not _pwg.before_write(fpath, data, overlay=False):
+                    continue
                 temp = fpath.with_suffix('.tmp')
                 with open(temp, 'w') as f:
                     json.dump(data, f, indent=2, default=str)
@@ -2511,6 +2521,9 @@ class TradierPositionManager:
             # 4. Write to disk
             for side, data in [("LONG", longs), ("SHORT", shorts)]:
                 f = self.get_position_file(side)
+                import position_writer_guard as _pwg  # USER 2026-10-14 immutable opened_at / monotonic max_gain
+                if not _pwg.before_write(f, data, overlay=False):
+                    continue
                 temp = f.with_suffix('.tmp')
                 with open(temp, 'w') as fp: 
                     json.dump(data, fp, indent=2)
@@ -2620,6 +2633,9 @@ class TradierPositionManager:
                 # Write to disk
                 for side, data in [("LONG", longs), ("SHORT", shorts)]:
                     f = self.get_position_file(side)
+                    import position_writer_guard as _pwg  # USER 2026-10-14 immutable opened_at / monotonic max_gain
+                    if not _pwg.before_write(f, data, overlay=False):
+                        continue
                     temp = f.with_suffix('.tmp')
                     with open(temp, 'w') as fp:
                         json.dump(data, fp, indent=2, ensure_ascii=False, default=str)

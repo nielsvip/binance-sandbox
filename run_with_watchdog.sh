@@ -622,6 +622,20 @@ main() {
             consecutive_sigkill=0
             # 2026-10-06 USER: backoff on consecutive failures (exit 1 crash loops relaunched every 5s).
             # 0/143 (clean / graceful TERM recycle) reset the counter and relaunch fast as before.
+            # 2026-10-14 USER: an INTENTIONAL restart relaunches immediately, never a 300 s gap. Intentional =
+            # SIGTERM sent to this wrapper (handle_sigterm), a request file
+            # data/restart_requests/<script><_acct>.request (consumed), or any exit after a STABLE run
+            # (>= WD_STABLE_RUN_S, default 120 s: a rolling restart TERMs a long-running child -> exit 1).
+            # The failure counter only grows for crash loops (exits within WD_STABLE_RUN_S of launch).
+            local _req="$WORKDIR/data/restart_requests/${SCRIPT_BASE}${ACCT_SUFFIX}.request"
+            if [[ "${WD_INTENTIONAL:-0}" == "1" || -f "$_req" || "$_run_duration" -ge "${WD_STABLE_RUN_S:-120}" ]]; then
+                log "[INTENTIONAL_RESTART] exit=$_last_exit after ${_run_duration}s (sigterm=${WD_INTENTIONAL:-0} request=$([[ -f "$_req" ]] && echo 1 || echo 0)) — failure counter reset (was $consecutive_fail), relaunching in 1s"
+                rm -f "$_req"
+                WD_INTENTIONAL=0
+                consecutive_fail=0
+                sleep 1
+                continue
+            fi
             if [[ "$_last_exit" -ne 0 && "$_last_exit" -ne 143 ]]; then
                 consecutive_fail=$((consecutive_fail + 1))
                 local _fbo=$((5 * (1 << (consecutive_fail - 1))))
@@ -647,6 +661,7 @@ cleanup() {
 # SIGTERM to watchdog itself: kill child, let main loop restart it
 CHILD_PID=""
 handle_sigterm() {
+    WD_INTENTIONAL=1
     log "Watchdog received SIGTERM — killing child, will restart"
     if [ -n "$CHILD_PID" ] && kill -0 "$CHILD_PID" 2>/dev/null; then
         kill -TERM "$CHILD_PID" 2>/dev/null || true

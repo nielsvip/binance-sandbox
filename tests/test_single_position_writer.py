@@ -205,3 +205,73 @@ def test_broker_rewrite_deferred_in_manage_role(acct, monkeypatch):
     before = (acct / "long_positions.json").read_bytes()
     assert positions_truth.rewrite_row_from_broker("binance", "fin", "ETHUSDC", "LONG", {"amt": 0.03, "entry": 2511.0}) is True
     assert (acct / "long_positions.json").read_bytes() == before
+
+
+def test_max_gain_never_decreases_within_lifecycle(acct):
+    rows = {"fin:ETHUSDC_LONG": _row(mg=0.1)}
+    pwg.before_write(acct / "long_positions.json", rows, role="service")
+    assert rows["fin:ETHUSDC_LONG"]["max_gain"] == 0.5
+    (acct / "long_positions.json").write_text(json.dumps({"fin:ETHUSDC_LONG": _row(amt=0.0, mg=0.5)}))
+    rows = {"fin:ETHUSDC_LONG": _row(oa=OA_RESTAMP, mg=0.0)}
+    pwg.before_write(acct / "long_positions.json", rows, role="service")
+    assert rows["fin:ETHUSDC_LONG"]["max_gain"] == 0.0  # new lifecycle after a real close starts fresh
+
+
+def _restorer(tmp_path):
+    import types
+    from ez_positions_service import PositionService
+    o = types.SimpleNamespace(config=types.SimpleNamespace(BASE_PATH=tmp_path))
+    o._restore_lifecycle_sanitize = types.MethodType(PositionService._restore_lifecycle_sanitize, o)
+    o.restore = types.MethodType(PositionService._restore_position_from_backups_blocking, o)
+    return o
+
+
+def test_restore_refuses_other_account(tmp_path, monkeypatch):
+    monkeypatch.setenv("POSITIONS_BASE_DIR", str(tmp_path))
+    for a in ("fin", "men"):
+        (tmp_path / a / "backups").mkdir(parents=True)
+    (tmp_path / "men" / "long_positions.json").write_text(json.dumps({"men:ETHUSDC_LONG": _row()}))
+    (tmp_path / "fin" / "backups" / "long_positions_backup_20261014_000000.json").write_text(json.dumps({}))
+    assert _restorer(tmp_path).restore("fin", "ETHUSDC", "LONG") is None
+
+
+def test_restore_flat_backup_row_carries_no_closed_lifecycle_identity(tmp_path, monkeypatch):
+    monkeypatch.setenv("POSITIONS_BASE_DIR", str(tmp_path))
+    (tmp_path / "fin" / "backups").mkdir(parents=True)
+    (tmp_path / "fin" / "backups" / "long_positions_backup_20261014_000000.json").write_text(json.dumps({"fin:ETHUSDC_LONG": _row(amt=0.0, mg=3.0)}))
+    pos = _restorer(tmp_path).restore("fin", "ETHUSDC", "LONG")
+    assert pos is not None and pos.opened_at is None and pos.entry_price == 0.0 and pos.max_gain == 0.0
+
+
+def test_restore_held_own_backup_row_kept(tmp_path, monkeypatch):
+    monkeypatch.setenv("POSITIONS_BASE_DIR", str(tmp_path))
+    (tmp_path / "fin" / "backups").mkdir(parents=True)
+    (tmp_path / "fin" / "backups" / "long_positions_backup_20261014_000000.json").write_text(json.dumps({"fin:ETHUSDC_LONG": _row()}))
+    pos = _restorer(tmp_path).restore("fin", "ETHUSDC", "LONG")
+    assert abs(pwg.to_epoch(pos.opened_at) - pwg.to_epoch(OA_TRUE)) < 1 and pos.entry_price == 2509.33
+
+
+def test_tracker_record_mirrors_service_identity(acct):
+    ec = {"opened_at": OA_RESTAMP, "entry_price": 2500.72, "average_entry_price": 2500.72, "positionAmt": 0.02, "max_gain": 0.9}
+    ch = pwg.mirror_identity(ec, pwg.held_identity(acct, "fin:ETHUSDC_LONG"))
+    assert ec["opened_at"] == OA_TRUE and ec["entry_price"] == 2509.33 and ec["average_entry_price"] == 2509.33
+    assert ec["positionAmt"] == 0.025 and ec["max_gain"] == 0.9  # tracker max_gain never pulled below
+    assert {c[0] for c in ch} >= {"opened_at", "entry_price", "positionAmt"}
+    assert pwg.held_identity(acct, "fin:NOPE_LONG") is None
+
+
+def test_tracker_save_mirrors_identity(acct):
+    import types
+    import ez_positions_quick as q
+    tm = types.SimpleNamespace(base_path=acct.parent, exit_candidates={"fin:ETHUSDC_LONG": {"opened_at": OA_RESTAMP, "entry_price": 1.0, "positionAmt": 0.025, "max_gain": 0.0}})
+    n = q.TrackerManager._mirror_identity_from_service(tm, "fin")
+    assert n >= 2 and tm.exit_candidates["fin:ETHUSDC_LONG"]["opened_at"] == OA_TRUE
+
+
+def test_tradier_rows_opened_at_immutable(tmp_path):
+    d = tmp_path / "tra"
+    d.mkdir()
+    (d / "long_positions.json").write_text(json.dumps({"tra:META_LONG": {"symbol": "META", "positionAmt": 1.0, "entry_price": 606.92, "opened_at": "2026-08-10T13:39:15.121Z", "max_gain": 4.0}}))
+    rows = {"tra:META_LONG": {"symbol": "META", "positionAmt": 1.0, "entry_price": 606.92, "opened_at": "2026-09-01T15:29:44.907202Z", "max_gain": 1.0}}
+    assert pwg.before_write(d / "long_positions.json", rows, role="other", overlay=False) is True
+    assert rows["tra:META_LONG"]["opened_at"] == "2026-08-10T13:39:15.121Z" and rows["tra:META_LONG"]["max_gain"] == 4.0

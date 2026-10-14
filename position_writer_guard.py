@@ -239,6 +239,82 @@ def enforce_identity(rows, disk_rows):
     return rejected
 
 
+def enforce_max_gain(rows, disk_rows):
+    """max_gain is monotonic within a lifecycle: disk held + new held + same opened_at -> never below the disk value."""
+    raised = []
+    for k, n in (rows or {}).items():
+        o = (disk_rows or {}).get(k)
+        if not isinstance(n, dict) or not isinstance(o, dict) or _amt(o) <= 0 or _amt(n) <= 0:
+            continue
+        if not _same_lifecycle(o.get("opened_at"), n.get("opened_at")):
+            continue
+        try:
+            o_mg, n_mg = float(o.get("max_gain") or 0), float(n.get("max_gain") or 0)
+        except Exception:
+            continue
+        if n_mg < o_mg - 1e-12:
+            n["max_gain"] = o_mg
+            raised.append((k, o_mg, n_mg))
+    return raised
+
+
+_identity_cache = {}
+
+
+def identity_rows(account_dir, max_age_s=2.0):
+    """The single writer's rows for an account (both sides), cached briefly. Readers mirror identity fields from here."""
+    key = str(account_dir)
+    hit = _identity_cache.get(key)
+    if hit and time.time() - hit[0] < max_age_s:
+        return hit[1]
+    rows = {}
+    for side in ("long", "short"):
+        rows.update(read_json(Path(account_dir) / f"{side}_positions.json"))
+    _identity_cache[key] = (time.time(), rows)
+    return rows
+
+
+def held_identity(account_dir, position_key):
+    """(opened_at, entry_price, max_gain, positionAmt) of a HELD position from the single writer, else None."""
+    r = identity_rows(account_dir).get(position_key)
+    if not isinstance(r, dict) or _amt(r) <= 0 or to_epoch(r.get("opened_at")) is None:
+        return None
+    try:
+        return r.get("opened_at"), float(r.get("entry_price") or 0), float(r.get("max_gain") or 0), _amt(r)
+    except Exception:
+        return None
+
+
+def mirror_identity(candidate, ident):
+    """Make a tracker/bookkeeping record mirror the single writer: opened_at / entry / qty from the service, max_gain never below it."""
+    if not isinstance(candidate, dict) or not ident:
+        return []
+    oa, ep, mg, amt = ident
+    changed = []
+    if not _same_lifecycle(candidate.get("opened_at"), oa):
+        changed.append(("opened_at", candidate.get("opened_at"), oa))
+        candidate["opened_at"] = oa
+    if ep > 0:
+        for f in ("entry_price", "average_entry_price"):
+            if f == "entry_price" or f in candidate:
+                try:
+                    if abs(float(candidate.get(f) or 0) - ep) > ep * 1e-9:
+                        changed.append((f, candidate.get(f), ep))
+                        candidate[f] = ep
+                except Exception:
+                    candidate[f] = ep
+    try:
+        if abs(float(candidate.get("positionAmt") or 0) - amt) > max(1e-12, amt * 1e-9):
+            changed.append(("positionAmt", candidate.get("positionAmt"), amt))
+            candidate["positionAmt"] = amt
+        if float(candidate.get("max_gain") or -1e18) < mg:
+            changed.append(("max_gain", candidate.get("max_gain"), mg))
+            candidate["max_gain"] = mg
+    except Exception:
+        pass
+    return changed
+
+
 def _alert(kind, detail, base_dir=None):
     try:
         if not base_dir and os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("POSITIONS_BASE_DIR"):
@@ -271,7 +347,11 @@ def before_write(path, rows, role=None, log=None, overlay=True):
             log.info(f"[SINGLE_WRITER] {role} write to {path} skipped: {why}")
         return False
     apply_overlay(rows, read_json(overlay_path(path)))
-    rejected = enforce_identity(rows, read_json(path))
+    disk = read_json(path)
+    rejected = enforce_identity(rows, disk)
+    for k, disk_mg, new_mg in enforce_max_gain(rows, disk):
+        if _rate_limited(f"mg:{k}", 300.0):
+            log.warning(f"🛡️ [MAX_GAIN_DECREASE_REJECTED] {k}: kept {disk_mg}, refused {new_mg} (role={role})")
     for k, disk_oa, new_oa in rejected:
         log.critical(f"🛑 [OPENED_AT_CHANGE_REJECTED] {k}: kept {disk_oa}, refused {new_oa} (role={role} pid={os.getpid()})")
         _alert("OPENED_AT_CHANGE_REJECTED", {"key": k, "kept": disk_oa, "refused": new_oa, "file": str(path)}, Path(path).parent.parent)

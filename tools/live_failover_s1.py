@@ -56,6 +56,7 @@ TAKEOVER_CONFIRM = int(os.environ.get("LF_TAKEOVER_CONFIRM", "4"))
 FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "600"))
 FENCE_WAIT_S = float(os.environ.get("LF_FENCE_WAIT_S", "120"))
 WITNESS_S = float(os.environ.get("LF_WITNESS_S", "300"))
+TRADING_DEAD_S = float(os.environ.get("LF_TRADING_DEAD_S", "600"))  # > max normal ez_manage restart (300 s backoff cap + ~80 s startup) + margin
 UNITS = {"crypto": "live-failover-crypto-producers.service", "stocks": "live-failover-stocks-producers.service", "trading": "live-failover-trading.service"}
 TRADER_PATTERN = r"python.*(ez_manage\.py --account|tradier_manage\.py --accounts)"
 HOST = socket.gethostname()
@@ -372,7 +373,7 @@ class Watchdog:
             tk["dead_since"] = tk.get("dead_since") or now
         else:
             tk["dead_since"] = None
-        trading_dead = bool(tk.get("dead_since")) and now - tk["dead_since"] >= TAKEOVER_HB_S
+        trading_dead = bool(tk.get("dead_since")) and now - tk["dead_since"] >= TRADING_DEAD_S
         cond = hb_absent and pushes_stopped and (unreachable or trading_dead)
         tk.update(hb_absent=hb_absent, pushes_stopped=pushes_stopped, unreachable=unreachable, trading_dead=trading_dead, cond=cond)
         pin = lease.get("pin")

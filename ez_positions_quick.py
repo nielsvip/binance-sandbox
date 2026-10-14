@@ -17706,6 +17706,26 @@ class TrackerManager:
                 logger.debug(f"[reconcile_hedges.save] {account_key}: {_e}")
         return added
 
+    def _mirror_identity_from_service(self, account_key: str) -> int:
+        """USER 2026-10-14 single position writer: tracker opened_at / entry / qty / max_gain mirror ez_positions_service
+        (the tracker never originates position identity). Held positions only; caller holds _exit_candidates_lock."""
+        try:
+            import position_writer_guard as _pwg
+            account_dir = self.base_path / account_key
+            n = 0
+            for pk, ec in list(self.exit_candidates.items()):
+                if not pk.startswith(f"{account_key}:") or not isinstance(ec, dict):
+                    continue
+                ch = _pwg.mirror_identity(ec, _pwg.held_identity(account_dir, pk))
+                for f, old, new in ch:
+                    if f == "opened_at" and old:
+                        logger.warning(f"[TRACKER_IDENTITY_MIRROR] {pk}.opened_at {old} -> service {new}")
+                n += len(ch)
+            return n
+        except Exception as e:
+            logger.debug(f"[TRACKER_IDENTITY_MIRROR][{account_key}] skipped: {e!r}")
+            return 0
+
     async def save_tracker(
         self,
         account_key: str,
@@ -17741,6 +17761,7 @@ class TrackerManager:
             await self.sync_universe(account_key)
             prefix = f"{account_key}:"
             async with self._exit_candidates_lock:
+                self._mirror_identity_from_service(account_key)
                 raw_exits = {
                     k: v
                     for k, v in self.exit_candidates.items()
@@ -19349,9 +19370,20 @@ class TrackerManager:
                         new_gain = ((avg_price - current_price) / avg_price) * 100.0
                     new_data["max_gain"] = max(new_data.get("max_gain", -999), new_gain)
         elif prev_qty == 0:
-            new_data["average_entry_price"] = current_price
-            new_data["first_entry_price"] = current_price
-            new_data["opened_at"] = datetime.now(timezone.utc).isoformat()
+            # USER 2026-10-14: identity comes from ez_positions_service (held row) — the tracker never stamps its own
+            try:
+                import position_writer_guard as _pwg
+                _ident = _pwg.held_identity(self.base_path / account_key, position_key)
+            except Exception:
+                _ident = None
+            if _ident:
+                new_data["average_entry_price"] = _ident[1] or current_price
+                new_data["first_entry_price"] = new_data.get("first_entry_price") or _ident[1] or current_price
+                new_data["opened_at"] = _ident[0]
+            else:
+                new_data["average_entry_price"] = current_price
+                new_data["first_entry_price"] = current_price
+                new_data["opened_at"] = datetime.now(timezone.utc).isoformat()
         new_data["status"] = status
         new_data["positionAmt"] = qty
         new_data["total_entry_qty"] = max(new_data.get("total_entry_qty", 0), qty)

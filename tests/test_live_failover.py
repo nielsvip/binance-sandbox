@@ -333,14 +333,14 @@ def test_trading_dead_path_and_force_pins(world):
     world.mac_produce(T_SATURDAY)
     run_pair(world, agent, watchdog, T_SATURDAY)
     taken = None
-    for k in range(1, 60):  # Mac reachable (live heartbeat pushed) but every ez_manage dead
+    for k in range(1, 80):  # Mac reachable (live heartbeat pushed) but every ez_manage dead
         now = T_SATURDAY + 15 * k
         touch(world.s1 / "data" / "mac_live_heartbeat.json", now, json.dumps({"epoch": now, "accounts": {a: False for a in ("ang", "inf", "flz", "men", "fin")}}))
         run_pair(world, agent, watchdog, now, mac_alive=False)
         if world.lease()["holder"] == "s1":
             taken = now - T_SATURDAY
             break
-    assert taken is not None and taken <= 360
+    assert taken is not None and 600 <= taken <= 660, taken  # all ez_manage dead must outlast a normal restart (LF_TRADING_DEAD_S=600)
     # force-mac one-shot: immediate failback, pin cleared afterwards
     world.S1.set_pin("mac_once")
     world.clock(T_SATURDAY + taken + 15)
@@ -440,3 +440,28 @@ def test_takeover_merge_and_failback_pull_never_copy_positions_files(world, monk
     assert world.MA.Agent().pull_state_back("s1-pub") is True
     account_pulls = [a for a in calls if any(str(x).endswith("/ang/") for x in a)]
     assert account_pulls and all("--exclude=*_positions.json" in a for a in account_pulls)
+
+
+# ---------------------------------------------------------------- run_with_watchdog: intentional restart never waits 300 s
+@pytest.mark.skipif(sys.platform != "darwin", reason="wrapper uses the Mac interpreter")
+def test_wrapper_intentional_restart_vs_crash_loop(tmp_path):
+    import signal
+    import time as _t
+    (tmp_path / "lf_fake_child.py").write_text("import time,sys\ntime.sleep(2)\nsys.exit(1)\n")
+    logs = tmp_path / "logs"
+
+    def run(extra, seconds):
+        env = dict(os.environ, WATCHDOG_TEST_WORKDIR=str(tmp_path), WATCHDOG_TEST_LOGDIR=str(logs), TRADIER_LOCAL_ONLY="1", **extra)
+        proc = subprocess.Popen(["bash", str(REPO / "run_with_watchdog.sh"), "lf_fake_child.py"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        _t.sleep(seconds)
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
+        (logs / ".watchdog_lf_fake_child.pid").unlink(missing_ok=True)
+        text = (logs / "lf_fake_child_watchdog.log").read_text()
+        (logs / "lf_fake_child_watchdog.log").unlink()
+        return text
+
+    crash = run({}, 24)
+    assert "[RESTART_BACKOFF] consecutive failure #2" in crash and "INTENTIONAL_RESTART" not in crash
+    stable = run({"WD_STABLE_RUN_S": "1"}, 14)
+    assert stable.count("[INTENTIONAL_RESTART]") >= 2 and "RESTART_BACKOFF" not in stable

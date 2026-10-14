@@ -269,7 +269,7 @@ def _single_writer_resync(position_service, account_key):
         if _pwg.process_role() == "manage":
             _pwg.resync_memory_from_files(mem, account_dir, log=logger)
         else:
-            _pwg.resync_memory_from_files(mem, account_dir, log=logger, require_fresh=False, fields=("opened_at",))
+            _pwg.resync_memory_from_files(mem, account_dir, log=logger, require_fresh=False, fields=("opened_at", "max_gain"))
     except Exception as e:
         logger.debug(f"[SINGLE_WRITER_RESYNC][{account_key}] skipped: {e!r}")
 

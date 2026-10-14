@@ -1672,6 +1672,17 @@ def _convert_timestamp_strings_positions(data: Any) -> Any:
     elif isinstance(data, list):
         return [_convert_timestamp_strings_positions(item) for item in data]
     return data
+def _orphan_opened_at(pos_api_data, now):
+    """USER 2026-10-14: an adopted orphan gets the broker's position updateTime (<= now) — the earliest broker-sourced bound, never later."""
+    try:
+        ut = float((pos_api_data or {}).get("updateTime") or 0) / 1000.0
+        if ut > 0 and ut <= now.timestamp():
+            return datetime.fromtimestamp(ut, timezone.utc)
+    except Exception:
+        pass
+    return now
+
+
 def _opened_at_change_ok(pos, value):
     """USER 2026-10-14: opened_at of a HELD position is immutable (only a fresh open after a real close re-stamps it, inside identity_write_allowed())."""
     try:
@@ -6165,6 +6176,22 @@ class PositionService:
         except Exception as e:
             logger.error(f"[_check_for_deletions] Error during check: {e}")
 
+    def _restore_lifecycle_sanitize(self, position_key, pos_data, source):
+        """USER 2026-10-14: a restored FLAT row belongs to a closed lifecycle — never carry its opened_at / entry_price /
+        max_gain into whatever the broker holds now (the broker sync stamps the new lifecycle from broker truth)."""
+        try:
+            if abs(safe_fetch_float(pos_data.get("positionAmt", 0), 0)) > 0:
+                return pos_data
+            if pos_data.get("opened_at") or safe_fetch_float(pos_data.get("entry_price", 0), 0) > 0 or safe_fetch_float(pos_data.get("max_gain", 0), 0) != 0:
+                logger.warning(f"[RESTORE_LIFECYCLE_SANITIZED] {position_key}: flat row from {source} — closed-lifecycle opened_at={pos_data.get('opened_at')} entry={pos_data.get('entry_price')} max_gain={pos_data.get('max_gain')} NOT carried")
+            pos_data["opened_at"] = None
+            pos_data["entry_price"] = 0.0
+            pos_data["max_gain"] = 0.0
+            pos_data["gain"] = 0.0
+            return pos_data
+        except Exception:
+            return pos_data
+
     def _restore_position_from_backups_blocking(self, account_key: str, symbol: str, position_side: str) -> Optional[Position]:
         """Synchronous worker for restore_position_from_backups. Performs all disk I/O. MUST be invoked via asyncio.to_thread — never on the event loop directly. Event-loop blocking here caused process_account_update HUNG > 120s on 2026-04-29."""
         position_key = f"{account_key}:{symbol}_{position_side}"
@@ -6192,6 +6219,7 @@ class PositionService:
                     if not pos_data or not isinstance(pos_data, dict):
                         continue
                     backup_amt = abs(safe_fetch_float(pos_data.get("positionAmt", 0), 0))
+                    pos_data = self._restore_lifecycle_sanitize(position_key, dict(pos_data), os.path.basename(bf))
                     # 2026-05-23 USER MANDATE: positionAmt writes removed. Restored object carries
                     # backup positionAmt; handle_account_update (WS/API sync within ~5s) will
                     # reconcile to real value. DUP_OPEN_GUARD (ez_manage:44213) refuses OPENs on
@@ -6213,57 +6241,20 @@ class PositionService:
                     pos_data = data.get(position_key)
                     if pos_data and isinstance(pos_data, dict):
                         # 2026-05-23 USER MANDATE: positionAmt writes removed. Trust API sync.
+                        pos_data = self._restore_lifecycle_sanitize(position_key, dict(pos_data), "main_file")
                         restored = Position.from_dict(pos_data)
                         logger.critical(f"[RESTORE_FROM_MAIN_FILE] {position_key}: Recovered from main file (positionAmt KEPT from file, awaiting API sync)")
                         return restored
                 except Exception:
                     pass
-            logger.warning(f"[RESTORE_BACKUP] Not found in {account_key} backups/main — searching OTHER accounts for {symbol}_{position_side}")
-            all_accounts = ["ang", "inf", "flz", "men", "fin"]
-            for other_acct in all_accounts:
-                if other_acct == account_key:
-                    continue
-                other_pk = f"{other_acct}:{symbol}_{position_side}"
-                other_main = os.path.join(str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')), other_acct, f"{position_side_str}_positions.json")
-                if os.path.exists(other_main):
-                    try:
-                        with open(other_main, "r") as f:
-                            data = json.load(f)
-                        if isinstance(data, dict) and "positions" in data:
-                            data = data["positions"]
-                        pos_data = data.get(other_pk)
-                        if pos_data and isinstance(pos_data, dict):
-                            pos_data["symbol"] = symbol
-                            pos_data["position_side"] = position_side
-                            # 2026-05-23 USER MANDATE: positionAmt writes removed.
-                            # Cross-acct copy is structural template only — API sync sets real value.
-                            restored = Position.from_dict(pos_data)
-                            logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT] {position_key}: Copied structure from {other_acct} (positionAmt from source dict, awaiting API sync)")
-                            return restored
-                    except Exception:
-                        continue
-                other_backup_dir = os.path.join(str(getattr(self.config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')), other_acct, "backups")
-                if os.path.exists(other_backup_dir):
-                    other_backups = []
-                    for pat in patterns:
-                        other_backups.extend(glob.glob(os.path.join(other_backup_dir, pat)))
-                    other_backups.sort(reverse=True)
-                    for obf in other_backups[:3]:
-                        try:
-                            with open(obf, "r") as f:
-                                data = json.load(f)
-                            if isinstance(data, dict) and "positions" in data:
-                                data = data["positions"]
-                            pos_data = data.get(other_pk)
-                            if pos_data and isinstance(pos_data, dict):
-                                pos_data["symbol"] = symbol
-                                pos_data["position_side"] = position_side
-                                # 2026-05-23 USER MANDATE: positionAmt writes removed.
-                                restored = Position.from_dict(pos_data)
-                                logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT_BACKUP] {position_key}: Copied from {other_acct} backup {os.path.basename(obf)} (positionAmt awaiting API sync)")
-                                return restored
-                        except Exception:
-                            continue
+            # USER 2026-10-14: NEVER take another account's opened_at / entry_price / max_gain (the former cross-account
+            # template copy carried a foreign lifecycle into this account). Refuse + alert; API sync adopts the broker row.
+            try:
+                import position_writer_guard as _pwg_rs
+                _pwg_rs._alert("RESTORE_OTHER_ACCOUNT_REFUSED", {"key": position_key})
+            except Exception:
+                pass
+            logger.critical(f"🛑 [RESTORE_OTHER_ACCOUNT_REFUSED] {position_key}: not in {account_key} backups/main — cross-account copy refused (USER 2026-10-14); broker sync adopts the real row")
             logger.critical(f"[RESTORE_BACKUP] ABSOLUTE FAILURE: {position_key} not found in ANY account, ANY backup, ANY file on the entire system")
             return None
         except Exception as e:
@@ -7086,7 +7077,7 @@ class PositionService:
                                     "initial_quantity": amt_abs,
                                     "max_quantity": amt_abs,
                                     "max_positionSize": amt_abs * (_mk or 0),
-                                    "opened_at": now,
+                                    "opened_at": _orphan_opened_at(pos_api_data, now),
                                     "last_updated": now,
                                     "augment_reason": "API_ORPHAN_ADOPTED",
                                 }
