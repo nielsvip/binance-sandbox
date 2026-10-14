@@ -233,6 +233,24 @@ _OB_GAP_FIRED: Dict[str, str] = {}  # key = position_key, val = YYYY-MM-DD
 _BROKER_HOLDS_CACHE: Dict[tuple, tuple] = {}  # key = (acct, sym, side), val = (ts, True)
 _BROKER_QTY_MEMO: Dict[tuple, tuple] = {}  # 2026-10-14 GOOGL trb: key = (acct, sym), val = (ts, abs broker qty) — backstop qty is broker truth, never local positionAmt
 _FIXED_STOP_PLACE_LOG: Dict[str, list] = {}  # 2026-10-14: per-position placement timestamps (581 rejected GTC stops in 90 min) — breaker
+_JSON_MTIME_CACHE: Dict[str, tuple] = {}  # 2026-10-14: path -> (mtime_ns, size, parsed); big JSONs were re-parsed inside the event loop
+
+
+def _json_load_cached(path):
+    """Parse a JSON file once per (mtime_ns, size). Returned object is SHARED — read-only use. Event-loop freezes 10-179 s came from
+    re-parsing the 7 MB indicator snapshots / per_sym_active_config_stocks.json / D klines per position per cycle."""
+    _p = str(path)
+    st = os.stat(_p)
+    _hit = _JSON_MTIME_CACHE.get(_p)
+    if _hit is not None and _hit[0] == st.st_mtime_ns and _hit[1] == st.st_size:
+        return _hit[2]
+    with open(_p, "r") as _fh:
+        _obj = json.load(_fh)
+    _JSON_MTIME_CACHE[_p] = (st.st_mtime_ns, st.st_size, _obj)
+    if len(_JSON_MTIME_CACHE) > 600:
+        for _k in list(_JSON_MTIME_CACHE)[:150]:
+            _JSON_MTIME_CACHE.pop(_k, None)
+    return _obj
 # Broker-distress ring (USER 2026-10-13: vitals first — while the broker is
 # unreachable, new OPENs must fail fast instead of burning 120s queue slots
 # that CLOSEs need. Exits never read this ring.)
@@ -560,7 +578,7 @@ def negbook_is_blocked(symbol: str, position_side: str) -> bool:
                 / "per_sym_active_config_stocks.json"
             )
             if _p.exists():
-                for _k, _v in (json.loads(_p.read_text()) or {}).items():
+                for _k, _v in (_json_load_cached(_p) or {}).items():
                     if not isinstance(_v, dict):
                         continue
                     _g = _v.get("acc_gain_pct")
@@ -41868,8 +41886,7 @@ class TradierTradeManager:
                         s1_age_file = now.timestamp() - s1_path.stat().st_mtime
                         if s1_age_file > 300:
                             continue  # skip old timestamped files
-                        with open(s1_path, "r") as _sf:
-                            _s1_data = _js2.load(_sf)
+                        _s1_data = _json_load_cached(s1_path)
                         if isinstance(_s1_data, dict) and symbol.upper() in _s1_data:
                             _s1_ind = _s1_data[symbol.upper()]
                             _s1_ts = (
@@ -43141,7 +43158,7 @@ class TradierTradeManager:
         now = time.time()
         if (
             symbol in self._extra_indicators_cache
-            and (now - self._extra_indicators_cache_time.get(symbol, 0)) < 120
+            and (now - self._extra_indicators_cache_time.get(symbol, 0)) < 300
         ):
             return self._extra_indicators_cache[symbol]
         try:
@@ -47749,7 +47766,7 @@ class TradierTradeManager:
                                 / "per_sym_active_config_stocks.json"
                             )
                             if _ps.exists():
-                                _sj = json.loads(_ps.read_text())
+                                _sj = _json_load_cached(_ps)
                                 _raw = _sj.get(_base_key) or _sj.get(_key)
                                 if _raw is not None:
                                     _is_stock = True
@@ -54427,8 +54444,7 @@ class TradierTradeManager:
                     )
                     if _effective_mtime > _last_ref:
                         try:
-                            with open(json_path, "r") as f:
-                                raw_data = json.loads(f.read())
+                            raw_data = await asyncio.to_thread(lambda _jp=json_path: json.loads(open(_jp, "r").read()))  # 2026-10-14: parse off the event loop
                             if isinstance(raw_data, dict) and len(raw_data) > 0:
                                 new_snapshot = {}
                                 for sym, vals in raw_data.items():
@@ -56148,7 +56164,7 @@ class TradierTradeManager:
             if not klines_path.exists():
                 continue
             try:
-                raw = json.loads(klines_path.read_text())
+                raw = _json_load_cached(klines_path)
                 bars = raw if isinstance(raw, list) else raw.get("bars", [])
                 _lb = getattr(self.config, "ROTATION_LOOKBACK_DAYS", 10)
                 if len(bars) < _lb + 1:
@@ -56477,10 +56493,11 @@ class TradierTradeManager:
             if not klines_path.exists():
                 continue
             try:
-                raw = json.loads(klines_path.read_text())
+                raw = _json_load_cached(klines_path)
                 bars = raw if isinstance(raw, list) else raw.get("bars", [])
                 if len(bars) < 4:
                     continue
+                await asyncio.sleep(0)  # 2026-10-14: yield per symbol (RSI2 scan froze the loop)
                 closes = [float(b.get("close") or b.get("c") or 0) for b in bars]
                 highs = [float(b.get("high") or b.get("h") or 0) for b in bars]
                 lows = [float(b.get("low") or b.get("l") or 0) for b in bars]
@@ -56658,7 +56675,7 @@ class TradierTradeManager:
             if not klines_path.exists():
                 continue
             try:
-                raw = json.loads(klines_path.read_text())
+                raw = _json_load_cached(klines_path)
                 bars = raw if isinstance(raw, list) else raw.get("bars", [])
                 if len(bars) < 2:
                     continue
