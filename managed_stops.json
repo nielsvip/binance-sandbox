@@ -1,44 +1,37 @@
 {
-  "men:NEARUSDC_LONG": {
-    "orderId": "2000001510713196",
-    "stopPrice": 4.95,
-    "entry_sig": "2026-10-14 10:21:52.110000+00:00",
-    "symbol": "NEARUSDC",
+  "ang:KMNOUSDT_LONG": {
+    "orderId": "4000001966646137",
+    "stopPrice": 0.03685,
+    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
+    "symbol": "KMNOUSDT",
     "side": "LONG"
   },
-  "men:GALAUSDT_SHORT": {
-    "orderId": "2000001510797540",
-    "stopPrice": 0.002173,
-    "entry_sig": "2026-10-14 11:20:03.089000+00:00",
+  "ang:GALAUSDT_SHORT": {
+    "orderId": "4000001967142861",
+    "stopPrice": 0.002175,
+    "entry_sig": "2026-10-14 08:20:21.309000+00:00",
     "symbol": "GALAUSDT",
     "side": "SHORT"
   },
-  "men:MELANIAUSDT_LONG": {
-    "orderId": "2000001510824749",
-    "stopPrice": 0.08832,
-    "entry_sig": "2026-10-14 11:14:26.795000+00:00",
+  "ang:MELANIAUSDT_SHORT": {
+    "orderId": "4000001967226397",
+    "stopPrice": 0.09063,
+    "entry_sig": "2026-10-14 09:20:37.904000+00:00",
     "symbol": "MELANIAUSDT",
-    "side": "LONG"
-  },
-  "men:YFIUSDT_LONG": {
-    "orderId": "2000001510848777",
-    "stopPrice": 2255.0,
-    "entry_sig": "2026-10-14 11:56:29.760000+00:00",
-    "symbol": "YFIUSDT",
-    "side": "LONG"
-  },
-  "men:YFIUSDT_SHORT": {
-    "orderId": "2000001510852378",
-    "stopPrice": 2350.0,
-    "entry_sig": "2026-10-14 10:21:46.039000+00:00",
-    "symbol": "YFIUSDT",
     "side": "SHORT"
   },
-  "men:LINKUSDC_LONG": {
-    "orderId": "2000001510892844",
-    "stopPrice": 12.768,
-    "entry_sig": "2026-10-14 12:20:01.938000+00:00",
-    "symbol": "LINKUSDC",
+  "ang:NEARUSDC_LONG": {
+    "orderId": "4000001967316004",
+    "stopPrice": 4.994,
+    "entry_sig": "2026-10-14 10:19:43.044000+00:00",
+    "symbol": "NEARUSDC",
     "side": "LONG"
+  },
+  "ang:EGLDUSDT_SHORT": {
+    "orderId": "4000001967358953",
+    "stopPrice": 3.846,
+    "entry_sig": "2026-10-14 10:52:25.461000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
   }
 }
