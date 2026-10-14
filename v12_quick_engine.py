@@ -68,6 +68,7 @@ import numpy as np
 import vec_decisions.breakout_opener
 import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
+import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
@@ -7982,6 +7983,9 @@ class QuickConfig:
     )
     ACCOUNT_TP_PCT: Dict[str, float] = field(default_factory=dict)
     ACCOUNT_TYPE_TRA: str = "cash"
+    ACCOUNT_TYPE_TRB: str = "margin"  # 2026-10-14 cash-settlement parity: = config_tradier (margin -> no GFV hold)
+    ACCOUNT_TYPE_TRC: str = "paper"  # 2026-10-14 cash-settlement parity: = config_tradier (paper -> no GFV hold)
+    CASH_ACCOUNT_SETTLEMENT_ENABLED: bool = True  # 2026-10-14 USER "no violations": T+1 GFV rule on cash-account boards (vec_decisions/cash_settlement; inert for margin/paper)
     ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1
     ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD: float = 0.9
     ADAPTIVE_REGIME_DECAY_HALFLIFE_H: float = 24.0
@@ -18400,7 +18404,26 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _hsc = vec_decisions.htf_signal_consume.build_ctx(cfg, npz, n, is_long, ts, entry_sig, _hsc_core, _entry_or_srcs, _safe)  # 2026-10-13 V17 TF law: HTF-only fires need a fresh LTF confirmation, attempts tighten (None = inert)
     if _hsc is not None:
         entry_sig = np.array(entry_sig, dtype=bool, copy=True)  # a gated bar's entry_sig[i] is cleared in-loop (reentry pathways stay evaluable)
+    _cs_snap = None
+    try:  # CASH SETTLEMENT (USER 2026-10-14 "no violations"): None = inert (margin/paper account, crypto, or switch off)
+        _cs_book = _cash_settle.SettlementBook(cfg) if is_tradier else None
+        if _cs_book is not None and not _cs_book.active:
+            _cs_book = None
+    except Exception:
+        _cs_book = None
     for i in range(n):
+        if _cs_snap is not None:  # CASH SETTLEMENT (2026-10-14): judge the previous bar's actions; forbidden -> roll the bar back
+            _cs_dec = _cash_settle.audit_bar(_cs_book, _cs_snap, trades, events, pos)
+            if _cs_dec["rollback"]:
+                del trades[_cs_snap["nt"]:]
+                del events[_cs_snap["ne"]:]
+                pos = _cs_snap["pos"]
+                cd, has_closed_before = _cs_snap["extra"]["cd"], _cs_snap["extra"]["hcb"]
+                bars_in_pos = _cs_snap["extra"]["bip"] + (1 if pos is not None else 0)
+                _ot_cnt.clear()
+                _ot_cnt.update(_cs_snap["extra"]["otc"])
+                _cs_book.owed = _cash_settle.merge_owed(_cs_book.owed, _cs_dec["owed"])
+            _cs_snap = None
         px = close[i]
         if px <= 0:
             continue
@@ -18410,6 +18433,36 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     1  # held through the closed session; live never acts outside RTH
                 )
             continue
+        if _cs_book is not None:
+            _cs_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+            if pos is None:
+                _cs_book.owed = None
+            elif _cs_book.owed is not None:
+                bars_in_pos += 1
+                if not _cs_book.can_sell(_cs_ts):
+                    continue  # GFV: the owed sell waits for settlement (live holds it: GFV_BLOCKED / BLOCKED_GFV_ACCOUNT_RULE)
+                _cs_ow, _cs_book.owed = _cs_book.owed, None
+                _cs_rs = _cash_settle.deferred_reason(_cs_ow)
+                _cs_q = float(pos["qty"]) if _cs_ow["full"] else min(float(pos["qty"]), float(_cs_ow["qty"]))
+                _cs_book.stats["owed_executed"] += 1
+                if _cs_ow["full"] or _cs_q >= float(pos["qty"]) - 1e-12:
+                    pos["fees"] += abs(pos["qty"] * px) * half_fee
+                    _cs_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
+                    _cs_pct = _cs_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                    trades.append({"pnl_dollars": _cs_pnl, "pnl_pct": float(_cs_pct), "deployed": pos["deployed"], "reason": _cs_rs, "type": "CLOSE", "ts": _cs_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _cs_rs, "bars_held": int(i - pos["entry_bar"])})
+                    pos = None
+                    cd = cooldown_bars
+                    has_closed_before = True
+                    _cs_book.on_sell(_cs_ts, flat=True)
+                elif _cs_q > 0:
+                    pos["realized"] += (px - pos["avg_price"]) * _cs_q if is_long else (pos["avg_price"] - px) * _cs_q
+                    pos["fees"] += abs(_cs_q * px) * half_fee
+                    pos["qty"] -= _cs_q
+                    events.append({"type": "REDUCE", "ts": _cs_ts, "price": float(px), "qty": float(_cs_q), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _cs_rs})
+                    pos["last_reduce_bar"] = int(i)
+                    _cs_book.on_sell(_cs_ts, flat=False)
+                continue
+            _cs_snap = _cash_settle.snapshot(_cs_book, _cs_ts, pos, trades, events, {"cd": cd, "hcb": has_closed_before, "bip": bars_in_pos, "otc": dict(_ot_cnt)})
         # 2026-09-18 HARDCODED RALLY REENTRY bypass cooldown: if close>exit and wt rising, ignore cd
         # 2026-09-26 TARGET-DC immediate reentry [aug-reentry: centralized in target_dc_reentry_gate + master-gated]
         if pos is None and has_closed_before and trades and cd > 0:
@@ -22319,6 +22372,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             cd = cooldown_bars
             has_closed_before = True
 
+    if _cs_snap is not None:  # CASH SETTLEMENT (2026-10-14): judge the previous bar's actions; forbidden -> roll the bar back
+        _cs_dec = _cash_settle.audit_bar(_cs_book, _cs_snap, trades, events, pos)
+        if _cs_dec["rollback"]:
+            del trades[_cs_snap["nt"]:]
+            del events[_cs_snap["ne"]:]
+            pos = _cs_snap["pos"]
+            cd, has_closed_before = _cs_snap["extra"]["cd"], _cs_snap["extra"]["hcb"]
+            bars_in_pos = _cs_snap["extra"]["bip"] + (1 if pos is not None else 0)
+            _ot_cnt.clear()
+            _ot_cnt.update(_cs_snap["extra"]["otc"])
+            _cs_book.owed = _cash_settle.merge_owed(_cs_book.owed, _cs_dec["owed"])
+        _cs_snap = None
     if pos is not None:
         px = close[-1]
         # MTM: only fees actually paid so far (open/augment/reduce) — no synthetic exit fee, position not actually closed
@@ -22389,6 +22454,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 ),
             )
             _res0["seeded"] = {"active": True, "trace": list(_seeded_trace)}
+        if _cs_book is not None:
+            _res0["cash_settlement"] = {"account": _cs_book.account, "banned": _cs_book.banned, "settling": _cs_book.settling, **_cs_book.stats}
         return _res0
     deployed_arr = np.array([t["deployed"] for t in _mtrades])
     pnl_arr = np.array([t["pnl_dollars"] for t in _mtrades])
@@ -22496,6 +22563,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     }
     if _seeded_active:
         _res["seeded"] = {"active": True, "trace": list(_seeded_trace)}
+    if _cs_book is not None:
+        _res["cash_settlement"] = {"account": _cs_book.account, "banned": _cs_book.banned, "settling": _cs_book.settling, **_cs_book.stats}
     vec_decisions.htf_signal_consume.dump_trace(_hsc if "_hsc" in dir() else None, sym, is_long)
     return _res
 

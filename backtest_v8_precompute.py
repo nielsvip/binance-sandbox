@@ -935,9 +935,32 @@ def _source_score(df, tf, mode, now_ts):
     return (tail_ok, len(df), last)
 
 
+CANONICAL_KLINES = BASE_PATH / "klines_canonical"
+CANONICAL_TFS = ("15m", "1h", "4h", "D")
+
+
+def _canonical_frame(symbol, tf, mode):
+    """USER 2026-10-14 "REAL prices": exchange-native closed bars written only by tools/klines_canonical.py (fapi, exact symbol, base volume).
+    Crypto 15m/1h/4h/D only. NPZ_CANONICAL_SOURCE=0 restores the legacy per-build picker."""
+    if mode == "tradier" or tf not in CANONICAL_TFS or os.environ.get("NPZ_CANONICAL_SOURCE", "1") == "0":
+        return None
+    df = load_klines(CANONICAL_KLINES / f"{symbol}_{tf}.json")
+    if df is None or len(df) < 30:
+        return None
+    return df
+
+
 def _pick_best_source(symbol, tf, sources, mode):
     """USER 2026-10-12: ONE complete source per symbol/TF — never union gap-fill.
-    Returns (df or None, dirname or None). NPZ_SOURCE_UNION_LEGACY=1 restores merge."""
+    USER 2026-10-14: the canonical exchange store wins unconditionally when it holds the symbol/TF (no per-build switching between
+    klines_cache / klines_cache_gateway / klines_cache_macbook, which disagreed on past bars: USDT-perp bars under USDC names, 3m right-label
+    resamples, frozen unclosed snapshots). Returns (df or None, dirname or None). NPZ_SOURCE_UNION_LEGACY=1 restores merge."""
+    cdf = _canonical_frame(symbol, tf, mode)
+    if cdf is not None:
+        logger.info(f"  {symbol} {tf}: source klines_canonical {len(cdf)} bars (exchange-native, closed-only)")
+        return cdf, "klines_canonical"
+    if mode != "tradier" and tf in CANONICAL_TFS and os.environ.get("NPZ_CANONICAL_SOURCE", "1") != "0":
+        logger.warning(f"  {symbol} {tf}: NON-CANONICAL — no klines_canonical/{symbol}_{tf}.json, legacy picker used")
     cands = []
     for d in sources:
         df = load_klines(d / f"{symbol}_{tf}.json")
@@ -1907,6 +1930,7 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             sources = [BASE_PATH / "klines_cache_backtest" / "tradier", BASE_PATH / "klines_cache" / "tradier", BASE_PATH / "klines_cache_gateway" / "tradier"]
         else:
             sources = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache", BASE_PATH / "klines_cache_gateway"]
+    _srcs = {}
     for tf in tfs:
         # USER 2026-10-12: ONE complete source per symbol/TF (_pick_best_source).
         # Union gap-filling is BANNED (franken-klines -> shitty NPZ). Legacy merge
@@ -1914,11 +1938,15 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         best_df, best_src = _pick_best_source(symbol, tf, sources, mode)
         if best_df is not None:
             dfs[tf] = best_df
+            _srcs[tf] = best_src
     # USER 2026-10-12: no complete 15m anywhere -> resample 15m from finer TFs
     # (1m, then 3m — we have everything). A resampled-complete 15m beats a
     # gappy/stale authentic one; never fill gaps, replace the frame.
+    # USER 2026-10-14: never when the 15m frame is canonical (a stale canonical tail is reported, not replaced by non-exchange bars).
+    if _srcs.get("15m") == "klines_canonical" and not _source_score(dfs["15m"], "15m", mode, time.time())[0]:
+        logger.warning(f"  {symbol} 15m: klines_canonical tail is stale (last {dfs['15m'].index[-1]}) — is tools/klines_canonical.py daemon running?")
     try:
-        _need15 = ("15m" not in dfs) or (not _source_score(dfs["15m"], "15m", mode, time.time())[0])
+        _need15 = ("15m" not in dfs) or (_srcs.get("15m") != "klines_canonical" and not _source_score(dfs["15m"], "15m", mode, time.time())[0])
         if _need15:
             for _ftf in ("1m", "3m"):
                 _fdf, _fsrc = _pick_best_source(symbol, _ftf, sources, mode)
@@ -2690,6 +2718,9 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     if return_arrays:
         if mode == "crypto" and os.environ.get("NPZ_HTF_LEGACY_LAG1") != "1":
             merged["htf_align"] = np.array(["causal_v3" if os.environ.get("NPZ_WM_LEGACY") != "1" else "causal_v2"])
+        if mode == "crypto":
+            # USER 2026-10-14: provenance of the input bars; the live twin's frozen store re-anchors when it changes (old stores froze bars built from mixed copies).
+            merged["kline_source"] = np.array(["canonical_v1" if all(_srcs.get(t) == "klines_canonical" for t in CANONICAL_TFS) else "mixed:" + ",".join(f"{t}={_srcs.get(t)}" for t in CANONICAL_TFS)])
         return merged
     _span_15m = _frame_span_seconds(dfs.get(_resample_src_tf, base_df)) / 86400.0
     _span_d = _frame_span_seconds(dfs.get("D")) / 86400.0 if mode == "tradier" and dfs.get("D") is not None else 0.0

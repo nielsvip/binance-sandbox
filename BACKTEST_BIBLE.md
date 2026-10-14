@@ -2737,3 +2737,13 @@ delta logs.
   the 1500 floor; LOSER/LOST_CAUSE/non-winner combo held: thin evidence).
 - Cron installer `tools/v17_kpi_install_cron.sh` (refuses an empty/short crontab, backup
   `backups/crontab_s1_before_v17_kpi_<ts>.txt`, idempotent). Tests `tests/test_v17_kpi.py` (12).
+- **v17 (3ce393d3, 2026-10-14 01:5xZ) — BEST-START-FLOOR (USER hard law):** KPI guard found 3 s2 finals below best start.
+  Paths: ONEUSDT_SHORT (f71ab606, pre-floor build) DIAG accepted status_up 28.21 -> 0.62 (TIM 9.2 -> 20.7); JASMYUSDT_LONG
+  (ce1937e7) DIAG status_up 7.40 -> 3.74 (TIM 6.3 -> 29.2) below START 3.98; the BEST-SEEN gate was SKIPPED because the
+  START note runs before `_run_npz_short` exists (best_seen.npz '') and the gate required npz equality (FILUSDC_SHORT
+  53bb952f same hole, progress since overwritten). Fix: gate drops the npz-string and chain-value preconditions (both sets are
+  re-evaluated fresh on this board's prepared NPZ = same NPZ); START note keeps `start_overrides`; hard `[BEST-START-FLOOR]`
+  right after the authoritative fresh final eval (before qualification/TIM law): best-start and best-seen sets re-evaluated,
+  a higher valid set is published instead (`progress["best_start_floor"]`, `V15_BEST_START_FLOOR=0` disables).
+  Combo: 7,800 s of combo wall -> 16.5 pp on s1+s2 (repeats mostly 0) -> WINNER first share 0.5 -> 0.3 and a combo repeat
+  runs only while its own last call lifted >= 0.3 pp/min. Guard-thread interval fix (`os` shadowing killed _check2).
