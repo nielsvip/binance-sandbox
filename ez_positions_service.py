@@ -1672,6 +1672,22 @@ def _convert_timestamp_strings_positions(data: Any) -> Any:
     elif isinstance(data, list):
         return [_convert_timestamp_strings_positions(item) for item in data]
     return data
+def choose_new_lifecycle_opened_at(e_file, t_fill, mem_oa, last_reduction_time, now):
+    """USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED": opened_at for a tiny->held transition. Order: the seed / single
+    writer's held row (if consistent with the broker opening fill), the broker opening fill, the memory value when no close
+    was recorded after it; the fill-seen time ('now') only when none of these exists. Returns (value, source)."""
+    import position_writer_guard as _pwg
+    e_fill = t_fill.timestamp() if t_fill is not None else None
+    if e_file is not None and (e_fill is None or e_file >= e_fill - 5.0):
+        return datetime.fromtimestamp(e_file, timezone.utc), "seed/file held row"
+    if t_fill is not None:
+        return t_fill, "broker opening fill"
+    e_mem, e_lr = _pwg.to_epoch(mem_oa), _pwg.to_epoch(last_reduction_time)
+    if e_mem is not None and (e_lr is None or e_lr < e_mem):
+        return mem_oa, "memory (no close recorded after it)"
+    return now, "fill seen now (no broker fill / file / memory value)"
+
+
 def _orphan_opened_at(pos_api_data, now):
     """USER 2026-10-14: an adopted orphan gets the broker's position updateTime (<= now) — the earliest broker-sourced bound, never later."""
     try:
@@ -7077,7 +7093,7 @@ class PositionService:
                                     "initial_quantity": amt_abs,
                                     "max_quantity": amt_abs,
                                     "max_positionSize": amt_abs * (_mk or 0),
-                                    "opened_at": (await self._broker_open_fill_time(account_key, symbol, position_side, amt_abs)) or _orphan_opened_at(pos_api_data, now),
+                                    "opened_at": self._seed_opened_at(account_key, position_side, position_key) or (await self._broker_open_fill_time(account_key, symbol, position_side, amt_abs)) or _orphan_opened_at(pos_api_data, now),
                                     "last_updated": now,
                                     "augment_reason": "API_ORPHAN_ADOPTED",
                                 }
@@ -7512,6 +7528,16 @@ class PositionService:
             pass
         self._mark_positions_dirty()
 
+    def _seed_opened_at(self, account_key, position_side, position_key):
+        """Held row's opened_at from the identity seed / single writer's file (carried through, never 'now')."""
+        try:
+            import position_writer_guard as _pwg
+            r = _pwg.seeded_disk_rows(self.get_position_file(account_key, position_side)).get(position_key) or {}
+            e = _pwg.to_epoch(r.get("opened_at")) if abs(safe_fetch_float(r.get("positionAmt", 0), 0)) > 0 else None
+            return datetime.fromtimestamp(e, timezone.utc) if e is not None else None
+        except Exception:
+            return None
+
     async def _broker_open_fill_time(self, account_key, symbol, position_side, amt):
         """USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED": a new lifecycle gets the broker's OPENING FILL time (READ-ONLY
         GET userTrades, replayed back from the current amount), never 'now'. Budgeted (8 lookups/min/account, 4 s each)."""
@@ -7635,11 +7661,20 @@ class PositionService:
             # opened_at. Re-stamp only when empty, or when a close was recorded after it opened, or the writer's file
             # does not show it held with that same opened_at.
             if self._fresh_open_restamp_ok(position, position_key):
+                # USER 2026-10-14 "THE PULL SHOWS YOU WHEN IT OPENED": carry the real opening time — identity seed / single
+                # writer's held row (when consistent with the broker opening fill), else the broker opening fill, else the
+                # memory value when no close was recorded after it; the fill-seen time only when nothing else exists.
                 import position_writer_guard as _pwg_aug
                 _t_open = await self._broker_open_fill_time(account_key, symbol, position_side, positionAmt_abs)
+                try:
+                    _frow = _pwg_aug.seeded_disk_rows(self.get_position_file(account_key, position_side)).get(position_key) or {}
+                except Exception:
+                    _frow = {}
+                _e_file = _pwg_aug.to_epoch(_frow.get("opened_at")) if abs(safe_fetch_float(_frow.get("positionAmt", 0), 0)) > 0 else None
+                _new_oa, _src = choose_new_lifecycle_opened_at(_e_file, _t_open, getattr(position, "opened_at", None), getattr(position, "last_reduction_time", None), now)
                 with _pwg_aug.identity_write_allowed():
-                    position.opened_at = _t_open or now
-                logger.critical(f"[OPENED_AT_NEW_LIFECYCLE] {position_key}: opened_at={position.opened_at} ({'broker opening fill' if _t_open else 'fill seen now (no broker fill found)'})")
+                    position.opened_at = _new_oa
+                logger.critical(f"[OPENED_AT_NEW_LIFECYCLE] {position_key}: opened_at={position.opened_at} ({_src})")
             else:
                 logger.critical(f"🛡️ [OPENED_AT_KEPT] {position_key}: tiny->held transition but position was continuously held (file) — opened_at {position.opened_at} kept")
         else:

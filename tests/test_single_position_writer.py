@@ -311,3 +311,27 @@ def test_new_lifecycle_gets_broker_opening_fill_time_not_now():
     svc = types.SimpleNamespace(accounts={"fin": types.SimpleNamespace(client=cli)})
     t = asyncio.run(PositionService._broker_open_fill_time(svc, "fin", "ETHUSDC", "LONG", 0.025))
     assert t is not None and abs(t.timestamp() - 1791932401.888) < 0.01
+
+
+def test_cold_start_takes_opened_at_from_seed_file_or_fill_never_now():
+    from ez_positions_service import choose_new_lifecycle_opened_at as choose
+    now = datetime(2026, 10, 14, 3, 45, tzinfo=timezone.utc)
+    fill = datetime(2026, 10, 13, 22, 50, 1, tzinfo=timezone.utc)
+    v, src = choose(pwg.to_epoch(OA_TRUE), fill, None, None, now)
+    assert abs(v.timestamp() - pwg.to_epoch(OA_TRUE)) < 1 and src.startswith("seed/file")
+    v, src = choose(None, fill, None, None, now)
+    assert v == fill
+    v, src = choose(pwg.to_epoch("2026-10-01T00:00:00Z"), fill, None, None, now)  # stale file lifecycle older than the fill
+    assert v == fill
+    v, src = choose(None, None, OA_TRUE, None, now)
+    assert v == OA_TRUE
+    v, src = choose(None, None, None, None, now)
+    assert v == now and "now" in src  # only when nothing at all exists
+
+
+def test_seed_row_is_identity_reference_for_cold_writer(acct):
+    seed = {"written_epoch": time.time() + 5, "rows": {"fin:SOLUSDC_LONG": _row(oa="2026-10-14T00:48:56.023801Z", ep=107.6, symbol="SOLUSDC")}}
+    (acct / pwg.SEED_NAME).write_text(json.dumps(seed))
+    rows = {"fin:SOLUSDC_LONG": _row(oa=OA_RESTAMP, ep=107.6, symbol="SOLUSDC")}
+    pwg.before_write(acct / "long_positions.json", rows, role="service")
+    assert rows["fin:SOLUSDC_LONG"]["opened_at"] == "2026-10-14T00:48:56.023801Z"

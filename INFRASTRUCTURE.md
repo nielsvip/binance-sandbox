@@ -114,6 +114,13 @@ Root cause of the 2026-10-14 opened_at re-stamps: the OLD S1 per-account failove
 * Mac: `com.niels.s1-posfailover-pull` unloaded, plist renamed `.retired_lease_20261014`.
 * Position data comes only from ez_positions_service. The lease merge (S1) and the failback pull (Mac) never copy `*_positions.json`. On a lease takeover S1's own `ez_positions_service.py`, started by `s1_failover_start.sh`, builds positions from the broker.
 
+### opened_at carried through takeover and handback (2026-10-14, USER "THE PULL SHOWS YOU WHEN IT OPENED")
+Neither direction copies a positions file. Instead the last authoritative writer's HELD rows (opened_at/entry/max_gain/qty) go into `<acct>/.identity_seed.json`:
+* S1 takeover: `merge_mac_state` writes it from the Mac rows staged on S1.
+* Mac fenced / failback: the agent writes it every tick from S1's position files, pulled to `/Users/niels/live_failover_stage/s1_positions/`.
+
+`position_writer_guard.seeded_disk_rows()` uses a seed row as the identity reference for its key only while the seed is newer than the positions file, so the writer's first save after it carries the real opened_at instead of the takeover time. Test `test_opened_at_byte_identical_through_takeover_and_handback`: byte-identical opened_at for held, stale-lifecycle and S1-opened positions. A running ez_positions_service picks the hook up at its next restart.
+
 ### run_with_watchdog.sh: intentional restart = immediate (2026-10-14)
 Relaunch after 1 s with the failure counter reset when any of these holds: (a) SIGTERM was sent to the wrapper; (b) `data/restart_requests/<script><_acct>.request` exists (consumed); (c) the child ran ≥ `WD_STABLE_RUN_S` (120 s) before exiting. A rolling restart that TERMs the python child exits 1 after a long run, so it falls under (c). Only crash loops (exit within 120 s) keep the 5→300 s backoff. Log `[INTENTIONAL_RESTART]`.
 

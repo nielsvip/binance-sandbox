@@ -115,6 +115,12 @@ class Api:
         self.calls = 0
         self.weight = 0
         self.last_fetch_ms = 0
+        import threading
+        self.lock = threading.Lock()
+        self._tls = threading.local()
+
+    def fetched_ms(self):
+        return getattr(self._tls, "fetched_ms", self.last_fetch_ms)
 
     def klines(self, symbol, tf, limit, start=None, end=None):
         if BAN.exists():
@@ -124,9 +130,11 @@ class Api:
                     raise RuntimeError(f"banned until {iso(until)}")
             except (ValueError, OSError):
                 pass
-        while time.time() - self.last < self.gap:
-            time.sleep(0.02)
-        self.last = time.time()
+        with self.lock:
+            wait = self.last + self.gap - time.time()
+            self.last = max(time.time(), self.last + self.gap)
+        if wait > 0:
+            time.sleep(wait)
         p = {"symbol": symbol, "interval": TFS[tf][0], "limit": int(limit)}
         if start is not None:
             p["startTime"] = int(start)
@@ -148,7 +156,9 @@ class Api:
                 return None
             raise RuntimeError(f"HTTP {e.code} {body}")
         self.calls += 1
-        self.last_fetch_ms = int(time.time() * 1000)  # the closed-bar test must use THIS page's response time (a bar forming at fetch time is never stored)
+        fetched_ms = int(time.time() * 1000)  # the closed-bar test must use THIS page's response time (a bar forming at fetch time is never stored)
+        self.last_fetch_ms = fetched_ms
+        self._tls.fetched_ms = fetched_ms
         if self.weight > WEIGHT_PAUSE:
             log(f"used weight {self.weight} > {WEIGHT_PAUSE} — pausing 60 s")
             time.sleep(60)
@@ -247,7 +257,7 @@ def fill_symbol_tf(api, symbol, tf, since_ms, store=STORE):
         pages += 1
         if not d:
             break
-        fetched_ms = api.last_fetch_ms
+        fetched_ms = api.fetched_ms()
         got.extend(k for k in d if int(k[6]) < fetched_ms - SETTLE_MS)
         oldest = int(d[0][0])
         if oldest <= since_ms or len(d) < 1000:
@@ -279,7 +289,7 @@ def tail_symbol_tf(api, symbol, tf, recheck=3, store=STORE):
         d = api.klines(symbol, tf, lim, start=start)
         if not d:
             break
-        a, c, _ = merge_exchange(path, d, api.last_fetch_ms)
+        a, c, _ = merge_exchange(path, d, api.fetched_ms())
         total_a += a
         total_c += c
         if len(d) < lim:
@@ -319,20 +329,31 @@ def cmd_tail(a, api=None, tfs=None):
     api = api or Api(a.rps)
     tfs = tfs or list(TFS)
     tot = {"added": 0, "corrected": 0, "missing_store": 0, "errors": 0}
-    for s in syms:
-        for tf in tfs:
-            try:
-                r = tail_symbol_tf(api, s, tf)
-            except RuntimeError as e:
-                log(f"STOP tail {s} {tf}: {e}")
+    stop = []
+
+    def one(job):
+        s, tf = job
+        if stop:
+            return None, None
+        try:
+            return tail_symbol_tf(api, s, tf), None
+        except RuntimeError as e:
+            stop.append(str(e))
+            return None, f"STOP tail {s} {tf}: {e}"
+        except Exception as e:
+            return None, f"tail {s} {tf}: {type(e).__name__} {e}"
+
+    from concurrent.futures import ThreadPoolExecutor
+    jobs = [(s, tf) for tf in tfs for s in syms]  # every symbol's 15m first, HTFs after (the live twin needs the 15m bar by +75 s)
+    with ThreadPoolExecutor(max_workers=int(os.environ.get("KLINES_CANONICAL_THREADS", "6"))) as ex:
+        for r, err in ex.map(one, jobs):
+            if err:
                 tot["errors"] += 1
-                return tot
-            except Exception as e:
-                tot["errors"] += 1
-                log(f"tail {s} {tf}: {type(e).__name__} {e}")
+                log(err)
                 continue
             if r is None:
-                tot["missing_store"] += 1
+                if not stop:
+                    tot["missing_store"] += 1
                 continue
             tot["added"] += r["added"]
             tot["corrected"] += r["corrected"]
@@ -571,7 +592,7 @@ def stocks_repair_file(cache15, cached, truth):
             except Exception:
                 continue
             x = m15.get(t)
-            if x is None:
+            if x is None or any(x.get(c) is None for c in KEYS):
                 continue
             new = {c: float(x[c]) for c in KEYS}
             if any(abs(float(r.get(c, 0) or 0) - new[c]) > 1e-9 * max(1.0, abs(new[c])) for c in KEYS):
@@ -581,7 +602,9 @@ def stocks_repair_file(cache15, cached, truth):
                 n += 1
         if n:
             out[cache15] = (rows, n)
-    daily = {d["date"]: d for d in truth.get("daily", []) if d.get("date")}
+    win = truth.get("window") or ["0000", "9999"]
+    # D only inside the 15m window: older Tradier daily history is split-adjusted after the fact, the cached rows/15m history are not
+    daily = {d["date"]: d for d in truth.get("daily", []) if d.get("date") and win[0] <= d["date"] <= win[1]}
     if cached.exists() and daily:
         rows = load_rows(cached)
         n = 0
@@ -591,7 +614,7 @@ def stocks_repair_file(cache15, cached, truth):
             except Exception:
                 continue
             x = daily.get(day)
-            if x is None:
+            if x is None or any(x.get(c) is None for c in KEYS):
                 continue
             new = {c: float(x[c]) for c in KEYS}
             if any(abs(float(r.get(c, 0) or 0) - new[c]) > 1e-9 * max(1.0, abs(new[c])) for c in KEYS):
