@@ -183,7 +183,9 @@ fi
 CUR_STEP=3
 log "step3 build_cat_side_defaults_4"
 cp -p data/per_sym_settings.json "backups/before_daily_chain_${DATE}_per_sym_settings.json" 2>/dev/null
-timeout 600 "$PY" -u tools/build_cat_side_defaults_4.py || fail 3 "build_cat_side_defaults_4 rc=$?"
+# 2026-10-14: live cat_side defaults = bold rows of the FLEET template set (TEMPLATE_FINAL_NORM), the set every board is measured on
+# (was the generic SPREADSHEETS/TEMPLATE_* set: e.g. CRYPTO_LONG MACD_ZERO_CROSS_SCORE bold 15 generic vs 0 FINAL_NORM). BIBLE §101.3.
+CSD4_TEMPLATE_DIR="$ROOT/SPREADSHEETS/TEMPLATE_FINAL_NORM" timeout 600 "$PY" -u tools/build_cat_side_defaults_4.py || fail 3 "build_cat_side_defaults_4 rc=$?"
 mkdir -p data/sweep_defaults && cp data/per_sym_settings.json data/sweep_defaults/per_sym_settings.json || fail 3 "sweep copy"
 "$PY" -u tools/v15_state_kv_sync.py --apply || fail 3 "kv sync on S1"
 STEPS_OK="$STEPS_OK,3"

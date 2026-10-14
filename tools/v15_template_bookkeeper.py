@@ -20,6 +20,37 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx", "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx", "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx"}
 SHEET = "ZERO_FORMULA_BOOK"
+RULES_SHEET = "INSTRUCTIONS"
+RULES_MARKER = "BOOKKEEPER RULES (data/template_switch_rules.json — maintained by tools/v15_template_bookkeeper.py, never edit by hand)"
+RULES_FILE = ROOT / "data" / "template_switch_rules.json"
+
+
+def write_rules_section(wb, cat):
+    """2026-10-14 USER: switch/live rules added by agents must be in the template protocol tab. Idempotent: rows from the
+    marker down are replaced by the current rule list (one row per rule, rules that apply to this cat_side only)."""
+    try:
+        rules = json.loads(RULES_FILE.read_text()).get("rules") or []
+    except Exception as e:
+        print(f"[bookkeeper] rules file unreadable ({e}) — INSTRUCTIONS untouched", flush=True)
+        return 0
+    if RULES_SHEET not in wb.sheetnames:
+        return 0
+    ws = wb[RULES_SHEET]
+    start = None
+    for r in range(1, ws.max_row + 1):
+        if str(ws.cell(row=r, column=1).value or "").startswith("BOOKKEEPER RULES"):
+            start = r
+            break
+    if start is not None:
+        ws.delete_rows(start, ws.max_row - start + 1)
+    ws.cell(row=ws.max_row + 2, column=1).value = RULES_MARKER
+    n = 0
+    for ru in rules:
+        if cat not in (ru.get("cat_sides") or [cat]):
+            continue
+        ws.cell(row=ws.max_row + 1, column=1).value = f"{ru.get('id')} ({ru.get('date', '')}) — {ru.get('rule')}"
+        n += 1
+    return n
 
 
 def merge_ledgers(ledgers):
@@ -95,6 +126,7 @@ def main():
     ap.add_argument("--ledger-root", default=str(ROOT / "data" / "zero_formula_book"))
     ap.add_argument("--hosts", default=os.environ.get("V15_BOOK_HOSTS", ""))
     ap.add_argument("--timeout-s", type=int, default=300)
+    ap.add_argument("--rules-only", action="store_true", help="only (re)write the INSTRUCTIONS rules section, no ledger booking")
     a = ap.parse_args()
     try:
         import fcntl
@@ -124,12 +156,23 @@ def main():
         if a.dry_run:
             continue
         tpath = os.path.join(a.templates, fname)
+        if a.rules_only:
+            if os.path.exists(tpath):
+                wb = openpyxl.load_workbook(tpath)
+                try:
+                    nr = write_rules_section(wb, cat)
+                    atomic_save_xlsx(wb, tpath)
+                finally:
+                    wb.close()
+                print(f"[bookkeeper] {cat}: rules-only — {nr} rules -> {fname}!{RULES_SHEET}", flush=True)
+            continue
         if not os.path.exists(tpath):
             print(f"[bookkeeper] missing {tpath} — skipped", flush=True)
             continue
         wb = openpyxl.load_workbook(tpath)
         try:
             nlines = write_book_sheet(wb, cat, merged, len(leds))
+            write_rules_section(wb, cat)
             atomic_save_xlsx(wb, tpath)
         finally:
             wb.close()

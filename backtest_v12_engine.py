@@ -8961,9 +8961,18 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # 2026-10-14: tradier _vec_exact_process stale fallback compares the twin buffer's last bar with WALL-CLOCK time; on a frozen NPZ
     # every replay bar is days old -> VEC_EXACT_STALE on every bar (APO_LONG: 810/810) -> the VEC_EXACT live leg silently ran native
     # paths. The replay feed is the sim clock (never stale) -> fallback off in the replay process only (live keeps its 4-bar guard).
-    # (0 cannot express "off": the reader does `float(_cfg(...) or 4.0)` -> an effectively infinite bar budget instead.)
+    # (0 cannot express "off": the reader does `float(_cfg(...) or 4.0)`; the per-sym store row shadows a config attr -> wrap _cfg
+    # for this one key with an effectively infinite bar budget.)
     try:
-        tm_mod.config.VEC_EXACT_STALE_FALLBACK_BARS = 1e12
+        if not getattr(tm_mod._cfg, "_v12_stale_off", False):
+            _v12_orig_tm_cfg = tm_mod._cfg
+
+            def _v12_tm_cfg(param, *a, **kw):
+                if param == "VEC_EXACT_STALE_FALLBACK_BARS":
+                    return 1e12
+                return _v12_orig_tm_cfg(param, *a, **kw)
+            _v12_tm_cfg._v12_stale_off = True
+            tm_mod._cfg = _v12_tm_cfg
     except Exception:
         pass
     async def _fresh(sym, pk=None, *_a, **_kw): return True, "NPZ", True, manager.market_snapshot.get(sym.upper(), {})

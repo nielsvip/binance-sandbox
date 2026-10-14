@@ -2770,7 +2770,8 @@ def _settle_promoted_holes(done: dict, keys, reasons: dict) -> list:
 _POSSYM_MIN_N = int(os.environ.get("V15_POSSYM_MIN_N", "3"))  # USER 2026-10-06: sampling must speed sheets ~70-80% -> min evidence 3 sym_sides (= template writer --min-n); was 20 (USER 2026-10-01)
 _ZERO_MIN_N_ROW = int(os.environ.get("V15_ZERO_MIN_N_ROW", "15"))
 _ZERO_MIN_N_CELL = int(os.environ.get("V15_ZERO_MIN_N_CELL", "10"))
-SACRED_ZERO_EXEMPT_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")
+# USER 2026-10-14: the 3 re-entry triggers + SESSION_OPEN_STOP_REFREEZE are tested in EVERY run (never zero-condemned, never CARRIED_DEAD-skipped; sacred re-pass) — BIBLE §101.2
+SACRED_ZERO_EXEMPT_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION", "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", "REENTRY_ON_DC4_15M_BREAK_ENABLED", "REENTRY_ON_HIGHER_LOW_ENABLED", "SESSION_OPEN_STOP_REFREEZE_ENABLED")
 
 
 def inert_row_sampled(rr: int, sname: str, seq: int, every: int) -> bool:
@@ -5000,7 +5001,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ws.cell(row=rr, column=2).font = Font(name="Arial", size=10, color="FFBFBFBF")
         elif not all(k in known_config_fields() for k in (_switch_overrides(str(switch).strip(), _parse_opt_value(cand, defaults.get(switch))) or {str(switch).strip(): None})):
             info.update(kind="skip", reason="NOT_IN_CONFIG: no config/config_tradier/QuickConfig field — grey, not calculated", g=None)
-        elif _v17_on and _carry_book and not str(switch).strip().startswith(("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")) and carry_decide(_carry_book, carry_key(sname, switch, cand), _carry_fp, _t.time(), _tier_name, int(_carry_book.get("boards") or 0)):
+        elif _v17_on and _carry_book and not str(switch).strip().startswith(("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION", "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", "REENTRY_ON_DC4_15M_BREAK_ENABLED", "REENTRY_ON_HIGHER_LOW_ENABLED", "SESSION_OPEN_STOP_REFREEZE_ENABLED")) and carry_decide(_carry_book, carry_key(sname, switch, cand), _carry_fp, _t.time(), _tier_name, int(_carry_book.get("boards") or 0)):
             info.update(kind="skip", reason=f"CARRIED_DEAD: |naked|<eps on this sym_side's last {(_carry_book.get('rows') or {}).get(carry_key(sname, switch, cand), [0])[0]} boards (NO-RETEST §65, USER 2026-10-14) — not re-evaluated, re-checked by rotation", g=None)
             _carry_rows[carry_key(sname, switch, cand)] = ("carried", None)
         elif _v17_on and _carry_book and carry_decide(_carry_book, carry_key(sname, switch, cand), _carry_fp, _t.time(), _tier_name, 0, rotate=False):
@@ -5502,7 +5503,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _r, _e = _get(_sname, _rr, _switch, _cand, _label, _ov, _t.time() + YELLOW_TIMEOUT * 2, _cum)
         return _r
     _start_t = _t.time()
-    _SACRED_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")
+    _SACRED_PREFIXES = ("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION", "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", "REENTRY_ON_DC4_15M_BREAK_ENABLED", "REENTRY_ON_HIGHER_LOW_ENABLED", "SESSION_OPEN_STOP_REFREEZE_ENABLED")
     _sacred_on = os.environ.get("V15_SACRED_REPASS", "1") == "1" and not (_v17_on and os.environ.get("V15_V17_SACRED_REPASS", "1") != "1")  # V17 keeps it: canary RLC A got 21.1pp from tab-boundary sacred repasses (GOLDEN_RULE_BASE_USD=0.0 +19.8)
     _sacred_rows = [(s, r, sw, c) for (s, r, sw, c) in queue if str(sw).startswith(_SACRED_PREFIXES)]
     _sacred_tab_order = list(dict.fromkeys(s for s, _, _, _ in queue))
