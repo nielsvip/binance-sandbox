@@ -2834,3 +2834,12 @@ AAPL_LONG trb 24/24 trips identical entry+exit timestamps; AAPL_LONG as cash (RE
 either leg, deferred exits on the same bars; META_LONG trb 25/28 (pre-existing twin divergence 09-08 + 09-24), as cash 6/9 (all 3 deferred vec
 exits identical in live; the 3 unmatched 09-09..09-16 cascade from the same 09-08 twin exit divergence seen on trb), 0 unsettled sells either leg;
 tra (AAPL/APO/META) 0 trades both legs. Unit tests `tests/test_cash_settlement_parity.py` (13).
+- **v18 (2be673b9):** SIM_ACCOUNT hook — `install_sim_account_hook`: stock boards evaluated as `cash_settlement.board_account(sym,
+  side, TradierConfig())`, injected into the overrides only inside `tools.opt.v12_pilot.evaluate_prepared_sanitized/
+  evaluate_sanitized` (patched in-process, pool inherits) and only when != trb (today all trb -> results + cache keys unchanged);
+  SIM_ACCOUNT / SIM_TRADING_ACCOUNT are GLOBAL_ONLY.
+- **v19 (4693e9ed, 04:41Z):** P4_FFR + P4_POST_ENDGAME_DIAG cuttable (same 20-board zero-lift rule; best-seen gate, best-start
+  floor and adopt guards always run). WINNER first combo share back to 0.5 (repeat only while >= 0.3 pp/min). Tier: aligned
+  big mover WINNER only at bh >= `V15_TIER_WIN_BIG_MOVER` (25); 8 <= bh < 25 needs potential >= max(bh, 10). Replay on 141
+  boards (2 days, s1+s2): winners 95 -> 88, expected boards/h x1.01 — winners are winners by potential (65/95 from prior
+  finals), and non-winner walls were 27 min vs winners 36 min, so the tier mix is not the throughput lever.
