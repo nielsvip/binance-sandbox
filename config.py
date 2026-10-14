@@ -1756,6 +1756,15 @@ class Config:
     VEC_CONVERGE_OPEN_ENABLED: bool = (
         True  # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … REENTER FAST": live follows the vec POSITION — vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> OPEN now (latest-board sym_sides only, once per bar). False = event-only.
     )
+    REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = (
+        True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on): after any exit, close crosses back through the exit price (+15m WT confirm). vec_decisions/reentry_triggers.py
+    )
+    REENTRY_ON_DC4_15M_BREAK_ENABLED: bool = (
+        True  # USER 2026-10-14 re-entry trigger 2/3: close breaks the prior closed bar's dc_high4_15m (vv dc_low4_15m short) (+15m WT confirm)
+    )
+    REENTRY_ON_HIGHER_LOW_ENABLED: bool = (
+        True  # USER 2026-10-14 re-entry trigger 3/3: a 15m higher low above the lowest low since the exit + up close (vv lower high short) (+15m WT confirm)
+    )
     SUBSTITUTION_CLOSE_ENABLED: bool = (
         False  # USER 2026-10-13 "NOTHING can ever be live only": >=18-position SUBSTITUTION close of the lowest-gain position (115 closes 10-07..13, avg -5.6%) has no vec twin -> OFF. True = legacy.
     )

@@ -41567,6 +41567,24 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                 return None
         except Exception as _gre:
             logger.warning(f"[GR_HTF_REENTRY] {position_key}: {_gre}")
+    # 2026-10-14 USER re-entry triggers (exit-price break / dc4_15m break / higher low; all 3 can be on) — SAME function as the vec
+    # (vec_decisions/reentry_triggers.py). Native path: acts only when the vec twin is not deciding (PARITY_VEC_EXACT_MODE native-off).
+    try:
+        import vec_decisions.reentry_triggers as _rtrg_l
+
+        _rt_side = "LONG" if is_long else "SHORT"
+        _rt_cfg = lambda k, d: _psym_get(symbol, _rt_side, k, getattr(config, k, d))
+        if bool(_psym_get(symbol, _rt_side, "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", getattr(config, "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", True))) or bool(_psym_get(symbol, _rt_side, "REENTRY_ON_DC4_15M_BREAK_ENABLED", getattr(config, "REENTRY_ON_DC4_15M_BREAK_ENABLED", True))) or bool(_psym_get(symbol, _rt_side, "REENTRY_ON_HIGHER_LOW_ENABLED", getattr(config, "REENTRY_ON_HIGHER_LOW_ENABLED", True))):
+            _rt_xp = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
+            _rt_xt = getattr(position, "last_reduction_time", None)
+            _rt_xt = _rt_xt.timestamp() if hasattr(_rt_xt, "timestamp") else (__import__("live_twins.reentry_augment", fromlist=["epoch"]).epoch(_rt_xt) or 0.0)
+            _rt_kl = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
+            _rt_name = _rtrg_l.fire_live(_rt_cfg, is_long, current_price, i, _rt_xp, float(_rt_xt or 0.0), _rt_kl)
+            if _rt_name:
+                logger.warning(f"[{_rt_name}] {position_key}: cur={current_price:.6f} exit={_rt_xp:.6f} — re-entry trigger fired")
+                return Signal(action="REENTRY", reason=f"{_rt_name}_cur{current_price:.6f}_exit{_rt_xp:.6f}", conviction=80.0, quantity=re_qty)
+    except Exception as _rt_e:
+        logger.debug(f"[REENTRY_TRIGGERS] {position_key}: {_rt_e}")
     # B00: PRICE ABOVE EXIT — price recovered above exit + meaningful buffer, trend
     # confirmed by ema_9_15m (2026-10-04 ALL-15M: sma_200_1m has no 15m equiv), momentum
     # confirmed by 15m WT cross (+ 3m stoch rising only when USE_1M_3M_SIGNALS_ENABLED).

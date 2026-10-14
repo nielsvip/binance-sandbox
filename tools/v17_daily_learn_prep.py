@@ -907,7 +907,7 @@ def kpi_section(kpi, n=12):
         L.append(_tbl(["phase", "boards", "lift>0", "sum lift", "core-min", "lift/core-min"], [[p, x["boards"], x["pos"], x["lift"], x["core_min"], x["lift_per_core_min"]] for p, x in list(c["phases_3d"].items())[: n + 2]]))
         L.append(f"best phases: {', '.join(c['best_phases'])} · worst phases: {', '.join(c['worst_phases'])}")
     r = c["regression"]
-    L.append(f"### C.regression guard: {'REGRESSION ' + '; '.join(r['hits']) if r['regression'] else 'ok'}; finals below best_start {r['finals_below_best_start']}; new pilot md5 {', '.join(r['new_pilot_md5']) or '-'}")
+    L.append(f"### C.regression guard: {'REGRESSION ' + ('; '.join(r['hits']) or 'finals below best_start') if r['regression'] else 'ok'}; finals below best_start {r['finals_below_best_start']}; new pilot md5 {', '.join(r['new_pilot_md5']) or '-'}")
     if c["autotune"]["moved"]:
         L.append("### C.autotune moved knobs (prev -> value): " + "; ".join(f"{k} {a}->{b}" for k, (a, b) in c["autotune"]["moved"].items()))
     return "\n".join(L) + "\n"

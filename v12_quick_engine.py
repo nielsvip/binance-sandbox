@@ -8552,6 +8552,15 @@ class QuickConfig:
     UNTESTED_FLAT_SPS_MULT: float = (
         0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).
     )
+    REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = (
+        True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on): after any exit, close crosses back through the exit price (+15m WT confirm). vec_decisions/reentry_triggers.py
+    )
+    REENTRY_ON_DC4_15M_BREAK_ENABLED: bool = (
+        True  # USER 2026-10-14 re-entry trigger 2/3: close breaks the prior closed bar's dc_high4_15m (vv dc_low4_15m short) (+15m WT confirm)
+    )
+    REENTRY_ON_HIGHER_LOW_ENABLED: bool = (
+        True  # USER 2026-10-14 re-entry trigger 3/3: a 15m higher low above the lowest low since the exit + up close (vv lower high short) (+15m WT confirm)
+    )
     SESSION_OPEN_STOP_REFREEZE_ENABLED: bool = (
         False  # USER 2026-10-13 (stocks): mirror of config_tradier.py — first RTH bar of each ET session re-freezes a carried position's FIXED_STOP to the current dc_15m channel (vec_decisions/fixed_stop.session_open_mask).
     )
@@ -17630,15 +17639,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _hc_wt1_15m = _safe(npz, "wt1_15m", n)
     except Exception:
         _hc_wt1_15m = close * 0
-    # 2026-10-13 USER guaranteed re-entry after any exit (FIXED_STOP incl.): live B00 / H2 PRICE_ABOVE_EXIT twin. Single call site.
+    # 2026-10-14 USER re-entry triggers (exit-price break / dc4_15m break / higher low; all 3 can be on) — vec_decisions/reentry_triggers.py
     try:
-        import vec_decisions.lane_vec_reentry2 as _xr_lvr2
+        import vec_decisions.reentry_triggers as _rtrg
 
-        _xr_ready = _xr_lvr2.reclaim_ready_mask(npz, n, is_long, cfg)
-        _xr_buf = float(getattr(cfg, "REENTRY_EXIT_RECLAIM_BUFFER_PCT", 0.2) or 0.0) / 100.0
+        _rt_on = bool(getattr(cfg, "REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", True)) or bool(getattr(cfg, "REENTRY_ON_DC4_15M_BREAK_ENABLED", True)) or bool(getattr(cfg, "REENTRY_ON_HIGHER_LOW_ENABLED", True))
+        if _rt_on:
+            _rt_dc4 = _safe(npz, "dc_high4_15m" if is_long else "dc_low4_15m", n)
+            _rt_lo = _safe(npz, "low_15m", n)
+            _rt_hi = _safe(npz, "high_15m", n)
+            _rt_w1 = _safe(npz, "wt1_15m", n)
+            _rt_w2 = _safe(npz, "wt2_15m", n)
+            _rt_vel = _safe(npz, "wt_velocity_15m", n)
     except Exception:
-        _xr_ready, _xr_buf = None, 0.002
-    _xr_fired_bar = -1
+        _rt_on = False
+    _rt_fired = (-1, "")
     # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
     try:
         _n3_k15 = _safe(npz, "stoch_k_15m", n, 50.0)
@@ -18681,20 +18696,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             fire = True
                 except Exception:
                     pass
-            if (
-                not fire
-                and _xr_ready is not None
-                and has_closed_before
-                and trades
-            ):  # 2026-10-13 REENTRY_EXIT_RECLAIM (live B00/H2 twin): armed after ANY exit until the next entry; fires on reclaim + confirm
-                try:
-                    _xr_exit = float(trades[-1].get("exit_price", 0) or 0)
-                    if _xr_exit > 0 and bool(_xr_ready[i]) and (
-                        (is_long and px >= _xr_exit * (1.0 + _xr_buf))
-                        or ((not is_long) and px <= _xr_exit * (1.0 - _xr_buf))
-                    ):
-                        fire = True
-                        _xr_fired_bar = i
+            if not fire and _rt_on and has_closed_before and trades and i >= 2:
+                try:  # 2026-10-14 USER re-entry triggers — single call into the shared predicate
+                    _rt_last = next((t for t in reversed(trades) if t.get("type") == "CLOSE"), None)
+                    if _rt_last is not None:
+                        _rt_xb = int(_rt_last.get("bar_exit", i - 1))
+                        _rt_seg = (_rt_lo if is_long else _rt_hi)[max(0, _rt_xb) : i]
+                        _rt_ext = float(np.nanmin(_rt_seg) if is_long else np.nanmax(_rt_seg)) if len(_rt_seg) else 0.0
+                        _rt_name = _rtrg.fire(
+                            cfg, is_long, float(px), float(close[i - 1]), float(_rt_last.get("exit_price", 0) or 0),
+                            float(_rt_dc4[i - 1]), float(_rt_dc4[i - 2]), float(_rt_lo[i]), float(_rt_hi[i]), _rt_ext,
+                            float(_rt_w1[i]), float(_rt_w2[i]), float(_rt_vel[i]),
+                        )
+                        if _rt_name:
+                            fire = True
+                            _rt_fired = (i, _rt_name)
                 except Exception:
                     pass
             _n3_tier = None
@@ -19198,8 +19214,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     try:
                         # 2026-09-18 HARDCODED tag before generic
                         _hardcoded_fired = False
-                        if _xr_fired_bar == i and not entry_sig[i]:
-                            entry_reason = "REENTRY_EXIT_RECLAIM"  # 2026-10-13 B00/H2 twin (label = the pathway that fired)
+                        if _rt_fired[0] == i and not entry_sig[i]:
+                            entry_reason = _rt_fired[1]  # 2026-10-14 USER re-entry trigger that fired
                             _hardcoded_fired = True
                         if (
                             has_closed_before

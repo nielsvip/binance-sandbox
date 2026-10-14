@@ -161,6 +161,8 @@ def test_autotune_budget_cut_only_below_rule_and_thin_window_holds():
     doc = K.autotune(dead, {}, now)
     assert doc["knobs"]["V15_V17_P3_MAX_S_LOSER"]["value"] == pytest.approx(240.0)  # 0 pp/min < 0.3 rule -> -20 %
     assert doc["knobs"]["V15_V17_SHARE_SURGEON"]["why"].startswith("hold: no P3 lift")
+    dead_w = [dict(b, tier="WINNER") for b in dead]
+    assert K.autotune(dead_w, {}, now)["knobs"]["V15_V17_P3_MAX_S_WINNER"]["value"] == 1500.0  # USER: winners never cut
     thin = K.autotune(dead[:3], {}, now)
     assert all(v["value"] == v["prev"] for v in thin["knobs"].values()) and "held" in thin["note"]
 

@@ -3568,6 +3568,9 @@ class TradierConfig:
     REENTRY_EXHAUSTED_PARTIAL_ENABLED: bool = True
     REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.2
     REENTRY_EXIT_RECLAIM_ENABLED: bool = True
+    REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on) — vec_decisions/reentry_triggers.py
+    REENTRY_ON_DC4_15M_BREAK_ENABLED: bool = True  # USER 2026-10-14 re-entry trigger 2/3: prior-bar dc_high4_15m break (vv short)
+    REENTRY_ON_HIGHER_LOW_ENABLED: bool = True  # USER 2026-10-14 re-entry trigger 3/3: 15m higher low since the exit + up close (vv short)
     SESSION_OPEN_STOP_REFREEZE_ENABLED: bool = False  # USER 2026-10-13 (stocks): at each market open re-freeze a carried position's FIXED_STOP to the NEW dc_15m_low -0.25% (vv short); breached -> exit, re-entry via the re-entry pathways. OFF until swept (TEMPLATE_STOCKS_{LONG,SHORT}).
     REENTRY_FAVORABLE_HTF_MIN: int = 2
     REENTRY_FAVORABLE_MOVE_PCT: float = 1.0

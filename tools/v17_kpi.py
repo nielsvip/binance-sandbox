@@ -40,6 +40,7 @@ MIN_LIFT_PM = 0.3  # the "0.3 rule" (V15_V17_MIN_LIFT_PM) — READ ONLY, the tun
 STEP = 0.20  # max relative change per knob per day
 # knob -> default (pilot 404a3881 v15_pilot.py), hard bounds, family, tier group. Laws are NOT knobs: V15_V17_MIN_LIFT_PM,
 # V15_V17_P3_MAX_S (absolute cap), best-start, 365D record-only, typed values, never-lower are never written.
+# WINNER initial budget floor = 1500 s (USER 2026-10-13 "extend time cap for winners": the tuner may raise it, never cut it).
 KNOBS = {
     "V15_V17_COMBO_SHARE_WINNER": {"default": 0.5, "lo": 0.15, "hi": 0.7, "kind": "share", "fam": "combo", "tiers": ("WINNER",)},
     "V15_V17_COMBO_SHARE": {"default": 0.35, "lo": 0.1, "hi": 0.6, "kind": "share", "fam": "combo", "tiers": ("MEDIOCRE", "LOSER", "LOST_CAUSE")},
@@ -48,7 +49,7 @@ KNOBS = {
     "V15_V17_SHARE_FOCUS": {"default": 0.5, "lo": 0.1, "hi": 0.8, "kind": "share", "fam": "focus", "tiers": TIERS},
     "V15_V17_SHARE_ABLATION": {"default": 0.6, "lo": 0.15, "hi": 0.85, "kind": "share", "fam": "ablation", "tiers": TIERS},
     "V15_V17_SHARE_RETEST": {"default": 0.7, "lo": 0.2, "hi": 0.9, "kind": "share", "fam": "retest", "tiers": TIERS},
-    "V15_V17_P3_MAX_S_WINNER": {"default": 1500.0, "lo": 600.0, "hi": 3600.0, "kind": "budget", "tiers": ("WINNER",)},
+    "V15_V17_P3_MAX_S_WINNER": {"default": 1500.0, "lo": 1500.0, "hi": 3600.0, "kind": "budget", "tiers": ("WINNER",)},
     "V15_V17_P3_MAX_S_MEDIOCRE": {"default": 540.0, "lo": 180.0, "hi": 1500.0, "kind": "budget", "tiers": ("MEDIOCRE",)},
     "V15_V17_P3_MAX_S_LOSER": {"default": 300.0, "lo": 90.0, "hi": 900.0, "kind": "budget", "tiers": ("LOSER",)},
     "V15_V17_P3_MAX_S_LOST_CAUSE": {"default": 120.0, "lo": 30.0, "hi": 300.0, "kind": "budget", "tiers": ("LOST_CAUSE",)},

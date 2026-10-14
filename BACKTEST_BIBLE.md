@@ -2635,3 +2635,18 @@ with latest npz." Live follows the winning vectorized board exactly, INCLUDING l
 `backups/before_strip_parity_vec_exact_persym_*.json`, meta `global_key_strip_20261014`); added to
 `switch_parity.GLOBAL_ONLY_KEYS`; golive `ARTEFACT_KEYS` patch proposed in `backups/proposed_patches/`. All 672 active
 sym_sides resolve PARITY_VEC_EXACT_MODE=True through per-sym > cat_side > global.
+- **v16 (594deeda, 2026-10-14 01:1xZ) — USER "99% time savings and 10x bh in the next round":**
+  * **V17 CARRY** (`carry_decide/carry_update`, books `~/v15_carry/<SS>.json`, seeded from the delta logs by
+    `tools/v17_carry_seed.py`, S1<->s2 newest-wins sync cron `V15_CARRY_SYNC`): a main-pass row dead (|naked|<1e-6) on the
+    sym_side's last 2 evaluated boards is not re-evaluated (`CARRIED_DEAD:` structural skip, G blank, never a fake 0) — never
+    WINNER, never sacred rows, last board <= 7 d, re-evaluated after 2 carried boards, rotating 1/10 re-check (`carry_sampled`
+    measures precision live). Offline replay (real delta logs): 66% of naked rows, 99.3% stayed dead. A/B S1 ZCSH_LONG
+    (MEDIOCRE, same file, production autopsy base): carry OFF 69.5485 / 17:28 wall / 1086 cpu-s; carry ON 69.5749 / 12:15 /
+    779 cpu-s (gain >=, wall -30%, CPU -28%). Kill switch `V15_V17_CARRY=0`; strict start-fp match `V15_V17_CARRY_REQUIRE_FP=1`.
+  * Prefetch/presubmit pipeline A/B again at 2 workers (UNIUSDC_SHORT): identical 20.8301 + wall, +26% CPU -> stays OFF.
+  * Non-winner combo slice: P3 budget += `V15_V17_COMBO_MIN_S_<TIER>` (MEDIOCRE 120 / LOSER 75 / LOST_CAUSE 45 s) and the first
+    combo step gets at least that (the 30 s search minimum starved MEDIOCRE).
+  * PHASE CUT: `data/v17_phase_stats.json` (written hourly by `tools/v17_hourly_report.py`, S1 cron :05 `V17_HOURLY_REPORT`,
+    pushed to hosts); a cuttable phase (P1_PROBE, P3_FOCUS/ABLATION/RETEST/PROBE/COMBO/SURGEON — never REGIME365/TIMFIX/
+    ESSENTIAL) with n >= 20 new-build boards and 0 lifts is skipped (`V15_V17_PHASE_CUT=0` disables).
+  * Per board: `result_cpu_s` (self + reaped pool workers), `result_workers`, `[V17-SUMMARY]` line (lift by phase, final/bh).

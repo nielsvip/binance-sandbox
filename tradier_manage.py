@@ -39896,6 +39896,24 @@ class StockStrategy:
                             90.0,
                             _xb_qty,
                         )
+        # 2026-10-14 USER re-entry triggers (exit-price break / dc4_15m break / higher low; all 3 can be on) — SAME function as the
+        # vec (vec_decisions/reentry_triggers.py). Native path: acts only when the vec twin is not deciding.
+        try:
+            import vec_decisions.reentry_triggers as _rtrg_t
+
+            _rt_cfg_t = lambda k, d: _cfg_auto(k, d)
+            if (bool(_cfg_auto("REENTRY_ON_EXIT_PRICE_BREAK_ENABLED", True)) or bool(_cfg_auto("REENTRY_ON_DC4_15M_BREAK_ENABLED", True)) or bool(_cfg_auto("REENTRY_ON_HIGHER_LOW_ENABLED", True))) and current_price is not None and current_price > 0:
+                _rt_xp_t = float(getattr(position, "last_reduction_price", 0.0) or 0.0)
+                _rt_xt_t = getattr(position, "last_reduction_time", None)
+                _rt_xt_t = _rt_xt_t.timestamp() if hasattr(_rt_xt_t, "timestamp") else (__import__("live_twins.reentry_augment", fromlist=["epoch"]).epoch(_rt_xt_t) or 0.0)
+                _rt_kl_t = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
+                _rt_name_t = _rtrg_t.fire_live(_rt_cfg_t, is_long, current_price, i or {}, _rt_xp_t, float(_rt_xt_t or 0.0), _rt_kl_t)
+                if _rt_name_t:
+                    _rt_qty_t = max(1.0, _weekly_max_shares_tradier(position, current_price, symbol, current_account.get("") or "trb"))
+                    logger.warning(f"[{_rt_name_t}] {symbol} {'LONG' if is_long else 'SHORT'}: cur={current_price:.4f} exit={_rt_xp_t:.4f} — re-entry trigger fired")
+                    return ("REENTRY_OPEN", f"{_rt_name_t}_cur{current_price:.4f}_exit{_rt_xp_t:.4f}", 80.0, _rt_qty_t)
+        except Exception as _rt_e_t:
+            logger.debug(f"[REENTRY_TRIGGERS] {symbol}: {_rt_e_t}")
         # WAVE2 2026-10-05 lane H2: REENTRY_EXIT_RECLAIM_ENABLED + REENTRY_EXIT_RECLAIM_BUFFER_PCT live twin (ez evaluate_reentry B00 PRICE_ABOVE_EXIT). No 3m feed on stocks — momentum leg bypassed like ez USE_1M_3M_SIGNALS_ENABLED=False. Mostly dominated by PRICE_CROSS_BACK above (fires first when price>=exit); marginal reach: exits older than XB max age. Config default True, mirrors ez/crypto-live ON — LIVE-ACTIVE, flagged to coordinator.
         try:
             if bool(_cfg_auto("REENTRY_EXIT_RECLAIM_ENABLED", True)):
