@@ -160,6 +160,8 @@ class RealtimePositionUpdater:
                                 _saved = await save_positions_guarded(self.position_service, self.account_key)
                                 if _saved:
                                     self.mark_written()
+                                elif self.role == "service":
+                                    pwg.write_heartbeat(self.account_dir, {"account": self.account_key, "note": "fetch ok, save refused (disk newer)"})
                                 logger.warning(f"[FETCH_LOOP][{self.account_key}] ✅ {'SAVED' if _saved else 'SAVE-REFUSED-STALE'} {len(account_positions)} positions")
                             except Exception as save_err:
                                 logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ Save failed: {save_err}", exc_info=True)

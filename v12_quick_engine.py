@@ -18404,6 +18404,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _hsc = vec_decisions.htf_signal_consume.build_ctx(cfg, npz, n, is_long, ts, entry_sig, _hsc_core, _entry_or_srcs, _safe)  # 2026-10-13 V17 TF law: HTF-only fires need a fresh LTF confirmation, attempts tighten (None = inert)
     if _hsc is not None:
         entry_sig = np.array(entry_sig, dtype=bool, copy=True)  # a gated bar's entry_sig[i] is cleared in-loop (reentry pathways stay evaluable)
+    _ws_on = bool(is_tradier)  # STOCK WHOLE-SHARE twin: every live stock order is whole shares (tradier execute_now max(1, int(round(q))))
+    _ws_ne = 0
     _cs_snap = None
     try:  # CASH SETTLEMENT (USER 2026-10-14 "no violations"): None = inert (margin/paper account, crypto, or switch off)
         _cs_book = _cash_settle.SettlementBook(cfg) if is_tradier else None
@@ -18412,6 +18414,36 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _cs_book = None
     for i in range(n):
+        if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
+            for _ws_e in list(events[_ws_ne:]):
+                if pos is None or _ws_e.get("type") != "REDUCE":
+                    continue
+                _ws_q = float(_ws_e.get("qty") or 0.0)
+                _ws_ql = float(max(1, int(round(_ws_q))))
+                if abs(_ws_ql - _ws_q) < 1e-9:
+                    continue
+                _ws_px = float(_ws_e.get("price") or 0.0)
+                _ws_before = float(pos["qty"]) + _ws_q
+                _ws_sgn = 1.0 if is_long else -1.0
+                if _ws_ql >= _ws_before - 1e-9:  # live sells every share -> flat at the reduce bar
+                    _ws_dq = _ws_before - _ws_q
+                    pos["realized"] += (_ws_px - pos["avg_price"]) * _ws_sgn * _ws_dq
+                    pos["fees"] += abs(_ws_dq * _ws_px) * half_fee
+                    events.remove(_ws_e)
+                    _ws_pnl = pos["realized"] - pos["fees"]
+                    _ws_rs = f"WHOLE_SHARE_REDUCE_TO_FLAT[{str(_ws_e.get('reason') or '')[:80]}]"
+                    _ws_bar = int(_ws_e.get("bar", i))
+                    trades.append({"pnl_dollars": _ws_pnl, "pnl_pct": float(_ws_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _ws_rs, "type": "CLOSE", "ts": float(_ws_e.get("ts") or 0.0), "price": _ws_px, "bar_entry": int(pos["entry_bar"]), "bar_exit": _ws_bar, "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": _ws_px, "qty": _ws_before, "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _ws_rs, "bars_held": int(_ws_bar - pos["entry_bar"])})
+                    pos = None
+                    cd = cooldown_bars
+                    has_closed_before = True
+                else:
+                    _ws_dq = _ws_ql - _ws_q
+                    pos["realized"] += (_ws_px - pos["avg_price"]) * _ws_sgn * _ws_dq
+                    pos["fees"] += (abs(_ws_ql * _ws_px) - abs(_ws_q * _ws_px)) * half_fee
+                    pos["qty"] -= _ws_dq
+                    _ws_e["qty"] = _ws_ql
+            _ws_ne = len(events)
         if _cs_snap is not None:  # CASH SETTLEMENT (2026-10-14): judge the previous bar's actions; forbidden -> roll the bar back
             _cs_dec = _cash_settle.audit_bar(_cs_book, _cs_snap, trades, events, pos)
             if _cs_dec["rollback"]:
@@ -18424,6 +18456,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _ot_cnt.update(_cs_snap["extra"]["otc"])
                 _cs_book.owed = _cash_settle.merge_owed(_cs_book.owed, _cs_dec["owed"])
             _cs_snap = None
+            _ws_ne = min(_ws_ne, len(events))
         px = close[i]
         if px <= 0:
             continue
@@ -22372,6 +22405,36 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             cd = cooldown_bars
             has_closed_before = True
 
+    if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
+        for _ws_e in list(events[_ws_ne:]):
+            if pos is None or _ws_e.get("type") != "REDUCE":
+                continue
+            _ws_q = float(_ws_e.get("qty") or 0.0)
+            _ws_ql = float(max(1, int(round(_ws_q))))
+            if abs(_ws_ql - _ws_q) < 1e-9:
+                continue
+            _ws_px = float(_ws_e.get("price") or 0.0)
+            _ws_before = float(pos["qty"]) + _ws_q
+            _ws_sgn = 1.0 if is_long else -1.0
+            if _ws_ql >= _ws_before - 1e-9:  # live sells every share -> flat at the reduce bar
+                _ws_dq = _ws_before - _ws_q
+                pos["realized"] += (_ws_px - pos["avg_price"]) * _ws_sgn * _ws_dq
+                pos["fees"] += abs(_ws_dq * _ws_px) * half_fee
+                events.remove(_ws_e)
+                _ws_pnl = pos["realized"] - pos["fees"]
+                _ws_rs = f"WHOLE_SHARE_REDUCE_TO_FLAT[{str(_ws_e.get('reason') or '')[:80]}]"
+                _ws_bar = int(_ws_e.get("bar", n - 1))
+                trades.append({"pnl_dollars": _ws_pnl, "pnl_pct": float(_ws_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _ws_rs, "type": "CLOSE", "ts": float(_ws_e.get("ts") or 0.0), "price": _ws_px, "bar_entry": int(pos["entry_bar"]), "bar_exit": _ws_bar, "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": _ws_px, "qty": _ws_before, "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _ws_rs, "bars_held": int(_ws_bar - pos["entry_bar"])})
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+            else:
+                _ws_dq = _ws_ql - _ws_q
+                pos["realized"] += (_ws_px - pos["avg_price"]) * _ws_sgn * _ws_dq
+                pos["fees"] += (abs(_ws_ql * _ws_px) - abs(_ws_q * _ws_px)) * half_fee
+                pos["qty"] -= _ws_dq
+                _ws_e["qty"] = _ws_ql
+        _ws_ne = len(events)
     if _cs_snap is not None:  # CASH SETTLEMENT (2026-10-14): judge the previous bar's actions; forbidden -> roll the bar back
         _cs_dec = _cash_settle.audit_bar(_cs_book, _cs_snap, trades, events, pos)
         if _cs_dec["rollback"]:

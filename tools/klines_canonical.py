@@ -107,6 +107,7 @@ class Api:
         self.last = 0.0
         self.calls = 0
         self.weight = 0
+        self.last_fetch_ms = 0
 
     def klines(self, symbol, tf, limit, start=None, end=None):
         if BAN.exists():
@@ -140,6 +141,7 @@ class Api:
                 return None
             raise RuntimeError(f"HTTP {e.code} {body}")
         self.calls += 1
+        self.last_fetch_ms = int(time.time() * 1000)  # the closed-bar test must use THIS page's response time (a bar forming at fetch time is never stored)
         if self.weight > WEIGHT_PAUSE:
             log(f"used weight {self.weight} > {WEIGHT_PAUSE} — pausing 60 s")
             time.sleep(60)
@@ -238,7 +240,8 @@ def fill_symbol_tf(api, symbol, tf, since_ms, store=STORE):
         pages += 1
         if not d:
             break
-        got.extend(d)
+        fetched_ms = api.last_fetch_ms
+        got.extend(k for k in d if int(k[6]) < fetched_ms - SETTLE_MS)
         oldest = int(d[0][0])
         if oldest <= since_ms or len(d) < 1000:
             break
@@ -269,7 +272,7 @@ def tail_symbol_tf(api, symbol, tf, recheck=3, store=STORE):
         d = api.klines(symbol, tf, lim, start=start)
         if not d:
             break
-        a, c, _ = merge_exchange(path, d, int(time.time() * 1000))
+        a, c, _ = merge_exchange(path, d, api.last_fetch_ms)
         total_a += a
         total_c += c
         if len(d) < lim:

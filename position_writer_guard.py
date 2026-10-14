@@ -25,7 +25,7 @@ from pathlib import Path
 logger = logging.getLogger("position_writer_guard")
 ROLE_ENV = "EZ_POSITION_WRITER_ROLE"
 STALE_ENV = "EZ_SERVICE_HEARTBEAT_STALE_S"
-DEFAULT_STALE_S = 30.0
+DEFAULT_STALE_S = 60.0  # service REST cycles reach 30+ s on slow API (men/fin 2026-10-14) -> no false takeovers
 FILE_FRESH_S = 30.0
 HEARTBEAT_NAME = ".positions_service_heartbeat.json"
 POSITION_FILE_NAMES = ("long_positions.json", "short_positions.json")
