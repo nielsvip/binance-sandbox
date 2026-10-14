@@ -1319,6 +1319,13 @@ def _result_stamp(progress: dict, symside: str) -> None:
                            ("result_config_md5", ROOT / ("config_tradier.py" if _is_stocks else "config.py"))):
                 progress[_k] = _hl.md5(_p.read_bytes()).hexdigest()
         progress["result_done_utc"] = datetime.now(timezone.utc).isoformat()
+        try:  # USER 2026-10-14 throughput: real CPU per board (self + reaped pool workers) + launch workers -> core-min/board
+            import resource as _rs
+            _ru_s, _ru_c = _rs.getrusage(_rs.RUSAGE_SELF), _rs.getrusage(_rs.RUSAGE_CHILDREN)
+            progress["result_cpu_s"] = round(_ru_s.ru_utime + _ru_s.ru_stime + _ru_c.ru_utime + _ru_c.ru_stime, 1)
+            progress["result_workers"] = int(os.environ.get("V15_RESULT_WORKERS") or 0) or None
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -2999,6 +3006,81 @@ def prior_row_policy(prior: dict, tab: str, switch, cand, hdrs, rr: int, seq: in
     return ("trimmed" if skipped else "full"), kept, skipped, {"why": "row kept", "cells": cells, "verdict": (row_e or {}).get("verdict")}
 
 
+# ---- V17 CARRY (USER 2026-10-14 "99% time savings"): main-pass rows dead (|naked| < eps) on this sym_side's last boards are
+# carried (NO-RETEST §65) instead of re-evaluated. Offline replay on the real delta logs (s1+s2, 2026-10-14): rows dead on the
+# last 2 boards = 66% of naked rows, 99.3% stayed dead, missed positives 0.27 pp/board. Guards: streak >= 2 evaluated-dead
+# boards, last board <= V15_V17_CARRY_MAX_AGE_D (3 d, the NPZ window shift), a carried row is re-evaluated after
+# V15_V17_CARRY_MAX_RUN (2) carried boards, rotating 1/V15_V17_CARRY_SAMPLE (10) sample, never WINNER (V15_V17_CARRY_WINNER=0),
+# never sacred rows, optional start-set fingerprint match (V15_V17_CARRY_REQUIRE_FP=1).
+V17_CUTTABLE_PHASES = frozenset({"P1_PROBE", "P3_FOCUS", "P3_ABLATION", "P3_RETEST", "P3_PROBE", "P3_COMBO", "P3_SURGEON"})  # never REGIME365 / TIMFIX / ESSENTIAL (law)
+
+
+def v17_phase_cut_list(path=None) -> set:
+    """Phases with n >= V15_V17_CUT_MIN_N (20) new-build boards and ZERO lift on every one (tools/v17_hourly_report.py writes it)."""
+    try:
+        p = Path(path or os.environ.get("V15_V17_PHASE_STATS", str(Path(__file__).resolve().parent / "data" / "v17_phase_stats.json")))
+        d = json.loads(p.read_text())
+        n_min = int(os.environ.get("V15_V17_CUT_MIN_N", "20"))
+        return {k for k, v in (d.get("phases") or {}).items() if k in V17_CUTTABLE_PHASES and int(v.get("n") or 0) >= n_min and int(v.get("lifted") or 0) == 0}
+    except Exception:
+        return set()
+
+
+def carry_key(sheet, switch, cand) -> str:
+    return f"{str(sheet).strip()}|{str(switch).strip()}|{str(cand).strip()}"
+
+
+def carry_start_fp(overrides: dict) -> str:
+    import hashlib
+    try:
+        return hashlib.md5(json.dumps({str(k): str(v) for k, v in dict(overrides or {}).items()}, sort_keys=True).encode()).hexdigest()[:16]
+    except Exception:
+        return ""
+
+
+def carry_decide(book: dict, key: str, start_fp: str, now: float, tier: str, sample_seed: int = 0, rotate: bool = True) -> bool:
+    """Pure: True when this main-pass row may be carried instead of evaluated."""
+    if os.environ.get("V15_V17_CARRY", "1") != "1" or not isinstance(book, dict):
+        return False
+    if str(tier) == "WINNER" and os.environ.get("V15_V17_CARRY_WINNER", "0") != "1":
+        return False
+    if now - float(book.get("last_at") or 0.0) > float(os.environ.get("V15_V17_CARRY_MAX_AGE_D", "7")) * 86400.0:
+        return False
+    if os.environ.get("V15_V17_CARRY_REQUIRE_FP", "0") == "1" and book.get("start_fp") != start_fp:
+        return False
+    st = (book.get("rows") or {}).get(key)
+    if not st or int(st[0]) < 2 or int(st[1]) >= int(os.environ.get("V15_V17_CARRY_MAX_RUN", "2")):
+        return False
+    if not rotate:
+        return True
+    n = max(1, int(os.environ.get("V15_V17_CARRY_SAMPLE", "10")))
+    import zlib
+    return (zlib.crc32(key.encode()) + int(sample_seed)) % n != 0
+
+
+def carry_update(book: dict, rows: dict, start_fp: str, now: float) -> dict:
+    """Pure: rows {key: ("eval", naked_delta) | ("carried", None)} from the board just finished -> new book.
+    rows[key] = [evaluated-dead streak, consecutive carried boards]."""
+    eps = float(os.environ.get("V15_V17_CARRY_EPS", "1e-6"))
+    b = dict(book or {})
+    old = dict(b.get("rows") or {})
+    if os.environ.get("V15_V17_CARRY_REQUIRE_FP", "0") == "1" and b.get("start_fp") not in (None, start_fp):
+        old = {}
+    new = {}
+    for k, (how, d) in rows.items():
+        s0, c0 = (old.get(k) or [0, 0])[:2]
+        if how == "carried":
+            new[k] = [int(s0), int(c0) + 1]
+        elif d is not None:
+            new[k] = [int(s0) + 1, 0] if abs(float(d)) < eps else [0, 0]
+    b.update(rows=new, start_fp=start_fp, last_at=float(now), boards=int(b.get("boards") or 0) + 1)
+    return b
+
+
+def carry_book_path(symside: str) -> Path:
+    return Path(os.path.expanduser(os.environ.get("V15_V17_CARRY_DIR", "~/v15_carry"))) / f"{symside}.json"
+
+
 def symside_tier(baseline_gain, bh, trades, prior_best=None, floor_trades=10, force=None):
     """Pure (tested). -> (tier, meta). potential = max(baseline gain, best earlier final gain of this sym_side).
     WINNER: potential >= max(bh, WIN_GAIN) with the sample floor, or a BH-ALIGNED BIG MOVER (bh >= BIG_MOVER: B&H made its
@@ -3579,6 +3661,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _tier_trades = 0
     _TYPES_VENUE[0] = "STOCKS" if map_key_for_symside(new_symside).startswith("STOCKS") else "CRYPTO"
     _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
+    _carry_book, _carry_rows, _carry_fp = {}, {}, ""
+    try:
+        _carry_fp = carry_start_fp(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
+        if carry_book_path(new_symside).exists():
+            _carry_book = json.loads(carry_book_path(new_symside).read_text())
+    except Exception as _cbe:
+        print(f"[V17-CARRY-WARN] book {_cbe}", flush=True)
     _tier_focus_s = float(_tier_meta.get("focus_s") or 0.0)
     _tier_strict = _tier_name in ("LOSER", "LOST_CAUSE") and os.environ.get("V15_TIER_STRICT", "1") == "1"
     _tier_skip_post = (_tier_name in ("LOST_CAUSE", "LOSER") or bool(_tier_meta.get("bh_opposing"))) and os.environ.get("V15_TIER_SKIP_POST", "1") == "1"  # 2026-10-13 throughput: LOSER too
@@ -3736,6 +3825,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     global _POOL_PREPARED
     _pool = None
     _n_proc = max(1, min(int(getattr(args, "workers", 1) or 1), (os.cpu_count() or 2) - 1))
+    os.environ["V15_RESULT_WORKERS"] = str(_n_proc)
     if prepared is not None and _n_proc > 1:
         import multiprocessing as _mp
         _POOL_PREPARED = prepared
@@ -4910,6 +5000,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ws.cell(row=rr, column=2).font = Font(name="Arial", size=10, color="FFBFBFBF")
         elif not all(k in known_config_fields() for k in (_switch_overrides(str(switch).strip(), _parse_opt_value(cand, defaults.get(switch))) or {str(switch).strip(): None})):
             info.update(kind="skip", reason="NOT_IN_CONFIG: no config/config_tradier/QuickConfig field — grey, not calculated", g=None)
+        elif _v17_on and _carry_book and not str(switch).strip().startswith(("GOLDEN_RULE_", "ENTRY_DC_TF", "TECHNICAL_DC_", "DAYTRADE_DC_", "ULTIMATE_DC_4H", "WT_DC_", "DELTA_EXIT", "AUGMENT_", "MAX_AUGMENTS_PER_POSITION")) and carry_decide(_carry_book, carry_key(sname, switch, cand), _carry_fp, _t.time(), _tier_name, int(_carry_book.get("boards") or 0)):
+            info.update(kind="skip", reason=f"CARRIED_DEAD: |naked|<eps on this sym_side's last {(_carry_book.get('rows') or {}).get(carry_key(sname, switch, cand), [0])[0]} boards (NO-RETEST §65, USER 2026-10-14) — not re-evaluated, re-checked by rotation", g=None)
+            _carry_rows[carry_key(sname, switch, cand)] = ("carried", None)
+        elif _v17_on and _carry_book and carry_decide(_carry_book, carry_key(sname, switch, cand), _carry_fp, _t.time(), _tier_name, 0, rotate=False):
+            info["carry_sampled"] = True  # eligible but rotated in: its fresh naked eval measures the carry precision live
             ws.cell(row=rr, column=1).font = Font(name="Arial", size=10, color="FFBFBFBF")
         elif (_tm_why := _switch_type_violation(str(switch).strip(), cand, defaults)):
             info.update(kind="skip", reason=f"{_tm_why} — grey, not calculated", g=None)
@@ -6022,7 +6117,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[V17-PHASE] {ph['name']} evals={rec['evals']} wall={rec['wall_s']}s lift={rec['lift']:+.4f} promotions={rec['promotions']} tested={rec['tested']} {ph['g0']:.4f}->{float(cumulative_gain):.4f}", flush=True)
         _maybe_write_json(force=True)
     def _v17_phase_done(name: str) -> bool:
+        if _v17_phase_cut(name):
+            return True  # USER 2026-10-14: a phase that never lifted across >= 20 new-build boards is cut (data/v17_phase_stats.json)
         return bool(((_v17.get("phases") or {}).get(name) or {}).get("done"))
+    def _v17_phase_cut(name: str) -> bool:
+        base = _re_v17cut.sub("", str(name))
+        if base not in V17_CUTTABLE_PHASES or os.environ.get("V15_V17_PHASE_CUT", "1") != "1":
+            return False
+        if _v17_cut_set[0] is None:
+            _v17_cut_set[0] = v17_phase_cut_list()
+            if _v17_cut_set[0]:
+                print(f"[V17-PHASE-CUT] {new_symside} cut (never lifted on >= {os.environ.get('V15_V17_CUT_MIN_N', '20')} boards): {sorted(_v17_cut_set[0])}", flush=True)
+        return base in _v17_cut_set[0]
+    import re as _re_cutmod
+    _re_v17cut = _re_cutmod.compile(r"_\d+$")
+    _v17_cut_set = [None]
     def _v17_opts_of(names) -> dict:
         names = set(names)
         opts: dict = {}
@@ -7008,6 +7117,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _v17["p3_saved_est"] = {"hustle_skipped": _hus, "yellows_skipped": int(_v17_ystats.get("skipped") or 0), "p2_secs_per_eval": round(_spe, 4), "saved_s": round(_saved, 1), "floor_s": _floor}
             except Exception as _bse:
                 print(f"[V17-WARN] saved-budget {_bse}", flush=True)
+        # USER 2026-10-14: non-winners get a REAL combo-engine slice (the 30 s search minimum starved MEDIOCRE: 0.35 x 120 s - 20 s)
+        _cmin = float(os.environ.get(f"V15_V17_COMBO_MIN_S_{_tier_name}", {"MEDIOCRE": "120", "LOSER": "75", "LOST_CAUSE": "45"}.get(_tier_name, "0")))
+        if _tier_name != "WINNER" and _cmin > 0 and not os.environ.get("V15_V17_P3_MAX_S"):
+            budget += _cmin
         _v17["p3_budget_s"] = round(budget, 1)
         _SLICE_HOLD["v"] = True  # the 0.3 rule: the fill slice never cuts a board from here on (the round stops itself on lift)
         # heartbeat: a long combo/365D step can be silent for many minutes; the reaper (idle>20 min) / watchdog (90 min) read
@@ -7047,7 +7160,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         pass
                 if _it == 1 or _win:
                     _csh = float(os.environ.get("V15_V17_COMBO_SHARE_WINNER", "0.5")) if _win else float(os.environ.get("V15_V17_COMBO_SHARE", "0.35"))
-                    _v17_combo_step(_t.time() + max(0.0, deadline - _t.time()) * _csh, "P3_COMBO" if _it == 1 else f"P3_COMBO_{_it}")
+                    _v17_combo_step(_t.time() + max(max(0.0, deadline - _t.time()) * _csh, (_cmin + 20.0) if _it == 1 and not _win else 0.0), "P3_COMBO" if _it == 1 else f"P3_COMBO_{_it}")
                 # SURGEON first: it owns the guaranteed budget (USER 2026-10-13); generic steps use what it leaves
                 _ssh = float(os.environ.get("V15_V17_SHARE_SURGEON_WINNER", "0.75")) if _win else float(os.environ.get("V15_V17_SHARE_SURGEON", "0.6"))
                 _v17_surgeon(_t.time() + max(0.0, deadline - _t.time()) * _ssh, f"P3_SURGEON_{_it}")
@@ -7576,7 +7689,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["cumulative_gain"] = float(cumulative_gain)
         div = _write_div(sname, rr, [row_gain])
         _uw_tag = "UNWIRED_CALCULATED: switch is in the vec_unwired audit (no engine read found) — 0.0 is the honest eval delta" if (row_delta == 0 and str(switch).strip() in UNWIRED_TAG_SW) else ""
-        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
+        progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "carry_sampled": bool(st.get("carry_sampled")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("v17_deferred"):
@@ -7596,7 +7709,29 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v17_t["p2"]["prom"] = sum(1 for _pk, _pv in (progress.get("done") or {}).items() if isinstance(_pv, dict) and _pv.get("promoted") and str(_pk).split("!", 1)[0] in SWITCH_SHEETS and not str(_pk).endswith(":REPASS") and not _pv.get("v17_phase"))
         _v17["yellow_sample"] = {**_v17_ystats, "pos_top": _v17_ptop[0], "p_min": float(os.environ.get("V15_V17_P_MIN", "0.005")), "seq": _inert_seq}
         print(f"[YELLOW-SAMPLE] {new_symside} evaluated={_v17_ystats['evaluated']} skipped={_v17_ystats['skipped']} pos_top={_v17_ptop[0]} (p = max(1/200, pos_sym/pos_top), unevidenced p=1)", flush=True)
-        _v17_phase_end(_v17_t["p2"], rows_pending=_v17_t["p2"].get("rows_pending"), resumed_segment=bool(_v17_phase_done("P2_WORST_FIRST")))
+        _v17_phase_end(_v17_t["p2"], rows_pending=_v17_t["p2"].get("rows_pending"), resumed_segment=bool(_v17_phase_done("P2_WORST_FIRST")), carried=sum(1 for _v in _carry_rows.values() if _v[0] == "carried"))
+        try:  # carry book: this board's evaluated naked deltas + carried rows -> ~/v15_carry/<sym_side>.json
+            for _dk, _dv in (progress.get("done") or {}).items():
+                if not isinstance(_dv, dict) or _dv.get("v17_phase") or ":" not in str(_dk) or "!" not in str(_dk):
+                    continue
+                _sh = str(_dk).split("!", 1)[0]
+                if _sh not in SWITCH_SHEETS or str(_dk).endswith(":REPASS"):
+                    continue
+                _swc = str(_dk).split(":", 1)[1]
+                _sw, _, _cd = _swc.partition("=")
+                _ck2 = carry_key(_sh, _sw, _cd)
+                if _ck2 in _carry_rows:
+                    continue
+                if _dv.get("naked_delta") is not None:
+                    _carry_rows[_ck2] = ("eval", _dv.get("naked_delta"))
+            _cbp = carry_book_path(new_symside)
+            _cbp.parent.mkdir(parents=True, exist_ok=True)
+            _nb = carry_update(_carry_book, _carry_rows, _carry_fp, _t.time())
+            _cbp.with_suffix(".tmp").write_text(json.dumps(_nb))
+            os.replace(_cbp.with_suffix(".tmp"), _cbp)
+            print(f"[V17-CARRY] {new_symside} carried={sum(1 for _v in _carry_rows.values() if _v[0] == 'carried')} evaluated={sum(1 for _v in _carry_rows.values() if _v[0] == 'eval')} book_boards={_nb.get('boards')} streak>=2={sum(1 for _v in _nb['rows'].values() if _v[0] >= 2)}", flush=True)
+        except Exception as _cwe:
+            print(f"[V17-CARRY-WARN] book write {_cwe}", flush=True)
     if _sacred_on:
         _sacred_final_n = _sacred_repass(None)
         print(f"[SACRED-REPASS] {new_symside} final pass: {_sacred_final_n} promotions, cumulative {float(cumulative_gain):.4f}", flush=True)

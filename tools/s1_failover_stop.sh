@@ -13,10 +13,22 @@ ACCT="${2:-}"
 LOG=/home/niels/logs
 MARKER_DIR=/home/niels/binance/data
 ts(){ date -u +%FT%TZ; }
+# 2026-10-14 LIVE FAILOVER: never touch the always-on ez_s1_stack (own cwd) or processes of the
+# live-failover on-demand units — killing the stack's ez_klines forces a REST restart burst (418 ban).
+lf_killable_pids(){
+    local p cwd cg
+    for p in $(pgrep -f "$1"); do
+        cwd=$(readlink /proc/$p/cwd 2>/dev/null)
+        cg=$(cat /proc/$p/cgroup 2>/dev/null)
+        [[ "$cwd" == /home/niels/binance/ez_s1_stack* ]] && continue
+        [[ "$cg" == *live-failover-* ]] && continue
+        echo "$p"
+    done
+}
 kill_pattern(){
     local pattern="$1"
     local pids
-    pids=$(pgrep -f "$pattern")
+    pids=$(lf_killable_pids "$pattern")
     if [ -n "$pids" ]; then
         kill -TERM $pids 2>/dev/null
         echo "[$(ts)] [FAILOVER_STOP] sent SIGTERM to: $pattern (pids: $pids)" >> "$LOG/s1_failover.log"

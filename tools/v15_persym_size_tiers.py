@@ -6,7 +6,7 @@ Input: the day's per-sym go-live report (data/daily_chain/persym_golive_<date>*.
 Rules (per venue, crypto / stocks ranked separately):
   30D < 0 and 365D <= 0 or unknown  -> MIN      mult = --min-mult (default 0.25) crypto, --min-mult-stocks (default 0.05 = $45 at trb $900) stocks
   30D < 0 and 365D > 0              -> NEG30    mult = --neg30-mult (default 0.5)
-  30D > 0 and 365D > 0 (confirmed) -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 4.0);
+  30D > 0 and 365D > 0 (confirmed) -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 6.0 — USER 2026-10-14);
                                                 bigger gain = bigger size, up to 4x. ONLY 365D-confirmed gainers reach above 1x.
   30D > 0, 365D unknown/absent     -> RANKED_NO365_SMALL  mult = --unconfirmed-mult (default 0.5, USER 2026-10-11: trade always, small)
   30D > 0 and 365D <= 0 (overfit)  -> RANKED_NEG365_SMALL mult = --unconfirmed-mult (default 0.5; was CAP1 1.0 — a 30D gainer that loses on 365D is not a winner)
@@ -86,7 +86,7 @@ def main():
     ap.add_argument("--min-mult", type=float, default=0.25)
     ap.add_argument("--min-mult-stocks", type=float, default=0.05)
     ap.add_argument("--neg30-mult", type=float, default=0.5)
-    ap.add_argument("--max-mult", type=float, default=4.0)
+    ap.add_argument("--max-mult", type=float, default=6.0)
     ap.add_argument("--unconfirmed-mult", type=float, default=0.5)
     ap.add_argument("--gain-cap", type=float, default=20.0)
     ap.add_argument("--dry-run", action="store_true")

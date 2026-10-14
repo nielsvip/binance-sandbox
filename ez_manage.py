@@ -36357,7 +36357,7 @@ class MultiAccountTradeManager:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
                         _oc_abs = float(getattr(config, "OPEN_CEIL_ABSOLUTE_MAX_USD", 8000.0))  # USER 2026-10-12: real risk ceiling, global-only
-                        _oc_hard = max(0.0, min(4.0 * _oc_base, _oc_abs))  # USER 2026-10-12: MAX_ORDER_SIZE = 4x per-sym SPS (default 4x$45=$180), absolute $8000; supersedes static OPEN_CEIL_HARD_MAX_USD
+                        _oc_hard = max(0.0, min(float(getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 6.0)) * _oc_base, _oc_abs))  # USER 2026-10-12: MAX_ORDER_SIZE = 4x per-sym SPS (default 4x$45=$180), absolute $8000; supersedes static OPEN_CEIL_HARD_MAX_USD
                         if _oc_ceil > _oc_hard:
                             _oc_ceil = _oc_hard
                         if bool(getattr(config, "UNTESTED_FLAT_SPS_ENABLED", True)):

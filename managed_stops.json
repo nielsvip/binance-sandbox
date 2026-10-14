@@ -1,30 +1,72 @@
 {
-  "flz:DOGEUSDC_LONG": {
-    "orderId": "1000002619710527",
+  "ang:TRBUSDT_LONG": {
+    "orderId": "4000001964477870",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:46:08.290044+00:00",
-    "symbol": "DOGEUSDC",
+    "entry_sig": "2026-10-13 18:52:22.159118+00:00",
+    "symbol": "TRBUSDT",
     "side": "LONG"
   },
-  "flz:ETHUSDC_LONG": {
-    "orderId": "1000002619712878",
+  "ang:TRUMPUSDC_LONG": {
+    "orderId": "4000001966278299",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 22:50:26.337631+00:00",
-    "symbol": "ETHUSDC",
+    "entry_sig": "2026-10-13 21:22:26.568669+00:00",
+    "symbol": "TRUMPUSDC",
     "side": "LONG"
   },
-  "flz:DASHUSDT_LONG": {
-    "orderId": "1000002619762233",
+  "ang:APEUSDT_LONG": {
+    "orderId": "4000001966358243",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 23:49:32.798893+00:00",
-    "symbol": "DASHUSDT",
+    "entry_sig": "2026-10-13 22:59:18.276750+00:00",
+    "symbol": "APEUSDT",
     "side": "LONG"
   },
-  "flz:BNBUSDC_LONG": {
-    "orderId": "1000002619762847",
+  "ang:ALTUSDT_LONG": {
+    "orderId": "4000001966365908",
     "stopPrice": 0.0,
-    "entry_sig": "2026-10-13 23:53:24.520035+00:00",
-    "symbol": "BNBUSDC",
+    "entry_sig": "2026-10-13 23:02:31.791908+00:00",
+    "symbol": "ALTUSDT",
+    "side": "LONG"
+  },
+  "ang:ZENUSDT_LONG": {
+    "orderId": "4000001966425328",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-13 23:51:07.544796+00:00",
+    "symbol": "ZENUSDT",
+    "side": "LONG"
+  },
+  "ang:EGLDUSDT_LONG": {
+    "orderId": "4000001966478555",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-14 00:31:36.196148+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "LONG"
+  },
+  "ang:QTUMUSDT_LONG": {
+    "orderId": "4000001966474514",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-14 00:31:30.887316+00:00",
+    "symbol": "QTUMUSDT",
+    "side": "LONG"
+  },
+  "ang:RAYSOLUSDT_LONG": {
+    "orderId": "4000001966482694",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-14 00:34:53.997572+00:00",
+    "symbol": "RAYSOLUSDT",
+    "side": "LONG"
+  },
+  "ang:KMNOUSDT_LONG": {
+    "orderId": "4000001966484543",
+    "stopPrice": 0.0,
+    "entry_sig": "2026-10-14 00:36:23.635606+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
+  "ang:JASMYUSDT_LONG": {
+    "orderId": "4000001966497048",
+    "stopPrice": 0.004857,
+    "entry_sig": "2026-10-14 00:43:53.345377+00:00",
+    "symbol": "JASMYUSDT",
     "side": "LONG"
   }
 }
