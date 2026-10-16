@@ -128,6 +128,156 @@ def align_default(wb, switch, value):
     return rep
 
 
+SWITCH_TABS = ("STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES", "EXIT_STRUCTURAL", "EXIT_VELOCITY", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE", "AUGMENT_TREND", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "GLOBAL_RISK_GATES")
+
+
+def _is_yellow(cell):
+    try:
+        return cell.fill is not None and cell.fill.fill_type == "solid" and str(cell.fill.fgColor.rgb or "").upper().endswith("FFFF00")
+    except Exception:
+        return False
+
+
+def dedupe_rows(wb):
+    """USER 2026-10-16 "duplicate contradictory fields in TEMPLATE_ ... should be impossible". Removes rows that repeat the same
+    (switch, value) inside one switch tab — same row kind only (column-A fill), so a white row and its orange filter-block
+    twin are never merged. Keeps the bold row, else the row with the most yellow filter cells; yellow cells that only the
+    removed twin had are copied onto the kept row first, so no filter test is lost. Pilot progress is keyed by canonical
+    (tab, switch, value), so no measured cell is lost either. Raises if any switch ends with a different bold count."""
+    import copy as _copy
+    import dataclasses as _dc
+    rep = {}
+    try:
+        sys.path.insert(0, str(ROOT))
+        import v12_quick_engine as _E
+        _bool_fields = {f.name for f in _dc.fields(_E.QuickConfig) if isinstance(getattr(_E.QuickConfig(), f.name, None), bool)}
+    except Exception:
+        _bool_fields = set()
+    for ws in wb.worksheets:
+        if ws.title not in SWITCH_TABS:
+            continue
+        # A bool switch whose whole group is written 0/1 (generic float era) -> False/True, so the bold reads as the
+        # engine's bool type (chain_harmony_check TPL_TYPE). Only when EVERY row of the group is 0 or 1.
+        _bg = {}
+        for r in range(3, ws.max_row + 1):
+            sw = str(ws.cell(r, 1).value or "").strip()
+            if sw in _bool_fields:
+                _bg.setdefault(sw, []).append(r)
+        for sw, rows in _bg.items():
+            vals = [ws.cell(r, 2).value for r in rows]
+            if all(not isinstance(v, bool) and isinstance(v, (int, float)) and v in (0, 1) for v in vals):
+                for r in rows:
+                    ws.cell(r, 2).value = bool(ws.cell(r, 2).value)
+                rep.setdefault(ws.title, []).append({"switch": sw, "bool_normalized": rows})
+        groups = {}
+        for r in range(3, ws.max_row + 1):
+            sw = str(ws.cell(r, 1).value or "").strip()
+            if not sw or sw != sw.upper() or not sw.replace("_", "").isalnum():
+                continue
+            a = ws.cell(r, 1)
+            kind = str(a.fill.fgColor.rgb) if (a.fill is not None and a.fill.fill_type == "solid") else "none"
+            groups.setdefault((sw, _norm_val(ws.cell(r, 2).value), kind), []).append(r)
+        bold_before = {}
+        for (sw, _v, _k), rows in groups.items():
+            bold_before[sw] = bold_before.get(sw, 0) + sum(1 for r in rows if ws.cell(r, 2).font and ws.cell(r, 2).font.b)
+        drop = []
+        for (sw, v, _k), rows in groups.items():
+            if len(rows) < 2:
+                continue
+            bold = [r for r in rows if ws.cell(r, 2).font and ws.cell(r, 2).font.b]
+            yel = {r: sum(1 for c in range(4, ws.max_column + 1) if _is_yellow(ws.cell(r, c))) for r in rows}
+            keep = bold[0] if bold else max(rows, key=lambda r: (yel[r], -r))
+            # A bool switch whose rows all carry the SAME value is a missing option, not a stray copy (e.g. two
+            # LH_HL_FILTER_REQUIRE_BOTH=False rows, no True row): the first duplicate becomes the opposite value so
+            # both options are testable (USER 2026-10-16 "every option must be testable"). Only when the tab has no
+            # row of the opposite value at all.
+            flip = None
+            if v in ("True", "False"):
+                opp = "False" if v == "True" else "True"
+                if not any(_norm_val(ws.cell(rr, 2).value) == opp for rr in range(3, ws.max_row + 1) if str(ws.cell(rr, 1).value or "").strip() == sw):
+                    flip = next((r for r in rows if r != keep), None)
+            if flip is not None:
+                from openpyxl.styles import Font
+                c2 = ws.cell(flip, 2)
+                f = _copy.copy(c2.font) if c2.font is not None else Font(name="Arial", size=10)
+                c2.value = (opp == "True")
+                c2.font = Font(name=f.name or "Arial", size=f.size or 10, bold=False, italic=f.italic, color=f.color)
+                isd = next((c for c in range(1, ws.max_column + 1) if str(ws.cell(2, c).value or "").strip().lower().startswith("is_default")), None)
+                if isd:
+                    ws.cell(flip, isd).value = "NO"
+                rep.setdefault(ws.title, []).append({"switch": sw, "value": v, "flipped_to": opp, "row": flip})
+            for r in rows:
+                if r == keep or r == flip:
+                    continue
+                for c in range(4, ws.max_column + 1):
+                    if _is_yellow(ws.cell(r, c)) and not _is_yellow(ws.cell(keep, c)):
+                        ws.cell(keep, c).fill = _copy.copy(ws.cell(r, c).fill)
+                drop.append(r)
+            if len(bold) > 1:
+                bold_before[sw] -= len(bold) - 1
+            rep.setdefault(ws.title, []).append({"switch": sw, "value": v, "kept": keep, "removed": [r for r in rows if r not in (keep, flip)]})
+        for r in sorted(drop, reverse=True):
+            ws.delete_rows(r, 1)
+        bold_after = {}
+        for r in range(3, ws.max_row + 1):
+            sw = str(ws.cell(r, 1).value or "").strip()
+            if sw in bold_before and ws.cell(r, 2).font and ws.cell(r, 2).font.b:
+                bold_after[sw] = bold_after.get(sw, 0) + 1
+        bad = {sw: (n, bold_after.get(sw, 0)) for sw, n in bold_before.items() if n != bold_after.get(sw, 0)}
+        if bad:
+            raise RuntimeError(f"{ws.title}: bold count changed {list(bad.items())[:5]}")
+    return rep
+
+
+def single_home(wb, switch, home):
+    """USER 2026-10-16 "duplicate contradictory fields ... should be impossible": a switch with regular (white) rows in two
+    tabs has two places to be promoted and can end with two bold defaults (WT_CROSSUNDER_FINAL_ENABLED refused every
+    STOCKS_SHORT board 2026-10-15 23:22). Removes the switch's WHITE rows from every tab except `home`; filter-block
+    (filled) rows are untouched. Refuses — writing nothing — if another tab carries a value the home lacks, a yellow
+    filter cell the home row of that value lacks, or a bold value that differs from the home bold."""
+    import copy as _copy
+    def _white(ws, r):
+        a = ws.cell(r, 1)
+        return not (a.fill is not None and a.fill.fill_type == "solid")
+    if home not in wb.sheetnames:
+        raise RuntimeError(f"{home} is not a tab")
+    hw = wb[home]
+    hrows = {_norm_val(hw.cell(r, 2).value): r for r in range(3, hw.max_row + 1) if str(hw.cell(r, 1).value or "").strip() == switch and _white(hw, r)}
+    if not hrows:
+        raise RuntimeError(f"{home} has no white {switch} row")
+    hbold = [v for v, r in hrows.items() if hw.cell(r, 2).font and hw.cell(r, 2).font.b]
+    rep = {"switch": switch, "home": home, "removed": {}}
+    plan = []
+    for ws in wb.worksheets:
+        if ws.title == home or ws.title not in SWITCH_TABS:
+            continue
+        rows = [r for r in range(3, ws.max_row + 1) if str(ws.cell(r, 1).value or "").strip() == switch and _white(ws, r)]
+        for r in rows:
+            v = _norm_val(ws.cell(r, 2).value)
+            if v not in hrows:
+                raise RuntimeError(f"{ws.title}!{r} {switch}={v} has no row in {home} — add it there first (tools/v15_switch_add.py --extend)")
+            if ws.cell(r, 2).font and ws.cell(r, 2).font.b and hbold and v not in hbold:
+                raise RuntimeError(f"{ws.title}!{r} bold {switch}={v} disagrees with {home} bold {hbold}")
+            for c in range(4, ws.max_column + 1):
+                if _is_yellow(ws.cell(r, c)) and not _is_yellow(hw.cell(hrows[v], c)):
+                    hdr = str(ws.cell(2, c).value or ws.cell(1, c).value or c)
+                    hc = next((cc for cc in range(4, hw.max_column + 1) if str(hw.cell(2, cc).value or hw.cell(1, cc).value or cc) == hdr), None)
+                    if hc is None:
+                        raise RuntimeError(f"{ws.title}!{r} yellow filter '{hdr}' has no column in {home}")
+                    plan.append(("fill", hrows[v], hc, _copy.copy(ws.cell(r, c).fill)))
+            plan.append(("drop", ws.title, r))
+    for p in plan:
+        if p[0] == "fill":
+            hw.cell(p[1], p[2]).fill = p[3]
+    for title in {p[1] for p in plan if p[0] == "drop"}:
+        ws = wb[title]
+        drops = sorted([p[2] for p in plan if p[0] == "drop" and p[1] == title], reverse=True)
+        for r in drops:
+            ws.delete_rows(r, 1)
+        rep["removed"][title] = drops
+    return rep
+
+
 def pull_fleet(ledger_root, hosts, timeout_s):
     pulled = 0
     for h in hosts:
@@ -157,6 +307,8 @@ def main():
     ap.add_argument("--protocol-only", action="store_true", help="only (re)write the PROTOCOL tab (backs up each template first)")
     ap.add_argument("--align-default", metavar="SWITCH=VALUE", help="re-bold the existing SWITCH=VALUE row in every tab of --cat-side (cross-tab default disagreement); never edits values")
     ap.add_argument("--cat-side", help="with --align-default: CRYPTO_LONG|CRYPTO_SHORT|STOCKS_LONG|STOCKS_SHORT")
+    ap.add_argument("--single-home", metavar="SWITCH=TAB", help="keep SWITCH's white rows only in TAB of every template that has them there (filter-block rows untouched)")
+    ap.add_argument("--dedupe-rows", action="store_true", help="remove repeated (switch, value) rows inside each switch tab of every template (yellow cells merged, bold kept)")
     a = ap.parse_args()
     try:
         import fcntl
@@ -185,6 +337,45 @@ def main():
                 print(f"[bookkeeper] align-default written -> {tpath}", flush=True)
         finally:
             wb.close()
+        return 0
+    if a.single_home:
+        import datetime as _dt, shutil as _sh, openpyxl as _ox
+        sw, _, home = a.single_home.partition("=")
+        for cat, fname in TEMPLATES.items():
+            if a.cat_side and cat != a.cat_side:
+                continue
+            tpath = os.path.join(a.templates, fname)
+            wb = _ox.load_workbook(tpath)
+            try:
+                if home.strip() not in wb.sheetnames or not any(str(wb[home.strip()].cell(r, 1).value or "").strip() == sw.strip() for r in range(3, wb[home.strip()].max_row + 1)):
+                    continue
+                rep = single_home(wb, sw.strip(), home.strip())
+                n = sum(len(v) for v in rep["removed"].values())
+                print(f"[bookkeeper] single-home {cat} {sw}->{home}: removed {n} rows {rep['removed']}", flush=True)
+                if n and not a.dry_run:
+                    _sh.copy2(tpath, ROOT / "backups" / f"before_bookkeeper_singlehome_{sw.strip()}_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{fname}")
+                    atomic_save_xlsx(wb, tpath)
+            except RuntimeError as e:
+                print(f"[bookkeeper] single-home {cat} {sw}: REFUSED {e}", flush=True)
+            finally:
+                wb.close()
+        return 0
+    if a.dedupe_rows:
+        import datetime as _dt, shutil as _sh, openpyxl as _ox
+        for cat, fname in TEMPLATES.items():
+            tpath = os.path.join(a.templates, fname)
+            wb = _ox.load_workbook(tpath)
+            try:
+                rep = dedupe_rows(wb)
+                n = sum(len(g.get("removed") or []) for tab in rep.values() for g in tab)
+                nf = sum(1 for tab in rep.values() for g in tab if g.get("flipped_to") or g.get("bool_normalized"))
+                print(f"[bookkeeper] dedupe-rows {cat}: {n} duplicate rows removed, {nf} bool rows turned into the missing opposite option, {len(rep)} tabs", flush=True)
+                if (n or nf) and not a.dry_run:
+                    _sh.copy2(tpath, ROOT / "backups" / f"before_bookkeeper_dedupe_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{fname}")
+                    atomic_save_xlsx(wb, tpath)
+                    print(f"[bookkeeper] dedupe-rows written -> {tpath}", flush=True)
+            finally:
+                wb.close()
         return 0
     hosts = [h for h in (a.hosts or "").split(",") if h.strip()]
     if hosts and not a.dry_run:

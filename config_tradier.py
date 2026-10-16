@@ -5392,8 +5392,8 @@ class TradierConfig:
     # predicate set vec_decisions/grey_wire_exits.py shared with v12_quick_engine.simulate_one; hook = tradier_manage
     # GREY_WIRE exit block after ULTIMATE_DC. All OFF = today's stock live behaviour (tradier never ran these).
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = False
-    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = (
-        1.0  # truthy = require wt1_4h against too (QuickConfig/template carry 1.0)
+    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = (
+        True  # require wt1_4h against too. 2026-10-16: bool again — QuickConfig dedupe + template 0/1 -> False/True (was float 1.0)
     )
     WT_4H_VEL_EXIT_ENABLED: bool = False
     DC_HOPELESS_EXIT_ENABLED: bool = False
@@ -5424,8 +5424,8 @@ class TradierConfig:
     WT_PERCENTILE_ENTRY_OS_D: float = 10.0
     HTF_DIRECTION_GATE_ENABLED: bool = False
     HTF_GATE_SIGNALS_SMA200D: bool = True
-    HTF_GATE_D_MANDATORY: float = (
-        0.0  # falsy (template/QuickConfig encode this bool as 0.0)
+    HTF_GATE_D_MANDATORY: bool = (
+        False  # 2026-10-16: bool again — QuickConfig dedupe + template 0/1 -> False/True (was float 0.0, same truthiness)
     )
     HTF_GATE_MIN_CONFIRMATIONS: int = 2
     # 2026-09-30 GREY-SWITCH WIRING batch 3: HLR_TOP_EXIT ("sell the top") stock live port (tradier GREY_REWIRE_EXIT block ->
