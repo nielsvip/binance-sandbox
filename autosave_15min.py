@@ -109,6 +109,27 @@ def backup_cycle():
     log(f"Backup {ts}: {saved} files → {dest}")
 
 
+def _force_rmtree(p: Path):
+    """Delete a snapshot dir whose files carry the macOS `uchg` (immutable) flag.
+
+    THE 14 GB BUG (found 2026-10-17): snapshots are written with shutil.copy2, which PRESERVES file flags, so
+    every snapshot's copy of LOCKED_FILES.md (and LOCKED_FILES.md.gz) is immutable — and shutil.rmtree then
+    fails the whole directory with `PermissionError [Errno 1] Operation not permitted`. The old prune swallowed
+    that in `except Exception: pass`, so it had NEVER deleted a single directory: 1019 snapshot dirs / 14 GB
+    accumulated while a full 14 GB tree-walk ran every 5 minutes, which is where this process burned ~49
+    CPU-hours before being SIGSTOPped mid-prune on 2026-10-14.
+    The flag is cleared on the SNAPSHOT COPY only — the guard below refuses any path outside backups/autosave,
+    so the live LOCKED_FILES.md can never be unlocked by this."""
+    rp = p.resolve()
+    if BACKUP_DIR.resolve() not in rp.parents:
+        raise RuntimeError(f"refusing to chflags/rmtree outside {BACKUP_DIR}: {rp}")
+    subprocess.run(["chflags", "-R", "nouchg", str(rp)], timeout=180, capture_output=True)
+    if rp.is_dir():
+        shutil.rmtree(rp)
+    else:
+        rp.unlink(missing_ok=True)
+
+
 def prune_snapshots():
     """Cap backups/autosave. Runs EVERY cycle as its own janitor, not only when a snapshot was written —
     otherwise the 1019 dirs / 14 GB already on disk when git became the history would never be reclaimed,
@@ -130,8 +151,9 @@ def prune_snapshots():
     if current_size < MAX_BYTES:
         return  # plenty of space, keep everything
     log(f"Backup dir at {current_size/1e9:.1f}GB — pruning by stability score")
-    # Sort by timestamp, compute edit gap (time to next backup)
-    all_backups = sorted(BACKUP_DIR.glob("*"))
+    # Sort by timestamp, compute edit gap (time to next backup). Directories ONLY: the old glob("*") also
+    # picked up .DS_Store, which could occupy a `keep` slot and always failed its rmtree as NotADirectoryError.
+    all_backups = sorted(p for p in BACKUP_DIR.glob("*") if p.is_dir())
     if len(all_backups) < 10:
         return
     # For each backup, compute gap to next one. Keep the ones with LARGEST gaps.
@@ -152,17 +174,22 @@ def prune_snapshots():
     # 2026-10-14T21:03:32Z with "Backup dir at 14.9GB — pruning by stability score" as its last log line,
     # after which NOTHING in this repo was committed or file-backed-up for over two days.
     remaining = current_size
+    pruned_n, failed_n = 0, 0
     for b in all_backups:
         if b not in keep:
             try:
                 freed = _dirsize(b)
-                shutil.rmtree(b)
+                _force_rmtree(b)
                 remaining -= freed
-                log(f"  pruned {b.name} (-{freed/1e6:.0f}MB)")
-            except Exception:
-                pass
+                pruned_n += 1
+            except Exception as e:
+                # NEVER silent again: `except Exception: pass` here is what hid the EPERM for weeks.
+                failed_n += 1
+                if failed_n <= 3:
+                    log(f"  prune FAILED {b.name}: {type(e).__name__} {e}")
             if remaining < MAX_BYTES * 0.7:
                 break
+    log(f"  pruned {pruned_n} snapshot dirs, {failed_n} failed, now {remaining/1e9:.1f}GB")
 
 
 STALE_LOCK_MIN_AGE_S = 120
