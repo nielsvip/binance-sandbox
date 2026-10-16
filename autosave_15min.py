@@ -107,6 +107,14 @@ def backup_cycle():
             except Exception as e:
                 log(f"  SKIP {rel}: {e}")
     log(f"Backup {ts}: {saved} files → {dest}")
+
+
+def prune_snapshots():
+    """Cap backups/autosave. Runs EVERY cycle as its own janitor, not only when a snapshot was written —
+    otherwise the 1019 dirs / 14 GB already on disk when git became the history would never be reclaimed,
+    which is the opposite of what the dedup is for (USER 2026-10-17: "so we dont need to keep 2 copies on
+    disk plus the git version"). Every one of these snapshot dirs was written in the same cycle as a
+    successful `git commit`, so its content is already in the object store, compressed and deduplicated."""
     # Smart pruning: only delete when disk usage exceeds 5GB.
     # Keep versions with LARGEST edit gaps (stable versions that ran longest).
     import os as _os
@@ -267,6 +275,7 @@ while True:
             if not committed:
                 log("git commit did not take — writing the file-snapshot fallback")
             backup_cycle()
+        prune_snapshots()
         git_push()
     except Exception as e:
         log(f"ERROR: {e}")
