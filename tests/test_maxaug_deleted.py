@@ -1,0 +1,84 @@
+"""MAX_AUGMENTS_PER_POSITION is deleted — USER 2026-10-15 "delete the switch completely".
+
+No augment-count cap exists on any surface: not in config.py / config_tradier.py / QuickConfig, not in the live
+decision path (ez_manage / tradier_manage), not in the scalar verifier (backtest_v12_engine), not in the vector twin,
+not in the cat_side layer, and not in any live per-sym set. Replaces tests/test_max_augments_parity.py, which
+asserted the opposite. MAX_ORDER_VALUE stays — it is still a live switch (6x START_POSITION_SIZE today).
+"""
+import dataclasses
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+KEY = "MAX_AUGMENTS_PER_POSITION"
+LIVE_SOURCES = ["ez_manage.py", "tradier_manage.py", "config.py", "config_tradier.py",
+                "v12_quick_engine.py", "backtest_v12_engine.py",
+                "vec_decisions/ported_stateful_augment.py"]
+
+
+def test_no_config_field_on_any_surface():
+    from config import Config
+    from config_tradier import TradierConfig
+    import v12_quick_engine as V
+    assert not hasattr(Config(), KEY)
+    assert not hasattr(TradierConfig(), KEY)
+    assert KEY not in {f.name for f in dataclasses.fields(V.QuickConfig)}
+
+
+@pytest.mark.parametrize("name", LIVE_SOURCES)
+def test_no_executable_reference_in_live_sources(name):
+    """A comment or docstring may record the deletion; no executable token may carry the key."""
+    import io
+    import tokenize
+    src = (ROOT / name).read_text()
+    hits = []
+    for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+        if tok.type in (tokenize.COMMENT, tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT):
+            continue
+        if tok.type == tokenize.STRING and tok.line.strip().startswith(('"""', "'''", 'r"""', "r'''")):
+            continue  # docstring
+        if KEY in tok.string:
+            hits.append(f"{name}:{tok.start[0]} {tok.line.strip()[:110]}")
+    assert not hits, f"{KEY} is still read in code: {hits[:5]}"
+
+
+def test_no_block_reason_remains():
+    for name in ("ez_manage.py", "backtest_v12_engine.py", "tradier_manage.py"):
+        assert "BLOCKED_MAX_AUGMENTS" not in (ROOT / name).read_text(), name
+
+
+def test_absent_from_the_cat_side_layer():
+    import per_sym_settings as ps
+    for cs in ps.CAT_SIDES:
+        assert KEY not in ps.defaults(cs), cs
+
+
+def test_absent_from_every_live_per_sym_set():
+    import json
+    import sqlite3
+    db = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
+    if not db.exists():
+        pytest.skip("no live store on this host")
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30.0)
+    try:
+        rows = con.execute("SELECT sym_side, overrides_json, full_config_json, defaults_snapshot_json "
+                           "FROM per_sym_active").fetchall()
+    finally:
+        con.close()
+    offenders = [r[0] for r in rows if any(c and KEY in c for c in r[1:])]
+    assert not offenders, f"{len(offenders)} live rows still carry {KEY}: {offenders[:8]}"
+
+
+def test_max_order_value_is_still_a_live_switch():
+    """The sibling the user kept: deleting MAX_AUGMENTS must not take MAX_ORDER_VALUE with it."""
+    from config import Config
+    assert hasattr(Config(), "MAX_ORDER_VALUE")
+    import per_sym_store as pss
+    kept = pss._mandate_sanitize({"MAX_ORDER_VALUE": 300.0, KEY: 0})
+    assert kept["MAX_ORDER_VALUE"] == 300.0
+    assert KEY in kept, "the strip no longer special-cases a deleted switch"
+    assert pss._mandate_sanitize({"MAX_ORDER_VALUE": 0}) == {}

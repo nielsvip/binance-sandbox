@@ -1,0 +1,6755 @@
+{
+ "tag": "STOCKS_T1_20261016T0005Z",
+ "ts": "2026-10-16T00:10:44Z",
+ "args": {
+  "sym_sides": "CLS_LONG,WDAY_SHORT,IBIT_LONG,APO_SHORT,COST_LONG,ZCSH_SHORT,BWXT_SHORT,CRWV_SHORT,CRWD_SHORT,PAAS_SHORT,HOOD_SHORT,XOM_LONG,ACN_LONG",
+  "venue": "crypto",
+  "tiers": "",
+  "limit": 0,
+  "window_days": 30,
+  "workers": 8,
+  "cell_timeout": 120.0,
+  "yellow_mode": "best",
+  "wt": false,
+  "probe_unwired": false,
+  "accum_tol": 2.5,
+  "apply": false,
+  "allow_untradeable": false,
+  "tag": "STOCKS_T1_20261016T0005Z",
+  "pause": "",
+  "resume": false,
+  "start_sets": "data/reports/v15_start_sets_stocks.json",
+  "apply_from": ""
+ },
+ "results": [
+  {
+   "sym_side": "CLS_LONG",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:06:21Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [
+    {
+     "switch": "EXIT_R1_R2_FILTER_TF",
+     "status": "UNWIRED in data/vec_unwired.json \u2014 the sweep refuses it, so no delta here can be real; never promoted. Re-run with --probe-unwired to MEASURE it (research only).",
+     "ladder": []
+    },
+    {
+     "switch": "MTF_ATR_TRAIL_FILTER_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "15m",
+     "parents_armed_by_test": {
+      "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+     },
+     "parent_ref": "v12_quick_engine.py:17573-17576",
+     "cum_before": 29.7832,
+     "ladder": [
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF"
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=15m+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "15m",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h"
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h"
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D"
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_ENABLED_TRADIER=True (parent-arm only)",
+       "move": {
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.2031,
+       "trades": 53,
+       "delta_vs_row": -2.5801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0145,
+       "trades": 51,
+       "delta_vs_row": -8.7687,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 15.1133,
+       "trades": 48,
+       "delta_vs_row": -14.67,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0145,
+       "trades": 51,
+       "delta_vs_row": -8.7687,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0145,
+       "trades": 51,
+       "delta_vs_row": -8.7687,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0145,
+       "trades": 51,
+       "delta_vs_row": -8.7687,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.2031,
+       "trades": 53,
+       "delta_vs_row": -2.5801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0145,
+       "trades": 51,
+       "delta_vs_row": -8.7687,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.2031,
+       "trades": 53,
+       "delta_vs_row": -2.5801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0145,
+       "trades": 51,
+       "delta_vs_row": -8.7687,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 25.6693,
+       "trades": 53,
+       "delta_vs_row": -4.1139,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 28.7032,
+       "trades": 53,
+       "delta_vs_row": -1.0801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 28.7032,
+       "trades": 53,
+       "delta_vs_row": -1.0801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 28.7032,
+       "trades": 53,
+       "delta_vs_row": -1.0801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=2",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=1",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 16.4085,
+       "trades": 52,
+       "delta_vs_row": -13.3747,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.2031,
+       "trades": 53,
+       "delta_vs_row": -2.5801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.2031,
+       "trades": 53,
+       "delta_vs_row": -2.5801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.2031,
+       "trades": 53,
+       "delta_vs_row": -2.5801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.0484,
+       "trades": 49,
+       "delta_vs_row": -2.7348,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 26.1271,
+       "trades": 52,
+       "delta_vs_row": -3.6561,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 28.6495,
+       "trades": 53,
+       "delta_vs_row": -1.1337,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 27.0484,
+       "trades": 49,
+       "delta_vs_row": -2.7348,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "tf_inert_with_parent_off": "every naked rung read 0.0 while ['MTF_ATR_TRAIL_ENABLED_TRADIER'] is off (v12_quick_engine.py:17573-17576) \u2014 the TF value cannot move this sym_side's vector until the parent is armed",
+     "yellow_count": 81,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "FROZEN_STOP_FILTER_TF",
+     "status": "venue crypto only \u2014 skipped on stocks",
+     "ladder": []
+    },
+    {
+     "switch": "DC_HARD_STOP_15M_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 29.7832,
+     "ladder": [
+      {
+       "label": "DC_HARD_STOP_15M_ENABLED=False",
+       "move": {
+        "DC_HARD_STOP_15M_ENABLED": false
+       },
+       "gain": 29.7832,
+       "trades": 53,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "yellow_count": 0,
+     "promoted": null
+    },
+    {
+     "switch": "GAP_MOC_EXIT_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": false,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 29.7832,
+     "ladder": [
+      {
+       "label": "GAP_MOC_EXIT_ENABLED=True",
+       "move": {
+        "GAP_MOC_EXIT_ENABLED": true
+       },
+       "gain": 29.3168,
+       "trades": 55,
+       "delta": -0.4665,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 2,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    },
+    {
+     "switch": "WT_LOWER_CROSS_EXIT_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "1h",
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 29.7832,
+     "ladder": [
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=OFF",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "OFF"
+       },
+       "gain": 27.7554,
+       "trades": 51,
+       "delta": -2.0279,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=15m",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "15m"
+       },
+       "gain": 21.3311,
+       "trades": 66,
+       "delta": -8.4522,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=4h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "4h"
+       },
+       "gain": 27.7554,
+       "trades": 51,
+       "delta": -2.0279,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 25.6693,
+       "trades": 53,
+       "delta_vs_row": -4.1139,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 28.7032,
+       "trades": 53,
+       "delta_vs_row": -1.0801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 28.7032,
+       "trades": 53,
+       "delta_vs_row": -1.0801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 28.7032,
+       "trades": 53,
+       "delta_vs_row": -1.0801,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.95",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.9",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.8",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.05",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.1",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.2",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 29.7832,
+       "trades": 53,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 28.4233,
+       "trades": 55,
+       "delta_vs_row": -1.3599,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 27.7716,
+       "trades": 54,
+       "delta_vs_row": -2.0116,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 26.8543,
+       "trades": 55,
+       "delta_vs_row": -2.929,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 21,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    }
+   ],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3533,
+   "start_set_md5": "df6be6aff881fb6af3cba8809fde6f42",
+   "baseline": {
+    "gain_pct": 29.7832,
+    "bh_pct": 12.2321,
+    "trades": 53,
+    "max_dd_pct": 3.1669,
+    "tim_pct": 46.1,
+    "pool_sharpe": 0.3202,
+    "valid": true,
+    "qualifies": true,
+    "why": "",
+    "remeasured_on": "current NPZ"
+   },
+   "final": {
+    "gain_pct": 29.7832,
+    "trades": 53,
+    "max_dd_pct": 3.1669,
+    "tim_pct": 46.1,
+    "pool_sharpe": 0.3202,
+    "valid": true,
+    "qualifies": true,
+    "why": ""
+   },
+   "accumulation_check": {
+    "expected": 29.7832,
+    "measured": 29.7832,
+    "drift": 0.0,
+    "ok": true
+   },
+   "promoted_moves": {},
+   "evals": 120,
+   "secs": 45.6,
+   "status": "OK"
+  },
+  {
+   "sym_side": "WDAY_SHORT",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:07:07Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [
+    {
+     "switch": "EXIT_R1_R2_FILTER_TF",
+     "status": "UNWIRED in data/vec_unwired.json \u2014 the sweep refuses it, so no delta here can be real; never promoted. Re-run with --probe-unwired to MEASURE it (research only).",
+     "ladder": []
+    },
+    {
+     "switch": "MTF_ATR_TRAIL_FILTER_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "15m",
+     "parents_armed_by_test": {
+      "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+     },
+     "parent_ref": "v12_quick_engine.py:17573-17576",
+     "cum_before": 22.5071,
+     "ladder": [
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF"
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=15m+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "15m",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h"
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h"
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D"
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_ENABLED_TRADIER=True (parent-arm only)",
+       "move": {
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.1562,
+       "trades": 56,
+       "delta_vs_row": -0.3509,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.1562,
+       "trades": 56,
+       "delta_vs_row": -0.3509,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.1562,
+       "trades": 56,
+       "delta_vs_row": -0.3509,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.1891,
+       "trades": 56,
+       "delta_vs_row": -0.318,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 11.1148,
+       "trades": 45,
+       "delta_vs_row": -11.3923,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 11.1148,
+       "trades": 45,
+       "delta_vs_row": -11.3923,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 11.1148,
+       "trades": 45,
+       "delta_vs_row": -11.3923,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.7921,
+       "trades": 54,
+       "delta_vs_row": -4.715,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.7921,
+       "trades": 54,
+       "delta_vs_row": -4.715,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 18.2415,
+       "trades": 54,
+       "delta_vs_row": -4.2655,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.0191,
+       "trades": 54,
+       "delta_vs_row": -1.488,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=2",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=1",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 13.5589,
+       "trades": 47,
+       "delta_vs_row": -8.9481,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 11.3388,
+       "trades": 49,
+       "delta_vs_row": -11.1682,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 13.5589,
+       "trades": 47,
+       "delta_vs_row": -8.9481,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 13.5589,
+       "trades": 47,
+       "delta_vs_row": -8.9481,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 19.9997,
+       "trades": 55,
+       "delta_vs_row": -2.5074,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 10.2201,
+       "trades": 48,
+       "delta_vs_row": -12.287,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.0137,
+       "trades": 57,
+       "delta_vs_row": -0.4934,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "tf_inert_with_parent_off": "every naked rung read 0.0 while ['MTF_ATR_TRAIL_ENABLED_TRADIER'] is off (v12_quick_engine.py:17573-17576) \u2014 the TF value cannot move this sym_side's vector until the parent is armed",
+     "yellow_count": 77,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "FROZEN_STOP_FILTER_TF",
+     "status": "venue crypto only \u2014 skipped on stocks",
+     "ladder": []
+    },
+    {
+     "switch": "DC_HARD_STOP_15M_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 22.5071,
+     "ladder": [
+      {
+       "label": "DC_HARD_STOP_15M_ENABLED=False",
+       "move": {
+        "DC_HARD_STOP_15M_ENABLED": false
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "yellow_count": 0,
+     "promoted": null
+    },
+    {
+     "switch": "GAP_MOC_EXIT_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 22.5071,
+     "ladder": [
+      {
+       "label": "GAP_MOC_EXIT_ENABLED=False",
+       "move": {
+        "GAP_MOC_EXIT_ENABLED": false
+       },
+       "gain": 22.5071,
+       "trades": 56,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "yellow_count": 2,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "WT_LOWER_CROSS_EXIT_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "1h",
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 22.5071,
+     "ladder": [
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=OFF",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "OFF"
+       },
+       "gain": 22.152,
+       "trades": 55,
+       "delta": -0.3551,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=15m",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "15m"
+       },
+       "gain": 5.5175,
+       "trades": 86,
+       "delta": -16.9896,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=4h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "4h"
+       },
+       "gain": 22.152,
+       "trades": 55,
+       "delta": -0.3551,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.7921,
+       "trades": 54,
+       "delta_vs_row": -4.715,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.7921,
+       "trades": 54,
+       "delta_vs_row": -4.715,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 18.2415,
+       "trades": 54,
+       "delta_vs_row": -4.2655,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_VELOCITY",
+       "gain": 21.0191,
+       "trades": 54,
+       "delta_vs_row": -1.488,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.95",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.9",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.8",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.05",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.1",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.2",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 22.5071,
+       "trades": 56,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 14.0958,
+       "trades": 65,
+       "delta_vs_row": -8.4113,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 9.1887,
+       "trades": 66,
+       "delta_vs_row": -13.3183,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 6.6343,
+       "trades": 70,
+       "delta_vs_row": -15.8727,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 21,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    }
+   ],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3534,
+   "start_set_md5": "8164ce6df0aebddae1ab3faafac1b7ed",
+   "baseline": {
+    "gain_pct": 22.5071,
+    "bh_pct": 5.3492,
+    "trades": 56,
+    "max_dd_pct": 1.4836,
+    "tim_pct": 71.2,
+    "pool_sharpe": 0.4369,
+    "valid": true,
+    "qualifies": true,
+    "why": "",
+    "remeasured_on": "current NPZ"
+   },
+   "final": {
+    "gain_pct": 22.5071,
+    "trades": 56,
+    "max_dd_pct": 1.4836,
+    "tim_pct": 71.2,
+    "pool_sharpe": 0.4369,
+    "valid": true,
+    "qualifies": true,
+    "why": ""
+   },
+   "accumulation_check": {
+    "expected": 22.5071,
+    "measured": 22.5071,
+    "drift": 0.0,
+    "ok": true
+   },
+   "promoted_moves": {},
+   "evals": 116,
+   "secs": 62.2,
+   "status": "OK"
+  },
+  {
+   "sym_side": "IBIT_LONG",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:08:09Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [
+    {
+     "switch": "EXIT_R1_R2_FILTER_TF",
+     "status": "UNWIRED in data/vec_unwired.json \u2014 the sweep refuses it, so no delta here can be real; never promoted. Re-run with --probe-unwired to MEASURE it (research only).",
+     "ladder": []
+    },
+    {
+     "switch": "MTF_ATR_TRAIL_FILTER_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "15m",
+     "parents_armed_by_test": {
+      "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+     },
+     "parent_ref": "v12_quick_engine.py:17573-17576",
+     "cum_before": 17.0487,
+     "ladder": [
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF"
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=15m+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "15m",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h"
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h"
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D"
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_ENABLED_TRADIER=True (parent-arm only)",
+       "move": {
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 16.6716,
+       "trades": 20,
+       "delta_vs_row": -0.3772,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "BREAKOUT_RETEST_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 16.6716,
+       "trades": 20,
+       "delta_vs_row": -0.3772,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 15.9074,
+       "trades": 20,
+       "delta_vs_row": -1.1413,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=2",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=1",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 10.4836,
+       "trades": 21,
+       "delta_vs_row": -6.5651,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 10.7501,
+       "trades": 24,
+       "delta_vs_row": -6.2987,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "tf_inert_with_parent_off": "every naked rung read 0.0 while ['MTF_ATR_TRAIL_ENABLED_TRADIER'] is off (v12_quick_engine.py:17573-17576) \u2014 the TF value cannot move this sym_side's vector until the parent is armed",
+     "yellow_count": 81,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "FROZEN_STOP_FILTER_TF",
+     "status": "venue crypto only \u2014 skipped on stocks",
+     "ladder": []
+    },
+    {
+     "switch": "DC_HARD_STOP_15M_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 17.0487,
+     "ladder": [
+      {
+       "label": "DC_HARD_STOP_15M_ENABLED=False",
+       "move": {
+        "DC_HARD_STOP_15M_ENABLED": false
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "yellow_count": 0,
+     "promoted": null
+    },
+    {
+     "switch": "GAP_MOC_EXIT_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": false,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 17.0487,
+     "ladder": [
+      {
+       "label": "GAP_MOC_EXIT_ENABLED=True",
+       "move": {
+        "GAP_MOC_EXIT_ENABLED": true
+       },
+       "gain": 10.0028,
+       "trades": 21,
+       "delta": -7.046,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 16.5759,
+       "trades": 23,
+       "delta_vs_row": -0.4729,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 2,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    },
+    {
+     "switch": "WT_LOWER_CROSS_EXIT_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "OFF",
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 17.0487,
+     "ladder": [
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=15m",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "15m"
+       },
+       "gain": 11.0529,
+       "trades": 38,
+       "delta": -5.9958,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=1h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "1h"
+       },
+       "gain": 5.1048,
+       "trades": 27,
+       "delta": -11.9439,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=4h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "4h"
+       },
+       "gain": 17.0487,
+       "trades": 20,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.9074,
+       "trades": 20,
+       "delta_vs_row": -1.1413,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.95",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.9",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.8",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.05",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.1",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.2",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 17.0487,
+       "trades": 20,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 21,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    }
+   ],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3533,
+   "start_set_md5": "b71ec68212475a398f48ecc3e084a164",
+   "baseline": {
+    "gain_pct": 17.0487,
+    "bh_pct": 5.553,
+    "trades": 20,
+    "max_dd_pct": 1.2324,
+    "tim_pct": 41.42,
+    "pool_sharpe": 0.2043,
+    "valid": true,
+    "qualifies": true,
+    "why": "",
+    "remeasured_on": "current NPZ"
+   },
+   "final": {
+    "gain_pct": 17.0487,
+    "trades": 20,
+    "max_dd_pct": 1.2324,
+    "tim_pct": 41.42,
+    "pool_sharpe": 0.2043,
+    "valid": true,
+    "qualifies": true,
+    "why": ""
+   },
+   "accumulation_check": {
+    "expected": 17.0487,
+    "measured": 17.0487,
+    "drift": 0.0,
+    "ok": true
+   },
+   "promoted_moves": {},
+   "evals": 120,
+   "secs": 55.9,
+   "status": "OK"
+  },
+  {
+   "sym_side": "APO_SHORT",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:09:05Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [
+    {
+     "switch": "EXIT_R1_R2_FILTER_TF",
+     "status": "UNWIRED in data/vec_unwired.json \u2014 the sweep refuses it, so no delta here can be real; never promoted. Re-run with --probe-unwired to MEASURE it (research only).",
+     "ladder": []
+    },
+    {
+     "switch": "MTF_ATR_TRAIL_FILTER_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "15m",
+     "parents_armed_by_test": {
+      "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+     },
+     "parent_ref": "v12_quick_engine.py:17573-17576",
+     "cum_before": 14.0194,
+     "ladder": [
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF"
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=15m+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "15m",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h"
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h"
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D"
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "MTF_ATR_TRAIL_ENABLED_TRADIER=True (parent-arm only)",
+       "move": {
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 14.0194,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 12.2067,
+       "trades": 23,
+       "delta_vs_row": -1.8127,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 12.2067,
+       "trades": 23,
+       "delta_vs_row": -1.8127,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 4.4135,
+       "trades": 22,
+       "delta_vs_row": -9.6059,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 4.1954,
+       "trades": 22,
+       "delta_vs_row": -9.824,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=2",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=1",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 3.5881,
+       "trades": 21,
+       "delta_vs_row": -10.4314,
+       "qualifies": false,
+       "why": "TIM 11.4 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 1.599,
+       "trades": 22,
+       "delta_vs_row": -12.4204,
+       "qualifies": false,
+       "why": "TIM 13.8 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 12.2067,
+       "trades": 23,
+       "delta_vs_row": -1.8127,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 12.2067,
+       "trades": 23,
+       "delta_vs_row": -1.8127,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 12.2067,
+       "trades": 23,
+       "delta_vs_row": -1.8127,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 14.0194,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "tf_inert_with_parent_off": "every naked rung read 0.0 while ['MTF_ATR_TRAIL_ENABLED_TRADIER'] is off (v12_quick_engine.py:17573-17576) \u2014 the TF value cannot move this sym_side's vector until the parent is armed",
+     "yellow_count": 77,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "FROZEN_STOP_FILTER_TF",
+     "status": "venue crypto only \u2014 skipped on stocks",
+     "ladder": []
+    },
+    {
+     "switch": "DC_HARD_STOP_15M_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 14.0194,
+     "ladder": [
+      {
+       "label": "DC_HARD_STOP_15M_ENABLED=False",
+       "move": {
+        "DC_HARD_STOP_15M_ENABLED": false
+       },
+       "gain": 15.6278,
+       "trades": 19,
+       "delta": 1.6083,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [],
+     "yellow_count": 0,
+     "promoted": {
+      "label": "DC_HARD_STOP_15M_ENABLED=False",
+      "move": {
+       "DC_HARD_STOP_15M_ENABLED": false
+      },
+      "old": {
+       "DC_HARD_STOP_15M_ENABLED": true
+      },
+      "delta": 1.6083,
+      "gain_before": 14.0194,
+      "gain_after": 15.6278,
+      "trades": 19,
+      "max_dd_pct": 1.2974,
+      "tim_pct": 71.54,
+      "pool_sharpe": 0.2604
+     },
+     "status": "PROMOTED"
+    },
+    {
+     "switch": "GAP_MOC_EXIT_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 15.6278,
+     "ladder": [
+      {
+       "label": "GAP_MOC_EXIT_ENABLED=False",
+       "move": {
+        "GAP_MOC_EXIT_ENABLED": false
+       },
+       "gain": 15.6278,
+       "trades": 19,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_ENABLED=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "yellow_count": 2,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "WT_LOWER_CROSS_EXIT_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "OFF",
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 15.6278,
+     "ladder": [
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=15m",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "15m"
+       },
+       "gain": 8.6989,
+       "trades": 61,
+       "delta": -6.9289,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=1h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "1h"
+       },
+       "gain": 9.1061,
+       "trades": 26,
+       "delta": -6.5216,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=4h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "4h"
+       },
+       "gain": 13.2108,
+       "trades": 22,
+       "delta": -2.4169,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.95",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.9",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.8",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.05",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.1",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.2",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 15.6278,
+       "trades": 19,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 7.5003,
+       "trades": 43,
+       "delta_vs_row": -8.1274,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 10.3309,
+       "trades": 35,
+       "delta_vs_row": -5.2969,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 9.3988,
+       "trades": 43,
+       "delta_vs_row": -6.2289,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 21,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    }
+   ],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3494,
+   "start_set_md5": "8dc5f57e753d5571eb20c4f7f835bb48",
+   "baseline": {
+    "gain_pct": 14.0194,
+    "bh_pct": 14.0283,
+    "trades": 24,
+    "max_dd_pct": 1.2974,
+    "tim_pct": 70.98,
+    "pool_sharpe": 0.31,
+    "valid": true,
+    "qualifies": true,
+    "why": "",
+    "remeasured_on": "current NPZ"
+   },
+   "final": {
+    "gain_pct": 15.6278,
+    "trades": 19,
+    "max_dd_pct": 1.2974,
+    "tim_pct": 71.54,
+    "pool_sharpe": 0.2604,
+    "valid": true,
+    "qualifies": true,
+    "why": ""
+   },
+   "accumulation_check": {
+    "expected": 15.6277,
+    "measured": 15.6278,
+    "drift": 0.0001,
+    "ok": true
+   },
+   "promoted_moves": {
+    "DC_HARD_STOP_15M_ENABLED": false
+   },
+   "evals": 117,
+   "secs": 61.8,
+   "status": "OK"
+  },
+  {
+   "sym_side": "ZCSH_SHORT",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:10:07Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [
+    {
+     "switch": "EXIT_R1_R2_FILTER_TF",
+     "status": "UNWIRED in data/vec_unwired.json \u2014 the sweep refuses it, so no delta here can be real; never promoted. Re-run with --probe-unwired to MEASURE it (research only).",
+     "ladder": []
+    },
+    {
+     "switch": "MTF_ATR_TRAIL_FILTER_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "15m",
+     "parents_armed_by_test": {
+      "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+     },
+     "parent_ref": "v12_quick_engine.py:17573-17576",
+     "cum_before": 41.4871,
+     "ladder": [
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF"
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=OFF+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "OFF",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=15m+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "15m",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h"
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=1h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "1h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h"
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=4h+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "4h",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D"
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_FILTER_TF=D+MTF_ATR_TRAIL_ENABLED_TRADIER=True",
+       "move": {
+        "MTF_ATR_TRAIL_FILTER_TF": "D",
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "label": "MTF_ATR_TRAIL_ENABLED_TRADIER=True (parent-arm only)",
+       "move": {
+        "MTF_ATR_TRAIL_ENABLED_TRADIER": true
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "CIRCUIT_SHARPE_GATES_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREACH_REDUCE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_BREAK_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DC_MOMENTUM_BOTA_SCORER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "DELTA_ENGINE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_9_21_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EMA_BLANKET_FILTER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 35.3036,
+       "trades": 25,
+       "delta_vs_row": -6.1834,
+       "qualifies": false,
+       "why": "TIM 17.2 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 39.4056,
+       "trades": 25,
+       "delta_vs_row": -2.0815,
+       "qualifies": false,
+       "why": "TIM 17.5 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FAST_RISER_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "FROZEN_STOP_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=2",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_HL_FILTER_TF_REQ=1",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 18.2771,
+       "trades": 36,
+       "delta_vs_row": -23.21,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 19.3999,
+       "trades": 29,
+       "delta_vs_row": -22.0872,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 1.2366,
+       "trades": 34,
+       "delta_vs_row": -40.2505,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "MOM3_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 1.3313,
+       "trades": 26,
+       "delta_vs_row": -40.1558,
+       "qualifies": false,
+       "why": "TIM 17.6 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 10.2358,
+       "trades": 12,
+       "delta_vs_row": -31.2513,
+       "qualifies": false,
+       "why": "TIM 9.4 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 0.0,
+       "trades": 0,
+       "delta_vs_row": null,
+       "qualifies": false,
+       "why": "ZERO_TRADES"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 7.7044,
+       "trades": 17,
+       "delta_vs_row": -33.7827,
+       "qualifies": false,
+       "why": "TIM 12.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MOMENTUM_BREAKOUT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 21.1087,
+       "trades": 22,
+       "delta_vs_row": -20.3784,
+       "qualifies": false,
+       "why": "TIM 15.5 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.0477,
+       "trades": 25,
+       "delta_vs_row": -0.4394,
+       "qualifies": false,
+       "why": "TIM 18.4 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.0477,
+       "trades": 25,
+       "delta_vs_row": -0.4394,
+       "qualifies": false,
+       "why": "TIM 18.4 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 40.8641,
+       "trades": 25,
+       "delta_vs_row": -0.623,
+       "qualifies": false,
+       "why": "TIM 18.1 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "MTF_DC_REJECT_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.0477,
+       "trades": 25,
+       "delta_vs_row": -0.4394,
+       "qualifies": false,
+       "why": "TIM 18.4 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "NEWBORN_LOSS_KILL_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      },
+      {
+       "on": "incumbent",
+       "header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+       "tab": "EXIT_STRUCTURAL",
+       "gain": 41.4871,
+       "trades": 25,
+       "delta_vs_row": 0.0,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      }
+     ],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "tf_inert_with_parent_off": "every naked rung read 0.0 while ['MTF_ATR_TRAIL_ENABLED_TRADIER'] is off (v12_quick_engine.py:17573-17576) \u2014 the TF value cannot move this sym_side's vector until the parent is armed",
+     "yellow_count": 77,
+     "positive_yellows": [],
+     "promoted": null
+    },
+    {
+     "switch": "FROZEN_STOP_FILTER_TF",
+     "status": "venue crypto only \u2014 skipped on stocks",
+     "ladder": []
+    },
+    {
+     "switch": "DC_HARD_STOP_15M_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 41.4871,
+     "ladder": [
+      {
+       "label": "DC_HARD_STOP_15M_ENABLED=False",
+       "move": {
+        "DC_HARD_STOP_15M_ENABLED": false
+       },
+       "gain": 41.4871,
+       "trades": 25,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 18.0 outside [20,80]"
+      }
+     ],
+     "yellows": [],
+     "status": "INERT_IN_VECTOR \u2014 every variant read 0.0 (BIBLE \u00a714.3: an upstream gate suppresses the trades this switch touches; vec wiring is not fixed here)",
+     "yellow_count": 0,
+     "promoted": null
+    },
+    {
+     "switch": "GAP_MOC_EXIT_ENABLED",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": true,
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 41.4871,
+     "ladder": [
+      {
+       "label": "GAP_MOC_EXIT_ENABLED=False",
+       "move": {
+        "GAP_MOC_EXIT_ENABLED": false
+       },
+       "gain": 48.6488,
+       "trades": 24,
+       "delta": 7.1617,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "GAP_MOC_EXIT_ENABLED=False",
+       "header": "LH_LL_TOP_EXIT_ENABLED=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 47.5955,
+       "trades": 24,
+       "delta_vs_row": -1.0533,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "GAP_MOC_EXIT_ENABLED=False",
+       "header": "LH_LL_TOP_EXIT_ENABLED=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 2,
+     "positive_yellows": [],
+     "promoted": {
+      "label": "GAP_MOC_EXIT_ENABLED=False",
+      "move": {
+       "GAP_MOC_EXIT_ENABLED": false
+      },
+      "old": {
+       "GAP_MOC_EXIT_ENABLED": true
+      },
+      "delta": 7.1617,
+      "gain_before": 41.4871,
+      "gain_after": 48.6488,
+      "trades": 24,
+      "max_dd_pct": 1.4955,
+      "tim_pct": 27.01,
+      "pool_sharpe": 0.4615
+     },
+     "status": "PROMOTED"
+    },
+    {
+     "switch": "WT_LOWER_CROSS_EXIT_TF",
+     "unwired": false,
+     "probe_only": false,
+     "incumbent": "OFF",
+     "parents_armed_by_test": {},
+     "parent_ref": "",
+     "cum_before": 48.6488,
+     "ladder": [
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=15m",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "15m"
+       },
+       "gain": 39.2707,
+       "trades": 27,
+       "delta": -9.378,
+       "valid": true,
+       "qualifies": false,
+       "why": "TIM 19.7 outside [20,80]"
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=1h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "1h"
+       },
+       "gain": 48.5013,
+       "trades": 25,
+       "delta": -0.1475,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "label": "WT_LOWER_CROSS_EXIT_TF=4h",
+       "move": {
+        "WT_LOWER_CROSS_EXIT_TF": "4h"
+       },
+       "gain": 48.6488,
+       "trades": 24,
+       "delta": 0.0,
+       "valid": true,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellows": [
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 42.6224,
+       "trades": 24,
+       "delta_vs_row": -6.0263,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=1h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "EXIT_TOP_FADE_FILTER_TF=15m",
+       "tab": "EXIT_VELOCITY",
+       "gain": 46.9101,
+       "trades": 24,
+       "delta_vs_row": -1.7387,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.95",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.9",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MAX=0.8",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.05",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.1",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_BB_MIN=0.2",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_HIGH_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_LOW_1H_GT_PREV=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=True",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "WT_15M_BOUNCE_REL_VOL_GT_1=False",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=OFF",
+       "tab": "EXIT_VELOCITY",
+       "gain": 47.5955,
+       "trades": 24,
+       "delta_vs_row": -1.0533,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h",
+       "tab": "EXIT_VELOCITY",
+       "gain": 48.6488,
+       "trades": 24,
+       "delta_vs_row": 0.0,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 43.4703,
+       "trades": 24,
+       "delta_vs_row": -5.1785,
+       "qualifies": true,
+       "why": ""
+      },
+      {
+       "on": "incumbent",
+       "header": "LH_LL_TOP_EXIT_STRUCT_TF=4h,D",
+       "tab": "EXIT_VELOCITY",
+       "gain": 44.5236,
+       "trades": 24,
+       "delta_vs_row": -4.1252,
+       "qualifies": true,
+       "why": ""
+      }
+     ],
+     "yellow_count": 21,
+     "positive_yellows": [],
+     "status": "no positive qualifying move \u2014 incumbent kept",
+     "promoted": null
+    }
+   ],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3534,
+   "start_set_md5": "319688495401790e134fde01deb488e4",
+   "baseline": {
+    "gain_pct": 41.4871,
+    "bh_pct": 51.8115,
+    "trades": 25,
+    "max_dd_pct": 2.148,
+    "tim_pct": 18.04,
+    "pool_sharpe": 0.386,
+    "valid": true,
+    "qualifies": false,
+    "why": "TIM 18.0 outside [20,80]",
+    "remeasured_on": "current NPZ"
+   },
+   "final": {
+    "gain_pct": 48.6488,
+    "trades": 24,
+    "max_dd_pct": 1.4955,
+    "tim_pct": 27.01,
+    "pool_sharpe": 0.4615,
+    "valid": true,
+    "qualifies": true,
+    "why": ""
+   },
+   "accumulation_check": {
+    "expected": 48.6488,
+    "measured": 48.6488,
+    "drift": 0.0,
+    "ok": true
+   },
+   "promoted_moves": {
+    "GAP_MOC_EXIT_ENABLED": false
+   },
+   "evals": 117,
+   "secs": 37.5,
+   "status": "OK"
+  },
+  {
+   "sym_side": "BWXT_SHORT",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:10:44Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3533,
+   "start_set_md5": "bd48c41f149ec602d515e0c2402af664",
+   "status": "NPZ_STALE: STALE_NPZ_SKIPPED: BWXT ends 2026-10-15 19:15Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  },
+  {
+   "sym_side": "CRWD_SHORT",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:10:44Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3533,
+   "start_set_md5": "4098476e54610abdcfad37069e127999",
+   "status": "NPZ_STALE: STALE_NPZ_SKIPPED: CRWD ends 2026-10-15 19:15Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  },
+  {
+   "sym_side": "HOOD_SHORT",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:10:44Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3533,
+   "start_set_md5": "f8111c741d0134e47a083c64b582246c",
+   "status": "NPZ_STALE: STALE_NPZ_SKIPPED: HOOD ends 2026-10-15 19:30Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  },
+  {
+   "sym_side": "ACN_LONG",
+   "venue": "stocks",
+   "ts": "2026-10-16T00:10:44Z",
+   "host": "s2",
+   "window_days": 30,
+   "source": "suspect_row_rerun",
+   "pilot_module": "_v15_pilot_for_rerun",
+   "pilot_md5": "5bb7122aecece88d5bfe4102df6efec3",
+   "switches": [],
+   "start_set_source": "start_sets_export.full_config",
+   "start_set_keys": 3534,
+   "start_set_md5": "186773e800127031ecb62249fe931ffe",
+   "status": "NPZ_STALE: STALE_NPZ_SKIPPED: ACN ends 2026-10-15 19:30Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  }
+ ]
+}

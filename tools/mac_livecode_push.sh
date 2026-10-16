@@ -18,6 +18,8 @@ EXCLUDES=(--include 'data/' --include 'data/livecode_sync.json' --exclude 'data/
   --exclude 'node_modules/' --exclude '.nova/' --exclude '*.pyc' --exclude '.DS_Store'
   --exclude 'ang/' --exclude 'inf/' --exclude 'flz/' --exclude 'men/' --exclude 'fin/'
   --exclude 'tra/' --exclude 'trb/' --exclude 'trc/' --exclude 'klines_cache/' --exclude '*.tmp'
+  --exclude 'klines_cache_gateway/' --exclude 'klines_canonical/' --exclude 'klines_cache_backtest/' --exclude 'klines_cache_macbook/'
+  --exclude 'klines_vault/' --exclude 'klines_*/'
   --exclude 'agent_inbox_poller.py' --exclude 'vec_paths/mtf_dc_reject.py' --exclude 'vec_paths/live_entry_engine.py')
 try_push() { # try_push <shell-or-EMPTY> <destination>
     local shell="$1" dest="$2" rc

@@ -17,11 +17,37 @@ def _cs(stock_states, crypto_states):
     return cs
 
 
-def test_auto_phase_stocks_while_launchable_then_any():
-    phase, pend = S._venue_phase(_cs(["need30", "terminal_ok"], ["need30"]), mode="auto")
-    assert phase == "stocks" and pend == ["ST0_LONG"]
-    phase, pend = S._venue_phase(_cs(["terminal_ok", "running", "waiting_base", "terminal_deferred"], ["need30"]), mode="auto")
-    assert phase == "any" and pend == []  # running / waiting_base / deferred stocks never hold the crypto phase
+import datetime
+
+RTH = datetime.datetime(2026, 10, 15, 14, 0, tzinfo=datetime.timezone.utc)  # Wed 10:00 ET, market open
+OFF = datetime.datetime(2026, 10, 15, 3, 58, tzinfo=datetime.timezone.utc)  # Tue 23:58 ET, market closed
+
+
+def test_auto_phase_stocks_while_launchable_at_every_hour():
+    """The 2026-10-12 rule holds verbatim for the stock half, at every hour: USER 2026-10-15 (corrected) keeps the
+    guaranteed daily stock pass, including after the 20:00 UTC close, because a post-close NPZ rebuilt to the
+    session's final bar is current."""
+    for now in (RTH, OFF):
+        phase, pend = S._venue_phase(_cs(["need30", "terminal_ok"], ["need30"]), mode="auto", now=now)
+        assert phase == "stocks" and pend == ["ST0_LONG"], now
+
+
+def test_auto_phase_hands_the_rest_of_the_night_to_crypto_once_stocks_are_done():
+    """USER 2026-10-15: "dedicate the rest of the night until market open to all cryptos that can fit". Before
+    this, a drained stock queue fell through to "any" and crypto never had a window of its own."""
+    phase, pend = S._venue_phase(_cs(["terminal_ok", "running", "waiting_base", "terminal_deferred"], ["need30"]), mode="auto", now=OFF)
+    assert phase == "crypto" and pend == []  # running / waiting_base / deferred stocks never hold the phase
+    assert S._venue_phase(_cs(["terminal_ok"], ["terminal_ok"]), mode="auto", now=OFF)[0] == "any"
+
+
+def test_auto_phase_kill_switch_removes_only_the_crypto_phase(monkeypatch):
+    monkeypatch.setenv("V15_SCHED_VENUE_CLOCK", "0")
+    assert S._venue_phase(_cs(["need30"], ["need30"]), mode="auto", now=OFF)[0] == "stocks"
+    assert S._venue_phase(_cs(["terminal_ok"], ["need30"]), mode="auto", now=OFF)[0] == "any"
+
+
+def test_forced_crypto_phase_exists():
+    assert S._venue_phase(_cs(["need30"], ["need30"]), mode="crypto", now=RTH)[0] == "crypto"
 
 
 def test_forced_and_none_modes():

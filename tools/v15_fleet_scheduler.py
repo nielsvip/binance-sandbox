@@ -26,6 +26,7 @@ from zoneinfo import ZoneInfo
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import v15_universe as U  # noqa: E402
+import v15_ranking_priority as _RANKPRI  # noqa: E402  # USER 2026-10-14: ranking top-N queue priority (order+frequency only)
 
 HOSTS = ROOT / "tools" / "fleet_hosts.json"
 STATE = ROOT / "data" / "fleet_scheduler_state.json"
@@ -94,6 +95,10 @@ def venue_order(now):
         return ["stocks", "crypto"]
     if now.strftime("%Y-%m-%d") in CRYPTO_FIRST_DATES:
         return ["crypto", "stocks"]
+    # USER 2026-10-15 (corrected): stocks keep their guaranteed DAILY pass, and a post-close NPZ rebuilt to the
+    # session's final bar IS current (no newer bars exist), so the night is not a reason to deprioritise stocks.
+    # Ordering therefore stays as it was; what changed is (a) a real crypto PHASE for after the stock pass is
+    # done (_venue_phase) and (b) a session-relative freshness bar (npz_tail_limit_h).
     return ["crypto", "stocks"] if us_market_open(now) else ["stocks", "crypto"]
 
 
@@ -167,7 +172,10 @@ def _progress_marks(path):
     _terminal = _jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT") and __import__("os").environ.get("V15_SCHED_SOFTSKIP_DONE", "1") == "1"
     _done = bool(_fg_ok and (not _jd.get("needs_redo") or _terminal))
     _q = _jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT")
-    return _done, _q, (float(_fg) if _fg_ok else None), bool(_jd.get("needs_redo"))
+    # 2026-10-16: the 10-14 fix marked these done but still reported redo=True, so _cont_sides kept them as "unfinished
+    # continuations": measured 10-16 on S2, ENAUSDC/JASMY/FILUSDC/DUSK/AMAT/QBTS/ZCSH/LRCX launched 40x each (the side
+    # soft-skipped instantly, its finished sibling re-ran every time — 415 sibling re-boards in one day).
+    return _done, _q, (float(_fg) if _fg_ok else None), bool(_jd.get("needs_redo")) and not (_fg_ok and _terminal)
 
 
 def environ(pid):
@@ -177,9 +185,36 @@ def environ(pid):
         return {}
 
 
+def _pilot_is_foreign(env, prod_pdir):
+    """Pure: True = this pilot process belongs to a run the fleet does not own, so the reaper must leave it alone.
+    Foreign = an isolated/bench run (V15_ISOLATED_PROOF=1 or its own V15_OUT_DIR) or a V15_PROGRESS_DIR other than
+    the host's current round dir. A pilot with no V15_PROGRESS_DIR and no isolation marker is this round's."""
+    env = env or {}
+    if str(env.get("V15_ISOLATED_PROOF") or "") == "1" or env.get("V15_OUT_DIR"):
+        return True
+    pd = env.get("V15_PROGRESS_DIR")
+    if not pd or not prod_pdir:
+        return False
+    return os.path.normpath(str(pd)).rstrip("/") != os.path.normpath(str(prod_pdir)).rstrip("/")
+
+
 def pilots():
-    """python processes of v15_pilot / v15_365_cycle with --sym-side: {ss: {pss_mb, pids, kind, pdir}} (workers included)"""
+    """python processes of v15_pilot / v15_365_cycle with --sym-side: {ss: {pss_mb, pids, prod_pids, kind, pdir}}
+    (workers included). `pids` is every process of that sym_side — its RAM counts toward the host either way.
+    `prod_pids` is only the processes of THIS round's progress dir; everything else is a foreign run.
+
+    2026-10-15 REAP SAFETY (measured): the group was keyed on --sym-side alone, so a foreign run of the same
+    sym_side (S2 version-gate bench champion+candidate, tools/v15_throughput_proof arms, an older round's
+    resume) landed in the same group. The reaper then saw several "roots" and TERMed the ones that momentarily
+    had no linked worker as "orphaned workers (parent gone)" — it killed the gate bench's CHRUSDT_LONG champ and
+    cand (gate verdict came back gain=None / 0.0 fit+OOS) and both arms of a DOTUSDT_LONG A/B on s2. The fleet
+    must never kill a run it does not own; `mode == "kill"` already scopes itself to the current pdir this way."""
     r = {}
+    prod_pdir = None
+    try:
+        prod_pdir = (open(HOME + "/v15_current_progress_dir.txt").read().strip() or None) if os.path.exists(HOME + "/v15_current_progress_dir.txt") else None
+    except Exception:
+        prod_pdir = None
     for pid, a in procs():
         if not os.path.basename(a[0]).startswith("python") or "--sym-side" not in a:
             continue
@@ -187,11 +222,16 @@ def pilots():
         if not kind:
             continue
         ss = a[a.index("--sym-side") + 1]
-        e = r.setdefault(ss, {"pss_mb": 0.0, "pids": [], "kind": kind, "pdir": None})
+        e = r.setdefault(ss, {"pss_mb": 0.0, "pids": [], "prod_pids": [], "kind": kind, "pdir": None})
         e["pss_mb"] += pss_mb(pid)
         e["pids"].append(pid)
+        env = environ(pid)
+        pd = env.get("V15_PROGRESS_DIR")
+        if _pilot_is_foreign(env, prod_pdir):
+            continue
+        e["prod_pids"].append(pid)
         if e["pdir"] is None:
-            e["pdir"] = environ(pid).get("V15_PROGRESS_DIR")
+            e["pdir"] = pd
     return r
 
 
@@ -223,7 +263,7 @@ if mode == "probe":
     o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u, "disk_avail_mb": dsk,
          "running": pilots(), "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
     if pdir and os.path.isdir(pdir):
-        cache_p = "/tmp/v15_sched_done_cache_v2.json"  # v2 (2026-10-10): v1 cached flat-regex done verdicts poisoned by nested endgame.final_gain
+        cache_p = "/tmp/v15_sched_done_cache_v3.json"  # v3 (2026-10-16): redo flag semantics changed (terminal soft-skip != redo); v2 (2026-10-10): v1 cached flat-regex done verdicts poisoned by nested endgame.final_gain
         try:
             cache = json.load(open(cache_p))
         except Exception:
@@ -369,6 +409,12 @@ elif mode == "reap":
     info = {}
     for ss, g in groups.items():
         sym, side = ss.rsplit("_", 1)
+        # 2026-10-15: only the pids of THIS round's progress dir are reapable (see pilots()). A group that is
+        # entirely foreign (gate bench / throughput proof / older round) is skipped — its RAM still counts in the
+        # probe's pss_mb, the fleet just never kills it.
+        g = dict(g, pids=list(g.get("prod_pids") or []))
+        if not g["pids"]:
+            continue
         age = max([now - start_ts(p) for p in g["pids"]] or [0])
         pd = g.get("pdir") or ""
         cands = glob.glob("/tmp/sweep_%s_%s_*.log" % (sym, side)) + ["/tmp/v15_%s.log" % ss]
@@ -537,37 +583,165 @@ def _deny_tokenized(syms):
     return filter_syms(syms, ROOT)
 
 
+_TRADEABLE_UNI = {"at": 0.0, "uni": None, "src": []}
+
+
+def _jload(path, default=None):
+    try:
+        return json.loads(pathlib.Path(path).read_text())
+    except Exception:
+        return default
+
+
+def _tradeable_universe():
+    """USER 2026-10-15: "anything not in symbols_trb_long/short.json or mandatory long/short (stocks) or not in the
+    latest tradeable_keys should not be traded nor calculated or use any cpu in any way." Same universe the director
+    builds (tools/v15_director.py:199-242) — symbol-level, tradeable on EITHER side keeps the symbol, side-exactness
+    stays this scheduler's job. Cached 120 s (the --once tick runs every 2 min). FAIL-OPEN: a missing or unreadable
+    file returns None and the caller skips the filter — an unreadable file must never empty the dispatch queue."""
+    if _TRADEABLE_UNI["uni"] is not None and time.time() - _TRADEABLE_UNI["at"] < 120:
+        return _TRADEABLE_UNI["uni"], _TRADEABLE_UNI["src"]
+    uni, src = set(), []
+    try:
+        for f, lab in (("symbols_trb_long.json", "trb_long"), ("symbols_trb_short.json", "trb_short")):
+            v = _jload(ROOT / f, None)
+            if isinstance(v, list):
+                uni |= {str(x).upper() for x in v}
+                src.append(f"{lab}:{len(v)}")
+        try:
+            sys.path.insert(0, str(ROOT))
+            from config_tradier import TradierConfig as _TC
+            c = _TC()
+            for a in ("TRADIER_MANDATORY_LONG_TRB", "TRADIER_MANDATORY_SHORT_TRB"):
+                m = getattr(c, a, None) or []
+                uni |= {str(x).upper() for x in m}
+                src.append(f"{a[18:].lower()}:{len(m)}")
+        except Exception as me:
+            print(f"[sched] mandatory stock lists unavailable: {me}", flush=True)
+        tk = _jload(ROOT / "tradeable_keys.json", None)
+        if isinstance(tk, list):
+            for k in tk:
+                uni.add(str(k).split(":", 1)[-1].rsplit("_", 1)[0].upper())
+            src.append(f"tradeable_keys:{len(tk)}")
+    except Exception as ue:
+        print(f"[sched] tradeable-universe filter unavailable: {ue}", flush=True)
+        return None, []
+    if not uni:
+        print("[sched] tradeable universe EMPTY — filter skipped (fail-open), check symbols_trb_*/tradeable_keys", flush=True)
+        return None, []
+    _TRADEABLE_UNI.update(at=time.time(), uni=uni, src=src)
+    return uni, src
+
+
+def _deny_untradeable(syms, label):
+    """Drop symbols outside the tradeable universe BEFORE dispatch, so an untradeable symbol gets no NPZ build and no
+    board. _deny_tokenized only ever covered TOKENIZED stocks (AAPLUSDT…); 65 of the 266 live sym_sides in the
+    2026-10-15 recalc triage sat outside the universe and were still being fully computed. V15_SCHED_TRADEABLE_FILTER=0
+    restores the old behaviour."""
+    if os.environ.get("V15_SCHED_TRADEABLE_FILTER", "1") == "0":
+        return list(syms)
+    uni, src = _tradeable_universe()
+    if not uni:
+        return list(syms)
+    keep = [s for s in syms if str(s).upper() in uni]
+    cut = [s for s in syms if str(s).upper() not in uni]
+    if cut:
+        print(f"[sched] tradeable universe {len(uni)} syms ({', '.join(src)}): {label} {len(syms)} -> {len(keep)}, dropped {cut[:12]}{' …' if len(cut) > 12 else ''}", flush=True)
+    return keep
+
+
 def _venue_allowed(sym, native_syms=None, phase=None):
     """Venue gate. V15_SCHED_VENUE_ONLY=stocks (USER 2026-10-10): only native-stocks pairs launch. USER 2026-10-12
     `auto`: the gate is the current VENUE PHASE (`_venue_phase`): "stocks" while any tradeable stock sym_side is still
     launchable (need30, not deferred/fresh/waiting_base), else "any" (crypto flows; W-tier stocks come back daily through
-    the 24h refresh and flip the phase for that tick). USDT stock equivalents (AAPLUSDT) are NEVER stocks. Pure (tested)."""
-    mode = phase if phase is not None else ("stocks" if _VENUE_ONLY == "stocks" else "any")
-    if mode != "stocks":
-        return True
-    return venue_of(sym) == "stocks"
+    the 24h refresh and flip the phase for that tick). USDT stock equivalents (AAPLUSDT) are NEVER stocks.
+    USER 2026-10-15: there is now also a real "crypto" phase — outside US RTH a stock NPZ cannot be current, so the
+    fleet spends those hours on crypto, which has 24/7 bars. Pure (tested)."""
+    mode = phase if phase is not None else ("stocks" if _VENUE_ONLY == "stocks" else "crypto" if _VENUE_ONLY == "crypto" else "any")
+    if mode == "stocks":
+        return venue_of(sym) == "stocks"
+    if mode == "crypto":
+        return venue_of(sym) == "crypto"
+    return True
 
 
-def _venue_phase(chain_state, mode=None, launchable=None):
-    """USER 2026-10-12: "stocks only until all tradeable stocks have passed, then crypto (+ best stock performers daily)".
-    -> (phase, launchable_stock_sides). mode = V15_SCHED_VENUE_ONLY: "auto" derives the phase from chain_state (stocks
-    sides still in need30 = launchable now); "stocks" forces the stocks phase; anything else = "any". Pure (tested)."""
+def _venue_phase(chain_state, mode=None, launchable=None, now=None, market_open=None):
+    """-> (phase, launchable_stock_sides). mode = V15_SCHED_VENUE_ONLY: "auto" derives the phase, "stocks"/"crypto"
+    force one, anything else = "any". Pure (tested); the clock is injected (`now`, `market_open`).
+
+    PROVENANCE, do not delete — USER 2026-10-12: "stocks only until all tradeable stocks have passed, then crypto
+    (+ best stock performers daily)". `auto` therefore returned "stocks" while any tradeable stock side was still
+    launchable, regardless of the clock.
+
+    EXTENDED BY USER 2026-10-15: "as stocks are where the real money goes make sure they actually get a rerun per
+    day even after market close (understanding no new klines are produced after 20:00utc) and dedicate the rest of
+    the night until market open to all cryptos that can fit."
+
+    So stocks keep absolute priority until their daily pass is DONE — a post-close NPZ rebuilt to the session's
+    final bar is current, because no newer bars exist, so "after the close" is a legitimate stock window, not
+    stale data. What was missing is the second half: once no stock side is launchable, the remainder of the night
+    must go to crypto. `auto` previously fell through to "any", which let a stock that became launchable mid-night
+    preempt nothing and gave crypto no window of its own. Now: stocks while launchable -> else crypto while
+    launchable -> else "any" (never idle a drained venue; that would trade one waste for another).
+
+    An earlier draft of this made the phase clock-based (crypto all night). The USER corrected it: the clock
+    governs FRESHNESS (see npz_tail_limit_h / the session-relative stock tail rule), never the stock pass itself.
+    `now`/`market_open` stay injectable for that reason and for tests.
+    V15_SCHED_VENUE_CLOCK=0 restores the 2026-10-12 behaviour exactly (stocks -> any, no crypto phase)."""
     mode = (mode if mode is not None else _VENUE_ONLY) or ""
-    pending = []
+    pending, pending_crypto = [], []
     for sym, sides in (chain_state or {}).items():
-        if venue_of(sym) != "stocks":
+        _v = venue_of(sym)
+        if _v not in ("stocks", "crypto"):
             continue
         for side, v in (sides or {}).items():
             try:
                 if v[0] == "need30" and (launchable is None or launchable(sym, side)):  # USER 2026-10-13: an exhausted/crashing stock side must not hold crypto hostage
-                    pending.append(f"{sym}_{side}")
+                    (pending if _v == "stocks" else pending_crypto).append(f"{sym}_{side}")
             except Exception:
                 continue
     if mode == "stocks":
         return "stocks", pending
+    if mode == "crypto":
+        return "crypto", pending
     if mode == "auto":
-        return ("stocks" if pending else "any"), pending
+        if pending:
+            return "stocks", pending
+        if os.environ.get("V15_SCHED_VENUE_CLOCK", "1") != "1":
+            return "any", pending
+        return ("crypto" if pending_crypto else "any"), pending
     return "any", pending
+
+
+_NPZ_DEAD_PAT = re.compile(r"load fail|no timestamps/timestamp_15m|_compact_to_15m would raise|too few bars|len\(timestamp_15m\)")
+def _npz_dead_syms(readiness_by_host):
+    """USER 2026-10-16 (both hosts idle while the market was open): a STRUCTURALLY broken NPZ (unpicklable
+    object timestamps, 1 bar, length mismatch) is not "unready" — no tail append or dispatch-side build fixes
+    it, so the side can never launch. One such symbol (CDW: timestamp_15m = ['2026-10-13T17:30:00.000000Z'],
+    1 bar) was the ONLY launchable stock side, so the RTH stocks phase held and 7 ready crypto sides on s2
+    were venue-gated for hours. Dead symbols are excluded from the phase (never from the rebuild worklist).
+    Staleness reasons (tail-stale/stale/gap/history) are NOT dead — the dispatch job refreshes those. Pure."""
+    dead = set()
+    for sym in {s for rb in (readiness_by_host or {}).values() for s in rb}:
+        seen = [rb[sym] for rb in readiness_by_host.values() if sym in rb]
+        if seen and all(not (r or {}).get("ok") and _NPZ_DEAD_PAT.search(str((r or {}).get("reason") or "")) for r in seen):
+            dead.add(sym)
+    return dead
+
+
+def _phase_launchable(ss, st, started, redo, quar=None, pinned=None):
+    """USER 2026-10-15 (06.3): venue-phase launch predicate — the phase counts ONLY sides that can really
+    launch a 30D board now. Skipped: (a) exhausted sides (attempt/slice caps, INCLUDING the operator-pin cap —
+    the old callback never passed `pinned`, so a pinned-redo side over its cap still held crypto hostage);
+    (b) soft-skipped sides (quarantined terminal verdicts the pilot refuses with IMPOSSIBLE-SKIP/SOFT-SKIP —
+    the pin override forces them to need30, but relaunching only burns a dispatch). Mirrors pending_actions
+    budgets exactly (same _launch_exhausted call with the pin set). V15_SCHED_PHASE_STRICT=0 restores the
+    legacy callback (no pin set, no quarantine filter). Pure (tested)."""
+    if os.environ.get("V15_SCHED_PHASE_STRICT", "1") != "1":
+        return not _launch_exhausted(f"{ss}|30D", "30D", ss, st, started, redo)
+    if ss in (quar or set()):
+        return False
+    return not _launch_exhausted(f"{ss}|30D", "30D", ss, st, started, redo, pinned)
 
 
 def _host_order(hosts, held):
@@ -806,7 +980,7 @@ def _side_tier(ss, tiers):
     return ((tiers or {}).get(ss) or {}).get("tier", "M")
 
 
-_REFRESH_W_STALE_SEC = 86400.0
+_REFRESH_W_STALE_SEC = float(os.environ.get("V15_REFRESH_W_STALE_H", "24") or 24) * 3600.0  # USER 2026-10-16 weekend: "run the entire universe several times" -> cron sets 8
 _REFRESH_MAX_RM_PER_TICK = 3
 
 
@@ -848,6 +1022,13 @@ def _side_deferred(ss, tiers, now_ts, windows=_GAIN_TIER_DEFER_DAYS):
     e = (tiers or {}).get(ss)
     if not e:
         return False
+    # USER 2026-10-14 (ranking top-25 frequency boost): ranking members recalculate every round like W.
+    # Terminal/365D-failure handling lives in chain_state/quarantine (untouched) — this only skips the M/L wait.
+    try:
+        if _RANKPRI.is_ranking_side(ss):
+            return False
+    except Exception:
+        pass
     try:
         win = float((windows or {}).get(e.get("tier"), 0) or 0)
     except (TypeError, ValueError):
@@ -861,17 +1042,31 @@ def _side_deferred(ss, tiers, now_ts, windows=_GAIN_TIER_DEFER_DAYS):
     return age_d < win
 
 
-def _sym_quota_hit(sym, tiers):
-    """True = pair consumes a non-winner slot: measured M/L present and no W side. Unknown/new pairs are discovery (exempt)."""
-    ts = [((tiers or {}).get(f"{sym}_{sd}") or {}).get("tier") for sd in ("LONG", "SHORT")]
+def _sym_quota_hit(sym, tiers, failed=()):
+    """True = pair consumes a non-winner slot: measured M/L present and no W side. Unknown/new pairs are discovery (exempt).
+    USER 2026-10-14 (sibling independence, both directions): a side proven impossible (terminal_failing:
+    IMPOSSIBLE/NO_TRADES quarantine or negative-30D failing) never counts against its sibling — pass such
+    sides as failed={"SHORT"} etc. Each side stands on its own evidence; both can be productive at once."""
+    bad = set(failed or ())
+    ts = [((tiers or {}).get(f"{sym}_{sd}") or {}).get("tier") for sd in ("LONG", "SHORT") if sd not in bad]
     return any(t in ("M", "L") for t in ts) and not any(t == "W" for t in ts)
 
 
+_FAILED_CHAIN_STATES = ("terminal_failing",)
+
+
 def _quota_blocks(sym, gtiers, chain_state):
-    """True = winner-quota blocks a NEW slot: non-winner pair that still wants a FRESH 30D board. Pure-chain syms (GS/repair/365D continuations) always drain — quota throttles new boards, never verification/heals (USER 2026-10-12: quota was starving 10/12 GS-heals on idle s5/s6)."""
-    if not _sym_quota_hit(sym, gtiers):
+    """True = winner-quota blocks a NEW slot: non-winner pair that still wants a FRESH 30D board. Pure-chain syms (GS/repair/365D continuations) always drain — quota throttles new boards, never verification/heals (USER 2026-10-12: quota was starving 10/12 GS-heals on idle s5/s6).
+    USER 2026-10-14: a terminal-failed side never blocks its sibling's fresh board (failed SHORT => LONG
+    still launches, and vice versa). Measured-mediocre siblings keep normal throttling."""
+    st = chain_state.get(sym) or {}
+    try:
+        failed = {sd for sd in ("LONG", "SHORT") if (st.get(sd) or ("",))[0] in _FAILED_CHAIN_STATES}
+    except Exception:
+        failed = set()
+    if not _sym_quota_hit(sym, gtiers, failed):
         return False
-    return any(v[0] == "need30" for v in (chain_state.get(sym) or {}).values())
+    return any(v[0] == "need30" for v in st.values())
 
 
 def _fresh_daily_state(st, datestr):
@@ -919,7 +1114,11 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
         except (TypeError, ValueError, IndexError): continue
         if _sym not in _old_ts or _vv < _old_ts[_sym]: _old_ts[_sym] = _vv
     _pri = pri or frozenset()
-    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers), 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
+    # USER 2026-10-14 (ranking top-25 priority): ranking members sort right AFTER the gain tier (BEST_WORST
+    # stays primary; neg-365D L-tier exceptions keep sorting last) and before director-priority/attempts.
+    # The boost weighs less than a tier step by construction: it only breaks ties within a tier.
+    _rkpairs = _RANKPRI.ranking_sets()["pairs"]
+    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
     return seq
 
 
@@ -1284,6 +1483,25 @@ def _spawn_guard(ss, window, body):
             f"|| echo \"[launchlock] {ss} {window} launcher race, retry next tick\"; else bash -c {shlex.quote(inner)}; fi")
 
 
+GATE_ENV_KEY_RE = re.compile(r"^V1[25]_[A-Z0-9_]+$")
+
+
+def gate_env_inline(path=None):
+    """USER 2026-10-16 "make sure any version gets tested side by side against previous version so corner cutting is exposed":
+    data/v15_gate_env.json (published ONLY by tools/v15_version_gate.py on a PASS / champion publish) is the launch env every
+    30D board runs. Returned as inline ` K=V` pairs appended after the scheduler's own env, so the benched value wins over the
+    hard-coded pace values and over the V17 autotune exports (inline assignment beats `export`). Missing/unreadable file or
+    V15_SCHED_GATE_ENV=0 -> '' (pre-2026-10-16 behaviour)."""
+    if os.environ.get("V15_SCHED_GATE_ENV", "1") == "0":
+        return ""
+    try:
+        doc = json.loads(pathlib.Path(path or (ROOT / "data" / "v15_gate_env.json")).read_text())
+        env = doc.get("env") or {}
+    except (OSError, ValueError):
+        return ""
+    return "".join(f" {k}={shlex.quote(str(v))}" for k, v in sorted(env.items()) if GATE_ENV_KEY_RE.match(str(k)))
+
+
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
     """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd. USER 2026-10-11: spawn-guarded (see _spawn_guard)."""
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
@@ -1292,6 +1510,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=150 V15_ENDGAME_S=120 V15_FOCUS_S_WINNER=600 V15_FOCUS_S_MEDIOCRE=150 V15_FOCUS_S_LOSER=60 V15_TIER_BIG_MOVER=8 V15_FOCUS_S_BHCHASE=600 V15_FOCUS_TOP_K_BHCHASE=48 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=8 V15_PROGRESS_DIR={pdir} V12_ALLOW_STALE_NPZ=1 V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         if os.environ.get("V15_SCHED_V17", "1") == "1":
             env += " V15_V17_ROUNDS=1"  # USER 2026-10-13: >=12 finalized V17 boards per hour per server (V15_SCHED_V17=0 = old pilot)
+        env += gate_env_inline()  # USER 2026-10-16: the gate-benched launch env is authoritative (appended last = it wins)
         body = f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
@@ -1307,10 +1526,22 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     return _spawn_guard(ss, window, body)
 
 
+def _launched_actions(actions):
+    """USER 2026-10-14 pair-in-RAM: a pure-30D multi-side launch collapses to the FIRST side — the
+    pilot calculates the partner in-process before the symbol leaves RAM (V15_PAIR_MODE=0 restores
+    one-process-per-side). Chain windows (365D/REPAIR/GS) are never collapsed."""
+    acts = list(actions or [])
+    if os.environ.get("V15_PAIR_MODE", "1") == "0":
+        return acts
+    if len(acts) > 1 and all(a.get("window") == "30D" for a in acts):
+        return acts[:1]
+    return acts
+
+
 def pair_launch_cmd(host, actions, pdir, workers):
     """one ssh command that detaches every side job of a symbol (subshell > /dev/null so ssh returns at once)."""
     parts = []
-    for a in actions:
+    for a in _launched_actions(actions):
         body = side_cmd(host, a["sym"], a["side"], a["window"], pdir, a.get("attempt", 1), workers)
         parts.append(f"(cd {host['root']} && mkdir -p logs && setsid nohup bash -c {shlex.quote(body)} >> /tmp/sweep_{a['sym']}_{a['side']}_{a['window']}.log 2>&1 < /dev/null &) > /dev/null 2>&1")
     return "; ".join(parts)
@@ -1362,6 +1593,133 @@ def npz_prep(host, symbol):
         return json.loads(lines[-1]) if lines else None
     except Exception:
         return None
+
+
+_NPZ_PREFLIGHT_ON = os.environ.get("V15_SCHED_NPZ_PREFLIGHT", "1") == "1"
+_NPZ_DEFER_MAX = int(float(os.environ.get("V15_SCHED_NPZ_DEFER_MAX", "3") or 3))
+_NPZ_REBUILD_COOLDOWN_S = float(os.environ.get("V15_SCHED_NPZ_REBUILD_COOLDOWN_S", "1800") or 1800)
+_PAIR_FRESH_REQUEUE = os.environ.get("V15_SCHED_PAIR_FRESH_REQUEUE", "0") == "1"
+
+
+def _prep_disposition(pr):
+    """Thin adapter: the meaning of a prep verdict lives ONCE, in tools/v15_dispatch_job.prep_disposition,
+    next to the prep() that produces it (that module is import-safe — no argv read at import time).
+    PUSH ORDER: v15_dispatch_job.py must reach a host BEFORE this file does.
+    The fallback is deliberately stricter than the real table, never looser: launch only on an explicit
+    ok=True and never request a rebuild, so a missing dependency can only make the gate safer."""
+    try:
+        if str(ROOT / "tools") not in sys.path:
+            sys.path.insert(0, str(ROOT / "tools"))
+        from v15_dispatch_job import prep_disposition as _pd
+    except Exception:
+        if pr is not None and pr.get("ok") is True:
+            return True, "ok", str(pr.get("reason") or ""), False
+        return False, "retry", "prep_disposition unavailable — fail closed", False
+    return _pd(pr)
+
+
+def _npz_preflight(symbol, window_days=30, ind_dir=None, check_freshness=True):
+    """Verify the NPZ that will ACCOMPANY the dispatch — on S1, the source the push copies from — BEFORE a
+    board is launched on it (USER 2026-10-15: "BEFORE any calculations start a verification of npz data").
+
+    The prep tool's own ok=True is NOT sufficient: measured `v15_npz_prep.py --symbol ATOMUSDT --dry-run`
+    returned ok=true/action=would_regen while reporting `tail 24.0 bars behind latest closed 15m` and
+    kline_lag_h 0.7, and a rebuild in flight leaves a 1-bar NPZ visible to dispatch (census 2026-10-15:
+    ADP/AEM/ALMU/AXTI/CDW all bars=1 span=0.0d while 3 precompute jobs rebuilt them).
+
+    check_freshness=False is for the PRE-dispatch structural screen only: under the JIT law S1's tail is
+    legitimately behind until the dispatch job refreshes it, so staleness there is not a defect. The
+    post-prep call runs with freshness ON, against the bytes that will actually travel.
+
+    -> (ok, reason, res). A missing preflight module fails OPEN (logged) so the fleet never deadlocks on a
+    tool that has not been pushed yet; a real verdict is authoritative and fails CLOSED."""
+    if not _NPZ_PREFLIGHT_ON:
+        return True, "preflight-off", {}
+    try:
+        if str(ROOT / "tools") not in sys.path:
+            sys.path.insert(0, str(ROOT / "tools"))
+        import v15_npz_preflight as _pf
+    except Exception as e:
+        return True, f"preflight-unavailable ({type(e).__name__})", {}
+    _lim = None
+    if check_freshness:
+        try:
+            from v15_dispatch_job import npz_tail_limit_h as _tl
+            _lim = _tl(symbol)  # USER 2026-10-15: inside RTH a stock tail must be from the latest market hour
+        except Exception:
+            _lim = None
+    try:
+        res = _pf.verify(symbol, window_days=window_days, ind_dir=ind_dir, check_freshness=check_freshness, max_tail_age_h=_lim)
+    except Exception as e:
+        return True, f"preflight-crash ({type(e).__name__})", {}
+    reasons = [str(x) for x in (res.get("reasons") or [])]
+    # Same rule as v15_dispatch_job.npz_preflight: older bars are a FLEET policy (V15_SCHED_RUN_STALE, and the
+    # tail-stale branch of the is_ready gate above), not this gate's call — blocking on them stopped every
+    # crypto dispatch on 2026-10-15. A structural/thin/holed build always blocks: that is the 0-trades producer.
+    if not res.get("ok") and reasons and all(r.startswith("stale tail:") for r in reasons) and os.environ.get("V15_SCHED_RUN_STALE", "1") == "1":
+        return True, "DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1): " + "; ".join(reasons)[:220], res
+    return bool(res.get("ok")), "; ".join(reasons)[:300], res
+
+
+def _npz_gap_screen(symbol, ind_dir=None):
+    """Second pre-dispatch screen, STOCKS ONLY: session count + intra-window holes, complementary to
+    _npz_preflight (structural rot + staleness). USER 2026-10-15: "as stocks are where the real money goes".
+
+    Measured on s1 2026-10-15: 32 of 162 stock NPZs are holed — 17 x "20 sessions in last 60d, 29 d gap
+    (2026-08-26->09-24)", 5 x "1 session" (ADP AEM ALMU AXTI CDW), 5 x "19 sessions, 35 d gap" — and those
+    PASS a span/window check, because the tail is current and bars exist inside the window; only the session
+    census sees the hole. Meanwhile 36 of 37 rows in data/alerts/stock_npz_gap.jsonl were
+    `v15_dispatch_job.fast_push refused=True` (GOOGL at 04:02, 04:06, 04:10, 04:14 — every tick, no rebuild
+    requested, no escalation), so the refusal has to move BEFORE the dispatch and share the skip ->
+    one-rebuild -> requeue -> alert machinery instead of looping.
+
+    Uses stock_npz_gap_guard.check_timestamps, which is PURE: gate()/gate_npz() append an alert row on every
+    call and that append is exactly the per-tick noise being replaced. Fails OPEN (an unreadable or missing
+    NPZ is _npz_preflight's refusal, not this one's). -> (ok, reason, info)."""
+    if venue_of(symbol) != "stocks" or os.environ.get("V15_SCHED_NPZ_GAP_SCREEN", "1") != "1":
+        return True, "", {}
+    try:
+        import numpy as _np
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from tools.stock_npz_gap_guard import check_timestamps as _ct
+        p = pathlib.Path(ind_dir or (ROOT / "backtest_v8" / "indicators")) / f"{str(symbol).upper()}.npz"
+        with _np.load(str(p), allow_pickle=True) as z:
+            info = _ct(z["timestamps"])
+    except Exception as e:
+        return True, f"gap-screen-unavailable ({type(e).__name__})", {}
+    return bool(info.get("ok")), str(info.get("reason") or "")[:300], info
+
+
+def _npz_defer_note(st, sym, kind, reason, now_ts=None, cooldown_s=None, max_defer=None, may_rebuild=True):
+    """Bookkeep one deferral in the scheduler's own persistent state and answer whether a rebuild should be
+    REQUESTED now. Clock and limits are injected so this is testable. -> (want_rebuild, n, alert).
+
+    A rebuild is requested at most once per cooldown per symbol ("once per deferral, not per tick"), never
+    for a transient kind, never for an alert kind, and never once the symbol has been deferred more than
+    V15_SCHED_NPZ_DEFER_MAX times — past that it is surfaced instead of spun."""
+    now_ts = time.time() if now_ts is None else float(now_ts)
+    cd = _NPZ_REBUILD_COOLDOWN_S if cooldown_s is None else float(cooldown_s)
+    mx = _NPZ_DEFER_MAX if max_defer is None else int(max_defer)
+    book = st.setdefault("npz_defer", {})
+    e = book.setdefault(sym, {"n": 0, "first": now_ts, "last_rebuild": None})
+    e["n"] = int(e.get("n") or 0) + 1
+    e["last"], e["kind"], e["reason"] = now_ts, kind, str(reason)[:300]
+    alert = bool(e["n"] > mx or kind == "alert")
+    # a never-requested symbol may rebuild at once (last_rebuild None); after that, once per cooldown. Measuring
+    # the first request against 0.0 would have made the cooldown depend on the clock's origin, not on elapsed time.
+    _lr = e.get("last_rebuild")
+    _due = _lr is None or (now_ts - float(_lr)) >= cd
+    want = bool(may_rebuild and kind == "block" and not alert and _due)
+    if want:
+        e["last_rebuild"] = now_ts
+    return want, e["n"], alert
+
+
+def _npz_defer_clear(st, sym):
+    """A symbol that passes the preflight again is re-admitted WITH PRIORITY (it already lost its turn).
+    -> the deferral count it carried (0 = it was never deferred), so the caller can prioritise only real returns."""
+    return int((st.setdefault("npz_defer", {}).pop(sym, None) or {}).get("n") or 0)
 
 
 _ASYNC_DISPATCH = os.environ.get("V15_SCHED_ASYNC_DISPATCH", "1") == "1"
@@ -1503,10 +1861,114 @@ def _dispatching_syms(st, now_ts, grace_s=None):
     return out
 
 
+# every file v15_universe.build() derives the tradeable universe from (crypto account lists + tradeable_keys.json,
+# stocks from symbols_trb_long/short.json). Watched together so a change to ANY of them rebuilds the universe.
+_TRADEABLE_SOURCES = ("tradeable_keys.json", "symbols_trb_long.json", "symbols_trb_short.json",
+                      "symbols_flz_long.json", "symbols_flz_short.json", "symbols_men.json",
+                      "symbols_men_long.json", "symbols_men_short.json",
+                      "symbols_ang_long.json", "symbols_ang_short.json")
+
+_FILE_TRADEABLE = {"ts": 0.0, "set": None}
+_TRADEABLE_MEMO = {"ts": 0.0, "set": None}
+_TRADEABLE_TTL_S = float(os.environ.get("V15_TRADEABLE_TTL_S", "5"))
+
+
+def _file_tradeable():
+    """Side-exact tradeable sym_sides straight from the files the user named: tradeable_keys.json (crypto,
+    acct:SYM_SIDE), symbols_trb_long/short.json and the STATIC TradierConfig.TRADIER_MANDATORY_{LONG,SHORT}_TRB
+    (stocks). Cached 60 s. Returns an empty set on any failure so the caller fails OPEN — a scheduler that stops
+    dispatching costs more than a wasted board."""
+    if _FILE_TRADEABLE["set"] is not None and time.time() - _FILE_TRADEABLE["ts"] < 60:
+        return _FILE_TRADEABLE["set"]
+    out = set()
+    try:
+        keys = _jload(ROOT / "tradeable_keys.json", None)
+        keys = keys.get("keys") if isinstance(keys, dict) else keys
+        for k in keys or []:
+            out.add(str(k).split(":", 1)[-1].strip().upper())
+        for fname, side in (("symbols_trb_long.json", "LONG"), ("symbols_trb_short.json", "SHORT")):
+            v = _jload(ROOT / fname, None)
+            v = v.get("symbols") if isinstance(v, dict) else v
+            for sym in v or []:
+                out.add(f"{str(sym).strip().upper()}_{side}")
+        sys.path.insert(0, str(ROOT))
+        from config_tradier import TradierConfig as _TC
+        c = _TC()
+        for attr, side in (("TRADIER_MANDATORY_LONG_TRB", "LONG"), ("TRADIER_MANDATORY_SHORT_TRB", "SHORT")):
+            for sym in getattr(c, attr, None) or []:
+                out.add(f"{str(sym).strip().upper()}_{side}")
+    except Exception as exc:
+        print(f"[sched] file tradeable set unavailable ({exc!r}) — intersection skipped (fail-open)", flush=True)
+        return set()
+    _FILE_TRADEABLE.update(ts=time.time(), set=out)
+    return out
+
+
+def _tradeable_now():
+    """The tradeable sym_side set as it is RIGHT NOW, both venues (U.build -> allowed_sym_sides, deny-filtered).
+
+    USER 2026-10-15: "make sure v15_fleet_scheduler always checks whether a sym_side is still tradeable before
+    queuing it as the list changes constantly". The universe is only rebuilt when tradeable_keys.json is newer than
+    the build, so a sym_side selected earlier in a tick — or already sitting in the dispatch queue — could still be
+    launched after it stopped being tradeable, burning a worker slot on a board nothing will ever trade.
+
+    U.build is 2-11 ms, so this is re-read per dispatch behind a 5 s memo. NOTE it covers BOTH venues on purpose:
+    tradeable_keys.json is crypto-only (247 keys), so checking that file alone would drop every stock dispatch.
+    allowed_sym_sides is 131 crypto + 133 stocks.
+
+    On a read failure it returns the last good set, and None if there has never been one — the caller then dispatches
+    anyway. That is deliberate: a wasted sweep costs compute, a scheduler that stops dispatching costs every board.
+    """
+    now = time.time()
+    if _TRADEABLE_MEMO["set"] is not None and now - _TRADEABLE_MEMO["ts"] < _TRADEABLE_TTL_S:
+        return _TRADEABLE_MEMO["set"]
+    try:
+        fresh = {str(x).upper() for x in (U.build(ROOT).get("allowed_sym_sides") or [])}
+        # USER 2026-10-16: "make sure ONLY tradeable_keys are considered (or tradeable stock) ... v15_fleet_scheduler
+        # needs to check BEFORE WASTING CPU on npz refresh, dispatching, server time". U.build's allowed_sym_sides is
+        # 3 wider than the raw files (DVN_LONG, JNJ_SHORT, VZ_SHORT — the known non-tradeable OPEN positions), so the
+        # side-exact file set is intersected in here, at the gate every dispatch already passes through, which is
+        # upstream of v15_dispatch_job's tail_refresh + NPZ push. The mandatory stock lists are NOT lost: both sides
+        # read TRADIER_MANDATORY_{LONG,SHORT}_TRB (v15_universe.py:123 and _file_tradeable below), verified 0 sym_sides
+        # dropped by the intersection that the files allow. Fail-open: an empty/unreadable file set changes nothing.
+        _ft = _file_tradeable()
+        if fresh and _ft:
+            _cut = fresh - _ft
+            if _cut:
+                print(f"[sched] tradeable intersect: {len(fresh)} -> {len(fresh & _ft)} sym_sides, not in tradeable_keys/trb/mandatory: {sorted(_cut)[:12]}", flush=True)
+            fresh &= _ft
+        if fresh:
+            _TRADEABLE_MEMO.update(ts=now, set=fresh)
+            return fresh
+        print("[sched] tradeable re-check: empty allowed_sym_sides — keeping last known set", flush=True)
+    except Exception as exc:
+        print(f"[sched] tradeable re-check failed ({exc!r}) — keeping last known set", flush=True)
+    return _TRADEABLE_MEMO["set"]
+
+
+def _drop_untradeable(symbol, acts, tag):
+    """Filter a dispatch down to sides that are STILL tradeable. Returns the surviving actions (possibly empty)."""
+    allowed = _tradeable_now()
+    if not allowed:
+        return list(acts)
+    keep, dropped = [], []
+    for a in acts:
+        key = f"{a.get('sym')}_{a.get('side')}".upper()
+        (keep if key in allowed else dropped).append(a)
+    if dropped:
+        names = ",".join(f"{a.get('sym')}_{a.get('side')}" for a in dropped)
+        print(f"[sched] NOT_TRADEABLE_ANYMORE skip {names} (tag={tag}) — dropped at dispatch, universe moved on", flush=True)
+    return keep
+
+
 def _dispatch_async(host, symbol, acts, pdir, workers, tag):
     """2026-10-13: hand NPZ rebuild + md5 push + pilot launch to tools/v15_dispatch_job.py (detached, setsid) so the
     tick returns in seconds. The job launches only after its NPZ is ready (JIT law). The caller holds the slot + a
     dispatch grace (st["dispatch_q"]) so the next tick never double-dispatches."""
+    acts = _drop_untradeable(symbol, acts, tag)
+    if not acts:
+        print(f"[sched] dispatch SKIPPED for {symbol}: no tradeable side left (tag={tag})", flush=True)
+        return
     import tempfile
     tgt = (host.get("ssh") or [None])[0]
     push = str(tgt) if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1") else ""
@@ -1541,15 +2003,28 @@ def tick(args, cfg, now):
     sim = json.load(open(args.simulate)) if args.simulate else None
     uni, how = U.load_or_build(ROOT, now, write=not (args.dry_run or sim))
     try:
-        _tk_mtime = (ROOT / "tradeable_keys.json").stat().st_mtime
+        # USER 2026-10-15: "tradeable_keys is crypto only, symbols_trb_long/short are the stocks version that also
+        # keeps updating". This trigger watched ONLY tradeable_keys.json, so a stock list change never rebuilt the
+        # universe and the scheduler kept selecting stock sym_sides from a stale list (v15_universe:120 builds stocks
+        # from symbols_trb_{long,short}.json, crypto from symbols_{flz,men,ang}_{long,short}.json). Every source the
+        # universe reads is watched now, and the log says which one moved.
+        _tk_newest, _tk_src = 0.0, ""
+        for _name in _TRADEABLE_SOURCES:
+            try:
+                _m = (ROOT / _name).stat().st_mtime
+            except OSError:
+                continue
+            if _m > _tk_newest:
+                _tk_newest, _tk_src = _m, _name
+        _tk_mtime = _tk_newest
         _ub = datetime.datetime.fromisoformat(uni.get("built_utc", "")).timestamp()
     except Exception:
-        _tk_mtime, _ub = 0, 0
+        _tk_mtime, _ub, _tk_src = 0, 0, ""
     if _tk_mtime > _ub:
-        # USER 2026-10-10: tradeable universe churns live — a universe older than the keys file
+        # USER 2026-10-10: tradeable universe churns live — a universe older than its sources
         # schedules dead work. Rebuild in-tick (quorum-guarded: a bad build serves last_good).
         uni = U.build(ROOT, now); how = "rebuilt-tradeable-changed"
-        print(f"[sched] universe rebuilt: tradeable_keys.json newer than universe build", flush=True)
+        print(f"[sched] universe rebuilt: {_tk_src or 'a tradeable source'} newer than universe build", flush=True)
     stocks, crypto = list(uni["stocks"]), list(uni["crypto"])
     for _pss in sorted(_load_pinned()[0]):  # 2026-10-13: operator-pinned sides are scheduled even outside today's universe
         _psym = _pss.rsplit("_", 1)[0]
@@ -1659,6 +2134,7 @@ def tick(args, cfg, now):
         done.discard(ss)
         done_host.pop(ss, None)
     stocks, crypto = _deny_tokenized(stocks), _deny_tokenized(crypto)  # USER 2026-10-13: tokenized stocks (AAPLUSDT…) are NOT tradeable — never scheduled, never held
+    stocks, crypto = _deny_untradeable(stocks, "stocks"), _deny_untradeable(crypto, "crypto")  # USER 2026-10-15: outside the tradeable universe = no NPZ build, no board, no CPU
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
     all_syms = stocks + crypto
     # ---- readiness (per host, only for symbols that could be placed there)
@@ -1684,7 +2160,32 @@ def tick(args, cfg, now):
             return {"ok": True, "can_365": True, "size_mb": 300}
         return r or {"ok": False, "reason": "not probed"}
 
+    _npz_dead = _npz_dead_syms(readiness_by_host) if os.environ.get("V15_SCHED_NPZ_DEAD_PHASE", "1") == "1" else set()
+    if _npz_dead:
+        print(f"[sched] NPZ-DEAD {len(_npz_dead)} symbol(s) unloadable on every host -> excluded from the venue phase (rebuild them): {sorted(_npz_dead)[:12]}", flush=True)
+
     # ---- per-symbol chain status
+    def _same_npz_as_last_board(sym, side):
+        """USER 2026-10-16: refresh = re-measure on NEW bars. The newest publish manifest's npz_md5 equal to the current S1
+        NPZ md5 = no bar arrived since that board (stocks over a weekend) -> a re-board only re-measures noise; skip it and
+        give the slot to a side with new data. Missing manifest / md5 = not same (fail open). V15_SCHED_REFRESH_SAME_NPZ=1 =
+        refresh anyway."""
+        if os.environ.get("V15_SCHED_REFRESH_SAME_NPZ", "0") == "1":
+            return False
+        import glob as _gl
+        try:
+            mans = sorted(_gl.glob(os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL", f"{sym}_{side}_*_manifest.json")), key=os.path.getmtime)
+            if not mans:
+                return False
+            last = str((json.loads(pathlib.Path(mans[-1]).read_text()) or {}).get("npz_md5") or "")
+            cur = _npz_md5_cached(sym, _npz_md5_cache)
+        except Exception:
+            return False
+        if last and cur and last == cur:
+            _same_npz_skips.append(f"{sym}_{side}")
+            return True
+        return False
+
     def side_state(sym, side, host_name, _tiers=None):
         ss = f"{sym}_{side}"
         if ss in running:
@@ -1693,7 +2194,7 @@ def tick(args, cfg, now):
         _quar = _quar_terminal(ss, quar, _no_chain)
         _non_short = side == "SHORT" and venue_of(sym) == "stocks" and sym in NON_SHORTABLE
         # USER 2026-10-12: refresh (rm progress + requeue) skips fresh (<4d matrix) sides — without this the rm fires and fresh-skip blocks the relaunch, destroying the board.
-        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map:
+        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map and not _same_npz_as_last_board(sym, side):
             _rm_mtime = ((_tiers.get(ss) or {}).get("mtime"))
             _rkey = f"{ss}|{_rm_mtime}"
             _rd = st.setdefault("refresh_done", {})
@@ -1827,6 +2328,7 @@ def tick(args, cfg, now):
     _fresh_skipped = []
     _pair_stale = []
     _npz_md5_cache = {}
+    _same_npz_skips = []
     _fresh_pri = priority_syms()
     _refresh_tick_n = [0]
     _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
@@ -1864,9 +2366,11 @@ def tick(args, cfg, now):
             if f"{sym}_{side}" in _pin_sides and f"{sym}_{side}" not in done and _st[side][0] != "running":
                 _st[side] = ("need30", 1)  # 2026-10-13 operator pin: bypass deferral/fresh-skip/base-wait/allowlist
         chain_state[sym] = _st
-    _phase, _phase_pending = _venue_phase(chain_state, launchable=lambda _s, _sd: not _launch_exhausted(f"{_s}_{_sd}|30D", "30D", f"{_s}_{_sd}", st, started, redo))  # USER 2026-10-12: stocks first until every tradeable stock has passed
-    _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12]}
-    print(f"[sched] venue phase={_phase} (mode={_VENUE_ONLY or 'none'}, launchable stock sides={len(_phase_pending)})", flush=True)
+    _phase, _phase_pending = _venue_phase(chain_state, launchable=lambda _s, _sd: _s not in _npz_dead and _phase_launchable(f"{_s}_{_sd}", st, started, redo, quar, _pin_sides), now=now)  # USER 2026-10-12: stocks first until every tradeable stock has passed; USER 2026-10-15 (06.3): only really-launchable sides hold the phase (exhausted incl. pin cap + quarantined soft-skips excluded); USER 2026-10-15: clock-aware (stocks in RTH, crypto outside)
+    _rth_now = us_market_open(now)
+    _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12],
+                  "us_rth": bool(_rth_now), "venue_clock": os.environ.get("V15_SCHED_VENUE_CLOCK", "1") == "1", "min_to_open": round(minutes_to_open(now) or -1)}
+    print(f"[sched] venue phase={_phase} (mode={_VENUE_ONLY or 'none'}, rth={_rth_now}, launchable stock sides={len(_phase_pending)})", flush=True)
 
     def terminal(sym):
         return all(v[0].startswith("terminal") for v in chain_state[sym].values())
@@ -1968,7 +2472,14 @@ def tick(args, cfg, now):
     new_syms = [s for s in all_syms if s not in owner and not terminal(s)]
     vrank = {v: i for i, v in enumerate(vorder)}
     pri = priority_syms()
-    _trk = lambda s: (_sym_tier_rank(s, _gtiers), sym_rank_key(s, vrank, all_syms, pri))  # USER 2026-10-09: winners first, losers last
+    # USER 2026-10-09: winners first, losers last. USER 2026-10-14: ranking top-25 breaks tier ties
+    # (BEST_WORST gain tier stays primary; the ranking boost weighs less than a tier step by construction).
+    _rkpairs = frozenset()
+    try:
+        _rkpairs = _RANKPRI.ranking_sets()["pairs"]
+    except Exception:
+        pass
+    _trk = lambda s: (_sym_tier_rank(s, _gtiers), 0 if s in _rkpairs else 1, sym_rank_key(s, vrank, all_syms, pri))
     new_syms.sort(key=_trk)
     adopted = [s for s in all_syms if s in owner and not terminal(s)]
     adopted.sort(key=_trk)
@@ -1977,8 +2488,10 @@ def tick(args, cfg, now):
     HB, launched_keys = {}, set()
     npz_prefetch = []  # USER 2026-10-13: (host, [next candidate syms]) — s1 pre-generates their NPZ after the launch pass
     log["venue_phase"] = _phase_log
+    log["npz_dead"] = sorted(_npz_dead)
     _pin_syms = {x.rsplit("_", 1)[0] for x in _pin_sides}
     _cont_all = (started - done) | redo
+    _frz = set()  # 2026-10-15: always defined — the preflight's rebuild gate reads it, and dry-run/sim never builds it
     try:  # 2026-10-13 RULE#4 resume guard registry (tools/v15_npz_freeze.py): every NPZ writer on S1 skips these symbols
         if not (args.dry_run or sim):
             import v15_npz_freeze as _nf
@@ -2106,25 +2619,112 @@ def tick(args, cfg, now):
                 # side always rides along on the same NPZ load (unless it is running or was just dispatched).
                 _sib = "LONG" if acts[0]["side"] == "SHORT" else "SHORT"
                 _sk = f"{sym}_{_sib}|30D"
-                if f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts):
+                _sib_state = ((chain_state.get(sym) or {}).get(_sib) or (None,))[0]
+                _sib_needs = _sib_state in ("need30", "waiting_base") or os.environ.get("V15_SCHED_SIB_NEED_ONLY", "1") == "0"
+                if not _sib_needs:
+                    # 2026-10-16: the sibling rides along ONLY when it needs a 30D board itself — a finished/fresh/deferred
+                    # sibling re-ran on every launch of its pair (PUMPUSDT_SHORT re-published 57.32 eight times on 10-16).
+                    log.setdefault("pair_sibling_skipped_done", []).append(f"{h['name']}:{sym}_{_sib}:{_sib_state}")
+                elif f"{sym}_{_sib}" not in running and _sk not in launched_keys and not _launched_recently(_sk, st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S) and not _launched_recently(_sk, st.get("launched_at"), _now_ts):
                     acts.append({"sym": sym, "side": _sib, "window": "30D", "attempt": 1, "key": _sk})
                     log.setdefault("pair_sibling_added", []).append(f"{h['name']}:{sym}_{_sib}")
             if needs_slot and not _pair_gate_ok(sym, acts, owner, chain_state, st["attempts"], pend_sides={a["side"] for a in pending_actions(sym, h["name"]) if f"{a['sym']}_{a['side']}" not in running}):  # fresh syms: every launchable side covered; terminal/capped sides don't block siblings
                 log.setdefault("skipped_pair_gate", []).append(f"{h['name']}:{sym}:" + str([a.get('side') for a in acts]))
                 continue
+            # ---- PRE-DISPATCH NPZ VERIFICATION (USER 2026-10-15) -------------------------------------
+            # "BEFORE any calculations start a verification of npz data, recalc if needed while the symbol is
+            # skipped and the next good one runs, then requeue the one that could have caused 0 trades instead
+            # of blindly following a list of symbols."
+            # STRUCTURAL screen only here (check_freshness=False): under the JIT law S1's tail is legitimately
+            # behind until the dispatch job refreshes it, so staleness is not a defect at this point. What this
+            # catches is the rebuild-in-flight race — a 1-bar/truncated/all-zero NPZ visible to dispatch (census
+            # 2026-10-15: ADP/AEM/ALMU/AXTI/CDW all bars=1 span=0.0d while 3 precompute jobs rebuilt them) and
+            # a span under the 0.80 coverage floor the engine would use to THROW THE FINISHED BOARD AWAY.
+            # Reference: ACEUSDT_LONG_bhm14p68_gain0p00_t0_30d_matrix.xlsx burned a whole board for 0 trades
+            # inside the 09-24..10-01 klines-tail corruption window; its NPZ verifies fine today.
+            _pf_ok, _pf_why, _pf_res = _npz_preflight(sym, 30, check_freshness=False)
+            if not _pf_ok:
+                _frozen_now = sym in _frz or bool(_cont_ss) or any(x in running for x in (f"{sym}_LONG", f"{sym}_SHORT"))
+                _want_rb, _dn, _alert = _npz_defer_note(st, sym, "block", _pf_why, now_ts=_now_ts, may_rebuild=not _frozen_now)
+                log["skipped_unready"][sym] = f"{h['name']}: npz-preflight #{_dn} {_pf_why}" + (" [FROZEN: no rebuild]" if _frozen_now else "")
+                try:
+                    _pf_mod = sys.modules.get("v15_npz_preflight")
+                    if _pf_mod is not None and _pf_res:
+                        _pf_mod.record_deferral(_pf_res)
+                except Exception:
+                    pass
+                if _alert:
+                    log.setdefault("npz_preflight_alert", []).append(f"{h['name']}:{sym}:n{_dn}:{_pf_why}")
+                if _want_rb and not (args.dry_run or sim) and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
+                    # the sanctioned rebuild path (single-flight flock + v15_npz_prep.py), requested ONCE per
+                    # cooldown — never a direct precompute spawn, never under a frozen symbol.
+                    log.setdefault("npz_preflight_rebuild", []).append(f"{h['name']}:{sym}")
+                    npz_prep(h, sym)
+                continue  # the next GOOD symbol takes this slot; this one is requeued when it passes again
+            # STOCKS second screen: session census / intra-window holes. Same machinery, one path.
+            _gp_ok, _gp_why, _gp_info = _npz_gap_screen(sym)
+            # A gate that fails OPEN must never do it silently — a NameError in the screen read as "usable" for
+            # every holed stock NPZ until this surfaced it (2026-10-15). Fail-open is logged, every tick.
+            for _uw in (_pf_why, _gp_why):
+                if _uw and ("unavailable" in _uw or "-crash" in _uw):
+                    log.setdefault("npz_screen_degraded", {})[f"{sym}"] = _uw[:160]
+            if not _gp_ok:
+                _frozen_now = sym in _frz or bool(_cont_ss) or any(x in running for x in (f"{sym}_LONG", f"{sym}_SHORT"))
+                _want_rb, _dn, _alert = _npz_defer_note(st, sym, "block", _gp_why, now_ts=_now_ts, may_rebuild=not _frozen_now)
+                log["skipped_unready"][sym] = f"{h['name']}: npz-gap #{_dn} {_gp_why}" + (" [FROZEN: no rebuild]" if _frozen_now else "")
+                if _alert:
+                    log.setdefault("npz_gap_alert", []).append(f"{h['name']}:{sym}:n{_dn}:sessions{_gp_info.get('sessions')}:{_gp_why}"[:300])
+                if _want_rb and not (args.dry_run or sim) and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
+                    log.setdefault("npz_gap_rebuild", []).append(f"{h['name']}:{sym}")
+                    npz_prep(h, sym)
+                continue
+            _pf_back = _npz_defer_clear(st, sym)
+            if _pf_back:
+                log.setdefault("npz_preflight_requeued", []).append(f"{h['name']}:{sym}:after{_pf_back}")
             _async_npz = False
             _frz_why = ("continuation " + ",".join(_cont_ss)) if _cont_ss else ("sibling running " + ",".join(x for x in (f"{sym}_LONG", f"{sym}_SHORT") if x in running) if any(x in running for x in (f"{sym}_LONG", f"{sym}_SHORT")) else "")
             if needs_slot and _CONT_FREEZE_ON and _frz_why and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
                 # USER 2026-10-13 V16: a rebuild here archived whole boards (NPZ-CHANGED-REFILL, 120k rows wiped fleet-wide)
                 # or tripped the FINAL midrun-swap refusal of a running sibling. Fresh boards still get the JIT NPZ.
                 log.setdefault("npz_frozen", []).append(f"{h['name']}:{sym}:{_frz_why}")
+                # 2026-10-15 OPEN TRADEOFF, decided by the operator, NOT here (V15_SCHED_PAIR_FRESH_REQUEUE=0 default).
+                # When a PAIR goes out together the freeze is right: both sides measured on the same fresh bars.
+                # When the sibling is dispatched HOURS later it inherits bars that old (measured: CHRUSDT's NPZ tail
+                # was 6.89 h old while its LONG side ran). ON = requeue the late sibling for a fresh-NPZ dispatch;
+                # OFF = today's behaviour, "pair calculated on same data" wins. A continuation is NEVER requeued:
+                # RULE#4 says a resuming board stays on the NPZ its rows were measured on.
+                if _PAIR_FRESH_REQUEUE and needs_slot and not _cont_ss and _frz_why.startswith("sibling running"):
+                    log.setdefault("pair_fresh_requeue", []).append(f"{h['name']}:{sym}:{_frz_why}")
+                    continue
             elif needs_slot and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1" and not (args.dry_run or sim):  # USER 2026-10-13: NPZ is calculated on the latest S1 klines right before a symbol is sent  # USER 2026-10-13: EVERY venue — fresh NPZ computed on s1 ships with the dispatch
                 if _ASYNC_DISPATCH:
                     _async_npz = True  # 2026-10-13: rebuild+push+launch run in a detached job (a synchronous rebuild outlived the 110 s tick timeout -> zero launches)
                 else:
                     pr = npz_prep(h, sym)
-                    if pr is not None and not pr.get("ok"):
-                        log["skipped_unready"][sym] = f"{h['name']}: npz_prep {pr.get('reason')}"
+                    # USER 2026-10-15: ok=None is NOT a pass. `if pr is not None and not pr.get("ok")` let every
+                    # unknown verdict through (20 of 909 launches on s1, 2.2%: slot-wait-timeout, frozen,
+                    # push-failed, reaped prep). Each kind now gets its own disposition.
+                    _l_ok, _l_kind, _l_why, _l_rb = _prep_disposition(pr)
+                    if not _l_ok:
+                        _want_rb, _dn, _alert = _npz_defer_note(st, sym, _l_kind, _l_why, now_ts=_now_ts, may_rebuild=_l_rb and sym not in _frz)
+                        log["skipped_unready"][sym] = f"{h['name']}: npz_prep[{_l_kind}] #{_dn} {_l_why}"
+                        if _alert:
+                            log.setdefault("npz_prep_alert", []).append(f"{h['name']}:{sym}:{_l_kind}:n{_dn}:{_l_why}"[:300])
+                        continue
+                    # ...and the prep's own ok=True is not sufficient either: verify the bytes that will travel,
+                    # freshness INCLUDED (measured: ATOMUSDT prep ok=true with a 6 h-old tail).
+                    _po_ok, _po_why, _po_res = _npz_preflight(sym, 30, check_freshness=True)
+                    if not _po_ok:
+                        _want_rb, _dn, _alert = _npz_defer_note(st, sym, "block", _po_why, now_ts=_now_ts, may_rebuild=False)
+                        log["skipped_unready"][sym] = f"{h['name']}: npz-postprep #{_dn} {_po_why}"
+                        try:
+                            _pf_mod = sys.modules.get("v15_npz_preflight")
+                            if _pf_mod is not None and _po_res:
+                                _pf_mod.record_deferral(_po_res)
+                        except Exception:
+                            pass
+                        if _alert:
+                            log.setdefault("npz_preflight_alert", []).append(f"{h['name']}:{sym}:postprep:n{_dn}:{_po_why}"[:300])
                         continue
             tag = f"{h['name']}:{sym}:" + "+".join(f"{a['side'][0]}{a['window']}" + (f"#a{a['attempt']}" if a["window"] == "REPAIR" else "") for a in acts)
             if args.dry_run or sim:
@@ -2445,6 +3045,7 @@ def tick(args, cfg, now):
     log["gain_tiers"] = {"measured_sides": len(_gtiers), **{t: sum(1 for e in _gtiers.values() if e["tier"] == t) for t in "WML"},
                          "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
     log["fresh_skipped"] = {"sides": len(_fresh_skipped), "sample": _fresh_skipped[:30]}
+    log["refresh_skip_same_npz"] = {"sides": len(_same_npz_skips), "sample": _same_npz_skips[:30]}
     try:  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick. Guarded: a logging bug must never kill the tick.
         _starve = {"running": [], "waiting_base": [], "capped": [], "venue_gated": [], "unready": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}
         for _ssym in all_syms:

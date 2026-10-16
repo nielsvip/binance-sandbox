@@ -10,6 +10,7 @@ copy (engine modules resolve ROOT via Path(__file__).resolve(), so a symlinked t
 
   snapshot --name N --sides A_LONG,B_SHORT,...   freeze inputs -> ~/v15_bench/snap_N/ (md5 manifest)
   run      --snap N --label L [--code DIR]        run every side of the snapshot with the code in DIR (default ~/binance-sandbox)
+  rescore  --snap N --label L                     rebuild results.json from the run's artifacts on disk (no recompute)
   compare  --snap N --a L1 --b L2                 per-side + aggregate diff, PASS/FAIL gate
 Stdlib only. Runs on S2 (or any worker with the NPZs + .venv). NO-LIES: every number is read back from the pilot's own
 progress JSON and delta log of that run.
@@ -31,6 +32,8 @@ CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_ca
 DATA_EXCLUDE_DIRS = {"eval_cache_v1.db", "klines_3m_hist_w2", "klines_5m_hist_w2", "matrix_npz", "reports", "tradier", "sweep_results", "vec_live", "hourly_reconfig", "yellow_discovery", "s6_365", "causal_learner.db", "kpi"}
 DATA_MAX_FILE = 150 * 1024 * 1024
 ENV_KEEP_PREFIX = ("V15_", "V12_")
+ALLOWED_WINDOWS = (1, 7, 20, 30, 365)  # v15_pilot --window-days whitelist
+MIN_WINDOW_COVERAGE = 0.80  # tools/opt/metrics.py: a board whose NPZ covers less of the window is INVALID
 ENV_DROP = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISOLATED_PROOF", "V15_EVAL_CACHE_DB", "V15_FILL_SLICE_S", "V15_V17_CARRY_DIR"}
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
 
@@ -183,6 +186,23 @@ def build_root(snap, run_dir, code):
     return root
 
 
+def find_progress(sd, fit_days=None):
+    """2026-10-15: the pilot names its progress JSON {symside}_v14_progress.json ONLY when --window-days is 30
+    (v15_pilot.py:12119-12123); every other window writes {symside}_{window}d_progress.json. The gate always benches
+    with V15_HOLDOUT_DAYS=7 (v15_version_gate.py:119), which snaps the fit window 30 -> 20, so the pilot wrote
+    *_20d_progress.json while this bench globbed only *_v14_progress.json -> every side scored {"err": "no progress
+    json"} with rc=0 and the gate dropped all 4 sides as "uninformative", making PASS unreachable by construction."""
+    pd = Path(sd) / "progress"
+    if not pd.exists():
+        return None
+    pats = ([f"*_{int(fit_days)}d_progress.json"] if fit_days else []) + ["*_v14_progress.json", "*_progress.json"]
+    for pat in pats:
+        for p in sorted(pd.glob(pat)):
+            if ".npzprev_" not in p.name and ".hollowprev_" not in p.name:
+                return p
+    return None
+
+
 def board_metrics(prog_path, dlog_path):
     out = {"final_gain": None, "trades": None, "tim": None, "dd": None, "sharpe": None, "verdict": None, "baseline": None, "promoted_rows": None, "rows": None}
     try:
@@ -196,6 +216,12 @@ def board_metrics(prog_path, dlog_path):
             out["tim"] = fm.get("tim_pct", fm.get("tim"))
             out["dd"] = fm.get("max_dd_pct", fm.get("dd"))
             out["sharpe"] = fm.get("pool_sharpe")
+        ho = p.get("holdout") if isinstance(p.get("holdout"), dict) else {}
+        out["oos_final"] = (ho.get("final") or {}).get("gain_pct")
+        out["oos_start"] = (ho.get("start") or {}).get("gain_pct")
+        out["oos_template"] = (ho.get("template") or {}).get("gain_pct")
+        out["oos_final_trades"] = (ho.get("final") or {}).get("trades")
+        out["oos_bh"] = ho.get("bh")
         done = p.get("done") or {}
         out["rows"] = len(done)
         out["promoted_rows"] = sum(1 for v in done.values() if isinstance(v, dict) and v.get("promoted"))
@@ -224,8 +250,67 @@ def board_metrics(prog_path, dlog_path):
                     secs += float(r.get("secs") or 0.0)
     except Exception:
         pass
-    out.update(evals=n_ev, evals_noncached=n_nc)
+    out.update(evals=n_ev, evals_noncached=n_nc, eval_secs=round(secs, 1))
+    try:
+        out["coverage"] = board_coverage(json.loads(Path(prog_path).read_text()))
+    except Exception as e:
+        out["coverage"] = {"err": str(e)[:120]}
     return out
+
+
+COVERAGE_SKIP_KEYS = ("coarse_deferred_filters", "zero_skipped_filters", "prior_skipped_filters", "sampled_out_filters", "excluded_unwired", "type_skipped", "missing_yellows", "chain_passed_filters")
+
+
+def board_coverage(p):
+    """How much of the template a board really evaluated (USER 2026-10-16: corner cutting must be exposed). Main-pass
+    rows only (`TAB!n:SWITCH=cand`; V17/FOCUS/ABL bookkeeping keys excluded). A cell counts as evaluated only when it has a
+    result in the row's `yellows` (painted != evaluated, BIBLE §109.7); skipped cells are booked per mechanism."""
+    c = {"rows": 0, "naked_rows": 0, "rows_no_naked": 0, "cells_eval": 0, "cells_skipped": 0, "zero_yellow_rows": 0, "promoted_rows": 0}
+    by_mech, no_naked = {}, {}
+    for k, r in (p.get("done") or {}).items():
+        if not isinstance(r, dict) or "!" not in k or ":" not in k:
+            continue
+        head = k.split("!")[0]
+        if head.startswith(("V17", "FOCUS", "ABL", "P3", "P4")):
+            continue
+        c["rows"] += 1
+        if r.get("naked_delta") is not None or r.get("is_running"):
+            c["naked_rows"] += 1
+        else:
+            c["rows_no_naked"] += 1
+            rs = str(r.get("reason") or "?").split(":")[0][:40]
+            no_naked[rs] = no_naked.get(rs, 0) + 1
+        ev = set((r.get("yellows") or {}).keys())
+        skipped = set()
+        for s in COVERAGE_SKIP_KEYS:
+            L = set(r.get(s) or [])
+            if s == "coarse_deferred_filters":
+                L -= set(r.get("coarse_revived") or [])
+            L -= ev
+            if L:
+                by_mech[s] = by_mech.get(s, 0) + len(L)
+            skipped |= L
+        if r.get("inert_filters") and not (r.get("inert_sampled") or r.get("inert_revived")):
+            L = set(r["inert_filters"]) - ev
+            if L:
+                by_mech["inert_unsampled"] = by_mech.get("inert_unsampled", 0) + len(L)
+            skipped |= L
+        c["cells_eval"] += len(ev)
+        c["cells_skipped"] += len(skipped)
+        c["zero_yellow_rows"] += int(not ev)
+        c["promoted_rows"] += int(bool(r.get("promoted")) and not r.get("is_running"))
+    c["skipped_by_mechanism"] = by_mech
+    c["no_naked_by_reason"] = dict(sorted(no_naked.items(), key=lambda kv: -kv[1])[:12])
+    return c
+
+
+def _write_json_atomic(path, obj):
+    """tmp + os.replace: an ENOSPC mid-write leaves the previous file intact instead of a 0-byte JSON that every later
+    reader crashes on (2026-10-14: a truncated meta.json killed `v15_version_gate run` on all 89 following ticks)."""
+    p = Path(path)
+    tmp = p.with_name(f".{p.name}.tmp")
+    tmp.write_text(json.dumps(obj, indent=1))
+    os.replace(tmp, p)
 
 
 def cmd_run(args):
@@ -240,10 +325,32 @@ def cmd_run(args):
     root = build_root(snap, run_dir, code)
     pmd5 = md5(root / "v15_pilot.py")
     env_base = {k: v for k, v in os.environ.items() if not k.startswith(ENV_KEEP_PREFIX)}
-    env_base.update(man.get("env") or {})
+    # 2026-10-16 USER "test every version side by side against the previous version so corner cutting is exposed": the
+    # gate passes the champion's recorded LAUNCH env (what production really runs) instead of the env frozen into the
+    # snapshot on 10-14 — scheduler/autotune env changes otherwise never reached a bench.
+    env_base.update(json.loads(Path(args.env_file).read_text()) if args.env_file else (man.get("env") or {}))
     for kv in args.set or []:
         k, _, v = kv.partition("=")
         env_base[k] = v
+    # 2026-10-15: V15_HOLDOUT_DAYS truncates the NPZ in memory at (last bar - H d), so a 30 d fit window on a ~31 d
+    # snapshot leaves ~24 d of bars and evaluate_v12._validate refuses every row ("npz covers 24d of the 30d window
+    # (79%) - regenerate") -> 0 promoted rows -> IMPOSSIBLE -> final_gain None on BOTH sides, so the gate could never
+    # decide (2026-10-14T23:10Z candidate: champ and cand both IMPOSSIBLE on every side). The fit window must be the
+    # span that survives the cut; holdout_score keeps its own H-day window for the OOS number.
+    _ho = float(env_base.get("V15_HOLDOUT_DAYS") or 0)
+    fit_days = int(args.window_days)
+    if _ho > 0:
+        _want = int(args.window_days) - int(_ho)
+        # Keep the requested window while the bars surviving the cut still cover it at the validator's floor
+        # (metrics.MIN_WINDOW_COVERAGE = 0.80); otherwise snap DOWN to the largest allowed window, because the pilot
+        # refuses anything else ("BLOCKED: only 30/20/7/1/365 allowed"). 30 d window - 7 d holdout -> 20 d fit.
+        if _want < MIN_WINDOW_COVERAGE * int(args.window_days):
+            fit_days = max([w for w in ALLOWED_WINDOWS if w <= _want] or [min(ALLOWED_WINDOWS)])
+        print(f"[bench] holdout {_ho:.0f}d -> fit window {fit_days}d (requested {args.window_days}d, {_want}d survives the cut, coverage floor {MIN_WINDOW_COVERAGE:.0%})", flush=True)
+    _free_mb = shutil.disk_usage(str(BENCH)).free / (1 << 20)
+    if _free_mb < args.min_disk_mb:
+        print(f"[bench] REFUSED: {_free_mb:.0f} MB free on {BENCH} < {args.min_disk_mb:.0f} MB — a bench that runs out of space truncates results.json/meta.json to 0 bytes (2026-10-14 ENOSPC killed the gate)", file=sys.stderr)
+        return 3
     sides = [s for s in man["sides"] if sym_of(s) in man["npz"]]
     if args.only:
         sides = [s for s in sides if s in set(args.only.split(","))]
@@ -262,7 +369,7 @@ def cmd_run(args):
             st = snap / "starts" / f"{ss}_autopsy_base.json"
             if st.exists():
                 env["V15_START_OVERRIDES"] = str(st)
-            cmd = [str(root / ".venv" / "bin" / "python"), "-u", "v15_pilot.py", "--sym-side", ss, "--template", str(root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template_for(ss)), "--seq-mode", "worst2best", "--window-days", "30", "--vector-only", "--workers", str(args.workers)]
+            cmd = [str(root / ".venv" / "bin" / "python"), "-u", "v15_pilot.py", "--sym-side", ss, "--template", str(root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template_for(ss)), "--seq-mode", "worst2best", "--window-days", str(fit_days), "--vector-only", "--workers", str(args.workers)]
             log = open(sd / "pilot.log", "w")
             pr = subprocess.Popen(["nice", "-n", str(args.nice)] + cmd, cwd=str(root), env=env, stdout=log, stderr=subprocess.STDOUT)
             running[ss] = (pr, time.time(), log)
@@ -292,17 +399,44 @@ def cmd_run(args):
                 continue
             log.close()
             sd = run_dir / ss
-            prog = next(iter((sd / "progress").glob("*_v14_progress.json")), None)
+            prog = find_progress(sd, fit_days)
             dl = next(iter((sd / "progress" / "v15_delta_log").glob("*.jsonl")), None) if (sd / "progress" / "v15_delta_log").exists() else None
-            m = board_metrics(prog, dl) if prog else {"err": "no progress json"}
+            m = board_metrics(prog, dl) if prog else {"err": "no progress json", "progress_dir_had": sorted(p.name for p in (sd / "progress").glob("*")) if (sd / "progress").exists() else None}
             m.update(rc=rc, wall_s=round(time.time() - t0, 1))
             results[ss] = m
             del running[ss]
             print(f"[bench] done {ss} rc={rc} wall={m['wall_s']} gain={m.get('final_gain')}", flush=True)
-            (run_dir / "results.json").write_text(json.dumps({"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "results": results}, indent=1))
-    summary = {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "wall_total_s": round(time.time() - t_all, 1), "results": results}
-    (run_dir / "results.json").write_text(json.dumps(summary, indent=1))
+            _write_json_atomic(run_dir / "results.json", {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "results": results})
+    summary = {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "wall_total_s": round(time.time() - t_all, 1), "results": results}
+    _write_json_atomic(run_dir / "results.json", summary)
     print(json.dumps({k: v for k, v in summary.items() if k != "results"}))
+    return 0
+
+
+def cmd_rescore(args):
+    """Rebuild results.json for a finished run from the artifacts already on disk — no board is recomputed. Recovers
+    the runs whose sides were mis-scored as "no progress json" by the pre-2026-10-15 glob; rc/wall_s are preserved."""
+    run_dir = BENCH / "runs" / f"{args.snap}__{args.label}"
+    rp = run_dir / "results.json"
+    old = json.loads(rp.read_text()) if rp.exists() else {"snap": args.snap, "label": args.label}
+    fit_days = args.window_days or old.get("window_days_fit")
+    prev = old.get("results") or {}
+    sides = sorted(set(prev) | {d.name for d in run_dir.iterdir() if d.is_dir() and (d / "progress").exists()})
+    results = {}
+    for ss in sides:
+        sd = run_dir / ss
+        prog = find_progress(sd, fit_days)
+        dl = next(iter((sd / "progress" / "v15_delta_log").glob("*.jsonl")), None) if (sd / "progress" / "v15_delta_log").exists() else None
+        m = board_metrics(prog, dl) if prog else {"err": "no progress json"}
+        m.update(rc=(prev.get(ss) or {}).get("rc"), wall_s=(prev.get(ss) or {}).get("wall_s"), rescored_from=prog.name if prog else None)
+        results[ss] = m
+        print(f"[rescore] {ss} gain={m.get('final_gain')} oos={m.get('oos_final')} rows={m.get('rows')} from={m.get('rescored_from')}", flush=True)
+    out = dict(old)
+    out.update(results=results, window_days_fit=fit_days, rescored_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+    if rp.exists():
+        shutil.copy2(rp, rp.with_name(f"results.json.pre_rescore_{time.strftime('%Y%m%d%H%M%S', time.gmtime())}"))
+    _write_json_atomic(rp, out)
+    print(json.dumps({k: v for k, v in out.items() if k != "results"}))
     return 0
 
 
@@ -341,6 +475,10 @@ def cmd_compare(args):
     for r in rows:
         fm = lambda v, n=2: ("—" if v is None else (f"{v:.{n}f}" if isinstance(v, float) else str(v)))
         print(f"{r[0]:22s} {fm(r[1]):>8s} {fm(r[2]):>8s} {fm(r[3]):>7s} {fm(r[4],0):>7s} {fm(r[5],0):>7s} {fm(r[6]):>6s} {fm(r[7]):>6s} {fm(r[8])} {fm(r[9])} {fm(r[10])} {fm(r[11])} {r[12]}")
+    oa = [(_f(a[ss].get("oos_final")), _f(b[ss].get("oos_final")), _f(b[ss].get("oos_start")), _f(b[ss].get("oos_template"))) for ss in sorted(set(a) & set(b))]
+    oa = [x for x in oa if x[0] is not None and x[1] is not None]
+    if oa:
+        print(f"OOS (unseen holdout days): sides {len(oa)}  sum final A {sum(x[0] for x in oa):+.3f}  sum final B {sum(x[1] for x in oa):+.3f}  B-A {sum(x[1]-x[0] for x in oa):+.3f}  B beats A on {sum(1 for x in oa if x[1] > x[0] + 1e-9)}  B final-start {sum((x[1]-(x[2] or 0)) for x in oa):+.3f}  B final-template {sum((x[1]-(x[3] or 0)) for x in oa):+.3f}")
     speed = (wa / wb) if wb else None
     incomplete = [ss for ss in sorted(set(a) | set(b)) if _f((a.get(ss) or {}).get("final_gain")) is None or _f((b.get(ss) or {}).get("final_gain")) is None]
     ok = (sum_b >= sum_a - args.tol_sum_pp) and not drops and not incomplete and bool(rows)
@@ -363,6 +501,7 @@ def main(argv=None):
     r.add_argument("--label", required=True)
     r.add_argument("--code", help="code tree to bench (default ~/binance-sandbox)")
     r.add_argument("--set", action="append", help="extra env K=V for this version (e.g. V15_BRAIN=1)")
+    r.add_argument("--env-file", help="JSON launch env replacing the snapshot's frozen env (the gate passes the champion/candidate env)")
     r.add_argument("--only")
     r.add_argument("--parallel", type=int, default=3)
     r.add_argument("--workers", type=int, default=2)
@@ -371,6 +510,12 @@ def main(argv=None):
     r.add_argument("--force", action="store_true")
     r.add_argument("--min-free-mb", type=float, default=10000.0, help="start a side only above this MemAvailable")
     r.add_argument("--sacrifice-mb", type=float, default=3000.0, help="below this the bench kills its own newest pilot")
+    r.add_argument("--window-days", type=int, default=30, help="requested fit window; a holdout shortens it to window-holdout so the snapshot still covers it")
+    r.add_argument("--min-disk-mb", type=float, default=20000.0, help="refuse to start below this free disk (ENOSPC truncates results.json/meta.json)")
+    rs = sub.add_parser("rescore")
+    rs.add_argument("--snap", required=True)
+    rs.add_argument("--label", required=True)
+    rs.add_argument("--window-days", type=int, help="fit window of that run (default: window_days_fit from results.json)")
     c = sub.add_parser("compare")
     c.add_argument("--snap", required=True)
     c.add_argument("--a", required=True)
@@ -378,7 +523,7 @@ def main(argv=None):
     c.add_argument("--tol-pp", type=float, default=0.5, help="a single side may not lose more than this (pp)")
     c.add_argument("--tol-sum-pp", type=float, default=0.0, help="summed gain of B may not be below A minus this")
     args = ap.parse_args(argv)
-    return {"snapshot": cmd_snapshot, "run": cmd_run, "compare": cmd_compare}[args.cmd](args)
+    return {"snapshot": cmd_snapshot, "run": cmd_run, "rescore": cmd_rescore, "compare": cmd_compare}[args.cmd](args)
 
 
 if __name__ == "__main__":

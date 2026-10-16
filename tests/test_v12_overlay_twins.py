@@ -2,7 +2,7 @@
 
 Source-level (no engine import): parses QuickConfig field defaults vs
 apply_tradier_defaults() assigns in v12_quick_engine.py, and the
-MAX_AUGMENTS_PER_POSITION global in config.py.
+the deleted MAX_AUGMENTS_PER_POSITION global (removed 2026-10-15; see tests/test_maxaug_deleted.py).
 """
 import re
 from pathlib import Path
@@ -46,7 +46,3 @@ def test_no_value_identical_overlay_twins():
     assert same == [], f"value-identical overlay twins (delete the overlay line): {same}"
 
 
-def test_max_augments_no_cap_mandate():
-    m = re.search(r"^    MAX_AUGMENTS_PER_POSITION:\s*int\s*=\s*(\d+)", CFG.read_text(), re.M)
-    assert m is not None, "MAX_AUGMENTS_PER_POSITION field missing from config.py"
-    assert int(m.group(1)) == 999999, f"USER 2026-05-30 no-cap mandate violated: config.py MAX_AUGMENTS_PER_POSITION={m.group(1)}"

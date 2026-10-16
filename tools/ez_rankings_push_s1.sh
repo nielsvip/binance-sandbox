@@ -13,6 +13,15 @@ FILES=()
 for f in symbols.json symbols_active.json symbols_*_long.json symbols_*_short.json; do  # USER: "it is about symbols_*.json" (rankings.json not needed)
     [ -f "$f" ] && FILES+=("$f")
 done
+# USER 2026-10-15: "tradeable_keys is crypto only, symbols_trb_long/short are the stocks version that also keeps
+# updating" + "make sure v15_fleet_scheduler always checks whether a sym_side is still tradeable before queuing it".
+# tradeable_keys.json was NEVER in this push, so ~/binance-sandbox — the tree the fleet scheduler actually runs from
+# (S1 cron */2) — held a 2.1-DAY-OLD crypto tradeable list while the stock lists were 3 minutes old. The scheduler was
+# therefore queueing crypto sym_sides that had already dropped out of the universe. Both halves of the tradeable truth
+# ship together now, plus the tokenized-stock denylist the universe subtracts.
+for f in tradeable_keys.json data/excluded_tokenized_stocks.json; do
+    [ -f "$f" ] && FILES+=("$f")
+done
 [ "${#FILES[@]}" -gt 0 ] || { echo "$(date -u +%FT%TZ) no files" >>"$LOG"; exit 0; }
 SHELLS=("ssh -o BatchMode=yes -o ConnectTimeout=6 s1-int" "ssh -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6 -o ControlMaster=no -o ControlPath=none niels@157.180.125.52")
 push_to() { # push_to <dest-dir>

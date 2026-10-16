@@ -34,9 +34,16 @@ try:
 except ImportError:  # pragma: no cover
     ZoneInfo = None
 
-KLINE_STALE_S = float(os.environ.get("LF_KLINE_STALE_S", "180"))
-SNAPSHOT_STALE_S = float(os.environ.get("LF_SNAPSHOT_STALE_S", "180"))
-CRYPTO_3M_STALE_S = float(os.environ.get("LF_CRYPTO_3M_STALE_S", "540"))
+KLINE_STALE_S = float(os.environ.get("LF_KLINE_STALE_S", "600"))  # USER 2026-10-14: 180 -> 600 ("we are not trading <15m tf's"); 180 flapped failover 16x/day
+SNAPSHOT_STALE_S = float(os.environ.get("LF_SNAPSHOT_STALE_S", "90"))  # USER 2026-10-15: 600 -> 90 "ez_indicators
+# has to start earlier, as soon as market_data files stop coming in". This is the CLEAN signal — the write age of
+# the newest Mac-own market_data_*.json — and it drives the DATA failover only (live_failover_s1.data_failover
+# goes ACTIVE on the FIRST stale reading, no confirm), so S1 has fresh indicators ready within ~90 s + 1 tick
+# instead of 10 minutes. Starting a producer is cheap and reversible, so eagerness here costs nothing.
+# KLINE_STALE_S / CRYPTO_3M_STALE_S deliberately stay at 600: those are the noisy median-bars-behind measures
+# that flapped the failover 16x/day at 180 (USER 2026-10-14). Moving TRADING still needs the heartbeat absent
+# (LF_TAKEOVER_HB_S) plus LF_TAKEOVER_CONFIRM consecutive ticks — data staleness alone never moves trading.
+CRYPTO_3M_STALE_S = float(os.environ.get("LF_CRYPTO_3M_STALE_S", "600"))  # USER 2026-10-14: 600 (no <15m trading)
 PRODUCER_LOOKBACK_S = float(os.environ.get("LF_PRODUCER_LOOKBACK_S", "180"))
 TRADIER_ERR_MIN = int(os.environ.get("LF_TRADIER_ERR_MIN", "5"))
 CRYPTO_ACCOUNTS = ("ang", "inf", "flz", "men", "fin")
@@ -388,6 +395,14 @@ ORDER_WINDOW_S = float(os.environ.get("LF_ORDER_WINDOW_S", "300"))
 LOOP_LAG_DEAD_S = float(os.environ.get("LF_LOOP_LAG_DEAD_S", "60"))
 STOCK_SILENT_S = float(os.environ.get("LF_STOCK_SILENT_S", "180"))
 ORDER_DEAD_FRAC = float(os.environ.get("LF_ORDER_DEAD_FRAC", "0.5"))
+# 2026-10-16 USER 3-MINUTE INVARIANT, per-account escalation (see the account_dead kind in TradingHealth._crypto).
+# MANAGE_SILENT_S: an ez_manage that is alive but has written nothing for this long is WEDGED, i.e. dead for our
+# purposes (a busy engine still logs every ~60-90 s, so 180 s is unambiguous).
+# ACCT_DEAD_S: how long ONE account must stay dead before S1 is told. Deliberately above the Mac's local repair path
+# (mac_pos_writer_keepalive.sh runs */1 min and replaces a childless wrapper at 45 s / a silent engine at 150 s), so
+# this fires only after local repair has already had several chances and failed — it escalates, it does not race.
+MANAGE_SILENT_S = float(os.environ.get("LF_MANAGE_SILENT_S", "180"))
+ACCT_DEAD_S = float(os.environ.get("LF_ACCT_DEAD_S", "240"))
 HEALTH_KEEP_S = 3600.0
 VENUES = ("crypto", "stocks")
 STOCK_SCRIPTS = ("tradier_manage.py", "tradier_positions.py")
@@ -578,6 +593,18 @@ class TradingHealth:
                            "rt": LogFollower(logdir / f"ez_positions_realtime_{a}.log", _crypto_pos_events),
                            "mgr": LogFollower(logdir / f"ez_manage_{a}.log", _crypto_manage_events, 1048576)} for a in CRYPTO_ACCOUNTS}
         self.stocks = {a: LogFollower(logdir / f"tradier_manage_{a}.log", _stock_events, 1048576) for a in STOCK_ACCOUNTS}
+        self._engine_dead_since = {}
+
+    def _engine_dead_s(self, acct, now, n_alive, mgr_last_any):
+        """Seconds this account's DECISION ENGINE has been continuously dead, 0 when healthy. Dead = no ez_manage
+        process at all, or a process that has written nothing for MANAGE_SILENT_S (wedged). Measured here, per
+        account, because nothing else was: traders_dead needs all five gone and broker_unreachable needs 3 of 5."""
+        dead = n_alive <= 0 or (mgr_last_any is not None and now - mgr_last_any >= MANAGE_SILENT_S)
+        if not dead:
+            self._engine_dead_since.pop(acct, None)
+            return 0.0
+        since = self._engine_dead_since.setdefault(acct, now)
+        return round(max(0.0, now - since), 1)
 
     def measure(self, now=None, procs=None, fenced=()):
         now = now_s() if now is None else now
@@ -618,18 +645,40 @@ class TradingHealth:
                               "no_broker_ok_s": None if no_ok_s is None else round(no_ok_s, 1), "consec_broker_errors": consec,
                               "writer_log_silent_s": None if silent_s is None else round(silent_s, 1), "error_classes_window": classes,
                               "opens_blocked_broker_unreachable_window": len(mgr.window(now, ORDER_WINDOW_S, "blocked")),
-                              "manage_broker_fetch_failed_window": len(mgr.window(now, ORDER_WINDOW_S, "fetch_failed")), "broker_dead": broker_dead}
+                              "manage_broker_fetch_failed_window": len(mgr.window(now, ORDER_WINDOW_S, "fetch_failed")), "broker_dead": broker_dead,
+                              "manage_log_silent_s": None if mgr.last_any is None else round(now - mgr.last_any, 1),
+                              "engine_dead_s": self._engine_dead_s(acct, now, n_alive, mgr.last_any)}
         kinds, reasons = [], []
+        # 2026-10-15 SELF-LOCKING FENCE (USER live takeover test): a FENCED venue is deliberately not trading, so
+        # its silence is never a fault. Once ez_positions_service_main/ez_positions_realtime joined the fence list,
+        # the fenced Mac stopped polling the broker and this meter reported "broker_unreachable 5/5 accounts" about
+        # a perfectly healthy Mac. live_failover_s1 feeds those kinds into nt_left, and failback requires nt_left to
+        # be empty -> the Mac could NEVER come back: fenced, therefore faulty, therefore keep it fenced. Only
+        # traders_dead was guarded by `not fenced`; every kind must be.
         need = max(1, math.ceil(BROKER_DEAD_FRAC * considered - 1e-9)) if considered else 0
-        if considered and len(dead) >= need:
+        if not fenced and considered and len(dead) >= need:
             kinds.append("broker_unreachable")
             reasons.append(f"broker_unreachable {len(dead)}/{considered} accounts ({','.join(dead)}) no successful broker poll >= {int(BROKER_DEAD_S)}s")
         traders = sum(1 for a in accounts.values() if a["trader_alive"])
         if not fenced and traders == 0:
             kinds.append("traders_dead")
             reasons.append("no crypto ez_manage alive")
+        # 2026-10-16 USER ("NO account can be inactive for >3min without s1 kicking in"): PER-ACCOUNT blind spot.
+        # Before this, a single stopped account was invisible to every cross-host detector. traders_dead needs ALL
+        # FIVE engines gone; broker_unreachable needs BROKER_DEAD_FRAC=0.6 of them, i.e. need=3 of 5 — so one or two
+        # accounts could sit dead forever and S1 would never learn of it (the Mac's own heartbeat kept reporting
+        # not_trading=false). engine_dead_s is measured per account from the ez_manage process count AND its log
+        # write age, so a WEDGED engine (alive, silent) counts as dead too. ANY ONE account over the bar raises the
+        # kind. The bar is deliberately LONGER than the Mac's local repair path (mac_pos_writer_keepalive.sh, */1 min,
+        # MAX_MGR_NOCHILD=45 s / MAX_MGR_LOG_AGE=150 s): this is the ESCALATION for when local repair has already
+        # failed several times, not a competitor to it, which is why it cannot flap on an ordinary restart.
+        acct_dead = sorted(a for a, v in accounts.items() if (v.get("engine_dead_s") or 0) >= ACCT_DEAD_S)
+        if not fenced and traders and acct_dead:
+            kinds.append("account_dead")
+            reasons.append(f"account_dead {len(acct_dead)}/{len(accounts)} ({','.join(acct_dead)}) no ez_manage process and/or no engine log line for >= {int(ACCT_DEAD_S)}s while other accounts still trade — local repair failed")
         return {"applicable": True, "fenced": fenced, "not_trading": bool(kinds), "kinds": kinds, "reasons": reasons,
-                "traders_alive": traders, "accounts_considered": considered, "broker_dead_accounts": dead, "accounts": accounts}
+                "traders_alive": traders, "accounts_considered": considered, "broker_dead_accounts": dead,
+                "account_dead_accounts": acct_dead, "accounts": accounts}
 
     def _stocks(self, now, alive, fenced):
         for follower in self.stocks.values():
@@ -660,10 +709,10 @@ class TradingHealth:
                               "log_silent_s": None if silent_s is None else round(silent_s, 1), "order_path_dead": order_dead, "broker_unreachable": broker_bad}
         kinds, reasons = [], []
         need = max(1, math.ceil(ORDER_DEAD_FRAC * considered - 1e-9)) if considered else 0
-        if considered and len(bun) >= need:
+        if not fenced and considered and len(bun) >= need:
             kinds.append("broker_unreachable")
             reasons.append(f"broker_unreachable {len(bun)}/{considered} accounts ({','.join(bun)})")
-        if considered and len(opd) >= need:
+        if not fenced and considered and len(opd) >= need:
             kinds.append("order_path_dead")
             reasons.append(f"order_path_dead {len(opd)}/{considered} accounts ({','.join(opd)}): 0 orders reached the broker in {int(ORDER_WINDOW_S)}s with stalls/loop lag >= {int(LOOP_LAG_DEAD_S)}s/silence")
         if not fenced and considered == 0:

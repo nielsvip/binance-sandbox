@@ -1395,6 +1395,14 @@ class TradierDedupeGuard(_GuardBase):
 
     async def guarded_place(self, inner_client, account_key: str, symbol: str, side: str, quantity: float, order_type: str = "market", price: float = None, stop: float = None, duration: str = "day", origin: str = "") -> Dict[str, Any]:
         sym = str(symbol).upper()
+        # USER 2026-10-16: "this auto stop order adjustment function could get an exemption from the execute_now pass
+        # as it is totally safe". A resting stop / stop_limit on the CLOSING side can only ever REDUCE exposure — it
+        # cannot open, augment or flip anything — so none of the exposure / intent / open-from-zero reasoning applies
+        # to it. On 2026-10-16 the FIXED_STOP backstop for trb:XOM_LONG was refused twice by this guard with
+        # ORDER_DEDUPE_BLOCK:BROKER_UNREACHABLE_ORDERS and :BROKER_POSITION_UNKNOWN — i.e. the position was left
+        # UNPROTECTED precisely because the broker was hard to read, which is when protection matters most.
+        if tradier_protective_stop(order_type, side) and self.enabled():
+            return await self.guarded_protective_stop_place(inner_client, account_key, sym, side, quantity, order_type, price, stop, duration, origin)
         _xp = tradier_exit_priority_mode(sym, side, order_type)
         if _xp and self.enabled():
             return await self.guarded_exit_place(inner_client, account_key, sym, side, quantity, order_type, price, stop, duration, origin, force=(_xp == "FORCE"))
@@ -1506,6 +1514,55 @@ class TradierDedupeGuard(_GuardBase):
             except Exception as e:
                 self.log.critical(f"⚠️ [EXIT_BROKER_POSITION_UNREACHABLE] tradier:{self.account}:{sym}: holdings read failed ({e!r:.160}) — exit proceeds with qty {quantity} (broker rejects selling more than held)")
             entry = {"local_id": uuid.uuid4().hex, "order_id": None, "side": s_l, "position_side": "", "qty": qty, "type": order_type, "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": ("EXIT_FORCE|" if force else "EXIT|") + origin[:110]}
+            self.ledger.mutate(sym, lambda orders: orders.append(entry))
+            _remember_order(entry["local_id"])
+            self._backoff.pop(sym, None)
+        try:
+            raw = getattr(inner_client, "_odg_raw_place_order", None) or inner_client.place_order
+            res = await raw(account_key=account_key, symbol=symbol, side=side, quantity=quantity, order_type=order_type, price=price, stop=stop, duration=duration)
+        except BaseException as e:
+            self._mark(sym, entry, state="UNKNOWN", evidence=repr(e)[:200])
+            raise
+        order = (res or {}).get("order") if isinstance(res, dict) else None
+        oid = order.get("id") if isinstance(order, dict) else None
+        if oid:
+            self._mark(sym, entry, order_id=oid, status=str(order.get("status", "") or "").lower() or None, state="SUBMITTED")
+        elif isinstance(res, dict) and res.get("errors"):
+            self._mark(sym, entry, state="FINAL", status="rejected_by_broker", final=True, executed_qty=0.0, evidence=str(res.get("errors"))[:200])
+        else:
+            self._mark(sym, entry, state="UNKNOWN", evidence=str(res)[:200])
+        return res
+
+    async def guarded_protective_stop_place(self, inner_client, account_key: str, symbol: str, side: str, quantity: float, order_type: str = "stop", price: float = None, stop: float = None, duration: str = "gtc", origin: str = "") -> Dict[str, Any]:
+        """PROTECTIVE STOP EXEMPTION (USER 2026-10-16: "totally safe"). A closing-side stop / stop_limit only ever
+        reduces exposure, so it is never subject to preflight / phase3 / exposure / intent / execute_now-token gates —
+        those exist to stop us INCREASING risk, and refusing a backstop can only increase it.
+
+        What still applies, because these are correctness not policy:
+          * BAD_QTY — a zero / NaN / sub-1-share stop is a broken order, never a safer one;
+          * qty is clamped to the FRESH broker holding when it is readable (a stop for more shares than held is the
+            exact order Tradier rejected ~every time on 2026-10-16). An unreadable holding does NOT block: the caller
+            sizes from tradier_broker_snapshot and Tradier rejects an oversized stop safely;
+          * the ledger row is written before the wire, so a lost response is still reconcilable.
+        Deliberately NOT applied: resting protective stops of our own do not block each other here — the CALLER
+        (ensure_fixed_stop_backstop_tradier) owns the one-stop-per-position invariant and cancels before replacing."""
+        sym = str(symbol).upper()
+        s_l = str(side).lower()
+        async with self.akey_lock(sym):
+            qty = _f(quantity, 0.0)
+            if _bad_qty(quantity) or int(qty) < 1:
+                d2 = self._block(sym, "BAD_QTY", {"quantity": str(quantity), "kind": "protective_stop"}, origin)
+                return {"errors": {"error": [f"ORDER_DEDUPE_BLOCK:{d2.code}"]}, "order_dedupe_block": {"code": d2.code, "evidence": d2.evidence}}
+            try:
+                bp = await self.broker_position(inner_client, sym, s_l == "sell")
+                amt = float(int(_f(bp.get("amt"))))
+                if amt >= 1 and qty > amt:
+                    self.log.warning(f"✂️ [STOP_QTY_CLAMP_BROKER] tradier:{self.account}:{sym} {s_l} stop qty {quantity} -> {amt} (fresh broker holdings)")
+                    quantity = amt
+                    qty = amt
+            except Exception as e:
+                self.log.warning(f"[STOP_BROKER_POSITION_UNREACHABLE] tradier:{self.account}:{sym}: holdings read failed ({e!r:.160}) — protective stop proceeds with qty {quantity} (never refused for an unreadable broker)")
+            entry = {"local_id": uuid.uuid4().hex, "order_id": None, "side": s_l, "position_side": "", "qty": qty, "type": order_type, "submitted_at": self.clock(), "state": "SUBMITTING", "status": None, "executed_qty": 0.0, "final": False, "origin": "PROTECTIVE_STOP|" + origin[:110]}
             self.ledger.mutate(sym, lambda orders: orders.append(entry))
             _remember_order(entry["local_id"])
             self._backoff.pop(sym, None)

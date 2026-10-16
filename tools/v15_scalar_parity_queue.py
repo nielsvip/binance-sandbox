@@ -85,7 +85,10 @@ def build(days):
         md5 = e.get("overrides_md5") or hashlib.md5(json.dumps(ov, sort_keys=True, default=str).encode()).hexdigest()
         tier = 1 if ss in lt else 2 if (ss in pos or ss in tr) else 3 if ss in st else 4
         items.append({"sym_side": ss, "tier": tier, "open_position": ss in pos, "trades_recent": tr.get(ss, 0), "streak": ss in st,
-                      "overrides_md5": md5, "published_at": e.get("published_at"), "history_id": e.get("history_id"), "overrides": ov})
+                      "overrides_md5": md5, "published_at": e.get("published_at"), "history_id": e.get("history_id"),
+                      # USER 2026-10-15: the board's OWN NPZ md5 (published_selection evidence.npz_id), so the s2 lane can
+                      # verify the published result on the NPZ that produced it instead of a newly refreshed window.
+                      "npz_md5": ((e.get("evidence") or {}).get("npz_id") or None), "overrides": ov})
     items.sort(key=lambda x: (x["tier"], not x["open_position"], -x["trades_recent"], not x["streak"], x["sym_side"]))
     return {"_meta": {"built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "source": "data/published_selection.json",
                       "n": len(items), "tiers": {t: sum(1 for i in items if i["tier"] == t) for t in (1, 2, 3, 4)},

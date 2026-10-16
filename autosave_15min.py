@@ -138,11 +138,23 @@ def backup_cycle():
     scored.sort(reverse=True)
     keep = set(b for _, b in scored[:48])  # keep top 48 stable versions
     keep.add(all_backups[-1])  # always keep newest
+    # 2026-10-17: size is tracked by SUBTRACTION, not recomputed. The old loop called _dirsize(BACKUP_DIR) —
+    # a full walk of the whole tree — after EVERY rmtree, i.e. O(n^2) I/O over ~1000 snapshot dirs and 14 GB.
+    # That is where this process spent ~49 CPU-hours, and it was stopped (SIGSTOP, state T) mid-prune on
+    # 2026-10-14T21:03:32Z with "Backup dir at 14.9GB — pruning by stability score" as its last log line,
+    # after which NOTHING in this repo was committed or file-backed-up for over two days.
+    remaining = current_size
     for b in all_backups:
         if b not in keep:
-            try: shutil.rmtree(b); log(f"  pruned {b.name}")
-            except Exception: pass
-            if _dirsize(BACKUP_DIR) < MAX_BYTES * 0.7: break
+            try:
+                freed = _dirsize(b)
+                shutil.rmtree(b)
+                remaining -= freed
+                log(f"  pruned {b.name} (-{freed/1e6:.0f}MB)")
+            except Exception:
+                pass
+            if remaining < MAX_BYTES * 0.7:
+                break
 
 
 STALE_LOCK_MIN_AGE_S = 120
@@ -191,12 +203,15 @@ def git_commit():
                           cwd=str(REPO), timeout=30, capture_output=True, text=True)
         if r.returncode == 0:
             log(f"git commit: OK")
+            return True
         elif "nothing to commit" in r.stdout.lower() or "nothing to commit" in r.stderr.lower():
             log(f"git commit: no changes")
+            return True
         else:
             log(f"git commit: rc={r.returncode} stderr={r.stderr.strip()[:200]!r} stdout={r.stdout.strip()[:300]!r}")
     except Exception as e:
         log(f"git commit failed: {e}")
+    return False
 
 
 GITHUB_REMOTE = "origin"
@@ -208,7 +223,10 @@ def git_push():
     """One-way mirror of HEAD to GitHub + S1. NEVER fetch/pull/merge/reset here —
     Mac is the live-trading source of truth (CLAUDE.md); this repo must never
     pull code back down from GitHub. Pushes to origin (GitHub) and s1-backup."""
-    for remote in (GITHUB_REMOTE, GITHUB_SSH_REMOTE, "s1-backup"):
+    # origin-ssh dropped 2026-10-17: it points at the SAME GitHub repo as origin (which pushes fine over https)
+    # and failed on every single cycle with "ERROR: Permission to nielsvip/binance-sandbox.git denied to deploy
+    # key" — a duplicate target that only produced noise. Re-add it once the deploy key has write access.
+    for remote in (GITHUB_REMOTE, "s1-backup"):
         r = subprocess.run(["git", "remote", "get-url", remote], cwd=str(REPO),
                           capture_output=True, text=True)
         if r.returncode != 0:
@@ -230,11 +248,25 @@ def git_push():
             log(f"git push {remote} failed: {e}")
 
 
-log("AUTOSAVE STARTED — 5 min cycles, file backups + git commit")
+# USER 2026-10-17 ("we do need it to run and sync every script and template save ... can we sync it with the
+# /backups/ folder so we dont need to keep 2 copies on disk plus the git version"): git IS the history now, and
+# the 275-file snapshot is only the fallback for when git cannot take it.
+# Measured before this change: backups/autosave held 1019 snapshot dirs = 14 GB of the 36 GB backups/ tree,
+# every one of them a second, UNCOMPRESSED copy of content git already stores content-addressed and deduplicated
+# (the same two days of commits are ~16 MB of objects). The per-edit backups/before_*.py copies are untouched —
+# 1731 files for 1.3 GB total, cheap, and what the edit workflow in CLAUDE.md actually reads.
+# So: commit first, and write a snapshot ONLY if the commit did not happen. If git ever breaks, the fallback
+# resumes automatically and the prune guard above caps it. AUTOSAVE_ALWAYS_SNAPSHOT=1 restores the old
+# always-copy behaviour.
+log("AUTOSAVE STARTED — 5 min cycles, git is the history (snapshot only on git failure)")
 while True:
     try:
-        backup_cycle()
-        git_commit()
+        ensure_master_symbols()  # ran inside backup_cycle() before; it is a live-data guard, not a backup step
+        committed = git_commit()
+        if not committed or os.environ.get("AUTOSAVE_ALWAYS_SNAPSHOT") == "1":
+            if not committed:
+                log("git commit did not take — writing the file-snapshot fallback")
+            backup_cycle()
         git_push()
     except Exception as e:
         log(f"ERROR: {e}")

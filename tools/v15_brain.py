@@ -25,7 +25,20 @@ CLI
   build    mine delta logs -> data/brain/brain_edges.json (+ .md summary)
   replay   chronological holdout: current rule vs brain at several floors -> evals saved / positives kept
   suggest  top keys for a sym_side / cat_side and a metric (gain, tim, trades, dd, sharpe)
+  export   prequential-train over every log -> data/brain/brain_<CAT_SIDE>.json (weights + evidence tables)
+  compare  champion vs challenger model files on last-3-days prequential capture (verdict only, never replaces)
 Nothing here writes sheets, progress JSONs, templates or configs. NO-LIES: every count is a real logged eval.
+
+Forward learning (USER 2026-10-14, tasks 04.2/04.3): the pilot logs FORWARD delta-log records
+{key, d_gain, d_trades, d_dd, d_tim, d_sharpe, unseen_bars, prev_npz_end} plus HOLDOUT lines and
+BOARD_CTX lines {tier, bh, baseline_gain, ...}. FORWARD/HOLDOUT lines are consumed here as learning
+labels P(key helps forward | context) alongside the fit-delta labels, with forward labels weighted
+higher (WEIGHT_FORWARD default 1.0, fit WEIGHT_FIT default 0.25). Absent keys are skipped, never crash.
+Multi-metric heads (04.4): dd/tim/trades/sharpe logistic heads next to the gain heads; suggest answers
+from forward/live evidence and says 'no evidence' explicitly when there is none. Regime context (04.5):
+BOARD_CTX tier/bh/holdout become key x regime interaction features, APPENDED only (x[12..16]) so old
+12-long weight files keep loading (zero-padded). Champion/challenger (04.6): compare_models() returns a
+verdict dict; promotion happens only on strict improvement and is never wired here.
 """
 import argparse
 import collections
@@ -47,6 +60,46 @@ M_SHRINK = float(os.environ.get("V15_BRAIN_M", "8"))
 Q_REF = float(os.environ.get("V15_BRAIN_QREF", "0.80"))
 GLOBAL = "GLOBAL"
 METRICS = ("d", "dtim", "dtr", "ddd", "dsh")
+WEIGHT_FORWARD = float(os.environ.get("V15_BRAIN_WEIGHT_FORWARD", "1.0"))
+WEIGHT_FIT = float(os.environ.get("V15_BRAIN_WEIGHT_FIT", "0.25"))
+METRIC_HEADS = {"dd": ("ddd", -1.0), "tim": ("dtim", 1.0), "trades": ("dtr", 1.0), "sharpe": ("dsh", 1.0)}
+TIER_CODE = {"W": 1.0, "WINNER": 1.0, "M": 0.0, "MEDIOCRE": 0.0, "L": -1.0, "LOSER": -1.0, "LOST_CAUSE": -1.0}
+BH_SCALE = 25.0
+HO_ALPHA = 0.1
+
+
+def tier_code(tier):
+    try:
+        return TIER_CODE.get(str(tier).strip().upper(), 0.0)
+    except Exception:
+        return 0.0
+
+
+def bh_code(bh):
+    try:
+        return max(-1.0, min(1.0, float(bh) / BH_SCALE))
+    except Exception:
+        return 0.0
+
+
+def metric_label(metric, rec):
+    """0/1 improvement label for a metric head from a fit or forward rec, None when the metric is absent.
+    dd improves downward, tim/trades/sharpe improve upward."""
+    spec = METRIC_HEADS.get(metric)
+    if spec is None or rec is None:
+        return None
+    key, sign = spec
+    try:
+        v = rec.get(key)
+    except Exception:
+        return None
+    if v is None:
+        return None
+    try:
+        v = float(v)
+    except Exception:
+        return None
+    return 1.0 if sign * v > EPS else 0.0
 
 
 def cat_side_of(sym_side):
@@ -143,7 +196,7 @@ def iter_rows(path):
                         marg[hdr] = m
                 yield sym_side, str(r.get("ts") or ""), r.get("sheet"), f"{sw}={r.get('cand')}", naked, marg
                 continue
-            if label is None or label in ("hustle", "BOARD_CTX") or str(label).startswith(SKIP_LABEL_PREFIX) or r.get("cached"):
+            if label is None or label in ("hustle", "BOARD_CTX", "FORWARD", "HOLDOUT") or str(label).startswith(SKIP_LABEL_PREFIX) or r.get("cached"):
                 continue
             if str(label).startswith("RED_RETRY:"):
                 label = label[len("RED_RETRY:"):]
@@ -161,12 +214,167 @@ def iter_rows(path):
                 b["y"][label] = rec
 
 
+def forward_node(key):
+    """Normalize a FORWARD record key to a graph node. R:/F:/N: prefixes pass through; SWITCH=cand is a naked
+    row node; a bare switch name is sibling (name-level) evidence. None/empty -> None (skip, never crash)."""
+    if key is None:
+        return None
+    try:
+        k = str(key).strip()
+    except Exception:
+        return None
+    if not k:
+        return None
+    if k.startswith(("R:", "F:", "N:")):
+        return k
+    if "=" in k:
+        return "R:" + k
+    return "N:" + k
+
+
+def iter_forward(path):
+    """Yield (sym_side, ts, node, rec, ctx) per FORWARD delta-log record. rec uses the same internal keys as
+    iter_rows (d/dtim/dtr/ddd/dsh/valid/secs); ctx carries unseen_bars/prev_npz_end. Missing key -> skip."""
+    default_sym = sym_side_of_path(path)
+    with open(path, "r", errors="replace") as fh:
+        for line in fh:
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            try:
+                if r.get("label") != "FORWARD":
+                    continue
+                node = forward_node(r.get("key"))
+                if node is None:
+                    continue
+                sym_side = r.get("sym_side") or default_sym
+                ts = str(r.get("ts") or "")
+                rec = {"d": _f(r.get("d_gain")), "valid": True, "secs": _f(r.get("secs")), "dtim": _f(r.get("d_tim")), "dtr": _f(r.get("d_trades")), "ddd": _f(r.get("d_dd")), "dsh": _f(r.get("d_sharpe")), "ts": ts}
+                ctx = {"unseen_bars": r.get("unseen_bars"), "prev_npz_end": r.get("prev_npz_end")}
+                yield sym_side, ts, node, rec, ctx
+            except Exception:
+                continue
+
+
+def iter_ctx(path):
+    """Yield (sym_side, ts, ctx) per BOARD_CTX line. Missing tier/bh/baseline -> None (never crash)."""
+    default_sym = sym_side_of_path(path)
+    with open(path, "r", errors="replace") as fh:
+        for line in fh:
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            try:
+                if r.get("label") != "BOARD_CTX":
+                    continue
+                sym_side = r.get("sym_side") or default_sym
+                yield sym_side, str(r.get("ts") or ""), {"tier": r.get("tier"), "bh": _f(r.get("bh")), "baseline_gain": _f(r.get("baseline_gain")), "baseline_trades": _f(r.get("baseline_trades"))}
+            except Exception:
+                continue
+
+
+def iter_holdout(path):
+    """Yield (sym_side, ts, won, info) per HOLDOUT line. won = final set beat start OOS (final_minus_start > 0).
+    Lines without a computable verdict are still yielded with won=None (board context, never a label)."""
+    default_sym = sym_side_of_path(path)
+    with open(path, "r", errors="replace") as fh:
+        for line in fh:
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            try:
+                if r.get("label") != "HOLDOUT":
+                    continue
+                sym_side = r.get("sym_side") or default_sym
+                fms = _f(r.get("final_minus_start"))
+                if fms is None:
+                    try:
+                        fg = (r.get("final") or {}).get("gain_pct")
+                        sg = (r.get("start") or {}).get("gain_pct")
+                        fms = float(fg) - float(sg) if fg is not None and sg is not None else None
+                    except Exception:
+                        fms = None
+                won = (fms > EPS) if fms is not None else None
+                yield sym_side, str(r.get("ts") or ""), won, {"final_minus_start": fms, "days": _f(r.get("days"))}
+            except Exception:
+                continue
+
+
+class Fwd:
+    """Weighted forward-label accumulator for one (scope, node). Raw n/pos stay integer counts (NO-LIES);
+    wn/wpos carry the WEIGHT_FORWARD-scaled mass the model learns from."""
+
+    __slots__ = ("n", "pos", "wn", "wpos", "last")
+
+    def __init__(self):
+        self.n = self.pos = 0
+        self.wn = self.wpos = 0.0
+        self.last = ""
+
+    def add(self, y, w, ts):
+        self.n += 1
+        self.wn += w
+        if y:
+            self.pos += 1
+            self.wpos += w
+        if ts > self.last:
+            self.last = ts
+
+    def to_json(self):
+        return {"n": self.n, "pos": self.pos, "wn": round(self.wn, 4), "wpos": round(self.wpos, 4), "last": self.last}
+
+
 class Brain:
     """The graph. edges[(scope, a, b)] -> Edge. a = node key ("R:SWITCH=cand" or "F:FILTER=opt"), b = "" or the row node."""
 
     def __init__(self, pair_min_scope=("cat",)):
         self.edges = collections.defaultdict(Edge)
+        self.fwd = collections.defaultdict(Fwd)
+        self.ho_ema = collections.defaultdict(lambda: 0.5)
+        self.ho_seen = set()
         self.pair_scopes = pair_min_scope
+
+    def observe_forward(self, sym_side, ts, node, y, w=WEIGHT_FORWARD):
+        """One forward label P(node helps forward): y truthy = helped. Stored GLOBAL/cat_side/sym_side."""
+        cs = cat_side_of(sym_side)
+        for scope in (GLOBAL, cs, sym_side):
+            self.fwd[(scope, node)].add(bool(y), w, ts)
+
+    def observe_holdout(self, sym_side, ts, won, alpha=HO_ALPHA):
+        """Board-level OOS verdict: the final set beat start on unseen days. won=None = no verdict, ignored."""
+        if won is None:
+            return
+        self.ho_seen.add(sym_side)
+        e = self.ho_ema[sym_side]
+        self.ho_ema[sym_side] = min(0.98, max(0.02, (1 - alpha) * e + alpha * (1.0 if won else 0.0)))
+
+    def holdout_rate(self, sym_side):
+        return self.ho_ema[sym_side] if sym_side in self.ho_seen else None
+
+    def p_forward(self, sym_side, node):
+        """Hierarchical Beta posterior P(node helps forward | context) over weighted forward labels."""
+        cs = cat_side_of(sym_side)
+        p, wn = 0.5, 0.0
+        first = True
+        for scope in (GLOBAL, cs, sym_side):
+            e = self.fwd.get((scope, node))
+            if e is None:
+                continue
+            m = 1.0 if first else M_SHRINK
+            p = (e.wpos + m * p) / (e.wn + m)
+            wn += e.wn
+            first = False
+        return p, wn
+
+    def forward_json(self, min_n=1):
+        out = collections.defaultdict(dict)
+        for (scope, node), e in self.fwd.items():
+            if e.n >= min_n:
+                out[scope][node] = e.to_json()
+        return out
 
     def observe_row(self, sym_side, ts, row_key, naked, marg):
         cs = cat_side_of(sym_side)
@@ -294,14 +502,22 @@ def stream_rows(files, lo="", hi="~"):
 def cmd_build(args):
     files = collect_files(args.glob or DEFAULT_GLOBS)
     brain = Brain()
-    n = 0
+    n = nf = nh = 0
     for f in files:
         for sym_side, ts, _sheet, row_key, naked, marg in iter_rows(f):
             brain.observe_row(sym_side, ts, row_key, naked, marg)
             n += 1
+        for sym_side, ts, node, rec, _ctx in iter_forward(f):
+            if rec.get("d") is None:
+                continue
+            brain.observe_forward(sym_side, ts, node, rec["d"] > EPS)
+            nf += 1
+        for sym_side, ts, won, _info in iter_holdout(f):
+            brain.observe_holdout(sym_side, ts, won)
+            nh += 1
     out_dir = args.out_dir or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "brain")
     os.makedirs(out_dir, exist_ok=True)
-    blob = {"_meta": {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "files": len(files), "rows": n, "edges": len(brain.edges), "m_shrink": M_SHRINK, "source": "v15 delta logs (real engine evals, cache hits excluded)"}, "edges": brain.to_json()}
+    blob = {"_meta": {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "files": len(files), "rows": n, "forward_labels": nf, "holdout_lines": nh, "edges": len(brain.edges), "m_shrink": M_SHRINK, "w_forward": WEIGHT_FORWARD, "w_fit": WEIGHT_FIT, "source": "v15 delta logs (real engine evals, cache hits excluded)"}, "edges": brain.to_json(), "forward": brain.forward_json()}
     p = os.path.join(out_dir, "brain_edges.json")
     with open(p + ".tmp", "w") as fh:
         json.dump(blob, fh)
@@ -413,14 +629,24 @@ class Online:
     """One learned layer over graph evidence (USER 2026-10-14 "like a neural network that keeps making connections"):
     logistic regression, SGD, predict-THEN-learn on every real eval (prequential = honest out-of-sample at every step).
     Features per candidate (kind R = naked row, F = yellow cell):
-      bias, key log-odds @GLOBAL / @cat_side / @sym_side (shrunk by n), switch-name log-odds @cat_side (sibling cands),
-      filter-on-row pair log-odds (F), log1p(n) evidence mass, board running hit-rate logit (EMA), tab-on-board running
-      logit (EMA), naked-result features for F (sign + clipped delta: the row's own naked eval, known before deferred yellows)."""
-    NF = 12
+      x[0..11] (frozen since 2026-10-14): bias, key log-odds @GLOBAL / @cat_side / @sym_side (shrunk by n),
+      switch-name log-odds @cat_side (sibling cands), filter-on-row pair log-odds (F), log1p(n) evidence mass,
+      board running hit-rate logit (EMA), tab-on-board running logit (EMA), naked-result features for F
+      (sign + clipped delta: the row's own naked eval, known before deferred yellows).
+      x[12..16] (ADDITIVE ONLY, 2026-10-15 regime context from BOARD_CTX): tier x key-evidence, bh x key-evidence,
+      tier main, bh main, board holdout-OOS logit. Old 12-long weight files load zero-padded.
+    Heads: gain heads w[R/F/F0] plus one logistic head per metric (mh[metric][kind]) predicting P(metric improves).
+    learn() takes a sample weight w (fit-delta labels learn with WEIGHT_FIT, forward labels with WEIGHT_FORWARD)."""
+    NF = 17
+    NF0 = 12
 
     def __init__(self, lr=0.03, l2=1e-5):
         self.w = {"R": [0.0] * self.NF, "F": [0.0] * self.NF, "F0": [0.0] * self.NF}
         self.w["R"][0] = self.w["F"][0] = self.w["F0"][0] = -4.0
+        self.mh = {m: {k: [0.0] * self.NF for k in ("R", "F", "F0")} for m in METRIC_HEADS}
+        for m in METRIC_HEADS:
+            for k in ("R", "F", "F0"):
+                self.mh[m][k][0] = -4.0
         self.lr, self.l2 = lr, l2
         self.ema = collections.defaultdict(lambda: 0.02)
 
@@ -428,7 +654,12 @@ class Online:
     def _sig(z):
         return 1.0 / (1.0 + math.exp(-max(-30.0, min(30.0, z))))
 
-    def feats(self, brain, kind, sym_side, sheet, row_key, hdr, naked_d):
+    @staticmethod
+    def static_x(x):
+        """Naked-blind variant (no row-result features): x[10..11] zeroed, regime tail kept."""
+        return x[:10] + [0.0, 0.0] + x[12:]
+
+    def feats(self, brain, kind, sym_side, sheet, row_key, hdr, naked_d, regime=None):
         cs = cat_side_of(sym_side)
         a = ("R:" + row_key) if kind == "R" else ("F:" + str(hdr).strip())
         x = [1.0] + [0.0] * (self.NF - 1)
@@ -456,16 +687,37 @@ class Online:
         if kind == "F" and naked_d is not None:
             x[10] = 1.0 if naked_d > EPS else (-1.0 if naked_d < -EPS else 0.0)
             x[11] = max(-3.0, min(3.0, naked_d))
+        tc = tier_code((regime or {}).get("tier")) if regime else 0.0
+        bc = bh_code((regime or {}).get("bh")) if regime else 0.0
+        x[12] = tc * x[2]
+        x[13] = bc * x[2]
+        x[14] = tc
+        x[15] = bc
+        try:
+            ho = brain.ho_ema.get(sym_side, 0.5) if brain is not None else 0.5
+        except Exception:
+            ho = 0.5
+        ho = min(0.98, max(0.02, ho))
+        x[16] = math.log(ho / (1.0 - ho))
         return x
 
     def predict(self, kind, x):
         return self._sig(sum(w * v for w, v in zip(self.w[kind], x)))
 
-    def learn(self, kind, x, y, p):
-        g = y - p
-        w = self.w[kind]
+    def learn(self, kind, x, y, p, w=1.0):
+        g = (y - p) * w
+        ws = self.w[kind]
         for i, v in enumerate(x):
-            w[i] += self.lr * (g * v - self.l2 * w[i])
+            ws[i] += self.lr * (g * v - self.l2 * ws[i])
+
+    def predict_metric(self, metric, kind, x):
+        return self._sig(sum(w * v for w, v in zip(self.mh[metric][kind], x)))
+
+    def learn_metric(self, metric, kind, x, y, p, w=1.0):
+        g = (y - p) * w
+        ws = self.mh[metric][kind]
+        for i, v in enumerate(x):
+            ws[i] += self.lr * (g * v - self.l2 * ws[i])
 
     def bump(self, sym_side, sheet, y, alpha=0.02):
         for k in (sym_side, (sym_side, sheet)):
@@ -480,38 +732,127 @@ def observe_names(brain, sym_side, ts, row_key, naked, marg):
         brain.edges[(cs, "N:" + str(hdr).split("=", 1)[0].strip(), "")].add(sym_side, m, ts)
 
 
+def stream_events(files, since=""):
+    """Chronological merge of fit rows, FORWARD labels, BOARD_CTX regimes and HOLDOUT verdicts.
+    Yields ("row", ts, item) / ("fwd", ts, item) / ("ctx", ts, item) / ("ho", ts, item). Never raises on bad lines."""
+    events = []
+    for f in files:
+        try:
+            for it in iter_rows(f):
+                if it[1] >= since:
+                    events.append(("row", it[1], it))
+        except Exception as e:
+            print(f"[warn] {f}: {e}", file=sys.stderr)
+        try:
+            for it in iter_forward(f):
+                if it[1] >= since:
+                    events.append(("fwd", it[1], it))
+        except Exception as e:
+            print(f"[warn] {f} forward: {e}", file=sys.stderr)
+        try:
+            for it in iter_ctx(f):
+                if it[1] >= since:
+                    events.append(("ctx", it[1], it))
+        except Exception as e:
+            print(f"[warn] {f} ctx: {e}", file=sys.stderr)
+        try:
+            for it in iter_holdout(f):
+                if it[1] >= since:
+                    events.append(("ho", it[1], it))
+        except Exception as e:
+            print(f"[warn] {f} holdout: {e}", file=sys.stderr)
+    events.sort(key=lambda e: e[1])
+    return events
+
+
+def learn_fit_eval(model, brain, kind, sym_side, sheet, row_key, hdr, r, nd, regime, w=WEIGHT_FIT):
+    """SGD step on one fit-delta eval: gain head + every metric head whose metric is present."""
+    x = model.feats(brain, kind, sym_side, sheet, row_key, hdr, nd, regime)
+    d = r["d"] if r["valid"] else None
+    y = 1.0 if (d is not None and d > EPS) else 0.0
+    model.learn(kind, x, y, model.predict(kind, x), w)
+    x0 = Online.static_x(x) if kind == "F" else None
+    if kind == "F":
+        model.learn("F0", x0, y, model.predict("F0", x0), w)
+    for m in METRIC_HEADS:
+        yl = metric_label(m, r)
+        if yl is not None:
+            model.learn_metric(m, kind, x, yl, model.predict_metric(m, kind, x), w)
+            if kind == "F":
+                model.learn_metric(m, "F0", x0, yl, model.predict_metric(m, "F0", x0), w)
+    return x
+
+
+def learn_forward_label(model, brain, sym_side, node, rec, regime, w=WEIGHT_FORWARD):
+    """SGD step on one FORWARD label: gain head (needs d_gain) + every metric head whose metric is present.
+    Returns False when the record carries no usable label."""
+    d = rec.get("d")
+    if d is None:
+        return False
+    y = 1.0 if d > EPS else 0.0
+    if node.startswith("F:"):
+        kind, hdr, row_key = "F", node[2:], ""
+    elif node.startswith("N:"):
+        kind, hdr, row_key = "R", None, node[2:]
+    else:
+        kind, hdr, row_key = "R", None, node[2:] if node.startswith("R:") else node
+    x = model.feats(brain, kind, sym_side, "", row_key, hdr, None, regime)
+    model.learn(kind, x, y, model.predict(kind, x), w)
+    if kind == "F":
+        x0 = Online.static_x(x)
+        model.learn("F0", x0, y, model.predict("F0", x0), w)
+    for m in METRIC_HEADS:
+        yl = metric_label(m, rec)
+        if yl is not None:
+            model.learn_metric(m, kind, x, yl, model.predict_metric(m, kind, x), w)
+            if kind == "F":
+                model.learn_metric(m, "F0", x0, yl, model.predict_metric(m, "F0", x0), w)
+    brain.observe_forward(sym_side, rec.get("ts") or "", node, y, w)
+    return True
+
+
 def cmd_prequential(args):
     """Predict-then-learn over the whole chronological stream. Every logged real eval is scored BEFORE the graph and the
     weights learn from it. Report for evals at/after --cut (warm-up before): the cost/recall frontier of
     p_eval = clip(pred / p_ref, floor/1000, 1) for many p_ref, vs today's verdict rule; AUC-style capture curve."""
     files = collect_files(args.glob or DEFAULT_GLOBS)
-    items = []
-    for f in files:
-        try:
-            for it in iter_rows(f):
-                if it[1] >= (args.since or ""):
-                    items.append(it)
-        except Exception as e:
-            print(f"[warn] {f}: {e}", file=sys.stderr)
-    items.sort(key=lambda x: x[1])
+    events = stream_events(files, args.since or "")
     brain, model = Brain(), Online()
+    regimes = {}
     prof_sw = collections.defaultdict(lambda: collections.defaultdict(lambda: [set(), set(), set()]))
     rec = {"R": [], "F": [], "F0R": []}
-    for sym_side, ts, sheet, row_key, naked, marg in items:
+    n_row = n_fwd = 0
+    for etyp, _ets, item in events:
+        if etyp == "ctx":
+            sym_side, _ts, ctx = item
+            regimes[sym_side] = ctx
+            continue
+        if etyp == "ho":
+            sym_side, ts, won, _info = item
+            brain.observe_holdout(sym_side, ts, won)
+            continue
+        if etyp == "fwd":
+            sym_side, _ts, node, frec, _fctx = item
+            learn_forward_label(model, brain, sym_side, node, frec, regimes.get(sym_side))
+            n_fwd += 1
+            continue
+        sym_side, ts, sheet, row_key, naked, marg = item
+        n_row += 1
         cs = cat_side_of(sym_side)
         test = ts >= args.cut
+        regime = regimes.get(sym_side)
         nd = naked["d"] if (naked is not None and naked["valid"]) else None
         cand = []
         if naked is not None:
             cand.append(("R", None, naked))
         cand.extend(("F", h, m) for h, m in marg.items())
         for kind, hdr, r in cand:
-            x = model.feats(brain, kind, sym_side, sheet, row_key, hdr, nd)
+            x = model.feats(brain, kind, sym_side, sheet, row_key, hdr, nd, regime)
             p = model.predict(kind, x)
             d = r["d"] if r["valid"] else None
             y = 1.0 if (d is not None and d > EPS) else 0.0
             if kind == "F":
-                x0 = x[:10] + [0.0, 0.0]
+                x0 = Online.static_x(x)
                 p0 = model.predict("F0", x0)
             if test:
                 key = row_key if kind == "R" else str(hdr).strip()
@@ -521,9 +862,7 @@ def cmd_prequential(args):
                 rec[kind].append((p, r["secs"] or 0.0, y, d if y else 0.0, cur_skip))
                 if kind == "F":
                     rec["F0R"].append((p0, r["secs"] or 0.0, y, d if y else 0.0, cur_skip, nd is not None and nd > EPS))
-            model.learn(kind, x, y, p)
-            if kind == "F":
-                model.learn("F0", x0, y, p0)
+            learn_fit_eval(model, brain, kind, sym_side, sheet, row_key, hdr, r, nd, regime)
             ps = prof_sw[cs][(kind, row_key if kind == "R" else str(hdr).strip())]
             ps[0].add(sym_side)
             if y:
@@ -532,7 +871,7 @@ def cmd_prequential(args):
         observe_names(brain, sym_side, ts, row_key, naked, marg)
         if naked is not None:
             model.bump(sym_side, sheet, 1.0 if (nd is not None and nd > EPS) else 0.0)
-    out = {"_meta": {"since": args.since, "cut": args.cut, "items": len(items), "weights": model.w, "floor_per_1000": args.floor, "note": "prequential: each eval predicted before learned; current rule = never-positive / <5% pos on >=10 sym_sides (profile DEAD/USELESS/HARMFUL proxy) applied to rows AND cells"}, "kinds": {}}
+    out = {"_meta": {"since": args.since, "cut": args.cut, "items": n_row, "rows": n_row, "forward_labels": n_fwd, "weights": model.w, "floor_per_1000": args.floor, "w_forward": WEIGHT_FORWARD, "w_fit": WEIGHT_FIT, "note": "prequential: each eval predicted before learned; current rule = never-positive / <5% pos on >=10 sym_sides (profile DEAD/USELESS/HARMFUL proxy) applied to rows AND cells; fit labels learn at w_fit, FORWARD labels at w_forward"}, "kinds": {}}
     for kind in ("R", "F", "F0R"):
         R = rec[kind]
         if not R:
@@ -573,34 +912,39 @@ def cmd_prequential(args):
 
 def cmd_export(args):
     """Prequential-train over every log, then write one runtime file per cat_side for the pilot: weights + the evidence
-    tables the features read (GLOBAL/cat/name/pair/sym edges as [pos, n]). data/brain/brain_<CAT_SIDE>.json"""
+    tables the features read (GLOBAL/cat/name/pair/sym edges as [pos, n]). data/brain/brain_<CAT_SIDE>.json.
+    Format is backward compatible: old readers ignore the new mh/fwd/ho keys; gain weights stay x[0..11]-first."""
     files = collect_files(args.glob or DEFAULT_GLOBS)
-    items = []
-    for f in files:
-        try:
-            items.extend(it for it in iter_rows(f) if it[1] >= (args.since or ""))
-        except Exception as e:
-            print(f"[warn] {f}: {e}", file=sys.stderr)
-    items.sort(key=lambda x: x[1])
+    events = stream_events(files, args.since or "")
     brain, model = Brain(), Online()
-    for sym_side, ts, sheet, row_key, naked, marg in items:
+    regimes = {}
+    n_row = n_fwd = 0
+    for etyp, _ets, item in events:
+        if etyp == "ctx":
+            regimes[item[0]] = item[2]
+            continue
+        if etyp == "ho":
+            brain.observe_holdout(item[0], item[1], item[2])
+            continue
+        if etyp == "fwd":
+            sym_side, _ts, node, frec, _fctx = item
+            learn_forward_label(model, brain, sym_side, node, frec, regimes.get(sym_side))
+            n_fwd += 1
+            continue
+        sym_side, ts, sheet, row_key, naked, marg = item
+        n_row += 1
+        regime = regimes.get(sym_side)
         nd = naked["d"] if (naked is not None and naked["valid"]) else None
         cand = ([("R", None, naked)] if naked is not None else []) + [("F", h, m) for h, m in marg.items()]
         for kind, hdr, r in cand:
-            x = model.feats(brain, kind, sym_side, sheet, row_key, hdr, nd)
-            d = r["d"] if r["valid"] else None
-            y = 1.0 if (d is not None and d > EPS) else 0.0
-            model.learn(kind, x, y, model.predict(kind, x))
-            if kind == "F":
-                x0 = x[:10] + [0.0, 0.0]
-                model.learn("F0", x0, y, model.predict("F0", x0))
+            learn_fit_eval(model, brain, kind, sym_side, sheet, row_key, hdr, r, nd, regime)
         brain.observe_row(sym_side, ts, row_key, naked, marg)
         observe_names(brain, sym_side, ts, row_key, naked, marg)
         if naked is not None:
             model.bump(sym_side, sheet, 1.0 if (nd is not None and nd > EPS) else 0.0)
     out_dir = Path(args.out_dir) if args.out_dir else Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "data" / "brain"
     out_dir.mkdir(parents=True, exist_ok=True)
-    per = collections.defaultdict(lambda: {"cat": {}, "pair": {}, "sym": collections.defaultdict(dict)})
+    per = collections.defaultdict(lambda: {"cat": {}, "pair": {}, "sym": collections.defaultdict(dict), "fwd": {"global": {}, "cat": {}, "sym": collections.defaultdict(dict)}, "ho": {}})
     glob_t = {}
     for (scope, a, b), e in brain.edges.items():
         pn = [e.pos, max(0, e.n - e.inv)]
@@ -610,14 +954,25 @@ def cmd_export(args):
             (per[scope]["pair"] if b else per[scope]["cat"])[(a + "|" + b) if b else a] = pn
         else:
             per[cat_side_of(scope)]["sym"][scope][a] = pn
-    meta = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "rows": len(items), "since": args.since, "p_ref": {"R": args.p_ref_r, "F": args.p_ref_f}, "floor_per_1000": args.floor}
+    fwd_global = {}
+    for (scope, node), e in brain.fwd.items():
+        pn = [e.pos, e.n, round(e.wpos, 4), round(e.wn, 4)]
+        if scope == GLOBAL:
+            fwd_global[node] = pn
+        elif scope.startswith(("CRYPTO_", "STOCKS_")):
+            per[scope]["fwd"]["cat"][node] = pn
+        else:
+            per[cat_side_of(scope)]["fwd"]["sym"][scope][node] = pn
+    for sym_side in brain.ho_seen:
+        per[cat_side_of(sym_side)]["ho"][sym_side] = round(brain.ho_ema[sym_side], 4)
+    meta = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "rows": n_row, "forward_labels": n_fwd, "since": args.since, "nf": Online.NF, "w_forward": WEIGHT_FORWARD, "w_fit": WEIGHT_FIT, "p_ref": {"R": args.p_ref_r, "F": args.p_ref_f}, "floor_per_1000": args.floor}
     for cs, blk in per.items():
-        blob = {"_meta": dict(meta, cat_side=cs), "w": model.w, "global": glob_t, "cat": blk["cat"], "pair": blk["pair"], "sym": blk["sym"], "ema": {k: v for k, v in model.ema.items() if isinstance(k, str) and cat_side_of(k) == cs}}
+        blob = {"_meta": dict(meta, cat_side=cs), "w": model.w, "mh": model.mh, "global": glob_t, "cat": blk["cat"], "pair": blk["pair"], "sym": blk["sym"], "fwd": {"global": fwd_global, "cat": blk["fwd"]["cat"], "sym": blk["fwd"]["sym"]}, "ho": blk["ho"], "ema": {k: v for k, v in model.ema.items() if isinstance(k, str) and cat_side_of(k) == cs}}
         p = out_dir / f"brain_{cs}.json"
         with open(str(p) + ".tmp", "w") as fh:
             json.dump(blob, fh)
         os.replace(str(p) + ".tmp", p)
-        print(json.dumps({"out": str(p), "cat": len(blk["cat"]), "pair": len(blk["pair"]), "sym_sides": len(blk["sym"]), "bytes": p.stat().st_size}))
+        print(json.dumps({"out": str(p), "cat": len(blk["cat"]), "pair": len(blk["pair"]), "sym_sides": len(blk["sym"]), "fwd": sum(len(v) for v in (blk["fwd"]["global"], blk["fwd"]["cat"])) + sum(len(v) for v in blk["fwd"]["sym"].values()), "bytes": p.stat().st_size}))
     return 0
 
 
@@ -629,16 +984,30 @@ class PilotBrain:
     def __init__(self, path, sym_side):
         blob = json.load(open(path))
         self.sym_side, self.cs = sym_side, cat_side_of(sym_side)
-        self.w = blob["w"]
+        self.w = {k: (list(v) + [0.0] * Online.NF)[:Online.NF] for k, v in (blob.get("w") or {}).items()}
+        for k in ("R", "F", "F0"):
+            self.w.setdefault(k, ([-4.0] + [0.0] * (Online.NF - 1)))
+        self.mh = {}
+        for m, kinds in ((blob.get("mh") or {}).items()):
+            try:
+                self.mh[m] = {k: (list(v) + [0.0] * Online.NF)[:Online.NF] for k, v in kinds.items()}
+            except Exception:
+                continue
         self.glob, self.cat, self.pair = blob.get("global") or {}, blob.get("cat") or {}, blob.get("pair") or {}
         self.sym = dict((blob.get("sym") or {}).get(sym_side) or {})
+        self.ho = blob.get("ho") or {}
         self.meta = blob.get("_meta") or {}
+        self.ctx = {"tier": 0.0, "bh": 0.0}
         self.ema = collections.defaultdict(lambda: 0.02)
         e0 = (blob.get("ema") or {}).get(sym_side)
         if e0:
             self.ema[sym_side] = float(e0)
-        self.p_ref = {"R": float(os.environ.get("V15_BRAIN_PREF_R", self.meta.get("p_ref", {}).get("R", 0.002))), "F": float(os.environ.get("V15_BRAIN_PREF_F", self.meta.get("p_ref", {}).get("F", 0.002)))}
+        self.p_ref = {"R": float(os.environ.get("V15_BRAIN_PREF_R", self.meta.get("p_ref", {}).get("R", 0.005))), "F": float(os.environ.get("V15_BRAIN_PREF_F", self.meta.get("p_ref", {}).get("F", 0.005)))}
         self.floor = float(os.environ.get("V15_BRAIN_FLOOR", self.meta.get("floor_per_1000", 5.0))) / 1000.0
+
+    def observe_ctx(self, tier=None, bh=None):
+        """Board regime context (from the BOARD_CTX line). Additive only: zeros = model behaves as before."""
+        self.ctx = {"tier": tier_code(tier), "bh": bh_code(bh)}
 
     def _x(self, kind, sheet, row_key, hdr):
         a = ("R:" + row_key) if kind == "R" else ("F:" + str(hdr).strip())
@@ -660,10 +1029,30 @@ class PilotBrain:
         be, te = self.ema[self.sym_side], self.ema[(self.sym_side, sheet)]
         x[8] = math.log(be / (1.0 - be))
         x[9] = math.log(te / (1.0 - te))
+        tc, bc = self.ctx.get("tier", 0.0), self.ctx.get("bh", 0.0)
+        x[12] = tc * x[2]
+        x[13] = bc * x[2]
+        x[14] = tc
+        x[15] = bc
+        try:
+            ho = min(0.98, max(0.02, float(self.ho.get(self.sym_side, 0.5))))
+        except Exception:
+            ho = 0.5
+        x[16] = math.log(ho / (1.0 - ho))
         return x, cn
 
     def _p(self, kind, x):
         return Online._sig(sum(w * v for w, v in zip(self.w[kind], x)))
+
+    def p_metric_head(self, metric, kind, sheet, row_key, hdr=None):
+        """P(metric improves) from the metric head. kind R = naked row, F = yellow cell (static F0 weights)."""
+        if metric not in self.mh:
+            return None
+        wk = "R" if kind == "R" else "F0"
+        if wk not in self.mh[metric]:
+            return None
+        x, _cn = self._x("R" if kind == "R" else "F", sheet, row_key, hdr)
+        return Online._sig(sum(w * v for w, v in zip(self.mh[metric][wk], x)))
 
     def p_row(self, sheet, row_key):
         x, cn = self._x("R", sheet, row_key, None)
@@ -687,32 +1076,185 @@ class PilotBrain:
             self.sym[a] = (pos + int(y), n + 1)
 
 
+class FileModel:
+    """Frozen scorer for one exported brain_<CAT_SIDE>.json blob. Mirrors PilotBrain math (gain heads R/F0) so two
+    model files can be compared on the same evals. Tolerates old files (12-long weights, no mh/ho/fwd)."""
+
+    def __init__(self, blob):
+        self.w = {k: (list(v) + [0.0] * Online.NF)[:Online.NF] for k, v in (blob.get("w") or {}).items()}
+        for k in ("R", "F", "F0"):
+            self.w.setdefault(k, ([-4.0] + [0.0] * (Online.NF - 1)))
+        self.glob, self.cat, self.pair = blob.get("global") or {}, blob.get("cat") or {}, blob.get("pair") or {}
+        self.sym = blob.get("sym") or {}
+        self.ho = blob.get("ho") or {}
+        self.ctx = {}
+
+    def set_ctx(self, sym_side, ctx):
+        self.ctx[sym_side] = ctx or {}
+
+    def score(self, kind, sym_side, sheet, row_key, hdr):
+        cs = cat_side_of(sym_side)
+        a = ("R:" + row_key) if kind == "R" else ("F:" + str(hdr).strip())
+        sym_t = self.sym.get(sym_side) or {}
+        gp, gn = self.glob.get(a, (0, 0))
+        cp, cn = self.cat.get(a, (0, 0))
+        sp, sn = sym_t.get(a, (0, 0))
+        x = [1.0] + [0.0] * (Online.NF - 1)
+        x[1] = _lo(gp, gn) * gn / (gn + 3.0)
+        x[2] = _lo(cp, cn) * cn / (cn + 3.0)
+        x[3] = (_lo(sp, sn) - x[2]) * sn / (sn + 2.0)
+        name = "N:" + (row_key.split("=", 1)[0] if kind == "R" else str(hdr).split("=", 1)[0].strip())
+        np_, nn = self.cat.get(name, (0, 0))
+        x[4] = _lo(np_, nn) * nn / (nn + 3.0)
+        if kind != "R":
+            pp, pn = self.pair.get(a + "|R:" + row_key, (0, 0))
+            x[5] = _lo(pp, pn) * pn / (pn + 2.0)
+        x[6] = math.log1p(cn)
+        x[7] = 1.0 if cn < 3 else 0.0
+        x[8] = math.log(0.02 / 0.98)
+        x[9] = math.log(0.02 / 0.98)
+        ctx = self.ctx.get(sym_side) or {}
+        tc, bc = tier_code(ctx.get("tier")), bh_code(ctx.get("bh"))
+        x[12] = tc * x[2]
+        x[13] = bc * x[2]
+        x[14] = tc
+        x[15] = bc
+        try:
+            ho = min(0.98, max(0.02, float((self.ho.get(sym_side, 0.5)))))
+        except Exception:
+            ho = 0.5
+        x[16] = math.log(ho / (1.0 - ho))
+        wk = "R" if kind == "R" else "F0"
+        return Online._sig(sum(w * v for w, v in zip(self.w[wk], x)))
+
+
+def _capture_at_budget(scored, budget):
+    """Positives kept walking p-desc until budget eval-seconds are spent (a secs-0 eval costs 1 unit).
+    scored = [(p, secs, y)]. Fractional take on the boundary eval keeps the comparison exact."""
+    pos = spent = 0.0
+    for p, secs, y in sorted(scored, key=lambda r: -r[0]):
+        if spent >= budget:
+            break
+        unit = secs if secs > 0 else 1.0
+        take = min(1.0, (budget - spent) / unit)
+        pos += take * y
+        spent += take * unit
+    return pos
+
+
+def compare_models(champ_path, chal_path, globs=None, days=3, budget_frac=0.5, min_pos=10):
+    """Champion/challenger promotion verdict on last-`days` days of real logged evals. Both models score every eval;
+    at EQUAL eval-seconds (budget_frac of total) the positives-kept are compared. The challenger promotes ONLY on
+    strict improvement. Returns a verdict dict; never writes or replaces any file (no auto-replace wiring)."""
+    try:
+        champ = FileModel(json.load(open(champ_path)))
+    except Exception as e:
+        return {"winner": "error", "promote": False, "error": f"champion unreadable: {e}"}
+    try:
+        chal = FileModel(json.load(open(chal_path)))
+    except Exception as e:
+        return {"winner": "error", "promote": False, "error": f"challenger unreadable: {e}"}
+    try:
+        import datetime
+        cut = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        cut = ""
+    files = collect_files(globs or DEFAULT_GLOBS)
+    ctxs = {}
+    for f in files:
+        try:
+            for sym_side, ts, ctx in iter_ctx(f):
+                if ts >= cut and (sym_side not in ctxs or ts >= ctxs[sym_side][0]):
+                    ctxs[sym_side] = (ts, ctx)
+        except Exception:
+            continue
+    for sym_side, (_ts, ctx) in ctxs.items():
+        champ.set_ctx(sym_side, ctx)
+        chal.set_ctx(sym_side, ctx)
+    scored_c, scored_h = [], []
+    n = 0
+    for f in files:
+        try:
+            rows = [it for it in iter_rows(f) if it[1] >= cut]
+        except Exception:
+            continue
+        for sym_side, _ts, sheet, row_key, naked, marg in rows:
+            cands = ([("R", None, naked)] if naked is not None else []) + [("F", h, m) for h, m in marg.items()]
+            for kind, hdr, r in cands:
+                d = r["d"] if r["valid"] else None
+                if d is None:
+                    continue
+                y = 1.0 if d > EPS else 0.0
+                secs = r["secs"] or 0.0
+                try:
+                    pc = champ.score(kind, sym_side, sheet, row_key, hdr)
+                    ph = chal.score(kind, sym_side, sheet, row_key, hdr)
+                except Exception:
+                    continue
+                scored_c.append((pc, secs, y))
+                scored_h.append((ph, secs, y))
+                n += 1
+    pos = sum(s[2] for s in scored_c)
+    secs = sum(s[1] for s in scored_c)
+    verdict = {"winner": "insufficient", "promote": False, "champion": champ_path, "challenger": chal_path, "days": days, "cut": cut, "n": n, "pos": int(pos), "eval_secs": round(secs, 1), "budget_frac": budget_frac}
+    if n == 0 or pos < min_pos:
+        verdict["note"] = f"only {n} evals / {int(pos)} positives in the last {days}d (min_pos={min_pos})"
+        return verdict
+    budget = budget_frac * sum((s[1] if s[1] > 0 else 1.0) for s in scored_c)
+    cp = _capture_at_budget(scored_c, budget)
+    hp = _capture_at_budget(scored_h, budget)
+    verdict.update({"budget_secs": round(budget, 1), "champ_pos_kept": round(cp, 2), "chal_pos_kept": round(hp, 2)})
+    if hp > cp:
+        verdict.update({"winner": "challenger", "promote": True})
+    elif cp > hp:
+        verdict.update({"winner": "champion", "promote": False})
+    else:
+        verdict.update({"winner": "tie", "promote": False})
+    return verdict
+
+
+def cmd_compare(args):
+    print(json.dumps(compare_models(args.champ, args.chal, args.glob, args.days, args.budget, args.min_pos), indent=1))
+    return 0
+
+
 def cmd_suggest(args):
     """Top nodes for a metric from brain_edges.json (scope sym_side if evidenced, else its cat_side). Ranking = P(pos) x E[d|pos]
-    for gain, mean metric difference for tim/trades/dd/sharpe (dd: most negative first). Research view — never a delta."""
+    for gain, mean metric difference for tim/trades/dd/sharpe (dd: most negative first). FORWARD labels are shown as
+    fwd_n/fwd_p columns when present. Empty evidence prints an explicit 'no evidence' line — never invented rows."""
     blob = json.load(open(args.edges))
-    edges = blob["edges"]
-    scope = args.scope
+    edges = blob.get("edges") or {}
+    fwd = blob.get("forward") or {}
+    scope = getattr(args, "sym_side", None) or args.scope
     cs = cat_side_of(scope) if scope.endswith(("_LONG", "_SHORT")) else scope
     rows = []
     for k, e in (edges.get(cs) or {}).items():
-        if "|" in k or e["n_sym"] < args.min_n:
+        if "|" in k or e.get("n_sym", 0) < args.min_n:
             continue
         own = (edges.get(scope) or {}).get(k) if scope != cs else None
-        valid = max(1, e["n"] - e["inv"])
+        valid = max(1, e["n"] - e.get("inv", 0))
         p = (e["pos"] + 1.0) / (valid + 2.0)
         if own:
-            p = (own["pos"] + M_SHRINK * p) / (max(1, own["n"] - own["inv"]) + M_SHRINK)
+            p = (own["pos"] + M_SHRINK * p) / (max(1, own["n"] - own.get("inv", 0)) + M_SHRINK)
         eg = e["sum_pos"] / e["pos"] if e["pos"] else 0.0
         mkey = {"gain": None, "tim": "mean_dtim", "trades": "mean_dtr", "dd": "mean_ddd", "sharpe": "mean_dsh"}[args.metric]
         v = p * eg if mkey is None else e.get(mkey)
         if v is None:
             continue
-        rows.append((v, k, p, eg, e))
+        fe = (fwd.get(scope) or {}).get(k) or (fwd.get(cs) or {}).get(k) or (fwd.get(GLOBAL) or {}).get(k)
+        fp, fn = (None, 0)
+        if fe:
+            fn = fe.get("n", 0)
+            fp = (fe.get("wpos", 0.0) + 0.5) / (fe.get("wn", 0.0) + 1.0)
+        rows.append((v, k, p, eg, e, fp, fn))
+    if not rows:
+        print(f"no evidence: scope={scope} metric={args.metric} (n=0)")
+        return 0
     rev = args.metric != "dd"
     rows.sort(key=lambda x: x[0], reverse=rev)
-    for v, k, p, eg, e in rows[: args.top]:
-        print(f"{v:+9.4f}  {k:70s} p_pos={p:.3f} E[d|pos]={eg:.2f} n_sym={e['n_sym']} pos={e['pos']} d_tim={e.get('mean_dtim')} d_trades={e.get('mean_dtr')} d_dd={e.get('mean_ddd')}")
+    for v, k, p, eg, e, fp, fn in rows[: args.top]:
+        fw = f" fwd_p={fp:.3f} fwd_n={fn}" if fp is not None else " fwd_p=- fwd_n=0"
+        print(f"{v:+9.4f}  {k:70s} p_pos={p:.3f} E[d|pos]={eg:.2f} n_sym={e['n_sym']} pos={e['pos']} d_tim={e.get('mean_dtim')} d_trades={e.get('mean_dtr')} d_dd={e.get('mean_ddd')}{fw}")
     return 0
 
 
@@ -740,17 +1282,27 @@ def main(argv=None):
     e.add_argument("--glob", action="append")
     e.add_argument("--since", default="")
     e.add_argument("--out-dir")
-    e.add_argument("--p-ref-r", type=float, default=0.002)
-    e.add_argument("--p-ref-f", type=float, default=0.002)
+    e.add_argument("--p-ref-r", type=float, default=0.005)
+    e.add_argument("--p-ref-f", type=float, default=0.005)
     e.add_argument("--floor", type=float, default=5.0)
     s = sub.add_parser("suggest")
     s.add_argument("--edges", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "brain", "brain_edges.json"))
-    s.add_argument("--scope", required=True, help="sym_side (e.g. BTCUSDC_LONG) or cat_side (CRYPTO_LONG)")
+    s.add_argument("--scope", default=None, help="sym_side (e.g. BTCUSDC_LONG) or cat_side (CRYPTO_LONG)")
+    s.add_argument("--sym-side", default=None, help="sym_side to answer for (e.g. BTCUSDC_LONG); overrides --scope")
     s.add_argument("--metric", default="gain", choices=["gain", "tim", "trades", "dd", "sharpe"])
     s.add_argument("--min-n", type=int, default=5)
     s.add_argument("--top", type=int, default=25)
+    c = sub.add_parser("compare")
+    c.add_argument("--champ", required=True, help="champion model file (brain_<CAT_SIDE>.json)")
+    c.add_argument("--chal", required=True, help="challenger model file")
+    c.add_argument("--glob", action="append")
+    c.add_argument("--days", type=float, default=3.0)
+    c.add_argument("--budget", type=float, default=0.5)
+    c.add_argument("--min-pos", type=int, default=10)
     args = ap.parse_args(argv)
-    return {"build": cmd_build, "replay": cmd_replay, "prequential": cmd_prequential, "export": cmd_export, "suggest": cmd_suggest}[args.cmd](args)
+    if args.cmd == "suggest" and not (args.scope or args.sym_side):
+        ap.error("suggest needs --sym-side SS or --scope SCOPE")
+    return {"build": cmd_build, "replay": cmd_replay, "prequential": cmd_prequential, "export": cmd_export, "suggest": cmd_suggest, "compare": cmd_compare}[args.cmd](args)
 
 
 if __name__ == "__main__":

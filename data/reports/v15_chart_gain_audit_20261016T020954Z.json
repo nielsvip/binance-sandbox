@@ -1,0 +1,340 @@
+{
+ "tag": "20261016T020954Z",
+ "host": "MacBook-Pro.local",
+ "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+ "args": {
+  "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+  "symside": "1000FLOKIUSDT_SHORT",
+  "glob": "*_30d_matrix.html",
+  "limit": 0,
+  "latest_only": false,
+  "tol": 0.01,
+  "npz": false,
+  "no_xlsx": true,
+  "rerun": false,
+  "rerun_tol": 2.5,
+  "keep_rerun": false,
+  "verbose": true,
+  "fail_on": "",
+  "out": ""
+ },
+ "counts": {
+  "PASS": 0,
+  "WARN": 0,
+  "FAIL": 2,
+  "UNPARSEABLE": 0,
+  "UNREADABLE": 0
+ },
+ "findings_by_id": {
+  "ROW_PNL_FREE_MONEY": 2,
+  "ROW_PNL_ARITHMETIC": 2,
+  "LA_OFF_SERIES_FILL": 1
+ },
+ "charts": [
+  {
+   "chart": "1000FLOKIUSDT_SHORT_bhm5p17_gain11p_t159_30d_matrix.html",
+   "symside": "1000FLOKIUSDT_SHORT",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "5/159 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "ERROR",
+     "id": "ROW_PNL_FREE_MONEY",
+     "msg": "4/154 single-leg trade(s) book MORE P&L than their own entry/exit prices can produce",
+     "sample": [
+      {
+       "bps": -58.69,
+       "pnl": 1.8278,
+       "gross_from_prices": 0.1844,
+       "exit_reason": "MTF_DC_REJECT_1h_px0.0231"
+      },
+      {
+       "bps": -84.5,
+       "pnl": 2.366,
+       "gross_from_prices": -0.0,
+       "exit_reason": "UNCOND_DC_HIGH_15M"
+      },
+      {
+       "bps": -30.81,
+       "pnl": 0.6489,
+       "gross_from_prices": 0.0,
+       "exit_reason": "WT_CROSS_EXIT_1h_bull"
+      },
+      {
+       "bps": -3.22,
+       "pnl": 0.0902,
+       "gross_from_prices": 0.0,
+       "exit_reason": "EXIT_VELOCITY_WT against-short g0.00%"
+      }
+     ]
+    },
+    {
+     "sev": "ERROR",
+     "id": "ROW_PNL_ARITHMETIC",
+     "msg": "18/154 single-leg trade(s) charge a cost that is not the 4.00 bps the rest of the chart charges \u2014 their P&L is not qty x (exit - entry) minus the same fee",
+     "worst": {
+      "entry": 0.027329999953508377,
+      "exit": 0.02687999978661537,
+      "qty": 0.0,
+      "pnl": -0.2928,
+      "gross_from_prices": 4.6103,
+      "row_cost_bps": 175.11,
+      "chart_cost_bps": 4.0,
+      "exit_reason": "PPL_TP_g1.65%>=1.50%_stopBE0.0274"
+     }
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no 1000FLOKIUSDT_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=5.8696/+5bps=-2.2087/+10bps=-15.6725"
+    }
+   ],
+   "filename_claims": {
+    "gain": 11.0,
+    "trades": 159,
+    "bh": -5.17
+   },
+   "recomputed": {
+    "trades": 159,
+    "pnl_dollars": 31.51,
+    "peak_event_replay": 280.0,
+    "peak_sweepline": 280.0,
+    "gain_pct_event_peak": 11.2551,
+    "gain_pct_sweep_peak": 11.2551,
+    "wins": 73,
+    "wr_pct": 45.91,
+    "max_dd_pct": 3.91,
+    "tim_pct": 16.11,
+    "bh_pct": -5.1668,
+    "cost_ladder": {
+     "2bps": 5.8696,
+     "5bps": -2.2087,
+     "10bps": -15.6725
+    },
+    "pool_sharpe": 0.114,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 154
+   },
+   "header": {
+    "gain_pct": 11.26,
+    "bh_pct": -5.17,
+    "delta_vs_bh": 16.42,
+    "trades": 159,
+    "pool_sharpe": 0.114,
+    "max_dd_pct": 3.91,
+    "max_dd_mae_pct": 4.23,
+    "tim_pct": 16.11,
+    "wr_pct": 45.91,
+    "bars": 2881,
+    "peak_capital": 280.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 159,
+     "opens": 159,
+     "augments": 0,
+     "reduces": 6
+    },
+    "last_label": "2026-10-14 04:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 11.25510919278183,
+    "trades": 159,
+    "tim_pct": 16.11,
+    "max_dd_pct": 3.9119293306431415,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -5.166801843579182,
+    "gain_vs_bh": 16.421911036361013
+   },
+   "secs": 0.06
+  },
+  {
+   "chart": "1000FLOKIUSDT_SHORT_bhm5p17_gain16p_t233_30d_matrix.html",
+   "symside": "1000FLOKIUSDT_SHORT",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "9/233 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "ERROR",
+     "id": "ROW_PNL_FREE_MONEY",
+     "msg": "7/224 single-leg trade(s) book MORE P&L than their own entry/exit prices can produce",
+     "sample": [
+      {
+       "bps": -50.9,
+       "pnl": 1.5881,
+       "gross_from_prices": 0.1629,
+       "exit_reason": "MTF_DC_REJECT_4h_px0.0231"
+      },
+      {
+       "bps": -36.54,
+       "pnl": 1.0233,
+       "gross_from_prices": 0.0001,
+       "exit_reason": "WT_CROSS_EXIT_1h_bull"
+      },
+      {
+       "bps": -84.5,
+       "pnl": 2.366,
+       "gross_from_prices": -0.0,
+       "exit_reason": "UNCOND_DC_HIGH_15M"
+      },
+      {
+       "bps": -60.65,
+       "pnl": 1.6634,
+       "gross_from_prices": 0.0,
+       "exit_reason": "WT_CROSS_EXIT_1h_bull"
+      },
+      {
+       "bps": -16.93,
+       "pnl": 0.4739,
+       "gross_from_prices": 0.0,
+       "exit_reason": "WT_CROSS_EXIT_1h_bull"
+      }
+     ]
+    },
+    {
+     "sev": "ERROR",
+     "id": "ROW_PNL_ARITHMETIC",
+     "msg": "19/224 single-leg trade(s) charge a cost that is not the 4.00 bps the rest of the chart charges \u2014 their P&L is not qty x (exit - entry) minus the same fee",
+     "worst": {
+      "entry": 0.028950000181794167,
+      "exit": 0.028510000556707382,
+      "qty": 0.0,
+      "pnl": -0.7297,
+      "gross_from_prices": 4.2556,
+      "row_cost_bps": 178.05,
+      "chart_cost_bps": 4.0,
+      "exit_reason": "PPL_TP_g1.52%>=1.50%_stopBE0.0290"
+     }
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "6 fill(s) at a price that is on no bar close (stop/limit level) \u2014 only an intrabar [low,high] check can clear them; run --npz where the NPZ lives",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 1326,
+       "price": 0.028831899198703468,
+       "bar_close": 0.02896999940276146,
+       "qty": 2.175346383664942,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1445,
+       "price": 0.026806849651038644,
+       "bar_close": 0.02694999985396862,
+       "qty": 10486.891642115677,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1720,
+       "price": 0.027999825798906385,
+       "bar_close": 0.027969999238848686,
+       "qty": 7.767069295935504e-11,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1962,
+       "price": 0.027548700631596146,
+       "bar_close": 0.02758999913930893,
+       "qty": 10207.801757514022,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1978,
+       "price": 0.027749200291000305,
+       "bar_close": 0.02776999957859516,
+       "qty": 0.6716928904752777,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no 1000FLOKIUSDT_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=8.4478/+5bps=-3.0043/+10bps=-22.0911"
+    }
+   ],
+   "filename_claims": {
+    "gain": 16.0,
+    "trades": 233,
+    "bh": -5.17
+   },
+   "recomputed": {
+    "trades": 233,
+    "pnl_dollars": 45.03,
+    "peak_event_replay": 280.0,
+    "peak_sweepline": 280.0,
+    "gain_pct_event_peak": 16.0825,
+    "gain_pct_sweep_peak": 16.0825,
+    "wins": 103,
+    "wr_pct": 44.21,
+    "max_dd_pct": 3.63,
+    "tim_pct": 20.03,
+    "bh_pct": -5.1668,
+    "cost_ladder": {
+     "2bps": 8.4478,
+     "5bps": -3.0043,
+     "10bps": -22.0911
+    },
+    "pool_sharpe": 0.0896,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 224
+   },
+   "header": {
+    "gain_pct": 16.08,
+    "bh_pct": -5.17,
+    "delta_vs_bh": 21.25,
+    "trades": 233,
+    "pool_sharpe": 0.0896,
+    "max_dd_pct": 3.63,
+    "max_dd_mae_pct": 4.09,
+    "tim_pct": 20.03,
+    "wr_pct": 44.21,
+    "bars": 2881,
+    "peak_capital": 280.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 233,
+     "opens": 233,
+     "augments": 0,
+     "reduces": 17
+    },
+    "last_label": "2026-10-14 04:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 16.082477402318695,
+    "trades": 233,
+    "tim_pct": 20.03,
+    "max_dd_pct": 3.6336505878436287,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -5.166801843579182,
+    "gain_vs_bh": 21.249279245897878
+   },
+   "secs": 0.06
+  }
+ ]
+}

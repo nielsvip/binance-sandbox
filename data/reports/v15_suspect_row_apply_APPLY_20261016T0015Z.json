@@ -1,0 +1,39 @@
+{
+ "from": "data/reports/v15_suspect_row_rerun_STOCKS_T1_20261016T0005Z.json",
+ "ts": "2026-10-16T00:14:24Z",
+ "host": "MacBook-Pro.local",
+ "applied": [
+  "APO_SHORT",
+  "ZCSH_SHORT"
+ ],
+ "skipped": [
+  {
+   "sym_side": "CLS_LONG",
+   "why": "no promoted move"
+  },
+  {
+   "sym_side": "WDAY_SHORT",
+   "why": "no promoted move"
+  },
+  {
+   "sym_side": "IBIT_LONG",
+   "why": "no promoted move"
+  },
+  {
+   "sym_side": "BWXT_SHORT",
+   "why": "NPZ_STALE: STALE_NPZ_SKIPPED: BWXT ends 2026-10-15 19:15Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  },
+  {
+   "sym_side": "CRWD_SHORT",
+   "why": "NPZ_STALE: STALE_NPZ_SKIPPED: CRWD ends 2026-10-15 19:15Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  },
+  {
+   "sym_side": "HOOD_SHORT",
+   "why": "NPZ_STALE: STALE_NPZ_SKIPPED: HOOD ends 2026-10-15 19:30Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  },
+  {
+   "sym_side": "ACN_LONG",
+   "why": "NPZ_STALE: STALE_NPZ_SKIPPED: ACN ends 2026-10-15 19:30Z, latest closed bar 2026-10-15 20:00Z \u2014 refresh the NPZ, test skipped (no misleading numbers)"
+  }
+ ]
+}

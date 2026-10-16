@@ -3722,19 +3722,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         )
                         if _uag_gain_since < _uag_min_gain:
                             return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
-        # ═══════════════════════════════════════════════════════════════════════════
-        # 2026-09-18 FIX — MAX_AUGMENTS_PER_POSITION — mirror ez_manage.py:23388-23396
-        # Live caps AUGMENT (not REENTRY) via augmented_count >= max (config 999999 = no cap).
-        # Pilot capped values 0/0.5/1/2 were disconnected in backtest (stub _=1); now
-        # wired so deltas for those caps are valid and parity-tested (is_augment ∧ ¬REENTRY).
-        # ═══════════════════════════════════════════════════════════════════════════
-        if is_aug_action and (act or '').upper() not in ('REENTRY', 'REENTRY_2', 'HEDGE_OPEN') and not _is_ladder_seed:
-            _max_aug_v8 = int(float(getattr(config, 'MAX_AUGMENTS_PER_POSITION', 999999) or 999999))
-            _pa_v8 = trade_manager.positions.get(pk)
-            if _pa_v8 is not None:
-                _ac_v8 = int(float(getattr(_pa_v8, 'augmented_count', 0) or 0))
-                if _ac_v8 >= _max_aug_v8:
-                    return f"BLOCKED_MAX_AUGMENTS_{_ac_v8}>={_max_aug_v8}"
+        # MAX_AUGMENTS_PER_POSITION deleted 2026-10-15 (USER): no augment-count cap on any surface, live or vector.
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-29 PARITY — MTF ARMED-STATE ENTRY GATE — mirror ez_manage.py:22791-22839.
         # Gates OPEN/AUGMENT/ENTRY (NOT REENTRY/hedge) on armed-state + GR filter. Same
@@ -4957,12 +4945,22 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         return _v.astype(np.float64)
                     return np.full(_wr_n, _d, dtype=np.float64)
 
+                # ha_4h is stored numerically (int8 -1/0/1) on most NPZs but as the colour STRING on others, and the
+                # unconditional int64 cast raised `ValueError: invalid literal for int() with base 10: 'red'`, which
+                # killed the whole V12_WR_NATIVE event build (measured 2026-10-16 on the trade-parity live leg).
+                # A string store already holds the value this block is about to construct, so it is used as-is.
                 _wr_ha4_raw = _wr_a.get("ha_4h") if hasattr(_wr_a, "get") else None
+                _wr_ha4s = None
                 if _wr_ha4_raw is not None and isinstance(_wr_ha4_raw, np.ndarray) and len(_wr_ha4_raw) == _wr_n:
-                    _wr_ha4i = np.asarray(_wr_ha4_raw).astype(np.int64)
+                    if _wr_ha4_raw.dtype.kind in ("U", "S", "O"):
+                        _wr_ha4s = np.asarray([(_x.decode() if isinstance(_x, bytes) else str(_x)) for _x in _wr_ha4_raw])
+                        _wr_ha4i = np.where(_wr_ha4s == 'red', -1, np.where(_wr_ha4s == 'green', 1, 0)).astype(np.int64)
+                    else:
+                        _wr_ha4i = np.asarray(_wr_ha4_raw).astype(np.int64)
                 else:
                     _wr_ha4i = np.zeros(_wr_n, dtype=np.int64)
-                _wr_ha4s = np.where(_wr_ha4i == -1, 'red', np.where(_wr_ha4i == 1, 'green', 'neutral'))
+                if _wr_ha4s is None:
+                    _wr_ha4s = np.where(_wr_ha4i == -1, 'red', np.where(_wr_ha4i == 1, 'green', 'neutral'))
                 _wr_last = 0.0
                 for _wr_side in _position_sides:
                     _wr_is_long = _wr_side == "LONG"
@@ -15273,8 +15271,6 @@ def _ensure_eng_all_params(tm_mod):
         _ = 1  # MARK_PRICE_MAX_STALENESS
     if bool(getattr(tm_mod.config, "MAX_ALLOWED_DRAWDOWN_PCT", False)) if "MAX_ALLOWED_DRAWDOWN_PCT".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_ALLOWED_DRAWDOWN_PCT", None) is not None:
         _ = 1  # MAX_ALLOWED_DRAWDOWN_PCT
-    if bool(getattr(tm_mod.config, "MAX_AUGMENTS_PER_POSITION", False)) if "MAX_AUGMENTS_PER_POSITION".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_AUGMENTS_PER_POSITION", None) is not None:
-        _ = 1  # MAX_AUGMENTS_PER_POSITION
     if bool(getattr(tm_mod.config, "MAX_CONCURRENT_ORDERS", False)) if "MAX_CONCURRENT_ORDERS".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_CONCURRENT_ORDERS", None) is not None:
         _ = 1  # MAX_CONCURRENT_ORDERS
     if bool(getattr(tm_mod.config, "MAX_CONCURRENT_POSITIONS", False)) if "MAX_CONCURRENT_POSITIONS".endswith("_ENABLED") else getattr(tm_mod.config, "MAX_CONCURRENT_POSITIONS", None) is not None:

@@ -19,6 +19,13 @@ def test_tradier_prepared_forces_live_augment_sources(monkeypatch):
     assert out2["STOCK_LIVE_AUGMENT_ONLY"] is True  # a swept False can never re-enable crypto augments on stocks
 
 
+def test_engine_forces_live_only_for_tradier():
+    src = open(os.path.join(os.path.dirname(__file__), "..", "v12_quick_engine.py")).read()
+    i = src.index("_n4_live_only =")
+    window = src[i : i + 500]
+    assert '"tradier"' in window and "V12_STOCK_LIVE_AUGMENT_GUARD" in window  # engine-level venue law, not just the flag
+
+
 def test_crypto_untouched_and_kill_switch(monkeypatch):
     monkeypatch.delenv("V12_STOCK_LIVE_AUGMENT_GUARD", raising=False)
     out = VP._venue_augment_guard({"mode": "crypto", "symside": "BTCUSDT_LONG"}, {})

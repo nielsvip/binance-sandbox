@@ -43,6 +43,12 @@ for ip in 10.0.0.4; do  # 2026-10-13 s5/s6 destroyed
   _excl_arg=""
   [ -f "$EXCL" ] && _excl_arg="--exclude-from=$EXCL"
   # shellcheck disable=SC2086
-  rsync -az --timeout=60 $_excl_arg ~/binance-sandbox/backtest_v8/indicators/ niels@$ip:~/binance-sandbox/backtest_v8/indicators/ > /tmp/sync_ind_${ip##*.}.log 2>&1 || echo "$(date) fail $ip" >> /tmp/sync_indicators.log
+  # 2026-10-16 `-u`: never overwrite a NEWER NPZ on the worker. S1 cannot refresh a STOCK NPZ at all
+  # (npz_bar_refresh returns EXCHANGE_BAR_NOT_READY for every stock here — only s2 reaches Tradier), so s2 is the
+  # only host that can produce a current stock tail. Proven 2026-10-16 00:10:08Z (ctime): this push replaced 12
+  # freshly rebuilt stock NPZs on s2 with S1's 20:21Z copies, mtime preserved, and every board then refused
+  # STALE_NPZ_SKIPPED. --update keeps S1 the source for everything it is newer on and lets the worker's own
+  # fresher build stand.
+  rsync -azu --timeout=60 $_excl_arg ~/binance-sandbox/backtest_v8/indicators/ niels@$ip:~/binance-sandbox/backtest_v8/indicators/ > /tmp/sync_ind_${ip##*.}.log 2>&1 || echo "$(date) fail $ip" >> /tmp/sync_indicators.log
   echo "$(date -u +%FT%TZ) $ip OK $(ls ~/binance-sandbox/backtest_v8/indicators 2>&1 | wc -l) files" >> /tmp/sync_indicators.log
 done

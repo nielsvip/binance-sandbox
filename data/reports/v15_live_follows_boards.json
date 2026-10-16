@@ -1,0 +1,48 @@
+{
+ "at": "2026-10-16T23:38:01Z",
+ "reports": [
+  {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261016_refresh_1238.json",
+   "age_min": 655.2,
+   "applied": true,
+   "n": null,
+   "results": {
+    "PASS": 390,
+    "REFUSED": 27,
+    "SKIP": 11
+   },
+   "registered": 2,
+   "already_live_skipped": 388,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 21,
+    "published": 11,
+    "golive-blocklisted": 6
+   },
+   "changed_symsides": []
+  },
+  {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261016_refresh_1226.json",
+   "age_min": 667.5,
+   "applied": true,
+   "n": null,
+   "results": {
+    "PASS": 390,
+    "REFUSED": 27,
+    "SKIP": 11
+   },
+   "registered": 1,
+   "already_live_skipped": 389,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 21,
+    "published": 11,
+    "golive-blocklisted": 6
+   },
+   "changed_symsides": []
+  }
+ ],
+ "fails": [
+  "newest go-live report is 655 min old (> 135) \u2014 V15_GOLIVE_REFRESH is not landing, live keeps its old sets",
+  "two consecutive runs still had pending sets (1 then 2) \u2014 live is not converging on the boards"
+ ],
+ "refused_total": 38
+}

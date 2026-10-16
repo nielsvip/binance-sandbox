@@ -2817,6 +2817,20 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         except Exception:
             _cand_ts_span = None
         allowed, _reason = should_allow_overwrite(out_path, _span_days, _cs, _ckeys, _cand_n, _cand_ts_span)
+        if not allowed and os.environ.get("NPZ_HOLE_REPAIR", "1") == "1":
+            # USER 2026-10-15 "merge, not replace": the block is correct for a truncated candidate but it also makes a
+            # HOLED npz unrepairable forever. Merge historic + fresh rows and let BOTH guards judge the merged result.
+            _rep = _npz_hole_repair_merge(out_path, merged, symbol)
+            if _rep is not None:
+                merged = _rep
+                _cand_n = int(len(merged["timestamps"]))
+                _ckeys = len(merged)
+                _rts = np.asarray(merged["timestamps"], dtype=np.int64)
+                _cand_ts_span = (float(_rts[-1]) - float(_rts[0])) / 86400.0
+                _span_days = max(_span_days, _cand_ts_span)
+                n = _cand_n
+                allowed, _reason = should_allow_overwrite(out_path, _span_days, _cs, _ckeys, _cand_n, _cand_ts_span)
+                logger.warning(f"  {symbol}: post-repair overwrite guard: {'ALLOW' if allowed else 'BLOCK'} — {_reason}")
         if not allowed:
             logger.warning(f"  {symbol}: BLOCKED overwrite — {_reason} (existing 917d preserved)")
             return False
@@ -2835,6 +2849,101 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
     fsize = os.path.getsize(str(out_path))
     logger.info(f"  {symbol}: {len(merged)} keys, {n} bars, {fsize/1024:.0f}KB, {elapsed:.1f}s")
     return True
+
+
+def _npz_hole_repair_merge(out_path, candidate, symbol):
+    """USER 2026-10-15 "merge, not replace": repair a holed NPZ without losing history.
+
+    The 2026-08-26 -> 09-30 Tradier 15m cache hole left 32 of 162 stock NPZs with a 29-35 day gap in the recent
+    window while still spanning years (GOOGL NVDA PLTR MSTR PYPL RRC TTD ...). Every rebuild is then refused by
+    tools/npz_guard.should_allow_overwrite, because the candidate's row index is the FRESH klines (~10 months, clean)
+    and is therefore <80% of the holed file's total rows -> "BLOCK bar-loss overwrite" -> nothing is written, and
+    v15_dispatch_job gap-refuses the symbol every tick forever. The klines themselves are complete (30 of the 32).
+
+    So: keep the existing rows OUTSIDE the candidate's coverage, take the candidate's rows INSIDE it (that is what
+    fills the hole), and return the union. The merged file then has MORE rows and MORE span than the existing one, so
+    the overwrite guards pass by construction and nothing has to be loosened.
+
+    Returns the merged dict, or None when the repair does not apply or does not come out strictly better. Never raises.
+    """
+    try:
+        from tools.stock_npz_gap_guard import check_timestamps as _chk
+    except Exception as _e:
+        logger.warning(f"  {symbol}: hole-repair unavailable ({_e})")
+        return None
+    try:
+        if not Path(str(out_path)).exists() or "timestamps" not in candidate:
+            return None
+        with np.load(str(out_path), allow_pickle=True) as _z:
+            ex = {k: _z[k] for k in _z.files}
+        ex_ts = np.asarray(ex.get("timestamps"), dtype=np.int64)
+        cd_ts = np.asarray(candidate["timestamps"], dtype=np.int64)
+        if ex_ts.size < 2 or cd_ts.size < 2:
+            return None
+        # both are epoch seconds (ts_epoch divides by the index unit); normalise a ms-era file
+        if ex_ts[-1] > 10 ** 11:
+            ex_ts = ex_ts // 1000
+        if cd_ts[-1] > 10 ** 11:
+            cd_ts = cd_ts // 1000
+        v_ex, v_cd = _chk(ex_ts), _chk(cd_ts)
+        if v_ex.get("ok"):
+            return None  # nothing to repair
+        if not v_cd.get("ok"):
+            logger.warning(f"  {symbol}: hole-repair SKIPPED — candidate is holed too ({v_cd.get('reason')}); fix the klines first (refetch)")
+            return None
+        # UNION by timestamp with the candidate winning on overlap. Keeping only `ex_ts < cd_ts[0]` would DROP any
+        # existing bars NEWER than the candidate's range (a tail the klines no longer reach) and open a fresh gap
+        # between the historic block and the candidate's first bar — the merged file then fails the gap guard and the
+        # repair silently never applies. Caught by tests/test_npz_hole_repair_merge.py.
+        keep = ~np.isin(ex_ts, cd_ts)
+        n_keep, n_cd = int(keep.sum()), int(cd_ts.size)
+        if n_keep + n_cd <= ex_ts.size:
+            logger.warning(f"  {symbol}: hole-repair SKIPPED — merge would not add rows ({n_keep}+{n_cd} <= {ex_ts.size})")
+            return None
+        _order = np.argsort(np.concatenate([ex_ts[keep], cd_ts]), kind="stable")
+        def _pad(like, n):
+            a = np.asarray(like)
+            if a.dtype.kind == "f":
+                return np.full(n, np.nan, dtype=a.dtype)
+            if a.dtype.kind == "b":
+                return np.zeros(n, dtype=a.dtype)
+            if a.dtype.kind in "iu":
+                return np.zeros(n, dtype=a.dtype)
+            return np.full(n, "", dtype=a.dtype) if a.dtype.kind in "US" else np.zeros(n, dtype=a.dtype)
+        out, padded = {}, []
+        for k in sorted(set(ex) | set(candidate)):
+            e, c = ex.get(k), candidate.get(k)
+            e_row = e is not None and getattr(e, "ndim", 0) == 1 and len(e) == ex_ts.size
+            c_row = c is not None and getattr(c, "ndim", 0) == 1 and len(c) == n_cd
+            if e_row and c_row:
+                out[k] = np.concatenate([np.asarray(e)[keep], np.asarray(c)])[_order]
+            elif e_row and not c_row:
+                out[k] = np.concatenate([np.asarray(e)[keep], _pad(e, n_cd)])[_order]
+                padded.append(k)
+            elif c_row and not e_row:
+                out[k] = np.concatenate([_pad(c, n_keep), np.asarray(c)])[_order]
+                padded.append(k)
+            else:
+                out[k] = c if c is not None else e  # non-row marker (htf_align, kline_source, ...)
+        out["timestamps"] = np.concatenate([ex_ts[keep], cd_ts])[_order].astype(np.int64)
+        m_ts = out["timestamps"]
+        v_m = _chk(m_ts)
+        ex_span = (float(ex_ts[-1]) - float(ex_ts[0])) / 86400.0
+        m_span = (float(m_ts[-1]) - float(m_ts[0])) / 86400.0
+        if not v_m.get("ok"):
+            logger.warning(f"  {symbol}: hole-repair REFUSED — merged still holed ({v_m.get('reason')})")
+            return None
+        if m_ts.size < ex_ts.size or m_span < ex_span - 1e-6 or len(out) < len(ex):
+            logger.warning(f"  {symbol}: hole-repair REFUSED — merged not strictly better (bars {m_ts.size} vs {ex_ts.size}, span {m_span:.0f}d vs {ex_span:.0f}d, keys {len(out)} vs {len(ex)})")
+            return None
+        if int(np.sum(np.diff(m_ts) < 0)) or int(np.sum(np.diff(m_ts) == 0)):
+            logger.warning(f"  {symbol}: hole-repair REFUSED — merged timestamps not strictly increasing")
+            return None
+        logger.warning(f"  {symbol}: HOLE REPAIR — existing {ex_ts.size} bars/{ex_span:.0f}d sessions={v_ex.get('sessions')} -> merged {m_ts.size} bars/{m_span:.0f}d sessions={v_m.get('sessions')} (kept {n_keep} historic + {n_cd} fresh, padded {len(padded)} one-sided keys)")
+        return out
+    except Exception as _e:
+        logger.warning(f"  {symbol}: hole-repair failed {type(_e).__name__}: {_e}")
+        return None
 
 
 def _inject_market_sentiment(out_dir, symbols):

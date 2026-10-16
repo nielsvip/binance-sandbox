@@ -1,0 +1,152 @@
+{
+ "tag": "20261016T021444Z",
+ "host": "MacBook-Pro.local",
+ "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+ "args": {
+  "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+  "symside": "ALGOUSDT_LONG",
+  "glob": "ALGOUSDT_LONG_bh36p13_gain3p47_t82_30d_matrix.html",
+  "limit": 0,
+  "latest_only": false,
+  "tol": 0.01,
+  "npz": false,
+  "no_xlsx": true,
+  "rerun": true,
+  "rerun_tol": 2.5,
+  "keep_rerun": false,
+  "verbose": true,
+  "fail_on": "",
+  "out": ""
+ },
+ "counts": {
+  "PASS": 0,
+  "WARN": 0,
+  "FAIL": 1,
+  "UNPARSEABLE": 0,
+  "UNREADABLE": 0
+ },
+ "findings_by_id": {
+  "GAIN_MANIFEST_VS_LEDGER": 1,
+  "SRC_MANIFEST_TRADES": 1,
+  "SRC_CHART_WINDOW_AFTER_MANIFEST": 1,
+  "RERUN_GAIN_DRIFT": 1
+ },
+ "charts": [
+  {
+   "chart": "ALGOUSDT_LONG_bh36p13_gain3p47_t82_30d_matrix.html",
+   "symside": "ALGOUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_MANIFEST_VS_LEDGER",
+     "msg": "manifest prints gain +7.1480% but its own entries/exits sum to +3.4668% (event-peak) / +3.4668% (sweep-peak) \u2014 drift 3.6812",
+     "claimed": 7.148038210240196,
+     "recomputed": [
+      3.4668,
+      3.4668
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "1/82 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_MANIFEST_TRADES",
+     "msg": "manifest says 47 trades, the chart draws 82"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_CHART_WINDOW_AFTER_MANIFEST",
+     "msg": "the chart's last bar is 2026-10-12 but the manifest was published 2026-10-08 \u2014 the html was regenerated on a LATER window than the board it is named for, so these pictograms are not the trades the manifest scored"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=2.2891/+5bps=0.5224/+10bps=-2.4221"
+    },
+    {
+     "sev": "WARN",
+     "id": "RERUN_GAIN_DRIFT",
+     "msg": "the same set re-measures -0.18% today against the published +3.47% \u2014 the window slid or the NPZ changed under the board"
+    }
+   ],
+   "filename_claims": {
+    "gain": 3.47,
+    "trades": 82,
+    "bh": 36.13
+   },
+   "recomputed": {
+    "trades": 82,
+    "pnl_dollars": 9.71,
+    "peak_event_replay": 280.0,
+    "peak_sweepline": 280.0,
+    "gain_pct_event_peak": 3.4668,
+    "gain_pct_sweep_peak": 3.4668,
+    "wins": 42,
+    "wr_pct": 51.22,
+    "max_dd_pct": 1.62,
+    "tim_pct": 2.88,
+    "bh_pct": 36.1268,
+    "cost_ladder": {
+     "2bps": 2.2891,
+     "5bps": 0.5224,
+     "10bps": -2.4221
+    },
+    "pool_sharpe": 0.0967,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 81
+   },
+   "header": {
+    "gain_pct": 3.47,
+    "bh_pct": 36.13,
+    "delta_vs_bh": -32.66,
+    "trades": 82,
+    "pool_sharpe": 0.0967,
+    "max_dd_pct": 1.62,
+    "max_dd_mae_pct": 2.25,
+    "tim_pct": 2.88,
+    "wr_pct": 51.22,
+    "bars": 2881,
+    "peak_capital": 280.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 82,
+     "opens": 82,
+     "augments": 0,
+     "reduces": 1
+    },
+    "last_label": "2026-10-12 04:00"
+   },
+   "manifest_metrics": {
+    "gain_pct": 7.148038210240196,
+    "trades": 47,
+    "tim_pct": 1.67,
+    "max_dd_pct": 2.3072171956111993,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 18.914590545558283,
+    "gain_vs_bh": -11.766552335318089
+   },
+   "secs": 0.09,
+   "rerun": {
+    "ok": true,
+    "set_from": "/Users/niels/Documents/binance/data/reports/lifecycle_pilot/ALGOUSDT_LONG_v14_progress.json",
+    "fresh": {
+     "gain_pct": -0.1831,
+     "trades": 141,
+     "bh_pct": 28.9419,
+     "bars": 2881
+    },
+    "published": {
+     "gain_pct": 3.4668,
+     "trades": 82,
+     "bh_pct": 36.1268,
+     "bars": 2881
+    }
+   }
+  }
+ ]
+}

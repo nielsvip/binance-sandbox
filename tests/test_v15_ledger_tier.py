@@ -25,3 +25,8 @@ def test_ledger_entry(tmp_path, monkeypatch):
     tier, meta = P.symside_tier(5.0, 1.0, 40, 31.2, force=P.ledger_tier_name("W", 1.0))
     assert tier == "WINNER"
     P._LEDGER_CACHE.clear()
+
+
+def test_holdout_cut_and_default_off():
+    assert P.holdout_cut(1000000.0, 7) == 1000000.0 - 7 * 86400.0
+    assert P._HOLDOUT["installed"] is False or P._HOLDOUT["days"] > 0

@@ -63,7 +63,14 @@ DRY = os.environ.get("LF_DRY_RUN", "0") == "1"
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 HB_FRESH_S = float(os.environ.get("LF_HB_FRESH_S", "90"))
 RECOVER_S = float(os.environ.get("LF_RECOVER_S", "600"))
-TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "300"))
+TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "60"))  # USER 2026-10-15 "ARM s1 SO IT CAN ALWAYS ENTER
+# INTO ACTION AT ANY INSTANT": 300 -> 60. The Mac agent writes mac_data_heartbeat.json every LF_TICK_S (15 s), so
+# 60 s absent = 4 missed writes = unambiguous. With TAKEOVER_CONFIRM=4 at a 15 s tick a dead Mac is taken over in
+# ~120 s instead of ~360 s. It is not set lower because the Mac demonstrably stalls 30-45 s under load
+# ([OFFLOOP_SLOW] took 44.3s, 2026-10-15) and sub-minute thresholds are what flapped the failover 16x/day when
+# KLINE_STALE_S was 180. The failure that actually cost money today — ONE wedged position writer while the host
+# stayed up — is now repaired locally in <=60 s by tools/mac_pos_writer_keepalive.sh, which is both faster and
+# safer than moving the whole venue to another host; this threshold is the whole-host backstop behind it.
 TAKEOVER_CONFIRM = int(os.environ.get("LF_TAKEOVER_CONFIRM", "4"))
 FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "600"))
 FENCE_WAIT_S = float(os.environ.get("LF_FENCE_WAIT_S", "120"))
@@ -77,7 +84,13 @@ NT_ORDER_S = float(os.environ.get("LF_NT_ORDER_S", "300"))
 NT_PROBE_EVERY_S = float(os.environ.get("LF_NT_PROBE_EVERY_S", "120"))
 NT_BACKOFF_WINDOW_S = float(os.environ.get("LF_NT_BACKOFF_WINDOW_S", "21600"))
 NT_BACKOFF_MAX = int(os.environ.get("LF_NT_BACKOFF_MAX", "3"))
-NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S}
+NT_ACCT_S = float(os.environ.get("LF_NT_ACCT_S", "0"))  # 2026-10-16 USER ("NO account can be inactive for >3min
+# without s1 kicking in"): the account_dead kind (live_failover_common, ANY ONE crypto account whose decision engine
+# has been dead/wedged >= LF_ACCT_DEAD_S=240 s while the others still trade) needs no extra S1-side dwell — the bar
+# is already in the kind itself, and TAKEOVER_CONFIRM still demands 4 consecutive ticks (~60 s) before anything moves.
+# Before this the kind did not exist: one or two stopped accounts out of five were invisible to S1 forever, because
+# traders_dead requires ALL FIVE engines gone and broker_unreachable requires BROKER_DEAD_FRAC=0.6 (3 of 5).
+NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S}
 STATE_CHECK = Path(__file__).resolve().parent / "live_failover_state_check.py"
 
 

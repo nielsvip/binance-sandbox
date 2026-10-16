@@ -28,7 +28,12 @@ HOME = Path(os.path.expanduser("~"))
 SCHED_LOG = Path("/tmp/v15_fleet_sched.log")
 PRIO = HOME / "v15_priority_syms.txt"
 OUT = ROOT / "data" / "daily_chain"
-MAX_PRIO = int(os.environ.get("V15_DIRECTOR_MAX_PRIO", "24"))
+# 24 -> 64 (USER 2026-10-15 recalc triage): V15_SCHED_PRIORITY_SYMS is consumed as a SET by the scheduler
+# (priority_syms() returns a set — order inside the file does not rank), so a 24-cap could only ever prefer 24 of the
+# 85 triage symbols and silently dropped the rest of today's losers. 64 carries the 2-loss escalation plus all 39
+# tier-1 losers (~35 distinct symbols) with room for the tier-2 open positions, while still leaving 200+ of the 266
+# live-traded universe outside the priority block — so this narrows the queue rather than flattening it.
+MAX_PRIO = int(os.environ.get("V15_DIRECTOR_MAX_PRIO", "64"))
 
 
 def now():
@@ -129,6 +134,34 @@ def main():
         print(f"[director] loss-streak priority unavailable: {_se}")
         streak_syms = []
     prio += streak_syms
+    # 🔴 USER 2026-10-15 RECALC TRIAGE (emergency, right after the 2-loss escalation): the templates and the pilot were
+    # fixed tonight (WT15 yellow attachment 49->129 / 0->127, coarse yellow cap paused, 3 unvectorised WT switches
+    # quarantined), so the sym_sides that actually LOST MONEY must be recomputed on the corrected system first —
+    # "triaging tonight's recalc to the ~40 names that traded or lost today plus the 42 open positions ... first
+    # priority all that traded live over the last week both stock and crypto".
+    # Source: data/reports/v15_recalc_triage.json, built on the Mac from data/per_trade_returns (7d of CONFIRMED
+    # closes) + data/open_position_sym_sides.json, tier-ordered: 1 = lost money today (39 sym_sides, -$713.52 on
+    # 2026-10-15), 2 = open position now (55), 3 = lost money this week, 4 = traded this week.
+    # Tiers 1 and 2 only — tiers 3/4 fall through to the existing live-universe tier below, so this narrows the
+    # queue without starving it. Fail-open: a missing/unreadable file changes nothing.
+    triage_syms = []
+    try:
+        _tr = jload(ROOT / "data" / "reports" / "v15_recalc_triage.json", []) or []
+        for _t in (1, 2):
+            for _r in _tr:
+                if int(_r.get("tier") or 9) != _t:
+                    continue
+                _s = str(_r.get("sym_side") or "").rsplit("_", 1)[0]
+                if _s:
+                    triage_syms.append(_s)
+        triage_syms = list(dict.fromkeys(triage_syms))
+        if triage_syms:
+            _n1 = sum(1 for _r in _tr if int(_r.get("tier") or 9) == 1)
+            print(f"[director] recalc triage: {len(triage_syms)} symbols lead the queue ({_n1} tier-1 losers) ({triage_syms[:8]})")
+    except Exception as _te:
+        print(f"[director] recalc triage unavailable: {_te}")
+        triage_syms = []
+    prio += triage_syms
     # USER 2026-10-12: (0) the best performers (ledger W tier = DAILY adjustment) always lead; in the stocks phase
     # (scheduler venue_phase: every tradeable stock passes before crypto) stocks lead and crypto waits.
     phase = ((tick.get("venue_phase") or {}).get("phase")) or "any"
@@ -163,6 +196,50 @@ def main():
         prio = filter_syms(prio, ROOT)  # USER 2026-10-13: tokenized stocks are not tradeable — never prioritised
     except ImportError as _de:
         print(f"[director] deny filter unavailable: {_de}")
+    # 🔴 TRADEABLE-UNIVERSE FILTER (USER 2026-10-15: "there was a problem with tradeable symbols not updating ...
+    # anything not in symbols_trb_long/short.json or mandatory long/short (stocks) or not in the latest
+    # tradeable_keys should not be traded nor calculated or use any cpu in any way").
+    # The only filter here before this was excluded_tokenized_stocks.filter_syms, which covers TOKENIZED stocks
+    # (AAPLUSDT etc.) and says nothing about the tradeable universe — so untradeable symbols were being prioritised
+    # and fully computed. Measured 2026-10-15: 65 of the 266 live-traded sym_sides in the recalc triage are NOT in the
+    # universe, including 5 tier-1 losers that cost **-$143.58 today** (LOW_SHORT -46.52, NKE_SHORT -31.57,
+    # JNJ_SHORT -25.73, PATH_SHORT -24.43, TRGP_LONG -15.33) — they should never have traded, let alone been queued.
+    # Symbol-level test (the priority file is symbols, not sym_sides): keep a symbol if it is tradeable on EITHER
+    # side, so a long-only name still gets its long board. Side-exactness is the scheduler's job.
+    # FAIL-OPEN: if a universe file is missing or unreadable the filter is skipped and logged — an unreadable file
+    # must not silently empty the queue.
+    try:
+        _uni, _src = set(), []
+        for _f, _lab in (("symbols_trb_long.json", "trb_long"), ("symbols_trb_short.json", "trb_short")):
+            _v = jload(ROOT / _f, None)
+            if isinstance(_v, list):
+                _uni |= {str(x).upper() for x in _v}; _src.append(f"{_lab}:{len(_v)}")
+        try:
+            sys.path.insert(0, str(ROOT))
+            from config_tradier import TradierConfig as _TC
+            _c = _TC()
+            for _a in ("TRADIER_MANDATORY_LONG_TRB", "TRADIER_MANDATORY_SHORT_TRB"):
+                _m = getattr(_c, _a, None) or []
+                _uni |= {str(x).upper() for x in _m}; _src.append(f"{_a[18:].lower()}:{len(_m)}")
+        except Exception as _me:
+            print(f"[director] mandatory stock lists unavailable: {_me}")
+        _tk = jload(ROOT / "tradeable_keys.json", None)
+        if isinstance(_tk, list):
+            # entries are acct:SYM_SIDE (crypto only — no tr* accounts as of 2026-10-15)
+            for _k in _tk:
+                _ss = str(_k).split(":", 1)[-1]
+                _uni.add(_ss.rsplit("_", 1)[0].upper())
+            _src.append(f"tradeable_keys:{len(_tk)}")
+        if _uni:
+            _before = len(prio)
+            _cut = [s for s in prio if str(s).upper() not in _uni]
+            prio = [s for s in prio if str(s).upper() in _uni]
+            print(f"[director] tradeable universe {len(_uni)} syms ({', '.join(_src)}): priority {_before} -> {len(prio)}"
+                  + (f", dropped untradeable {_cut[:12]}" if _cut else ""))
+        else:
+            print("[director] tradeable universe EMPTY — filter skipped (fail-open), check symbols_trb_*/tradeable_keys")
+    except Exception as _ue:
+        print(f"[director] tradeable-universe filter unavailable: {_ue}")
     seen, ordered = set(), []
     for s in prio:
         if s not in seen:

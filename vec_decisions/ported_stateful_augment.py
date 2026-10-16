@@ -14,12 +14,9 @@ An empty return (switch inactive / not differing from effective default) = the p
 
 WORKLIST STATUS — determined by reading each live decision site 1:1 (ez_manage.py):
 
-  WIRED (1):
-    MAX_AUGMENTS_PER_POSITION — ez_manage.py:24150-24157. Real cap:
-        `_aug_count = position.augmented_count; _max = MAX_AUGMENTS_PER_POSITION;
-         if is_augment and not reentry and _aug_count >= _max: BLOCK`.
-        Pure count gate, no indicator => mask = ones(n), gate = {'augment_count_max': K}.
-        Effective default 999999 (no cap, config.py:145 / config_tradier.py:3500) => emitted ONLY when a
+  WIRED (0):
+    MAX_AUGMENTS_PER_POSITION was the only one; deleted everywhere 2026-10-15 (USER "delete the switch
+        completely"), so this module now emits no masks until a new stateful switch is ported. Historical note: it was a
         real finite cap is set (0 <= K < 999999). config_tradier.py:3500 states this is already wired in
         backtest_v12_engine as `augmented_count >= max, REENTRY exempt`, i.e. the scalar walk tracks
         augmented_count. CAVEAT the parent must confirm: (a) the walk exposes per-position augment_count to
@@ -33,8 +30,6 @@ WORKLIST STATUS — determined by reading each live decision site 1:1 (ez_manage
 import numpy as np
 
 
-# Sentinel above which MAX_AUGMENTS_PER_POSITION means "no cap" (effective default, config.py:145).
-_NO_CAP = 999999
 
 
 def masks(npz, n, is_long, cfg, _safe, close):
@@ -43,18 +38,8 @@ def masks(npz, n, is_long, cfg, _safe, close):
     decision site. Impossible ones are documented in module-level VEC_UNSUPPORTED."""
     out = {}
 
-    # === MAX_AUGMENTS_PER_POSITION — ez_manage.py:24150-24157 (real count cap) ===
-    # Live: block AUGMENT (not REENTRY) once position.augmented_count >= MAX_AUGMENTS_PER_POSITION.
-    # No indicator => mask all-True; the gate carries the count condition. Effective default 999999 = no cap,
-    # so only emit when a real finite cap is configured.
-    _mx_raw = getattr(cfg, "MAX_AUGMENTS_PER_POSITION", None)
-    if _mx_raw is not None:
-        try:
-            _mx = int(float(_mx_raw))
-        except (TypeError, ValueError):
-            _mx = None
-        if _mx is not None and 0 <= _mx < _NO_CAP:
-            out["MAX_AUGMENTS_PER_POSITION"] = (np.ones(n, dtype=bool), {"augment_count_max": _mx})
+    # MAX_AUGMENTS_PER_POSITION deleted 2026-10-15 (USER "delete the switch completely"): there is no
+    # augment-count cap on any surface, so this twin has nothing to mirror.
 
     return out
 

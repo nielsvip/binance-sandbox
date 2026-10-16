@@ -1,0 +1,39 @@
+{
+ "tag": "202610160335",
+ "apply": true,
+ "backup_dir": "/Users/niels/Documents/binance/backups/charts_before_header_repair_202610160335",
+ "changed": 2,
+ "skipped": 0,
+ "charts": [
+  {
+   "chart": "BIOUSDC_SHORT_bhm13p51_gain0p00_t0_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 0.0,
+    "trades": 0
+   },
+   "now": {
+    "gain_pct": 0.0,
+    "trades": 0
+   },
+   "gain_drift": 0.0,
+   "backup": "/Users/niels/Documents/binance/backups/charts_before_header_repair_202610160335/BIOUSDC_SHORT_bhm13p51_gain0p00_t0_30d_matrix.html"
+  },
+  {
+   "chart": "BIOUSDC_SHORT_bhm13p51_gain64p_t131_30d_matrix.html",
+   "changed": true,
+   "undrawn_closes_restored": 70,
+   "undrawn_dollars": 212.7076,
+   "was": {
+    "gain_pct": 64.82,
+    "trades": 131
+   },
+   "now": {
+    "gain_pct": 64.8203,
+    "trades": 131
+   },
+   "gain_drift": 0.0003,
+   "backup": "/Users/niels/Documents/binance/backups/charts_before_header_repair_202610160335/BIOUSDC_SHORT_bhm13p51_gain64p_t131_30d_matrix.html"
+  }
+ ]
+}

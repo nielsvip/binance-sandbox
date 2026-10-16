@@ -142,6 +142,28 @@ def export_atomic(df, path, replace_from=None):
                 logger.error("refusing write to unreadable existing cache %s", path)
                 return False
     path.parent.mkdir(parents=True, exist_ok=True)
+    # USER 2026-10-16 ("are we finally never erasing another kline on s1"): this writer was the one still destroying
+    # them. `replace_from` drops EVERY existing row at/after the window start and keeps only what the fresh response
+    # returned, and refresh_daily additionally filters `volume > 0` — so a reply with fewer bars in the window silently
+    # deletes history. Measured on s1: MSTR_D 5560->5552 and IBIT_D 1852->1844 rows at 21:16Z (span unchanged, 8 days
+    # gone each), and 29 such events since 10-13 totalling ~1500 file-shrinks. klines_guard --tripwire restored every
+    # one within the minute, so nothing was lost permanently, but the write/restore tug-of-war is why re-downloading
+    # never catches up. klines_guard's own contract says all canonical-cache writers MUST go through guarded_write;
+    # this one never did. It refuses a write that drops rows from a >=400d file or truncates the span, and leaves the
+    # file untouched. TRADIER_KLINES_ALLOW_SHRINK=1 restores the old unguarded write for a deliberate repair pass.
+    if os.environ.get("TRADIER_KLINES_ALLOW_SHRINK", "0") != "1":
+        try:
+            import sys as _sys
+            if os.path.dirname(os.path.abspath(__file__)) + "/tools" not in _sys.path:
+                _sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+            from klines_guard import guarded_write as _guarded_write
+        except Exception as _ge:
+            logger.warning("klines_guard unavailable (%s) — writing %s unguarded", _ge, path.name)
+        else:
+            ok, why = _guarded_write(path, records)
+            if not ok:
+                logger.error("REFUSED shrinking write to %s: %s", path.name, why)
+            return bool(ok)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     with tmp.open("w", encoding="utf-8") as handle:
         json.dump(records, handle, separators=(",", ":")); handle.flush(); os.fsync(handle.fileno())

@@ -139,7 +139,9 @@ def test_every_surface_is_wired():
 
     src_ez = inspect.getsource(E.MultiAccountTradeManager.execute_now)
     assert "_air_native_carry(" in src_ez and "_air_trade_log(self, position_key)" in src_ez
-    assert "current_carried(_air_trade_log(self, position_key))" in inspect.getsource(E.MultiAccountTradeManager.execute_trade_action)
+    # 2026-10-15: the execute_trade_action carry-count call is gone with MAX_AUGMENTS_PER_POSITION (USER "delete the
+    # switch completely"). It existed only to make a carried open count as augment #1 against that cap, so
+    # reentry_augment.current_carried now has no production caller; the unit tests above still pin its behaviour.
     src_tm = inspect.getsource(TM.TradierTradeManager.execute_now)
     assert "_air_native_carry_t(" in src_tm and "_air_history_log(" in src_tm
     bt = (ROOT / "backtest_v12_engine.py").read_text()

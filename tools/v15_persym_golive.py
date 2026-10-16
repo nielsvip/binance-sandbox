@@ -51,7 +51,10 @@ EV_KEYS = (
 )
 
 
-ARTEFACT_KEYS = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER"}
+# MAX_AUGMENTS_PER_POSITION joined the artefact list 2026-10-15 (USER "delete the switch completely"): it is gone
+# from config/config_tradier/QuickConfig and from the cat_side layer, but boards published BEFORE the deletion
+# still carry it, so every go-live would write a dead key back into the live set (ACTUSDT_LONG 04:57:19Z did).
+ARTEFACT_KEYS = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER", "MAX_AUGMENTS_PER_POSITION"}
 
 
 def migrate(overrides):
@@ -162,7 +165,7 @@ def _collect_one(path):
 
 def sanitize(co, rec):
     """Integrity stripping shared by the progress-file collect and the published-board source: VEC_ONLY renames/removals,
-    engine artefacts (MODE/SIMPLE_PRICE_GT0/VENUE/IS_TRADIER/ABLATION_*), MAX_AUGMENTS<1, MAX_ORDER_VALUE<=0. Fills rec."""
+    engine artefacts (MODE/SIMPLE_PRICE_GT0/VENUE/IS_TRADIER/MAX_AUGMENTS_PER_POSITION/ABLATION_*), MAX_ORDER_VALUE<=0. Fills rec."""
     ov, rec["renamed"], rec["dropped"] = migrate(co)
     # 2026-10-08 CONTAMINATION FIX: engine-level artefacts never go live — MODE (venue engine mode; 71 stocks sets were "rescued"
     # by MODE=crypto), SIMPLE_PRICE_GT0_ENABLED (pseudo-gate), ABLATION_* (engine kills). Stripped BEFORE the fresh eval below, so
@@ -172,17 +175,8 @@ def sanitize(co, rec):
     ]
     for k in rec["artefact_stripped"]:
         ov.pop(k, None)
-    # 2026-10-13 MAXAUG_NEVER_ZERO (USER 2026-10-10 no-cap mandate): per-sym MAX_AUGMENTS<1 never goes live
-    # (104 poison keys stripped Mac+S1 this turn from pre-guard sheets; the pilot guard alone does not cover golive).
+    # MAXAUG_NEVER_ZERO retired 2026-10-15: the switch itself is deleted, so ARTEFACT_KEYS drops it outright.
     rec["mandate_stripped"] = []
-    if "MAX_AUGMENTS_PER_POSITION" in ov:
-        try:
-            _mav = float(str(ov["MAX_AUGMENTS_PER_POSITION"]).strip())
-        except Exception:
-            _mav = None
-        if _mav is not None and _mav < 1:
-            rec["mandate_stripped"] = [f"MAX_AUGMENTS_PER_POSITION={ov['MAX_AUGMENTS_PER_POSITION']}"]
-            ov.pop("MAX_AUGMENTS_PER_POSITION", None)
     # 2026-10-13 fishnet: a per-sym MAX_ORDER_VALUE of 0 blocks every order (FCN_LONG/SHORT poison this turn) — never live.
     if "MAX_ORDER_VALUE" in ov:
         try:
@@ -296,6 +290,35 @@ def book_diff(ss, new):
         "added_sample": add[:15],
         "removed_sample": rem[:15],
     }
+
+
+def _trades_from_published_sheet(symside, gain=None, tol=0.01):
+    """Recover a null trades count from the board's OWN published filename (`..._t<N>_30d_matrix.xlsx`) without
+    re-evaluating anything. Matched on the evidence's gain, never on mtime: a sym_side usually has several published
+    sheets and the newest is often a DIFFERENT board (ACEUSDT_LONG's newest is an older `gain0p00_t0` run, while the
+    winner is `bh41p09_gain65p15`), so mtime would attribute another board's trade count. Returns None when the
+    winning sheet predates the `_t<N>_` naming (the pre-2026-10 format carries no count) — the caller then records
+    trades_unknown rather than inventing a number."""
+    if gain is None:
+        return None
+    try:
+        from tools.v15_final_naming import parse_final_matrix_name as _pfm
+    except Exception:
+        return None
+    try:
+        cands = list((ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL").glob(f"{symside}_bh*gain*_30d_matrix.xlsx"))
+    except Exception:
+        return None
+    for p in cands:
+        d = _pfm(p.name) or {}
+        if d.get("trades") is None or d.get("gain") is None:
+            continue
+        try:
+            if abs(float(d["gain"]) - float(gain)) <= tol:
+                return int(d["trades"])
+        except Exception:
+            continue
+    return None
 
 
 def published_collected(path):
@@ -430,10 +453,23 @@ def golive_rows(a, sp, collected, host_err, src):
             row.update(result="REFUSED", reason=f"engine rejects the set: {ir[:200]}")
             rows[ss] = row
             continue
-        if a.all_finished and int(ev.get("trades") or 0) == 0:
+        # USER 2026-10-15: "the eval can not move on until it has at least 10 trades ... all tradeable_keys should be
+        # actually making trades by now". Correct — and that is why UNKNOWN must never be read as ZERO. `int(None or 0)`
+        # refused 37 published boards (gain 15-109 %, 24-478 trades in their own progress) as "zero trades" and kept
+        # live on an OLDER set, because their trades field arrived null. A board cannot publish below the 10-trade
+        # floor, so only a MEASURED 0 is a silencing risk; unknown is a bookkeeping hole, recorded and followed.
+        _ev_tr = ev.get("trades")
+        if _ev_tr is None:
+            _ev_tr = _trades_from_published_sheet(ss, ev.get("gain_pct"))
+            if _ev_tr is not None:
+                ev["trades"] = _ev_tr
+                ev["trades_source"] = "published_sheet_name"
+            else:
+                row["trades_unknown"] = True
+        if a.all_finished and _ev_tr is not None and int(_ev_tr) == 0:
             row.update(
                 result="REFUSED",
-                reason="zero trades on the fresh 30D eval (registering would silence a tradeable key)",
+                reason="zero trades MEASURED on the board (registering would silence a tradeable key)",
             )
             rows[ss] = row
             continue
@@ -489,6 +525,50 @@ def golive_rows(a, sp, collected, host_err, src):
             would_register=dr.get("would_register"),
             change=book_diff(ss, dr.get("would_register") or {}),
         )
+        # 2026-10-15 CONVERGENCE: a set already byte-identical on the live surface is a no-op write that still costs ~35 s
+        # under live load (two 56/59 MB JSON books rewritten + a ~300 KB history row into the 1.12 GB SQLite + per-key verify).
+        # The 19:20Z run spent its whole 5400 s timeout that way and died after 148 of 394 sets, so every sym_side past the
+        # cut stayed on an older board. Skipping the no-ops leaves only the sets that actually differ, so the run finishes
+        # and live converges on the latest published boards. Exactness proved: dry-run would_register == the live row on
+        # every already-applied set (40/40 sampled). Kill switch V15_GOLIVE_SKIP_NOOP=0.
+        if a.apply and os.environ.get("V15_GOLIVE_SKIP_NOOP", "1") == "1":
+            _wr = dr.get("would_register")
+            if isinstance(_wr, dict) and _wr:
+                try:
+                    # the overrides COLUMN, not get_overrides() — that now serves the full measured set
+                    # (per_sym_store PER_SYM_APPLY_FULL_SET), while would_register is the sheet-key diff.
+                    import per_sym_store as _pss_live
+                    _row = _pss_live.get(ss)
+                    _cur = dict((_row or {}).get("overrides") or {}) if _row else None
+                except Exception:
+                    _cur = None
+                # 2026-10-16: the diff half matching is NOT proof the set is live. Live resolves the FULL frozen set
+                # (per_sym_store.get_overrides, USER 2026-10-15), so a row whose overrides COLUMN equals this run's
+                # diff-only key set can still carry an older board's defaults_snapshot underneath. Measured on
+                # refresh_1238: 139 sym_sides were skipped as already-live while the live entry gate read them as
+                # LIVE_SET_NE_BOARD (XRPUSDC_LONG 45 keys, ZCSH_SHORT 22, TIAUSDC_SHORT 850) — on crypto that verdict
+                # also refuses every ENTRY, so those sym_sides could neither update nor open. The no-op skip now has to
+                # agree with the gate itself: same comparator, live_twins.vec_exact.board_live_diff.
+                # Fail-CLOSED: if the check cannot run, the set is registered (a wasted write beats a stale board).
+                # V15_GOLIVE_NOOP_BOARD_CHECK=0 restores the pre-2026-10-16 diff-only skip.
+                _offboard = None
+                if isinstance(_cur, dict) and _cur == _wr:
+                    if os.environ.get("V15_GOLIVE_NOOP_BOARD_CHECK", "1") == "0":
+                        _offboard = []
+                    else:
+                        try:
+                            from live_twins import vec_exact as _vx_live
+                            _offboard = _vx_live.board_live_diff(ss.rsplit("_", 1)[0], ss.rsplit("_", 1)[1], dict(ov))
+                        except Exception as _obe:
+                            _offboard = [f"<board check failed: {_obe}>"]
+                if _offboard == []:
+                    row["already_live"] = True
+                    row["registered"] = True
+                    rows[ss] = row
+                    continue
+                if _offboard:
+                    row["noop_but_offboard"] = _offboard[:8]
+                    row["noop_but_offboard_n"] = len(_offboard)
         if a.apply:
             rr = sp.register_workbook_result(
                 ss,
@@ -527,6 +607,7 @@ def golive_rows(a, sp, collected, host_err, src):
         "results": dict(Counter(r["result"] for r in rows.values())),
         "pass": n_pass,
         "registered": n_reg,
+        "already_live_skipped": sum(1 for r in rows.values() if r.get("already_live")),
         "host_errors": host_err,
         "refuse_reasons_top": Counter(
             r["reason"].split(":")[0][:60]

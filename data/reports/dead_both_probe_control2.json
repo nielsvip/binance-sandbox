@@ -1,0 +1,26 @@
+{
+ "control": "HTF_DIRECTION_GATE_ENABLED=True (second, crypto-binding control)",
+ "arms": {
+  "BTCUSDC_LONG": {
+   "base_gain": -4.186713003012099,
+   "base_trades": 514,
+   "ctrl_gain": -1.7832098623515444,
+   "ctrl_trades": 261,
+   "binds": true
+  },
+  "AAPL_LONG": {
+   "base_gain": 8.44389771694328,
+   "base_trades": 48,
+   "ctrl_gain": 8.474815621818792,
+   "ctrl_trades": 46,
+   "binds": true
+  },
+  "NVDA_LONG": {
+   "base_gain": -8.161463609717176,
+   "base_trades": 8,
+   "ctrl_gain": -8.161463609717176,
+   "ctrl_trades": 8,
+   "binds": false
+  }
+ }
+}

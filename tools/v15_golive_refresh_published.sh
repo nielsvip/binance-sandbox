@@ -6,6 +6,16 @@
 # selection over the 235 published boards). A failed published build applies NOTHING (never falls back to the old selection).
 ROOT=/Users/niels/Documents/binance
 cd "$ROOT" || exit 1
+# 2026-10-15: single-flight. The schedule went hourly (:50) the same day, and a run that outlasts the hour met the next
+# one inside the same store: two appliers were writing per_sym_active + the 56/59 MB JSON books at 04:50-05:11Z. flock
+# makes a late run skip its slot instead of doubling up (the next hour re-applies whatever it missed).
+# macOS has no flock(1); /usr/bin/shlock is the system's pid-aware lock (stale locks self-clear when the pid is gone).
+LOCK=/tmp/v15_golive_refresh.lock
+if ! /usr/bin/shlock -f "$LOCK" -p $$; then
+  echo "[$(date -u +%FT%TZ)] [golive-refresh] another run holds $LOCK (pid $(cat "$LOCK" 2>/dev/null)) — skipping this slot"
+  exit 0
+fi
+trap 'rm -f "$LOCK"' EXIT INT TERM
 PY=$ROOT/.venv/bin/python
 S1=${V15_S1:-s1-pub}
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=10"

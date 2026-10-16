@@ -108,8 +108,15 @@ def dispatch(item):
     return meta
 
 
-def _freeze(d, symside):
-    """Private NPZ dir for this job: the job symbol's fresh NPZ copied (immutable for the run), every other NPZ symlinked."""
+def _freeze(d, symside, want_md5=None):
+    """Private NPZ dir for this job: the job symbol's NPZ copied (immutable for the run), every other NPZ symlinked.
+
+    USER 2026-10-15 "keep the 'stale' copy of the latest calc on s2 for backtest_v12": the NPZ that must be used is the
+    one the PUBLISHED BOARD ran on (item npz_md5, from published_selection evidence.npz_id), kept in npz_archive — not a
+    newly refreshed window. backtest_v12_engine then verifies the published result itself. This supersedes the
+    2026-10-12 "never spend a run on a stale window" rule FOR THIS LANE: a board's own NPZ is by definition expired.
+    Falls back to the current NPZ, flagged npz_exact=False, so a missing archive degrades the evidence instead of
+    blocking the queue (3 STALE_WAIT items used to hold 419 PENDING)."""
     from tools.opt.evaluate_v12 import split_symside, resolve_tokenised
     npz_sym, _ = resolve_tokenised(split_symside(symside)[0])
     src = ROOT / "backtest_v8" / "indicators"
@@ -120,25 +127,56 @@ def _freeze(d, symside):
     for f in src.glob("*.npz"):
         if f.stem != npz_sym:
             os.symlink(f, fz / f.name)
-    tgt = src / f"{npz_sym}.npz"
+    board, exact = _board_npz(npz_sym, want_md5)
+    tgt = board if board is not None else (src / f"{npz_sym}.npz")
     if tgt.exists():
-        shutil.copy2(tgt, fz / tgt.name)
-    return str(fz), hashlib.md5((fz / tgt.name).read_bytes()).hexdigest() if tgt.exists() else None
+        shutil.copy2(tgt, fz / f"{npz_sym}.npz")
+    return str(fz), (hashlib.md5((fz / f"{npz_sym}.npz").read_bytes()).hexdigest() if tgt.exists() else None), exact
+
+
+ARCHIVE = ROOT / "data" / "parity" / "npz_archive"
+
+
+def _board_npz(npz_sym, want_md5):
+    """-> (path, exact). The board's own NPZ from the archive; archived on first sight while the live file still
+    matches want_md5. One copy retained per symbol (older md5s pruned), so the store stays bounded at ~one NPZ per
+    sym_side. (None, False) when the exact bytes are already gone — never fabricated, never silently substituted."""
+    if not want_md5:
+        return None, False
+    try:
+        ARCHIVE.mkdir(parents=True, exist_ok=True)
+        keep = ARCHIVE / f"{npz_sym}__{want_md5}.npz"
+        if keep.exists():
+            return keep, True
+        cur = ROOT / "backtest_v8" / "indicators" / f"{npz_sym}.npz"
+        if cur.exists() and hashlib.md5(cur.read_bytes()).hexdigest() == want_md5:
+            tmp = ARCHIVE / f".{npz_sym}.{os.getpid()}.tmp"
+            shutil.copy2(cur, tmp)
+            os.replace(tmp, keep)
+            for old in ARCHIVE.glob(f"{npz_sym}__*.npz"):
+                if old != keep:
+                    old.unlink(missing_ok=True)
+            return keep, True
+    except Exception:
+        pass
+    return None, False
 
 
 def run_job(rel):
     d = ROOT / rel
     meta = json.loads((d / "item.json").read_text())
-    fz, md5 = _freeze(d, meta["sym_side"])
+    fz, md5, exact = _freeze(d, meta["sym_side"], meta.get("npz_md5"))
     from tools.opt.v12_pilot import npz_freshness
     fresh, why = npz_freshness(meta["sym_side"])
-    if not fresh:
+    # the board's own (expired) NPZ is the point of this lane — freshness is irrelevant once we have those bytes
+    if not exact and not fresh:
         # the S1 push could not bring a fresh NPZ (e.g. 2026-10-14 Binance IP ban on S1 -> tail refresh fetched nothing):
         # never spend a run on a stale window (USER 2026-10-12) — wait, then re-dispatch
         shutil.rmtree(d / "npz", ignore_errors=True)
         (d / "stale_wait.json").write_text(json.dumps({"t": time.time(), "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "why": why, "npz_md5": md5}))
         return 0
     env = dict(os.environ, TRADE_PARITY_VEC_EXACT="0", V15_PARITY_FORCE_REAL="1", PYTHONUNBUFFERED="1", TRADE_PARITY_NPZ_DIR=fz)
+    meta.update({"npz_exact": bool(exact), "npz_md5_used": md5, "npz_md5_board": meta.get("npz_md5"), "npz_fresh": bool(fresh), "npz_why": None if exact else why})
     py = str(ROOT / ".venv" / "bin" / "python")
     cmd = ["nice", "-n", "19", "timeout", str(int(TIMEOUT_H * 3600)), py, "-u", "tools/v15_trade_parity.py", "--sym-side", meta["sym_side"],
            "--overrides-json", str(d / "overrides.json"), "--out-dir", str(d)]
@@ -150,6 +188,35 @@ def run_job(rel):
     shutil.rmtree(d / "npz", ignore_errors=True)
     meta.update({"rc": rc, "ended": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
     (d / "job.json").write_text(json.dumps(meta, indent=1))
+
+
+STALE_RETRY_MIN = float(os.environ.get("V15_LANE_STALE_RETRY_MIN", "30"))
+
+
+def _requeue_stale(items):
+    """A STALE_WAIT item returns to PENDING after STALE_RETRY_MIN minutes, so the lane re-checks it when its NPZ has
+    refreshed. Without this it stays STALE_WAIT forever: run_job writes stale_wait.json and the dispatch loop only
+    ever picks PENDING, so nothing retries it. Returns the sym_sides put back in the queue. Never raises."""
+    out = []
+    for it in items:
+        d = _jobdir(it)
+        try:
+            st, meta = _state(d)
+        except Exception:
+            continue
+        if st != "STALE_WAIT":
+            continue
+        try:
+            age_min = (time.time() - float(meta.get("t") or 0)) / 60.0
+        except Exception:
+            age_min = STALE_RETRY_MIN + 1.0
+        if age_min >= STALE_RETRY_MIN:
+            try:
+                (d / "stale_wait.json").unlink()
+                out.append(it["sym_side"])
+            except Exception:
+                pass
+    return out
 
 
 def status(items):
@@ -182,8 +249,12 @@ def main():
     running = sum(1 for it in items if _state(_jobdir(it))[0] in ("RUNNING", "DISPATCHED"))
     started = []
     ban_s = s1_ban_remaining_s()
-    stale_waiting = any(_state(_jobdir(it))[0] == "STALE_WAIT" for it in items)
-    hold = f"S1 Binance ban {ban_s:.0f}s more" if ban_s > 0 else ("an item is in STALE_WAIT (fresh NPZ not available yet)" if stale_waiting else "")
+    # USER 2026-10-15: a stale item must NEVER hold the queue. Measured before this change: 3 STALE_WAIT items
+    # (BNO, COTIUSDT, PUMPUSDT — NPZs ending 2026-10-13/14 against a 10-15 17:15Z bar) were blocking 419 PENDING, so
+    # the lane had produced 3 DONE in total. A stale NPZ is that ITEM's problem: it goes back to PENDING after
+    # STALE_RETRY_MIN and is re-checked once its NPZ refreshes, while items whose NPZ is fresh keep the lane busy.
+    requeued = _requeue_stale(items)
+    hold = f"S1 Binance ban {ban_s:.0f}s more" if ban_s > 0 else ""
     for it in ([] if hold else items):
         if running >= MAX_JOBS or os.getloadavg()[0] >= MAX_LOAD:
             break
@@ -197,7 +268,7 @@ def main():
         running += 1
     counts, rows = status(items)
     st = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": socket.gethostname(), "load1": round(load1, 1), "max_jobs": MAX_JOBS,
-          "max_load": MAX_LOAD, "timeout_h": TIMEOUT_H, "dispatch_hold": hold, "queue_built": (q.get("_meta") or {}).get("built"), "counts": counts, "started_now": started, "rows": rows}
+          "max_load": MAX_LOAD, "timeout_h": TIMEOUT_H, "dispatch_hold": hold, "stale_requeued": requeued, "queue_built": (q.get("_meta") or {}).get("built"), "counts": counts, "started_now": started, "rows": rows}
     (LANE / "STATUS.json").write_text(json.dumps(st, indent=1, default=str))
     md = [f"# Scalar parity lane (S2) — {st['at']}", "", f"load1 {st['load1']} | jobs ≤{MAX_JOBS} | timeout {TIMEOUT_H}h | queue built {st['queue_built']} | {counts}", f"dispatch hold: {hold or 'none'}", "",
           "| tier | sym_side | state | verdict | vec trips | live trips | matched | vec match | live match | exit agree |", "|---|---|---|---|---|---|---|---|---|---|"]
@@ -205,7 +276,7 @@ def main():
         if r["state"] != "PENDING":
             md.append(f"| {r['tier']} | {r['sym_side']} | {r['state']} | {r.get('verdict', '')} | {r.get('vec_trips', '')} | {r.get('live_trips', '')} | {r.get('matched', '')} | {r.get('vec_match_rate', '')} | {r.get('live_match_rate', '')} | {r.get('exit_agree_rate', '')} |")
     (LANE / "STATUS.md").write_text("\n".join(md) + "\n")
-    print(f"[lane] load1={load1:.1f} counts={counts} started={started} hold={hold or '-'}")
+    print(f"[lane] load1={load1:.1f} counts={counts} started={started} stale_requeued={requeued or '-'} hold={hold or '-'}")
 
 
 if __name__ == "__main__":

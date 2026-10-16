@@ -35,11 +35,16 @@ class Prepared:
 
 
 def rally_k15_blocked(P, i, cfg, fresh_cross=False):
-    cap = float(getattr(cfg, 'REENTRY_RALLY_K15M_MAX', 100.0) or 100.0)
-    if cap >= 100.0 or fresh_cross:
-        return False
-    k = float(P.k15[i])
-    return (k >= cap) if P.is_long else (k <= 100.0 - cap)
+    """DEAD — stoch_k is never a reentry filter in this system (USER 2026-10-16, crypto AND stocks).
+
+    This gate blocked a LONG reentry whenever k15 >= REENTRY_RALLY_K15M_MAX. Boards had the cap promoted to
+    0.15 on a 0-100 scale, so it blocked every bar; measured on BATUSDT_LONG, moving it to its own OFF sentinel
+    (100) left the trade set byte-identical (136 trades, TIM 38.6%, 50 one-bar exits, WR 58.8) and moved only
+    the P&L — it never admitted or refused a single reentry, it just resized. A knob that filters nothing while
+    pretending to is prohibited: reentry is filtered by the REENTRY_WINDOWED / REENTRY_ADAPTIVE yellow filters,
+    never by stoch_k and never by the entry gates. Always False.
+    """
+    return False
 
 
 def size_tier_mult(P, i, px, exit_px, cfg):

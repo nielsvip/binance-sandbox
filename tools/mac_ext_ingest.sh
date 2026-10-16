@@ -6,14 +6,22 @@
 set -u
 LOG=/tmp/mac_ext_ingest.log
 say() { echo "$(date -u +%FT%TZ) [ingest] $*" >> "$LOG"; }
+# USER 2026-10-16: a detached drive leaves its /Volumes/<name> DIRECTORY behind, and `[ -d ]` is true for it —
+# so this wrote "backups" onto the BOOT DISK while believing it had an external drive. Measured: /Volumes/WD25 held
+# 1.2 GB written 2026-10-14 19:34 on the internal volume (same st_dev as /). A mount, not a directory, is the test.
+is_ext_mount() { [ -d "$1" ] || return 1; [ "$(stat -f %d "$1" 2>/dev/null)" != "$(stat -f %d / 2>/dev/null)" ]; }
 TARGET=""
-for d in /Volumes/E3T /Volumes/WD25; do
-  if [ -d "$d" ]; then
+# USER 2026-10-16: SSD2T added. E3T is unplugged and /Volumes/WD25 is a PHANTOM — a leftover directory on the boot
+# disk (st_dev 16777232 == /), which is_ext_mount correctly refuses — so this list had NO valid target and the
+# ingester logged "no MOUNTED ext target" every 15 min while S1's ~/ext_staging held 12 GB of cold archives it
+# could not release and S1 filled to 100% (2.5 GB free). SSD2T is a real mount (st_dev 16777237) with 87 GB free.
+for d in /Volumes/E3T /Volumes/SSD2T /Volumes/WD25; do
+  if is_ext_mount "$d"; then
     FREE_MB=$(df -m "$d" 2>/dev/null | awk 'NR==2{print $4}')
     if [ "${FREE_MB:-0}" -gt 30720 ]; then TARGET="$d"; break; fi
   fi
 done
-[ -z "$TARGET" ] && { say "no ext target with >30G free — skip"; exit 0; }
+[ -z "$TARGET" ] && { say "no MOUNTED ext target with >30G free — skip (this step deletes the S1 copy once bytes match, so a phantom mountpoint would move data onto the boot disk and drop the only other copy)"; exit 0; }
 DEST="$TARGET/s1_offload"
 mkdir -p "$DEST" 2>/dev/null || { say "$TARGET not writable — skip"; exit 0; }
 BATCHES=$(ssh -S none -o ConnectTimeout=20 -o BatchMode=yes s1-int "ls ~/ext_staging/ 2>/dev/null" | grep -v manifest || true)

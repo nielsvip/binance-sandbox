@@ -48,7 +48,10 @@ import switch_types as ST  # noqa: E402  BIBLE §96 — the one typed-value vali
 
 SWITCH_SHEETS = ["STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_CHANNEL", "ENTRY_CONFIRMATION_GATES", "EXIT_STRUCTURAL", "EXIT_VELOCITY", "REENTRY_WINDOWED", "REENTRY_ADAPTIVE", "AUGMENT_TREND", "AUGMENT_RISK_SIZING", "REDUCE_PROFIT_LOCK", "REDUCE_SIGNAL_RATER", "GLOBAL_RISK_GATES"]
 FILES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_CRYPTO_SHORT.xlsx", "STOCKS_LONG": "TEMPLATE_STOCKS_LONG.xlsx", "STOCKS_SHORT": "TEMPLATE_STOCKS_SHORT.xlsx"}
-FLEET = ["s1-via-gateway", "s2", "s5"]
+# 2026-10-13: s5/s6 were destroyed (tools/sync_indicators.sh pushes to 10.0.0.4 only). Leaving s5 here made
+# every --fleet run end in "connect failed: Connection timed out / rsync error ... (code 20)" after the two
+# real hosts had already succeeded, which reads like the push failed when it did not.
+FLEET = ["s1-via-gateway", "s2"]
 
 
 def die(msg):
@@ -359,7 +362,7 @@ def apply_queue(queue_path, templates_dirs, apply=False, root=ROOT, lock_wait_s=
                         before[tab] = fingerprints(ws)
                     if any(ws.cell(r, 1).value == sw for r in range(3, ws.max_row + 1)):
                         continue
-                    insert_switch_rows(ws, sw, opts, dflt, ts)
+                    insert_switch_rows(ws, sw, opts, pdflt, ts)
                     done.append((sw, tab, len(opts)))
                 for tab, fp in before.items():
                     lost = sum((fp - fingerprints(wb[tab])).values())
@@ -638,6 +641,7 @@ def main():
     ap.add_argument("--sides", default="both", choices=["long", "short", "both"])
     ap.add_argument("--templates-dir", default=str(ROOT / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM"))
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--extend", action="store_true", help="the switch may already have rows: install ONLY the missing candidates and keep the existing bold default (USER 2026-10-16: every option must be testable, the best delta stays)")
     ap.add_argument("--fleet", action="store_true")
     ap.add_argument("--queue", help="batch mode: install every queued switch missing from the target templates")
     ap.add_argument("--templates-dirs", default=f"{ROOT / 'SPREADSHEETS' / 'TEMPLATE_FINAL_NORM'},{ROOT / 'SPREADSHEETS'}")
@@ -693,25 +697,42 @@ def main():
         wb = openpyxl.load_workbook(str(p))
         try:
             ws = wb[a.tab]
-            if any(ws.cell(r, 1).value == sw for r in range(3, ws.max_row + 1)):
-                die(f"{sw} already has rows in {fn}!{a.tab}")
-            plan.append((cs, fn, p, last_white_row(ws), ordered))
+            have = {str(ws.cell(r, 2).value).strip() for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value == sw and ws.cell(r, 2).value is not None}
+            if have and not a.extend:
+                die(f"{sw} already has rows in {fn}!{a.tab} — pass --extend to install only the MISSING candidates")
+            if have:
+                # EXTEND (USER 2026-10-16: "ALL 4 need to be tested in TEMPLATE_*.xlsx the best delta stays"):
+                # a switch installed with one option can only ever read as its own default, so the board never
+                # measures the other legs. Only the missing candidates are inserted and the EXISTING bold default is
+                # left untouched — the defaults gate still requires exactly one bold is_default=YES in the group.
+                miss = [o for o in ordered if str(o).strip() not in have]
+                if str(dflt).strip() not in have:
+                    die(f"{fn}!{a.tab}: {sw} exists but its rows do not include the default {dflt!r} (have {sorted(have)}) — fix the default row first")
+                if not miss:
+                    print(f"[{cs}] {fn}!{a.tab}: all {len(ordered)} candidates already present — nothing to do", flush=True)
+                else:
+                    plan.append((cs, fn, p, last_white_row(ws), miss, None))
+            else:
+                plan.append((cs, fn, p, last_white_row(ws), ordered, dflt))
         finally:
             wb.close()
-    for cs, fn, p, last_w, opts in plan:
-        print(f"[{cs}] {fn}!{a.tab}: insert {len(opts)} rows at {last_w + 1} (after last white row) default={dflt!r}", flush=True)
+    for cs, fn, p, last_w, opts, pdflt in plan:
+        print(f"[{cs}] {fn}!{a.tab}: insert {len(opts)} rows {opts} at {last_w + 1} (after last white row) default={pdflt!r}" + ("" if pdflt else " (extend: existing bold default kept)"), flush=True)
+    if not plan:
+        print("nothing to install — every target already carries all candidates", flush=True)
+        return 0
     if not a.apply:
         print("dry-run OK — re-run with --apply to write (backs up each file first)", flush=True)
         return 0
     ts = datetime.datetime.now().strftime("%Y%m%d%H%M")
-    for cs, fn, p, last_w, opts in plan:
+    for cs, fn, p, last_w, opts, pdflt in plan:
         shutil.copy2(p, ROOT / "backups" / f"before_switch_add_{sw}_{ts}_{fn}")
         wb = openpyxl.load_workbook(str(p))
         try:
             ws = wb[a.tab]
             before = fingerprints(ws)
             try:
-                insert_switch_rows(ws, sw, opts, dflt, ts)
+                insert_switch_rows(ws, sw, opts, pdflt, ts)
             except Refused as r:
                 die(str(r))
             after = fingerprints(ws)

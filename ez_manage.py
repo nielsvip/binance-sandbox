@@ -5,6 +5,7 @@ import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-
 import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode native block + local dedup claim
 import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
+import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/tradier_manage
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
@@ -3409,8 +3410,25 @@ def ez_vigilance_is_blocked(symbol: str, position_side: str) -> Tuple[bool, str]
     if not bool(getattr(config, "VIGILANCE_GUARD_ENABLED", True)):
         return False, ""
     _ez_vigilance_load()
-    _b = _EZ_VIGILANCE_STATE["blocks"].get(ez_vigilance_sym_side(symbol, position_side))
+    _key = ez_vigilance_sym_side(symbol, position_side)
+    _b = _EZ_VIGILANCE_STATE["blocks"].get(_key)
     if _b:
+        # USER 2026-10-16: "as soon as any account starts bleeding again the losers are exited and prohibited from
+        # trading for 12 hrs so we can revise what went wrong". The block was open-ended ("until further analysis");
+        # it now EXPIRES after VIGILANCE_BLOCK_HOURS so a sym_side comes back by itself once the review window has
+        # passed, instead of silently becoming a graveyard. 0 restores the old open-ended behaviour.
+        _hrs = float(getattr(config, "VIGILANCE_BLOCK_HOURS", 12.0) or 0.0)
+        if _hrs > 0:
+            try:
+                _at = datetime.fromisoformat(str(_b.get("blocked_at")).replace("Z", "+00:00"))
+                _age_h = (datetime.now(timezone.utc) - _at).total_seconds() / 3600.0
+                if _age_h >= _hrs:
+                    _EZ_VIGILANCE_STATE["blocks"].pop(_key, None)
+                    _ez_vigilance_save()
+                    logger.critical(f"🟢 [VIGILANCE_UNBLOCK] {_key}: {_hrs:.0f} h review window elapsed ({_age_h:.1f} h) — trading allowed again")
+                    return False, ""
+            except (TypeError, ValueError) as _vex:
+                logger.warning(f"[VIGILANCE_BLOCK] {_key}: unreadable blocked_at ({_vex}) — keeping the block (fail-closed)")
         return True, str(_b.get("reason", "VIGILANCE_BLOCK"))
     return False, ""
 
@@ -3488,7 +3506,17 @@ def ez_vigilance_record_close(symbol: str, position_side: str, gain_pct: float, 
     _st.setdefault("last", []).append({"ts": datetime.now(timezone.utc).isoformat(), "gain_pct": round(_g, 4), "reason": str(reason)[:120]})
     _st["last"] = _st["last"][-10:]
     _blocked = False
-    if _st["consec_losses"] >= int(getattr(config, "VIGILANCE_CONSEC_LOSSES", 2)):
+    # USER 2026-10-16: "consec losses is an emergency measure to avoid another suicidal day but it starts and ends
+    # before Saturday when all this should be resolved." After VIGILANCE_CONSEC_UNTIL_UTC no new block is armed —
+    # no manual step, nothing left running into the weekend. Existing blocks still expire on their own 12 h clock.
+    _consec_until = str(getattr(config, "VIGILANCE_CONSEC_UNTIL_UTC", "") or "")
+    _consec_live = True
+    if _consec_until:
+        try:
+            _consec_live = datetime.now(timezone.utc) < datetime.fromisoformat(_consec_until.replace("Z", "+00:00"))
+        except ValueError:
+            _consec_live = True
+    if _consec_live and _st["consec_losses"] >= int(getattr(config, "VIGILANCE_CONSEC_LOSSES", 2)):
         ez_vigilance_block(symbol, position_side, f"{_st['consec_losses']}_CONSECUTIVE_LOSING_TRADES_last_g{_g:.2f}pct", exit_price=exit_price)
         _blocked = True
     _ez_vigilance_save()
@@ -3583,6 +3611,10 @@ async def _xg_ez_confirmed(mgr, a, c, result):
             ez_vigilance_record_close(_sym, _ps, _pnl, _reason, exit_price=_px, lifecycle=_life, notional_usd=_notional)
         except Exception as _ve:
             logger.warning(f"[VIGILANCE] close-record err {_pk}: {_ve}")
+        try:
+            _qq.live_record_close(config.BASE_PATH, "ez", _acct, _sym, _ps, _entry, _px, _QQCfg(_sym, _ps), lifecycle=_life, notional_usd=_notional)  # QTY_STREAK: one count per lifecycle
+        except Exception as _qe:
+            logger.warning(f"[QTY_STREAK] close-record err {_pk}: {_qe}")
         try:
             _stale_set_halt.record_close("ez", _acct, _sym, _ps, _pnl, _reason, cfg=config, lifecycle=_life, notional_usd=_notional)
         except Exception as _se:
@@ -4454,7 +4486,6 @@ _FULL_COVERAGE_PARAMS_EZ = ['ABLATION_DISABLE_AGGRESSIVE_HEDGE',
     'MARKET_QUALITY_SCORE_ENABLED_TRADIER',
     'MARK_PRICE_MAX_STALENESS',
     'MAX_ALLOWED_DRAWDOWN_PCT',
-    'MAX_AUGMENTS_PER_POSITION',
     'MAX_CONCURRENT_ORDERS',
     'MAX_CONCURRENT_POSITIONS',
     'MAX_DAILY_LOSS_PCT',
@@ -7102,8 +7133,8 @@ _FULL_COVERAGE_HASH_EZ: dict = {}
 def _batch3_template_live_wiring():
     _ = config.BAND_ARROW_ENABLED
     _ = getattr(config, 'BAND_ARROW_ENABLED', False)
-    _ = config.BAND_ARROW_SLOPE_DEADBAND
-    _ = getattr(config, 'BAND_ARROW_SLOPE_DEADBAND', 0.0)
+    # BAND_ARROW_SLOPE_DEADBAND stubs removed 2026-10-15: the real per-sym_side consumer is
+    # twin_entry_ports_b.band_arrow_entry via _psym_get (ez_manage.py:47938).
     _ = config.BAR_PATTERNS_FILTER_TF
     _ = getattr(config, 'BAR_PATTERNS_FILTER_TF', '15m')
     _ = config.BB_PULLBACK_GATE_FILTER_TF
@@ -7730,13 +7761,13 @@ _shared_mem_tried = False
 _COLD_DATA_CACHE = {}
 _LAST_COLD_CHECK = 0
 _LAST_LOADED_FILE = None
-try:
-    from ez_share_ind import get_shared_memory_client
-
-    _shared_mem_client = get_shared_memory_client()
-    _shared_mem_store = _shared_mem_client.get_store() if _shared_mem_client else None
-except ImportError:
-    _shared_mem_store = None
+# 2026-10-15 IMPORT-TIME HANG REMOVED (USER "FIX ez_positions_service ... UNLOCK WHERE NEEDED"): this block called
+# ez_share_ind.get_shared_memory_client() at MODULE level with NO timeout. ez_positions_service._ensure_trade_manager
+# imports ez_manage, so whenever the share_ind server wedged (accept loop blocked -> TCP connect itself times out) every
+# position service froze forever at "Lazy loading MultiAccountTradeManager" — men + inf were dead 13:58->18:10Z today,
+# 19 positions unmanaged, no FIXED_STOP cycle, no heartbeat, no exchange backstop. _shared_mem_store/_shared_mem_client
+# were assigned here and NEVER read anywhere in this module (grep: only these lines), so the connect was pure liability.
+# Anything needing the store must use shared_mem_safe.connect_store() (off-thread, 3 s timeout, 30 s backoff).
 try:
     import resource
 
@@ -7824,7 +7855,7 @@ _NON_VEC_KNOBS_EZ = frozenset([
     "EXPLODING_LEDGER_ENABLED", "LIVE_ENTRY_ENGINE_ENABLED", "LIVE_ENTRY_ENGINE_WT_ENABLED",
     "LIVE_ENTRY_ENGINE_STOCH_ENABLED", "LIVE_ENTRY_ENGINE_DC_ENABLED", "LIVE_ENTRY_ENGINE_HTF_ENABLED",
     "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", "SCALP_V3_ENABLED", "SCALP_V3_BOOST_ENABLED",
-    "STDEV_SLOPE_SIZING_ENABLED", "MOMENTUM_WATCHDOG_ENABLED", "HEDGE_ACCOUNTS", "SCALP_ACCOUNTS",
+    "MOMENTUM_WATCHDOG_ENABLED", "HEDGE_ACCOUNTS", "SCALP_ACCOUNTS",  # STDEV_SLOPE_SIZING_ENABLED unmasked 2026-10-16: vec twin is the same function (vec_decisions/qty_quantizers.py)
     "STRICT_NO_LOSS_ACCOUNTS", "EMA50_15M_ENTRY_FILTER_ENABLED", "REENTRY_GOLDEN_BLOCK_ENABLED",
     # 2026-09-28 close the MOMENTUM_WATCHDOG open leak: the masked MOMENTUM_WATCHDOG_ENABLED is DEAD
     # (only a no-op read at ~58943); the force-open at ez_manage.py:35875/35999/36039 actually fires
@@ -8003,6 +8034,33 @@ async def _run_redis_operation(operation: Awaitable[Any], label: str) -> None:
 _ezm_per_sym_cfgs: dict = {}
 _ezm_per_sym_cfgs_mtime: float = 0.0
 _ezm_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+
+
+def _ezm_per_sym_layer(sym: str, side: str):
+    """The per-sym layer behind every `config.KNOB` read in this file (_PerSymProxy, both lookup paths).
+    Single source with _psym_get: the FULL frozen board set via per_sym_store (USER 2026-10-15), not the
+    `overrides` half of the JSON view, which carries 412 of 742 sym_sides and ~835 of ~3546 keys — every
+    key it misses fell through to the cat_side layer that build_cat_side_defaults_4.py rebuilds each
+    morning. The legacy JSON block below stays as the fail-soft fallback and is restored in full by
+    PER_SYM_FULL_SET_READER=0. READ-ONLY: never mutate the returned dict."""
+    try:
+        import per_sym_live_set as _pls
+
+        ov = _pls.full_set(f"{sym}_{side}")
+        if ov:
+            return ov
+    except Exception:
+        pass
+    try:
+        mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
+        if mtime != _ezm_per_sym_cfgs_mtime:
+            with _ezm_per_sym_cfgs_path.open() as _f:
+                raw = json.load(_f)
+            globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
+            globals()["_ezm_per_sym_cfgs_mtime"] = mtime
+    except Exception:
+        pass
+    return _ezm_per_sym_cfgs.get(f"{sym}_{side}")
 _ezm_per_sym_raw: dict = {}
 _ezm_per_sym_raw_mtime: float = 0.0
 _ezm_per_sym_stocks_raw: dict = {}
@@ -8103,9 +8161,128 @@ def _ezm_default(symbol: str, side: str, knob: str, default):
     return getattr(config, knob, default) if v is _EZM_CSD_MISSING else v
 
 
+# 🔴 SUB-15m HARD BLOCK — CRYPTO (USER 2026-10-15: "AND THAT NO 1/3/5M TRADE CAN EVER BE EXECUTED UNTIL THE SWITCH
+# IS BACK ON"). knob -> value forced while config.LTF_SUB15M_TRADING_ENABLED is False. Checked ABOVE the per_sym
+# lookup in _psym_get, because a config default alone does nothing: on 2026-10-15 all 325 crypto per_sym rows carried
+# RULE_B_5M_EXIT_ENABLED=True and 322 carried WT_CROSSUNDER_FINAL_ENABLED=True, so every promoted board out-voted it.
+# Only the knobs with a REAL (non-stub) sub-15m decision read in this file are listed.
+SUB15M_BLOCKED_SWITCHES = {
+    "WT_3M_FORCE_OPEN_ENABLED": False,
+    "WT_3M_OPEN_GATE_ENABLED": False,
+    "DC_BASIS_3M_REDUCE_ENABLED": False,
+    "R1_DC_LOW4_3M_EMERGENCY_ENABLED": False,
+    "WT_CROSSUNDER_FINAL_ENABLED": False,
+    "RULE_B_5M_EXIT_ENABLED": False,
+    "RULE_B_3M_EXIT_ENABLED": False,
+    "EXIT_K5M_BOUNCE_ENABLED": False,
+    "EXIT_HARD_DROP_5M_ENABLED": False,
+    "EXIT_STRUCT_BREAK_5M_ENABLED": False,
+    "STOCH_CROSS_3M_EXIT_ENABLED": False,
+    "K1M_EXTREME_REVERSE_ENABLED": False,
+    "WT_DC_K5M_HARD_ENABLED": False,
+    "USE_1M_3M_SIGNALS_ENABLED": False,
+    "DC_BREAKOUT_ALLOW_3M": False,
+    "OBLIGATORY_HEDGE_WT_USE_1M": False,
+    "OBLIGATORY_HEDGE_WT_USE_3M": False,
+    "HEDGE_TRIGGER_USE_WT_3M_ALONE": False,
+}
+_SUB15M_LOGGED_EZ: set = set()
+
+
+# USER 2026-10-16: "DC_HARD_STOP_15M_ENABLED can NEVER be switched as it is the bottom stop market order that goes
+# with the entry to the exchange." A per_sym set may therefore not turn it off: 39 live sym_sides were carrying
+# False when this was added (ABT_SHORT, ADBE_SHORT, MU_LONG, APO_SHORT, TSLA_LONG ...), all restored to True.
+# Pinned ABOVE the per_sym lookup so a republished board can never re-disable it.
+EXCHANGE_RESTING_STOPS = {"DC_HARD_STOP_15M_ENABLED"}
+
+
+_CRYPTO_MIN_SIZE_LOGGED: set = set()
+# USER 2026-10-16: "reduce crypto trading to minimum - only men account is still eroding my savings for NOTHING".
+# The sizing knobs live in per_sym full sets too (every one of the 327 crypto rows carries MAX_ORDER_VALUE), and
+# _psym_get resolves per_sym BEFORE the class, so flooring config.py alone would be shadowed on every symbol —
+# the same trap the 2026-10-15 sub-15m block had to solve. These caps therefore sit ABOVE the per_sym lookup.
+# Only NEW EXPOSURE is capped: no exit, stop, reduce or close path reads these knobs.
+CRYPTO_MIN_SIZE_CAPS = {
+    "START_POSITION_SIZE": 6.0,
+    "MAX_ORDER_VALUE": 6.0,
+    "MAX_ORDER_VALUE_MEN": 6.0,
+    "MAX_ORDER_VALUE_FIN": 6.0,
+    "MAX_POSITION_SIZE": 12.0,
+    "MAX_POSITION_SIZE_MEN": 12.0,
+    "MAX_POSITION_SIZE_FIN": 12.0,
+    "MAX_POSITION_SIZE_BTC": 60.0,
+}
+
+
+def _crypto_min_size_cap(knob: str, value):
+    """-> capped value when CRYPTO_MINIMUM_TRADING_MODE is on and `knob` is a sizing knob, else None.
+    Caps, never raises: a per_sym value already BELOW the cap is left alone. Fail-SAFE — on any error the cap is
+    applied, because the harm being prevented is opening more crypto exposure than the user asked for."""
+    if knob not in CRYPTO_MIN_SIZE_CAPS:
+        return None
+    try:
+        if not bool(getattr(config, "CRYPTO_MINIMUM_TRADING_MODE", False)):
+            return None
+    except Exception:
+        pass
+    cap = CRYPTO_MIN_SIZE_CAPS[knob]
+    try:
+        if value is not None and float(value) <= cap:
+            return None
+    except (TypeError, ValueError):
+        pass
+    if knob not in _CRYPTO_MIN_SIZE_LOGGED:
+        _CRYPTO_MIN_SIZE_LOGGED.add(knob)
+        try:
+            logger.warning(f"[CRYPTO_MIN_SIZE] {knob}: capped {value} -> {cap} (USER 2026-10-16 minimum crypto trading; exits unaffected)")
+        except Exception:
+            pass
+    return cap
+
+
+def _sub15m_blocked_ez(knob: str) -> bool:
+    """True when `knob` is a sub-15m decision switch AND the master kill switch is off. Fail-SAFE: on any error a
+    listed knob is BLOCKED, since the harm being prevented is executing an unvectorised 1/3/5m trade."""
+    if knob not in SUB15M_BLOCKED_SWITCHES:
+        return False
+    try:
+        if bool(getattr(config, "LTF_SUB15M_TRADING_ENABLED", False)):
+            return False
+    except Exception:
+        pass
+    if knob not in _SUB15M_LOGGED_EZ:
+        _SUB15M_LOGGED_EZ.add(knob)
+        try:
+            logger.critical(f"⛔ [SUB15M_BLOCKED] {knob} forced to {SUB15M_BLOCKED_SWITCHES[knob]} — LTF_SUB15M_TRADING_ENABLED=False (USER 2026-10-15); per_sym/board values are overridden")
+        except Exception:
+            pass
+    return True
+
+
+class _QQCfg:
+    """Per-sym view for vec_decisions/qty_quantizers: every knob resolves through _psym_get (board value > template > global)."""
+
+    def __init__(self, symbol, side):
+        self._qq_symbol, self._qq_side = symbol, side
+
+    def __getattr__(self, knob):
+        if knob.startswith("_"):
+            raise AttributeError(knob)
+        return _psym_get(self._qq_symbol, self._qq_side, knob, getattr(config, knob, None))
+
+
 def _psym_get(symbol: str, side: str, knob: str, default):
     """USER 2026-10-06 SINGLE SOURCE: latest sqlite per-sym overrides > TEMPLATE baseline (cat_side copy) > global.
-    All JSON/book/xlsx/tradeable_keys layers removed — they ran conflicting configs."""
+    All JSON/book/xlsx/tradeable_keys layers removed — they ran conflicting configs.
+
+    2026-10-15: the SUB-15m hard block is checked first — see _sub15m_blocked_ez()."""
+    if _sub15m_blocked_ez(knob):
+        return SUB15M_BLOCKED_SWITCHES[knob]
+    if knob in EXCHANGE_RESTING_STOPS:
+        return True
+    _cmin = _crypto_min_size_cap(knob, default)
+    if _cmin is not None:
+        return _cmin
     if (bool(getattr(config, "PARITY_DISABLE_NON_VECTORIZABLE", False)) or bool(getattr(config, "V12_PARITY_DISABLE_NON_VECTORIZABLE", False))) and knob in _NON_VEC_KNOBS_EZ:
         if isinstance(default, bool):
             return False
@@ -8554,16 +8731,7 @@ class _PerSymProxy:
                 if sym and side:
                     # Per-sym override only when V8 not disabled
                     if not os.environ.get("V8_DISABLE_PER_SYM"):
-                        try:
-                            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-                            if mtime != _ezm_per_sym_cfgs_mtime:
-                                with _ezm_per_sym_cfgs_path.open() as _f:
-                                    raw = json.load(_f)
-                                globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
-                                globals()["_ezm_per_sym_cfgs_mtime"] = mtime
-                        except Exception:
-                            pass
-                        ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
+                        ov = _ezm_per_sym_layer(sym, side)
                         if ov is not None and name in ov:
                             return ov[name]
                         # final-book overlay
@@ -8603,16 +8771,7 @@ class _PerSymProxy:
                 sym, side = ctx
                 if sym and side:
                     if not os.environ.get("V8_DISABLE_PER_SYM"):
-                        try:
-                            mtime = _ezm_per_sym_cfgs_path.stat().st_mtime
-                            if mtime != _ezm_per_sym_cfgs_mtime:
-                                with _ezm_per_sym_cfgs_path.open() as _f:
-                                    raw = json.load(_f)
-                                globals()["_ezm_per_sym_cfgs"] = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict) and k != "_meta"}
-                                globals()["_ezm_per_sym_cfgs_mtime"] = mtime
-                        except Exception:
-                            pass
-                        ov = _ezm_per_sym_cfgs.get(f"{sym}_{side}")
+                        ov = _ezm_per_sym_layer(sym, side)
                         if ov is not None and name in ov:
                             return ov[name]
                     # Fallback to STOCK/CRYPTO_LONG/SHORT template base even when V8 disabled
@@ -12104,6 +12263,8 @@ class Position:
     _position_key: str = ""
     _frozen_sacred: bool = False
     fixed_stop_price: float = 0.0
+    fixed_stop_anchor: float = 0.0  # 2026-10-15: epoch of the opened_at this level was frozen for — a new lifecycle re-freezes
+    fixed_stop_armed: bool = True  # 2026-10-15: arm on cross — a level frozen with price already beyond it waits for price to come back
     exchange_stop_order_id: str = ""
 
     def __post_init__(self):
@@ -12264,6 +12425,8 @@ class Position:
             reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))),
             mark_price_last_updated=safe_time(data.get("mark_price_last_updated")),
             fixed_stop_price=safe_float(data.get("fixed_stop_price")),
+            fixed_stop_anchor=safe_float(data.get("fixed_stop_anchor")),
+            fixed_stop_armed=bool(data.get("fixed_stop_armed", True)),
             exchange_stop_order_id=str(data.get("exchange_stop_order_id") or ""),
         )
 
@@ -21392,6 +21555,57 @@ class MultiAccountTradeManager:
             return {"__transport_error__": str(_e)}
         return {}
 
+    async def _fixed_stop_tick(self, account_key, symbol):
+        """Tick size for symbol, resolved through symbol_configs -> load_symbol_configs -> exchange_info. 0.0 = unknown.
+
+        2026-10-15 (USER, COTI incident): the adopt scan computed the wanted exchange level only when it already had a
+        tick (`_want0 ... if (_soft0 > 0 and _tk0 > 0) else 0.0`) and then skipped the wrong-level check because
+        `_want0 > 0` was False. Right after a restart symbol_configs is still empty, so EVERY resting stop was ADOPTED
+        whatever its price: men:COTIUSDT_SHORT re-adopted backstop 2000001514076276 at 0.012758 while its real level was
+        0.011311 (+11.3% away, unreachable). That is how 1-2 day old levels survived restart after restart.
+        """
+        try:
+            _sc = self.get_symbol_config(symbol) or {}
+            _tk = float(_sc.get("tick_size") or _sc.get("tickSize") or 0.0)
+            if _tk > 0:
+                return _tk
+        except Exception:
+            pass
+        try:
+            if not getattr(self, "symbol_configs", None):
+                _loaded = await self.load_symbol_configs()
+                if isinstance(_loaded, dict) and _loaded:
+                    self.symbol_configs = _loaded
+            _sc = self.get_symbol_config(symbol) or {}
+            _tk = float(_sc.get("tick_size") or _sc.get("tickSize") or 0.0)
+            if _tk > 0:
+                return _tk
+        except Exception:
+            pass
+        try:
+            _cli = self.get_client(account_key)
+            if _cli is None:
+                return 0.0
+            _ei = await asyncio.wait_for(asyncio.to_thread(_cli.futures_exchange_info), timeout=20.0) or {}
+            for _s in (_ei.get("symbols") or []):
+                if str(_s.get("symbol", "")) != symbol:
+                    continue
+                for _f in (_s.get("filters") or []):
+                    if str(_f.get("filterType", "")) == "PRICE_FILTER":
+                        _tk = float(_f.get("tickSize") or 0.0)
+                        if _tk > 0:
+                            if not isinstance(getattr(self, "symbol_configs", None), dict):
+                                self.symbol_configs = {}
+                            _cur = self.symbol_configs.get(symbol) or {}
+                            if isinstance(_cur, dict):
+                                _cur["tick_size"] = _tk
+                                self.symbol_configs[symbol] = _cur
+                            return _tk
+                break
+        except Exception:
+            pass
+        return 0.0
+
     async def _fixed_stop_find_algo(self, account_key, symbol, side_u, want_oid):
         """2026-10-13 NEVER-AGAIN: a recorded stop oid is a claim, not proof (men:LTCUSDC tracked an oid while the broker held nothing — invisible forever). Returns True if want_oid is a live STOP algo for symbol/side, False if listed-and-absent, None if the check itself failed (caller treats as present this round, retries soon). Never raises."""
         try:
@@ -21632,12 +21846,28 @@ class MultiAccountTradeManager:
                                     _oid0 = str(_o.get("algoId", "") or _o.get("orderId", "") or "")
                                     _trig0 = float(_o.get("triggerPrice", 0) or _o.get("stopPrice", 0) or 0)
                                     _soft0 = float(soft_level or 0.0)
-                                    try:
-                                        _sc0 = self.get_symbol_config(symbol) or {}
-                                        _tk0 = float(_sc0.get("tick_size") or _sc0.get("tickSize") or 0.0)
-                                    except Exception:
-                                        _tk0 = 0.0
+                                    _tk0 = await self._fixed_stop_tick(account_key, symbol)
+                                    if _soft0 > 0 and _tk0 <= 0:
+                                        # 2026-10-15: never adopt a level we cannot verify — that fail-open re-adopted
+                                        # stale stops on every restart. No tick = no adoption this cycle; the place path
+                                        # below resolves the tick itself and refuses an unrounded stop.
+                                        logger.critical(f"⛔ [FIXED_STOP_ADOPT_UNVERIFIABLE] {position_key}: resting stop {_oid0} at {_trig0} cannot be checked against level {_soft0:.8f} (no tick size) — NOT adopting")
+                                        continue
                                     _want0 = float(_fixed_stop_core.build_stop_params(_side_u == "LONG", _soft0, _tk0).get("stopPrice") or 0.0) if (_soft0 > 0 and _tk0 > 0) else 0.0
+                                    if _oid0 and _want0 > 0 and _fixed_stop_core.breached(_side_u == "LONG", float(current_price or 0.0), _soft0):
+                                        # 2026-10-15 (USER "you cant just close these now without absolute reentry
+                                        # guarantee"): the correct level is already behind price, so the place path
+                                        # below would refuse it (FIXED_STOP_REFUSE, would trigger instantly) and the
+                                        # position would be left with NO exchange stop at all. Keep the resting one as a
+                                        # disaster backstop — far away, but far better than naked — until price comes
+                                        # back to the protected side, when the normal wrong-level replace takes over.
+                                        reg[position_key] = {"orderId": _oid0, "stopPrice": _trig0, "entry_sig": _sig, "symbol": symbol, "side": position_side, "disaster_backstop": True}
+                                        try:
+                                            position.exchange_stop_order_id = _oid0
+                                        except Exception:
+                                            pass
+                                        logger.critical(f"🛡️ [FIXED_STOP_DISASTER_BACKSTOP_KEPT] {position_key}: correct level {_soft0:.8f} is already behind price {float(current_price or 0):.8f} (cross predates the fix) — keeping resting stop {_oid0} at {_trig0} rather than leaving the position naked")
+                                        return "OK_DISASTER_BACKSTOP_KEPT"
                                     if _oid0 and _want0 > 0 and (_trig0 <= 0 or abs(_trig0 - _want0) > _tk0 * 1.5):  # exact exchange level (tick-rounded), no % tolerance
                                         # 2026-10-13 men AVAX: a resting stop at 9.779 (frozen 25h after a 10.942 entry) was adopted for hours — never adopt a wrong level
                                         logger.critical(f"🛡️ [FIXED_STOP_WRONG_LEVEL] {position_key}: resting stop {_oid0} at {_trig0} vs frozen level {_soft0:.6f} — cancelling, placing correct level")
@@ -25835,20 +26065,9 @@ class MultiAccountTradeManager:
                     )
                     return f"BLOCKED_GAIN_GATE_{_gain:.2f}%_lt_{_aug_thr:.2f}%_pos${_pos_val:.0f}"
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
-        if is_augment and not _original_action_was_reentry and position:
-            _aug_count = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)
-            try:
-                from live_twins import reentry_augment as _ra_cnt
-                if _ra_cnt.current_carried(_air_trade_log(self, position_key)):
-                    _aug_count += 1.0  # V17 AIR: a carried open counts as augment #1 (vec n_augments=1)
-            except Exception:
-                pass
-            _max_augs = _psym_get(symbol, position_side, "MAX_AUGMENTS_PER_POSITION", getattr(config, "MAX_AUGMENTS_PER_POSITION", 3))
-            if _aug_count >= _max_augs:
-                logger.warning(
-                    f"[MAX_AUGMENTS_CAP] {position_key}: BLOCKED — augmented_count={int(_aug_count)} >= max={_max_augs}"
-                )
-                return f"BLOCKED_MAX_AUGMENTS_{int(_aug_count)}"
+        # USER 2026-10-15 "MAX_AUGMENTS <- delete the switch completely": the augment-count cap is GONE from every
+        # surface (config, config_tradier, QuickConfig, vec twin, templates, per_sym sets). There is no cap to read, so
+        # there is no gate here; augment frequency is governed by the gain ladder and COUNTER_TREND_ADD_BLOCK only.
         # BACKTEST_CHANGE_46: block augments on blacklisted symbols (reductions still allowed)
         if is_augment and symbol in getattr(config, "BLACKLIST_SYMBOLS", []):
             return f"BLOCKED_BLACKLISTED_{symbol}"
@@ -28686,7 +28905,18 @@ class MultiAccountTradeManager:
             # 2026-07-19 USER: band-slope sizing at the central sizing chokepoint so ALL crypto
             # opens get it (was quick-open path only). QUICK actions skip — calculate_dynamic_quantity
             # already applied it upstream (no double-apply).
-            if getattr(config, "BAND_SLOPE_SIZING_V2_ENABLED", False) and "QUICK" not in (action or ""):
+            _qq_cfg = _QQCfg(symbol, position_side)
+            if bool(_qq_cfg.STDEV_SLOPE_SIZING_ENABLED) and "QUICK" not in (action or ""):
+                # USER 2026-10-16 "should be 1-5x": the STDEV ladder replaces BAND_SLOPE_SIZING_V2 when on — ONE function
+                # shared with v12_quick_engine + tradier_manage (vec_decisions/qty_quantizers.py). Missing channel -> 1.0.
+                _qq_lm = _qq.ladder_from_indicators(i, is_long, _qq_cfg)
+                quantity = quantity * _qq_lm
+                logger.info(f"{position_key} [STDEV_LADDER] lrL_pct_b_{_qq.ladder_tf(_qq_cfg)}={i.get('lrL_pct_b_' + _qq.ladder_tf(_qq_cfg))} x{_qq_lm:.2f} (1-{_qq.ladder_max(_qq_cfg):g}x) -> ${quantity * current_price:.2f}")
+            if _qq.is_new_lifecycle_action(action) and _qq.streak_on(_qq_cfg):
+                _qq_sm = _qq.live_mult(config.BASE_PATH, "ez", account_key, symbol, position_side, _qq_cfg)
+                quantity = quantity * _qq_sm
+                logger.info(f"{position_key} [QTY_STREAK] {action} x{_qq_sm:.2f} -> ${quantity * current_price:.2f}")
+            if not bool(_qq_cfg.STDEV_SLOPE_SIZING_ENABLED) and getattr(config, "BAND_SLOPE_SIZING_V2_ENABLED", False) and "QUICK" not in (action or ""):
                 _bs_tf = getattr(config, "BAND_SLOPE_SIZING_V2_TF", "4h")
                 _bs_pb = i.get(f"lrL_pct_b_{_bs_tf}")
                 _bs_sl = i.get(f"lrL_slope_{_bs_tf}")
@@ -29162,7 +29392,9 @@ class MultiAccountTradeManager:
 
         # ── DC POSITION SIZING — final step before execution ──────────────────
         # 0.0=channel bottom, 1.0=channel top; rewards good entries, penalises chasing
-        if is_entry_action and "HEDGE" not in action:
+        # USER 2026-10-16: DC_POS_SIZE re-sized every crypto open 0.5-2.2x with NO vector twin, after the STDEV ladder and after the
+        # MAX_ORDER_VALUE cap, so live never traded the size the board measured. Same ruling as the 2026-10-06 VEC-SIZE PARITY removals.
+        if is_entry_action and "HEDGE" not in action and bool(getattr(config, "DC_POS_SIZE_LIVE_ENABLED", False)):
 
             def _dcp_eta(lo_k, hi_k):
                 lo = safe_fetch_float(i.get(lo_k, 0), 0)
@@ -31973,6 +32205,23 @@ class MultiAccountTradeManager:
             if not _ok365:
                 logger.warning(f"🛑 [365D_CONFIRM_BLOCK] {position_key} action={action} reason_in='{(reason or '')[:60]}' BLOCKED: {_why365}")
                 return "BLOCKED_NO_365D_CONFIRM"
+        # ─── SYM-HALT (USER unlock 2026-10-15 — tools/v15_sym_halt.py) ───
+        # 3 trailing net losers since apply halts new exposure for that
+        # (account, sym_side) pair only. Exits untouched by construction
+        # (CLOSE/REDUCE never match the OPEN/AUGMENT/REENTRY/REVERSE tokens).
+        # Env kill-switch V15_SYM_HALT_ENABLED=0. Fail-open on ANY error.
+        # No vec-driven exemption: live booked losses outrank twin agreement.
+        try:
+            _sh_on = str(os.environ.get("V15_SYM_HALT_ENABLED", "1")).lower() not in ("0", "false", "no")
+            _sh_act = str(action or "").upper()
+            if _sh_on and any(_t in _sh_act for _t in ("OPEN", "AUGMENT", "REENTRY", "REVERSE")):
+                from tools.v15_sym_halt import sym_halt_active as _sym_halt_active
+                _sh_hit, _sh_why = _sym_halt_active(account_key, f"{symbol}_{position_side}")
+                if _sh_hit:
+                    logger.critical(f"🛑 [SYM_HALT] {position_key}: {_sh_why} — {action} refused, exits untouched")
+                    return "BLOCKED_SYM_HALT"
+        except Exception as _sh_e:
+            logger.debug(f"[SYM_HALT] {position_key}: check skipped, fail-open ({_sh_e})")
         # BROKER_SYNC LOGICAL DEMAND — 2026-09-08: 80× same order sent because it thought not received without checking broker.
         # DEMAND recent broker positions info before any trade (both crypto and stock) — not optional, not a switch.
         # 2026-10-02 FIX (fin:ETHUSDT_LONG bled -13% ROE with every CLOSE refused 17:35→22:30 UTC on a frozen ts):
@@ -32198,7 +32447,7 @@ class MultiAccountTradeManager:
         # chokepoint DESTROYS martingale: a counter-1h add/open is refused from EVERY path (FIN_AGENT force-open,
         # STRONG_SELL/BUY, reentry, DELTA_PYRAMID, watchdog, etc). CLOSE/REDUCE/HEDGE pass. ROLLBACK: =False.
         # ═══════════════════════════════════════════════════════════════════════════
-        _re_g = bool(getattr(config, "REENTRY_APPLY_ENTRY_GATES_ENABLED", False))  # N1/004 live twin: reentry paths must pass the same entry gates (default OFF = today)
+        _re_g = False  # DEAD (USER 2026-10-16): reentry never uses the ENTRY gates — it has its own reentry filters. Twin of v12_quick_engine _rag_on.
         try:
             if (
                 bool(getattr(config, "COUNTER_TREND_ADD_BLOCK_ENABLED", True))
@@ -32770,7 +33019,11 @@ class MultiAccountTradeManager:
             if (
                 bool(getattr(config, "GR_FILTER_ALL_ENTRIES", False))
                 and symbol
-                and position_side == "LONG"
+                # 2026-10-16 USER: "it should run all all cat_sides". The SHORT path was already written
+                # below (sma_200_15m * 0.95 relaxation at the elif) and gr_filter_pass takes position_side
+                # and derives is_long from it — only this outer LONG-only condition kept CRYPTO_SHORT out.
+                # The stocks twin (tradier_manage.py:24342) was never side-restricted.
+                and position_side in ("LONG", "SHORT")
                 and ("OPEN" in _kill_act or "ENTRY" in _kill_act)
                 and "REENTRY" not in _kill_act and "AUGMENT" not in _kill_act
                 and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act and "HEDGE" not in _kill_act
@@ -35183,7 +35436,14 @@ class MultiAccountTradeManager:
                             )
             if _ung_hedge_misident_block:
                 return "BLOCKED_HEDGE_MISIDENT_this_is_original"
-            _ung_bypass = is_hedge or "LIQUIDATION" in reason_upper or "FORCE_REDUCE" in reason_upper or "EMERGENCY_OVERSIZE" in reason_upper
+            # 2026-10-15 FIXED_STOP IS NON-NEGOTIABLE (USER, COTI incident): the frozen dc_15m stop is "no switch, no cfg
+            # read, no veto" (vec_decisions/fixed_stop.py). It was NOT in UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS, so every
+            # breach close at a loss returned BLOCKED_BY_UNIVERSAL_NOLOSS_GATE — unlogged at the caller — and set a 300 s
+            # cooldown: men re-decided the same 13 closes every 6.7 s for hours and not one order ever reached Binance
+            # (live_guardian: "CLOSE FIXED_STOP decided ... no fill in 1800s and no refusal logged"). It is hard-coded
+            # here beside LIQUIDATION, NOT added to the config list, because a mandate that a config edit can disable is
+            # not a mandate.
+            _ung_bypass = is_hedge or "FIXED_STOP" in reason_upper or "LIQUIDATION" in reason_upper or "FORCE_REDUCE" in reason_upper or "EMERGENCY_OVERSIZE" in reason_upper
             # 2026-04-16: bypass for technical-exit reasons (WT cross, ratio-close-losing).
             # Default list covers the exits I added today. User controls via config.
             if not _ung_bypass and bool(
@@ -36333,6 +36593,12 @@ class MultiAccountTradeManager:
                         ez_vigilance_record_close(symbol, position_side, safe_fetch_float(getattr(position, "gain", 0.0), 0.0), reason, exit_price=float(current_price or 0.0))
                 except Exception as _vg_rce:
                     logger.warning(f"[VIGILANCE] close-record err {position_key}: {_vg_rce}")
+                try:
+                    if is_reduce and (is_full_close or (current_real_amt > 0 and float(quantity) >= float(current_real_amt) * 0.999)):
+                        _qq_ent = safe_fetch_float(getattr(position, "entryPrice", 0.0), 0.0) or safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
+                        _qq.live_record_close(config.BASE_PATH, "ez", account_key, symbol, position_side, _qq_ent, float(current_price or 0.0), _QQCfg(symbol, position_side), lifecycle=_xg.lifecycle_id(account_key, symbol, str(position_side).upper(), getattr(position, "opened_at", None), _qq_ent), notional_usd=float(quantity) * float(current_price or 0.0))
+                except Exception as _qq_rce:
+                    logger.warning(f"[QTY_STREAK] close-record err {position_key}: {_qq_rce}")
                 # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): every realized FULL close feeds the sym_side's loss window —
                 # gain from the REAL entry price (position.gain can be stale), runs independent of VIGILANCE_GUARD_ENABLED.
                 try:
@@ -39861,12 +40127,20 @@ class MultiAccountTradeManager:
                             getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_LOW", 30.0)
                         )
                         _gr_k_fav_hi = float(_psym_cs_get(symbol, pos_side, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", getattr(config, "GUARANTEED_REENTRY_K_FAVORABLE_HIGH", 70.0)))  # USER 2026-10-12 tandem: per-sym > cat_side > global (was global-only)
-                        _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (
+                        # 🔴 USER 2026-10-16: "WE DO NOT HAVE A FUCKING stoch_k filter anywhere for over a year,
+                        # only wt — GET IT OUT ... DESTROY". k_3m may no longer decide a GUARANTEED_REENTRY in
+                        # either direction: it can never BLOCK one (that is how a rally gets abandoned after the
+                        # exit) and it can never be the sole justification for one either. WT stack + HTF agreement
+                        # below is the whole gate, which is what the system actually trades on. The K thresholds
+                        # above are left in place only so the config/template surface stays stable; they are inert.
+                        # ROLLBACK: GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED = True in config.py.
+                        _gr_k_stoch_gate = bool(getattr(config, "GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED", False))
+                        _gr_k_adverse = _gr_k_stoch_gate and ((is_long and k_3m >= _gr_k_hi) or (
                             not is_long and k_3m <= _gr_k_lo
-                        )
-                        _gr_k_favorable = (is_long and k_3m <= _gr_k_fav_lo) or (
+                        ))
+                        _gr_k_favorable = _gr_k_stoch_gate and ((is_long and k_3m <= _gr_k_fav_lo) or (
                             not is_long and k_3m >= _gr_k_fav_hi
-                        )
+                        ))
                         # USER RULE (2026-05-04): 3m AND 15m must agree + ≥1/3 HTF (1h/4h/D).
                         # Exception: within 5min of exit, price still with us, 3m ok, ≥1 HTF.
                         _gr_is_cont = (
@@ -42018,7 +42292,13 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     if pos_amt > 0:
         try:
             import vec_decisions.twin_reentry_staged as _twin_af
-            _af_get = lambda _k, _d=None: getattr(config, _k, _d)
+            # 2026-10-15 DEAD_VEC live-wire: per-sym_side resolver (per_sym > cat_side > global), the twin of
+            # tradier_manage.py:18582 `_af_get = lambda _k, _d=None: _cfg_auto(_k, _d)` — crypto read the GLOBAL
+            # only, so a board value for AUGMENT_FALLBACK_GAIN_PCT/_REDUCE_PCT/_REDUCE_ENABLED never reached live.
+            # Default-preserving: AUGMENT_FALLBACK_REDUCE_ENABLED is False on all 740 per_sym rows and all 4
+            # cat_sides, so augment_fallback_reduce_frac stays 0.0 and this branch cannot fire today.
+            _af_side = ctx.get("position_side") or ("LONG" if is_long else "SHORT")
+            _af_get = lambda _k, _d=None: _psym_get(symbol, _af_side, _k, getattr(config, _k, _d))
             _af_peak = safe_fetch_float(getattr(position, "max_gain", gain), gain)
             if bool(_twin_af.augment_fallback_fires(_af_get, gain, _af_peak)):
                 _af_frac = float(_twin_af.augment_fallback_reduce_frac(_af_get) or 0.0)
@@ -42220,11 +42500,6 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                 _aal_sig = _aal_cur > 0 and _aal_prv is not None and _aal_cur < safe_fetch_float(_aal_prv, 0.0)
                 _aal_dc_ok = _aal_dcp is None or _aal_dcc <= 0 or _aal_dcc <= safe_fetch_float(_aal_dcp, 0.0)
                 _aal_fresh = _aal_cur < _aal_last
-            _aal_cnt = safe_fetch_float(getattr(position, "augmented_count", 0), 0.0)
-            try:
-                _aal_cap = float(_psym_get(symbol, _aal_side, "MAX_AUGMENTS_PER_POSITION", getattr(config, "MAX_AUGMENTS_PER_POSITION", 999999)))
-            except (TypeError, ValueError):
-                _aal_cap = 999999.0
             _aal_new = dict(_aal_st)
             if is_long:
                 _aal_new["prev_low_15m_prev"] = _aal_cur
@@ -42234,7 +42509,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
                 _aal_new["prev_high_15m_prev"] = _aal_cur
                 if _aal_dcc > 0:
                     _aal_new["prev_dc_high_15m_prev"] = _aal_dcc
-            if _aal_sig and _aal_dc_ok and _aal_fresh and _aal_cnt < _aal_cap:
+            if _aal_sig and _aal_dc_ok and _aal_fresh:  # 2026-10-15: MAX_AUGMENTS cap deleted (USER)
                 _aal_qty = float(getattr(config, "START_POSITION_SIZE", 28.0)) / max(current_price, 1e-9)
                 if _aal_qty > 0:
                     _aal_new["last_aug_low" if is_long else "last_aug_high"] = _aal_cur
@@ -50138,7 +50413,11 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
         _gain = safe_fetch_float(getattr(_pos, "gain", 0), 0.0)
         _amt = abs(safe_float(getattr(_pos, "positionAmt", 0)))
         _fired = None
-        if bool(getattr(_cfg, "VIGILANCE_GUARD_ENABLED", True)):
+        # USER 2026-10-16: "the low4 are switches that need to be tried on every sym_side like everything else" —
+        # the dc_low4/high4 structural stop is therefore NOT a hardcoded exit path. It fires only where a board has
+        # armed it (VIGILANCE_DC4_STOP_ARMED, per-sym resolvable); the non-negotiable stop is the one resting at the
+        # exchange on dc_low_15m/dc_high_15m -/+ 0.25%, which is untouched by this.
+        if bool(getattr(_cfg, "VIGILANCE_GUARD_ENABLED", True)) and bool(getattr(_cfg, "VIGILANCE_DC4_STOP_ARMED", False)):
             _vg_tf = str(getattr(_cfg, "VIGILANCE_DC4_STOP_TF", "15m") or "OFF").strip()
             if _vg_tf.upper() != "OFF" and _gain < 0:
                 _vg_lvl = safe_fetch_float(_ind.get(f"dc_low4_{_vg_tf}" if _is_long else f"dc_high4_{_vg_tf}", 0), 0.0)
@@ -51153,14 +51432,34 @@ async def process_position(
             _fx_is_long = position_side == "LONG"
             _fx_lvl = safe_fetch_float(getattr(position, "fixed_stop_price", 0) or 0, 0.0)
             _fx_ep = safe_fetch_float(getattr(position, "entry_price", 0) or 0, 0.0)
-            if _fx_lvl <= 0 or _fixed_stop_level_absurd(_fx_is_long, _fx_lvl, _fx_ep):
+            try:
+                _fx_oa = getattr(position, "opened_at", None)
+                _fx_oa_ep = _fx_oa.timestamp() if hasattr(_fx_oa, "timestamp") else 0.0
+            except Exception:
+                _fx_oa_ep = 0.0
+            _fx_anchor = safe_fetch_float(getattr(position, "fixed_stop_anchor", 0) or 0, 0.0)
+            # 2026-10-15 LIFECYCLE-BOUND FREEZE (USER, COTI incident): _fixed_stop_level_absurd only ever caught a
+            # WRONG-SIDE level (distance was removed per "NO 5% OR ANY% EXISTS"), so a level inherited from a PREVIOUS
+            # lifecycle of the same key — correct side, 1-2 days old — was never re-frozen. ang/fin/men COTIUSDT_SHORT
+            # re-entered 13:09-13:59Z on 10-15 carried the 10-13/10-14 dc_high_15m and had no reachable stop at all.
+            # opened_at is the lifecycle: a new one re-freezes. No percentage anywhere.
+            if _fixed_stop_core.needs_freeze(_fx_lvl, _fx_anchor, _fx_oa_ep) or _fixed_stop_level_absurd(_fx_is_long, _fx_lvl, _fx_ep):
                 _fx_old = _fx_lvl
                 _fx_lvl, _fx_src = _fixed_stop_freeze_level(_fx_is_long, safe_fetch_float(_pp_shared_ind.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(_pp_shared_ind.get("dc_high_15m", 0) or 0, 0.0), _fx_ep)
                 if _fx_lvl > 0:
                     position.fixed_stop_price = _fx_lvl
+                    _fx_armed0 = _fixed_stop_core.armed_at_freeze(_fx_is_long, current_price, _fx_lvl)
+                    position.fixed_stop_armed = _fx_armed0
+                    if not _fx_armed0:
+                        logger.critical(f"⚠️ [FIXED_STOP_UNARMED] {position_key}: price {current_price:.6f} is ALREADY past the frozen level {_fx_lvl:.6f} — the cross predates this freeze, NO retro close; arms when price returns to the protected side")
+                    if _fx_oa_ep > 0:
+                        position.fixed_stop_anchor = _fx_oa_ep
                     if _fx_old > 0:
-                        logger.critical(f"🛡️ [FIXED_STOP_REFREEZE] {position_key}: stale frozen {_fx_old:.6f} absurd vs entry {_fx_ep:.6f} — one-time re-freeze to {_fx_lvl:.6f} ({_fx_src}), never drifts again")
-            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl):
+                        logger.critical(f"🛡️ [FIXED_STOP_REFREEZE] {position_key}: {_fx_old:.6f} (anchor {_fx_anchor:.0f}) does not belong to this lifecycle (opened_at {_fx_oa_ep:.0f}, entry {_fx_ep:.6f}) — re-frozen to {_fx_lvl:.6f} ({_fx_src})")
+            if _fx_lvl > 0 and not bool(getattr(position, "fixed_stop_armed", True)) and not _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl):
+                position.fixed_stop_armed = True
+                logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl:.6f} — stop is live again")
+            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl) and bool(getattr(position, "fixed_stop_armed", True)):
                 _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _fx_side = "SELL" if _fx_is_long else "BUY"
@@ -63730,14 +64029,8 @@ def _ensure_ez_all(config):
         try: _a=float(locals().get("position", {}).get("gain",0) if 'position' in locals() else 0)
         except: _a=0
         _=_a  # AUGMENT_BREAKOUT_MIN_GAIN_PCT
-    # AUGMENT_FALLBACK_GAIN_PCT — real live: fallback augment gain pct
-    try:
-        _aug_fallback = float(getattr(config, "AUGMENT_FALLBACK_GAIN_PCT", 0) or 0)
-        if _aug_fallback not in (0, 1.0) and _aug_fallback != 0:
-            _aug_gain = float(locals().get("position", {}).get("unrealizedProfit", 0) or 0) if 'position' in locals() else 0
-            if _aug_gain < -_aug_fallback:
-                _ = 1
-    except: pass
+    # AUGMENT_FALLBACK_GAIN_PCT stub removed 2026-10-15: the real per-sym_side consumer is
+    # evaluate_augmentation (ez_manage.py:42110, twin_reentry_staged.augment_fallback_fires).
     if bool(getattr(config, "AUGMENT_FALLBACK_REDUCE_ENABLED", False)):
         try: _aug = float(locals().get("position", {}).get("gain", 0) if 'position' in locals() else 0)
         except: _aug = 0

@@ -3092,3 +3092,337 @@ themselves so we can opt to trade the identical trades from vectorized or switch
 - Also 10-14: a "Teleport auto-stash" (git stash 19:38:35Z) reverted all uncommitted tracked edits in the Mac repo; restored
   forward (§106 text, binance_fills_fetch); traders were SIGKILLed in sequence 20:31–20:36Z by an unidentified actor (not the
   cron watchdog, not memory pressure; a Muse agent runs on the Mac).
+
+### 108.7 OOS audit (2026-10-14 22:xxZ) — the 30D optimizer fits noise; holdout mode + min-effect knob
+Real engine evals (`E.prepare` + `evaluate_prepared_sanitized`, NPZ truncated in memory; scripts `~/oos_audit/` on S2):
+- Boards fitted Oct 8–13 (exact fit end, n=108 in-sample / 79 OOS, median 4.2 unseen days): published set in-sample median
+  +9.53 (claimed +20.0 — boards do not reproduce even on their own window: 10/108 within 1 pp) -> OOS median **0.00**, mean +0.13;
+  OOS lift vs its own start set median 0.00 (≈2% of the claimed lift survives); vs template +0.21 median, mostly by NOT trading
+  (25/79 zero-trade). Spearman(in-sample lift, OOS lift) ≈ 0 (−0.06 / +0.08). Older boards (n=382, last 7 d): A 0.00 median.
+- `vp.evaluate_sanitized(..., window_days=7)` silently returns the 30D result; the prepare path honours 7. The pilot's V17
+  regime check uses prepare_batch(…, 7) (correct).
+Consequences: learning MORE connections from in-sample deltas learns noise. Pilot (md5 `67a88ea1` Mac / bench; deployed
+`6f019d49` without the min-effect knob): `V15_HOLDOUT_DAYS=7` fits the whole board on the NPZ truncated at last bar − 7 d and
+scores final / start / template on the 7 unseen days -> `progress["holdout"]` + `HOLDOUT` delta-log line (default 0 = off);
+`V15_MIN_PROMOTE_DELTA` (pp, default 0) rejects main-pass promotions below a minimum effect. The bench now judges versions on the
+holdout (`v15_npz_bench.py compare` prints OOS sums). The brain must be retrained on holdout outcomes (P(OOS win | fit win)),
+not on fit deltas.
+Ops same day (USER): S1 = backtests only; klines APPENDED (npz_bar_refresh NPZ_LOCAL_ONLY=1, tradier-sandbox-klines disabled),
+ez_s1_stack only inside the failover unit (EZ_S1_STACK cron commented, tools/ez_s1_stack_reap.sh), failover stale limits 600 s,
+symbols_*.json pushed Mac->S1 every 2 min (tools/ez_rankings_push_s1.sh), pilot tier = ledger W/M/L of the previous round
+(ledger built from the KPI DB in 0.1 s, pushed to S2).
+
+### 108.8 Version gate — only verified pilot changes reach production (USER 2026-10-14)
+USER: "make sure the verifier is in place on the fixed npz set on s2 that runs every new version of v15_pilot.py and subscripts and
+only allows a modification if results improve — not when skipping switches or filters leads to deterioration of the system".
+`tools/v15_version_gate.py` (S2 `~/v15_bench/tools/`, cron */20 run + hourly watch): `submit --files SRC=REL [--set K=V]` ->
+champion vs candidate CONCURRENTLY on frozen `snap_20261014` (4 sides, `V15_HOLDOUT_DAYS=7`) -> PASS = all sides resulted, Σfit not
+lower than champion − 1.0, no side −2.0 pp, ΣOOS not lower than champion − 1.0 -> atomic md5-verified deploy to S1+S2 sandbox+live,
+gated switch defaults -> `data/v15_gate_flags.json` (pilot loads at import, env wins), candidate = champion. FAIL = nothing deployed.
+`watch` alerts (`~/v15_bench/gate/ALERT_UNGATED_PILOT.json`) when a production pilot differs from the champion. Bootstrap champion
+= pilot md5 1aef0e69 (brain default OFF); first candidate = BRAIN ON (p_ref 0.005, floor 5/1000). Pending task docs:
+`docs/v15_pending/00_INDEX.md`.
+
+### 108.9 Gate discipline — the ONLY production path (USER 2026-10-15)
+No pilot, subscript, or gated switch-default change reaches production by hand edit, direct rsync, or fleet-wide
+redeploy — `v15_version_gate submit` on S2 is the single gate: PASS deploys (atomic md5-verified), FAIL deploys nothing.
+A board that degrades or reverts after a deploy is gate-bypass evidence: stop the herd, prove the bypass, re-submit.
+Out of gate scope by design: scheduler-track files (`tools/v15_fleet_scheduler.py`, `tools/v15_dispatch_job.py`,
+`tools/v15_round_watchdog.sh`) — Mac-only dev, never fleet-pushed, never benched; they schedule work, never change
+what a board computes.
+
+---
+
+## 109 — 2026-10-15 CORRECTIONS. THIS SECTION SUPERSEDES EVERY EARLIER PASSAGE IT CONTRADICTS.
+
+Written after the 2026-10-15 Tradier loss day (**−$430.34** stocks / **−$713.52** both venues, 39 sym_sides).
+Each item below was MEASURED, with the file:line or the number. Where an older section disagrees, **§109 wins** —
+the older text is left in place as provenance, as §0 requires. Full detail: `HANDOVER_20261015/`.
+
+### 109.1 Yellow geometry — "L:BI (col12-61)" is WRONG
+§56 and the `INSTRUCTIONS` tab say yellows live in **`L:BI`, 50 columns**. Measured on
+`TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx`: filter headers run to **`max_column` 230, ~216 headers per tab,
+2461 per workbook** (`ENTRY_REVERSAL_BOUNCE` 216, `EXIT_VELOCITY` 214, `GLOBAL_RISK_GATES` 190 …). `v15_pilot.py:5521`
+scans col 12 → `max_column+50`, stopping at the `WHAT SWITCH` sentinel — it is NOT bounded by BI.
+**Consequence:** any audit that diffs only `r[11:61]` compares the first 47 of 216 columns and will declare a starved
+template healthy. The Oct 13 → Oct 15 full-width diff is **2461 → 2461, zero headers removed** — templates were never
+column-starved. ~80 filters on one row fits ~4× over; **slot capacity has never been the constraint.**
+
+### 109.2 `DEAD_VEC_SWITCHES` / `vec_unwired.json` mean dead on the **VECTOR** side, not live
+`v15_pilot.py:124-128` states it; it is easy to misread and was misread this session (30 names removed, **18 had to be
+put back**). A `QuickConfig` dataclass FIELD plus `AUTO_WIRED_PARAMS` membership is **INERT** — all four consumers are
+`return`-first passthroughs with erased bodies: `v12_quick_engine.py:799, 809, 256, 779` (2026-09-28/09-30 NO-LIES
+purges). Un-excluding such a switch is **dangerous, not generous**: its vec delta is structurally 0, board
+nondeterminism is ±0.48 gain, and 15 of the 18 had real live consumers — i.e. noise could promote a structural zero
+onto live stops.
+
+### 109.3 The 2026-09-28 filter-wiring census verdicts are UNRELIABLE — do not cite them as proof
+It counted single-line `getattr(cfg,NAME)` hits and therefore missed every multi-line
+`_cfg("NAME",\n default,\n account_key, symbol, side)` consumer. `EXIT_R1_R2_FILTER_TF` and `FROZEN_STOP_FILTER_TF`
+were verdicted dead while being real on BOTH sides (`v12q:17114` / `:17091` + `twin_yellow_filters`; live inside the
+`R2_WT_VEL_SLOW` gate). **Four traps, all of which produced a false verdict this session:**
+1. a quoted name inside a **list literal** is not a read (`filter_ablation_groups.py:54`, `lane_vec_stub4.py:77`); nor is a docstring citation;
+2. a read inside a `vec_decisions/` twin counts only if an engine **calls** that twin (`wt_crossunder_final_exit` @ `twin_entry_ports_b.py:415` has zero call sites);
+3. on the LIVE side `_ = _cfg("NAME", …)` is a stub farm — **456** such lines in `tradier_manage.py`, plus `if bool(_cfg(…)): _ = 1` around `:59783-61298`;
+4. **any dead switch with a `data/switch_dependencies.json` master looks alive** under baseline-vs-flip, because `tools/opt/evaluate_v12.py:812-814` forces the master ON when the switch is overridden. Pin the master in BOTH arms.
+**Mandatory gate:** `python3 -I tools/v15_deadvec_wiring_audit.py` must exit 0 before and after any wiring change.
+
+### 109.4 A config default is NOT a kill switch
+`_cfg` / `_cfg_auto` / `_psym_get` resolve **per_sym FIRST**. Measured 2026-10-15: `RULE_B_5M_EXIT_ENABLED=True` on
+**222/222 stock and 325/325 crypto** rows, `WT_CROSSUNDER_FINAL_ENABLED=True` on 218/222 and 322/325,
+`HEDGE_FAILED_FALLBACK_CLOSE_ENABLED=True` on all 547. Flipping the class default changed **nothing** live.
+A real kill switch must sit **above** the per_sym layer (`SUB15M_BLOCKED_SWITCHES` + `_sub15m_blocked` at the top of
+`_cfg`; `_sub15m_blocked_ez` at the top of `_psym_get`) or be read off the class object at the call site.
+**Also:** inside `tradier_manage.py` the bare name `config` **is `TradierConfig()`** (`:6645`) — that file never
+imports `config.py`. Stocks settings belong in `config_tradier.py`; a stocks constant in `config.py` is dead.
+
+### 109.5 `r2_eff_tfs` semantics — the mechanism behind the peak give-backs
+`vec_decisions/twin_yellow_filters.py:1067`: `"15m"` (the default) or `""`/`"OFF"` → **ALL** of `family`; any other TF
+→ **just `(that_tf,)`**. Stocks family `('1h','4h','D')` ⇒ `'D'` **narrows** to Daily only. **Crypto family is
+`('15m',)` ⇒ `'D'` is a total SWAP to a leg crypto never had.** It gates `R2_WT_VEL_SLOW`, the peak-then-collapse exit.
+It moved 15m→D on **109/222 stock and 98/325 crypto**; 13 positions surrendered their whole peak
+(CRWD_SHORT +13.01%→−0.20%).
+
+### 109.6 One-way-ness test — how to tell a mechanical rewrite from a real optimiser
+A per-sym delta search returns a SPREAD of transitions. These returned one:
+`EXIT_R1_R2_FILTER_TF` 103 sym_sides / **1** distinct transition / 100% · `FROZEN_STOP_FILTER_TF` 103 / 1 / 100% ·
+`PARITY_VEC_EXACT_MODE` 146 / 1 / 100% · `DC_HARD_STOP_15M_ENABLED` 31 / 1 / 100%
+versus a genuinely optimised switch — `ATR_ADAPTIVE_STOP_MULT`: 64 sym_sides, **23** distinct transitions, dominant 17%.
+**A switch flipping one way across 100+ sym_sides was not backtested. Treat it as un-evidenced.**
+
+### 109.7 Yellow-attachment ≠ prune-exemption (§56 addendum)
+`WT_CORE_MANDATORY_BASES` / `ESSENTIAL_GATE_SWITCHES` exempt a row from **pruning** only; nothing consulted them for
+**attachment**. Measured before the fix: `WT_15M_BOUNCE_OPEN_ENABLED` attached 49 yellows of which only **12** were
+WT-specific; `WT_CROSS_EXIT_APPLIES_TO_WINNERS` evaluated **0** (its only yellow is in `UNWIRED_FILTERS`, so 5 cells
+were painted yellow while zero work happened). **Painted ≠ evaluated — audit `len(done[k]["yellows"])`, not colour.**
+Fixed by making `mandatory_bases_for_tab(sheet, switch)` switch-aware; `EXIT_VELOCITY`/`EXIT_STRUCTURAL` previously had
+no mandatory set at all.
+
+### 109.8 The coarse yellow cap is PAUSED (24 → 0)
+`_COARSE_CAP` default is now **0** (disabled). `_coarse_trim` ranks `_kept` by `_kept_ev` = (AVG_DELTA, POS_SYM) from
+prior rounds, so a **newly added column has no evidence, sorts last, and is deferred forever** — never earning the
+evidence that would keep it. The cap would permanently hide the WT15 filters and the boards would "prove" new columns
+worthless by never evaluating them. Restore with `V15_COARSE_YELLOW_CAP=24` only once the new columns have
+AVG_DELTA/POS_SYM over hundreds of tests. Cost accepted by the user: WT rows now evaluate up to ~127 yellows.
+Measured regression this closed: WT15 yellows/row **26.20 (run27, Oct 6) → 0.65 (run32, Oct 12)**, a 40× collapse;
+EXIT-tab zero-yellow share 44.9% → 93.5%; fleet-wide 61.8% of calculated EXIT rows evaluated ZERO yellows.
+
+### 109.9 The S2 version gate was a closed door 2026-10-14 → 2026-10-16 — ROOT CAUSE FOUND, now fixed
+Every bench side returned `{"err": "no progress json", "rc": 0}` after 22–61 minutes of clean running, so
+`v15_version_gate.py:153` dropped all 4 as `uninformative`, `scored: []`, `fit Σ 0.0→0.0`, and **PASS was unreachable
+by construction**. The 4 FAILs in that window are **harness failures, not verdicts on their candidates**.
+**ACTUAL CAUSE (2026-10-16, `tools/v15_npz_bench.py:189-198`):** the pilot names its progress JSON
+`{symside}_v14_progress.json` **only when `--window-days` is 30** (`v15_pilot.py:12119-12123`); every other window
+writes `{symside}_{window}d_progress.json`. The gate always benches with `V15_HOLDOUT_DAYS=7`
+(`v15_version_gate.py:119`), which snaps the fit window 30 → 20, so the pilot wrote `*_20d_progress.json` while the
+bench globbed only `*_v14_progress.json`. `find_progress` now tries `*_{fit_days}d_progress.json` first.
+**A superseded hypothesis, recorded so it is not re-chased:** this was initially attributed to the 2026-10-15
+`PROGRESS_JSON_EVERY_S` 60→300 throttle plus the bench's `V15_FILL_SLICE_S=0` — i.e. "a bench board never hits a
+forced flush". That was wrong; the boards flushed fine, under a name nobody was looking for.
+**Standing rules regardless:** never read a `0.0→0.0` / `scored: []` FAIL as evidence against a candidate, and never
+relax `TOL_SUM`/`TOL_SIDE` to make one pass.
+
+### 109.10 `ALL_PATHS_ALLOWLIST.csv` gates the live-faithful verifier
+`backtest_v12_engine.py:260` **exits 2** for any override not listed. The CSV had been gzipped away, and **no WT15 key
+was in it** — so column **H / LIVE_DELTA was dead for the entire WT15 family**. Restored (1586 rows). Other families
+may still be unregistered: audit before trusting any H column.
+
+### 109.11 Only what is in the tradeable universe may consume CPU
+Universe = `symbols_trb_long.json` ∪ `symbols_trb_short.json` ∪ `TradierConfig.TRADIER_MANDATORY_{LONG,SHORT}_TRB`
+(stocks, **side-exact**) ∪ `tradeable_keys.json` (crypto, `acct:SYM_SIDE`; contains **no `tr*` accounts**).
+Outside it: klines and indicators may still be collected, but **no NPZ build and no backtest**.
+`excluded_tokenized_stocks.filter_syms` covers tokenized stocks ONLY and is not a universe filter — the director now
+applies the real one (`v15_director.py`), `v15_fleet_scheduler.py:577-580` still does not. Cost of the gap, measured:
+5 tier-1 losers traded outside the universe for **−$143.58** on 2026-10-15.
+Positions held in now-untradeable symbols are closed **only when WT 15m turns the wrong way** — never force-closed.
+
+### 109.12 Live is not 15m-only, and a disabled feature was still closing positions
+`tradier_manage.py` reads `k_1m, rsi_1m, atr_3m, k_3m, atr_5m, k_5m, rsi_5m`. `LTF_SUB15M_TRADING_ENABLED=False` now
+hard-blocks the sub-15m **decision switches** (19 stock / 18 crypto, above per_sym, fail-CLOSED,
+`tests/test_sub15m_hard_block.py` 12/12) but the indicator reads remain.
+`HEDGE_FAILED_FALLBACK_CLOSE`: hedging is off (`HEDGE_MODE_TRADIER=False`) yet the FAILURE path was armed and defaulted
+True at `:11489` — live sought a hedge mate impossible on Tradier and the guaranteed failure **closed at a loss**:
+**11 lifecycles, −$202.82**, violating this repo's own "never close at a loss on live" prohibition. Now ANDed with
+`HEDGE_MODE_TRADIER` off the class object.
+
+### 109.13 Hermetic vec-only gate — crypto ENFORCING, stocks LOG
+`data/hermetic_mode.json` = `enforce` since 2026-10-14T20:58Z (crypto, `ez_manage.py:31983`, 0 false flags).
+Stocks had **zero** hermetic references until 2026-10-15; the twin now sits at the top of
+`tradier_manage.execute_now`, reading `TradierConfig.TRADIER_HERMETIC_ENFORCE` (**False = log only**) so per_sym cannot
+switch it off. Flip to enforce only after the `[HERMETIC_TR] WOULD_REFUSE` count over a full session reconciles with
+forward parity's `LIVE_ONLY_NONVEC` tally — stock parity is **1 PASS of 35** today.
+**EXITS ARE NEVER GATED IN EITHER MODE** (`is_full_close`/`action` passed to `vec_provenance.gate`); blocking an exit
+recreates the 2026-10-13 incident. The gate fails OPEN on error.
+
+### 109.14 The profit-protection layer is the least-wired part of the system
+52 non-sub-15m exit/stop/protection switches sit unwired — only **7%** of `vec_unwired.json` is sub-15m, so this is not
+a timeframe artefact. Standouts: `ATR_TRAIL_FILTER_TF` + `ATR_TRAIL_SWEEP_ENABLED` (live reads them, no reachable vec
+read — and give-backs were the day's #1 loss mode); `REGIME_TRENDING_EXIT_GAIN_MIN` / `REGIME_RANGING_EXIT_GAIN_MIN`
+(**dead both sides** — literally the "take profit in time" knob); `INTRADAY_SESSION_FORCE_EXIT_UTC` (**dead both
+sides** — the direct remedy for the −$233 overnight gap). `ULTIMATE_DC_4H_STOP_ENABLED` is **vestigial by mandate**,
+not a defect (the stop at `:14939` is "no veto" by USER mandate; the tunable lever is `DC_HARD_STOP_TF`).
+The vec route **does** carry switches live never reads (`PARITY_VEC_EXACT_MODE` → `_vec_exact_process` →
+`per_sym_store.get_overrides` → `setattr` → `simulate_one`; 40/40 values verified carried), so a vec-wired-only exit
+switch is tradeable today — the gap is the scalar fallback and every `VEC_EXACT_STALE` 4-bar fallback.
+
+## 110. SIDE-BY-SIDE GATE — LAUNCH ENV IS PART OF THE VERSION, CORNER CUTS MUST EARN THEIR PLACE (USER 2026-10-16)
+
+USER: "make sure any version gets tested side by side against previous version so corner cutting is exposed and better
+results are always guaranteed". Measured before the change (2026-10-16):
+- The gate benched pilot CODE with the env frozen into `snap_20261014` (captured from one CRWD_LONG pilot 10-14 19:3xZ).
+  Production boards run the scheduler's dispatch env (`tools/v15_fleet_scheduler.py:1488-1490`: `V15_INERT_SAMPLE_EVERY=100`,
+  `V15_V17_ROUNDS=1`, FOCUS cuts) plus the daily `v17_kpi.py --autotune` (S1 cron 14:30Z) values — neither was ever benched.
+  On 10-16 192/192 S1 production pilots ran 5 unbenched autotune values (SHARE_ABLATION 0.48→0.3072, SHARE_RETEST
+  0.84→0.593, SHARE_FOCUS 0.6→0.8, P3_MAX_S_LOSER 300→432, COMBO_SHARE_WINNER 0.4→0.4527).
+- The 30 latest production boards (pilot 1aef0e69) evaluated 6.2% of attached yellow cells (0.20M of 3.23M); 26% of
+  main-pass rows had no naked eval. The gate compared gain only, so a version doing less work was invisible.
+- 4 bench sides (one per cat_side) against a 0.48/board noise floor.
+
+Gate v2 (`~/v15_bench/tools/v15_version_gate.py` md5 b67aafa0, `v15_npz_bench.py` 6f20851e; tests
+`tests/test_v15_gate_side_by_side.py` 10/10):
+1. **Launch env is versioned.** Champion meta carries `env` (bootstrap = snapshot env). Champion and candidate benches each
+   get an explicit `--env-file`; a candidate may change env (`submit --env K=V`, `--env-from-production HOST`). On PASS the
+   env is published as `data/v15_gate_env.json` beside `data/v15_gate_flags.json`. Routing-only keys are ignored (ENV_IGNORE).
+2. **Coverage is measured on every bench board** (`board_coverage`: main-pass rows, naked rows, yellow cells evaluated =
+   cells with a result, skipped cells per mechanism, no-naked reasons). Painted ≠ evaluated (§109.7).
+3. **Corner-cut rule.** Candidate cells-evaluated or naked-rows < 90% of the champion's (`V15_GATE_COVERAGE_MIN`) =
+   CORNER_CUT → PASS only if ΣOOS beats the champion by more than the noise floor (0.48·√n) AND Σfit is not lower at all
+   (no tolerance). Unreadable candidate coverage while the champion's is known = cut (fail-closed). Every FAIL lists
+   `reasons`.
+4. **All 8 snapshot sides** by default (two per cat_side); run timeout 720 min.
+5. **`watch` (hourly) reads /proc/environ of every production python pilot** on S2 + S1 (bench pilots excluded) and writes
+   `gate/ALERT_UNGATED_ENV.json` on any result-affecting difference from the champion env. GATE_STATUS.md shows the last
+   candidate side by side (fit, OOS, trades, DD, TIM, cells, naked rows, wall per side) plus both alerts.
+First candidate: `20261016T181153Z` = champion code + the production env above, benched against the champion env.
+Not yet enforced: the scheduler does not read `data/v15_gate_env.json`; until it does, drift is detected and alerted, not
+prevented. No gate can promise future market gains — it guarantees only that nothing ships which measured worse
+(fit and unseen-days) or did less work without proving it on unseen days.
+
+## 111. NPZ FRESHNESS — EVERY STORE TOPPED UP EVERY BAR, NEVER REBUILT WHEN A DEEPER COPY EXISTS, NEVER SHRUNK (USER 2026-10-16)
+
+USER: "ez_indicators and tradier_indicators … are supposed to trickle update the npz files every 15min however this
+system is faulty … revise and fix so they are always up to date from now on" + "s2 has backups of the npz;s so no
+complete reruns are ever needed just topups; make sure they get appended to never overwritten with smaller versions".
+
+**Measured before (S1, 2026-10-16 20:3x–21:0xZ, nothing inferred).** Crypto median 3.4 bars behind, 5 of 94 within
+2 bars. The 15m loop's own stamp showed cycles of **2064–2866 s against a 900 s bar** (`latency_from_bar_close_s`
+2615–2666 for the W*/X*/Z* tail of a fixed job order, every cycle). Six symbols were frozen for days: ASTERUSDT 17
+days (legacy `htf_align` → `REFUSE_LEGACY_HTF_ALIGN` forever), ZECUSDC 64 h (`cannot extend 45 row keys`, all
+monthly), CDW/ADP/AEM/AXTI 1-ROW stores since 2026-10-13 (`cannot extend 618 row keys`). On s2, 63 shared symbols
+were staler than on S1 (BNBUSDC 3 bars on S1 / 361 on s2) and AEM was 366 rows vs 25083.
+
+**Root causes, each proven.**
+1. **One global lock made every targeted top-up a silent no-op.** `--loop` held `/tmp/npz_bar_refresh.lock`
+   forever, so `v15_dispatch_job.tail_refresh`, `v15_npz_ensure`, the `*/15` additive cron and
+   `npz_freshness_gate --refresh` printed "locked (previous run active)" and **exited 0**; the dispatch logged that
+   as `tail current (0.2s)` and pushed the stale NPZ to a worker with an md5 "verified=True". Mutual exclusion is
+   now PER SYMBOL (`sym_lock`), the daemon keeps a singleton lock, a one-shot that did not reach the bar exits 3,
+   and `tail_refresh` judges the NPZ's own last bar instead of parsing stdout.
+2. **The cycle was ~3x the bar and the loop then slept to the NEXT boundary.** Jobs are now ordered live-lane
+   first then worst-behind-first (`order_jobs`), the pool is sized from the previous cycle to fit one bar
+   (`autoscale`, cap `NPZ_LOOP_MAX_WORKERS=8` of 16 cores, margin 1.15), and `catchup_wait` starts the next cycle
+   as soon as a closed bar is waiting — measured result **2634 s → 650 s**.
+3. **The appender demanded a near-newest bar.** When the cutoff was not provably final it stepped back at most 3
+   bars and else refused, so a symbol whose klines ended a day ago never caught up to bars its own klines ALREADY
+   held (AEM/AXTI). `cache_last_final` now takes the newest provably-final bar in the local store (same finality
+   rule — a strictly newer row must exist; `tests/test_npz_refresh_dropkeys.py` still pins that an unfinal bar is
+   refused). `NPZ_CATCHUP_TO_SOURCE=0` restores the old behaviour.
+4. **Hard refusals were repaired by nobody.** They are now queued (`data/vec_live/npz_repair_queue.json`) and
+   **tools/npz_repair.py** fixes them by ADOPTING the deepest copy on any host (s1 / s1-live / s1 backups / s2 /
+   s2 backups), then walking it forward in as many 1400-bar passes as the hole needs. Rebuilds are a separate,
+   explicit `--rebuild` (never the cron): adoption healed AEM 1 → 25083 rows from s2's backup — DEEPER than AEM's
+   own 19177 klines rows, which is exactly why adoption is tried before any rebuild — and AXTI 1 → 464.
+5. **The monthly leg froze short crypto stores.** `droppable(k, mode)` matches the whole `*_M` / `*_M_prev` family
+   for CRYPTO only; stocks keep every one of them (the only readers repo-wide are `tradier_manage.py` and
+   `vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py`; `ez_rankings`' `qv_M` is an output label it
+   writes). ZECUSDC went 259 bars → 1 bar on the first cycle after this.
+6. **The loop ignored the RULE#4 freeze** that `v15_npz_freeze` names every other NPZ writer in. It now skips
+   frozen symbols (`FROZEN_BOARD`, 17 on the first cycle) and picks them up automatically when the board finishes,
+   because the order is worst-first.
+7. **21 installed stores were in no refresh job at all** (42USDT, BASUSDT, COLLECTUSDT, ARIAUSDT, BANANAS31USDT …
+   301 bars behind with current klines and a clean dry-run append). The universe now includes every installed NPZ
+   (`installed_syms`, kill switch `NPZ_COVER_INSTALLED=0`); variant/derived files (`_S3`, `_LONG`, `_365` …) stay out.
+8. **The mirror to the worker stopped entirely while the loop lagged.** `sync_indicators.sh` excludes every NPZ the
+   freshness gate calls STALE (>2 bars) or SHORT (<365 d), so during the slow cycles 113 files — including the
+   current ones — were never pushed and s2 aged without limit (ZECUSDC and AGCO, at 331 d and 95 d, could never be
+   pushed at all). **tools/npz_fresh_sync.py** is the corrective pass (cron `5,15,25,…`): it copies a file ONLY
+   where it beats the peer's by rows/last-bar and never where it would shrink the target — 68 corrected copies on
+   the first run, 12 held because their boards were in flight.
+9. **A SIGTERMed loop could hang alive forever.** `Pool.join()` has no timeout: one worker inside builder C code
+   held the parent in `do_wait` for 4+ minutes while the `pgrep`-only keepalive saw a live pid and started nothing.
+   `_kill_pool` bounds the wait and kills the stragglers; **tools/npz_loop_keepalive.sh** judges the loop's log
+   HEARTBEAT (`NPZ_LOOP_MAX_LOG_AGE=900`) and kills a silent pid — the same fix the Mac position writers needed.
+
+**The never-shrink invariant.** `npz_live_generator._shrink_check` refuses any write with fewer rows or an older
+last bar than the file it would replace (`NPZ_ALLOW_SHRINK=1` to override), and the 1-row-stub branch is refused
+for CRYPTO as well as stocks (`NPZ_ALLOW_CRYPTO_STUB=1` restores it). That writer — shared by `ez_indicators` and
+`tradier_indicators` — is what replaced four full stock stores with 1-row live stubs on 2026-10-13; it never called
+`npz_guard`, which would have refused it.
+
+**Where freshness is bounded by the source, say so.** `npz_fresh_sync` splits every symbol into `refresh_gap` (the
+NPZ is behind its OWN klines — this pipeline's fault) and `upstream_gap` (the klines store itself is behind the
+clock), judges stocks against the session frontier rather than the wall clock, and excludes symbols whose klines
+stopped arriving (`dead_klines`, by LAST BAR not mtime). On 2026-10-16 21:20Z that separated ~60 stock NPZs sitting
+95 bars "behind" — whose klines ended at 2026-10-15T20:00Z — from anything the NPZ chain could fix.
+
+**Reporting rule.** A board or live decision may never be claimed to run on a current NPZ because a top-up command
+returned 0. The proof is the NPZ's own last bar: `data/reports/npz_freshness.json` per symbol per host,
+`data/alerts/npz_stale_live_lane.json` when a live-lane symbol passes `NPZ_FRESH_MAX_BARS` (2),
+`data/alerts/npz_unrepairable.json` when no host holds a deeper copy. A store that is LEVEL with its source now
+reports `SOURCE_NO_NEW_BAR` instead of `EXCHANGE_BAR_NOT_READY` (and counts as success for the exit code): the old
+label made a healthy cycle read as a 241-symbol outage. Tests: `tests/test_npz_always_fresh.py` (11 contracts, the
+never-shrink one needs pandas so it is skipped on the Mac) + `tests/test_npz_refresh_dropkeys.py` — 16 pass on S1.
+
+### 111.1 — THE SOURCE SIDE, SAME DAY (USER "rebuild use massive.com if needed … fix the gateway fetcher … run disk cleaner")
+
+**Everything above was bounded by two full disks.** S1 was at **100 % (2.5 GB free)** and the gateway at **99 %
+(620 MB)**. A write that stops on ENOSPC leaves a file cut at a block boundary, which is exactly what the kline
+stores held: 111 unparseable JSONs on the Mac, the same 111 on S1 (rsync propagated them), **222 on the gateway**,
+every size an exact multiple of 4096 (245760, 229376, 282624 …). The primary stores (`klines_cache`,
+`klines_cache_backtest`) had **zero** — only the gateway cache was hit, and for symbols whose ONLY store is that
+cache (1000RATSUSDT, PROVEUSDT, BASUSDT, SAHARAUSDT) there was no source at all.
+
+- **Disk.** `ez_disk_cleanup.py --auto 85` (cron */10) only covers `~/binance` and freed 1.1 GB — it cannot reach
+  the sandbox. What actually freed S1: dropping `data/eval_cache_v1.db` (**58 GB**, regenerable memo cache, via the
+  operator's own `V15_EVALCACHE_CAP` command; `causal_learner.db` NOT touched) and draining `~/ext_staging`
+  (**12 GB**). The staging drain had been dead for days: `tools/mac_ext_ingest.sh` looks for `/Volumes/E3T` or
+  `/Volumes/WD25`, E3T is unplugged and **WD25 is a PHANTOM** — a leftover directory on the boot disk (st_dev
+  equals `/`), which its own `is_ext_mount` correctly refuses — so it logged "no MOUNTED ext target" every 15 min.
+  `/Volumes/SSD2T` is a real mount with 87 GB free and is now in the list. **S1: 100 % -> 76 %, 70 GB free.**
+  Gateway: journal vacuum 3.4 GB + the 222 deletions -> **99 % -> 89 %**.
+- **Gateway fetcher untouched**, as instructed. NEW `tools/klines_truncation_guard.py` restores a truncated file
+  from a longer parseable local copy, or deletes it so the fetcher refetches (that is also what frees the blocks).
+  Mac 111 -> 0 (21 restored, 90 deleted); gateway 222 deleted -> 0. Cron `KLINES_TRUNC_GUARD` on the Mac
+  (13,43 * * * *) and hourly on gateway/S1/s2.
+- **Massive.com cannot cover the current day.** MEASURED: `2025-06-02` 110 bars, `2026-10-15` (yesterday) 60 bars,
+  **today HTTP 403** — the plan embargoes it, and `massive_backfill_15m.py` is append-older-only by design. So
+  massive is for history, never for today's session.
+- **Today's stock session was missing for 107 of 223 symbols** — not a vendor outage: a DIRECT Tradier timesales
+  call for the lagging names returned **27 of today's bars in 1.0 s**. `tradier_klines.py` runs sem=64 over
+  223 symbols x 6 TFs during RTH and one 7-day repair pass at sem=16 after the close, and its log shows
+  `15min fetch failed/timeout:` with an EMPTY message (`asyncio.wait_for`'s TimeoutError stringifies to nothing)
+  at 1-3 MINUTES per symbol — self-inflicted concurrency, and the alphabetical crawl never reached T/STZ/USO/TTD.
+  NEW `tools/tradier_klines_catchup.py` imports that module and calls its own `process_symbol()` at **conc 4** for
+  the symbols actually behind — **107 symbols, all 6 timeframes, 156 s**; the script itself is unchanged. Cron
+  `TRADIER_KLINES_CATCHUP` (*/20, 13-23 Mon-Fri). Afterwards only ELD and HAO lag, and both simply stopped
+  trading before the close. The NPZ audit's `upstream_gap` fell **68 -> 5**.
+- **The six frozen symbols, final:** ASTERUSDT 36009 rows/1658 bars behind/legacy -> **37675 rows, 1 bar,
+  causal_v3** (rebuilt in ~105 s once the disk was free — the same rebuild had timed out at 90 min while the disk
+  was full). ZECUSDC 259 bars -> **2**. AEM 1 row -> **25483** (adopted from s2's backup, deeper than its own
+  klines, then walked forward). ADP 1 row -> **16101** (adopted from `/Volumes/SSD2T/tmp_s1_relay`, deeper than a
+  rebuild). CDW 1 row -> **15174**. AXTI 1 row -> **596**. All four stock stores now sit at their session frontier.
+- **Adoption needs a shape check, not just a row count.** `/Volumes/SSD2T/tmp_s1_relay/CDW.npz` has 43904 rows —
+  more than any live store — with `dt_med=0 s` over a **20708-day** span (duplicate/garbage timestamps), and the
+  deepest ADP copy on that drive is a **300 s** grid, a different generation. Ranking by depth alone would have
+  adopted either. `npz_repair.grid_ok()` requires `600 < dt_med < 1200` and a span under `NPZ_MAX_SPAN_DAYS`
+  (4000), and after an adopt+walk the tool ROLLS BACK if the tail ended up older than before (a deeper copy with
+  an older tail is worse for a 30D board than a shallower current one).
+
+## 112. ORDER-QUANTITY QUANTIZERS — ONE FUNCTION, VECTOR = LIVE, CAPS INCLUDED (USER 2026-10-16)
+
+- **One implementation.** Every quantity multiplier that a board measures lives in `vec_decisions/qty_quantizers.py` and is CALLED (never re-typed) by `v12_quick_engine` (vector), `ez_manage.execute_trade_action` (crypto) and `tradier_manage.calculate_position_size` / `_qta_entry_sizing` (stocks). A sizing knob with three hand-written copies is three different strategies; that is how the STDEV ladder ended up 1–5× on boards, 0.7–1.8× live crypto and 10×-flat live stocks.
+- **STDEV ladder (USER "should be 1-5x").** `STDEV_SLOPE_SIZING_ENABLED` master; `edge = clip(1-lrL_pct_b_TF, 0, 1)` long / `clip(lrL_pct_b_TF, 0, 1)` short; `mult = 1 + (STDEV_LADDER_MAX_MULT-1)·edge` → 1× at the top, 5× at the bottom (vv shorts), linear. Missing/non-finite channel = 1.0 (no guess). `STDEV_LADDER_TF` D (4h/1h rows). When STDEV is off, BAND_SLOPE_SIZING_V2 is the live path and the vector applies its live twin.
+- **Streak quantizer.** `QTY_STREAK_SIZING_ENABLED` (default False) + `MIN_MOVE_PCT` 1.0/0.5, `LOSS_COUNT` 1/2 → `LOSS_MULT` 0.8/0.6/0.4, `WIN_COUNT` 1/2 → ×(1+`WIN_STEP` 0.2/0.5/0.8) compounding per further qualifying win, ceiling `MAX_MULT` 3/2/5. A trade = one lifecycle scored at its FULL close by the move of the exit vs the AVERAGE entry; sub-threshold results neither count nor break a streak; applies to new opens/reentries only. Live keeps `data/qty_streak/{venue}_{account}.json` (one count per lifecycle, dust skipped); the vector folds the same CLOSE rows (FINAL_MTM excluded).
+- **Sub-knob rows force their master** via `data/switch_dependencies.json` (`dep_forced` in the result) — a `QTY_STREAK_WIN_STEP=0.5` row is measured WITH `QTY_STREAK_SIZING_ENABLED=True` and promotes both.
+- **Caps are part of the size.** Live clamps every vec-decided order at the per-sym `MAX_ORDER_VALUE` / `MAX_POSITION_SIZE` AFTER every multiplier (`VEC_EXACT_HARD_CAP`). The vector cap `max(MAX_ORDER_VALUE, 10×START)` does not (measured 30d OPENs up to 22–30× START on crypto). `QTY_LIVE_ORDER_CAP_MULT` (START units) mirrors the live cap; 0 = legacy. OPEN: the pilot must feed it per sym_side from the live set, through the version gate.
+- **Live-only sizing is not allowed to survive.** `DC_POS_SIZE` (crypto, 0.5–2.2× after the cap, no twin) is behind `DC_POS_SIZE_LIVE_ENABLED=False` — same ruling as the 2026-10-06 VEC-SIZE PARITY removals.

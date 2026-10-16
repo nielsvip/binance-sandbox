@@ -694,15 +694,33 @@ def write_complete_chart(symside: str, wb_path: Path, baseline_gain: float, cumu
             except Exception:
                 ledger = []
 
-        # Build metrics table
+        # Build metrics table — RECOMPUTED FROM THE LEDGER THIS CHART EMBEDS (USER 2026-10-16: "no chart html can
+        # ever be produced again without recalculating its own results and adding them to the header"). `metrics`
+        # here can be `final_vec`, i.e. the vector engine, which has no per-trade returns, while `const TRADES`
+        # below is the ledger — printing the former over the latter is the fork that put a +64.82% headline on a
+        # chart whose trades summed to -11.15%. When a ledger exists it is the producer and it wins.
         bh = float(metrics.get("bh_pct") or 0) if metrics else 0
         gain = float(metrics.get("gain_pct") or cumulative_gain or 0) if metrics else cumulative_gain
-        delta = gain - bh
         trades = int(metrics.get("trades") or len(ledger) or 0)
         tim = float(metrics.get("tim_pct") or 0) if metrics else 0
         dd = float(metrics.get("max_dd_pct") or 0) if metrics else 0
         sharpe = float(metrics.get("pool_sharpe") or 0) if metrics else 0
         wr = float(metrics.get("wr_pct") or 0) if metrics else 0
+        _recomputed_note = ""
+        if ledger:
+            try:
+                from tools.opt.chart_truth import realised as _ct_realised, recompute as _ct_recompute
+                _closes = _ct_realised(ledger)
+                _evts = [r for r in ledger if r not in _closes]
+                _own = _ct_recompute(_closes, _evts, None, symside.endswith("_LONG"))
+                if abs(float(_own["gain_pct"]) - float(gain)) > 0.01 or int(_own["trades"]) != int(trades):
+                    _recomputed_note = f" [header recomputed from this chart's own {_own['trades']} trades; the engine dict said gain {gain:.4f}% / {trades} trades]"
+                gain, trades = float(_own["gain_pct"]), int(_own["trades"])
+                dd, wr = float(_own["max_dd_pct"]), float(_own["wr_pct"])
+                sharpe = float(_own["pool_sharpe"]) if _own.get("pool_sharpe") is not None else sharpe
+            except Exception as _ct_exc:
+                _recomputed_note = f" [recompute unavailable: {type(_ct_exc).__name__}]"
+        delta = gain - bh
         bars = int(metrics.get("window", {}).get("bars", 0) or metrics.get("bars", 0) or 0) if metrics else 0
         peak = metrics.get("peak_capital") or metrics.get("peak_notional") or 0
 
@@ -765,6 +783,7 @@ def write_complete_chart(symside: str, wb_path: Path, baseline_gain: float, cumu
 </head><body>
 <h1>{symside} — COMPLETE zoomable chart <span style='font-size:14px;color:#9ca3af'>baseline {baseline_gain:.2f}% → cumulative {cumulative_gain:.2f}% (delta {cumulative_gain-baseline_gain:.2f}%)</span></h1>
 <div><div class='metric'><b>GAIN%</b> <span class='{"pos" if gain>0 else "neg"}'>{gain:.4f}</span></div><div class='metric'><b>BH%</b> <span>{bh:.4f}</span></div><div class='metric'><b>DELTA vs BH</b> <span class='{"pos" if delta>0 else "neg"}'>{delta:.4f}</span></div><div class='metric'><b>TRADES</b> <span>{trades}</span></div><div class='metric'><b>TIM%</b> <span>{tim:.2f}</span></div><div class='metric'><b>DD%</b> <span>{dd:.2f}</span></div><div class='metric'><b>SHARPE</b> <span>{sharpe:.4f}</span></div><div class='metric'><b>WR%</b> <span>{wr:.1f}</span></div><div class='metric'><b>BARS</b> <span>{bars}</span></div><div class='metric'><b>PEAK $</b> <span>{peak}</span></div></div>
+<p style='font-size:11px;color:#f59e0b'>every metric above recomputed from this chart's own {trades} embedded trades{_recomputed_note}</p>
 <p class='hint'>Zoom: mouse wheel or pinch, drag to pan, double-click to reset. Hover for trade. Online CDN (Chart.js + zoom plugin).</p>
 <canvas id='equity' height='320'></canvas>
 <canvas id='pnl' height='120' style='margin-top:12px'></canvas>

@@ -42,6 +42,62 @@ def kline_last(symbol, venue):
     return best
 
 
+def kline_span(symbol, venue):
+    """(first, last) epoch of the deepest 15m cache copy — the depth gate's measuring stick."""
+    from datetime import datetime, timezone
+    if venue == "crypto":
+        cands = [ROOT / "klines_cache_backtest" / f"{symbol}_15m.json", ROOT / "klines_cache" / f"{symbol}_15m.json",
+                 ROOT / "klines_canonical" / f"{symbol}_15m.json", ROOT / "klines_cache_gateway" / f"{symbol}_15m.json"]
+    else:
+        cands = [ROOT / "klines_cache_backtest" / "tradier" / f"{symbol}_15m.json", ROOT / "klines_cache" / "tradier" / f"{symbol}_15m.json"]
+    best = (None, None)
+    for p in cands:
+        try:
+            d = json.load(open(p))
+            if not d:
+                continue
+            t0 = int(datetime.strptime(d[0]["timestamp"][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp())
+            t1 = int(datetime.strptime(d[-1]["timestamp"][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp())
+            if best[0] is None or t1 - t0 > best[1] - best[0]:
+                best = (t0, t1)
+        except Exception:
+            continue
+    return best
+
+
+def prune_rebuild_backups(bk, sym, keep=2):
+    """USER 2026-10-16 ("not multiple backups that consume terabytes"): every regen parks a ~15 MB copy of the previous
+    NPZ in ~/npzprep/backup and nothing ever removed it, so 53 deepening builds plus the JIT rebuilds would accumulate
+    unbounded on a 94%-full disk. Keep the last few per symbol; other symbols' copies are untouched."""
+    try:
+        for old in sorted(Path(bk).glob(f"{sym}.*.npz"), key=lambda q: q.name)[:-keep or None]:
+            old.unlink()
+    except OSError:
+        pass
+
+
+def depth_attempted(sym, k0):
+    """USER 2026-10-16: one deepening attempt per kline head. Without this stamp a builder that caps its own
+    output would re-run the full rebuild on every dispatch and never get longer."""
+    try:
+        st = json.load(open(ROOT / "data" / "npz_depth_attempts.json"))
+        return int(st.get(sym, {}).get("kline_head", -1)) == int(k0)
+    except Exception:
+        return False
+
+
+def stamp_depth_attempt(sym, k0, npz_bars):
+    try:
+        p = ROOT / "data" / "npz_depth_attempts.json"
+        st = json.load(open(p)) if p.exists() else {}
+        st[sym] = {"kline_head": int(k0), "npz_bars_before": int(npz_bars), "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(st, indent=1, sort_keys=True))
+        os.replace(tmp, p)
+    except Exception:
+        pass
+
+
 def npz_kline_source(p):
     import numpy as np
     try:
@@ -153,6 +209,7 @@ def main():
     ap.add_argument("--symbol", required=True)
     ap.add_argument("--max-npz-age-h", type=float, default=20)
     ap.add_argument("--max-kline-lag-h", type=float, default=30)
+    ap.add_argument("--max-span-short-d", type=float, default=120, help="rebuild once when the NPZ span falls this many days behind its own klines")
     ap.add_argument("--push", nargs="*", default=[])
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -236,7 +293,19 @@ def main():
     _ksrc = npz_kline_source(live) if venue == "crypto" else None
     _canon_regen = venue == "crypto" and _ksrc != "canonical_v1" and canonical_ready(sym)
     r["kline_source"] = _ksrc
-    if _tok and not _canon_regen:
+    # USER 2026-10-16: every gate here was age/tail-staleness, never DEPTH, so 53 of 112 live-lane symbols kept a
+    # 93-day NPZ (ADP/CDW: ONE bar) against 730+ days of klines and were fitted on a 3-month view forever. A
+    # tail-current NPZ whose own span is far shorter than its klines is rebuilt once per kline head.
+    _k0, _k1 = kline_span(sym, venue)
+    _nspan = (t1 - t0) / 86400.0
+    _kspan = (_k1 - _k0) / 86400.0 if _k0 else 0.0
+    r.update(npz_span_d=round(_nspan, 1), kline_span_d=round(_kspan, 1))
+    _depth_regen = _kspan - _nspan > a.max_span_short_d and not depth_attempted(sym, _k0)
+    if _depth_regen:
+        r["depth_regen"] = round(_kspan - _nspan, 1)
+        if not a.dry_run:
+            stamp_depth_attempt(sym, _k0, n0)
+    if _tok and not _canon_regen and not _depth_regen:
         r.update(ok=True, reason="tail current to latest closed bar")
         finish(r, live, sym, a.push)
     kl = kline_last(sym, venue)
@@ -250,7 +319,7 @@ def main():
         out(r, 3)
     lag_h = (now - kl) / 3600
     r["kline_lag_h"] = round(lag_h, 2)
-    if kl <= t1:
+    if kl <= t1 and not _depth_regen:
         r.update(ok=True, reason="npz tail already at newest klines (no newer bars exist)")
         finish(r, live, sym, a.push)
     # klines lag counts only trading time loosely: >30h wall covers a weekend-less gap; weekends are tolerated up to 80h
@@ -277,7 +346,7 @@ def main():
             r["reason"] = f"klines stale {lag_h:.1f}h (> {allowed:.0f}h) and fetch did not help"
             out(r, 3)
     if a.dry_run:
-        r.update(ok=True, action="would_regen", reason=f"npz {age_h:.1f}h old, klines newer by {(kl - t1) / 3600:.1f}h")
+        r.update(ok=True, action="would_regen", reason=f"depth: npz span {_nspan:.0f}d vs klines {_kspan:.0f}d" if _depth_regen else f"npz {age_h:.1f}h old, klines newer by {(kl - t1) / 3600:.1f}h")
         out(r)
     stg = Path(os.path.expanduser(f"~/npzprep/{sym}"))
     shutil.rmtree(stg, ignore_errors=True)
@@ -300,6 +369,7 @@ def main():
     bk = Path(os.path.expanduser("~/npzprep/backup"))
     bk.mkdir(parents=True, exist_ok=True)
     shutil.copy2(live, bk / f"{sym}.{int(now)}.npz")
+    prune_rebuild_backups(bk, sym)
     tmp = IND / f".{sym}.prep.npz"
     shutil.copy2(cand, tmp)
     os.replace(tmp, live)

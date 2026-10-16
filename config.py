@@ -177,28 +177,40 @@ class Config:
     WT_VEL_DECAY_THRESHOLD: float = (
         1.0  # parity 2026-08-17: vector->live (was vector-only)
     )
+    # ═══ CRYPTO MINIMUM TRADING MODE (USER 2026-10-16: "reduce crypto trading to minimum - only men account is
+    # still eroding my savings for NOTHING") ═══════════════════════════════════════════════════════════════════
+    # New crypto EXPOSURE is cut to the exchange floor. Nothing here touches exits, stops or existing positions:
+    # the 36 open men positions keep their own exit logic, and CLAUDE.md forbids closing live positions at a loss.
+    # The floor is PERF_TIER_MIN_ORDER_USD (6.0 = Binance futures 5 USDT min notional + margin); per-symbol
+    # minNotional (BTC $50, ETH/BCH/LTC/ETC/LINK $20, rest $5) is still honoured by ez_manage._min_viable_qty, so
+    # orders stay placeable instead of being rejected. ROLLBACK: CRYPTO_MINIMUM_TRADING_MODE = False restores the
+    # values recorded beside each line.
+    CRYPTO_MINIMUM_TRADING_MODE: bool = True
+    # USER 2026-10-16 "GET IT OUT": stoch-K may not gate a GUARANTEED_REENTRY in either direction (ez_manage
+    # ~40049). The system gates reentries on WT + HTF. True restores the pre-2026-10-16 K behaviour.
+    GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED: bool = False
     MIN_POSITION_SIZE: float = 1.0
     # 1/50 RULE: No single position > 2% of total capital ($1k crypto = $20/pos max)
     MAX_POSITION_SIZE: float = (
-        200.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
+        12.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 200.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
     )
-    MAX_POSITION_SIZE_BTC: float = 2000.0  # 2026-03-30: Same rule for BTC. Was $6000.
-    MAX_POSITION_SIZE_MEN: float = 200.0  # 2026-03-30: Same. Was $1200.
-    MAX_POSITION_SIZE_FIN: float = 200.0  # 2026-03-30: Same. Was $4000.
+    MAX_POSITION_SIZE_BTC: float = 60.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 2000.0 (BTC minNotional 50)  # 2026-03-30: Same rule for BTC. Was $6000.
+    MAX_POSITION_SIZE_MEN: float = 12.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 200.0  # 2026-03-30: Same. Was $1200.
+    MAX_POSITION_SIZE_FIN: float = 12.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 200.0  # 2026-03-30: Same. Was $4000.
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
 
-    MAX_ORDER_VALUE: float = 90.0  # 2026-03-30: 1/50 rule. Was $280.
+    MAX_ORDER_VALUE: float = 6.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 90.0  # 2026-03-30: 1/50 rule. Was $280.
     MAX_ORDER_VALUE_MEN: float = (
-        300.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
+        26.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
     )
     MAX_ORDER_VALUE_FIN: float = (
-        300.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
+        26.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
     )
     EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = (
         False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     )
     START_POSITION_SIZE: float = (
-        45.0  # USER 2026-10-11: 28 -> 45 base; gainers to 4x ($180 OPEN_CEIL), losers/unconfirmed small via tiers. Was parity 2026-09-26 28.0.
+        6.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 45.0  # USER 2026-10-11: 28 -> 45 base; gainers to 4x ($180 OPEN_CEIL), losers/unconfirmed small via tiers. Was parity 2026-09-26 28.0.
     )
     FIXED_QUANTITY_ENABLED: bool = (
         False  # 2026-09-27 parity audit: when True, live uses fixed notional = START_POSITION_SIZE for all opens (bypass all sizing mults). For second parallel forward test: 1/3m OFF + non-vector OFF + fixed qty → isolates signal vs sizing. Vector BEST backtest also uses fixed sizing path when this True.
@@ -251,9 +263,7 @@ class Config:
     AUGMENT_FALLBACK_REDUCE_ENABLED: bool = False
     AUGMENT_FALLBACK_REDUCE_PCT: float = 0.5
     AUGMENT_FALLBACK_GAIN_PCT: float = 1.0
-    MAX_AUGMENTS_PER_POSITION: int = (
-        999999  # USER 2026-05-30: NO cap — augment a million times as long as gain > 0.5*MIN_GAIN (and wt1_1h aligned via add-block)  # 2026-05-21 USER MANDATE: position must compound to 20x start_position_size when price moves favorably. Was 3 ("stop piling into losers") — but combined with disabled-BREAKEVEN_GAIN_EROSION (line 2559) and MTF_ATR_TRAIL=2x protection (line 1363), augments only continue when price is moving in our favor. ROLLBACK: 3.
-    )
+    # MAX_AUGMENTS_PER_POSITION deleted 2026-10-15 (USER "delete the switch completely"): no augment-count cap exists.
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
 
@@ -2086,6 +2096,17 @@ class Config:
     STDEV_SLOPE_SIZING_MODE: str = (
         "slope_to_top"  # slope_to_top (10x on/below slope →1x top, vv shorts) vs bottom_to_top (10x bottom →1x top full gradient)
     )
+    # USER 2026-10-16 quantity quantizers — ONE implementation in vec_decisions/qty_quantizers.py (vector + ez_manage + tradier_manage)
+    STDEV_LADDER_TF: str = "D"  # STDEV ladder reads lrL_pct_b_<TF>: 1x at the top -> STDEV_LADDER_MAX_MULT at the bottom (vv shorts)
+    STDEV_LADDER_MAX_MULT: float = 5.0  # USER "should be 1-5x" (replaces the slope_to_top 10x map / BAND_V2 0.7-1.8 when STDEV_SLOPE_SIZING_ENABLED)
+    QTY_STREAK_SIZING_ENABLED: bool = False  # kill switch: resize new opens/reentries after consecutive qualifying full-close results
+    QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)
+    QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losers before shrinking (1 / 2)
+    QTY_STREAK_LOSS_MULT: float = 0.8  # size after the loss streak (0.8 / 0.6 / 0.4)
+    QTY_STREAK_WIN_COUNT: int = 1  # consecutive qualifying winners before growing (1 / 2)
+    QTY_STREAK_WIN_STEP: float = 0.2  # +20 / 50 / 80 %, compounding for every further qualifying winner
+    QTY_STREAK_MAX_MULT: float = 3.0  # compounding ceiling; MAX_ORDER_VALUE / MAX_POSITION_SIZE still bind after
+    DC_POS_SIZE_LIVE_ENABLED: bool = False  # USER 2026-10-16: live-only 0.5-2.2x DC-channel resize after the cap, no vector twin (VEC-SIZE PARITY 2026-10-06 ruling). True = old behaviour
     # 2026-09-18 BULL_HOLD + PUMP SWITCHES — based on v15_pilot_0914 deep dive (entering too late for crypto, exiting too early in bull, HTF overkill for exits, AUGMENT toxic)
     # BULL_HOLD: delay exits when D bull (close>SMA20 + 4h WT>-53) — fixes TIM 41%→60% in bh>20, gap -80→-60 verified via RULE_B proxy +2.59..+6.94
     BULL_HOLD_EXIT_DELAY_BARS: int = (
@@ -2606,7 +2627,22 @@ class Config:
     # 2026-09-28 USER (4th vigilance mandate): DC4 vigilance is "one of many exit switches to be
     # tried NOT a hardcoded exit path... it needs to be a switch not a default" — default OFF,
     # promoted per sym_side via sweep proof like any other exit switch.
-    VIGILANCE_GUARD_ENABLED: bool = False
+    # USER 2026-10-16: "as soon as any account starts bleeding again the losers are exited and prohibited from
+    # trading for 12 hrs so we can revise what went wrong" — the guard the user specified on 2026-09-28 is armed.
+    # Structural trigger only (position at a loss AND dc_low4/high4_15m breached with 0.25% tolerance), plus
+    # VIGILANCE_CONSEC_LOSSES realised losing closes in a row. ENTRY-block only: exits and reduces always pass and
+    # an open position is never stranded. ROLLBACK: VIGILANCE_GUARD_ENABLED = False.
+    VIGILANCE_GUARD_ENABLED: bool = True
+    # CORRECTED 2026-10-16: the DC4 structural stop is NOT armed as a hardcoded path — "the low4 are switches that
+    # need to be tried on every sym_side like everything else" (and the user's own 4th mandate of 2026-09-28 said
+    # default OFF, promoted per sym_side via sweep proof). Only the consecutive-loss circuit breaker is armed here.
+    VIGILANCE_DC4_STOP_ARMED: bool = False
+    # The review window: a blocked sym_side comes back by itself after 12 h.
+    VIGILANCE_BLOCK_HOURS: float = 12.0
+    # "consec losses is an emergency measure ... it starts and ends before Saturday when all this should be
+    # resolved" (USER 2026-10-16). After this instant the 2-loss block stops arming new blocks by itself; no manual
+    # step needed, and nothing is left running into the weekend.
+    VIGILANCE_CONSEC_UNTIL_UTC: str = "2026-10-17T12:00:00Z"
     # USER 2026-09-28 (3rd mandate): "we do not use fix %" — NO fixed-percentage stop. The vigilance
     # loss trigger is STRUCTURAL: position at a loss AND price breaches dc_low4_{TF} (LONG) /
     # dc_high4_{TF} (SHORT). TF granted by user: 15m. OFF disables the structural stop.
@@ -2619,6 +2655,9 @@ class Config:
     # sym_side auto-unblocks and KEEPS TRADING the moment it recovers: price back past the
     # block-exit price, or a bounce (wt1_15m rising + 3m stoch momentum with the side).
     VIGILANCE_RECOVERY_REENTRY_ENABLED: bool = False
+    # CORRECTED 2026-10-16: "Recovery bounce is valid but only if it was the best option in the backtest and all
+    # relevant filters were tested on it" — so it is a normal per-sym switch decided by the sweep, not something
+    # pinned on or off here. Class default restored; the boards promote it where it measures best.
     VIGILANCE_RECOVERY_BOUNCE_OK: bool = True
     # ═══ STALE-SET 2-LOSS HALT — USER 2026-10-14 (BACKTEST_BIBLE §102) ═══
     # "NO blocking loss closes if the vector tells you to" + "but if the vector has not been refreshed for over 10 days and 2
@@ -5706,65 +5745,63 @@ class Config:
 
     def _apply_mode(self, mode: str):  # emergency mode
         light = {
-            # "START_POSITION_SIZE": 11.0,#emergency mode
-            # "MAX_POSITION_SIZE": 250.0,
-            # "MAX_ORDER_VALUE": 110.0,
-            # "MAX_ORDER_VALUE_MEN": 180.0,#emergency mode
-            # "MAX_ORDER_VALUE_FIN": 200.0,#emergency mode
+            # "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 11.0
+            # "MAX_POSITION_SIZE": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 250.0
+            # "MAX_ORDER_VALUE_MEN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
+            # "MAX_ORDER_VALUE_FIN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 200.0
             # "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 200,
             # "REDUCTION_COOLDOWN_SECONDS": 480.0,
             # "AUGMENTATION_COOLDOWN_SECONDS": 480.0,  # REDUCED: From 480 to 240 for faster reactions
             # "MIN_GAIN": 1.2,#emergency mode
-            # "MAX_POSITION_SIZE_MEN": 800.0,#emergency mode
+            # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 800.0
             # "MAX_POSITION_SIZE_FIN": 900.0#emergency mode
-            "START_POSITION_SIZE": 45.0,  # USER 2026-10-11: 16 -> 45 (LIGHT is the live mode; must match base)
-            "MAX_POSITION_SIZE": 360.0,  # USER 2026-10-11: 155 -> 360 = 8x SPS, two full 4x gainer steps
-            "MAX_ORDER_VALUE": 180.0,  # USER 2026-10-11: 80 -> 180 = 4x SPS gainer step headroom
-            "MAX_ORDER_VALUE_MEN": 440.0,
-            "MAX_ORDER_VALUE_FIN": 180.0,  # USER 2026-10-11: 18 -> 180, fin gainers reach 4x too
+            "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 45.0
+            "MAX_POSITION_SIZE": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
+            "MAX_ORDER_VALUE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
+            "MAX_ORDER_VALUE_MEN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 440.0
+            "MAX_ORDER_VALUE_FIN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 660.0,
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 360.0,  # USER 2026-10-11: 220 -> 360 (LIGHT two-step headroom)
-            "MAX_POSITION_SIZE_FIN": 360.0,  # USER 2026-10-11: 120 -> 360 (a $180 gainer step must fit)
+            "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
+            "MAX_POSITION_SIZE_FIN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
         }
         base = {
-            # "START_POSITION_SIZE": 15.0,#emergency mode
-            # "MAX_POSITION_SIZE": 220.0,
-            # "MAX_ORDER_VALUE": 40.0,
-            # "MAX_ORDER_VALUE_MEN": 50.0,#emergency mode
-            # "MAX_ORDER_VALUE_FIN": 60.0,#emergency mode
+            # "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 15.0
+            # "MAX_POSITION_SIZE": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 220.0
+            # "MAX_ORDER_VALUE_MEN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 50.0
+            # "MAX_ORDER_VALUE_FIN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 60.0
             # "LIMIT_HIGH_GAIN_AUGMENTATION": 200,
             # "REDUCTION_COOLDOWN_SECONDS": 240.0,
             # "AUGMENTATION_COOLDOWN_SECONDS": 240.0,
             # "MIN_GAIN": 0.8,#emergency mode
-            # "MAX_POSITION_SIZE_MEN": 160.0,#emergency mode
+            # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 160.0
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 45.0,  # USER 2026-10-11: 28 -> 45
-            "MAX_POSITION_SIZE": 780.0,  # STDEV_SLOPE fix 2026-09-14: was 20 (1.11x START) capped 10x D ladder; now 18*10=180
-            "MAX_ORDER_VALUE": 180.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180 for 10x ladder parity
-            "MAX_ORDER_VALUE_MEN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
-            "MAX_ORDER_VALUE_FIN": 280.0,  # STDEV_SLOPE fix 2026-09-14: was 20 →180
+            "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 45.0
+            "MAX_POSITION_SIZE": 62.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 780.0
+            "MAX_ORDER_VALUE": 26.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
+            "MAX_ORDER_VALUE_MEN": 26.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 280.0
+            "MAX_ORDER_VALUE_FIN": 62.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 280.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 360.0,  # USER 2026-10-11: 280 -> 360 two-step headroom for $180 gainer steps
-            "MAX_POSITION_SIZE_FIN": 360.0,  # USER 2026-10-11: 280 -> 360 two-step headroom for $180 gainer steps
+            "MAX_POSITION_SIZE_MEN": 42.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
+            "MAX_POSITION_SIZE_FIN": 42.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
         }
         extreme = {
-            "START_POSITION_SIZE": 70.0,
-            "MAX_POSITION_SIZE": 2800.0,
-            "MAX_ORDER_VALUE": 180.0,
-            "MAX_ORDER_VALUE_MEN": 500.0,
-            "MAX_ORDER_VALUE_FIN": 1200.0,
+            "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 70.0
+            "MAX_POSITION_SIZE": 92.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 2800.0
+            "MAX_ORDER_VALUE": 46.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
+            "MAX_ORDER_VALUE_MEN": 46.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 500.0
+            "MAX_ORDER_VALUE_FIN": 46.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 1200.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 190.0,  # REDUCED: From 240 to 120 for faster reactions
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 3200.0,
-            "MAX_POSITION_SIZE_FIN": 4000.0,
+            "MAX_POSITION_SIZE_MEN": 72.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 3200.0
+            "MAX_POSITION_SIZE_FIN": 72.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 4000.0
         }
 
         for key, value in base.items():
@@ -10262,6 +10299,15 @@ PROXIMITY_TOP_MAX_DROP_PCT = 5.0  # don't long when within X% of 52w high
 SQUEEZE_FIRE_ENTRY_ENABLED = True  # 2026-04-27 sweep T1: 9/91 winners True. Was False.
 SQUEEZE_FIRE_TF = "5m"
 SQUEEZE_FIRE_BONUS_SCORE = 15.0
+
+# 🔴 SUB-15m MASTER KILL SWITCH — CRYPTO (USER 2026-10-15: "AND THAT NO 1/3/5M TRADE CAN EVER BE EXECUTED UNTIL THE
+# SWITCH IS BACK ON"). False = every 1m/3m/5m decision switch is forced to its blocking value inside _psym_get, i.e.
+# ABOVE the per_sym layer, so no per_sym set, cat_side default or promoted board can re-enable one.
+# A plain default could not do this: `_psym_get` resolves per_sym first and all 325 crypto rows carried
+# RULE_B_5M_EXIT_ENABLED=True (322 also WT_CROSSUNDER_FINAL_ENABLED=True) on 2026-10-15. See
+# SUB15M_BLOCKED_SWITCHES in ez_manage.py. Set True to restore sub-15m trading.
+LTF_SUB15M_TRADING_ENABLED = False
+
 
 # --- TSMOM book-level scalar (12-1 month sign-agreement) ---
 TSMOM_BOOK_SCALAR_ENABLED = True  # 2026-04-27 sweep T1: 8/91 winners True. Was False.

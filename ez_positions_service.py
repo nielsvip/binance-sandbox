@@ -1477,9 +1477,18 @@ class AccountConfig:
                 asyncio.create_task(self._deferred_client_init())
 
     async def _deferred_client_init(self):
-        """Retry Binance client init in background with backoff."""
-        for attempt in range(5):
-            await asyncio.sleep(10 * (attempt + 1))
+        """Retry Binance client init in background, FOREVER (USER 2026-10-15).
+
+        This used to give up after 5 attempts (150 s). ang/fin/flz exhausted them today ("Deferred client init attempt
+        5/5 failed") and then sat with client=None for hours: no position fetch, no FIXED_STOP cycle, no exchange
+        backstop, no heartbeat, and nothing escalating — 21 positions ended up with ZERO stop orders at the exchange.
+        An account with no client is an unprotected account, so the retry never stops; backoff caps at 60 s and every
+        12th failure is CRITICAL so it cannot stay silent.
+        """
+        attempt = 0
+        while not self.client:
+            attempt += 1
+            await asyncio.sleep(min(10.0 * attempt, 60.0))
             if self.client:
                 return
             def _sync_init():
@@ -1761,6 +1770,8 @@ class Position:
     hedge_for: Optional[str] = None
     r1_stop_price: float = 0.0
     fixed_stop_price: float = 0.0
+    fixed_stop_anchor: float = 0.0  # 2026-10-15: epoch of the opened_at this level was frozen for — a new lifecycle re-freezes
+    fixed_stop_armed: bool = True  # 2026-10-15: a stop frozen while price is ALREADY past it waits for price to come back (arm on cross, never on state)
     exchange_stop_order_id: str = ""
 
     def __setattr__(self, name, value):
@@ -1844,7 +1855,7 @@ class Position:
                 except ValueError:
                     pass
             return None
-        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=abs(safe_float(data.get("positionAmt")) or 0.0), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=(safe_float(data.get("realized_pnl"))), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), is_hedge=bool(data.get("is_hedge", False)), hedge_for=(str(data.get("hedge_for")) if data.get("hedge_for") else None), fixed_stop_price=safe_float(data.get("fixed_stop_price")), exchange_stop_order_id=str(data.get("exchange_stop_order_id") or ""), )
+        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=abs(safe_float(data.get("positionAmt")) or 0.0), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=(safe_float(data.get("realized_pnl"))), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), is_hedge=bool(data.get("is_hedge", False)), hedge_for=(str(data.get("hedge_for")) if data.get("hedge_for") else None), fixed_stop_price=safe_float(data.get("fixed_stop_price")), fixed_stop_anchor=safe_float(data.get("fixed_stop_anchor")), fixed_stop_armed=bool(data.get("fixed_stop_armed", True)), exchange_stop_order_id=str(data.get("exchange_stop_order_id") or ""), )
 
     def to_json(self) -> Dict[str, Any]:
         payload = asdict(self)
@@ -6945,55 +6956,107 @@ class PositionService:
                         _lvl = float(getattr(position, "fixed_stop_price", 0) or 0)
                     except Exception:
                         _lvl = 0.0
-                    _fx_done = self.__dict__.setdefault("_fx_entry_anchored", set())
-                    if position_key not in _fx_done:
-                        # 2026-10-13 men AVAX: positions opened BEFORE the FIXED_STOP mandate (10-13 ~01:00Z) were frozen at the moment the stop
-                        # code first saw them (AVAX entry 10.942 10-11 23:48, frozen 10-13 01:07 from the 00:45 crash low 9.792 -> stop 9.779),
-                        # not at entry. Rebuild dc_15m (20 bars) AT ENTRY from Binance klines, once per position; frozen-at-entry positions untouched.
-                        try:
-                            _oa = getattr(position, "opened_at", None)
-                            _oa_ep = _oa.timestamp() if hasattr(_oa, "timestamp") else None
-                        except Exception:
-                            _oa_ep = None
-                        _mandate = float(getattr(config, "FIXED_STOP_MANDATE_TS", 1791853200.0) or 1791853200.0)  # 2026-10-13T01:00:00Z
-                        if _oa_ep is not None and _oa_ep < _mandate:
-                            try:
-                                _cli = self.get_client(account_key)
-                                _kl = await asyncio.wait_for(asyncio.to_thread(_cli.futures_klines, symbol=_sym, interval="15m", endTime=int(_oa_ep * 1000), limit=20), timeout=15.0)
-                                _ch = min(float(x[3]) for x in _kl) if _is_long else max(float(x[2]) for x in _kl)
-                                _new = _ch * 0.9975 if _is_long else _ch * 1.0025
-                                if _ch > 0 and (_lvl <= 0 or abs(_new - _lvl) / _new > 0.001):
-                                    logger.critical(f"🛡️ [FIXED_STOP_REFREEZE] {position_key}: opened {time.strftime('%m-%d %H:%M', time.gmtime(_oa_ep))}Z before the mandate, frozen late at {_lvl:.6f} -> dc_15m {'low' if _is_long else 'high'} AT ENTRY {_ch:.6f} -> {_new:.6f}")
+                    try:
+                        _anchor = float(getattr(position, "fixed_stop_anchor", 0) or 0)
+                    except Exception:
+                        _anchor = 0.0
+                    try:
+                        _oa = getattr(position, "opened_at", None)
+                        _oa_ep = _oa.timestamp() if hasattr(_oa, "timestamp") else None
+                    except Exception:
+                        _oa_ep = None
+                    # 2026-10-15 LIFECYCLE-BOUND FREEZE (USER, COTI incident): the level is the dc_15m channel of the bar
+                    # that entered, so it belongs to ONE lifecycle. It used to be frozen once per position KEY and never
+                    # cleared on close, so a re-entered sym_side carried a 1-2 day old channel: ang/fin/men COTIUSDT_SHORT
+                    # opened 13:09-13:59Z 10-15 still held the 10-13/10-14 dc_high_15m (0.01256-0.01272) while the true
+                    # entry-bar channel was 0.011277 -> stop 0.011305; price passed it at ~15:00Z and all three stayed open.
+                    # Audit at 18:1xZ: 38 of 41 crypto positions stale, 27 already past their true stop. A new opened_at now
+                    # re-freezes from the ENTRY BAR itself (20x15m klines ending at opened_at), never from "now".
+                    # 2026-10-15 SELF-HEALING (USER "I NEED ABSOLUTE SOLID PROOF THIS CAN NOT HAPPEN AGAIN EVER"):
+                    # the level is RE-DERIVED from the entry bar once per lifecycle per process, not just when the
+                    # anchor mismatches. A stale number that was already wearing a valid anchor — exactly what the
+                    # manage overlay put back over the repaired men:COTIUSDT level — is therefore corrected on the
+                    # next writer start, with no manual repair and nothing to remember. One klines call per position
+                    # per process start, bounded and cached by (key, lifecycle).
+                    _fx_ver = self.__dict__.setdefault("_fx_entry_verified", set())
+                    _fx_vkey = (position_key, int(_oa_ep or 0))
+                    if _fixed_stop_core.needs_freeze(_lvl, _anchor, _oa_ep) or _fx_vkey not in _fx_ver:
+                        _fx_fail = self.__dict__.setdefault("_fx_freeze_retry_at", {})
+                        if time.time() >= float(_fx_fail.get(position_key, 0) or 0):
+                            _new, _src = 0.0, ""
+                            if _oa_ep is not None:
+                                try:
+                                    _cli = self.get_client(account_key)
+                                    if _cli is None:
+                                        raise RuntimeError("no client")
+                                    _kl = await asyncio.wait_for(asyncio.to_thread(_cli.futures_klines, symbol=_sym, interval="15m", endTime=int(_oa_ep * 1000), limit=20), timeout=15.0)
+                                    _ch = min(float(x[3]) for x in _kl) if _is_long else max(float(x[2]) for x in _kl)
+                                    if _ch > 0:
+                                        _new, _src = _fixed_stop_core.freeze_software_level(_is_long, _ch, _ch, float(getattr(position, "entry_price", 0) or 0)), "ENTRY_BAR"
+                                except Exception as _fx_ke:
+                                    _fx_fail[position_key] = time.time() + 30.0
+                                    logger.warning(f"[FIXED_STOP_FREEZE] {position_key}: entry-bar channel rebuild failed ({_fx_ke}) — falling back to the live channel this cycle")
+                            if _new <= 0:
+                                try:
+                                    _ind = ii(self, _sym) or {}
+                                except Exception:
+                                    _ind = {}
+                                try:
+                                    _dlo = float((_ind.get("dc_low_15m", 0) if isinstance(_ind, dict) else 0) or 0)
+                                    _dhi = float((_ind.get("dc_high_15m", 0) if isinstance(_ind, dict) else 0) or 0)
+                                except Exception:
+                                    _dlo, _dhi = 0.0, 0.0
+                                try:
+                                    _ep = float(getattr(position, "entry_price", 0) or 0)
+                                except Exception:
+                                    _ep = 0.0
+                                _new, _src = _fixed_stop_core.freeze_software_level(_is_long, _dlo, _dhi, _ep), "LIVE_CHANNEL"
+                            if _new > 0:
+                                if _src == "ENTRY_BAR":
+                                    _fx_ver.add(_fx_vkey)  # this lifecycle's level is now proven against its own entry bar
+                                _fx_changed = not (_lvl > 0 and abs(_new - _lvl) / _new < 1e-6)
+                                if not _fx_changed:
+                                    # same level, just re-proven: never touch `armed` here. A position that was armed
+                                    # and has since crossed must FIRE — recomputing armed from the current price would
+                                    # silently disarm exactly the breach the stop exists for.
                                     _lvl = _new
-                                    position.fixed_stop_price = _lvl
-                                _fx_done.add(position_key)
-                            except Exception as _fx_ke:
-                                logger.warning(f"[FIXED_STOP_REFREEZE] {position_key}: entry-channel rebuild failed ({_fx_ke}) — retry next cycle")
-                        else:
-                            _fx_done.add(position_key)
-                    if _lvl <= 0:
-                        try:
-                            _ind = ii(self, _sym) or {}
-                        except Exception:
-                            _ind = {}
-                        try:
-                            _dlo = float((_ind.get("dc_low_15m", 0) if isinstance(_ind, dict) else 0) or 0)
-                            _dhi = float((_ind.get("dc_high_15m", 0) if isinstance(_ind, dict) else 0) or 0)
-                        except Exception:
-                            _dlo, _dhi = 0.0, 0.0
-                        try:
-                            _ep = float(getattr(position, "entry_price", 0) or 0)
-                        except Exception:
-                            _ep = 0.0
-                        _lvl = _fixed_stop_core.freeze_software_level(_is_long, _dlo, _dhi, _ep)
-                        if _lvl > 0:
-                            try:
-                                position.fixed_stop_price = _lvl
-                            except Exception:
-                                pass
+                                    if _oa_ep is not None:
+                                        try:
+                                            position.fixed_stop_anchor = _oa_ep
+                                        except Exception:
+                                            pass
+                                else:
+                                    _armed0 = _fixed_stop_core.armed_at_freeze(_is_long, _px, _new)
+                                    logger.critical(f"🛡️ [FIXED_STOP_FREEZE] {position_key}: lifecycle opened {time.strftime('%m-%d %H:%M', time.gmtime(_oa_ep)) + 'Z' if _oa_ep else 'unknown'} — {_lvl:.6f} (anchor {_anchor:.0f}) -> {_new:.6f} from {_src} armed={_armed0}")
+                                    if not _armed0:
+                                        logger.critical(f"⚠️ [FIXED_STOP_UNARMED] {position_key}: price {_px:.6f} is ALREADY past the frozen level {_new:.6f} — the cross happened before this freeze, so NO retro close. Arms when price returns to the protected side; technical exits (WT/DC) manage it meanwhile.")
+                                    try:
+                                        position.fixed_stop_price = _new
+                                        position.fixed_stop_armed = _armed0
+                                        if _oa_ep is not None:
+                                            position.fixed_stop_anchor = _oa_ep
+                                    except Exception:
+                                        pass
+                                    _lvl = _new
+                                if _fx_changed and str(getattr(position, "exchange_stop_order_id", "") or ""):
+                                    # the resting backstop belongs to the OLD level: drop the record so the ensure leg
+                                    # cancels/replaces it at the new one instead of adopting a stop that can never trigger
+                                    try:
+                                        position.exchange_stop_order_id = ""
+                                    except Exception:
+                                        pass
+                                _lvl = _new
                     if _lvl <= 0 or tm is None:
                         continue
-                    if _fixed_stop_core.breached(_is_long, _px, _lvl):
+                    if not bool(getattr(position, "fixed_stop_armed", True)):
+                        # waiting for price to come back to the protected side before this stop can fire (arm on cross)
+                        if not _fixed_stop_core.breached(_is_long, _px, _lvl):
+                            try:
+                                position.fixed_stop_armed = True
+                            except Exception:
+                                pass
+                            logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {_px:.6f} back on the protected side of {_lvl:.6f} — stop is live again")
+                    if _fixed_stop_core.breached(_is_long, _px, _lvl) and bool(getattr(position, "fixed_stop_armed", True)):
                         if position_key in _inflight:
                             continue
                         try:
@@ -13743,9 +13806,17 @@ async def check_position_reductions(service, position_key: str, account_key: str
             if _fx_lvl0 > 0:
                 try:
                     position.fixed_stop_price = _fx_lvl0
+                    position.fixed_stop_armed = _fixed_stop_core.armed_at_freeze(is_long, current_price, _fx_lvl0)
                 except Exception:
                     pass
-        if _fx_lvl0 > 0 and _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
+        # arm on cross, never on state — a level frozen with price already beyond it must not close retroactively
+        if _fx_lvl0 > 0 and not bool(getattr(position, "fixed_stop_armed", True)) and not _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
+            try:
+                position.fixed_stop_armed = True
+            except Exception:
+                pass
+            logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl0:.6f} — stop is live again")
+        if _fx_lvl0 > 0 and bool(getattr(position, "fixed_stop_armed", True)) and _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
             _fx_side0 = 'SELL' if is_long else 'BUY'
             logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_lvl0:.6f} g={float(gain or 0):.2f}% → HARD_STOP CLOSE (non-negotiable)")
             await service.trade_manager.execute_now(position_key, account_key, symbol, pos_amt, _fx_side0, position_side, pos_amt, current_price, f"FIXED_STOP_{int(time.time())}", f"FIXED_STOP_{position_side}_px{current_price:.6f}_lvl{_fx_lvl0:.6f}_g{float(gain or 0):.2f}", True, 'CLOSE')

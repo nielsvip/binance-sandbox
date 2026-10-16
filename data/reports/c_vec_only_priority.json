@@ -1,0 +1,242 @@
+[
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "EXIT_VELOCITY_WT_TFS",
+  "vec_read_site": "twin_exits_dead:600",
+  "probe": "MOVED"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "BOTTOM_EXIT_HTF_WT_VETO_ENABLED",
+  "vec_read_site": "v12q:16439",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "BTC_TECH_EXIT_WT_MIN_TFS",
+  "vec_read_site": "v12q:15589",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "EXIT_SCORER_DC_EXTREME",
+  "vec_read_site": "v12q:15616",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "SCALP_V3_OB_WALL_TOO_CLOSE_PCT",
+  "vec_read_site": "v12q:15548",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "SMFI_DIV_EXIT_TF",
+  "vec_read_site": "twin_entries_dead_b:95",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "STDEV_BREAKOUT_EXIT_PCTB_FAIL",
+  "vec_read_site": "twin_exits_dead:452",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "VWAP_STRETCH_EXIT_ENABLED",
+  "vec_read_site": "twin_entries_dead_b:114",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "EXIT/PROTECTION",
+  "switch": "VWAP_STRETCH_EXIT_PCT",
+  "vec_read_site": "twin_entries_dead_b:117",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "REENTRY",
+  "switch": "HLR_REENTRY_MAX_AGE_S",
+  "vec_read_site": "wirec_hlr_family:194",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "REENTRY",
+  "switch": "LEGACY_PROC_SINGLE_REENTRY",
+  "vec_read_site": "v12q:17743",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "REENTRY",
+  "switch": "LEGACY_REENTRY_PSR_K_DC_CROSSOVER",
+  "vec_read_site": "v12q:17744",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "REENTRY",
+  "switch": "OBLIGATORY_REENTRY_SCORE_TIER1",
+  "vec_read_site": "obligatory_reentry_vec:76",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "REENTRY",
+  "switch": "OBLIGATORY_REENTRY_SCORE_TIER2",
+  "vec_read_site": "obligatory_reentry_vec:95",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "REENTRY",
+  "switch": "REENTRY_EXHAUSTED_PARTIAL_ENABLED",
+  "vec_read_site": "reentry_tiers:63",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "FUNDING_CROWD_ENTRY_Z",
+  "vec_read_site": "v12q:16932",
+  "probe": "MOVED"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "OI_SURGE_ENTRY_PCT",
+  "vec_read_site": "v12q:16934",
+  "probe": "MOVED"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "SMFI_DIV_ENTRY_TF",
+  "vec_read_site": "v12q:16894",
+  "probe": "MOVED"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "VWAP_STRETCH_ENTRY_PCT",
+  "vec_read_site": "v12q:16896",
+  "probe": "MOVED"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "WT_DIV_ENTRY_GATE_ENABLED",
+  "vec_read_site": "wirec_wt_gates:42",
+  "probe": "MOVED"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "BBKC_ENTRY_TF",
+  "vec_read_site": "twin_exits_dead:102",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "BTC_DEDICATED_FILTER_TF",
+  "vec_read_site": "v12q:12336",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "ENTRY_PRIMARY_TF",
+  "vec_read_site": "wirec_entry_tf:48",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "HA_WICK_QUALITY_ENABLED",
+  "vec_read_site": "v12q:12132",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "HA_WICK_QUALITY_SCORE",
+  "vec_read_site": "v12q:12131",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "HA_WICK_QUALITY_TF",
+  "vec_read_site": "v12q:12134",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "HLR_SMA_BAND_PCT",
+  "vec_read_site": "wirec_hlr_family:47",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MACD_ZERO_CROSS_ENABLED",
+  "vec_read_site": "v12q:12142",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MACD_ZERO_CROSS_SCORE",
+  "vec_read_site": "v12q:12141",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MACD_ZERO_CROSS_TF",
+  "vec_read_site": "v12q:12144",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MI_ENTRY_EXHAUST_BONUS",
+  "vec_read_site": "v12q:12157",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MI_ENTRY_STRUCT_BONUS",
+  "vec_read_site": "v12q:12158",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MOVER_THRESHOLD",
+  "vec_read_site": "v12q:12184",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MTS_BOTTOM_BONUS_THRESHOLD",
+  "vec_read_site": "v12q:12182",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "MTS_BOTTOM_STRONG_THRESHOLD",
+  "vec_read_site": "v12q:12183",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "STDEV_SLOPE_LOOKBACK_15M",
+  "vec_read_site": "twin_stdev:78",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "WT_COMPOSITE_ENTRY_GOOD",
+  "vec_read_site": "v12q:12151",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "WT_COMPOSITE_ENTRY_OK",
+  "vec_read_site": "v12q:12152",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "WT_COMPOSITE_ENTRY_STRONG",
+  "vec_read_site": "v12q:12153",
+  "probe": "flat(3 syms)"
+ },
+ {
+  "family": "ENTRY/SIZING",
+  "switch": "WT_EXHAUST_ENTRY_GATE_ENABLED",
+  "vec_read_site": "wirec_wt_gates:74",
+  "probe": "flat(3 syms)"
+ }
+]

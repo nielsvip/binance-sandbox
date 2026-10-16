@@ -703,7 +703,10 @@ def verify_symside(sym_side: str, root: Path = None) -> dict:
     try:
         import per_sym_store as _pss
 
-        sql_ov = _pss.get_overrides(sym_side)
+        # 2026-10-15: the overrides COLUMN, not get_overrides() — that now serves the full measured set to live
+        # (per_sym_store PER_SYM_APPLY_FULL_SET), while this check is book-overrides vs stored-overrides.
+        _row = _pss.get(sym_side)
+        sql_ov = dict((_row or {}).get("overrides") or {}) if isinstance(_row, dict) else None
         sql_full = _pss.get_full_config(sym_side)
     except Exception as _e:
         rep["mismatches"].append(f"sqlite unreadable: {_e}")
@@ -939,6 +942,13 @@ def verify_default_surfaces(
             row["other_bold"] = ob
             row["global_differs"] = gv != "<absent>" and not _same_val(bv, gv)
             row["quick_differs"] = qv != "<absent>" and not _same_val(bv, qv)
+            # USER 2026-10-15 ("NO results"): record WHY a bold may legitimately outrank the venue global.
+            # template_bold_defaults already drops any bold that disagrees with live truth UNLESS the key is a
+            # cat_side promotion, so a surviving bold-vs-global row is by construction the learning layer's own
+            # output; live resolves per_sym -> cat_side -> global, so the global is a shadowed fallback, not the
+            # value that trades. `catside_backed` says the two surfaces that actually bind agree.
+            row["catside_backed"] = _same_val(bv, cv)
+            row["promoted"] = k in promoted
             if not _same_val(bv, cv):
                 row["class"] = "bold-vs-cat"
             elif gv == "<absent>" and qv == "<absent>":
@@ -1452,6 +1462,10 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
             "config_tradier.py",
             "v12_quick_engine.py",
             "data/per_sym_settings.json",
+            # 2026-10-15: the gate's OWN rules were missing from the signature, so a deployed classification change
+            # kept serving the previous verdict out of /tmp until an input file happened to move. A stale "ok: false"
+            # would have kept the fleet idle after the fix landed.
+            "switch_parity.py",
         ):
             p = root / f
             sig += hashlib.md5(p.read_bytes()).hexdigest() if p.exists() else "x"
@@ -1486,10 +1500,25 @@ def startup_gate(cat_side: str, template_path: str = None, root: Path = None) ->
     except Exception as _e:
         rep["warnings"].append(f"gate audit crashed ({_e}) — allowing run")
         return rep
+    _strict_global = os.environ.get("SWITCH_PARITY_GATE_STRICT_GLOBAL", "0") == "1"
     for m in audit.get("mismatches", []):
         if m.get("class") in ("bold-vs-global", "bold-vs-quick"):
+            _desc = f"{m.get('key')}: bold={m.get('bold')!r} global={m.get('global')!r} quick={m.get('quick')!r}"
+            if m.get("catside_backed") and not _strict_global:
+                # USER 2026-10-15 "NO results": this exact row (NEWBORN_LOSS_KILL_ENABLED / R3_HTF_FLIP_EXIT_ENABLED,
+                # promoted at 12:18Z) refused EVERY crypto 30D launch for 9 h on both hosts — the scheduler mirrors
+                # this gate and the pilot exits on it, so the whole venue idled with cores free. The bold IS the
+                # cat_side value, which is what the board applies as an explicit override and what live resolves
+                # before the global, so the lagging surface cannot change a board or a trade: it is a fallback that
+                # the daily chain's sync-defaults should align (it currently CANNOT — multi-line parenthesized
+                # fields land in needs_manual, which is why this never self-healed). Reversible:
+                # SWITCH_PARITY_GATE_STRICT_GLOBAL=1 restores the blocking behaviour exactly.
+                rep["warnings"].append(f"catside-backed {m.get('class')} {_desc} cat={m.get('cat')!r} promoted={bool(m.get('promoted'))}")
+            else:
+                rep["hard"].append(_desc)
+        elif m.get("class") == "not-in-configs":
             rep["hard"].append(
-                f"{m.get('key')}: bold={m.get('bold')!r} global={m.get('global')!r} quick={m.get('quick')!r}"
+                f"{m.get('key')}: bold={m.get('bold')!r} exists in NEITHER engine (board would run a value the sheet does not describe)"
             )
         elif m.get("class") in ("bold-vs-cat", "template-default-violation"):
             rep["warnings"].append(

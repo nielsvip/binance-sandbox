@@ -29,6 +29,20 @@ lf_lease_fenced() {
     if [[ "$(uname)" == "Darwin" ]]; then
         file="$workdir/data/live_failover/lease_local.json"
         grep -q '"holder": *"s1"' "$file" 2>/dev/null || return 1
+        # 2026-10-16 A GHOST LEASE MUST NOT FENCE FOREVER (USER: "trading can only stop because macbook went offline,
+        # NEVER is there any possibility that it just stops"). lease_local.json is written by tools/mac_failover_agent.py
+        # from S1's lease; if that agent dies while the file says holder=s1, every gated Mac trader stays fenced with
+        # nothing left to ever unfence it. A lease older than LF_LEASE_MAX_AGE_S is not a lease, it is a leftover file.
+        local _age _now _fetched
+        _fetched="$(sed -n 's/.*"fetched_epoch"[^0-9]*\([0-9][0-9]*\).*/\1/p' "$file" 2>/dev/null | head -1)"
+        _now="$(date -u +%s)"
+        if [[ -n "$_fetched" ]]; then
+            _age=$(( _now - _fetched ))
+            if [[ "$_age" -gt "${LF_LEASE_MAX_AGE_S:-600}" ]]; then
+                echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [LEASE_STALE] lease_local.json says holder=s1 but is ${_age}s old (> ${LF_LEASE_MAX_AGE_S:-600}s) — the failover agent is not maintaining it; NOT fencing $script" >&2
+                return 1
+            fi
+        fi
         grep -q '"venues":' "$file" 2>/dev/null || return 0
         grep -q "\"venues\": *\"[^\"]*${venue}" "$file" 2>/dev/null && return 0
         return 1

@@ -1,0 +1,217 @@
+{
+ "tag": "20261016T025817Z",
+ "host": "MacBook-Pro.local",
+ "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+ "args": {
+  "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+  "symside": "APO_SHORT",
+  "glob": "*_30d_matrix.html",
+  "limit": 0,
+  "latest_only": false,
+  "tol": 0.01,
+  "npz": false,
+  "no_xlsx": true,
+  "rerun": false,
+  "rerun_tol": 2.5,
+  "keep_rerun": false,
+  "verbose": false,
+  "fail_on": "",
+  "out": ""
+ },
+ "counts": {
+  "PASS": 0,
+  "WARN": 1,
+  "FAIL": 1,
+  "UNPARSEABLE": 0,
+  "UNREADABLE": 0
+ },
+ "findings_by_id": {
+  "LA_ZERO_COST": 2,
+  "GAIN_MANIFEST_VS_LEDGER": 1,
+  "GAIN_FILENAME_VS_LEDGER": 1,
+  "SRC_MANIFEST_TRADES": 1,
+  "SRC_FILENAME_TRADES": 1
+ },
+ "charts": [
+  {
+   "chart": "APO_SHORT_bh14p03_gain17p_t19_30d_matrix.html",
+   "symside": "APO_SHORT",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no APO_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=16.4417/+5bps=15.3532/+10bps=13.5389"
+    }
+   ],
+   "filename_claims": {
+    "gain": 17.0,
+    "trades": 19,
+    "bh": 14.03
+   },
+   "recomputed": {
+    "trades": 19,
+    "pnl_dollars": 1201.21,
+    "peak_event_replay": 6997.01,
+    "peak_sweepline": 6997.01,
+    "gain_pct_event_peak": 17.1674,
+    "gain_pct_sweep_peak": 17.1674,
+    "wins": 14,
+    "wr_pct": 73.68,
+    "max_dd_pct": 0.69,
+    "tim_pct": 70.64,
+    "bh_pct": 14.0283,
+    "cost_ladder": {
+     "2bps": 16.4417,
+     "5bps": 15.3532,
+     "10bps": 13.5389
+    },
+    "pool_sharpe": 0.281,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 19
+   },
+   "header": {
+    "gain_pct": 17.17,
+    "bh_pct": 14.03,
+    "delta_vs_bh": 3.14,
+    "trades": 19,
+    "pool_sharpe": 0.281,
+    "max_dd_pct": 0.69,
+    "max_dd_mae_pct": 4.3,
+    "tim_pct": 70.64,
+    "wr_pct": 73.68,
+    "bars": 889,
+    "peak_capital": 6997.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 19,
+     "opens": 19,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-15 22:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 17.1674,
+    "trades": 19,
+    "tim_pct": 70.64,
+    "max_dd_pct": 0.6907,
+    "valid": true,
+    "invalid_reason": null,
+    "bh": 14.0283,
+    "gain_vs_bh": 3.139100000000001
+   },
+   "secs": 0.11
+  },
+  {
+   "chart": "APO_SHORT_bh14p47_gain16p_t12_30d_matrix.html",
+   "symside": "APO_SHORT",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_MANIFEST_VS_LEDGER",
+     "msg": "manifest prints gain +16.6709% but its own entries/exits sum to +17.1320% (event-peak) / +17.1320% (sweep-peak) \u2014 drift 0.4611",
+     "claimed": 16.67092536388712,
+     "recomputed": [
+      17.132,
+      17.132
+     ]
+    },
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +16% (integer slot) but the ledger sums to +17.13%",
+     "claimed": 16.0,
+     "recomputed": [
+      17.132,
+      17.132
+     ]
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_MANIFEST_TRADES",
+     "msg": "manifest says 12 trades, the chart draws 15"
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_FILENAME_TRADES",
+     "msg": "filename claims t12 but the chart draws 15 trades"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no APO_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=16.5656/+5bps=15.716/+10bps=14.3"
+    }
+   ],
+   "filename_claims": {
+    "gain": 16.0,
+    "trades": 12,
+    "bh": 14.47
+   },
+   "recomputed": {
+    "trades": 15,
+    "pnl_dollars": 1198.73,
+    "peak_event_replay": 6997.01,
+    "peak_sweepline": 6997.01,
+    "gain_pct_event_peak": 17.132,
+    "gain_pct_sweep_peak": 17.132,
+    "wins": 11,
+    "wr_pct": 73.33,
+    "max_dd_pct": 0.3,
+    "tim_pct": 70.51,
+    "bh_pct": 12.7769,
+    "cost_ladder": {
+     "2bps": 16.5656,
+     "5bps": 15.716,
+     "10bps": 14.3
+    },
+    "pool_sharpe": 0.3194,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 15
+   },
+   "header": {
+    "gain_pct": 17.13,
+    "bh_pct": 12.78,
+    "delta_vs_bh": 4.36,
+    "trades": 15,
+    "pool_sharpe": 0.3194,
+    "max_dd_pct": 0.3,
+    "max_dd_mae_pct": 4.3,
+    "tim_pct": 70.51,
+    "wr_pct": 73.33,
+    "bars": 885,
+    "peak_capital": 6997.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 15,
+     "opens": 15,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-14 20:00"
+   },
+   "manifest_metrics": {
+    "gain_pct": 16.67092536388712,
+    "trades": 12,
+    "tim_pct": 70.17,
+    "max_dd_pct": 0.3036980933835333,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 14.4653616612533,
+    "gain_vs_bh": 2.205563702633821
+   },
+   "secs": 0.1
+  }
+ ]
+}

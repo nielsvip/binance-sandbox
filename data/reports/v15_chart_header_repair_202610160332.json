@@ -1,0 +1,152 @@
+{
+ "tag": "202610160332",
+ "apply": false,
+ "backup_dir": "/Users/niels/Documents/binance/backups/charts_before_header_repair_202610160332",
+ "changed": 11,
+ "skipped": 0,
+ "charts": [
+  {
+   "chart": "APO_SHORT_bh14p03_gain17p_t19_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 17.17,
+    "trades": 19
+   },
+   "now": {
+    "gain_pct": 17.1674,
+    "trades": 19
+   },
+   "gain_drift": 0.0026
+  },
+  {
+   "chart": "APO_SHORT_bh14p47_gain16p_t12_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 17.13,
+    "trades": 15
+   },
+   "now": {
+    "gain_pct": 17.132,
+    "trades": 15
+   },
+   "gain_drift": 0.002
+  },
+  {
+   "chart": "BIOUSDC_SHORT_bhm13p51_gain0p00_t0_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 0.0,
+    "trades": 0
+   },
+   "now": {
+    "gain_pct": 0.0,
+    "trades": 0
+   },
+   "gain_drift": 0.0
+  },
+  {
+   "chart": "BIOUSDC_SHORT_bhm13p51_gain64p_t131_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 64.82,
+    "trades": 131
+   },
+   "now": {
+    "gain_pct": 64.8203,
+    "trades": 61
+   },
+   "gain_drift": 0.0003
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bh2p85_gain18p_t184_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 18.98,
+    "trades": 184
+   },
+   "now": {
+    "gain_pct": 18.9796,
+    "trades": 109
+   },
+   "gain_drift": 0.0004
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bhm0p17_gain38p_t152_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 38.76,
+    "trades": 152
+   },
+   "now": {
+    "gain_pct": 38.7643,
+    "trades": 152
+   },
+   "gain_drift": 0.0043
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bhm0p17_gain46p_t72_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 46.57,
+    "trades": 72
+   },
+   "now": {
+    "gain_pct": 46.5704,
+    "trades": 72
+   },
+   "gain_drift": 0.0004
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bhm0p17_gain50p_t72_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 50.18,
+    "trades": 72
+   },
+   "now": {
+    "gain_pct": 50.179,
+    "trades": 72
+   },
+   "gain_drift": 0.001
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bhm1p88_gain3p_t25_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 3.94,
+    "trades": 25
+   },
+   "now": {
+    "gain_pct": 3.9372,
+    "trades": 25
+   },
+   "gain_drift": 0.0028
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bhm3p29_gain51p_t96_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 51.71,
+    "trades": 96
+   },
+   "now": {
+    "gain_pct": 51.7126,
+    "trades": 96
+   },
+   "gain_drift": 0.0026
+  },
+  {
+   "chart": "DOGEUSDC_LONG_bhm3p29_gain52p_t96_30d_matrix.html",
+   "changed": true,
+   "was": {
+    "gain_pct": 52.59,
+    "trades": 96
+   },
+   "now": {
+    "gain_pct": 52.5874,
+    "trades": 96
+   },
+   "gain_drift": 0.0026
+  }
+ ]
+}

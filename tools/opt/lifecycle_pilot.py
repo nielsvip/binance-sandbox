@@ -161,7 +161,10 @@ def _slice_rows(npz: Any, left: int, right: int) -> Any:
 
 
 def exact_month_slice(npz: Any, crypto: bool, window_days: int = 30) -> tuple[Any, Dict[str, Any]]:
-    """Return 30C/30T for month, 365C for yr. window_days 30 -> 30 calendar (crypto) or 30 sessions (stocks); 365 -> 365 calendar both."""
+    """Return 30C/30T for month, 365C for yr. window_days 30 -> 30 calendar (crypto) or 30 sessions (stocks); 365 -> 365 calendar both.
+    Quick windows 1/7 (USER 2026-10-14 task 09: evaluate_sanitized(window_days=7) silently returned 30D): crypto slices that many
+    calendar days, stocks that many trading sessions (1 stocks = 7-session warmup proxy, same as evaluate_v12._exact_30d_slice —
+    a true 1-session slice is indicator-starved). Anything else raises instead of silently returning 30D."""
     if not isinstance(npz, dict):
         raise ValueError("NPZ store is not a mapping")
     raw = np.asarray(npz.get("timestamps", ()), dtype="float64")
@@ -170,29 +173,51 @@ def exact_month_slice(npz: Any, crypto: bool, window_days: int = 30) -> tuple[An
         raise ValueError("NPZ has no usable timestamps")
     seconds = raw / (1000.0 if float(raw[finite[-1]]) > 1e11 else 1.0)
     right = int(finite[-1]) + 1
+    wd = int(window_days)
     # Yr 365 calendar days for both venues; month 30 calendar crypto / 30 trading stocks (was 20)
-    if int(window_days) >= 365:
+    if wd >= 365:
         end_s = float(seconds[finite[-1]])
         start_s = end_s - 365.0 * 86400.0
         left = int(np.searchsorted(seconds, start_s, side="left"))
         policy = "365_calendar_days"
         session_count = None
-    elif crypto:
-        end_s = float(seconds[finite[-1]])
-        start_s = end_s - 30.0 * 86400.0
-        left = int(np.searchsorted(seconds, start_s, side="left"))
-        policy = "30_calendar_days"
-        session_count = None
+    elif wd == 30:
+        if crypto:
+            end_s = float(seconds[finite[-1]])
+            start_s = end_s - 30.0 * 86400.0
+            left = int(np.searchsorted(seconds, start_s, side="left"))
+            policy = "30_calendar_days"
+            session_count = None
+        else:
+            days = seconds.astype("datetime64[s]").astype("datetime64[D]")
+            valid_days = days[finite]
+            unique = np.unique(valid_days)
+            if len(unique) < 30:
+                raise ValueError(f"NPZ has only {len(unique)} distinct stock sessions (need 30)")
+            first_day = unique[-30]
+            left = int(np.searchsorted(days, first_day, side="left"))
+            policy = "30_trading_sessions"
+            session_count = 30
+    elif wd in (1, 7):
+        if crypto:
+            end_s = float(seconds[finite[-1]])
+            start_s = end_s - float(wd) * 86400.0
+            left = int(np.searchsorted(seconds, start_s, side="left"))
+            policy = f"{wd}_calendar_days"
+            session_count = None
+        else:
+            use_sessions = 7
+            days = seconds.astype("datetime64[s]").astype("datetime64[D]")
+            valid_days = days[finite]
+            unique = np.unique(valid_days)
+            if len(unique) < use_sessions:
+                raise ValueError(f"NPZ has only {len(unique)} distinct stock sessions (need {use_sessions})")
+            first_day = unique[-use_sessions]
+            left = int(np.searchsorted(days, first_day, side="left"))
+            policy = "1_trading_sessions_proxy_7" if wd == 1 else "7_trading_sessions"
+            session_count = use_sessions
     else:
-        days = seconds.astype("datetime64[s]").astype("datetime64[D]")
-        valid_days = days[finite]
-        unique = np.unique(valid_days)
-        if len(unique) < 30:
-            raise ValueError(f"NPZ has only {len(unique)} distinct stock sessions (need 30)")
-        first_day = unique[-30]
-        left = int(np.searchsorted(days, first_day, side="left"))
-        policy = "30_trading_sessions"
-        session_count = 30
+        raise ValueError(f"unsupported window_days={window_days} (need 1/7/30/365+)")
     sliced = _slice_rows(npz, left, right)
     sliced_ts = np.asarray(sliced.get("timestamps", ()), dtype="float64")
     return sliced, {

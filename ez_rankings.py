@@ -3963,7 +3963,6 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
                 if dftf.empty:
                     continue
                 dftf = detect_tops_bottoms(dftf, distance=5, prominence=1e-4)
-                dftf = add_stochrsi_zones(dftf)
                 dfs_current_sym[tf] = dftf
             
             if not dfs_current_sym:
@@ -4114,7 +4113,12 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         # Calculate price vs SMA with new weighting
         price_vs_sma_score = 0.0
         if current_price and df_1h is not None and not df_1h.empty and len(df_1h) >= 200:
-            sma_1h = df_1h['close'].rolling(200).mean().iloc[-1] if 'close' in df_1h.columns else None
+            try:
+                sma_1h = float((indicators_data.get(sym, {}) or {}).get("sma_200_1h") or 0.0)
+            except (TypeError, ValueError):
+                sma_1h = 0.0
+            if not sma_1h or sma_1h <= 0:
+                sma_1h = df_1h['close'].rolling(200).mean().iloc[-1] if 'close' in df_1h.columns else None
             if sma_1h and sma_1h > 0:
                 price_vs_sma_score = ((current_price - sma_1h) / sma_1h) * 100 * 15
         
@@ -4128,7 +4132,12 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         # Calculate breakthrough bonus
         breakthrough_bonus = 0.0
         if current_price and df_1h is not None and not df_1h.empty:
-            atr_1h = calculate_atr(df_1h, period=14)
+            try:
+                atr_1h = float((indicators_data.get(sym, {}) or {}).get("atr_1h") or 0.0)
+            except (TypeError, ValueError):
+                atr_1h = 0.0
+            if not atr_1h or atr_1h <= 0:
+                atr_1h = calculate_atr(df_1h, period=14)
             
             # Get band boundaries for breakthrough detection
             band_data = calculate_weighted_band_score(current_price, valid_dfs)
@@ -4505,17 +4514,18 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
 
     # Add ranking_points.json to final scores — WITH HTF TREND FILTER
     try:
-        with open("data/ranking_points.json", "r") as f:
-            ranking_data = json.load(f)
-        sorted_ranking = sorted(ranking_data.items(), key=lambda x: x[1], reverse=True)
-        symbols_ang_long_list.extend([symbol for symbol, score in sorted_ranking[:60] if symbol not in _bearish_syms][:20])
-        symbols_ang_short_list.extend([symbol for symbol, score in sorted_ranking[-60:] if symbol not in _bullish_syms][:20])
+        if "sorted_ranking" not in dir():
+            with open("data/ranking_points.json", "r") as f:
+                ranking_data = json.load(f)
+            sorted_ranking = sorted(ranking_data.items(), key=lambda x: x[1], reverse=True)
+        symbols_ang_long_list.extend([symbol for symbol, score in sorted_ranking[:60] if symbol not in _bearish_syms][:25])
+        symbols_ang_short_list.extend([symbol for symbol, score in sorted_ranking[-60:] if symbol not in _bullish_syms][:25])
     except Exception as e:
         logger.warning(f"Failed to load ranking_points.json: {e}")
-    
-    # Remove duplicates and ensure 20 symbols each
-    symbols_ang_long_list = list(dict.fromkeys(symbols_ang_long_list))[:20]
-    symbols_ang_short_list = list(dict.fromkeys(symbols_ang_short_list))[:20]
+
+    # Remove duplicates and ensure 25 symbols each
+    symbols_ang_long_list = list(dict.fromkeys(symbols_ang_long_list))[:25]
+    symbols_ang_short_list = list(dict.fromkeys(symbols_ang_short_list))[:25]
     # Tier-based priority: A-tier symbols get sorted to front, C-tier to back
     if config.TIER_ENABLED:
         try:
@@ -4526,10 +4536,10 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         except Exception:
             pass
     
-    if len(symbols_ang_long_list) < 20:
+    if len(symbols_ang_long_list) < 25:
         symbols_ang_long_list.extend([item["symbol"] for item in to_save_top30[len(symbols_ang_long_list):]])
-    if len(symbols_ang_short_list) < 20:
-        symbols_ang_short_list.extend([item["symbol"] for item in to_save_bottom30[len(symbols_ang_short_list):]]) 
+    if len(symbols_ang_short_list) < 25:
+        symbols_ang_short_list.extend([item["symbol"] for item in to_save_bottom30[len(symbols_ang_short_list):]])
     
     # Build short-term/inflection lists — WITH HTF TREND FILTER
     symbols_inf_long_list = [item["symbol"] for item in to_save_top15_15m if item["symbol"] not in _bearish_syms] + \
@@ -4652,10 +4662,10 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
             _foi_long = []  # (sym, reason)
             _foi_short = []
             _candidate_syms = list({e["symbol"] for e in final_ranking_data_scalars})
-            for _sym in _candidate_syms:
+            _hm_raw = await asyncio.gather(*[redis.get(f"hot_metrics:{_s}") for _s in _candidate_syms], return_exceptions=True)
+            for _sym, _hm in zip(_candidate_syms, _hm_raw):
                 try:
-                    _hm = await redis.get(f"hot_metrics:{_sym}")
-                    if not _hm: continue
+                    if not _hm or isinstance(_hm, Exception): continue
                     _hm_d = json_loads(_hm)
                     if not isinstance(_hm_d, dict): continue
                     _fr = _hm_d.get('funding_rate')
@@ -5785,6 +5795,20 @@ async def save_market_data():
             _before_long, _before_short = len(symbols_ang_long_list), len(symbols_ang_short_list)
             symbols_ang_long_list = [s for s in symbols_ang_long_list if _is_tradeable_side(f"{s}_LONG")]
             symbols_ang_short_list = [s for s in symbols_ang_short_list if _is_tradeable_side(f"{s}_SHORT")]
+            _pool_long = [i.get("symbol") for i in (to_save_top30 + to_save_top30_r) if i.get("symbol")]
+            _pool_short = [i.get("symbol") for i in (to_save_bottom30 + to_save_bottom30_r) if i.get("symbol")]
+            for _s in _pool_long:
+                if len(symbols_ang_long_list) >= 25: break
+                if _s not in symbols_ang_long_list and _is_tradeable_side(f"{_s}_LONG"): symbols_ang_long_list.append(_s)
+            for _s in _pool_long:
+                if len(symbols_ang_long_list) >= 25: break
+                if _s not in symbols_ang_long_list: symbols_ang_long_list.append(_s)
+            for _s in _pool_short:
+                if len(symbols_ang_short_list) >= 25: break
+                if _s not in symbols_ang_short_list and _is_tradeable_side(f"{_s}_SHORT"): symbols_ang_short_list.append(_s)
+            for _s in _pool_short:
+                if len(symbols_ang_short_list) >= 25: break
+                if _s not in symbols_ang_short_list: symbols_ang_short_list.append(_s)
             if len(symbols_ang_long_list) != _before_long or len(symbols_ang_short_list) != _before_short:
                 logger.info(f"[TRADEABLE_FILTER] symbols_ang_long { _before_long}->{len(symbols_ang_long_list)} short { _before_short}->{len(symbols_ang_short_list)} (non-tradeable dropped: long {[s for s in ['CRDOUSDT','AMATUSDT'] if s not in symbols_ang_long_list][:3]} )")
         except Exception as _e:
@@ -7630,7 +7654,12 @@ async def ranking_loop(symbols_list_arg: List[str]):
     
     while True:
         try:
+            now_time = time.time()
+            if now_time - _last_full_ranking_time < BATCH_INTERVAL_S:
+                await asyncio.sleep(60)
+                continue
             ranking_data_scalars_list_loop, metadata_current_run_loop = await initial_fetch_and_ranking(symbols_list_arg, ["4h", "1h", "15m", "3m", "D"])
+            _last_full_ranking_time = time.time()
             
             if ranking_data_scalars_list_loop:
                 RANKING_DATA = ranking_data_scalars_list_loop 

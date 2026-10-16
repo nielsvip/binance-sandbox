@@ -19,20 +19,12 @@ from __future__ import annotations
 
 
 def rally_k15_blocked(k15: float, is_long: bool, cfg) -> bool:
-    """Live RALLY_K15M_MAX guard mirror (live default 30.0)."""
-    try:
-        cap = float(getattr(cfg, "REENTRY_RALLY_K15M_MAX", 100.0) or 100.0)
-    except Exception:
-        cap = 100.0
-    if cap >= 100.0:
-        return False
-    try:
-        k = float(k15)
-    except Exception:
-        k = 50.0
-    if is_long:
-        return k >= cap
-    return k <= (100.0 - cap)
+    """DEAD — stoch_k is never a reentry filter in this system (USER 2026-10-16, crypto AND stocks).
+
+    Twin of vec_decisions/reentry_epq_vec.rally_k15_blocked, killed with it so the tier chain and the EPQ path
+    cannot disagree. Reentry is filtered by the REENTRY_WINDOWED / REENTRY_ADAPTIVE yellow filters. Always False.
+    """
+    return False
 
 
 def tier_fire(is_long: bool, px: float, last_exit_px: float, mins_since_exit: float, cfg,

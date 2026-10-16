@@ -42,6 +42,7 @@ BASE = Path(os.environ.get("LF_BASE", "/Users/niels/Documents/binance"))
 LF = BASE / "data" / "live_failover"
 STAGE = Path(os.environ.get("LF_STAGE", "/Users/niels/live_failover_stage"))
 LOGDIR = Path(os.environ.get("LF_LOGDIR", "/Users/niels/logs"))
+GAG_ALARM_EVERY_S = float(os.environ.get("LF_GAG_ALARM_EVERY_S", "300"))  # a disarmed failover is announced at least this often
 LOG = LOGDIR / "live_failover_agent.log"
 REMOTE_LIVE = os.environ.get("LF_REMOTE_LIVE", "/home/niels/binance")
 REMOTE_LF = f"{REMOTE_LIVE}/data/live_failover"
@@ -49,11 +50,17 @@ HOSTS = tuple(os.environ.get("LF_HOSTS", "s1-pub s1-int").split())
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2", "-o", "ControlMaster=no", "-o", "ControlPath=none"]
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
-GATED = ("ez_manage.py", "tradier_manage.py", "ez_positions_watchdog.py", "ez_positions.py", "ez_copilot.py", "ez_reentry_daemon.py", "tradier_positions.py")
+# 2026-10-15 (USER live takeover test, Mac disconnected ~15 min): ez_positions_service_main.py / ez_positions_realtime.py
+# were NOT gated. Since the 2026-10-14 single-writer refactor the writer is also an ORDER PATH — its FIXED_STOP live
+# leg calls trade_manager.execute_now() directly — so while S1 held the lease and traded, the Mac could still have
+# fired a FIXED_STOP close on the same account: two hosts, one position. In this test no breach happened on the Mac
+# (0 breaches 19:27-19:39Z) so nothing double-fired, but the path was open. The fence now closes it.
+GATED = ("ez_manage.py", "tradier_manage.py", "ez_positions_watchdog.py", "ez_positions.py", "ez_copilot.py", "ez_reentry_daemon.py", "tradier_positions.py", "ez_positions_service_main.py", "ez_positions_realtime.py")
 TRADER_RX = r"python[^ ]* .*(" + "|".join(name.replace(".", r"\.") for name in GATED) + r")"
 ACCOUNTS = C.CRYPTO_ACCOUNTS + C.STOCK_ACCOUNTS
 VERSION = "2026-10-14.2"
 PULL_LAG_S = float(os.environ.get("LF_PULL_LAG_S", "60"))
+SEED_EVERY_S = float(os.environ.get("LF_SEED_EVERY_S", "120"))  # re-seed from S1 at most this often while fenced (was: every tick)
 PULL_OFF_S = float(os.environ.get("LF_PULL_OFF_S", "600"))
 PULLER_LABEL = "com.binance.ez-s1-indicators-pull"
 PULLER_PLIST = Path(os.environ.get("LF_PULLER_PLIST", f"/Users/niels/Library/LaunchAgents/{PULLER_LABEL}.plist"))
@@ -222,7 +229,17 @@ class Agent:
         if pids:
             log(f"FENCE: SIGTERM {len(pids)} gated trader pids {pids}")
         if host:
-            self.seed_from_s1(host)
+            # 2026-10-15: seed at most once per lease generation / SEED_EVERY_S. This ran an rsync from S1 on EVERY
+            # tick while fenced, so the 15 s tick stretched to ~180 s and the heartbeat this agent pushes to S1 went
+            # stale — S1 then read "heartbeat_absent" from a perfectly healthy Mac, which both BLOCKS FAILBACK (the
+            # Mac can never prove it is alive because it is busy proving it) and, at LF_TAKEOVER_HB_S=60, could
+            # re-trigger a takeover. Liveness must never be starved by the work that liveness gates.
+            _sg = getattr(self, "_seed_gen", None)
+            _st = float(getattr(self, "_seed_ts", 0.0) or 0.0)
+            if _sg != lease.get("gen") or C.now_s() - _st >= SEED_EVERY_S:
+                self._seed_gen = lease.get("gen")
+                self._seed_ts = C.now_s()
+                self.seed_from_s1(host)
         return 0 if os.environ.get("LF_NO_KILL") == "1" else len(trader_pids(venues))
 
     def unfence(self, lease, host):
@@ -405,6 +422,43 @@ class Agent:
                 setattr(self, key, verdict)
                 log(f"TRADING_HEALTH {venue}: kinds={verdict} reasons={(health.get(venue) or {}).get('reasons')}")
 
+    def alarm_if_gagged(self, lease, state, now):
+        """Scream, every single tick, while the failover cannot take over (USER 2026-10-15).
+
+        2026-10-14T16:14:27Z someone ran force-mac: S1's lease went to pin="mac" and the arm file was never created.
+        pin="mac" blocks EVERY takeover (live_failover_s1.nt_candidates: `if pin == "mac": return []`) and the arm file
+        is required on top of that. All the older S1 watchdog crons had just been retired (#RETIRED_BY_LEASE_20261014#),
+        so from that moment the standby was gagged — and nothing said so anywhere. On 2026-10-15 the Mac's position
+        writers were wedged 13:58->18:2xZ; this agent's own health meter DID detect it ("broker_unreachable 5/5
+        accounts", "traders_dead", from 17:59:50Z) and no takeover could follow. A safety net that is off must never be
+        quiet: this logs CRITICAL and writes data/alerts/failover_gagged.jsonl so live_guardian surfaces it.
+        """
+        try:
+            pin = (lease or {}).get("pin")
+            armed = None
+            if isinstance(state, dict):
+                armed = state.get("armed", state.get("arm", None))
+            gagged = []
+            if pin:
+                gagged.append(f'pin={pin} (set {(lease or {}).get("since")} by {(lease or {}).get("by")}: {(lease or {}).get("reason")})')
+            if armed is False:
+                gagged.append("arm file absent")
+            if not gagged:
+                self._gag_last = 0.0
+                return
+            if now - float(getattr(self, "_gag_last", 0.0) or 0.0) >= GAG_ALARM_EVERY_S:
+                self._gag_last = now
+                log(f"CRITICAL FAILOVER_GAGGED — S1 CANNOT TAKE OVER: {'; '.join(gagged)}. Release with tools/live_failover_ctl.sh auto (and arm) on S1 once S1 data is fresh.")
+                try:
+                    d = Path(BASE) / "data" / "alerts"
+                    d.mkdir(parents=True, exist_ok=True)
+                    with open(d / "failover_gagged.jsonl", "a") as fh:
+                        fh.write(json.dumps({"ts": C.iso(now), "gagged": gagged, "lease": lease}, default=str) + "\n")
+                except Exception:
+                    pass
+        except Exception as exc:
+            log(f"alarm_if_gagged error: {exc!r}")
+
     def tick(self):
         now = C.now_s()
         venues = self.measure(now)
@@ -422,6 +476,7 @@ class Agent:
         self.note_health(health)
         C.atomic_write_json(LF / "mac_data_heartbeat.json", heartbeat)
         lease, state, host = self.exchange(heartbeat)
+        self.alarm_if_gagged(lease, state, now)
         if host is None:
             log(f"S1 unreachable via {HOSTS} — keeping local lease {local.get('holder')} gen={local.get('gen')}")
             return heartbeat

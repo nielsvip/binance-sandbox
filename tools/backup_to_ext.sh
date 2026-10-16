@@ -8,21 +8,26 @@ SRC=/Users/niels/Documents/binance
 SSD=/Volumes/SSD2T
 WD25=/Volumes/WD25
 E3T=/Volumes/E3T
+# USER 2026-10-16: a detached drive leaves its /Volumes/<name> DIRECTORY behind, and `[ -d ]` is true for it —
+# so this wrote "backups" onto the BOOT DISK while believing it had an external drive. Measured: /Volumes/WD25 held
+# 1.2 GB written 2026-10-14 19:34 on the internal volume (same st_dev as /). A mount, not a directory, is the test.
+is_ext_mount() { [ -d "$1" ] || return 1; [ "$(stat -f %d "$1" 2>/dev/null)" != "$(stat -f %d / 2>/dev/null)" ]; }
 ts=$(date +%Y%m%d_%H%M%S)
 log=/Users/niels/logs/backup_to_ext.log
 mkdir -p "$(dirname "$log")"
 echo "[$ts] backup_to_ext start" >> "$log"
 # snapshot: keep last 20 versioned mirrors on SSD2T so we can rewind a month
+is_ext_mount "$SSD" || { echo "[$ts] SSD2T not mounted (phantom dir or detached), skip" >> "$log"; exit 0; }
 snap="$SSD/binance_mirror_$ts"
-mkdir -p "$snap" 2>/dev/null || { echo "[$ts] SSD2T not mounted, skip" >> "$log"; exit 0; }
+mkdir -p "$snap" 2>/dev/null || { echo "[$ts] SSD2T not writable, skip" >> "$log"; exit 0; }
 rsync -a --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' --exclude='node_modules' \
   "$SRC/v12_quick_engine.py" "$SRC/SPREADSHEETS/" "$SRC/tools/" "$SRC/config.py" "$SRC/config_tradier.py" \
   "$snap/" >> "$log" 2>&1 || true
 # rolling mirror (always current, --delete keeps it exact)
 rsync -a --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' --exclude='node_modules' \
   "$SRC/" "$SSD/binance-sandbox/" >> "$log" 2>&1 || true
-if [ -d "$WD25" ]; then rsync -a --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' "$SRC/" "$WD25/binance/" >> "$log" 2>&1 || true; fi
-if [ -d "$E3T" ]; then mkdir -p "$E3T/binance" 2>/dev/null; rsync -a --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' "$SRC/" "$E3T/binance/" >> "$log" 2>&1 || true; fi
+if is_ext_mount "$WD25"; then rsync -a --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' "$SRC/" "$WD25/binance/" >> "$log" 2>&1 || true; fi
+if is_ext_mount "$E3T"; then mkdir -p "$E3T/binance" 2>/dev/null; rsync -a --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' "$SRC/" "$E3T/binance/" >> "$log" 2>&1 || true; fi
 # prune old snapshots: keep 20 newest, del oldest
 ls -1d "$SSD"/binance_mirror_* 2>/dev/null | sort | head -n -20 | xargs rm -rf 2>/dev/null || true
 echo "[$ts] backup_to_ext done snap=$snap" >> "$log"

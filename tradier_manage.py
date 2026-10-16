@@ -4,7 +4,9 @@ import asyncio
 import order_dedupe_guard as _odg  # 2026-10-06 USER ORDER_DEDUPE_GUARD: broker-confirmed final-state gate on every order
 import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
+import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/ez_manage
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty refusal, broker-confirmed SUCCESS, local!=broker refuses entries
+import tradier_broker_snapshot as _bsnap  # 2026-10-16 USER "TOTAL AND COMPLETE SYNCHRONICITY": broker positions+orders read on a dedicated thread, immune to main-loop freezes
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
 import datetime as dt
@@ -233,7 +235,115 @@ _OB_GAP_FIRED: Dict[str, str] = {}  # key = position_key, val = YYYY-MM-DD
 _BROKER_HOLDS_CACHE: Dict[tuple, tuple] = {}  # key = (acct, sym, side), val = (ts, True)
 _BROKER_QTY_MEMO: Dict[tuple, tuple] = {}  # 2026-10-14 GOOGL trb: key = (acct, sym), val = (ts, abs broker qty) — backstop qty is broker truth, never local positionAmt
 _FIXED_STOP_PLACE_LOG: Dict[str, list] = {}  # 2026-10-14: per-position placement timestamps (581 rejected GTC stops in 90 min) — breaker
+# 2026-10-15 (USER "it should have never been disabled but FIXED after it sent 5000 bullshit orders overnight"):
+# /accounts/{id}/orders is an ACCOUNT-level listing — it ignores symbol, and _fixed_stop_broker_stops only filters it
+# locally. Calling it once per POSITION was the storm: 42 open stocks x (up to 10 pages x 1500 orders) per verify
+# sweep, ~7 s each, which is exactly why the backstop was switched off on 2026-10-14. One pull per ACCOUNT now serves
+# every position in that account, so the call count drops from O(positions) to O(accounts) — 3 instead of 42.
+_FIXED_STOP_ORDERS_MEMO: Dict[str, tuple] = {}  # key = acct, val = (ts, [order dicts]) — raw account order list, filtered per symbol in memory
 _JSON_MTIME_CACHE: Dict[str, tuple] = {}  # 2026-10-14: path -> (mtime_ns, size, parsed); big JSONs were re-parsed inside the event loop
+
+
+_S1_TS_CANDS_CACHE: Dict[str, tuple] = {}
+
+
+def _s1_timestamped_candidates():
+    """Newest-first S1 timestamped indicator files, memoised for a few seconds.
+
+    2026-10-16: is_data_fresh ran two pathlib globs over data/ plus a stat() per hit INSIDE process_position, i.e.
+    once per position per cycle, and only when the indicators were already stale — which is exactly when the most
+    positions take that branch. A faulthandler dump taken DURING one of the 2026-10-16 freezes caught the main
+    thread in pathlib._select_from under is_data_fresh. The file set is identical for every symbol in a cycle, so
+    one listing per TTL serves them all."""
+    try:
+        _ttl = float(os.getenv("TRADIER_S1_TS_SCAN_TTL_SEC", "5") or 5)
+    except (TypeError, ValueError):
+        _ttl = 5.0
+    _hit = _S1_TS_CANDS_CACHE.get("cands")
+    if _hit and time.time() - _hit[0] <= _ttl:
+        return list(_hit[1])
+    cands = []
+    for d in (config.DATA_DIR / "s1_timestamped", config.DATA_DIR):
+        for pat in ("tradier_indicators_[0-9]*.json", "s1_tradier_indicators_[0-9]*.json"):
+            try:
+                cands.extend(d.glob(pat))
+            except Exception:
+                pass
+    try:
+        cands = sorted(set(cands), key=lambda p: p.stat().st_mtime, reverse=True)
+    except Exception:
+        cands = list(set(cands))
+    _S1_TS_CANDS_CACHE["cands"] = (time.time(), list(cands))
+    return cands
+
+
+def _fixed_stop_lifecycle_sig(position) -> str:
+    """Canonical lifecycle signature for a FIXED_STOP registry row. It identifies the OPENING of this position, so the
+    ensure path can tell "same lifecycle, stop still valid" from "re-opened, stop must be replaced".
+
+    2026-10-16: this used to be `str(position.opened_at)`, i.e. whatever text the attribute's type happened to render.
+    A hydrated row gives a datetime -> '2026-10-15 15:21:38.438046+00:00'; the same instant read from
+    trb/short_positions.json is the string '2026-10-15T15:21:38.438046Z'. Same opening, different signature, so the
+    ensure path read it as a re-open and CANCELLED a perfectly good resting stop to place an identical one — and a
+    re-place into an un-released reservation is exactly what Tradier rejects. Normalise to epoch microseconds so the
+    text form of opened_at can never change the decision.
+    """
+    try:
+        _oa = getattr(position, "opened_at", None)
+    except Exception:
+        _oa = None
+    if _oa:
+        _dt = None
+        if isinstance(_oa, dt.datetime):
+            _dt = _oa
+        else:
+            try:
+                _dt = safe_datetime(_oa)
+            except Exception:
+                _dt = None
+        if isinstance(_dt, dt.datetime):
+            try:
+                if _dt.tzinfo is None:
+                    _dt = _dt.replace(tzinfo=dt.timezone.utc)
+                return f"oa{int(_dt.astimezone(dt.timezone.utc).timestamp() * 1_000_000)}"
+            except Exception:
+                pass
+        return f"oa_raw{str(_oa).strip()}"
+    try:
+        return f"ep{float(getattr(position, 'entry_price', 0) or 0)}"
+    except Exception:
+        return ""
+
+
+def _fixed_stop_sig_matches(stored, current) -> bool:
+    """True when a registry row describes the SAME position lifecycle as the live one. Accepts the pre-2026-10-16
+    signature (`str(opened_at)` in either the '... 00:00' or the '...T...Z' rendering) so the format change does not
+    make every recorded stop look like a re-open and churn a cancel+replace through the whole book on first boot."""
+    _s, _c = str(stored or ""), str(current or "")
+    if _s == _c:
+        return True
+    if not _s or not _c:
+        return False
+    if _c.startswith("oa") and not _s.startswith("oa"):
+        try:
+            _d = safe_datetime(_s)
+            if isinstance(_d, dt.datetime):
+                if _d.tzinfo is None:
+                    _d = _d.replace(tzinfo=dt.timezone.utc)
+                return f"oa{int(_d.astimezone(dt.timezone.utc).timestamp() * 1_000_000)}" == _c
+        except Exception:
+            return False
+    return False
+
+
+def _snap_max_age() -> float:
+    """How stale the broker snapshot may be before a reader must treat it as UNVERIFIED. 2026-10-16: the snapshot
+    thread refreshes every TRADIER_SNAPSHOT_INTERVAL_SEC (3 s) and is immune to main-loop freezes, so 20 s already
+    means several consecutive failed pulls — at that point nothing may act on it."""
+    try:
+        return max(5.0, float(os.getenv("TRADIER_SNAPSHOT_MAX_AGE_SEC", "20") or 20))
+    except (TypeError, ValueError):
+        return 20.0
 
 
 def _json_load_cached(path):
@@ -3446,7 +3556,6 @@ _FULL_COVERAGE_PARAMS = [
     "MARKET_QUALITY_SCORE_ENABLED_TRADIER",
     "MARK_PRICE_MAX_STALENESS",
     "MAX_ALLOWED_DRAWDOWN_PCT",
-    "MAX_AUGMENTS_PER_POSITION",
     "MAX_CONCURRENT_ORDERS",
     "MAX_CONCURRENT_POSITIONS",
     "MAX_DAILY_LOSS_PCT",
@@ -6097,10 +6206,8 @@ def _batch3_template_live_wiring_tradier():
     _ = getattr(config, "BAND_ARROW_ENABLED", False)
     _ = getattr(config_tradier, "BAND_ARROW_ENABLED", False)
     _ = config_tradier.BAND_ARROW_ENABLED
-    _ = config.BAND_ARROW_SLOPE_DEADBAND
-    _ = getattr(config, "BAND_ARROW_SLOPE_DEADBAND", 0.0)
-    _ = getattr(config_tradier, "BAND_ARROW_SLOPE_DEADBAND", 0.0)
-    _ = config_tradier.BAND_ARROW_SLOPE_DEADBAND
+    # BAND_ARROW_SLOPE_DEADBAND stubs removed 2026-10-15: the real per-sym_side consumer is the
+    # band_arrow_score call in monitor_entries (tradier_manage.py:19793, _cfg_auto).
     _ = config.BAR_PATTERNS_FILTER_TF
     _ = getattr(config, "BAR_PATTERNS_FILTER_TF", "15m")
     _ = getattr(config_tradier, "BAR_PATTERNS_FILTER_TF", "15m")
@@ -7596,6 +7703,63 @@ def _trb_start_usd(account_key):
     return float(getattr(config, "START_POSITION_SIZE", 500.0))
 
 
+# 🔴 SUB-15m HARD BLOCK (USER 2026-10-15: "AND THAT NO 1/3/5M TRADE CAN EVER BE EXECUTED UNTIL THE SWITCH IS BACK ON")
+# switch -> the value forced while config_tradier.LTF_SUB15M_TRADING_ENABLED is False. Every one of these is a REAL
+# (non-stub) sub-15m decision read in this file; the mapped value is its blocking/no-action value.
+# This sits ABOVE per_sym on purpose. Flipping the class defaults was NOT enough: _cfg resolves per_sym first and on
+# 2026-10-15 the live stock book carried RULE_B_5M_EXIT_ENABLED=True on 222/222 rows and
+# WT_CROSSUNDER_FINAL_ENABLED=True on 218/222 — so a promoted board silently out-voted the default. 40 of that day's
+# exit reasons were WT_CROSSOVER/CROSSUNDER_FINAL on a hardcoded 5m leg that the vector never evaluates
+# (vec_decisions/twin_entry_ports_b.py:415 has no engine call site; the 15m NPZ has no wt1_5m/k_5m).
+# WT_CROSS_EXIT_REQUIRE_15M_CONFIRM is deliberately NOT here — it REQUIRES 15m confirmation, i.e. it constrains a
+# sub-15m signal rather than creating one; forcing it False would loosen the system.
+SUB15M_BLOCKED_SWITCHES = {
+    "WT_CROSSUNDER_FINAL_ENABLED": False,
+    "RULE_B_5M_EXIT_ENABLED": False,
+    "RULE_B_3M_EXIT_ENABLED": False,
+    "EXIT_K5M_BOUNCE_ENABLED": False,
+    "EXIT_HARD_DROP_5M_ENABLED": False,
+    "EXIT_STRUCT_BREAK_5M_ENABLED": False,
+    "STOCH_CROSS_3M_EXIT_ENABLED": False,
+    "WT_3M_FORCE_OPEN_ENABLED": False,
+    "WT_3M_OPEN_GATE_ENABLED": False,
+    "K1M_EXTREME_REVERSE_ENABLED": False,
+    "WT_DC_K5M_HARD_ENABLED": False,
+    "DC_BASIS_3M_REDUCE_ENABLED": False,
+    "R1_DC_LOW4_3M_EMERGENCY_ENABLED": False,
+    "USE_1M_3M_SIGNALS_ENABLED": False,
+    "TRC_LIVE_5M_TRADING_ENABLED": False,
+    "DC_BREAKOUT_ALLOW_3M": False,
+    "OBLIGATORY_HEDGE_WT_USE_1M": False,
+    "OBLIGATORY_HEDGE_WT_USE_3M": False,
+    "HEDGE_TRIGGER_USE_WT_3M_ALONE": False,
+}
+_SUB15M_LOGGED: set = set()
+
+
+def _sub15m_blocked(param) -> bool:
+    """True when `param` is a sub-15m decision switch AND the master kill switch is off. Fail-SAFE: any error here
+    blocks (returns True) for a listed param, because executing an unvectorised 1/3/5m trade is the harm being
+    prevented. Logs once per switch so the block is provable in the logs, never silent."""
+    if param not in SUB15M_BLOCKED_SWITCHES:
+        return False
+    try:
+        if bool(getattr(config, "LTF_SUB15M_TRADING_ENABLED", False)):
+            return False
+    except Exception:
+        pass
+    if param not in _SUB15M_LOGGED:
+        _SUB15M_LOGGED.add(param)
+        try:
+            logger.critical(f"⛔ [SUB15M_BLOCKED] {param} forced to {SUB15M_BLOCKED_SWITCHES[param]} — LTF_SUB15M_TRADING_ENABLED=False (USER 2026-10-15); per_sym/board values are overridden")
+        except Exception:
+            pass
+    return True
+
+
+EXCHANGE_RESTING_STOPS_TR = {"DC_HARD_STOP_15M_ENABLED"}
+
+
 def _cfg(
     param,
     default=None,
@@ -7606,7 +7770,16 @@ def _cfg(
 ):
     """USER 2026-10-06 SINGLE SOURCE: latest sqlite per-sym overrides > TEMPLATE baseline (cat_side copy) > global.
     All JSON/book/regime/master layers removed — they ran conflicting configs. Sweep override stays first (backtest-only).
+
+    2026-10-15: a SUB-15m hard block sits above every layer here — see _sub15m_blocked().
     """
+    if _sub15m_blocked(param):
+        return SUB15M_BLOCKED_SWITCHES[param]
+    # USER 2026-10-16: the bottom stop-market order rests AT the exchange with the entry, so no per_sym set, board
+    # or sweep override may switch it off. Pinned above every layer here, as on the crypto side
+    # (ez_manage.EXCHANGE_RESTING_STOPS). 39 live sym_sides were carrying False when this was added.
+    if param in EXCHANGE_RESTING_STOPS_TR:
+        return True
     _test_found, _test_value = _v8_sweep_override(param)
     if _test_found:
         return _test_value
@@ -11424,9 +11597,23 @@ async def obligatory_sector_hedge_or_close_loop(trade_manager):
     require_5m_1h = bool(
         _cfg_auto("OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H", True)
     )
+    # 🔴 2026-10-15 (USER: "hedging has been disabled for over 6 months ... hedging is not even possible on tradier").
+    # A hedge-FAILURE fallback cannot apply when hedging is DISABLED at the venue, so it is now ANDed with
+    # HEDGE_MODE_TRADIER. Read off `config` (= TradierConfig(), tradier_manage.py:6645) so per_sym CANNOT re-enable it:
+    # flipping the class default alone was useless — all 222 stock and 325 crypto per_sym rows carry
+    # HEDGE_FAILED_FALLBACK_CLOSE_ENABLED=True and `_cfg_auto` resolves per_sym FIRST (the same bypass that defeated
+    # the 5m switch defaults earlier tonight).
+    # WHAT IT WAS DOING: HEDGE_MODE_TRADIER=False and HEDGE_MODE=False, yet this path still ran — live sought a hedge
+    # mate that cannot exist on Tradier and the guaranteed failure closed the position AT A LOSS.
+    # 2026-10-15 cost: 11 lifecycles, -$202.82, the day's second-largest loss bucket —
+    #   no_sector_g-4.73% (LOW_SHORT -46.52) · no_mate_sectorhealthcare_pharma (JNJ_SHORT -25.73) ·
+    #   no_mate_sectorindustrials_defense (BWXT_SHORT -24.50) · mateBNO_failed · mateDVN_failed · mateCOIN_failed.
+    # Also breaks CLAUDE.md Absolute Prohibitions: never close at a loss on live — technical exits (WT/DC) handle it.
+    # No protective exit is lost: DC/WT/FIXED_STOP are untouched; this only ever fired BECAUSE the hedge failed.
+    # Re-enables automatically if hedging is genuinely turned back on (HEDGE_MODE_TRADIER=True).
     fallback_close_enabled = bool(
         _cfg_auto("HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", True)
-    )
+    ) and bool(getattr(config, "HEDGE_MODE_TRADIER", False))
     min_loss_pct = float(_cfg_auto("OBLIGATORY_HEDGE_MIN_LOSS_PCT", -0.5))
     logger.critical(
         f"[OBLIGATORY_SECTOR_HEDGE_LOOP] STARTED. interval={interval}s require_wt_5m_AND_1h={require_5m_1h} min_loss={min_loss_pct}% fallback_close={fallback_close_enabled}"
@@ -13301,20 +13488,25 @@ async def gap_moc_and_morning_loop(trade_manager):
             logger.error(f"[GAP_MOC] loop err: {_e}", exc_info=True)
 
 
-def band_arrow_score(ind, is_long, cfg):
+def band_arrow_score(ind, is_long, cfg, deadband=None):
     """BAND_ARROW entry — vector twin of live BAND_ARROW_ENABLED family.
 
     Checks BAND_ARROW_ENTRY_TFS (e.g. "D,4h,1h") for a green arrow (LONG) or red
     arrow (SHORT). A green arrow = lrL_slope > BAND_ARROW_SLOPE_DEADBAND and
     pct_b in favorable zone (LONG: below centre, SHORT: above). Returns True
     if any configured TF fires. Fails-open: missing fields → no fire.
+
+    `deadband` lets the caller inject the per-sym_side BAND_ARROW_SLOPE_DEADBAND
+    (per_sym > cat_side > global) instead of the global `cfg` value — the live twin of
+    vec_decisions/wirec_band_arrow.band_arrow_block, which reads it off the evaluated
+    QuickConfig. None keeps the previous global read exactly.
     """
     try:
         if not bool(getattr(cfg, "BAND_ARROW_ENABLED", False)):
             return False, ""
         tfs_raw = str(getattr(cfg, "BAND_ARROW_ENTRY_TFS", "D,4h,1h"))
         tfs = [t.strip() for t in tfs_raw.split(",") if t.strip()]
-        deadband = float(getattr(cfg, "BAND_ARROW_SLOPE_DEADBAND", 0.0))
+        deadband = float(getattr(cfg, "BAND_ARROW_SLOPE_DEADBAND", 0.0) if deadband is None else deadband)
         for tf in tfs:
             sl = ind.get(f"lrL_slope_{tf}")
             pb = ind.get(f"lrL_pct_b_{tf}")
@@ -14852,7 +15044,7 @@ async def process_position(
                     # The software FIXED_STOP above (breach -> CLOSE via execute_now) stays active.
                     _fx_ens = getattr(trade_manager, "ensure_fixed_stop_backstop_tradier", None) if bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)) else None
                     if _fx_ens is not None:
-                        asyncio.create_task(_fx_ens(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_fx_lvl, current_price=current_price))
+                        asyncio.create_task(_fx_ens(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_fx_lvl, current_price=current_price, dc_low_15m=safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), dc_high_15m=safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0)))
                 except Exception:
                     pass
                 try:
@@ -18507,22 +18699,7 @@ async def process_position(
                                 _pyr_long,
                                 safe_fetch_float(getattr(position, "gain", 0), 0.0),
                             )
-                            try:
-                                _mx_cap = int(
-                                    float(
-                                        _cfg_auto("MAX_AUGMENTS_PER_POSITION", 999999)
-                                    )
-                                )
-                            except Exception:
-                                _mx_cap = 999999
-                            _n_aug = (
-                                1
-                                if getattr(position, "last_augmentation_time", None)
-                                is not None
-                                else 0
-                            )
-                            if _n_aug >= _mx_cap:
-                                _pyr_fire = False
+                            # USER 2026-10-15 "MAX_AUGMENTS <- delete the switch completely": no augment-count cap on any surface.
                             # WAVE2 2026-10-04 lane B2: DELTA_GATE_AUGMENT live twin (vec v12:10299 kills all augments when False). Inert at True.
                             try:
                                 if not bool(_cfg_auto("DELTA_GATE_AUGMENT", True)):
@@ -19787,8 +19964,19 @@ async def process_position(
                     _cfg_auto("BAND_ARROW_ENABLED", False)
                 ):
                     _ba_is_long = is_long
+                    # 2026-10-15 DEAD_VEC live-wire: BAND_ARROW_SLOPE_DEADBAND now resolves per-sym_side
+                    # (per_sym > cat_side > global), mirroring vec wirec_band_arrow.band_arrow_block and the
+                    # crypto side (ez_manage.py:47938 twin_entry_ports_b.band_arrow_entry via _psym_get).
+                    # Default-preserving: the value is 0.0 on all 740 per_sym rows and all 4 cat_sides.
+                    # NOTE (reported, NOT changed here): band_arrow_score still re-checks BAND_ARROW_ENABLED on
+                    # the GLOBAL `config` (False on both venues), so this whole leg is inert in live even on the
+                    # 5 sym_sides whose per_sym master is True. Un-shadowing that master would open real entries
+                    # and needs explicit approval — it is not a wiring change.
                     _ba_fired, _ba_detail = band_arrow_score(
-                        indicators_raw if indicators_raw else i, _ba_is_long, config
+                        indicators_raw if indicators_raw else i,
+                        _ba_is_long,
+                        config,
+                        _cfg_auto("BAND_ARROW_SLOPE_DEADBAND", 0.0),
                     )
                     if _ba_fired:
                         _ba_base = (
@@ -21606,11 +21794,15 @@ async def process_position(
                                 symbol=symbol,
                                 position_side="LONG" if is_long else "SHORT",
                             )
+                        # 2026-10-16 USER "HTF_MIN_TFS needs to move the needle on entries and exits": this was a
+                        # hardcoded 1, so GOLDEN_RULE_HTF_MIN_TFS could not change a single stock entry (and the vec
+                        # twin mirrored the constant at gr_htf_direct_entry._resolve_gate). Now per-sym resolvable,
+                        # default 1 = today's behaviour unchanged until a board moves it.
                         _grde_pass, _grde_n_tfs, _grde_detail = _gr_htf_direct_entry(
                             indicators_raw if indicators_raw else i,
                             is_long,
                             "tradier",
-                            min_tfs=1,
+                            min_tfs=int(_cfg_auto("GOLDEN_RULE_HTF_MIN_TFS", 1) or 1),
                             min_ind=_grde_min_ind,
                             current_price=current_price,
                         )
@@ -23367,6 +23559,18 @@ def _qta_ls_ratio_scale(trade_manager, position_key, position_side, absolute_tar
     return ls_ratio_scale, ls_ratio_reason
 
 
+class _QQTCfg:
+    """Per-sym view for vec_decisions/qty_quantizers: every knob resolves through _cfg (board value > template > global)."""
+
+    def __init__(self, account_key, symbol, side):
+        self._qq_a, self._qq_s, self._qq_d = account_key, symbol, side
+
+    def __getattr__(self, knob):
+        if knob.startswith("_"):
+            raise AttributeError(knob)
+        return _cfg(knob, getattr(config, knob, None), self._qq_a, self._qq_s, self._qq_d)
+
+
 def _qta_entry_sizing(
     trade_manager,
     position_key,
@@ -23404,6 +23608,18 @@ def _qta_entry_sizing(
         )
     if quantity <= 0:
         return quantity
+    # USER 2026-10-16 QTY_STREAK quantizer — same function as v12_quick_engine/ez_manage (vec_decisions/qty_quantizers.py):
+    # after 1|2 qualifying losers size x0.8/0.6/0.4, after 1|2 qualifying winners x1.2/1.5/1.8 compounding. New lifecycles only.
+    try:
+        _qq_cfg = _QQTCfg(account_key, symbol, position_side)
+        if _qq.is_new_lifecycle_action(action) and _qq.streak_on(_qq_cfg):
+            _qq_sm = _qq.live_mult(config.BASE_PATH, "tradier", account_key, symbol, position_side, _qq_cfg)
+            if _qq_sm != 1.0:
+                _qq_q0 = quantity
+                quantity = float(max(1, int(quantity * _qq_sm + 1e-9)))
+                logger.info(f"[QTY_STREAK] {position_key} {action}: x{_qq_sm:.2f} qty {_qq_q0:.0f}->{quantity:.0f}")
+    except Exception as _qq_e:
+        logger.warning(f"[QTY_STREAK] {position_key}: sizing error (fail-open, x1.0): {_qq_e}")
     _absolute_target_order = absolute_target
     # ═══════════════════════════════════════════════════════════════════════════
     # 📈 BREAKOUT_SIZE_LADDER — STOCKS (USER 2026-05-30): HIGHER open/reentry/augment qty when price is
@@ -24477,7 +24693,8 @@ async def queue_trade_action(
                 )
                 # LANE-K2 2026-10-05 REENTRY_APPLY_ENTRY_GATES_ENABLED stocks port of crypto live (ez:30305): direct _cfg read (same resolution + default False as the lambda read it replaces) — reentry paths must pass entry gates when True. Inert.
                 _leg_re_g = bool(
-                    _cfg(
+                    False  # DEAD (USER 2026-10-16): reentry never uses the ENTRY gates, stocks included — it has its own reentry filters.
+                    and _cfg(
                         "REENTRY_APPLY_ENTRY_GATES_ENABLED",
                         False,
                         _leg_acct,
@@ -34372,7 +34589,9 @@ class StockStrategy:
                         _grde_exit_ind,
                         not is_long,
                         "tradier",
-                        min_tfs=1,
+                        # 2026-10-16: same hardcoded 1 as the entry site — the EXIT scorer ignored
+                        # GOLDEN_RULE_HTF_MIN_TFS too, so the switch moved neither entries nor exits on stocks.
+                        min_tfs=int(_cfg_auto("GOLDEN_RULE_HTF_MIN_TFS", 1) or 1),
                         min_ind=_grde_exit_min_ind,
                         current_price=current_price,
                     )
@@ -38949,13 +39168,7 @@ class StockStrategy:
                             or _aal_dcc <= float(_aal_dcp)
                         )
                         _aal_fresh = _aal_cur < _aal_last
-                    try:
-                        _aal_cap = int(
-                            float(_cfg_auto("MAX_AUGMENTS_PER_POSITION", 999999))
-                        )
-                    except Exception:
-                        _aal_cap = 999999
-                    _aal_new = dict(_aal_st)
+                    _aal_new = dict(_aal_st)  # 2026-10-15: MAX_AUGMENTS cap deleted (USER)
                     if is_long:
                         _aal_new["prev_low_15m_prev"] = _aal_cur
                         if _aal_dcc > 0:
@@ -38964,12 +39177,7 @@ class StockStrategy:
                         _aal_new["prev_high_15m_prev"] = _aal_cur
                         if _aal_dcc > 0:
                             _aal_new["prev_dc_high_15m_prev"] = _aal_dcc
-                    if (
-                        _aal_sig
-                        and _aal_dc_ok
-                        and _aal_fresh
-                        and int(_aal_st.get("aug_count", 0)) < _aal_cap
-                    ):
+                    if _aal_sig and _aal_dc_ok and _aal_fresh:
                         _aal_max_val = _cfg_auto("MAX_SYMBOL_VALUE_TRADIER", 15000)
                         if current_value < _aal_max_val:
                             _aal_raw = max(
@@ -39004,11 +39212,11 @@ class StockStrategy:
                                     )
                                     self._aug_at_loss_state[_aal_pk] = _aal_new
                                     logger.info(
-                                        f"{symbol} [AUGMENT_AT_LOSS] {'HL' if is_long else 'LH'}={_aal_cur:.2f} g={gain:.2f}% cnt{_aal_new['aug_count']}/{_aal_cap}"
+                                        f"{symbol} [AUGMENT_AT_LOSS] {'HL' if is_long else 'LH'}={_aal_cur:.2f} g={gain:.2f}% cnt{_aal_new['aug_count']}"
                                     )
                                     return (
                                         True,
-                                        f"AUGMENT_AT_LOSS_{'HL' if is_long else 'LH'} {symbol} px={current_price:.2f} g={gain:.2f}% cnt{_aal_new['aug_count']}/{_aal_cap}",
+                                        f"AUGMENT_AT_LOSS_{'HL' if is_long else 'LH'} {symbol} px={current_price:.2f} g={gain:.2f}% cnt{_aal_new['aug_count']}",
                                         70.0,
                                         qty,
                                     )
@@ -40551,8 +40759,11 @@ class StockStrategy:
                 logger.info(
                     f"[REENTRY_GATE] {symbol}: STOCH_GATE_BYPASSED overdue={last_red_age_min:.0f}m k5m={k_5m_t2:.0f} wt_fav={_wt_fav}"
                 )
-            # RALLY GATE: optional k15m level cap + HTF WT count (sweep knobs)
-            _rally_k15m_max = float(_cfg_auto("REENTRY_RALLY_K15M_MAX", 100.0))
+            # RALLY GATE: HTF WT count only. The k15m level cap is DEAD (USER 2026-10-16: stoch_k is never a
+            # reentry filter, crypto AND stocks) — pinned to the OFF sentinel 100.0 so the `< 100.0` guard below
+            # skips it; the vec twins (vec_decisions/reentry_epq_vec, reentry_tiers) return False for the same
+            # reason, so live and board agree.
+            _rally_k15m_max = 100.0
             _rally_htf_min = int(_cfg_auto("REENTRY_RALLY_HTF_MIN", 1))
             if _rally_k15m_max < 100.0:
                 _k15m_ok = (
@@ -41361,6 +41572,10 @@ async def _xg_tr_confirmed(mgr, a, c, result):
         except Exception as _ve:
             logger.warning(f"[VIGILANCE] close-record err {_pk}: {_ve}")
         try:
+            _qq.live_record_close(config.BASE_PATH, "tradier", _acct, _sym, _ps, _entry, _px, _QQTCfg(_acct, _sym, _ps), lifecycle=_life, notional_usd=_notional)  # QTY_STREAK: one count per lifecycle
+        except Exception as _qe:
+            logger.warning(f"[QTY_STREAK] close-record err {_pk}: {_qe}")
+        try:
             _stale_set_halt.record_close("tradier", _acct, _sym, _ps, _pnl, _reason, cfg=config, lifecycle=_life, notional_usd=_notional)
         except Exception as _se:
             logger.warning(f"[STALE_SET_HALT] close-record err {_pk}: {_se}")
@@ -41860,27 +42075,7 @@ class TradierTradeManager:
         # Fallback 2: if age >90s, try newest S1 TIMESTAMPED file (never _latest — cached)
         if age > 90:
             try:
-                import glob as _glob2, json as _js2
-
-                # Find newest S1 timestamped file across both mirror locations
-                s1_cands = []
-                for d in [config.DATA_DIR / "s1_timestamped", config.DATA_DIR]:
-                    try:
-                        for f in d.glob("tradier_indicators_[0-9]*.json"):
-                            # Prefer S1 files: those recently pulled from S1 have recent mtime
-                            s1_cands.append(f)
-                    except Exception:
-                        pass
-                # Also try s1_tradier_indicators_*.json naming variant
-                for d in [config.DATA_DIR / "s1_timestamped", config.DATA_DIR]:
-                    try:
-                        for f in d.glob("s1_tradier_indicators_[0-9]*.json"):
-                            s1_cands.append(f)
-                    except Exception:
-                        pass
-                s1_cands = sorted(
-                    set(s1_cands), key=lambda p: p.stat().st_mtime, reverse=True
-                )
+                s1_cands = _s1_timestamped_candidates()
                 for s1_path in s1_cands[:3]:
                     try:
                         s1_age_file = now.timestamp() - s1_path.stat().st_mtime
@@ -43890,6 +44085,22 @@ class TradierTradeManager:
                 _cttl = float(getattr(config, "TRADIER_BROKER_VERIFY_TTL_SEC", 60.0) or 60.0)
             except Exception:
                 _cttl = 60.0
+            # 2026-10-16 SNAPSHOT FIRST (USER "positions in total synchronicity with the exchange"): the thread-owned
+            # snapshot is broker truth read off the main loop, so a parked loop cannot turn a held position into
+            # "unverified". Only when no snapshot is fresh do we fall back to the in-loop call that timed out 202x today.
+            try:
+                _sq = _bsnap.quantity(account_key, symbol, max_age=_snap_max_age())
+                if _sq is not None:
+                    _sym_s = str(symbol or "").upper()
+                    _BROKER_QTY_MEMO[(str(account_key or ""), _sym_s)] = (time.time(), abs(float(_sq)))
+                    if _sq == 0:
+                        return False
+                    _held_s = (_sq > 0) if str(position_side or "").upper() != "SHORT" else (_sq < 0)
+                    if _held_s is True:
+                        _BROKER_HOLDS_CACHE[_ck] = (time.time(), True)
+                    return _held_s
+            except Exception:
+                pass
             try:
                 _hit = _BROKER_HOLDS_CACHE.get(_ck)
                 if _hit is not None and (time.time() - float(_hit[0])) < _cttl and _hit[1] is True:
@@ -43937,31 +44148,56 @@ class TradierTradeManager:
         try:
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 return None
-            client = TradierAPIClient(config, account_key=account_key)
+            # 2026-10-16 SNAPSHOT FIRST: this listing timed out 102x on 2026-10-16 purely because the main loop was
+            # parked (LOOP_LAG up to 81.5 s), and EVERY rejected stop that day followed one of those timeouts within
+            # ~25 s. The snapshot thread does the same read off-loop and already paginates correctly.
             try:
-                _acct_id = getattr(client, "_current_id", None)
-                if not _acct_id:
-                    return None
-                # 2026-10-14: all pages (1500/page) — page 1 alone hid the resting stops behind 1500+ rejected overnight orders
-                _ol = []
-                for _pg in range(1, 11):
-                    _res = await asyncio.wait_for(client._request("GET", f"/accounts/{_acct_id}/orders", params={"page": _pg} if _pg > 1 else None, use_data_context=False), timeout=10.0)
-                    if not isinstance(_res, dict) or "orders" not in _res:
-                        return None
-                    _inner = _res.get("orders")
-                    if _inner in ("null", None):
-                        break
-                    if not isinstance(_inner, dict) or "order" not in _inner:
-                        return None
-                    _got = _inner["order"] if isinstance(_inner["order"], list) else [_inner["order"]]
-                    _ol.extend(_got)
-                    if len(_got) < 1500:
-                        break
-            finally:
+                _snap_stops = _bsnap.protective_stops(account_key, symbol, position_side, max_age=_snap_max_age())
+                if _snap_stops is not None:
+                    return _snap_stops
+            except Exception:
+                pass
+            # ACCOUNT-LEVEL MEMO (2026-10-15): the listing below is per-account and is only filtered by symbol in
+            # memory further down, so one pull serves every position of this account for TTL seconds. A FAILED pull is
+            # never memoised — a cached empty list would read as "no resting stop" and duplicate every backstop.
+            _ak = str(account_key or "")
+            try:
+                _oml_ttl = float(_cfg_auto("TRADIER_FIXED_STOP_ORDERS_MEMO_TTL_SEC", 45.0) or 45.0)
+            except Exception:
+                _oml_ttl = 45.0
+            _oml_hit = _FIXED_STOP_ORDERS_MEMO.get(_ak)
+            if _oml_hit and time.time() - float(_oml_hit[0]) <= _oml_ttl:
+                _ol = list(_oml_hit[1])
+            else:
+                client = TradierAPIClient(config, account_key=account_key)
                 try:
-                    await client.close()
-                except Exception:
-                    pass
+                    _acct_id = getattr(client, "_current_id", None)
+                    if not _acct_id:
+                        return None
+                    # 2026-10-14: all pages — page 1 alone hid the resting stops behind the day's rejected orders.
+                    # 2026-10-16 FIX: the page size is 100, not 1500, and no `limit` was sent, so `len(_got) < 1500`
+                    # broke out after page 1 every single time — the "all pages" fix never read a second page. Send an
+                    # explicit limit and terminate on a short page, exactly like tradier_recent_orders does.
+                    _ol = []
+                    for _pg in range(1, 41):
+                        _res = await asyncio.wait_for(client._request("GET", f"/accounts/{_acct_id}/orders", params={"page": _pg, "limit": 100}, use_data_context=False), timeout=10.0)
+                        if not isinstance(_res, dict) or "orders" not in _res:
+                            return None
+                        _inner = _res.get("orders")
+                        if _inner in ("null", None):
+                            break
+                        if not isinstance(_inner, dict) or "order" not in _inner:
+                            return None
+                        _got = _inner["order"] if isinstance(_inner["order"], list) else [_inner["order"]]
+                        _ol.extend(_got)
+                        if len(_got) < 100:
+                            break
+                finally:
+                    try:
+                        await client.close()
+                    except Exception:
+                        pass
+                _FIXED_STOP_ORDERS_MEMO[_ak] = (time.time(), list(_ol))
             _close_side = "sell" if str(position_side or "").upper() == "LONG" else "buy_to_cover"
             _sym = str(symbol or "").upper()
             return [o for o in _ol if isinstance(o, dict) and str(o.get("symbol", "")).upper() == _sym and str(o.get("side", "")).lower() == _close_side and _odg.tradier_protective_stop(o.get("type"), o.get("side")) and str(o.get("status", "")).lower() in ("open", "pending", "partially_filled")]
@@ -44009,16 +44245,34 @@ class TradierTradeManager:
         logger.critical(f"🛡️ [FIXED_STOP_EXIT_HANDOFF_TR] {_pk}: backstop(s) {ids} cancelled for exit ({str(reason)[:60]}) — ensure re-places if shares remain")
         return "HANDED_OFF"
 
-    async def ensure_fixed_stop_backstop_tradier(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price):
+    async def ensure_fixed_stop_backstop_tradier(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price, dc_low_15m=0.0, dc_high_15m=0.0):
         """Self-healing reconcile: exactly one live Tradier stop backstop per open position, sized to the position. Never raises.
         2026-10-13 GUARANTEED STOP (USER): a broker stop exists as soon as a stock position opens, so the broker exits even when every
         system is down. A stop is only ever cancelled when the BROKER confirms flat (a stale local snapshot never removes protection);
         a recorded order id is re-verified at the broker every TRADIER_FIXED_STOP_VERIFY_TTL_SEC; a stop already resting at the broker
         is adopted (never duplicated); a quantity change (augment/reduce) re-places the stop; a missing frozen level falls back to the
         entry-price level of the shared core."""
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return "SKIPPED_STOP_PYTEST"
+        # 2026-10-16 ONE RECONCILE PER POSITION AT A TIME. process_position fires this with asyncio.create_task, so two
+        # tasks for the same position overlapped: both read "no resting stop", both placed, the second was rejected
+        # (trb APO 14:47:06 + 14:47:48, VLO 14:51:10 + 14:51:42 — same qty, same level, seconds apart). The duplicate
+        # ADOPTED/CANCEL lines logged twice in the same second are the same race. A second caller simply skips: the
+        # first one is already doing exactly the work it wanted done.
+        _locks = getattr(self, "_fx_stop_locks", None)
+        if not isinstance(_locks, dict):
+            _locks = self._fx_stop_locks = {}
+        _lk = _locks.get(position_key)
+        if _lk is None:
+            _lk = _locks[position_key] = asyncio.Lock()
+        if _lk.locked():
+            return "SKIPPED_STOP_RECONCILE_IN_FLIGHT"
+        async with _lk:
+            return await self._ensure_fixed_stop_backstop_tradier_locked(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=soft_level, current_price=current_price, dc_low_15m=dc_low_15m, dc_high_15m=dc_high_15m)
+
+    async def _ensure_fixed_stop_backstop_tradier_locked(self, *, account_key, symbol, position_key, position_side, position, soft_level, current_price, dc_low_15m=0.0, dc_high_15m=0.0):
+        """Body of ensure_fixed_stop_backstop_tradier, serialised per position_key by its caller."""
         try:
-            if os.environ.get("PYTEST_CURRENT_TEST"):
-                return "SKIPPED_STOP_PYTEST"
             reg = self._fixed_stop_registry_load()
             # SYNC GATE (NVDA trb 2026-10-13, USER correction): stale sync must NOT
             # leave a real position unprotected, and must NOT place for a phantom.
@@ -44040,11 +44294,7 @@ class TradierTradeManager:
                     logger.error(f"[FIXED_STOP_BROKER_FLAT_TR] {position_key}: sync stale {_sync_age:.0f}s, broker confirms FLAT — never placing")
                     return "SKIPPED_STOP_BROKER_FLAT"
                 logger.critical(f"[FIXED_STOP_STALE_SYNC_TR] {position_key}: sync stale {_sync_age:.0f}s, broker verify={'HELD' if _held else 'UNVERIFIED'} — proceeding (position must stay protected)")
-            try:
-                _oa = getattr(position, "opened_at", "")
-                _sig = str(_oa) if _oa else f"ep{float(getattr(position, 'entry_price', 0) or 0)}"
-            except Exception:
-                _sig = ""
+            _sig = _fixed_stop_lifecycle_sig(position)
             _side_u = str(position_side or "").upper()
             _is_long = _side_u == "LONG"
             have = reg.get(position_key) if isinstance(reg.get(position_key), dict) else None
@@ -44072,34 +44322,107 @@ class TradierTradeManager:
             _qty = max(1, int(amt))
             # 2026-10-14 USER (GOOGL trb: broker 6, stops sent for 2/4/12/24 — 581 rejected): the backstop quantity is the BROKER's
             # held quantity. Local positionAmt is only a claim; unverified broker qty -> no placement this cycle.
+            # 2026-10-16: the off-loop snapshot is <=3 s old, so an augment/reduce resizes the stop on the next cycle instead of
+            # riding a 60-120 s memo. The memo path below stays as the fallback for when no snapshot is fresh.
             try:
-                _bq_hit = _BROKER_QTY_MEMO.get((str(account_key or ""), str(symbol or "").upper()))
-                if not _bq_hit or time.time() - float(_bq_hit[0]) > 60.0:
-                    _BROKER_HOLDS_CACHE.pop((str(account_key or ""), str(symbol or "").upper(), str(position_side or "").upper()), None)
-                    _held_q = await self._broker_holds_position(account_key, symbol, position_side)
-                    if _held_q is False:
-                        return "SKIPPED_STOP_BROKER_FLAT"
+                _snap_q = _bsnap.quantity(account_key, symbol, max_age=_snap_max_age())
+            except Exception:
+                _snap_q = None
+            if _snap_q is not None:
+                if _snap_q == 0:
+                    return "SKIPPED_STOP_BROKER_FLAT"
+                _snap_qty = max(1, int(abs(_snap_q)))
+                if _snap_qty != _qty:
+                    logger.critical(f"[FIXED_STOP_QTY_BROKER_TR] {position_key}: local positionAmt {amt} != broker {_snap_qty} (snapshot {_bsnap.age(account_key):.1f}s) — using BROKER qty")
+                _qty = _snap_qty
+                _BROKER_QTY_MEMO[(str(account_key or ""), str(symbol or "").upper())] = (time.time(), float(_snap_qty))
+            else:
+                try:
                     _bq_hit = _BROKER_QTY_MEMO.get((str(account_key or ""), str(symbol or "").upper()))
-                if not _bq_hit or time.time() - float(_bq_hit[0]) > 120.0 or int(_bq_hit[1]) <= 0:
-                    # broker read failed: local qty is acceptable ONLY when it was just synced from tradier_positions (fresh truth)
-                    if _sync_age <= float(getattr(config, "TRADIER_READER_REDIS_MAX_AGE_SEC", 15.0) or 15.0):
-                        _bq_hit = (time.time(), _qty)
-                    else:
-                        logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: broker qty unknown and tradier_positions sync {_sync_age:.0f}s old (local {amt}) — not placing this cycle")
-                        return "SKIPPED_STOP_QTY_UNVERIFIED"
-                if int(_bq_hit[1]) != _qty:
-                    logger.critical(f"[FIXED_STOP_QTY_BROKER_TR] {position_key}: local positionAmt {amt} != broker {int(_bq_hit[1])} — using BROKER qty")
-                _qty = int(_bq_hit[1])
-            except Exception as _bqe:
-                logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: {_bqe} — not placing this cycle")
-                return "SKIPPED_STOP_QTY_UNVERIFIED"
+                    if not _bq_hit or time.time() - float(_bq_hit[0]) > 60.0:
+                        _BROKER_HOLDS_CACHE.pop((str(account_key or ""), str(symbol or "").upper(), str(position_side or "").upper()), None)
+                        _held_q = await self._broker_holds_position(account_key, symbol, position_side)
+                        if _held_q is False:
+                            return "SKIPPED_STOP_BROKER_FLAT"
+                        _bq_hit = _BROKER_QTY_MEMO.get((str(account_key or ""), str(symbol or "").upper()))
+                    if not _bq_hit or time.time() - float(_bq_hit[0]) > 120.0 or int(_bq_hit[1]) <= 0:
+                        # broker read failed: local qty is acceptable ONLY when it was just synced from tradier_positions (fresh truth)
+                        if _sync_age <= float(getattr(config, "TRADIER_READER_REDIS_MAX_AGE_SEC", 15.0) or 15.0):
+                            _bq_hit = (time.time(), _qty)
+                        else:
+                            logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: broker qty unknown and tradier_positions sync {_sync_age:.0f}s old (local {amt}) — not placing this cycle")
+                            return "SKIPPED_STOP_QTY_UNVERIFIED"
+                    if int(_bq_hit[1]) != _qty:
+                        logger.critical(f"[FIXED_STOP_QTY_BROKER_TR] {position_key}: local positionAmt {amt} != broker {int(_bq_hit[1])} — using BROKER qty")
+                    _qty = int(_bq_hit[1])
+                except Exception as _bqe:
+                    logger.error(f"[FIXED_STOP_QTY_UNVERIFIED_TR] {position_key}: {_bqe} — not placing this cycle")
+                    return "SKIPPED_STOP_QTY_UNVERIFIED"
+            # ═══ AUTO STOP ADJUSTMENT (USER 2026-10-16) ═══
+            # "stop orders on the exchange are constantly updated with the correct quantity (without changing the
+            #  price unless an augment took place in which case you take the stop for the entire position to the new
+            #  dc_low_15-0.3% (vv short))"
+            # So a quantity change alone NEVER moves the price:
+            #   REDUCE  (broker qty < the qty the resting stop was sized for) -> same stop price, smaller quantity.
+            #   AUGMENT (broker qty > that qty)                               -> RE-FREEZE from the CURRENT 15m
+            #           Donchian channel and cover the WHOLE position: dc_low_15m -0.3% LONG / dc_high_15m +0.3% SHORT
+            #           (freeze_software_level -0.25% then exchange_level -0.05% = 0.99700125, i.e. -0.2999%).
+            # The previous size is the registry row's qty, else the resting stop's own quantity (the registry is a
+            # cache and was missing 9 of 15 live trb stops on 2026-10-16 — the broker is what decides).
+            _prev_qty = 0
+            try:
+                if have and int(have.get("qty", 0) or 0) > 0:
+                    _prev_qty = int(have.get("qty"))
+                else:
+                    _rest_now = _bsnap.protective_stops(account_key, symbol, position_side, max_age=_snap_max_age()) or []
+                    if len(_rest_now) == 1:
+                        _prev_qty = int(float(_rest_now[0].get("quantity", 0) or 0))
+            except Exception:
+                _prev_qty = 0
+            _augmented = _prev_qty > 0 and _qty > _prev_qty
+            if _augmented:
+                try:
+                    _ref = _fixed_stop_core.freeze_software_level(_is_long, float(dc_low_15m or 0.0), float(dc_high_15m or 0.0), float(getattr(position, "entry_price", 0) or 0))
+                except Exception:
+                    _ref = 0.0
+                if _ref > 0:
+                    logger.critical(f"🛡️ [FIXED_STOP_AUGMENT_REFREEZE_TR] {position_key}: qty {_prev_qty} -> {_qty} (augment) — whole position re-stopped at the CURRENT dc_{'low' if _is_long else 'high'}_15m {'-' if _is_long else '+'}0.3% (soft {_ref:.4f}, was {float(soft_level or 0.0):.4f})")
+                    soft_level = _ref
+                    try:
+                        _lvm_a = getattr(self, "_fixed_stop_levels", None)
+                        if not isinstance(_lvm_a, dict):
+                            _lvm_a = self._fixed_stop_levels = {}
+                        _lvm_a[position_key] = {"level": _ref, "sig": _sig}
+                        self._fixed_stop_registry_save()
+                    except Exception:
+                        pass
+                else:
+                    logger.error(f"[FIXED_STOP_AUGMENT_NO_CHANNEL_TR] {position_key}: qty {_prev_qty} -> {_qty} but no dc_15m channel available — keeping the frozen level, resizing only")
             try:  # 2026-10-13: the resting stop must sit at the CURRENT frozen level (SESSION_OPEN_STOP_REFREEZE moves it) — tick-exact
                 _lv_long = str(position_side or "").upper() == "LONG"
                 _lv_want = _fixed_stop_core.round_to_tick(_lv_long, _fixed_stop_core.exchange_level(_lv_long, float(soft_level or 0.0)), 0.01) if float(soft_level or 0.0) > 0 else 0.0
             except Exception:
                 _lv_want = 0.0
+            _lv_pin = 0.0  # when >0 the replacement stop MUST be placed at exactly this exchange price
+            if _prev_qty > 0 and _qty < _prev_qty:
+                # REDUCE: the price must not move. Reuse the resting stop's own price (or the recorded one) verbatim,
+                # so a partial take-profit never drags the backstop to a level the position never agreed to.
+                _keep_px = 0.0
+                try:
+                    _rest_r = _bsnap.protective_stops(account_key, symbol, position_side, max_age=_snap_max_age()) or []
+                    if len(_rest_r) == 1:
+                        _keep_px = float(_rest_r[0].get("stop_price", 0) or 0)
+                    if _keep_px <= 0 and have:
+                        _keep_px = float(have.get("stopPrice", 0) or 0)
+                except Exception:
+                    _keep_px = 0.0
+                if _keep_px > 0:
+                    if abs(_keep_px - _lv_want) > 0.0051:
+                        logger.critical(f"🛡️ [FIXED_STOP_REDUCE_KEEP_PRICE_TR] {position_key}: qty {_prev_qty} -> {_qty} (reduce) — stop price held at {_keep_px:.2f} (the frozen level would have moved it to {_lv_want:.2f})")
+                    _lv_want = _keep_px
+                    _lv_pin = _keep_px
             _lv_ok = _lv_want <= 0 or not have or abs(float(have.get("stopPrice", 0) or 0) - _lv_want) < 0.0051
-            if have and have.get("orderId") and str(have.get("entry_sig", "")) == _sig and int(have.get("qty", _qty) or _qty) == _qty and _lv_ok:
+            if have and have.get("orderId") and _fixed_stop_sig_matches(have.get("entry_sig", ""), _sig) and int(have.get("qty", _qty) or _qty) == _qty and _lv_ok:
                 # NEVER-AGAIN (crypto twin): a recorded oid is a claim, not proof — re-verify at the broker on a TTL.
                 _vmap = getattr(self, "_fx_stop_verify_ts", None)
                 if not isinstance(_vmap, dict):
@@ -44108,6 +44431,14 @@ class TradierTradeManager:
                     _vttl = float(_cfg_auto("TRADIER_FIXED_STOP_VERIFY_TTL_SEC", 300.0) or 300.0)
                 except Exception:
                     _vttl = 300.0
+                # 2026-10-16: the 300 s TTL existed because each verify cost a ~7 s in-loop order listing. The snapshot
+                # thread already holds the whole order book, so verifying is a dict lookup — do it every cycle. A stop
+                # that disappears (filled, cancelled by hand, rejected) is then noticed in seconds, not in five minutes.
+                try:
+                    if _bsnap.age(account_key) is not None and _bsnap.age(account_key) <= _snap_max_age():
+                        _vttl = float(_cfg_auto("TRADIER_FIXED_STOP_VERIFY_TTL_SNAPSHOT_SEC", 0.0) or 0.0)
+                except Exception:
+                    pass
                 _vnow = time.time()
                 if _vnow - float(_vmap.get(position_key, 0.0) or 0.0) < _vttl:
                     return "OK_ALREADY_PLACED"
@@ -44145,7 +44476,9 @@ class TradierTradeManager:
             if _soft <= 0:
                 logger.critical(f"⛔ [FIXED_STOP_NO_LEVEL_TR] {position_key}: no frozen level and no entry price — position UNPROTECTED at broker")
                 return "SKIPPED_STOP_NO_LEVEL"
-            _lvl = _fixed_stop_core.round_to_tick(_is_long, _fixed_stop_core.exchange_level(_is_long, _soft), 0.01)
+            # A reduce pins the price: the replacement carries the resting stop's own exchange price, unrounded and
+            # un-recomputed, so shrinking the size can never move the stop (USER 2026-10-16).
+            _lvl = _lv_pin if _lv_pin > 0 else _fixed_stop_core.round_to_tick(_is_long, _fixed_stop_core.exchange_level(_is_long, _soft), 0.01)
             if _lvl <= 0:
                 return "SKIPPED_STOP_NO_LEVEL"
             # NEVER-KILL RETRY (USER 2026-10-13): sync above proved this position is
@@ -44168,24 +44501,75 @@ class TradierTradeManager:
             except Exception:
                 pass
             # ADOPT before placing: a stop already resting at the broker for this exact position (restart / peer) is reused, never duplicated.
+            # 2026-10-16 NEVER PLACE BLIND (USER "none of the stop market orders ... ALL rejected because the quantity is more
+            # than the existing quantity"). A resting sell/buy_to_cover stop RESERVES the shares at Tradier, so a second stop for
+            # the same position is always rejected with "order is for more shares than your current position". The old code read
+            # `for _o in (_live0 or [])` — an UNVERIFIED listing (None) therefore looked exactly like "no stop resting" and fell
+            # straight through to PLACE. Proven on 2026-10-16: XOM 151865001 rested from 14:13:22, the 14:50:45 listing timed out,
+            # and the 14:51:10 placement was rejected; CRK, VLO, QCOM, APO and RRC each followed the same 2-step pattern.
+            # A missing stop costs nothing to place one cycle later; a blind placement is always either a duplicate reject or a
+            # second stop on the same shares. So: no verified listing -> no placement, and say so loudly.
             _live0 = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
-            for _o in (_live0 or []):
+            if _live0 is None:
+                _ub = getattr(self, "_fx_stop_unverified_since", None)
+                if not isinstance(_ub, dict):
+                    _ub = self._fx_stop_unverified_since = {}
+                _since = float(_ub.get(position_key) or 0.0) or time.time()
+                _ub[position_key] = _since
+                _stuck = time.time() - _since
+                _lvl_log = logger.critical if _stuck > 120.0 else logger.error
+                _lvl_log(f"⛔ [FIXED_STOP_LIST_UNVERIFIED_TR] {position_key}: broker order listing unverified for {_stuck:.0f}s (snapshot age={_bsnap.age(account_key)}) — NOT placing (a blind stop is rejected by the resting one); protection state UNKNOWN")
+                return "SKIPPED_STOP_LIST_UNVERIFIED"
+            try:
+                _ub = getattr(self, "_fx_stop_unverified_since", None)
+                if isinstance(_ub, dict):
+                    _ub.pop(position_key, None)
+            except Exception:
+                pass
+            # The listing is VERIFIED from here: [] genuinely means this position has no resting stop.
+            _cancelled_ids = []
+            for _o in _live0:
                 try:
                     _oq = int(float(_o.get("quantity", 0) or 0))
                 except Exception:
                     _oq = 0
-                if _oq == _qty and not have:
-                    _oid0 = str(_o.get("id", "") or "")
-                    if _oid0:
-                        have = {"orderId": _oid0, "stopPrice": float(_o.get("stop_price", 0) or 0), "entry_sig": _sig, "symbol": symbol, "side": position_side, "qty": _qty}
-                        reg[position_key] = have
-                        self._fixed_stop_registry_save()
-                        logger.critical(f"🛡️ [FIXED_STOP_ADOPTED_TR] {position_key}: adopted broker backstop {_oid0} stop={have['stopPrice']} qty={_qty}")
-                        continue
-                # any other resting closing-side stop on this position is stale (wrong qty / duplicate): cancel it
-                await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=str(_o.get("id", "")))
+                _oid0 = str(_o.get("id", "") or "")
+                try:
+                    _ostop = float(_o.get("stop_price", 0) or 0)
+                except Exception:
+                    _ostop = 0.0
+                # Adopt the first stop that already protects the WHOLE broker quantity at the wanted level. 2026-10-16: the old
+                # test was `_oq == _qty` only, so a correct-size stop sitting at a stale level was adopted and never corrected,
+                # while a stop of any other size was cancelled and instantly re-placed into its own un-released reservation.
+                if _oid0 and _oq == _qty and (_lv_want <= 0 or abs(_ostop - _lv_want) < 0.0051) and not have:
+                    have = {"orderId": _oid0, "stopPrice": _ostop, "entry_sig": _sig, "symbol": symbol, "side": position_side, "qty": _qty}
+                    reg[position_key] = have
+                    self._fixed_stop_registry_save()
+                    logger.critical(f"🛡️ [FIXED_STOP_ADOPTED_TR] {position_key}: adopted broker backstop {_oid0} stop={_ostop} qty={_qty}")
+                    continue
+                # any other resting closing-side stop on this position is stale (wrong qty / wrong level / duplicate): cancel it
+                _cr = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="CANCEL_STOP", stop_order_id=_oid0)
+                if _oid0 and ("SUCCESS" in str(_cr)):
+                    _cancelled_ids.append(_oid0)
             if have:
                 return "OK_ADOPTED_STOP"
+            if _cancelled_ids:
+                # WAIT FOR THE RELEASE (2026-10-16): Tradier frees the reserved shares only once the cancel is processed. RRC
+                # 14:51:06 cancel -> 14:51:44 replace was still rejected. Re-read until the broker stops listing them; if they
+                # are still there, leave the placement to the next cycle rather than fire into the reservation.
+                _released = False
+                for _ in range(10):
+                    await asyncio.sleep(1.0)
+                    _bsnap.invalidate(account_key)
+                    _recheck = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+                    if _recheck is None:
+                        continue
+                    if not any(str(_o.get("id", "")) in _cancelled_ids for _o in _recheck):
+                        _released = True
+                        break
+                if not _released:
+                    logger.critical(f"⛔ [FIXED_STOP_CANCEL_NOT_RELEASED_TR] {position_key}: cancelled {_cancelled_ids} still reserve the shares — deferring placement to the next cycle (never fire into a live reservation)")
+                    return "SKIPPED_STOP_CANCEL_PENDING"
             _r = await self._fixed_stop_order_action_tradier(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, action="PLACE_STOP", stop_price=_lvl, quantity=_qty, current_price=float(current_price or 0.0))
             _rs = str(_r)
             if _rs.startswith("SUCCESS_STOP_PLACED"):
@@ -44211,6 +44595,11 @@ class TradierTradeManager:
         try:
             if os.environ.get("PYTEST_CURRENT_TEST"):
                 return "SKIPPED_STOP_PYTEST"
+            # This action mutates the account's order book, so the account-level listing memo is now wrong. Drop it
+            # BEFORE acting: a cancelled order left in a cached list would be ADOPTED as a live backstop and the
+            # position would be recorded as protected by a dead order id. Costs one extra pull per mutation (rare).
+            _FIXED_STOP_ORDERS_MEMO.pop(str(account_key or ""), None)
+            _bsnap.invalidate(account_key)  # 2026-10-16: the off-loop snapshot must re-read now, not at its next interval
             try:
                 client = TradierAPIClient(config, account_key=account_key)
             except Exception as _ce:
@@ -44286,7 +44675,32 @@ class TradierTradeManager:
                 # must not record a stop that does not exist at the exchange.
                 logger.error(f"[FIXED_STOP_PLACE_TR] {position_key}: broker returned no order id (rejected?) resp={str(_resp)[:200]}")
                 return "FAILED_STOP_NO_ORDER_ID"
-            logger.critical(f"🛡️ [FIXED_STOP_PLACED_TR] {position_key}: exchange backstop {_oid} stop={lvl:.2f} ({'LONG' if is_long else 'SHORT'})")
+            # 2026-10-16 AN ID IS NOT AN ACCEPTANCE. Tradier answers a rejected order with a normal {"order": {"id": ...}}
+            # body, so "it has an id" recorded the reject as the live backstop: FIXED_STOP_PLACED_TR logged 151890442 (XOM)
+            # and 151890614 (VLO) on 2026-10-16 while the broker lists both as `rejected`. The registry then claimed
+            # protection by an order that does not exist, and the verify TTL could not disprove it while listings were
+            # failing. Confirm the id is actually resting before calling it a backstop.
+            _confirmed, _bstatus = False, ""
+            for _try in range(8):
+                _bsnap.invalidate(account_key)
+                await asyncio.sleep(0.75)
+                _st = _bsnap.order_status(account_key, _oid, max_age=_snap_max_age())
+                if _st is None:
+                    continue
+                if _st in _bsnap.LIVE_ORDER_STATUSES or _st == "filled":
+                    _confirmed, _bstatus = True, _st
+                    break
+                if _st:
+                    _bstatus = _st
+                    break
+            if not _confirmed and _bstatus:
+                logger.critical(f"⛔ [FIXED_STOP_REJECTED_TR] {position_key}: broker {_bstatus.upper()} order {_oid} qty={int(quantity or 0)} stop={lvl:.2f} — NOT recorded as a backstop (position remains unprotected until the next verified cycle)")
+                return f"FAILED_STOP_BROKER_{_bstatus.upper()}"
+            if not _confirmed:
+                # Unverified: the snapshot never came back. Do not claim protection we cannot see.
+                logger.critical(f"⛔ [FIXED_STOP_PLACE_UNCONFIRMED_TR] {position_key}: order {_oid} sent but never seen resting (snapshot age={_bsnap.age(account_key)}) — not recorded")
+                return "FAILED_STOP_PLACE_UNCONFIRMED"
+            logger.critical(f"🛡️ [FIXED_STOP_PLACED_TR] {position_key}: exchange backstop {_oid} stop={lvl:.2f} ({'LONG' if is_long else 'SHORT'}) broker_status={_bstatus}")
             return f"SUCCESS_STOP_PLACED_{_oid}"
         except Exception as _e:
             try:
@@ -44295,9 +44709,121 @@ class TradierTradeManager:
                 pass
             return "FAILED_STOP_WIRE"
 
+    async def stop_truth_reconcile_loop(self):
+        """USER 2026-10-16: "Tradier_manage has to monitor these positions CONSTANTLY ... stop orders on the exchange
+        are constantly updated with the correct quantity".
+
+        The per-position ensure already did this, but only as a side-effect of process_position, which on 2026-10-16
+        was taking minutes per sweep and froze for up to 81.5 s at a time — so a reduce could leave an oversized stop
+        resting (which Tradier then rejects on the next touch) for as long as the main loop took to come round.
+        This loop is driven purely by tradier_broker_snapshot (a dedicated thread, never starved), so a quantity
+        change at the broker is matched within TRADIER_STOP_RECONCILE_SEC regardless of what the main loop is doing.
+        It places nothing itself: it calls the same ensure, under the same per-position lock, so there is exactly one
+        implementation of the stop rules. Orphan stops (broker flat, stop still resting) are swept in the same pass."""
+        try:
+            _every = float(_cfg_auto("TRADIER_STOP_RECONCILE_SEC", 10.0) or 10.0)
+        except Exception:
+            _every = 10.0
+        logger.critical(f"🛡️ [STOP_RECONCILE] continuous broker-truth stop reconciler started (every {_every:.0f}s, accounts={list(self.target_accounts or [])})")
+        while self.running:
+            try:
+                if not bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)):
+                    await asyncio.sleep(_every)
+                    continue
+                for _acct in list(self.target_accounts or []):
+                    _qmap = _bsnap.positions(_acct, max_age=_snap_max_age())
+                    if _qmap is None:
+                        logger.error(f"[STOP_RECONCILE] {_acct}: no fresh broker snapshot (age={_bsnap.age(_acct)}) — skipping this pass, nothing is guessed")
+                        continue
+                    await self.sweep_orphan_stops_tradier(_acct)
+                    for _sym, _q in sorted(_qmap.items()):
+                        if not _q:
+                            continue
+                        _pside = "LONG" if _q > 0 else "SHORT"
+                        _pk = f"{_acct}:{_sym}_{_pside}"
+                        _pos = None
+                        try:
+                            _pm = getattr(self, "position_manager", None)
+                            if _pm is not None and hasattr(_pm, "get_position"):
+                                _pos = _pm.get_position(_pk)
+                        except Exception:
+                            _pos = None
+                        if _pos is None:
+                            logger.error(f"[STOP_RECONCILE] {_pk}: broker holds {_q} but there is no local position row — stop left to the next position sync (never sized from a guess)")
+                            continue
+                        _ind = {}
+                        try:
+                            _ind = self.get_indicators(_sym) or {}
+                        except Exception:
+                            _ind = {}
+                        _soft = 0.0
+                        try:
+                            _lvm = getattr(self, "_fixed_stop_levels", None) or {}
+                            _lve = _lvm.get(_pk) if isinstance(_lvm.get(_pk), dict) else None
+                            if _lve:
+                                _soft = float(_lve.get("level", 0) or 0)
+                        except Exception:
+                            _soft = 0.0
+                        try:
+                            _cp = safe_fetch_float(_ind.get("current_price", 0) or _ind.get("close", 0) or 0, 0.0)
+                        except Exception:
+                            _cp = 0.0
+                        try:
+                            await self.ensure_fixed_stop_backstop_tradier(
+                                account_key=_acct, symbol=_sym, position_key=_pk, position_side=_pside, position=_pos,
+                                soft_level=_soft, current_price=_cp,
+                                dc_low_15m=safe_fetch_float(_ind.get("dc_low_15m", 0) or 0, 0.0),
+                                dc_high_15m=safe_fetch_float(_ind.get("dc_high_15m", 0) or 0, 0.0),
+                            )
+                        except Exception as _re:
+                            logger.warning(f"[STOP_RECONCILE] {_pk}: {_re}")
+                        await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                break
+            except Exception as _le:
+                logger.error(f"[STOP_RECONCILE] pass failed: {_le}")
+            await asyncio.sleep(_every)
+
+    async def sweep_orphan_stops_tradier(self, account_key):
+        """2026-10-16 USER "TOTAL AND COMPLETE SYNCHRONICITY": cancel every resting protective stop on a symbol the BROKER
+        is flat in, whether or not the registry ever knew about it. The registry-driven sweep below can only clean up stops
+        it recorded, and on 2026-10-16 the registry held 7 rows against 15 resting trb stops — the rest were invisible to it.
+        An orphan stop reserves shares, so it also rejects the next entry's backstop on that symbol. Never raises, and never
+        cancels on anything but a FRESH broker snapshot showing qty 0 (an unverified read removes nothing)."""
+        try:
+            if os.environ.get("PYTEST_CURRENT_TEST"):
+                return "SKIPPED_PYTEST"
+            _qty_map = _bsnap.positions(account_key, max_age=_snap_max_age())
+            _orders = _bsnap.orders(account_key, max_age=_snap_max_age())
+            if _qty_map is None or _orders is None:
+                return "SKIPPED_ORPHAN_UNVERIFIED"
+            out = []
+            for _o in _orders:
+                if not isinstance(_o, dict):
+                    continue
+                if str(_o.get("status", "")).lower() not in _bsnap.LIVE_ORDER_STATUSES:
+                    continue
+                if not _odg.tradier_protective_stop(_o.get("type"), _o.get("side")):
+                    continue
+                _sym = str(_o.get("symbol", "")).upper()
+                if abs(float(_qty_map.get(_sym, 0.0) or 0.0)) > 0:
+                    continue
+                _pside = "LONG" if str(_o.get("side", "")).lower() == "sell" else "SHORT"
+                _pk = f"{account_key}:{_sym}_{_pside}"
+                logger.critical(f"🧹 [FIXED_STOP_ORPHAN_TR] {_pk}: resting stop {_o.get('id')} qty={_o.get('quantity')} but broker holds 0 — cancelling (it reserves shares and rejects the next backstop)")
+                _r = await self._fixed_stop_order_action_tradier(position_key=_pk, account_key=account_key, symbol=_sym, position_side=_pside, action="CANCEL_STOP", stop_order_id=str(_o.get("id", "")))
+                out.append(f"{_pk}={_r}")
+            return ("ORPHAN_OK:" + ",".join(out)) if out else "ORPHAN_CLEAN"
+        except Exception as _e:
+            return f"FAILED_ORPHAN_SWEEP_{_e}"
+
     async def sweep_fixed_stops_tradier(self, account_key):
         """Cancel backstops for flat/missing positions (covers every close path). Never raises."""
         try:
+            try:
+                await self.sweep_orphan_stops_tradier(account_key)
+            except Exception:
+                pass
             reg = self._fixed_stop_registry_load()
             if not reg:
                 return "SWEEP_EMPTY"
@@ -47020,6 +47546,37 @@ class TradierTradeManager:
     ) -> (
         str
     ):  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
+        # ─── HERMETIC VEC-ONLY GATE — STOCKS (2026-10-15 USER "stocks have no gate at all <- last thing i need for
+        # you is to fix that"). Twin of the crypto gate at ez_manage.py:31983, which has been in `enforce` since
+        # 2026-10-14T20:58Z with 0 false flags. Stocks had ZERO hermetic references before this — and stocks are where
+        # 2026-10-15 lost -$430 of the -$713, every dollar of it through a path the vector never authorised:
+        # 40 WT_CROSSUNDER_FINAL exits on a hardcoded 5m leg with no engine call site, 11 HEDGE_FAILED_FALLBACK_CLOSE
+        # closes for a DISABLED feature (-$202.82), and 9 stock sym_sides classed LIVE_ONLY_NONVEC by forward parity.
+        # An exposure increase must carry structural vec provenance for THIS position_key (live_twins/vec_provenance:
+        # a ContextVar set by the vec dispatch sites — NOT a reason string, per CLAUDE.md "NO reason-string bypasses").
+        #
+        # EXITS / REDUCTIONS / STOPS ARE NEVER GATED. CLAUDE.md: "NO exit can EVER be skipped AT ALL for ANY REASON".
+        # vec_provenance.gate() enforces that itself via is_full_close/action (same call the crypto twin makes);
+        # blocking an exit here would recreate the 2026-10-13 incident (vec exits lost in execution, NEARUSDC_LONG
+        # held 25 h for -10.8%). `is_hedge=False`: this signature has none, and hedging is off on Tradier anyway.
+        #
+        # STARTS IN LOG MODE FOR STOCKS, deliberately, regardless of data/hermetic_mode.json: forward parity is
+        # currently **1 PASS of 35 stock sym_sides**, so enforcing on day one would refuse most legitimate opens and
+        # halt the book. It logs every would-be refusal so the count can be reconciled against
+        # tools/forward_parity/live_vs_vec.py's LIVE_ONLY_NONVEC tally over a full session FIRST.
+        # FLIP TO ENFORCE (one line, after that reconciliation): TradierConfig.TRADIER_HERMETIC_ENFORCE = True.
+        # Read off `config` (= TradierConfig(), tradier_manage.py:6645) NOT via _cfg, so a per_sym row can never
+        # switch the gate off — the bypass that defeated the 5m and hedge defaults earlier today.
+        try:
+            from live_twins import vec_provenance as _vprov_g
+            _hm_ok, _hm_why = _vprov_g.gate(position_key, side, position_side, is_full_close=is_full_close, action=action, is_hedge=False)
+        except Exception as _hm_e:
+            _hm_ok, _hm_why = True, f"gate error {_hm_e}"  # fail-OPEN: a gate bug must never stop trading
+        _hm_enforce = bool(getattr(config, "TRADIER_HERMETIC_ENFORCE", False))
+        if _hm_why and not str(_hm_why).startswith("vec:"):
+            logger.warning(f"[HERMETIC_TR] {'REFUSED' if (not _hm_ok and _hm_enforce) else 'WOULD_REFUSE(log mode)'} {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_hm_why}")
+        if not _hm_ok and _hm_enforce:
+            return "BLOCKED_HERMETIC_NOT_VEC"
         # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
         # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or the stuck watcher): broker holdings ->
         # cancel our working orders + protective stop handoff -> ONE market sell / buy_to_cover of the broker qty -> verify flat.
@@ -47027,6 +47584,38 @@ class TradierTradeManager:
             return await self._exit_force_market_stocks(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, reason=reason, old_price=old_price)
         _xg_full = _xg.is_full_close(action, is_full_close)  # full close: mechanical refusals below never apply (FORCE backstop behind them)
         _xg_exit = _xg.is_exit_action(action, is_full_close) or (str(side).upper() == "SELL" and str(position_side).upper() == "LONG") or (str(side).upper() == "BUY" and str(position_side).upper() == "SHORT")
+        # ─── LATEST-BOARD ENTRY GATE — STOCKS (2026-10-16 USER "live trading executes the trades dictated by the latest
+        # per_sym best settings") ─── twin of the crypto gate at ez_positions_quick.py ~28512, which refuses an entry when
+        # the sym_side has no published board (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks had no
+        # board gate at ALL, so an entry could be taken on a sym_side no board ever measured: trb/LEXX_SHORT opened twice
+        # with NO live per_sym row and a go-live blocklist entry against it (DATA_SAWTOOTH + gate-floor) —
+        # 2026-10-14T19:23Z VEC_EXACT_OPEN_B12|RATIO_CUT_S(R=0.30) and 2026-10-15T16:37Z VEC_EXACT_OPEN_B_SRS_ENTRY, both
+        # in data/history/trb/LEXX_SHORT.jsonl; trc/U_SHORT 2026-10-15T18:18Z and trb/GDX_SHORT 2026-10-15T15:50Z did the
+        # same. Measured 2026-10-16: 15 stock sym_sides traded boardless in 7 days (ADP_LONG, AU_LONG, AU_SHORT,
+        # BHVN_SHORT, CRK_LONG, EOG_LONG, GDX_SHORT, INTC_SHORT, MA_LONG, MP_SHORT, NKE_SHORT, NVDA_SHORT, PAAS_LONG,
+        # XLE_LONG, XOP_LONG), against 214 of 236 published stock boards now gate-OK.
+        #
+        # ONLY the unambiguous half of the crypto gate: NO published board within the age ceiling. LIVE_SET_NE_BOARD is
+        # deliberately NOT gated here — forward parity is 1 PASS of 35 stock sym_sides (see the HERMETIC_TR note above),
+        # so an equality gate would halt the book.
+        # EXITS / REDUCTIONS / STOPS ARE NEVER GATED: _xg_exit / _xg_full / the explicit entry-action set below, and
+        # CLAUDE.md "NO exit can EVER be skipped AT ALL for ANY REASON".
+        # Read off `config` (= TradierConfig()) NOT via _cfg, so a per_sym row can never switch the gate off.
+        # DEFAULT OFF — TradierConfig.TRADIER_NO_BOARD_ENTRY_BLOCK = False. Turning it on is the user's call.
+        _lb_entry = (
+            not _xg_exit
+            and not _xg_full
+            and str(action or "").upper() in ("OPEN", "AUGMENT", "REENTRY", "REENTER", "REENTRY_OPEN", "QUICK_OPEN", "QUICK_AUGMENT", "REVERSE", "HEDGE_OPEN")
+        )
+        if _lb_entry and bool(getattr(config, "TRADIER_NO_BOARD_ENTRY_BLOCK", False)):
+            try:
+                from live_twins import vec_exact as _vx_lb
+                _lb_ok, _lb_why = _vx_lb.latest_board_ok(symbol, position_side)
+            except Exception as _lb_e:
+                _lb_ok, _lb_why = True, f"board check error {_lb_e}"  # fail-OPEN: a gate bug must never stop trading
+            if not _lb_ok and str(_lb_why).startswith("NO_LATEST_BOARD"):
+                logger.warning(f"[NO_BOARD_TR] REFUSED {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_lb_why}")
+                return "BLOCKED_NO_LATEST_BOARD"
         if _odg.entry_banned(account_key, config) and (
             str(action or "").upper()
             in (
@@ -47051,6 +47640,48 @@ class TradierTradeManager:
                 f"🚫 [ACCOUNT_ENTRY_BANNED] {position_key}: {account_key} is entry-banned (exits only) — {action} refused"
             )  # PHASE 3 USER: tra one trade from closure
             return "BLOCKED_ACCOUNT_ENTRY_BANNED"
+        # ─── SYM-HALT (USER unlock 2026-10-15 — tools/v15_sym_halt.py) ───
+        # Pair halt: 3 trailing net losers since apply blocks new exposure for
+        # that (account, sym_side) only. Exits untouched (_xg_exit guard +
+        # entry-only token list mirrors entry_banned above). Kill-switch
+        # V15_SYM_HALT_ENABLED=0. Fail-open on ANY error. No vec exemption:
+        # live booked losses outrank twin agreement.
+        try:
+            _sh_on = str(os.environ.get("V15_SYM_HALT_ENABLED", "1")).lower() not in ("0", "false", "no")
+            _sh_act = str(action or "").upper()
+            if (
+                _sh_on
+                and (
+                    _sh_act
+                    in (
+                        "OPEN",
+                        "AUGMENT",
+                        "REENTRY",
+                        "REENTER",
+                        "REENTRY_OPEN",
+                        "QUICK_OPEN",
+                        "QUICK_AUGMENT",
+                        "REVERSE",
+                        "HEDGE_OPEN",
+                    )
+                    or (
+                        not action
+                        and not is_full_close
+                        and str(side).upper()
+                        == ("BUY" if str(position_side).upper() == "LONG" else "SELL")
+                    )
+                )
+                and not _xg_exit
+            ):
+                from tools.v15_sym_halt import sym_halt_active as _sym_halt_active
+                _sh_hit, _sh_why = _sym_halt_active(account_key, f"{symbol}_{position_side}")
+                if _sh_hit:
+                    logger.critical(
+                        f"🛑 [SYM_HALT] {position_key}: {account_key} {_sh_why} — {action} refused, exits untouched"
+                    )
+                    return "BLOCKED_SYM_HALT"
+        except Exception as _sh_e:
+            logger.debug(f"[SYM_HALT] {position_key}: check skipped, fail-open ({_sh_e})")
         # PARITY LOOP STOCKS 2026-10-06: VEC_EXACT order (PARITY_VEC_EXACT_MODE) = the vec decision -> decision gates below are skipped ("NO GATES"; NOLOSS has only exceptions).
         _vx_ex = is_vec_exact_reason(reason) and bool(
             _cfg("PARITY_VEC_EXACT_MODE", False, account_key, symbol, position_side)
@@ -47742,7 +48373,15 @@ class TradierTradeManager:
                             else None
                         )
                         # Also try loading from file directly for gain/bh
-                        if _raw is None:
+                        # 2026-10-16 ORDER-PATH FREEZE: this was `json.loads(_p.read_text())` of
+                        # data/hourly_reconfig/per_sym_active_config.json — 67 MB — parsed synchronously on the event
+                        # loop INSIDE execute_now, i.e. once per order. That file is crypto-only (COTIUSDT_SHORT ...;
+                        # it holds no plain stock key), so on tra/trb/trc it burned the whole parse to return None every
+                        # time. It is the heaviest of the four blockers behind the 2026-10-16 [LOOP_LAG] freezes, and it
+                        # sits exactly where the failover agent measured "0 orders reached the broker in 300s ...
+                        # loop lag >= 60s" before it fenced the Mac for stocks. Only a crypto pair can match a key in
+                        # that file, and the sibling stocks read below already uses the mtime cache — same here.
+                        if _raw is None and str(symbol or "").upper().endswith(("USDT", "USDC")):
                             _p = (
                                 Path(config.BASE_PATH)
                                 / "data"
@@ -47750,8 +48389,8 @@ class TradierTradeManager:
                                 / "per_sym_active_config.json"
                             )
                             if _p.exists():
-                                _j = json.loads(_p.read_text())
-                                _raw = _j.get(_key)
+                                _j = _json_load_cached(_p)
+                                _raw = _j.get(_key) if isinstance(_j, dict) else None
                     except Exception:
                         _raw = None
                     if _raw is None:
@@ -48374,7 +49013,16 @@ class TradierTradeManager:
                         logger.debug(
                             f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}"
                         )
-                if not _ung_active_t:
+                if "FIXED_STOP" in _en_reason_up:
+                    # 2026-10-15 FIXED_STOP IS NON-NEGOTIABLE (USER, COTI incident on crypto; same hole here). The frozen
+                    # dc_15m stop is "no switch, no cfg read, no veto" (vec_decisions/fixed_stop.py), but it was in NO
+                    # bypass here: UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS does not contain it, so a breach close at a loss
+                    # returned NOLOSS_BLOCK — and LOSS_PROTECTION_BLOCK would have held it even inside the 180 s window.
+                    # It is checked FIRST, hard-coded, so no config and no later branch can hold a breached stop.
+                    logger.critical(
+                        f"⛔ [EXECUTE_NOW_FIXED_STOP_NONNEGOTIABLE] {position_key}: gain={_en_gain:.2f}% — frozen-stop breach closes at a loss, no NOLOSS/LOSS_PROTECTION veto (reason={reason[:80]})"
+                    )
+                elif not _ung_active_t:
                     pass  # master switch OFF (config_tradier.UNIVERSAL_NOLOSS_GATE=False) — targeted, not blanket; technical exits fire freely
                 elif _vx_ex:
                     pass  # PARITY LOOP STOCKS 2026-10-06: NOLOSS exception — a vec-decided close executes at a loss (director/user ruling)
@@ -49653,6 +50301,11 @@ class TradierTradeManager:
                                             logger.warning(
                                                 f"[VIGILANCE] close-record err {position_key}: {_vg_ce}"
                                             )
+                                        try:
+                                            if _ep > 0 and current_price and not _xg.active():  # QTY_STREAK (2026-10-16): same full-close feed, one count per lifecycle
+                                                _qq.live_record_close(config.BASE_PATH, "tradier", account_key, symbol, position_side, _ep, float(current_price), _QQTCfg(account_key, symbol, position_side), lifecycle=_xg.lifecycle_id(account_key, symbol, str(position_side).upper(), getattr(local_pos, "opened_at", None), _ep))
+                                        except Exception as _qq_ce:
+                                            logger.warning(f"[QTY_STREAK] close-record err {position_key}: {_qq_ce}")
                                         # STALE-SET 2-LOSS HALT (USER 2026-10-14, BIBLE §102): realized full close feeds the sym_side loss window.
                                         try:
                                             if _ep > 0 and current_price and not _xg.active():  # 2026-10-14: confirmed hook records once per lifecycle
@@ -50546,9 +51199,10 @@ class TradierTradeManager:
                                 ]
                                 if (w1 > w2 if side == "LONG" else w1 < w2)
                             )
-                            _rally_k15m_max = float(
-                                _cfg_auto("REENTRY_RALLY_K15M_MAX", 100.0)
-                            )
+                            # k15m level cap DEAD (USER 2026-10-16: stoch_k is never a reentry filter) — 100.0 is
+                            # the OFF sentinel, so `k_15m < 100` is always true and only the rising/HTF-WT terms
+                            # decide. Matches the vec twins, which return False.
+                            _rally_k15m_max = 100.0
                             _rally_htf_min = int(_cfg_auto("REENTRY_RALLY_HTF_MIN", 2))
                             if side == "LONG":
                                 _k15m_lvl_ok = k_15m < _rally_k15m_max
@@ -52498,9 +53152,24 @@ class TradierTradeManager:
                     logger.warning(
                         f"[{account_key}] [VIX_REGIME] check failed: {_vix_e}"
                     )
-            if _cfg_auto("BAND_SLOPE_SIZING_V2_ENABLED", False) or _cfg_auto(
-                "STDEV_SLOPE_SIZING_ENABLED", False
-            ):
+            if _cfg_auto("STDEV_SLOPE_SIZING_ENABLED", False):
+                # USER 2026-10-16 "should be 1-5x": 1x at the top -> STDEV_LADDER_MAX_MULT at the bottom (vv shorts) on lrL_pct_b_<STDEV_LADDER_TF>.
+                # Replaces the slope_to_top 10x map (flat max over the whole lower half). ONE function with v12_quick_engine + ez_manage.
+                try:
+                    _qq_ind = (self.market_snapshot or {}).get(symbol.upper(), {}) or {}
+                    _qq_cfg = _QQTCfg(account_key, symbol, side)
+                    _qq_lm = _qq.ladder_from_indicators(_qq_ind, side == "LONG", _qq_cfg)
+                    max_value *= _qq_lm
+                    logger.info(f"[STDEV_LADDER] {symbol} {side}: lrL_pct_b_{_qq.ladder_tf(_qq_cfg)}={_qq_ind.get('lrL_pct_b_' + _qq.ladder_tf(_qq_cfg))} x{_qq_lm:.2f} (1-{_qq.ladder_max(_qq_cfg):g}x) -> ${max_value:.0f}")
+                    try:
+                        import vec_decisions.twin_stdev as _twin_stdev
+
+                        max_value *= _twin_stdev.get_scalar(_qq_ind, side == "LONG", config)
+                    except Exception:
+                        pass
+                except Exception as _qq_le:
+                    logger.warning(f"[STDEV_LADDER] {symbol} sizing check failed (x1.0): {_qq_le}")
+            elif _cfg_auto("BAND_SLOPE_SIZING_V2_ENABLED", False):
                 try:
                     _bs_ind = (self.market_snapshot or {}).get(symbol.upper(), {}) or {}
                     _bs_tf = _cfg_auto("BAND_SLOPE_SIZING_V2_TF", "D")
@@ -53173,8 +53842,11 @@ class TradierTradeManager:
         while self.running:
             try:
                 if is_regular_trading_hours():
-                    import subprocess
-
+                    # 2026-10-16: this was a blocking subprocess.run(timeout=120) ON THE EVENT LOOP — up to two
+                    # minutes of total freeze every 5 minutes. It is one of the four blockers behind the 193
+                    # [LOOP_LAG] freezes (max 81.5 s) of 2026-10-16, which timed out every broker read, caused the
+                    # duplicate stops Tradier rejected, and finally made the failover agent fence the Mac for stocks
+                    # ("order_path_dead ... loop lag >= 60s"). asyncio subprocess: the loop keeps serving while it runs.
                     account = self.target_accounts[0] if self.target_accounts else "trb"
                     cmd = [
                         sys.executable,
@@ -53184,20 +53856,25 @@ class TradierTradeManager:
                         account,
                         "--auto-sell",
                     ]
-                    result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        timeout=120,
+                    _proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
                         cwd=str(config.BASE_PATH),
                     )
-                    if result.returncode != 0:
-                        logger.warning(
-                            f"[OPTIONS_WATCHDOG] Exit code {result.returncode}: {result.stderr[-200:] if result.stderr else ''}"
-                        )
+                    try:
+                        _out, _err = await asyncio.wait_for(_proc.communicate(), timeout=120)
+                    except asyncio.TimeoutError:
+                        try:
+                            _proc.kill()
+                        except Exception:
+                            pass
+                        _out, _err = b"", b"timed out after 120s"
+                        logger.warning("[OPTIONS_WATCHDOG] watch cycle timed out after 120s — killed")
+                    if _proc.returncode not in (0, None):
+                        logger.warning(f"[OPTIONS_WATCHDOG] Exit code {_proc.returncode}: {(_err or b'').decode('utf-8', 'replace')[-200:]}")
                     else:
-                        # Log any sells
-                        for line in result.stdout.split("\n"):
+                        for line in (_out or b"").decode("utf-8", "replace").split("\n"):
                             if "SELL" in line or "Smart-selling" in line:
                                 logger.warning(f"[OPTIONS_WATCHDOG] {line.strip()}")
                 await asyncio.sleep(300)  # 5 min
@@ -57378,6 +58055,7 @@ class TradierTradeManager:
             asyncio.create_task(self.order_queue.process_orders())
         )
         self.background_tasks.append(asyncio.create_task(self._options_watchdog_loop()))
+        self.background_tasks.append(asyncio.create_task(self.stop_truth_reconcile_loop()))
         self.background_tasks.append(
             asyncio.create_task(self.last_hour_balancing_loop())
         )
@@ -59602,6 +60280,13 @@ async def main():
     import argparse
 
     logger.critical(f"tradier_manage boot CODE_REV={TRADIER_MANAGE_CODE_REV} pid={os.getpid()}")
+    # 2026-10-16 USER "positions must keep TOTAL AND COMPLETE SYNCHRONICITY with what is on the exchange": broker
+    # positions + the full order book are refreshed on a dedicated thread, so a parked main loop can no longer turn
+    # broker truth into "unverified" (193 LOOP_LAG freezes up to 81.5 s on 2026-10-16 did exactly that).
+    try:
+        _bsnap.start(_own_accounts)
+    except Exception as _se:
+        logger.critical(f"⛔ [SNAPSHOT] broker truth thread failed to start ({_se}) — stop placement will refuse rather than guess")
 
     def signal_handler(signum, frame):
         """Handle shutdown signals"""
@@ -60396,10 +61081,6 @@ def _ensure_tradier_all(config, account_key="trb", symbol="AAPL", side="LONG"):
         _ = getattr(
             config_tradier, "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME", False
         )  # MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME
-    if bool(getattr(config_tradier, "MAX_AUGMENTS_PER_POSITION", False)):
-        _ = getattr(
-            config_tradier, "MAX_AUGMENTS_PER_POSITION", False
-        )  # MAX_AUGMENTS_PER_POSITION
     if bool(getattr(config_tradier, "MOM3_FILTER_TF", False)):
         _ = getattr(config_tradier, "MOM3_FILTER_TF", False)  # MOM3_FILTER_TF
     if bool(getattr(config_tradier, "MOMENTUM_BREAKOUT_FILTER_TF", False)):

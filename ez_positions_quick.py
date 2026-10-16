@@ -2935,21 +2935,31 @@ def _get_btc_sym_cfg(account_key: str, symbol: str, side: str, base_cfg):
     if not getattr(base_cfg, "BTC_PER_SYM_CONFIG_ENABLED", True):
         return base_cfg
     global _btc_per_sym_cfgs, _btc_per_sym_cfgs_mtime
+    overrides = None
     try:
-        mtime = _btc_per_sym_cfgs_path.stat().st_mtime
-        if mtime != _btc_per_sym_cfgs_mtime:
-            with _btc_per_sym_cfgs_path.open() as _f:
-                _btc_per_sym_cfgs = {
-                    k: v.get("overrides", {}) for k, v in json.load(_f).items()
-                }
-            _btc_per_sym_cfgs_mtime = mtime
-    except Exception as _exc:
-        logger.warning("BTC_PER_SYM_CFG load error: %s", _exc)
-    overrides = _btc_per_sym_cfgs.get(f"{symbol}_{side}", {})
+        import per_sym_live_set as _pls
+
+        overrides = _pls.full_set(f"{symbol}_{side}")
+    except Exception:
+        overrides = None
+    if not overrides:
+        try:
+            mtime = _btc_per_sym_cfgs_path.stat().st_mtime
+            if mtime != _btc_per_sym_cfgs_mtime:
+                with _btc_per_sym_cfgs_path.open() as _f:
+                    _btc_per_sym_cfgs = {
+                        k: v.get("overrides", {}) for k, v in json.load(_f).items()
+                    }
+                _btc_per_sym_cfgs_mtime = mtime
+        except Exception as _exc:
+            logger.warning("BTC_PER_SYM_CFG load error: %s", _exc)
+        overrides = _btc_per_sym_cfgs.get(f"{symbol}_{side}", {})
     return _BtcConfigOverlay(base_cfg, overrides) if overrides else base_cfg
 
 
 _per_sym_cfgs: dict = {}
+_per_sym_cfgs_entries: dict = {}
+_per_sym_full_sets: dict = {}
 _per_sym_cfgs_mtime: float = 0.0
 _per_sym_cfgs_path = (
     Path(__file__).resolve().parent
@@ -3071,6 +3081,36 @@ def _apply_final_book(sym_key: str, ovr: dict) -> dict:
     return ovr
 
 
+def _per_sym_full_set(sym_side: str):
+    """The FULL frozen board set for sym_side with this file's two live overlays re-applied on top
+    (the 2026-05-28 3-source neg-sharpe ban and the 2026-05-31 FINAL per_sym book, both authoritative
+    by user mandate). None when the full-set reader is off or no row exists anywhere, and the caller
+    then resolves the legacy JSON `overrides` half exactly as before.
+
+    Memoized PER_SYM_OVR_MEMO_SEC (30 s, same window per_sym_store uses): the set is ~3546 keys and the
+    entry path reads it thousands of times per cycle, while _inject_neg_sharpe_no_trade copies whatever
+    dict it is handed."""
+    try:
+        import per_sym_live_set as _pls
+
+        if not _pls.enabled():
+            return None
+        now = time.monotonic()
+        hit = _per_sym_full_sets.get(sym_side)
+        if hit is not None and now - hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "30.0")):
+            return hit[1]
+        full = _pls.full_set(sym_side)
+        if not full:
+            return None
+        entry = dict(_per_sym_cfgs_entries.get(sym_side) or {})
+        entry["overrides"] = full
+        merged = _apply_final_book(sym_side, _inject_neg_sharpe_no_trade(sym_side, entry))
+        _per_sym_full_sets[sym_side] = (now, merged)
+        return merged
+    except Exception:
+        return None
+
+
 def _get_per_sym_overrides(symbol: str, side: str) -> dict:
     """Return per-sym override dict from global per_sym_active_config.json.
     Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, etc.).
@@ -3078,7 +3118,7 @@ def _get_per_sym_overrides(symbol: str, side: str) -> dict:
     V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return {}
-    global _per_sym_cfgs, _per_sym_cfgs_mtime
+    global _per_sym_cfgs, _per_sym_cfgs_entries, _per_sym_cfgs_mtime
     try:
         mtime = _per_sym_cfgs_path.stat().st_mtime
         if mtime != _per_sym_cfgs_mtime:
@@ -3091,11 +3131,15 @@ def _get_per_sym_overrides(symbol: str, side: str) -> dict:
                 for k, v in raw.items()
                 if isinstance(v, dict)
             }
+            _per_sym_cfgs_entries = raw
             _per_sym_cfgs_mtime = mtime
     except FileNotFoundError:
         pass
     except Exception as _exc:
         logger.warning("PER_SYM_CFG load error: %s", _exc)
+    full = _per_sym_full_set(f"{symbol}_{side}")
+    if full is not None:
+        return full
     return _apply_final_book(
         f"{symbol}_{side}", _per_sym_cfgs.get(f"{symbol}_{side}", {})
     )

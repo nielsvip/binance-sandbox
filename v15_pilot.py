@@ -131,19 +131,59 @@ DEAD_VEC_SWITCHES = frozenset({
     # functional live read (AUGMENT_FALLBACK/BOUNCE/BREAKOUT MIN_GAIN: tradier_manage.py:32293
     # is a `_=_aug` stub) or live logic needs data absent from NPZs (stale-price, HTF force-close
     # confirm, ALL_TF close rater, band-arrow scorer, DD bounce) — do not fake:
-    "AUGMENT_FALLBACK_GAIN_PCT", "AUGMENT_BOUNCE_MIN_GAIN_PCT", "AUGMENT_BREAKOUT_MIN_GAIN_PCT",
-    "DD_BOUNCE_ENABLED", "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
-    "HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H", "ALL_TF_AGAINST_CLOSE_MIN_TFS",
-    "ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC", "BAND_ARROW_SLOPE_DEADBAND",
-    "ASYMMETRIC_STOPS_ENABLED", "BB_FROZEN_STOP_FIELD", "BB_FROZEN_STOP_TF",
+    "AUGMENT_FALLBACK_GAIN_PCT",
+    "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
+    # BAND_ARROW_SLOPE_DEADBAND + HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H removed 2026-10-15: both now proven real on BOTH
+    # sides by the dead-range-aware + stub-aware probe — vec_decisions/{wirec_band_arrow,twin_entry_ports_b}.py and
+    # {grey_wire_exits,ported_exit,twin_sizing_reduce}.py, live tradier_manage.py:19795 / ez_manage.py:51776.
+    # (BAND_ARROW's live per-sym read was added the same day; note band_arrow_score still re-checks the BAND_ARROW
+    # master on the GLOBAL config, so the stocks band-arrow entry leg stays inert until that shadow is lifted.)
+    "CONNORS_RSI2_TIME_STOP_BARS_DAILY", "DD_BOUNCE_DD_STOP_ENABLED",
+    "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", "HEDGE_EXIT_BYPASS_NOLOSS",
+    # 🔴 2026-10-15 SELF-CORRECTION — these 18 were wrongly REMOVED from this set earlier today and are now BACK.
+    # The removal was justified with a probe that had the very blind spot it was written to catch: it accepted a
+    # QuickConfig dataclass FIELD plus AUTO_WIRED_PARAMS membership as "vec wiring". The header above already says
+    # that membership is INERT, and it is: _apply_auto_wired_params (v12_quick_engine.py:799),
+    # _apply_universal_distinctness_fallback (:809), _batch1_template_wiring (:256) and
+    # _wire_07_exit_stops_tranche (:779) are all `return`-first passthroughs (2026-09-28/09-30 NO-LIES purges, bodies
+    # erased). A switch whose ONLY vec presence is a field + that membership has a vec delta of STRUCTURALLY 0.
+    # Why putting them back matters more than "more coverage": 15 of these 18 DO have a real live consumer, so a
+    # promoted value WOULD change live behaviour — while the board that promoted it measured nothing. Board
+    # nondeterminism is +/-0.48 gain (identical tree + NPZ, wall-clock phase budgets), which is on its own enough to
+    # promote a structural zero on noise. These are stop / trail / breakeven switches, so that is the 2026-10-15
+    # EXIT_R1_R2_FILTER_TF accident running in reverse: live protection changed with zero backtest evidence.
+    # Verified INERT on the vec side by a dead-range-aware probe (reads inside the 4 purged functions, the QuickConfig
+    # field block and the AUTO_WIRED_PARAMS list all excluded). They come out ONLY when a real vectorized path lands.
+    # The 12 that genuinely do have a real vec read stay OUT of this set and are correctly testable:
+    #   ALL_TF_AGAINST_CLOSE_{COOLDOWN_SEC,MIN_TFS}, AUGMENT_{BOUNCE,BREAKOUT}_MIN_GAIN_PCT,
+    #   BB_FROZEN_STOP_{FIELD,TF}, DD_BOUNCE_ENABLED, EXIT_R1_R2_FILTER_TF (v12q:17114),
+    #   FROZEN_STOP_FILTER_TF (v12q:17091), TRAILING_AUG_MAX_PER_POSITION,
+    #   UNIVERSAL_NOLOSS_GATE_BYPASS_{REASONS,TECHNICAL}
+    # WT_CROSSUNDER_FINAL_ENABLED added 2026-10-15: live-only 5m exit (tradier_manage.py:15191, hardcoded "5m");
+    # vec_decisions/twin_entry_ports_b.py:415 is never called by v12_quick_engine or backtest_v12_engine and the NPZ
+    # has no wt1_5m/k_5m, so its vec delta is structurally 0. It produced 40 of 2026-10-15's exit reasons. OFF in
+    # config_tradier; excluded here so no board can promote it back on noise.
+    "WT_CROSSUNDER_FINAL_ENABLED",
+    # 🔴 2026-10-15 added with their template rows the same night. Rows were created for these (user mandate, via the
+    # sanctioned adder) but all three have ZERO `cfg.X` reads in v12_quick_engine.py and no vec_decisions predicate —
+    # verified by grep. The adder's vec gate let them through because `vec_read_count` is a non-empty dict of zeros.
+    # So their board delta is structurally 0, and board nondeterminism (+/-0.48 gain) alone could promote them into a
+    # live per_sym set — the exact mechanism that moved EXIT_R1_R2_FILTER_TF and cost 13 positions their whole peak.
+    # Excluded from testing until vectorised. The ROWS stay (they are correct and the user asked for them); when a
+    # real vec predicate lands, remove the name here and it becomes testable immediately.
+    # WT_CROSS_REQUIRE_HTF_AGREE is ALSO removed from WT_CORE_MANDATORY_BASES for the same reason — as a WT-core
+    # member it would otherwise receive the full ~127-column no-skip sweep, every cell a structural zero.
+    "WT_CROSS_REQUIRE_HTF_AGREE",
+    "WT_CROSSUNDER_15M_SHORT",
+    "WT15_CROSS_DC_BASIS_GATE_ENABLED",
+    "ASYMMETRIC_STOPS_ENABLED",
     "BOTTOM_A_PROTECTIVE_TRAIL_ARM_TIMEFRAME", "BOTTOM_A_PROTECTIVE_TRAIL_BREAK_BUFFER_ATR",
     "BOTTOM_A_PROTECTIVE_TRAIL_DISTANCE_MULT", "BOTTOM_A_PROTECTIVE_TRAIL_ENABLED",
     "BOTTOM_A_PROTECTIVE_TRAIL_LOOKBACK", "BOTTOM_A_PROTECTIVE_TRAIL_MODE",
-    "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME", "BREAKEVEN_EXIT_AFTER_BARS",
-    "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", "BREAKEVEN_EXIT_AFTER_BARS_TF",
-    "CONNORS_RSI2_TIME_STOP_BARS_DAILY", "DC4_STOP_GR_SCORE_MIN_IND", "DC4_STOP_GR_SCORE_MIN_TFS",
-    "DC_LOW_FROZEN_STOP_TF", "DD_BOUNCE_DD_STOP_ENABLED", "EMERGENCY_BRAKE_DC_STOP_FIELD",
-    "EXIT_PREEMPTIVE_BREAKEVEN_ENABLED", "HEDGE_EXIT_BYPASS_NOLOSS", "NEVER_GO_RED_STOP_ENABLED",
+    "BOTTOM_A_PROTECTIVE_TRAIL_TRAIL_TIMEFRAME",
+    "BREAKEVEN_EXIT_AFTER_BARS", "BREAKEVEN_EXIT_AFTER_BARS_BUFFER_PCT", "BREAKEVEN_EXIT_AFTER_BARS_TF",
+    "DC4_STOP_GR_SCORE_MIN_IND", "DC4_STOP_GR_SCORE_MIN_TFS", "DC_LOW_FROZEN_STOP_TF",
+    "EMERGENCY_BRAKE_DC_STOP_FIELD", "NEVER_GO_RED_STOP_ENABLED",
     "NEWBORN_DC_STOP_FIELD", "NEWBORN_DC_STOP_MAX_AGE_MIN",
     # NOLOSS_BYPASS_WT_5OF5_MIN_TFS removed 2026-09-28: really wired now (vec_decisions/reduce_profit_lock round)
     # FILTER_TF pair added: only live reads are `_=getattr` stubs (tradier_manage.py:32589/32623) — no semantics to mirror
@@ -152,15 +192,31 @@ DEAD_VEC_SWITCHES = frozenset({
     "LIVE_ENTRY_ENGINE_FILTER_TF", "HA_WICK_QUALITY_TF", "HA_WICK_QUALITY_ENABLED", "HA_WICK_QUALITY_SCORE",
     # Wave-3 census verdicts 2026-09-28: ops/portfolio state or no vec parent (reasons in filter_wiring_census.json)
     "COOLDOWN_LOCKS_FILTER_TF", "DC_MOMENTUM_BOTA_SCORER_FILTER_TF", "DELTA_ENGINE_FILTER_TF",
-    "DUP_GUARD_FILTER_TF", "FH_MOMENTUM_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF",
+    # FH_MOMENTUM_FILTER_TF removed 2026-10-15: real on both sides — vec_decisions/twin_yellow_filters.py et al,
+    # live ez_manage.py:59443 (the Wave-3 "no vec parent" verdict was wrong, same getattr-census blind spot).
+    "DUP_GUARD_FILTER_TF", "FIRST_OPEN_THROTTLE_FILTER_TF",
     "FUNDING_GATE_FILTER_TF", "GOLDEN_RULE_ENFORCE_FILTER_TF", "GR_FILTER_VEC_FILTER_TF",
     "HAIKU_WINNER_FILTER_TF", "MTF_ARMED_ENTRIES_FILTER_TF",
     # Wave-4 final census verdicts: parent not vectorized / state absent
-    "EXIT_R1_R2_FILTER_TF", "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
-    "FROZEN_STOP_FILTER_TF", "OPEN_INTENT_SIZE_GATES_FILTER_TF",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF", "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF",
     "NOLOSS_DC4H_GATE_ENABLED", "QUICK_BREAKEVEN_GAIN_EROSION_VEC_ENABLED",
-    "STOP_MAJOR_LOSS_ENABLED", "STOP_TIMEFRAME", "TRAILING_AUG_MAX_PER_POSITION",
-    "UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS", "UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL",
+    "STOP_MAJOR_LOSS_ENABLED", "STOP_TIMEFRAME",
+    # 🔴 2026-10-15 MIS-CENSUS REPAIR (USER "this stinks like complete filter skipping ... FATAL").
+    # 30 switches were removed from this set today. The 2026-09-28 census verdicted them
+    # "no functional live read" / "parent not vectorized / state absent" because it counted only
+    # SINGLE-LINE `getattr(cfg, NAME)` hits and so missed every MULTI-LINE `_cfg("NAME",\n default,
+    # account_key, symbol, side)` consumer. All 30 are in fact wired on BOTH sides (QuickConfig field
+    # AND a v12_quick_engine body read AND a live _cfg/_gx_c/_ftf_ps consumer) — proof:
+    # tools/v15_deadvec_wiring_audit.py. Consequence of the wrong verdict: v15_pilot never
+    # delta-tested them, so they carried un-backtested values into live. On 2026-10-15 that put
+    # EXIT_R1_R2_FILTER_TF 15m->D on 103/197 stock sym_sides (r2_eff_tfs: "15m" => legs (1h,4h,D);
+    # "D" => leg (D,) only, i.e. the 1h+4h PEAK-THEN-COLLAPSE exit silently removed) and
+    # FROZEN_STOP_FILTER_TF 15m->OFF on 103 — 100% one-directional on both, which a per-sym_side
+    # delta search cannot produce (compare ATR_ADAPTIVE_STOP_MULT: 64 sym_sides, 23 distinct
+    # transitions). 13 Tradier positions gave back their entire peak that day (CRWD_SHORT +13.01%
+    # -> -0.20%, SNDK_SHORT +7.71% -> -0.68%, UUUU_SHORT +5.51% -> -7.10%).
+    # NEVER re-add a switch here on a getattr-count. Dataflow-verify both sides first.
 })
 # Portfolio-level live reduce paths (intraday L/S ratio trims, EOD slim, sentiment rebalance):
 # single-symbol NPZ evals cannot see portfolio state, so these are live-only by construction,
@@ -172,7 +228,27 @@ LIVE_ONLY_SWITCHES = frozenset({
     "INTRADAY_RATIO_MAX_TRIMS_PER_DAY", "EOD_SLIM_RATIO_ENABLED",
     "SENTIMENT_REBAL_REDUCE_DEVIATION_THR", "SENTIMENT_REBAL_COOLDOWN_MIN",
 })
-PROGRESS_JSON_EVERY_S = float(os.environ.get("V15_PROGRESS_JSON_EVERY_S", "60"))  # 2026-10-14 profile: 15 s full dumps of the 3-35 MB JSON cost ~0.17 s/row; delta log keeps every eval, promotions force a write
+PROGRESS_JSON_EVERY_S = float(os.environ.get("V15_PROGRESS_JSON_EVERY_S", "60"))  # USER 2026-10-15 "keep more in memory ... once every 5min or so max". DEFAULT HELD AT 60 s (2026-10-15 05:1xZ): a CLEAN sequential A/B (both arms rc=0, no reaper interference) showed the 300 s arm did NOT reproduce champion — 3373 vs 3376 rows, 7 vs 10 promotions, final_gain 8.3799 vs 8.9128 (-0.53 pp) — while interval 0 reproduced champion byte for byte. Causality vs run-to-run nondeterminism is still under test (champion-vs-champion control), and the measured upside was only -3.1 % wall / -19 % write bytes, so 300 s does not ship until the control proves the difference is noise. Set V15_PROGRESS_JSON_EVERY_S=300 to opt in. MEASURED (py-spy + per-process /proc io over full boards): the 60 s throttle was already in force on the production path (JSON rewritten once per 72-80 s, ~0.157 MB/s, ~424 MB per board), and 87.6% of board CPU is inclusive in simulate_one inside the pool workers while the writing parent is <=8% — so this is a write-volume reduction, NOT a throughput fix. An earlier comment here claimed 2.9 MB/s / ~93% overhead from a 25 s single-process sample; that was wrong. A/B on DOTUSDT_LONG: promoted set md5 and final_gain IDENTICAL, wall +1.3% (noise). Delta log keeps every eval; promotions force a write.
+WB_SAVE_EVERY_S = float(os.environ.get("V15_WB_SAVE_EVERY_S", "300"))  # legacy-fallback workbook saves only: the PRODUCTION spec-filler saves on XLSX_SAVE_EVERY_S (600 s) and is untouched by this knob
+
+
+def _flush_interval_s(name: str, default: float) -> float:
+    """Resolved per call, NOT at import: the gated defaults in data/v15_gate_flags.json are injected into os.environ by
+    _load_gate_flags() further down this module, i.e. AFTER the two constants above are evaluated. Reading the env here
+    makes both that file and a plain env var a one-step kill switch for the 2026-10-15 flush throttle."""
+    try:
+        return float(os.environ.get(name, default))
+    except Exception:
+        return float(default)
+
+
+def _flush_due(last_t: float, interval_s: float, now: float, force: bool = False) -> bool:
+    """Pure: persist now? force always writes; interval <= 0 writes on every call, i.e. the exact pre-2026-10-15
+    write-every-row behaviour — that is the documented revert (V15_PROGRESS_JSON_EVERY_S=0 / V15_WB_SAVE_EVERY_S=0)."""
+    try:
+        return bool(force) or (float(now) - float(last_t)) >= float(interval_s)
+    except Exception:
+        return True
 # 2026-09-28 OOM FIX: unbounded eval cache grew for the pilot's lifetime (~72k evals/sym_side of result
 # dicts) and contributed to OOM kills that truncated workbook saves (19 BadZip files quarantined
 # backups/corrupt_xlsx_20260928/). Bounded FIFO: oldest quarter evicted when the cap is hit — identical
@@ -195,6 +271,25 @@ _per_cell_hard_limit = YELLOW_TIMEOUT
 per_cell_deadline = YELLOW_TIMEOUT
 
 ROOT = Path(__file__).resolve().parent
+
+
+def _load_gate_flags():
+    """USER 2026-10-14: "make sure the verifier is in place on the fixed npz set on s2 that runs every new version of v15_pilot.py
+    and subscripts and only allows a modification if results improve". Feature switches that change what the board evaluates
+    (V15_BRAIN, V15_BRAIN_NAKED, ...) take their DEFAULT from data/v15_gate_flags.json, written ONLY by tools/v15_version_gate.py
+    after a PASS on the frozen-NPZ bench. An explicit env var still wins (ops / bench). Missing file = all gated switches off."""
+    try:
+        f = Path(os.environ.get("V15_GATE_FLAGS") or (ROOT / "data" / "v15_gate_flags.json"))
+        d = json.loads(f.read_text()).get("flags") or {} if f.exists() else {}
+        for k, v in d.items():
+            if str(k).startswith("V15_") and k not in os.environ:
+                os.environ[str(k)] = str(v)
+        return d
+    except Exception:
+        return {}
+
+
+GATE_FLAGS = _load_gate_flags()
 # USER 2026-09-28 "no double compute before mega sweep": only yellows on this allowlist get
 # evaluated; the rest are PENDING_WIRING grey until their family's real vector path lands
 # (see FILTER_WIRING_CENSUS_20260928.md). Missing/unreadable file -> None -> evaluate all
@@ -630,6 +725,94 @@ def get_template_for_symside(symside: str) -> Path:
     if cand.exists():
         return cand
     raise SystemExit(f"REFUSED: missing template {cand} for {symside} — no cross-side fallback (4 independent templates); restore the file, never substitute another side's")
+
+
+def _pair_partner_decision(symside, partner_progress_md5, current_md5, template_ok=True, blocked=False):
+    """USER 2026-10-14 pair-in-RAM (pure, tested): -> opposite sym_side to calculate in THIS process
+    before the symbol leaves RAM, or None. None when the partner is blocked/not tradeable, has no
+    template, or was already calculated on the SAME NPZ vintage (md5 equal — cadence owns it then)."""
+    s = str(symside or "").upper()
+    if s.endswith("_LONG"):
+        partner = s[:-5] + "_SHORT"
+    elif s.endswith("_SHORT"):
+        partner = s[:-6] + "_LONG"
+    else:
+        return None
+    if blocked or not template_ok:
+        return None
+    if partner_progress_md5 and current_md5 and str(partner_progress_md5) == str(current_md5):
+        return None
+    return partner
+
+
+def _pair_blocked(symside, trb_long=None, trb_short=None, mandatory_long=None, mandatory_short=None, non_shortable=None, tradeable_keys=None):
+    """True = partner side must never be calculated. USER 2026-10-14 tradeable rule: a STOCKS side is
+    tradeable iff its symbol is in symbols_trb_{side}.json OR TRADIER_MANDATORY_{side}_TRB in
+    config_tradier (plus NON_SHORTABLE excludes shorts). CRYPTO: present in tradeable_keys.json when
+    that file exists. Injected sets are for tests; unreadable sources fail open (scheduler also gates)."""
+    s = str(symside or "").upper()
+    base = s[:-5] if s.endswith("_LONG") else s[:-6] if s.endswith("_SHORT") else s
+    is_crypto = base.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI"))
+    side = "LONG" if s.endswith("_LONG") else "SHORT" if s.endswith("_SHORT") else ""
+    if not side:
+        return True
+    if not is_crypto:
+        if side == "SHORT":
+            ns = non_shortable
+            if ns is None:
+                try:
+                    import re as _re
+
+                    m = _re.search(r"NON_SHORTABLE\s*=\s*\{([^}]*)\}", (ROOT / "config_tradier.py").read_text())
+                    ns = set(_re.findall(r'"([A-Z0-9.\-]+)"', m.group(1))) if m else set()
+                except Exception:
+                    ns = set()
+            if base in ns:
+                return True
+
+        def _load(name, injected):
+            if injected is not None:
+                return set(injected)
+            try:
+                v = json.loads((ROOT / name).read_text())
+                return {str(x).upper() for x in v} if isinstance(v, list) else set()
+            except Exception:
+                return None
+
+        def _mand(injected, key):
+            if injected is not None:
+                return set(injected)
+            try:
+                import re as _re
+
+                m = _re.search(rf"{key}\s*=\s*\[([^\]]*)\]", (ROOT / "config_tradier.py").read_text())
+                return set(_re.findall(r'"([A-Z0-9.\-]+)"', m.group(1))) if m else set()
+            except Exception:
+                return None
+
+        trb = _load(f"symbols_trb_{side.lower()}.json", trb_long if side == "LONG" else trb_short)
+        mand = _mand(mandatory_long if side == "LONG" else mandatory_short, f"TRADIER_MANDATORY_{side}_TRB")
+        if trb is None and mand is None:
+            return False
+        return base not in (trb or set()) and base not in (mand or set())
+    keys = tradeable_keys
+    if keys is None:
+        try:
+            tk = ROOT / "tradeable_keys.json"
+            keys = json.loads(tk.read_text()) if tk.exists() else None
+        except Exception:
+            keys = None
+    if isinstance(keys, list) and keys:
+        return not any(str(k).endswith(f":{s}") for k in keys)
+    return False
+
+
+def _progress_npz_md5(symside):
+    try:
+        d = json.loads((PROGRESS_DIR / f"{symside}_v14_progress.json").read_text())
+        return str((d.get("npz_id") or {}).get("md5") or "") or None
+    except Exception:
+        return None
 
 
 # V15_OUT_DIR isolates proof runs (DONE-stage publish renames same-sym_side sheets in OUT_DIR to .superseded)
@@ -1148,7 +1331,35 @@ def _load_kg_bases() -> set:
         print(f"[KG-mandatory] {len(bases)} real KG bases loaded", flush=True)
     return _KG_BASES_CACHE
 
-def mandatory_bases_for_tab(sname: str) -> set:
+def mandatory_bases_for_tab(sname: str, switch=None) -> set:
+    """Bases forced into a row's yellow set regardless of the >=2-shared-token rule.
+
+    🔴 2026-10-15 WT CORE ATTACHMENT. Membership in WT_CORE_MANDATORY_BASES / ESSENTIAL_GATE_SWITCHES only exempts a
+    row from PRUNING — nothing consulted it for ATTACHMENT, so the WT rows never gained a single filter column from
+    it. Measured before this change: WT_15M_BOUNCE_OPEN_ENABLED attached 49 yellows of which only **12** were
+    WT-specific (the other 37 are the generic KG/EMA/COUNTER_TREND gates), and on EXIT_VELOCITY the cross-exit rows
+    attached 0-14 with **zero** WT gates — WT_CROSS_EXIT_ENABLED got 2 (both LH_LL_TOP_EXIT_ENABLED, matched on
+    {EXIT,ENABLED}), WT_CROSS_EXIT_MIN_AGE_MINUTES got 3 (all WT_15M_BOUNCE_BB_MIN, matched on {WT,MIN} — a Bollinger
+    ENTRY filter offered as the gate for a cross-EXIT's minimum age), and APPLIES_TO_WINNERS/LOSERS evaluated NOTHING
+    because their only yellow is EXIT_TO_REDUCE_ADAPTER_FILTER_TF, which is in UNWIRED_FILTERS.
+    The token rule cannot bridge this: WT_CROSS_EXIT_ENABLED & WT_15M_BOUNCE_VOLUME_MODE share only {WT} = 1 token,
+    and lowering V15_YELLOW_MIN_SHARED to 1 would attach every *_EXIT_*/*_ENABLED column in the tab while still
+    adding zero WT gates.
+    SCOPED ON PURPOSE to rows that ARE WT core members, not to whole tabs: the fleet is throughput-bound (~2
+    boards/h on 2026-10-15), so forcing 20 extra bases onto every row of EXIT_VELOCITY would buy nothing and cost
+    evals everywhere. `_header_disc_precompute` is cached per (sheet, switch), so a switch-aware mandatory set costs
+    no extra cache pressure. Only bases that EXIST as a column and are config-known can attach — today that is 5 of
+    the 20, rising as the sanctioned adder lands the missing WT filter columns.
+    Kill switch: V15_WT_CORE_MANDATORY=0.
+    """
+    _sw = str(switch).strip() if switch is not None else ""
+    _wt: set = set()
+    if _sw in WT_CORE_MANDATORY_BASES and os.environ.get("V15_WT_CORE_MANDATORY", "1") != "0":
+        try:
+            _wt = set(WT_CORE_MANDATORY_BASES) & known_config_fields()
+        except Exception:
+            _wt = set(WT_CORE_MANDATORY_BASES)
+        _wt.discard(_sw)  # a switch is never its own yellow filter
     if sname in ENTRY_TABS_MANDATORY:
         out = set()
         if os.environ.get("V15_KG_MANDATORY", "1") != "0":
@@ -1158,13 +1369,15 @@ def mandatory_bases_for_tab(sname: str) -> set:
                 out |= set(COUNTER_TREND_MANDATORY_BASES) & known_config_fields()
             except Exception:
                 out |= set(COUNTER_TREND_MANDATORY_BASES)
-        return out
+        return out | _wt
     if sname in REENTRY_TABS_MANDATORY and os.environ.get("V15_RECROSS_MANDATORY", "1") != "0":
         try:
-            return set(RECROSS_MANDATORY_BASES) & known_config_fields()
+            return (set(RECROSS_MANDATORY_BASES) & known_config_fields()) | _wt
         except Exception:
-            return set(RECROSS_MANDATORY_BASES)
-    return set()
+            return set(RECROSS_MANDATORY_BASES) | _wt
+    # EXIT_VELOCITY / EXIT_STRUCTURAL / REDUCE_* / AUGMENT_* / GLOBAL_RISK_GATES had NO mandatory set at all, which
+    # is why the cross-exit rows lived entirely off accidental token collisions. _wt is their first one.
+    return _wt
 
 # USER 2026-10-04 ESSENTIAL-ROWS GATE: the make-or-break protection filters. No sheet may
 # finish/qualify while any of these has no non-zero number in its rows (naked G, any yellow,
@@ -1190,7 +1403,46 @@ def mandatory_bases_for_tab(sname: str) -> set:
 # switch and refused a healthy +40.77/52t sheet. KG membership above (KINDERGARTEN_* + EMA_9_21_FILTER_*) is
 # the EMA protection proof now; the blanket stays sweepable, just never essential.
 # Venue binding proven by S1 flip test 2026-10-04 (tmp_s1_flip_test.py) — see matrix in report.
+# 🔴 WT CORE — NEVER PRUNED, EVERY ROUND, EVERY SYM_SIDE (USER 2026-10-15):
+# "wt_15m bounce entry and cross exit are probably the most important switches in the system that should always be
+#  True but have about 80 yellow boxes that can not be skipped in any test to optimize them as they SHOULD ALWAYS BE
+#  the entry and exit points but not in every occasion (hence the 80 filters that need to be tested on them). These
+#  should never be skipped and run in the worst_first and AGAIN in the pinpoint system without exception."
+# MEASURED VIOLATION (2026-10-15 boards of that day's losers): the WT_15M_BOUNCE_OPEN_ENABLED row carried
+# 0 yellows on ZCSH_SHORT / ULTA_LONG / ORCL_SHORT, 12 on CRWD_SHORT, 22 on CLS_LONG/VLO_LONG, 30 on
+# TRGP/ACN/CLF, 47 on IBIT_LONG, 49 on WDAY_SHORT — never the ~80 the switch actually has, and JNJ/PATH/BHVN/HP/UNH
+# had no board at all. Every recoverable entry among that day's losers came from WT_15M_BOUNCE_OPEN
+# (16 long losers -$194.08, 7 short -$60.14) while its strongest gates sat unset live (RSI_MAX / RVOL_MIN /
+# REQUIRE_HTF = None on every loser, HIGH_1H_GT_PREV = False) — i.e. the system's primary entry was running
+# ungated because its filters were pruned out of the search, not because they lost on delta.
+# Membership in ESSENTIAL_GATE_SWITCHES is the enforcement: it is the single chokepoint every prune path consults —
+# prior_row_policy(exempt=...) via the _px flag, _brain_exempt (brain row/cell sampling), and the zero-condemned
+# guard. An exempt row returns mode "full": nothing pruned, every yellow evaluated, naked + all filters.
+WT_CORE_MANDATORY_BASES = frozenset({
+    # the two entry points
+    "WT_15M_BOUNCE_OPEN_ENABLED", "WT_15M_CROSS_ENTRY_ENABLED",
+    # the cross exits. NOT WT_CROSSUNDER_FINAL_ENABLED: it is live-only on a hardcoded 5m leg
+    # (tradier_manage.py:15191) and vec_decisions/twin_entry_ports_b.py:415 has NO call site in either engine, so its
+    # vec delta is structurally 0 — exempting it from pruning would hand it a full 80-yellow sweep of zeros that
+    # board noise (+/-0.48) could promote, switching a non-vectorizable 5m exit back on. It is in DEAD_VEC_SWITCHES
+    # and OFF in config_tradier instead. Vectorise it (wt1_5m/k_5m in the NPZ + a compute_exit_signals call) to
+    # make it testable, then it belongs here.
+    "WT_CROSS_EXIT_ENABLED", "WT_LOWER_CROSS_EXIT_TF",
+    "WT_CROSS_EXIT_APPLIES_TO_WINNERS", "WT_CROSS_EXIT_APPLIES_TO_LOSERS",
+    "WT_CROSS_EXIT_MIN_AGE_MINUTES", "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM",
+    # the gating filters that decide WHEN they fire — the "not in every occasion" half of the mandate
+    "WT_15M_BOUNCE_BB_MIN", "WT_15M_BOUNCE_BB_MAX",
+    "WT_15M_BOUNCE_HIGH_1H_GT_PREV", "WT_15M_BOUNCE_LOW_1H_GT_PREV",
+    # NOT WT_CROSS_REQUIRE_HTF_AGREE: row added 2026-10-15 but it has ZERO cfg.X reads in v12_quick_engine, so every
+    # one of the ~127 no-skip cells it would get is a structural zero that noise could promote. It is in
+    # DEAD_VEC_SWITCHES until a real vec predicate exists; move it back here the moment one does — it is the natural
+    # HTF gate for the cross entry/exit and belongs in the core set on merit.
+    "WT_15M_BOUNCE_REL_VOL_GT_1", "WT_15M_BOUNCE_REQUIRE_BOTH_HTF",
+    "WT_15M_BOUNCE_FILTER_MODE", "WT_15M_BOUNCE_FILTER_HH_ENABLED", "WT_15M_BOUNCE_FILTER_HL_ENABLED",
+    "WT_15M_BOUNCE_VOLUME_FILTER_ENABLED", "WT_15M_BOUNCE_VOLUME_MODE", "WT_15M_BOUNCE_VOLUME_THRESHOLD",
+})
 ESSENTIAL_GATE_SWITCHES = frozenset({
+    *WT_CORE_MANDATORY_BASES,
     "KINDERGARTEN_EMA_GATE_ENABLED", "KINDERGARTEN_FILTER_TF",
     "KINDERGARTEN_CUMULATIVE_MIN_TFS",
     "EMA_9_21_FILTER_ENABLED", "EMA_9_21_FILTER_FILTER_TF", "EMA_9_21_FILTER_MIN_TFS",
@@ -1373,7 +1625,16 @@ def _mandatory_summary() -> str:
 
 # GLOBAL_ONLY (USER 2026-10-13): never a row, never in a board's cumulative/final set, stripped on every ingest + progress write.
 # 2026-10-14: 3 live per-sym rows carried PARITY_VEC_EXACT_MODE=False -> crypto sym_sides traded without vector authorization.
-GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "SIM_ACCOUNT", "SIM_TRADING_ACCOUNT"})
+# 🔴 2026-10-15 (USER "PARITY_VEC_EXACT_MODE make sure this is TESTED on every v15_pilot.py run and always gets the
+# setting for the result with the best delta for that sym_side only"): PARITY_VEC_EXACT_MODE is NO LONGER global-only.
+# Forcing it global is what put False->True on 146/197 stock sym_sides in one morning, 100% one-directional, with zero
+# per-sym_side delta evidence — it routes the whole bar decision (tradier_manage.py:14314 _vec_exact_process, "every
+# live-only path is suppressed"), so it is the single highest-leverage switch in the system and must be measured, not
+# decreed. It now needs a tested row per sym_side (PARITY_VEC_EXACT_MODE True/False in GLOBAL_RISK_GATES) —
+# tools/v15_deadvec_wiring_audit.py --require-row fails closed until the template carries it.
+# The 2026-10-14 accident it was meant to prevent (a per-sym False slipping in unmeasured) is now covered by the row
+# itself: False only survives if it WON on delta for that sym_side.
+GLOBAL_ONLY_KEYS = frozenset({"AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "SIM_ACCOUNT", "SIM_TRADING_ACCOUNT"})
 
 
 def install_sim_account_hook(symside: str):
@@ -2077,6 +2338,21 @@ _ADAPT_TREND_KIND = ("FILTER", "GATE", "VETO")
 QUAL_TIM_MIN, QUAL_TIM_MAX = 20.0, 80.0
 # USER 2026-10-14: "no xlsx should be able to finalize with <10 trades, >30%dd" — max DD is a hard finish gate (never a near-miss)
 QUAL_DD_MAX = float(os.environ.get("V15_QUAL_DD_MAX", "30"))
+# 🔴 2026-10-16 USER: "_qualifies_30d needs gain > 0. Not true since about a week we trade everything just minimal
+# amounts for the losers". The gain>0 publish gate encoded an assumption that stopped being true ~2026-10-09: a
+# negative-gain sym_side IS traded live, at minimal size, so its board still governs real orders and must be allowed
+# to publish. The old gate created a trap exactly where it hurt most — a LOSING sym_side could never publish an
+# improvement, so the bleeding boards stayed frozen on the settings that were bleeding. Measured 2026-10-16:
+# RLCUSDT_SHORT's best move (FROZEN_STOP_FILTER_TF=4h + BB_FROZEN_STOP_ENABLED=True) improved it +3.11
+# (-30.65 -> -27.54) and was REFUSED for gain<=0; IBIT_LONG's GAP_MOC_EXIT_ENABLED=True measured +1.06 and was
+# refused on TIM. Tier-1 means losing, so under the old gate nothing on a tier-1 board could ever qualify.
+# -inf = gain is no longer a publish gate. The other gates are UNCHANGED and still bind: valid, trades >=
+# ADAPT_FLOOR_TRADES (10), TIM within [QUAL_TIM_MIN, QUAL_TIM_MAX], max_dd <= QUAL_DD_MAX (30).
+# WHAT STILL PREVENTS A REGRESSION: the best-start law (BIBLE, 2026-10-13) — the baseline is the previous best
+# published set re-measured, and a row only promotes on a POSITIVE delta vs the running cumulative, so a published
+# final can never sit below where it started. Loss REDUCTION is now promotable; loss INCREASE still is not.
+# Restore the old behaviour in one step: V15_QUAL_GAIN_MIN=0
+QUAL_GAIN_MIN = float(os.environ.get("V15_QUAL_GAIN_MIN", "-inf"))
 QUAL_365D_FLOOR_TRADES = 80
 QUAL_MAX_REDOS = int(os.environ.get("V15_QUAL_MAX_REDOS", "2"))
 QUAL_365D_TIMEOUT = float(os.environ.get("V15_QUAL_365D_TIMEOUT", "600"))
@@ -2103,8 +2379,11 @@ def _qualifies_30d(v, bh):
         r.append(f"TIM {tim:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}]")
     g = v.get("gain_pct")
     g = float(g) if g is not None else None
-    if g is None or g <= 0:
-        r.append(f"gain {g}")
+    # 2026-10-16: floor is QUAL_GAIN_MIN (default -inf = gain is NOT a publish gate) — see its definition.
+    # A losing sym_side is traded live at minimal size, so its board must be publishable; the old `<= 0` froze
+    # exactly the bleeding boards on the settings that were bleeding. An UNKNOWN gain still fails, fail-closed.
+    if g is None or g <= QUAL_GAIN_MIN:
+        r.append(f"gain {g}" + ("" if g is None else f" <= floor {QUAL_GAIN_MIN}"))
     try:
         dd = float(v.get("max_dd_pct")) if v.get("max_dd_pct") is not None else None
     except (TypeError, ValueError):
@@ -2286,6 +2565,94 @@ def _npz_path(symside):
     return None
 
 
+# ── HOLDOUT / WALK-FORWARD (USER 2026-10-14 "not self learning correctly … gains deplorable"; OOS audit: published sets keep ~2%
+# of their in-sample lift on unseen bars, in-sample lift does not predict OOS lift, Spearman ~0) ──
+# V15_HOLDOUT_DAYS=7: the whole board FITS on the NPZ truncated in memory at (last bar - 7 d) (same mechanism the audit proved:
+# evaluate_v12._store sliced, nothing on disk changes); at the end the final / start / template sets are scored on the 7 unseen
+# days (real engine, window 7 = 7 calendar days crypto / 7 sessions stocks) -> progress["holdout"] + a HOLDOUT delta-log line.
+# Default 0 = unchanged production. Bible §108.7.
+_HOLDOUT = {"days": float(os.environ.get("V15_HOLDOUT_DAYS", "0") or 0), "cut": None, "on": False, "installed": False}
+_MIN_PROMOTE_DELTA = float(os.environ.get("V15_MIN_PROMOTE_DELTA", "0") or 0)
+
+
+def holdout_cut(last_s: float, days: float) -> float:
+    """Pure: fit-window end = last bar - days."""
+    return float(last_s) - float(days) * 86400.0
+
+
+def _install_holdout(symside: str):
+    if _HOLDOUT["days"] <= 0 or _HOLDOUT["installed"]:
+        return None
+    import numpy as _np_h
+    from tools.opt import evaluate_v12 as _E_h
+    p = _npz_path(symside)
+    if p is None:
+        print(f"[HOLDOUT] {symside} no NPZ — holdout off", flush=True)
+        return None
+    with _np_h.load(str(p), allow_pickle=True) as z:
+        t = _np_h.asarray(z["timestamps"], dtype="float64")
+    t = t[_np_h.isfinite(t) & (t > 0)]
+    last = float(t[-1]) / (1000.0 if t[-1] > 1e11 else 1.0)
+    _HOLDOUT["cut"] = holdout_cut(last, _HOLDOUT["days"])
+    _orig = _E_h._store
+    def _store_h(sym, mode, start):
+        d = _orig(sym, mode, start)
+        if d is None or not _HOLDOUT["on"] or _HOLDOUT["cut"] is None:
+            return d
+        ts = _np_h.asarray(d["timestamps"], dtype="float64")
+        sec = ts / 1000.0 if _np_h.nanmax(ts) > 1e11 else ts
+        right = int(_np_h.searchsorted(sec, _HOLDOUT["cut"] + 1e-6, side="right"))
+        n = len(ts)
+        return {k: (v[:right] if isinstance(v, _np_h.ndarray) and v.ndim and len(v) == n else v) for k, v in d.items()}
+    _E_h._store = _store_h
+    try:
+        _E_h._STORES.clear()
+    except Exception:
+        pass
+    _HOLDOUT.update(on=True, installed=True, orig=_orig)
+    print(f"[HOLDOUT] {symside} FIT window ends {datetime.datetime.utcfromtimestamp(_HOLDOUT['cut']).isoformat()}Z ({_HOLDOUT['days']:.0f} d before the last bar); the last {_HOLDOUT['days']:.0f} d are scored only at the end", flush=True)
+    return _HOLDOUT["cut"]
+
+
+def holdout_score(symside: str, sets: dict, defaults: dict) -> dict:
+    """Score named override sets on the unseen holdout days (truncation switched off, window = holdout days). Real engine."""
+    from tools.opt import evaluate_v12 as _E_h
+    from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_h
+    out = {"days": _HOLDOUT["days"], "cut": _HOLDOUT["cut"]}
+    _HOLDOUT["on"] = False
+    try:
+        _E_h._STORES.clear()
+    except Exception:
+        pass
+    try:
+        prep = _E_h.prepare(symside, int(_HOLDOUT["days"]))
+        if prep is None:
+            out["error"] = "prepare None"
+            return out
+        tt = prep["npz_prepared"]["timestamps"]
+        out["bars"] = int(len(tt))
+        out["bh"] = None if prep.get("bh") is None else float(prep.get("bh"))
+        for name, ov in sets.items():
+            if ov is None:
+                continue
+            r = _eps_h(prep, sanitize_overrides(dict(ov), defaults)[0], int(_HOLDOUT["days"]))
+            out[name] = {k: (float((r or {}).get(k)) if isinstance((r or {}).get(k), (int, float)) and not isinstance((r or {}).get(k), bool) else (r or {}).get(k)) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "pool_sharpe", "valid")}
+    except Exception as e:
+        out["error"] = f"{type(e).__name__}: {e}"[:200]
+    finally:
+        _HOLDOUT["on"] = True
+        try:
+            _E_h._STORES.clear()
+        except Exception:
+            pass
+    g = lambda n: ((out.get(n) or {}).get("gain_pct"))
+    if g("final") is not None and g("start") is not None:
+        out["final_minus_start"] = round(float(g("final")) - float(g("start")), 4)
+    if g("final") is not None and g("template") is not None:
+        out["final_minus_template"] = round(float(g("final")) - float(g("template")), 4)
+    return out
+
+
 def _npz_span_days(symside):
     """Available-history span in days for the symside's NPZ (timestamps peek, mmap). None if unreadable."""
     try:
@@ -2328,6 +2695,293 @@ def _build_publish_manifest(symside, final_name, metrics, counts, overrides_md5,
     except Exception:
         _mm["gain_vs_bh"] = None
     return {"symside": symside, "final_name": final_name, "published_utc": utcnow(), "host": host, "metrics": _mm, "counts": {"F": int(counts[0]), "C": int(counts[1]), "E": int(counts[2]), "done_n": int(counts[3])}, "overrides_md5": overrides_md5, "file_md5": file_md5, "npz_name": npz_name, "npz_md5": npz_md5, "span_days": span_days, "pilot_md5": pilot_md5, "template": template_name}
+
+
+# ── PILOT-TRACK TASKS 07.1 / 04.1 / 05.2 / 05.3 (USER 2026-10-15, stacked gate candidate) ──
+# Every new behavior below is DEFAULT OFF or a zero-cost additive record; the version gate
+# (BIBLE §108.8) decides flips. Nothing here changes a board result unless its env is set.
+
+
+def board_provenance(symside, overrides, final_gain, template_path=None, npz_id=None) -> dict:
+    """Task 07.1: per finished board {engine_md5, npz sha of window, template md5, published set hash, final_gain}.
+    Pure reads + hashes; never raises (None on unreadable). The NPZ window identity is the file sha plus the
+    window bounds (ts_first/ts_last/n) — same-window bytes reproduce, anything else is drift (task 07 step 1)."""
+    import hashlib as _hl_p
+    try:
+        _ov_hash = _hl_p.md5(json.dumps(overrides or {}, sort_keys=True, default=str).encode()).hexdigest()
+    except Exception:
+        _ov_hash = None
+    _nid = npz_id if isinstance(npz_id, dict) else {}
+    _tp = None
+    try:
+        if template_path:
+            _tp = Path(str(template_path))
+            if not _tp.exists():
+                _alt = ROOT / str(template_path)
+                _tp = _alt if _alt.exists() else None
+    except Exception:
+        _tp = None
+    try:
+        _fg = None if final_gain is None else float(final_gain)
+    except Exception:
+        _fg = None
+    return {"engine_md5": _md5_file(ROOT / "v12_quick_engine.py"), "npz_sha": _nid.get("md5"), "npz_window": {k: _nid.get(k) for k in ("ts_first", "ts_last", "n", "size", "mtime_ns")}, "npz_name": (str(_nid.get("path") or "").rsplit("/", 1)[-1] or None), "template_md5": _md5_file(_tp) if _tp is not None else None, "published_set_hash": _ov_hash, "final_gain": _fg}
+
+
+def forward_score_on() -> bool:
+    """Task 04.1 kill switch: V15_FORWARD_SCORE=1 enables, default 0 = fully inert (no file reads, no evals)."""
+    return os.environ.get("V15_FORWARD_SCORE", "0") == "1"
+
+
+def forward_unseen_window(prev_ts_last, cur_ts_last):
+    """Task 04.1 (pure): unseen span between board NPZ ends -> supported scoring window (1/7/30 d).
+    None when nothing new (stale/rewound NPZ) or unparseable — the caller records nothing then."""
+    try:
+        _span = (float(cur_ts_last) - float(prev_ts_last)) / 86400.0
+    except Exception:
+        return None
+    if not (_span > 0):
+        return None
+    if _span <= 1.5:
+        return 1
+    if _span <= 8.0:
+        return 7
+    return 30
+
+
+def forward_loo_sets(prev_overrides, defaults) -> list:
+    """Task 04.1 (pure): [(key, prev-minus-key)] for each known-field key the previous set moved off defaults,
+    sorted for determinism. No evals here — the caller scores each pair on the unseen bars only."""
+    _base = dict(prev_overrides or {})
+    _defs = defaults or {}
+    _out = []
+    for _k in sorted(_base):
+        if _k in GLOBAL_ONLY_KEYS:
+            continue
+        try:
+            if _k not in known_config_fields():
+                continue
+        except Exception:
+            continue
+        try:
+            if same_val(_base.get(_k), _defs.get(_k)):
+                continue
+        except Exception:
+            continue
+        _loo = dict(_base)
+        _loo.pop(_k, None)
+        _out.append((_k, _loo))
+    return _out
+
+
+def forward_pick_prev(candidates, cur_ts_last, min_gap_s=3600.0):
+    """Task 04.1 (pure): newest candidate whose NPZ end predates the current NPZ end by > min_gap_s.
+    None when this board is not a refresh (no older window) — the caller records nothing then."""
+    try:
+        _cur = float(cur_ts_last)
+    except Exception:
+        return None
+    _best = None
+    for _c in candidates or []:
+        try:
+            _tl = float((_c or {}).get("ts_last"))
+        except Exception:
+            continue
+        if not (_cur - _tl > float(min_gap_s)):
+            continue
+        if _best is None:
+            _best = _c
+        else:
+            try:
+                if _tl > float(_best.get("ts_last")):
+                    _best = _c
+            except Exception:
+                continue
+    return _best
+
+
+def forward_prev_candidates(symside, progress_dir=None) -> list:
+    """Task 04.1 source: archived refresh boards (.npzprev_*.json sidecars written at RULE#4 refill) for this
+    symside, each {src, ts_last, final_gain, overrides}. Read-only; [] on any error."""
+    _out = []
+    try:
+        _d = Path(progress_dir) if progress_dir else PROGRESS_DIR
+        _files = sorted(_d.glob(f"{symside}_v14_progress.json.npzprev_*.json"), key=lambda q: q.stat().st_mtime)
+        for _p in _files:
+            try:
+                _pj = json.loads(_p.read_text())
+            except Exception:
+                continue
+            _nid = _pj.get("npz_id") if isinstance(_pj.get("npz_id"), dict) else {}
+            _ov = {k: v for k, v in ((_pj.get("cumulative_overrides")) or {}).items() if not (isinstance(v, str) and " + " in v)}
+            if not _ov:
+                continue
+            _out.append({"src": _p.name, "ts_last": _nid.get("ts_last"), "final_gain": _pj.get("final_gain"), "overrides": _ov})
+    except Exception:
+        pass
+    return _out
+
+
+def run_forward_score(symside, cur_ts_last, defaults, delta_log_fn=None, progress=None, progress_dir=None) -> list:
+    """Task 04.1: score the previous published set + each promoted key leave-one-out on bars added since that
+    board's NPZ end. SCORING ONLY — zero extra fits, no promotions, main pass untouched. Returns the FORWARD
+    records (also appended to the delta log via delta_log_fn and to progress['forward']). [] when disabled
+    (default), when not a refresh, or on any error (fail-silent, warn-only)."""
+    if not forward_score_on():
+        return []
+    _recs = []
+    try:
+        _prev = forward_pick_prev(forward_prev_candidates(symside, progress_dir), cur_ts_last)
+        if _prev is None:
+            return []
+        _win = forward_unseen_window(_prev.get("ts_last"), cur_ts_last)
+        if _win is None:
+            return []
+        from tools.opt.v12_pilot import prepare_batch as _pb_f, evaluate_prepared_sanitized as _eps_f
+        _was_on = bool(_HOLDOUT.get("on"))
+        _HOLDOUT["on"] = False
+        try:
+            try:
+                import importlib as _il_f
+                _E_f = _il_f.import_module("tools.opt.evaluate_v12")
+                _E_f._STORES.clear()
+            except Exception:
+                pass
+            _prep = _pb_f(symside, int(_win))
+        finally:
+            _HOLDOUT["on"] = _was_on
+        if not isinstance(_prep, dict) or _prep.get("_stale"):
+            return []
+        _ts = ((_prep.get("npz_prepared") or {}).get("timestamps") or [])
+        try:
+            _unseen_bars = int(len(_ts))
+        except Exception:
+            _unseen_bars = 0
+        _defs = defaults or {}
+        _full_ov, _ = sanitize_overrides(dict(_prev.get("overrides") or {}), _defs)
+        _full = _eps_f(_prep, _full_ov, int(_win)) or {}
+        def _pick(_r):
+            return {k: (_r or {}).get(k) for k in ("gain_pct", "trades", "max_dd_pct", "tim_pct", "pool_sharpe", "valid")}
+        _fb = _pick(_full)
+        def _d(_a, _b):
+            try:
+                return None if _a is None or _b is None else round(float(_a) - float(_b), 4)
+            except Exception:
+                return None
+        for _key, _loo_ov in forward_loo_sets(_prev.get("overrides"), _defs):
+            try:
+                _sov, _ = sanitize_overrides(dict(_loo_ov), _defs)
+                _rb = _pick(_eps_f(_prep, _sov, int(_win)) or {})
+            except Exception as _le:
+                _rb = {"gain_pct": None, "trades": None, "max_dd_pct": None, "tim_pct": None, "pool_sharpe": None, "valid": None, "error": f"{_le}"[:120]}
+            _rec = {"ts": utcnow(), "sym_side": symside, "label": "FORWARD", "key": _key, "d_gain": _d(_rb.get("gain_pct"), _fb.get("gain_pct")), "d_trades": _d(_rb.get("trades"), _fb.get("trades")), "d_dd": _d(_rb.get("max_dd_pct"), _fb.get("max_dd_pct")), "d_tim": _d(_rb.get("tim_pct"), _fb.get("tim_pct")), "d_sharpe": _d(_rb.get("pool_sharpe"), _fb.get("pool_sharpe")), "unseen_bars": _unseen_bars, "prev_npz_end": _prev.get("ts_last"), "window_days": int(_win), "src": _prev.get("src")}
+            _recs.append(_rec)
+            if delta_log_fn is not None:
+                try:
+                    delta_log_fn(_rec)
+                except Exception:
+                    pass
+        if isinstance(progress, dict):
+            try:
+                progress.setdefault("forward", []).append({"at": utcnow(), "src": _prev.get("src"), "window_days": int(_win), "unseen_bars": _unseen_bars, "prev_npz_end": _prev.get("ts_last"), "n_keys": len(_recs), "full": _fb})
+            except Exception:
+                pass
+        print(f"[FORWARD] {symside} scored prev set + {len(_recs)} LOO keys on {int(_win)}d unseen ({_unseen_bars} bars) from {_prev.get('src')}", flush=True)
+    except Exception as _fe:
+        print(f"[FORWARD-WARN] {symside} {_fe} — main pass unaffected", flush=True)
+        return []
+    return _recs
+
+
+def _priority_lane_on() -> bool:
+    """Task 05.2 kill switch: V15_PRIORITY_LANE=1 enables the 1-worker priority pool, default 0 = shared FIFO only."""
+    return os.environ.get("V15_PRIORITY_LANE", "0") == "1"
+
+
+def _get_critical_pool(ck, prio_pool, eval_cache, inflight, pend_batch):
+    """Task 05.2 routing (pure): a critical-path eval that is nowhere in flight goes to the 1-worker priority
+    pool instead of the shared FIFO. Returns prio_pool or None. No evals, no side effects."""
+    if prio_pool is None:
+        return None
+    try:
+        if ck in eval_cache or ck in inflight:
+            return None
+    except Exception:
+        return None
+    try:
+        if any(c == ck for c, _ in (pend_batch or [])):
+            return None
+    except Exception:
+        return None
+    return prio_pool
+
+
+_HEADER_DISC_CACHE_NOTE = "per-(tab,switch) header discovery"
+
+
+def _header_disc_precompute(sname, switch, header_map, tab_level, mand, defaults) -> dict:
+    """Task 05.3 (pure): the cand-independent half of yellow-cell discovery for one (tab, switch) — token sets
+    over the tab's yellow headers, type gates, skip classes. The cand-dependent ever_yellow membership stays
+    per-row (one hash lookup per header in _header_disc_combine). Same rules as the inline loop (USER 2026-09-30:
+    yellow iff the row's switch name and the column's filter name share >= 2 '_'-tokens, decided from NAMES)."""
+    _sw_tok = frozenset(t for t in str(switch).upper().split("_") if t)
+    _items = []
+    for _hdr in (header_map or {}):
+        _base = _hdr.split("=", 1)[0].strip()
+        _via_base = len(_sw_tok & frozenset(t for t in _base.upper().split("_") if t)) >= YELLOW_MIN_SHARED_TOKENS
+        _tl = _base in (tab_level or set())
+        _want_base = bool(_via_base or _base in (mand or set()))
+        _filt = _opt = None
+        _field_ok, _unwired, _compat_ok = True, False, True
+        if not _tl:
+            _filt, _, _opt = _hdr.partition("=")
+            _filt, _opt = _filt.strip(), _opt.strip()
+            if _filt not in known_config_fields():
+                _field_ok = False
+            elif _filt in UNWIRED_FILTERS or _filt in UNWIRED_SWITCHES:
+                _unwired = True
+            else:
+                _ok, _ = _cand_compatible(_filt, _parse_opt_value(_opt, (defaults or {}).get(_filt)), defaults or {})
+                _compat_ok = bool(_ok)
+        _items.append({"hdr": _hdr, "base": _base, "via_base": bool(_via_base), "want_base": _want_base, "tab_level": bool(_tl), "field_ok": bool(_field_ok), "unwired": bool(_unwired), "compat_ok": bool(_compat_ok), "filt": _filt, "opt": _opt, "mand_only_base": bool(_want_base and not _via_base)})
+    return {"switch": str(switch).strip(), "headers": list((header_map or {})), "items": _items}
+
+
+def _header_disc_combine(pre, sname, switch, cand, ever_y, all_filter_cols_1) -> dict:
+    """Task 05.3 (pure): per-row half — fold the cand-dependent ever_yellow membership into a precomputed struct.
+    Returns {yellow:set, hdrs:list, h2f:dict, excluded_tab_level:list, excluded_unwired:list, type_skipped:list,
+    mand_notes:list of bases needing _mandatory_note(sname, base, False)}. Exact replay of the inline loop."""
+    _yellow, _hdrs, _h2f = set(), [], {}
+    _excl_tl, _excl_unw, _type_sk, _notes = [], [], [], []
+    _ev = ever_y if isinstance(ever_y, set) else set(ever_y or [])
+    _rk = f"{sname}\t{str(switch).strip()}={str(cand).strip()}"
+    for _it in (pre or {}).get("items", []):
+        _hdr = _it["hdr"]
+        _ever = f"{_rk}\t{_hdr}" in _ev
+        if _it["tab_level"]:
+            if _it["want_base"] or _ever:
+                _yellow.add(_hdr)
+                _excl_tl.append(_hdr)
+            continue
+        _via = bool(_it["via_base"] or _ever)
+        _want = bool(_it["want_base"] or _ever)
+        if _want:
+            _yellow.add(_hdr)
+        elif not all_filter_cols_1:
+            continue
+        if not _it["field_ok"]:
+            continue
+        if _it["unwired"]:
+            _excl_unw.append(_hdr)
+            continue
+        if not _it["compat_ok"]:
+            _type_sk.append(_hdr)
+            continue
+        if _it["mand_only_base"] and not _ever:
+            _notes.append(_it["base"])
+        _hdrs.append(_hdr)
+        _h2f[_hdr] = {"filter": _it["filt"], "opt": _it["opt"]}
+    return {"yellow": _yellow, "hdrs": _hdrs, "h2f": _h2f, "excluded_tab_level": _excl_tl, "excluded_unwired": _excl_unw, "type_skipped": _type_sk, "mand_notes": _notes}
 
 
 def _qualifies_365d(v, span_days=None):
@@ -2779,7 +3433,35 @@ def _credible_baseline(new_symside, prepared, base_sets, defaults, template_path
 _POSSYM_P = {0: 1.0 / 20, 1: 1.0 / 10, 2: 1.0 / 6, 3: 1.0 / 2}  # USER 2026-10-06: pos_sym 3 -> 1 in 2 (was 1/3); sampling ON again
 # USER 2026-10-10 coarse sweep: cap evaluated yellows/row at K prior-ranked (fleet pos_sym evidence),
 # rest deferred (NOT sampled/hollow) for phase-2 expansion on promoted rows. Target: 10-min worst_first.
-_COARSE_CAP = int(os.environ.get("V15_COARSE_YELLOW_CAP", "24"))
+# 🔴 2026-10-15 PAUSED BY USER: "the yellow cap needs to be put on pause until we get avg deltas and pos_sym from the
+# new yellow boxes over hundreds of tests". Default 24 -> 0 (0 disables: the guard is `len(_kept) > _COARSE_CAP > 0`).
+# WHY the cap cannot stay on while new columns are being added: _coarse_trim ranks _kept by _kept_ev, which is
+# (AVG_DELTA, POS_SYM) evidence from previous rounds. A yellow column added tonight has NO evidence, so it sorts last
+# and is deferred — and being deferred it never earns the evidence that would have kept it. The cap would therefore
+# permanently hide exactly the WT15 filters we just attached, and the boards would "prove" the new columns are
+# worthless by never evaluating them. Circular, and invisible in the output.
+# COST, accepted by the user ("tests will slow down because we are undoing the selective yellow cell tests that sped
+# it up"): rows previously trimmed to 24 now evaluate everything attached — up to ~127 on a WT row, and the fleet was
+# already at ~2 boards/h. s5 (cax41) is authorised to be added ONLY once the A/B proof shows the new system produces
+# better gain/WR, not before.
+# RESTORE once AVG_DELTA / POS_SYM exist for the new columns over hundreds of tests:
+#   V15_COARSE_YELLOW_CAP=24  (env, or the gated default in data/v15_gate_flags.json)
+_COARSE_CAP = int(os.environ.get("V15_COARSE_YELLOW_CAP", "0"))
+
+
+def _coarse_cap_exempt(switch) -> bool:
+    """🔴 2026-10-15 USER "make sure the latest v15_pilot does not skip any yellow box". The coarse cap trims a row's
+    kept yellows to _COARSE_CAP (24) and defers the rest, so making the WT rows attach ~127 columns would have been
+    silently clipped back to 24 — the attachment fix and the all-columns fix would both have been cosmetic.
+    WT-core rows are therefore exempt from the cap: they evaluate every attached yellow, no deferral.
+    NOTE 2026-10-15: _COARSE_CAP now defaults to 0 (cap PAUSED by the user until the new yellow columns have
+    AVG_DELTA/POS_SYM over hundreds of tests), so this exemption is dormant — it is deliberately kept so that when
+    the cap is restored to 24 the WT core rows stay uncapped rather than silently losing their filters again.
+    Kill switch: V15_WT_CORE_NO_CAP=0."""
+    try:
+        return str(switch).strip() in WT_CORE_MANDATORY_BASES and os.environ.get("V15_WT_CORE_NO_CAP", "1") != "0"
+    except Exception:
+        return False
 _COARSE_ON = os.environ.get("V15_COARSE_SWEEP", "1") == "1"
 _COARSE_FIRST_PASS = _COARSE_ON and os.environ.get("V15_COARSE_NO_SAMPLING", "1") == "1"  # USER 2026-10-13 V16: coarse cap independent of possym sampling
 _COARSE_INLINE = _COARSE_ON and os.environ.get("V15_COARSE_INLINE", "1") == "1"  # USER 2026-10-13 V16: a moving row evaluates its deferred yellows on the spot
@@ -2873,10 +3555,43 @@ def _zero_condemned(pos, n, min_n) -> bool:
         return False
 
 
-def _zero_partition_hdrs(hdrs, keys, cell_ev, min_n):
+def _low_yield_on() -> bool:
+    return os.environ.get("V15_LOW_YIELD_SAMPLING", "0") == "1"
+
+
+def low_yield_keep(pos, n, min_n, seed, round_id=""):
+    """USER 2026-10-16: "switches that improve fewer than 3% of sym_sides take 59% of eval time — reduce them to 1 out of 20
+    tests, the 0 results to 1 out of 100". Replaces the hard ZERO_FORMULA skip (never re-tested) with a rotating sample.
+    Returns (keep, p, tier). Unevidenced (n < min_n) -> always kept. Deterministic per (seed, round): a different slice each
+    round, so every key is re-tested over time and a key that starts winning re-earns full frequency. Pure (tested)."""
+    try:
+        pos_i, n_i = int(pos or 0), int(n or 0)
+    except (TypeError, ValueError):
+        return True, 1.0, "unevidenced"
+    if n_i < int(min_n) or n_i <= 0:
+        return True, 1.0, "unevidenced"
+    rate = pos_i / n_i
+    if pos_i == 0:
+        p, tier = 1.0 / max(1, int(os.environ.get("V15_LOW_YIELD_ZERO_EVERY", "100"))), "zero"
+    elif rate < float(os.environ.get("V15_LOW_YIELD_RATE", "0.03")):
+        p, tier = 1.0 / max(1, int(os.environ.get("V15_LOW_YIELD_LOW_EVERY", "20"))), "low"
+    else:
+        return True, 1.0, "proven"
+    import hashlib as _hl_ly
+    h = int(_hl_ly.md5(f"{seed}|{round_id}".encode()).hexdigest()[:8], 16) / float(0xFFFFFFFF)
+    return h < p, p, tier
+
+
+def _zero_partition_hdrs(hdrs, keys, cell_ev, min_n, round_id=""):
     kept, skipped = [], []
     for h in hdrs:
         ce = (cell_ev or {}).get(keys.get(h))
+        if _low_yield_on():
+            if isinstance(ce, dict) and not low_yield_keep(ce.get("pos_sym"), ce.get("n_sym"), min_n, keys.get(h), round_id)[0]:
+                skipped.append(h)
+            else:
+                kept.append(h)
+            continue
         if isinstance(ce, dict) and _zero_condemned(ce.get("pos_sym"), ce.get("n_sym"), min_n):
             skipped.append(h)
         else:
@@ -3194,6 +3909,31 @@ def ledger_tier_name(sched_tier: str, bh) -> str:
     if sched_tier == "L":
         return "LOST_CAUSE" if abs(float(bh or 0.0)) < _TIER_BH_LOST else "LOSER"
     return "MEDIOCRE"
+
+
+def _apply_ranking_floor(tier_name: str, tier_meta: dict, symside: str):
+    """Pure (tested). USER 2026-10-14: a ranking top-25 winner-long/loser-short is hot NOW, but the
+    floor respects what the tier means. LOSER (flat name; the best of them are the favorite SHORTS)
+    -> MEDIOCRE full board, quick pass. LOST_CAUSE (near-zero everything, full boards are pure compute
+    burn) -> only LOSER: STRICT yellows + small focus, post stages still skipped — a cheap re-measure,
+    not a full board. Earned WINNER/MEDIOCRE untouched. Sheet math untouched (compute only)."""
+    try:
+        if tier_name in ("LOSER", "LOST_CAUSE") and os.environ.get("V15_RANKING_TIER_FLOOR", "1") == "1" and symside:
+            from tools.v15_ranking_priority import is_ranking_side as _is_rk
+            if _is_rk(symside):
+                tier_meta = dict(tier_meta or {})
+                if tier_name == "LOST_CAUSE":
+                    tier_meta["ranking_floor"] = "loser"
+                    tier_meta["focus_s"] = _TIER_FOCUS_S["LOSER"]
+                    tier_meta["source"] = "%s+ranking-floor-loser" % (tier_meta.get("source") or "?")
+                    return "LOSER", tier_meta
+                tier_meta["ranking_floor"] = True
+                tier_meta["focus_s"] = _TIER_FOCUS_S["MEDIOCRE"]
+                tier_meta["source"] = "%s+ranking-floor" % (tier_meta.get("source") or "?")
+                return "MEDIOCRE", tier_meta
+    except Exception:
+        pass
+    return tier_name, tier_meta
 
 
 def _prior_best_gain(symside: str):
@@ -3672,7 +4412,12 @@ def scan_template_cands(template_path, defaults: dict, cat_side: str, zero_on: b
             if zero_on and not _isdef:
                 _zrkey = f"{sname}!{str(sw).strip()}={str(cand).strip()}"
                 _zjr = _zm.get(_zrkey)
-                if isinstance(_zjr, dict) and _zero_condemned(_zjr.get("pos_sym"), _zjr.get("n_sym"), _ZERO_MIN_N_ROW):
+                if isinstance(_zjr, dict) and _low_yield_on():
+                    if not str(sw).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) and str(sw).strip() not in ESSENTIAL_GATE_SWITCHES and not low_yield_keep(_zjr.get("pos_sym"), _zjr.get("n_sym"), _ZERO_MIN_N_ROW, _zrkey, datetime.datetime.utcnow().strftime("%Y%m%d"))[0]:
+                        stats["skip"] += 1
+                        stats["zero_skipped"] += 1
+                        continue
+                elif isinstance(_zjr, dict) and _zero_condemned(_zjr.get("pos_sym"), _zjr.get("n_sym"), _ZERO_MIN_N_ROW):
                     stats["skip"] += 1
                     stats["zero_skipped"] += 1
                     continue
@@ -3747,6 +4492,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     else:
         _tier_name, _tier_meta = symside_tier(baseline_gain, bh, _tier_trades, _prior_best_gain(new_symside), floor_trades=ADAPT_FLOOR_TRADES)
         _tier_meta["source"] = "legacy"
+    # USER 2026-10-14 (ranking top-25): hot-now symbols get at least a full MEDIOCRE board, never lightning.
+    _tier_name, _tier_meta = _apply_ranking_floor(_tier_name, _tier_meta, new_symside)
     _carry_book, _carry_rows, _carry_fp = {}, {}, ""
     try:
         _carry_fp = carry_start_fp(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
@@ -3915,9 +4662,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # V15_BRAIN_NAKED=1 per row — p_eval = clip(P(pos)/p_ref, floor/1000, 1); deterministic draw, propensity booked in
     # progress["brain"]; skipped cells ride prior_skipped (PRIOR-REVIVED on a positive naked); skipped rows are settled
     # BRAIN_SAMPLED_OUT (like CARRIED_DEAD). Never: sacred / essential-gate / new / coarse-expand rows, WINNER-tier rows.
-    # Default OFF until the frozen-NPZ bench (tools/v15_npz_bench.py) proves no loss. Bible §108.
+    # 2026-10-14 USER: speed first, but "only allow a modification if results improve" -> ON only via the version gate's flags
+    # file (tools/v15_version_gate.py PASS on the frozen-NPZ bench); p_ref 0.005 / floor 5 per 1000. Bible §108.
     _brain = None
-    if os.environ.get("V15_BRAIN", "0") == "1":
+    if os.environ.get("V15_BRAIN", "0") == "1":  # default comes from data/v15_gate_flags.json (gate PASS only, USER 2026-10-14) — env wins
         try:
             from tools.v15_brain import PilotBrain as _PilotBrain, draw as _brain_draw
             _brain_path = Path(os.environ.get("V15_BRAIN_DIR") or (ROOT / "data" / "brain")) / f"brain_{map_key_for_symside(new_symside)}.json"
@@ -3951,6 +4699,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # 26-52min). Force ALL workers to fork NOW, while this process is still single-threaded.
         list(_pool.map(abs, range(_n_proc * 4)))
         print(f"[spec-fill] process pool {_n_proc} workers (fork, NPZ shared, pre-forked single-threaded)", flush=True)
+    _prio_pool = None
+    if _priority_lane_on() and _pool is not None:  # TASK 05.2 priority lane (USER 2026-10-15): critical-path eval
+        # fetch goes to a 1-worker pool forked AFTER preload (inherits _POOL_PREPARED) instead of the shared FIFO.
+        # V15_PRIORITY_LANE=0 (default) = shared FIFO exactly as before. Same _pool_eval_batch -> exact outputs.
+        import multiprocessing as _mp_prio
+        _prio_pool = _cf.ProcessPoolExecutor(max_workers=1, mp_context=_mp_prio.get_context("fork"), initializer=_pool_worker_sig_default)
+        list(_prio_pool.map(abs, range(4)))
+        print("[spec-fill] priority lane ON: 1-worker pool for critical-path evals", flush=True)
     # USER 2026-09-30: every RED (stuck/slow) cell and every 0 delta is logged for the fixing agent
     _zr_path = progress_path.parent / "v15_zero_red" / f"{new_symside}.jsonl"
     _zr_path.parent.mkdir(parents=True, exist_ok=True)
@@ -4036,9 +4792,30 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             except Exception as _se: print(f"[SLICE-save-warn] {_se}", flush=True)
             print(f"[SLICE] {new_symside} fill hit {_slice_s:.0f}s cap — clean exit, scheduler relaunches into holes-only resume", flush=True)
             sys.exit(11)
-        if force or _t.time() - _last_json["t"] >= PROGRESS_JSON_EVERY_S:
+        if _flush_due(_last_json["t"], _flush_interval_s("V15_PROGRESS_JSON_EVERY_S", PROGRESS_JSON_EVERY_S), _t.time(), force):
             _atomic_write_json(progress_path, progress)
             _last_json["t"] = _t.time()
+    try:  # TASK 04.1 forward score (USER 2026-10-15): on refresh boards, BEFORE the main pass, score the PREVIOUS
+        # published set + each promoted key leave-one-out on bars added since that board's NPZ end. SCORING ONLY
+        # (zero extra fits) -> FORWARD delta-log records + progress['forward']. V15_FORWARD_SCORE=0 (default) = inert.
+        if forward_score_on():
+            _fw_end = None
+            try:
+                _fw_ts = (prepared or {}).get("npz_prepared", {}).get("timestamps") or []
+                _fw_end = float(_fw_ts[-1]) if len(_fw_ts) else None
+            except Exception:
+                _fw_end = None
+            if _fw_end is None:
+                try:
+                    _fw_nid = progress.get("npz_id") or {}
+                    _fw_end = float(_fw_nid.get("ts_last")) if _fw_nid.get("ts_last") is not None else None
+                except Exception:
+                    _fw_end = None
+            if _fw_end is not None:
+                run_forward_score(new_symside, _fw_end, defaults, delta_log_fn=_delta_log, progress=progress)
+                _maybe_write_json()
+    except Exception as _fwe:
+        print(f"[FORWARD-WARN] {new_symside} {_fwe} — main pass unaffected", flush=True)
     def _row_done(sname: str, rr: int, switch: str, cand, n_evals: int, delta, promoted: bool):
         _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": "ROW_DONE", "row_secs": round(_t.time() - _row_t0, 4), "n_evals": n_evals, "delta": delta, "promoted": promoted, "cum_after": cumulative_gain})
     def _final_filter_recheck():
@@ -4882,6 +5659,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             if hv and isinstance(hv, str) and hv.strip().upper().startswith("WHAT SWITCH"):
                 break
         header_maps[sname] = hm
+    _header_disc_cache: dict = {}  # TASK 05.3: per-(tab,switch) discovery cache, per-board lifetime (header_maps is per-board)
     # override column C (USER 2026-09-30): previous-best settings (BEST-C-FILL) + every promotion's switch=cand and positive
     # filter=opt. A key lives in exactly ONE C cell: when a later promotion sets it to another value, the old part is erased
     # from its cell and the new setting is written in the promoting row's C. _c_where: key -> (sheet, row), in fill order.
@@ -5155,38 +5933,43 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # path) or RED with a failure reason — NEVER pre-painted here. Pre-painting changed cell colours
             # for rows/cells that were then policy-skipped (0 evals): colour without calculation. Previously
             # calculated values are never cleared here either (that destroyed real deltas without a new calc).
-            _sw_tok = {t for t in str(switch).upper().split("_") if t}
-            _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
+            # TASK 05.3 (USER 2026-10-15): per-(tab,switch) header-discovery cache — the cand-independent half
+            # (token sets over the ~231 yellow headers, type gates, skip classes) is computed once per (tab, switch);
+            # each row only folds its cand-dependent ever_yellow membership (one hash lookup per header).
+            # V15_HEADER_CACHE=0 disables (recompute per row). Exact outputs: same sets/lists/notes as the loop above.
+            _sw_key = str(switch).strip()
+            _cache_on = os.environ.get("V15_HEADER_CACHE", "1") == "1"
+            _pre = _header_disc_cache.get((sname, _sw_key)) if _cache_on else None
+            if _pre is None:
+                _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
+                _mand = mandatory_bases_for_tab(sname, switch)
+                _pre = _header_disc_precompute(sname, switch, header_maps[sname], _tab_level, _mand, defaults)
+                if _cache_on:
+                    _header_disc_cache[(sname, _sw_key)] = _pre
             _ever_y = ever_yellow_cells(map_key_for_symside(new_symside))
-            _mand = mandatory_bases_for_tab(sname)
-            for hdr, col in header_maps[sname].items():
-                _hdr_base = hdr.split("=", 1)[0].strip()
-                _via_token = len(_sw_tok & {t for t in _hdr_base.upper().split("_") if t}) >= YELLOW_MIN_SHARED_TOKENS or f"{sname}\t{str(switch).strip()}={str(cand).strip()}\t{hdr}" in _ever_y
-                _want = _via_token or _hdr_base in _mand
-                _mand_only = _want and not _via_token
-                if hdr.split("=", 1)[0].strip() in _tab_level:
-                    if _want:
-                        info["yellow"].add(hdr)
-                        info.setdefault("excluded_tab_level", []).append(hdr)
-                    continue  # tab-level filter: tested once as an orange row of this tab, never per switch row
-                if _want:
-                    info["yellow"].add(hdr)
-                elif os.environ.get("V15_ALL_FILTER_COLS", "0") != "1":
-                    continue  # USER 2026-09-30: yellow cells only now; the all-column test runs after every sym_side is complete
-                filt, opt = hdr.split("=", 1)
-                if filt.strip() not in known_config_fields():
-                    continue
-                if filt.strip() in UNWIRED_FILTERS or filt.strip() in UNWIRED_SWITCHES:
-                    info.setdefault("excluded_unwired", []).append(hdr)
-                    continue  # not wired in the vectorized engine: no calculation, no fake 0
-                _fok, _fwhy = _cand_compatible(filt.strip(), _parse_opt_value(opt.strip(), defaults.get(filt.strip())), defaults)
-                if not _fok:
-                    info.setdefault("type_skipped", []).append(hdr)
-                    continue  # type-incompatible filter value: blank cell, never evaluated, never 0.0, never RED
-                if _mand_only:
-                    _mandatory_note(sname, _hdr_base, False)
-                info["hdrs"].append(hdr)
-                info["h2f"][hdr] = {"filter": filt.strip(), "opt": opt.strip()}
+            # 🔴 2026-10-15 USER "make sure the latest v15_pilot does not skip any yellow box". ALL filter columns on
+            # the tab are evaluated for a WT-core row — no token rule, no selection, nothing skipped. Measured on
+            # TEMPLATE_STOCKS_LONG: WT_15M_BOUNCE_OPEN_ENABLED 49 -> 129, WT_CROSS_EXIT_ENABLED 14 -> 127,
+            # WT_LOWER_CROSS_EXIT_TF 26 -> 127, WT_CROSS_EXIT_APPLIES_TO_WINNERS 12 -> 127.
+            # SCOPED to WT-core rows, NOT global: flipping V15_ALL_FILTER_COLS=1 for every row costs 5.0x the evals
+            # (101 -> 510 on those 4 rows alone), and at the 2026-10-15 fleet rate of ~2 boards/h that makes a
+            # full-book recalc arithmetically impossible. ~20 WT rows x ~127 is ~12% on a 1200 s board — affordable.
+            # The global env var still wins if set, so V15_ALL_FILTER_COLS=1 remains the everything-everywhere lever.
+            _all_cols = os.environ.get("V15_ALL_FILTER_COLS", "0") == "1"
+            if not _all_cols and _sw_key in WT_CORE_MANDATORY_BASES and os.environ.get("V15_WT_CORE_ALL_COLS", "1") != "0":
+                _all_cols = True
+            _dc = _header_disc_combine(_pre, sname, switch, cand, _ever_y, _all_cols)
+            info["yellow"] = _dc["yellow"]
+            info["hdrs"] = _dc["hdrs"]
+            info["h2f"] = _dc["h2f"]
+            if _dc["excluded_tab_level"]:
+                info["excluded_tab_level"] = _dc["excluded_tab_level"]
+            if _dc["excluded_unwired"]:
+                info["excluded_unwired"] = _dc["excluded_unwired"]
+            if _dc["type_skipped"]:
+                info["type_skipped"] = _dc["type_skipped"]
+            for _mb in _dc["mand_notes"]:
+                _mandatory_note(sname, _mb, False)
         if _inert_effective and info["kind"] == "eval" and info["hdrs"] and str(switch).strip() not in _inert_effective:
             if inert_row_sampled(rr, sname, _inert_seq, _inert_every):
                 info["inert_sampled"] = True
@@ -5258,7 +6041,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _kept_ev[_h] = (int(_fp), int(_fn))
                         except Exception:
                             _kept_ev[_h] = (0, 0)
-                    if (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
+                    if (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and not _coarse_cap_exempt(switch) and len(_kept) > _COARSE_CAP > 0:
                         _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
                         for _dh in _deferred:
                             info.setdefault("coarse_deferred_filters", []).append(_dh)
@@ -5284,7 +6067,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             _kept_ev[_h] = (int(_fp), int(_fn))
                         except Exception:
                             _kept_ev[_h] = (0, 0)
-                    if _COARSE_ON and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
+                    if _COARSE_ON and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and not _coarse_cap_exempt(switch) and len(_kept) > _COARSE_CAP > 0:
                         _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
                         for _dh in _deferred:
                             info.setdefault("coarse_deferred_filters", []).append(_dh)
@@ -5320,7 +6103,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                                     _kept_ev[_h] = (0, 0)
                             else:
                                 info.setdefault("sampled_filters", []).append(_h)
-                        if _COARSE_ON and not _redo_heal and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and len(_kept) > _COARSE_CAP > 0:
+                        if _COARSE_ON and not _redo_heal and (sname, str(switch).strip(), str(cand).strip()) not in _ps_new and f"{sname}!{str(switch).strip()}={str(cand).strip()}" not in _coarse_expand and not _coarse_cap_exempt(switch) and len(_kept) > _COARSE_CAP > 0:
                             _kept, _deferred = _coarse_trim(_kept, _kept_ev, _COARSE_CAP)
                             for _dh in _deferred:
                                 info.setdefault("coarse_deferred_filters", []).append(_dh)
@@ -5336,14 +6119,28 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _zjr = (_zero_row_ev or {}).get(_zrkey)
                     if isinstance(_zjr, dict):
                         _zp, _zn = _zjr.get("pos_sym"), _zjr.get("n_sym")
-                if not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW) and not str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) and str(switch).strip() not in ESSENTIAL_GATE_SWITCHES:
+                _ly_exempt = _zisd or str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) or str(switch).strip() in ESSENTIAL_GATE_SWITCHES
+                _ly_row = low_yield_keep(_zp, _zn, _ZERO_MIN_N_ROW, _zrkey, _ps_round) if (_low_yield_on() and not _ly_exempt) else None
+                if _ly_row is not None and _ly_row[1] < 1.0:
+                    info["low_yield"] = {"tier": _ly_row[2], "p": _ly_row[1], "pos_sym": _zp, "n_sym": _zn, "kept": bool(_ly_row[0])}
+                if _ly_row is not None and not _ly_row[0]:
+                    info.update(kind="skip", reason=f"ZERO_FORMULA_ROW LOW_YIELD {_ly_row[2]}: pos_sym={_zp}/{_zn} sampled out this round (p={_ly_row[1]:.3f}, rotates per round; settled, booked)", g=None)
+                    if _zero_book_enabled():
+                        _zero_book["rows"][_zrkey] = _zero_book_entry("row", sname, str(switch).strip(), cand, "", int(_zp or 0), int(_zn or 0), ((_zero_row_ev or {}).get(_zrkey) or {}).get("avg_delta"))
+                elif _ly_row is not None:
+                    _zkeys = {h: f"{_zrkey}@{str(h).strip()}" for h in info["hdrs"]}
+                    _zkept, _zskip = _zero_partition_hdrs(info["hdrs"], _zkeys, _zero_cell_ev, _ZERO_MIN_N_CELL, _ps_round)
+                    if _zskip:
+                        info["hdrs"] = _zkept
+                        info["zero_skipped"] = _zskip
+                elif not _zisd and _zero_condemned(_zp, _zn, _ZERO_MIN_N_ROW) and not str(switch).strip().startswith(SACRED_ZERO_EXEMPT_PREFIXES) and str(switch).strip() not in ESSENTIAL_GATE_SWITCHES:
                     _zjr2 = (_zero_row_ev or {}).get(_zrkey) or {}
                     info.update(kind="skip", reason=f"ZERO_FORMULA_ROW: pos_sym=0 in {_zn} syms, never positive — skipped, booked for formula fix (NOT obsolete)", g=None)
                     if _zero_book_enabled():
                         _zero_book["rows"][_zrkey] = _zero_book_entry("row", sname, str(switch).strip(), cand, "", int(_zp), int(_zn), _zjr2.get("avg_delta"))
                 else:
                     _zkeys = {h: f"{_zrkey}@{str(h).strip()}" for h in info["hdrs"]}
-                    _zkept, _zskip = _zero_partition_hdrs(info["hdrs"], _zkeys, _zero_cell_ev, _ZERO_MIN_N_CELL)
+                    _zkept, _zskip = _zero_partition_hdrs(info["hdrs"], _zkeys, _zero_cell_ev, _ZERO_MIN_N_CELL, _ps_round)
                     if _zskip:
                         info["hdrs"] = _zkept
                         info["zero_skipped"] = _zskip
@@ -5507,6 +6304,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if ck in _EVAL_CACHE:
             res, cached = _EVAL_CACHE[ck], True
         elif _pool is not None:
+            _cp = _get_critical_pool(ck, _prio_pool, _EVAL_CACHE, inflight, _pend_batch)
+            if _cp is not None:
+                try:  # TASK 05.2: this critical-path eval jumps the shared FIFO on its own worker (V15_PRIORITY_LANE=1)
+                    inflight[ck] = (_cp.submit(_pool_eval_batch, [(ck, ov)], args.window_days), _t.time())
+                except Exception:
+                    pass
             _submit(ov)
             _flush_batch()
             if ck in inflight:
@@ -7781,6 +8584,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     promote = False
                     _blk = ((_blk + "; ") if _blk else "") + f"RECALC-REJECT fresh {float(_rc_gain):.4f} <= E_before {float(cumulative_before):.4f}"
                     print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
+                elif row_delta < _MIN_PROMOTE_DELTA:
+                    # 2026-10-14 OOS audit: ~3300 greedy tests per board promote noise; a minimum effect size is the cheapest
+                    # multiple-testing guard (V15_MIN_PROMOTE_DELTA pp, default 0 = unchanged). Judged on the holdout bench.
+                    promote = False
+                    _blk = ((_blk + "; ") if _blk else "") + f"MIN-EFFECT {row_delta:.4f} < {_MIN_PROMOTE_DELTA} pp"
+                    print(f"[promote-block] {sname}!{rr} {switch}={cand} delta={row_delta} NOT promoted: {_blk}", flush=True)
         row_gain = (cumulative_before + row_delta) if row_delta is not None else None
         g = ws.cell(row=rr, column=cols["G"])
         f = ws.cell(row=rr, column=cols["F"])
@@ -8127,6 +8936,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     try:
         if _pool is not None:
             _pool.shutdown(wait=False, cancel_futures=True)
+            if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2: release the priority worker with the main pool
             _pool = None
             print("[spec-fill] fork pool released before DONE stage (RAM headroom for save+live-verify)", flush=True)
     except Exception as _ps_e:
@@ -8499,6 +9309,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     pass
                 if _pool is not None:
                     _pool.shutdown(wait=False, cancel_futures=True)
+                if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
                 return cumulative_gain, cumulative_overrides, progress
             _nm_ok, _nm_r = _nearmiss_30d(_fresh_final, bh)
             _calc_n = _board_calc_n(progress.get("done") or {})
@@ -8516,6 +9327,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     pass
                 if _pool is not None:
                     _pool.shutdown(wait=False, cancel_futures=True)
+                if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
                 return cumulative_gain, cumulative_overrides, progress
         if not _compliant:
             print(f"[NOT-FINISHED] {new_symside} REDO scheduled — no publish this run, herd relaunches into a fresh fill", flush=True)
@@ -8532,6 +9344,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     pass
             if _pool is not None:
                 _pool.shutdown(wait=False, cancel_futures=True)
+            if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
             return cumulative_gain, cumulative_overrides, progress
         # 2026-09-28 USER ORDER (impeccable sheets): PUBLISH THE bh/gain FINAL **BEFORE** the live
         # verification — the publish block in main() is unreachable (spec-fill returns early) and
@@ -8574,11 +9387,24 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _bgx = _bm.get("gain_pct")
                 progress["final_gain"] = float(_bgx) if _bgx is not None else float(_bd.get("gain", final_gain))
                 _btx = _bm.get("trades")
+                if _btx is None:
+                    # USER 2026-10-15 ("all tradeable_keys should be actually making trades by now"): when this run did
+                    # NOT beat the already-published board, the winner's metrics come from its manifest — and an older
+                    # manifest without a trades value left final_trades None. That None travelled: per_sym_history.trades
+                    # NULL -> published_selection evidence trades null -> go-live's int(None or 0) == 0 -> 37 sym_sides
+                    # REFUSED as "zero trades" and kept on an OLDER live set, although their boards traded 24-478 times.
+                    # The winner's own published filename carries the count (_t<N>_), so unknown is recoverable here.
+                    _btx = _bd.get("trades")
                 progress["final_trades"] = int(_btx) if _btx is not None else None
                 _bbh = _bm.get("bh")
                 progress["bh"] = float(_bbh) if _bbh is not None else float(_bd.get("bh", bh or 0))
                 progress["final_path"] = str(_final_path)
                 progress["best_note"] = f"kept {_active_name} over {_final_name}"
+            try:  # TASK 07.1 provenance (USER 2026-10-15): per finished board {engine_md5, npz sha of window,
+                # template md5, published set hash, final_gain} -> progress JSON + publish manifest (drift watch reads it)
+                progress["provenance"] = board_provenance(new_symside, cumulative_overrides, final_gain, getattr(args, "template", None), progress.get("npz_id"))
+            except Exception as _prove:
+                print(f"[provenance-warn] {new_symside} {_prove}", flush=True)
             _maybe_write_json(force=True)
             if not _won:
                 print(f"[MANIFEST] {new_symside} kept best {_active_name} — no manifest for history-filed {_final_name}", flush=True)
@@ -8600,6 +9426,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _npp = _npz_path(new_symside)
                     _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
+                    try:  # TASK 07.1: the same provenance record ships in the manifest sidecar (drift watch source)
+                        _man["provenance"] = progress.get("provenance") or board_provenance(new_symside, cumulative_overrides, final_gain, getattr(args, "template", None), progress.get("npz_id"))
+                    except Exception as _prove2:
+                        print(f"[provenance-warn] {new_symside} manifest {_prove2}", flush=True)
                     if _best_effort is not None:
                         _man["best_effort_reasons"] = list(_best_effort)
                     _man_p = OUT_DIR / (_final_name.replace(".xlsx", "_manifest.json"))
@@ -8648,6 +9478,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 pass
             if _pool is not None:
                 _pool.shutdown(wait=False, cancel_futures=True)
+            if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
             return cumulative_gain, cumulative_overrides, progress
         print("[DONE-STEP] published, entering live verify", flush=True)
         # 2026-09-28 PARITY FIX: --vector-only keeps the SWEEP vector-only (speed), but the single
@@ -8835,6 +9666,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                             pass
                     if _pool is not None:
                         _pool.shutdown(wait=False, cancel_futures=True)
+                    if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
                     return cumulative_gain, cumulative_overrides, progress
                 if bool((_v365 or {}).get("valid")):
                     _br = [f"365D: {r}" for r in _q365_reasons] or ["365D: valid but below gate"]
@@ -8850,6 +9682,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         pass
                     if _pool is not None:
                         _pool.shutdown(wait=False, cancel_futures=True)
+                    if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
                     return cumulative_gain, cumulative_overrides, progress
                 _carry = [progress["final_path"]] if progress.get("final_path") else []
                 _quarantine_impossible(new_symside, [f"365D: {r}" for r in _q365_reasons], {"window": "365D", "gain_pct": (_v365 or {}).get("gain_pct"), "trades": (_v365 or {}).get("trades"), "tim_pct": (_v365 or {}).get("tim_pct"), "max_dd_pct": (_v365 or {}).get("max_dd_pct"), "valid": (_v365 or {}).get("valid")}, wb, wb_path, progress, progress_path, cumulative_overrides, {"repair_365d": progress.get("repair_365d")}, carry_files=_carry)
@@ -8859,6 +9692,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     pass
                 if _pool is not None:
                     _pool.shutdown(wait=False, cancel_futures=True)
+                if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
                 return cumulative_gain, cumulative_overrides, progress
         # 2026-09-28 USER MANDATE ("confirmed by highest gain and 365D confirmations or they can not
         # trade"): at DONE, attempt the 365D certification for this sym_side. tools/confirm_365d.py
@@ -8885,6 +9719,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         pass
     if _pool is not None:
         _pool.shutdown(wait=False, cancel_futures=True)
+    if _prio_pool is not None: _prio_pool.shutdown(wait=False, cancel_futures=True)  # TASK 05.2
     try:
         write_zoomable_chart(new_symside, None, dict(cumulative_overrides), args.window_days, suffix=f"30D_REAL_ZOOMABLE_{nav_mode}")
     except Exception as _ce:
@@ -8894,6 +9729,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     print(f"[mandatory-yellows] {_mandatory_summary()}", flush=True)
     _touch(f"spec-done cum={cumulative_gain:.4f} rows={processed}")
     print(f"[spec-fill] DONE {new_symside} final_gain={cumulative_gain:.4f} baseline={baseline_gain:.4f} rows={processed} pos_tabs curated", flush=True)
+    if _HOLDOUT.get("installed"):
+        try:
+            _ho = holdout_score(new_symside, {"final": dict(cumulative_overrides), "start": dict(initial_overrides), "template": {}}, defaults)
+            _ho["fit_final_gain"] = float(cumulative_gain)
+            progress["holdout"] = _ho
+            _delta_log({"ts": utcnow(), "sym_side": new_symside, "label": "HOLDOUT", **{k: v for k, v in _ho.items() if not isinstance(v, dict)}, "final": _ho.get("final"), "start": _ho.get("start"), "template": _ho.get("template")})
+            print(f"[HOLDOUT] {new_symside} unseen {_ho.get('days'):.0f} d: final {(_ho.get('final') or {}).get('gain_pct')} start {(_ho.get('start') or {}).get('gain_pct')} template {(_ho.get('template') or {}).get('gain_pct')} (fit {cumulative_gain:.2f}) final-start {_ho.get('final_minus_start')} {_ho.get('error') or ''}", flush=True)
+            _maybe_write_json(force=True)
+        except Exception as _hse:
+            print(f"[HOLDOUT-WARN] score {_hse}", flush=True)
     try:  # USER 2026-10-14: per board lift per phase + gain vs bh (the path to 10x bh); tools/v17_hourly_report.py aggregates
         import re as _re_sum
         _agg = {}
@@ -9878,6 +10723,81 @@ def _run_single_core(new_symside, args, _v15_start_time):
     _v15_start_time = _v15_start_time
 
 def main():
+    """USER 2026-10-14 pair-in-RAM wrapper: run one sym_side, then — on EVERY exit path (publish,
+    kept-best, IMPOSSIBLE quarantine, SystemExit) — calculate the tradeable opposite side in this
+    same process before the symbol leaves RAM. V15_PAIR_MODE=0 / V15_PAIR_CHILD disable."""
+    import time as _pt
+
+    _pair_on = os.environ.get("V15_PAIR_MODE", "1") == "1" and not os.environ.get("V15_PAIR_CHILD")
+    _argv = sys.argv[:]
+    _sym = None
+    _win30 = True
+    try:
+        _i = _argv.index("--sym-side")
+        _sym = str(_argv[_i + 1]).strip().upper()
+    except Exception:
+        _sym = None
+    if "--batch-syms" in _argv or "--dry-run" in _argv:
+        _pair_on = False
+    if "--window-days" in _argv:
+        try:
+            _win30 = int(_argv[_argv.index("--window-days") + 1]) == 30
+        except Exception:
+            _win30 = False
+    _t0 = _pt.time()
+    _exit = None
+    try:
+        _main_single()
+    except SystemExit as _se:
+        _exit = _se
+    if _pair_on and _sym and _win30:
+        try:
+            _prog = PROGRESS_DIR / f"{_sym}_v14_progress.json"
+            _fresh = _prog.exists() and _prog.stat().st_mtime >= _t0 - 5.0
+        except Exception:
+            _fresh = False
+        if _fresh:
+            _run_pair_partner(_sym)
+        else:
+            print(f"[PAIR-IN-RAM] {_sym}: primary wrote no fresh progress (early exit) — partner not triggered", flush=True)
+    if _exit is not None:
+        raise _exit
+
+
+def _run_pair_partner(new_symside):
+    """Calculate the tradeable opposite side in-process (see _pair_partner_decision). Never raises."""
+    try:
+        _cur_md5 = _progress_npz_md5(new_symside)
+        _opp0 = f"{new_symside.rsplit('_', 1)[0]}_{'SHORT' if new_symside.endswith('_LONG') else 'LONG'}"
+        try:
+            _tpl_ok = bool(get_template_for_symside(_opp0))
+        except Exception:
+            _tpl_ok = False
+        _partner = _pair_partner_decision(new_symside, _progress_npz_md5(_opp0), _cur_md5, template_ok=_tpl_ok, blocked=_pair_blocked(_opp0))
+        if _partner is None:
+            print(f"[PAIR-IN-RAM] {new_symside}: partner {_opp0} not due (tradeable/template/same-vintage check) — primary only", flush=True)
+            return
+        if ensure_npz_for_symside(_partner, 30) is None:
+            print(f"[PAIR-IN-RAM] {new_symside}: partner {_partner} has no NPZ — primary only", flush=True)
+            return
+        print(f"[PAIR-IN-RAM] {new_symside} done on NPZ {_cur_md5} — calculating partner {_partner} in-process before the symbol leaves RAM", flush=True)
+        _saved_argv = sys.argv[:]
+        try:
+            os.environ["V15_PAIR_CHILD"] = "1"
+            sys.argv = [_saved_argv[0], "--sym-side", _partner, "--template", str(get_template_for_symside(_partner)), "--window-days", "30", "--seq-mode", "worst2best", "--workers", "8"] + (["--vector-only"] if "--vector-only" in _saved_argv else [])
+            try:
+                _main_single()
+            except SystemExit as _se:
+                print(f"[PAIR-IN-RAM] partner {_partner} exited SystemExit({_se.code}) — primary result stands", flush=True)
+        finally:
+            sys.argv = _saved_argv
+            os.environ.pop("V15_PAIR_CHILD", None)
+        print(f"[PAIR-IN-RAM] pair {new_symside} + {_partner} both calculated in one process on NPZ {_cur_md5}", flush=True)
+    except Exception as _pair_e:
+        print(f"[PAIR-IN-RAM-warn] {_pair_e}", flush=True)
+
+
+def _main_single():
     _capture_start_stamp()
     _cycle_deque = None
     _cycle_indices = None
@@ -10435,6 +11355,10 @@ def main():
             print(f"[NPZ-HOT] {new_symside} NPZ {p} {p.stat().st_size/1e6:.1f}M keep in RAM never erase", flush=True)
     except Exception as _e2:
         print(f"[NPZ-WARN] {_e2}", flush=True)
+    try:
+        _install_holdout(new_symside)
+    except Exception as _hoe:
+        print(f"[HOLDOUT-WARN] install {_hoe} — holdout off", flush=True)
     # Keep NPZ in RAM entire workbook — NO TIMEOUT, blocking load, never erase, lighting fast <1s per cell
     prepared = None
     try:
@@ -11268,6 +12192,23 @@ def main():
     else:
         progress_path = PROGRESS_DIR / f"{new_symside}_v14_progress.json"
         flags_md = FLAGS_DIR / f"{new_symside}_30d_flags.md"
+    _flush_state = {"json": time.time(), "wb": time.time()}
+
+    def _flush_progress(force: bool = False):
+        """USER 2026-10-15 "keep more in memory ... once every 5min or so max". Rows stay in RAM and the JSON is
+        persisted every PROGRESS_JSON_EVERY_S, forced on every promotion / cycle end / DONE / slice / shutdown.
+        Liveness for the watchdogs is the per-eval delta log + /tmp/v14_heartbeat_* (stall limits 60/90 min), never
+        this file's mtime, so a slower cadence cannot get a working board reaped."""
+        if _flush_due(_flush_state["json"], _flush_interval_s("V15_PROGRESS_JSON_EVERY_S", PROGRESS_JSON_EVERY_S), time.time(), force):
+            _atomic_write_json(progress_path, progress)
+            _flush_state["json"] = time.time()
+
+    def _flush_workbook(wb_obj, force: bool = False):
+        """Same cadence for the workbook; _atomic_save still validates the zip before os.replace (BadZip fix)."""
+        if _flush_due(_flush_state["wb"], _flush_interval_s("V15_WB_SAVE_EVERY_S", WB_SAVE_EVERY_S), time.time(), force):
+            _atomic_save(wb_obj, Path(wb_path))
+            _flush_state["wb"] = time.time()
+
     # fresh flags MD per run (truncate if exists, header will be recreated on first flag)
     try:
         if flags_md.exists():
@@ -12442,13 +13383,13 @@ def main():
             # flush periodic — progress and workbook per row, never lose CPU
             if _processed_cycle % 5 == 0:
                 try:
-                    _atomic_write_json(progress_path, progress)
+                    _flush_progress()
                 except: pass
                 # BADZIP FIX 2026-09-29: the "simple save" comment was exactly backwards —
                 # in-place saves ARE the torn-copy source (rsync mid-write + kill mid-save).
                 try:
                     wb_cur, _ = _get_wb_keep(sheet)
-                    _atomic_save(wb_cur, Path(wb_path))
+                    _flush_workbook(wb_cur)
                 except Exception:
                     pass
         # After dynamic cycle completes, flush all wb_keep caches and progress — never skip, every row must have F/G or red error
@@ -12458,7 +13399,7 @@ def main():
                 _wb.close()
             except: pass
         try:
-            _atomic_write_json(progress_path, progress)
+            _flush_progress(force=True)
         except: pass
         print(f"[0914-cycle] dynamic cycle complete {len(progress.get('done',{}))} rows cum={cumulative_gain:.4f} (stay on POS, next tab on NEG)", flush=True)
         # Skip sequential fallback — cycle has handled all rows
@@ -12990,7 +13931,7 @@ def main():
                         progress.get("done", {}).pop(key, None)
                         print(f"[ROW-INCOMPLETE] {new_symside} {key} no valid vector — no zeros written, stays pending", flush=True)
                         print(f"[ROW] {sheet}!{r} {switch}={cand} vs cum {cumulative_before:.4f} -> NO VALID", flush=True)
-                        _atomic_write_json(progress_path, progress)
+                        _flush_progress()
                         _touch_heartbeat(f"cell {sheet}!{r} NO VALID")
                         # keep G as actual negative, never 0.0 for NEG/invalid — E ALWAYS numeric (user fix 01 ENTRY_REVERSAL_BOUNCE empty)
                         try:
@@ -13013,7 +13954,7 @@ def main():
                                     ws_row.cell(row=r+1, column=5).value = None
                                 ws_row.cell(row=r, column=3).value = None
                                 try:
-                                    _atomic_save(wb_keep, wb_path)
+                                    _flush_workbook(wb_keep)
                                 except: pass
                         except: pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, "NO VALID all vectors invalid", 0.0, 0.0, cumulative_before)
@@ -13233,12 +14174,10 @@ def main():
                         print(f"[row-write-err] {sheet}!{r} {_e}", flush=True)
                     progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct","win_rate","bars","peak","n_syms","years","avg_gain_trade","gain_per_yr","sym_sharpe"]}, "best_filter": filt_best, "best_fval": fval_best, "yellows": dict(pending_lbI) if pending_lbI else {}, "invalid_yellows": list(invalid_hdrs), "unsettled_yellows": list(unsettled_hdrs), "cumulative_before": float(cumulative_before), "cumulative_after": float(cumulative_before + delta_best) if delta_best > 0 else float(cumulative_before), "npz": _run_npz_short, "complete": True}
                     try:
-                        # batch progress.json every 10 rows for 180/3min = 1s/cell (was per-row fsync = 1.6s/row)
-                        if r % 10 == 0 or args.window_days not in (1,7):
-                            _atomic_write_json(progress_path, progress)
-                        else:
-                            # still update in-memory, will flush at 10
-                            pass
+                        # USER 2026-10-15: 1d/7d are script-testing windows ONLY — the old `window_days not in (1,7)`
+                        # escape sent every 30d production board down the per-row write branch (11.6 MB x 3310 rows).
+                        # Rows stay in RAM; a promotion still forces the write so a resume never loses a promoted set.
+                        _flush_progress(force=bool(delta_best is not None and delta_best > 1e-9))
                     except: pass
                     _filter_suffix = f"+{filt_best}={fval_best}" if filt_best else ""
                     # Cycle-through-all-tabs: go through all 12 tabs then come back, until POS then move to next row (tenths)
@@ -13298,9 +14237,10 @@ def main():
                             continue
                         print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> NEG trades vec={vec_best.get('trades')} sharpe={float(vec_best.get('pool_sharpe') or 0):.4f}", flush=True)
                         _touch_heartbeat(f"cell {sheet}!{r} NEG")
-                        # FIX empty sheets - save per row so baseline/delta visible within seconds (was 10 rows batched)
+                        # USER 2026-10-15: NEG rows no longer rewrite the 1.2 MB workbook each time — WB_SAVE_EVERY_S
+                        # (promotions and cycle/sheet ends still force it, so the sheet never lags a promoted set)
                         try:
-                            _atomic_save(wb_keep, wb_path)
+                            _flush_workbook(wb_keep)
                         except: pass
                         continue
                     print(f"[ROW] {sheet}!{r} {switch}={cand}{_filter_suffix} vec_gain={float(vec_best.get('gain_pct') or 0):.4f} delta={delta_best:.4f} vs cum {cumulative_before:.4f} -> POSITIVE candidate", flush=True)
@@ -13327,7 +14267,7 @@ def main():
                             ok = False; reason = "per-cell timeout after live"
                     progress["done"][key].update({"live": {k: live_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","invalid_reason"]} if 'live_best' in locals() else {}, "live_delta": live_delta, "parity": ok if 'ok' in locals() else False, "reason": reason if 'reason' in locals() else ""})
                     try:
-                        _atomic_write_json(progress_path, progress)
+                        _flush_progress()
                     except: pass
                     if not ok:
                         print(f"[parity-fail] {sheet}!{r} {switch}={cand}" + (f"+{filt_best}={fval_best}" if filt_best else "") + f" delta={delta_best:.4f} {reason}", flush=True)
@@ -13436,7 +14376,7 @@ def main():
                             pass
                         _flag_to_md(flags_md, sheet, r, switch, cand, f"E-BLAND drop {new_cum:.4f} < {cumulative_gain:.4f}", delta_best, float(vec_best.get("gain_pct") or 0), cumulative_before)
                         progress.setdefault("done", {})[key] = {"delta": float(delta_best), "vec_gain": float(vec_best.get("gain_pct") or 0), "vec": {k: vec_best.get(k) for k in ["gain_pct","trades","pool_sharpe","valid","bh_pct","tim_pct","max_dd_pct"]}, "best_filter": filt_best, "best_fval": fval_best, "reason": "E-bland drop blocked"}
-                        _atomic_write_json(progress_path, progress)
+                        _flush_progress()
                         _touch_heartbeat(f"cell {sheet}!{r} E-bland")
                         continue
                     # build overrides string with all overrides used for this pos delta
@@ -13501,7 +14441,7 @@ def main():
                     progress["done"][key]["cumulative_after"] = cumulative_gain
                     progress["cumulative_gain"] = cumulative_gain
                     progress["cumulative_overrides"] = cumulative_overrides
-                    _atomic_write_json(progress_path, progress)
+                    _flush_progress(force=True)  # promotion = milestone, never deferred
                     # Update BASELINE_METRICS B2 to winning cumulative_gain (spec: baseline with final test gain result of winning combination so far)
                     try:
                         _bname = f"{new_symside}_BASELINE_METRICS"
@@ -13523,7 +14463,7 @@ def main():
                     # FIX empty - flush per row so XLS shows numbers within seconds (was 10 batched)
                     try:
                         print(f"[FLUSH] {sheet} row {r} cum {cumulative_gain:.4f}", flush=True)
-                        _atomic_save(wb_keep, wb_path)
+                        _flush_workbook(wb_keep, force=True)  # promotion = milestone
                     except Exception:
                         pass
                 except Exception as e:
@@ -13531,7 +14471,7 @@ def main():
                     print(f"[ROW-ERR] {sheet}!{r} {switch}={cand} err {e} {traceback.format_exc()[:800]}", flush=True)
                     try:
                         progress.setdefault("done", {})[key] = {"delta": 0, "reason": f"row err {e}"}
-                        _atomic_write_json(progress_path, progress)
+                        _flush_progress(force=True)  # row errors are rare — keep them durable
                         # flag red for never-stop
                         try:
                             if ws_row is not None:
@@ -13559,9 +14499,9 @@ def main():
                     except: pass
                     _touch_heartbeat(f"cell {sheet}!{r} ERR")
                     continue
-                # periodic flush for NEG/parity paths as well
+                # periodic flush for NEG/parity paths as well (WB_SAVE_EVERY_S, was every row)
                 try:
-                    _atomic_save(wb_keep, wb_path)
+                    _flush_workbook(wb_keep)
                 except Exception:
                     pass
                 if _check_per_cell_timeout(cell_start):

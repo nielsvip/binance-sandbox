@@ -123,7 +123,39 @@ def _load_npz(path: Path) -> Optional[Dict[str, np.ndarray]]:
         logger.warning(f"NPZ load failed {path}: {e}")
         return None
 
+def _shrink_check(path: Path, data: Dict[str, np.ndarray]):
+    """(allowed, reason) — a store is only ever extended, never replaced by a smaller one.
+
+    USER 2026-10-16: "s2 has backups of the npzs so no complete reruns are ever needed just topups; make sure
+    they get appended to never overwritten with smaller versions". MEASURED: CDW/ADP/AEM/AXTI were full stock
+    stores until 2026-10-13 and were then replaced by 1-row live stubs from this module (the pre-BIBLE-§109
+    minimal branch below), which froze them out of every top-up for 3 days (`cannot extend 618 row keys`) and
+    fed 1-bar NPZs to 30D boards. npz_guard.should_allow_overwrite would have refused it — this writer never
+    called it. NPZ_ALLOW_SHRINK=1 restores the old unguarded behaviour."""
+    if os.environ.get("NPZ_ALLOW_SHRINK") == "1" or not path.exists():
+        return True, "no existing — allow"
+    try:
+        with np.load(str(path), allow_pickle=True) as z:
+            if "timestamps" not in z.files:
+                return True, "existing has no timestamps — allow"
+            ts_old = np.asarray(z["timestamps"]).astype(np.int64).reshape(-1)
+    except Exception as e:
+        return True, f"existing unreadable ({type(e).__name__}) — allow"
+    n_old = len(ts_old)
+    ts_new = np.asarray(data.get("timestamps", np.array([], dtype=np.int64))).astype(np.int64).reshape(-1)
+    n_new = len(ts_new)
+    if n_new < n_old:
+        return False, f"REFUSED bar-loss write: existing {n_old} rows vs candidate {n_new}"
+    if n_old and n_new and int(ts_new[-1]) < int(ts_old[-1]):
+        return False, f"REFUSED time-regression write: existing last {int(ts_old[-1])} vs candidate {int(ts_new[-1])}"
+    return True, "allow"
+
+
 def _save_npz_atomic(path: Path, data: Dict[str, np.ndarray]) -> None:
+    allowed, reason = _shrink_check(path, data)
+    if not allowed:
+        logger.error(f"NPZ WRITE {reason} for {path.name} — file left untouched (never-shrink invariant)")
+        raise ValueError(f"{path.name}: {reason}")
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp.npz")
     np.savez_compressed(str(tmp), **data)
@@ -442,6 +474,12 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
                 except Exception:
                     pass
                 return False
+            elif os.environ.get("NPZ_ALLOW_CRYPTO_STUB") != "1":
+                # 2026-10-16: the §109 stock rule applies to crypto too — a 1-row stub is read by nobody (live crypto
+                # reads the indicator JSON) and it LOCKS the symbol out of every later top-up, because a 1-row store
+                # cannot be tailed. Refuse and queue a real repair instead. NPZ_ALLOW_CRYPTO_STUB=1 restores it.
+                logger.error(f"NPZ missing for {sym} and full precompute failed — NOT creating a 1-row crypto stub (queue tools/npz_repair.py)")
+                return False
             else:
                 # Create minimal NPZ with just this row
                 minimal = {}
@@ -461,6 +499,9 @@ def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
         except Exception as e:
             if not npz_path.stem.endswith(("USDT", "USDC")):
                 logger.error(f"full rebuild failed for {npz_path.stem}: {e} — NOT creating a 1-row stock stub (BIBLE §109)")
+                return False
+            if os.environ.get("NPZ_ALLOW_CRYPTO_STUB") != "1":
+                logger.error(f"full rebuild failed for {npz_path.stem}: {e} — NOT creating a 1-row crypto stub (2026-10-16: a stub cannot be tailed)")
                 return False
             logger.warning(f"full rebuild failed for {npz_path.stem}: {e}, creating minimal")
             minimal = {}

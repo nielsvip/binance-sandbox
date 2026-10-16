@@ -43,3 +43,45 @@ def test_pilot_syms_extend_universes(tmp_path, monkeypatch):
     assert len(st) == len(set(st))
     monkeypatch.setattr(R, "ROOT", Path(tmp_path / "emptyroot"))
     assert R.pilot_syms() == set()
+
+
+def _kl(rows):
+    import json
+    return json.dumps([{"timestamp": __import__("datetime").datetime.utcfromtimestamp(t).strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+                        "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1.0} for t in rows])
+
+
+def test_stale_canonical_copy_falls_through_to_the_long_store(tmp_path, monkeypatch):
+    """USER 2026-10-15 "all npz's up to date every 15m". S1 does not WRITE klines_canonical — the Mac daemon does and
+    klines_canonical_push.sh ships it. When that copy lagged (measured 70 min) while S1's own REST was refused with
+    HTTP 418, cache_bar_final returned False for every canonical-complete symbol and the loop installed NOTHING for
+    six cycles, although klines_cache_backtest already held the bar. The fallthrough must find it there — still only
+    when a STRICTLY NEWER row proves the bar closed."""
+    import backtest_v8_precompute as bvp
+    import npz_bar_refresh as R
+    canon, cache = tmp_path / "canon", tmp_path / "cache"
+    canon.mkdir(); cache.mkdir()
+    cutoff = 1_792_102_500
+    (canon / "X_15m.json").write_text(_kl([cutoff - 4 * R.BAR, cutoff - 3 * R.BAR]))      # canonical copy is 45 min behind
+    (cache / "X_15m.json").write_text(_kl([cutoff - R.BAR, cutoff, cutoff + R.BAR]))      # the long store has it + a successor
+    monkeypatch.setattr(bvp, "CANONICAL_KLINES", canon)
+    monkeypatch.setattr(bvp, "CRYPTO_KLINES", cache)
+    monkeypatch.setattr(bvp, "_canonical_complete", lambda s: True)
+    monkeypatch.setenv("NPZ_CANONICAL_WAIT_S", "0")
+    assert R.cache_bar_final("X", cutoff) is True
+
+
+def test_unfinal_bar_is_still_refused_after_the_fallthrough(tmp_path, monkeypatch):
+    """The relaxation must not invent finality: with no row NEWER than the cutoff, the answer stays False."""
+    import backtest_v8_precompute as bvp
+    import npz_bar_refresh as R
+    canon, cache = tmp_path / "canon", tmp_path / "cache"
+    canon.mkdir(); cache.mkdir()
+    cutoff = 1_792_102_500
+    (canon / "Y_15m.json").write_text(_kl([cutoff - 3 * R.BAR]))
+    (cache / "Y_15m.json").write_text(_kl([cutoff - R.BAR, cutoff]))   # cutoff is the newest row -> not provably closed
+    monkeypatch.setattr(bvp, "CANONICAL_KLINES", canon)
+    monkeypatch.setattr(bvp, "CRYPTO_KLINES", cache)
+    monkeypatch.setattr(bvp, "_canonical_complete", lambda s: True)
+    monkeypatch.setenv("NPZ_CANONICAL_WAIT_S", "0")
+    assert R.cache_bar_final("Y", cutoff) is False

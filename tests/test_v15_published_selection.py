@@ -69,6 +69,10 @@ def test_golive_published_collected_strips_artefacts_and_skips_refused(tmp_path)
     meta, col = GL.published_collected(p)
     assert col["AUSDT_LONG"]["overrides"] == {"K": 1}
     assert col["AUSDT_LONG"]["evidence"]["gain_pct"] == -2.0  # negative sets are NOT skipped (minimal tier size live)
-    assert sorted(col["AUSDT_LONG"]["artefact_stripped"]) == ["ABLATION_X", "MODE"]
-    assert len(col["AUSDT_LONG"]["mandate_stripped"]) == 2
+    # MAX_AUGMENTS_PER_POSITION joined ARTEFACT_KEYS 2026-10-15 (switch deleted; boards published before the
+    # deletion still carry it, so go-live drops it outright instead of applying a dead key).
+    assert sorted(col["AUSDT_LONG"]["artefact_stripped"]) == ["ABLATION_X", "MAX_AUGMENTS_PER_POSITION", "MODE"]
+    # one, not two: MAX_AUGMENTS_PER_POSITION moved to ARTEFACT_KEYS when the switch was deleted 2026-10-15,
+    # so MAX_ORDER_VALUE=0 is the only remaining mandate strip.
+    assert col["AUSDT_LONG"]["mandate_stripped"] == ["MAX_ORDER_VALUE=0"]
     assert col["BUSDT_LONG"]["skip"].startswith("published: SET_DRIFTED")

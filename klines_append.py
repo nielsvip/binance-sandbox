@@ -86,24 +86,49 @@ def canonical_rows(name: str) -> list[dict]:
     return load_json_list(CANONICAL / name)
 
 
+def _final_rows(rows: list[dict]) -> list[dict]:
+    """Drop provisional bars. The Mac/gateway tick builders publish a temp OHLC for the forming bar (key
+    `provisional`) and overwrite it with the official OHLCV when the exchange bar lands. merge_klines only CORRECTS
+    rows for canonical sources, so a provisional row appended into s1's long store would never be replaced — it would
+    freeze a half-formed bar into the backtest truth. s1 keeps final bars only; the next cycle brings the official one.
+    (tools/npz_bar_refresh.cache_bar_final_stocks likewise requires a NEWER row before trusting a bar.)"""
+    return [b for b in rows if not b.get("provisional")]
+
+
 def gather_fresh(name: str) -> list[dict]:
-    """Read primary; fill any timestamp gaps from backup. A canonical file, when present, is the only source."""
+    """Read primary; fill any timestamp gaps from backup+Mac. Canonical rows stay authoritative INSIDE their own range
+    (merge_klines correct=True rewrites differing OHLCV there); rows NEWER than canonical's last bar still come from
+    the live feeds.
+
+    USER 2026-10-15: before this, `if canon: return canon` let a LAGGING canonical freeze the whole store. Measured:
+    the canonical daemon was ~5 h behind (Mac 13:45Z, s1 12:45Z) while the tick feeds were at 18:00-18:30Z, so every
+    crypto symbol stopped at exactly 12:45Z, tools/npz_bar_refresh reported EXCHANGE_BAR_NOT_READY for 218-281 of 369
+    symbols, every NPZ went 6-21 h stale and the s2 parity lane parked in STALE_WAIT. The valve only ADDS timestamps
+    canonical does not cover, so canonical never loses authority over a bar it holds — which is what the USDC-mislabel
+    / 3m right-label rule protects. KLINES_APPEND_CANONICAL=0 still disables canonical entirely (legacy append-only).
+    """
     canon = canonical_rows(name)
-    if canon:
-        return canon
-    primary = load_json_list(PRIMARY / name)
-    backup = load_json_list(BACKUP / name) + load_json_list(MACBOOK / name)
+    primary = _final_rows(load_json_list(PRIMARY / name))
+    backup = _final_rows(load_json_list(BACKUP / name) + load_json_list(MACBOOK / name))
     if not primary:
-        return backup
-    if not backup:
-        return primary
-    seen = {b.get("timestamp") for b in primary if b.get("timestamp")}
-    extra = [b for b in backup if b.get("timestamp") and b["timestamp"] not in seen]
-    if not extra:
-        return primary
-    merged = primary + extra
-    merged.sort(key=lambda b: b.get("timestamp", ""))
-    return merged
+        live = backup
+    elif not backup:
+        live = primary
+    else:
+        seen = {b.get("timestamp") for b in primary if b.get("timestamp")}
+        extra = [b for b in backup if b.get("timestamp") and b["timestamp"] not in seen]
+        live = sorted(primary + extra, key=lambda b: b.get("timestamp", "")) if extra else primary
+    if not canon:
+        return live
+    if not live:
+        return canon
+    last_canon = max((b.get("timestamp") for b in canon if b.get("timestamp")), default=None)
+    if last_canon is None:
+        return canon
+    newer = [b for b in live if b.get("timestamp") and b["timestamp"] > last_canon]
+    if not newer:
+        return canon
+    return canon + sorted(newer, key=lambda b: b.get("timestamp", ""))
 
 
 def filenames_to_process(symbols: list[str] | None) -> list[str]:
@@ -112,13 +137,16 @@ def filenames_to_process(symbols: list[str] | None) -> list[str]:
     else:
         roots = None
     seen: set[str] = set()
+    # USER 2026-10-15: stocks live one level down (klines_cache_macbook/tradier/GOOGL_15m.json). The flat glob never
+    # saw them, so s1's long stock files sat at the previous session's close while today's bars were already on the
+    # box — `name` is now a path RELATIVE to each root, so CANONICAL/PRIMARY/BACKUP/MACBOOK/TARGET joins all follow.
     for d in (CANONICAL, PRIMARY, BACKUP, MACBOOK):
         if not d.exists():
             continue
-        for p in d.glob("*_*.json"):
-            name = p.name
-            stem = name[:-5]  # strip .json
-            if "_" not in stem:
+        for p in list(d.glob("*_*.json")) + list(d.glob("tradier/*_*.json")):
+            name = str(p.relative_to(d))
+            stem = p.name[:-5]  # strip .json — BASENAME, never the relative path: "tradier/GOOGL_15m" would
+            if "_" not in stem:  # otherwise yield sym="tradier/GOOGL", breaking --symbols and _excl_denied
                 continue
             sym, tf = stem.rsplit("_", 1)
             if tf not in VALID_TFS:
@@ -136,6 +164,7 @@ def append_one(name: str, dry_run: bool = False) -> dict:
     if not fresh:
         return {"file": name, "status": "no_fresh", "n_added": 0}
     target = TARGET / name
+    target.parent.mkdir(parents=True, exist_ok=True)  # tradier/ subdir on a first stock append
     existed = target.exists()
     existing = load_json_list(target)
     merged, n_added = merge_klines(existing, fresh, correct=bool(canonical_rows(name)))

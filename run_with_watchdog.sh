@@ -288,9 +288,40 @@ check_rapid_restarts() {
     fi
 }
 
+# FENCE AWARENESS (USER 2026-10-15 live takeover test). When S1 holds the lease it runs these accounts and this host
+# must not. Nothing told the watchdogs that: during the 19:27-21:47Z S1 lease these respawned ez_manage continuously
+# while mac_failover_agent SIGTERMed it on every 15 s tick ("FENCE: SIGTERM 6 gated trader pids" at 20:19, 20:20,
+# 20:25, 20:32...). Besides being a pointless fight, each respawn gave ez_manage a live window to place an order on an
+# account S1 was already trading. A fenced host simply waits.
+_lease_fenced() {
+    case "$SCRIPT" in
+        ez_manage.py|tradier_manage.py|ez_positions_watchdog.py|ez_positions.py|ez_copilot.py|ez_reentry_daemon.py|tradier_positions.py) ;;
+        *) return 1 ;;
+    esac
+    local lease="/Users/niels/Documents/binance/data/live_failover/lease_local.json"
+    [ -f "$lease" ] || return 1
+    case "$SCRIPT" in
+        tradier_*) local venue="stocks" ;;
+        *) local venue="crypto" ;;
+    esac
+    /usr/bin/python3 - "$lease" "$venue" <<'PYEOF' 2>/dev/null
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+venues = str(d.get("venues") or "")
+sys.exit(0 if (d.get("holder") == "s1" and (not venues or sys.argv[2] in venues)) else 1)
+PYEOF
+}
+
 # Function to run the script
 run_script() {
     local start_time=$(date +%s)
+    while _lease_fenced; do
+        log "[FENCED] S1 holds the lease for $SCRIPT — not starting on this host; re-checking in 15s"
+        sleep 15
+    done
     log "Starting $SCRIPT ${ARGS[*]}"
 
     # Scripts using Python logging write to their own log file — stdout to /dev/null
@@ -516,16 +547,22 @@ main() {
         # Check for rapid restarts
         check_rapid_restarts
 
-        # Kill any duplicate python instances before launching
-        kill_duplicate_python
         # ═══ LIVE FAILOVER LEASE GATE (2026-10-13 USER, Mac only, applies even with TRADIER_LOCAL_ONLY=1) ═══
         # S1 holds the live-trading lease -> the Mac never spawns a gated trader (tools/live_failover_lease_gate.sh).
         # 2026-10-14: also on S1's live dir (has data/live_failover/): ez_copilot's wrapper kept spawning tradier_positions.py
         # on S1 WITHOUT the lease, so S1's own stock files (not the Mac's seed) decided opened_at at takeover.
+        # 2026-10-16 FENCED WATCHDOG MUST NOT KILL (proven, trb 2026-10-16): kill_duplicate_python ran BEFORE this gate,
+        # so a fenced wrapper SIGTERMed every live child it refused to replace — once per 30 s loop. tradier_positions.py
+        # (the only writer of stock position truth) therefore ran 13:30-13:50, 14:03-14:12, 14:37-14:52 and then NOT AT ALL
+        # until 19:51 (665 LEASE_FENCED iterations, 9 restarts/300 s churn, "[SINGLETON] Killing duplicate ... tradier_positions.py"
+        # at 14:02/15:32/16:12/16:26/18:18/19:18), while S1 — which does not run stocks at all — held the lease. A fenced
+        # wrapper now does NOTHING: no duplicate reaping, no spawn. Only a wrapper that is allowed to RUN the venue may kill for it.
         if [[ -f "$WORKDIR/tools/live_failover_lease_gate.sh" ]] && [[ "$(uname)" == "Darwin" || -d "$WORKDIR/data/live_failover" ]]; then
             source "$WORKDIR/tools/live_failover_lease_gate.sh"
-            if lf_lease_fenced "$SCRIPT" "$WORKDIR"; then log "[LEASE_FENCED] the other machine holds the live-trading lease for this venue (data/live_failover/lease_local.json on the Mac, lease.json run_venues on S1) — NOT spawning $SCRIPT on $(uname). Retrying in 30s..."; sleep 30; continue; fi
+            if lf_lease_fenced "$SCRIPT" "$WORKDIR"; then log "[LEASE_FENCED] the other machine holds the live-trading lease for this venue (data/live_failover/lease_local.json on the Mac, lease.json run_venues on S1) — NOT spawning $SCRIPT on $(uname), and NOT killing any running instance. Retrying in 30s..."; sleep 30; continue; fi
         fi
+        # Kill any duplicate python instances before launching (only reached when this wrapper may actually run the venue)
+        kill_duplicate_python
         # ═══ S1 FAILOVER GATE (MacBook only) ═══
         # Local-only launches must never SSH to S1.  start_everything_3.command
         # and local cron recovery export TRADIER_LOCAL_ONLY=1; the legacy
@@ -579,6 +616,28 @@ main() {
                 log "[SIGKILL_BACKOFF] last run lasted ${_run_duration}s (≥300s stable) — resetting counter (was $consecutive_sigkill)"
             fi
             consecutive_sigkill=0
+        fi
+
+        # 2026-10-16 USER ("NO account can be inactive for >3min ... NEVER IS THERE ANY POSSIBILITY THAT it just stops
+        # trading"): exit 137 is NOT proof of jetsam. An operator `kill -9`, a rolling restart, or any external SIGKILL
+        # lands in the branch below and was converted into a DELIBERATE 60-660s halt that nothing could fill — the
+        # watchdog holds the singleton lock while it sleeps, so crypto_watchdog_cron.sh (wrapper alive = healthy) and
+        # the keepalive (log age < 300s) both stand down. PROVEN 2026-10-16: ang/inf/flz/fin SIGKILLed 04:08:11-13Z,
+        # each logged "consecutive 137 #1 — sleeping 60s", relaunched only 04:09:18-19Z (~65-68s down), and the very
+        # next line recorded pressure_level=1 free=56-62MB — i.e. there was never any memory pressure to back off from.
+        # The jetsam signal is the PRESSURE LEVEL, not the exit code. When the host is not tight the kill came from
+        # outside and the only correct action is to relaunch at once. The OOM thrash protection below is untouched and
+        # still applies in full whenever the host really is under pressure.
+        # Darwin-only: mac_pressure_level() returns a constant 1 off Darwin, which would turn EVERY 137 into an
+        # immediate relaunch on S1/Linux. S1's behaviour is left exactly as it was.
+        _lvl_137=9
+        if [[ "$(uname)" == "Darwin" && "$SCRIPT_BASE" == "ez_manage" && "$_last_exit" -eq 137 ]]; then _lvl_137=$(mac_pressure_level); fi
+        if [[ "$SCRIPT_BASE" == "ez_manage" && "$_last_exit" -eq 137 && "$_lvl_137" -le 2 ]]; then
+            log "[SIGKILL_EXTERNAL] exit 137 after ${_run_duration}s with pressure_level=${_lvl_137} (≤2 = not jetsam) free=$(mac_pages_free_kb)KB — external kill, NOT memory pressure: relaunching immediately, no backoff"
+            consecutive_sigkill=0
+            consecutive_fail=0
+            sleep 1
+            continue
         fi
 
         if [[ "$SCRIPT_BASE" == "ez_manage" && "$_last_exit" -eq 137 ]]; then

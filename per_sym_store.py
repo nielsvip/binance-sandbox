@@ -552,18 +552,68 @@ def get_full_config(sym_side: str) -> Optional[dict]:
 _OVR_MEMO: dict = {}  # 2026-10-14: sym_side -> (monotonic ts, overrides dict); live _cfg called this thousands of times per cycle and
 # every call deep-copied the full entry (full_config) -> tradier_manage event loop frozen up to 179 s -> no exits reached the broker.
 
+_ARTEFACT_KEYS = ("MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER")
+
+
+def _mandate_sanitize(ov: dict) -> dict:
+    """The go-live integrity strip, applied at READ time to the frozen full set.
+
+    tools/v15_persym_golive.sanitize() only ever cleaned the overrides half of a row; the defaults_snapshot half was
+    never checked. Engine artefacts never reach live (MODE / SIMPLE_PRICE_GT0_ENABLED / VENUE / IS_TRADIER /
+    ABLATION_*, USER 2026-10-08), and a MAX_ORDER_VALUE of 0 would block every order for the sym_side (it is still a
+    live switch — USER 2026-10-15: "MAX_ORDER_VALUE right now is 6x START_POSITION_SIZE but it is not yet obsolete").
+    MAX_AUGMENTS_PER_POSITION needs no clause any more: the switch was deleted from every surface 2026-10-15 and
+    purged from the cat_side layer and all 736 live rows. A dropped key falls through to the cat_side default.
+    """
+    for k in _ARTEFACT_KEYS:
+        ov.pop(k, None)
+    for k in [k for k in ov if k.startswith("ABLATION_")]:
+        ov.pop(k, None)
+    if "MAX_ORDER_VALUE" in ov:
+        try:
+            if float(str(ov["MAX_ORDER_VALUE"]).strip()) <= 0:
+                ov.pop("MAX_ORDER_VALUE", None)
+        except (TypeError, ValueError):
+            pass
+    return ov
+
 
 def get_overrides(sym_side: str) -> Optional[dict]:
+    """The per-sym layer every live reader resolves FIRST (ez_manage._psym_get, tradier_manage._cfg,
+    ez_positions_service). READ-ONLY: the returned dict is the live cache itself, never copy-on-read (see below).
+
+    USER 2026-10-15: "we do not store overrides anymore, we store and apply the FULL set of switches and filters for
+    every symbol and side ... defaults change every morning so overrides are absolutely useless." That is exactly the
+    hole this closes. The row keeps three columns: overrides_json (the 842 keys the board's sheet covered),
+    defaults_snapshot_json (the 3561-key default layer frozen when the board was written) and full_config_json
+    (snapshot + overrides = the complete set the board was MEASURED with). Live read only the 842 and resolved the
+    other 2719 from the CURRENT per_sym_settings layer, which tools/build_cat_side_defaults_4.py rebuilds every
+    morning -> measured at 02:40Z: 384 of 735 rows were running at least one switch at a value their own board never
+    saw (115 keys; STOCH_CROSS_ENTRY_TRADIER True->False on 208 rows, COOLDOWN_BARS_TRADIER 8->0 on 182,
+    ADX_REGIME_FILTER_ENABLED True->False on 171, MIN_GAIN_TO_BUY_AGGRESSIVELY 4.5->6.0 on 81). Serving full_config
+    makes the per-sym layer complete, so a morning default move can no longer drift live off a qualified board; the
+    next go-live re-apply refreshes the snapshot. Kill switch PER_SYM_APPLY_FULL_SET=0 restores the 842-key diff.
+
+    No copy on return: the full set is 3561 keys and live calls this thousands of times per cycle (copying cost
+    8.3 us/call at 842 keys, 18.3 us at 3561 -> the same event-loop freeze the memo was added for; no-copy is 0.05 us).
+    Every live caller is a membership test plus one read; the two tool callers copy for themselves.
+    """
     import time as _time
     _k = str(sym_side).strip()
     _hit = _OVR_MEMO.get(_k)
     _now = _time.monotonic()
     if _hit is not None and _now - _hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "30.0")):
-        return None if _hit[1] is None else dict(_hit[1])
+        return _hit[1]
     e = get(sym_side)
-    ov = None if e is None else dict(e.get("overrides") or {})
+    if e is None:
+        ov = None
+    elif os.environ.get("PER_SYM_APPLY_FULL_SET", "1") != "0":
+        _full = e.get("full_config")
+        ov = _mandate_sanitize(dict(_full)) if isinstance(_full, dict) and _full else dict(e.get("overrides") or {})
+    else:
+        ov = dict(e.get("overrides") or {})
     _OVR_MEMO[_k] = (_now, ov)
-    return None if ov is None else dict(ov)
+    return ov
 
 
 def get_knob(symbol: str, side: str, knob: str, default=None, venue: str = None):
@@ -717,6 +767,11 @@ def upsert(
     Returns the entry dict that was persisted.
     """
     sym_side = str(sym_side).strip()
+    # 2026-10-15: the 30 s get_overrides memo must not survive our own write. switch_parity.verify_symside read the
+    # pre-write cached row right after upsert and reported "post-verify FAILED: override key sets differ / sqlite
+    # overrides row missing" for every set, so the 02:23Z go-live apply registered 0 of 57 on paper while the rows had
+    # in fact landed (AAVEUSDC_LONG 02:23:24Z, board-identical). Invalidating here keeps every writer honest.
+    _OVR_MEMO.pop(sym_side, None)
     parts = sym_side.rsplit("_", 1)
     symbol = parts[0] if len(parts) == 2 else sym_side
     side = parts[1] if len(parts) == 2 else "LONG"
@@ -941,6 +996,7 @@ def upsert(
         except Exception:
             pass
 
+    _OVR_MEMO.pop(sym_side, None)  # 2026-10-15: and again after the write, in case the row was re-read mid-upsert
     return {"sym_side": sym_side, "full_config": full_config, "overrides": overrides, "defaults_snapshot": defaults_snapshot, "meta": meta}
 
 

@@ -1,187 +1,30 @@
 {
- "generated_at": "2026-10-14 21:42 UTC",
- "total_capital_usd": 299.69,
+ "generated_at": "2026-10-16 23:29 UTC",
+ "total_capital_usd": 6.9,
  "tier_capital": {
-  "A": 35.92,
-  "B": 87.74,
-  "C": 176.05
+  "A": 6.9,
+  "B": 0.0,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 2,
-  "B": 5,
-  "C": 7
+  "A": 1,
+  "B": 0,
+  "C": 0
  },
- "winners": [
-  "fin:XRPUSDC_SHORT"
- ],
- "losers": [
-  "fin:ATOMUSDT_SHORT",
-  "fin:ADAUSDC_SHORT",
-  "fin:CHRUSDT_SHORT",
-  "fin:UNIUSDC_SHORT",
-  "fin:COTIUSDT_SHORT",
-  "fin:EGLDUSDT_SHORT",
-  "fin:SANDUSDT_SHORT",
-  "fin:SNXUSDT_SHORT"
- ],
- "mediocre": [
-  "fin:1INCHUSDT_SHORT",
-  "fin:KSMUSDT_SHORT"
- ],
+ "winners": [],
+ "losers": [],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ADAUSDC_SHORT",
-   "symbol": "ADAUSDC",
-   "account": "fin",
-   "value_usd": 56.14,
-   "gain_pct": -0.307,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 245.6,
-   "mark": 0.2286
-  },
-  {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 33.99,
-   "gain_pct": -0.086,
-   "tier": "C",
-   "perf_mult": 0.38,
-   "amt": 2921.0,
-   "mark": 0.011635
-  },
-  {
-   "pk": "fin:EGLDUSDT_SHORT",
-   "symbol": "EGLDUSDT",
-   "account": "fin",
-   "value_usd": 22.48,
-   "gain_pct": -0.014,
-   "tier": "C",
-   "perf_mult": 0.3,
-   "amt": 6.2,
-   "mark": 3.62550846
-  },
-  {
-   "pk": "fin:1INCHUSDT_SHORT",
-   "symbol": "1INCHUSDT",
-   "account": "fin",
-   "value_usd": 22.37,
-   "gain_pct": 0.149,
-   "tier": "B",
-   "perf_mult": 0.39,
-   "amt": 239.0,
-   "mark": 0.0936
-  },
-  {
-   "pk": "fin:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "fin",
-   "value_usd": 21.84,
-   "gain_pct": 2.639,
+   "pk": "ang:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "ang",
+   "value_usd": 6.9,
+   "gain_pct": -1.055,
    "tier": "A",
-   "perf_mult": 8.57,
-   "amt": 16.4,
-   "mark": 1.3316
-  },
-  {
-   "pk": "fin:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "fin",
-   "value_usd": 21.34,
-   "gain_pct": -0.239,
-   "tier": "C",
-   "perf_mult": 0.4,
-   "amt": 3.0,
-   "mark": 7.11232245
-  },
-  {
-   "pk": "fin:KSMUSDT_SHORT",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 17.75,
-   "gain_pct": 0.11,
-   "tier": "B",
-   "perf_mult": 0.26,
-   "amt": 3.9,
-   "mark": 4.551
-  },
-  {
-   "pk": "fin:ZENUSDT_SHORT",
-   "symbol": "ZENUSDT",
-   "account": "fin",
-   "value_usd": 16.78,
-   "gain_pct": -0.184,
-   "tier": "B",
-   "perf_mult": 1.93,
-   "amt": 2.8,
-   "mark": 5.993
-  },
-  {
-   "pk": "fin:ATOMUSDT_LONG",
-   "symbol": "ATOMUSDT",
-   "account": "fin",
-   "value_usd": 16.71,
-   "gain_pct": 0.057,
-   "tier": "B",
-   "perf_mult": 1.68,
-   "amt": 9.46,
-   "mark": 1.76601676
-  },
-  {
-   "pk": "fin:ATOMUSDT_SHORT",
-   "symbol": "ATOMUSDT",
-   "account": "fin",
-   "value_usd": 14.13,
-   "gain_pct": -0.799,
-   "tier": "B",
-   "perf_mult": 1.68,
-   "amt": 8.0,
-   "mark": 1.76601676
-  },
-  {
-   "pk": "fin:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "fin",
-   "value_usd": 14.09,
-   "gain_pct": 0.262,
-   "tier": "C",
-   "perf_mult": 0.23,
-   "amt": 61.7,
-   "mark": 0.2284
-  },
-  {
-   "pk": "fin:IOTXUSDT_SHORT",
-   "symbol": "IOTXUSDT",
-   "account": "fin",
-   "value_usd": 14.08,
-   "gain_pct": -0.551,
-   "tier": "A",
-   "perf_mult": 8.27,
-   "amt": 3856.0,
-   "mark": 0.00365146
-  },
-  {
-   "pk": "fin:CHRUSDT_SHORT",
-   "symbol": "CHRUSDT",
-   "account": "fin",
-   "value_usd": 14.06,
-   "gain_pct": -0.301,
-   "tier": "C",
-   "perf_mult": 0.2,
-   "amt": 700.0,
-   "mark": 0.02008035
-  },
-  {
-   "pk": "fin:SANDUSDT_SHORT",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 13.95,
-   "gain_pct": 0.215,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 251.0,
-   "mark": 0.05557
+   "perf_mult": 7.64,
+   "amt": 181.0,
+   "mark": 0.03812342
   }
  ]
 }

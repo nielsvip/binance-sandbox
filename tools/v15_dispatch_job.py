@@ -7,10 +7,54 @@ market is open) killed every tick from 13:44Z and the fleet launched nothing. Th
 ok=False from the prep tool = sym_side must not launch (stale tail it could not heal) -> skip, the scheduler retries later.
 Prep tool crash / lock wait timeout = launch with what the host has (USER 2026-10-13: "work with what you have").
 Every outcome is one JSON line in /tmp/v15_dispatch.log."""
-import argparse, fcntl, json, os, pathlib, re, subprocess, sys, time
+import argparse, datetime, fcntl, hashlib, json, os, pathlib, re, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LOG = pathlib.Path(os.environ.get("V15_DISPATCH_LOG", "/tmp/v15_dispatch.log"))
+NPZ_FAIL_LEDGER = pathlib.Path(os.environ.get("V15_NPZ_FAIL_LEDGER", str(ROOT / "data" / "v15_npz_failures.jsonl")))
+
+
+def _npz_identity(symbol, npz_path=None):
+    """{sha, bars, sessions, last_bar} for an NPZ. Session count mirrors the pilot/engine gate
+    (tools/opt/evaluate_v12.py: distinct UTC calendar days over finite timestamps for stocks).
+    Never raises — missing/unreadable fields stay None (capture must not break a dispatch)."""
+    p = pathlib.Path(npz_path) if npz_path else ROOT / "backtest_v8" / "indicators" / f"{symbol}.npz"
+    rec = {"symbol": symbol, "npz": str(p), "sha": None, "bars": None, "sessions": None, "last_bar": None}
+    try:
+        h = hashlib.md5()
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        rec["sha"] = h.hexdigest()
+    except OSError:
+        return rec
+    try:
+        import numpy as np
+        z = np.load(p, allow_pickle=False)
+        ts = np.asarray(z["timestamps"]).ravel()
+        rec["bars"] = int(ts.size)
+        raw = ts[np.isfinite(ts)]
+        if raw.size:
+            secs = raw / (1000.0 if float(raw[-1]) > 1e11 else 1.0)
+            rec["last_bar"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(float(secs[-1])))
+            if not str(symbol).upper().endswith(("USDT", "USDC")):
+                rec["sessions"] = int(len(np.unique(secs.astype("datetime64[s]").astype("datetime64[D]"))))
+    except Exception:
+        pass
+    return rec
+
+
+def _ledger_npz(rec):
+    """USER 2026-10-15 (06.2): NPZ failure/push ledger — CAPTURE ONLY, never gates a launch.
+    Every pushed NPZ and every reported pilot NPZ failure lands here as one JSON line
+    {ts, event, symbol, sha, bars, sessions, last_bar, ...} so the short-stock-NPZ gate
+    (pending 06 item 2) can later join failures to exact NPZ identities."""
+    try:
+        lp = pathlib.Path(os.environ.get("V15_NPZ_FAIL_LEDGER", str(NPZ_FAIL_LEDGER)))
+        with open(lp, "a") as f:
+            f.write(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **rec}) + "\n")
+    except OSError:
+        pass
 
 
 def log(rec):
@@ -69,6 +113,135 @@ def prep(symbol, push):
     return res
 
 
+PREP_NO_REBUILD_ACTIONS = ("frozen", "regen_failed", "regen_blocked")
+PREP_ALERT_ACTIONS = ("regen_failed", "regen_blocked")
+
+
+def prep_disposition(pr):
+    """Pure. THE single meaning of a prep verdict, owned by the module that produces it (prep() above).
+
+    USER 2026-10-15: a verdict of None must NEVER launch. Measured on s1 /tmp/v15_dispatch.log (966 records):
+    889 launches carried prep.ok=True (97.8%, the accompanying-NPZ law working), but 20 (2.2%) launched with
+    ok=None under the old `if res.get("ok") is False` gate plus the "work with what you have" rule in the
+    header — slot-wait-timeout (XOM, AGCO), regen_blocked by the bar-loss-overwrite guard (CLS 24181 bars,
+    AG 2017), and prep crashes `no-output rc=-15` (CVX, WDAY: the prep itself was SIGTERMed).
+
+    -> (launch_ok, kind, reason, may_rebuild), kind in ('ok', 'block', 'retry', 'alert'):
+      ok     launch
+      block  ok=False for a reason a rebuild may fix -> defer, rebuild once per cooldown
+      retry  transient (frozen / push failed / lock / slot wait / timeout / reaped prep) -> next tick, NO rebuild
+      alert  regen_failed / regen_blocked -> surface it; a rebuild cannot fix a data problem, never spin
+    `pr is None` is retry, never a pass. tools/v15_npz_prep.py's `action` is the discriminator (it returns
+    ok=None for frozen, push-failed, regen_failed<48h and regen_blocked<48h); the reason text is a fallback."""
+    if pr is None:
+        return False, "retry", "prep did not run (no output / crashed)", False
+    ok = pr.get("ok")
+    action = str(pr.get("action") or "")
+    reason = str(pr.get("reason") or "") or action or "no reason given"
+    if action in PREP_ALERT_ACTIONS:
+        return False, "alert", reason, False
+    if ok is True:
+        return True, "ok", reason, False
+    if action in PREP_NO_REBUILD_ACTIONS or "push failed" in reason.lower():
+        return False, "retry", reason, False
+    if ok is False:
+        return False, "block", reason, True
+    return False, "retry", reason, False
+
+
+NY_TZ = "America/New_York"
+
+
+def us_rth(now):
+    """True inside US regular trading hours (09:30-16:00 ET, weekdays). Clock injected by the caller."""
+    import zoneinfo
+
+    t = now.astimezone(zoneinfo.ZoneInfo(NY_TZ))
+    return t.weekday() < 5 and datetime.time(9, 30) <= t.time() < datetime.time(16, 0)
+
+
+def npz_tail_limit_h(symbol, now=None, rth=None):
+    """Stocks freshness bar, SESSION-RELATIVE (USER 2026-10-15: "run stocks on the latest market hour bar npz",
+    and "no new klines are produced after 20:00utc" — so a post-close NPZ rebuilt to the session's final bar IS
+    current and must not be called stale).
+
+    An absolute hour count is wrong across weekends and holidays: Saturday 03:00 UTC with a Friday 20:00 last bar
+    is 31 h old and perfectly current, yet a fixed 20 h limit would block it. So the cutoff comes from
+    tools/npz_cutoffs.last_rth_close_bar — the same authority tail_currency() uses, which already handles live RTH
+    (latest closed 15m bar), post-close (today's 16:00 ET) and weekend/holiday (the previous session's close) —
+    and is then expressed as the `max_tail_age_h` that tools/v15_npz_preflight.verify already accepts. No change
+    to that module is needed.
+
+    -> hours, or None to use the module's own limit (crypto always: its 1.5 h rule is already bar-accurate).
+    Pure (clock injected). V15_SCHED_STOCK_TAIL_GRACE_H (default 0.5 = 2 bars) absorbs builder/push lag;
+    V15_SCHED_STOCK_TAIL_H forces a fixed hour count if the session rule ever has to be bypassed."""
+    sym = str(symbol or "").upper()
+    if sym.endswith(("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")):
+        return None
+    forced = os.environ.get("V15_SCHED_STOCK_TAIL_H")
+    if forced:
+        try:
+            return round(float(forced), 2)
+        except (TypeError, ValueError):
+            pass
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    try:
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from tools.npz_cutoffs import last_rth_close_bar
+        cutoff = float(last_rth_close_bar(now))
+    except Exception:
+        return None  # no calendar -> fall back to the module's own limit rather than inventing one
+    if not cutoff:
+        return None
+    try:
+        grace = float(os.environ.get("V15_SCHED_STOCK_TAIL_GRACE_H", "0.5") or 0.5)
+    except (TypeError, ValueError):
+        grace = 0.5
+    return round(max(0.5, (now.timestamp() - cutoff) / 3600.0 + grace), 2)
+
+
+def npz_preflight(symbol, window_days=30, check_freshness=True):
+    """Verify the NPZ that will ACCOMPANY this task — on S1, the source the push copies from — AFTER the prep
+    and BEFORE the pilot is launched. The prep's own ok=True is not sufficient: measured
+    `v15_npz_prep.py --symbol ATOMUSDT --dry-run` returned ok=true/action=would_regen while reporting a tail
+    24.0 bars (6 h) behind the latest closed 15m bar.
+    -> (ok, reason, res). A missing module fails OPEN (logged) so a dependency that has not been pushed yet
+    cannot stop the fleet; a real verdict is authoritative and fails CLOSED."""
+    if os.environ.get("V15_SCHED_NPZ_PREFLIGHT", "1") != "1":
+        return True, "preflight-off", {}
+    try:
+        if str(ROOT / "tools") not in sys.path:
+            sys.path.insert(0, str(ROOT / "tools"))
+        import v15_npz_preflight as _pf
+    except Exception as e:
+        return True, f"preflight-unavailable ({type(e).__name__})", {}
+    try:
+        res = _pf.verify(symbol, window_days=window_days, check_freshness=check_freshness,
+                         max_tail_age_h=(npz_tail_limit_h(symbol) if check_freshness else None))
+    except Exception as e:
+        return True, f"preflight-crash ({type(e).__name__})", {}
+    try:
+        if not res.get("ok"):
+            _pf.record_deferral(res)
+    except Exception:
+        pass
+    reasons = [str(x) for x in (res.get("reasons") or [])]
+    ok = bool(res.get("ok"))
+    # A STALE TAIL IS NOT A VETO WHILE THE FLEET IS CONFIGURED TO RUN STALE.
+    # Measured 2026-10-15 04:3x-05:0xZ: enforcing freshness here blocked EVERY crypto dispatch (ENAUSDC,
+    # FILUSDC, SNXUSDT, SOLUSDC, COTIUSDT, DUSKUSDT, JASMYUSDT — tails 7.1-8.7 h after the job's own refresh)
+    # and 0 crypto boards launched. The scheduler's own gate already decides this question:
+    # V15_SCHED_RUN_STALE=1 (the default) means "run on older bars rather than idle the fleet", and that is a
+    # fleet policy, not this gate's call. So: older bars -> record the deferral (the rebuild still gets asked
+    # for) and launch; a STRUCTURAL defect or a thin/holed build -> always block, because that is the silent
+    # 0-trades producer the user asked to stop. V15_SCHED_RUN_STALE=0 restores a hard freshness veto.
+    if not ok and reasons and all(r.startswith("stale tail:") for r in reasons):
+        if os.environ.get("V15_SCHED_RUN_STALE", "1") == "1":
+            return True, "DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1): " + "; ".join(reasons)[:220], res
+    return ok, "; ".join(reasons)[:300], res
+
+
 def _dedup_lock(tag):
     """One live job per dispatch tag (a dead tick that never saved dispatch_q re-dispatched the same tag every 2 min)."""
     f = open("/tmp/v15_dispatch_job." + "".join(c if c.isalnum() else "_" for c in tag) + ".lock", "w")
@@ -101,14 +274,30 @@ def tail_refresh(symbol):
     try:
         r = subprocess.run([str(ROOT / ".venv" / "bin" / "python"), str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", symbol, "--mode", mode, "--w15", "2500", "--workers", "2", "--no-sentiment", "--no-fng"], capture_output=True, text=True, timeout=float(os.environ.get("V15_TAIL_REFRESH_TIMEOUT_S", "300")), cwd=str(ROOT))
         st = "INSTALLED" if '"status": "INSTALLED"' in (r.stdout or "") else ("current" if r.returncode == 0 else f"rc={r.returncode}")
+        if "locked" in (r.stdout or ""):
+            st = "LOCK_BLOCKED"
     except subprocess.TimeoutExpired:
         st = "timeout"
-    return {"tail": st, "tail_s": round(time.time() - t0, 1)}
+    # 2026-10-16: "current" used to be inferred from rc=0 alone. The 24/7 --loop held the one global lock, so EVERY
+    # top-up printed "locked (previous run active)", exited 0, and was logged as `tail current (0.2s)` before the
+    # stale NPZ was pushed to the worker and md5-"verified". The tail is now judged by the NPZ itself.
+    out = {"tail": st, "tail_s": round(time.time() - t0, 1)}
+    try:
+        from tools.npz_bar_refresh import npz_last_ts
+        from tools.npz_cutoffs import BAR, last_closed_bar, last_closed_stock_bar
+        last = npz_last_ts(str(ROOT / "backtest_v8" / "indicators"), symbol)
+        cut = last_closed_bar() if mode == "crypto" else last_closed_stock_bar()
+        out["tail_last_ts"] = last
+        out["tail_bars_behind"] = None if last is None else int((int(cut) - int(last)) // BAR)
+        if out["tail_bars_behind"] is not None and out["tail_bars_behind"] > int(os.environ.get("V15_TAIL_MAX_BARS_BEHIND", "1")) and st != "INSTALLED":
+            out["tail"] = f"STALE_{out['tail_bars_behind']}_BARS({st})"
+    except Exception as e:
+        out["tail_verify_err"] = f"{type(e).__name__}: {e}"[:120]
+    return out
 
 
 def fast_push(symbol, push):
     """S1 NPZ exists -> tail-refresh it to the latest closed bar, push it (rsync, md5 verify) and launch; None -> fall back to the builder (no NPZ on S1)."""
-    import hashlib
     live = ROOT / "backtest_v8" / "indicators" / f"{symbol}.npz"
     if not live.exists() and os.environ.get("V15_NPZ_PEER_SEED", "1") != "0":
         # 2026-10-14: S1 had lost ~390 NPZs that s2 still holds; seed from the peer and tail-refresh (seconds) instead of a 40-min full build
@@ -139,9 +328,11 @@ def fast_push(symbol, push):
             gap_ok, gap_info = True, {"reason": f"guard unavailable: {exc}"}
         if not gap_ok:
             log({"event": "stock-npz-gap-refused", "symbol": symbol, "gap": gap_info})
+            _ledger_npz({"event": "gap-refused", **_npz_identity(symbol), "reason": str(gap_info.get("reason"))[:160]})
             return {"ok": False, "action": "gap-refused", "reason": f"STOCK_NPZ_GAP {gap_info.get('reason')}", "prep_s": 0.0}
     t0 = time.time()
     if not push:
+        _ledger_npz({"event": "push", "action": "fast30d-local", **_npz_identity(symbol), "tail": tr.get("tail")})
         return {"ok": True, "action": "fast30d-local", "reason": f"S1 NPZ tail {tr.get('tail')}", "prep_s": tr.get("tail_s", 0.0)}
     h = hashlib.md5(live.read_bytes()).hexdigest()
     dst = f"{push}:binance-sandbox/backtest_v8/indicators/{symbol}.npz"
@@ -151,6 +342,7 @@ def fast_push(symbol, push):
         ok = r.stdout.split()[0] == h if r.stdout else False
     except (subprocess.SubprocessError, OSError, IndexError):
         ok = False
+    _ledger_npz({"event": "push", "action": "fast30d-push", **_npz_identity(symbol), "verified": bool(ok)})
     return {"ok": True if ok else None, "action": "fast30d-push", "reason": f"tail {tr.get('tail')} ({tr.get('tail_s')}s); pushed S1 NPZ md5 {h[:8]} verified={ok}", "prep_s": round(time.time() - t0, 1)}
 
 
@@ -213,6 +405,10 @@ def _autotune_exports(tag, path=None):
     string still wins (it is assigned after the export). Any problem -> '' (pilot defaults)."""
     if os.environ.get("V17_AUTOTUNE_APPLY", "1") == "0" or (tag and ":" in tag and "30D" not in tag):
         return "", None
+    if os.environ.get("V15_SCHED_GATE_ENV", "1") != "0" and (ROOT / "data" / "v15_gate_env.json").exists():
+        # USER 2026-10-16: autotune values never reach production unbenched — once the gate publishes a launch env, autotune
+        # output goes in as a gate candidate (v15_version_gate.py submit --env K=V), not as a dispatch export.
+        return "", {"skipped": "gate env authoritative (data/v15_gate_env.json)"}
     p = pathlib.Path(path or (ROOT / "data" / "kpi" / "v17_autotune.json"))
     try:
         doc = json.loads(p.read_text())
@@ -237,10 +433,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", required=True)
     ap.add_argument("--push", default="", help="target ssh host for the md5-verified NPZ push ('' = local host)")
-    ap.add_argument("--via", required=True, help="ssh target that runs the launch command")
-    ap.add_argument("--cmd-file", required=True, help="file holding the remote launch shell command (deleted after use)")
+    ap.add_argument("--via", default="", help="ssh target that runs the launch command")
+    ap.add_argument("--cmd-file", default="", help="file holding the remote launch shell command (deleted after use)")
     ap.add_argument("--tag", default="")
+    ap.add_argument("--npz-failure", action="store_true", help="USER 2026-10-15 (06.2): record a pilot NPZ failure {npz sha, session count, timestamp} to the failure ledger and exit 0. CAPTURE ONLY — never gates anything. The pilot wrapper calls this when a board dies with the NPZ session error.")
+    ap.add_argument("--npz", default="", help="NPZ file the failure is attributed to (default: backtest_v8/indicators/<SYMBOL>.npz)")
+    ap.add_argument("--error", default="", help="pilot error text (e.g. 'NPZ has only 20 distinct stock sessions (need 30)')")
     a = ap.parse_args()
+    if a.npz_failure:
+        rec = _npz_identity(a.symbol, a.npz or None)
+        rec.update({"event": "pilot-npz-failure", "error": (a.error or "")[:300]})
+        _ledger_npz(rec)
+        return 0
+    for req in ("via", "cmd_file"):
+        if not getattr(a, req):
+            ap.error(f"--{req.replace('_', '-')} is required without --npz-failure")
     cmd_path = pathlib.Path(a.cmd_file)
     remote = cmd_path.read_text()
     _guard = _dedup_lock(a.tag or a.symbol)
@@ -256,8 +463,23 @@ def main():
         res = fast_push(a.symbol, a.push)
     if res is None:
         res = prep(a.symbol, a.push)
-    if res.get("ok") is False:
-        log({"event": "skip", "symbol": a.symbol, "tag": a.tag, "prep": res})
+    # USER 2026-10-15: ok=None is NOT a pass (see prep_disposition). The old gate only blocked ok=False, so
+    # 2.2% of launches went out on an NPZ nobody had verified. Skipping here costs one tick; the scheduler
+    # requeues the symbol and the next GOOD symbol takes the slot.
+    _l_ok, _l_kind, _l_why, _ = prep_disposition(res)
+    if not _l_ok:
+        log({"event": "skip", "symbol": a.symbol, "tag": a.tag, "kind": _l_kind, "why": _l_why, "prep": res})
+        cmd_path.unlink(missing_ok=True)
+        return 3
+    # ...and verify the bytes that will actually travel, freshness INCLUDED. Exit 3 = do not launch, the same
+    # convention tools/v15_npz_prep.py and tools/v15_npz_preflight.py use.
+    _pf_ok, _pf_why, _pf_res = npz_preflight(a.symbol, 30, check_freshness=True)
+    if _pf_ok and _pf_why.startswith("DEGRADED"):
+        log({"event": "npz-degraded", "symbol": a.symbol, "tag": a.tag, "why": _pf_why,
+             "tail_age_h": _pf_res.get("tail_age_h"), "max_tail_age_h": _pf_res.get("max_tail_age_h")})
+    if not _pf_ok:
+        log({"event": "skip", "symbol": a.symbol, "tag": a.tag, "kind": "npz-preflight", "why": _pf_why,
+             "bars": _pf_res.get("bars"), "span_days": _pf_res.get("span_days"), "tail_age_h": _pf_res.get("tail_age_h"), "prep": res})
         cmd_path.unlink(missing_ok=True)
         return 3
     if os.environ.get("V15_PREV_BEST_SHIP", "1") == "1":

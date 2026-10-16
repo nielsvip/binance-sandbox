@@ -21,6 +21,28 @@ CAT_FIXTURE = {
     "STOCKS_SHORT": {"SW_BOOL": False, "SW_TF": "15m", "SW_FLOAT": 2.5, "SW_INT": 10},
 }
 
+GATE_CACHE_CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
+
+
+@pytest.fixture(autouse=True)
+def _no_synthetic_verdict_survives():
+    """startup_gate caches its verdict in /tmp/switch_parity_gate_{cat_side}.json (switch_parity.py ~1477,
+    path hardcoded, keyed on the INPUT files' md5s only) — and LIVE code reads that same path. The synthetic
+    audits below drive startup_gate with fabricated mismatches, so whichever synthetic case ran last used to
+    leave ITS verdict in a file live reads as the real-repo answer: measured 2026-10-16T23:31Z, the CRYPTO_LONG
+    cache held `ok=false, hard=["GHOST_SWITCH: bold=True exists in NEITHER engine ..."]`, and GHOST_SWITCH is a
+    fixture row in this file (test_switch_in_neither_engine_is_hard) that appears nowhere else in the repo.
+    A false hard disparity on this gate is not cosmetic: LOCKED_FILES.md 2026-10-15 records one idling both
+    hosts for 9 h with every pilot refusing crypto 30D work. _gate_with already dropped the cache BEFORE each
+    case so the cases evaluate honestly; this drops it AFTER every test as well, so nothing this file computes
+    can outlive it. Deleting rather than restoring is the safe direction — the verdict recomputes from the real
+    inputs on the next call, so a missing cache is always correct and a stale one never is.
+    """
+    yield
+    for _cs in GATE_CACHE_CAT_SIDES:
+        Path(f"/tmp/switch_parity_gate_{_cs}.json").unlink(missing_ok=True)
+
+
 EVIDENCE = {
     "n_promoted": 2,
     "valid": True,
@@ -72,7 +94,13 @@ def test_register_happy_path_crypto(iso):
     assert entry["full_config"]["SW_FLOAT"] == 2.5
     import per_sym_store as pss
 
-    assert pss.get_overrides("BTCUSDC_LONG") == {"SW_BOOL": True, "SW_TF": "1h"}
+    # USER 2026-10-15: the stored overrides COLUMN stays the sheet-key diff, while the live reader
+    # (get_overrides) serves the FULL measured set so a morning default rebuild cannot drift live off
+    # the board — see tests/test_per_sym_full_set.py.
+    assert dict(pss.get("BTCUSDC_LONG")["overrides"]) == {"SW_BOOL": True, "SW_TF": "1h"}
+    served = pss.get_overrides("BTCUSDC_LONG")
+    assert served["SW_BOOL"] is True and served["SW_TF"] == "1h"
+    assert served["SW_FLOAT"] == 2.5 and served["SW_INT"] == 10
     assert pss.get_full_config("BTCUSDC_LONG")["SW_TF"] == "1h"
     led = (iso / "data" / "parity_promotions.jsonl").read_text().strip().splitlines()
     assert len(led) == 1 and json.loads(led[0])["sym_side"] == "BTCUSDC_LONG"
@@ -425,3 +453,56 @@ def test_live_order_switches_zero_hard_after_catside_conversion():
     ):
         assert k not in hard_keys, f"{k} regressed to HARD: {[h for h in rep['hard'] if h['key'] == k]}"
     assert rep["n_hard"] == 0, f"live-order HARDs regressed: {hard_keys}"
+
+
+def _gate_with(monkeypatch, mismatches, tmp_path):
+    """Drive startup_gate with a synthetic audit so the classes under test are exact, not repo-dependent."""
+    monkeypatch.setattr(SP, "verify_default_surfaces", lambda *a, **k: {"mismatches": mismatches, "missing_from_cat": []})
+    # the verdict cache is keyed on the INPUT files only, so consecutive synthetic audits would all read the first
+    # one's answer out of /tmp — drop it so each case is really evaluated
+    Path("/tmp/switch_parity_gate_CRYPTO_LONG.json").unlink(missing_ok=True)
+    return SP.startup_gate("CRYPTO_LONG")
+
+
+def test_catside_backed_global_lag_is_a_warning_not_hard(monkeypatch, tmp_path):
+    """USER 2026-10-15 "NO results": NEWBORN_LOSS_KILL_ENABLED / R3_HTF_FLIP_EXIT_ENABLED were promoted at cat_side
+    level at 12:18Z; config.py's global stayed False, so this gate reported hard=2 and the scheduler + every pilot
+    refused all crypto 30D work for 9 h (both hosts idle, slots 0/4 and 0/6, "no eligible ready symbol"). The bold
+    IS the cat_side value: the board applies it as an explicit override and live resolves per_sym -> cat_side before
+    the global, so nothing that computes or trades can see the lagging surface."""
+    row = {"key": "NEWBORN_LOSS_KILL_ENABLED", "class": "bold-vs-global", "bold": True, "cat": True, "global": False, "quick": False, "catside_backed": True, "promoted": True}
+    g = _gate_with(monkeypatch, [row], tmp_path)
+    assert g["ok"] is True and g["hard"] == []
+    assert any("catside-backed" in w and "NEWBORN_LOSS_KILL_ENABLED" in w for w in g["warnings"]), g["warnings"]
+
+
+def test_bold_the_catside_does_not_back_is_still_hard(monkeypatch, tmp_path):
+    """Real drift — a bold no binding surface agrees with — must still stop the board."""
+    row = {"key": "SOME_SWITCH", "class": "bold-vs-global", "bold": True, "cat": False, "global": False, "quick": False, "catside_backed": False, "promoted": False}
+    g = _gate_with(monkeypatch, [row], tmp_path)
+    assert g["ok"] is False and len(g["hard"]) == 1
+
+
+def test_strict_global_env_restores_the_blocking_behaviour(monkeypatch, tmp_path):
+    monkeypatch.setenv("SWITCH_PARITY_GATE_STRICT_GLOBAL", "1")
+    row = {"key": "NEWBORN_LOSS_KILL_ENABLED", "class": "bold-vs-global", "bold": True, "cat": True, "global": False, "quick": False, "catside_backed": True, "promoted": True}
+    g = _gate_with(monkeypatch, [row], tmp_path)
+    assert g["ok"] is False and len(g["hard"]) == 1
+
+
+def test_switch_in_neither_engine_is_hard(monkeypatch, tmp_path):
+    """A bold the engines cannot express would make the board run a value the sheet does not describe."""
+    row = {"key": "GHOST_SWITCH", "class": "not-in-configs", "bold": True, "cat": True, "global": "<absent>", "quick": "<absent>"}
+    g = _gate_with(monkeypatch, [row], tmp_path)
+    assert g["ok"] is False and any("NEITHER engine" in h for h in g["hard"])
+
+
+def test_every_demoted_row_in_the_live_repo_is_a_recorded_promotion():
+    """The demotion rests on template_bold_defaults dropping any untrusted bold unless the key is promoted — so a
+    surviving cat-backed global/quick lag must carry a promotion record. If that ever stops holding, the demotion
+    would start hiding real drift and this test fails first."""
+    for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
+        rep = SP.verify_default_surfaces(cs)
+        for m in rep["mismatches"]:
+            if m.get("class") in ("bold-vs-global", "bold-vs-quick") and m.get("catside_backed"):
+                assert m.get("promoted"), f"{cs}:{m['key']} demoted without a promotion record: {m}"

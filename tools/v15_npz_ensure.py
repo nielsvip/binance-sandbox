@@ -41,6 +41,10 @@ def ensure(symsides, timeout=600, dry_run=False):
             print(f"[NPZ-ENSURE] {line[:160]}", flush=True)
         if r.returncode != 0:
             print(f"[NPZ-ENSURE-LOUD] refresh rc={r.returncode} for {syms} — proceeding, guards own residue", flush=True)
+        if "locked (previous" in ((r.stdout or "") + (r.stderr or "")):
+            # 2026-10-16: this was the silent no-op — the 24/7 loop held the one global lock, so every pilot start
+            # "ensured" nothing and said so to nobody. Per-symbol locks fixed it; this line stays as the alarm.
+            print(f"[NPZ-ENSURE-LOUD] refresh was LOCK-BLOCKED for {syms} — the NPZ was NOT topped up", flush=True)
         return True  # refresh-and-go: never block
     except Exception as e:
         print(f"[NPZ-ENSURE-LOUD] refresh failed ({e}) for {syms} — proceeding, guards own residue", flush=True)

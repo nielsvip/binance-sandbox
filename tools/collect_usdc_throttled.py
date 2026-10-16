@@ -68,7 +68,7 @@ for sym in ordered:
                         print(f"      rsync {dst} fail {e}")
                 # Deep-source hosts (S1, span>=300d) may ALSO feed S5's repo; shallow
                 # hosts must not (would shrink it).
-                if span>=300:
+                if span>=300 and os.environ.get("USDC_PUSH_S5", "0") == "1":  # s5 destroyed 2026-10-13
                     for dst in ["niels@10.0.0.5:~/binance-sandbox/klines_cache/"]:
                         try:
                             subprocess.run(["rsync","-az",str(klines_path), dst], timeout=10, capture_output=True)
@@ -79,8 +79,10 @@ for sym in ordered:
                 print(f"    {sym} would truncate {len(existing)}->{len(merged)} — BLOCKED")
         elif r.status_code in (418,429,403):
             wait=int(r.headers.get("Retry-After","60"))
-            print(f"    {sym} banned {r.status_code} wait {wait}s")
-            time.sleep(wait)
+            # 2026-10-14: sleeping out Retry-After (up to 16735 s seen) stacked hourly runs behind an IP ban for hours.
+            # Stop now; the next hourly cron run retries (bans clear on their own, a waiting process only adds load).
+            print(f"    {sym} banned {r.status_code} retry-after {wait}s — stopping this run, next hourly run retries", flush=True)
+            raise SystemExit(0)
         else:
             print(f"    {sym} error {r.status_code} {r.text[:100]}")
     except Exception as e:

@@ -170,15 +170,15 @@ def _resolve_gate(cfg):
     except Exception:
         _mode = "crypto"
     is_tradier = (_mode == "tradier")
-    if is_tradier:
-        # W2-GR5M: live DIRECT hardcodes min_tfs=1 on tradier
-        # (tradier_manage GR_HTF_DIRECT_ENTRY/EXIT call sites).
+    # 2026-10-16 (USER "HTF_MIN_TFS needs to move the needle on entries and exits"): tradier used to pin
+    # min_tfs = 1 here because the two live stock call sites passed a literal 1
+    # (tradier_manage.py GR_HTF_DIRECT_ENTRY ~21689 and GR_HTF_DIRECT_EXIT ~34451). Both now resolve
+    # GOLDEN_RULE_HTF_MIN_TFS through _cfg_auto with the same default of 1, so the twin reads the switch for
+    # every cat_side and parity is kept by construction: default 1 reproduces the old constant exactly.
+    try:
+        min_tfs = int(getattr(cfg, "GOLDEN_RULE_HTF_MIN_TFS", 1) or 1)
+    except (TypeError, ValueError):
         min_tfs = 1
-    else:
-        try:
-            min_tfs = int(getattr(cfg, "GOLDEN_RULE_HTF_MIN_TFS", 1))
-        except Exception:
-            min_tfs = 1
     try:
         min_ind = int(getattr(cfg, "GOLDEN_RULE_MIN_IND", 2))
     except Exception:

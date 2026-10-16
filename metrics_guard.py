@@ -18,6 +18,7 @@ import csv
 import datetime
 import json
 import math
+import os
 import re
 import shutil
 from pathlib import Path
@@ -61,6 +62,50 @@ def sym_sharpe_from_groups(returns_by_sym: Mapping[str, Sequence[float]]) -> flo
     return (sum(caps) / len(caps)) if caps else 0.0
 
 
+_MTM_PREFIXES = ("FINAL_MTM", "WINDOW_END_MTM", "MTM_FINAL", "OPEN_AT_WINDOW_END")
+
+
+def is_unrealised_mark(row) -> bool:
+    """True when a ledger row is a mark-to-market of a position that was NEVER SOLD.
+
+    USER 2026-10-16: "make sure no more exaggeration of technicals and gains can ever take place".
+    `v12_quick_engine` closes the window by booking the open position's paper P&L as a ledger row
+    (`exit_reason` FINAL_MTM...), and because the row carries `pnl_dollars` it was counted as a realised
+    close everywhere — gain, DD, WR, pool_sharpe, the chart header. 138 of the 439 latest published charts
+    carry one. It is not a trade: nothing was sold, no price was obtained, and it can never be traded.
+    Paper dollars are REPORTED (unrealised_marks / unrealised_dollars), never summed into a headline.
+    METRICS_COUNT_UNREALISED_MTM=1 restores the pre-2026-10-16 behaviour for a one-off comparison. Pure."""
+    if not isinstance(row, dict):
+        return False
+    if row.get("unrealised") is True or row.get("is_mtm") is True:
+        return True
+    r = str(row.get("exit_reason") or "").upper()
+    return any(r.startswith(p) for p in _MTM_PREFIXES)
+
+
+def unrealised_marks(ledger) -> List[dict]:
+    """The mark-to-market rows of a ledger — reported alongside every headline, never inside one. Pure."""
+    return [t for t in (ledger or []) if isinstance(t, dict) and t.get("pnl_dollars") is not None and is_unrealised_mark(t)]
+
+
+def unrealised_dollars(ledger) -> float:
+    """Paper dollars a ledger carries that were never realised. Pure."""
+    tot = 0.0
+    for t in unrealised_marks(ledger):
+        try:
+            tot += float(t.get("pnl_dollars") or 0.0)
+        except (TypeError, ValueError):
+            continue
+    return tot
+
+
+def count_unrealised_enabled() -> bool:
+    # USER 2026-10-16 (later the same day): "a position still open at the window edge marked to market and counted as a
+    # closed trade is correct behavior — if not, a huge open losing trade would not be counted and embellish results".
+    # Default = COUNT the mark (still tagged unrealised + reported); METRICS_COUNT_UNREALISED_MTM=0 excludes it for a comparison.
+    return os.environ.get("METRICS_COUNT_UNREALISED_MTM", "1") == "1"
+
+
 def realised_closes(ledger) -> List[dict]:
     """Return the realised-close rows of an engine ledger (PAR/001 unit).
 
@@ -74,7 +119,12 @@ def realised_closes(ledger) -> List[dict]:
     (OPEN/AUGMENT, partial REDUCE, companion markers) never enters trade
     counts or Sharpe; pre-window seed markers (seeded_prewindow) stay in the
     ledger for reason trace but never count.
+
+    USER 2026-10-16: a FINAL_MTM window-edge mark is NOT a realised close (see
+    is_unrealised_mark) and is excluded here, so no headline anywhere can
+    include a position that was never sold.
     """
+    keep_mtm = count_unrealised_enabled()
     out = []
     for t in ledger or []:
         if not isinstance(t, dict):
@@ -82,6 +132,8 @@ def realised_closes(ledger) -> List[dict]:
         if t.get("pnl_dollars") is None:
             continue
         if t.get("seeded_prewindow"):
+            continue
+        if not keep_mtm and is_unrealised_mark(t):
             continue
         out.append(t)
     return out
@@ -97,12 +149,18 @@ def pool_sharpe_from_ledger(ledger, gain_field: str = "pnl_pct") -> float:
     realised_closes/trades. Presence — not pnl_dollars — is the filter so
     minimal gain-only rows still count; on real engine ledgers both filters
     agree (closes always carry pnl_dollars AND pnl_pct). Pre-window seeds
-    never count."""
+    never count.
+
+    USER 2026-10-16: nor does an unrealised window-edge mark (is_unrealised_mark)
+    — a position that was never sold has no trade return to put in a Sharpe."""
+    keep_mtm = count_unrealised_enabled()
     pct = []
     for t in ledger or []:
         if not isinstance(t, dict):
             continue
         if t.get("seeded_prewindow"):
+            continue
+        if not keep_mtm and is_unrealised_mark(t):
             continue
         g = t.get(gain_field)
         if g is None:

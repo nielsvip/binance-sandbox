@@ -69,6 +69,7 @@ import vec_decisions.breakout_opener
 import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
+import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
@@ -1949,7 +1950,6 @@ AUTO_WIRED_PARAMS = [
     "MARKET_QUALITY_SCORE_ENABLED_TRADIER",
     "MARK_PRICE_MAX_STALENESS",
     "MAX_ALLOWED_DRAWDOWN_PCT",
-    "MAX_AUGMENTS_PER_POSITION",
     "MAX_CONCURRENT_ORDERS",
     "MAX_CONCURRENT_POSITIONS",
     "MAX_DAILY_LOSS_PCT",
@@ -4225,7 +4225,7 @@ class QuickConfig:
         "15m"  # 2026-10-04 parity cut: live parity — both venues run 15m (was 3m; stocks overlay sets 5m)
     )
     ENTRY_SCORE_THRESHOLD: float = 18.0
-    K3M_FLOOR: float = 30
+    K3M_FLOOR: int = 30
     K3M_FLOOR_ENABLED: bool = False
     COOLDOWN_BARS: int = 0  # USER 2026-09-27: NO FUCKING COOLDOWN
     NOLOSS_ENABLED: bool = False
@@ -4365,7 +4365,7 @@ class QuickConfig:
     # WT_DC_ENABLED field that DID NOT EXIST in QuickConfig, so getattr(...,False) kept the live entry
     # stack permanently OFF in every baseline. Default True: baselines enter the way live enters.
     WT_DC_ENABLED: bool = True
-    WT_DC_ENTRY_THRESHOLD: float = 45.0
+    WT_DC_ENTRY_THRESHOLD: int = 45
     WT_DC_DETAILED_SCORER_ENABLED: bool = False
     WT_DC_DETAILED_ENTRY_THRESHOLD: float = 43.0
     WT_DC_DETAILED_EXIT_ENABLED: bool = False
@@ -4555,15 +4555,6 @@ class QuickConfig:
     RSI_ENTRY_GATE_ENABLED: bool = False
     RSI_ENTRY_MAX_LONG: float = 37.0
     RSI_ENTRY_MIN_SHORT: float = 63.0
-    RSI_ENTRY_LONG_TRADIER: float = (
-        40.0  # §17 live parity: config.py + TradierConfig 40.0 — stocks RSI entry thresholds
-    )
-    RSI_ENTRY_SHORT_TRADIER: float = (
-        58.0  # §17 live parity: config.py + TradierConfig 58.0 — stocks RSI entry thresholds
-    )
-    RSI_ENTRY_PERIOD_TRADIER: int = (
-        10  # §17 live parity: config.py + TradierConfig 10 — stocks RSI entry thresholds
-    )
     MFI_ENTRY_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)
     )
@@ -4938,7 +4929,7 @@ class QuickConfig:
     SEEDED_LEDGER_SNAPSHOT_JSON: str = (
         ""  # [w2-carryin] snapshot doc (V8_SEED-compatible positions map or explicit {"seeds": {...}}). Empty = no seeds
     )
-    REENTRY_BLANKET_FIRE_ENABLED: object = (
+    REENTRY_BLANKET_FIRE_ENABLED: bool = (
         False  # C/003 (was None=auto: crypto True 'legacy upper bound'): live never reenters every bar — live Processing-order mix 09-25..10-01: OPEN 41191 / REENTRY 1248; True restores the legacy crypto upper bound
     )
     OVERTRADE_GUARD_ENABLED: bool = (
@@ -4991,52 +4982,6 @@ class QuickConfig:
     AUGMENT_MIN_GAIN_PCT: float = (
         0.0  # 2026-10-01 LG-19: 0 = defer to MIN_GAIN_TO_BUY_AGGRESSIVELY (effective 3.0, neutral); >0 = explicit override (floor 2.5)
     )
-    ADX_RANGING_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = (
-        0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    ALL_TF_AGAINST_CLOSE_ENABLED: bool = (
-        True  # 2026-09-10 FIX vs B&H: all TFs against → close primary
-    )
-    ALL_TF_AGAINST_CLOSE_MIN_TFS: int = (
-        3  # 2026-09-10 FIX: 3 TFs against → exit (was 10 — never fired)
-    )
-    AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = (
-        0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    BANDAID_OFF_LOSER_RECOVER_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    BAND_ARROW_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    BAND_ARROW_SLOPE_DEADBAND: float = (
-        0.0  # WIRING LANE C M2b: aligned to live 0.0 (config_tradier:1029); was stale 0.5
-    )
-    CRYPTO_SPIKE_FADE_THRESHOLD_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    DAEMON_REENTRY_STALE_EXIT_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    DC_HOPELESS_EXIT_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    DC_HOPELESS_EXIT_MIN_AGE_S: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    DD_BOUNCE_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    DELTA_HTF_GATE: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
-    DELTA_PYRAMID_MAX: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    DELTA_PYRAMID_PRICE_TOL: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    DELTA_REENTRY_FILTER_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    DIRECTION_FAVORABLE_REENTRY_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    DYN_STRUCT_TRAIL_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
     DYN_STRUCT_TRAIL_TF: str = "4h"  # [N4] tradier_manage.py:10784 _cfg default '4h'
     DYN_STRUCT_TRAIL_MIN_GAIN_PCT: float = 0.0  # [N4] tradier_manage.py:10785
     PPL_BE_STOP_LIVE_SIGN: bool = (
@@ -5051,32 +4996,8 @@ class QuickConfig:
     STOCK_LIVE_AUGMENT_ENABLED: bool = (
         False  # [N4] master for the stock DC_TIER/TRAILING augment sources (live evaluate_augment); False = pre-N4 vector behaviour
     )
-    ENTRY_PRIMARY_TF: str = (
-        "4h"  # WIRING LANE C L1d: aligned to live 4h (was stale OFF)
-    )
-    EZ_MANAGE_THROTTLER_RATE: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added
-    E_1_EXIT_DELTA_THR: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    E_1_WT_EXIT_USE_DELTA_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    FG_FEAR_THRESHOLD: int = (
-        25  # WIRING LANE C: aligned to live 25 (config.py:2961); was stale 10
-    )
-    FG_GREED_THRESHOLD: int = (
-        75  # WIRING LANE C: aligned to live 75 (config.py:2962); was stale 10
-    )
-    GOLDEN_RULE_BASE_USD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     GR_FILTER_ALL_ENTRIES: bool = (
         False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    HIGH_GAIN_AUGMENTATION_MIN_SIZE: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    HTF4_CONF: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = (
-        False  # 2026-09-29 USER: default OFF (frequent-exit churn) — swept switch; sane baseline WT/DC. Was True 2026-09-10.
     )
     BOTTOM_EXIT_HTF_WT_VETO_ENABLED: bool = (
         True  # parity 2026-09-27: config True + TEMPLATE bold — block R1/ULTIMATE_DC/NEWBORN bottom exits when HTF WT with position
@@ -5087,207 +5008,6 @@ class QuickConfig:
     HTF_WT_CHURN_REENTRY_MAX_AGE_MIN: float = (
         120.0  # parity 2026-09-27: config 120.0 + TEMPLATE bold — churn window 2h after exit
     )
-    HTF_GATE_D_MANDATORY: bool = (
-        True  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default True
-    )
-    HTF_GATE_MIN_CONFIRMATIONS: int = (
-        3  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 3 (was 10 stub)
-    )
-    HTF_GATE_SIGNALS_SMA200D: bool = (
-        False  # 2026-10-04 §17.4 C1: config.py False wins over ez getattr default True; stocks True via overlay
-    )
-    HTF_TREND_VETO_BYPASS_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    HTF_TREND_VETO_BYPASS_REASONS: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added (list)
-    )
-    LEADERBOARD_FILTER: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LEGACY_PROC_SINGLE_REENTRY: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = (
-        True  # WIRING LANE C L1e: live True; parity-synced 2026-10-06 (was False)
-    )
-    LEGACY_REENTRY_PSR_FULL_DC: bool = (
-        True  # WIRING LANE C L1e: live True; parity-synced 2026-10-06 (was False)
-    )
-    LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LH_HL_FILTER_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LH_HL_FILTER_MODE: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
-    LH_HL_FILTER_REQUIRE_BOTH: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LH_HL_FILTER_TF_REQ: int = 2  # FIX 2026-09-06: LIVE_ONLY auto-added
-    LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF: str = (
-        "15m"  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    LIVE_VEC_EMERGENCY_BRAKE_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    LR_BAND_LADDER_STOCH_EXTREME: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    LR_BAND_LADDER_TF_BOTTOM: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added (dict)
-    )
-    LR_BAND_LADDER_TF_TOP: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added (dict)
-    MANDATORY_REENTRY_WT_FILTER_MIN_TFS: int = (
-        10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY: float = (
-        0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    MANDATORY_REENTRY_WT_FILTER_TF_MODE: str = (
-        "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO: float = (
-        0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    MAX_AUGMENTS_PER_POSITION: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = (
-        True  # WIRING LANE C L1b: live default True (config.py:1703); twin inert at True (§17)
-    )
-    MTF_GR_MIN_IND: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    MU_CORRECTION_EXIT_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    MU_CORRECTION_REENTRY_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = (
-        0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    NEW_POSITION_MAX_LOSS_THRESHOLD: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = (
-        3  # EMERGENCY 2026-09-11: 5→3 matches config_tradier (TEMPLATE bold 5→3, rollback if v14 proves 5 better)
-    )
-    REENTRY2_DC_BREAK_ALLOW_15M: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    REENTRY2_DC_BREAK_FILTER_TF: str = (
-        "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added; parity 2026-10-06 OFF
-    )
-    REENTRY2_DC_BREAK_REQUIRE_K_FILTER: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    REENTRY2_DIR_FAV_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_EXIT_RECLAIM_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    REENTRY_POST_CONSOL_ATR_THRESHOLD: float = (
-        0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    )
-    REENTRY_POST_CONSOL_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    REENTRY_POST_CONSOL_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_POST_CONSOL_TFS_REQUIRED: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_PRICE_IMPROVE_PCT: float = 0.08  # 2026-09-09 aligned to config.py
-    REENTRY_BAR_TURN_ENABLED: bool = True
-    REENTRY_BAR_TURN_TF: str = "3m"
-    REENTRY_BAR_TURN_REQUIRE_BOTH: bool = False
-    REENTRY_BAR_STRUCTURE_ENABLED: bool = True
-    REENTRY_BAR_STRUCTURE_TF: str = "3m"
-    RECENT_REDUCTION_GUARD_ENABLED: bool = (
-        True  # USER 2026-10-12: PROMOTED (was False): unanimous truth — live True (user-ordered 2026-06-03 anti-churn), template bolds True/True; closes verify-live-switches HARD, pilot cat-side now live-faithful
-    )
-    RECENT_REDUCTION_GUARD_WINDOW_S: float = (
-        300.0  # WIRING LANE C L1b: crypto live default (stocks 450 via apply_tradier_defaults)
-    )
-    RECENT_REDUCTION_GUARD_USE_4BAR: bool = True
-    REENTRY_SMA200_BACKUP_ENABLED: bool = True  # 2026-09-09 USER: ON
-    REENTRY_NEAR_EXIT_CHURN_OK: bool = True
-    REENTRY_POSITIVE_EXIT_SIZE_MULT: float = 1.25
-    PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True
-    PRICE_CROSSED_HTF_AGAINST_VETO_BAR_TURN_BYPASS: bool = (
-        True  # 2026-09-09 soften veto like GPCR bar-turn
-    )
-    PRICE_CROSSED_HTF_AGAINST_VETO_HA_BYPASS: bool = True
-    REENTRY_SIZE_BREAKOUT_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_SIZE_DIP_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_SIZE_EXTENDED_K1H: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_SIZE_EXTENDED_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    REENTRY_WT15M_SIZE_MULT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    RZ_BREAKOUT_BAND: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    RZ_BREAKOUT_ENTRY_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    STDEV_BREAKOUT_PCTB_LONG: float = (
-        1.0  # 2026-10-08 tandem: crypto truth = config.py 1.0 (TEMPLATE bold + cat_side); stocks 1.125 via apply_tradier_defaults overlay
-    )
-    STDEV_BREAKOUT_PCTB_SHORT: float = (
-        -0.125
-    )  # FIX 2026-09-13: was 0.5 generic — align to config -0.125
-    STDEV_REJECT_EXIT_TF: str = "OFF"  # FIX 2026-09-06: LIVE_ONLY auto-added
-    UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = (
-        True  # 2026-09-28 LIVE PARITY: config.py:899 = True; drives the vec gain-ladder augment
-    )
-    WRONG_SIDE_WT_TFS_REQUIRED: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_4H_VEL_EXIT_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    WT_4H_VEL_EXIT_REQUIRE_PROFIT: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    WT_ACCEL_EXIT_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    WT_DIV_EXIT_ENABLED: bool = False  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_15M_LH_WAIT_EXIT_ENABLED: bool = (
-        False  # 2026-09-15 WAIT: lower-high 15m + DC/BB/WT wait — never mid-rally
-    )
-    WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED: bool = (
-        False  # 2026-09-15 WAIT: wt LH while price HH divergence + wait
-    )
-    WT_TECHNICAL_WAIT_LOWER_HIGH_ONLY: bool = (
-        True  # gate: require LH/div before any WT technical exit fires
-    )
-    EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED: bool = (
-        False  # 2026-09-15 EXIT BLOCKER — requires LH (closed 15m) OR LL (forming) for any exit
-    )
-    EXIT_BLOCKER_LH_TF: str = "15m"
-    EXIT_BLOCKER_LL_TF: str = "15m"
-    DC_BREAK_WAIT_WT15_CLOSE_ENABLED: bool = (
-        False  # 2026-09-15 wait for wt15 close instead of dc break
-    )
-    WT_EXHAUST_EXIT_MIN_GAIN_PCT: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    WT_MOMENTUM_EXIT_THRESHOLD: int = 10  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_PERCENTILE_EXIT_ENABLED: bool = (
-        False  # FIX 2026-09-06: LIVE_ONLY auto-added from live bool
-    )
-    WT_PERCENTILE_EXIT_OB_4H: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_PERCENTILE_EXIT_OB_D: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_PERCENTILE_EXIT_OS_4H: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
-    WT_PERCENTILE_EXIT_OS_D: float = 0.5  # FIX 2026-09-06: LIVE_ONLY auto-added
     BOUNCE_AUGMENT_ENABLED: bool = False
     BOUNCE_AUGMENT_K_D_CROSSING_UP: bool = True
     BOUNCE_AUGMENT_K_D_THRESHOLD: float = 20.0
@@ -5590,6 +5310,15 @@ class QuickConfig:
         self.LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
         self.LIVE_ENTRY_ENGINE_STOCH_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
         self.LIVE_ENTRY_ENGINE_WT_ENABLED = True  # 2026-10-04 parity cut: tradier overlay (verify vs config_tradier post-cut)
+        # 2026-10-16 R2 FAMILY PARITY (USER: "EXIT_R1_R2_FILTER_TF needs to be wired perfectly and tested in the
+        # quick test on all sym_sides"). The stocks R2 family is hardcoded at the LIVE call site as the _cfg default
+        # ("1h","4h","D") — tradier_manage.py:16486 — while QuickConfig's base is ("15m",) and nothing else sets it
+        # (census 2026-10-16: R2_TF_LIST is absent from all 414 stock and 327 crypto per_sym rows AND from all four
+        # cat_side layers, so both sides fall through to their own default). Via r2_eff_tfs the default TF "15m"
+        # expands to the WHOLE family, so the vector was evaluating R2 on a 15m leg that stocks-live never uses while
+        # live evaluated 1h/4h/D that the vector never loaded — for 100% of stock sym_sides. Crypto is already
+        # correct on both sides (("15m",), ez_manage.py:52405).
+        self.R2_TF_LIST = ("1h", "4h", "D")
         self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
         self.GAP_RISK_EXIT_ENABLED = (
             True  # N2/007: live config_tradier True (2026-09-30)
@@ -5831,6 +5560,9 @@ class QuickConfig:
         self.HARDCODED_RALLY_MIN_AGE_MIN = 15.0
         # parity-sync 20261014: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.EMA_DIST_SIZING_MULT = 2.0
+        # parity-sync 20261015: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.NEWBORN_LOSS_KILL_ENABLED = False
+        self.R3_HTF_FLIP_EXIT_ENABLED = False
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
@@ -5849,7 +5581,7 @@ class QuickConfig:
     ABLATION_DISABLE_RATIO_REBALANCE: bool = False  # auto-wired 625
     ABLATION_DISABLE_REENTRY_ENFORCE: bool = False  # auto-wired 625
     ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # auto-wired 625
-    ALIGNMENT_GATE_MIN: float = 4  # auto-wired 625
+    ALIGNMENT_GATE_MIN: int = 4  # auto-wired 625
     ATR_PARITY_EQUITY_BASE_USD: float = 17500.0  # auto-wired 625
     ATR_PARITY_QTY_CAP_MULT: float = 5.0  # auto-wired 625
     ATR_PARITY_USE_DAILY: bool = (
@@ -5890,6 +5622,21 @@ class QuickConfig:
     SLOPE_SIZING_LIVE_TWIN_ENABLED: bool = (
         False  # [UNWV/001] live-faithful band/stdev slope sizing (vec_decisions/slope_sizing_live.py); OFF = legacy simplified stdev block (baseline unchanged)
     )
+    # USER 2026-10-16 quantity quantizers — vec_decisions/qty_quantizers.py, same code in ez_manage + tradier_manage
+    STDEV_LADDER_TF: str = "D"  # 1x top -> MAX bottom (vv shorts) on lrL_pct_b_<TF>
+    STDEV_LADDER_MAX_MULT: float = 5.0  # USER "should be 1-5x"
+    QTY_STREAK_SIZING_ENABLED: bool = False
+    QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # only full-close moves >= this qualify (1.0 / 0.5)
+    QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losses before shrinking (1 / 2)
+    QTY_STREAK_LOSS_MULT: float = 0.8  # 0.8 / 0.6 / 0.4 of normal size
+    QTY_STREAK_WIN_COUNT: int = 1  # consecutive qualifying wins before growing (1 / 2)
+    QTY_STREAK_WIN_STEP: float = 0.2  # +20/50/80 %, compounding per further win
+    QTY_STREAK_MAX_MULT: float = 3.0  # compounding ceiling (account caps still bind after)
+    # USER 2026-10-16 "until the system is solid enough ... we should cap the vectorized too so results dont get too skewed":
+    # boards credited 22-30x START opens and uncapped augments that live clamps at MAX_ORDER_VALUE / MAX_POSITION_SIZE.
+    # TRB 7000/900 ~ 8x per order; live MAX_POSITION ~ 10x START. 0 = uncapped (the chart header shows that what-if gain).
+    QTY_LIVE_ORDER_CAP_MULT: float = 8.0  # order notional <= START x this
+    QTY_LIVE_POSITION_CAP_MULT: float = 10.0  # position notional <= START x this (augments clipped)
     BB_FROZEN_STOP_ENABLED: bool = False  # auto-wired 625
     STOCKS_REENTRY_LIVE_SOURCES_ENABLED: bool = (
         True  # [C2 q002] stocks live reentry ladder pathways on 15m+ data (PRICE_CROSS_BACK band, EMA200_1H_BOUNCE). 2026-10-07: TIER2_FORCED KILLED (USER).
@@ -5933,8 +5680,8 @@ class QuickConfig:
     BREAKEVEN_GRACE_MINUTES: float = 5.0  # auto-wired 625
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # auto-wired 625
     BREAKOUT_RETEST_ARMED_ENABLED: bool = False  # auto-wired 625
-    BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: float = 2  # auto-wired 625
-    BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: float = 30  # auto-wired 625
+    BREAKOUT_RETEST_ARMED_HTF_STACK_MIN: int = 2  # auto-wired 625
+    BREAKOUT_RETEST_ARMED_K_3M_PREV_MAX: int = 30  # auto-wired 625
     BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT: float = 0.3  # auto-wired 625
     BREAKOUT_RETEST_ARMED_VOLUME_MULT: float = 1.25  # auto-wired 625
     BREAKOUT_SIZE_EMA200_T1_MULT: float = 1.5  # auto-wired 625
@@ -5972,15 +5719,15 @@ class QuickConfig:
     ENTRY_LH_TRIGGER_DIVERG_ENABLED: bool = (
         False  # USER 2026-10-09 INV-0001 v5: OR-branch — stoch rollover from OB/OS inside the regress gate (AGLD +40 net bars); OFF = v4 STRUCT only
     )
-    CONGRESS_CONVICTION_MIN_SOURCES: float = 2  # auto-wired 625
+    CONGRESS_CONVICTION_MIN_SOURCES: int = 2  # auto-wired 625
     CONGRESS_CONVICTION_SIZING_BOOST: float = 1.3  # auto-wired 625
     CONNORS_RSI2_REQUIRE_ABOVE_200SMA: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     CONNORS_RSI2_THRESHOLD: float = 10.0  # auto-wired 625
-    CONNORS_RSI_MAX_HOLD_DAYS: float = 20  # auto-wired 625
+    CONNORS_RSI_MAX_HOLD_DAYS: int = 20  # auto-wired 625
     CONNORS_RSI_POSITION_SIZE: float = 600.0  # auto-wired 625
-    CONVICTION_SHORT_THRESHOLD: float = 20  # auto-wired 625
+    CONVICTION_SHORT_THRESHOLD: int = 20  # auto-wired 625
     CONVICTION_SIZING_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -5994,13 +5741,13 @@ class QuickConfig:
     DC_BREAK_GR_MULT_RETEST: float = 3.0  # auto-wired 625
     DC_BREAK_GR_RETEST_TOLERANCE_PCT: float = 0.3  # auto-wired 625
     DC_BREAK_LOW_REQUIRE_HTF_ENABLED: bool = False  # auto-wired 625
-    DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS: float = 2  # auto-wired 625
+    DC_BREAK_LOW_REQUIRE_HTF_MIN_TFS: int = 2  # auto-wired 625
     DC_DAYTRADE_BUFFER: float = 0.001  # auto-wired 625
     DC_DAYTRADE_K_EXHAUSTED_LONG: float = 85.0  # auto-wired 625
     DC_DAYTRADE_K_EXHAUSTED_SHORT: float = 15.0  # auto-wired 625
     DC_DAYTRADE_LONG_BUDGET: float = 3000.0  # auto-wired 625
     DC_DAYTRADE_MAX_POSITION_SIZE: float = 1000.0  # auto-wired 625
-    DC_DAYTRADE_PRE_CLOSE_MINUTES: float = 120  # auto-wired 625
+    DC_DAYTRADE_PRE_CLOSE_MINUTES: int = 120  # auto-wired 625
     DC_DAYTRADE_SHORT_BUDGET: float = 3000.0  # auto-wired 625
     DC_DAYTRADE_START_SIZE: float = 600.0  # auto-wired 625
     DC_DAYTRADE_STOCH_FILTER: bool = (
@@ -6027,15 +5774,15 @@ class QuickConfig:
     DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # auto-wired 625
     DELTA_EXIT_ACCEL_THRESHOLD: float = -0.1  # auto-wired 625
     DELTA_EXIT_DECAY_RATIO: float = 0.9  # auto-wired 625
-    DELTA_EXIT_MIN_HOLD: float = 4  # auto-wired 625
-    DELTA_EXIT_MIN_TF_LOST: float = 1  # auto-wired 625
+    DELTA_EXIT_MIN_HOLD: int = 4  # auto-wired 625
+    DELTA_EXIT_MIN_TF_LOST: int = 1  # auto-wired 625
     DELTA_EXIT_OPPOSING_RATIO: float = 1.5  # auto-wired 625
     DELTA_EXIT_REENTRY_COOLDOWN_MIN: float = 45.0  # auto-wired 625
     DELTA_EXIT_REQUIRE_NONZERO_SCORE: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     DELTA_PYRAMID_ACCEL_THRESHOLD: float = 0.2  # auto-wired 625
-    DELTA_PYRAMID_MIN_BARS: float = 8  # auto-wired 625
+    DELTA_PYRAMID_MIN_BARS: int = 8  # auto-wired 625
     DELTA_TF_Z_THRESHOLD: float = 1.5  # auto-wired 625
     DG_DAILY_GAIN_BLOCK_SHORT_PCT: float = 2.5  # auto-wired 625
     DG_DAILY_LOSS_BLOCK_LONG_PCT: float = 2.5  # auto-wired 625
@@ -6108,7 +5855,7 @@ class QuickConfig:
     EXIT_IBS_EXHAUSTION_ENABLED: bool = False  # auto-wired 625
     EXIT_K5M_BOUNCE_ENABLED: bool = False  # auto-wired 625
     EXIT_MAX_HOLD_ENABLED: bool = False  # auto-wired 625
-    EXIT_MAX_HOLD_MINUTES: float = 99999  # auto-wired 625
+    EXIT_MAX_HOLD_MINUTES: int = 99999  # auto-wired 625
     EXIT_MI_ENABLED: bool = False  # auto-wired 625
     EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -6116,7 +5863,7 @@ class QuickConfig:
     EXIT_SCORER_DC_EXTREME: float = 0.8  # auto-wired 625
     EXIT_SCORER_FULL_SCORE: float = 100.0  # auto-wired 625
     EXIT_SCORER_K_EXTREME: float = 75.0  # auto-wired 625
-    EXIT_SCORER_MIN_CONDITIONS: float = 5  # auto-wired 625
+    EXIT_SCORER_MIN_CONDITIONS: int = 5  # auto-wired 625
     EXIT_SCORER_PARTIAL_SCORE: float = 40.0  # auto-wired 625
     EXIT_SENTIMENT_ENABLED: bool = False  # auto-wired 625
     EXIT_STDEV_BREAKOUT_FAIL_ENABLED: bool = (
@@ -6140,7 +5887,7 @@ class QuickConfig:
     )
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # auto-wired 625
     FAST_CUT_LOSS_THRESHOLD: float = -999.0  # auto-wired 625
-    FH_MOMENTUM_EVAL_MINUTES: float = 30  # auto-wired 625
+    FH_MOMENTUM_EVAL_MINUTES: int = 30  # auto-wired 625
     FH_MOMENTUM_POSITION_SIZE: float = 600.0  # auto-wired 625
     FROZEN_ABSOLUTE_FLOOR_PCT_TRADIER: float = -8.0  # auto-wired 625
     FROZEN_ACTIVATION_STOP_ENABLED: bool = True  # auto-wired 625
@@ -6160,13 +5907,13 @@ class QuickConfig:
     GHOST_CLOSE_REQUIRE_CONFIRMATION: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    GOLDEN_RULE_EXIT_MIN_IND: float = 2  # auto-wired 625
-    GOLDEN_RULE_EXIT_MIN_TFS: float = 0  # auto-wired 625
-    GOLDEN_RULE_HTF_MIN_TFS: float = 1  # auto-wired 625
+    GOLDEN_RULE_EXIT_MIN_IND: int = 2  # auto-wired 625
+    GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # auto-wired 625
+    GOLDEN_RULE_HTF_MIN_TFS: int = 1  # auto-wired 625
     GOLDEN_RULE_HTF_VETO_ENABLED: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    GOLDEN_RULE_MIN_IND: float = 2  # auto-wired 625
+    GOLDEN_RULE_MIN_IND: int = 2  # auto-wired 625
     GOLDEN_RULE_REQUIRE_ACTIVATION: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -6190,7 +5937,7 @@ class QuickConfig:
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     HEDGE_MODE_TRADIER: bool = False  # auto-wired 625
-    HTF_ALIGN_REQUIRED_TRADIER: float = 2  # auto-wired 625
+    HTF_ALIGN_REQUIRED_TRADIER: int = 2  # auto-wired 625
     HTF_DC_BREAKOUT_TRADIER_ENABLED: bool = False  # auto-wired 625
     HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -6202,7 +5949,7 @@ class QuickConfig:
     )
     HTF_TREND_VETO_SCORE_MIN_ABS: float = 5.0  # auto-wired 625
     HTF_W_M_ALIGN_GATE_TRADIER_ENABLED: bool = False  # auto-wired 625
-    HTF_W_M_ALIGN_TRADIER_REQUIRED: float = 2  # auto-wired 625
+    HTF_W_M_ALIGN_TRADIER_REQUIRED: int = 2  # auto-wired 625
     HTF_W_REVERSAL_EXIT_TRADIER_ENABLED: bool = False  # auto-wired 625
     HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -6230,7 +5977,7 @@ class QuickConfig:
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = (
         False  # 2026-10-04 parity cut: crypto live False; tradier overlay True (trio-verified SAFE, §17.3 holds)
     )
-    LIVE_INDICATOR_MAX_BARS_PER_TF: float = 600  # auto-wired 625
+    LIVE_INDICATOR_MAX_BARS_PER_TF: int = 600  # auto-wired 625
     LOCAL_EXTREMES_MIN_SCORE: float = 45.0  # auto-wired 625
     LR_BAND_HARVEST_ENABLED: bool = False  # auto-wired 625
     LR_BAND_HARVEST_FRAC: float = 0.25  # auto-wired 625
@@ -6264,7 +6011,7 @@ class QuickConfig:
     MARKET_QUALITY_SCORE_ENABLED_TRADIER: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    MAX_CONCURRENT_POSITIONS: float = 16  # auto-wired 625
+    MAX_CONCURRENT_POSITIONS: int = 16  # auto-wired 625
     MAX_DAILY_LOSS_PCT: float = 3.0  # auto-wired 625
     MAX_ORDER_VALUE: float = (
         2500.0  # §17.3 EXCLUSION 2026-09-29: live per-order money cap (config 180) zeroes sim sizing (AAPL 1 share > cap) — capital-normalization class
@@ -6278,16 +6025,16 @@ class QuickConfig:
     MINERVINI_ENABLED: bool = False  # auto-wired 625
     MINERVINI_GATE_ENABLED: bool = False  # auto-wired 625
     MINERVINI_LONG_BUDGET: float = 4000.0  # auto-wired 625
-    MINERVINI_MAX_HOLD_DAYS: float = 40  # auto-wired 625
+    MINERVINI_MAX_HOLD_DAYS: int = 40  # auto-wired 625
     MINERVINI_POSITION_SIZE: float = 800.0  # auto-wired 625
     MINERVINI_TARGET_PCT: float = 25.0  # auto-wired 625
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 4.5  # auto-wired 625
-    MIN_HOLD_BARS_TRADIER: float = 40  # auto-wired 625
+    MIN_HOLD_BARS_TRADIER: int = 40  # auto-wired 625
     MI_DIV_EXIT_ENABLED_TRADIER: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    MI_ENTRY_EXHAUST_BONUS_TRADIER: float = 4  # auto-wired 625
-    MI_ENTRY_STRUCT_BONUS_TRADIER: float = 5  # auto-wired 625
+    MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 4  # auto-wired 625
+    MI_ENTRY_STRUCT_BONUS_TRADIER: int = 5  # auto-wired 625
     MI_EXHAUST_EXIT_ENABLED_TRADIER: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -6467,7 +6214,7 @@ class QuickConfig:
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     RED_ZONE_TRADIER_MIN_DISTANCE_PCT: float = 0.25  # auto-wired 625
-    RED_ZONE_TRADIER_MIN_OI_AT_WALL: float = 1000  # auto-wired 625
+    RED_ZONE_TRADIER_MIN_OI_AT_WALL: int = 1000  # auto-wired 625
     RED_ZONE_TRADIER_STALE_MAX_HOURS: float = 4.0  # auto-wired 625
     REENTRY_60MIN_MIN_PCT: float = 0.05  # auto-wired 625
     REENTRY_60MIN_UNCONDITIONAL_ENABLED: bool = (
@@ -6510,7 +6257,7 @@ class QuickConfig:
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     RSI2_POSITION_SIZE: float = 600.0  # auto-wired 625
-    RSI_ENTRY_PERIOD_TRADIER: float = 10  # auto-wired 625
+    RSI_ENTRY_PERIOD_TRADIER: int = 10  # auto-wired 625
     RULE_B_5M_EXIT_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -6536,7 +6283,7 @@ class QuickConfig:
     SATOSHIT_ENTRY_FILTER: bool = False  # auto-wired 625
     SCALP_LONG_BUDGET: float = 250.0  # auto-wired 625
     SCALP_MAX_HOLD_MINUTES: float = 180.0  # auto-wired 625
-    SCALP_MAX_POSITIONS_PER_SIDE: float = 6  # auto-wired 625
+    SCALP_MAX_POSITIONS_PER_SIDE: int = 6  # auto-wired 625
     SCALP_MAX_POSITION_SIZE: float = 500.0  # auto-wired 625
     SCALP_MIN_MOVE_PCT: float = 0.003  # auto-wired 625
     SCALP_MIN_REL_VOL: float = 1.1  # auto-wired 625
@@ -6551,13 +6298,13 @@ class QuickConfig:
     SENTIMENT_REBAL_AUGMENT_DEVIATION_THR: float = 1.0  # auto-wired 625
     SENTIMENT_REBAL_REDUCE_DEVIATION_THR: float = 0.5  # auto-wired 625
     SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # auto-wired 625
-    SMA_FILTER_PERIOD_TRADIER: float = 100  # auto-wired 625
+    SMA_FILTER_PERIOD_TRADIER: int = 100  # auto-wired 625
     SMFI_ENABLED: bool = False  # auto-wired 625
     SMFI_LONG_BUDGET: float = 3000.0  # auto-wired 625
-    SMFI_MAX_HOLD_DAYS: float = 10  # auto-wired 625
+    SMFI_MAX_HOLD_DAYS: int = 10  # auto-wired 625
     SMFI_POSITION_SIZE: float = 600.0  # auto-wired 625
     SMFI_SHORT_BUDGET: float = 3000.0  # auto-wired 625
-    SPIKE_FADE_MAX_POSITIONS: float = 10  # auto-wired 625
+    SPIKE_FADE_MAX_POSITIONS: int = 10  # auto-wired 625
     SPIKE_FADE_POSITION_SIZE: float = 600.0  # auto-wired 625
     SPIKE_FADE_THRESHOLD_PCT: float = 2.0  # auto-wired 625
     SPY_REGIME_BLOCK_LONGS_BELOW: bool = (
@@ -6574,9 +6321,9 @@ class QuickConfig:
     STDEV_BOUNCE_PCTB_SHORT: float = 0.95  # auto-wired 625
     STDEV_BOUNCE_RVOL_MIN: float = 1.2  # auto-wired 625
     STDEV_BREAKOUT_ENABLED: bool = False  # auto-wired 625
-    STDEV_BREAKOUT_MAX_AGE_BARS: float = 50  # auto-wired 625
+    STDEV_BREAKOUT_MAX_AGE_BARS: int = 50  # auto-wired 625
     STDEV_BREAKOUT_RETEST_PCTB_MIN: float = 0.85  # auto-wired 625
-    STDEV_BREAKOUT_RETEST_SCORE: float = 22  # auto-wired 625
+    STDEV_BREAKOUT_RETEST_SCORE: int = 22  # auto-wired 625
     STDEV_BREAKOUT_RETEST_SIZE_MULT: float = 1.5  # auto-wired 625
     STDEV_BREAKOUT_RVOL_MIN: float = 1.2  # auto-wired 625
     STDEV_MACRO_AUGMENT_VETO_ENABLED: bool = False  # auto-wired 625
@@ -6594,7 +6341,7 @@ class QuickConfig:
     SYMBOL_PERF_MAX_MULT: float = 10.0  # auto-wired 625
     SYMBOL_PERF_MIN_MULT: float = 0.1  # auto-wired 625
     TIER_A_MIN_GAIN: float = 0.3  # auto-wired 625
-    TIER_A_MIN_TRADES: float = 10  # auto-wired 625
+    TIER_A_MIN_TRADES: int = 10  # auto-wired 625
     TIME_ZONE_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -6603,8 +6350,8 @@ class QuickConfig:
     TRADIER_NOLOSS_SRS_BYPASS: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    TRADIER_OI_INJECT_MAX_EACH: float = 10  # auto-wired 625
-    TRADIER_OI_INJECT_MIN_TOTAL_OI: float = 1000  # auto-wired 625
+    TRADIER_OI_INJECT_MAX_EACH: int = 10  # auto-wired 625
+    TRADIER_OI_INJECT_MIN_TOTAL_OI: int = 1000  # auto-wired 625
     TRADIER_OI_INJECT_STALE_MAX_HOURS: float = 4.0  # auto-wired 625
     TRADIER_QUEUE_DEDUPE_SEC: float = 60.0  # auto-wired 625
     TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0  # auto-wired 625
@@ -6619,7 +6366,7 @@ class QuickConfig:
     TRADIER_RSI_SHORT_1H: float = 65.0  # auto-wired 625
     TRADIER_RSI_SHORT_RVOL_15M: float = 1.0  # auto-wired 625
     TRADIER_RSI_SHORT_RVOL_1H: float = 1.0  # auto-wired 625
-    TRADIER_WT_EXIT_MIN_TFS_TRADIER: float = 5  # auto-wired 625
+    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 5  # auto-wired 625
     TRADIER_WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # auto-wired 625
     TRAILING_AUG_ENABLED_TRADIER: bool = False  # auto-wired 625
     TRAILING_AUG_GAIN_STEP_PCT: float = 0.5  # auto-wired 625
@@ -6645,14 +6392,14 @@ class QuickConfig:
     TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0  # auto-wired 625
     TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0  # auto-wired 625
     TRC_DC_DAYTRADE_START_SIZE: float = 1980.0  # auto-wired 625
-    TRC_ENTRY_MIN_ALIGNMENT: float = 4  # auto-wired 625
+    TRC_ENTRY_MIN_ALIGNMENT: int = 4  # auto-wired 625
     TRC_ENTRY_ZONE_LONG: float = 30.0  # auto-wired 625
     TRC_ENTRY_ZONE_SHORT: float = 70.0  # auto-wired 625
     TRC_EP_POSITION_SIZE: float = 2640.0  # auto-wired 625
     TRC_GAP_FILL_POSITION_SIZE: float = 1980.0  # auto-wired 625
     TRC_LS_RATIO_MAX: float = 3.0  # auto-wired 625
     TRC_LS_RATIO_MIN: float = 0.3  # auto-wired 625
-    TRC_MAX_CONCURRENT_POSITIONS: float = 32  # auto-wired 625
+    TRC_MAX_CONCURRENT_POSITIONS: int = 32  # auto-wired 625
     TRC_MAX_DAILY_LOSS_PCT: float = 10.0  # auto-wired 625
     TRC_MAX_ORDER_VALUE: float = 1250.0  # auto-wired 625
     TRC_MAX_POSITION_SIZE: float = 3750.0  # auto-wired 625
@@ -6666,7 +6413,7 @@ class QuickConfig:
     TRC_ROTATION_POSITION_SIZE: float = 3000.0  # auto-wired 625
     TRC_RSI2_POSITION_SIZE: float = 1980.0  # auto-wired 625
     TRC_SCALP_LONG_BUDGET: float = 1250.0  # auto-wired 625
-    TRC_SCALP_MAX_POSITIONS_PER_SIDE: float = 12  # auto-wired 625
+    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 12  # auto-wired 625
     TRC_SCALP_SHORT_BUDGET: float = 1250.0  # auto-wired 625
     TRC_SCALP_START_SIZE: float = 495.0  # auto-wired 625
     TRC_SCALP_TARGET_PCT: float = 0.01  # auto-wired 625
@@ -6682,7 +6429,7 @@ class QuickConfig:
     TREND_GATES: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    TR_ADX4H_BOYCOTT_SCORE: float = -40  # auto-wired 625
+    TR_ADX4H_BOYCOTT_SCORE: int = -40  # auto-wired 625
     TR_ADX4H_GATE_ENABLED: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
@@ -6706,7 +6453,7 @@ class QuickConfig:
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
     TSMOM_HIGH_CAP: float = 1.5  # auto-wired 625
-    TSMOM_LOOKBACK_BARS: float = 252  # auto-wired 625
+    TSMOM_LOOKBACK_BARS: int = 252  # auto-wired 625
     TSMOM_LOW_CAP: float = 0.25  # auto-wired 625
     TSMOM_MIN_AGREEMENT: float = 0.5  # auto-wired 625
     VIX_REGIME_FILTER_ENABLED: bool = (
@@ -6810,7 +6557,7 @@ class QuickConfig:
     WT_DC_EXIT_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
     )
-    WT_DC_EXIT_STALE_MAX_S: float = 600  # auto-wired 625
+    WT_DC_EXIT_STALE_MAX_S: int = 600  # auto-wired 625
     WT_DC_EXIT_THRESHOLD: float = 25.0  # auto-wired 625
     WT_DC_HTF_GATE: str = (
         "4h_D"  # live parity: config_tradier 4h_D (was missing — SHORT-into-uptrend gap; 4h_D blocks SHORT when D uptrend, mirrors tradier_manage 7239)
@@ -6831,7 +6578,7 @@ class QuickConfig:
     )
     WT_EXIT_VETO_ENABLED_TRADIER: bool = False  # auto-wired 625
     WT_FORCE_OPEN_FRESH_CROSS_ONLY: bool = False  # auto-wired 625
-    WT_FORCE_OPEN_FRESH_MAX_BARS: float = 0  # auto-wired 625
+    WT_FORCE_OPEN_FRESH_MAX_BARS: int = 0  # auto-wired 625
     WT_VEL_DECEL_RATIO: float = 0.5  # auto-wired 625
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -6897,9 +6644,9 @@ class QuickConfig:
     HTF_VETO_REQUIRE_D: bool = (
         True  # live parity: config_tradier True (added, was missing, caused 0 trades)
     )
-    ZONE_CLOSE_THRESHOLD: float = 20  # auto-wired 625
-    ZONE_MID_THRESHOLD: float = 30  # auto-wired 625
-    LR_BAND_LADDER_BASIS: str = 0.5  # auto-wired 625
+    ZONE_CLOSE_THRESHOLD: int = 20  # auto-wired 625
+    ZONE_MID_THRESHOLD: int = 30  # auto-wired 625
+    LR_BAND_LADDER_BASIS: float = 0.5  # auto-wired 625
     LR_BAND_LADDER_MODE: str = "center_plateau"  # auto-wired 625
     BREAKEVEN_EXIT_AFTER_BARS_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # auto-wired 625
@@ -7241,19 +6988,19 @@ class QuickConfig:
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = (
         True  # 2026-09-10 FIX vs B&H: all TFs (3m/15m/1h/4h/D) against → close primary
     )
-    ALL_TF_AGAINST_CLOSE_MIN_TFS: float = (
+    ALL_TF_AGAINST_CLOSE_MIN_TFS: int = (
         4  # 2026-09-10 FIX: 3 TFs against → exit (was 0 — never fired)
     )
     # 2026-10-01 WIRING b1 — ALL_TF_AGAINST split into two precisely named switches (old ALL_TF_AGAINST_CLOSE_* kept as DEPRECATED aliases until deploy):
     #   FORCE_CLOSE = CAUSES a full close of the position when >= MIN_TFS of the 5 WT TFs (3m/15m/1h/4h/D) are against it (ez_manage.process_position 48045)
     #   BLOCK_ENTRY = PREVENTS an open/reentry when >= MIN_TFS are against the side (ez_manage._batch1_template_live_gate 6579, crypto only)
     ALL_TF_AGAINST_FORCE_CLOSE_ENABLED: bool = True
-    ALL_TF_AGAINST_FORCE_CLOSE_MIN_TFS: float = 4
+    ALL_TF_AGAINST_FORCE_CLOSE_MIN_TFS: int = 4
     ALL_TF_AGAINST_FORCE_CLOSE_COOLDOWN_SEC: float = 30.0
     ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED: bool = (
         False  # [JSN2] user: ALL_TF_AGAINST entry veto False until tested (live config False)
     )
-    ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS: float = 4
+    ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS: int = 4
     QUICK_ENTRY_ABLATION_SUPPRESS_VEC: bool = (
         True  # C/003: honour ABLATION_DISABLE_QUICK_ENTRY (live kills the candidate loop; crypto)
     )
@@ -7339,7 +7086,7 @@ class QuickConfig:
     ATR_TRAIL_SWEEP_ENABLED: bool = False  # auto-added TEMPLATE
     AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5  # auto-added TEMPLATE
     AUGMENT_AT_LOSS_ENABLED: bool = False  # auto-added TEMPLATE
-    AUGMENT_ONLY_WHEN_PROFITABLE: float = True  # auto-added TEMPLATE generic
+    AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # auto-added TEMPLATE generic
     AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False  # auto-added TEMPLATE
     BANDAID_OFF_LOSER_RECOVER_PCT: float = -0.25  # auto-added TEMPLATE
     BAND_ARROW_ENABLED: bool = False  # auto-added TEMPLATE
@@ -7358,8 +7105,8 @@ class QuickConfig:
         "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     )
     BOUNCE_REENTRY_ENABLED: bool = True  # auto-added TEMPLATE
-    BOUNCE_REENTRY_K_RESET_LONG: float = 35  # auto-added TEMPLATE generic
-    BOUNCE_REENTRY_K_RESET_SHORT: float = 65  # auto-added TEMPLATE generic
+    BOUNCE_REENTRY_K_RESET_LONG: int = 35  # auto-added TEMPLATE generic
+    BOUNCE_REENTRY_K_RESET_SHORT: int = 65  # auto-added TEMPLATE generic
     BREAKEVEN_DC_FIELD_MODE: str = "DC4"  # auto-added TEMPLATE generic
     BREAKEVEN_GAIN_EROSION_ENABLED: bool = False  # auto-added TEMPLATE
     BREAKEVEN_GAIN_EROSION_FILTER_TF: str = (
@@ -7371,17 +7118,17 @@ class QuickConfig:
     BREAKOUT_RETEST_FILTER_TF: str = (
         "15m"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     )
-    BTC_ACCEL_RAMP_REQUIRE_POSITIVE: float = True  # auto-added TEMPLATE generic
+    BTC_ACCEL_RAMP_REQUIRE_POSITIVE: bool = True  # auto-added TEMPLATE generic
     BTC_BREAKOUT_ENTRY_ENABLED: bool = True  # auto-added TEMPLATE
     BTC_DEDICATED_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    BTC_DIVERGENCE_EXIT_AGAINST: float = True  # auto-added TEMPLATE generic
+    BTC_DIVERGENCE_EXIT_AGAINST: bool = True  # auto-added TEMPLATE generic
     BTC_GUARANTEED_REENTRY_ENABLED: bool = True  # auto-added TEMPLATE
-    BTC_GUARANTEED_REENTRY_MAX_AGE_BARS: float = 480  # auto-added TEMPLATE
+    BTC_GUARANTEED_REENTRY_MAX_AGE_BARS: int = 480  # auto-added TEMPLATE
     BTC_GUARANTEED_REENTRY_MIN_GAP_BARS: int = 5  # parity fix 2026-09-04: config 5
-    BTC_HARD_BLOCK_OTHER_ACCOUNTS: float = 0.0  # auto-added TEMPLATE generic
-    BTC_ROUND_BANDS_EACH_SIDE: float = 8  # auto-added TEMPLATE generic
-    BTC_RZ_WT_DC_MULTIFACTOR: float = True  # auto-added TEMPLATE
-    BTC_TECH_EXIT_WT_MIN_TFS: float = 3  # auto-added TEMPLATE generic
+    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = False  # auto-added TEMPLATE generic
+    BTC_ROUND_BANDS_EACH_SIDE: int = 8  # auto-added TEMPLATE generic
+    BTC_RZ_WT_DC_MULTIFACTOR: bool = True  # auto-added TEMPLATE
+    BTC_TECH_EXIT_WT_MIN_TFS: int = 3  # auto-added TEMPLATE generic
     BT_WT_CROSS_LADDER_FILTER_TF: str = (
         "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     )
@@ -7403,15 +7150,15 @@ class QuickConfig:
         "OFF"  # 2026-09-28 WAVE2: generic_filter_tf real gate; OFF default behavior-neutral (only dead-farm reads before)
     )
     DC_HOPELESS_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
-    DC_HOPELESS_EXIT_MIN_AGE_S: float = 900  # auto-added TEMPLATE generic
+    DC_HOPELESS_EXIT_MIN_AGE_S: int = 900  # auto-added TEMPLATE generic
     DC_MOMENTUM_BOTA_SCORER_FILTER_TF: str = (
         "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     )
     DC_MOMENT_STRONG_THRESHOLD: float = 40.0  # auto-added TEMPLATE
     DD_BOUNCE_ENABLED: bool = False  # auto-added TEMPLATE
     DELTA_ENGINE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    DELTA_HTF_GATE: float = "hh_hl_4h"  # auto-added TEMPLATE generic
-    DELTA_PYRAMID_MAX: float = 8  # auto-added TEMPLATE
+    DELTA_HTF_GATE: str = 'hh_hl_4h'  # auto-added TEMPLATE generic
+    DELTA_PYRAMID_MAX: int = 8  # auto-added TEMPLATE
     DELTA_PYRAMID_PRICE_TOL: float = 0.02  # auto-added TEMPLATE generic
     DELTA_REENTRY_FILTER_ENABLED: bool = False  # auto-added TEMPLATE
     DIRECTION_FAVORABLE_REENTRY_ENABLED: bool = False  # auto-added TEMPLATE
@@ -7422,8 +7169,8 @@ class QuickConfig:
         "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     )
     EMA_9_21_FILTER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    EMA_9_21_FILTER_MIN_TFS: float = (
-        3.0  # 2026-09-10 FIX: require 3 TFs EMA confirm (was 0 — filter never fired)
+    EMA_9_21_FILTER_MIN_TFS: int = (
+        3  # 2026-09-10 FIX: require 3 TFs EMA confirm (was 0 — filter never fired)
     )
     EMA_BLANKET_FILTER_ENABLED: bool = (
         False  # 2026-09-29 PARITY: default OFF = live-neutral (live/tradier has NO blanket gate; census NEITHER). Was True but the vec gate is real and vetoed EVERY stock-short entry → 0-trade baselines (CRM_SHORT 652 signals→0; False→113). Kept as swept switch. Was True 2026-09-28 WAVE4.
@@ -7432,14 +7179,14 @@ class QuickConfig:
         True  # [FLT q001] execute_now OPEN chokepoint gates (EMA_BLANKET, COUNTER_TREND_ADD_BLOCK) also gate MOMENTUM_WATCHDOG opens (live parity); vec-only housekeeping
     )
     EMA_BLANKET_FILTER_FILTER_TF: str = "OFF"  # 2026-10-13 parity: live config.py OFF + crypto cat_side OFF + TEMPLATE bold OFF (daily-chain needs_manual)
-    EMA_BLANKET_FILTER_MIN_TFS: float = (
-        3.0  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
+    EMA_BLANKET_FILTER_MIN_TFS: int = (
+        3  # 2026-09-10 FIX: 3 TFs must confirm (was 0)
     )
     EMERGENCY_BRAKE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     ENTRY_PRIMARY_TF: str = (
         "4h"  # parity fix 2026-09-04: config 4h (was 15m auto-generic)
     )
-    EXECUTE_NOW_SINGLE_GATE_ENFORCE: float = True  # auto-added TEMPLATE generic
+    EXECUTE_NOW_SINGLE_GATE_ENFORCE: bool = True  # auto-added TEMPLATE generic
     EXHAUSTION_EXIT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_R1_R2_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF: str = (
@@ -7454,12 +7201,12 @@ class QuickConfig:
     EZ_MANAGE_THROTTLER_RATE: float = 0.0  # auto-added TEMPLATE generic
     E_1_EXIT_DELTA_THR: float = 50.0  # auto-added TEMPLATE generic
     E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False  # auto-added TEMPLATE
-    E_3_USE_WT_STRUCTURE_EXIT_MODE: float = 0.0  # auto-added TEMPLATE generic
+    E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0  # auto-added TEMPLATE generic
     FAST_RISER_FILTER_TF: str = (
         "OFF"  # 2026-09-28 WAVE1: real gate (vec_decisions/filter_tf_gates); OFF default is behavior-neutral (field was never read before)
     )
-    FG_FEAR_THRESHOLD: float = 25  # auto-added TEMPLATE
-    FG_GREED_THRESHOLD: float = 75  # auto-added TEMPLATE
+    FG_FEAR_THRESHOLD: int = 25  # auto-added TEMPLATE
+    FG_GREED_THRESHOLD: int = 75  # auto-added TEMPLATE
     FH_MOMENTUM_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     FIRST_OPEN_THROTTLE_FILTER_TF: str = (
         "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -7468,7 +7215,7 @@ class QuickConfig:
     FROZEN_STOP_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     FUNDING_GATE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     FUNDING_GATE_LONG_MAX: float = 0.0005  # auto-added TEMPLATE
-    FUNDING_GATE_MTF_REQUIRED: float = True  # auto-added TEMPLATE generic
+    FUNDING_GATE_MTF_REQUIRED: bool = True  # auto-added TEMPLATE generic
     FUNDING_GATE_SHORT_MIN: float = -0.0005  # auto-added TEMPLATE
     GOLDEN_RULE_BASE_USD: float = 5.0  # auto-added TEMPLATE generic
     GOLDEN_RULE_ENFORCE_FILTER_TF: str = (
@@ -7477,10 +7224,12 @@ class QuickConfig:
     GOLDEN_RULE_HTF_VOTE_FILTER_TF: str = (
         "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     )
-    GR_FILTER_ALL_ENTRIES: float = 0.0  # auto-added TEMPLATE generic
+    # GR_FILTER_ALL_ENTRIES: the bool at the LIVE_ONLY block above is the real field — a second
+    # "auto-added TEMPLATE generic" float = 0.0 redefinition here made the dataclass field a float (last
+    # definition wins), mistyping a boolean switch. Removed 2026-10-16.
     GR_FILTER_VEC_ENABLED: bool = False  # auto-added TEMPLATE
     GR_FILTER_VEC_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    GR_FILTER_VEC_MIN_TFS: float = 2  # auto-added TEMPLATE generic
+    GR_FILTER_VEC_MIN_TFS: int = 2  # auto-added TEMPLATE generic
     GR_V5_STATE_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     HAIKU_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE
     HAIKU_WINNER_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
@@ -7504,9 +7253,9 @@ class QuickConfig:
     HARD_BREAKEVEN_FLOOR_ENABLED: bool = True  # auto-added TEMPLATE
     HARD_BREAKEVEN_MIN_PEAK_PCT: float = 0.5  # auto-added TEMPLATE
     HA_WICK_QUALITY_ENABLED: bool = False  # auto-added TEMPLATE
-    HA_WICK_QUALITY_SCORE: float = 15  # auto-added TEMPLATE
+    HA_WICK_QUALITY_SCORE: int = 15  # auto-added TEMPLATE
     HA_WICK_QUALITY_TF: str = "1h"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    HIGH_GAIN_AUGMENTATION_MIN_SIZE: float = 50  # auto-added TEMPLATE generic
+    HIGH_GAIN_AUGMENTATION_MIN_SIZE: int = 50  # auto-added TEMPLATE generic
     HLR_REENTRY_MAX_AGE_S: float = 14400.0  # auto-added TEMPLATE generic
     HLR_SMA_BAND_PCT: float = 0.03  # auto-added TEMPLATE
     HLR_TOP_EXIT_ENABLED: bool = True  # 2026-09-28 LIVE PARITY: config.py:2576 = True
@@ -7537,12 +7286,12 @@ class QuickConfig:
     WT_TOP_ENTRY_MODE: str = "TOPS_ONLY"  # "TOPS_ONLY" | "TOPS_AND_LOWS".
     WT_TOP_ENTRY_DIV_MODE: str = "OFF"  # "OFF" | "REG" | "HIDDEN" | "REG_OR_HIDDEN".
     WT_TOP_ENTRY_HTF_CONFIRM_TF: str = "OFF"  # "4h" | "D" | "BOTH" (OR).
-    HLR_TOP_MIN_TFS: float = (
-        2.0  # 2026-09-28 LIVE PARITY: config.py:2578 = 2 (min TFs confirming top, >=1 must be 4h+)
+    HLR_TOP_MIN_TFS: int = (
+        2  # 2026-09-28 LIVE PARITY: config.py:2578 = 2 (min TFs confirming top, >=1 must be 4h+)
     )
-    HTF4_CONF: float = True  # auto-added TEMPLATE generic
-    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: float = (
-        1.0  # 2026-09-10 FIX: require 4h confirm (was 0)
+    HTF4_CONF: bool = True  # auto-added TEMPLATE generic
+    HTF_AGAINST_FORCE_CLOSE_CONFIRM_4H: bool = (
+        True  # 2026-09-10 FIX: require 4h confirm (was 0)
     )
     HTF_AGAINST_FORCE_CLOSE_ENABLED: bool = (
         False  # 2026-09-29 USER: default OFF (frequent-exit churn) — swept switch; sane baseline WT/DC. Was True 2026-09-10.
@@ -7552,36 +7301,36 @@ class QuickConfig:
     )
     HTF_EXIT_VETO_ENABLED: bool = True  # auto-added TEMPLATE
     HTF_EXIT_VETO_MAX_LOSS_PCT: float = 2.0  # auto-added TEMPLATE
-    HTF_EXIT_VETO_MIN_ALIGNED: float = 2  # auto-added TEMPLATE generic
-    HTF_GATE_APPLY_TO_AUGMENT: float = True  # auto-added TEMPLATE generic
-    HTF_GATE_APPLY_TO_OPEN: float = True  # auto-added TEMPLATE generic
-    HTF_GATE_BYPASS_RZ: float = True  # auto-added TEMPLATE generic
-    HTF_GATE_D_MANDATORY: float = 0.0  # auto-added TEMPLATE generic
-    HTF_GATE_MIN_CONFIRMATIONS: float = 2  # auto-added TEMPLATE generic
+    HTF_EXIT_VETO_MIN_ALIGNED: int = 2  # auto-added TEMPLATE generic
+    HTF_GATE_APPLY_TO_AUGMENT: bool = True  # auto-added TEMPLATE generic
+    HTF_GATE_APPLY_TO_OPEN: bool = True  # auto-added TEMPLATE generic
+    HTF_GATE_BYPASS_RZ: bool = True  # auto-added TEMPLATE generic
+    HTF_GATE_D_MANDATORY: bool = False  # auto-added TEMPLATE generic
+    HTF_GATE_MIN_CONFIRMATIONS: int = 2  # auto-added TEMPLATE generic
     HTF_GATE_SIGNALS_SMA200D: bool = (
         False  # 2026-10-04 §17.4 C1: dup def kept in sync (config.py False; stocks True via overlay)
     )
     HTF_TREND_VETO_BYPASS_ENABLED: bool = True  # auto-added TEMPLATE
     HTF_TREND_VETO_BYPASS_REASONS: float = 0.0  # auto-added TEMPLATE generic
-    INTRADAY_SESSION_FORCE_EXIT_UTC: float = 35100  # auto-added TEMPLATE generic
+    INTRADAY_SESSION_FORCE_EXIT_UTC: int = 35100  # auto-added TEMPLATE generic
     KILLER_KNOB_FINDER_FILTER_TF: str = (
         "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     )
-    LEADERBOARD_FILTER: float = True  # auto-added TEMPLATE generic
-    LEGACY_PROC_SINGLE_REENTRY: float = 0.0  # auto-added TEMPLATE generic
-    LEGACY_REENTRY_PSR_DC_BOUNCE: float = (
+    LEADERBOARD_FILTER: bool = True  # auto-added TEMPLATE generic
+    LEGACY_PROC_SINGLE_REENTRY: bool = False  # auto-added TEMPLATE generic
+    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = (
         True  # WIRING LANE C L1e: live True (config.py:2290); parity-synced 2026-10-06 (was False)
     )
-    LEGACY_REENTRY_PSR_FULL_DC: float = (
+    LEGACY_REENTRY_PSR_FULL_DC: bool = (
         True  # WIRING LANE C L1e: live True (config.py:2289); parity-synced 2026-10-06 (was False)
     )
-    LEGACY_REENTRY_PSR_K_DC_CROSSOVER: float = 0.0  # auto-added TEMPLATE generic
-    LEGACY_REENTRY_PSR_QUICK_RECOVERY: float = (
+    LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False  # auto-added TEMPLATE generic
+    LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = (
         True  # WIRING LANE C L1e: DIVERGENCE live True (config.py:2287); inert until promotion
     )
     LH_HL_FILTER_ENABLED: bool = False  # auto-added TEMPLATE
-    LH_HL_FILTER_MODE: float = "STRICT_2BAR"  # auto-added TEMPLATE generic
-    LH_HL_FILTER_REQUIRE_BOTH: float = 0.0  # auto-added TEMPLATE generic
+    LH_HL_FILTER_MODE: str = 'STRICT_2BAR'  # auto-added TEMPLATE generic
+    LH_HL_FILTER_REQUIRE_BOTH: bool = False  # auto-added TEMPLATE generic
     LH_HL_FILTER_TF_REQ: int = (
         2  # 2026-09-29 accordance fix: was float 0.0 dup overriding int 2 (config=2)
     )
@@ -7592,7 +7341,7 @@ class QuickConfig:
     LIVE_VEC_EMERGENCY_BRAKE_ENABLED: bool = False  # auto-added TEMPLATE
     LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED: bool = False  # auto-added TEMPLATE
     LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED: bool = False  # auto-added TEMPLATE
-    LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK: float = True  # auto-added TEMPLATE generic
+    LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK: bool = True  # auto-added TEMPLATE generic
     LR_BAND_LADDER_STOCH_EXTREME: float = 30.0  # auto-added TEMPLATE generic
     LR_BAND_LADDER_TF_BOTTOM: dict = field(
         default_factory=lambda: {"D": 10.0, "4h": 6.0, "1h": 4.0}
@@ -7606,19 +7355,18 @@ class QuickConfig:
     MACD_ZERO_CROSS_ENABLED: bool = False  # auto-added TEMPLATE
     MACD_ZERO_CROSS_SCORE: int = 15  # parity fix 2026-09-04: config 15
     MACD_ZERO_CROSS_TF: str = "1h"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS: float = 0.0  # auto-added TEMPLATE generic
+    MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS: bool = False  # auto-added TEMPLATE generic
     MANDATORY_REENTRY_K_HIGH_BLOCK: float = 80.0  # auto-added TEMPLATE generic
     MANDATORY_REENTRY_K_LOW_BLOCK: float = 20.0  # auto-added TEMPLATE generic
-    MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME: float = True  # auto-added TEMPLATE generic
-    MANDATORY_REENTRY_WT_FILTER_MIN_TFS: float = 1  # auto-added TEMPLATE generic
+    MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME: bool = True  # auto-added TEMPLATE generic
+    MANDATORY_REENTRY_WT_FILTER_MIN_TFS: int = 1  # auto-added TEMPLATE generic
     MANDATORY_REENTRY_WT_FILTER_MIN_VELOCITY: float = 0.0  # auto-added TEMPLATE generic
-    MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP: float = 0.0  # auto-added TEMPLATE generic
-    MANDATORY_REENTRY_WT_FILTER_TF_MODE: float = (
-        "15m_only"  # auto-added TEMPLATE generic
+    MANDATORY_REENTRY_WT_FILTER_REQUIRE_FLIP: bool = False  # auto-added TEMPLATE generic
+    MANDATORY_REENTRY_WT_FILTER_TF_MODE: str = (
+        '15m_only'  # auto-added TEMPLATE generic
     )
     MANDATORY_REENTRY_WT_FILTER_VELOCITY_RATIO: float = 0.9  # auto-added TEMPLATE
     MARKET_QUALITY_SCORE_ENABLED: bool = False  # auto-added TEMPLATE
-    MAX_AUGMENTS_PER_POSITION: float = 999999  # auto-added TEMPLATE generic
     MI_DIV_EXIT_ENABLED: bool = (
         True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     )
@@ -7634,7 +7382,7 @@ class QuickConfig:
     MI_STRUCT_EXIT_ENABLED: bool = (
         True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     )
-    MI_TF_AGREE_MIN: float = 3.0  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 3
+    MI_TF_AGREE_MIN: int = 3  # 2026-09-28 WAVE4 LIVE PARITY: ez getattr default 3
     MI_VELOCITY_EXIT_ENABLED: bool = (
         True  # 2026-09-28 WAVE4 LIVE PARITY: ez_positions_quick.py:3726+ getattr default True (was auto-added False)
     )
@@ -7651,8 +7399,8 @@ class QuickConfig:
     MTF_ARMED_ENTRIES_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     MTF_ATR_TRAIL_FILTER_TF: str = "1h"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
     MTF_DC_REJECT_FILTER_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: float = True  # auto-added TEMPLATE generic
-    MTF_GR_MIN_IND: float = 7  # auto-added TEMPLATE generic
+    MTF_FILTER_STRONG_BUY_QUICK_BYPASS: bool = True  # auto-added TEMPLATE generic
+    MTF_GR_MIN_IND: int = 7  # auto-added TEMPLATE generic
     MTS_BOTTOM_BONUS_THRESHOLD: float = 25.0  # auto-added TEMPLATE
     MTS_BOTTOM_STRONG_THRESHOLD: float = 40.0  # auto-added TEMPLATE
     MTS_GATE_ENABLED: bool = True  # auto-added TEMPLATE
@@ -7663,12 +7411,6 @@ class QuickConfig:
     )
     NEWBORN_LOSS_KILL_GAIN_THRESHOLD_PCT: float = (
         0.0  # 2026-09-28 WAVE3 LIVE PARITY: ez_manage.py:46537 default -0.5 (was 0.0 stub)
-    )
-    NEWBORN_LOSS_KILL_ENABLED: bool = (
-        False  # 2026-09-28 WAVE3: live config.py:1148 = False (V1 disabled after A/B; V2 vel-confirm awaits verdict)
-    )
-    NEWBORN_LOSS_KILL_WINDOW_MIN: float = (
-        30.0  # 2026-09-28 WAVE3 LIVE PARITY: ez_manage.py:46536 default 30.0
     )
     NEWBORN_LOSS_KILL_REQUIRE_VEL_AGAINST: bool = (
         True  # 2026-09-28 WAVE3 LIVE PARITY: ez_manage.py:46541 default True (was float 0.0 stub)
@@ -7683,17 +7425,17 @@ class QuickConfig:
     OBLIGATORY_REENTRY_ENABLED: bool = True  # auto-added TEMPLATE
     OBLIGATORY_REENTRY_K15_HIGH_BLOCK: float = 95.0  # auto-added TEMPLATE generic
     OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC: float = 0.5  # auto-added TEMPLATE generic
-    OBLIGATORY_REENTRY_SCORE_TIER1: float = 40  # auto-added TEMPLATE
-    OBLIGATORY_REENTRY_SCORE_TIER2: float = 30  # auto-added TEMPLATE
-    OBLIGATORY_REENTRY_SCORE_TIER3: float = 30  # auto-added TEMPLATE
+    OBLIGATORY_REENTRY_SCORE_TIER1: int = 40  # auto-added TEMPLATE
+    OBLIGATORY_REENTRY_SCORE_TIER2: int = 30  # auto-added TEMPLATE
+    OBLIGATORY_REENTRY_SCORE_TIER3: int = 30  # auto-added TEMPLATE
     OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK: float = 5.0  # auto-added TEMPLATE generic
     OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC: float = (
         0.5  # auto-added TEMPLATE generic
     )
-    OBLIGATORY_REENTRY_SMA_FIELD: float = "ema_50"  # auto-added TEMPLATE generic
+    OBLIGATORY_REENTRY_SMA_FIELD: str = 'ema_50'  # auto-added TEMPLATE generic
     OBLIGATORY_REENTRY_SMA_TF: str = "15m"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED: float = 3  # auto-added TEMPLATE generic
-    OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED: float = 1  # auto-added TEMPLATE generic
+    OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED: int = 3  # auto-added TEMPLATE generic
+    OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED: int = 1  # auto-added TEMPLATE generic
     OI_CONFIRM_ENABLED: bool = True  # auto-added TEMPLATE
     OI_CONFIRM_MIN_CHANGE_PCT: float = (
         0.5  # FIX 2026-09-15: align to config.py 0.5 (was 0.0 dead, no OI gate)
@@ -7713,14 +7455,14 @@ class QuickConfig:
         "OFF"  # 2026-10-04 §17.4 C2: config.py/config_tradier 15m (live filters); was OFF
     )
     PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False  # auto-added TEMPLATE
-    QUICK_REDUCE_TECHNICAL_ONLY: float = True  # auto-added TEMPLATE generic
+    QUICK_REDUCE_TECHNICAL_ONLY: bool = True  # auto-added TEMPLATE generic
     QUICK_REENTRY_60MIN_MIN_PCT: float = 0.6  # auto-added TEMPLATE
-    REENTRY2_DC_BREAK_ALLOW_15M: float = True  # auto-added TEMPLATE generic
+    REENTRY2_DC_BREAK_ALLOW_15M: bool = True  # auto-added TEMPLATE generic
     REENTRY2_DC_BREAK_FILTER_TF: str = (
         "OFF"  # parity 2026-10-06 OFF (was "3m" dup; config="OFF")
     )
-    REENTRY2_DC_BREAK_REQUIRE_K_FILTER: float = True  # auto-added TEMPLATE generic
-    REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: float = 0.0  # auto-added TEMPLATE generic
+    REENTRY2_DC_BREAK_REQUIRE_K_FILTER: bool = True  # auto-added TEMPLATE generic
+    REENTRY2_DC_BREAK_REQUIRE_WT_FILTER: bool = False  # auto-added TEMPLATE generic
     REENTRY2_DIR_FAV_ENABLED: bool = True  # auto-added TEMPLATE
     REENTRY_B16_SIZE_MULT_STRONG: float = 3.0  # auto-added TEMPLATE
     REENTRY_B16_SIZE_MULT_WEAK: float = 1.5  # auto-added TEMPLATE
@@ -7733,7 +7475,7 @@ class QuickConfig:
     REENTRY_POST_CONSOL_ATR_THRESHOLD: float = 0.15  # auto-added TEMPLATE
     REENTRY_POST_CONSOL_ENABLED: bool = True  # auto-added TEMPLATE
     REENTRY_POST_CONSOL_MULT: float = 1.5  # auto-added TEMPLATE
-    REENTRY_POST_CONSOL_TFS_REQUIRED: float = 2  # auto-added TEMPLATE generic
+    REENTRY_POST_CONSOL_TFS_REQUIRED: int = 2  # auto-added TEMPLATE generic
     REENTRY_PRICE_IMPROVE_PCT: float = 0.08  # auto-added TEMPLATE
     REENTRY_BAR_TURN_ENABLED: bool = True  # 2026-09-09 bar-turn softening
     REENTRY_BAR_TURN_TF: str = "3m"
@@ -7783,8 +7525,8 @@ class QuickConfig:
     )
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # auto-added TEMPLATE
     STDEV_REJECT_EXIT_TF: str = "D"  # auto-added 2026-09-04 TEMPLATE FILTER_TF
-    STDEV_SUPPRESS_EARLY_EXIT: float = 0.0  # auto-added TEMPLATE generic
-    TREND_EXIT_SCORE_FLIP: float = 0.0  # auto-added TEMPLATE
+    STDEV_SUPPRESS_EARLY_EXIT: bool = False  # auto-added TEMPLATE generic
+    TREND_EXIT_SCORE_FLIP: int = 0  # auto-added TEMPLATE
     TREND_MIN_GAIN_EXIT: float = 0.1  # auto-added TEMPLATE generic
     UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED: bool = (
         True  # 2026-09-28 LIVE PARITY: config.py:899 = True (later field wins — keep in sync with line ~5085)
@@ -7801,8 +7543,8 @@ class QuickConfig:
     WT_4H_VEL_EXIT_ENABLED: bool = False  # auto-added TEMPLATE
     WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 2.0  # auto-added TEMPLATE generic
     WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 20.0  # auto-added TEMPLATE generic
-    WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: float = True  # auto-added TEMPLATE generic
-    WT_4H_VEL_EXIT_REQUIRE_PROFIT: float = True  # auto-added TEMPLATE generic
+    WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: bool = True  # auto-added TEMPLATE generic
+    WT_4H_VEL_EXIT_REQUIRE_PROFIT: bool = True  # auto-added TEMPLATE generic
     WT_ACCEL_EXIT_ENABLED: bool = (
         False  # parity fix 2026-09-13: config_tradier False (was True causing default drift)
     )
@@ -7811,17 +7553,17 @@ class QuickConfig:
     WT_COMPOSITE_ENTRY_GOOD: float = 30.0  # parity fix 2026-09-04: config.py 30.0
     WT_COMPOSITE_ENTRY_OK: float = 10.0  # parity fix 2026-09-04: config.py 10.0
     WT_COMPOSITE_ENTRY_STRONG: float = 50.0  # parity fix 2026-09-04: config.py 50.0
-    WT_CROSS_EXIT_APPLIES_TO_WINNERS: float = True  # auto-added TEMPLATE generic
+    WT_CROSS_EXIT_APPLIES_TO_WINNERS: bool = True  # auto-added TEMPLATE generic
     WT_CROSS_EXIT_ENABLED: bool = True  # auto-added TEMPLATE
     WT_CROSS_EXIT_MIN_AGE_MINUTES: float = 1.0  # auto-added TEMPLATE generic
-    WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: float = True  # auto-added TEMPLATE generic
+    WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = True  # auto-added TEMPLATE generic
     WT_DIV_ENTRY_GATE_ENABLED: bool = True  # auto-added TEMPLATE
     WT_DIV_EXIT_ENABLED: bool = (
         False  # FIX 2026-09-13: was True — align to config_tradier False (was causing default drift)
     )
     WT_EXHAUST_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE
     WT_EXHAUST_EXIT_MIN_GAIN_PCT: float = 0.5  # auto-added TEMPLATE
-    WT_EXHAUST_EXIT_REQUIRE_GAIN: float = 0.0  # auto-added TEMPLATE generic
+    WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False  # auto-added TEMPLATE generic
     WT_MOMENTUM_EXIT_THRESHOLD: int = 1  # parity fix 2026-09-04: config 1
     WT_PERCENTILE_ENTRY_GATE_ENABLED: bool = False  # auto-added TEMPLATE
     WT_PERCENTILE_ENTRY_OB_D: float = 90.0  # parity fix 2026-09-04: config 90.0
@@ -8006,7 +7748,7 @@ class QuickConfig:
     AI_PREMARKET_SIZE_MULT_MAX: float = 1.5
     API_RATE_LIMIT_PER_MINUTE: int = 300
     API_RATE_LIMIT_PER_SECOND: int = 10
-    ASYMMETRIC_LOSER_MIN_AGE_SECONDS: float = 540
+    ASYMMETRIC_LOSER_MIN_AGE_SECONDS: int = 540
     ASYMMETRIC_WINNER_GAIN_PCT: float = 1.5
     ATR_PARITY_TARGET_RISK_PCT: float = 0.2
     ATR_TRAIL_ENABLED_TRADIER: bool = False
@@ -8425,7 +8167,7 @@ class QuickConfig:
     FIN_ADVISORY_CONSUMER_ENABLED_TRADIER: bool = False
     FOOTHOLD_PILEON_ENABLED: bool = False
     FORCE_OPEN_REQUIRE_MTF_GR: bool = True
-    FORCE_REFRESH_SECONDS: float = 10
+    FORCE_REFRESH_SECONDS: int = 10
     FORMATION_CUP_HANDLE_ENTRY_ENABLED: bool = False
     FORMATION_CUP_HANDLE_EXIT_ENABLED: bool = False
     FORMATION_DOUBLE_TOP_BOTTOM_ENTRY_ENABLED: bool = False
@@ -8633,9 +8375,6 @@ class QuickConfig:
         600.0  # 2026-10-06 golden twin: live per-pkey cooldown
     )
     GOLDEN_RULE_MAX_FIRES_PER_TICK: int = 5  # 2026-10-06 golden twin: live per-tick cap
-    USE_1M_3M_SIGNALS_ENABLED: bool = (
-        False  # 2026-10-06 golden twin: native-TF selector (False for months)
-    )
     GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True
     GRACEFUL_EXIT_FILE_TEMPLATE: Path = Path("data")
     GR_HEDGE_SCORE_FLOOR: int = 15
@@ -8911,13 +8650,13 @@ class QuickConfig:
     MARKET_MODE_FILE: str = "data/market_mode.json"
     MARKET_OPEN_HOUR: int = 9
     MARKET_OPEN_MINUTE: int = 30
-    MARK_PRICE_MAX_STALENESS: float = 2
+    MARK_PRICE_MAX_STALENESS: int = 2
     MAX_ALLOWED_DRAWDOWN_PCT: float = 50.0
-    MAX_CONCURRENT_ORDERS: float = 186
+    MAX_CONCURRENT_ORDERS: int = 186
     MAX_FILES: int = 20
     MAX_HEDGE_BALANCE_MULTIPLIER: float = 1.8
     MAX_HEDGE_BALANCE_VALUE_USD: float = 500.0
-    MAX_MARKET_DATA_FILE_AGE_SECONDS: float = 1200
+    MAX_MARKET_DATA_FILE_AGE_SECONDS: int = 1200
     MAX_MEMORY_GB: int = 8
     MAX_ORDER_VALUE_FIN: float = 280.0
     MAX_ORDER_VALUE_MEN: float = 280.0
@@ -9020,9 +8759,6 @@ class QuickConfig:
     MTF_EXIT_MIN_OPEN_TS: float = 1779235200.0
     MTF_GR_EXIT_MIN_IND: int = 5
     MTF_GR_EXIT_MIN_TFS: int = 3
-    MTF_WT_CROSS_EXIT_TF: str = (
-        "15m"  # live parity: config.py '15m' (2026-09-28 exit-vectorization; 'either' is inert live+vec)
-    )
     MTF_DC_REJECT_USE_DC4: bool = (
         False  # NEW 2026-09-28 (user): band field dc_high4/dc_low4_{TF} instead of dc_high/dc_low_{TF}; wired live ez_manage same session
     )
@@ -9370,7 +9106,7 @@ class QuickConfig:
     RED_ZONE_GATE_FALLBACK_ENABLED: bool = True
     RED_ZONE_HEDGE_GATE_ENABLED: bool = False
     RED_ZONE_MIN_DISTANCE_PCT: float = 0.4
-    RED_ZONE_MIN_WALL_NOTIONAL_USD: float = 50000
+    RED_ZONE_MIN_WALL_NOTIONAL_USD: int = 50000
     RED_ZONE_STALE_MAX_SEC: float = 30.0
     REENTER_ORPHAN_THRESHOLD: timedelta = field(
         default_factory=lambda: timedelta(days=70)
@@ -9999,7 +9735,7 @@ class QuickConfig:
     SIGNALS_LOOP_INTERVAL_SECONDS: int = 300
     SIZING_MODE_TRADIER: str = "DEFAULT"
     SLEEP_TIME_PER_TASKS: int = 3
-    SLEEP_TIME_PROC_ACCT: float = 5
+    SLEEP_TIME_PROC_ACCT: int = 5
     SMFI_MAX_PER_SIDE: int = 5
     SPIKE_FADE_COOLDOWN_BARS: int = 6
     SPIKE_FADE_ENABLED: bool = False
@@ -10223,8 +9959,8 @@ class QuickConfig:
     TRENDER_INJECT_LIVE: bool = False
     TRENDER_INJECT_SHADOW_LOG: bool = True
     TRENDER_LIN_MIN: float = 0.65
-    TRENDER_QV_ANCHOR_USD: float = 50000000
-    TRENDER_QV_FLOOR_USD: float = 25000000
+    TRENDER_QV_ANCHOR_USD: int = 50000000
+    TRENDER_QV_FLOOR_USD: int = 25000000
     TRENDER_QV_MAX_BOOST: float = 1.5
     TRENDER_RET24_MIN_PCT: float = 2.5
     TREND_ACCOUNTS: List[str] = field(default_factory=lambda: [])
@@ -10465,6 +10201,28 @@ class QuickConfig:
     _REGIME_REDIS_CACHE: ClassVar[Dict[str, Dict]] = {}
     _REGIME_REDIS_TS: ClassVar[float] = 0.0
     indicators_filepath: Path = Path("data")
+
+
+def _quickconfig_duplicate_fields():
+    """USER 2026-10-16 "duplicate contradictory fields ... should be impossible": a second `NAME: T = v` in the
+    QuickConfig body silently replaces the first (type AND default). Text scan of the class body, ~ms."""
+    import re as _re
+
+    src = Path(__file__).read_text()
+    a = src.index("\nclass QuickConfig:")
+    b = src.index("\ndef load_npz(", a)
+    seen, dups = set(), []
+    for m in _re.finditer(r"\n    ([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?!=)", src[a:b]):
+        k = m.group(1)
+        if k in seen:
+            dups.append(k)
+        seen.add(k)
+    return dups
+
+
+_QC_DUPS = _quickconfig_duplicate_fields()
+if _QC_DUPS:
+    raise RuntimeError(f"QuickConfig declares {len(_QC_DUPS)} field(s) twice — the later line silently re-types/re-defaults the switch: {_QC_DUPS[:12]} (fix: tools/quickconfig_dedupe.py --apply)")
 
 
 def load_npz(mode, symbols, start_date, npz_dir=""):
@@ -14194,26 +13952,15 @@ def compute_regime_sizing_mult(npz, n, is_long, cfg):
         except Exception:
             pass
     elif bool(getattr(cfg, "STDEV_SLOPE_SIZING_ENABLED", False)):
+        # USER 2026-10-16 "should be 1-5x": 1x top -> STDEV_LADDER_MAX_MULT (5) bottom, vv shorts, on STDEV_LADDER_TF (D).
+        # ONE implementation shared with ez_manage/tradier_manage (vec_decisions/qty_quantizers.py).
+        mult = mult * _qq.ladder_vec(npz, n, is_long, cfg)
+    elif bool(getattr(cfg, "BAND_SLOPE_SIZING_V2_ENABLED", False)):
+        # STDEV off: live sizes with BAND_SLOPE_SIZING_V2 (ez_manage/tradier_manage), so the vector does too
         try:
-            _stdev_max = 5.0  # 5x at bottom (longs) / top (shorts)
-            _stdev_min = 1.0  # 1x at opposite extreme
-            _stdev_tf = "D"  # D only per user request
-            _stdev_pb_key = f"lrL_pct_b_{_stdev_tf}"
-            _stdev_sl_key = f"lrL_slope_{_stdev_tf}"
-            if _stdev_pb_key not in npz or _stdev_sl_key not in npz:
-                raise KeyError(
-                    f"STDEV_SLOPE no channel {_stdev_tf} (live parity: skip)"
-                )
-            _stdev_pb = _safe(npz, _stdev_pb_key, n, 0.5)
-            _stdev_sl = _safe(npz, _stdev_sl_key, n, 0.0)
-            # Edge: 0 at top, 1 at bottom for longs; reversed for shorts
-            _edge = (1.0 - _stdev_pb) if is_long else _stdev_pb
-            _edge = np.clip(_edge, 0.0, 1.0)
-            # Bottom→top 5x→1x for longs, top→bottom 5x→1x for shorts (same edge logic)
-            _bs_m = 1.0 + (_stdev_max - 1.0) * _edge
-            _bs_m = np.clip(_bs_m, _stdev_min, _stdev_max)
-            _bs_m = np.where(np.isfinite(_bs_m), _bs_m, 1.0)
-            mult = mult * _bs_m
+            import vec_decisions.slope_sizing_live as _ssl2
+
+            mult = mult * _ssl2.mult(npz, n, is_long, cfg)
         except Exception:
             pass
     # [twin_stdev] STDEV band/slope switch parametrization (7 switches) — inert at defaults
@@ -16277,7 +16024,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         pass
     # [N1/004] REENTRY_APPLY_ENTRY_GATES_ENABLED: capture the AND-product of the final entry-gate stack (pure AND steps below) independent of the permissive OR sources.
-    _rag_on = bool(getattr(cfg, "REENTRY_APPLY_ENTRY_GATES_ENABLED", False))
+    # DEAD (USER 2026-10-16): reentry is NOT filtered by the entry gates — if it were, it would be ENTRY, not
+    # REENTRY. Reentry has its own filters (REENTRY_WINDOWED / REENTRY_ADAPTIVE yellow columns). Measured on
+    # BATUSDT_LONG: this was the ONLY thing filtering reentry, and it filtered with the wrong set.
+    _rag_on = False
     _rag_base = None
     _iso_on = bool(
         str(getattr(cfg, "ENTRY_ISOLATE_FAMILY", "") or "").strip()
@@ -16364,8 +16114,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 > 0.5,
             )
     # [N4 queue/2b] parity master: stocks augment ONLY from live's sources (DC_TIER / TRAILING_AUG / WT_D_BOUNCE_AUG / LR band ladder parity); the vector's gain-ladder/pullback/pyramid augments are not live stock sources
-    _n4_live_only = getattr(cfg, "MODE", "crypto") == "tradier" and bool(
-        getattr(cfg, "STOCK_LIVE_AUGMENT_ONLY", False)
+    # USER 2026-10-14 venue law (engine level, was flag-only): tradier ALWAYS live-only — a swept
+    # STOCK_LIVE_AUGMENT_ONLY=False re-enabled crypto augments on stocks (SNDK_LONG -0.50% vs +40.49%).
+    # Kill switch V12_STOCK_LIVE_AUGMENT_GUARD=0 restores the flag's say. AT_LOSS stays: live tradier source.
+    _n4_live_only = getattr(cfg, "MODE", "crypto") == "tradier" and (
+        bool(getattr(cfg, "STOCK_LIVE_AUGMENT_ONLY", False))
+        or os.environ.get("V12_STOCK_LIVE_AUGMENT_GUARD", "1") != "0"
     )
     _typed_aug_on = bool(
         getattr(cfg, "AUGMENT_TYPED_MIN_GAIN_ENABLED", False)
@@ -17639,6 +17393,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _mtfwt_min = int(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3))
     _vig_block_px = 0.0
     _vig_scan_start = 0
+    _qs_on = _qq.streak_on(cfg)  # 2026-10-16 QTY_STREAK quantizer: state folded from full CLOSE rows at each new open
+    _qs_state = _qq.new_state()
+    _qs_seen = 0
+    _qs_avg_by_entry = {}
     try:
         # 2026-09-30 15m-floor: NPZ has no 3m; VIGILANCE recovery stoch-confirm read k_3m/d_3m (phantom, always 0 -> leg always-True). Use 15m.
         _vig_k3 = _safe(npz, "stoch_k_15m", n, 50)
@@ -17833,11 +17591,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         break
                     if _ev.get("type") == "AUGMENT" and _eb <= _bx:
                         return 0.0
-            try:
-                if float(getattr(cfg, "MAX_AUGMENTS_PER_POSITION", 999999)) < 1:
-                    return 0.0
-            except Exception:
-                pass
             if _sa_cap is not None and int(_sa_cap) < 1:
                 return 0.0
             if bool(getattr(cfg, "REENTRY_AUGMENT_REQUIRE_HIGHER_LOW", True)):
@@ -18422,6 +18175,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _cs_book = None
     for i in range(n):
+        if _qs_on and pos is not None:
+            _qs_avg_by_entry[int(pos["entry_bar"])] = float(pos["avg_price"])  # live streak scores vs the AVERAGE entry
         if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
             for _ws_e in list(events[_ws_ne:]):
                 if pos is None or _ws_e.get("type") != "REDUCE":
@@ -19247,6 +19002,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _dollar = _dollar * float(
                             getattr(cfg, "GAP_MOC_REENTRY_SIZE_MULT", 1.25)
                         )
+                if _qs_on:  # QTY_STREAK quantizer (live: ez_manage/tradier_manage via vec_decisions/qty_quantizers.py)
+                    for _qs_t in trades[_qs_seen:]:
+                        if str(_qs_t.get("type", "")) == "CLOSE" and not _qs_t.get("unrealised"):
+                            _qs_avg = _qs_avg_by_entry.get(int(_qs_t.get("bar_entry", -1)), _qs_t.get("entry_price"))
+                            _qq.streak_update(_qs_state, _qq.trade_move_pct(is_long, _qs_avg, _qs_t.get("exit_price")), cfg)
+                    _qs_seen = len(trades)
+                    _dollar = _dollar * _qq.streak_mult(_qs_state, cfg)
                 try:
                     _cap = float(getattr(cfg, "MAX_ORDER_VALUE", 2500.0) or 2500.0)
                     if _cap > 0:
@@ -19255,7 +19017,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             float(getattr(cfg, "START_POSITION_SIZE", 500.0) or 500.0)
                             * 10.0,
                         )
-                        _dollar = min(_dollar, _cap)
+                    _dollar = _qq.cap_dollar(cfg, _dollar, _cap)  # QTY_LIVE_ORDER_CAP_MULT>0 = live MAX_ORDER_VALUE/START cap
                 except Exception:
                     pass
                 qty0 = _size_qty(cfg, _dollar, px)
@@ -20783,7 +20545,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 pos.get("entry_price", pos["avg_price"])
                             ),
                             "exit_price": float(px),
-                            "qty": 0.0,
+                            # USER 2026-10-16: was 0.0 while the closed size sat in scope, so the chart could not
+                            # show how much was sold and `qty*(exit-entry)` contradicted the row's own P&L sign
+                            # (70 of 439 latest charts). `pnl_dollars` here is pos["realized"]-fees = the WHOLE
+                            # lifecycle, so single-leg arithmetic only reconciles when legs == 1 — stated, not implied.
+                            "qty": float(_hq_rq),
+                            "closed_qty": float(_hq_rq),
+                            "pnl_is_lifecycle": True,
                             "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                             "exit_reason": _hq_reason,
                             "bars_held": int(i - pos["entry_bar"]),
@@ -21136,6 +20904,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         add_qty = _sas_q
                     except Exception:
                         pass
+                add_qty = _qq.cap_add_qty(cfg, pos["qty"], add_qty, px, is_tradier)  # QTY_LIVE_POSITION_CAP_MULT: live MAX_POSITION_SIZE/START cap
                 if add_qty > 0:
                     new_qty = pos["qty"] + add_qty
                     pos["avg_price"] = (
@@ -21284,7 +21053,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "bar_exit": int(i),
                         "entry_price": float(pos.get("entry_price", pos["avg_price"])),
                         "exit_price": float(px),
-                        "qty": 0.0,
+                        "qty": float(_ppl_qty),  # USER 2026-10-16: the size actually closed, never 0.0
+                        "closed_qty": float(_ppl_qty),
+                        "pnl_is_lifecycle": True,
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _ppl_reason,
                         "bars_held": int(i - pos["entry_bar"]),
@@ -21385,7 +21156,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "bar_exit": int(i),
                         "entry_price": float(pos.get("entry_price", pos["avg_price"])),
                         "exit_price": float(px),
-                        "qty": 0.0,
+                        "qty": float(_dd_qty),  # USER 2026-10-16: the size actually closed, never 0.0
+                        "closed_qty": float(_dd_qty),
+                        "pnl_is_lifecycle": True,
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _dd_reason,
                         "bars_held": int(i - pos["entry_bar"]),
@@ -21765,7 +21538,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 pos.get("entry_price", pos["avg_price"])
                             ),
                             "exit_price": float(px),
-                            "qty": 0.0,
+                            "qty": float(_w2_tpq),  # USER 2026-10-16: the size actually closed, never 0.0
+                            "closed_qty": float(_w2_tpq),
+                            "pnl_is_lifecycle": True,
                             "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                             "exit_reason": _w2_tpr,
                             "bars_held": int(i - pos["entry_bar"]),
@@ -22127,6 +21902,54 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos["realized"] += realized
                 pos["fees"] += abs(reduce_qty * px) * half_fee
                 pos["qty"] -= reduce_qty
+                # USER 2026-10-16 ("the chart html files represent the trades with the exact number that are shown
+                # in the headers"): this branch shrank the position by SATOSHIT_EXIT_PARTIAL_PCT (default 70%) and
+                # wrote NOTHING to trades or events, on every qualifying bar. The dollars still landed in
+                # pos["realized"] and surfaced later inside the lifecycle close row, so a row's P&L could
+                # contradict the sign of the one entry/exit pair drawn for it and no pictogram existed for the leg
+                # that produced it. The leg is now recorded exactly like every other REDUCE path — same shape, no
+                # change to sizing, timing or the exit decision.
+                _st_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                events.append(
+                    {
+                        "type": "REDUCE",
+                        "ts": _st_ts,
+                        "price": float(px),
+                        "qty": float(reduce_qty),
+                        "pos_deployed": float(pos["deployed"]),
+                        "bar": int(i),
+                        "reason": f"SATOSHIT_EXIT_PARTIAL {satoshit_partial:.2f}",
+                    }
+                )
+                pos["last_reduce_bar"] = int(i)
+                if pos["qty"] <= 1e-9:
+                    # Repeated 70% cuts can leave dust: without this the lifecycle never closed and was booked as
+                    # an unrealised FINAL_MTM mark instead of the realised close it is.
+                    _st_pnl = pos["realized"] - pos["fees"]
+                    trades.append(
+                        {
+                            "pnl_dollars": _st_pnl,
+                            "pnl_pct": float(_st_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0),
+                            "deployed": pos["deployed"],
+                            "reason": "SATOSHIT_EXIT_PARTIAL_FLAT",
+                            "type": "REDUCE",
+                            "ts": _st_ts,
+                            "price": float(px),
+                            "bar_entry": int(pos["entry_bar"]),
+                            "bar_exit": int(i),
+                            "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                            "exit_price": float(px),
+                            "qty": float(reduce_qty),
+                            "closed_qty": float(reduce_qty),
+                            "pnl_is_lifecycle": True,
+                            "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                            "exit_reason": "SATOSHIT_EXIT_PARTIAL_FLAT",
+                            "bars_held": int(i - pos["entry_bar"]),
+                        }
+                    )
+                    pos = None
+                    cd = cooldown_bars
+                    has_closed_before = True
                 continue
             pnl_preview = pos["realized"] + (
                 (px - pos["avg_price"]) * pos["qty"]
@@ -22495,6 +22318,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                 "exit_reason": "FINAL_MTM",
                 "bars_held": int(n - 1 - pos["entry_bar"]),
+                # USER 2026-10-16 ("no more exaggeration of technicals and gains can ever take place"): this row
+                # is the OPEN position marked to the last close. Nothing was sold, no price was obtained, and the
+                # position may still move either way — so it is NOT a realised close and may not enter gain,
+                # trades, WR, mean_deployed, peak capital or drawdown. It STAYS in the ledger (reason trace, and
+                # the chart draws it as UNREALISED_MARK) exactly like a seeded_prewindow row.
+                # Measured over the 439 latest published charts: 149 counted one; worst single effect +0.29 pp.
+                # Kill switch METRICS_COUNT_UNREALISED_MTM=1 (same flag metrics_guard honours) restores counting.
+                "unrealised": True,
             }
         )
 
@@ -22502,10 +22333,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # SEEDED-LEDGER (w2-carryin, hunk B): pre-window seed rows never enter
     # metrics (they stay in the ledger for reason trace). Unseeded:
     # _mtrades IS trades (same object) -> bitwise identical metrics.
+    _count_mtm = os.environ.get("METRICS_COUNT_UNREALISED_MTM", "1") == "1"  # USER 2026-10-16: the window-edge mark COUNTS (an open loser must never vanish); =0 excludes for a comparison
     _mtrades = (
         trades
-        if not _seeded_active
-        else [t for t in trades if not t.get("seeded_prewindow")]
+        if not _seeded_active and _count_mtm
+        else [t for t in trades if not t.get("seeded_prewindow") and (_count_mtm or not t.get("unrealised"))]
     )
     if not _mtrades:
         _res0 = {

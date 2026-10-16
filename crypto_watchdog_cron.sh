@@ -165,7 +165,13 @@ ET_MIN=$(TZ="America/New_York" date +"%M")
 ET_MINS=$((10#$ET_HOUR * 60 + 10#$ET_MIN))
 DOW=$(date +%u)
 if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 420 ] && [ "$ET_MINS" -le 975 ]; then
-    for tproc in "tradier_prices.py" "tradier_indicators.py" "tradier_rankings.py" "tradier_positions.py --accounts tra trb trc" "tradier_manage.py --accounts trb" "tradier_manage.py --accounts trc"; do
+    # 2026-10-16 USER ("tra is not actively trading so that is fine however its files should keep getting updated and
+    # it should monitor emergency exits"): tradier_manage.py --accounts tra was the ONLY stock trader missing from this
+    # relaunch list — it is started by start_stocks.sh / an iTerm launcher and nothing ever brought it back. tra cannot
+    # open anything (HARD_ENTRY_BANNED_ACCOUNTS = {"tra"}, order_dedupe_guard:46 — "exits only, forever"), so running it
+    # IS exactly "monitor emergency exits": stop backstops, DC hard stops and every exit path for the positions it still
+    # holds. On 2026-10-16 tra held META 1 share with no resting stop while its manager had been down since 13:50Z.
+    for tproc in "tradier_prices.py" "tradier_indicators.py" "tradier_rankings.py" "tradier_positions.py --accounts tra trb trc" "tradier_manage.py --accounts tra" "tradier_manage.py --accounts trb" "tradier_manage.py --accounts trc"; do
         script_name="${tproc%% *}"
         args="${tproc#* }"
         if [ "$script_name" = "$args" ]; then args=""; fi

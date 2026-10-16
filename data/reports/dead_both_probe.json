@@ -1,0 +1,3029 @@
+{
+ "generated": "2026-10-15T23:02:53Z",
+ "env": {
+  "V15_EVAL_CACHE": "0",
+  "V12_ALLOW_STALE_NPZ": "1"
+ },
+ "window_days": 30,
+ "symsides": [
+  "AAPL_LONG",
+  "NVDA_LONG",
+  "BTCUSDC_LONG"
+ ],
+ "control_atr_adaptive_stop_mult": {
+  "AAPL_LONG": {
+   "baseline_gain": 8.44389771694328,
+   "baseline_trades": 48,
+   "mult5_gain": 8.423026197149762,
+   "mult8_gain": 8.453950603240816,
+   "d5": -0.02087151979351809,
+   "d8": 0.010052886297536645,
+   "binds": true
+  },
+  "NVDA_LONG": {
+   "baseline_gain": -8.161463609717176,
+   "baseline_trades": 8,
+   "mult5_gain": -8.079640357005895,
+   "mult8_gain": -7.494562279304418,
+   "d5": 0.08182325271128121,
+   "d8": 0.6669013304127578,
+   "binds": true
+  },
+  "BTCUSDC_LONG": {
+   "baseline_gain": -4.186713003012099,
+   "baseline_trades": 514,
+   "mult5_gain": -4.186713003012099,
+   "mult8_gain": -4.186713003012099,
+   "d5": 0.0,
+   "d8": 0.0,
+   "binds": false
+  }
+ },
+ "n_names": 86,
+ "n_moved": 1,
+ "n_flat": 81,
+ "n_not_in_quickconfig": 4,
+ "secs": 22.7,
+ "results": [
+  {
+   "switch": "ABSOLUTE_OPEN_LOCK_SEC",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0,
+   "flipped_to": 1,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "BALANCE_FLOOR_USD",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0,
+   "flipped_to": 1.0,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "BEAR_MARKET_MODE",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "BOUNCE_REENTRY_K_RESET_LONG",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 35,
+   "flipped_to": 70,
+   "flip_kind": "x2",
+   "forced_enabler": "BOUNCE_REENTRY_ENABLED"
+  },
+  {
+   "switch": "BOUNCE_REENTRY_K_RESET_SHORT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 65,
+   "flipped_to": 130,
+   "flip_kind": "x2",
+   "forced_enabler": "BOUNCE_REENTRY_ENABLED"
+  },
+  {
+   "switch": "BREAKOUT_LEASH_REENTRY_MULT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 1.5,
+   "flipped_to": 3.0,
+   "flip_kind": "x2",
+   "forced_enabler": "BREAKOUT_LEASH_ENABLED"
+  },
+  {
+   "switch": "BTC_ACCEL_RAMP_REQUIRE_POSITIVE",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": "BTC_ACCEL_RAMP_ENABLED"
+  },
+  {
+   "switch": "BTC_BREAKOUT_ENTRY_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "BTC_DIVERGENCE_EXIT_AGAINST",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": "BTC_DIVERGENCE_ENABLED"
+  },
+  {
+   "switch": "BTC_GUARANTEED_REENTRY_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 480,
+   "flipped_to": 960,
+   "flip_kind": "x2",
+   "forced_enabler": "BTC_GUARANTEED_REENTRY_ENABLED"
+  },
+  {
+   "switch": "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 5,
+   "flipped_to": 10,
+   "flip_kind": "x2",
+   "forced_enabler": "BTC_GUARANTEED_REENTRY_ENABLED"
+  },
+  {
+   "switch": "BTC_HARD_BLOCK_OTHER_ACCOUNTS",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0,
+   "flipped_to": 1.0,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "BTC_ROUND_BANDS_EACH_SIDE",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 8,
+   "flipped_to": 16,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "CIRCUIT_BREAKER_THRESHOLD_PCT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0,
+   "flipped_to": 1.0,
+   "flip_kind": "zero->1",
+   "forced_enabler": "CIRCUIT_BREAKER_ENABLED"
+  },
+  {
+   "switch": "COOLDOWN_LOCKS_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "DAEMON_REENTRY_STALE_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "DC_MOMENT_STRONG_THRESHOLD",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 40.0,
+   "flipped_to": 80.0,
+   "flip_kind": "x2",
+   "forced_enabler": "DC_MOMENT_ENABLED"
+  },
+  {
+   "switch": "DUP_GUARD_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "EMERGENCY_BRAKE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "EXECUTE_NOW_SINGLE_GATE_ENFORCE",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "EXIT_STDEV_BREAKOUT_FAIL_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "EXIT_TO_REDUCE_ADAPTER_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "EZ_MANAGE_THROTTLER_RATE",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0,
+   "flipped_to": 1.0,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "FIRST_OPEN_THROTTLE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "FUNDING_CROWD_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "FUNDING_CROWD_EXIT_Z",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 2.0,
+   "flipped_to": 4.0,
+   "flip_kind": "x2",
+   "forced_enabler": "FUNDING_CROWD_EXIT_ENABLED"
+  },
+  {
+   "switch": "FUNDING_GATE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "FUNDING_GATE_ENABLED"
+  },
+  {
+   "switch": "FUNDING_GATE_LONG_MAX",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0005,
+   "flipped_to": 0.001,
+   "flip_kind": "x2",
+   "forced_enabler": "FUNDING_GATE_ENABLED"
+  },
+  {
+   "switch": "FUNDING_GATE_MTF_REQUIRED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": "FUNDING_GATE_ENABLED"
+  },
+  {
+   "switch": "FUNDING_GATE_SHORT_MIN",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": -0.0005,
+   "flipped_to": -0.001,
+   "flip_kind": "x2",
+   "forced_enabler": "FUNDING_GATE_ENABLED"
+  },
+  {
+   "switch": "GOLDEN_RULE_ENFORCE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "GOLDEN_RULE_ENABLED"
+  },
+  {
+   "switch": "GOLDEN_RULE_HTF_VOTE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "GOLDEN_RULE_ENABLED"
+  },
+  {
+   "switch": "GR_FILTER_VEC_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "GR_FILTER_VEC_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "GR_FILTER_VEC_ENABLED"
+  },
+  {
+   "switch": "GR_FILTER_VEC_MIN_TFS",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 2,
+   "flipped_to": 4,
+   "flip_kind": "x2",
+   "forced_enabler": "GR_FILTER_VEC_ENABLED"
+  },
+  {
+   "switch": "GR_V5_STATE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "GR_V5_ENABLED"
+  },
+  {
+   "switch": "HAIKU_WINNER_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "HAIKU_WINNER_ENABLED"
+  },
+  {
+   "switch": "HARD_AUGMENT_LOCK_SEC",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0,
+   "flipped_to": 1,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "HARD_REDUCE_LOCK_SEC",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0,
+   "flipped_to": 1,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "HTF_BULL_ENTRY_FILTER_ENABLED",
+   "in_quickconfig": false,
+   "per_symside": {},
+   "moved": false,
+   "note": "NOT_IN_QUICKCONFIG: QuickConfig has no such field \u2014 vector cannot read it at all"
+  },
+  {
+   "switch": "HTF_BULL_ENTRY_FILTER_TF",
+   "in_quickconfig": false,
+   "per_symside": {},
+   "moved": false,
+   "note": "NOT_IN_QUICKCONFIG: QuickConfig has no such field \u2014 vector cannot read it at all"
+  },
+  {
+   "switch": "HTF_GATE_BYPASS_RZ",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.474815621818792,
+     "d_gain": 0.030917904875511937,
+     "base_trades": 48,
+     "flip_trades": 46,
+     "d_trades": -2
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -1.7832098623515444,
+     "d_gain": 2.403503140660555,
+     "base_trades": 514,
+     "flip_trades": 261,
+     "d_trades": -253
+    }
+   },
+   "moved": true,
+   "note": "MOVED_LEDGER: reclassify \u2014 NOT dead",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "INTRADAY_SESSION_FORCE_EXIT_UTC",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 35100,
+   "flipped_to": 70200,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "LIVE_ENTRY_ENGINE_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "LIVE_ENTRY_ENGINE_ENABLED"
+  },
+  {
+   "switch": "LIVE_ONLY_SIGNALS_BATCH5_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0,
+   "flipped_to": 1.0,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "MANDATORY_REENTRY_K_HIGH_BLOCK",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 80.0,
+   "flipped_to": 160.0,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "MANDATORY_REENTRY_K_LOW_BLOCK",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 20.0,
+   "flipped_to": 40.0,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "MTF_ARMED_ENTRIES_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "NEWBORN_PROTECT_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "NOLOSS_BYPASS_WT5OF5_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "OBLIGATORY_REENTRY_SCORE_TIER3",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 30,
+   "flipped_to": 60,
+   "flip_kind": "x2",
+   "forced_enabler": "OBLIGATORY_REENTRY_ENABLED"
+  },
+  {
+   "switch": "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 1,
+   "flipped_to": 2,
+   "flip_kind": "x2",
+   "forced_enabler": "OBLIGATORY_REENTRY_ENABLED"
+  },
+  {
+   "switch": "OI_SURGE_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "OI_SURGE_EXIT_PCT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 3.0,
+   "flipped_to": 6.0,
+   "flip_kind": "x2",
+   "forced_enabler": "OI_SURGE_EXIT_ENABLED"
+  },
+  {
+   "switch": "OPEN_INTENT_SIZE_GATES_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "OPEN_RATE_BREAKER_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "OPEN_RATE_MAX",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 30,
+   "flipped_to": 60,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "PARTIAL_PROFIT_LOCK_V2_FILTER_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 5.872375750535901,
+     "flip_gain": 5.872375750535901,
+     "d_gain": 0.0,
+     "base_trades": 50,
+     "flip_trades": 50,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.038365140513298,
+     "flip_gain": -8.038365140513298,
+     "d_gain": 0.0,
+     "base_trades": 12,
+     "flip_trades": 12,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "15m",
+   "flipped_to": "1h",
+   "flip_kind": "tf",
+   "forced_enabler": "PARTIAL_PROFIT_LOCK_ENABLED"
+  },
+  {
+   "switch": "QUICK_REENTRY_60MIN_MIN_PCT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.6,
+   "flipped_to": 1.2,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "REENTRY2_DIR_FAV_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "REENTRY_CROSS_FRESHNESS_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "REENTRY_PRICE_IMPROVE_PCT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.08,
+   "flipped_to": 0.16,
+   "flip_kind": "x2",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "REVERSE_ON_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "RULE_B_3M_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "SCALP_V3_AUG_BE_STOP_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "SCALP_V3_AUG_BE_STOP_PCT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.1,
+   "flipped_to": 0.2,
+   "flip_kind": "x2",
+   "forced_enabler": "SCALP_V3_AUG_BE_STOP_ENABLED"
+  },
+  {
+   "switch": "SCALP_V3_K_OB_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "SCALP_V3_K_OB_EXIT_K15M_HI",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 80.0,
+   "flipped_to": 160.0,
+   "flip_kind": "x2",
+   "forced_enabler": "SCALP_V3_K_OB_EXIT_ENABLED"
+  },
+  {
+   "switch": "SCALP_V3_K_OB_EXIT_K15M_LO",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 20.0,
+   "flipped_to": 40.0,
+   "flip_kind": "x2",
+   "forced_enabler": "SCALP_V3_K_OB_EXIT_ENABLED"
+  },
+  {
+   "switch": "SCALP_V3_K_OB_EXIT_K3M_HI",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 80.0,
+   "flipped_to": 160.0,
+   "flip_kind": "x2",
+   "forced_enabler": "SCALP_V3_K_OB_EXIT_ENABLED"
+  },
+  {
+   "switch": "SCALP_V3_K_OB_EXIT_K3M_LO",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 20.0,
+   "flipped_to": 40.0,
+   "flip_kind": "x2",
+   "forced_enabler": "SCALP_V3_K_OB_EXIT_ENABLED"
+  },
+  {
+   "switch": "SCALP_V3_K_OB_EXIT_WALL_PCT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.5,
+   "flipped_to": 1.0,
+   "flip_kind": "x2",
+   "forced_enabler": "SCALP_V3_K_OB_EXIT_ENABLED"
+  },
+  {
+   "switch": "SCALP_V3_PROTECTIVE_EXIT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "STALE_HOLD_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": false,
+   "flipped_to": true,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "STDEV_SUPPRESS_EARLY_EXIT",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": 0.0,
+   "flipped_to": 1.0,
+   "flip_kind": "zero->1",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "ULTIMATE_DC_4H_STOP_ENABLED",
+   "in_quickconfig": false,
+   "per_symside": {},
+   "moved": false,
+   "note": "NOT_IN_QUICKCONFIG: QuickConfig has no such field \u2014 vector cannot read it at all"
+  },
+  {
+   "switch": "UNIVERSAL_NOLOSS_BYPASS_REASONS",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "()",
+   "flipped_to": "[]",
+   "flip_kind": "trunc",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "V8_ENTRY_ENGINE_DC_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "V8_ENTRY_ENGINE_WT_ENABLED",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": true,
+   "flipped_to": false,
+   "flip_kind": "bool",
+   "forced_enabler": ""
+  },
+  {
+   "switch": "WT_DC_DETAILED_TF",
+   "in_quickconfig": false,
+   "per_symside": {},
+   "moved": false,
+   "note": "NOT_IN_QUICKCONFIG: QuickConfig has no such field \u2014 vector cannot read it at all"
+  },
+  {
+   "switch": "WT_DC_DIRECT_DC_TF",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "1h",
+   "flipped_to": "15m",
+   "flip_kind": "tf",
+   "forced_enabler": "WT_DC_ENABLED"
+  },
+  {
+   "switch": "WT_DC_DIRECT_TF_ENTRY",
+   "in_quickconfig": true,
+   "per_symside": {
+    "AAPL_LONG": {
+     "base_gain": 8.44389771694328,
+     "flip_gain": 8.44389771694328,
+     "d_gain": 0.0,
+     "base_trades": 48,
+     "flip_trades": 48,
+     "d_trades": 0
+    },
+    "NVDA_LONG": {
+     "base_gain": -8.161463609717176,
+     "flip_gain": -8.161463609717176,
+     "d_gain": 0.0,
+     "base_trades": 8,
+     "flip_trades": 8,
+     "d_trades": 0
+    },
+    "BTCUSDC_LONG": {
+     "base_gain": -4.186713003012099,
+     "flip_gain": -4.186713003012099,
+     "d_gain": 0.0,
+     "base_trades": 514,
+     "flip_trades": 514,
+     "d_trades": 0
+    }
+   },
+   "moved": false,
+   "note": "FLAT: identical gain and trades across the flip on every probed sym_side",
+   "default": "1h",
+   "flipped_to": "15m",
+   "flip_kind": "tf",
+   "forced_enabler": "WT_DC_ENABLED"
+  }
+ ]
+}

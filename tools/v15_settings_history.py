@@ -125,6 +125,46 @@ def _i(x):
         return None
 
 
+def archive_board_npz(symside, npz_name, npz_md5, host, root=None, run=None):
+    """USER 2026-10-15: "the copy has to happen at publish time in the orchestrator". Retain the exact NPZ a published
+    board ran on, so tools/v15_scalar_parity_lane.py (backtest_v12_engine) verifies THAT result instead of a newly
+    refreshed window. Archiving when the lane first sees the item was too late: the JIT rebuild at the symbol's next
+    dispatch had already replaced the bytes.
+
+    Keyed by md5, ONE copy retained per sym_side (older md5s pruned) -> bounded at ~one NPZ per sym_side. The copy runs
+    on the board's OWN host (local cp, or ssh for a peer) because that is where the file is. Verifies the md5 before
+    keeping it: a file that no longer matches the manifest is NOT the board's NPZ and is never substituted.
+    Returns a short status string. Never raises. V15_NPZ_ARCHIVE=0 disables.
+    """
+    import subprocess
+    if os.environ.get("V15_NPZ_ARCHIVE", "1") == "0":
+        return "disabled"
+    if not (symside and npz_name and npz_md5):
+        return "no npz identity in the manifest"
+    sym = str(npz_name)[:-4] if str(npz_name).endswith(".npz") else str(npz_name)
+    root = root or "$HOME/binance-sandbox"  # $HOME, never ~: the paths below are double-quoted and ~ does not expand there
+    keep = f"{root}/data/parity/npz_archive/{sym}__{npz_md5}.npz"
+    src = f"{root}/backtest_v8/indicators/{npz_name}"
+    sh = (
+        f'set -e; mkdir -p {root}/data/parity/npz_archive; '
+        f'if [ -f "{keep}" ]; then echo already; exit 0; fi; '
+        f'if [ ! -f "{src}" ]; then echo no-src; exit 0; fi; '
+        f'got=$(md5sum "{src}" | cut -d" " -f1); '
+        f'if [ "$got" != "{npz_md5}" ]; then echo "md5-moved:$got"; exit 0; fi; '
+        f'cp -p "{src}" "{keep}.tmp" && mv "{keep}.tmp" "{keep}"; '
+        f'for f in {root}/data/parity/npz_archive/{sym}__*.npz; do [ "$f" = "{keep}" ] || rm -f "$f"; done; '
+        f'echo archived'
+    )
+    local = str(host or "").strip() in ("", os.uname().nodename, "local", "localhost", "127.0.0.1")
+    cmd = ["bash", "-lc", sh] if local else ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", str(host), sh]
+    try:
+        r = (run or subprocess.run)(cmd, capture_output=True, text=True, timeout=180)
+        out = (r.stdout or "").strip().splitlines()
+        return (out[-1] if out else "no-output")[:60]
+    except Exception as e:
+        return f"{type(e).__name__}"[:40]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hosts", default=os.environ.get("V15_HIST_HOSTS", "127.0.0.1,10.0.0.4"))
@@ -187,6 +227,8 @@ def main():
                 "npz": m.get("npz_md5") or s.get("npz"), "npz_name": m.get("npz_name"), "span_days": m.get("span_days"), "template": m.get("template"),
                 "verdict": s.get("verdict"), "result_done_utc": s.get("result_done_utc"), "n_overrides": len(ov) if ov else None,
                 "template_md5_at_record": tpl.get(cs), "recorded_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+        if source == "fleet_orchestrator_publish":
+            meta["npz_archived"] = archive_board_npz(ss, m.get("npz_name"), meta.get("npz"), r.get("host"))
         con.execute(
             "INSERT INTO per_sym_history (sym_side, updated_at, epoch, cat_side, template_md5, defaults_round, "
             "winning_tag, gain_pct, baseline_gain, delta_pct, bh_pct, trades, pool_sharpe, max_dd_pct, tim_pct, "

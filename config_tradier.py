@@ -1879,6 +1879,16 @@ class TradierConfig:
     STDEV_SLOPE_LOOKBACK_1H: int = 168
     STDEV_SLOPE_LOOKBACK_15M: int = 96
     STDEV_SLOPE_SIZING_MODE: str = "slope_to_top"
+    # USER 2026-10-16 quantity quantizers — ONE implementation in vec_decisions/qty_quantizers.py (vector + ez_manage + tradier_manage)
+    STDEV_LADDER_TF: str = "D"  # STDEV ladder reads lrL_pct_b_<TF>: 1x at the top -> STDEV_LADDER_MAX_MULT at the bottom (vv shorts)
+    STDEV_LADDER_MAX_MULT: float = 5.0  # USER "should be 1-5x" (replaces the slope_to_top 10x map / BAND_V2 0.7-1.8 when STDEV_SLOPE_SIZING_ENABLED)
+    QTY_STREAK_SIZING_ENABLED: bool = False  # kill switch: resize new opens/reentries after consecutive qualifying full-close results
+    QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)
+    QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losers before shrinking (1 / 2)
+    QTY_STREAK_LOSS_MULT: float = 0.8  # size after the loss streak (0.8 / 0.6 / 0.4)
+    QTY_STREAK_WIN_COUNT: int = 1  # consecutive qualifying winners before growing (1 / 2)
+    QTY_STREAK_WIN_STEP: float = 0.2  # +20 / 50 / 80 %, compounding for every further qualifying winner
+    QTY_STREAK_MAX_MULT: float = 3.0  # compounding ceiling; MAX_ORDER_VALUE / MAX_POSITION_SIZE still bind after
     BAND_SLOPE_SIZING_V2_ENABLED: bool = (
         True  # sizing-only modifier on existing entries; validated on 305-sym bt_band_bounce v2
     )
@@ -2933,7 +2943,29 @@ class TradierConfig:
     HEDGE_EXIT_BYPASS_NOLOSS: bool = False
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False
     HEDGE_EXIT_WT_TF: str = "3m"
-    HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True
+    # 🔴 2026-10-15 OFF (USER: "hedging has been disabled for over 6 months so not sure what this is pretending
+    # hedging is not even possible on tradier"). Hedging IS off for stocks — `HEDGE_MODE_TRADIER = False` and
+    # `HEDGE_MODE = False` in this same class — but this FAILURE path was still armed, and `tradier_manage.py:11489`
+    # defaults it True via `_cfg_auto("HEDGE_FAILED_FALLBACK_CLOSE_ENABLED", True)`. So live attempted a hedge that
+    # cannot succeed on Tradier, and the guaranteed failure fired its fallback: CLOSE THE POSITION AT A LOSS.
+    # COST on 2026-10-15: **11 lifecycles, -$202.82** — the second-largest loss bucket of the day. Reason strings
+    # prove the mechanism, every one a hedge that could never be found:
+    #   HEDGE_FAILED_FALLBACK_CLOSE_no_sector_g-4.73%_qty_999999            (LOW_SHORT  -$46.52)
+    #   HEDGE_FAILED_FALLBACK_CLOSE_no_mate_sectorhealthcare_pharma_g-2.92% (JNJ_SHORT  -$25.73)
+    #   HEDGE_FAILED_FALLBACK_CLOSE_no_mate_sectorindustrials_defense       (BWXT_SHORT -$24.50)
+    #   HEDGE_FAILED_FALLBACK_CLOSE_mateBNO_failed / mateDVN_failed / mateCOIN_failed
+    # It also breaks this repo's own standing rule — CLAUDE.md "Absolute Prohibitions": never "Close positions at a
+    # loss on live ... Technical exits (WT/DC) handle this". A hedge-mate lookup failing is not a technical exit.
+    # NOT a protective exit being removed: the DC/WT/FIXED_STOP exits are untouched, and this path only ever fired
+    # BECAUSE the hedge was impossible. Set True again only if hedging is genuinely re-enabled on Tradier
+    # (HEDGE_MODE_TRADIER=True) and a mate universe exists.
+    # 2026-10-15: stocks hermetic vec-only gate (tradier_manage.execute_now). False = LOG ONLY (gate wired,
+    # logs every would-be refusal, refuses nothing). Flip True ONLY after the [HERMETIC_TR] WOULD_REFUSE count
+    # over a full session reconciles with forward parity's LIVE_ONLY_NONVEC tally — stock parity is 1 PASS of 35
+    # today, so enforcing now would refuse most legitimate opens. Exits are never gated in either mode.
+    TRADIER_HERMETIC_ENFORCE: bool = False
+    TRADIER_NO_BOARD_ENTRY_BLOCK: bool = False  # 2026-10-16: refuse a stock ENTRY (never an exit/reduction/stop) when the sym_side has no published board within the age ceiling (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks twin of the crypto gate at ez_positions_quick ~28512. LIVE_SET_NE_BOARD deliberately NOT gated (forward parity 1 PASS of 35). Default False — turning it on is the user's call.
+    HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = False
     HEDGE_HTF_VETO_ENABLED: bool = True
     HEDGE_MAX_ABSOLUTE_USD: float = 100000.0
     HEDGE_MAX_AGE_HOURS: float = 6.0
@@ -3679,7 +3711,24 @@ class TradierConfig:
     RSI_MACD_EMA_TF: str = "1h"
     RSI_MOMENTUM_MODE: bool = False
     RULE_B_3M_EXIT_ENABLED: bool = True
-    RULE_B_5M_EXIT_ENABLED: bool = True
+    # 🔴 SUB-15m MASTER KILL SWITCH (USER 2026-10-15: "AND THAT NO 1/3/5M TRADE CAN EVER BE EXECUTED UNTIL THE
+    # SWITCH IS BACK ON"). False = every 1m/3m/5m decision switch is forced to its blocking value at the _cfg
+    # resolution layer, so NO per_sym set, cat_side default or promoted board can re-enable one.
+    # WHY A CONFIG DEFAULT WAS NOT ENOUGH — measured 2026-10-15: `_cfg()` resolves per_sym FIRST, and the live books
+    # carried `RULE_B_5M_EXIT_ENABLED=True` on **222/222 stock and 325/325 crypto** rows plus
+    # `WT_CROSSUNDER_FINAL_ENABLED=True` on 218/222 and 322/325. Flipping the class default changed nothing live.
+    # The block therefore lives in _cfg/_psym_get (see SUB15M_BLOCKED_SWITCHES in tradier_manage.py / ez_manage.py),
+    # above per_sym, not in this value — this constant only arms it. Set True to restore sub-15m trading.
+    LTF_SUB15M_TRADING_ENABLED: bool = False
+    # 2026-10-15 USER "40 of today's exit reasons contain 5m_ <- STOP THIS IMMEDIATELY they need to live under the
+    # 1/3/5m switch that DISABLES those - NO Trade can be against the vectorized results". This is a REAL live-only
+    # 5m exit: consumer tradier_manage.py:37265 `_cfg_auto("RULE_B_5M_EXIT_ENABLED", False) and gain >= _noloss_min_t`,
+    # while on the vec side the name appears only as a QuickConfig field (v12_quick_engine.py:6515) and a coverage-list
+    # entry (:2692) — no engine body read — so the vector can never reproduce or score it. OFF.
+    # (RULE_B_3M_EXIT_ENABLED above is left True deliberately: its only live site, tradier_manage.py:60704, is a no-op
+    # stub-farm line `if bool(getattr(...)): _ = getattr(...)`, so it already fires nothing and flipping it would be a
+    # cosmetic change that falsely suggests a 3m path was closed.)
+    RULE_B_5M_EXIT_ENABLED: bool = False
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False
@@ -4720,8 +4769,27 @@ class TradierConfig:
     EXTREME_OS_RSI_4H_MAX: float = 20.0
     EXTREME_OS_RSI_D_MAX: float = 25.0
     EXTREME_OS_BB_PCT_B_4H_MAX: float = 0.0
+    # 2026-10-15 USER "NO Trade can be against the vectorized results ... but forward looking": OFF. This was the
+    # single biggest sub-15m offender — **40 of 2026-10-15's exit reason strings** were
+    # `WT_CROSSOVER/CROSSUNDER_FINAL_5m_15m_1hTrue_4hFalse...`, i.e. this exit firing on a 5m leg.
+    # PROOF it cannot be in parity with the vector, not an opinion:
+    #   * live calls it at tradier_manage.py:15191 as
+    #     `_twin_entry_ports_b.wt_crossunder_final_exit(_gx_c, is_long, i, "5m")` — the TF is a hardcoded literal,
+    #     and note live passes "5m" while the twin's own signature default is base_tf="3m";
+    #   * `wt_crossunder_final_exit` is DEFINED in vec_decisions/twin_entry_ports_b.py:415 but has **no call site in
+    #     v12_quick_engine.py, backtest_v12_engine.py or anywhere in vec_decisions/** — the vector never evaluates it;
+    #   * the 15m NPZ carries no `wt1_5m` / `k_5m` at all (its only sub-15m fields are sma_200_1m[_prev]), so even if
+    #     it were called the predicate has no data to run on.
+    # So every one of those 40 exits was a trade the backtest could neither produce nor price. A board therefore can
+    # never earn this switch back either, which is the correct outcome — hence it is also listed in
+    # v15_pilot.DEAD_VEC_SWITCHES and kept out of WT_CORE_MANDATORY_BASES, so the pilot cannot promote it on
+    # board noise (+/-0.48 gain) the way EXIT_R1_R2_FILTER_TF moved earlier today.
+    # SUPERSEDES the 2026-10-04 operator activation; the T25 note below measured True vs False as noise (0.357 vs
+    # 0.363, i.e. False was marginally BETTER) so nothing of value is being given up.
+    # If WT cross exits are wanted on a sub-15m leg, vectorise it first: add wt1_5m/k_5m to the NPZ, call the twin
+    # from compute_exit_signals, then let the board decide.
     WT_CROSSUNDER_FINAL_ENABLED: bool = (
-        True  # T25 2026-04-14: True=0.357 vs False=0.363 (Δ=0.006) — essentially noise. Keeping True for live WT exit coverage.
+        False  # T25 2026-04-14: True=0.357 vs False=0.363 (Δ=0.006) — False was already the marginally better arm.
     )
     ATR_TRAIL_2X_EXIT_ENABLED: bool = (
         False  # BACKTEST_CHANGE_T58: was True. ATR trail = #1 stock PnL destroyer (-2557% cumulative). Disabled.
@@ -5007,9 +5075,7 @@ class TradierConfig:
         0.5  # fraction of last augment to reduce on fallback
     )
     AUGMENT_FALLBACK_GAIN_PCT: float = 1.0  # fallback threshold pct from peak
-    MAX_AUGMENTS_PER_POSITION: int = (
-        999999  # USER 2026-10-10 no-cap mandate restored (was 0 since 2026-09-18 parity-fix: baseline error, candidates 0-1-2-5-10 were meant to be swept against a 999999 baseline, not to become the default). Mirrors crypto config.py no-cap: augment rapidly while favorable. ROLLBACK: 0.
-    )
+    # MAX_AUGMENTS_PER_POSITION deleted 2026-10-15 (USER "delete the switch completely"): no augment-count cap exists.
     # === HEDGE vs RATIO SWEEP (2026-03-21 — 65 configs, both systems) ===
     RATIO_MULTIPLIER_TRADIER: float = (
         3.5  # BACKTEST_CHANGE_T61: was 2.0. 3.5x ratio exaggeration = Sharpe 260 (vs 249 at 2x). Best: 3.5-4x.
@@ -6284,6 +6350,38 @@ class TradierConfig:
         0  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     )
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
+    # === TRADIER broker-side GUARANTEED STOP backstop (stocks) ===
+    # USER 2026-10-15: "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED needs to be activated immediately tested and
+    # verified tomorrow it should have never been disabled but FIXED after it sent 5000 bullshit orders overnight."
+    # WHY IT WAS NEVER HAPPENING: the constant existed in NO module, so the gate at tradier_manage.py:14852 —
+    # bool(getattr(config, "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED", False)) — fell through to False every cycle
+    # and ensure_fixed_stop_backstop_tradier was never called. Result on 2026-10-15: 42 open stock positions, 47
+    # recorded stop LEVELS, `"orders": {}` in fixed_stop_registry_tradier.json (ZERO resting exchange stops), and one
+    # FIXED_STOP log line all session (a listing failure). It belongs HERE, not in config.py: inside tradier_manage
+    # the bare name `config` is `TradierConfig()` (tradier_manage.py:6645) — there is no `import config` in that file
+    # at all — so `getattr(config, ...)` resolves against THIS class. USER 2026-10-15: "tradier_manage does not read
+    # config.py nor should it it has config_tradier.py where all its settings should be."
+    # The 2026-10-14 order storm is FIXED, not suppressed — causes and fixes, all verified present:
+    #   1. qty: stops went out for 2/4/12/24 while the broker held 6 -> all rejected, then retried. The backstop qty
+    #      is now the BROKER's held quantity (_BROKER_QTY_MEMO); an unverified broker qty places NOTHING. That is
+    #      also the user's "same amount as the entry order" — broker truth rather than the local positionAmt claim.
+    #   2. duplicates -> ADOPT-before-place; any other resting closing-side stop with the wrong qty is cancelled.
+    #   3. placement loops -> 5 s per-position backoff + TRADIER_FIXED_STOP_MAX_PLACES (3 per 600 s) breaker.
+    #   4. THE STORM ITSELF (fixed 2026-10-15): /accounts/{id}/orders is an ACCOUNT-level listing that
+    #      _fixed_stop_broker_stops only filters by symbol in memory, yet it was pulled once PER POSITION — 42
+    #      positions x up to 10 pages x 1500 orders, ~7 s each, which saturated the API and stalled exits past 120 s.
+    #      Now memoised per account for TRADIER_FIXED_STOP_ORDERS_MEMO_TTL_SEC and dropped on every place/cancel, so
+    #      the call count is O(accounts)=3, not O(positions)=42.
+    # LEVEL: the software leg freezes dc_15m -0.25% at entry and the exchange leg sits 0.05% beyond it
+    # (_fixed_stop_core.exchange_level) => 0.9975 * 0.9995 = 0.99700125 = dc_low_15m -0.2999% for a LONG and
+    # dc_high_15m +0.2999% for a SHORT, i.e. the dc_low_15m -0.3% the user specified.
+    # VERIFY after restarting tradier_manage, at the 13:30Z open and again mid-session:
+    #   python3 tools/tradier_fixed_stop_verify.py            (must print PASS; was FAIL 42/42)
+    #   grep -c FIXED_STOP_PLACED_TR ~/logs/tradier_manage_tr*.log     (must be >0; was 0 all of 2026-10-15)
+    # If FIXED_STOP_BREAKER_TR / FIXED_STOP_QTY_UNVERIFIED_TR / FIXED_STOP_RETRY_TR repeat, placement is being
+    # rejected again — read the reason before touching this flag.
+    TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED: bool = True
+    TRADIER_FIXED_STOP_ORDERS_MEMO_TTL_SEC: float = 45.0
     TRADIER_DC_DAYTRADE_STOP_PCT: float = (
         0.005  # BIBLE 68/67 2026-10-06: own template bold (vec v12 reads THIS name in its TRADIER_ blocks; the un-prefixed twin keeps its own bold); alias bridge copy removed in tradier_manage
     )

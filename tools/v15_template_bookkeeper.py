@@ -88,6 +88,46 @@ def atomic_save_xlsx(wb, path, min_entries=10):
     os.replace(tmp, str(path))
 
 
+def _norm_val(v):
+    s = str(v).strip()
+    return {"true": "True", "false": "False", "1.0": "1", "0.0": "0"}.get(s.lower(), s)
+
+
+def align_default(wb, switch, value):
+    """2026-10-16: one switch whose bold default DISAGREES across tabs (the pilot's DEFAULTS-GATE refuses the whole template —
+    every STOCKS_SHORT board was refused from 2026-10-15 23:22: WT_CROSSUNDER_FINAL_ENABLED bold True in
+    ENTRY_CONFIRMATION_GATES, bold False in EXIT_VELOCITY). Re-bolds the EXISTING row whose value == `value` in every tab that
+    carries the switch; never changes a cell value, never adds/removes/reorders rows. A tab without a row of that value is left
+    untouched and reported. is_default (row-2 header) set YES/NO alongside. Returns a report; raises if a touched tab would not
+    end with exactly one bold row for the switch."""
+    from openpyxl.styles import Font
+    import copy as _copy
+    want = _norm_val(value)
+    rep = {"switch": switch, "value": want, "tabs": {}, "missing": []}
+    for ws in wb.worksheets:
+        rows = [r for r in range(3, ws.max_row + 1) if str(ws.cell(r, 1).value or "").strip() == switch]
+        if not rows:
+            continue
+        hit = [r for r in rows if _norm_val(ws.cell(r, 2).value) == want]
+        if not hit:
+            rep["missing"].append(ws.title)
+            continue
+        isd = next((c for c in range(1, ws.max_column + 1) if str(ws.cell(2, c).value or "").strip().lower().startswith("is_default")), None)
+        before = [(r, bool(ws.cell(r, 2).font and ws.cell(r, 2).font.b)) for r in rows]
+        for r in rows:
+            cell = ws.cell(r, 2)
+            f = _copy.copy(cell.font) if cell.font is not None else Font(name="Arial", size=10)
+            on = r == hit[0]
+            cell.font = Font(name=f.name or "Arial", size=f.size or 10, bold=on, italic=f.italic, color=f.color)
+            if isd:
+                ws.cell(r, isd).value = "YES" if on else "NO"
+        nb = sum(1 for r in rows if ws.cell(r, 2).font and ws.cell(r, 2).font.b)
+        if nb != 1:
+            raise RuntimeError(f"{ws.title}: {switch} ends with {nb} bold rows")
+        rep["tabs"][ws.title] = {"rows": rows, "bold_before": [r for r, b in before if b], "bold_after": hit[0]}
+    return rep
+
+
 def pull_fleet(ledger_root, hosts, timeout_s):
     pulled = 0
     for h in hosts:
@@ -115,6 +155,8 @@ def main():
     ap.add_argument("--hosts", default=os.environ.get("V15_BOOK_HOSTS", ""))
     ap.add_argument("--timeout-s", type=int, default=300)
     ap.add_argument("--protocol-only", action="store_true", help="only (re)write the PROTOCOL tab (backs up each template first)")
+    ap.add_argument("--align-default", metavar="SWITCH=VALUE", help="re-bold the existing SWITCH=VALUE row in every tab of --cat-side (cross-tab default disagreement); never edits values")
+    ap.add_argument("--cat-side", help="with --align-default: CRYPTO_LONG|CRYPTO_SHORT|STOCKS_LONG|STOCKS_SHORT")
     a = ap.parse_args()
     try:
         import fcntl
@@ -122,6 +164,27 @@ def main():
         fcntl.flock(_lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except Exception:
         print("[bookkeeper] lock held — another run active, exiting", flush=True)
+        return 0
+    if a.align_default:
+        import datetime as _dt, shutil as _sh, openpyxl as _ox
+        sw, _, val = a.align_default.partition("=")
+        if a.cat_side not in TEMPLATES or not sw or not val:
+            print("[bookkeeper] --align-default needs SWITCH=VALUE and --cat-side", flush=True)
+            return 2
+        tpath = os.path.join(a.templates, TEMPLATES[a.cat_side])
+        wb = _ox.load_workbook(tpath)
+        try:
+            rep = align_default(wb, sw.strip(), val.strip())
+            print(json.dumps(rep), flush=True)
+            if not rep["tabs"]:
+                print("[bookkeeper] align-default: no tab carries that value — nothing written", flush=True)
+                return 2
+            if not a.dry_run:
+                _sh.copy2(tpath, ROOT / "backups" / f"before_bookkeeper_align_{sw.strip()}_{_dt.datetime.utcnow().strftime('%Y%m%d%H%M')}_{TEMPLATES[a.cat_side]}")
+                atomic_save_xlsx(wb, tpath)
+                print(f"[bookkeeper] align-default written -> {tpath}", flush=True)
+        finally:
+            wb.close()
         return 0
     hosts = [h for h in (a.hosts or "").split(",") if h.strip()]
     if hosts and not a.dry_run:

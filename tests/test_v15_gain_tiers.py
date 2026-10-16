@@ -1,13 +1,16 @@
 """Gain-tier scheduling (USER 2026-10-09): winners-first ranks, loser deferral, launch caps."""
 
+import os
 import sys
 import unittest
 from pathlib import Path
 
+os.environ["V15_RANKING_PRIORITY"] = "0"  # USER 2026-10-14: hermetic — these pins predate ranking priority (covered in test_v15_ranking_priority.py)
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _defer_windows, _fresh_daily_state, _gain_tiers, _gs_allowed_for_tier, _place_order, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
+from v15_fleet_scheduler import _GAIN_TIER_DEFER_DAYS, _LAUNCH_CAPS, _defer_windows, _fresh_daily_state, _gain_tiers, _gs_allowed_for_tier, _place_order, _quota_blocks, _repair_allowed_for_tier, _side_deferred, _side_tier, _sym_quota_hit, _sym_tier_rank
 
 NOW = 1791500000.0
 
@@ -117,6 +120,37 @@ class QuotaTest(unittest.TestCase):
 
     def test_unknown_pair_is_discovery_exempt(self):
         self.assertFalse(_sym_quota_hit("ZZZ", self._tiers()))
+
+
+class QuotaSiblingTest(unittest.TestCase):
+    """USER 2026-10-14: a terminal-failed side never blocks its sibling's fresh board (both directions);
+    each side stands on its own evidence, both can be productive at once."""
+
+    def test_failed_short_frees_fresh_long(self):
+        tiers = {"X_SHORT": {"tier": "L", "gain": -5, "mtime": 1}}
+        chain = {"X": {"LONG": ("need30", 1), "SHORT": ("terminal_failing", None)}}
+        self.assertFalse(_quota_blocks("X", tiers, chain))
+
+    def test_failed_long_frees_fresh_short(self):
+        tiers = {"X_LONG": {"tier": "L", "gain": -5, "mtime": 1}}
+        chain = {"X": {"LONG": ("terminal_failing", None), "SHORT": ("need30", 1)}}
+        self.assertFalse(_quota_blocks("X", tiers, chain))
+
+    def test_unfailed_loser_still_blocks(self):
+        tiers = {"X_SHORT": {"tier": "L", "gain": -5, "mtime": 1}}
+        chain = {"X": {"LONG": ("need30", 1), "SHORT": ("need30", 1)}}
+        self.assertTrue(_quota_blocks("X", tiers, chain))
+
+    def test_measured_mediocre_sibling_still_throttled(self):
+        tiers = {"X_LONG": {"tier": "M", "gain": 1, "mtime": 1}, "X_SHORT": {"tier": "L", "gain": -5, "mtime": 1}}
+        chain = {"X": {"LONG": ("need30", 1), "SHORT": ("terminal_failing", None)}}
+        self.assertTrue(_quota_blocks("X", tiers, chain))
+
+    def test_failed_side_ignored_in_hit(self):
+        tiers = {"X_SHORT": {"tier": "L", "gain": -5, "mtime": 1}}
+        self.assertTrue(_sym_quota_hit("X", tiers))
+        self.assertFalse(_sym_quota_hit("X", tiers, {"SHORT"}))
+        self.assertTrue(_sym_quota_hit("X", tiers, {"LONG"}))
 
 
 class PlaceOrderTest(unittest.TestCase):

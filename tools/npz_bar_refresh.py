@@ -65,6 +65,40 @@ REFRESH_DROP_KEYS = frozenset({
 # only lr_pct_b_D (gate LR_PCTB_D_LONG_ENTRY_ENABLED, ON nowhere that has the key) and slope_close_1h
 # (snapshot copy never read downstream); macd_M/adx_M have zero references repo-wide; stdev_edge/slope have
 # no value readers (ZECUSDC lacks them = known-tolerated). Old NPZs never had them — drop = match old behavior.
+RETIRED_M_DROP_KEYS = frozenset({
+    "rsi_M", "atr_M", "atr_M_prev", "stoch_k_M", "stoch_d_M", "stoch_k_M_prev", "stoch_d_M_prev", "k_M_prev", "d_M_prev",
+    "stoch_crossover_M", "stoch_crossunder_M", "wt1_M", "wt2_M", "wt_score_M", "wt_bullish_M", "wt_velocity_M",
+    "wt_acceleration_M", "wt_cross_bullish_M", "wt_cross_bearish_M", "wt_overbought_M", "wt_oversold_M",
+})  # 2026-10-16 CRYPTO ONLY: the monthly leg the crypto builder no longer emits for short stores (ZECUSDC 329d) —
+# it froze the symbol for 64 h ("cannot extend 45 row keys") while every row it already had stayed valid. Readers
+# verified: the ONLY repo readers of this family are tradier_manage.py (2 sites) and
+# vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py — both STOCKS, hence drop_keys(mode) never
+# offers them to a tradier refresh. ez_manage / v12_quick_engine / backtest_v12_engine read none of them.
+
+
+def drop_keys(mode="crypto"):
+    """static droppable set. Stocks keep the monthly leg (live W/M gate reads wt1_M/wt2_M)."""
+    return REFRESH_DROP_KEYS if mode == "tradier" else (REFRESH_DROP_KEYS | RETIRED_M_DROP_KEYS)
+
+
+def droppable(k, mode="crypto"):
+    """is this row key droppable on a refresh? crypto: the WHOLE monthly leg by suffix.
+
+    A hand-written list left ZECUSDC refusing twice over (first 45 keys, then 28 more: wt_cross_*_M ...) — the
+    monthly leg is a family, so it is matched as one. Verified repo-wide 2026-10-16: the only readers of any
+    *_M key are tradier_manage.py and vec_decisions/check_entry_candidates_stocks__htf_w_m_align.py (both
+    STOCKS, hence mode=="tradier" keeps every one of them); ez_rankings' qv_M is an output label it writes."""
+    if k in REFRESH_DROP_KEYS:
+        return True
+    if mode == "tradier":
+        return False
+    return k.endswith("_M") or k.endswith("_M_prev")
+
+
+SYMLOCK_DIR = Path(os.environ.get("NPZ_SYMLOCK_DIR", "/tmp/npz_bar_refresh.locks"))
+REPAIR_QUEUE = ROOT / "data" / "vec_live" / "npz_repair_queue.json"
+REPAIR_STATUSES = ("REFUSE_LEGACY_HTF_ALIGN", "REFUSE_MS_TIMESTAMPS", "ERROR", "GUARD_REFUSED", "TOO_SHORT_TO_APPEND", "GAP_TOO_LARGE")
+MIN_APPENDABLE_ROWS = int(os.environ.get("NPZ_MIN_APPENDABLE_ROWS", "8"))  # a 1-row live stub (CDW/ADP/AEM/AXTI, 2026-10-13) can never be tailed — it needs adoption of a deeper copy
 STOCK_GRID_MIN, STOCK_GRID_MAX = 240, 1185  # 04:00-19:45 ET (STKT grid; matches the live stock NPZ grid)
 STOCK_PREFETCH_SEM = 2  # Tradier prefetch concurrency (gentle: s1 shares the token with the live stack)
 FNG_URL = "https://api.alternative.me/fng/?limit=0&format=json"
@@ -373,7 +407,14 @@ def cache_bar_final(symbol, cutoff):
             if df is not None and len(df) and (_epoch_s(df.index) == cutoff).any():
                 return True
             if time.time() >= deadline or time.time() - (cutoff + BAR) > 180:
-                return False
+                # 2026-10-15: this used to `return False`, so a symbol marked canonical-complete whose S1 canonical
+                # COPY lagged (the Mac daemon writes it, klines_canonical_push.sh ships it) could never be judged
+                # final by any other means — measured 21:06-22:06Z with S1's own REST refused (HTTP 418) and S1's
+                # canonical 45 min behind: EXCHANGE_BAR_NOT_READY for 283 of 367 symbols, INSTALLED 0, five cycles
+                # in a row, while klines_cache_backtest already held the bar. Fall through to the primary-cache test
+                # instead: it still requires a STRICTLY NEWER row, so finality is proven, just from the long store
+                # that klines_append feeds (canonical keeps authority inside its own range there).
+                break
             time.sleep(5)
     df = bvp.load_klines(bvp.CRYPTO_KLINES / f"{symbol}_15m.json")
     if df is None or not len(df):
@@ -397,6 +438,31 @@ def cache_bar_final_stocks(symbol, cutoff):
         if bool((ts == cutoff).any() and (ts > cutoff).any()):
             return True
     return False
+
+
+def cache_last_final(symbol, mode):
+    """newest bar in the local 15m store that is PROVABLY final = the newest one with a strictly newer row after it.
+
+    Same finality rule as cache_bar_final/_stocks (nothing unfinal is ever appended), asked of the store instead
+    of one candidate bar at a time. The 3-bar probe above it can only rescue a symbol whose source is at most 3
+    bars behind; a symbol whose klines ended a day ago (AEM/AXTI 2026-10-15T20:00Z vs a 2026-10-16T21:00Z clock)
+    returned EXCHANGE_BAR_NOT_READY forever and never caught up to the bars its own klines ALREADY held, which
+    is the opposite of "just topups, appended"."""
+    import backtest_v8_precompute as bvp
+    dirs = ((ROOT / "klines_cache_backtest" / "tradier", ROOT / "klines_cache" / "tradier", ROOT / "klines_cache_gateway" / "tradier", ROOT / "klines_cache_macbook" / "tradier")
+            if mode == "tradier" else (bvp.CRYPTO_KLINES,))
+    best = None
+    for d in dirs:
+        try:
+            df = bvp.load_klines(Path(d) / f"{symbol}_15m.json")
+        except Exception:
+            continue
+        if df is None or len(df) < 2:
+            continue
+        ts = sorted({int(t) for t in _epoch_s(df.index)})
+        if len(ts) >= 2 and (best is None or ts[-2] > best):
+            best = ts[-2]
+    return best
 
 
 def _overlay(df, fr, cutoff, tf=None):
@@ -713,6 +779,7 @@ def splice(L, tail, symbol, overlap=8, mode="crypto"):
         post.update(backfill_legacy_keys(full, L, _bf, symbol))
     missing = []
     _dropped = []
+    _droppable = {k for k in set(row_keys) | set(L) if droppable(k, mode)}
     for k in row_keys:
         if k in builder_keys and k not in FUNDOI_KEYS:
             continue
@@ -720,7 +787,7 @@ def splice(L, tail, symbol, overlap=8, mode="crypto"):
             D[k] = np.concatenate([L[k], _cast(np.asarray(post[k])[n_old:], L[k])])
         elif k in builder_keys:
             continue
-        elif k in REFRESH_DROP_KEYS:
+        elif k in _droppable:
             _dropped.append(k)
         else:
             missing.append(k)
@@ -729,7 +796,7 @@ def splice(L, tail, symbol, overlap=8, mode="crypto"):
     if missing:
         raise ValueError(f"cannot extend {len(missing)} row keys: {missing[:8]}")
     for k in L:
-        if k not in D and k not in REFRESH_DROP_KEYS:
+        if k not in D and k not in _droppable:
             D[k] = L[k]
     return D, info
 
@@ -745,17 +812,18 @@ def save_npz(path, D, level=1):
     return tmp
 
 
-def validate(L, D, path):
+def validate(L, D, path, mode="crypto"):
     import numpy as np
     from npz_guard import should_allow_overwrite
-    missing = sorted(set(L) - set(D) - REFRESH_DROP_KEYS)
+    _droppable = {k for k in set(L) | set(D) if droppable(k, mode)}
+    missing = sorted(set(L) - set(D) - _droppable)
     if missing:
         return False, f"lost keys {missing[:5]}"
     n0, n1 = len(L["timestamps"]), len(D["timestamps"])
     if n1 <= n0:
         return False, "not longer"
     for k in L:
-        if k in REFRESH_DROP_KEYS and k not in D:
+        if k in _droppable and k not in D:
             continue
         if np.ndim(L[k]) >= 1 and len(L[k]) == n0 and k != "htf_align" and len(D[k]) != n1:
             return False, f"{k} len {len(D[k])} != {n1}"
@@ -779,6 +847,80 @@ def md5(p):
     return h.hexdigest()
 
 
+def sym_lock(symbol):
+    """per-symbol exclusive lock fd, or None when another refresh already owns that symbol.
+
+    2026-10-16: the ONE global --lock made every targeted top-up a silent no-op while the 24/7 --loop held it —
+    proven live: `npz_bar_refresh.py --symbols BNBUSDC` printed "locked (previous run active)" and exited 0, and
+    /tmp/v15_dispatch.log shows the dispatch JIT reading that as `tail current (0.2s)` before pushing a stale NPZ
+    to a worker. The install is per file, so the mutual exclusion belongs per file: the loop and a JIT top-up now
+    run side by side and only collide (LOCKED_SYMBOL) on the same symbol."""
+    try:
+        SYMLOCK_DIR.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(SYMLOCK_DIR / f"{symbol}.lock"), os.O_CREAT | os.O_RDWR, 0o666)
+    except OSError:
+        return None
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None
+    return fd
+
+
+def frozen_syms():
+    """symbols whose NPZ must not change (RULE#4: a board in flight is archived when its NPZ identity moves).
+
+    2026-10-16: v15_npz_freeze names npz_prep / sync_indicators / fundoi / sentiment_force as the writers that
+    consult it, but this loop — the biggest writer of all (231 installs/cycle) — never did. Frozen symbols are
+    skipped and come back on their own the moment the board finishes, because the cycle is ordered worst-first."""
+    if os.environ.get("V15_NPZ_FREEZE", "1") == "0":
+        return set()
+    try:
+        sys.path.insert(0, str(ROOT))
+        from tools.v15_npz_freeze import frozen_syms as _frozen
+        return _frozen()
+    except Exception:
+        try:
+            d = json.loads((ROOT / "data" / "npz_frozen_syms.json").read_text())
+            return {str(s).upper() for s in (d.get("syms") or {})}
+        except Exception:
+            return set()
+
+
+def repair_queue_update(results, path=None):
+    """persist the symbols no top-up can ever fix (legacy align, unextendable keys, 1-row stubs) for tools/npz_repair.py.
+
+    These statuses used to be logged every cycle forever and repaired by nobody: ASTERUSDT sat 17 days behind,
+    ZECUSDC 64 h, CDW/ADP/AEM/AXTI were 1-row live stubs for 3 days."""
+    p = Path(path) if path else REPAIR_QUEUE
+    try:
+        cur = json.loads(p.read_text()).get("syms", {})
+    except Exception:
+        cur = {}
+    now = time.time()
+    seen = set()
+    for r in results:
+        s, st = r.get("symbol"), r.get("status")
+        if not s or st not in REPAIR_STATUSES:
+            continue
+        seen.add(s)
+        e = cur.get(s) or {"first_seen": now, "attempts": 0}
+        e.update({"status": st, "mode": r.get("mode"), "error": str(r.get("error") or r.get("guard") or "")[:200],
+                  "ts_before": r.get("ts_before"), "last_seen": now, "cycles": int(e.get("cycles", 0)) + 1})
+        cur[s] = e
+    for s in [s for s, e in cur.items() if s not in seen and (now - float(e.get("last_seen", 0))) > 6 * 3600]:
+        cur.pop(s, None)  # healed (or gone from the universe) — a repaired symbol stops reporting within the hour
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"updated": dt.datetime.now(dt.timezone.utc).isoformat(), "syms": cur}, indent=1, sort_keys=True, default=str))
+        os.replace(tmp, p)
+    except Exception as e:
+        log(f"repair queue write failed: {type(e).__name__}: {e}")
+    return cur
+
+
 def refresh_symbol(symbol, ind_dir, w15=0, dry_run=False, force=False, cutoff=None, fresh=None, mode="crypto", overlap=8, builder=None):
     import numpy as np
     t0 = time.time()
@@ -789,14 +931,32 @@ def refresh_symbol(symbol, ind_dir, w15=0, dry_run=False, force=False, cutoff=No
     res = {"symbol": symbol, "cutoff": cutoff, "mode": mode}
     if not path.exists():
         return {**res, "status": "NO_NPZ"}
+    _lock_fd = sym_lock(symbol)
+    if _lock_fd is None:
+        return {**res, "status": "LOCKED_SYMBOL"}
+    try:
+        return _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cutoff, fresh, mode, overlap, builder, t0)
+    finally:
+        try:
+            fcntl.flock(_lock_fd, fcntl.LOCK_UN)
+            os.close(_lock_fd)
+        except OSError:
+            pass
+
+
+def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cutoff, fresh, mode, overlap, builder, t0):
+    import numpy as np
     z = np.load(path, allow_pickle=True)
     _ts_raw = np.asarray(z["timestamps"]).astype(np.int64)
     if int(_ts_raw[-1]) > 1e11:
         return {**res, "status": "REFUSE_MS_TIMESTAMPS"}
     ts_last = int(_ts_raw[-1])
     res["ts_before"] = ts_last
+    res["rows_before"] = int(len(_ts_raw))
     if ts_last >= cutoff and not force:
         return {**res, "status": "FRESH", "secs": round(time.time() - t0, 2)}
+    if len(_ts_raw) < MIN_APPENDABLE_ROWS:
+        return {**res, "status": "TOO_SHORT_TO_APPEND", "error": f"{len(_ts_raw)} rows — a live stub cannot be tailed, adopt a deeper copy (tools/npz_repair.py)"}
     if mode == "crypto" and ("htf_align" not in z.files or str(np.asarray(z["htf_align"]).ravel()[0]) not in ("causal_v3",)):
         return {**res, "status": "REFUSE_LEGACY_HTF_ALIGN"}
     L = {k: z[k] for k in z.files}
@@ -813,7 +973,36 @@ def refresh_symbol(symbol, ind_dir, w15=0, dry_run=False, force=False, cutoff=No
         fresh.pop("15m", None)
         _cbf = cache_bar_final_stocks if mode == "tradier" else cache_bar_final
         if not _cbf(symbol, cutoff):
-            return {**res, "status": "EXCHANGE_BAR_NOT_READY"}
+            # USER 2026-10-15 ("all npz's up to date every 15m"): the finality rule needs a STRICTLY NEWER row, so the
+            # bar that closed ~5 min ago is never yet provable and the whole cycle used to be thrown away — measured
+            # 21:06-22:34Z: EXCHANGE_BAR_NOT_READY for every crypto symbol, INSTALLED 0, six cycles running, while
+            # bars OLDER than the cutoff were long since final in the store. Step the cutoff back to the newest bar
+            # that IS provably final (at most 3) instead: nothing unfinal is ever appended, the tail just lands one
+            # bar short of the clock and catches up next cycle. NPZ_CUTOFF_BACKOFF_BARS=0 restores the all-or-nothing
+            # behaviour.
+            _back = int(os.environ.get("NPZ_CUTOFF_BACKOFF_BARS", "3"))
+            _ok = None
+            for _i in range(1, _back + 1):
+                _c = cutoff - _i * BAR
+                if _c <= ts_last:
+                    break
+                if _cbf(symbol, _c):
+                    _ok = _c
+                    break
+            if _ok is None and os.environ.get("NPZ_CATCHUP_TO_SOURCE", "1") == "1":
+                _lf = cache_last_final(symbol, mode)
+                if _lf is not None and _lf > ts_last:
+                    _ok = min(int(_lf), cutoff)
+                    res["cutoff_from_source_tail"] = True
+                elif _lf is not None:
+                    # the store is LEVEL with its source: there is no newer provably-final bar to append. Reporting
+                    # that as EXCHANGE_BAR_NOT_READY is what made a healthy cycle look like a 241-symbol outage.
+                    return {**res, "status": "SOURCE_NO_NEW_BAR", "source_last_final": int(_lf), "secs": round(time.time() - t0, 2)}
+            if _ok is None:
+                return {**res, "status": "EXCHANGE_BAR_NOT_READY"}
+            res["cutoff_backed_off_bars"] = (cutoff - _ok) // BAR
+            cutoff = _ok
+            res["cutoff"] = cutoff
         res["source_15m"] = "klines_cache(final-by-successor)"
     else:
         res["source_15m"] = "fapi" if mode == "crypto" else "tradier"
@@ -839,7 +1028,7 @@ def refresh_symbol(symbol, ind_dir, w15=0, dry_run=False, force=False, cutoff=No
     res["t_post"] = round(time.time() - t4, 2)
     if D is None:
         return {**res, "status": "NO_NEW_ROWS"}
-    ok, reason = validate(L, D, path)
+    ok, reason = validate(L, D, path, mode=mode)
     res["guard"] = reason
     if not ok:
         return {**res, "status": "GUARD_REFUSED"}
@@ -898,10 +1087,49 @@ def _pool_init():
             pass
 
 
+def _kill_pool(pool, grace=None):
+    """terminate the fork pool and REFUSE to wait forever for it.
+
+    MEASURED 2026-10-16 21:24-21:28Z: a SIGTERMed loop sat in do_wait() for 4+ minutes because Pool.join() has no
+    timeout and one worker was deep inside builder C code; the */15 keepalive then saw a live pid, logged "locked
+    (previous daemon active)" and started nothing — a loop that has stopped refreshing while looking healthy is
+    the same pgrep-only-liveness trap that let the Mac position writers wedge for 4.5 h on 2026-10-15."""
+    grace = float(os.environ.get("NPZ_POOL_KILL_GRACE_S", "10") if grace is None else grace)
+    try:
+        pool.terminate()
+    except Exception:
+        pass
+    killed = 0
+    for p in list(getattr(pool, "_pool", []) or []):
+        try:
+            p.join(grace)
+            if p.is_alive():
+                p.kill()
+                p.join(5)
+                killed += 1
+        except Exception:
+            pass
+    try:
+        pool.join()
+    except Exception:
+        pass
+    if killed:
+        log(f"pool shutdown: {killed} worker(s) did not honour SIGTERM within {grace:.0f}s and were killed")
+
+
 def _drain_pool(pool, jobs):
     """consume pool.imap results with 5s SIGTERM polling; raises _Shutdown on SIGTERM or pool stall (caller stamps partials)."""
     out = []
-    it = pool.imap(_worker, jobs)
+    n_jobs = len(jobs)
+    beat = float(os.environ.get("NPZ_LOOP_BEAT_S", "60"))
+    t_beat = time.time()
+    # imap_unordered, NOT imap: ordered yield blocks every finished result behind the slowest job at the head of
+    # the queue. MEASURED 2026-10-16 21:39-21:57Z on a 3x-oversubscribed S1 (load 44 / 16 cores): the cycle had
+    # already installed BASUSDT, COLLECTUSDT, BANANAS31USDT, BCHUSDC … to disk while the log showed ZERO symbol
+    # lines for 17 min, because job #1 was a 40k-row live-lane symbol. Jobs are still SUBMITTED worst-first (that
+    # is what decides who gets refreshed first); only the reporting is freed, which also keeps the keepalive's
+    # heartbeat honest — it judges this log, and a silent-but-healthy loop would have been killed.
+    it = getattr(pool, "imap_unordered", pool.imap)(_worker, jobs)
     from multiprocessing.context import TimeoutError as _MpTimeoutError
     silent = 0
     while True:
@@ -919,6 +1147,15 @@ def _drain_pool(pool, jobs):
             continue
         silent = 0
         out.append(r)
+        if time.time() - t_beat >= beat:
+            # a HEARTBEAT the keepalive can trust: a cycle in which every symbol comes back FRESH logs no symbol
+            # lines at all (FRESH is deliberately silent), and tools/npz_loop_keepalive.sh would then kill a
+            # perfectly healthy loop for being quiet. Progress is now stated regardless of the status mix.
+            t_beat = time.time()
+            _c = {}
+            for _r in out:
+                _c[_r.get("status")] = _c.get(_r.get("status"), 0) + 1
+            log(f"progress {len(out)}/{n_jobs} drained — {_c}")
 
 
 def _worker(args):
@@ -960,6 +1197,52 @@ def universe_stocks():
     return list(dict.fromkeys(out))
 
 
+def priority_syms():
+    """live lane: symbols a trading engine reads right now (vec_driven + the newest go-live candidates)."""
+    out = set()
+    for p, pick in ((ROOT / "data" / "vec_live" / "vec_driven.json", True), ):
+        try:
+            d = json.loads(p.read_text())
+            for k, v in (d.items() if isinstance(d, dict) else []):
+                if isinstance(v, dict) and v.get("account", "ez") != "ez":
+                    continue
+                out.add(str(k).rsplit("_", 1)[0].upper())
+        except Exception:
+            pass
+    for p in sorted((ROOT / "data" / "golive").glob("candidates_*.json"))[-1:]:
+        try:
+            d = json.loads(p.read_text())
+            out |= {str(k).rsplit("_", 1)[0].upper() for k in (d if isinstance(d, dict) else [])}
+        except Exception:
+            pass
+    return out
+
+
+def order_jobs(jobs, ind_dir, last_ts_map=None, cutoff_crypto=None):
+    """live lane first, then worst-behind first; frozen boards skipped. Returns (ordered_jobs, skipped_results).
+
+    2026-10-16: the cycle used to run in universe order and took 2634 s against a 900 s bar, so the SAME tail of
+    the list was always the stalest (measured latency_from_bar_close_s 2615-2666 s for W*/X*/Z* stocks every
+    cycle). Ordering by lag makes an overrun cost the least-behind symbol a bar instead of starving a fixed set."""
+    last_ts_map = last_ts_map or {}
+    pri = priority_syms()
+    frozen = frozen_syms()
+    out, skipped = [], []
+    for j in jobs:
+        s, mode, co = j[0], j[6], j[5]
+        if s in frozen:
+            skipped.append({"symbol": s, "mode": mode, "status": "FROZEN_BOARD"})
+            continue
+        last = last_ts_map.get(s)
+        if last is None:
+            last = npz_last_ts(ind_dir, s)
+        cut = int(co or cutoff_crypto or last_closed_bar())
+        behind = ((cut - int(last)) // BAR) if last else 10 ** 6
+        out.append((0 if s in pri else 1, -behind, s, j))
+    out.sort(key=lambda t: (t[0], t[1], t[2]))
+    return [t[3] for t in out], skipped
+
+
 def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto, w15, last_ts_map=None, stamp_path=None):
     """one refresh cycle. Wave 1: fork-pool refresh (crypto fapi in workers; stocks from parent-prefetched frames).
     Wave 2 (unless --no-sentiment): breadth scan over actives at new ts + patch of installed files AND backlog files
@@ -988,6 +1271,9 @@ def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto
         if err:
             fr["_rest_error"] = err
         jobs.append((s, ind_dir, w15, a.dry_run, a.force, co, "tradier", fr))
+    jobs, skipped = order_jobs(jobs, ind_dir, last_ts_map, cutoff_crypto)
+    for r in skipped:
+        results.append(r)
     from multiprocessing import get_context
     pool = get_context("fork").Pool(max(1, a.workers), initializer=_pool_init)
     try:
@@ -997,8 +1283,7 @@ def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto
                 slim = {k: v for k, v in r.items() if k != "new_ts"}
                 log(json.dumps(slim, default=str))
     finally:
-        pool.terminate()
-        pool.join()
+        _kill_pool(pool)
         if _TERM["n"] and not a.no_stamp and not a.dry_run:
             stamp(results, {}, stamp_path)
     t_wave1 = round(time.time() - t0, 1)
@@ -1059,6 +1344,7 @@ def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto
             wave2 = {"status": "NOTHING_NEW", "secs": round(time.time() - t2, 1)}
     if not a.no_stamp and not a.dry_run:
         stamp(results, patched_map, stamp_path)
+        repair_queue_update(results)
     return results, wave2, t_wave1
 
 
@@ -1077,10 +1363,39 @@ def loop_stamp(payload, loop_path=None):
 
 
 def next_cycle_wait(now=None):
-    """seconds until next :00/:15/:30/:45 UTC boundary + 75s settle (fapi close_time strictness + Tradier propagation)."""
+    """seconds until next :00/:15/:30/:45 UTC boundary + settle (fapi close_time strictness + Tradier propagation).
+
+    USER 2026-10-15 ("all npz's up to date every 15m so no complete rewrites are ever needed"): the settle must also
+    outlast the kline append that FEEDS this cycle. klines_append (cron */5) takes 150-550 s for a full pass, so at the
+    old fixed 75 s this loop asked for a bar the long store did not have yet and logged EXCHANGE_BAR_NOT_READY for
+    219-282 of 369 symbols — the appends it did manage (INSTALLED: 8) were only the symbols the append had reached.
+    NPZ_LOOP_SETTLE_S tunes it; the fleet runs 300 s."""
     now = now if now is not None else time.time()
-    nxt = ((int(now) // BAR) + 1) * BAR + 75
+    try:
+        settle = float(os.environ.get("NPZ_LOOP_SETTLE_S", "75"))
+    except Exception:
+        settle = 75.0
+    settle = min(max(settle, 5.0), float(BAR) - 60.0)  # never past the next close
+    nxt = ((int(now) // BAR) + 1) * BAR + settle
     return max(5.0, float(nxt - now))
+
+
+def catchup_wait(cutoff_done, now=None):
+    """0-ish when a closed bar is already waiting (cycle overran), else the normal boundary+settle wait.
+
+    2026-10-16: next_cycle_wait() always slept to the NEXT boundary, so a cycle that overran the bar (measured
+    2634 s at workers=2) waited out most of another bar on top — the loop effectively ran every 2-3 bars and
+    every NPZ sat 2-4 bars behind. When bars are already closed and unappended there is nothing to wait for."""
+    now = now if now is not None else time.time()
+    try:
+        settle = float(os.environ.get("NPZ_LOOP_SETTLE_S", "75"))
+    except Exception:
+        settle = 75.0
+    newest = last_closed_bar(now)
+    if cutoff_done is not None and int(newest) > int(cutoff_done):
+        age = now - (int(newest) + BAR)
+        return max(5.0, min(settle, settle - age))
+    return next_cycle_wait(now)
 
 
 def pilot_syms():
@@ -1202,12 +1517,37 @@ def stamp_sent_through(stamp_path=None):
     return {s: e.get("sent_through") for s, e in cur.items() if isinstance(e, dict) and e.get("sent_through") is not None}
 
 
+def installed_syms(ind_dir):
+    """every NPZ actually present, minus the derived/variant files that match no klines.
+
+    USER 2026-10-15 "all npz's up to date every 15m": the two universes (vec_driven/golive/symbols_active/pilot
+    for crypto, symbols_tradier/pilot for stocks) left 21 installed stores covered by NO job at all — measured
+    2026-10-16: 42USDT, BASUSDT, COLLECTUSDT, ARIAUSDT, BANANAS31USDT 301 bars (3.1 days) behind with CURRENT
+    klines and a clean dry-run append. A store that exists is a store something may load, so the set of
+    installed files is part of the universe."""
+    out = []
+    try:
+        import re as _re
+        bad = _re.compile(r"(S3|_LONG|_SHORT|_365|_BF2|_BF|_CYCLE|_W2B)$", _re.IGNORECASE)
+        for p in sorted(Path(ind_dir).glob("*.npz")):
+            s = p.stem.upper()
+            if s and not bad.search(s):
+                out.append(s)
+    except Exception as e:
+        log(f"installed_syms failed: {type(e).__name__}: {e}")
+    return out
+
+
 def split_universe(a):
     if a.symbols:
         syms = [s.strip().upper() for s in a.symbols.split(",") if s.strip()]
         crypto, stocks = [s for s in syms if is_crypto_symbol(s)], [s for s in syms if not is_crypto_symbol(s)]
     else:
         crypto, stocks = universe(), universe_stocks()
+        if os.environ.get("NPZ_COVER_INSTALLED", "1") == "1":
+            have = installed_syms(a.ind_dir)
+            crypto += [s for s in have if is_crypto_symbol(s) and s not in set(crypto)]
+            stocks += [s for s in have if not is_crypto_symbol(s) and s not in set(stocks)]
     if a.mode == "crypto":
         stocks = []
     elif a.mode == "stocks":
@@ -1225,7 +1565,7 @@ def one_cycle(a, w15, state, in_loop):
     t0 = time.time()
     ind_dir = a.ind_dir
     crypto_syms, stock_syms_all = split_universe(a)
-    cutoff_crypto = last_closed_bar()
+    cutoff_crypto = int(getattr(a, "cutoff", 0) or 0) or last_closed_bar()
     fng = {"status": "SKIPPED_FLAG"} if (a.no_fng or LOCAL_ONLY) else refresh_fng_cache(dry_run=a.dry_run)
     if fng.get("status") not in ("FRESH", "SKIPPED_FLAG", "SKIPPED_DRY_RUN"):
         log(f"F&G cache: {json.dumps(fng, default=str)}")
@@ -1235,7 +1575,7 @@ def one_cycle(a, w15, state, in_loop):
     if stock_syms_all:
         for s in stock_syms_all:
             last_ts_map[s] = npz_last_ts(ind_dir, s)
-        cutoff_stocks = last_closed_stock_bar()
+        cutoff_stocks = int(getattr(a, "cutoff", 0) or 0) or last_closed_stock_bar()
         attempt, reason = stocks_gate()
         has_npz = [s for s in stock_syms_all if last_ts_map.get(s) is not None]
         fetch_syms = list(has_npz)
@@ -1280,6 +1620,32 @@ def one_cycle(a, w15, state, in_loop):
     return summ
 
 
+def autoscale(a, state):
+    """size the fork pool from the LAST cycle so a cycle fits inside one bar; bounded, never below --workers.
+
+    MEASURED 2026-10-16: 363 symbols x ~18 s of builder work = ~6500 CPU-s per 900 s bar. The cycle that was
+    running held workers=2 (the */15 keepalive's value won the race against the */5 watchdog's 8) and took
+    2634 s, which is the whole median lag. Cap via NPZ_LOOP_MAX_WORKERS (default 8 of 16 cores, nice'd so the
+    board herd keeps the rest); NPZ_LOOP_AUTOSCALE=0 pins --workers."""
+    if os.environ.get("NPZ_LOOP_AUTOSCALE", "1") != "1":
+        return a.workers
+    base = int(state.get("base_workers") or a.workers)
+    state["base_workers"] = base
+    cap = max(base, int(os.environ.get("NPZ_LOOP_MAX_WORKERS", "8")))
+    cyc, jobs = state.get("last_cycle_s"), state.get("last_jobs")
+    if not cyc or not jobs:
+        want = cap
+    else:
+        per_job = (float(cyc) * max(1, a.workers)) / float(max(1, jobs))
+        target = float(BAR) - float(os.environ.get("NPZ_LOOP_SETTLE_S", "75") or 75)
+        margin = float(os.environ.get("NPZ_LOOP_MARGIN", "1.15"))  # measured cycles swing 2064-2866 s for the same work
+        want = int(min(cap, max(base, -(-int(per_job * jobs * margin) // max(60, int(target))))))
+    if want != a.workers:
+        log(f"autoscale workers {a.workers} -> {want} ({'no cycle measured yet' if not cyc else f'last cycle {cyc}s over {jobs} jobs'}, cap {cap})")
+        a.workers = want
+    return a.workers
+
+
 def run_loop(a, w15):
     import faulthandler
     faulthandler.enable()
@@ -1310,7 +1676,11 @@ def run_loop(a, w15):
     log(f"loop start mode={a.mode} workers={a.workers} w15={w15} ind={a.ind_dir}")
     while True:
         try:
+            autoscale(a, state)
             summ = one_cycle(a, w15, state, True)
+            state["last_cutoff"] = summ.get("cutoff_crypto")
+            state["last_cycle_s"] = summ.get("cycle_s")
+            state["last_jobs"] = int(summ.get("n_crypto") or 0) + int(summ.get("n_stocks") or 0)
             loop_stamp(summ)
         except _Shutdown:
             log(f"loop exit on SIGTERM mid-cycle (partial stamped, {n} full cycles done)")
@@ -1337,7 +1707,7 @@ def run_loop(a, w15):
         if _TERM["n"]:
             log(f"loop exit after SIGTERM x{_TERM['n']} ({n} cycles done)")
             return
-        _deadline = time.time() + next_cycle_wait()
+        _deadline = time.time() + catchup_wait(state.get("last_cutoff"))
         while time.time() < _deadline:
             if _TERM["n"]:
                 log(f"loop exit on idle SIGTERM ({n} cycles done)")
@@ -1360,18 +1730,24 @@ def main():
     ap.add_argument("--loop", action="store_true", help="daemon: run a cycle right after every :00/:15/:30/:45 UTC close, forever (systemd + cron keep it alive)")
     ap.add_argument("--max-cycles", type=int, default=0, help="testing only: exit the loop after N cycles (never set in the 24/7 unit)")
     ap.add_argument("--lock", default="/tmp/npz_bar_refresh.lock")
+    ap.add_argument("--global-lock", action="store_true", help="one-shot runs: also take the daemon singleton lock (legacy behaviour; targeted runs need only their per-symbol locks)")
+    ap.add_argument("--cutoff", type=int, default=0, help="one-shot: append only up to this bar instead of the latest closed one. The ONLY way to close a hole bigger than the per-pass limit (refresh_symbol refuses gap>1400): walk it in capped steps, e.g. tools/npz_repair.py does min(last+1400 bars, latest).")
     ap.add_argument("--allow-mac", action="store_true", help="override the macOS refusal (debugging only; live NPZs exist on S1 only)")
     a = ap.parse_args()
     if sys.platform == "darwin" and not a.allow_mac and (a.loop or not a.dry_run):
         ap.error("macOS refused: the refresh loop and live installs run on S1 only (Mac holds no live NPZs); pass --allow-mac to override")
-    lk = open(a.lock, "w")
-    try:
-        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        log("locked (previous run active)")
-        return
-    global _LOCK_FD
-    _LOCK_FD = lk.fileno()
+    # 2026-10-16: the singleton lock guards the DAEMON only. A targeted run (dispatch JIT top-up, v15_npz_ensure,
+    # the gate's --refresh) used to hit this same lock, print "locked" and exit 0 — a silent no-op reported upstream
+    # as "tail current". Per-symbol locks (sym_lock) now provide the real mutual exclusion, per file.
+    if a.loop or a.global_lock:
+        lk = open(a.lock, "w")
+        try:
+            fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            log("locked (previous daemon active)")
+            sys.exit(4)
+        global _LOCK_FD
+        _LOCK_FD = lk.fileno()
     w15 = a.w15 if a.w15 is not None else (2500 if a.loop else 0)
     if a.loop:
         run_loop(a, w15)
@@ -1380,9 +1756,14 @@ def main():
         summ = one_cycle(a, w15, {"last_catchup": 0.0}, False)
     except _Shutdown:
         log("shutdown on SIGTERM (partial one-shot stamped)")
-        return
+        sys.exit(4)
     if a.dry_run:
         log(f"dry-run summary: {json.dumps(summ, default=str)}")
+    cnt = (summ.get("counts") if isinstance(summ, dict) else None) or {}
+    bad = sum(v for k, v in cnt.items() if k not in ("INSTALLED", "FRESH", "NO_NEW_ROWS", "DRY_RUN_OK", "SOURCE_NO_NEW_BAR"))
+    if bad:
+        log(f"exit 3: {bad} of {sum(cnt.values())} symbol(s) did NOT reach the latest bar ({ {k: v for k, v in cnt.items() if k not in ('INSTALLED', 'FRESH', 'NO_NEW_ROWS', 'DRY_RUN_OK', 'SOURCE_NO_NEW_BAR')} })")
+        sys.exit(3)
 
 
 if __name__ == "__main__":

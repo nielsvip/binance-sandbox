@@ -70,23 +70,47 @@ SKIPPED (30 total incl. the above families' siblings) — no REAL live effect / 
 """
 import numpy as np
 
+_WARNED: set = set()
+
+
+def _warn_once(switch, msg):
+    """One line per (switch, message) per process. A vectorised entry gate that cannot run must be visible —
+    the sweep would otherwise report a filter as tested while it never touched a single bar."""
+    key = (switch, msg[:120])
+    if key in _WARNED:
+        return
+    _WARNED.add(key)
+    print(f"[ported_entry-warn] {switch}: {msg[:200]}", flush=True)
+
 
 def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
-    # === GR_FILTER_ALL_ENTRIES — ez_manage.py:29940-29966 (crypto, LONG-only) ===================
-    # Live: every fresh LONG OPEN/ENTRY must pass mtf_live_evaluator.gr_filter_pass (breakout min7,
-    # min_ind relaxed to 4 when close>sma_200_15m*1.05). Faithful vectorized twin already exists.
-    # Gate on the switch AND is_long (live is LONG-only). SHORT / stocks: live has only a stub → inert.
-    if is_long and bool(getattr(cfg, 'GR_FILTER_ALL_ENTRIES', False)):
+    # === GR_FILTER_ALL_ENTRIES — ALL FOUR CAT_SIDES (USER 2026-10-16) ===========================
+    # Live: every fresh OPEN/ENTRY must pass mtf_live_evaluator.gr_filter_pass (breakout min-ind,
+    # min_ind relaxed to 4 when price is 5% beyond sma_200_15m, mirrored for shorts).
+    # 2026-10-16: this block used to gate on `is_long` and hardcode mode 'crypto', on the basis that
+    # live was crypto-LONG-only. Both halves of that are now wrong:
+    #   • the stocks twin exists and is side-agnostic — tradier_manage.py:24342-24406 parses the side
+    #     out of the position key and hands it to the same shared evaluator;
+    #   • the crypto block's SHORT branch was already written (ez_manage.py:32913 sma200*0.95) and was
+    #     only unreachable because of an outer `position_side == "LONG"`, removed the same day.
+    # Both twins read the SAME knobs (MTF_GR_* falling back to GOLDEN_RULE_HTF_MIN_TFS / _MIN_IND), so
+    # GOLDEN_RULE_HTF_MIN_TFS now moves entries on every cat_side instead of only CRYPTO_LONG.
+    if bool(getattr(cfg, 'GR_FILTER_ALL_ENTRIES', False)):
+        _gr_mode = 'tradier' if str(getattr(cfg, 'MODE', '') or '').lower() in ('tradier', 'stocks') else 'crypto'
         try:
             import vec_paths.gr_filter_vec as _grv
-            _gr_pass = _grv.build_gr_filter_mask(npz, n, is_long, 'crypto', cfg)
+            _gr_pass = _grv.build_gr_filter_mask(npz, n, is_long, _gr_mode, cfg)
             _gr_pass = np.asarray(_gr_pass, dtype=bool)
             if _gr_pass.shape == sig.shape:
                 sig = sig & _gr_pass
                 if _entry_filter_masks is not None:
                     _entry_filter_masks.append(_gr_pass)
-        except Exception:
-            pass
+            else:
+                _warn_once('GR_FILTER_ALL_ENTRIES', f'mask shape {_gr_pass.shape} != signal {sig.shape} — entry filter NOT applied')
+        except Exception as _gre:
+            # 2026-10-16: a bare `except: pass` here hid a filter that silently stopped applying. A gate
+            # that cannot run is reported once per process, never swallowed.
+            _warn_once('GR_FILTER_ALL_ENTRIES', f'{type(_gre).__name__}: {_gre}')
     # === LH_HL_FILTER (family: _ENABLED / _TF_REQ / _MODE / _DC_THRESHOLD_PCT / _REQUIRE_BOTH) ====
     # tradier_manage.py:27519/27877 (stocks): block LONG on lower-highs, SHORT on higher-lows across
     # 1h/4h. Shared pure predicate drives scalar+vec; the vectorized blocking mask already exists.

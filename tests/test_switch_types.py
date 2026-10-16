@@ -206,7 +206,10 @@ class WriterRefusals(Base):
 
     def test_daily_writer_refuses_phantom_promotion(self):
         import v15_daily_template_update as D
-        self.assertFalse(D._coercible("MAX_AUGMENTS_PER_POSITION", "0.5", "CRYPTO_SHORT"), "the MAX_AUGMENTS '0.5' phantom (§90) must be refused")
+        # MAX_AUGMENTS_PER_POSITION was deleted 2026-10-15 (USER), so the §90 phantom is pinned on a live int field
+        # that still exists. NOTE: an unknown key is still coercible — see the ORPHAN finding in
+        # tools/v15_template_coverage_audit.py; making unknown fields fail closed is a separate change.
+        self.assertFalse(D._coercible("REENTRY_FAVORABLE_HTF_MIN", "0.5", "CRYPTO_SHORT"), "a non-integral float on a live int field (§90) must be refused")
         self.assertFalse(D._coercible("LEGACY_PROC_SINGLE_REENTRY", "2.0", "CRYPTO_LONG"))
         self.assertTrue(D._coercible("LEGACY_PROC_SINGLE_REENTRY", "False", "CRYPTO_LONG"))
 

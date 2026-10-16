@@ -5,13 +5,14 @@ Two mechanisms:
 1. guarded_write(path, rows): atomic JSON write that REFUSES to shrink a
    file's time-span (tails-only growth + head-extension allowed; truncation
    blocked). All canonical-cache writers MUST use it.
-2. --tripwire (cron */5): hardlink snapshot + state compare; on ANY shrink
+2. --tripwire (cron */5): gzipped snapshot + state compare; on ANY shrink
    vs snapshot: ALERT loudly + RESTORE the file from snapshot.
 
   python3 tools/klines_guard.py --tripwire   # cron: detect + restore + snapshot
   python3 tools/klines_guard.py --check      # report only, exit 1 on shrink
 """
 import argparse
+import gzip
 import json
 import os
 import shutil
@@ -102,17 +103,23 @@ def scan(prev=None):
     return state
 
 
+def snap_of(rel):
+    """USER 2026-10-16 ("not multiple klines backups that consume terabytes"): the snapshot is stored gzipped and
+    carries the SOURCE's mtime, so a changed file is still detected by one stat and the second full copy of the
+    store costs ~3.5 GB instead of 15 GB. A pre-existing raw snapshot is still honoured on restore, then dropped."""
+    return SNAP / (str(rel) + ".gz")
+
+
 def take_snapshot():
     try:
         SNAP.mkdir(parents=True, exist_ok=True)
         for p in snapshot_files():
             rel = p.relative_to(ROOT / "klines_cache_backtest")
-            dst = SNAP / rel
+            dst = snap_of(rel)
             try:
                 st = p.stat()
                 try:
-                    ds = dst.stat()
-                    if ds.st_mtime == st.st_mtime and ds.st_size == st.st_size:
+                    if dst.stat().st_mtime == st.st_mtime:
                         continue
                 except FileNotFoundError:
                     pass
@@ -125,17 +132,48 @@ def take_snapshot():
                         continue
                 except Exception:
                     continue
-                try:
-                    dst.unlink()
-                except FileNotFoundError:
-                    pass
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(p, dst)
+                tmp = dst.with_suffix(".gz.tmp")
+                with open(p, "rb") as fh, gzip.open(tmp, "wb", compresslevel=6) as gz:
+                    shutil.copyfileobj(fh, gz, 1 << 20)
+                os.replace(tmp, dst)
+                os.utime(dst, (st.st_atime, st.st_mtime))
+                raw = SNAP / rel
+                if raw.exists():
+                    raw.unlink()
             except Exception:
                 continue
+        prune_snapshot()
         return True
     except Exception:
         return False
+
+
+def prune_snapshot():
+    """Drop snapshot entries this guard can never use. 2026-10-16: .guard_snap held 11132 raw copies (3.19 GB) of the
+    STAGING dirs (gateway/, consolidated_klines/ …) that were removed from protection on 2026-10-13 because they roll
+    by design — the tripwire neither scans nor restores them, so the copies were inert. A snapshot whose source file
+    is GONE is kept: the guard restores shrinks, not deletions, and that copy may be the last one here."""
+    try:
+        live = {str(p.relative_to(ROOT / "klines_cache_backtest")) for p in snapshot_files()}
+        base = ROOT / "klines_cache_backtest"
+        for p in SNAP.rglob("*.json*"):
+            if p.name.endswith(".tmp"):
+                continue
+            rel = str(p.relative_to(SNAP))
+            if rel.endswith(".gz"):
+                rel = rel[:-3]
+            elif snap_of(rel).exists():
+                # a RAW leftover beside a current gz: an in-flight pre-deploy run rewrote 5570 of them (9.53 GB) and
+                # the writer only drops the raw when it rewrites the gz, so the pair would survive until the file changed.
+                p.unlink()
+                continue
+            if rel in live:
+                continue
+            if (base / rel).exists():
+                p.unlink()
+    except Exception:
+        pass
 
 
 def tripwire(restore=True):
@@ -158,10 +196,17 @@ def tripwire(restore=True):
     if shrunk and restore:
         for k, a, b in shrunk:
             try:
-                src = SNAP / k.split("klines_cache_backtest/")[-1]
+                rel = k.split("klines_cache_backtest/")[-1]
                 dst = ROOT / k
-                if src.exists():
-                    shutil.copy2(src, dst)
+                gz, raw = snap_of(rel), SNAP / rel
+                if gz.exists():
+                    tmp = dst.with_suffix(".json.restore")
+                    with gzip.open(gz, "rb") as fh, open(tmp, "wb") as out:
+                        shutil.copyfileobj(fh, out, 1 << 20)
+                    os.replace(tmp, dst)
+                    restored.append(k)
+                elif raw.exists():
+                    shutil.copy2(raw, dst)
                     restored.append(k)
             except Exception:
                 pass

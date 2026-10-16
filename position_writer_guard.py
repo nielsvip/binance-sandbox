@@ -29,7 +29,7 @@ DEFAULT_STALE_S = 60.0  # service REST cycles reach 30+ s on slow API (men/fin 2
 FILE_FRESH_S = 30.0
 HEARTBEAT_NAME = ".positions_service_heartbeat.json"
 POSITION_FILE_NAMES = ("long_positions.json", "short_positions.json")
-OVERLAY_FIELDS = ("fixed_stop_price", "exchange_stop_order_id", "r1_stop_price", "is_hedge", "hedge_for", "last_signal", "sba_add_count", "last_sba_time", "sba_total_added_usd", "entry_price_before_sba", "cycle_peak_gain", "trade_wing")  # last two: stocks (tradier_manage) bookkeeping
+OVERLAY_FIELDS = ("fixed_stop_price", "fixed_stop_anchor", "fixed_stop_armed", "exchange_stop_order_id", "r1_stop_price", "is_hedge", "hedge_for", "last_signal", "sba_add_count", "last_sba_time", "sba_total_added_usd", "entry_price_before_sba", "cycle_peak_gain", "trade_wing")  # last two: stocks (tradier_manage) bookkeeping
 _ROLE_BY_SCRIPT = {"ez_manage.py": "manage", "tradier_manage.py": "manage", "ez_positions_realtime.py": "failover", "ez_positions_service_main.py": "service"}
 _identity_write_ok = contextvars.ContextVar("pwg_identity_write_ok", default=False)
 _last_log = {}
@@ -254,7 +254,27 @@ def apply_overlay(rows, overlay):
             continue
         if not _same_lifecycle(ov.get("opened_at"), r.get("opened_at")):
             continue
+        # 2026-10-15 (USER, COTI incident): the frozen stop level and the lifecycle it was frozen for are ONE fact.
+        # An overlay written before anchors existed carried a stale fixed_stop_price with no fixed_stop_anchor; this
+        # merge put that level straight back over the writer's corrected one while leaving the valid anchor in place,
+        # so needs_freeze() then said "this level belongs to this lifecycle" and nothing ever re-froze it. men:COTIUSDT
+        # went back to 0.012758 (+11.3% away) within one save of being repaired to 0.011305. The pair now moves
+        # together or not at all: a level whose anchor does not match this lifecycle is refused.
+        _skip = set()
+        _ov_lvl, _ov_anchor = ov.get("fixed_stop_price"), ov.get("fixed_stop_anchor")
+        if _ov_lvl not in (None, "", 0, 0.0, False):
+            _oa = to_epoch(r.get("opened_at"))
+            try:
+                _anchor_ok = _oa is not None and _ov_anchor is not None and abs(float(_ov_anchor) - _oa) <= 1.0
+            except (TypeError, ValueError):
+                _anchor_ok = False
+            if not _anchor_ok:
+                _skip = {"fixed_stop_price", "fixed_stop_anchor"}
+                if _rate_limited(f"fxovr:{k}", 300.0):
+                    logger.warning(f"🛡️ [FIXED_STOP_OVERLAY_REFUSED] {k}: overlay level {_ov_lvl} has anchor {_ov_anchor} != opened_at {r.get('opened_at')} — keeping the writer's {r.get('fixed_stop_price')}")
         for f in OVERLAY_FIELDS:
+            if f in _skip:
+                continue
             v = ov.get(f)
             if v not in (None, "", 0, 0.0, False) and r.get(f) != v:
                 r[f] = v
