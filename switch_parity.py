@@ -53,6 +53,7 @@ Env: SWITCH_PARITY_REGISTER=0 disables registration (proof runs must set it).
 
 from __future__ import annotations
 import argparse
+import ast
 import datetime
 import hashlib
 import json
@@ -135,10 +136,19 @@ def coerce_structured(key: str, value):
     parsed; a comma string per path is split); normalized = str keys, de-duplicated str lists, empty paths dropped."""
     v = value
     if isinstance(v, str):
+        # USER 2026-10-17: json.loads alone refused every Python-repr dict reaching the registrar as a string —
+        # "{'REENTRY': ['EMA_9_21_FILTER_ENABLED']}" (single quotes) is not JSON. Since the caller refuses the
+        # WHOLE sym_side on one bad value ("type-gate refused ALL (1 bad)"), that quoting difference alone left
+        # ONDOUSDT_LONG, ZROUSDT_LONG and 1000FLOKIUSDT_SHORT unapplied for days with fresh boards on disk.
+        # ast.literal_eval parses literals ONLY (no names, calls or attribute access, so nothing executes); a
+        # string that is still not a literal dict keeps refusing exactly as before: fail-closed.
         try:
             v = json.loads(v) if v.strip() else {}
         except Exception:
-            return (False, f"{key}: unparseable string {value!r}"[:200])
+            try:
+                v = ast.literal_eval(v) if v.strip() else {}
+            except Exception:
+                return (False, f"{key}: unparseable string {value!r}"[:200])
     if not isinstance(v, dict):
         return (False, f"{key}: type {type(value).__name__} is not a dict {{path: [filters]}}")
     out = {}

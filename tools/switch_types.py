@@ -323,10 +323,21 @@ def coerce(field, value, venue=None, *, allow_quick_float=False, strict_unknown=
     if k == "dict":
         v = value
         if isinstance(v, str):
+            # USER 2026-10-17: json.loads alone refused every Python-repr dict that reaches the gate as a
+            # string — "{'REENTRY': ['EMA_9_21_FILTER_ENABLED']}" (single quotes) is not JSON. Because
+            # switch_parity refuses the WHOLE sym_side on one bad value ("type-gate refused ALL (1 bad)"),
+            # that single quoting difference discarded 21 of 27 refusals on the 2026-10-16 refresh —
+            # FILTER_EXEMPTIONS x10, WT_DC_TF_COMBO x4, OBLIGATORY_REENTRY_SMA_FIELD/HTF_GATE_D_MANDATORY/
+            # WT_DC_TF_ENTRY x2 each — leaving boards like ONDOUSDT_LONG and ZROUSDT_LONG unapplied for days.
+            # ast.literal_eval parses literals ONLY (no names, calls or attribute access, so nothing executes),
+            # and anything that is still not a literal dict keeps refusing exactly as before: fail-closed.
             try:
                 v = json.loads(v) if v.strip() else {}
             except Exception:
-                return (False, value, f"{field}: unparseable dict string {value!r}"[:200])
+                try:
+                    v = ast.literal_eval(v) if v.strip() else {}
+                except Exception:
+                    return (False, value, f"{field}: unparseable dict string {value!r}"[:200])
         if not isinstance(v, dict):
             return (False, value, f"{field}: {type(value).__name__} {value!r} is not a dict")
         if field == "FILTER_EXEMPTIONS":
