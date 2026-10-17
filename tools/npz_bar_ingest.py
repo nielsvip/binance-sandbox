@@ -92,6 +92,24 @@ def klines_between(symbol, mode, lo, hi):
     return []
 
 
+def strip_htf(row):
+    """Drop W/M keys from a shipped row. The producing host does not have the history to compute them.
+
+    MEASURED 2026-10-17, and this guard exists because it ALREADY HAPPENED: 3 of 432 staged stock bars
+    (ABBV/ACN/ADP) carried 118 W + 118 M keys whose timestamp_W was 2026-03-23 -- the Mac's *_W.json files are 7
+    months stale and sit on an 05:00-ET grid, not the builder's Monday-00:00Z W-MON bucket, and its 15m history
+    spans 95d (= 14 weekly bars) against the 200 ema_200_W needs. Applying them would have written a March weekly
+    high into today's row of every board's input.
+    Dropping them is not a loss: _append_row_to_npz carries an absent per-bar key forward, which IS the value until
+    the bucket closes, and tools/npz_bar_refresh.py (deep klines + the real builder) is the only writer that moves a
+    W/M key. npz_live_generator now drops W/M off S1 at the source; this is the fail-closed half, so a producer
+    regression cannot reach an NPZ."""
+    bad = [k for k in row if k.endswith(("_W", "_M", "_W_prev", "_M_prev"))]
+    for k in bad:
+        row.pop(k, None)
+    return row, bad
+
+
 def sanitize_row(npz_path, row):
     """Map JSON null to what the store already uses for "no value".
 
@@ -182,6 +200,10 @@ def main():
             counts["WOULD_APPLY"] = counts.get("WOULD_APPLY", 0) + 1
             applied.append({"symbol": sym, "ts": ts, "keys": len(row)})
             continue
+        row, htf = strip_htf(row)
+        if htf:
+            counts["HTF_STRIPPED"] = counts.get("HTF_STRIPPED", 0) + 1
+            log(f"{sym}: stripped {len(htf)} W/M keys from the shipped row (carried forward instead) e.g. {htf[:3]}")
         row, fixes = sanitize_row(IND / f"{sym}.npz", row)
         try:
             ok = gen._append_row_to_npz(IND / f"{sym}.npz", row)

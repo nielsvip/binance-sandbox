@@ -3563,7 +3563,16 @@ class Config:
         14.0  # 2026-09-04 probationary START size per user short reinstate until proven              # notional $ for each obligatory open (escalates via the watchdog ladder on subsequent WT crosses)
     )
     PERSYM_FINAL_BOOK_ENABLED: bool = (
-        True  # 2026-08-21 REVERTED per user: keep True so 900*900 verified winners can promote without config flip. Files wiped 410->0 so NO TRADING until verified repopulates; 96 old tradeable from 110-key sweep is gone.
+        # USER 2026-10-17: "just make sure all are in perfect harmony with the vect settings we are
+        # calculating every day no overrides for now (just yet)." data/persym_final_book.json is dated
+        # 2026-09-01 — 6.5 weeks stale — and _apply_final_book (ez_positions_quick ~3044) applies it
+        # AUTHORITATIVELY over the per-sym layer: measured 2026-10-17 it overrides 248 live board rows,
+        # force-ENABLING 194 (plus injecting MOMENTUM_SMA_WATCHDOG_PCT / BREAKOUT_SIZE_MAX_MULT) and
+        # force-DISABLING 54 that their current board may enable. A 6-week-old file outranking today's
+        # board is exactly the override this mandate removes. OFF so live follows the daily vector set.
+        # Nothing is deleted: the book file stays and this flips back to True when overrides return.
+        # NOTE: CONVICTION_SIZING_ENABLED below reads size_mult from the SAME book — see its comment.
+        False  # was True 2026-08-21 ("keep True so 900*900 verified winners can promote without config flip")
     )
     CONVICTION_SIZING_ENABLED: bool = (
         True  # 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: False.
