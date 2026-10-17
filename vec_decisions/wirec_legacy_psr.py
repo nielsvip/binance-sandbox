@@ -69,6 +69,26 @@ class Prepared:
         self.atr = g('atr_15m', 0.0)
         self.w1_4h = g('wt1_4h', 50.0)
         self.w2_4h = g('wt2_4h', 50.0)
+        # 2026-10-17 speed: per-bar scalar reads from Python lists (same float values as float(arr[i])), cfg reads cached per sim
+        for _a in ("k", "d", "kp", "dp", "px", "lo15", "hi15", "lo1h", "hi1h", "lo15p", "hi15p", "lo1hp", "hi1hp", "basis15", "atr", "w1_4h", "w2_4h"):
+            setattr(self, _a, np.asarray(getattr(self, _a), dtype=np.float64).tolist())
+        self._cfc = (None, {})
+
+
+def _cf(P, cfg, k, d):
+    """cfg is constant for the whole simulation that owns P (no cfg writes inside the engine bar loop) — read each knob once."""
+    c = getattr(P, "_cfc", None)
+    if c is None or c[0] is not cfg:
+        c = (cfg, {})
+        try:
+            P._cfc = c
+        except Exception:
+            return getattr(cfg, k, d)
+    m = c[1]
+    kk = (k, d)
+    if kk not in m:
+        m[kk] = getattr(cfg, k, d)
+    return m[kk]
 
 
 def _stoch_cross(P, i):
@@ -92,7 +112,7 @@ def _below_dc(P, i, px):
 
 
 def _delta_ok(P, i, cfg):
-    if not bool(getattr(cfg, 'DELTA_REENTRY_FILTER_ENABLED', False)):
+    if not bool(_cf(P, cfg, 'DELTA_REENTRY_FILTER_ENABLED', False)):
         return True
     a, b = float(P.w1_4h[i]), float(P.w2_4h[i])
     return (a > b) if P.is_long else (a < b)
@@ -100,12 +120,12 @@ def _delta_ok(P, i, cfg):
 
 def fires_qr(P, i, px, last_red_px, min_since, cfg):
     """(ok, mult). Needs exit context from the loop."""
-    if not bool(getattr(cfg, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False)):
+    if not bool(_cf(P, cfg, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False)):
         return False, 1.0
-    if not bool(getattr(cfg, 'REENTRY2_QUICK_RECOVERY_ENABLED', True)):
+    if not bool(_cf(P, cfg, 'REENTRY2_QUICK_RECOVERY_ENABLED', True)):
         return False, 1.0
     try:
-        win = float(getattr(cfg, 'QUICK_RECOVERY_WINDOW_MIN', 120.0))
+        win = float(_cf(P, cfg, 'QUICK_RECOVERY_WINDOW_MIN', 120.0))
     except Exception:
         win = 120.0
     if not (last_red_px > 0) or not (min_since < win):
@@ -136,8 +156,8 @@ def fires_kdc(P, i, px, inv_in, cfg):
             k, d = float(P.k[i]), float(P.d[i])
             if (k < d) and (k > 30):  # short revalidate extras (:43142-43149)
                 inv_out = False
-    if not (bool(getattr(cfg, 'LEGACY_PROC_SINGLE_REENTRY', False))
-            and bool(getattr(cfg, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False))):
+    if not (bool(_cf(P, cfg, 'LEGACY_PROC_SINGLE_REENTRY', False))
+            and bool(_cf(P, cfg, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False))):
         return False, 1.0, inv_out
     if inv_in:
         return False, 1.0, inv_out
@@ -157,7 +177,7 @@ def fires_kdc(P, i, px, inv_in, cfg):
 
 def fires_fulldc(P, i, inv_in, cfg):
     """(ok, mult). Notional gate vacuous at entry (pos None -> 0 < START)."""
-    if not bool(getattr(cfg, 'LEGACY_REENTRY_PSR_FULL_DC', False)):
+    if not bool(_cf(P, cfg, 'LEGACY_REENTRY_PSR_FULL_DC', False)):
         return False, 1.0
     if inv_in:
         return False, 1.0
@@ -180,7 +200,7 @@ def _within2(a, b):
 
 def fires_dcbounce(P, i, px, last_red_px, hours_since, cfg):
     """(ok, mult). Full DC_BOUNCE predicate with exit context."""
-    if not bool(getattr(cfg, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False)):
+    if not bool(_cf(P, cfg, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False)):
         return False, 1.0
     if not (last_red_px > 0):
         return False, 1.0

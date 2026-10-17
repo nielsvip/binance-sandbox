@@ -12,6 +12,7 @@
 # repo was committed for two days. So this tick checks the process STATE (T = stopped) and whether the vault
 # log is advancing, and SIGKILLs a wedged vault so launchd relaunches it clean.
 set -u
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 REPO=/Users/niels/Documents/binance
 PY=/opt/anaconda3/envs/binance_env/bin/python
 LOG=/tmp/vault_and_archive_tick.log
