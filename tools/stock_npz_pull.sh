@@ -12,7 +12,7 @@ mkdir "$LOCK" 2>/dev/null || { echo "$(date -u +%FT%TZ) SKIP lock held" >>"$LOG"
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 cd "$BASE" || exit 1
 LIST=$(mktemp /tmp/stock_npz_list.XXXXXX)
-/Users/niels/Documents/binance/.venv/bin/python - "$LIST" <<'EOF'
+/opt/anaconda3/envs/binance_env/bin/python - "$LIST" <<'EOF'
 import glob, json, sys
 syms = set()
 for f in glob.glob("symbols_tr[abc]_*.json"):
