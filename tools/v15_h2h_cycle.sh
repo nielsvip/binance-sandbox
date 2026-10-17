@@ -17,7 +17,7 @@ set -u
 VENUE="${1:-crypto}"
 ROOT=/Users/niels/Documents/binance
 cd "$ROOT" || exit 1
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 SSH="ssh -S none -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 if [ "$VENUE" = "crypto" ]; then HOST=s1-pub; else HOST=s2; fi
 TS=$(date -u +%Y%m%dT%H%M%SZ)

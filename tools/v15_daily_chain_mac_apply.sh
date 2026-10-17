@@ -17,7 +17,7 @@ set -o pipefail
 export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
 ROOT=/Users/niels/Documents/binance
 cd "$ROOT" || exit 1
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 DATE=${CHAIN_DATE:-$(date -u +%Y%m%d)}
 DRYRUN=${DRYRUN:-0}
 S1=${V15_CHAIN_S1:-s1-pub}

@@ -9,6 +9,15 @@ Run 365D test for each FINAL 30D sym_side using its found 30D settings.
 """
 import pathlib, subprocess, json, re, sys, os, glob
 
+def _pyinterp():
+    """Conda interpreter for this host (USER 2026-10-17: off .venv, onto conda)."""
+    import importlib.util, pathlib
+    spec = importlib.util.spec_from_file_location("pyinterp", pathlib.Path(__file__).resolve().parent / "pyinterp.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.interpreter()
+
+
 ROOT = pathlib.Path.home() / "binance-sandbox"
 FINAL_DIR = ROOT / "SPREADSHEETS/V15_V16_CELL_BY_CELL_FINAL"
 OUT_DIR = ROOT / "SPREADSHEETS/V15_V16_CELL_BY_CELL"
@@ -50,7 +59,7 @@ def run_one(sym_side):
         print(f"[365D-SKIP] {sym_side} no hustler_best.json (no found 30D settings) — skip 365D until 30D best exists", flush=True)
         return
     cmd = [
-        str(ROOT / ".venv/bin/python"), "-u", str(ROOT / "v15_pilot.py"),
+        _pyinterp(), "-u", str(ROOT / "v15_pilot.py"),
         "--sym-side", sym_side,
         "--template", str(tmpl),
         "--window-days", "365",

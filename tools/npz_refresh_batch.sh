@@ -8,7 +8,7 @@ SYMS="${1:?comma list of symbols}"
 MODE="${2:-crypto}"
 LOCK="${3:-/tmp/npz_refresh_batch.lock}"
 cd "$(dirname "$0")/.." || exit 1
-PY=.venv/bin/python
+PY=$(bash "$(dirname "$0")/pyinterp.sh")
 [ -x "$PY" ] || PY=python3
 for s in $(echo "$SYMS" | tr ',' ' '); do
   out=$("$PY" -u tools/npz_bar_refresh.py --symbols "$s" --mode "$MODE" --workers 1 --lock "$LOCK" 2>&1)

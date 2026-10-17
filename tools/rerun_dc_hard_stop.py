@@ -15,7 +15,16 @@ Distributed 1/3 NPZ per server, respects S1 done but forces rerun for correction
 import pathlib, subprocess, shlex, hashlib, socket, time, json, os
 ROOT = pathlib.Path.home() / "binance-sandbox"
 ORDER_FILE = ROOT / "SPREADSHEETS/V15_FULL_354.txt"
-VENV = ROOT / ".venv/bin/python"
+
+def _pyinterp():
+    """Conda interpreter for this host (USER 2026-10-17: off .venv, onto conda)."""
+    import importlib.util, pathlib
+    spec = importlib.util.spec_from_file_location("pyinterp", pathlib.Path(__file__).resolve().parent / "pyinterp.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.interpreter()
+
+VENV = _pyinterp()
 S1 = "10.0.0.3"
 
 def log(m): print(f"[DC-HARD-STOP] {m}", flush=True)
@@ -40,6 +49,8 @@ my_bases=set(b for b in bases if h(b)==idx)
 # For this rerun, we target ALL finished xlsx for my shard that exist on this host OR on S1
 # Gather finished syms from local + S1
 import glob
+
+
 local_done=set()
 for p in (ROOT/"SPREADSHEETS/V15_V16_CELL_BY_CELL").glob("*.xlsx"):
     for s in order:

@@ -9,6 +9,15 @@ so the recalc watcher never sees a broken file. Idempotent; --symbols to restric
 import argparse, json, subprocess, sys, statistics, pathlib
 import numpy as np
 
+def _pyinterp():
+    """Conda interpreter for this host (USER 2026-10-17: off .venv, onto conda)."""
+    import importlib.util, pathlib
+    spec = importlib.util.spec_from_file_location("pyinterp", pathlib.Path(__file__).resolve().parent / "pyinterp.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.interpreter()
+
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tools"))
 KLINES = ROOT / "klines_cache_macbook" / "tradier"   # the Massive full-history 15m stage dir
@@ -82,7 +91,7 @@ def run_pass(syms, no_dist):
         if not needs_recompute(sym):
             skipped += 1
             continue
-        r = subprocess.run([str(ROOT / ".venv/bin/python"), "backtest_v8_precompute.py",
+        r = subprocess.run([_pyinterp(), "backtest_v8_precompute.py",
                             "--symbol", sym, "--mode", "tradier"], cwd=str(ROOT),
                            capture_output=True, text=True, timeout=1200)
         valid, why = validate(sym)

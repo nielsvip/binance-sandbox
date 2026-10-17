@@ -6,7 +6,7 @@
 # by syncs): the dated aggregate file is passed explicitly through every step.
 set -u
 cd /Users/niels/Documents/binance || exit 1
-VENV=.venv/bin/python
+VENV=$(bash "$(dirname "$0")/pyinterp.sh")
 echo "=== $(date -u +%FT%TZ) selfimprove start"
 timeout 1500 $VENV -u tools/v15_avg_delta_rebuild.py || exit 1
 AGG=$(ls -t SPREADSHEETS/v15_avg_delta/v15_avg_delta_*.xlsx | head -1)

@@ -13,6 +13,15 @@ continuously re-measured as the baseline (frequent-exits-off, wiring) evolves.
 """
 import json, os, pathlib, re, subprocess, sys, time
 
+def _pyinterp():
+    """Conda interpreter for this host (USER 2026-10-17: off .venv, onto conda)."""
+    import importlib.util, pathlib
+    spec = importlib.util.spec_from_file_location("pyinterp", pathlib.Path(__file__).resolve().parent / "pyinterp.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.interpreter()
+
+
 ROOT = pathlib.Path.home() / "binance-sandbox"
 if not ROOT.exists():
     ROOT = pathlib.Path("/Users/niels/Documents/binance")
@@ -129,7 +138,7 @@ def main():
     max_parallel = int(os.environ.get("PARITY_MAX_PARALLEL", "3"))
     min_avail = int(os.environ.get("PARITY_MIN_AVAIL_M", "1500"))
     load_frac = float(os.environ.get("PARITY_LOAD_FRAC", "0.90"))  # only use spare headroom
-    py = str(ROOT / ".venv/bin/python")
+    py = _pyinterp()
     if not pathlib.Path(py).exists():
         py = sys.executable
     venue, crypto = load_queue()

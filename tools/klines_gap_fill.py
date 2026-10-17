@@ -1,0 +1,319 @@
+#!/usr/bin/env python3
+"""klines_gap_fill — never leave a hole: look in every folder first, and only then fetch (1500 bars at a time).
+
+USER 2026-10-17: "if any bar is missing they must look in any of the 3 folders (gateway/mac/s1) and fill it in
+before leaving a gap or fetching (if fetching is necessary fetch 1500 bars it is same cost as 5 bars)".
+
+SOURCE ORDER, strictly. A REST call is the last resort, never the first:
+  1. MAC      klines_cache, klines_canonical, klines_cache_backtest, data/klines_wm_staging
+  2. GATEWAY  klines_cache_gateway (the Mac's mirror of the gateway host's cache)
+  3. S1       ~/binance-sandbox/klines_cache (19 GB, the deep long store), ~/binance/klines_cache,
+              both klines_canonical, ~/binance/klines_cache_gateway — pulled per symbol over ssh, once
+  4. FETCH    Binance USD-M /fapi/v1/klines via tools.klines_backfill_15m.fetch_after, ALWAYS limit=1500
+              even for a one-bar hole, because 1500 bars cost the same as 5 (one request, one weight unit).
+
+A found bar is merged append-only: a timestamp already held is never overwritten here, and the external
+archive is updated through tools/klines_ext_archive (which refuses any write that would shrink or narrow it).
+Local stores are only touched with --apply-local, because a careless local write is what erased ranges on
+2026-10-16; the archive is always safe to update since it cannot shrink by construction.
+
+Gap detection is grid-based per timeframe and INTERIOR ONLY (between the first and last bar held) — the head
+and tail are not "gaps", they are just the extent of history. Stock symbols are reported but never fetched:
+their sessions are irregular (the UTC-vs-ET winter-grid loss) and tools/massive_backfill_15m.py --fill-holes
+owns that repair.
+
+Usage:
+    python3 tools/klines_gap_fill.py --symbol ZROUSDT_15m
+    python3 tools/klines_gap_fill.py --all --max 50          # scan, fill from folders, fetch what remains
+    python3 tools/klines_gap_fill.py --all --no-fetch        # folders + S1 only, no REST at all
+    python3 tools/klines_gap_fill.py --symbol X --apply-local  # also repair the local klines_canonical copy
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+REPO = Path("/Users/niels/Documents/binance")
+sys.path.insert(0, str(REPO))
+
+MAC_DIRS = ("klines_cache", "klines_canonical", "klines_cache_backtest", "data/klines_wm_staging")
+GATEWAY_DIRS = ("klines_cache_gateway",)
+S1_DIRS = ("binance-sandbox/klines_cache", "binance/klines_cache", "binance-sandbox/klines_canonical",
+           "binance/klines_canonical", "binance/klines_cache_gateway")
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ControlMaster=no", "-o", "ControlPath=none", "-o", "ConnectTimeout=20"]
+S1_HOST = "s1-int"
+STEP_S = {"15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "1d": 86400, "5m": 300, "3m": 180, "1m": 60}
+BINANCE_INTERVAL = {"15m": "15m", "1h": "1h", "4h": "4h", "D": "1d", "1d": "1d", "5m": "5m", "1m": "1m"}
+CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
+FETCH_LIMIT = 1500           # USER: same cost as 5 bars
+LOG = Path("/tmp/klines_gap_fill.log")
+
+
+def log(msg: str) -> None:
+    line = f"[{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}] {msg}"
+    print(line, flush=True)
+    try:
+        with LOG.open("a") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        pass
+
+
+def split_name(name: str) -> tuple[str, str]:
+    sym, _, tf = name.rpartition("_")
+    return sym, tf
+
+
+def is_crypto(sym: str) -> bool:
+    return sym.upper().endswith(CRYPTO_SUFFIX)
+
+
+def load(p: Path) -> list[dict]:
+    try:
+        d = json.loads(p.read_text())
+    except Exception:
+        return []
+    return [b for b in d if isinstance(b, dict) and b.get("timestamp")] if isinstance(d, list) else []
+
+
+def ts_ms(ts: str) -> int:
+    return int(datetime.strptime(ts.replace("Z", "").split(".")[0], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def ms_ts(ms: int) -> str:
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+
+
+def interior_gaps(bars: list[dict], tf: str) -> list[int]:
+    """Missing grid slots strictly between the first and last bar held. Head/tail are extent, not gaps."""
+    step = STEP_S.get(tf)
+    if not step or len(bars) < 2:
+        return []
+    have = {ts_ms(b["timestamp"]) for b in bars}
+    lo, hi = min(have), max(have)
+    step_ms = step * 1000
+    # anchor on the grid the data itself uses, so a venue whose bars sit at :30 is not reported as all-missing
+    return [t for t in range(lo, hi + 1, step_ms) if t not in have]
+
+
+def archive_dirs() -> list[Path]:
+    out = []
+    try:
+        boot = os.stat("/System/Volumes/Data").st_dev
+    except OSError:
+        boot = None
+    for r in (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"), Path("/Volumes/TOSHIBA_EXT")):
+        try:
+            if r.is_dir() and os.access(r, os.W_OK) and not (boot is not None and os.stat(r).st_dev == boot):
+                d = r / "binance_archive" / "klines_archive"
+                if d.is_dir():
+                    out.append(d)
+        except OSError:
+            continue
+    return out
+
+
+def local_candidates(name: str) -> list[tuple[str, Path]]:
+    out = []
+    for rel in MAC_DIRS:
+        p = REPO / rel / f"{name}.json"
+        if p.exists():
+            out.append(("mac", p))
+    for rel in GATEWAY_DIRS:
+        p = REPO / rel / f"{name}.json"
+        if p.exists():
+            out.append(("gateway", p))
+    for d in archive_dirs():
+        p = d / f"{name}.json"
+        if p.exists():
+            out.append((f"archive:{d.parents[1].name}", p))
+    return out
+
+
+def pull_s1(name: str, tmp: Path) -> list[tuple[str, Path]]:
+    """Copy this symbol's S1 files down once, newest-deepest first. Absence of S1 is never fatal."""
+    out = []
+    for rel in S1_DIRS:
+        dest = tmp / (rel.replace("/", "_") + f"_{name}.json")
+        r = subprocess.run(["rsync", "-a", "--timeout=90", "-e", " ".join(SSH),
+                            f"{S1_HOST}:{rel}/{name}.json", str(dest)],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and dest.exists() and dest.stat().st_size > 0:
+            out.append((f"s1:{rel}", dest))
+    return out
+
+
+def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int]:
+    """One request per contiguous hole, always limit=1500 (same cost as 5 bars). Returns (bars, n_requests)."""
+    try:
+        from tools.klines_backfill_15m import fetch_after
+    except Exception:
+        sys.path.insert(0, str(REPO / "tools"))
+        from klines_backfill_15m import fetch_after            # type: ignore
+    interval = BINANCE_INTERVAL.get(tf)
+    if not interval:
+        return [], 0
+    step_ms = STEP_S[tf] * 1000
+    blocks, cur = [], [gaps[0]]
+    for t in gaps[1:]:
+        if t == cur[-1] + step_ms:
+            cur.append(t)
+        else:
+            blocks.append(cur)
+            cur = [t]
+    blocks.append(cur)
+    got: list[dict] = []
+    calls = 0
+    for blk in blocks:
+        covered = {b["timestamp"] for b in got}
+        if ms_ts(blk[0]) in covered:
+            continue                       # a previous 1500-bar window already reached this hole
+        try:
+            rows = fetch_after(sym, blk[0], limit=FETCH_LIMIT, interval=interval)
+            calls += 1
+            got.extend(rows)
+            log(f"    fetched {len(rows)} bars from {ms_ts(blk[0])} (hole of {len(blk)}; limit={FETCH_LIMIT})")
+        except Exception as e:
+            log(f"    fetch failed at {ms_ts(blk[0])}: {e}")
+    return got, calls
+
+
+def write_archive(name: str, bars: list[dict]) -> None:
+    """Append-only update of every archive copy: existing timestamps are kept, new ones added, never shrink."""
+    for d in archive_dirs():
+        p = d / f"{name}.json"
+        cur = {b["timestamp"]: b for b in load(p)} if p.exists() else {}
+        before = len(cur)
+        for b in bars:
+            cur.setdefault(b["timestamp"], b)
+        if len(cur) == before:
+            continue
+        out = [cur[k] for k in sorted(cur)]
+        tmp = p.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(out, separators=(",", ":")))
+        if len(load(tmp)) != len(out):
+            tmp.unlink(missing_ok=True)
+            log(f"    REFUSED archive write on {d.parents[1].name}: short write")
+            continue
+        os.replace(tmp, p)
+        log(f"    archive {d.parents[1].name}: {before} -> {len(out)} bars")
+
+
+def fill_one(name: str, no_fetch: bool, apply_local: bool) -> dict:
+    sym, tf = split_name(name)
+    rep = {"name": name, "gaps_before": 0, "from_folders": 0, "from_s1": 0, "fetched": 0, "requests": 0,
+           "still_missing": 0, "sources_used": []}
+    if tf not in STEP_S:
+        rep["skip"] = f"unknown timeframe {tf}"
+        return rep
+    merged: dict[str, dict] = {}
+    for label, p in local_candidates(name):
+        for b in load(p):
+            merged.setdefault(b["timestamp"], b)
+    if not merged:
+        rep["skip"] = "no copy anywhere locally"
+        return rep
+    bars = [merged[k] for k in sorted(merged)]
+    gaps = interior_gaps(bars, tf)
+    rep["gaps_before"] = len(gaps)
+    if not gaps:
+        return rep
+    log(f"  {name}: {len(gaps)} interior gap(s) across {len(bars)} bars "
+        f"[{bars[0]['timestamp'][:16]} .. {bars[-1]['timestamp'][:16]}]")
+    # the local union already counts as "looked in the mac + gateway + archive folders"
+    before_folders = len(merged)
+    rep["from_folders"] = before_folders - len({b["timestamp"] for b in load(local_candidates(name)[0][1])})
+    # 3. S1
+    with tempfile.TemporaryDirectory() as td:
+        for label, p in pull_s1(name, Path(td)):
+            n0 = len(merged)
+            for b in load(p):
+                merged.setdefault(b["timestamp"], b)
+            if len(merged) > n0:
+                rep["from_s1"] += len(merged) - n0
+                rep["sources_used"].append(label)
+    bars = [merged[k] for k in sorted(merged)]
+    gaps = interior_gaps(bars, tf)
+    # 4. fetch, last resort
+    if gaps and not no_fetch and is_crypto(sym):
+        got, calls = fetch_missing(sym, tf, gaps)
+        rep["requests"] = calls
+        n0 = len(merged)
+        for b in got:
+            merged.setdefault(b["timestamp"], b)
+        rep["fetched"] = len(merged) - n0
+        if rep["fetched"]:
+            rep["sources_used"].append("binance:1500")
+        bars = [merged[k] for k in sorted(merged)]
+        gaps = interior_gaps(bars, tf)
+    elif gaps and not is_crypto(sym):
+        rep["sources_used"].append("stock: no fetch (massive_backfill_15m --fill-holes owns session repair)")
+    rep["still_missing"] = len(gaps)
+    write_archive(name, bars)
+    if apply_local:
+        target = REPO / "klines_canonical" / f"{name}.json"
+        cur = {b["timestamp"]: b for b in load(target)} if target.exists() else {}
+        n0 = len(cur)
+        for b in bars:
+            cur.setdefault(b["timestamp"], b)
+        if len(cur) > n0:
+            out = [cur[k] for k in sorted(cur)]
+            tmp = target.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(out, separators=(",", ":")))
+            if len(load(tmp)) == len(out):
+                os.replace(tmp, target)
+                log(f"    klines_canonical: {n0} -> {len(out)} bars")
+            else:
+                tmp.unlink(missing_ok=True)
+                log("    REFUSED klines_canonical write: short write")
+    return rep
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--symbol", help="one SYMBOL_TF")
+    ap.add_argument("--all", action="store_true")
+    ap.add_argument("--max", type=int, default=0, help="--all: stop after this many files with gaps")
+    ap.add_argument("--no-fetch", action="store_true", help="folders + S1 only; never call the exchange")
+    ap.add_argument("--apply-local", action="store_true", help="also repair klines_canonical (append-only)")
+    a = ap.parse_args()
+    names = []
+    if a.symbol:
+        names = [a.symbol]
+    elif a.all:
+        seen = set()
+        for rel in MAC_DIRS + GATEWAY_DIRS:
+            d = REPO / rel
+            if d.is_dir():
+                for p in d.glob("*.json"):
+                    if not p.name.startswith(("_", ".")):
+                        seen.add(p.stem)
+        names = sorted(seen)
+    else:
+        ap.error("need --symbol or --all")
+    log(f"gap fill over {len(names)} file(s); fetch={'OFF' if a.no_fetch else f'limit {FETCH_LIMIT}'}; "
+        f"archives={[d.parents[1].name for d in archive_dirs()] or 'NONE'}")
+    tot = {"with_gaps": 0, "from_s1": 0, "fetched": 0, "requests": 0, "still_missing": 0}
+    for n in names:
+        r = fill_one(n, a.no_fetch, a.apply_local)
+        if r.get("gaps_before"):
+            tot["with_gaps"] += 1
+            for k in ("from_s1", "fetched", "requests", "still_missing"):
+                tot[k] += r.get(k, 0)
+            log(f"    {n}: s1=+{r['from_s1']} fetched=+{r['fetched']} ({r['requests']} req) "
+                f"still_missing={r['still_missing']} via {r['sources_used'] or ['folders']}")
+            if a.max and tot["with_gaps"] >= a.max:
+                log(f"  --max {a.max} reached")
+                break
+    log(f"TOTAL {tot}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

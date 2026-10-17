@@ -26,7 +26,7 @@ TAG="${V15_TOPUP_TAG:-TOPUP_$(date -u +%Y%m%dT%H%M%SZ)}"
 HOST_CRYPTO=s1-pub
 HOST_STOCKS=s2
 SSH="ssh -S none -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 LOG=/tmp/v15_topup_run_${TAG}.log
 say() { echo "[$(date -u +%FT%TZ)] $*" | tee -a "$LOG"; }
 

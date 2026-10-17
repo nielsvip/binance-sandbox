@@ -18,7 +18,7 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 echo $$ > "$LOCK/pid"
 trap 'rm -f "$LOCK/pid" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT
-PY=.venv/bin/python; [ -x "$PY" ] || PY=python3
+PY=$(bash "$(dirname "$0")/pyinterp.sh")
 STATE=data/switch_bible_cycle.state
 M5=$(command -v md5 2>/dev/null); [ -x "$M5" ] || M5=/sbin/md5; [ -x "$M5" ] || { echo "FATAL: no md5 binary" >&2; exit 3; }
 SIG=$( ("$M5" -q SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx SPREADSHEETS/TEMPLATE_CRYPTO_SHORT.xlsx SPREADSHEETS/TEMPLATE_STOCKS_LONG.xlsx SPREADSHEETS/TEMPLATE_STOCKS_SHORT.xlsx; \

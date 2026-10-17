@@ -16,7 +16,7 @@ if ! /usr/bin/shlock -f "$LOCK" -p $$; then
   exit 0
 fi
 trap 'rm -f "$LOCK"' EXIT INT TERM
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 S1=${V15_S1:-s1-pub}
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=10"
 D=$(date -u +%Y%m%d)

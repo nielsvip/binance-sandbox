@@ -22,7 +22,7 @@ if [ "${V17_LEARN_LOCKED:-0}" != "1" ]; then
   export V17_LEARN_LOCKED=1
   exec /usr/bin/lockf -s -t 0 /tmp/v17_daily_learn.lock /bin/bash "$0" "$@"
 fi
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 CLAUDE=${CLAUDE_BIN:-/Users/niels/.local/bin/claude}
 D=$(date -u +%Y%m%d)
 LD=$ROOT/data/learn

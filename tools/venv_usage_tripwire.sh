@@ -11,7 +11,14 @@
 #                                      scripts cannot import under it. This is what crash-looped ez_indicators
 #                                      every 32 s from 2026-10-14 and made S1 unable to take over. No longer
 #                                      preferred by run_with_watchdog.sh.
+#                                      RETIRED 2026-10-17 02:58Z (USER "everything should be on conda so the
+#                                      binance venv can be discarded it is flawed") -> .venv.RETIRED_<ts>, after
+#                                      the tripwire showed its last user (ez_share_ind.py, stdlib-only) stopped
+#                                      at 01:44Z. Restore with a single mv if anything ever asks for it.
 #   /home/niels/binance-sandbox/.venv  316M py3.12  COMPLETE — the backtest workhorse, ~21 cron lines.
+#                                      NOT retired and NOT hand-migratable: it carries numpy 2.5.3 / pandas 3.0.5
+#                                      against conda's 2.4.6, so swapping the interpreter under the boards would
+#                                      move the numbers. It goes through tools/v15_version_gate.py or not at all.
 #
 # Review with:  sort -u /home/niels/logs/venv_usage_tripwire.log | awk '{$1="";print}' | sort | uniq -c | sort -rn
 # A venv with no NEW lines for a couple of weeks is the evidence needed to retire it.

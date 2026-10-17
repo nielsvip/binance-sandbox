@@ -14,7 +14,7 @@ if [ "${V17_CONV_LOCKED:-0}" != "1" ]; then
   export V17_CONV_LOCKED=1
   exec /usr/bin/lockf -s -t 0 /tmp/v17_conviction.lock /bin/bash "$0" "$@"
 fi
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 D=$(date -u +%Y%m%d)
 TS=$(date -u +%Y%m%d%H%M)
 T=$ROOT/data/persym_size_tiers.json

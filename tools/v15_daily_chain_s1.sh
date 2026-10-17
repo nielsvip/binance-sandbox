@@ -32,7 +32,7 @@ set -o pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT" || exit 1
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
-PY=$ROOT/.venv/bin/python
+PY=$(bash "$ROOT/tools/pyinterp.sh")
 DATE=$(date -u +%Y%m%d)
 DRYRUN=${DRYRUN:-0}
 # 2026-10-14: s5 (10.0.0.5) + s6 (10.0.0.6) were destroyed 2026-10-13 -> the 10-14 push failed at step 6 on 10.0.0.5. Workers = S2 only.
