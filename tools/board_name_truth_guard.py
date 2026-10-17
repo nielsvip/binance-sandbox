@@ -325,6 +325,7 @@ class Guard:
             stem = p.name[: p.name.index("_30d_matrix")]
             groups.setdefault((p.parent, stem), {})[m.group("suf")] = p
         newmap = {}
+        true_stems = set()
         handled = set()
         # pass 1: every page decides its own triplet
         order = sorted(groups.items(), key=lambda kv: (0 if kv[0][0].name == "V15_V16_CELL_BY_CELL" else 1, str(kv[0][0])))
@@ -350,6 +351,7 @@ class Guard:
                 new_stem = f"{m.group('ss')}_bh{m.group('bh')}_gain{t['token']}{m.group('t') or ''}"
                 quarantine = t["status"] == "QUARANTINE"
                 in_q = QDIR in page.parts
+                true_stems.add(new_stem)
                 newmap.setdefault(stem, {"new": new_stem, "G": t["G"], "sum_pnl_dollars": t["sum_pnl_dollars"], "peak": t["peak"], "peak_header": t.get("peak_header"), "header_gain": t.get("header_gain"), "max_dd_pct": t.get("max_dd_pct"), "closed_trades": t.get("closed_trades"), "page": str(page), "status": t["status"]})
                 if quarantine:
                     self.state["quarantined"][new_stem] = {"why": t["why"], "utc": now_utc(), "page": str(page)}
@@ -380,6 +382,8 @@ class Guard:
                 if now - p.stat().st_mtime < self.min_age:
                     continue
                 info = self.state["map"].get(stem)
+                if info and stem in true_stems and QDIR not in p.parts:
+                    continue  # a page proves this name true (old-format names can collide) — never chain-rename it away
                 target_stem = info["new"] if info else stem
                 q = target_stem in self.state["quarantined"] and QDIR not in p.parts
                 if target_stem == stem and not q:
