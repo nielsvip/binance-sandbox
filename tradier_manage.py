@@ -14089,6 +14089,112 @@ async def _pre_twin_hard_stops(
         return False
 
 
+async def _vec_exact_process_twin(
+    account_key,
+    position_key,
+    symbol,
+    position_side,
+    order_queue,
+    trade_manager,
+    position,
+):
+    """USER 2026-10-17 "fix the stock vector-decided path first, then enforce it". The 10-06 stocks oracle simulated only the
+    live rows buffered since process start: empty after every restart ("twin buffer last bar 0") and >4 bars old most of the
+    time -> 1,600-2,400 VEC_EXACT_STALE_FALLBACK per account log vs 2-7 vec orders, so stocks traded natively. This path runs
+    the crypto twin (live_twins/vec_exact.py, source npz): the board's own evaluate_v12.prepare(symside, 30) on the stock
+    NPZ (kept bar-fresh on the Mac by tools/stock_npz_pull.sh from S2), cut at the last closed bar. Causal proof on S2
+    10-17: AMD_LONG 477/477, PWR_SHORT 596/596, CRWD_LONG 1716/1716 bars identical to the full board run.
+    Returns "VEC_EXACT_STALE" (native fallback this bar) when the twin has no fresh decision, else "VEC_EXACT[:...]"."""
+    import time as _time
+    import tradier_vec_exact as _tve
+    from live_twins import vec_exact as _vx
+
+    _vx.set_cfg(config)
+    _vx.logger = logger
+    fams = _vx.families(config)
+    _amt = abs(float(getattr(position, "positionAmt", 0) or 0)) if position else 0.0
+    if _amt <= 0 and "ENTRY" not in fams:
+        return "VEC_EXACT_STALE"
+    if _amt > 0 and "EXIT" not in fams:
+        return "VEC_EXACT_STALE"
+    _now = _time.time()
+    try:
+        _st = await _ptruth.offloop_serialized(_vx.actions_at, symbol, position_side, _now)
+    except Exception as _tw_e:
+        logger.warning(f"[VEC_EXACT_STALE_FALLBACK] {position_key}: twin error {_tw_e} -> native exits run")
+        return "VEC_EXACT_STALE"
+    try:
+        _stale_bars = float(_cfg("VEC_EXACT_STALE_FALLBACK_BARS", 4.0, account_key, symbol, position_side) or 4.0)
+    except Exception:
+        _stale_bars = 4.0
+    _bar_ts = float(_st.get("bar_ts") or 0.0)
+    if _st.get("status") != "OK" or (_stale_bars > 0 and _now - _bar_ts > _stale_bars * 900.0):
+        _k = (position_key, _st.get("status"), int(_bar_ts))
+        if _k not in _VX_TWIN_FALLBACK_LOGGED:
+            _VX_TWIN_FALLBACK_LOGGED.add(_k)
+            logger.warning(f"[VEC_EXACT_STALE_FALLBACK] {position_key}: twin status={_st.get('status')} bar {int(_bar_ts)} is {(_now - _bar_ts) / 60.0:.0f}m old -> native this bar")
+        return "VEC_EXACT_STALE"
+    if _amt > 0:
+        want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
+    else:
+        want = ("OPEN",)
+    _acts_now, _acts_catch = await _ptruth.offloop_serialized(_vx.take_all, symbol, position_side, _now, want)
+    _out = []
+    # USER 2026-10-13 rule (crypto twin): "NO exit can EVER be skipped AT ALL" — a vec full exit that expired unconsumed (> 4 bars)
+    # is owed now when it was decided after this live position opened; one decided before the entry belongs to another lifecycle.
+    try:
+        _exp = _vx.pop_expired_exits(symbol, position_side) if _amt > 0 else []
+        if _exp:
+            _oa = getattr(position, "opened_at", None)
+            _oa_ep = None
+            try:
+                _oa_dt = _oa if isinstance(_oa, datetime) else (datetime.fromisoformat(str(_oa).replace("Z", "+00:00")) if _oa else None)
+                _oa_ep = (_oa_dt if _oa_dt.tzinfo else _oa_dt.replace(tzinfo=timezone.utc)).timestamp() if _oa_dt else None
+            except Exception:
+                _oa_ep = None
+            _mine = [e for e in _exp if _oa_ep is None or float(e[0]) + 900.0 >= _oa_ep]
+            if _mine:
+                logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: {len(_mine)} vec exit(s) expired unconsumed -> owed CLOSE now ({_mine[-1][1]})")
+                _acts_now = list(_acts_now or []) + [{"type": "CLOSE", "reason": f"EXIT_OWED_{_mine[-1][1]}", "to_flat": True, "qty_frac": 1.0}]
+    except Exception as _xo_e:
+        logger.warning(f"[VEC_EXACT_EXIT_OWED] {position_key} probe err: {_xo_e}")
+    for _a in (_acts_now or []) + ([x for x in (_acts_catch or []) if _amt > 0] if _amt > 0 else []):
+        _typ = str(_a.get("type") or "").upper()
+        _ev = {"type": "CLOSE" if (_typ == "REDUCE" and _a.get("to_flat")) else _typ, "reason": str(_a.get("reason") or "")}
+        if _ev["type"] == "OPEN":
+            if _amt > 0:
+                continue
+            _gcp = await trade_manager.get_current_price(symbol)
+            _px = float(_gcp[0]) if isinstance(_gcp, tuple) and _gcp and _gcp[0] is not None else float(_gcp or 0.0) if not isinstance(_gcp, tuple) else 0.0
+            _q = await trade_manager.calculate_position_size(symbol, _px, account_key=account_key) if _px > 0 else 0.0
+        elif _ev["type"] == "AUGMENT":
+            _q = _amt * float(_a.get("qty_frac") or 0.0)
+        elif _ev["type"] == "REDUCE":
+            _q = min(_amt, _amt * float(_a.get("qty_frac") or 0.0))
+        else:
+            _q = _amt
+        if _q <= 0 or (_ev["type"] != "OPEN" and _amt <= 0):
+            logger.warning(f"[VEC_EXACT_SKIP] {position_key}: vec {_ev['type']} {_ev['reason'][:60]} but live amt={_amt} qty={_q}")
+            _out.append(f"SKIP:{_ev['type']}")
+            continue
+        _res = await queue_trade_action(order_queue, trade_manager, position_key, _ev["type"], _tve.vec_reason(_ev), 100.0, override_qty=_q)
+        _tve.record_dispatch(config.BASE_PATH, position_key, _ev, (_ev["type"], _q), _res)
+        logger.warning(f"[VEC_EXACT] {position_key}: {_ev['type']} qty={_q:.4f} reason={_tve.vec_reason(_ev)[:80]}{' (catchup)' if _a.get('catchup') else ''} -> {_res}")
+        _out.append(f"{_ev['type']}:{_res}")
+        if _ev["type"] == "OPEN":
+            _amt = _q
+        elif _ev["type"] == "AUGMENT":
+            _amt += _q
+        elif _ev["type"] == "REDUCE":
+            _amt = max(0.0, _amt - _q)
+        elif _ev["type"] == "CLOSE":
+            _amt = 0.0
+    return "VEC_EXACT" + (":" + ",".join(_out) if _out else "")
+
+
+_VX_TWIN_FALLBACK_LOGGED: set = set()
+
+
 async def _vec_exact_process(
     account_key,
     position_key,
@@ -14105,6 +14211,8 @@ async def _vec_exact_process(
     """
     import tradier_vec_exact as _tve
     import time as _time
+    if str(getattr(config, "TRADIER_VEC_EXACT_ENGINE", "npz_twin") or "npz_twin").strip().lower() == "npz_twin":
+        return await _vec_exact_process_twin(account_key, position_key, symbol, position_side, order_queue, trade_manager, position)
 
     _tve.ORACLE.ingest(symbol, indicators_raw)
     try:

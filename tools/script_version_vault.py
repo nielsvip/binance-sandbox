@@ -54,6 +54,13 @@ REPO = Path("/Users/niels/Documents/binance")
 EXT_ROOTS = (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"), Path("/Volumes/TOSHIBA_EXT"))
 EXT_SUBDIR = Path("binance_archive") / "script_vault"
 EXT_MIN_FREE_GB_ROOT = 3.0
+# USER 2026-10-17: "git has been extremely flaky ... if not we need to put the /backups/ full folder back on
+# macbook we can not risk losing versions of scripts and templates." This IS that local folder, and it does not
+# depend on git or on a drive being mounted: plain gzipped files under backups/, readable with gunzip alone.
+# It costs ~1.3 GB for the same 4500 versions the old full 15-min snapshots took 14 GB to hold, because it is
+# content-addressed and deduplicated instead of copying all 275 files every cycle.
+LOCAL_VAULT = REPO / "backups" / "script_vault"
+LOCAL_MIN_FREE_GB = 10.0
 INDEX = REPO / "data" / "reports" / "script_vault_index.jsonl"
 LOG = Path("/tmp/script_version_vault.log")
 FSWATCH = "/opt/homebrew/bin/fswatch"
@@ -156,9 +163,19 @@ def capture_git(p: Path, rel: str, ts: str, sha12: str) -> str | None:
 
 
 def ext_vaults() -> list[Path]:
-    """Every genuinely-mounted external drive's vault dir. Phantom /Volumes dirs (same device as the boot
-    volume) and nearly-full drives are skipped, so a copy is never written to the internal disk by mistake."""
+    """Every destination for a gzipped copy: the LOCAL backups/script_vault first (always, unless the internal
+    disk is nearly full), then every genuinely-mounted external drive. Phantom /Volumes dirs (same device as
+    the boot volume) and nearly-full drives are skipped, so a copy is never written to the internal disk while
+    pretending to be a drive — /Volumes/WD25 was exactly that on 2026-10-17."""
     out = []
+    try:
+        st = os.statvfs(REPO)
+        if (st.f_bavail * st.f_frsize) / 1e9 >= LOCAL_MIN_FREE_GB:
+            out.append(LOCAL_VAULT)
+        else:
+            log(f"  local vault skipped: internal disk below {LOCAL_MIN_FREE_GB}GB free")
+    except OSError:
+        pass
     try:
         boot_dev = os.stat("/System/Volumes/Data").st_dev
     except OSError:
@@ -178,6 +195,11 @@ def ext_vaults() -> list[Path]:
     return out
 
 
+def vault_label(vault: Path) -> str:
+    """How a destination is named in logs: LOCAL for backups/script_vault, otherwise the drive name."""
+    return "LOCAL(backups)" if vault == LOCAL_VAULT else vault.parents[1].name
+
+
 def capture_ext(p: Path, rel: str, ts: str, sha12: str) -> str | None:
     """Gzipped copy on EVERY mounted external drive — recoverable with gunzip alone, no git involved.
     Returns the first destination written (or already present); absence of all drives is never fatal."""
@@ -185,7 +207,7 @@ def capture_ext(p: Path, rel: str, ts: str, sha12: str) -> str | None:
     vaults = ext_vaults()
     if not vaults:
         if not _ext_warned:
-            log("  no external drive mounted — git capture continues; ext copies resume when one appears")
+            log("  no copy destination available — git capture continues; copies resume when one appears")
             _ext_warned = True
         return None
     _ext_warned = False
@@ -203,7 +225,7 @@ def capture_ext(p: Path, rel: str, ts: str, sha12: str) -> str | None:
             os.replace(tmp, dest)
             first = first or str(dest)
         except Exception as e:
-            log(f"  ext copy failed on {vault.parents[1].name} for {rel}: {e}")
+            log(f"  copy failed on {vault_label(vault)} for {rel}: {e}")
     return first
 
 
@@ -287,7 +309,7 @@ def verify(target: str) -> int:
     for vault in ext_vaults():
         ext_dir = vault / rel
         gz = sorted(ext_dir.glob("*.gz")) if ext_dir.is_dir() else []
-        print(f"{rel}: {len(gz)} version(s) on {vault.parents[1].name}" + (", newest:" if gz else ""))
+        print(f"{rel}: {len(gz)} version(s) on {vault_label(vault)}" + (", newest:" if gz else ""))
         for g in gz[-5:]:
             print(f"   {g}")
     if not ext_vaults():
@@ -339,7 +361,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="capture every in-scope file now, then exit")
     ap.add_argument("--verify", metavar="PATH", help="list the captured versions of one file")
+    ap.add_argument("--capture", metavar="PATH", action="append", default=[],
+                    help="capture just these paths now (no repo sweep) — for a hook, a test, or a cron one-off")
     a = ap.parse_args()
+    if a.capture:
+        n = sum(1 for p in a.capture if capture(p))
+        log(f"--capture: {n} new version(s) of {len(a.capture)} path(s)")
+        return 0
     if a.verify:
         return verify(a.verify)
     if a.once:

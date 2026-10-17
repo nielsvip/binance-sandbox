@@ -1,2 +1,2 @@
-# vault self-test version 1
-VALUE = 1
+# vault self-test version 3
+VALUE = 3
