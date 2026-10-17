@@ -158,12 +158,39 @@ def main():
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps(payload, indent=1, sort_keys=True, default=str))
     log(f"report -> {REPORT}")
-    if a.write and pinned and not conflicts:
+    # The table is written for BASE-TF (15m) keys ONLY, and the HTF conflicts above are the measured reason why.
+    # A 1h/4h/D/W/M value stored on a 15m row is the builder's AS-OF BROADCAST of the last closed HTF bar
+    # (_broadcast_asof_indices); recomputing the live row gets that TF's own latest close instead, so the two
+    # disagree wherever the broadcast index differs. MEASURED 2026-10-17 over 75 rows: every 15m categorical pinned
+    # unanimously, while wt_cross_4h BEAR split -1/+1 (64:11), ha_1h green split +1/-1 (28:13) and wt_wave_phase_4h
+    # EXPANDING split +1/-1 (57:10). That is not resolvable by more observations -- it is the wrong question. So the
+    # trickled row only ever moves 15m keys and HTF carries forward (the true value until the bucket closes), with
+    # tools/npz_bar_refresh.py's builder tail pass the only thing that moves an HTF key.
+    # timestamp_* is excluded too: it is an ISO-string -> epoch CONVERSION, not a label code, and the ingest does it
+    # arithmetically instead of from a lookup of every timestamp ever seen.
+    base_tfs = ("_15m", "_5m", "_3m", "_1m")
+    base_pinned = {k: v for k, v in pinned.items()
+                   if k.endswith(base_tfs) and not k.startswith("timestamp_")}
+    base_conflicts = {k: v for k, v in conflicts.items()
+                      if k.endswith(base_tfs) and not k.startswith("timestamp_")}
+    if a.write and base_pinned:
         OUT.parent.mkdir(parents=True, exist_ok=True)
-        OUT.write_text(json.dumps({"pinned": pinned, "derived_at": time.time(), "rows_observed": n_rows}, indent=1, sort_keys=True))
-        log(f"table -> {OUT}")
-    elif a.write and conflicts:
-        log("REFUSING to write the table while conflicts exist — a wrong code would corrupt every board that reads the key")
+        OUT.write_text(json.dumps({
+            "pinned": base_pinned,
+            "omitted_conflicted_pairs": base_conflicts,
+            "htf_unmappable": sorted(k for k in conflicts if not k.endswith(base_tfs)),
+            "derived_at": time.time(), "rows_observed": n_rows, "symbols": syms,
+            "scope": "base-TF keys only; a (key,label) pair is present ONLY if every observation agreed. An absent "
+                     "label is NOT guessed by the ingest -- it drops the key for that bar, so the NPZ carries the "
+                     "last value forward and npz_bar_refresh's builder tail corrects it.",
+        }, indent=1, sort_keys=True))
+        log(f"table -> {OUT}  ({sum(len(v) for v in base_pinned.values())} base-TF pairs across {len(base_pinned)} keys"
+            f"; omitted {sum(len(v) for v in base_conflicts.values())} conflicted base pairs"
+            f"; {len([k for k in conflicts if not k.endswith(base_tfs)])} HTF keys unmappable by design)")
+        for k, v in sorted(base_conflicts.items()):
+            log(f"   OMITTED (not guessed) {k}: {v}")
+    elif a.write:
+        log("REFUSING to write: no base-TF pair reached unanimity")
     return 1 if conflicts else 0
 
 

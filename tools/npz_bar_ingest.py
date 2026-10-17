@@ -92,6 +92,79 @@ def klines_between(symbol, mode, lo, hi):
     return []
 
 
+BASE_SUFFIXES = ("_15m", "_5m", "_3m", "_1m")
+BARE_BASE = ("timestamps", "open", "high", "low", "close", "volume")
+TABLE = ROOT / "data" / "npz_label_codes.json"
+_table_cache = {}
+
+
+def label_table():
+    """The MEASURED label -> int8 code table (tools/npz_label_code_derive.py). Never a guess, never a default."""
+    if "t" not in _table_cache:
+        try:
+            _table_cache["t"] = json.loads(TABLE.read_text()).get("pinned") or {}
+        except Exception:
+            _table_cache["t"] = {}
+    return _table_cache["t"]
+
+
+def iso_to_epoch(v):
+    import datetime as dt
+    try:
+        return int(dt.datetime.strptime(str(v)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc).timestamp())
+    except ValueError:
+        return None
+
+
+def select_base_tf(row, npz_path):
+    """Keep ONLY the base-TF keys the shipped row can move; everything else carries forward.
+
+    MEASURED 2026-10-17 (data/reports/npz_label_code_derive.json, 75 recomputed rows): every 15m categorical maps
+    to its stored int8 code unanimously, while EVERY HTF categorical conflicts -- wt_cross_4h BEAR split -1/+1
+    64:11, ha_1h green +1/-1 28:13, wt_wave_phase_4h EXPANDING +1/-1 57:10. The cause is not noise: the HTF value
+    on a 15m row is the builder's AS-OF BROADCAST of the last closed HTF bar, and a live recompute reads that TF's
+    own latest close instead. So an HTF key cannot be moved from a shipped row at all, and it does not need to be --
+    it is unchanged until its bucket closes, which is what carry-forward gives, with npz_bar_refresh's builder tail
+    the only writer that moves it.
+
+    Three ways a key leaves here, all fail-closed (dropped = carried forward, never fabricated):
+      HTF            -- suffix is not a base TF
+      UNMAPPED_LABEL -- a string for an integer-dtype key whose label is not in the measured table
+      BAD_TIMESTAMP  -- an ISO availability stamp that would not parse
+    """
+    import numpy as np
+    keep, why = {}, {"HTF": [], "UNMAPPED_LABEL": [], "BAD_TIMESTAMP": []}
+    dtypes = {}
+    try:
+        with np.load(npz_path, allow_pickle=True) as z:
+            for k in z.files:
+                dtypes[k] = np.asarray(z[k]).dtype
+    except Exception:
+        return row, {"PROBE_FAILED": list(row)[:0]}
+    table = label_table()
+    for k, v in row.items():
+        if not (k in BARE_BASE or k.endswith(BASE_SUFFIXES)):
+            why["HTF"].append(k)
+            continue
+        dt_k = dtypes.get(k)
+        if dt_k is not None and dt_k.kind in "iu" and isinstance(v, str):
+            if k.startswith("timestamp"):
+                e = iso_to_epoch(v)
+                if e is None:
+                    why["BAD_TIMESTAMP"].append(k)
+                    continue
+                keep[k] = e
+                continue
+            code = (table.get(k) or {}).get(v)
+            if code is None:
+                why["UNMAPPED_LABEL"].append(f"{k}={v}")
+                continue
+            keep[k] = int(code)
+            continue
+        keep[k] = v
+    return keep, {kk: vv for kk, vv in why.items() if vv}
+
+
 def strip_htf(row):
     """Drop W/M keys from a shipped row. The producing host does not have the history to compute them.
 
@@ -200,10 +273,13 @@ def main():
             counts["WOULD_APPLY"] = counts.get("WOULD_APPLY", 0) + 1
             applied.append({"symbol": sym, "ts": ts, "keys": len(row)})
             continue
-        row, htf = strip_htf(row)
-        if htf:
-            counts["HTF_STRIPPED"] = counts.get("HTF_STRIPPED", 0) + 1
-            log(f"{sym}: stripped {len(htf)} W/M keys from the shipped row (carried forward instead) e.g. {htf[:3]}")
+        n_shipped = len(row)
+        row, dropped = select_base_tf(row, IND / f"{sym}.npz")
+        if dropped:
+            for reason, keys in dropped.items():
+                counts[f"DROP_{reason}"] = counts.get(f"DROP_{reason}", 0) + len(keys)
+            if dropped.get("UNMAPPED_LABEL"):
+                log(f"{sym}: {len(dropped['UNMAPPED_LABEL'])} unmapped labels carried forward instead of guessed: {dropped['UNMAPPED_LABEL'][:4]}")
         row, fixes = sanitize_row(IND / f"{sym}.npz", row)
         try:
             ok = gen._append_row_to_npz(IND / f"{sym}.npz", row)
@@ -212,7 +288,8 @@ def main():
             skipped.append({"symbol": sym, "ts": ts, "why": f"append raised {type(e).__name__}: {e}"[:140]})
         if ok and npz_last_ts(sym) == ts:
             counts["APPLIED"] = counts.get("APPLIED", 0) + 1
-            applied.append({"symbol": sym, "ts": ts, "keys": len(row), "null_fixes": fixes})
+            applied.append({"symbol": sym, "ts": ts, "keys_applied": len(row), "keys_shipped": n_shipped,
+                            "carried_forward": {k: len(v) for k, v in dropped.items()}, "null_fixes": fixes})
             DONE.mkdir(parents=True, exist_ok=True)
             shutil.move(str(f), str(DONE / f.name))
         else:

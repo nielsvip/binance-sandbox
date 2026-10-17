@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 03:30:14 UTC
+# Copilot Status — 2026-10-17 03:36:07 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,7 +6,7 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T03:29:53
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T03:35:55
 
 ## Missed Trades (trader comparison)
 
@@ -18,14 +18,14 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 21 | **Watching for reentry:** 9 | **Reentered:** 0
+**Held:** 21 | **Watching for reentry:** 8 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +2.1%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +2.0%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +1.9%
-- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +1.2%
+- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +2.1%
+- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +1.1%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -34,7 +34,6 @@ _None_
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 0m ago
 - WATCHING: **MANAUSDT** SHORT (crypto) peaked +7.1%, exited 0m ago
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +7.0%, exited 0m ago
-- WATCHING: **ALGOUSDT** SHORT (crypto) peaked +6.2%, exited 0m ago
 - WATCHING: **ATOMUSDT** SHORT (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **DASHUSDT** SHORT (crypto) peaked +4.3%, exited 0m ago
 - WATCHING: **BBUSDT** SHORT (crypto) peaked +4.3%, exited 0m ago
@@ -45,9 +44,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 6
+**Issues (last 1h):** 5
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running

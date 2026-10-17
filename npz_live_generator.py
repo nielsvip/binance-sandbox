@@ -187,15 +187,20 @@ def _compute_row_for_15m_close(
     else:
         tfs = ["3m", "15m", "1h", "4h", "D", "W", "M"]
         base_tf = "15m"
-    # USER 2026-10-17 trickle (Mac computes the bar -> S1 appends it): W/M are computed ONLY on the host that holds
-    # the deep history. MEASURED on the Mac: the *_W.json files it would read are 7 months (stocks, 05:00-ET grid)
-    # and 7.5 weeks (crypto) stale and are not the builder's Monday-00:00Z left-labelled W-MON/MS buckets, and the
-    # 15m history those buckets would have to be resampled from spans 95d / 18d = 14 / 3 weekly bars against the 200
-    # ema_200_W needs. Shipping a weekly key from here would write a WRONG number into every board's input, so the
-    # row carries none: _append_row_to_npz carries W/M forward, which IS the value until the bucket closes, and
-    # tools/npz_bar_refresh.py (deep history + the real builder) remains the only writer that moves a W/M key.
-    if not _is_s1_host():
-        tfs = [t for t in tfs if t not in ("W", "M")]
+    # 2026-10-17: this row NEVER carries a W/M key, on ANY host. Not a trickle-only gate -- the W/M source this
+    # function reads is stale everywhere. MEASURED on both hosts the same day: AAPL_W.json ends 2026-03-23 (7 months
+    # back, on an 05:00-ET grid, not the builder's Monday-00:00Z left-labelled W-MON bucket) and BNBUSDC_W.json ends
+    # 2026-08-24, in klines_cache AND klines_cache_backtest, on the Mac AND on S1. backtest_v8_precompute abandoned
+    # those files for exactly this reason (_crypto_wm_frame: "the old 'append-only contract' kept the stale
+    # authentic *_W.json/*_M.json files (last written 2026-08-26) over the 15m resample ... so W/M arrays froze")
+    # and now builds the frame as authentic-older-history + fresh 15m buckets, which needs history this function
+    # does not have: the 15m span here is 95d for stocks and 18d for crypto = 14 and 3 weekly bars, against the 200
+    # that ema_200_W needs.
+    # It is not a loss. _append_row_to_npz carries an absent per-bar key FORWARD, which is the exact value until the
+    # bucket closes, and tools/npz_bar_refresh.py (deep klines + the real builder) is the only writer that moves a
+    # W/M key. Computing them here only ever wrote a March weekly high onto an October row -- 3 staged stock bars
+    # (ABBV/ACN/ADP) had already done it, timestamp_W=2026-03-23, before tools/npz_bar_ingest.py refused them.
+    tfs = [t for t in tfs if t not in ("W", "M")]
     # We need to handle W/M as well, but they are derived from D; use same compute path.
     # For each TF, try to get df truncated to close_ts
     # Use kline_manager.get_latest or direct cache? Use get_latest which returns closed df.

@@ -1162,8 +1162,9 @@ TIMEFRAMES = {
     # AAPL_W.json is 3657 rows deep but its last bar is 2026-03-23 (7 months stale) on an 05:00-ET grid, not the
     # builder's Monday-00:00Z left-labelled W-MON bucket; the crypto W files end 2026-08-24; and the 15m history the
     # buckets would have to be resampled from spans 95d for stocks / 18d for crypto = 14 / 3 weekly bars against the
-    # 200 that ema_200_W needs. A W value computed on the Mac would therefore be wrong, so npz_live_generator drops
-    # W/M from the TF list off S1 and the shipped row carries no weekly key: _append_row_to_npz CARRIES THEM FORWARD,
+    # 200 that ema_200_W needs -- and S1's copies of those files are just as stale, so this is not a Mac problem.
+    # npz_live_generator therefore drops W/M from its TF list on EVERY host and no live row carries a weekly key:
+    # _append_row_to_npz CARRIES THEM FORWARD,
     # which is the exact value until the bucket closes, and tools/npz_bar_refresh.py (deep history + the real
     # builder) stays the only writer that moves a W/M key.
     # LIVE TRADING IS UNAFFECTED: _schedule_order is ["D","4h","1h","15m","5m","1m"] and does not include W/M, so
