@@ -3655,3 +3655,56 @@ nothing. Split: **crypto** (24/7) n=151 median **29.1 min**, 60% ≤30 min, 91% 
 139/151 and stocks 151/193 are ≥365d. The genuine outliers separate by cause, and the NPZ is never the cause when
 its klines are older: AWEUSDT/AXLUSDT/C98USDT/ICXUSDT had klines from 03:45 the same morning (NPZ-side), while
 ANKRUSDT (4d), BLOK (18d), HL (51d), BK (149d) and CALM (175d) are their own klines being ancient (kline-side).
+
+### 111.6 — CONDA ONLY, AND THE VENV-MOVES-BOARD-NUMBERS FEAR IS MEASURED FALSE (USER 2026-10-17 "we will be using conda only for everything" + "all conda is up to latest so find out why it would be using old numpy before migrating")
+
+**THE TARGET.** Workers: `/home/niels/.conda/envs/binance_env_mac/bin/python`. Mac:
+`/opt/anaconda3/envs/binance_env/bin/python`. Both are py3.11.14 / numpy 2.4.6 / pandas 3.0.6 / scipy 1.17.1 /
+sklearn 1.8.0 — identical, so a script that runs on either host computes the same numbers.
+
+**WHY ONE CONDA ENV STILL SHOWED OLD NUMPY — the question, answered.** `~/.conda/envs/binance_env` on S1/s2 is
+**not a maintained conda env**: created **2025-06-03**, its numpy 1.26.4 has **no conda install record** (only a
+`numpy-1.26.4.dist-info`, i.e. **pip-installed outside conda's control**), and it is pinned below 2 by
+`pyarrow 15.0.2` (`numpy<2`) and `tensorflow-cpu-aws 2.15.0` (`numpy<2.0.0`). `conda update` cannot lift it.
+`binance_env_mac` (2026-10-14) carries neither package. So "conda is up to date" was true — of the current env;
+the laggard was a 2025 leftover that 8 S1 crons, 3 processes and ~150 repo files still named, including
+`persym_baseline_campaign.py` and `build_master_switch_sheet.py`, i.e. baseline/board work silently on old numpy.
+
+**THE FEAR WAS TESTED, NOT ASSUMED.** The standing caution — "the sandbox venv's numpy 2.5.3 / pandas 3.0.5
+against conda's 2.4.6 would move board numbers, so it must be benched through `v15_version_gate` or not at all" —
+is **false for the NPZ build path**. `backtest_v8_precompute.compute_symbol('BNBUSDC','crypto',
+return_arrays=True)` run under the sandbox venv (py3.12.3) and under conda `binance_env_mac` returned
+**946 numeric 1-D arrays over 42,451 rows that are BIT-IDENTICAL: 0 moved values, 0 float-noise differences, 0
+dtype differences, identical key sets.** Conda is additionally strictly MORE capable: the venv has **no scipy**,
+which is precisely why every stocks row recompute failed there (`No module named 'scipy'`, AAPL 0/25 bars) and
+succeeds under conda (25/25). Probe + diff kept at `/tmp/env_numeric_probe.py` and `/tmp/env_diff.py` on S1.
+
+**VERIFY A MIGRATION BY THE EXECUTING SURFACE, NOT BY GREP.** Three surfaces decide what actually runs:
+the crontab, `systemctl show <unit> -p ExecStart` (the **effective** value — a `.service.d/*.conf` drop-in can
+override a venv ExecStart in the base unit, which is why `binance-npz-refresh` read as conda while a venv process
+ran), and the live process list. File greps mislead twice over: they count `backups/`, `.history/` and `.git/`
+(exclude them or the number is meaningless), and the **Mac's** conda env is ALSO named `binance_env`
+(`/opt/anaconda3/envs/binance_env`), so the naive pattern `envs/binance_env/bin/python` matches 157 perfectly
+correct Mac paths alongside the stale worker ones.
+
+**THE VENV KEPT COMING BACK FOR A REASON.** `binance-npz-refresh.service` had a correct conda drop-in from 01:24Z,
+yet the running loop was a venv process started Oct 16 22:13 — because the unit sat `inactive` while
+`tools/npz_loop_keepalive.sh` relaunched the loop on `$ROOT/.venv/bin/python` every 5 min. A migration that leaves
+the *relauncher* behind migrates nothing.
+
+**WHAT WAS CHANGED.** S1+s2 crontabs → 0 non-conda refs; drop-ins for `binance-npz-refresh`,
+`live-failover-watchdog`, `trade-auto-tuner` (both live modules **import-probed** under the target env before
+switching — on this host "present" has meant "crash-loops on import"); `npz_loop_keepalive.sh`;
+`tools/pyinterp.{sh,py}` (stale rung removed — it had listed `binance_env` AHEAD of a *duplicated*
+`binance_env_mac` line, so a host missing that env silently fell through to old numpy); ~149 Mac-repo files
+(Tier 1 = 128 absolute stale-env refs in 108 files; Tier 2 = 80 `.venv` refs in 41 files, applied only to the
+absolute/remote/spawning sites — the ~98 bare-relative hits are mostly fallback rungs *after* conda or docstring
+usage lines and were deliberately left); 58 worker-only legacy launchers edited **in place** on each worker (they
+do not exist in the Mac repo, so they cannot be fixed Mac-side and rsynced); then 73 files/106 lines on S1 and
+71/111 on s2 converted off `.venv`, each syntax-checked with **restore-on-failure**. Both sandbox venvs retired by
+`mv` to `.venv.RETIRED_<ts>` (S1 immediately; s2 via `tools/s2_retire_venv_when_idle.sh` on a `*/10` cron, because
+a `par_path_probe.py` had been running on it for 12 min and killing live parity work to tidy an interpreter is not
+a trade worth making). Pre-edit images: `backups/before_conda_tier1_*.tar.gz` (valid — taken before the edit),
+`backups/before_conda_tier2_PREIMAGE_6a8c18beb_*.tar.gz` (rebuilt from the pre-edit commit after the first attempt
+archived the ALREADY-EDITED files, because the 15-min autosave cron had committed them and `git show HEAD:` was
+therefore post-edit), and per-worker `backups/{conda_worker_local,venv_to_conda}_<ts>/`.
