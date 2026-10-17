@@ -71,6 +71,7 @@ import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen s
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
+import vec_decisions.breakeven_lock as _belm  # 2026-10-17 BREAKEVEN_LOCK + LOSS_PRONE_ENTRY_FILTER (close before a loss; loss-prone entries need filters)
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
@@ -5635,6 +5636,12 @@ class QuickConfig:
     STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
     STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
     STOP_RECLAIM_EXCLUSIVE: bool = True  # inside the window only the strict reclaim may re-enter after a FIXED_STOP (fresh entries unaffected)
+    # 2026-10-17 BREAKEVEN_LOCK + LOSS_PRONE_ENTRY_FILTER (vec_decisions/breakeven_lock.py; flags data/loss_prone_entries.json)
+    BREAKEVEN_LOCK_SCOPE: str = "loss_prone"  # off / loss_prone / all — close a former winner before it turns into a loss
+    BREAKEVEN_LOCK_ARM_PCT: float = 0.5  # 0.5 / 1.0 / 1.5 — best close-basis gain needed to arm
+    BREAKEVEN_LOCK_FLOOR_PCT: float = 0.10  # 0.10 / 0.0 / 0.25 — close when the gain falls back to this
+    LOSS_PRONE_ENTRY_FILTER_ENABLED: bool = True  # loss-prone entry functions need extra filters (boards may switch it off)
+    LOSS_PRONE_ENTRY_MIN_FILTERS: int = 2  # 1 / 2 / 3 of {WT 1h, WT 4h, close vs ema50 1h} with the side
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # only full-close moves >= this qualify (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losses before shrinking (1 / 2)
     QTY_STREAK_LOSS_MULT: float = 0.8  # 0.8 / 0.6 / 0.4 of normal size
@@ -17447,6 +17454,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _rt_fired = (-1, "")
     # 2026-10-17 STOP_RECLAIM_REENTRY inputs (vec_decisions/stop_reclaim.py) — only built when the switch is on
     _sr_on = _srm.enabled(cfg)
+    # 2026-10-17 BREAKEVEN_LOCK / LOSS_PRONE_ENTRY_FILTER inputs — flag list = data/loss_prone_entries.json (tools/loss_close_db.py)
+    try:
+        import loss_prone as _lpm
+
+        _lp_flags = _lpm.flagged("stocks" if str(getattr(cfg, "MODE", "crypto")) == "tradier" else "crypto")
+    except Exception:
+        _lpm, _lp_flags = None, frozenset()
+    _bel_on = _lpm is not None and str(getattr(cfg, "BREAKEVEN_LOCK_SCOPE", "loss_prone") or "off").strip().lower() in ("loss_prone", "all")
+    _lp_on = _lpm is not None and bool(_lp_flags) and bool(getattr(cfg, "LOSS_PRONE_ENTRY_FILTER_ENABLED", True))
+    if _lp_on:
+        _lp_w11, _lp_w21 = _safe(npz, "wt1_1h", n), _safe(npz, "wt2_1h", n)
+        _lp_w14, _lp_w24 = _safe(npz, "wt1_4h", n), _safe(npz, "wt2_4h", n)
+        _lp_e50 = _safe(npz, "ema_50_1h", n)
     _sr_fired = (-1, "")
     if _sr_on:
         _sr_lo, _sr_hi = _safe(npz, "low_15m", n), _safe(npz, "high_15m", n)
@@ -19321,6 +19341,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue  # BLOCKED_DC4 twin (LONG band-entry exempt, like live)
                     if _fx_G["_bt_veto"] is not None and bool(_fx_G["_bt_veto"][i]):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
+                    if _lp_on and _lpm.fn_family(entry_reason) in _lp_flags and not _belm.entry_filters_pass(cfg, is_long, float(px), float(_lp_w11[i]), float(_lp_w21[i]), float(_lp_w14[i]), float(_lp_w24[i]), float(_lp_e50[i])):
+                        continue  # 2026-10-17 LOSS_PRONE_ENTRY_FILTER: a loss-prone function needs the extra filters
                     pos = _open(qty0, px, i, entry_reason)
                     vec_decisions.htf_signal_consume.commit(_hsc, i, bool(entry_sig[i]))
                     if _gm_rebuy:
@@ -20005,6 +20027,26 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
         except Exception:
             pass
+        if _bel_on and pos is not None:  # 2026-10-17 BREAKEVEN_LOCK — close a former winner before it turns into a loss
+            try:
+                _bel_avg = float(pos.get("avg_price") or 0.0)
+                if "_bel_fam" not in pos:
+                    pos["_bel_fam"] = _lpm.fn_family(pos.get("entry_reason"))
+                if _bel_avg > 0 and _belm.lock_in_scope(cfg, pos["_bel_fam"], _lp_flags):
+                    _bel_g = ((px - _bel_avg) / _bel_avg * 100.0) if is_long else ((_bel_avg - px) / _bel_avg * 100.0)
+                    pos["_bel_mfe"] = max(float(pos.get("_bel_mfe", -1e9)), _bel_g)
+                    if int(pos.get("entry_bar", i)) < i and _belm.lock_fires(cfg, pos["_bel_mfe"], _bel_g):
+                        pos["fees"] += abs(pos["qty"] * px) * half_fee
+                        _bel_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
+                        _bel_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                        _bel_rs = f"{_belm.REASON}_peak{pos['_bel_mfe']:.2f}_g{_bel_g:.2f}"
+                        trades.append({"pnl_dollars": _bel_pnl, "pnl_pct": float(_bel_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _bel_rs, "type": "CLOSE", "ts": _bel_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _bel_rs, "bars_held": int(i - pos["entry_bar"])})
+                        pos = None
+                        cd = cooldown_bars
+                        has_closed_before = True
+                        continue
+            except Exception:
+                pass
         # 2026-10-06 USER MANDATE twin — UNCONDITIONAL DC STOP BOTH SIDES (hardcoded 4h + switched 1h/15m, ±0.25%). No veto.
         try:
             _uh_j = (

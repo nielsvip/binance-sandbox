@@ -638,11 +638,13 @@ class TradingHealth:
         self.stocks = {a: LogFollower(logdir / f"tradier_manage_{a}.log", _stock_events, 1048576) for a in STOCK_ACCOUNTS}
         self._engine_dead_since = {}
 
-    def _engine_dead_s(self, acct, now, n_alive, mgr_last_any):
+    def _engine_dead_s(self, acct, now, n_alive, mgr_last_any, starting=False):
         """Seconds this account's DECISION ENGINE has been continuously dead, 0 when healthy. Dead = no ez_manage
         process at all, or a process that has written nothing for MANAGE_SILENT_S (wedged). Measured here, per
         account, because nothing else was: traders_dead needs all five gone and broker_unreachable needs 3 of 5."""
-        dead = n_alive <= 0 or (mgr_last_any is not None and now - mgr_last_any >= MANAGE_SILENT_S)
+        # ANTI-FLAP: a just-restarted engine has not had time to write its first log line, and silence is
+        # measured from the last LINE — without this it reads as long-dead the instant it comes back.
+        dead = (not starting) and (n_alive <= 0 or (mgr_last_any is not None and now - mgr_last_any >= MANAGE_SILENT_S))
         if not dead:
             self._engine_dead_since.pop(acct, None)
             return 0.0
@@ -657,7 +659,8 @@ class TradingHealth:
                 "stocks": self._stocks(now, procs.get("stocks", {}), "stocks" in fenced, _ages.get("stocks") or {}),
                 "measured_at": iso(now)}
 
-    def _crypto(self, now, alive, fenced):
+    def _crypto(self, now, alive, fenced, ages=None):
+        ages = ages or {}
         accounts, dead, considered = {}, [], 0
         for acct, f in self.crypto.items():
             for follower in f.values():
@@ -682,7 +685,10 @@ class TradingHealth:
                     classes[e[2]] = classes.get(e[2], 0) + 1
             n_alive = int(alive.get(acct, 0))
             active = n_alive > 0 or (silent_s is not None and silent_s < HEALTH_KEEP_S)
-            broker_dead = bool(active and no_ok_s is not None and no_ok_s >= BROKER_DEAD_S and (consec >= BROKER_ERR_MIN or (silent_s is not None and silent_s >= BROKER_DEAD_S)))
+            # ANTI-FLAP: an engine younger than the grace is STARTING, not broker-dead (see ENGINE_STARTUP_GRACE_S).
+            _age = ages.get(acct)
+            starting = _age is not None and _age < ENGINE_STARTUP_GRACE_S
+            broker_dead = bool(active and not starting and no_ok_s is not None and no_ok_s >= BROKER_DEAD_S and (consec >= BROKER_ERR_MIN or (silent_s is not None and silent_s >= BROKER_DEAD_S)))
             considered += 1 if active else 0
             if broker_dead:
                 dead.append(acct)
@@ -692,7 +698,7 @@ class TradingHealth:
                               "opens_blocked_broker_unreachable_window": len(mgr.window(now, ORDER_WINDOW_S, "blocked")),
                               "manage_broker_fetch_failed_window": len(mgr.window(now, ORDER_WINDOW_S, "fetch_failed")), "broker_dead": broker_dead,
                               "manage_log_silent_s": None if mgr.last_any is None else round(now - mgr.last_any, 1),
-                              "engine_dead_s": self._engine_dead_s(acct, now, n_alive, mgr.last_any)}
+                              "engine_dead_s": self._engine_dead_s(acct, now, n_alive, mgr.last_any, starting)}
         kinds, reasons = [], []
         # 2026-10-15 SELF-LOCKING FENCE (USER live takeover test): a FENCED venue is deliberately not trading, so
         # its silence is never a fault. Once ez_positions_service_main/ez_positions_realtime joined the fence list,
@@ -725,7 +731,8 @@ class TradingHealth:
                 "traders_alive": traders, "accounts_considered": considered, "broker_dead_accounts": dead,
                 "account_dead_accounts": acct_dead, "accounts": accounts}
 
-    def _stocks(self, now, alive, fenced):
+    def _stocks(self, now, alive, fenced, ages=None):
+        ages = ages or {}
         for follower in self.stocks.values():
             follower.poll(now)
         if not stocks_applicable(now):
@@ -741,8 +748,12 @@ class TradingHealth:
             silent_s = (now - f.last_any) if f.last_any else None
             last_sub = f.last.get("submitted")
             lag_max = max(lags) if lags else 0.0
-            order_dead = bool(n_alive and submitted == 0 and (stalls >= 1 or lag_max >= LOOP_LAG_DEAD_S or (silent_s is not None and silent_s >= STOCK_SILENT_S)))
-            broker_bad = bool(n_alive and submitted == 0 and (auth >= 1 or fetch_failed >= BROKER_ERR_MIN))
+            # ANTI-FLAP (same reasoning as crypto): a just-restarted stock trader has submitted nothing YET;
+            # judging it before ENGINE_STARTUP_GRACE_S makes every takeover manufacture the next one.
+            _age = ages.get(acct)
+            starting = _age is not None and _age < ENGINE_STARTUP_GRACE_S
+            order_dead = bool(n_alive and not starting and submitted == 0 and (stalls >= 1 or lag_max >= LOOP_LAG_DEAD_S or (silent_s is not None and silent_s >= STOCK_SILENT_S)))
+            broker_bad = bool(n_alive and not starting and submitted == 0 and (auth >= 1 or fetch_failed >= BROKER_ERR_MIN))
             considered += 1 if n_alive else 0
             if order_dead:
                 opd.append(acct)
