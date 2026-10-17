@@ -155,6 +155,14 @@ def select_base_tf(row, npz_path):
                     continue
                 keep[k] = e
                 continue
+            # A NUMBER shipped as a string is not a label. MEASURED 2026-10-17: wt_cross_bars_ago_15m arrived as
+            # "4"/"7"/"12" and was being dropped as an unmappable label, carrying a stale bar count forward on
+            # every trickled bar. Only a genuinely non-numeric string needs the measured table.
+            try:
+                keep[k] = int(float(v))
+                continue
+            except ValueError:
+                pass
             code = (table.get(k) or {}).get(v)
             if code is None:
                 why["UNMAPPED_LABEL"].append(f"{k}={v}")
