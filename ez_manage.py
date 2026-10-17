@@ -8214,6 +8214,10 @@ CRYPTO_MIN_SIZE_CAPS = {
 }
 
 
+try:
+    from per_sym_store import LIVE_AUTHORITY_KNOBS as _LIVE_AUTHORITY_EZ
+except Exception:
+    _LIVE_AUTHORITY_EZ = frozenset()
 _CRYPTO_MODE_CEILING_LOGGED: set = set()
 
 
@@ -8305,6 +8309,8 @@ def _psym_get(symbol: str, side: str, knob: str, default):
         return SUB15M_BLOCKED_SWITCHES[knob]
     if knob in EXCHANGE_RESTING_STOPS:
         return True
+    if knob in _LIVE_AUTHORITY_EZ:  # USER 2026-10-17 total parity: config only — never a frozen per-sym / cat_side value
+        return getattr(_ezm_base_config, knob, default)
     _cmin = _crypto_min_size_cap(knob, default)
     if _cmin is not None:
         return _cmin
@@ -8750,7 +8756,7 @@ class _PerSymProxy:
     def __getattr__(self, name):
         inner = object.__getattribute__(self, "_inner")
         ctx = _psym_ctx_var.get()
-        if ctx is not None and not name.startswith("_"):
+        if ctx is not None and not name.startswith("_") and name not in _LIVE_AUTHORITY_EZ:
             try:
                 sym, side = ctx
                 if sym and side:
@@ -8791,7 +8797,7 @@ class _PerSymProxy:
         inner = object.__getattribute__(self, "_inner")
         # Direct per-sym intercept for attribute access
         ctx = _psym_ctx_var.get()
-        if ctx is not None and not name.startswith("_") and name.isupper():
+        if ctx is not None and not name.startswith("_") and name.isupper() and name not in _LIVE_AUTHORITY_EZ:
             try:
                 sym, side = ctx
                 if sym and side:

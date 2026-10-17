@@ -7758,6 +7758,10 @@ def _sub15m_blocked(param) -> bool:
 
 
 EXCHANGE_RESTING_STOPS_TR = {"DC_HARD_STOP_15M_ENABLED"}
+try:
+    from per_sym_store import LIVE_AUTHORITY_KNOBS as _LIVE_AUTHORITY_TR
+except Exception:
+    _LIVE_AUTHORITY_TR = frozenset()
 
 
 def _cfg(
@@ -7780,6 +7784,8 @@ def _cfg(
     # (ez_manage.EXCHANGE_RESTING_STOPS). 39 live sym_sides were carrying False when this was added.
     if param in EXCHANGE_RESTING_STOPS_TR:
         return True
+    if param in _LIVE_AUTHORITY_TR:  # USER 2026-10-17 total parity: config only — never a frozen per-sym / cat_side value
+        return getattr(config, param, default)
     _test_found, _test_value = _v8_sweep_override(param)
     if _test_found:
         return _test_value

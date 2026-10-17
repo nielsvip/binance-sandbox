@@ -553,6 +553,19 @@ _OVR_MEMO: dict = {}  # 2026-10-14: sym_side -> (monotonic ts, overrides dict); 
 # every call deep-copied the full entry (full_config) -> tradier_manage event loop frozen up to 179 s -> no exits reached the broker.
 
 _ARTEFACT_KEYS = ("MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER")
+# USER 2026-10-17 "we need total parity" / "make sure every sym_side trades the EXACT bars its best settings dict demands":
+# parity, exit-guarantee and exposure-mode switches are LIVE AUTHORITY — they say HOW live follows the board, never what
+# the board measured (no engine or vec_decisions read any of them). Frozen into every full set at board time, they
+# silently overrode config: STRICT_VEC_PARITY_GATE_EXITS=False on 368 stock + 329 crypto sets, PARITY_VEC_EXACT_MODE=False
+# on 85 stock sets (snapshots older than the 2026-10-13 switch-on). Stripped here AND pinned to config in
+# ez_manage._psym_get / _PerSymProxy and tradier_manage._cfg (the cat_side layer carries frozen values too).
+LIVE_AUTHORITY_KNOBS = frozenset({
+    "PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SOURCE", "PARITY_VEC_EXACT_SET_DIR",
+    "PARITY_VEC_EXACT_LIVE_SIZING", "PARITY_VEC_EXACT_SNAPSHOT_FINAL", "STRICT_VEC_PARITY_MODE", "STRICT_VEC_PARITY_SHADOW",
+    "STRICT_VEC_PARITY_GATE_ENTRIES", "STRICT_VEC_PARITY_GATE_EXITS", "TRADIER_HERMETIC_ENFORCE", "TRADIER_NO_BOARD_ENTRY_BLOCK",
+    "VEC_EXACT_STALE_FALLBACK_BARS", "VEC_EXACT_BAR_HARD_STOP_ENABLED", "EXIT_GUARANTEE_ENABLED", "EXIT_GUARANTEE_FORCE_ENABLED",
+    "CRYPTO_MINIMUM_TRADING_MODE", "CRYPTO_MODE_SIZE_CEILING_ENABLED",
+})
 
 
 def _mandate_sanitize(ov: dict) -> dict:
@@ -566,6 +579,8 @@ def _mandate_sanitize(ov: dict) -> dict:
     purged from the cat_side layer and all 736 live rows. A dropped key falls through to the cat_side default.
     """
     for k in _ARTEFACT_KEYS:
+        ov.pop(k, None)
+    for k in LIVE_AUTHORITY_KNOBS:
         ov.pop(k, None)
     for k in [k for k in ov if k.startswith("ABLATION_")]:
         ov.pop(k, None)
