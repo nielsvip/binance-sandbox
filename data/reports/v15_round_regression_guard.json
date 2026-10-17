@@ -1,38 +1,23 @@
 {
- "at": "2026-10-17T03:26:00Z",
+ "at": "2026-10-17T04:26:03Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 3,
-   "per_hour": 1.5,
-   "improved_vs_best_start": 3,
-   "mean_uplift_vs_best_start": 51.5325,
-   "median_uplift": 62.2267,
+   "published_n": 1,
+   "per_hour": 0.5,
+   "improved_vs_best_start": 1,
+   "mean_uplift_vs_best_start": 68.7114,
+   "median_uplift": 68.7114,
    "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
-    {
-     "symside": "INJUSDT_LONG",
-     "published_at": 1792202730.1928775,
-     "final_gain": 60.80044998727176,
-     "best_start_gain": -1.4262408594329197,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 2,
-     "baseline_gain": -1.4262408594329197,
-     "npz_ts_last": 1792197900.0,
-     "npz_md5": "f8a37cf5af98ee35a09bb2e2abe7b084",
-     "npz_bars": 146105,
-     "bh": 59.28911602186776,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 1.34
-    },
     {
      "symside": "TIAUSDC_SHORT",
      "published_at": 1792206978.4667654,
@@ -47,21 +32,6 @@
      "bh": -98.84426232966672,
      "verdict": "BEST_EFFORT",
      "npz_age_h_at_publish": 1.52
-    },
-    {
-     "symside": "WPM_SHORT",
-     "published_at": 1792200480.5677369,
-     "final_gain": 28.185886607094634,
-     "best_start_gain": 4.526464979104043,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 2,
-     "baseline_gain": 4.526464979104043,
-     "npz_ts_last": 1792179900.0,
-     "npz_md5": "34539b38f69ca01d51bd02c96d40f975",
-     "npz_bars": 14525,
-     "bh": 10.68921584781922,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 5.72
     }
    ],
    "error": null

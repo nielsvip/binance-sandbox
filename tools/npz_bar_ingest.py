@@ -288,11 +288,53 @@ def main():
             continue
         staged.append((int(d.get("ts") or 0), f, d))
     staged.sort()
+    # One worker per SYMBOL, symbols in parallel. MEASURED 2026-10-17: a single-threaded batch applied 132 bars in
+    # ~6 min (~2.7 s each -- _append_row_to_npz rewrites the whole store through np.savez_compressed), so the
+    # symbols late in the batch slipped a second bar and crypto sat at 1-2 bars behind (75 at 1, 76 at 2) instead
+    # of uniformly 1. Threads are the right pool here: the cost is zlib + file I/O, both of which drop the GIL.
+    # Per-symbol ordering is preserved (oldest staged bar first) because a two-bar backlog must apply in sequence,
+    # and each symbol takes npz_bar_refresh's OWN sym_lock so this can never write a store the refresher is tailing.
+    by_sym = {}
     for ts, f, d in staged:
+        by_sym.setdefault((d.get("symbol") or "?"), []).append((ts, f, d))
+    lock = __import__("threading").Lock()
+
+    def bump(key, n=1):
+        """counts[k] = counts.get(k,0)+n is a read-modify-write and loses increments across threads."""
+        with lock:
+            counts[key] = counts.get(key, 0) + n
+
+    def handle(items):
+        """Hold npz_bar_refresh's own per-symbol lock for the whole symbol, so this and the refresher's tail pass
+        can never write the same store at once (the claim made in the comment above, enforced here)."""
+        sym = items[0][2].get("symbol") if items else None
+        fd = None
+        if a.apply and sym:
+            try:
+                from tools.npz_bar_refresh import sym_lock
+                fd = sym_lock(sym)
+                if fd is None:
+                    bump("SKIP_REFRESHER_HOLDS_SYMBOL")
+                    return
+            except Exception:
+                fd = None
+        try:
+            for ts, f, d in items:
+                one_bar(ts, f, d)
+        finally:
+            if fd is not None:
+                try:
+                    import fcntl
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                    os.close(fd)
+                except OSError:
+                    pass
+
+    def one_bar(ts, f, d):
         sym, mode, row = d.get("symbol"), d.get("mode") or "crypto", d.get("row") or {}
         if not sym or not row or not ts:
-            counts["MALFORMED"] = counts.get("MALFORMED", 0) + 1
-            continue
+            bump("MALFORMED")
+            return
         age_h = (now - ts) / 3600.0
         last = npz_last_ts(sym)
         if last is None:
@@ -301,34 +343,35 @@ def main():
             # The file is filed under rejected/ rather than left in place: MEASURED 2026-10-17, 293 of 507 staged
             # bars were NO_NPZ, and leaving them would re-read and re-report the same files every cycle and grow the
             # inbox by ~28k files/day (293 x 96 cycles).
-            counts["NO_NPZ"] = counts.get("NO_NPZ", 0) + 1
-            no_npz_syms.add(sym)
+            bump("NO_NPZ")
+            with lock:
+                no_npz_syms.add(sym)
             if a.apply:
                 claim(f, REJECTED)
-            continue
+            return
         if ts <= last:
-            counts["ALREADY_HAVE"] = counts.get("ALREADY_HAVE", 0) + 1
+            bump("ALREADY_HAVE")
             if a.apply:
                 claim(f, DONE)
-            continue
+            return
         if age_h > a.max_age_h:
-            counts["TOO_OLD"] = counts.get("TOO_OLD", 0) + 1
+            bump("TOO_OLD")
             skipped.append({"symbol": sym, "ts": ts, "why": f"staged bar {age_h:.1f}h old (> {a.max_age_h}h)"})
-            continue
+            return
         hole = klines_between(sym, mode, last, ts)
         if hole:
-            counts["HOLE_LEFT_TO_REFRESHER"] = counts.get("HOLE_LEFT_TO_REFRESHER", 0) + 1
+            bump("HOLE_LEFT_TO_REFRESHER")
             skipped.append({"symbol": sym, "ts": ts, "why": f"{len(hole)} of its own bars sit between {last} and {ts}"})
-            continue
+            return
         if not a.apply:
-            counts["WOULD_APPLY"] = counts.get("WOULD_APPLY", 0) + 1
+            bump("WOULD_APPLY")
             applied.append({"symbol": sym, "ts": ts, "keys": len(row)})
-            continue
+            return
         n_shipped = len(row)
         row, dropped = select_base_tf(row, IND / f"{sym}.npz")
         if dropped:
             for reason, keys in dropped.items():
-                counts[f"DROP_{reason}"] = counts.get(f"DROP_{reason}", 0) + len(keys)
+                bump(f"DROP_{reason}", len(keys))
             if dropped.get("UNMAPPED_LABEL"):
                 log(f"{sym}: {len(dropped['UNMAPPED_LABEL'])} unmapped labels carried forward instead of guessed: {dropped['UNMAPPED_LABEL'][:4]}")
         row, fixes = sanitize_row(IND / f"{sym}.npz", row)
@@ -338,13 +381,29 @@ def main():
             ok = False
             skipped.append({"symbol": sym, "ts": ts, "why": f"append raised {type(e).__name__}: {e}"[:140]})
         if ok and npz_last_ts(sym) == ts:
-            counts["APPLIED"] = counts.get("APPLIED", 0) + 1
+            bump("APPLIED")
             applied.append({"symbol": sym, "ts": ts, "keys_applied": len(row), "keys_shipped": n_shipped,
                             "carried_forward": {k: len(v) for k, v in dropped.items()}, "null_fixes": fixes})
             claim(f, DONE)
         else:
-            counts["APPEND_FAILED"] = counts.get("APPEND_FAILED", 0) + 1
+            bump("APPEND_FAILED")
             skipped.append({"symbol": sym, "ts": ts, "why": "append returned False or the tail did not move"})
+
+    if a.apply:
+        from multiprocessing.pool import ThreadPool
+        workers = max(1, min(int(os.environ.get("NPZ_INGEST_WORKERS", "8")), len(by_sym) or 1))
+        log(f"applying {len(staged)} staged bars across {len(by_sym)} symbols on {workers} workers")
+        pool = ThreadPool(workers)
+        try:
+            for _ in pool.imap_unordered(handle, list(by_sym.values())):
+                pass
+        finally:
+            pool.close()
+            pool.join()
+    else:
+        for items in by_sym.values():
+            handle(items)
+
     log(f"{'APPLIED' if a.apply else 'DRY-RUN'} inbox={len(files)} {counts}")
     if no_npz_syms:
         log(f"NO_NPZ: {len(no_npz_syms)} symbols this host holds no NPZ for (filed under rejected/, never created): "

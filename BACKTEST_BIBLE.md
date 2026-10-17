@@ -3528,3 +3528,96 @@ STILL TO DO — LOCKED FILES, 21 sites (CLAUDE.md STEP 0b; HANDS_FREE explicitly
 `ez_manage.py` 13, `ez_prices.py` 2, `utils.py` 2 (`force_usdc_if_needed`/`force_usdc_in_list`, whose callers are
 `ez_positions_service.py` and `ez_mark_prices.py`), `ez_positions_quick.py` 2, `ez_double.py` 1,
 `ez_mark_prices.py` 1 — plus `vec_decisions/small_account_sizer.py` in the same pass for parity.
+
+### 111.4 — THE MAC COMPUTES THE BAR, S1 APPENDS IT (USER 2026-10-17 "we want to use macbook for the latest npz bar calculations for both tradier and ez -> rsync to s1 -> s1 adds it immediately to the existing npz's. No compute wasted as macbook already did the computing within the indicator scripts; s1 never has to rebuild npz's it just uses the updates just like it appends the klines without fetching them")
+
+**THE PATH.** `ez_indicators.py` / `tradier_indicators.py` already call `npz_live_generator.update_npz_for_symbol`
+every 15 min. Off S1 that call used to `return False` on its first line. It now computes the row with the live
+calculator and stages it as JSON (`npz_live_generator.export_bar_for_symbol` → `data/npz_bar_outbox/`);
+`tools/npz_bar_push_s1.sh` (Mac cron `* * * * *`, `--remove-source-files`) ships it to
+`data/npz_bar_inbox/` on S1; `tools/npz_bar_ingest.py` (S1 cron `*/2`) applies it through
+`npz_live_generator._append_row_to_npz` — the SAME function that writes a bar when the generator runs on S1.
+Nothing is reimplemented, nothing is rebuilt, and a symbol with no NPZ is never created from a shipped bar (that
+would trigger the full precompute this path exists to avoid).
+
+**THE ROW MAY ONLY MOVE BASE-TF (15m) KEYS. HTF CARRIES FORWARD. THIS IS NOT A COMPROMISE, IT IS THE TRUTH.**
+`_append_row_to_npz` carries a per-bar key the row does not supply forward (`v = arr[-1]`), and for a 1h/4h/D/W/M
+key that IS the value until its bucket closes. Measured proof that it must work this way, from 75 recomputed rows
+(`tools/npz_label_code_derive.py`, `data/reports/npz_label_code_derive.json`): every 15m categorical maps to its
+stored int8 code UNANIMOUSLY (`wt_momentum_state_15m` {EXHAUST_DOWN:-2, IMPULSE_DOWN:-1, IMPULSE_UP:1,
+EXHAUST_UP:2}, `wt_peak_structure_15m` {HH:1, LH:-1}, `bar_pattern_15m` 17 labels, `ha_15m`, `bar_vol_regime_15m`,
+`wt_wave_phase_15m`), while EVERY HTF categorical CONFLICTS — `wt_cross_4h` BEAR splits -1/+1 64:11, `ha_1h` green
++1/-1 28:13, `wt_wave_phase_4h` EXPANDING +1/-1 57:10. The cause is not noise and more samples cannot fix it: the
+HTF value stored on a 15m row is the builder's AS-OF BROADCAST of the last closed HTF bar
+(`_broadcast_asof_indices`), and a live recompute reads that TF's own latest close instead. `npz_bar_refresh.py`
+(deep klines + the real builder) stays the only writer that moves an HTF key.
+
+**W AND M ARE NEVER COMPUTED LIVE, ON ANY HOST (USER "W is onluy for stocks not crypto").**
+`npz_live_generator._compute_row_for_15m_close` drops W/M from its TF list unconditionally. The W/M source it
+would read is stale EVERYWHERE: measured 2026-10-17 on the Mac AND S1, in `klines_cache` AND
+`klines_cache_backtest`, `AAPL_W.json` ends **2026-03-23** (7 months back, on an 05:00-ET grid, not the builder's
+Monday-00:00Z left-labelled `W-MON` bucket) and `BNBUSDC_W.json` ends **2026-08-24**.
+`backtest_v8_precompute._crypto_wm_frame` abandoned those files for exactly this reason ("the old 'append-only
+contract' kept the stale authentic `*_W.json`/`*_M.json` files … so W/M arrays froze") and now builds the frame as
+authentic-older-history + fresh 15m buckets, which needs history the live calculator does not have: its 15m span is
+95d for stocks and 18d for crypto = **14 and 3 weekly bars against the 200 `ema_200_W` needs**. This was not
+theoretical — 3 staged stock bars (ABBV/ACN/ADP) carried 118 W + 118 M keys with `timestamp_W=2026-03-23` and would
+have written a March weekly high onto an October row; `tools/npz_bar_ingest.py:strip_htf()` refused them. W/M were
+added to `tradier_indicators.TIMEFRAMES` only so a host WITH the deep history can ask for them
+(`compute(df, symbol, "W")` used to raise `KeyError: 'W'`); `WT_TF_PARAMS_STOCK` was deliberately NOT touched,
+because `wavetrend()` does `.get(tf, <default>)` and the builder's stored W/M wavetrend used that default.
+
+**FAIL-CLOSED, THREE WAYS, ALL "CARRIED FORWARD" AND NEVER FABRICATED.** `select_base_tf()` drops a key as
+`HTF` (not a base TF), `UNMAPPED_LABEL` (a non-numeric string for an integer key whose label is not in the measured
+table — never guessed) or `BAD_TIMESTAMP`. A number shipped as a string is not a label: `wt_cross_bars_ago_15m`
+arrives as `"4"` and is coerced, not dropped. `sanitize_row()` maps JSON null to the store's own "no value" (0 for
+numeric dtypes; an object array keeps None). The measured table lives in `data/npz_label_codes.json` and is written
+for base-TF keys ONLY, one (key,label) pair at a time, each one unanimous.
+
+**WHAT IT FIXED, MEASURED THE SAME NIGHT.** Before the base-TF selection every crypto append died on
+`key wt_cross_15m (int8) value 'BULL'` — 103-110 `APPEND_FAILED` per cycle, zero bars applied. After:
+**`APPLIED: 132`, `APPEND_FAILED: 0`**. ETHUSDC went 40128 → 40129 rows with `high_W` unchanged at 2736.47, which
+is carry-forward working. Producer/transport timing over 1231 staged bars: bar close → computed on the Mac
+**17.0 min median** (p90 18.5), computed → on S1 disk **1.7 min**. The producer term is the Mac's own 15m klines
+being up to one bar behind at the moment the indicator cycle reads them (measured 04:19Z, 4 min after a close:
+30 symbols 0 bars behind, 36 one bar behind), so the ingest cadence was raised 8x/hour → `*/2`.
+
+**LOCK: ONE FILE, ONE OWNER.** `npz_bar_ingest.py` takes `/tmp/npz_bar_ingest.lock` itself (`self_lock()`), so an
+operator run and the cron can never interleave. The cron's own `flock -n` wrapper on that SAME path was therefore
+REMOVED — with both, every cron run saw its own parent's lock and exited "another ingest holds the lock", and
+ingestion stopped dead from 03:47Z to 04:18Z (04:03/04:08/04:18 all no-ops). A `claim()` that tolerates
+`FileNotFoundError` replaced the bare `shutil.move`, which had killed a whole batch mid-apply when two instances
+globbed the same file. NO_NPZ bars are filed under `inbox/rejected/` and pruned after 6 h: 293 of 507 staged files
+were NO_NPZ and leaving them in place would have grown the inbox ~28k files/day.
+
+### 111.5 — THE DEEPEST COPY IS OFTEN IN A PURGE DIR (USER 2026-10-17 "that is RIDICULOUS … we have >365D npz's for EVERYTHING and they are ALL <15mm old")
+
+**NO_NPZ 293 WAS A FILE COUNT, NOT A SYMBOL COUNT** — 8 staged bars each for 35 distinct symbols. The real finding
+was bigger. Measured against the 566-symbol tradeable union: S1's live indicator dir held **332** NPZs while
+`indicators/_quarantine` held **482**, `.purged_npz/20261013002948` **191** and `.purged_variants/20261012234331`
+**262**, and s2's live dir held **681**. 62 symbols were MISSING from S1 live while a clean 900s-grid copy with
+400-1875 days of span sat in the purge dir (C98USDT 1875d, CELOUSDT 1841d, BOMEUSDC 901d); 39 more were live but
+shallower by >30d. `tools/npz_repair.local_roots()`/`peer_roots()` now search the quarantine and purge dirs and
+s2's `npz_before_history_rebuild_*` — they are not junk, they are where the deepest stores were.
+
+**RANK BY SPAN ON A VALID GRID, NEVER BY ROW COUNT.** A first pass ranked candidates by rows and "found" STORJUSDT
+at 1,011,590 rows vs 207,076 live and PLTR at 123,832 vs 3,924 — both **1-minute-grid** stores, not deeper 15m
+ones, and `npz_repair` correctly refused both (`grid_ok`: 600 < dt_med < 1200). The recurring **20707.7d** span
+(BNO, CIEN, CLX) is the epoch-0 junk-row signature `NPZ_MAX_SPAN_DAYS=4000` exists to reject.
+
+**A DEEP STORE THAT CANNOT BE TAILED IS HALF A REPAIR, AND MUST SAY SO.** `npz_repair` labelled every adoption
+`adopted+topped_up` unconditionally. AXLUSDT and AWEUSDT were adopted from the purge dir and wore that label while
+`topup()` had returned `REFUSE_LEGACY_HTF_ALIGN` both times — those stores carry no `htf_align` key at all, so
+`npz_bar_refresh` refuses them forever (appending would double-shift their causal rows, the ASTERUSDT lesson) and
+they sat **422 h stale under a success label**. The label now reports the real top-up status and names
+`ADOPTED BUT NOT TAILABLE — needs rebuild`; both were then rebuilt from their own deep, fresh klines (46,547 /
+42,449 15m rows). Only 2 of 155 crypto stores were ever in this state, and `--rebuild` is still explicit-only.
+RULE#4 is respected throughout: ABBV and AGCO were skipped `board in flight (RULE#4 freeze)` and must be requeued,
+never forced.
+
+**FRESHNESS MUST BE REPORTED PER VENUE OR IT IS A LIE.** A single median over all NPZs read 488 min and meant
+nothing. Split: **crypto** (24/7) n=151 median **29.1 min**, 60% ≤30 min, 91% ≤45 min; **stocks** n=193 median
+505 min, which is CORRECT at 04:15Z because the session closed at 20:00Z — only 6 exceeded 600 min. Depth: crypto
+139/151 and stocks 151/193 are ≥365d. The genuine outliers separate by cause, and the NPZ is never the cause when
+its klines are older: AWEUSDT/AXLUSDT/C98USDT/ICXUSDT had klines from 03:45 the same morning (NPZ-side), while
+ANKRUSDT (4d), BLOK (18d), HL (51d), BK (149d) and CALM (175d) are their own klines being ancient (kline-side).
