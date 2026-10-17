@@ -45,10 +45,17 @@ try: import netifaces
 except ImportError: NETIFACES_AVAILABLE=False
 def _resolve_local_bind_kwargs():
     potential_ips=[]
-    if os.environ.get("RUN_LOCALLY","").lower() in ("1","true","yes"): pass
-    elif ENVIRONMENT=="server" and not os.environ.get("RUN_LOCALLY"): potential_ips.extend(["49.13.32.80", "157.180.125.52"])
+    # USER 2026-10-17 ("ez_ trading with latest prices and indicators can never be down > 3m"): BINANCE_LOCAL_IP
+    # goes FIRST. It used to be appended AFTER the hardcoded server pool, and the loop below picks the first
+    # candidate that BINDS -- but binding says nothing about a ban. MEASURED that day: 49.13.32.80 is not an
+    # address on this host at all (bind fails, http=000) and 157.180.125.52 was Binance rate-limit banned
+    # (code -1003) yet binds fine, so the old order always won with the banned IP and the operator's override was
+    # dead code. 49.13.32.80 is dropped for the same reason; the netifaces sweep below still finds every real local
+    # address, so nothing is lost.
     env_ip=os.environ.get("BINANCE_LOCAL_IP")
     if env_ip: potential_ips.append(env_ip)
+    if os.environ.get("RUN_LOCALLY","").lower() in ("1","true","yes"): pass
+    elif ENVIRONMENT=="server" and not os.environ.get("RUN_LOCALLY"): potential_ips.extend(["5.75.211.216", "49.13.39.233", "157.180.125.52"])
     if NETIFACES_AVAILABLE:
         try:
             for interface in netifaces.interfaces():

@@ -14027,6 +14027,32 @@ def _size_qty(cfg, dollar_size, px):
     return dollar_size / px if px > 0 else 0.0
 
 
+
+def _running_ext(state, arr, start, end, is_min):
+    """2026-10-17 speed: exact incremental nanmin/nanmax of arr[start:end] for a growing end (same start) — replaces a full-segment
+    np.nanmin per flat bar (O(bars since exit) each). Same value as float(np.nanmin(arr[start:end])) (nan when all-nan, 0.0 when empty)."""
+    if end <= start:
+        return 0.0
+    if state[0] != start or state[1] > end or state[1] < start:
+        seg = arr[start:end]
+        with np.errstate(all="ignore"):
+            import warnings as _w
+
+            with _w.catch_warnings():
+                _w.simplefilter("ignore", RuntimeWarning)
+                state[2] = float(np.nanmin(seg) if is_min else np.nanmax(seg))
+        state[0], state[1] = start, end
+        return state[2]
+    ext = state[2]
+    for j in range(state[1], end):
+        v = float(arr[j])
+        if v != v:
+            continue
+        if ext != ext or (v < ext if is_min else v > ext):
+            ext = v
+    state[1], state[2] = end, ext
+    return ext
+
 def _bar_minutes(cfg):
     tf = getattr(cfg, "BASE_TF", "15m")  # 2026-10-04 parity cut: live-parity fallback
     try:
@@ -17453,6 +17479,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _rt_fired = (-1, "")
     # 2026-10-17 STOP_RECLAIM_REENTRY inputs (vec_decisions/stop_reclaim.py) — only built when the switch is on
     _sr_on = _srm.enabled(cfg)
+    _sr_xst, _rt_xst = [-1, -1, 0.0], [-1, -1, 0.0]  # 2026-10-17 speed: running-extreme state (_running_ext)
     # 2026-10-17 PEAK_GIVEBACK twin / LOSS_PRONE_ENTRY_FILTER inputs — flag list = data/loss_prone_entries.json (tools/loss_close_db.py)
     try:
         import loss_prone as _lpm
@@ -18368,8 +18395,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _sr_last is not None and _srm.armed(_sr_last.get("exit_reason") or _sr_last.get("reason"), _sr_last.get("entry_reason")):
                     _sr_xb = int(_sr_last.get("bar_exit", i))
                     _sr_lvl = float(_sr_last.get("fixed_stop_level") or _sr_last.get("exit_price") or 0.0)
-                    _sr_seg = (_sr_lo if is_long else _sr_hi)[max(0, _sr_xb) : i + 1]
-                    _sr_ext = float(np.nanmin(_sr_seg) if is_long else np.nanmax(_sr_seg)) if len(_sr_seg) else 0.0
+                    _sr_ext = _running_ext(_sr_xst, (_sr_lo if is_long else _sr_hi), max(0, _sr_xb), i + 1, is_long)
                     if _srm.fire(cfg, is_long, _sr_lvl, i - _sr_xb, _sr_ext, float(px), float(_sr_hi[i]), float(_sr_lo[i]), float(_sr_w1[i]), float(_sr_w2[i]), float(_sr_vel[i]), float(_sr_d4l[i]), float(_sr_d4h[i]), float(_sr_w14[i]), float(_sr_w24[i]), float(_sr_e50[i])):
                         _sr_fired = (i, _srm.REASON)
                         cd = 0
@@ -18620,8 +18646,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _rt_last = next((t for t in reversed(trades) if t.get("type") == "CLOSE"), None)
                     if _rt_last is not None:
                         _rt_xb = int(_rt_last.get("bar_exit", i - 1))
-                        _rt_seg = (_rt_lo if is_long else _rt_hi)[max(0, _rt_xb) : i]
-                        _rt_ext = float(np.nanmin(_rt_seg) if is_long else np.nanmax(_rt_seg)) if len(_rt_seg) else 0.0
+                        _rt_ext = _running_ext(_rt_xst, (_rt_lo if is_long else _rt_hi), max(0, _rt_xb), i, is_long)
                         _rt_name = _rtrg.fire(
                             cfg, is_long, float(px), float(close[i - 1]), float(_rt_last.get("exit_price", 0) or 0),
                             float(_rt_dc4[i - 1]), float(_rt_dc4[i - 2]), float(_rt_lo[i]), float(_rt_hi[i]), _rt_ext,
@@ -21313,8 +21338,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if pos is not None:
             try:
                 if (
-                    "_ty_dc_eff" in locals()
-                    and _ty_dc_eff is not None
+                    _ty_dc_eff is not None
                     and _ty_dc_band is not None
                     and bool(getattr(cfg, "MTF_DC_REJECT_EXIT_ENABLED", False))
                 ):
@@ -21354,7 +21378,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             try:
                 if (
                     (not _ty_fire)
-                    and "_ty_frozen_bb_arr" in locals()
                     and _ty_frozen_bb_arr is not None
                     and bool(getattr(cfg, "BB_FROZEN_STOP_ENABLED", False))
                 ):
@@ -21380,7 +21403,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             try:
                 if (
                     (not _ty_fire)
-                    and "_ty_r2_arrs" in locals()
                     and _ty_r2_arrs
                     and bool(
                         getattr(cfg, "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED", False)
@@ -21405,8 +21427,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _r2_w1 = (
                         float(_ty_r2_wt1d[i])
                         if (
-                            "_ty_r2_wt1d" in locals()
-                            and _ty_r2_wt1d is not None
+                            _ty_r2_wt1d is not None
                             and i < len(_ty_r2_wt1d)
                         )
                         else 0.0
@@ -21414,8 +21435,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _r2_w2 = (
                         float(_ty_r2_wt2d[i])
                         if (
-                            "_ty_r2_wt2d" in locals()
-                            and _ty_r2_wt2d is not None
+                            _ty_r2_wt2d is not None
                             and i < len(_ty_r2_wt2d)
                         )
                         else 0.0
