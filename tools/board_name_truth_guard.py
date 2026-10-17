@@ -54,7 +54,7 @@ MTM_PREFIXES = ("FINAL_MTM", "WINDOW_END_MTM", "MTM_FINAL", "OPEN_AT_WINDOW_END"
 HDR_GAIN_RE = re.compile(r"gain\s+(-?[\d.]+)%")
 HDR_PEAK_RE = re.compile(r"peak\s+\$(-?[\d.]+)")
 GAIN_TOL = 0.01
-TRUTH_VERSION = 3  # bump whenever page_truth changes: cached verdicts of older versions are recomputed
+TRUTH_VERSION = 4  # v4 2026-10-17: open position counted at last bar + realised reduce P&L from EVENTS; bump whenever page_truth changes: cached verdicts of older versions are recomputed
 LOG = Path.home() / "logs" / "board_name_truth_guard.log"
 
 
@@ -207,7 +207,11 @@ def page_truth(path: Path) -> dict:
     events = js_const(text, "EVENTS") or []
     closed = [t for t in trades if isinstance(t, dict) and t.get("pnl_dollars") is not None and not is_unrealised(t)]
     countable_events = [e for e in events if isinstance(e, dict) and not e.get("unrealised")]
-    pnl = sum(float(t.get("pnl_dollars") or 0.0) for t in closed)
+    # realised partial reduces are drawn on the page as reduce markers and live in EVENTS — they are trades shown on the page and
+    # the header counts them (2026-10-17: 1000FLOKIUSDT_LONG $100.74 TRADES + $3.23 reduce P&L = 37.13% = header)
+    realised_events = [e for e in countable_events if e.get("pnl_dollars") is not None and not e.get("seeded_prewindow") and not is_unrealised(e)]
+    reduce_pnl = sum(float(e.get("pnl_dollars") or 0.0) for e in realised_events)
+    pnl = sum(float(t.get("pnl_dollars") or 0.0) for t in closed) + reduce_pnl
     i = text.find('<div class="metrics">')
     seg = text[i: text.find("</div>", i)] if i >= 0 else text[:6000]
     mg, mp = HDR_GAIN_RE.search(seg), HDR_PEAK_RE.search(seg)
@@ -223,7 +227,7 @@ def page_truth(path: Path) -> dict:
         return (peak_ok and gain_ok, peak_ok)
     peak_method = max(("cost", "price"), key=lambda m: (_fits(m), m == "cost"))
     peak = pks[peak_method]
-    out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "closed_trades": len(closed), "peak_method": peak_method, "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t))}
+    out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "closed_trades": len(closed), "peak_method": peak_method, "reduce_pnl_dollars": reduce_pnl, "realised_reduce_events": len(realised_events), "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t)), "mtm_rows_counted": sum(1 for t in closed if isinstance(t, dict) and (t.get("unrealised") is True or str(t.get("exit_reason") or "").upper().startswith(MTM_PREFIXES)))}
     if peak <= 0:
         out.update(status="NO_PEAK", why="page peak is 0")
         return out

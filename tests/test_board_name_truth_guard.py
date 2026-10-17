@@ -17,17 +17,18 @@ def _page(trades, events, hdr_gain, hdr_peak):
 
 
 def _ledger():
-    # two trades of $200 notional each, sequential: pnl 10 + 15 (MTM row of 99 must be excluded) -> G = 25/200 = 12.5%
+    # USER 2026-10-17: a position still open at the window end counts as closed at the last bar. Two trades of $200 sequential
+    # (+10, +15) and an open LOSER marked -5 at the end -> G = (10 + 15 - 5) / 200 = 10.0% (excluding the mark would flatter: 12.5%)
     trades = [
         {"type": "CLOSE", "ts": 2.0, "pnl_dollars": 10.0, "deployed": 200.0, "bar_entry": 1, "bar_exit": 2, "price": 2.05, "qty": 100.0},
         {"type": "CLOSE", "ts": 4.0, "pnl_dollars": 15.0, "deployed": 200.0, "bar_entry": 3, "bar_exit": 4, "price": 2.10, "qty": 100.0},
-        {"type": "CLOSE", "ts": 6.0, "pnl_dollars": 99.0, "deployed": 200.0, "bar_entry": 5, "bar_exit": 6, "exit_reason": "FINAL_MTM window end", "unrealised": True},
+        {"type": "CLOSE", "ts": 6.0, "pnl_dollars": -5.0, "deployed": 200.0, "bar_entry": 5, "bar_exit": 6, "exit_reason": "FINAL_MTM window end", "unrealised": True},
     ]
     events = [{"type": "OPEN", "ts": 1.0, "price": 2.0, "qty": 100.0}, {"type": "OPEN", "ts": 3.0, "price": 2.0, "qty": 100.0}, {"type": "OPEN", "ts": 5.0, "price": 2.0, "qty": 100.0}]
     return trades, events
 
 
-def _board(d: Path, stem: str, hdr_gain=12.5, hdr_peak=200.0):
+def _board(d: Path, stem: str, hdr_gain=10.0, hdr_peak=200.0):
     cell = d / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
     cell.mkdir(parents=True, exist_ok=True)
     tr, ev = _ledger()
@@ -50,14 +51,14 @@ def test_token_format():
     assert G.fmt_token(-0.001) == "0p00"
 
 
-def test_page_truth_excludes_mtm_and_matches_header(tmp_path):
-    cell = _board(tmp_path, "AAAUSDT_LONG_bh1p00_gain12p50_t2")
-    t = G.page_truth(cell / "AAAUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.html")
-    assert t["status"] == "OK" and abs(t["G"] - 12.5) < 1e-9 and t["mtm_rows_excluded"] == 1 and abs(t["peak"] - 200.0) < 1e-9
+def test_page_truth_counts_open_position_at_last_bar(tmp_path):
+    cell = _board(tmp_path, "AAAUSDT_LONG_bh1p00_gain10p00_t2")
+    t = G.page_truth(cell / "AAAUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.html")
+    assert t["status"] == "OK" and abs(t["G"] - 10.0) < 1e-9 and t["mtm_rows_counted"] == 1 and t["mtm_rows_excluded"] == 0 and abs(t["peak"] - 200.0) < 1e-9
 
 
 def test_correct_name_is_untouched(tmp_path):
-    _board(tmp_path, "AAAUSDT_LONG_bh1p00_gain12p50_t2")
+    _board(tmp_path, "AAAUSDT_LONG_bh1p00_gain10p00_t2")
     res = _run(tmp_path)
     assert res["actions"] == [] and res["summary"]["ok"] == 1
 
@@ -66,10 +67,10 @@ def test_false_name_renamed_with_backup_and_manifest(tmp_path):
     cell = _board(tmp_path, "AAAUSDT_LONG_bh1p00_gain466p_t2")
     res = _run(tmp_path)
     names = sorted(p.name for p in cell.iterdir())
-    assert names == ["AAAUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.html", "AAAUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx", "AAAUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix_manifest.json"]
-    man = json.loads((cell / "AAAUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix_manifest.json").read_text())
-    assert abs(man["name_truth"]["G"] - 12.5) < 1e-9 and man["name_truth"]["sum_pnl_dollars"] == 25.0 and man["name_truth"]["peak"] == 200.0
-    assert man["final_name"] == "AAAUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx" and man["nolies_correction"]["claimed_gain_pct"] == 466.7
+    assert names == ["AAAUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.html", "AAAUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.xlsx", "AAAUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix_manifest.json"]
+    man = json.loads((cell / "AAAUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix_manifest.json").read_text())
+    assert abs(man["name_truth"]["G"] - 10.0) < 1e-9 and man["name_truth"]["sum_pnl_dollars"] == 20.0 and man["name_truth"]["peak"] == 200.0
+    assert man["final_name"] == "AAAUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.xlsx" and man["nolies_correction"]["claimed_gain_pct"] == 466.7
     tars = list((tmp_path / "backups" / "board_name_truth").glob("*.tar"))
     assert len(tars) == 1 and len(tarfile.open(tars[0]).getnames()) == 3
     assert len([a for a in res["actions"] if a["action"] == "RENAME"]) == 3
@@ -77,10 +78,10 @@ def test_false_name_renamed_with_backup_and_manifest(tmp_path):
 
 
 def test_header_mismatch_quarantines(tmp_path):
-    cell = _board(tmp_path, "BBBUSDT_SHORT_bhm1p00_gain61p_t2", hdr_gain=61.5)  # header counted the MTM row: (25+99)/200
+    cell = _board(tmp_path, "BBBUSDT_SHORT_bhm1p00_gain61p_t2", hdr_gain=61.5)  # header claims a number the page's trades do not give
     res = _run(tmp_path)
     q = cell / G.QDIR
-    assert sorted(p.name for p in q.iterdir()) == ["BBBUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html", "BBBUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.xlsx", "BBBUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix_manifest.json"]
+    assert sorted(p.name for p in q.iterdir()) == ["BBBUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix.html", "BBBUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix.xlsx", "BBBUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix_manifest.json"]
     assert not any(p.is_file() for p in cell.iterdir()) and len(res["alerts"]) == 1
     assert _run(tmp_path)["actions"] == []
 
@@ -96,8 +97,8 @@ def test_resurrected_old_name_deleted_and_root_copy_renamed(tmp_path):
         os.utime(p, (OLD, OLD))
     _run(tmp_path)
     assert not resurrected.exists() and not root_copy.exists()
-    assert (tmp_path / "SPREADSHEETS" / "CCCUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx").exists()
-    assert (cell / "CCCUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx").exists()
+    assert (tmp_path / "SPREADSHEETS" / "CCCUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.xlsx").exists()
+    assert (cell / "CCCUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.xlsx").exists()
 
 
 def test_dry_run_changes_nothing(tmp_path):
@@ -123,9 +124,9 @@ def test_peer_map_renames_copy_whose_page_lives_on_another_host(tmp_path):
     os.utime(orphan, (OLD, OLD))
     peers = tmp_path / "board_name_truth_peers"
     peers.mkdir()
-    (peers / "s1.json").write_text(json.dumps({"map": {"FFFUSDT_LONG_bh1p00_gain466p_t2": {"new": "FFFUSDT_LONG_bh1p00_gain12p50_t2", "G": 12.5}}, "quarantined": {}}))
+    (peers / "s1.json").write_text(json.dumps({"map": {"FFFUSDT_LONG_bh1p00_gain466p_t2": {"new": "FFFUSDT_LONG_bh1p00_gain10p00_t2", "G": 10.0}}, "quarantined": {}}))
     res = _run(tmp_path)
-    assert not orphan.exists() and (cell / "FFFUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx").exists() and res["summary"]["peer_maps"] == 1
+    assert not orphan.exists() and (cell / "FFFUSDT_LONG_bh1p00_gain10p00_t2_30d_matrix.xlsx").exists() and res["summary"]["peer_maps"] == 1
     exported = json.loads((tmp_path / "board_name_truth_map.json").read_text())
     assert "FFFUSDT_LONG_bh1p00_gain466p_t2" not in exported["map"]
 
@@ -141,9 +142,21 @@ def test_rerendered_consistent_page_is_unquarantined(tmp_path):
     _run(tmp_path)
     q = cell / G.QDIR
     tr, ev = _ledger()
-    (q / "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html").write_text(_page(tr, ev, 12.5, 200.0))
-    os.utime(q / "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html", (OLD, OLD))
+    (q / "GGGUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix.html").write_text(_page(tr, ev, 10.0, 200.0))
+    os.utime(q / "GGGUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix.html", (OLD, OLD))
     res = _run(tmp_path)
     assert res["summary"]["unquarantined_stems"] == 1 and not any(q.iterdir())
-    assert sorted(p.name for p in cell.iterdir() if p.is_file()) == ["GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html", "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.xlsx", "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix_manifest.json"]
+    assert sorted(p.name for p in cell.iterdir() if p.is_file()) == ["GGGUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix.html", "GGGUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix.xlsx", "GGGUSDT_SHORT_bhm1p00_gain10p00_t2_30d_matrix_manifest.json"]
     assert _run(tmp_path)["actions"] == []
+
+
+def test_realised_partial_reduce_in_events_counts(tmp_path):
+    cell = tmp_path / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
+    cell.mkdir(parents=True)
+    tr, ev = _ledger()
+    ev = ev + [{"type": "REDUCE", "ts": 1.5, "price": 2.04, "qty": 50.0, "pnl_dollars": 2.0}]  # drawn reduce marker with realised P&L
+    stem = "HHHUSDT_LONG_bh1p00_gain11p00_t2"  # (10 + 15 - 5 + 2) / 200 = 11.0%
+    (cell / f"{stem}_30d_matrix.html").write_text(_page(tr, ev, 11.0, 200.0))
+    os.utime(cell / f"{stem}_30d_matrix.html", (OLD, OLD))
+    t = G.page_truth(cell / f"{stem}_30d_matrix.html")
+    assert t["status"] == "OK" and abs(t["G"] - 11.0) < 1e-9 and t["reduce_pnl_dollars"] == 2.0 and t["realised_reduce_events"] == 1
