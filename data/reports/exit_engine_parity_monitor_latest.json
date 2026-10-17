@@ -1,22 +1,22 @@
 {
- "now": "2026-10-17T01:27:22.786920+00:00",
+ "now": "2026-10-17T02:27:27.661082+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 4856,
- "last_exit_ts": "2026-10-17T00:55:10.307222+00:00",
+ "n_exit_rows": 4579,
+ "last_exit_ts": "2026-10-17T02:27:48.799649+00:00",
  "n_leaks": 0,
  "n_gate_on": 4,
  "n_ungated": 1,
  "n_safety": 0,
- "n_unmapped": 1794,
+ "n_unmapped": 1671,
  "n_unverified": 0,
- "since": "2026-10-15T01:27:22.786920+00:00",
+ "since": "2026-10-15T02:27:27.661082+00:00",
  "vec_exact_by_action": {
-  "OPEN": 2404,
-  "REDUCE": 171,
-  "CLOSE": 467,
-  "AUGMENT": 15
+  "OPEN": 2323,
+  "AUGMENT": 15,
+  "REDUCE": 145,
+  "CLOSE": 420
  },
- "native_rows": 1799,
+ "native_rows": 1676,
  "unverified_by_family": {},
  "leaks_by_family": {},
  "leak_keys": {},
@@ -30,8 +30,8 @@
  },
  "safety_by_family": {},
  "unmapped": {
-  "FIXED_STOP_LONG": 1072,
-  "FIXED_STOP_SHORT": 716,
+  "FIXED_STOP_LONG": 951,
+  "FIXED_STOP_SHORT": 714,
   "WT_SIMPLE_GUARANTEE_15m_wt-8.3vs-8.3_g": 1,
   "BB_TAKE_15m": 1,
   "VEL_EXIT_v4h19.91": 1,
@@ -40,10 +40,10 @@
   "VEL_EXIT_v4h-30.00": 1
  },
  "actions": {
-  "CLOSE": 2264,
-  "OPEN": 2404,
-  "REDUCE": 172,
+  "OPEN": 2323,
   "AUGMENT": 15,
+  "REDUCE": 146,
+  "CLOSE": 2094,
   "QUICK_CLOSE": 1
  }
 }

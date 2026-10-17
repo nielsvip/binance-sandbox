@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-17 02:19 UTC",
- "total_capital_usd": 12.01,
+ "generated_at": "2026-10-17 02:28 UTC",
+ "total_capital_usd": 5.02,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.01,
-  "C": 0.0
+  "B": 0.0,
+  "C": 5.02
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "inf:WLDUSDC_LONG"
+ "losers": [
+  "fin:SANDUSDT_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "inf:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "inf",
-   "value_usd": 12.01,
-   "gain_pct": 0.061,
-   "tier": "B",
-   "perf_mult": 0.8,
-   "amt": 23.2,
-   "mark": 0.5177
+   "pk": "fin:SANDUSDT_SHORT",
+   "symbol": "SANDUSDT",
+   "account": "fin",
+   "value_usd": 5.02,
+   "gain_pct": 2.145,
+   "tier": "C",
+   "perf_mult": 0.15,
+   "amt": 91.0,
+   "mark": 0.05519
   }
  ]
 }

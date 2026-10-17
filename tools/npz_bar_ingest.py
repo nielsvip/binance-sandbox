@@ -92,6 +92,36 @@ def klines_between(symbol, mode, lo, hi):
     return []
 
 
+def sanitize_row(npz_path, row):
+    """Map JSON null to what the store already uses for "no value".
+
+    The Mac holds no NPZs, so it cannot know the target dtype — it ships JSON null. Unmapped, that aborts the
+    whole append: `np.array([None], dtype=float32)` raises inside _append_row_to_npz's all-or-nothing loop, which
+    is exactly how the first 6 shipped stock bars failed (wt_divergence_15m / wt_divergence_D came back None for
+    "no divergence"). MEASURED: those keys are int8 in the store with 0 for none, so numeric -> 0 is the store's
+    own encoding; an object array can hold None as-is."""
+    nones = [k for k, v in row.items() if v is None]
+    if not nones:
+        return row, []
+    import numpy as np
+    fixed = []
+    try:
+        with np.load(npz_path, allow_pickle=True) as z:
+            for k in nones:
+                if k not in z.files:
+                    row.pop(k, None)
+                    fixed.append(f"{k}: dropped (absent from NPZ)")
+                    continue
+                dt = np.asarray(z[k]).dtype
+                if dt == object:
+                    continue
+                row[k] = 0
+                fixed.append(f"{k}: None -> 0 ({dt})")
+    except Exception as e:
+        return row, [f"dtype probe failed: {type(e).__name__}"]
+    return row, fixed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
@@ -152,6 +182,7 @@ def main():
             counts["WOULD_APPLY"] = counts.get("WOULD_APPLY", 0) + 1
             applied.append({"symbol": sym, "ts": ts, "keys": len(row)})
             continue
+        row, fixes = sanitize_row(IND / f"{sym}.npz", row)
         try:
             ok = gen._append_row_to_npz(IND / f"{sym}.npz", row)
         except Exception as e:
@@ -159,7 +190,7 @@ def main():
             skipped.append({"symbol": sym, "ts": ts, "why": f"append raised {type(e).__name__}: {e}"[:140]})
         if ok and npz_last_ts(sym) == ts:
             counts["APPLIED"] = counts.get("APPLIED", 0) + 1
-            applied.append({"symbol": sym, "ts": ts, "keys": len(row)})
+            applied.append({"symbol": sym, "ts": ts, "keys": len(row), "null_fixes": fixes})
             DONE.mkdir(parents=True, exist_ok=True)
             shutil.move(str(f), str(DONE / f.name))
         else:
