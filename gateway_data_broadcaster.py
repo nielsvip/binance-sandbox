@@ -99,9 +99,9 @@ FSTREAM_WS_BASE_URL = ("wss://fstream.binance.com/stream?streams="
 
 
 def api_symbol_for(symbol: str) -> str:
-    """native symbol; the USDT twin only for symbols that genuinely have no USD-M stream of their own."""
-    if symbol.endswith("USDC") and symbol in USDC_WITHOUT_OWN_FUTURES_STREAM:
-        return symbol.replace("USDC", "USDT")
+    """the API symbol IS the symbol. USER 2026-10-17: "make sure no usdc/usdt conversion is being applied in any
+    script anymore as it is outdated and obsolete" — every USD-M USDC perp has its own REST klines, kline stream
+    and markPrice stream (36 of them verified on this host), so there is no twin to fall back to."""
     return symbol
 
 
@@ -183,11 +183,14 @@ def get_fallback_usdc_pairs() -> set:
     return fallback_pairs
 
 def force_usdc_if_needed(symbol: str, available_usdc_pairs: set) -> str:
-    """Convert symbol to USDC if available, otherwise keep USDT."""
-    if symbol.endswith("USDT"):
-        usdc_equivalent = symbol.replace("USDT", "USDC")
-        if usdc_equivalent in available_usdc_pairs:
-            return usdc_equivalent
+    """NO-OP by design (USER 2026-10-17: no USDC/USDT conversion anywhere).
+
+    Kept as a seam because several call sites pass every symbol through it. Rewriting a symbol at runtime hid the
+    real problem: a list that still names the USDT pair. PROVEN before removal that it was already a no-op — no
+    live symbol source (symbols_*.json, tradeable_keys.json, vec_driven.json) contained a USDT name whose USDC
+    sibling we hold data for. If that ever regresses, this says so instead of silently papering over it."""
+    if symbol.endswith("USDT") and symbol.replace("USDT", "USDC") in (available_usdc_pairs or ()):
+        logger.warning(f"⚠️ {symbol} was passed in although its USDC pair exists — fix the SYMBOL LIST, not the price path (no conversion applied)")
     return symbol
 
 def force_usdc_in_list(symbols_list: list, available_usdc_pairs: set) -> list:
@@ -661,13 +664,9 @@ class GatewayDataBroadcaster:
                 'volume': float(kline_data['v']),
             }
 
-            # Handle USDC/USDT symbol mapping
-            original_symbol = symbol
-            if symbol.endswith("USDT") and symbol.replace("USDT", "USDC") in self.usdc_symbols:
-                original_symbol = symbol.replace("USDT", "USDC")
-
-            # Convert symbol to best available format (USDC if available, otherwise USDT)
-            original_symbol = force_usdc_if_needed(original_symbol, self.live_usdc_pairs)
+            # USER 2026-10-17: the bar belongs to the symbol that produced it. Relabelling a USDT stream's kline
+            # as the USDC pair published the USDT candle under a USDC name.
+            original_symbol = force_usdc_if_needed(symbol, self.live_usdc_pairs)
 
             # --- THE CRITICAL CHECK ---
             redis_key = f"klines:{original_symbol}:{internal_interval}"
@@ -1537,13 +1536,9 @@ class GatewayDataBroadcaster:
                                     symbol = stream_name.split('@')[0].upper()  # Get symbol from stream name
                                     mark_price = float(data['data']['p'])
                                     
-                                    # Handle USDC/USDT conversion
+                                    # USER 2026-10-17: no USDC/USDT conversion — the price belongs to the
+                                    # symbol that produced it (USDC streams are native).
                                     final_symbol = symbol
-                                    if symbol.endswith("USDT"):
-                                        # Check if this USDT symbol has a corresponding USDC pair
-                                        usdc_symbol = symbol.replace("USDT", "USDC")
-                                        if usdc_symbol in self.usdc_symbols:
-                                            final_symbol = usdc_symbol
                                     
                                     # Update local storage
                                     self.mark_prices[final_symbol] = mark_price
@@ -1623,13 +1618,9 @@ class GatewayDataBroadcaster:
                                     symbol = stream_name.split('@')[0].upper()  # Get symbol from stream name
                                     kline_data = data['data']['k']
                                     
-                                    # Handle USDC/USDT conversion
+                                    # USER 2026-10-17: no USDC/USDT conversion — the price belongs to the
+                                    # symbol that produced it (USDC streams are native).
                                     final_symbol = symbol
-                                    if symbol.endswith("USDT"):
-                                        # Check if this USDT symbol has a corresponding USDC pair
-                                        usdc_symbol = symbol.replace("USDT", "USDC")
-                                        if usdc_symbol in self.usdc_symbols:
-                                            final_symbol = usdc_symbol
                                     
                                     # Process the kline data
                                     await self._process_live_kline(kline_data)

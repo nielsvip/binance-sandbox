@@ -73,7 +73,24 @@ VEC_EXIT_TOKENS = (
     "CYCLE_TP",                               # vec QUICK_CYCLE_TP_STOCH_AGAINST (live QUICK_CYCLE_TP_*, CYCLE_TP_TIERED_*)
     "HEDGE_CLOSE_WT",                         # vec HEDGE_CLOSE_WT (live HEDGE_CLOSE_WTNMNH_*)
     "WT15M_AGAINST",                            # vec v12 scalar WT15M force-close (live process_position twin) — D4 Edit 6 2026-10-04
+    # 2026-10-17 USER "we need total parity so it should be True": every exit family below is EMITTED by the vector engine
+    # (verified at the emitting line) but was missing here, so STRICT_VEC_PARITY_GATE_EXITS=True would have blocked the
+    # non-negotiable stop (327 crypto FIXED_STOP closes in 3 days) — the 2026-09-28 stranded-losers failure.
+    "FIXED_STOP",                             # vec_decisions/fixed_stop.py REASON = "FIXED_STOP" (dc_15m -0.3 %)
+    "DAYTRADE_TARGET",                        # vec_decisions/dc_channel_exits.py DAYTRADE_TARGET ... TARGET_BUF
+    "DAYTRADE_STOP",                          # vec_decisions/dc_channel_exits.py DAYTRADE_STOP ... STOP_BUF
+    "TECHNICAL_TARGET",                       # vec_decisions/dc_channel_exits.py TECHNICAL_TARGET ... TARGET_BUF
+    "ULTIMATE_DC_",                           # v12_quick_engine ULTIMATE_DC_<tf>_HARD_STOP
+    "VIGILANCE_DC4",                          # v12_quick_engine VIGILANCE_DC4_<tf>_STOP
+    "UNCOND_DC_",                             # v12_quick_engine UNCOND_DC_{LOW,HIGH}_{15M,1H,4H}
+    "LH_LL_TOP_EXIT",                         # vec_decisions/lh_ll_top_exit.py LH_LL_TOP_EXIT arm=...
+    "GAP_MOC_EXIT",                           # v12_quick_engine reason "GAP_MOC_EXIT" (live GAP_MOC_EXIT_VV_*)
+    "WT_PERCENTILE",                          # vec_decisions/ported_exit.py WT_PERCENTILE_EXIT (D/4h OB/OS) on exit_sig
 )
+# NOT vector exits (live-only, no emitting line in the engine) — blocked under STRICT_VEC_PARITY_GATE_EXITS:
+#   PRE_CLOSE (stocks flatten; engine has the DC_DAYTRADE_PRE_CLOSE_MINUTES field but never emits the close),
+#   E3_STRUCT_EXIT, Market_Against_Position_Bias, HEDGE_FAILED_FALLBACK_CLOSE (hedging off), SENT_STRAT_TRIM,
+#   INTRADAY_RATIO_TRIM (ported_reduce.py: VEC_UNSUPPORTED — portfolio L/S-ratio state).
 
 # Stocks-only — vec emits these but live only emits them in tradier_manage.py.
 # Included so the same gate works if applied to trb/trc; harmless for crypto.
@@ -97,6 +114,8 @@ def is_vec_achievable(reason: str) -> bool:
     if not reason:
         return False
     r = reason.upper()
+    if "VEC_EXACT" in r:  # 2026-10-17: a vec-decided order (live buffer, board set) is vec-achievable by construction
+        return True
     for token in _ALL_TOKENS_UPPER:
         if token in r:
             return True

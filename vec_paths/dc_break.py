@@ -24,6 +24,25 @@ if TYPE_CHECKING:
 _TF_MULTS = [("5m", 1.0), ("15m", 1.5)]
 
 
+def _tf_mults_for(cfg) -> list:
+    """The TF legs this path may trade — the live twin's rule, kept identical on purpose.
+
+    USER 2026-10-17: the sub-15m legs are gated by LTF_SUB15M_TRADING_ENABLED (tradier_manage ~59712).
+    Mirroring it here matters in BOTH directions. Today the NPZ carries no dc_high_5m /
+    dc_high_crossover_5m, so `store.b(...)` returns the False default and the 5m leg silently never fires
+    in a backtest while live fired it off real 5m data — a phantom leg, and the board therefore never
+    measured those trades. Dropping the leg explicitly makes that visible instead of silent, and if a
+    future NPZ build ever DOES carry 5m series this keeps the twin from suddenly trading a leg live has
+    switched off. Fail-SAFE: an unreadable switch drops the sub-15m legs, matching the live guard.
+    """
+    try:
+        if bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False)):
+            return list(_TF_MULTS)
+    except Exception:
+        pass
+    return [(_t, _m) for _t, _m in _TF_MULTS if _t not in ("1m", "3m", "5m")]
+
+
 def check_dc_break_entry(
     store: "_NPZStore",
     bar_idx: int,
@@ -70,7 +89,7 @@ def check_dc_break_entry(
 
     candidates = []
 
-    for tf, size_mult in _TF_MULTS:
+    for tf, size_mult in _tf_mults_for(cfg):
         dc_high = store.f(f"dc_high_{tf}", bar_idx, 0.0)
         dc_low = store.f(f"dc_low_{tf}", bar_idx, 0.0)
         dc_high_x = store.b(f"dc_high_crossover_{tf}", bar_idx, False)

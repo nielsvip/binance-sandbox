@@ -1033,7 +1033,10 @@ class MarkPriceStreamer:
         
     async def fetch_klines(self, symbol: str, limit: int, end_dt: datetime = None) -> pd.DataFrame:
         """Fetch klines with improved rate limiting and error handling"""
-        api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+        # USER 2026-10-17: no USDC/USDT conversion anywhere — USDC perps have their own REST klines and the basis
+        # is real money (measured 0.11-0.14% on 2026-10-17, wider under stress), so fetching the USDT twin's bars
+        # for a USDC symbol returned the wrong candles.
+        api_symbol = symbol
         actual_limit = min(limit, 1500)
         params = {"symbol": api_symbol, "interval": "3m", "limit": actual_limit}
         if end_dt: params['endTime'] = int(end_dt.timestamp() * 1000)
@@ -1117,14 +1120,15 @@ class MarkPriceStreamer:
         # Start websockets IMMEDIATELY with basic symbol mapping
         logger.info("--- 🚀 Starting websockets IMMEDIATELY ---")
         
-        # Create symbol mapping (convert USDC to USDT for API calls)
+        # USER 2026-10-17: the API symbol IS the symbol — no USDC->USDT mapping. The map stays (the websocket
+        # handler looks every incoming symbol up in it) but it is now identity, so a USDC stream resolves to the
+        # USDC symbol instead of being relabelled from its USDT twin.
         with open(config.LIVE_USDC_PAIRS_FILE, 'r') as f:
             live_usdc_pairs = set(json.load(f))
         self.symbols_to_run = sorted(force_usdc_in_list(initial_symbols, live_usdc_pairs))
-        
+
         for original_symbol in self.symbols_to_run:
-            api_symbol = original_symbol.replace("USDC", "USDT") if original_symbol.endswith("USDC") else original_symbol
-            self.api_symbol_to_original_map[api_symbol] = original_symbol
+            self.api_symbol_to_original_map[original_symbol] = original_symbol
         
         # Start websocket listener IMMEDIATELY
         websocket_task = asyncio.create_task(self.listen_to_websockets())
@@ -1983,8 +1987,9 @@ class MarkPriceStreamer:
                             # Publish fallback prices using unified manager
                             for symbol, price in fallback_prices.items():
                                 try:
-                                    # Convert to original symbol format if needed
-                                    original_symbol = symbol.replace("USDT", "USDC") if symbol.endswith("USDT") else symbol
+                                    # USER 2026-10-17: publish under the symbol the price actually belongs to —
+                                    # relabelling a USDT fallback price as USDC published the wrong price.
+                                    original_symbol = symbol
                                     
                                     # Publish using unified manager
                                     await broadcast_mark_prices_to_redis({original_symbol: price})

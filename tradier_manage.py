@@ -59709,7 +59709,22 @@ class StockDaytradeWing:
         k_15m = safe_fetch_float(data.get("k_15m", 50))
         k_exh_long = _cfg_auto("DC_DAYTRADE_K_EXHAUSTED_LONG", 85)
         k_exh_short = _cfg_auto("DC_DAYTRADE_K_EXHAUSTED_SHORT", 15)
-        for tf, size_mult in [("5m", 1.0), ("15m", 1.5)]:
+        # USER 2026-10-17: "DC_BREAK_HIGH_5M can stay on but should be disabled by the 1/5m trading
+        # disabled switch." The path stays; only its sub-15m legs are gated. This one is not merely
+        # unvectorised, it is a PHANTOM leg: the vec twin (vec_paths/dc_break.py) iterates the identical
+        # [("5m",1.0),("15m",1.5)], but the NPZ carries no dc_high_5m / dc_high_crossover_5m, so
+        # store.b(...) always returns the False default and the 5m leg CAN NEVER fire in a backtest —
+        # while live fires it off real 5m data (measured: 12 trb DC_BREAK_HIGH_5M entries in the 7 days to
+        # 2026-10-17). So the board never measured a single one of those trades. Fail-SAFE: any error
+        # reading the switch drops the sub-15m legs, since the harm prevented is an unmeasured live entry.
+        _dc_tfs = [("5m", 1.0), ("15m", 1.5)]
+        try:
+            _sub15m_on = bool(_cfg_auto("LTF_SUB15M_TRADING_ENABLED", False))
+        except Exception:
+            _sub15m_on = False
+        if not _sub15m_on:
+            _dc_tfs = [(_t, _m) for _t, _m in _dc_tfs if _t not in ("1m", "3m", "5m")]
+        for tf, size_mult in _dc_tfs:
             dc_high = safe_fetch_float(data.get(f"dc_high_{tf}", 0))
             dc_low = safe_fetch_float(data.get(f"dc_low_{tf}", 0))
             dc_high_x = bool(data.get(f"dc_high_crossover_{tf}", False))

@@ -4050,7 +4050,7 @@ class TradierConfig:
     STRENGTH_FILTER_ENABLED: bool = True
     STRENGTH_MIN_SCORE: float = 5.0
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
-    STRICT_VEC_PARITY_GATE_EXITS: bool = False
+    STRICT_VEC_PARITY_GATE_EXITS: bool = True  # USER 2026-10-17 total parity: closes only on vector exit families (vec_paths/vec_parity_gate.py, incl. FIXED_STOP/DAYTRADE_*/TECHNICAL_TARGET/ULTIMATE_DC/VIGILANCE_DC4/UNCOND_DC, |VEC_EXACT); live-only PRE_CLOSE / E3_STRUCT_EXIT / Market_Against_Position_Bias are refused in queue_trade_action
     STRICT_VEC_PARITY_SHADOW: bool = False
     ST_LT_SPLIT_ENABLED: bool = True
     ST_SCORE_WEIGHT_LTF: float = 0.7
