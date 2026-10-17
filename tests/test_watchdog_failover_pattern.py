@@ -34,7 +34,7 @@ def test_new_pattern_matches_workers_only():
 def test_watchdog_failover_pins():
     assert "${arg%?}[$a_last]" in WD
     assert "python.*$SCRIPT" in WD
-    assert "/home/niels/binance/.venv/bin/python" in WD
+    assert "/home/niels/.conda/envs/binance_env_mac/bin/python" in WD
     assert "/home/niels/.conda/envs/binance_env_mac/bin/python" in WD
 
 

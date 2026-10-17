@@ -21,7 +21,7 @@ else
     # longer preferred for live scripts. Darwin branch deliberately untouched.
     PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
     [ -x "$PYTHON" ] || PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
-    [ -x "$PYTHON" ] || PYTHON="/home/niels/binance/.venv/bin/python"
+    [ -x "$PYTHON" ] || PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
     [ -x "$PYTHON" ] || PYTHON="/usr/bin/python3"
     [ -x "$PYTHON" ] || PYTHON="python3"
 fi

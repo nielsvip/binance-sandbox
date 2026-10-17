@@ -29,7 +29,7 @@ for h in $HOSTS; do
   for t in $TPL; do run "$RS $t $h:binance-sandbox/$t"; done
   if [ $APPLY = 1 ]; then
     for f in $FILES; do L=$(md5 -q $f); R=$($SSH $h "md5sum ~/binance-sandbox/$f" | cut -c1-32); [ "$L" = "$R" ] || echo "MD5 MISMATCH $h $f"; done
-    $SSH $h "cd ~/binance-sandbox && .venv/bin/python -c 'import v12_quick_engine, v15_pilot; print(\"import ok\")'"
+    $SSH $h "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c 'import v12_quick_engine, v15_pilot; print(\"import ok\")'"
   fi
 done
 

@@ -65,7 +65,7 @@ EXTRA=""
 [ -n "${V15_H2H_CANDIDATE:-}" ] && EXTRA="$EXTRA --candidate ${V15_H2H_CANDIDATE}"
 [ -n "${V15_H2H_STALE_DAYS:-}" ] && EXTRA="$EXTRA --stale-days ${V15_H2H_STALE_DAYS}"
 say "measure on $HOST${EXTRA:+ (}${EXTRA}${EXTRA:+ )}"
-$SSH "$HOST" "cd ~/binance-sandbox && .venv/bin/python -u tools/v15_golive_headtohead.py measure --live-sets $LIVE --out $OUT$EXTRA" 2>&1 | tail -4 | tee -a "$LOG"
+$SSH "$HOST" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_golive_headtohead.py measure --live-sets $LIVE --out $OUT$EXTRA" 2>&1 | tail -4 | tee -a "$LOG"
 rsync -az --timeout=300 -e "$SSH" "$HOST:$OUT" "$OUT" >> "$LOG" 2>&1 || { say "decision pull failed"; exit 1; }
 
 if [ "${V15_H2H_APPLY:-0}" = "1" ]; then

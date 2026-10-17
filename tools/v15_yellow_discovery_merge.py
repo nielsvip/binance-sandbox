@@ -30,7 +30,7 @@ HOSTS = {"s1": "s1-pub", "s2": "s2", "s5": "s5"}
 
 def pull(day_dir: Path, day: str):
     for name, target in HOSTS.items():
-        subprocess.run(["ssh", "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=accept-new", target, f"cd ~/binance-sandbox && test -d data/yellow_discovery/{day}/audit365 && nice -n 10 .venv/bin/python tools/v15_yellow_365_audit.py --summarize --dir data/yellow_discovery/{day}/audit365 2>&1 | tail -1"], capture_output=True, text=True, timeout=300)
+        subprocess.run(["ssh", "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=accept-new", target, f"cd ~/binance-sandbox && test -d data/yellow_discovery/{day}/audit365 && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_yellow_365_audit.py --summarize --dir data/yellow_discovery/{day}/audit365 2>&1 | tail -1"], capture_output=True, text=True, timeout=300)
         dst = day_dir / f"audit365_{name}"
         dst.mkdir(parents=True, exist_ok=True)
         r = subprocess.run(["rsync", "-az", "-e", "ssh -S none -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10", f"{target}:~/binance-sandbox/data/yellow_discovery/{day}/audit365/", str(dst) + "/"], capture_output=True, text=True)

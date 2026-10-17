@@ -6,7 +6,7 @@ v15_hustle_cron — cron-resilient hustler loop with BEST-as-baseline + 50 rando
 - If hardly improves (gain delta <0.30pp for 2 consecutive rounds), mark converged.
 - Shares all results with S1 via rsync after each sym.
 - When shard converged, checks S1 crypto unfinished: if yes, extends to crypto shard; else syncs and deletes server (NEVER S1).
-Cron: */10 * * * * /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/v15_hustle_cron.py >> /tmp/hustle_cron.log 2>&1
+Cron: */10 * * * * /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_hustle_cron.py >> /tmp/hustle_cron.log 2>&1
 """
 import pathlib, subprocess, json, time, os, sys, hashlib, glob, shlex, socket, random
 

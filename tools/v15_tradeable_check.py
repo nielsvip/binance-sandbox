@@ -63,7 +63,7 @@ def main():
             via, _ = G._ssh(h["ssh"], "true", 30)
             G._scp(str(ROOT / "tools" / "v15_persym_golive.py"), f"{via}:binance-sandbox/tools/v15_persym_golive.py")
             G._scp(str(lf), f"{via}:/tmp/v15_tradeable_check_files.txt")
-            _, out = G._ssh([via], f"cd ~/binance-sandbox && timeout {a.timeout} .venv/bin/python -u tools/v15_persym_golive.py collect --eval-all --files /tmp/v15_tradeable_check_files.txt --out /tmp/v15_tradeable_check_out.json --workers {a.workers} 2>&1 | grep -v Warning | tail -2", a.timeout + 60)
+            _, out = G._ssh([via], f"cd ~/binance-sandbox && timeout {a.timeout} /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_persym_golive.py collect --eval-all --files /tmp/v15_tradeable_check_files.txt --out /tmp/v15_tradeable_check_out.json --workers {a.workers} 2>&1 | grep -v Warning | tail -2", a.timeout + 60)
             print(f"[tradeable-check] {hn} via {via}: {out.strip()}", flush=True)
             dst = tmpd / f"{hn}.json"
             G._scp(f"{via}:/tmp/v15_tradeable_check_out.json", str(dst))

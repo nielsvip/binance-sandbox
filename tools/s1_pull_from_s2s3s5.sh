@@ -17,4 +17,4 @@ for host in 10.0.0.4 10.0.0.5 10.0.0.6; do
   rsync -auz --timeout=30 --ignore-missing-args --include="*_v14_progress.json" --exclude="*" -e "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new" "niels@$host:~/binance-sandbox/data/reports/lifecycle_pilot/" "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/" 2>&1 | head -5 || true
 done
 echo "s1 pull done $(date -u) xlsx=$(find /home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL -name "*.xlsx" 2>/dev/null | wc -l | tr -d ' ')"
-/home/niels/binance-sandbox/.venv/bin/python /home/niels/binance-sandbox/tools/v15_final_sync_guard.py --audit /home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL 2>&1 | head -n 1 || true
+/home/niels/.conda/envs/binance_env_mac/bin/python /home/niels/binance-sandbox/tools/v15_final_sync_guard.py --audit /home/niels/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL 2>&1 | head -n 1 || true

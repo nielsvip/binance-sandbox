@@ -208,7 +208,7 @@ else
       done
       log "step4 $H:~/$D md5 OK:$CHANGED"
     done
-    $SSH "$H" "cd ~/binance-sandbox && .venv/bin/python -c 'import v12_quick_engine, config, config_tradier'" || fail 4 "import check on $H"
+    $SSH "$H" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c 'import v12_quick_engine, config, config_tradier'" || fail 4 "import check on $H"
   done
 fi
 
@@ -217,7 +217,7 @@ GATES=""
 for H in mac $HOSTS; do
   for C in $CS4; do
     if [ "$H" = mac ]; then OUT=$("$PY" switch_parity.py gate --cat-side "$C" 2>&1); RC=$?
-    else OUT=$($SSH "$H" "cd ~/binance-sandbox && .venv/bin/python switch_parity.py gate --cat-side $C" 2>&1); RC=$?; fi
+    else OUT=$($SSH "$H" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python switch_parity.py gate --cat-side $C" 2>&1); RC=$?; fi
     SUM=$(printf '%s' "$OUT" | "$PY" -c "import json,sys
 t=sys.stdin.read()
 try:
@@ -235,7 +235,7 @@ done
 #     design: logs the hard count every chain run so new live-vs-vec gaps can never accumulate silently.
 for H in mac "$S1"; do
   if [ "$H" = mac ]; then OUT=$("$PY" switch_parity.py verify-live-switches 2>&1); RC=$?
-  else OUT=$($SSH "$H" "cd ~/binance-sandbox && .venv/bin/python switch_parity.py verify-live-switches" 2>&1); RC=$?; fi
+  else OUT=$($SSH "$H" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python switch_parity.py verify-live-switches" 2>&1); RC=$?; fi
   SUM=$(printf '%s' "$OUT" | grep -m1 '^LIVE_ORDER_SWITCHES' || printf '%s' "$OUT" | tail -2 | tr '\n' ' ')
   log "step5a live-switches $H rc=$RC $SUM"
 done
@@ -265,7 +265,7 @@ fi
 PSEL=$DEST/data/published_selection.json
 mkdir -p "$(dirname "$PSEL")"
 if rsync -az -e "$SSH" tools/v15_published_selection.py "$S1:binance-sandbox/tools/v15_published_selection.py" 2>/dev/null \
-  && $SSH "$S1" "cd ~/binance-sandbox && rm -f data/published_selection.json && .venv/bin/python -u tools/v15_published_selection.py --out data/published_selection.json" 2>&1 | tail -1 | sed 's/^/[mac-apply] step5b /' \
+  && $SSH "$S1" "cd ~/binance-sandbox && rm -f data/published_selection.json && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_published_selection.py --out data/published_selection.json" 2>&1 | tail -1 | sed 's/^/[mac-apply] step5b /' \
   && rsync -az -e "$SSH" "$S1:binance-sandbox/data/published_selection.json" "$PSEL" 2>/dev/null && [ -s "$PSEL" ]; then
   log "step5b per-sym go-live PUBLISHED --pin-all ${GAPPLY:-DRY-RUN} (source $PSEL -> $GOUT)"
   timeout 2400 "$PY" -u tools/v15_persym_golive.py --published "$PSEL" --pin-all $GAPPLY --out "$GOUT" --date "$DATE" 2>&1 | grep -v "Warning\|Loaded 1 symbols\|  PASS" || log "step5b per-sym go-live rc=$? (non-fatal)"

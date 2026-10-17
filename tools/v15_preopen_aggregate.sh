@@ -7,7 +7,7 @@ OUT=${1:-SPREADSHEETS/v15_vector_delta_preopen.xlsx}
 P=""
 for h in s1-pub s2 s5; do
   scp -q tools/v15_vector_delta_rebuild.py $h:/tmp/v15_vector_delta_rebuild.py
-  ssh $h 'cd ~/v15_run19_20261001/progress && ls $PWD/*_v14_progress.json > /tmp/preopen_manifest.txt && cd ~/binance-sandbox && mkdir -p SPREADSHEETS && (.venv/bin/python /tmp/v15_vector_delta_rebuild.py --files /tmp/preopen_manifest.txt --emit-partial /tmp/preopen_partial.json 2>&1 | tail -2)'
+  ssh $h 'cd ~/v15_run19_20261001/progress && ls $PWD/*_v14_progress.json > /tmp/preopen_manifest.txt && cd ~/binance-sandbox && mkdir -p SPREADSHEETS && (/home/niels/.conda/envs/binance_env_mac/bin/python /tmp/v15_vector_delta_rebuild.py --files /tmp/preopen_manifest.txt --emit-partial /tmp/preopen_partial.json 2>&1 | tail -2)'
   scp -q $h:/tmp/preopen_partial.json data/wiring/preopen/partial_$h.json
   P="$P,data/wiring/preopen/partial_$h.json"
 done

@@ -5,7 +5,7 @@ cats = [("STOCKS_LONG","TEMPLATE_STOCKS_LONG.xlsx"),("CRYPTO_LONG","TEMPLATE_CRY
 for cat, tmpl in cats:
     print(f"=== CAT {cat} via {tmpl} ===", flush=True)
     try:
-        subprocess.run(["/home/niels/binance-sandbox/.venv/bin/python","-u","tools/run_one_cat.py","--cat",cat,"--template",tmpl], cwd=str(Path.home()/"binance-sandbox"), timeout=3600)
+        subprocess.run(["/home/niels/.conda/envs/binance_env_mac/bin/python","-u","tools/run_one_cat.py","--cat",cat,"--template",tmpl], cwd=str(Path.home()/"binance-sandbox"), timeout=3600)
     except Exception as e:
         print(f"ERR {cat} {e}", flush=True)
         continue

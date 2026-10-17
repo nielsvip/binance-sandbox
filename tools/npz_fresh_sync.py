@@ -79,7 +79,7 @@ def probe_local():
 
 
 def probe_peer(host):
-    cmd = SSH + [host, "cd ~/binance-sandbox && .venv/bin/python -c " + "'" + PROBE.replace("'", "'\"'\"'") + "'" + " ~/binance-sandbox/backtest_v8/indicators"]
+    cmd = SSH + [host, "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c " + "'" + PROBE.replace("'", "'\"'\"'") + "'" + " ~/binance-sandbox/backtest_v8/indicators"]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
     if r.returncode != 0:
         log(f"{host} probe failed rc={r.returncode}: {(r.stderr or '')[-200:]}")

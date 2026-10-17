@@ -3434,6 +3434,40 @@ cache (1000RATSUSDT, PROVEUSDT, BASUSDT, SAHARAUSDT) there was no source at all.
 - **Boards are capped like live** until the system is trusted with size: order ≤ `QTY_LIVE_ORDER_CAP_MULT` (8) × START, position ≤ `QTY_LIVE_POSITION_CAP_MULT` (10) × START. The chart header shows the same set's `uncapped what-if` result on its own labelled line — never as the headline, never tradeable at today's caps.
 - **Live sizing ceilings are mode-dependent and per-sym values bypass them** (OPEN, see §112): `_apply_mode` LIGHT/NORMAL/EXTREME (≈1×/4.3×/7.7× START after 2026-10-16 23:22Z) is switched automatically from `data/market_mode.json` (ez_rankings market index ≥65 EXTREME, ≤35 LIGHT), but `_psym_get` returns the per-sym store's own START/MAX_ORDER_VALUE first, so the mode ceiling only binds where the set has none; CRYPTO_MINIMUM_TRADING_MODE caps everything to the exchange floor on top.
 
+## 114. LOSS-PRONE ENTRY FUNCTIONS + CLOSE-BEFORE-A-LOSS — THE PILOT FLIPS THEM, NOBODY ELSE (USER 2026-10-17)
+
+USER: "what we do need is a stricter enforcement of 'closing before entering into a loss' and a clear database of what functions ended
+having to close in a loss - these are to be excluded from newborn protection and should only be accepted with additional filters in
+future application (unless backtest deltas say otherwise)"; "hard-zero breakeven protection was disabled <- NEVER SHOUDL BE ENABLED OR
+DISABLED IT IS A SWITCH THAT FLIPS ACCORDING TO v15_pilot.py test results"; "newborn protection; should exist in both with the exceptions
+jsut stated".
+
+- **DATABASE.** `tools/loss_close_db.py` (daily 05:15Z, Mac cron `LOSS_CLOSE_DB` -> `tools/loss_close_db_cron.sh`, pushes to S1/S2 sandbox +
+  live): `data/loss_close_db.sqlite` (every board trade from the latest 30d charts with close-basis MFE, every confirmed live full close joined
+  to its opening function), `data/loss_close_db_summary.json`, `data/loss_prone_entries.json`. Flag = board n>=30 & pnl_sum<0 & loss_rate>=0.55,
+  or live n>=10 & pnl_sum<0. `loss_prone.fn_family()` is the ONE name normaliser (DB, live, vector). 2026-10-17: 3905 board + 1155 live trades,
+  106 functions, crypto 7 (B12, B15, B_EMADIST, B_SRS_ENTRY, HARDCODED_RALLY_REENTRY, REENTRY_DC4_15M_BREAK, REENTRY_HIGHER_LOW), stocks 6.
+- **CLOSE BEFORE A LOSS = THE EXISTING PEAK_GIVEBACK FAMILY, NOW ACTUALLY IN THE ENGINE.** `v12_quick_engine` imported
+  `vec_decisions/check_exit_candidates_crypto__peak_giveback.py` but never called it, so every pilot test of `PEAK_GIVEBACK_HARD_ZERO_ENABLED`
+  (REDUCE_PROFIT_LOCK) measured delta 0 and the hand-set 2026-04-27 value could never be overturned. The engine now runs that same pure core per
+  closed bar (close basis, reason `PEAK_GIVEBACK_GAIN_EROSION_STOP_peak…`); live follows through the VEC_EXACT twin. NO default was changed —
+  the pilot's measured delta decides per board. A duplicate `BREAKEVEN_LOCK_*` family drafted the same morning was deleted (one rule, one home).
+  New option `PEAK_GIVEBACK_SCOPE` all/loss_prone (master `PEAK_GIVEBACK_HARD_ZERO_ENABLED`), read by the engine, `ez_positions_quick` and
+  `tradier_manage` alike. `HARD_BREAKEVEN_FLOOR_ENABLED` (EXIT_VELOCITY) is still a modifier of a live HTF veto with no engine twin — inert rows.
+  Flip proof, 30d default sets, 7 sym_sides [DIAGNOSTIC ONLY]: HARD_ZERO on 6/7 better (COIN_SHORT −6.69→−1.12, UNIUSDC_LONG +0.53→+2.15),
+  AMD_LONG worse (+3.94→+3.63).
+- **ADDITIONAL FILTERS.** `LOSS_PRONE_ENTRY_FILTER_ENABLED` (default True, template row, ENTRY_CONFIRMATION_GATES) + `LOSS_PRONE_ENTRY_MIN_FILTERS`
+  1/2/3: an open from a flagged function must pass N of {WT 1h, WT 4h, close vs ema_50_1h} with the side. Engine (before `_open`) and live
+  native exposure increases at both chokepoints (`loss_prone.native_entry_ok`, `BLOCKED_LOSS_PRONE_ENTRY_FILTER`; vec-provenanced orders were
+  already filtered by the engine). Filter on vs off, crypto: DOGE +0.10 vs −2.99, SUI −17.74 vs −21.29, UNI +0.53 vs −1.36, ZEC −7.52 vs −7.35;
+  no effect on the 3 stock boards. A board turns it off when its delta says so.
+- **NEWBORN PROTECTION, BOTH VENUES.** The 15-min block on native reduces/closes (ez `execute_now`) now has a stocks twin in tradier
+  `execute_now`; same emergency bypasses, finest DC (5m) break, VEC_EXACT exempt, and positions opened by a loss-prone function are exempt
+  (`NEWBORN_PROTECT_LOSS_PRONE_EXEMPT`, config-only LIVE_AUTHORITY). `exit_guarantee` classes `BLOCKED_NEWBORN_PROTECT_` as STRATEGY, so an
+  authorized close still escalates.
+- **13 live per-sym sets carry `PEAK_GIVEBACK_HARD_ZERO_ENABLED=True`** chosen while the switch was inert on boards; their next re-measure is
+  the first honest number for them.
+
 ### 111.2 — USDC IS NATIVE NOW (USER 2026-10-17 "we used to trade usdc but use usdt data … usdc has full and reliable data"; "usdc and usdt can have >5% price discrepancies so we DEFINITELY need to make it usdc native as well")
 
 **The premise checks out.** All three real kline stores hold REAL USDC bars for every USDC ticker — measured on S1

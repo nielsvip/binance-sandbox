@@ -14,7 +14,7 @@ for h in s1-pub s2 s3 s5; do
   todo=$($TIMEOUT 8 ssh -o ConnectTimeout=5 $h "grep -o 'todo [0-9]*' /tmp/v15_local_herd.log 2>&1 | tail -1" 2>&1 | tail -1 | tr -d ' ')
   load=$($TIMEOUT 8 ssh -o ConnectTimeout=5 $h "cat /proc/loadavg | awk '{print \$1}'" 2>&1 | tail -1 | tr -d ' ')
   printf "%-6s disk:%-4s pilots:%-2s herds:%-2s xlsx:%-5s recent15m:%-3s load:%-4s %s\n" "$h" "$df" "$pilots" "$herds" "$xlsx" "$last" "$load" "$todo" >> "$LOG"
-  if [ "$herds" = "0" ] || [ -z "$herds" ]; then echo "HEAL $h herd dead" >> "$LOG"; $TIMEOUT 10 ssh -o ConnectTimeout=5 $h "nohup /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/v15_local_herd.py > /tmp/v15_local_herd.log 2>&1 &" 2>&1 | head -3 >> "$LOG"; fi
+  if [ "$herds" = "0" ] || [ -z "$herds" ]; then echo "HEAL $h herd dead" >> "$LOG"; $TIMEOUT 10 ssh -o ConnectTimeout=5 $h "nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_local_herd.py > /tmp/v15_local_herd.log 2>&1 &" 2>&1 | head -3 >> "$LOG"; fi
 done
 mac_xlsx=$(find /Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL -name "*.xlsx" 2>/dev/null | wc -l | tr -d ' ')
 s1_xlsx=$($TIMEOUT 8 ssh -o ConnectTimeout=5 s1-pub "find ~/binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL -name '*.xlsx' 2>/dev/null | wc -l" 2>&1 | tail -1 | tr -d ' ')

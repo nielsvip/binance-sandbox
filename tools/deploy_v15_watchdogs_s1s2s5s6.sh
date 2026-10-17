@@ -51,8 +51,8 @@ set -e
 CRON_TMP="/tmp/cron.$$"
 crontab -l 2>/dev/null | grep -v "v15_local_herd\|v15_cpu80_watchdog\|v15_warn\|monitor_production\|ELASTIC" > "$CRON_TMP" || true
 cat >> "$CRON_TMP" << 'CRON'
-*/2 * * * * /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/v15_cpu80_watchdog.py >> /tmp/v15_cpu80_watchdog.log 2>&1
-*/10 * * * * /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/monitor_production.py >> /tmp/monitor_production.log 2>&1
+*/2 * * * * /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_cpu80_watchdog.py >> /tmp/v15_cpu80_watchdog.log 2>&1
+*/10 * * * * /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/monitor_production.py >> /tmp/monitor_production.log 2>&1
 CRON
 crontab "$CRON_TMP" && echo "cron installed $(crontab -l | grep -c v15) entries" || echo "cron fail"
 rm -f "$CRON_TMP"

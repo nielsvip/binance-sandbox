@@ -7,7 +7,7 @@ forced True), runs the vector engine (v12_quick_engine) and the live-faithful ve
 compares. This validates the threshold-alignment fix (detailed entry now fires live at 43 instead
 of never crossing 55/85). RUNS ON s2 (needs stock NPZ + full env). Read-only, no orders.
 
-Usage (on s2):  .venv/bin/python tools/wtdc_detailed_parity.py <overrides.json> [out.json]
+Usage (on s2):  /home/niels/.conda/envs/binance_env_mac/bin/python tools/wtdc_detailed_parity.py <overrides.json> [out.json]
 """
 import os, sys, json, subprocess, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

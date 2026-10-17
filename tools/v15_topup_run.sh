@@ -39,7 +39,7 @@ say "=== topup run tag=$TAG venue=$VENUE host=$HOST chunk=$CHUNK apply=${APPLY:-
 if [ -n "${V15_TOPUP_SYMSIDES:-}" ]; then
   TARGETS="$V15_TOPUP_SYMSIDES"
 else
-TARGETS=$($SSH "$HOST" "cd ~/binance-sandbox && .venv/bin/python - <<'PY'
+TARGETS=$($SSH "$HOST" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python - <<'PY'
 import sys, json
 sys.path.insert(0, '.')
 import tools.v15_suspect_row_rerun as RR
@@ -60,7 +60,7 @@ done
 say "targets: ${#SS[@]} of ${#ALLSS[@]} sym_sides (shard $SI/$SN)"
 
 # --- the published sets live only on the orchestrator (s2 holds 0 publish rows) -> export once, push once ---
-$SSH "$HOST_CRYPTO" "cd ~/binance-sandbox && .venv/bin/python -u tools/v15_export_start_sets.py --published --venue $VENUE --out data/reports/v15_published_sets_${VENUE}.json" | tee -a "$LOG"
+$SSH "$HOST_CRYPTO" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_export_start_sets.py --published --venue $VENUE --out data/reports/v15_published_sets_${VENUE}.json" | tee -a "$LOG"
 if [ "$HOST" != "$HOST_CRYPTO" ]; then
   rsync -az --timeout=60 -e "$SSH" "$HOST_CRYPTO:binance-sandbox/data/reports/v15_published_sets_${VENUE}.json" "/tmp/v15_published_sets_${VENUE}.json" \
     && rsync -az --timeout=60 -e "$SSH" "/tmp/v15_published_sets_${VENUE}.json" "$HOST:binance-sandbox/data/reports/v15_published_sets_${VENUE}.json" \
@@ -97,7 +97,7 @@ while [ $i -lt ${#SS[@]} ]; do
     [ -n "$FILES" ] && rsync -az --delay-updates --timeout=120 -e "$SSH" $FILES "$HOST:binance-sandbox/klines_canonical/" >> "$LOG" 2>&1
   fi
   $SSH "$HOST" "cd ~/binance-sandbox && bash tools/npz_refresh_batch.sh '$SYMS' $MODE /tmp/npz_topup_s${SI}.lock" | tee -a "$LOG"
-  $SSH "$HOST" "cd ~/binance-sandbox && .venv/bin/python -u tools/v15_xlsx_topup.py --sym-sides '$LIST' --published-sets data/reports/v15_published_sets_${VENUE}.json --workers 8 $EXTRA $APPLY --tag ${TAG}_c$((i / CHUNK))" | tee -a "$LOG"
+  $SSH "$HOST" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_xlsx_topup.py --sym-sides '$LIST' --published-sets data/reports/v15_published_sets_${VENUE}.json --workers 8 $EXTRA $APPLY --tag ${TAG}_c$((i / CHUNK))" | tee -a "$LOG"
 done
 say "=== done — reports on $HOST: data/reports/v15_xlsx_topup_${TAG}_c*.json"
 say "REMINDER: restore dispatch with  python3 tools/v15_suspect_row_rerun.py --resume"

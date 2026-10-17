@@ -18,8 +18,8 @@ Usage:
   python3 -u tools/v15_red_fixer.py --cron-check   # ensure daemon running
 
 Cron:
-  * * * * * /home/niels/binance-sandbox/.venv/bin/python /home/niels/binance-sandbox/tools/v15_red_fixer.py --cron-check >> /tmp/v15_red_fixer_cron.log 2>&1
-  @reboot sleep 20; nohup /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/v15_red_fixer.py >> /tmp/v15_red_fixer.log 2>&1 &
+  * * * * * /home/niels/.conda/envs/binance_env_mac/bin/python /home/niels/binance-sandbox/tools/v15_red_fixer.py --cron-check >> /tmp/v15_red_fixer_cron.log 2>&1
+  @reboot sleep 20; nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_red_fixer.py >> /tmp/v15_red_fixer.log 2>&1 &
 """
 from __future__ import annotations
 import os, sys, time, json, pathlib, re, signal

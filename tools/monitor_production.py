@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """monitor_production - every server must produce new and better results or alert.
 Checks S1/S2/S5/S6 via ssh: new V15 files, hustle-ends, gain monotonic. Writes alert if stalled.
-Cron: */10 * * * * /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/monitor_production.py >> /tmp/monitor_production.log 2>&1
+Cron: */10 * * * * /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/monitor_production.py >> /tmp/monitor_production.log 2>&1
 """
 import subprocess, json, pathlib, time, sys
 HOSTS = {

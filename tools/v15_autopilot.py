@@ -273,7 +273,7 @@ def stage_collect(st, dry):
             manifest = f"ls {pd}/*_v14_progress.json > /tmp/v15_files.txt"
         else:
             manifest = "cat > /tmp/v15_files.txt <<'V15EOF'\n" + "\n".join(winners[h["name"]]) + "\nV15EOF"
-        cmd = f"cd {h['root']} && {manifest} && .venv/bin/python tools/v15_vector_delta_rebuild.py --files /tmp/v15_files.txt --emit-partial {pf}"
+        cmd = f"cd {h['root']} && {manifest} && /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_vector_delta_rebuild.py --files /tmp/v15_files.txt --emit-partial {pf}"
         rc, o = rsh(h, cmd, timeout=900)
         if rc != 0:
             log(f"collect: {h['name']} emit-partial failed {o[-200:]}"); return False

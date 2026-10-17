@@ -20,7 +20,7 @@ CONDA=/home/niels/.conda/envs/binance_env_mac/bin/python
 for H in $HOSTS; do
     echo "################ $H ################"
     $SSH "$H" "CONDA=$CONDA; "'
-for E in "binance/.venv:/home/niels/binance/.venv/bin/python" "binance-sandbox/.venv:/home/niels/binance-sandbox/.venv/bin/python"; do
+for E in "binance/.venv:/home/niels/.conda/envs/binance_env_mac/bin/python" "binance-sandbox/.venv:/home/niels/.conda/envs/binance_env_mac/bin/python"; do
   LABEL=${E%%:*}; P=${E#*:}
   [ -x "$P" ] || { echo "=== $LABEL: not present on this host ==="; continue; }
   [ -x "$CONDA" ] || { echo "=== $LABEL: conda env MISSING — cannot point here ==="; continue; }

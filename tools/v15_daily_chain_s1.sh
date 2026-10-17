@@ -281,7 +281,7 @@ for H in $TARGETS; do
   $SSH "$H" "cd ~/binance-sandbox && md5sum $FILES | sort -k2" > "$WORK/push_$H.md5" || fail 6 "remote md5 on $H"
   diff -q "$WORK/push_local.md5" "$WORK/push_$H.md5" >/dev/null || { diff "$WORK/push_local.md5" "$WORK/push_$H.md5"; fail 6 "md5 mismatch on $H"; }
   rsync -az -e "$SSH" tools/v15_state_kv_sync.py "$H:binance-sandbox/tools/v15_state_kv_sync.py" || fail 6 "kv helper to $H"
-  $SSH "$H" "cd ~/binance-sandbox && .venv/bin/python -u tools/v15_state_kv_sync.py --apply" || fail 6 "kv sync on $H"
+  $SSH "$H" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_state_kv_sync.py --apply" || fail 6 "kv sync on $H"
   log "step6 $H md5 OK ($(wc -l < "$WORK/push_local.md5") files) + kv synced"
 done
 STEPS_OK="$STEPS_OK,6"
@@ -366,10 +366,10 @@ if [ "$(date -u +%u)" = 7 ] || [ "${V15_CHAIN_WEEKLY:-0}" = 1 ]; then
       rsync -azR -e "$SSH" tools/v15_switch_flip_study.py tools/v15_causal_rescue.py data/causal_condemned.json data/causal/switch_causal_profile.json "$W:binance-sandbox/" 2>/dev/null || log "step8c code/data push to $W failed (continuing)"
     fi
     [ -f data/causal/switch_flip_study.json ] && cp -p data/causal/switch_flip_study.json "backups/before_daily_chain_${DATE}_switch_flip_study.json"
-    on_host "$W" "V12_NPZ_CACHE=4 V12_ALLOW_STALE_NPZ=1 timeout 3000 nice -n 15 .venv/bin/python -u tools/v15_switch_flip_study.py --workers ${V15_FLIP_WORKERS:-4} --per-cat 15" > "$WORK/flip_study.log" 2>&1 || log "step8c flip study rc=$? on $W (non-fatal)"
+    on_host "$W" "V12_NPZ_CACHE=4 V12_ALLOW_STALE_NPZ=1 timeout 3000 nice -n 15 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_switch_flip_study.py --workers ${V15_FLIP_WORKERS:-4} --per-cat 15" > "$WORK/flip_study.log" 2>&1 || log "step8c flip study rc=$? on $W (non-fatal)"
     tail -2 "$WORK/flip_study.log" | sed "s/^/[chain] step8c flip /"
     [ "$W" = local ] || rsync -az -e "$SSH" "$W:binance-sandbox/data/causal/switch_flip_study.json" "$W:binance-sandbox/data/causal/switch_flip_study.md" data/causal/ 2>/dev/null || log "step8c flip pull failed (non-fatal)"
-    on_host "$W" "nice -n 15 timeout 2700 .venv/bin/python -u tools/v15_causal_rescue.py run --workers 2 --bases-per-cat 4 --budget-s 2400 --out data/causal/rescue_outcomes.json" > "$WORK/rescue_run.log" 2>&1 || log "step8c rescue run rc=$? on $W (non-fatal)"
+    on_host "$W" "nice -n 15 timeout 2700 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_causal_rescue.py run --workers 2 --bases-per-cat 4 --budget-s 2400 --out data/causal/rescue_outcomes.json" > "$WORK/rescue_run.log" 2>&1 || log "step8c rescue run rc=$? on $W (non-fatal)"
     tail -3 "$WORK/rescue_run.log" | sed "s/^/[chain] step8c rescue /"
     if [ "$W" = local ] || rsync -az -e "$SSH" "$W:binance-sandbox/data/causal/rescue_outcomes.json" "$W:binance-sandbox/data/causal/rescue_outcomes.md" data/causal/; then
       nice -n 15 "$PY" -u tools/v15_causal_rescue.py ingest-outcomes data/causal/rescue_outcomes.json 2>&1 | tail -2 | sed 's/^/[chain] step8c ingest /' || log "step8c rescue ingest failed (non-fatal)"

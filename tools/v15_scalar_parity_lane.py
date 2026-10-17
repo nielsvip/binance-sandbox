@@ -100,10 +100,10 @@ def dispatch(item):
     (d / "item.json").write_text(json.dumps(meta, indent=1))
     sym = item["sym_side"].rsplit("_", 1)[0]
     rel = d.relative_to(ROOT)
-    remote = f"cd ~/binance-sandbox && setsid -f .venv/bin/python tools/v15_scalar_parity_lane.py --run-job {rel} < /dev/null > /dev/null 2>&1"
+    remote = f"cd ~/binance-sandbox && setsid -f /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_scalar_parity_lane.py --run-job {rel} < /dev/null > /dev/null 2>&1"
     cmd_file = f"/tmp/v15_parity_dispatch_{item['sym_side']}_{item['overrides_md5'][:8]}.sh"
     subprocess.run(SSH + [S1, f"cat > {cmd_file}"], input=remote, text=True, check=True, timeout=60)
-    subprocess.run(SSH + [S1, f"cd ~/binance-sandbox && V15_PREV_BEST_SHIP=0 setsid -f .venv/bin/python tools/v15_dispatch_job.py --symbol {sym} --push {SELF} --via {SELF} --cmd-file {cmd_file} --tag parity:{item['sym_side']} < /dev/null > /dev/null 2>&1"], check=True, timeout=60)
+    subprocess.run(SSH + [S1, f"cd ~/binance-sandbox && V15_PREV_BEST_SHIP=0 setsid -f /home/niels/.conda/envs/binance_env_mac/bin/python tools/v15_dispatch_job.py --symbol {sym} --push {SELF} --via {SELF} --cmd-file {cmd_file} --tag parity:{item['sym_side']} < /dev/null > /dev/null 2>&1"], check=True, timeout=60)
     (d / "dispatch.json").write_text(json.dumps({"t": time.time(), "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "via": S1, "cmd_file": cmd_file}))
     return meta
 

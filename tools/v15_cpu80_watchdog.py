@@ -9,9 +9,9 @@ Guarantees:
   - Keep all servers cpu>80% via continuous saturation (herd max_parallel/workers)
 
 Cron on each server (installed by deploy_v15_watchdogs.sh):
-  */2 * * * * /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/v15_cpu80_watchdog.py >> /tmp/v15_cpu80_watchdog.log 2>&1
-  @reboot sleep 30; nohup /home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/tools/v15_local_herd.py >> /tmp/v15_local_herd.log 2>&1 &
-  * * * * * /home/niels/binance-sandbox/.venv/bin/python /home/niels/binance-sandbox/tools/v15_local_herd.py --cron-check >> /tmp/v15_local_herd_cron.log 2>&1
+  */2 * * * * /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_cpu80_watchdog.py >> /tmp/v15_cpu80_watchdog.log 2>&1
+  @reboot sleep 30; nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/tools/v15_local_herd.py >> /tmp/v15_local_herd.log 2>&1 &
+  * * * * * /home/niels/.conda/envs/binance_env_mac/bin/python /home/niels/binance-sandbox/tools/v15_local_herd.py --cron-check >> /tmp/v15_local_herd_cron.log 2>&1
 
 Also used by Mac warn daemon: same thresholds (CPU_WARN=80 now, was 95) for unified alerting.
 """

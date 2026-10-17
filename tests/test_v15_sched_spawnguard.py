@@ -20,7 +20,7 @@ class SpawnGuardShellTest(unittest.TestCase):
         g = _spawn_guard(
             "ZZZGUARD_LONG",
             "30D",
-            "echo BODY_RAN .venv/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG",
+            "echo BODY_RAN /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG",
         )
         out = subprocess.run(
             ["bash", "-c", g], capture_output=True, text=True, timeout=20
@@ -41,7 +41,7 @@ class SpawnGuardShellTest(unittest.TestCase):
             g = _spawn_guard(
                 "ZZZGUARD_LONG",
                 "30D",
-                "echo BODY_RAN .venv/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG",
+                "echo BODY_RAN /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side ZZZGUARD_LONG",
             )
             out = subprocess.run(
                 ["bash", "-c", g], capture_output=True, text=True, timeout=20
@@ -83,7 +83,7 @@ class SpawnGuardShellTest(unittest.TestCase):
             [
                 "bash",
                 "-c",
-                'exec -a "/home/niels/binance-sandbox/.venv/bin/python -u /home/niels/binance-sandbox/v15_pilot.py --sym-side ZZZGUARD_LONG" sleep 30',
+                'exec -a "/home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/v15_pilot.py --sym-side ZZZGUARD_LONG" sleep 30',
             ]
         )
         try:

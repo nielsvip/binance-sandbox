@@ -30,7 +30,7 @@ print(f"CAT {cat} order {len(order)} {order[:3]}", flush=True)
 for sym in order:
     print(f"START {sym}", flush=True)
     try:
-        subprocess.run(["/home/niels/binance-sandbox/.venv/bin/python","-u","v15_pilot.py","--sym-side",sym,"--window-days","30","--template","SPREADSHEETS/"+tmpl], cwd=str(Path.home()/"binance-sandbox"), timeout=3600)
+        subprocess.run(["/home/niels/.conda/envs/binance_env_mac/bin/python","-u","v15_pilot.py","--sym-side",sym,"--window-days","30","--template","SPREADSHEETS/"+tmpl], cwd=str(Path.home()/"binance-sandbox"), timeout=3600)
     except Exception as e:
         print(f"TIMEOUT/ERR {sym} {e}", flush=True)
         continue

@@ -21,5 +21,5 @@ for s in open('/tmp/stock_universe_daily.txt').read().split():
         print(f'{s}_{tf}.json')
 PY
 scp -q /tmp/stock_universe_daily.txt /tmp/klines_files_daily.txt $S1:/tmp/
-ssh -o BatchMode=yes $S1 "cd ~/binance-sandbox && nice -n 10 .venv/bin/python -u tools/stock_klines_gapfill.py --symbols-file /tmp/stock_universe_daily.txt --conc 5 | tail -3; mkdir -p ~/klines_bak_$D; cd klines_cache/tradier && nice -n 10 rsync -a --update --backup --backup-dir=\$HOME/klines_bak_$D --files-from=/tmp/klines_files_daily.txt ./ 10.0.0.4:/home/niels/binance-sandbox/klines_cache/tradier/"
-nice -n 10 .venv/bin/python -u tools/stock_npz_refresh.py --symbols-file /tmp/stock_universe_daily.txt --stage $HOME/npz_stage_$D --backup $HOME/npz_backup_$D
+ssh -o BatchMode=yes $S1 "cd ~/binance-sandbox && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/stock_klines_gapfill.py --symbols-file /tmp/stock_universe_daily.txt --conc 5 | tail -3; mkdir -p ~/klines_bak_$D; cd klines_cache/tradier && nice -n 10 rsync -a --update --backup --backup-dir=\$HOME/klines_bak_$D --files-from=/tmp/klines_files_daily.txt ./ 10.0.0.4:/home/niels/binance-sandbox/klines_cache/tradier/"
+nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/stock_npz_refresh.py --symbols-file /tmp/stock_universe_daily.txt --stage $HOME/npz_stage_$D --backup $HOME/npz_backup_$D

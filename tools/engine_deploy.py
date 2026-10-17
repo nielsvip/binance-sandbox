@@ -61,7 +61,7 @@ def main():
                 chk = sh(SSH + [h, f"cd {base} && md5sum " + " ".join(files)])
                 got = {l.split()[1]: l.split()[0] for l in chk.stdout.splitlines() if len(l.split()) == 2}
                 bad = [r for r in files if got.get(r) != res["files"][r]]
-                imp = sh(SSH + [h, f"cd {base} && .venv/bin/python -c 'import v12_quick_engine, evaluate_v12; print(\"ok\")' 2>&1 | tail -1"]).stdout.strip()
+                imp = sh(SSH + [h, f"cd {base} && /home/niels/.conda/envs/binance_env_mac/bin/python -c 'import v12_quick_engine, evaluate_v12; print(\"ok\")' 2>&1 | tail -1"]).stdout.strip()
                 res["hosts"][f"{h}:{d}"] = {"moved": "moved" in o.stdout, "md5_bad": bad, "import": imp}
     os.makedirs(os.path.join(ROOT, "data/engine_deploy"), exist_ok=True)
     cur = {}

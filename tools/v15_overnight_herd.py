@@ -130,7 +130,7 @@ def ensure_code_synced(host: str) -> bool:
 def launch_pilot(host: str, symside: str, workers: int, window_days: int = 30) -> bool:
     # nohup detached, log to /tmp/v15_{SYM}.log, also heartbeat
     cmd = (
-        f"nohup /home/niels/binance-sandbox/.venv/bin/python -u "
+        f"nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u "
         f"/home/niels/binance-sandbox/v15_pilot.py "
         f"--sym-side {shlex.quote(symside)} --window-days {window_days} "
         f"--vector-only --workers {workers} "

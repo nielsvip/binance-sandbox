@@ -9,7 +9,7 @@ W=data/wiring/avg2; mkdir -p $W
 for h in s1-pub s2 s5; do
   timeout 60 scp -q tools/v15_vector_delta_rebuild.py $h:/tmp/v15_vector_delta_rebuild.py
   timeout 60 scp -q tools/avg2_sources.py data/avg2_sources.json $h:/tmp/
-  timeout 600 ssh $h 'ls /home/niels/v15_run*_2026*/progress/*_v14_progress.json /home/niels/v15_run*_2026*/contaminated_*/progress/*_v14_progress.json 2>/dev/null | grep -E "v15_run(19|2[0-9])_" > /tmp/avg2_all.txt; cd ~/binance-sandbox && nice -n 5 .venv/bin/python /tmp/v15_vector_delta_rebuild.py --files /tmp/avg2_all.txt --scan /tmp/avg2_scan.tsv | tail -1'
+  timeout 600 ssh $h 'ls /home/niels/v15_run*_2026*/progress/*_v14_progress.json /home/niels/v15_run*_2026*/contaminated_*/progress/*_v14_progress.json 2>/dev/null | grep -E "v15_run(19|2[0-9])_" > /tmp/avg2_all.txt; cd ~/binance-sandbox && nice -n 5 /home/niels/.conda/envs/binance_env_mac/bin/python /tmp/v15_vector_delta_rebuild.py --files /tmp/avg2_all.txt --scan /tmp/avg2_scan.tsv | tail -1'
   timeout 60 scp -q $h:/tmp/avg2_scan.tsv $W/scan_$h.tsv
   awk -v h=$h '{print $0"\t"h}' $W/scan_$h.tsv >> $W/scan_all.tsv
 done
@@ -42,7 +42,7 @@ P=""
 for h in s1-pub s2 s5; do
   [ -s $W/manifest_$h.txt ] || continue
   timeout 60 scp -q $W/manifest_$h.txt $h:/tmp/avg2_manifest.txt
-  timeout 600 ssh $h 'cd ~/binance-sandbox && nice -n 5 .venv/bin/python /tmp/v15_vector_delta_rebuild.py --files /tmp/avg2_manifest.txt --emit-partial /tmp/avg2_partial.json | tail -1'
+  timeout 600 ssh $h 'cd ~/binance-sandbox && nice -n 5 /home/niels/.conda/envs/binance_env_mac/bin/python /tmp/v15_vector_delta_rebuild.py --files /tmp/avg2_manifest.txt --emit-partial /tmp/avg2_partial.json | tail -1'
   timeout 60 scp -q $h:/tmp/avg2_partial.json $W/partial_$h.json
   P="$P,$W/partial_$h.json"
 done

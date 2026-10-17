@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """par_path_probe — vector (v12_quick, include_ledger) vs scalar live-faithful (backtest_v12_engine.run_one) per-path trade counts at DEFAULT overrides on the same frozen 30D NPZ slice.
-Output JSON per sym_side in OUT dir: counts by (action, reason family) for vec and scalar, totals, gain. Run on a worker (S1/S2/S5) with .venv/bin/python, niced.
+Output JSON per sym_side in OUT dir: counts by (action, reason family) for vec and scalar, totals, gain. Run on a worker (S1/S2/S5) with /home/niels/.conda/envs/binance_env_mac/bin/python, niced.
   python tools/par_path_probe.py OUTDIR SYM_SIDE [SYM_SIDE...]
 """
 import os, sys, json, re, glob, time, collections

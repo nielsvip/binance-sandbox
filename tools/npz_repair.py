@@ -125,7 +125,7 @@ def fingerprint_local(symbols):
 
 
 def fingerprint_peer(host, symbols):
-    cmd = SSH + [host, "cd ~/binance-sandbox && .venv/bin/python -c " + json_quote(FINGERPRINT) + " " + ",".join(symbols) + " " + ":".join(peer_roots())]
+    cmd = SSH + [host, "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c " + json_quote(FINGERPRINT) + " " + ",".join(symbols) + " " + ":".join(peer_roots())]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if r.returncode != 0:
         log(f"{host} fingerprint failed rc={r.returncode}: {(r.stderr or '')[-200:]}")

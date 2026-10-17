@@ -25,7 +25,7 @@ log() { echo "[$(date -u +%FT%TZ)] [golive-refresh] $*"; }
 GAPPLY=""
 grep -q "PERF_TIER_SIZING" ez_manage.py && grep -q "PERF_TIER_SIZING" tradier_manage.py && "$PY" -c "import config,config_tradier,sys; sys.exit(0 if config.Config().PERF_TIER_SIZING_ENABLED and config_tradier.TradierConfig().PERF_TIER_SIZING_ENABLED else 1)" 2>/dev/null && GAPPLY="--apply"
 log "=== start ${GAPPLY:-DRY-RUN}"
-if $SSH "$S1" "cd ~/binance-sandbox && rm -f data/published_selection.json && .venv/bin/python -u tools/v15_published_selection.py --out data/published_selection.json" 2>&1 | tail -1 \
+if $SSH "$S1" "cd ~/binance-sandbox && rm -f data/published_selection.json && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_published_selection.py --out data/published_selection.json" 2>&1 | tail -1 \
   && rsync -az -e "$SSH" "$S1:binance-sandbox/data/published_selection.json" "$PSEL.s1" && [ -s "$PSEL.s1" ]; then
   mv "$PSEL.s1" "$PSEL"
   GOUT=$ROOT/data/daily_chain/persym_golive_${D}_refresh_$(date -u +%H%M).json

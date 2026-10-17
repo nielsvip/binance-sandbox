@@ -26,12 +26,12 @@ if [ "$READY" -ne 1 ]; then echo "[$(TS)] not ready: done=$N nowmin=$NOWMIN fire
 
 echo "[$(TS)] FIRING 365D certification + parity gate (done=$N)" >>"$LOG"
 # Stage 2a — 365D certification (neg gain discarded; gain>0 AND trades>=30 required). Sanctioned writer.
-timeout 4800 $SSH s1-int 'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox .venv/bin/python -u tools/confirm_365d.py --all --window-days 365 >/tmp/confirm365_s1.log 2>&1; tail -2 /tmp/confirm365_s1.log' >>"$LOG" 2>&1
-timeout 4800 $SSH s2     'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox .venv/bin/python -u tools/confirm_365d.py --all --window-days 365 >/tmp/confirm365_s2.log 2>&1; tail -2 /tmp/confirm365_s2.log' >>"$LOG" 2>&1
+timeout 4800 $SSH s1-int 'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/confirm_365d.py --all --window-days 365 >/tmp/confirm365_s1.log 2>&1; tail -2 /tmp/confirm365_s1.log' >>"$LOG" 2>&1
+timeout 4800 $SSH s2     'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/confirm_365d.py --all --window-days 365 >/tmp/confirm365_s2.log 2>&1; tail -2 /tmp/confirm365_s2.log' >>"$LOG" 2>&1
 # Stage 2b — parity gate: backtest_v12_engine vs vector on the certified set; REVOKE parity fails
 # (via sanctioned confirm_365d.py --revoke). Runs post-sweep so the servers are idle and fast.
-timeout 7200 $SSH s1-int 'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox .venv/bin/python -u tools/v15_parity_gate.py --window-days 30 >/tmp/paritygate_s1.log 2>&1; tail -3 /tmp/paritygate_s1.log' >>"$LOG" 2>&1
-timeout 7200 $SSH s2     'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox .venv/bin/python -u tools/v15_parity_gate.py --window-days 30 >/tmp/paritygate_s2.log 2>&1; tail -3 /tmp/paritygate_s2.log' >>"$LOG" 2>&1
+timeout 7200 $SSH s1-int 'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_parity_gate.py --window-days 30 >/tmp/paritygate_s1.log 2>&1; tail -3 /tmp/paritygate_s1.log' >>"$LOG" 2>&1
+timeout 7200 $SSH s2     'cd ~/binance-sandbox && BASE_PATH=$HOME/binance-sandbox /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_parity_gate.py --window-days 30 >/tmp/paritygate_s2.log 2>&1; tail -3 /tmp/paritygate_s2.log' >>"$LOG" 2>&1
 
 $SSH s1-int 'cat ~/binance-sandbox/data/confirmed_365d.json' >/tmp/c365_s1.json 2>/dev/null
 $SSH s2     'cat ~/binance-sandbox/data/confirmed_365d.json' >/tmp/c365_s2.json 2>/dev/null
