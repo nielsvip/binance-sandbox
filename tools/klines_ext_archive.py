@@ -165,6 +165,18 @@ def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list,
     existing = load_bars(target) if target.exists() else []
     merged = {b["timestamp"]: b for b in existing}
     own_before = len(merged)
+    # Bars settled against the exchange by tools/klines_reconcile.py are PINNED: never re-valued here.
+    # The _more_complete rule below reads "higher volume + wider range" as a later sample of the same forming
+    # bar, which an INFLATED corrupt bar also satisfies — that is how the archive ended up holding
+    # WLFIUSDC_1h 2026-08-03T00:00 at volume 10,306,094 when the exchange says 528,337. Without this pin the
+    # next run would promote the bad bar again and silently undo all 8,400 corrections.
+    pinned: set = set()
+    try:
+        _pp = arch_dir / f"{name}._pinned.json"
+        if _pp.exists():
+            pinned = {str(x) for x in json.loads(_pp.read_text())}
+    except Exception:
+        pinned = set()
     for peer_dir in peers:
         if peer_dir == arch_dir:
             continue
@@ -174,6 +186,8 @@ def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list,
                 cur = merged.get(b["timestamp"])
                 if cur is None:
                     merged[b["timestamp"]] = b
+                elif b["timestamp"] in pinned:
+                    continue
                 elif not _same_bar(cur, b) and _more_complete(b, cur):
                     merged[b["timestamp"]] = b
     before = own_before
@@ -185,6 +199,8 @@ def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list,
             if cur is None:
                 merged[ts] = b
                 added += 1
+            elif ts in pinned:
+                continue                      # exchange-settled: only another reconcile may change it
             elif _same_bar(cur, b):
                 continue                      # float noise only
             elif _more_complete(b, cur):
@@ -430,6 +446,26 @@ def verify(name: str) -> int:
     return 0
 
 
+_LOCK_FH = None
+
+
+def take_lock(name: str = "klines_archive") -> bool:
+    """One writer at a time across klines_ext_archive / klines_reconcile / klines_gap_fill.
+
+    All three write the same archive files. Each write is atomic (tmp + os.replace) so a file can never be
+    corrupted, but two overlapping runs can still LOSE an update: the later writer replaces the file from a
+    snapshot it read before the earlier writer finished. With the 30-minute tick and a long reconcile pass
+    that overlap is routine, so the loser simply exits and the next tick picks the work up."""
+    global _LOCK_FH
+    import fcntl
+    try:
+        _LOCK_FH = open(f"/tmp/{name}.lock", "w")
+        fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (IOError, OSError):
+        return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--coverage", action="store_true")
@@ -442,6 +478,10 @@ def main() -> int:
     ap.add_argument("--budget", type=float, default=0, help="--deepen: stop after N seconds (resumable)")
     ap.add_argument("--force", action="store_true", help="re-merge even when the manifest says sources are unchanged (use after a merge-rule change)")
     a = ap.parse_args()
+    _ro = bool(getattr(a, 'coverage', False) or getattr(a, 'verify', False) or getattr(a, 'dry_run', False))
+    if not _ro and not take_lock():
+        log("another klines archive writer holds the lock — exiting; the next tick picks this up")
+        return 0
     if a.coverage:
         return coverage()
     if a.verify:

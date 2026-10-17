@@ -265,6 +265,20 @@ def write_archive(name: str, bars: list[dict]) -> None:
             log(f"    REFUSED archive write on {d.parents[1].name}: short write")
             continue
         os.replace(tmp, p)
+        # Keep _manifest.json honest. This tool used to write the archive file and leave the manifest alone,
+        # so klines_ext_archive --coverage read a stale `bars` count and reported "136 archived shorter than
+        # local" for files this tool had in fact just FILLED, and the peer-convergence check compared stale
+        # numbers. Only bars/first/last are touched: `srcs` stays as it was so the archive tool still
+        # re-verifies the sources itself.
+        try:
+            mp = d / "_manifest.json"
+            man = json.loads(mp.read_text()) if mp.exists() else {}
+            ent = man.get(name) or {}
+            ent.update(bars=len(out), first=out[0]["timestamp"], last=out[-1]["timestamp"])
+            man[name] = ent
+            mp.write_text(json.dumps(man))
+        except Exception as e:
+            log(f"    manifest update failed on {d.parents[1].name}: {e}")
         log(f"    archive {d.parents[1].name}: {before} -> {len(out)} bars")
 
 
@@ -343,6 +357,26 @@ def fill_one(name: str, no_fetch: bool, apply_local: bool) -> dict:
     return rep
 
 
+_LOCK_FH = None
+
+
+def take_lock(name: str = "klines_archive") -> bool:
+    """One writer at a time across klines_ext_archive / klines_reconcile / klines_gap_fill.
+
+    All three write the same archive files. Each write is atomic (tmp + os.replace) so a file can never be
+    corrupted, but two overlapping runs can still LOSE an update: the later writer replaces the file from a
+    snapshot it read before the earlier writer finished. With the 30-minute tick and a long reconcile pass
+    that overlap is routine, so the loser simply exits and the next tick picks the work up."""
+    global _LOCK_FH
+    import fcntl
+    try:
+        _LOCK_FH = open(f"/tmp/{name}.lock", "w")
+        fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (IOError, OSError):
+        return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbol", help="one SYMBOL_TF")
@@ -351,6 +385,10 @@ def main() -> int:
     ap.add_argument("--no-fetch", action="store_true", help="folders + S1 only; never call the exchange")
     ap.add_argument("--apply-local", action="store_true", help="also repair klines_canonical (append-only)")
     a = ap.parse_args()
+    _ro = bool(getattr(a, 'coverage', False) or getattr(a, 'verify', False) or getattr(a, 'dry_run', False))
+    if not _ro and not take_lock():
+        log("another klines archive writer holds the lock — exiting; the next tick picks this up")
+        return 0
     names = []
     if a.symbol:
         names = [a.symbol]

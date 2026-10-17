@@ -33,4 +33,28 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 echo $$ > "$LOCK/pid" 2>/dev/null || true
 trap 'rm -rf "$LOCK"' EXIT INT TERM
+
+# SECOND macOS GAP, same cron lines: they read `flock -n <lock> timeout 2400 <cmd>` and macOS ships neither
+# flock NOR timeout (both are GNU coreutils). Fixing only flock would have moved the failure one word to the
+# right — `timeout: command not found` — and left the pipeline just as dead, which is why this is handled here
+# rather than by editing four crontab lines twice. Prefer the real tool, then Homebrew's gtimeout by absolute
+# path (cron's PATH has no /opt/homebrew/bin), and otherwise enforce the limit ourselves.
+if [ "${1:-}" = "timeout" ]; then
+    if command -v timeout >/dev/null 2>&1; then
+        :                                            # Linux: genuine coreutils timeout, use it unchanged
+    elif _gt="$(command -v gtimeout 2>/dev/null)" && [ -n "$_gt" ]; then
+        shift; set -- "$_gt" "$@"
+    elif [ -x /opt/homebrew/bin/gtimeout ]; then
+        shift; set -- /opt/homebrew/bin/gtimeout "$@"
+    elif [ -x /usr/local/bin/gtimeout ]; then
+        shift; set -- /usr/local/bin/gtimeout "$@"
+    else
+        shift; _lim="${1:-3600}"; shift
+        "$@" & _cpid=$!
+        ( sleep "$_lim"; kill -TERM "$_cpid" 2>/dev/null ) & _wpid=$!
+        wait "$_cpid"; _rc=$?
+        kill "$_wpid" 2>/dev/null
+        exit "$_rc"
+    fi
+fi
 "$@"

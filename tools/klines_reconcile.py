@@ -224,11 +224,46 @@ def reconcile_one(name: str, stamps: set[str], dry: bool) -> dict:
             with (d / "_corrections.jsonl").open("a") as fh:
                 for c in corrections:
                     fh.write(json.dumps(c) + "\n")
+        # PIN every exchange-settled timestamp. Without this the next klines_ext_archive run would undo the
+        # correction: its _more_complete rule treats "higher volume + wider range" as a later sample of the
+        # same forming bar, and an INFLATED corrupt bar looks exactly like that — every bar corrected here had
+        # too much volume (WLFIUSDC_1h 10,306,094 -> 528,337 true). A pinned bar is only ever changed by
+        # another exchange reconciliation.
+        stamps = sorted({c["timestamp"] for c in corrections})
+        for d in dirs:
+            pp = d / f"{name}._pinned.json"
+            try:
+                cur = set(json.loads(pp.read_text())) if pp.exists() else set()
+            except Exception:
+                cur = set()
+            merged_pins = sorted(cur | set(stamps))
+            if merged_pins != sorted(cur):
+                pp.write_text(json.dumps(merged_pins))
     # per-drive loop counts corrections once per drive; report the per-drive figure divided back
     if len(dirs) > 1:
         for k in ("corrected", "added", "already_right"):
             rep[k] = rep[k] // len(dirs)
     return rep
+
+
+_LOCK_FH = None
+
+
+def take_lock(name: str = "klines_archive") -> bool:
+    """One writer at a time across klines_ext_archive / klines_reconcile / klines_gap_fill.
+
+    All three write the same archive files. Each write is atomic (tmp + os.replace) so a file can never be
+    corrupted, but two overlapping runs can still LOSE an update: the later writer replaces the file from a
+    snapshot it read before the earlier writer finished. With the 30-minute tick and a long reconcile pass
+    that overlap is routine, so the loser simply exits and the next tick picks the work up."""
+    global _LOCK_FH
+    import fcntl
+    try:
+        _LOCK_FH = open(f"/tmp/{name}.lock", "w")
+        fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (IOError, OSError):
+        return False
 
 
 def main() -> int:
@@ -239,6 +274,10 @@ def main() -> int:
     ap.add_argument("--include-tokenized", action="store_true", help="also settle the untraded stock-USDT proxies")
     ap.add_argument("--max", type=int, default=0, help="stop after this many symbol/timeframes")
     a = ap.parse_args()
+    _ro = bool(getattr(a, 'coverage', False) or getattr(a, 'verify', False) or getattr(a, 'dry_run', False))
+    if not _ro and not take_lock():
+        log("another klines archive writer holds the lock — exiting; the next tick picks this up")
+        return 0
     global INCLUDE_TOKENIZED
     INCLUDE_TOKENIZED = bool(a.include_tokenized)
     tfs = tuple(t.strip() for t in a.timeframes.split(",") if t.strip())
