@@ -17,6 +17,8 @@ RULES
     and their .superseded twins) to the true name, backup first, manifest gets "name_truth".
   * header gain != G (+-0.01) or header peak != page peak -> QUARANTINE: the board (every copy on this host) is moved
     to <dir>/_quarantine_name_truth/ under its true name, never published, ALERT line in the log.
+  * a page inside a quarantine dir that is now consistent (e.g. re-rendered with tools.opt.hires_chart.generate_hires) moves
+    back to the publish dir with its companions (UNQUARANTINE).
   * copies without their own page (xlsx in SPREADSHEETS root, manifest archives, sync arrivals) follow the old->new map
     (persisted in the state file): renamed, or deleted after backup when the true name already exists there. This is
     what makes a sync unable to resurrect an old name.
@@ -102,8 +104,10 @@ def js_const(text: str, name: str):
         return None
 
 
-def event_peak(rows) -> float:
-    """Event replay identical to tools/opt/evaluate_v12._peak_concurrent (the chart header's peak), sweep fallback."""
+def event_peaks(rows) -> dict:
+    """Both event replays the chart header has ever printed: "cost" = cost-basis peak (tools/opt/evaluate_v12._peak_concurrent
+    since 2026-10-17, engine 4532fd52 / evaluator 784cf47d) and "price" = |qty| x latest fill price (earlier pages). Sweep fallback
+    when the page has no OPEN events."""
     evs = []
     for t in rows:
         if not isinstance(t, dict):
@@ -123,22 +127,32 @@ def event_peak(rows) -> float:
             evs.append((ts, 0 if ty == "OPEN" else 1, ty, abs(q), p))
         elif "pnl_dollars" in t:
             evs.append((ts, 2, "CLOSE", 0.0, 0.0))
-    if any(e[2] == "OPEN" for e in evs):
-        evs.sort(key=lambda e: (e[0], e[1]))
-        qty = peak = 0.0
-        for _ts, _rk, ty, q, p in evs:
-            if ty == "OPEN":
-                qty = q
-            elif ty == "AUGMENT":
-                qty += q
-            elif ty == "REDUCE":
-                qty = max(0.0, qty - min(q, qty))
-            else:
-                qty = 0.0
-                continue
-            peak = max(peak, qty * p)
-        return float(peak)
-    return sweep_peak([t for t in rows if isinstance(t, dict) and "pnl_dollars" in t])
+    if not any(e[2] == "OPEN" for e in evs):
+        sw = sweep_peak([t for t in rows if isinstance(t, dict) and "pnl_dollars" in t])
+        return {"cost": sw, "price": sw}
+    evs.sort(key=lambda e: (e[0], e[1]))
+    qty = cost = pk_cost = pk_price = 0.0
+    for _ts, _rk, ty, q, p in evs:
+        if ty == "OPEN":
+            qty, cost = q, q * p
+        elif ty == "AUGMENT":
+            qty += q
+            cost += q * p
+        elif ty == "REDUCE":
+            r = min(q, qty)
+            if qty > 0:
+                cost -= cost * (r / qty)
+            qty = max(0.0, qty - r)
+        else:
+            qty, cost = 0.0, 0.0
+            continue
+        pk_cost = max(pk_cost, cost)
+        pk_price = max(pk_price, qty * p)
+    return {"cost": float(pk_cost), "price": float(pk_price)}
+
+
+def event_peak(rows) -> float:
+    return event_peaks(rows)["cost"]
 
 
 def sweep_peak(trades) -> float:
@@ -188,13 +202,18 @@ def page_truth(path: Path) -> dict:
     closed = [t for t in trades if isinstance(t, dict) and t.get("pnl_dollars") is not None and not is_unrealised(t)]
     countable_events = [e for e in events if isinstance(e, dict) and not e.get("unrealised")]
     pnl = sum(float(t.get("pnl_dollars") or 0.0) for t in closed)
-    peak = event_peak(closed + countable_events)
     i = text.find('<div class="metrics">')
     seg = text[i: text.find("</div>", i)] if i >= 0 else text[:6000]
     mg, mp = HDR_GAIN_RE.search(seg), HDR_PEAK_RE.search(seg)
     hdr_gain = float(mg.group(1)) if mg else None
     hdr_peak = float(mp.group(1)) if mp else None
-    out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "closed_trades": len(closed), "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t))}
+    pks = event_peaks(closed + countable_events)
+    # the header's printed "peak $X" decides which replay the page was written with; cost basis when it matches or is absent
+    peak_method = "cost"
+    if hdr_peak is not None and abs(round(pks["cost"]) - hdr_peak) > 1.0 and abs(round(pks["price"]) - hdr_peak) <= 1.0:
+        peak_method = "price"
+    peak = pks[peak_method]
+    out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "closed_trades": len(closed), "peak_method": peak_method, "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t))}
     if peak <= 0:
         out.update(status="NO_PEAK", why="page peak is 0")
         return out
@@ -236,7 +255,7 @@ class Guard:
         self.tars = {}
         self.actions = []
         self.alerts = []
-        self.stats = {"pages": 0, "ok": 0, "renamed_stems": 0, "quarantined_stems": 0, "no_ledger": 0, "young_skipped": 0}
+        self.stats = {"pages": 0, "ok": 0, "renamed_stems": 0, "quarantined_stems": 0, "no_ledger": 0, "young_skipped": 0, "unquarantined_stems": 0}
 
     # ---------- scan ----------
     def scan(self):
@@ -381,6 +400,14 @@ class Guard:
                 newmap.setdefault(stem, {"new": new_stem, "G": t["G"], "sum_pnl_dollars": t["sum_pnl_dollars"], "peak": t["peak"], "peak_header": t.get("peak_header"), "header_gain": t.get("header_gain"), "max_dd_pct": t.get("max_dd_pct"), "closed_trades": t.get("closed_trades"), "page": str(page), "status": t["status"]})
                 if quarantine:
                     self.state["quarantined"][new_stem] = {"why": t["why"], "utc": now_utc(), "page": str(page)}
+                if in_q and not quarantine:
+                    # re-rendered page is consistent: back to the publish dir under its true name
+                    self.stats["unquarantined_stems"] += 1
+                    self.state["quarantined"].pop(new_stem, None)
+                    self.state["quarantined"].pop(stem, None)
+                    for x in members:
+                        self.move(x, d.parent / x.name.replace(stem + "_30d_matrix", new_stem + "_30d_matrix", 1), f"UNQUARANTINE G={t['G']:.4f} name={stem}", dict(t))
+                    continue
                 if new_stem == stem and (not quarantine or in_q):
                     self.stats["ok"] += 1
                     continue

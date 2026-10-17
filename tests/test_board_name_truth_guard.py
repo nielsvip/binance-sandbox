@@ -40,6 +40,7 @@ def _board(d: Path, stem: str, hdr_gain=12.5, hdr_peak=200.0):
 
 
 def _run(root, dry=False, min_age=600):
+    G.LOG = Path(root) / "guard.log"
     return G.Guard([root], dry, min_age, Path(root) / "state.json").run()
 
 
@@ -127,3 +128,22 @@ def test_peer_map_renames_copy_whose_page_lives_on_another_host(tmp_path):
     assert not orphan.exists() and (cell / "FFFUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx").exists() and res["summary"]["peer_maps"] == 1
     exported = json.loads((tmp_path / "board_name_truth_map.json").read_text())
     assert "FFFUSDT_LONG_bh1p00_gain466p_t2" not in exported["map"]
+
+
+def test_cost_basis_peak_and_price_peak_pages():
+    rows = [{"type": "OPEN", "ts": 1.0, "price": 1.0, "qty": 100.0}, {"type": "AUGMENT", "ts": 2.0, "price": 2.0, "qty": 100.0}, {"type": "CLOSE", "ts": 3.0, "pnl_dollars": 30.0, "bar_entry": 1, "bar_exit": 3}]
+    pk = G.event_peaks(rows)
+    assert abs(pk["cost"] - 300.0) < 1e-9 and abs(pk["price"] - 400.0) < 1e-9
+
+
+def test_rerendered_consistent_page_is_unquarantined(tmp_path):
+    cell = _board(tmp_path, "GGGUSDT_SHORT_bhm1p00_gain61p_t2", hdr_gain=61.5)
+    _run(tmp_path)
+    q = cell / G.QDIR
+    tr, ev = _ledger()
+    (q / "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html").write_text(_page(tr, ev, 12.5, 200.0))
+    os.utime(q / "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html", (OLD, OLD))
+    res = _run(tmp_path)
+    assert res["summary"]["unquarantined_stems"] == 1 and not any(q.iterdir())
+    assert sorted(p.name for p in cell.iterdir() if p.is_file()) == ["GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.html", "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix.xlsx", "GGGUSDT_SHORT_bhm1p00_gain12p50_t2_30d_matrix_manifest.json"]
+    assert _run(tmp_path)["actions"] == []
