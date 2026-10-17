@@ -6,6 +6,7 @@ import parity_exact_gate as _peg  # 2026-10-10 USER TOTAL PARITY: exact-mode nat
 import stale_set_halt as _stale_set_halt  # 2026-10-14 USER STALE-SET 2-LOSS HALT (BIBLE §102): vector >10d old + 2 losing closes -> sym_side entries halted until a fresh board is applied
 import exit_guarantee as _xg  # 2026-10-14 USER EXITS NEVER COMPROMISED: full close never refused (FORCE leg), reduce retry, ledger once per confirmed fill
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 USER STDEV 1-5x ladder + streak quantizer: same code as v12_quick_engine/tradier_manage
+import paper_nonvec as _paper_nv  # 2026-10-17 USER: live-only decisions refused + paper-traded next to the vector trades
 import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: stale->broker fallback, zero-qty refusal, broker-confirmed SUCCESS
 from live_rally_filters import rally_ok as _rally_ok, age_minutes as _rally_age
 import fnmatch
@@ -32123,6 +32124,8 @@ class MultiAccountTradeManager:
         if _hm_why and not str(_hm_why).startswith("vec:"):
             logger.warning(f"[HERMETIC] {'REFUSED' if not _hm_ok else 'WOULD_REFUSE(log mode)'} {position_key} {action} {side}/{position_side} hedge={is_hedge} reason={str(reason)[:80]} — {_hm_why}")
         if not _hm_ok:
+            if _paper_nv.enabled(config):
+                _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "HERMETIC", old_price, quantity)
             return "BLOCKED_HERMETIC_NOT_VEC"
         # ─── LOSS_PRONE_ENTRY_FILTER live twin (USER 2026-10-17 "should only be accepted with additional filters"): a NATIVE exposure
         # increase (no vec provenance) from a function flagged in data/loss_prone_entries.json must pass the vector's filters. ───
@@ -33141,6 +33144,8 @@ class MultiAccountTradeManager:
                     if not _vp_ok(reason or "") and not _lane_b_vec_only_parity_ok(symbol, position_side, reason or "") and not _vd_exempt:
                         if _vp_mode:
                             logger.critical(f"🧬 [STRICT_VEC_PARITY] {position_key}: BLOCKED — reason not vec-achievable. action={action} reason={(reason or '')[:90]}")
+                            if _paper_nv.enabled(config):
+                                _paper_nv.record("crypto", account_key, position_key, "exit" if _vp_is_exit else "entry", action, reason, "STRICT_VEC_PARITY", old_price, quantity)
                             return f"BLOCKED_VEC_PARITY_{(_kill_act or 'NA')[:12]}"
                         logger.warning(f"🧬 [STRICT_VEC_PARITY_SHADOW] {position_key}: WOULD-BLOCK (not vec-achievable). action={action} reason={(reason or '')[:90]}")
                     elif _vp_shadow and not _vp_mode:

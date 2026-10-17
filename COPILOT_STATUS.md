@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 05:21:12 UTC
+# Copilot Status — 2026-10-17 05:26:19 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -8,6 +8,8 @@
 
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T05:16:11
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T05:20:19
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T05:22:21
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T05:24:28
 
 ## Missed Trades (trader comparison)
 
@@ -45,8 +47,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 24
-- [MEDIUM] tradier_manage.py for trc is NOT running
+**Issues (last 1h):** 46
+- [HIGH] ez_market_data.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running

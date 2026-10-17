@@ -118,3 +118,23 @@ def test_breakeven_core_called_by_live_and_engine():
         assert call in live, call
     for call in ("_bgem.trend_veto(", "_bgem.htf_veto(", "_bgem.window_decision(", "_bgem.in_grace("):
         assert call in eng, call
+
+
+def test_paper_nonvec_records_once_per_bar(tmp_path, monkeypatch):
+    import paper_nonvec
+
+    monkeypatch.setattr(paper_nonvec, "DIR", tmp_path)
+    paper_nonvec._SEEN.clear()
+    for _ in range(3):
+        paper_nonvec.record("stocks", "trb", "trb:AMD_LONG", "entry", "OPEN", "REENTRY_MONITOR x", "HERMETIC")
+    rows = [l for f in tmp_path.glob("events_*.jsonl") for l in f.read_text().splitlines()]
+    assert len(rows) == 1 and '"fn": "REENTRY_MONITOR"' in rows[0]
+    assert paper_nonvec.kind_of("CLOSE") == "exit" and paper_nonvec.kind_of(None, "SELL", "LONG") == "exit" and paper_nonvec.kind_of("OPEN") == "entry"
+
+
+def test_refusals_paper_traded_and_stock_hermetic_enforced():
+    for f, n in (("ez_manage.py", 2), ("tradier_manage.py", 2)):
+        assert (ROOT / f).read_text().count("_paper_nv.record(") == n, f
+    import config_tradier
+
+    assert config_tradier.TradierConfig().TRADIER_HERMETIC_ENFORCE is True

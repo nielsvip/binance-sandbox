@@ -47,6 +47,28 @@ print(f"[h2h-cycle] {venue}: {len(sides)} tradeable sym_sides")
 PYEOF
 [ -s "$LIST" ] || { say "empty universe — refusing"; exit 1; }
 
+# USER 2026-10-17 bug, caught in the first real run: --stale-days was being evaluated on the WORKER, whose
+# per_sym_store.db is NOT the one that trades (the same trap this tool's header warns about for incumbent sets).
+# TIAUSDC_LONG — 9 days old on the Mac — was exported and in the universe, then silently dropped because S1's
+# copy of the row looked fresh. Age is a property of the LIVE set, so the filter runs here, on the Mac, before
+# the export, and the worker is never told about --stale-days.
+if [ -n "${V15_H2H_STALE_DAYS:-}" ]; then
+    "$PY" - "$LIST" "${V15_H2H_STALE_DAYS}" <<'PYEOF' >> "$LOG" 2>&1 || { say "stale filter failed"; exit 1; }
+import importlib.util, sys
+from pathlib import Path
+list_path, days = sys.argv[1], float(sys.argv[2])
+sys.path.insert(0, str(Path(__file__).resolve().parent if "__file__" in dir() else "."))
+spec = importlib.util.spec_from_file_location("h2h", "tools/v15_golive_headtohead.py")
+mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+stale = set(mod._stale_sym_sides(days))
+sides = [l.strip() for l in open(list_path) if l.strip() and not l.startswith("#")]
+kept = [s for s in sides if s in stale]
+open(list_path, "w").write("\n".join(kept) + ("\n" if kept else ""))
+print(f"[stale-filter] {len(sides)} -> {len(kept)} sym_sides older than {days}d (Mac per_sym_store, the set that trades)")
+PYEOF
+    say "stale filter: $(wc -l < "$LIST" | tr -d ' ') sym_side(s) older than ${V15_H2H_STALE_DAYS}d"
+    [ -s "$LIST" ] || { say "nothing older than ${V15_H2H_STALE_DAYS}d — done"; exit 0; }
+fi
 LIVE=/tmp/h2h_live_${VENUE}.json
 "$PY" tools/v15_golive_headtohead.py export-live --sym-sides-file "$LIST" --out "$LIVE" | tee -a "$LOG"
 [ -s "$LIVE" ] || { say "live export empty — refusing (never measure against a worker's own db)"; exit 1; }
@@ -63,7 +85,7 @@ OUT=/tmp/h2h_${VENUE}_${TS}.json
 # beat the nondeterminism tolerance or the incumbent stays.
 EXTRA=""
 [ -n "${V15_H2H_CANDIDATE:-}" ] && EXTRA="$EXTRA --candidate ${V15_H2H_CANDIDATE}"
-[ -n "${V15_H2H_STALE_DAYS:-}" ] && EXTRA="$EXTRA --stale-days ${V15_H2H_STALE_DAYS}"
+# NOT passed to the worker on purpose — see the Mac-side stale filter above.
 say "measure on $HOST${EXTRA:+ (}${EXTRA}${EXTRA:+ )}"
 $SSH "$HOST" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_golive_headtohead.py measure --live-sets $LIVE --out $OUT$EXTRA" 2>&1 | tail -4 | tee -a "$LOG"
 rsync -az --timeout=300 -e "$SSH" "$HOST:$OUT" "$OUT" >> "$LOG" 2>&1 || { say "decision pull failed"; exit 1; }

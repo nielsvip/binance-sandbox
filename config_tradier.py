@@ -1911,6 +1911,7 @@ class TradierConfig:
     PEAK_GIVEBACK_SCOPE: str = "all"  # all / loss_prone — which positions the PEAK_GIVEBACK hard-zero/drop exit covers (pilot-tested)
     LOSS_PRONE_ENTRY_FILTER_ENABLED: bool = True  # loss-prone entry functions need extra filters (boards may switch it off)
     LOSS_PRONE_ENTRY_MIN_FILTERS: int = 2  # 1 / 2 / 3 of {WT 1h, WT 4h, close vs ema50 1h} with the side
+    PAPER_NONVEC_ENABLED: bool = True  # config-only: refused live-only decisions are paper-traded (data/paper_nonvec, tools/paper_nonvec_eval.py)
     NEWBORN_PROTECT_LOSS_PRONE_EXEMPT: bool = True  # config-only (LIVE_AUTHORITY): positions opened by a loss-prone function get no 15-min newborn protection
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losers before shrinking (1 / 2)
@@ -3007,7 +3008,7 @@ class TradierConfig:
     # Enforcing it would have driven stocks toward 0 trades (USER 2026-10-17: "0 trades means something went
     # terribly wrong"). Do NOT flip without the reconciliation; the no-board gate below is the narrow,
     # sanctioned half of the same intent.
-    TRADIER_HERMETIC_ENFORCE: bool = False
+    TRADIER_HERMETIC_ENFORCE: bool = True  # USER 2026-10-17 "live needs to 100% reflect vector decisions right now no discrepancies tolerated": native stock entries refused + paper-traded (paper_nonvec); 3d before: 270 native vs 28 vec entries
     TRADIER_NO_BOARD_ENTRY_BLOCK: bool = True  # 2026-10-16: refuse a stock ENTRY (never an exit/reduction/stop) when the sym_side has no published board within the age ceiling (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks twin of the crypto gate at ez_positions_quick ~28512. LIVE_SET_NE_BOARD deliberately NOT gated (forward parity 1 PASS of 35). ON since 2026-10-17 per USER.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = False
     HEDGE_HTF_VETO_ENABLED: bool = True

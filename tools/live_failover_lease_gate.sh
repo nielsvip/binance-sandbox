@@ -35,7 +35,15 @@ lf_lease_fenced() {
         # nothing left to ever unfence it. A lease older than LF_LEASE_MAX_AGE_S is not a lease, it is a leftover file.
         local _age _now _fetched
         _fetched="$(sed -n 's/.*"fetched_epoch"[^0-9]*\([0-9][0-9]*\).*/\1/p' "$file" 2>/dev/null | head -1)"
-        _now="$(date -u +%s)"
+        # Honour the project's test clock (tools/live_failover_common.py:62 does the same:
+        # float(os.environ.get("LF_FAKE_NOW") or time.time())). Without it the staleness guard below compared a
+        # lease stamped at the harness's frozen T_SESSION (2026-10-13 18:00Z) against the REAL wall clock, so by
+        # 2026-10-17 every fence read as ~4 days stale and 6 failover tests failed on
+        # `gate(world.mac, "ez_manage.py") == 0` -- i.e. the tests that prove the Mac is FENCED when S1 takes a
+        # venue, the "seamlessly" half of the 3-minute takeover, could not pass at all. Production is unaffected:
+        # LF_FAKE_NOW is never set outside the harness.
+        _now="${LF_FAKE_NOW%%.*}"
+        [[ -n "$_now" ]] || _now="$(date -u +%s)"
         if [[ -n "$_fetched" ]]; then
             _age=$(( _now - _fetched ))
             if [[ "$_age" -gt "${LF_LEASE_MAX_AGE_S:-600}" ]]; then

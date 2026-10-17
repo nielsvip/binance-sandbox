@@ -217,8 +217,17 @@ def measure(a):
         if cg is None:
             d["verdict"], d["why"] = "CANDIDATE_UNMEASURABLE", cwhy
         elif lg is None:
-            d["verdict"], d["why"] = "APPLY_CANDIDATE", f"no measurable incumbent ({lwhy})"
-            d["overrides"] = cand_full
+            # USER 2026-10-17, caught in the first stocks run: "incumbent unmeasurable -> adopt" was written for a
+            # PUBLISHED board candidate, which a sweep had already proven. Pointed at cat_side defaults it means
+            # "the old set has too few trades to judge, so install a generic default that measures -12" — 6 of 14
+            # stock applies did exactly that (HOOD_LONG -12.38, SLV_LONG -11.63, ADP_LONG -10.63, NVDA_LONG -9.35,
+            # APA_LONG -5.25, MA_LONG -0.51) and were reverted. An unjudged per-sym set is not evidence that a
+            # LOSING replacement is better, so a negative candidate never wins by default.
+            if cg < 0:
+                d["verdict"], d["why"] = "KEEP_LIVE", f"no measurable incumbent ({lwhy}) and candidate {cg} is negative — not a reason to install a losing set"
+            else:
+                d["verdict"], d["why"] = "APPLY_CANDIDATE", f"no measurable incumbent ({lwhy}), candidate {cg} >= 0"
+                d["overrides"] = cand_full
         elif cg > lg + TOL:
             d["verdict"], d["why"] = "APPLY_CANDIDATE", f"candidate {cg} beats live {lg} by {cg - lg:.3f} > tol {TOL} on the same NPZ"
             d["overrides"] = cand_full
@@ -262,8 +271,6 @@ KV_CATSIDE_VERIFIED = "catside_verified"
 
 def _stamp(decisions_doc):
     """Record that each sym_side in this run was re-measured against today's cat_side defaults."""
-    if (decisions_doc.get("candidate_source") or decisions_doc.get("candidate")) not in ("catside", None):
-        pass
     try:
         import per_sym_store as PS
         prev = PS.kv_get(KV_CATSIDE_VERIFIED) or {}

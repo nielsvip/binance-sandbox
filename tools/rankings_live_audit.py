@@ -114,6 +114,31 @@ def _live_set_ages():
     return out
 
 
+def _catside_verified():
+    """-> {SYM_SIDE: age_hours_since_last_cat_side_head_to_head}. {} when never run / unreadable."""
+    import datetime
+    try:
+        import per_sym_store as pss
+
+        raw = pss.kv_get("catside_verified") or {}
+    except Exception:
+        return {}
+    out = {}
+    now = time.time()
+    for sym_side, rec in (raw.items() if isinstance(raw, dict) else []):
+        at = rec.get("at") if isinstance(rec, dict) else None
+        if not at:
+            continue
+        try:
+            stamp = datetime.datetime.fromisoformat(str(at).replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=datetime.timezone.utc)
+        except ValueError:
+            continue
+        out[str(sym_side).upper()] = (now - stamp.timestamp()) / 3600.0
+    return out
+
+
 def _board_divergence(sym_sides):
     """-> ([(SYM_SIDE, n_differing_keys)], [SYM_SIDE uncomparable]). The live entry gate's own comparator:
     [] means live IS running the board, whatever per_sym_active.updated_at says."""
@@ -286,6 +311,17 @@ def audit_venue(venue, args, ranking_sets):
         finding("SETTINGS", "%d traded sym_side(s) are NOT running their board: %s" % (len(diverged), ", ".join("%s(%d keys)" % (ss, n) for ss, n in diverged[:12])))
     if undecidable:
         finding("SETTINGS", "%d traded sym_side(s) could not be compared to their board: %s" % (len(undecidable), ", ".join(undecidable[:8])))
+    # An old row that was re-measured against today's cat_side defaults and WON is not a problem; one that is
+    # old and was never re-measured is the real gap (USER 2026-10-17, 7-day rule).
+    # Only sides past the SWEEP threshold can be "overdue": the cat_side head-to-head cron selects on
+    # --stale-days (7), so flagging anything merely over the 24h display limit would fire on every side aged
+    # 1-7 days and be noise — the same write-recency trap this check was rewritten to avoid.
+    verified = _catside_verified()
+    overdue = [ss for age, ss in stale if age > args.verify_age_days * 24.0 and ss not in verified]
+    report["stats"]["settings"]["old_but_verified"] = len([1 for _, ss in stale if ss in verified])
+    report["stats"]["settings"]["overdue_verification"] = len(overdue)
+    if overdue:
+        finding("SETTINGS", "%d traded sym_side(s) are over %.0fd old and were never re-measured against today's cat_side defaults: %s" % (len(overdue), args.verify_age_days, ", ".join(overdue[:12])))
     if stale and args.age_findings:
         finding("SETTINGS", "%d traded sym_side(s) written over %.0fh ago: %s" % (len(stale), args.settings_age_h, ", ".join("%s %.0fh" % (ss, age) for age, ss in stale[:15])))
 
@@ -307,6 +343,7 @@ def main():
     parser.add_argument("--max-age-h", type=float, default=float(os.environ.get("RANKINGS_AUDIT_MAX_AGE_H", 6.0)), help="list/artifact freshness limit (default 6)")
     parser.add_argument("--settings-age-h", type=float, default=float(os.environ.get("RANKINGS_AUDIT_SETTINGS_AGE_H", 24.0)), help="per_sym live-set age limit (default 24)")
     parser.add_argument("--plot-n", type=int, default=20, help="how many ranks per side are expected to be plotted")
+    parser.add_argument("--verify-age-days", type=float, default=float(os.environ.get("RANKINGS_AUDIT_VERIFY_AGE_D", 7.0)), help="age past which a set must have been re-measured against cat_side defaults (matches the h2h cron's --stale-days)")
     parser.add_argument("--no-deep", action="store_true", help="skip the board-vs-live comparison (~10s for the full fleet)")
     parser.add_argument("--age-findings", action="store_true", help="also report write-age staleness as a finding (context only by default)")
     parser.add_argument("--json", action="store_true", help="emit the report as JSON")
@@ -331,7 +368,7 @@ def main():
         stats = report["stats"]
         print("\n=== %s (%s) — %d long / %d short traded, %d plot files" % (report["venue"].upper(), report["account"], stats["traded"]["long"], stats["traded"]["short"], stats.get("plot_files", 0)))
         print("    ages(h): %s" % json.dumps(stats.get("age_h", {})))
-        print("    settings: %d sides, %d without a live set, %d diverged from board, %d written >%.0fh ago" % (stats["settings"]["traded_sides"], stats["settings"]["no_live_set"], stats["settings"]["diverged_from_board"], stats["settings"]["write_age_over_limit"], args.settings_age_h))
+        print("    settings: %d sides, %d without a live set, %d diverged from board, %d old (%d re-measured vs cat_side, %d overdue)" % (stats["settings"]["traded_sides"], stats["settings"]["no_live_set"], stats["settings"]["diverged_from_board"], stats["settings"]["write_age_over_limit"], stats["settings"].get("old_but_verified", 0), stats["settings"].get("overdue_verification", 0)))
         print("    priority: %d/%d sides visible to the scheduler" % (stats["priority"]["seen"], stats["priority"]["of"]))
         if not report["findings"]:
             print("    PASS — plots, lists, freshness, settings and priority all agree")
