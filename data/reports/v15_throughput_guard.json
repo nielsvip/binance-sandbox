@@ -1,5 +1,5 @@
 {
- "at": "2026-10-17T11:11:04Z",
+ "at": "2026-10-17T12:11:07Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,35 +10,35 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "KMNOUSDT_LONG"
+    "HOOD_LONG"
    ],
-   "mem_avail_mb": 12972,
-   "load1": 18.4,
+   "mem_avail_mb": 22361,
+   "load1": 16.74,
    "nproc": 16,
    "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 38769 MB, mem 14346 MB, est_pair 15914 MB) \u2014 slots 1/4",
+   "binding_reason": "scheduler mem guard (disk 36567 MB, mem 23931 MB, est_pair 19958 MB) \u2014 slots 1/4",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 54.6,
-   "last_improved_symside": "EDUUSDT_SHORT",
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 30.9,
-   "improved_gap_min_max_24h": 160.3,
-   "improved_finishes_24h": 24,
-   "board_cpu_s_median_24h": 4076.6,
-   "board_wall_s_median_24h": 1272.8810431957245,
-   "board_cores": 7.85,
-   "nonboard_cores_competing": 3.58,
-   "nonboard_cores_niced": 3.29,
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": 0,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": 6.83,
+   "nonboard_cores_competing": 1.14,
+   "nonboard_cores_niced": 3.78,
    "cores_by_bucket": {
-    "other": 2.65,
-    "boards": 7.85,
-    "klines_append": 0.93
+    "other": 0.21,
+    "klines_append": 0.93,
+    "boards": 6.83
    },
    "cores_by_bucket_niced": {
-    "other": 2.06,
-    "klines_vault": 1.23
+    "other": 2.07,
+    "klines_vault": 1.71
    }
   },
   "s2": {
@@ -48,30 +48,30 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "COIN_SHORT",
-    "LMT_SHORT"
+    "CDE_SHORT"
    ],
-   "mem_avail_mb": 23221,
-   "load1": 5.74,
+   "mem_avail_mb": 27779,
+   "load1": 4.31,
    "nproc": 16,
-   "slots": "2/6",
-   "binding_reason": "scheduler mem guard (disk 105428 MB, mem 23782 MB, est_pair 19626 MB) \u2014 slots 2/6",
+   "slots": "1/6",
+   "binding_reason": "scheduler mem guard (disk 115132 MB, mem 25293 MB, est_pair 23227 MB) \u2014 slots 1/6",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 5.1,
-   "last_improved_symside": "PAAS_SHORT",
+   "minutes_since_last_improved": 27.7,
+   "last_improved_symside": "COIN_SHORT",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 24.9,
+   "improved_gap_min_median_24h": 22.4,
    "improved_gap_min_max_24h": 1240.1,
-   "improved_finishes_24h": 29,
+   "improved_finishes_24h": 31,
    "board_cpu_s_median_24h": 2723.5,
-   "board_wall_s_median_24h": 1188.691614151001,
-   "board_cores": 4.54,
-   "nonboard_cores_competing": 0,
+   "board_wall_s_median_24h": 1151.968919992447,
+   "board_cores": 1.0,
+   "nonboard_cores_competing": 0.02,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 4.54
+    "boards": 1.0,
+    "other": 0.02
    },
    "cores_by_bucket_niced": {}
   }

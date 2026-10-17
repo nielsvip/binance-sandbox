@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 12:04:49 UTC
+# Copilot Status — 2026-10-17 12:09:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T11:44:02
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T11:46:08
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:48:13
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:50:19
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:52:25
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:58:37
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T12:00:40
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T12:04:48
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T12:06:51
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T12:08:55
 
 ## Missed Trades (trader comparison)
 
@@ -30,17 +30,17 @@ _None_
 **Held:** 22 | **Watching for reentry:** 12 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +0.4%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.1%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +-1.7%
+- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +-1.9%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
-- HELD: **UNIUSDC** SHORT (crypto) peak +4.8%, now +0.4%
+- HELD: **UNIUSDC** SHORT (crypto) peak +4.8%, now +0.6%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
 
-- WATCHING: **SANDUSDT** LONG (crypto) peaked +10.9%, exited 0m ago
+- WATCHING: **SANDUSDT** LONG (crypto) peaked +11.0%, exited 0m ago
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 0m ago
 - WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **MANAUSDT** SHORT (crypto) peaked +7.1%, exited 0m ago
