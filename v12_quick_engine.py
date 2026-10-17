@@ -5634,6 +5634,7 @@ class QuickConfig:
     STOP_RECLAIM_BUFFER_PCT: float = 0.10  # 0.05 / 0.10 / 0.20 — close must reclaim the stop by this much
     STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
     STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
+    STOP_RECLAIM_EXCLUSIVE: bool = True  # inside the window only the strict reclaim may re-enter after a FIXED_STOP (fresh entries unaffected)
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # only full-close moves >= this qualify (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losses before shrinking (1 / 2)
     QTY_STREAK_LOSS_MULT: float = 0.8  # 0.8 / 0.6 / 0.4 of normal size
@@ -18873,6 +18874,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     fire = False
             if fire and _iso_on and has_closed_before and not entry_sig[i]:
                 fire = False  # [N1/004] ENTRY_ISOLATE_FAMILY: every reentry fire disabled (fresh entries of the isolated family only)
+            if fire and _sr_on and has_closed_before and trades and not entry_sig[i] and _sr_fired[0] != i:
+                # 2026-10-17 STOP_RECLAIM_EXCLUSIVE: inside the reclaim window after a FIXED_STOP only the strict reclaim may re-enter
+                try:
+                    if _srm.exclusive_blocks(cfg, trades[-1].get("exit_reason") or trades[-1].get("reason"), i - int(trades[-1].get("bar_exit", i))):
+                        fire = False
+                except Exception:
+                    pass
             if (
                 fire
                 and _fx_G["_rag_pass"] is not None

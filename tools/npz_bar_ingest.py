@@ -95,8 +95,11 @@ def klines_between(symbol, mode, lo, hi):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--max-age-h", type=float, default=float(os.environ.get("NPZ_BAR_MAX_AGE_H", "6")),
-                    help="a staged bar older than this is stale news; the refresher owns that tail")
+    ap.add_argument("--max-age-h", type=float, default=float(os.environ.get("NPZ_BAR_MAX_AGE_H", "72")),
+                    help="sanity bound only. A STOCK's latest bar is legitimately hours old (the 20:00Z session "
+                         "close) and over a weekend ~65 h, so this must not be tight: correctness comes from the "
+                         "hole check below (the row must be the next bar that exists in the symbol's own klines), "
+                         "not from wall-clock age. 6 h rejected every overnight stock bar when first tried.")
     a = ap.parse_args()
     if not INBOX.is_dir():
         log(f"no inbox at {INBOX} — nothing to do")

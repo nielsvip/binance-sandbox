@@ -9,6 +9,7 @@ Evaluated on each CLOSED 15m bar while flat (LONG; SHORT mirrored). Fires only w
   4 reclaim   close >= stop_level x (1 + STOP_RECLAIM_BUFFER_PCT/100) AND close in the upper half of the bar (buyers won it)
   5 momentum  wt1_15m > wt2_15m AND wt_velocity_15m > 0 (strictly rising)
   6 trend     (STOP_RECLAIM_REQUIRE_HTF) close > dc_low_4h AND (wt1_4h >= wt2_4h OR close >= ema_50_4h)
+  STOP_RECLAIM_EXCLUSIVE (default True): inside the window every other re-entry pathway is held (fresh entries are not).
 Entry at the bar close, sized STOP_RECLAIM_SIZE_MULT x the normal open. The new position freezes its own FIXED_STOP with the
 unchanged vec_decisions/fixed_stop.py math (dc_15m_low now includes the sweep low) — the stop is never moved or disabled.
 ONE predicate for v12_quick_engine.simulate_one; live follows through the VEC_EXACT twin (the twin's OPEN carries the reason),
@@ -93,6 +94,21 @@ def fire(cfg, is_long: bool, stop_level: float, bars_since: int, ext_since: floa
         return True
     except Exception:
         return False
+
+
+def exclusive_blocks(cfg, last_exit_reason, bars_since: int) -> bool:
+    """STOP_RECLAIM_EXCLUSIVE (default True, only while STOP_RECLAIM_REENTRY_ENABLED): during the reclaim window after a
+    FIXED_STOP, every OTHER re-entry pathway (HARDCODED_RALLY, exit-price break, tiers ...) is held — the stop is followed
+    only by the strict reclaim. Fresh entry signals are never blocked here. Measured 10-17 on 11 sym_sides: with rally
+    re-entry on, every reclaim landed on a bar the blunt rally re-entry already took (gain identical; reclaims all lost)."""
+    if not enabled(cfg):
+        return False
+    v = _get(cfg, "STOP_RECLAIM_EXCLUSIVE", True)
+    if not ((str(v).strip().lower() in ("1", "true", "yes")) if isinstance(v, str) else bool(v)):
+        return False
+    if not str(last_exit_reason or "").upper().startswith(STOP_REASON):
+        return False
+    return 0 <= int(bars_since) <= int(_num(_get(cfg, "STOP_RECLAIM_WINDOW_BARS", 4), 4))
 
 
 def size_mult(cfg, reason) -> float:

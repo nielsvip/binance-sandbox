@@ -2130,6 +2130,7 @@ class Config:
     STOP_RECLAIM_BUFFER_PCT: float = 0.10  # 0.05 / 0.10 / 0.20 — close must reclaim the stop by this much
     STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
     STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
+    STOP_RECLAIM_EXCLUSIVE: bool = True  # inside the window only the strict reclaim may re-enter after a FIXED_STOP (fresh entries unaffected)
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losers before shrinking (1 / 2)
     QTY_STREAK_LOSS_MULT: float = 0.8  # size after the loss streak (0.8 / 0.6 / 0.4)
