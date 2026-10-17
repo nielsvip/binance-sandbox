@@ -93,6 +93,58 @@ def _candidate_set(sym_side):
                 "publish_row_keys": len(ov)}
 
 
+def _candidate_catside(sym_side):
+    """The CURRENT cat_side defaults for this sym_side. -> (set, meta) or (None, why).
+
+    USER 2026-10-17: "nothing trades old backtest settings, >14 days needs to verify whether old settings give
+    better results than latest defaults for cat_sym and use the best scoring one". A per-sym set proven weeks ago
+    is not self-evidently better than today's cat_side defaults, and nothing was re-checking that. This makes the
+    cat_side layer a first-class CANDIDATE so the same one-NPZ head-to-head decides it: the old set only survives
+    if it still wins by more than the nondeterminism tolerance. No new measurement path — same engine, same rule."""
+    try:
+        import cat_side_defaults as _csd
+    except Exception as e:
+        return None, f"cat_side_defaults unimportable: {type(e).__name__}: {str(e)[:60]}"
+    sym, _, side = sym_side.rpartition("_")
+    crypto = sym.upper().endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI"))
+    cat_side = f"{'CRYPTO' if crypto else 'STOCKS'}_{side.upper()}"
+    try:
+        ov = dict(_csd.defaults(cat_side) or {})
+    except Exception as e:
+        return None, f"cat_side defaults unreadable: {type(e).__name__}: {str(e)[:60]}"
+    if len(ov) < 20:
+        return None, f"cat_side {cat_side} carries {len(ov)} keys — nothing usable"
+    return ov, {"cat_side": cat_side, "cat_side_keys": len(ov), "source": "cat_side_defaults"}
+
+
+def _stale_sym_sides(days):
+    """SYM_SIDEs whose live per_sym row was last written more than `days` ago, oldest first."""
+    import datetime
+    import sqlite3
+
+    import per_sym_store as PS
+    out = []
+    try:
+        c = sqlite3.connect(f"file:{PS.DB_PATH}?mode=ro", uri=True)
+        rows = c.execute("select sym_side, updated_at from per_sym_active").fetchall()
+        c.close()
+    except Exception:
+        return out
+    now = time.time()
+    for sym_side, updated_at in rows:
+        try:
+            t = datetime.datetime.fromisoformat(str(updated_at).replace("Z", "+00:00"))
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            continue
+        age_d = (now - t.timestamp()) / 86400.0
+        if age_d > float(days):
+            out.append((age_d, sym_side))
+    out.sort(reverse=True)
+    return [ss for _, ss in out]
+
+
 def _candidate_full(incumbent, cand):
     """The candidate as a COMPLETE set: the incumbent full set with the publish row's keys written over it.
 
@@ -127,6 +179,10 @@ def measure(a):
     sides = [s.strip() for s in (a.sym_sides or "").replace("\n", ",").split(",") if s.strip()]
     if a.sym_sides_file:
         sides += [l.strip() for l in open(a.sym_sides_file) if l.strip() and not l.startswith("#")]
+    if getattr(a, "stale_days", 0):
+        stale = _stale_sym_sides(a.stale_days)
+        sides = [s for s in stale if (not live_in or s in live_in)] if not sides else [s for s in sides if s in set(stale)]
+        print(f"[h2h] --stale-days {a.stale_days}: {len(sides)} sym_side(s) whose live set is older than that", flush=True)
     if not sides and live_in:
         sides = sorted(live_in)
     sides = sorted(dict.fromkeys(sides))
@@ -137,7 +193,7 @@ def measure(a):
         d = {"sym_side": ss}
         live = live_in.get(ss) if live_in else (PS.get_full_config(ss) or {})
         live = live if isinstance(live, dict) else {}
-        cand, meta = _candidate_set(ss)
+        cand, meta = _candidate_catside(ss) if getattr(a, "candidate", "published") == "catside" else _candidate_set(ss)
         d["candidate_meta"] = meta if isinstance(meta, dict) else {"why": meta}
         if not live:
             d["verdict"], d["why"] = "NO_INCUMBENT", "no live per_sym set"
@@ -265,6 +321,8 @@ def main():
     m.add_argument("--live-sets", default="", help='JSON {"SYM_SIDE": {full set}} exported from the host that TRADES')
     m.add_argument("--allow-local-live", action="store_true", help="use this host's own per_sym_store as the incumbent (only where live runs)")
     m.add_argument("--window-days", type=int, default=30)
+    m.add_argument("--candidate", choices=("published", "catside"), default="published", help="what to pit against the live set: the latest published board (default) or the CURRENT cat_side defaults (USER 2026-10-17)")
+    m.add_argument("--stale-days", type=float, default=0.0, help="only sym_sides whose live set was last written more than N days ago (0 = no age filter)")
     m.add_argument("--out", default="/tmp/v15_h2h.json")
     e = sub.add_parser("export-live", help="dump THIS host's live per_sym sets for a worker to measure against")
     e.add_argument("--sym-sides", default="")
