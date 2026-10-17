@@ -1,32 +1,57 @@
 {
- "generated_at": "2026-10-17 08:14 UTC",
- "total_capital_usd": 0.05,
+ "generated_at": "2026-10-17 08:23 UTC",
+ "total_capital_usd": 20.36,
  "tier_capital": {
-  "A": 0.05,
-  "B": 0.0,
-  "C": 0.0
+  "A": 0.0,
+  "B": 14.5,
+  "C": 5.87
  },
  "tier_count": {
-  "A": 1,
-  "B": 0,
-  "C": 0
+  "A": 0,
+  "B": 2,
+  "C": 1
  },
- "winners": [
-  "inf:WLDUSDC_LONG"
+ "winners": [],
+ "losers": [
+  "ang:ARKMUSDT_LONG",
+  "ang:SKLUSDT_LONG"
  ],
- "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "ang:FARTCOINUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "inf:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "inf",
-   "value_usd": 0.05,
-   "gain_pct": 1.121,
-   "tier": "A",
-   "perf_mult": 8.81,
-   "amt": 0.1,
-   "mark": 0.5231
+   "pk": "ang:FARTCOINUSDT_SHORT",
+   "symbol": "FARTCOINUSDT",
+   "account": "ang",
+   "value_usd": 7.5,
+   "gain_pct": -0.131,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 49.0,
+   "mark": 0.15305172
+  },
+  {
+   "pk": "ang:SKLUSDT_LONG",
+   "symbol": "SKLUSDT",
+   "account": "ang",
+   "value_usd": 7.0,
+   "gain_pct": -0.801,
+   "tier": "B",
+   "perf_mult": 2.66,
+   "amt": 1467.0,
+   "mark": 0.00476929
+  },
+  {
+   "pk": "ang:ARKMUSDT_LONG",
+   "symbol": "ARKMUSDT",
+   "account": "ang",
+   "value_usd": 5.87,
+   "gain_pct": -0.893,
+   "tier": "C",
+   "perf_mult": 0.17,
+   "amt": 48.0,
+   "mark": 0.1222
   }
  ]
 }
