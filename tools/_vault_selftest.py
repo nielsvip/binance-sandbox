@@ -1,2 +1,2 @@
-# vault self-test version 3
-VALUE = 3
+# vault self-test commit probe
+VALUE = 99
