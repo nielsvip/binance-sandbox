@@ -69,18 +69,18 @@
     "symbol": "GALAUSDT",
     "side": "SHORT"
   },
-  "men:IOTXUSDT_SHORT": {
-    "orderId": "2000001518646643",
-    "stopPrice": 0.004174,
-    "entry_sig": "2026-10-16 09:40:36.830000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "men:BBUSDT_SHORT": {
     "orderId": "2000001516473059",
     "stopPrice": 0.008756,
     "entry_sig": "2026-10-16 09:43:09.778000+00:00",
     "symbol": "BBUSDT",
+    "side": "SHORT"
+  },
+  "men:IOTXUSDT_SHORT": {
+    "orderId": "2000001518646643",
+    "stopPrice": 0.004174,
+    "entry_sig": "2026-10-16 09:40:36.830000+00:00",
+    "symbol": "IOTXUSDT",
     "side": "SHORT"
   }
 }
