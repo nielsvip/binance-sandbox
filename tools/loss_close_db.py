@@ -34,16 +34,12 @@ _STRIP = re.compile(r"_(px|lvl|g|exit|cur|k3m|k15m|qty|mult|arm|leg|tgt|act|dev|
 
 
 def fn_family(reason) -> str:
-    """'DAYTRADE_TARGET dc_1h_high -0.10% TARGET_BUF' -> DAYTRADE_TARGET; 'FIXED_STOP_LONG_px0.9_lvl..' -> FIXED_STOP;
-    'B_KZONE |VEC_EXACT' -> B_KZONE; 'VEC_EXACT_OPEN_B12' -> B12."""
-    r = str(reason or "").strip()
-    r = re.sub(r"^VEC_EXACT_(OPEN|AUGMENT|REDUCE|CLOSE)_", "", r)
-    r = re.split(r"[ |:(]", r)[0] if r else ""
-    r = _STRIP.sub("", r)
-    r = re.sub(r"_(close|above|below|exit|from|at)[a-z].*$", "", r)  # lower-case tail = a parameter, not part of the name
-    r = re.sub(r"_(LONG|SHORT)$", "", r)
-    r = re.sub(r"[-+]?\d+(\.\d+)?%?$", "", r).rstrip("_")
-    return r or "UNKNOWN"
+    """ONE normaliser shared with live and the vector (loss_prone.fn_family)."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from loss_prone import fn_family as _f
+
+    return _f(reason)
 
 
 def venue_of(sym: str) -> str:

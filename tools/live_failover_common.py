@@ -404,6 +404,39 @@ ORDER_DEAD_FRAC = float(os.environ.get("LF_ORDER_DEAD_FRAC", "0.5"))
 MANAGE_SILENT_S = float(os.environ.get("LF_MANAGE_SILENT_S", "180"))
 ACCT_DEAD_S = float(os.environ.get("LF_ACCT_DEAD_S", "240"))
 HEALTH_KEEP_S = 3600.0
+# 2026-10-17 ANTI-FLAP (USER "no flapping allowed you need to find and fix this"). A freshly (re)started engine was
+# judged against log history that PREDATES it, so every takeover manufactured the condition for the next one:
+#   takeover -> Mac fenced -> its engines killed -> engines restart -> the new process has no successful broker poll
+#   yet, so `last_ok is None` and no_ok_s falls back to `now - min(first_seen)` off the OLD log tail -> that is
+#   instantly >= BROKER_DEAD_S -> broker_unreachable -> takeover again.
+# MEASURED 2026-10-17: lease gen 23 -> 31 in ~45 min, and at 03:44Z BOTH hosts sat at 0 engines with 39 open
+# positions. The same lag produced a bogus `men engine_dead_s=1238` on an engine that had restarted 60 s earlier
+# (manage_log_silent_s is measured from the last LOG LINE, and ez_manage takes ~80 s to initialise).
+# An engine younger than this grace is STARTING, not dead: it cannot be counted broker_dead or engine_dead. The
+# value must exceed ez_manage's ~80 s startup AND BROKER_DEAD_S (120 s), or a restart is still judged mid-boot.
+ENGINE_STARTUP_GRACE_S = float(os.environ.get("LF_ENGINE_STARTUP_GRACE_S", "240"))
+
+
+def parse_etime(text):
+    """`ps -o etime` -> seconds. Formats: SS, MM:SS, HH:MM:SS, DD-HH:MM:SS. None when unparseable.
+    etime (not etimes) because macOS ps silently ignores etimes while Linux supports both."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    days = 0
+    if "-" in text:
+        head, text = text.split("-", 1)
+        try:
+            days = int(head)
+        except ValueError:
+            return None
+    try:
+        parts = [int(p) for p in text.split(":")]
+    except ValueError:
+        return None
+    while len(parts) < 3:
+        parts.insert(0, 0)
+    return days * 86400 + parts[-3] * 3600 + parts[-2] * 60 + parts[-1]
 VENUES = ("crypto", "stocks")
 STOCK_SCRIPTS = ("tradier_manage.py", "tradier_positions.py")
 _TS_FULL = re.compile(r"^\[?(\d{4})-(\d\d)-(\d\d)[ T](\d\d):(\d\d):(\d\d)")
@@ -563,24 +596,34 @@ class LogFollower:
 
 
 def trader_procs(ps_text=None):
-    """{'crypto': {acct: n}, 'stocks': {acct: n}} from ONE `ps` call (live traders are `... ez_manage.py --account X`)."""
+    """{'crypto': {acct: n}, 'stocks': {acct: n}} from ONE `ps` call (live traders are `... ez_manage.py --account X`),
+    plus '_ages': {'crypto': {acct: oldest_engine_age_s}, 'stocks': {...}} used for the restart grace (see
+    ENGINE_STARTUP_GRACE_S). '_ages' is an extra key, so existing `procs.get("crypto")` callers are unaffected."""
     if ps_text is None:
         try:
             import subprocess
-            ps_text = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, timeout=10).stdout
+            ps_text = subprocess.run(["ps", "-axo", "pid=,etime=,command="], capture_output=True, text=True, timeout=10).stdout
         except Exception:
             ps_text = ""
-    out = {"crypto": {a: 0 for a in CRYPTO_ACCOUNTS}, "stocks": {a: 0 for a in STOCK_ACCOUNTS}}
+    out = {"crypto": {a: 0 for a in CRYPTO_ACCOUNTS}, "stocks": {a: 0 for a in STOCK_ACCOUNTS},
+           "_ages": {"crypto": {}, "stocks": {}}}
     for line in ps_text.splitlines():
         if "python" not in line:
             continue
-        m = re.search(r"ez_manage\.py --account (\w+)", line)
-        if m and m.group(1) in out["crypto"]:
-            out["crypto"][m.group(1)] += 1
-            continue
-        m = re.search(r"tradier_manage\.py --accounts (\w+)", line)
-        if m and m.group(1) in out["stocks"]:
-            out["stocks"][m.group(1)] += 1
+        # `pid etime command`; etime is absent when the caller passed a pid=,command= ps_text (tests) — then age is None
+        age = None
+        fields = line.split(None, 2)
+        if len(fields) >= 3 and ":" in fields[1]:
+            age = parse_etime(fields[1])
+        for venue, pat in (("crypto", r"ez_manage\.py --account (\w+)"), ("stocks", r"tradier_manage\.py --accounts (\w+)")):
+            m = re.search(pat, line)
+            if m and m.group(1) in out[venue]:
+                acct = m.group(1)
+                out[venue][acct] += 1
+                if age is not None:
+                    prev = out["_ages"][venue].get(acct)
+                    out["_ages"][venue][acct] = age if prev is None else max(prev, age)
+                break
     return out
 
 
@@ -609,8 +652,10 @@ class TradingHealth:
     def measure(self, now=None, procs=None, fenced=()):
         now = now_s() if now is None else now
         procs = trader_procs() if procs is None else procs
-        return {"crypto": self._crypto(now, procs.get("crypto", {}), "crypto" in fenced),
-                "stocks": self._stocks(now, procs.get("stocks", {}), "stocks" in fenced), "measured_at": iso(now)}
+        _ages = procs.get("_ages") or {}
+        return {"crypto": self._crypto(now, procs.get("crypto", {}), "crypto" in fenced, _ages.get("crypto") or {}),
+                "stocks": self._stocks(now, procs.get("stocks", {}), "stocks" in fenced, _ages.get("stocks") or {}),
+                "measured_at": iso(now)}
 
     def _crypto(self, now, alive, fenced):
         accounts, dead, considered = {}, [], 0
