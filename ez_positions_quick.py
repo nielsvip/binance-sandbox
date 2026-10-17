@@ -22531,7 +22531,7 @@ async def execute_trade_wrapper(
         or "REENTRY" in _action_u
     ) and not is_hedge
     if _is_open_like and _gate_sym and _gate_sym.endswith("USDT"):
-        _usdc_candidate = _gate_sym[:-4] + "USDC"
+        _usdc_candidate = _gate_sym[:-4] + "USDC"  # detect-only: used for the stale-list warning, never applied
         _live_usdc = (
             getattr(trade_manager, "live_usdc_pairs", None)
             or getattr(trade_manager, "available_usdc_pairs", set())

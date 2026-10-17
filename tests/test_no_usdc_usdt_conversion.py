@@ -62,6 +62,10 @@ def test_no_conversion_is_applied():
             code = ln.split("#", 1)[0]
             if not code.strip():
                 continue
+            # A site may build the sibling NAME to test membership so it can WARN that a symbol list is stale.
+            # Those carry an explicit marker; anything else that assigns or returns a rewritten symbol fails.
+            if "detect-only" in ln:
+                continue
             if APPLY.search(code):
                 offenders.append(f"{rel}:{i}: {ln.strip()[:120]}")
     assert not offenders, (

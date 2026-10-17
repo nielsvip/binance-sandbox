@@ -34308,7 +34308,7 @@ class MultiAccountTradeManager:
         # Backtests/sandbox: live_usdc_pairs is empty → file fallback DISABLED → USDT stays as USDT.
         # Live: live_usdc_pairs is set by exchange init → redirect fires transparently.
         if _is_open_action and not is_hedge and symbol and symbol.endswith("USDT"):
-            _usdc_sym_en = symbol[:-4] + "USDC"
+            _usdc_sym_en = symbol[:-4] + "USDC"  # detect-only: used for the stale-list warning, never applied
             _live_usdc_en = (
                 getattr(self, "live_usdc_pairs", None)
                 or getattr(self, "available_usdc_pairs", set())

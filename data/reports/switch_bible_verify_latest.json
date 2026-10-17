@@ -1,5 +1,5 @@
 {
- "broken": 80,
+ "broken": 81,
  "checks": {
   "TEMPLATE_NO_CONFIG": [
    "REENTRY_TIER2_MAX_MINUTES_TRADIER: in templates ['STOCKS_LONG'] but in no config"
@@ -22,6 +22,7 @@
    "HTF_TREND_VETO_BYPASS_REASONS [CRYPTO]: config.py=\"['TRADEABLE_KEYS_MANDATORY', 'RZ_', 'RED_ZONE', 'BASELINE_BOUNCE', 'BREAKDOWN_TR\" vs QuickConfig=0.0 (not on the documented conflict list)",
    "HTF_TREND_VETO_BYPASS_REASONS [STOCKS]: config_tradier.py=\"['TRADEABLE_KEYS_MANDATORY', 'RZ_', 'RED_ZONE', 'BASELINE_BOUNCE', 'BREAKDOWN_TR\" vs QuickConfig=0.0 (not on the documented conflict list)",
    "MANDATORY_REENTRY_WT_FILTER_TF_MODE [STOCKS]: config_tradier.py='5m_or_15m' vs QuickConfig='15m_only' (not on the documented conflict list)",
+   "START_POSITION_SIZE [CRYPTO]: config.py=15.0 vs QuickConfig=45.0 (not on the documented conflict list)",
    "STDEV_REJECT_EXIT_TF [STOCKS]: config_tradier.py='15m' vs QuickConfig='D' (not on the documented conflict list)",
    "VIGILANCE_GUARD_ENABLED [CRYPTO]: config.py=True vs QuickConfig=False (not on the documented conflict list)",
    "WT_15M_BOUNCE_BB_MAX [STOCKS]: config_tradier.py=0.8 vs QuickConfig=0.9 (not on the documented conflict list)",
@@ -83,15 +84,15 @@
   "COVERAGE": [
    "ACCOUNT_SIDE_MAPPING: wired live+vec (['vec_decisions/cash_settlement.py:189(board_account)'] / ['vec_decisions/cash_settlement.py:189(board_account)']) but in no template",
    "EXIT_DUST_USD: wired live+vec (['ez_manage.py:3498(ez_vigilance_record_close)'] / ['vec_decisions/qty_quantizers.py:186(live_record_close)']) but in no template",
-   "MAX_ORDER_VALUE_FIN: wired live+vec (['ez_manage.py:11834(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:111(max_order_usd_for)']) but in no template",
-   "MAX_ORDER_VALUE_MEN: wired live+vec (['ez_manage.py:11832(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:109(max_order_usd_for)']) but in no template",
-   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8392(_air_native_carry)'] / ['v12_quick_engine.py:17623(simulate_one._open)']) but in no template",
-   "MIN_GAIN: wired live+vec (['ez_manage.py:23512(MultiAccountTradeManager._handle_signal_message)'] / ['vec_decisions/aug_gain_gate.py:18(threshold)']) but in no template",
+   "MAX_ORDER_VALUE_FIN: wired live+vec (['ez_manage.py:11859(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:111(max_order_usd_for)']) but in no template",
+   "MAX_ORDER_VALUE_MEN: wired live+vec (['ez_manage.py:11857(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:109(max_order_usd_for)']) but in no template",
+   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8417(_air_native_carry)'] / ['v12_quick_engine.py:17623(simulate_one._open)']) but in no template",
+   "MIN_GAIN: wired live+vec (['ez_manage.py:23537(MultiAccountTradeManager._handle_signal_message)'] / ['vec_decisions/aug_gain_gate.py:18(threshold)']) but in no template",
    "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11316(in_opening_buffer)'] / ['v12_quick_engine.py:17920(simulate_one)']) but in no template",
    "QTY_LIVE_ORDER_CAP_MULT: wired live+vec (['vec_decisions/qty_quantizers.py:140(cap_dollar)'] / ['vec_decisions/qty_quantizers.py:140(cap_dollar)']) but in no template",
    "QTY_LIVE_POSITION_CAP_MULT: wired live+vec (['vec_decisions/qty_quantizers.py:149(cap_add_qty)'] / ['vec_decisions/qty_quantizers.py:149(cap_add_qty)']) but in no template",
-   "R2_TF_LIST: wired live+vec (['ez_manage.py:52550(process_position)'] / ['v12_quick_engine.py:16861(simulate_one)']) but in no template",
-   "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34917(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
+   "R2_TF_LIST: wired live+vec (['ez_manage.py:52575(process_position)'] / ['v12_quick_engine.py:16861(simulate_one)']) but in no template",
+   "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34942(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
    "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:21883(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
    "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19342(process_position)'] / ['v12_quick_engine.py:19242(simulate_one)']) but in no template"
   ],

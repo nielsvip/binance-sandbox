@@ -115,7 +115,11 @@ def sh_ssh(host, cmd, timeout=60):
     return None
 
 
-# ---------------------------------------------------------------- host-side helper (runs on the host under .venv python)
+# ---------------------------------------------------------------- host-side helper (runs on the host under the conda
+# live env /home/niels/.conda/envs/binance_env_mac — USER 2026-10-17 "we use the conda venv for live trading always ...
+# make all backtests on s1 and s2 use conda venv as well ... backtest scripts also need to run the live trading scripts
+# so an incomplete venv screws that up as well". Proven numerically free first: 16 sym_sides identical under .venv
+# (py3.12/numpy 2.5.3) and binance_env_mac (py3.11.14/numpy 2.4.6) on BOTH S1 and S2, 0 NaN.)
 HOST_PY = r'''
 import glob, json, os, re, signal, sys, time
 _VERDICT_TERMINAL_RE = re.compile(r'"verdict":\s*"(IMPOSSIBLE|NO_TRADES|BEST_EFFORT)"')
@@ -540,7 +544,7 @@ elif mode == "kill":
 
 
 def host_py(host, mode, arg, timeout=90):
-    cmd = f"cd {host['root']} && .venv/bin/python - {mode} {shlex.quote(json.dumps(arg))} <<'PYE'\n{HOST_PY}\nPYE"
+    cmd = f"cd {host['root']} && /home/niels/.conda/envs/binance_env_mac/bin/python - {mode} {shlex.quote(json.dumps(arg))} <<'PYE'\n{HOST_PY}\nPYE"
     out = sh_ssh(host, cmd, timeout)
     try:
         return json.loads((out or "").strip().splitlines()[-1])
@@ -1511,17 +1515,17 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         if os.environ.get("V15_SCHED_V17", "1") == "1":
             env += " V15_V17_ROUNDS=1"  # USER 2026-10-13: >=12 finalized V17 boards per hour per server (V15_SCHED_V17=0 = old pilot)
         env += gate_env_inline()  # USER 2026-10-16: the gate-benched launch env is authoritative (appended last = it wins)
-        body = f"{env} .venv/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
+        body = f"{env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
-        body = (f"mkdir -p {chain}/v365 && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
+        body = (f"mkdir -p {chain}/v365 && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
                 f"--template {t} --work {chain}/v365 --rounds 0 --workers {workers}")
     elif window == "GS":  # USER 2026-10-07: GS-heal adjuster stage (standalone runner, heal3+); gated by V15_GS_FLEET=1
-        body = (f"mkdir -p {chain}/gs_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_graph_search.py --symsides {ss} --out {chain}/gs_a{attempt} "
+        body = (f"mkdir -p {chain}/gs_a{attempt} && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_graph_search.py --symsides {ss} --out {chain}/gs_a{attempt} "
                 f"--method gs --budget ${{V15_GS_BUDGET:-1200}} --workers {workers} --parallel 1 --progress-dirs {pdir},data/reports/lifecycle_pilot")
     else:
         prev = (f"{pdir}/{ss}_v14_progress.json" if attempt == 1 else
-                f"$(.venv/bin/python -c \"import json;print(json.load(open('{chain}/repair_a{attempt-1}/{ss}_365_cycle.json'))['final_progress'])\")")
-        body = (f"mkdir -p {chain}/repair_a{attempt} && nice -n 10 .venv/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {prev} "
+                f"$(/home/niels/.conda/envs/binance_env_mac/bin/python -c \"import json;print(json.load(open('{chain}/repair_a{attempt-1}/{ss}_365_cycle.json'))['final_progress'])\")")
+        body = (f"mkdir -p {chain}/repair_a{attempt} && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {prev} "
                 f"--template {t} --work {chain}/repair_a{attempt} --rounds 3 --workers {workers}")
     return _spawn_guard(ss, window, body)
 

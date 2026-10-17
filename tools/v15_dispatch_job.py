@@ -272,7 +272,7 @@ def tail_refresh(symbol):
     mode = "crypto" if symbol.endswith(("USDT", "USDC")) else "stocks"
     t0 = time.time()
     try:
-        r = subprocess.run([str(ROOT / ".venv" / "bin" / "python"), str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", symbol, "--mode", mode, "--w15", "2500", "--workers", "2", "--no-sentiment", "--no-fng"], capture_output=True, text=True, timeout=float(os.environ.get("V15_TAIL_REFRESH_TIMEOUT_S", "300")), cwd=str(ROOT))
+        r = subprocess.run(["/home/niels/.conda/envs/binance_env_mac/bin/python", str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", symbol, "--mode", mode, "--w15", "2500", "--workers", "2", "--no-sentiment", "--no-fng"], capture_output=True, text=True, timeout=float(os.environ.get("V15_TAIL_REFRESH_TIMEOUT_S", "300")), cwd=str(ROOT))
         st = "INSTALLED" if '"status": "INSTALLED"' in (r.stdout or "") else ("current" if r.returncode == 0 else f"rc={r.returncode}")
         if "locked" in (r.stdout or ""):
             st = "LOCK_BLOCKED"
