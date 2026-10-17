@@ -1,32 +1,195 @@
 {
- "generated_at": "2026-10-17 02:28 UTC",
- "total_capital_usd": 5.02,
+ "generated_at": "2026-10-17 02:38 UTC",
+ "total_capital_usd": 239.71,
  "tier_capital": {
-  "A": 0.0,
-  "B": 0.0,
-  "C": 5.02
+  "A": 29.01,
+  "B": 59.75,
+  "C": 150.95
  },
  "tier_count": {
-  "A": 0,
-  "B": 0,
-  "C": 1
+  "A": 1,
+  "B": 6,
+  "C": 8
  },
  "winners": [],
  "losers": [
-  "fin:SANDUSDT_SHORT"
+  "men:GALAUSDT_LONG",
+  "men:COTIUSDT_LONG",
+  "men:1INCHUSDT_LONG",
+  "men:MELANIAUSDT_LONG",
+  "men:BBUSDT_SHORT",
+  "men:RVNUSDT_SHORT",
+  "men:DASHUSDT_SHORT",
+  "men:GALAUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "men:EGLDUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "fin:SANDUSDT_SHORT",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 5.02,
-   "gain_pct": 2.145,
+   "pk": "men:GALAUSDT_LONG",
+   "symbol": "GALAUSDT",
+   "account": "men",
+   "value_usd": 54.98,
+   "gain_pct": -0.785,
    "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 91.0,
-   "mark": 0.05519
+   "perf_mult": 0.14,
+   "amt": 27205.0,
+   "mark": 0.002021
+  },
+  {
+   "pk": "men:COTIUSDT_LONG",
+   "symbol": "COTIUSDT",
+   "account": "men",
+   "value_usd": 35.62,
+   "gain_pct": -0.404,
+   "tier": "C",
+   "perf_mult": 0.41,
+   "amt": 3135.0,
+   "mark": 0.011362
+  },
+  {
+   "pk": "men:ENJUSDT_LONG",
+   "symbol": "ENJUSDT",
+   "account": "men",
+   "value_usd": 29.01,
+   "gain_pct": -0.305,
+   "tier": "A",
+   "perf_mult": 9.34,
+   "amt": 986.0,
+   "mark": 0.02942
+  },
+  {
+   "pk": "men:DOTUSDT_LONG",
+   "symbol": "DOTUSDT",
+   "account": "men",
+   "value_usd": 27.55,
+   "gain_pct": 2.722,
+   "tier": "B",
+   "perf_mult": 4.6,
+   "amt": 23.7,
+   "mark": 1.1625
+  },
+  {
+   "pk": "men:RVNUSDT_SHORT",
+   "symbol": "RVNUSDT",
+   "account": "men",
+   "value_usd": 21.93,
+   "gain_pct": 2.594,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 14636.0,
+   "mark": 0.0014981
+  },
+  {
+   "pk": "men:MELANIAUSDT_LONG",
+   "symbol": "MELANIAUSDT",
+   "account": "men",
+   "value_usd": 14.98,
+   "gain_pct": -0.047,
+   "tier": "C",
+   "perf_mult": 0.17,
+   "amt": 174.3,
+   "mark": 0.08596983
+  },
+  {
+   "pk": "men:EGLDUSDT_LONG",
+   "symbol": "EGLDUSDT",
+   "account": "men",
+   "value_usd": 7.39,
+   "gain_pct": -0.174,
+   "tier": "B",
+   "perf_mult": 0.44,
+   "amt": 2.0,
+   "mark": 3.69356517
+  },
+  {
+   "pk": "men:UNIUSDC_SHORT",
+   "symbol": "UNIUSDC",
+   "account": "men",
+   "value_usd": 7.24,
+   "gain_pct": 2.768,
+   "tier": "B",
+   "perf_mult": 4.16,
+   "amt": 1.0,
+   "mark": 7.237
+  },
+  {
+   "pk": "men:1INCHUSDT_LONG",
+   "symbol": "1INCHUSDT",
+   "account": "men",
+   "value_usd": 5.96,
+   "gain_pct": -0.188,
+   "tier": "C",
+   "perf_mult": 0.34,
+   "amt": 64.0,
+   "mark": 0.09313467
+  },
+  {
+   "pk": "men:XTZUSDT_SHORT",
+   "symbol": "XTZUSDT",
+   "account": "men",
+   "value_usd": 5.96,
+   "gain_pct": 0.157,
+   "tier": "B",
+   "perf_mult": 5.25,
+   "amt": 18.8,
+   "mark": 0.3171
+  },
+  {
+   "pk": "men:BBUSDT_SHORT",
+   "symbol": "BBUSDT",
+   "account": "men",
+   "value_usd": 5.9,
+   "gain_pct": 1.691,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 700.0,
+   "mark": 0.008427
+  },
+  {
+   "pk": "men:MANAUSDT_SHORT",
+   "symbol": "MANAUSDT",
+   "account": "men",
+   "value_usd": 5.81,
+   "gain_pct": 3.027,
+   "tier": "B",
+   "perf_mult": 0.74,
+   "amt": 66.0,
+   "mark": 0.0881
+  },
+  {
+   "pk": "men:IOTXUSDT_SHORT",
+   "symbol": "IOTXUSDT",
+   "account": "men",
+   "value_usd": 5.8,
+   "gain_pct": 2.814,
+   "tier": "B",
+   "perf_mult": 3.68,
+   "amt": 1519.0,
+   "mark": 0.00381745
+  },
+  {
+   "pk": "men:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "men",
+   "value_usd": 5.79,
+   "gain_pct": 2.97,
+   "tier": "C",
+   "perf_mult": 0.25,
+   "amt": 0.119,
+   "mark": 48.68
+  },
+  {
+   "pk": "men:GALAUSDT_SHORT",
+   "symbol": "GALAUSDT",
+   "account": "men",
+   "value_usd": 5.79,
+   "gain_pct": 3.394,
+   "tier": "C",
+   "perf_mult": 0.14,
+   "amt": 2864.0,
+   "mark": 0.002021
   }
  ]
 }

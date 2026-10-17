@@ -22,6 +22,13 @@ done
 for f in tradeable_keys.json data/excluded_tokenized_stocks.json; do
     [ -f "$f" ] && FILES+=("$f")
 done
+# USER 2026-10-17: "ang and trb ... need to be prioritized in the s1 v15_fleet_scheduler". tools/v15_ranking_priority.py
+# used to read data/rankings.json, which this script deliberately never pushed ("not needed") — the S1 sandbox copy was
+# from 2026-08-20, the 48h freshness guard rejected it, and ranking_sets() returned 0/0/0 on every tick, so NOTHING was
+# ever prioritised. The qualification artifacts (rankings_qualify.py) are the list that actually trades and they ship here.
+for f in data/rankings_qualified_crypto.json data/rankings_qualified_stocks.json; do
+    [ -f "$f" ] && FILES+=("$f")
+done
 [ "${#FILES[@]}" -gt 0 ] || { echo "$(date -u +%FT%TZ) no files" >>"$LOG"; exit 0; }
 SHELLS=("ssh -o BatchMode=yes -o ConnectTimeout=6 s1-int" "ssh -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6 -o ControlMaster=no -o ControlPath=none niels@157.180.125.52")
 push_to() { # push_to <dest-dir>

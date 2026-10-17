@@ -999,6 +999,19 @@ def _refresh_due(ss, tiers, now_ts, windows=None):
     if not e:
         return False
     tier = e.get("tier")
+    # USER 2026-10-17: "ang and trb ... are the most rapidly changing according to markets and need new settings
+    # for each sym_side every day". A ranking member is due on the ranking window (V15_RANKING_REFRESH_H, 24h)
+    # whatever its tier, and never waits out an M/L defer window. Non-members keep the tier behaviour below.
+    try:
+        if _RANKPRI.is_ranking_side(ss):
+            rank_win_s = _RANKPRI.refresh_window_s()
+            if rank_win_s > 0:
+                try:
+                    return (float(now_ts) - float(e.get("mtime", 0) or 0)) >= rank_win_s
+                except (TypeError, ValueError):
+                    return False
+    except Exception:
+        pass
     if tier == "W":
         win_s = _REFRESH_W_STALE_SEC
     elif tier in ("M", "L") and os.environ.get("V15_SCHED_REFRESH_ALL", "1") == "1":
