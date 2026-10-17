@@ -7,6 +7,7 @@ talks to the fixture S1 dir instead of ssh) and LF_NO_KILL=1 (the fence never si
 """
 import importlib
 import json
+import pathlib
 import os
 import subprocess
 import sys
@@ -148,9 +149,16 @@ def test_stocks_not_applicable_when_market_closed(world):
 def test_stocks_session_stale_klines_and_timeouts(world):
     world.mac_produce(T_SESSION)
     assert world.C.measure_stocks(world.mac, T_SESSION)["stale"] is False
-    log_line = f"[{iso(T_SESSION + 400)[:19].replace('T', ' ')},123] ERROR AAPL 15min fetch failed/timeout: TimeoutError: \n"
+    # 2026-10-17: the two halves of this test are on different clocks and both moved under it, so they are set
+    # together now. (a) a 5m_behind reason needs k5 median behind > LF_KLINE_STALE_S, raised 180 -> 600 on
+    # 2026-10-14 ("we are not trading <15m tf's"); at the old +420 the measured behind was 600, and the check is
+    # strictly `>`, so it never fired -- the reading was stale on indicators_age alone and the assert's `stale`
+    # half passed while the `5m_behind=` half did not. +1000 puts the behind at 900. (b) producer error lines are
+    # only counted within LF_PRODUCER_LOOKBACK_S=180 of `now`, so a line stamped at +400 is invisible from +1000
+    # (MEASURED: producer_error_lines went to 0); the lines are therefore stamped 60 s before the measurement.
+    log_line = f"[{iso(T_SESSION + 940)[:19].replace('T', ' ')},123] ERROR AAPL 15min fetch failed/timeout: TimeoutError: \n"
     (world.logs / "tradier_klines.log").write_text(log_line * 6)
-    later = world.C.measure_stocks(world.mac, T_SESSION + 420, world.logs / "tradier_klines.log")
+    later = world.C.measure_stocks(world.mac, T_SESSION + 1000, world.logs / "tradier_klines.log")
     assert later["stale"] and any(r.startswith("5m_behind=") for r in later["reasons"]) and later["producer_error_lines"] == 6
 
 
@@ -253,31 +261,19 @@ def test_stocks_data_failover_only_in_session(world):
             break
     assert detected is not None and detected <= 195
     assert ("start", "live-failover-stocks-producers.service") in watchdog2.actions.calls
-    later = T_SESSION + detected + 120  # next 5m bar closed on S1 -> strictly newer than the Mac's
+    # 2026-10-17: +120 -> +300 (one full 5m bar). NOT a product change. apply_newer_klines replaces a file only
+    # when the staged newest bar is STRICTLY newer, and s1_produce stamps bars at floor(now, tf) - tf. With
+    # detection now at 105 s (LF_SNAPSHOT_STALE_S=90 + one tick) instead of the old ~180 s, T_SESSION+detected+120
+    # = +225 floors into the SAME 5m bucket as the Mac's T_SESSION write -- both files ended at bar 1791914100, so
+    # the staged bar was EQUAL, not newer, and the skip was correct. Proven by instrumenting the real path: the
+    # pull DID run and staged AAPL_{1m,5m,15m,1h}.json, and newest_bar_open(staged) == newest_bar_open(dest).
+    # Faster detection shortened the gap this test relied on, so the test has to advance a whole bar itself.
+    later = T_SESSION + detected + 300
     world.s1_produce(later)
     run_pair(world, agent2, watchdog2, later)
-    # DIAGNOSTIC
-    target = world.mac / "klines_cache" / "tradier" / "AAPL_5m.json"
-    world.clock(later + 15)
+    world.clock(later + 1)
     agent2.tick()
-    import os as _os
-    print("DIAG LF_NO_SSH =", _os.environ.get("LF_NO_SSH"), "LF_REMOTE_DIR =", _os.environ.get("LF_REMOTE_DIR"))
-    s1_out = world.s1 / "data" / "live_failover" / "outbox" / "stocks"
-    print("DIAG s1 outbox/stocks exists:", s1_out.is_dir(), "| klines:", sorted(x.name for x in (s1_out/"klines").glob("*.json"))[:4] if (s1_out/"klines").is_dir() else None)
-    stage = world.mac / "data" / "live_failover" / "stage" / "stocks"
-    print("DIAG mac stage/stocks exists:", stage.is_dir(), "| klines:", sorted(x.name for x in (stage/"klines").glob("*.json"))[:4] if (stage/"klines").is_dir() else None)
-    lf = world.mac / "data" / "live_failover"
-    print("DIAG mac LF tree:", sorted(x.relative_to(lf).as_posix() for x in lf.rglob("*") if x.is_dir())[:12])
-    s1st = lf / "s1_state.json"
-    if s1st.exists():
-        import json as _j
-        v = (_j.loads(s1st.read_text()).get("venues") or {})
-        print("DIAG modes the MAC saw:", {k: (v.get(k) or {}).get("mode") for k in ("crypto","stocks")})
-        print("DIAG outbox flags the MAC saw:", {k: (v.get(k) or {}).get("outbox") for k in ("crypto","stocks")})
-    else:
-        print("DIAG s1_state.json ABSENT on the Mac")
-    print("DIAG dest close:", json.loads(target.read_text())[-1]["close"])
-    assert json.loads(target.read_text())[-1]["close"] == 200.0
+    assert json.loads((world.mac / "klines_cache" / "tradier" / "AAPL_5m.json").read_text())[-1]["close"] == 200.0
 
 
 # ---------------------------------------------------------------- full trading failover + fencing

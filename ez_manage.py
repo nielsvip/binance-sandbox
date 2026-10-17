@@ -32097,6 +32097,155 @@ class MultiAccountTradeManager:
         stop_price: float = 0.0,
         stop_order_id: str = "",
     ) -> str:
+        # ─── AN EXCHANGE stop_market IS PART OF EVERY ENTRY/AUGMENT (2026-10-17 USER: "stop_market order on
+        # exchange for any entry/augment as a requirement") ───
+        # execute_now REMAINS the one and only gate: this is a thin wrapper around its unchanged body, so every
+        # one of the 98 call sites, every guard and every verdict string behaves exactly as before. It adds one
+        # thing — when the gate reports a filled exposure increase, the protective stop is placed as part of that
+        # fill instead of being left to the next process_position cycle.
+        # WHY: until today the only placer was the periodic FIXED_STOP probe in process_position. A position was
+        # therefore unprotected from fill until its next cycle, and a probe that errored left it unprotected
+        # indefinitely. That is not theory — tonight's stocks audit found 14 of 44 live positions with no resting
+        # stop. The requirement is enforced by placing, then VERIFYING, and shouting when it cannot.
+        _res = await self._execute_now_inner(
+            position_key=position_key, account_key=account_key, symbol=symbol,
+            original_positionAmt=original_positionAmt, side=side, position_side=position_side,
+            quantity=quantity, old_price=old_price, unique_id=unique_id, reason=reason,
+            is_full_close=is_full_close, action=action, is_hedge=is_hedge, hedge_for=hedge_for,
+            url_variant=url_variant, stop_price=stop_price, stop_order_id=stop_order_id,
+        )
+        try:
+            # Same predicate as live_twins.vec_provenance.increases_exposure (pinned identical by
+            # tests/test_entry_requires_exchange_stop.py) — inlined so the order path never depends on an import.
+            _act_u = str(action or "").upper()
+            _is_incr = not (is_full_close or "CLOSE" in _act_u or "REDUCE" in _act_u or "STOP" in _act_u) and (
+                is_hedge
+                or (str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY")
+                or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL")
+            )
+            if _is_incr and str(_res or "").upper().startswith("SUCCESS"):
+                await self._require_exchange_stop_after_entry(
+                    position_key=position_key, account_key=account_key, symbol=symbol,
+                    position_side=position_side, original_positionAmt=original_positionAmt,
+                    old_price=old_price, action=_act_u, reason=reason, result=str(_res),
+                )
+        except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
+            self._mark_entry_unprotected(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
+        return _res
+
+    def _mark_entry_unprotected(self, position_key, account_key, symbol, position_side, why):
+        """Record a filled entry that has no confirmed exchange stop, so something keeps chasing it.
+
+        NO-LIES: this is the opposite of a silent success. The entry is real and the stop is not, and that pair is
+        written down where the 10s reconcile, the FIXED_STOP probe and tools/tradier_position_stop_audit.py all see
+        it. Memory-only on purpose — it must survive nothing, because a restart re-derives it from broker truth.
+        """
+        try:
+            reg = getattr(self, "entry_stop_unprotected", None)
+            if not isinstance(reg, dict):
+                reg = {}
+                self.entry_stop_unprotected = reg
+            reg[str(position_key)] = {"ts": time.time(), "account_key": account_key, "symbol": symbol, "position_side": position_side, "why": str(why)[:200]}
+        except Exception:
+            pass
+
+    async def _require_exchange_stop_after_entry(self, *, position_key, account_key, symbol, position_side, original_positionAmt, old_price, action, reason, result):
+        """An exposure increase is not finished until a stop_market rests on the exchange for the WHOLE position.
+
+        2026-10-17 USER: "stop_market order on exchange for any tnery/augment as a requirement".
+        Rules, from the operator's own stop spec (same one the stocks side follows):
+          * the level is the frozen dc_15m channel stop — dc_low_15m for LONG, dc_high_15m for SHORT;
+          * an existing level is KEPT (a stop must not wander with price);
+          * an AUGMENT re-freezes the level for the entire position to the CURRENT channel, because the position
+            that the old level protected no longer exists.
+        It never raises, never blocks the order path beyond its timeout, and never claims a stop it did not see.
+        """
+        _t0 = time.time()
+        _timeout = float(getattr(config, "ENTRY_STOP_REQUIRE_TIMEOUT_S", 20.0) or 20.0)
+        position = await self.get_position(position_key)
+        _amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0) or 0, 0.0)) if position else 0.0
+        if _amt <= 0:
+            logger.warning(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} but position reads flat ({_amt}) — nothing to protect yet; FIXED_STOP probe will pick it up")
+            return "SKIPPED_FLAT"
+        _is_long = str(position_side or "").upper() == "LONG"
+        _ep = safe_fetch_float(getattr(position, "entry_price", 0) or 0, 0.0)
+        _px = safe_fetch_float(old_price or 0, 0.0) or _ep
+        _lvl = safe_fetch_float(getattr(position, "fixed_stop_price", 0) or 0, 0.0)
+        try:
+            _ind = self.service.indicators_snapshot.get(symbol, {}) if self.service else {}
+        except Exception:
+            _ind = {}
+        _dc_lo = safe_fetch_float(_ind.get("dc_low_15m", 0) or 0, 0.0)
+        _dc_hi = safe_fetch_float(_ind.get("dc_high_15m", 0) or 0, 0.0)
+        # An augment makes the previous level stale by definition: it protected a smaller position and was frozen
+        # against an older channel. Re-freeze the whole position to the current dc_15m, exactly as the operator
+        # specified for stocks ("you take the stop for the entire position to the new dc_low_15-0.3%, vv short").
+        _grew = _amt > abs(safe_fetch_float(original_positionAmt or 0, 0.0)) + 1e-9
+        _augment = _grew or "AUGMENT" in str(action or "").upper() or "AUGMENT" in str(reason or "").upper()
+        _refreeze = _augment and bool(getattr(config, "FIXED_STOP_AUGMENT_REFREEZE", True))
+        if _lvl <= 0 or _refreeze or _fixed_stop_level_absurd(_is_long, _lvl, _ep):
+            _new, _src = _fixed_stop_freeze_level(_is_long, _dc_lo, _dc_hi, _ep)
+            if _new > 0:
+                if _lvl > 0 and abs(_new - _lvl) > 1e-12:
+                    logger.critical(f"🛡️ [ENTRY_STOP_REFREEZE] {position_key}: {'augment' if _refreeze else 'stale level'} — whole position {_amt:.6f} moves {_lvl:.6f} -> {_new:.6f} ({_src})")
+                _lvl = _new
+                try:
+                    position.fixed_stop_price = _lvl
+                    position.fixed_stop_armed = _fixed_stop_core.armed_at_freeze(_is_long, _px, _lvl)
+                except Exception:
+                    pass
+        if _lvl <= 0:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} FILLED {_amt:.6f} but NO stop level could be frozen (dc_low_15m={_dc_lo} dc_high_15m={_dc_hi} entry={_ep}) — POSITION IS UNPROTECTED")
+            self._mark_entry_unprotected(position_key, account_key, symbol, position_side, "no_level")
+            return "FAILED_NO_LEVEL"
+        _fx = getattr(self, "ensure_fixed_stop_backstop", None)
+        if _fx is None:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: ensure_fixed_stop_backstop is MISSING — POSITION IS UNPROTECTED")
+            self._mark_entry_unprotected(position_key, account_key, symbol, position_side, "no_ensure")
+            return "FAILED_NO_ENSURE"
+        try:
+            _r = await asyncio.wait_for(_fx(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, soft_level=_lvl, current_price=_px), timeout=_timeout)
+        except asyncio.TimeoutError:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: stop placement TIMED OUT after {_timeout:.0f}s — POSITION MAY BE UNPROTECTED")
+            self._mark_entry_unprotected(position_key, account_key, symbol, position_side, "timeout")
+            return "FAILED_TIMEOUT"
+        # VERIFY, do not trust the return string: the registry only carries an orderId the broker acknowledged.
+        try:
+            _oid = str(((getattr(self, "managed_stop_registry", None) or {}).get(position_key) or {}).get("orderId") or "")
+        except Exception:
+            _oid = ""
+        if not _oid:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} FILLED {_amt:.6f} @ stop {_lvl:.6f} but NO resting exchange stop was confirmed (ensure -> {_r}) — POSITION IS UNPROTECTED")
+            self._mark_entry_unprotected(position_key, account_key, symbol, position_side, f"unconfirmed:{_r}")
+            return f"FAILED_UNCONFIRMED:{_r}"
+        try:
+            (getattr(self, "entry_stop_unprotected", None) or {}).pop(str(position_key), None)
+        except Exception:
+            pass
+        logger.info(f"🛡️ [ENTRY_STOP_OK] {position_key}: {result} -> exchange stop {_oid} rests at {_lvl:.6f} for {_amt:.6f} ({time.time() - _t0:.1f}s)")
+        return f"SUCCESS:{_oid}"
+
+    async def _execute_now_inner(
+        self,
+        position_key: Optional[str] = None,
+        account_key: Optional[str] = None,
+        symbol: Optional[str] = None,
+        original_positionAmt: float = 0.0,
+        side: str = "BUY",
+        position_side: str = "LONG",
+        quantity: float = 0.0,
+        old_price: float = 0.0,
+        unique_id: Optional[str] = None,
+        reason: str = "",
+        is_full_close: bool = False,
+        action: Optional[str] = None,
+        is_hedge: bool = False,
+        hedge_for: Optional[str] = None,
+        url_variant: str = "",
+        stop_price: float = 0.0,
+        stop_order_id: str = "",
+    ) -> str:
         # ─── FIXED_STOP ORDER ACTIONS (2026-10-12 USER MANDATE — non-negotiable backstop) ───
         # STOP placements/cancels are protection, not position changes: they run through
         # execute_now (the ONLY gate) but bypass position-change gates (365D/vec/exposure).

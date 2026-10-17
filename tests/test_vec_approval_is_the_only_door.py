@@ -43,6 +43,21 @@ def _callers_of(src, target):
     return out
 
 
+def _gate_body(src, inner="_execute_now_inner"):
+    """Name of the function holding execute_now's body, asserting the split has not become a bypass.
+
+    2026-10-17: execute_now became a thin wrapper (post-fill "an entry is not done without an exchange stop")
+    around its unchanged body, now `_execute_now_inner`. That is still ONE door only while the body has exactly one
+    caller — execute_now itself. If anything else ever learns the inner name, the gate has been routed around and
+    CLAUDE.md's "ALL orders go through execute_now()" is broken, so this fails loudly rather than adapting.
+    """
+    if f"def {inner}(" not in src:
+        return "execute_now"
+    callers = _callers_of(src, inner)
+    assert callers == {"execute_now"}, f"{inner} is execute_now's body — it must have exactly one caller, found {sorted(callers)}"
+    return inner
+
+
 def test_crypto_order_paths_are_reachable_only_from_execute_now():
     """CLAUDE.md: "No futures_create_order or REST /fapi/v1/order calls outside execute_now"."""
     src = (ROOT / "ez_manage.py").read_text()
@@ -56,13 +71,14 @@ def test_crypto_order_paths_are_reachable_only_from_execute_now():
         "_exit_force_market",           # exit_guarantee FORCE leg — a close, never blockable
         "initialize",                   # NOT an emitter: wrap_binance_client() names the method while wrapping it
         "execute_now",
+        "_execute_now_inner",           # 2026-10-17: execute_now's unchanged BODY (see _gate_body below)
     }
     assert emitters <= allowed, f"a NEW crypto order emitter appeared outside the known set: {sorted(emitters - allowed)}"
     # the three real wire legs must stay downstream of the gate
-    assert _callers_of(src, "place_maker_order") == {"execute_now"}
-    assert _callers_of(src, "_fixed_stop_taker_backstop") == {"execute_now"}
-    assert _callers_of(src, "send_webhook") <= {"execute_now", "place_maker_order"}, \
-        "send_webhook is the wire leg; a caller outside execute_now/place_maker_order would bypass the parity gate"
+    assert _callers_of(src, "place_maker_order") == {_gate_body(src)}
+    assert _callers_of(src, "_fixed_stop_taker_backstop") == {_gate_body(src)}
+    assert _callers_of(src, "send_webhook") <= {_gate_body(src), "place_maker_order"}, \
+        "send_webhook is the wire leg; a caller outside the gate body/place_maker_order would bypass the parity gate"
 
 
 def test_stock_order_paths_are_accounted_for():
@@ -70,8 +86,10 @@ def test_stock_order_paths_are_accounted_for():
     funcs = _funcs(src)
     emitters = {_enclosing(funcs, i) for i, line in enumerate(src.splitlines(), 1)
                 if re.search(r"\.place_order\(|_odg_raw_place_order", line) and not line.lstrip().startswith("#")}
+    _gate_body(src)  # the stocks gate split the same way on 2026-10-17; prove it is still one door
     allowed = {
         "execute_now",                        # the gate
+        "_execute_now_inner",                 # 2026-10-17: execute_now's unchanged BODY
         "place_order",                        # the manager's own wire method, called by execute_now
         "_exit_force_market_stocks",          # exit_guarantee FORCE leg — a close, never blockable
         "_fixed_stop_order_action_tradier",   # protective stop (FIXED_STOP family) — a close, never blockable

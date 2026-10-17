@@ -47747,6 +47747,119 @@ class TradierTradeManager:
         is_full_close: bool,
         action: str = None,
         decision_recorded: bool = False,
+    ) -> str:
+        # ─── AN EXCHANGE stop_market IS PART OF EVERY ENTRY/AUGMENT (2026-10-17 USER: "stop_market order on
+        # exchange for any entry/augment as a requirement") ─── twin of the crypto wrapper at ez_manage.py:32080.
+        # execute_now REMAINS the one and only gate; the body below is untouched and keeps every verdict string.
+        # WHY HERE AND NOT IN THE RECONCILE LOOP: ensure_fixed_stop_backstop_tradier has exactly ONE caller,
+        # stop_truth_reconcile_loop (tradier_manage.py:44976), which sweeps every 10 s. So a filled entry was
+        # unprotected until the sweep reached it, and anything that stalled the sweep left it unprotected with no
+        # alarm. Tonight's audit measured the result: 14 of 44 live stock positions had no resting stop.
+        _res = await self._execute_now_inner(
+            position_key=position_key, account_key=account_key, symbol=symbol,
+            original_position_amt=original_position_amt, side=side, position_side=position_side,
+            quantity=quantity, old_price=old_price, unique_id=unique_id, reason=reason,
+            is_full_close=is_full_close, action=action, decision_recorded=decision_recorded,
+        )
+        try:
+            # Same predicate as live_twins.vec_provenance.increases_exposure (pinned identical by
+            # tests/test_entry_requires_exchange_stop.py). No is_hedge: this signature has none and Tradier does not hedge.
+            _act_u = str(action or "").upper()
+            _is_incr = not (is_full_close or "CLOSE" in _act_u or "REDUCE" in _act_u or "STOP" in _act_u) and (
+                (str(position_side or "").upper() == "LONG" and str(side or "").upper() == "BUY")
+                or (str(position_side or "").upper() == "SHORT" and str(side or "").upper() == "SELL")
+            )
+            if _is_incr and str(_res or "").upper().startswith("SUCCESS"):
+                await self._require_exchange_stop_after_entry_tradier(
+                    position_key=position_key, account_key=account_key, symbol=symbol,
+                    position_side=position_side, old_price=old_price, result=str(_res),
+                )
+        except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
+            self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
+        return _res
+
+    def _mark_entry_unprotected_tradier(self, position_key, account_key, symbol, position_side, why):
+        """Record a filled entry with no confirmed broker stop so the 10 s reconcile and the audit keep chasing it.
+
+        NO-LIES: the opposite of a silent success. Memory-only by design — a restart re-derives it from broker truth.
+        """
+        try:
+            reg = getattr(self, "entry_stop_unprotected", None)
+            if not isinstance(reg, dict):
+                reg = {}
+                self.entry_stop_unprotected = reg
+            reg[str(position_key)] = {"ts": time.time(), "account_key": account_key, "symbol": symbol, "position_side": position_side, "why": str(why)[:200]}
+        except Exception:
+            pass
+
+    async def _require_exchange_stop_after_entry_tradier(self, *, position_key, account_key, symbol, position_side, old_price, result):
+        """An exposure increase is not finished until a protective stop rests at the broker for the WHOLE position.
+
+        Deliberately calls the SAME ensure with the SAME inputs as stop_truth_reconcile_loop
+        (tradier_manage.py:44976) rather than re-deriving a level here: the augment re-freeze, the adopt-don't-
+        duplicate rule and the quantity re-place all already live inside it, and a second implementation of a stop
+        level is exactly the kind of drift that strands a position. This only makes it happen AT the fill, then
+        verifies against the broker and shouts if the stop is not there. Never raises.
+        """
+        _t0 = time.time()
+        _timeout = float(getattr(config, "TRADIER_ENTRY_STOP_REQUIRE_TIMEOUT_S", 25.0) or 25.0)
+        _pos = await self.get_position(position_key)
+        if _pos is None:
+            logger.warning(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} but position unreadable — the 10s reconcile will pick it up")
+            self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, "position_unreadable")
+            return "SKIPPED_NO_POSITION"
+        try:
+            _ind = self.get_indicators(symbol) or {}
+        except Exception:
+            _ind = {}
+        _soft = 0.0
+        try:
+            _lve = (getattr(self, "_fixed_stop_levels", None) or {}).get(position_key)
+            if isinstance(_lve, dict):
+                _soft = float(_lve.get("level", 0) or 0)
+        except Exception:
+            _soft = 0.0
+        _cp = safe_fetch_float(old_price or 0, 0.0) or safe_fetch_float(_ind.get("current_price", 0) or _ind.get("close", 0) or 0, 0.0)
+        try:
+            _r = await asyncio.wait_for(self.ensure_fixed_stop_backstop_tradier(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=_pos, soft_level=_soft, current_price=_cp, dc_low_15m=safe_fetch_float(_ind.get("dc_low_15m", 0) or 0, 0.0), dc_high_15m=safe_fetch_float(_ind.get("dc_high_15m", 0) or 0, 0.0)), timeout=_timeout)
+        except asyncio.TimeoutError:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: stop placement TIMED OUT after {_timeout:.0f}s — POSITION MAY BE UNPROTECTED")
+            self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, "timeout")
+            return "FAILED_TIMEOUT"
+        # VERIFY AT THE BROKER, never on the return string. None = listing failed = UNVERIFIED, which is not "fine":
+        # it is exactly the state that let 14 unprotected positions look healthy, so it is recorded like a failure.
+        _stops = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+        if _stops is None:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} filled but the stop listing is UNVERIFIED (ensure -> {_r}) — cannot prove protection")
+            self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, f"unverified_listing:{_r}")
+            return f"FAILED_UNVERIFIED:{_r}"
+        if not _stops:
+            logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} filled but NO resting broker stop (ensure -> {_r}) — POSITION IS UNPROTECTED")
+            self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, f"no_resting_stop:{_r}")
+            return f"FAILED_NO_STOP:{_r}"
+        try:
+            (getattr(self, "entry_stop_unprotected", None) or {}).pop(str(position_key), None)
+        except Exception:
+            pass
+        logger.info(f"🛡️ [ENTRY_STOP_OK] {position_key}: {result} -> {len(_stops)} resting broker stop(s) ({time.time() - _t0:.1f}s)")
+        return f"SUCCESS:{len(_stops)}"
+
+    async def _execute_now_inner(
+        self,
+        position_key: str,
+        account_key: str,
+        symbol: str,
+        original_position_amt: float,
+        side: str,
+        position_side: str,
+        quantity: float,
+        old_price: float,
+        unique_id: str,
+        reason: str,
+        is_full_close: bool,
+        action: str = None,
+        decision_recorded: bool = False,
     ) -> (
         str
     ):  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
