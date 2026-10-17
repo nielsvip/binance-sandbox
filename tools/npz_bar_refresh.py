@@ -888,6 +888,32 @@ def frozen_syms():
             return set()
 
 
+def source_frozen(symbol, mode="crypto", bars=96):
+    """True when the symbol's own 15m klines carry ONE repeated close over the last `bars` — a dead/delisted
+    ticker whose bars are still being written forward, not data.
+
+    MEASURED 2026-10-17: ICXUSDT, STORJUSDT, IPUSDC and VANRYUSDT each held a single close for 4956-10618 bars
+    (ICXUSDT 0.01522 for 52 days) with timestamps advancing to the current bar, and Binance USD-M returns NO
+    price for any of them while BNBUSDC returns 719.92 — they are delisted. A constant close has no down-moves,
+    so rsi_series' avg_loss is 0, rs is NaN, the whole RSI is NaN, stoch_rsi returns None, and
+    backtest_v8_precompute's `if k_series is not None and len(k_series) == n` guard emits NONE of the ten 15m
+    stochastic keys — which surfaced as `cannot extend 10 row keys` every cycle for 7 cycles. Nothing about the
+    NPZ is broken, so it must not sit in the repair queue pretending a deeper copy would help.
+    32 of 592 crypto stores are frozen over 24 h; the other 28 simply stopped being written (ordinary dead
+    symbols, already reported as dead_klines)."""
+    p = (ROOT / "klines_cache" / f"{symbol}_15m.json") if mode != "tradier" else (ROOT / "klines_cache" / "tradier" / f"{symbol}_15m.json")
+    try:
+        sz = p.stat().st_size
+        with open(p, "rb") as f:
+            f.seek(max(0, sz - 200 * bars))
+            txt = f.read().decode("utf-8", "ignore")
+    except OSError:
+        return False
+    import re as _re
+    vals = _re.findall(r'"close":\s*([0-9.eE+-]+)', txt)[-bars:]
+    return len(vals) >= max(8, bars // 2) and len(set(vals)) == 1
+
+
 def repair_queue_update(results, path=None):
     """persist the symbols no top-up can ever fix (legacy align, unextendable keys, 1-row stubs) for tools/npz_repair.py.
 
@@ -899,10 +925,14 @@ def repair_queue_update(results, path=None):
     except Exception:
         cur = {}
     now = time.time()
-    seen = set()
+    seen, frozen_src = set(), {}
     for r in results:
         s, st = r.get("symbol"), r.get("status")
         if not s or st not in REPAIR_STATUSES:
+            continue
+        if st in ("ERROR", "GUARD_REFUSED") and source_frozen(s, r.get("mode") or "crypto"):
+            frozen_src[s] = str(r.get("error") or "")[:120]
+            cur.pop(s, None)
             continue
         seen.add(s)
         e = cur.get(s) or {"first_seen": now, "attempts": 0}
@@ -918,6 +948,16 @@ def repair_queue_update(results, path=None):
         os.replace(tmp, p)
     except Exception as e:
         log(f"repair queue write failed: {type(e).__name__}: {e}")
+    if frozen_src:
+        log(f"{len(frozen_src)} symbol(s) have a FROZEN source (one repeated close, exchange has no price) — delisted, not an NPZ fault: {','.join(sorted(frozen_src))}")
+        try:
+            ap = ROOT / "data" / "alerts" / "klines_frozen_source.json"
+            ap.parent.mkdir(parents=True, exist_ok=True)
+            ap.write_text(json.dumps({"at": dt.datetime.now(dt.timezone.utc).isoformat(), "syms": frozen_src,
+                                      "note": "15m klines carry one repeated close while timestamps advance; Binance returns no price -> delisted. Exclude them from the universe; no NPZ repair can help."},
+                                     indent=1, sort_keys=True))
+        except Exception as e:
+            log(f"frozen-source alert write failed: {type(e).__name__}")
     return cur
 
 

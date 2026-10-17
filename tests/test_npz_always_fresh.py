@@ -199,3 +199,25 @@ def test_repair_refuses_a_candidate_that_is_not_on_the_grid():
     assert ok and "rows 1 -> 15895" in why
     ok2, _ = rp.better(junk, good, "ADP")
     assert not ok2, "a junk candidate must never displace a valid store even with more rows"
+
+
+def test_frozen_source_is_not_queued_as_an_npz_repair(tmp_path, monkeypatch):
+    # ICXUSDT/STORJUSDT/IPUSDC/VANRYUSDT: one repeated close for 4956-10618 bars, exchange has no price.
+    # stoch_rsi returns None on a constant close, so the builder emits none of the 10 stoch_*_15m keys and the
+    # refresh ERRORs forever. That is a delisted ticker, not a store a deeper copy can fix.
+    monkeypatch.setattr(nbr, "ROOT", tmp_path)
+    (tmp_path / "klines_cache").mkdir()
+    frozen = [{"timestamp": f"2026-10-16T{h:02d}:{m:02d}:00.000000Z", "close": 0.01522} for h in range(24) for m in (0, 15, 30, 45)]
+    (tmp_path / "klines_cache" / "ICXUSDT_15m.json").write_text(json.dumps(frozen))
+    moving = [{"timestamp": r["timestamp"], "close": 0.01522 + i * 1e-5} for i, r in enumerate(frozen)]
+    (tmp_path / "klines_cache" / "LIVEUSDT_15m.json").write_text(json.dumps(moving))
+    assert nbr.source_frozen("ICXUSDT") is True
+    assert nbr.source_frozen("LIVEUSDT") is False
+    assert nbr.source_frozen("NOSUCHUSDT") is False
+    q = tmp_path / "q.json"
+    res = [{"symbol": "ICXUSDT", "status": "ERROR", "mode": "crypto", "error": "cannot extend 10 row keys: ['stoch_k_15m'...]"},
+           {"symbol": "LIVEUSDT", "status": "ERROR", "mode": "crypto", "error": "cannot extend 10 row keys"}]
+    out = nbr.repair_queue_update(res, path=q)
+    assert "ICXUSDT" not in out, "a frozen/delisted source must never enter the repair queue"
+    assert "LIVEUSDT" in out, "a real unextendable store still must"
+    assert (tmp_path / "data" / "alerts" / "klines_frozen_source.json").exists()

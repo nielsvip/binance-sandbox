@@ -175,6 +175,13 @@ class TradierConfig:
     START_POSITION_SIZE: float = (
         500.0  # was 150 (2026-04-27 emergency cut); 2026-06-14 raised: $150 can't buy 1 share of $300+ stocks
     )
+    # 2026-10-17 LIVE WIRING of the vector order/position caps (stocks half). vec_decisions.qty_quantizers
+    # cap_dollar/cap_add_qty serve both venues off whichever cfg they are handed and read this venue's own
+    # START_POSITION_SIZE; declared only in v12_quick_engine.QuickConfig until now, so stocks live took the
+    # legacy absolute-cap branch while the backtest clipped at 8x/10x START. cap_add_qty floors the room to
+    # whole shares when tradier=True. 0.0 restores the legacy absolute-cap branch.
+    QTY_LIVE_ORDER_CAP_MULT: float = 8.0  # order notional <= START_POSITION_SIZE x this
+    QTY_LIVE_POSITION_CAP_MULT: float = 10.0  # position notional <= START_POSITION_SIZE x this (augments clipped)
 
     # Hard account-risk ceiling.  Entries are refused at/above this measured
     # peak-to-current equity drawdown; exits remain permitted.

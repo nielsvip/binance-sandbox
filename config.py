@@ -185,33 +185,47 @@ class Config:
     # minNotional (BTC $50, ETH/BCH/LTC/ETC/LINK $20, rest $5) is still honoured by ez_manage._min_viable_qty, so
     # orders stay placeable instead of being rejected. ROLLBACK: CRYPTO_MINIMUM_TRADING_MODE = False restores the
     # values recorded beside each line.
-    CRYPTO_MINIMUM_TRADING_MODE: bool = True
+    # USER 2026-10-17: "apply light mode for now instead of hard capping everything at $6". The flat $6/$12
+    # floors distorted the RATIOS the boards were measured with (MAX_POSITION_SIZE/START went from a median
+    # 27.9x to 2.0x across all 328 crypto boards, so augment ladders and position-cap logic behaved
+    # differently, not just smaller). Exposure is now reduced by LIGHT_MODE instead, which scales the whole
+    # table coherently. Set this True again for a true floor-exposure emergency; CRYPTO_MIN_SIZE_CAPS
+    # (ez_manage) and per_sym_live_set._apply_caps are both still wired and keyed off this flag.
+    CRYPTO_MINIMUM_TRADING_MODE: bool = False
     # USER 2026-10-16 "GET IT OUT": stoch-K may not gate a GUARANTEED_REENTRY in either direction (ez_manage
     # ~40049). The system gates reentries on WT + HTF. True restores the pre-2026-10-16 K behaviour.
     GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED: bool = False
     MIN_POSITION_SIZE: float = 1.0
     # 1/50 RULE: No single position > 2% of total capital ($1k crypto = $20/pos max)
     MAX_POSITION_SIZE: float = (
-        12.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 200.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
+        200.0  # RESTORED 2026-10-17 (USER "make sure the light-normal-extreme modes get their sizes back"); minimum mode held 12.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
     )
-    MAX_POSITION_SIZE_BTC: float = 60.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 2000.0 (BTC minNotional 50)  # 2026-03-30: Same rule for BTC. Was $6000.
-    MAX_POSITION_SIZE_MEN: float = 12.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 200.0  # 2026-03-30: Same. Was $1200.
-    MAX_POSITION_SIZE_FIN: float = 12.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 200.0  # 2026-03-30: Same. Was $4000.
+    MAX_POSITION_SIZE_BTC: float = 2000.0  # RESTORED 2026-10-17; minimum mode held 60.0 (BTC minNotional 50)  # 2026-03-30: Same rule for BTC. Was $6000.
+    MAX_POSITION_SIZE_MEN: float = 200.0  # RESTORED 2026-10-17; minimum mode held 12.0  # 2026-03-30: Same. Was $1200.
+    MAX_POSITION_SIZE_FIN: float = 200.0  # RESTORED 2026-10-17; minimum mode held 12.0  # 2026-03-30: Same. Was $4000.
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
 
-    MAX_ORDER_VALUE: float = 6.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 90.0  # 2026-03-30: 1/50 rule. Was $280.
+    MAX_ORDER_VALUE: float = 90.0  # RESTORED 2026-10-17; minimum mode held 6.0  # 2026-03-30: 1/50 rule. Was $280.
     MAX_ORDER_VALUE_MEN: float = (
-        26.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
+        300.0  # RESTORED 2026-10-17; minimum mode held 26.0  # STDEV_SLOPE fix 2026-09-14: was 60 (4.2x START) capped ladder; now >=10x START (14*10=140) so 10x D ladder can express.
     )
     MAX_ORDER_VALUE_FIN: float = (
-        26.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 300.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
+        300.0  # RESTORED 2026-10-17; minimum mode held 26.0  # STDEV_SLOPE fix 2026-09-14: was 60 →200 for 10x ladder parity.
     )
     EMERGENCY_OVERSIZE_GUARD_ENABLED: bool = (
         False  # 2026-09-03 KILLED per user: MAKER_PROFIT_EXIT_FORCE_REDUCE_OVERSIZE_81 firing on FLZ (maker wrapper at 81>$20). Finandy TP ladder bug guard causes commission churn, default OFF.
     )
     START_POSITION_SIZE: float = (
-        6.0  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16: was 45.0  # USER 2026-10-11: 28 -> 45 base; gainers to 4x ($180 OPEN_CEIL), losers/unconfirmed small via tiers. Was parity 2026-09-26 28.0.
+        45.0  # RESTORED 2026-10-17; minimum mode held 6.0  # USER 2026-10-11: 28 -> 45 base; gainers to 4x ($180 OPEN_CEIL), losers/unconfirmed small via tiers. Was parity 2026-09-26 28.0.
     )
+    # 2026-10-17 LIVE WIRING of the vector order/position caps. These were declared ONLY in
+    # v12_quick_engine.QuickConfig (8.0/10.0), so vec_decisions.qty_quantizers.cap_dollar/cap_add_qty read 0.0
+    # live (`getattr(cfg, ..., 0.0)`) and took the legacy absolute-cap branch: the backtest clipped orders at
+    # 8x START and positions at 10x START while live clipped at MAX_ORDER_VALUE instead — two different
+    # formulas, which coincide only if MAX_ORDER_VALUE == 8 x START (90 vs 360 here: they do not). Declared on
+    # the live surfaces so backtest and live clip identically. 0.0 restores the legacy absolute-cap branch.
+    QTY_LIVE_ORDER_CAP_MULT: float = 8.0  # order notional <= START_POSITION_SIZE x this
+    QTY_LIVE_POSITION_CAP_MULT: float = 10.0  # position notional <= START_POSITION_SIZE x this (augments clipped)
     FIXED_QUANTITY_ENABLED: bool = (
         False  # 2026-09-27 parity audit: when True, live uses fixed notional = START_POSITION_SIZE for all opens (bypass all sizing mults). For second parallel forward test: 1/3m OFF + non-vector OFF + fixed qty → isolates signal vs sizing. Vector BEST backtest also uses fixed sizing path when this True.
     )
@@ -268,8 +282,11 @@ class Config:
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
 
     EXTREME_MODE: bool = False
-    LIGHT_MODE: bool = False
-    MARKET_MODE: str = "NORMAL_MODE"
+    # USER 2026-10-17: light mode is the active exposure reduction (replaces the flat $6 minimum-mode caps).
+    # _apply_mode writes `base` then overlays `light`: START 45, MAX_POSITION 360, MAX_ORDER_VALUE 180,
+    # MEN/FIN order 440/180, MEN/FIN position 360/360. NORMAL and EXTREME keep their own real sizes.
+    LIGHT_MODE: bool = True
+    MARKET_MODE: str = "LIGHT_MODE"
     REV_MODE: bool = False
 
     SERVICE_STOP = True
@@ -5755,17 +5772,17 @@ class Config:
             # "MIN_GAIN": 1.2,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 800.0
             # "MAX_POSITION_SIZE_FIN": 900.0#emergency mode
-            "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 45.0
-            "MAX_POSITION_SIZE": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
-            "MAX_ORDER_VALUE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
-            "MAX_ORDER_VALUE_MEN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 440.0
-            "MAX_ORDER_VALUE_FIN": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
+            "START_POSITION_SIZE": 45.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 360.0,  # RESTORED 2026-10-17; minimum mode held 12.0
+            "MAX_ORDER_VALUE": 180.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_ORDER_VALUE_MEN": 440.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_ORDER_VALUE_FIN": 180.0,  # RESTORED 2026-10-17; minimum mode held 6.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 660.0,
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
-            "MAX_POSITION_SIZE_FIN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
+            "MAX_POSITION_SIZE_MEN": 360.0,  # RESTORED 2026-10-17; minimum mode held 12.0
+            "MAX_POSITION_SIZE_FIN": 360.0,  # RESTORED 2026-10-17; minimum mode held 12.0
         }
         base = {
             # "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 15.0
@@ -5778,30 +5795,30 @@ class Config:
             # "MIN_GAIN": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 160.0
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 45.0
-            "MAX_POSITION_SIZE": 62.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 780.0
-            "MAX_ORDER_VALUE": 26.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
-            "MAX_ORDER_VALUE_MEN": 26.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 280.0
-            "MAX_ORDER_VALUE_FIN": 62.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 280.0
+            "START_POSITION_SIZE": 45.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 780.0,  # RESTORED 2026-10-17; minimum mode held 62.0
+            "MAX_ORDER_VALUE": 180.0,  # RESTORED 2026-10-17; minimum mode held 26.0
+            "MAX_ORDER_VALUE_MEN": 280.0,  # RESTORED 2026-10-17; minimum mode held 26.0
+            "MAX_ORDER_VALUE_FIN": 280.0,  # RESTORED 2026-10-17; minimum mode held 62.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 42.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
-            "MAX_POSITION_SIZE_FIN": 42.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 360.0
+            "MAX_POSITION_SIZE_MEN": 360.0,  # RESTORED 2026-10-17; minimum mode held 42.0
+            "MAX_POSITION_SIZE_FIN": 360.0,  # RESTORED 2026-10-17; minimum mode held 42.0
         }
         extreme = {
-            "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 70.0
-            "MAX_POSITION_SIZE": 92.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 2800.0
-            "MAX_ORDER_VALUE": 46.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 180.0
-            "MAX_ORDER_VALUE_MEN": 46.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 500.0
-            "MAX_ORDER_VALUE_FIN": 46.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 1200.0
+            "START_POSITION_SIZE": 70.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 2800.0,  # RESTORED 2026-10-17; minimum mode held 92.0
+            "MAX_ORDER_VALUE": 180.0,  # RESTORED 2026-10-17; minimum mode held 46.0
+            "MAX_ORDER_VALUE_MEN": 500.0,  # RESTORED 2026-10-17; minimum mode held 46.0
+            "MAX_ORDER_VALUE_FIN": 1200.0,  # RESTORED 2026-10-17; minimum mode held 46.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 190.0,  # REDUCED: From 240 to 120 for faster reactions
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 72.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 3200.0
-            "MAX_POSITION_SIZE_FIN": 72.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 4000.0
+            "MAX_POSITION_SIZE_MEN": 3200.0,  # RESTORED 2026-10-17; minimum mode held 72.0
+            "MAX_POSITION_SIZE_FIN": 4000.0,  # RESTORED 2026-10-17; minimum mode held 72.0
         }
 
         for key, value in base.items():

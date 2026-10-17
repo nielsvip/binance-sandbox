@@ -59,26 +59,57 @@ def test_min_mode_fail_safe():
     pls._cap_memo.clear()
 
 
+def _force_min_mode(on: bool):
+    """The caps only apply while config.CRYPTO_MINIMUM_TRADING_MODE is on, and that flag flips with the
+    operator's exposure decision (USER 2026-10-17 turned it OFF in favour of LIGHT_MODE). These tests pin
+    the CLAMP ITSELF, so they drive the gate explicitly instead of inheriting today's live value."""
+    saved = pls._min_mode_on
+    pls._min_mode_on = lambda: on
+    pls._cap_memo.clear()
+    return saved
+
+
 def test_caps_clamp_crypto_and_spare_stocks():
-    raw = {k: 10_000.0 for k in pls.CRYPTO_MIN_SIZE_CAPS}
-    raw["ENTRY_SCORE_THRESHOLD"] = 7
-    capped = pls._apply_caps("BTCUSDT_LONG", raw)
-    for knob, cap in pls.CRYPTO_MIN_SIZE_CAPS.items():
-        assert capped[knob] == cap, knob
-    assert capped["ENTRY_SCORE_THRESHOLD"] == 7, "non-sizing keys must pass through untouched"
-    pls._cap_memo.clear()
-    assert pls._apply_caps("AAPL_LONG", raw) is raw, "stock sym_sides are not crypto-capped"
-    pls._cap_memo.clear()
+    saved = _force_min_mode(True)
+    try:
+        raw = {k: 10_000.0 for k in pls.CRYPTO_MIN_SIZE_CAPS}
+        raw["ENTRY_SCORE_THRESHOLD"] = 7
+        capped = pls._apply_caps("BTCUSDT_LONG", raw)
+        for knob, cap in pls.CRYPTO_MIN_SIZE_CAPS.items():
+            assert capped[knob] == cap, knob
+        assert capped["ENTRY_SCORE_THRESHOLD"] == 7, "non-sizing keys must pass through untouched"
+        pls._cap_memo.clear()
+        assert pls._apply_caps("AAPL_LONG", raw) is raw, "stock sym_sides are not crypto-capped"
+    finally:
+        pls._min_mode_on = saved
+        pls._cap_memo.clear()
+
+
+def test_caps_off_is_a_pure_passthrough():
+    """Minimum mode OFF must hand back the board set untouched — the real sizes reach live unchanged."""
+    saved = _force_min_mode(False)
+    try:
+        raw = {k: 10_000.0 for k in pls.CRYPTO_MIN_SIZE_CAPS}
+        assert pls._apply_caps("BTCUSDT_LONG", raw) is raw
+    finally:
+        pls._min_mode_on = saved
+        pls._cap_memo.clear()
 
 
 def test_caps_never_raise_a_lower_value():
-    raw = {"START_POSITION_SIZE": 1.5, "MAX_POSITION_SIZE": 2.0}
-    assert pls._apply_caps("BTCUSDT_LONG", raw) is raw
-    pls._cap_memo.clear()
+    saved = _force_min_mode(True)
+    try:
+        raw = {"START_POSITION_SIZE": 1.5, "MAX_POSITION_SIZE": 2.0}
+        assert pls._apply_caps("BTCUSDT_LONG", raw) is raw
+    finally:
+        pls._min_mode_on = saved
+        pls._cap_memo.clear()
 
 
-def test_live_board_is_served_and_capped():
-    """End-to-end on the real store: non-sizing keys come from the board, sizing keys come back capped."""
+def test_live_board_is_served():
+    """End-to-end on the real store: the reader serves the board, and sizing obeys whatever the live
+    exposure flag says — capped while minimum mode is on, the board's own real sizes while it is off."""
+    import config as cfg
     import per_sym_store as pss
 
     board = pss.get_overrides("BTCUSDT_LONG")
@@ -86,9 +117,14 @@ def test_live_board_is_served_and_capped():
         return  # no live row on this host (workers have no per_sym_active) — nothing to assert
     got = pls.full_set("BTCUSDT_LONG")
     assert got is not None
+    min_mode = bool(getattr(cfg.Config, "CRYPTO_MINIMUM_TRADING_MODE", False))
     for knob, cap in pls.CRYPTO_MIN_SIZE_CAPS.items():
-        if knob in got:
+        if knob not in got:
+            continue
+        if min_mode:
             assert float(got[knob]) <= cap, knob
+        else:
+            assert got[knob] == board[knob], f"{knob}: caps off must pass the board value through"
     off = [
         k
         for k, v in board.items()
