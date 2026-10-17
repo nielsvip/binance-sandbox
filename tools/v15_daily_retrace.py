@@ -92,11 +92,19 @@ def sign_name(x) -> str:
 
 def set_segments(con, sym_side: str, t_from: float, t_to: float, active: dict):
     """The SQL trail of applied sets, cut into [t0, t1) segments of one md5 each, clipped to the window."""
-    sql = ("select coalesce(epoch, strftime('%s', replace(replace(updated_at,'T',' '),'Z',''))) ep, updated_at, overrides_json,"
-           " gain_pct, baseline_gain, bh_pct, trades, max_dd_pct, tim_pct, valid, meta_json"
-           " from per_sym_history where sym_side=? and overrides_json is not null order by ep")
-    seq = []
-    for ep, upd, oj, gain, base, bh, trades, dd, tim, valid, meta in con.execute(sql, (sym_side,)):
+    cols = ("select coalesce(epoch, strftime('%s', replace(replace(updated_at,'T',' '),'Z',''))) ep, updated_at, overrides_json,"
+            " gain_pct, baseline_gain, bh_pct, trades, max_dd_pct, tim_pct, valid, meta_json from per_sym_history")
+    where = " where sym_side=? and overrides_json is not null"
+    # rows inside the window, plus the last row before it (the set that was already in force when the window opened):
+    # parsing every historical 127 KB override blob for every sym_side is what makes a full-fleet retrace slow.
+    db_rows = list(con.execute(f"{cols}{where} and ep < ? order by ep desc limit 1", (sym_side, t_from)))[::-1]
+    db_rows += list(con.execute(f"{cols}{where} and ep >= ? order by ep", (sym_side, t_from)))
+    seq, raw_prev = [], None
+    for ep, upd, oj, gain, base, bh, trades, dd, tim, valid, meta in db_rows:
+        raw = hashlib.md5((oj or "").encode()).hexdigest()
+        if raw == raw_prev:
+            continue
+        raw_prev = raw
         try:
             ov = json.loads(oj or "{}")
         except Exception:
@@ -157,24 +165,51 @@ def load_active(con):
     return act
 
 
-def rerun_symbol(symbol: str, jobs, errors):
-    """One prepare per symbol (the twin's own frozen bars), then one evaluate per (sym_side, set). Returns {(ss, md5): result}."""
+def rerun_symbol(symbol: str, jobs, errors, board: dict, board_leg: bool = True):
+    """Two legs per (sym_side, set).
+
+    L2 PAPER (always): the twin's own append-only frozen bars = what live decided on, with the full ledger.
+    L2b BOARD (--board-leg): the same set on the local 15m NPZ store over the exact 30 d slice, i.e. the window a published
+    board is measured in. Comparing L1 vs L2b asks "is the published number reproducible at all"; comparing L2b vs L2 asks
+    "do live's own bars differ from the board's bars". Metrics only, so the memo cache may serve it."""
     from live_twins import vec_exact as VX
     from tools.opt import evaluate_v12 as E
 
     out = {}
     path = FROZEN_DIR / f"{symbol}.pkl"
+    raw = None
     if not path.exists():
         for ss, md5, _ov in jobs:
             out[(ss, md5)] = {"status": "NO_TWIN_STORE"}
-        return out
-    try:
-        with open(path, "rb") as fh:
-            raw = pickle.load(fh)
-    except Exception as exc:
-        errors.append(f"{symbol}: twin store read failed: {exc}")
-        for ss, md5, _ov in jobs:
-            out[(ss, md5)] = {"status": "TWIN_STORE_UNREADABLE"}
+    else:
+        try:
+            with open(path, "rb") as fh:
+                raw = pickle.load(fh)
+        except Exception as exc:
+            errors.append(f"{symbol}: twin store read failed: {exc}")
+            for ss, md5, _ov in jobs:
+                out[(ss, md5)] = {"status": "TWIN_STORE_UNREADABLE"}
+    if board_leg:
+        bprep = {}
+        for ss, md5, ov in jobs:
+            try:
+                if ss not in bprep:
+                    bprep[ss] = E.prepare(ss, 30)
+                p = bprep[ss]
+                if p is None:
+                    board[(ss, md5)] = {"status": "NO_LOCAL_NPZ"}
+                    continue
+                ts = p["npz_prepared"]["timestamps"]
+                r = E.evaluate_prepared(p, ov)
+                board[(ss, md5)] = {"status": "OK", "first": float(ts[0]), "last": float(ts[-1]), "bars": int(len(ts)),
+                                    "gain_pct": r.get("gain_pct"), "trades": r.get("trades"), "bh_pct": r.get("bh_pct"),
+                                    "max_dd_pct": r.get("max_dd_pct"), "tim_pct": r.get("tim_pct"), "wr_pct": r.get("wr_pct"),
+                                    "valid": r.get("valid"), "npz": (r.get("npz_provenance") or {}).get("md5")}
+            except Exception as exc:
+                errors.append(f"{ss} {md5[:8]}: board-leg eval failed: {exc}")
+                board[(ss, md5)] = {"status": f"ERROR:{type(exc).__name__}"}
+        bprep.clear()
+    if raw is None:
         return out
     prep_cache = {}
     for ss, md5, ov in jobs:
@@ -251,29 +286,59 @@ def trip_view(l, v, d_entry, d_exit, how):
             "live_trade_ids": (l.get("fills") or [])[:2], "live_exit_orders": [o.get("orderId") for o in (l.get("exit_orders") or [])][-2:]}
 
 
-def metric_verdict(claim, rerun, trades_ratio: float):
-    """Only differences no window length can explain. Everything else is reported as a number, not a verdict."""
+def _rate_off(n_a, days_a, n_b, days_b, ratio: float):
+    if not n_a or n_b is None or days_a <= 0 or days_b <= 0:
+        return None
+    a, b = float(n_a) / days_a, float(n_b) / days_b
+    if a <= 0:
+        return None
+    if b == 0:
+        return (a, b)
+    return (a, b) if (b / a > ratio or a / b > ratio) else None
+
+
+def metric_verdict(claim, rerun, bleg, trades_ratio: float):
+    """Two verdicts, so the fault lands on the right layer.
+
+    claim_verdict  L1 vs L2b: the published number against the SAME set re-measured in a 30 d board window. A sign flip or a
+                   trade rate off by more than --trades-ratio is a number no window length explains.
+    data_verdict   L2b vs L2: the board window against the bars live actually decided on — i.e. is live's data the outlier?
+    Tolerance for "reproduced" is the board-nondeterminism tolerance from the BIBLE (0.48 gain)."""
     cg, ct = claim.get("gain_pct"), claim.get("trades")
-    if rerun.get("status") != "OK":
-        return "NO_RERUN", None, None
-    m = rerun["metrics"]
-    rg, rt = m.get("gain_pct"), m.get("trades")
-    if cg is None or rg is None:
-        return "NO_CLAIM", rg, rt
-    d = float(rg) - float(cg)
-    if float(cg) > 0 and float(rg) <= 0:
-        return "CLAIM_POSITIVE_RERUN_NEGATIVE", rg, rt
-    span = max(1e-9, float(rerun.get("store_last", 0) - rerun.get("store_first", 0)) / 86400.0)
-    cw = float(claim.get("window_days") or m.get("window_days") or 30.0)
-    if ct and rt is not None and cw > 0:
-        cpd, rpd = float(ct) / cw, float(rt) / span
-        if cpd > 0 and (rpd / cpd > trades_ratio or (rpd > 0 and cpd / rpd > trades_ratio)):
-            return f"TRADE_RATE_OFF_{cpd:.1f}vs{rpd:.1f}_per_day", rg, rt
-        if rpd == 0 and cpd > 0:
-            return "RERUN_HAS_NO_TRADES", rg, rt
-    if abs(d) > 0.48:
-        return "WINDOW_DIFFERENT", rg, rt
-    return "REPRODUCED", rg, rt
+    tw_ok = rerun.get("status") == "OK"
+    m = rerun.get("metrics") or {}
+    rg, rt = (m.get("gain_pct"), m.get("trades")) if tw_ok else (None, None)
+    tw_span = max(1e-9, (float(rerun.get("store_last", 0)) - float(rerun.get("store_first", 0))) / 86400.0) if tw_ok else 0.0
+    b_ok = bool(bleg) and bleg.get("status") == "OK"
+    bg, bt = (bleg.get("gain_pct"), bleg.get("trades")) if b_ok else (None, None)
+    b_span = max(1e-9, (float(bleg.get("last", 0)) - float(bleg.get("first", 0))) / 86400.0) if b_ok else 0.0
+    cw = float(claim.get("window_days") or 30.0)
+    if cg is None:
+        claim_v = "NO_CLAIM_IN_SQL"
+    elif not b_ok:
+        claim_v = "NO_LOCAL_NPZ" if not bleg or bleg.get("status") == "NO_LOCAL_NPZ" else f"BOARD_LEG_{bleg.get('status')}"
+    elif float(cg) > 0 and float(bg) <= 0:
+        claim_v = "CLAIM_POSITIVE_REMEASURE_NEGATIVE"
+    elif _rate_off(ct, cw, bt, b_span, trades_ratio):
+        a, b = _rate_off(ct, cw, bt, b_span, trades_ratio)
+        claim_v = f"CLAIM_TRADE_RATE_OFF_{a:.1f}vs{b:.1f}_per_day"
+    elif abs(float(bg) - float(cg)) <= 0.48:
+        claim_v = "REPRODUCED"
+    else:
+        claim_v = f"CLAIM_GAIN_OFF_{float(bg) - float(cg):+.1f}pp"
+    if not tw_ok:
+        data_v = "NO_TWIN_RERUN"
+    elif not b_ok:
+        data_v = "NO_BOARD_LEG"
+    elif (rt or 0) == 0 and (bt or 0) > 0:
+        data_v = "TWIN_BARS_PRODUCE_NO_TRADES"
+    elif bg is not None and rg is not None and (float(bg) > 0) != (float(rg) > 0):
+        data_v = "TWIN_BARS_FLIP_THE_SIGN"
+    elif _rate_off(bt, b_span, rt, tw_span, trades_ratio):
+        data_v = "TWIN_BARS_TRADE_RATE_DIFFERS"
+    else:
+        data_v = "TWIN_CONSISTENT_WITH_BOARD"
+    return claim_v, data_v, rg, rt
 
 
 def parse_twin_log(accounts, t_from: float):
@@ -320,6 +385,7 @@ def main():
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--max-trips", type=int, default=40, help="per (sym_side, account) trip rows kept in the JSON detail")
     ap.add_argument("--no-logs", action="store_true")
+    ap.add_argument("--no-board-leg", action="store_true", help="skip the 30 d local-NPZ leg (then a claim can only be compared to the twin window)")
     a = ap.parse_args()
     t_start = time.time()
     accounts = [x.strip() for x in a.accounts.split(",") if x.strip()]
@@ -352,9 +418,9 @@ def main():
             if (ss, s["md5"]) not in [(x[0], x[1]) for x in jobs[sym]]:
                 jobs[sym].append((ss, s["md5"], s["ov"]))
     print(f"[retrace] window {iso(t_from)} -> {iso(now)}  sym_sides={len(sym_sides)}  symbols={len(jobs)}  sets={sum(len(v) for v in jobs.values())}  live_trips={len(live)}", flush=True)
-    reruns = {}
+    reruns, board = {}, {}
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
-        futs = {ex.submit(rerun_symbol, sym, j, errors): sym for sym, j in jobs.items()}
+        futs = {ex.submit(rerun_symbol, sym, j, errors, board, not a.no_board_leg): sym for sym, j in jobs.items()}
         done = 0
         for f in as_completed(futs):
             try:
