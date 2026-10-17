@@ -14053,6 +14053,106 @@ def _running_ext(state, arr, start, end, is_min):
     state[1], state[2] = end, ext
     return ext
 
+
+_SETUP_MEMO = {}
+_MISSING = object()
+
+
+def _npz_memo_fp(npz, n, is_long):
+    c = npz.get("close") if isinstance(npz, dict) else None
+    if c is None:
+        return None
+    try:
+        c = np.asarray(c)
+        ts = npz.get("timestamps")
+        return (int(n), bool(is_long), len(c), float(c[0]) if len(c) else 0.0, float(c[-1]) if len(c) else 0.0, float(np.nansum(c)), float(np.asarray(ts)[-1]) if ts is not None and len(ts) else 0.0)
+    except Exception:
+        return None
+
+
+def _memo_same(a, b):
+    if a is b:
+        return True
+    if type(a) is not type(b):
+        return False
+    try:
+        r = a == b
+        return r if isinstance(r, bool) else False
+    except Exception:
+        return False
+
+
+def _setup_memo(tag, fn, cfg, npz, n, is_long, call):
+    """2026-10-17 speed: exact dependency-tracked memo for per-eval vectorized setup (same NPZ + same value of every cfg attribute the
+    function read => same result). A call that writes cfg is never cached; npz keys it adds/replaces are replayed on a hit; results are
+    deep-copied. V12_SETUP_MEMO=0 disables."""
+    import copy as _cp
+    import os as _os
+
+    fp = _npz_memo_fp(npz, n, is_long)
+    if fp is None or _os.environ.get("V12_SETUP_MEMO", "1") == "0":
+        return call()
+    lst = _SETUP_MEMO.setdefault(tag, [])
+    for ent in lst:
+        if ent[0] != fp:
+            continue
+        ok = True
+        for k, v in ent[1].items():
+            try:
+                cur = object.__getattribute__(cfg, k)
+            except AttributeError:
+                cur = _MISSING
+            if not _memo_same(cur, v):
+                ok = False
+                break
+        if ok:
+            for k, v in ent[2].items():
+                npz[k] = v
+            return _cp.deepcopy(ent[3])
+    cls = type(cfg)
+    reads, wrote, local = {}, [False], {}
+    had_ga, had_sa = "__getattribute__" in cls.__dict__, "__setattr__" in cls.__dict__
+    orig_ga, orig_sa = cls.__getattribute__, cls.__setattr__
+
+    def _ga(self, name):
+        # reads on cfg AND on copies of it made inside the call (a copy carries cfg's values) — except names the call itself wrote on
+        # that copy; a fresh instance's defaults only make the entry stricter (a miss), never a wrong hit
+        try:
+            v = orig_ga(self, name)
+        except AttributeError:
+            if name not in reads and name not in local.get(id(self), ()):
+                reads[name] = _MISSING
+            raise
+        if name not in reads and not name.startswith("__") and name not in local.get(id(self), ()):
+            reads[name] = v
+        return v
+
+    def _sa(self, name, value):
+        if self is cfg:
+            wrote[0] = True
+        else:
+            local.setdefault(id(self), set()).add(name)
+        orig_sa(self, name, value)
+
+    before = {k: id(v) for k, v in npz.items()}
+    cls.__getattribute__, cls.__setattr__ = _ga, _sa
+    try:
+        res = call()
+    finally:
+        if had_ga:
+            cls.__getattribute__ = orig_ga
+        else:
+            del cls.__getattribute__
+        if had_sa:
+            cls.__setattr__ = orig_sa
+        else:
+            del cls.__setattr__
+    if not wrote[0]:
+        npz_w = {k: v for k, v in npz.items() if before.get(k) != id(v)}
+        lst.insert(0, (fp, reads, npz_w, _cp.deepcopy(res)))
+        del lst[48:]
+    return res
+
 def _bar_minutes(cfg):
     tf = getattr(cfg, "BASE_TF", "15m")  # 2026-10-04 parity cut: live-parity fallback
     try:
@@ -15290,8 +15390,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _iso_force_masters(
         cfg
     )  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
-    entry_sig = compute_entry_signals(npz, n, is_long, cfg)
-    _hsc_core = vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals)  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
+    entry_sig = _setup_memo("entry_sig", compute_entry_signals, cfg, npz, n, is_long, lambda: compute_entry_signals(npz, n, is_long, cfg))
+    _hsc_core = _setup_memo("nonhtf_core", None, cfg, npz, n, is_long, lambda: vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals))  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
     # cut#5: RSI T55 AND-gate REMOVED — live side dead (tradier touches only, cited lines rotted); it zeroed BTC LONG/ETH/MU (gate proof). Re-add only with functional live gate.
@@ -17631,7 +17731,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _qta_ct_block = None
     # Cache entry blocks once for per-trade reason tagging (avoid recompute per entry)
     try:
-        _entry_blocks_cache = compute_reentry_blocks(npz, n, is_long, cfg)
+        _entry_blocks_cache = _setup_memo("reentry_blocks", compute_reentry_blocks, cfg, npz, n, is_long, lambda: compute_reentry_blocks(npz, n, is_long, cfg))
     except Exception:
         _entry_blocks_cache = {}
 

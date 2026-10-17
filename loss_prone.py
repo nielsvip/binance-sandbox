@@ -12,6 +12,7 @@ fn_family() is the ONE name normaliser (tools/loss_close_db.py imports it) so DB
 """
 from __future__ import annotations
 
+import functools
 import glob
 import json
 import os
@@ -27,7 +28,17 @@ _CACHE = {"mtime": None, "flags": {"crypto": frozenset(), "stocks": frozenset()}
 _DEC = {}  # (account, file) -> (mtime, {position_key: [(epoch, reason)]})
 
 
+@functools.lru_cache(maxsize=8192)
+def _fn_family_cached(r: str) -> str:
+    return _fn_family_raw(r)
+
+
 def fn_family(reason) -> str:
+    """Pure function of the reason text — memoized (2026-10-17 speed: ~550 calls per engine sim)."""
+    return _fn_family_cached(str(reason or ""))
+
+
+def _fn_family_raw(reason) -> str:
     r = str(reason or "").strip()
     r = re.sub(r"^VEC_EXACT_(OPEN|AUGMENT|REDUCE|CLOSE)_", "", r)
     r = re.split(r"[ |:(]", r)[0] if r else ""

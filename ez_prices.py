@@ -2092,26 +2092,59 @@ class ResamplingAndGapFillEngine:
         """Creates an aiohttp session. Attempts to bind to dedicated IP first; if that
         fails (e.g., network unreachable) it falls back to default binding
         immediately without blocking the rest of startup."""
-        dedicated_ip = "49.13.32.80"
+        # USER 2026-10-17: "make absolutely sure ez_ trading with latest prices and indicators can never be down
+        # > 3m ... 3min all trading is taken over seamlessly on s1". This used to bind ONE hardcoded address,
+        # "49.13.32.80", which is NOT an address on the failover host (measured that day: bind test http=000), so
+        # on every S1 takeover it fell through to the default egress -- which was the IP Binance had rate-limit
+        # banned (code -1003, "IP(157.180.125.52) banned until ...") -- and the standby had no live prices while
+        # 49.13.39.233 and 5.75.211.216 were answering 200 on the same box.
+        # Now: try each candidate and KEEP THE FIRST THAT ACTUALLY REACHES fapi, because the old single-shot test
+        # could only pass or give up. A ban is invisible to bind() (a banned IP binds perfectly well) so only the
+        # ping tells the truth. BINANCE_LOCAL_IP is honoured first so an operator/systemd drop-in wins, exactly as
+        # ez_klines._resolve_local_bind_kwargs does; the default-binding session stays as the last resort.
+        # No host-address enumeration: it is unreliable here (MEASURED on S1,
+        # getaddrinfo(gethostname()) returns only 127.0.1.1, so filtering the pool by it left ZERO candidates and
+        # this fell straight back to the default egress again). An address that does not belong to this host simply
+        # fails to bind and is skipped by the handler below, which is a cheaper and more honest test than asking the
+        # OS to list its own addresses. On the Mac none of the S1 addresses bind, so it falls through to the default
+        # session exactly as before.
+        candidates = []
+        _env_ip = os.environ.get("BINANCE_LOCAL_IP")
+        if _env_ip:
+            candidates.append(_env_ip)
+        for _ip in ("5.75.211.216", "49.13.39.233", "157.180.125.52"):
+            if _ip not in candidates:
+                candidates.append(_ip)
         timeout = aiohttp.ClientTimeout(total=60, connect=15, sock_read=30)  # Increased timeout for better reliability
-        try:
-            connector = aiohttp.TCPConnector(
-                local_addr=(dedicated_ip, 0),
-                limit=100,  # Connection pool limit
-                limit_per_host=config.EZ_PRICES_LIMIT_PER_HOST.get(env,5),  # Per-host connection limit
-                ttl_dns_cache=300,  # DNS cache TTL
-                keepalive_timeout=60,  # Keep-alive timeout
-                enable_cleanup_closed=True  # Clean up closed connections
-            )
-            session = aiohttp.ClientSession(connector=connector, timeout=timeout)
-            # quick connectivity test
-            async with self.fapi_semaphore:
-                async with session.get("https://fapi.binance.com/fapi/v1/ping") as resp:
-                    if resp.status == 200:
-                        self.logger.info(f" Using dedicated IP {dedicated_ip} for API calls.")
-                        return session
-        except Exception as e:
-            self.logger.warning(f" Dedicated IP {dedicated_ip} not usable ({e}). Falling back to default IP.")
+        for dedicated_ip in candidates:
+            session = None
+            try:
+                connector = aiohttp.TCPConnector(
+                    local_addr=(dedicated_ip, 0),
+                    limit=100,  # Connection pool limit
+                    limit_per_host=config.EZ_PRICES_LIMIT_PER_HOST.get(env,5),  # Per-host connection limit
+                    ttl_dns_cache=300,  # DNS cache TTL
+                    keepalive_timeout=60,  # Keep-alive timeout
+                    enable_cleanup_closed=True  # Clean up closed connections
+                )
+                session = aiohttp.ClientSession(connector=connector, timeout=timeout)
+                # quick connectivity test — a BANNED ip binds fine and answers 418, so only a 200 counts
+                async with self.fapi_semaphore:
+                    async with session.get("https://fapi.binance.com/fapi/v1/ping") as resp:
+                        if resp.status == 200:
+                            self.logger.info(f" Using dedicated IP {dedicated_ip} for API calls.")
+                            return session
+                        self.logger.warning(f" Dedicated IP {dedicated_ip} reachable but fapi returned {resp.status} — trying the next IP.")
+                await session.close()
+            except Exception as e:
+                self.logger.warning(f" Dedicated IP {dedicated_ip} not usable ({e}). Trying the next IP.")
+                if session is not None:
+                    try:
+                        await session.close()
+                    except Exception:
+                        pass
+        if candidates:
+            self.logger.warning(f" No dedicated IP of {candidates} could reach fapi. Falling back to default IP.")
         # Fallback: any available IP
         connector = aiohttp.TCPConnector(
             limit=100,

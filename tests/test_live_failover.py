@@ -256,9 +256,28 @@ def test_stocks_data_failover_only_in_session(world):
     later = T_SESSION + detected + 120  # next 5m bar closed on S1 -> strictly newer than the Mac's
     world.s1_produce(later)
     run_pair(world, agent2, watchdog2, later)
-    world.clock(later + 1)
+    # DIAGNOSTIC
+    target = world.mac / "klines_cache" / "tradier" / "AAPL_5m.json"
+    world.clock(later + 15)
     agent2.tick()
-    assert json.loads((world.mac / "klines_cache" / "tradier" / "AAPL_5m.json").read_text())[-1]["close"] == 200.0
+    import os as _os
+    print("DIAG LF_NO_SSH =", _os.environ.get("LF_NO_SSH"), "LF_REMOTE_DIR =", _os.environ.get("LF_REMOTE_DIR"))
+    s1_out = world.s1 / "data" / "live_failover" / "outbox" / "stocks"
+    print("DIAG s1 outbox/stocks exists:", s1_out.is_dir(), "| klines:", sorted(x.name for x in (s1_out/"klines").glob("*.json"))[:4] if (s1_out/"klines").is_dir() else None)
+    stage = world.mac / "data" / "live_failover" / "stage" / "stocks"
+    print("DIAG mac stage/stocks exists:", stage.is_dir(), "| klines:", sorted(x.name for x in (stage/"klines").glob("*.json"))[:4] if (stage/"klines").is_dir() else None)
+    lf = world.mac / "data" / "live_failover"
+    print("DIAG mac LF tree:", sorted(x.relative_to(lf).as_posix() for x in lf.rglob("*") if x.is_dir())[:12])
+    s1st = lf / "s1_state.json"
+    if s1st.exists():
+        import json as _j
+        v = (_j.loads(s1st.read_text()).get("venues") or {})
+        print("DIAG modes the MAC saw:", {k: (v.get(k) or {}).get("mode") for k in ("crypto","stocks")})
+        print("DIAG outbox flags the MAC saw:", {k: (v.get(k) or {}).get("outbox") for k in ("crypto","stocks")})
+    else:
+        print("DIAG s1_state.json ABSENT on the Mac")
+    print("DIAG dest close:", json.loads(target.read_text())[-1]["close"])
+    assert json.loads(target.read_text())[-1]["close"] == 200.0
 
 
 # ---------------------------------------------------------------- full trading failover + fencing
