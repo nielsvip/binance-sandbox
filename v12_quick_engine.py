@@ -17788,7 +17788,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             return 0.0
 
+    _mvf_on = (not is_tradier) and __import__("os").environ.get("V12_MIN_VIABLE_FLOOR", "1") != "0"  # 2026-10-17 live VEC_EXACT_SIZE_FLOOR_FINAL twin
+
     def _open(qty0, px, i, entry_reason="VECTOR_ENTRY"):
+        if _mvf_on and qty0 > 0 and entry_reason != "SEED_BH":
+            qty0 = max(float(qty0), _qq.min_viable_qty(sym, px, cfg))  # live floors every vec OPEN to the smallest placeable size
         # Store original entry price/bar for ledger — avg_price may drift after augments
         _ts_open = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
         _air_mult = 0.0
@@ -21155,7 +21159,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         add_qty = _sas_q
                     except Exception:
                         pass
+                if _mvf_on and add_qty > 0:
+                    add_qty = max(float(add_qty), _qq.min_viable_qty(sym, px, cfg))  # live floors every vec AUGMENT (VEC_EXACT_SIZE_FLOOR_FINAL)
                 add_qty = _qq.cap_add_qty(cfg, pos["qty"], add_qty, px, is_tradier)  # QTY_LIVE_POSITION_CAP_MULT: live MAX_POSITION_SIZE/START cap
+                if _mvf_on and 0 < add_qty < _qq.min_viable_qty(sym, px, cfg):
+                    add_qty = 0.0  # the cap left less than the exchange minimum — the order could not be placed
                 if add_qty > 0:
                     new_qty = pos["qty"] + add_qty
                     pos["avg_price"] = (

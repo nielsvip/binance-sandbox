@@ -216,3 +216,40 @@ def live_mult(base: Any, venue: str, account: Any, symbol: Any, side: Any, cfg: 
         return 1.0
     st = live_load(base, venue, account).get(f"{str(symbol).upper()}_{str(side).upper()}")
     return streak_mult(st, cfg)
+
+
+_MQ_CACHE = {"mtime": None, "data": {}}
+
+
+def _min_qty_table() -> dict:
+    """Live's exchange limits (config.MIN_QTY_FILE = <repo>/min_qty.json: per-symbol minQty + minNotional)."""
+    import json
+    import os
+
+    p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "min_qty.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return {}
+    if _MQ_CACHE["mtime"] != mt:
+        try:
+            _MQ_CACHE["data"] = json.load(open(p))
+            _MQ_CACHE["mtime"] = mt
+        except Exception:
+            return _MQ_CACHE["data"]
+    return _MQ_CACHE["data"]
+
+
+def min_viable_qty(symbol: str, price: float, cfg: Any) -> float:
+    """2026-10-17 parity: live ez_manage floors every vector OPEN/AUGMENT to the smallest placeable size
+    (VEC_EXACT_SIZE_FLOOR_FINAL: max(6 x MIN_POSITION_SIZE / px, _min_viable_qty) where _min_viable_qty =
+    max(minQty x 1.2, 6/px, minNotional/px), defaults minQty 0.0001, minNotional 5.0). Boards traded $0.0007 positions live
+    can never place (SNXUSDT_LONG 88% of opens < $6). Same formula, same file."""
+    px = _num(price, 0.0)
+    if px <= 0:
+        return 0.0
+    d = _min_qty_table().get(str(symbol), {}) or {}
+    mq = _num(d.get("minQty", 0.0001), 0.0001) * 1.2
+    mn = _num(d.get("minNotional", 5.0), 5.0) / px
+    mps = _num(getattr(cfg, "MIN_POSITION_SIZE", 1.0), 1.0) or 1.0
+    return max(mq, 6.0 / px, mn, 6.0 * mps / px)
