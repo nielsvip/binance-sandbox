@@ -13,13 +13,6 @@
     "symbol": "TRUMPUSDC",
     "side": "SHORT"
   },
-  "ang:ENJUSDT_SHORT": {
-    "orderId": "4000001975072912",
-    "stopPrice": 0.02912,
-    "entry_sig": "2026-10-17 17:58:59.978000+00:00",
-    "symbol": "ENJUSDT",
-    "side": "SHORT"
-  },
   "ang:SNXUSDT_SHORT": {
     "orderId": "4000001975109111",
     "stopPrice": 0.2204,
@@ -33,5 +26,12 @@
     "entry_sig": "2026-10-17 19:20:29.556000+00:00",
     "symbol": "BLURUSDT",
     "side": "SHORT"
+  },
+  "ang:RSRUSDT_LONG": {
+    "orderId": "4000001975182833",
+    "stopPrice": 0.00191,
+    "entry_sig": "2026-10-17 19:44:07.595000+00:00",
+    "symbol": "RSRUSDT",
+    "side": "LONG"
   }
 }
