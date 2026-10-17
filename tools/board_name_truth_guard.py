@@ -44,6 +44,7 @@ from pathlib import Path
 
 NAME_RE = re.compile(r"^(?P<ss>[A-Z0-9]+_(?:LONG|SHORT))_bh(?P<bh>m?[0-9]+p[0-9]+)_gain(?P<g>m?[0-9]+p[0-9]*)(?P<t>_t[0-9]+)?_30d_matrix(?P<suf>.*)$")
 SCAN_SUBDIRS = ("SPREADSHEETS", "data/reports/charts_1M", "data/reports/charts_1Y", "data/manifest_archive_mac", "spreadheeets")
+SCAN_FLAT = ("", "data")  # board copies dropped loose in the root or data/ (not recursive: those trees are huge)
 SKIP_DIRS = {"backups", ".git", "node_modules", "__pycache__"}
 QDIR = "_quarantine_name_truth"
 ANCHOR_SUFFIXES = {".html": (".xlsx", "_manifest.json"), ".html.superseded": (".xlsx.superseded", "_manifest.json.superseded")}
@@ -241,6 +242,16 @@ class Guard:
     def scan(self):
         files = []
         for root in self.roots:
+            for sub in SCAN_FLAT:
+                base = root / sub if sub else root
+                try:
+                    names = os.listdir(base)
+                except OSError:
+                    continue
+                for f in names:
+                    m = NAME_RE.match(f)
+                    if m and ".tmp" not in m.group("suf") and (base / f).is_file():
+                        files.append((root, base / f, m))
             for sub in SCAN_SUBDIRS:
                 base = root / sub
                 if not base.is_dir():
@@ -358,10 +369,10 @@ class Guard:
                     continue
                 self.stats["pages"] += 1
                 t = self.truth_for(page)
-                handled.update(members)
                 if t.get("status") in ("NO_LEDGER", "UNREADABLE", "NO_PEAK"):
                     self.stats["no_ledger"] += 1
-                    continue
+                    continue  # unprovable page: its copies still follow the map in pass 2
+                handled.update(members)
                 m = NAME_RE.match(page.name)
                 new_stem = f"{m.group('ss')}_bh{m.group('bh')}_gain{t['token']}{m.group('t') or ''}"
                 quarantine = t["status"] == "QUARANTINE"
