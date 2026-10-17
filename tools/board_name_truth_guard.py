@@ -20,6 +20,9 @@ RULES
   * copies without their own page (xlsx in SPREADSHEETS root, manifest archives, sync arrivals) follow the old->new map
     (persisted in the state file): renamed, or deleted after backup when the true name already exists there. This is
     what makes a sync unable to resurrect an old name.
+  * maps are shared between hosts: every run writes data/reports/board_name_truth_map.json (this host's own entries) and
+    reads data/reports/board_name_truth_peers/*.json (other hosts' maps, copied by tools/board_name_truth_map_sync.sh), so
+    a copy whose page lives only on another host is still renamed / quarantined here.
   * files younger than --min-age seconds are left alone (a publish may be mid-flight).
 Only board files are ever touched. Backups: <root>/backups/board_name_truth/<UTC>.tar (original relative paths).
 Idempotent. --dry-run plans without touching anything.
@@ -217,6 +220,18 @@ class Guard:
             self.state.update(json.loads(state_path.read_text()))
         except (OSError, ValueError):
             pass
+        self.peers_loaded = 0
+        for pf in sorted((state_path.parent / "board_name_truth_peers").glob("*.json")):
+            try:
+                peer = json.loads(pf.read_text())
+            except (OSError, ValueError):
+                continue
+            for k, v in (peer.get("map") or {}).items():
+                if isinstance(v, dict) and v.get("new") and k not in self.state["map"]:
+                    self.state["map"][k] = dict(v, via_peer=pf.name)
+            for k, v in (peer.get("quarantined") or {}).items():
+                self.state["quarantined"].setdefault(k, dict(v, via_peer=pf.name) if isinstance(v, dict) else v)
+            self.peers_loaded += 1
         self.tars = {}
         self.actions = []
         self.alerts = []
@@ -399,7 +414,11 @@ class Guard:
             tmp = self.state_path.with_name(self.state_path.name + ".tmp")
             tmp.write_text(json.dumps(self.state, default=str))
             os.replace(tmp, self.state_path)
-        summary = {"utc": now_utc(), "host": socket.gethostname(), "dry_run": self.dry, "roots": [str(r) for r in self.roots], "files_scanned": len(files), **self.stats, "actions": len(self.actions), "alerts": len(self.alerts)}
+            mp = self.state_path.with_name("board_name_truth_map.json")
+            tmp = mp.with_name(mp.name + ".tmp")
+            tmp.write_text(json.dumps({"host": socket.gethostname(), "utc": now_utc(), "map": {k: v for k, v in self.state["map"].items() if not v.get("via_peer")}, "quarantined": {k: v for k, v in self.state["quarantined"].items() if not (isinstance(v, dict) and v.get("via_peer"))}}, default=str))
+            os.replace(tmp, mp)
+        summary = {"utc": now_utc(), "host": socket.gethostname(), "dry_run": self.dry, "roots": [str(r) for r in self.roots], "files_scanned": len(files), **self.stats, "peer_maps": self.peers_loaded, "actions": len(self.actions), "alerts": len(self.alerts)}
         log("SUMMARY " + json.dumps(summary), self.dry)
         return {"summary": summary, "actions": self.actions, "alerts": self.alerts}
 

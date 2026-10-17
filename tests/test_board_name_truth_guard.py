@@ -112,3 +112,18 @@ def test_young_and_tmp_files_left_alone(tmp_path):
     (cell / "EEEUSDT_LONG_bh1p00_gain466p_t2_30d_matrix.fz.tmp.xlsx").write_bytes(b"x")
     res = _run(tmp_path)
     assert res["actions"] == [] and res["summary"]["young_skipped"] == 1
+
+
+def test_peer_map_renames_copy_whose_page_lives_on_another_host(tmp_path):
+    cell = tmp_path / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
+    cell.mkdir(parents=True)
+    orphan = cell / "FFFUSDT_LONG_bh1p00_gain466p_t2_30d_matrix.xlsx"
+    orphan.write_bytes(b"PK")
+    os.utime(orphan, (OLD, OLD))
+    peers = tmp_path / "board_name_truth_peers"
+    peers.mkdir()
+    (peers / "s1.json").write_text(json.dumps({"map": {"FFFUSDT_LONG_bh1p00_gain466p_t2": {"new": "FFFUSDT_LONG_bh1p00_gain12p50_t2", "G": 12.5}}, "quarantined": {}}))
+    res = _run(tmp_path)
+    assert not orphan.exists() and (cell / "FFFUSDT_LONG_bh1p00_gain12p50_t2_30d_matrix.xlsx").exists() and res["summary"]["peer_maps"] == 1
+    exported = json.loads((tmp_path / "board_name_truth_map.json").read_text())
+    assert "FFFUSDT_LONG_bh1p00_gain466p_t2" not in exported["map"]
