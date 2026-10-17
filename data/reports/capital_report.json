@@ -1,32 +1,30 @@
 {
- "generated_at": "2026-10-17 17:52 UTC",
- "total_capital_usd": 7.49,
+ "generated_at": "2026-10-17 18:43 UTC",
+ "total_capital_usd": 5.96,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 7.49
+  "B": 5.96,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:EDUUSDT_LONG"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:EDUUSDT_LONG",
-   "symbol": "EDUUSDT",
-   "account": "ang",
-   "value_usd": 7.49,
-   "gain_pct": 0.02,
-   "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 98.0,
-   "mark": 0.07640549
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 5.96,
+   "gain_pct": 0.474,
+   "tier": "B",
+   "perf_mult": 0.94,
+   "amt": 4.6,
+   "mark": 1.2959
   }
  ]
 }
