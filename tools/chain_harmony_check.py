@@ -7,7 +7,7 @@ duplicate contradictory fields in TEMPLATE_ or v12_quick_engine should be imposs
 Checks (exit 1 on any HARD finding):
   QC_DUP        a QuickConfig field declared twice (the later line silently re-types/re-defaults it)
   TPL_DUP_ROW   the same (switch, value) row twice in one tab of one template
-  TPL_MULTI_TAB a switch with rows in more than one tab of the same template (two places to promote one knob)
+  TPL_MULTI_TAB a switch with REGULAR rows in more than one tab (two places to promote one knob; filter-block rows exempt)
   TPL_BOLD      a switch group without exactly one bold default row
   TPL_TYPE      a bold value that cannot be the QuickConfig field's type (e.g. True on an int knob, 'D' on a float)
   TPL_VS_QC     bold default != QuickConfig default (WARN: promoted cat_side bolds legitimately differ)
@@ -63,6 +63,7 @@ def check(tdir):
         p = Path(tdir) / f"TEMPLATE_{t}.xlsx"
         wb = openpyxl.load_workbook(p)
         tabs_of = collections.defaultdict(set)
+        white_tabs = collections.defaultdict(set)  # filter-block (filled) rows repeat per tab by design; only regular rows must be single-home
         for ws in wb.worksheets:
             if ws.title not in SWITCH_SHEETS:
                 continue
@@ -72,6 +73,9 @@ def check(tdir):
                 if not isinstance(sw, str) or not sw.strip() or not sw.strip().replace("_", "").isalnum() or sw.strip() != sw.strip().upper():
                     continue
                 groups[sw.strip()].append((r, ws.cell(r, 2).value, bool(ws.cell(r, 2).font and ws.cell(r, 2).font.b)))
+                a_ = ws.cell(r, 1)
+                if not (a_.fill is not None and a_.fill.fill_type == "solid"):
+                    white_tabs[sw.strip()].add(ws.title)
             for sw, rows in groups.items():
                 tabs_of[sw].add(ws.title)
                 seen = []
@@ -89,9 +93,9 @@ def check(tdir):
                         hard.append(("TPL_TYPE", t, f"{ws.title}!{bolds[0][0]} {sw} bold={bv!r} vs QuickConfig {type(qv).__name__}={qv!r}"))
                     elif not _same(bv, qv):
                         warn.append(("TPL_VS_QC", t, f"{sw} bold={bv!r} QuickConfig={qv!r}"))
-        for sw, tabs in tabs_of.items():
+        for sw, tabs in white_tabs.items():
             if len(tabs) > 1:
-                hard.append(("TPL_MULTI_TAB", t, f"{sw} in {sorted(tabs)}"))
+                hard.append(("TPL_MULTI_TAB", t, f"{sw} regular rows in {sorted(tabs)} (fix: tools/v15_template_bookkeeper.py --single-home {sw}=TAB)"))
     return hard, warn
 
 

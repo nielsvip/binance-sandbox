@@ -3,7 +3,7 @@
 
 Runs forever. Survives reboots via launchd.
 """
-import os, subprocess, sys, time, shutil
+import json, os, subprocess, sys, time, shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -252,6 +252,8 @@ def git_commit():
 GITHUB_REMOTE = "origin"
 GITHUB_SSH_KEY = Path.home() / ".ssh" / "id_ed25519_github_binance_main"
 GITHUB_SSH_REMOTE = "origin-ssh"
+PUSH_STATE = Path("/tmp/autosave_push_state.json")
+PUSH_BACKOFF_S = (0, 600, 1800, 7200, 21600)   # by consecutive failure count: now, 10m, 30m, 2h, 6h
 
 
 def git_push():
@@ -261,7 +263,23 @@ def git_push():
     # origin-ssh dropped 2026-10-17: it points at the SAME GitHub repo as origin (which pushes fine over https)
     # and failed on every single cycle with "ERROR: Permission to nielsvip/binance-sandbox.git denied to deploy
     # key" — a duplicate target that only produced noise. Re-add it once the deploy key has write access.
+    # PER-REMOTE BACKOFF (2026-10-17): a broken remote must never eat the cycle. S1's bare repo was deleted
+    # some time after 2026-10-14, so once it was recreated empty every push tried to send the FULL 5.5 GB
+    # repo and died at ~7% with "send-pack: unexpected disconnect" — two consecutive 300 s timeouts (23:51,
+    # 00:01) that each re-enumerated 107k objects. Backoff keeps the healthy remote (origin) on time while the
+    # broken one is retried ever more slowly: 10 min, 30 min, 2 h, then 6 h.
+    st = {}
+    try:
+        st = json.loads(PUSH_STATE.read_text())
+    except Exception:
+        st = {}
     for remote in (GITHUB_REMOTE, "s1-backup"):
+        ent = st.get(remote) or {}
+        fails = int(ent.get("fails") or 0)
+        if fails:
+            wait = PUSH_BACKOFF_S[min(fails, len(PUSH_BACKOFF_S) - 1)]
+            if time.time() - float(ent.get("at") or 0) < wait:
+                continue  # in backoff; the entry below logged why
         r = subprocess.run(["git", "remote", "get-url", remote], cwd=str(REPO),
                           capture_output=True, text=True)
         if r.returncode != 0:
@@ -275,12 +293,23 @@ def git_push():
                               env=env, timeout=300, capture_output=True, text=True)
             if r.returncode == 0:
                 log(f"git push {remote}: OK")
+                st[remote] = {"fails": 0, "at": time.time()}
             elif "up-to-date" in (r.stdout + r.stderr).lower() or "up to date" in (r.stdout + r.stderr).lower():
                 log(f"git push {remote}: up to date")
+                st[remote] = {"fails": 0, "at": time.time()}
             else:
-                log(f"git push {remote} failed: {(r.stderr or r.stdout).strip()[:400]}")
+                st[remote] = {"fails": fails + 1, "at": time.time()}
+                log(f"git push {remote} failed (#{fails + 1}, next try in "
+                    f"{PUSH_BACKOFF_S[min(fails + 1, len(PUSH_BACKOFF_S) - 1)] // 60} min): "
+                    f"{(r.stderr or r.stdout).strip()[:300]}")
         except Exception as e:
-            log(f"git push {remote} failed: {e}")
+            st[remote] = {"fails": fails + 1, "at": time.time()}
+            log(f"git push {remote} failed (#{fails + 1}, next try in "
+                f"{PUSH_BACKOFF_S[min(fails + 1, len(PUSH_BACKOFF_S) - 1)] // 60} min): {e}")
+    try:
+        PUSH_STATE.write_text(json.dumps(st))
+    except OSError:
+        pass
 
 
 # USER 2026-10-17 ("we do need it to run and sync every script and template save ... can we sync it with the

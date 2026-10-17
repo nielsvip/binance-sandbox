@@ -111,6 +111,27 @@ def ref_exists(ref: str) -> bool:
     return subprocess.run(["git", "show-ref", "--verify", "--quiet", ref], cwd=REPO).returncode == 0
 
 
+_REFS_CACHE: dict[str, list[str]] = {}
+
+
+def existing_refs_for(rel: str) -> list[str]:
+    """Every refs/vault ref already held for this path. Listed ONCE per process via a single
+    for-each-ref over refs/vault, so a restart costs one git call instead of one per file."""
+    if not _REFS_CACHE:
+        r = subprocess.run(["git", "for-each-ref", "--format=%(refname)", "refs/vault"],
+                           cwd=REPO, capture_output=True, text=True, timeout=300)
+        for line in r.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            body = line[len("refs/vault/"):]
+            path_part = body.rsplit("/", 1)[0] if "/" in body else body
+            _REFS_CACHE.setdefault(path_part, []).append(line)
+        _REFS_CACHE.setdefault("", [])   # mark as populated even when empty
+    safe = re.sub(r"[^A-Za-z0-9._/-]", "_", rel).strip("./")
+    return _REFS_CACHE.get(safe, [])
+
+
 def capture_git(p: Path, rel: str, ts: str, sha12: str) -> str | None:
     """Write the bytes into .git/objects and pin them with a ref so `git gc` can never prune them."""
     r = subprocess.run(["git", "hash-object", "-w", "--", str(p)], cwd=REPO, capture_output=True, text=True, timeout=120)
@@ -164,14 +185,27 @@ def capture(path: str) -> bool:
         return False
     if _seen.get(rel) == sha:
         return False   # byte-identical to the version we already hold
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     sha12 = sha[:12]
-    blob = capture_git(p, rel, ts, sha12)
-    ext = capture_ext(p, rel, ts, sha12)
+    # Already captured in a PREVIOUS process? The ref name and the external filename both end in sha12, so
+    # an existing capture is detectable from the sha alone — check that BEFORE forking git. Without this, every
+    # restart re-ran `git hash-object -w` once per in-scope file (4494 subprocesses on this repo) just to
+    # rediscover versions it already held, which is what put the watcher in uninterruptible disk wait on boot.
+    prior_ref = next((r for r in existing_refs_for(rel) if r.endswith(f"_{sha12}")), None)
+    prior_ext = next((g for g in (EXT_VAULT / rel).glob(f"*_{sha12}.gz")), None) if (EXT_VAULT / rel).is_dir() else None
+    if prior_ref and prior_ext:
+        _seen[rel] = sha
+        return False
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    blob = capture_git(p, rel, ts, sha12) if not prior_ref else prior_ref
+    ext = capture_ext(p, rel, ts, sha12) if not prior_ext else str(prior_ext)
     if blob is None and ext is None:
         log(f"  CAPTURE FAILED on both stores: {rel}")
         return False
     _seen[rel] = sha
+    if blob and not prior_ref:
+        # keep the in-process ref list current, so an A -> B -> A edit sequence recognises A without re-forking git
+        safe = re.sub(r"[^A-Za-z0-9._/-]", "_", rel).strip("./")
+        _REFS_CACHE.setdefault(safe, []).append(_ref_name(rel, ts, sha12))
     try:
         INDEX.parent.mkdir(parents=True, exist_ok=True)
         with INDEX.open("a") as fh:
