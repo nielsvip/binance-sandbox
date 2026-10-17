@@ -276,13 +276,16 @@ def exit_delta(v, l):
     return d, "ON_BAR" if d == 0 else ("INTRABAR_SAME_BAR" if d == -1 else (f"LIVE_LATE_{d}b" if d > 0 else f"LIVE_EARLY_{-d}b"))
 
 
-def trip_view(l, v, d_entry, d_exit, how):
+def trip_view(l, v, d_entry, d_exit, how, cycles=None):
+    """One comparable trip. cycles = how many OTHER vector lifecycles opened while this live position stayed open: a live
+    position that never goes flat while the vector cycles in and out shows up as a very late exit, and that is what it is."""
     return {"day": day_of(l["entry_ts"]), "live_entry": iso(l["entry_ts"]), "live_exit": iso(l["exit_ts"]) if l.get("exit_ts") else "OPEN",
             "vec_bar": iso(v["bar_ts"]) if v else "", "vec_exit_bar": iso(float(v["exit_ts"]) - BAR_S) if v and v.get("exit_ts") else ("OPEN" if v else ""),
             "entry_bar_delta": d_entry, "exit_bar_delta": d_exit, "exit_match": how,
             "entry_lag_min": (round((float(l["entry_ts"]) - (float(v["bar_ts"]) + BAR_S)) / 60.0, 1) if v else None),
             "exit_lag_min": (round((float(l["exit_ts"]) - float(v["exit_ts"])) / 60.0, 1) if (v and v.get("exit_ts") and l.get("exit_ts")) else None),
             "live_qty": round(l["open_qty"], 8), "live_notional": round(l["notional"] or 0, 2), "live_net_pnl": round(l["net_pnl"], 4), "live_net_pct": l.get("net_pct"),
+            "live_adds": l.get("n_adds"), "live_reduces": l.get("n_reduces"), "vec_cycles_inside": cycles,
             "live_result": sign_name(l["net_pnl"]) if not l["is_open"] else "OPEN",
             "vec_notional": round(v["deployed"], 2) if v else None, "vec_pnl": round(v["pnl_dollars"], 4) if v else None, "vec_pct": v.get("pct") if v else None,
             "vec_result": (sign_name(v["pnl_dollars"]) if v.get("exit_ts") else "OPEN") if v else "",
@@ -484,7 +487,8 @@ def main():
                 for i, j, d in pairs:
                     v, l = vts[i], lin[j]
                     dx, how = exit_delta(v, l)
-                    pr = trip_view(l, v, d, dx, how)
+                    cyc = sum(1 for k, t in enumerate(vts) if k != i and l["entry_ts"] < t["bar_ts"] + BAR_S < (l["exit_ts"] or now))
+                    pr = trip_view(l, v, d, dx, how, cyc)
                     pr.update(sym_side=ss, acct=acct, set_md5=s["md5"][:8], kind="MATCHED")
                     pair_rows.append(pr)
                     agg["matched"] += 1
@@ -498,6 +502,7 @@ def main():
                     agg["exit_open_disagree"] += 1 if (dx is None and how != "BOTH_OPEN") else 0
                     agg["both_same_bar"] += 1 if (d == 0 and dx in (0, -1)) else 0
                     if dx is not None and dx >= 1:
+                        agg["late_exit_held_through_vec_cycles"] += cyc
                         late_reasons[(v.get("exit_reason") or "?").split("_g")[0][:38]] += 1
                         late_usd[(v.get("exit_reason") or "?").split("_g")[0][:38]] += l["net_pnl"] if not l["is_open"] else 0.0
                     if not l["is_open"]:
@@ -545,6 +550,7 @@ def main():
             for pr in pair_rows:
                 daily.append({"day": pr["day"], "sym_side": ss, "acct": acct, "set_md5": pr["set_md5"], "kind": pr["kind"],
                               "entry_bar_delta": pr["entry_bar_delta"], "exit_bar_delta": pr["exit_bar_delta"], "exit_match": pr["exit_match"],
+                              "live_adds": pr["live_adds"], "live_reduces": pr["live_reduces"], "vec_cycles_inside": pr["vec_cycles_inside"],
                               "live_result": pr["live_result"], "vec_result": pr["vec_result"], "live_net_pnl": pr["live_net_pnl"],
                               "live_notional": pr["live_notional"], "vec_notional": pr["vec_notional"], "vec_pnl": pr["vec_pnl"],
                               "vec_entry_reason": pr["vec_entry_reason"], "vec_exit_reason": pr["vec_exit_reason"]})
@@ -732,11 +738,12 @@ def report_md(meta, rows, detail, trips, daily, late_reasons=None, late_usd=None
     A("")
     A("## Exit-bar disagreement on matched trips (top 20 by live loss)\n")
     bad = [t for t in trips if t["kind"] == "MATCHED" and t["exit_match"] != "SAME_BAR"]
-    A("| sym_side | acct | day | live entry | vec bar | dEntry | live exit | vec exit bar | dExit | how | live $ | vec $ | vec exit reason |")
-    A("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    A("| sym_side | acct | day | live entry | vec bar | dEntry | live exit | vec exit bar | dExit | how | adds/reduces | vec cycles held through | live $ | vec $ | vec exit reason |")
+    A("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for t in sorted(bad, key=lambda t: t["live_net_pnl"])[:20]:
         A(f"| {t['sym_side']} | {t['acct']} | {t['day']} | {t['live_entry']} | {t['vec_bar']} | {t['entry_bar_delta']} | {t['live_exit']} |"
-          f" {t['vec_exit_bar']} | {t['exit_bar_delta']} | {t['exit_match']} | {t['live_net_pnl']:+.2f} | {_f(t['vec_pnl'])} | {t['vec_exit_reason']} |")
+          f" {t['vec_exit_bar']} | {t['exit_bar_delta']} | {t['exit_match']} | {t['live_adds']}/{t['live_reduces']} | {t['vec_cycles_inside']} |"
+          f" {t['live_net_pnl']:+.2f} | {_f(t['vec_pnl'])} | {t['vec_exit_reason']} |")
     A("")
     if late_reasons:
         A("## Which vector exit did live fail to execute on its bar (>1 bar off)\n")
