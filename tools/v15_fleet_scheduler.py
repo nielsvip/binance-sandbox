@@ -882,7 +882,7 @@ def _npz_md5_cached(sym, cache):
 
 
 _RECENT_BOARD_H = 24.0  # USER 2026-10-17 new-information KPI: a side boarded < this many hours ago is not re-boarded ...
-_MIN_NEW_BARS_H = 4.0  # ... unless its NPZ now ends at least this many hours after that board was published (V15_SCHED_RECENT_H / V15_SCHED_MIN_NEW_BARS_H; 0 disables)
+_MIN_NEW_BARS_H = 24.0  # 2026-10-17 USER: 4 h let every 15-min NPZ top-up re-qualify a side after 4 h (SNXUSDT_LONG re-boarded 13:18Z + 15:40Z) ... unless its NPZ now ends at least this many hours after that board was published (V15_SCHED_RECENT_H / V15_SCHED_MIN_NEW_BARS_H; 0 disables)
 
 
 def _manifest_index(matrix_dir):
@@ -953,6 +953,19 @@ def _recent_unmoved(ss, mindex, npz_end, now_ts, recent_h=None, min_new_h=None):
     if npz_end is None:
         return False
     return (float(npz_end) - float(rec[0])) < mh * 3600.0
+
+
+def _live_position_syms(now_ts, open_path=None):
+    """Symbols with an open live position (data/open_position_sym_sides.json pushed by the Mac, ignored when > 2 h old)."""
+    try:
+        op = pathlib.Path(open_path) if open_path else ROOT / "data" / "open_position_sym_sides.json"
+        j = json.loads(op.read_text()) or {}
+        at = datetime.datetime.fromisoformat(str(j.get("at") or "").replace("Z", "+00:00")).timestamp()
+        if float(now_ts) - at < 7200.0:
+            return {str(x).rsplit("_", 1)[0] for x in (j.get("sym_sides") or [])}
+    except Exception:
+        pass
+    return set()
 
 
 def _recent_board_syms(syms, mindex, allowed, now_ts, recent_h=None, open_path=None):
@@ -2505,6 +2518,7 @@ def tick(args, cfg, now):
         return hit
 
     _same_npz_skips = []
+    _live_syms_now = _live_position_syms(_now_ts)
     _fresh_pri = priority_syms()
     _refresh_tick_n = [0]
     _allowed = set(uni.get("allowed_sym_sides") or [])  # USER 2026-10-06: only tradeable keys are calculated
@@ -2527,7 +2541,9 @@ def tick(args, cfg, now):
             # USER 2026-10-12: never re-calculate a sym_side computed in the last 4 days (matrix mtime).
             # terminal_fresh (NOT terminal_deferred) so backfill can never relaunch it; started/redo drain, priority syms exempt.
             # USER 2026-10-12: W-tier (DAILY) sides are exempt from the 4-day fresh skip — their 24h refresh is the point.
-            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and sym not in _fresh_pri and ((f"{sym}_{side}" in _fresh_map and _side_tier(f"{sym}_{side}", _gtiers) != "W") or _unmoved(sym, side)):
+            # 2026-10-17 USER (SNXUSDT re-boarded 3x in 24 h): priority symbols bypass only the 4-day fresh map, never the
+            # 24 h recent-unmoved guard; only a symbol with an open live position may re-board inside 24 h.
+            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and ((sym not in _fresh_pri and f"{sym}_{side}" in _fresh_map and _side_tier(f"{sym}_{side}", _gtiers) != "W") or (sym not in _live_syms_now and _unmoved(sym, side))):
                 _st[side] = ("terminal_fresh", None)
                 _fresh_skipped.append(f"{sym}_{side}")
         # USER 2026-10-13 pair currency: one side re-queues while its sibling's only board ran on an
@@ -2704,20 +2720,33 @@ def tick(args, cfg, now):
         # boards that fit or admitted crypto boards that did not. Each venue: max(floor, measured x1.25, 24 h peak x1.1).
         _peak_on = os.environ.get("V15_SCHED_PEAK_ADMIT", "1") == "1"
         est_v, peak_v = {}, {}
+        # 2026-10-17 PER-SIDE: the 24 h peak was booked per PAIR (L+S summed, 17-21 GB) and a single-side launch was budgeted
+        # at 1.1x that, so S1 with 24 GB free and no board running sat idle ("mem guard", est 20.7 GB > 18.1 GB). Memory is
+        # per board: peak + debt are per running SIDE; a launch is budgeted at one side's peak (a pair launch is caught by
+        # the next tick's debt, and the reaper floor stays). V15_SCHED_PEAK_PER_SIDE=0 restores the pair accounting.
+        _per_side = os.environ.get("V15_SCHED_PEAK_PER_SIDE", "1") == "1"
+        _units = pairs
+        if _per_side:
+            _units = {}
+            for _ss_u, _r_u in s["running"].items():
+                if isinstance(_r_u, dict) and "prod_pids" in _r_u and not _r_u.get("prod_pids"):
+                    continue
+                _units[_ss_u] = float(_r_u.get("pss_mb") or 0.0)
         if _peak_on:
             for _vn, _vfloor in (("crypto", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000)), ("stocks", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", "2500") or 2500))):
-                _vm = {k: v for k, v in pairs.items() if k in universe_syms[_vn] and v > 0}
-                peak_v[_vn] = max(_host_peak_pair_mb(st, f"{h['name']}|{_vn}", _vm, _now_ts), float(_vfloor) / 1.25)
+                _vm = {k: v for k, v in _units.items() if k.rsplit("_", 1)[0] in universe_syms[_vn] and v > 0} if _per_side else {k: v for k, v in pairs.items() if k in universe_syms[_vn] and v > 0}
+                _bk = f"{h['name']}|{_vn}|side" if _per_side else f"{h['name']}|{_vn}"
+                peak_v[_vn] = max(_host_peak_pair_mb(st, _bk, _vm, _now_ts), float(_vfloor) / 1.25)
                 est_v[_vn] = max(_est_pair_mb(list(_vm.values()), _vfloor), 1.1 * peak_v[_vn])
             est_pair = max(est_v.values())
         _est_sym = lambda _s: est_v.get(venue_of(_s), est_pair) if _peak_on else est_pair
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         if _peak_on:
             _debt = 0.0
-            for _ps_, _m_ in pairs.items():
+            for _ps_, _m_ in _units.items():
                 # a running pair still grows to the host's measured peak for its venue (not to est, which already
                 # carries the x1.25/x1.1 headroom for an unseen NEW board — counting that twice idled S1 at 2 boards)
-                _p_ = peak_v.get(venue_of(_ps_), _est_sym(_ps_))
+                _p_ = peak_v.get(venue_of(_ps_.rsplit("_", 1)[0] if _per_side else _ps_), _est_sym(_ps_.rsplit("_", 1)[0] if _per_side else _ps_))
                 _debt += max(0.0, float(_p_) - float(_m_ or 0))
             proj_mem = s["mem_avail_mb"] - reserve - _debt
         else:
