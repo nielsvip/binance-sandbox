@@ -1,5 +1,5 @@
 {
- "at": "2026-10-17T10:11:08Z",
+ "at": "2026-10-17T11:11:04Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,35 +10,35 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "EDUUSDT_LONG"
+    "KMNOUSDT_LONG"
    ],
-   "mem_avail_mb": 16513,
-   "load1": 22.52,
+   "mem_avail_mb": 12972,
+   "load1": 18.4,
    "nproc": 16,
    "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 41250 MB, mem 12634 MB, est_pair 15914 MB) \u2014 slots 1/4",
+   "binding_reason": "scheduler mem guard (disk 38769 MB, mem 14346 MB, est_pair 15914 MB) \u2014 slots 1/4",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 47.7,
-   "last_improved_symside": "HOOD_SHORT",
+   "minutes_since_last_improved": 54.6,
+   "last_improved_symside": "EDUUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 30.9,
    "improved_gap_min_max_24h": 160.3,
-   "improved_finishes_24h": 23,
-   "board_cpu_s_median_24h": 3977.0,
+   "improved_finishes_24h": 24,
+   "board_cpu_s_median_24h": 4076.6,
    "board_wall_s_median_24h": 1272.8810431957245,
-   "board_cores": 4.32,
-   "nonboard_cores_competing": 2.38,
-   "nonboard_cores_niced": 6.02,
+   "board_cores": 7.85,
+   "nonboard_cores_competing": 3.58,
+   "nonboard_cores_niced": 3.29,
    "cores_by_bucket": {
-    "other": 0.25,
-    "boards": 4.32,
-    "live_helpers": 2.13
+    "other": 2.65,
+    "boards": 7.85,
+    "klines_append": 0.93
    },
    "cores_by_bucket_niced": {
-    "other": 4.08,
-    "klines_vault": 1.94
+    "other": 2.06,
+    "klines_vault": 1.23
    }
   },
   "s2": {
@@ -48,29 +48,30 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "AMD_LONG"
+    "COIN_SHORT",
+    "LMT_SHORT"
    ],
-   "mem_avail_mb": 24831,
-   "load1": 4.34,
+   "mem_avail_mb": 23221,
+   "load1": 5.74,
    "nproc": 16,
    "slots": "2/6",
-   "binding_reason": "scheduler mem guard (disk 109124 MB, mem 19442 MB, est_pair 19626 MB) \u2014 slots 2/6",
+   "binding_reason": "scheduler mem guard (disk 105428 MB, mem 23782 MB, est_pair 19626 MB) \u2014 slots 2/6",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 121.7,
-   "last_improved_symside": "ABBV_LONG",
+   "minutes_since_last_improved": 5.1,
+   "last_improved_symside": "PAAS_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 24.9,
    "improved_gap_min_max_24h": 1240.1,
-   "improved_finishes_24h": 27,
-   "board_cpu_s_median_24h": 4143.9,
-   "board_wall_s_median_24h": 1589.3749418258667,
-   "board_cores": 2.98,
+   "improved_finishes_24h": 29,
+   "board_cpu_s_median_24h": 2723.5,
+   "board_wall_s_median_24h": 1188.691614151001,
+   "board_cores": 4.54,
    "nonboard_cores_competing": 0,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 2.98
+    "boards": 4.54
    },
    "cores_by_bucket_niced": {}
   }
