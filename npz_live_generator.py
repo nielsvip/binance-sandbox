@@ -187,6 +187,15 @@ def _compute_row_for_15m_close(
     else:
         tfs = ["3m", "15m", "1h", "4h", "D", "W", "M"]
         base_tf = "15m"
+    # USER 2026-10-17 trickle (Mac computes the bar -> S1 appends it): W/M are computed ONLY on the host that holds
+    # the deep history. MEASURED on the Mac: the *_W.json files it would read are 7 months (stocks, 05:00-ET grid)
+    # and 7.5 weeks (crypto) stale and are not the builder's Monday-00:00Z left-labelled W-MON/MS buckets, and the
+    # 15m history those buckets would have to be resampled from spans 95d / 18d = 14 / 3 weekly bars against the 200
+    # ema_200_W needs. Shipping a weekly key from here would write a WRONG number into every board's input, so the
+    # row carries none: _append_row_to_npz carries W/M forward, which IS the value until the bucket closes, and
+    # tools/npz_bar_refresh.py (deep history + the real builder) remains the only writer that moves a W/M key.
+    if not _is_s1_host():
+        tfs = [t for t in tfs if t not in ("W", "M")]
     # We need to handle W/M as well, but they are derived from D; use same compute path.
     # For each TF, try to get df truncated to close_ts
     # Use kline_manager.get_latest or direct cache? Use get_latest which returns closed df.
@@ -510,7 +519,13 @@ def update_npz_for_symbol(
         return False
 
 def _append_row_to_npz(npz_path: Path, row: Dict[str, Any]) -> bool:
-    """Append one row to NPZ, preserving all existing keys. Fills missing keys with 0."""
+    """Append one row to NPZ, preserving all existing keys.
+
+    NOT "fills missing keys with 0" (what this docstring said until 2026-10-17, left behind by the 2026-09-29
+    alignment fix below): a per-bar key the row does not carry CARRIES THE LAST VALUE FORWARD. That is what makes
+    the Mac->S1 trickle correct for every HTF key -- a weekly or daily value is unchanged until its bucket closes,
+    so carrying it is the true value, not a filler -- and zeroing them instead would wipe 137 W + 137 M keys on
+    every 15m bar."""
     data = _load_npz(npz_path)
     if data is None:
         # No existing file: do full rebuild via precompute if possible, else create minimal

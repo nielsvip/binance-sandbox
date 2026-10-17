@@ -1155,12 +1155,19 @@ TIMEFRAMES = {
     "1h":  {"sec": 3600, "half": 1800, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]},
     "4h":  {"sec": 14400,"half": 7200, "dc_window": 20, "atr": 14, "ema": [20, 50, 200], "sma":[]},
     "D":   {"sec": 86400,"half": 43200, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]},
-    # USER 2026-10-17 ("W is only for stocks not crypto"): W/M added so the NPZ row computation can ask for them.
-    # Before this, compute(df, symbol, "W") raised KeyError: 'W' on this dict, which is why every stock NPZ row the
-    # Mac computed carried 0 of its 137 W keys and 0 of its 137 M keys (measured on AAPL: NPZ needs 944 per-bar
-    # keys, the live row supplied 492).
+    # USER 2026-10-17 ("W is only for stocks not crypto"): W/M added so that a HOST WITH THE DEEP HISTORY can ask
+    # for them -- compute(df, symbol, "W") raised KeyError: 'W' on this dict before, so S1's own generator run and
+    # tools/npz_label_code_derive.py could not evaluate a weekly key at all.
+    # IT IS NOT HOW THE MAC's TRICKLED BAR GETS ITS W/M KEYS, AND MUST NOT BECOME THAT. Measured 2026-10-17:
+    # AAPL_W.json is 3657 rows deep but its last bar is 2026-03-23 (7 months stale) on an 05:00-ET grid, not the
+    # builder's Monday-00:00Z left-labelled W-MON bucket; the crypto W files end 2026-08-24; and the 15m history the
+    # buckets would have to be resampled from spans 95d for stocks / 18d for crypto = 14 / 3 weekly bars against the
+    # 200 that ema_200_W needs. A W value computed on the Mac would therefore be wrong, so npz_live_generator drops
+    # W/M from the TF list off S1 and the shipped row carries no weekly key: _append_row_to_npz CARRIES THEM FORWARD,
+    # which is the exact value until the bucket closes, and tools/npz_bar_refresh.py (deep history + the real
+    # builder) stays the only writer that moves a W/M key.
     # LIVE TRADING IS UNAFFECTED: _schedule_order is ["D","4h","1h","15m","5m","1m"] and does not include W/M, so
-    # nothing in the trading loop asks for these timeframes — only the NPZ row builder does.
+    # nothing in the trading loop asks for these timeframes.
     # Windows mirror what backtest_v8_precompute actually uses for W/M: it imports the indicator FUNCTIONS from
     # here and calls them with generic windows (atr_series(df, 14), donchian 20), and the EMA/SMA periods below are
     # the ones its stored W keys prove it wrote (ema_9/14/20/50/200_W, sma_70_W, sma_200_W).
