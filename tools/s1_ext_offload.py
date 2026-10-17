@@ -77,8 +77,25 @@ CANDIDATE_GLOBS = [
 ]
 
 
+def _live_run_dirs():
+    """2026-10-17: the CURRENT production run dir (~/v15_current_progress_dir.txt -> <run>/progress) is never cold.
+    Measured: this stager moved ~/v15_run32_20261011 (the live progress dir) to ext_staging 5x on 2026-10-17
+    (11:20, 13:10, 14:50, 15:00, 15:40Z) whenever lsof caught no open handle between writes — every progress JSON
+    left S1, boards lost their resume/done state and the scheduler re-dispatched sides it had just finished."""
+    out = set()
+    try:
+        pd = Path((HOME / "v15_current_progress_dir.txt").read_text().strip())
+        if str(pd):
+            out.add(pd.resolve())
+            out.add(pd.resolve().parent)
+    except Exception:
+        pass
+    return out
+
+
 def collect_candidates():
     found = []
+    live = _live_run_dirs()
     for name in CANDIDATE_DIRS:
         p = HOME / name
         if p.is_dir() and not (STAGE_ROOT in p.parents):
@@ -87,7 +104,10 @@ def collect_candidates():
         for p in sorted(HOME.glob(pattern)):
             if p.is_dir() and p not in found and STAGE_ROOT not in p.parents:
                 found.append(p)
-    return found
+    if not live:
+        # fail closed: without the pointer we cannot tell which run is live -> never stage any run dir
+        return [p for p in found if not p.name.startswith("v15_run")]
+    return [p for p in found if p.resolve() not in live]
 
 
 def main():

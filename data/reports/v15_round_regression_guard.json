@@ -1,24 +1,80 @@
 {
- "at": "2026-10-17T15:26:01Z",
+ "at": "2026-10-17T16:26:13Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 0,
-   "per_hour": 0.0,
-   "improved_vs_best_start": 0,
-   "mean_uplift_vs_best_start": null,
-   "median_uplift": null,
-   "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
+   "published_n": 3,
+   "per_hour": 1.5,
+   "improved_vs_best_start": 1,
+   "mean_uplift_vs_best_start": 80.6367,
+   "median_uplift": 80.6367,
+   "chained_from_previous_published": 1,
+   "no_floor_recorded": 2,
    "backslides": [],
-   "stale_npz": [],
-   "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
+   "stale_npz": [
+    {
+     "symside": "ZCSH_LONG",
+     "npz_age_h": 289.72
+    },
+    {
+     "symside": "ZCSH_SHORT",
+     "npz_age_h": 235.34
+    }
    ],
-   "rows": [],
-   "error": "Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
+   "fails": [
+    "throughput 1.5/h < 12.0/h (one per 5 min)",
+    "2/3 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+   ],
+   "rows": [
+    {
+     "symside": "SNXUSDT_LONG",
+     "published_at": 1792253424.4317296,
+     "final_gain": 466.7048920278333,
+     "best_start_gain": 386.06822822738036,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 8,
+     "baseline_gain": 386.06822822738036,
+     "npz_ts_last": 1792251000.0,
+     "npz_md5": "c6fd622d207d7d82b86febbd5d4ae972",
+     "npz_bars": 40177,
+     "bh": 5.077368947781301,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.67
+    },
+    {
+     "symside": "ZCSH_LONG",
+     "published_at": 1792249975.8737717,
+     "final_gain": -35.09522708051072,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": -35.09522708051072,
+     "npz_ts_last": 1791207000.0,
+     "npz_md5": "9bc9f8cc92c0950d7b7592aab05fee06",
+     "npz_bars": 1560,
+     "bh": -38.09276356270813,
+     "verdict": "IMPOSSIBLE",
+     "npz_age_h_at_publish": 289.72
+    },
+    {
+     "symside": "ZCSH_SHORT",
+     "published_at": 1792250415.7127576,
+     "final_gain": 3.2170901353995376,
+     "best_start_gain": null,
+     "best_start_chosen": null,
+     "best_start_candidates": null,
+     "baseline_gain": 3.2170901353995376,
+     "npz_ts_last": 1791403200.0,
+     "npz_md5": "4d89fbe69bdfa63859eb7be16a7dd7d4",
+     "npz_bars": 1098,
+     "bh": 43.04852038598312,
+     "verdict": "IMPOSSIBLE",
+     "npz_age_h_at_publish": 235.34
+    }
+   ],
+   "error": null
   },
   "s2": {
    "published_n": 0,
