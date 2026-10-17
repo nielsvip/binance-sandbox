@@ -169,11 +169,13 @@ def rerun_symbol(symbol: str, jobs, errors, board: dict, board_leg: bool = True)
     """Two legs per (sym_side, set).
 
     L2 PAPER (always): the twin's own append-only frozen bars = what live decided on, with the full ledger.
-    L2b BOARD (--board-leg): the same set on the local 15m NPZ store over the exact 30 d slice, i.e. the window a published
-    board is measured in. Comparing L1 vs L2b asks "is the published number reproducible at all"; comparing L2b vs L2 asks
+    L2b BOARD (--board-leg): the same set on the local 15m NPZ store over the exact 30 d slice through the PILOT's own call
+    (v12_pilot.evaluate_prepared_sanitized, the function that produced the published claim), i.e. the window a board is
+    measured in. Comparing L1 vs L2b asks "is the published number reproducible at all"; comparing L2b vs L2 asks
     "do live's own bars differ from the board's bars". Metrics only, so the memo cache may serve it."""
     from live_twins import vec_exact as VX
     from tools.opt import evaluate_v12 as E
+    from tools.opt import v12_pilot as P
 
     out = {}
     path = FROZEN_DIR / f"{symbol}.pkl"
@@ -200,7 +202,7 @@ def rerun_symbol(symbol: str, jobs, errors, board: dict, board_leg: bool = True)
                     board[(ss, md5)] = {"status": "NO_LOCAL_NPZ"}
                     continue
                 ts = p["npz_prepared"]["timestamps"]
-                r = E.evaluate_prepared(p, ov)
+                r = P.evaluate_prepared_sanitized(p, ov, 30)
                 board[(ss, md5)] = {"status": "OK", "first": float(ts[0]), "last": float(ts[-1]), "bars": int(len(ts)),
                                     "gain_pct": r.get("gain_pct"), "trades": r.get("trades"), "bh_pct": r.get("bh_pct"),
                                     "max_dd_pct": r.get("max_dd_pct"), "tim_pct": r.get("tim_pct"), "wr_pct": r.get("wr_pct"),
@@ -278,6 +280,8 @@ def trip_view(l, v, d_entry, d_exit, how):
     return {"day": day_of(l["entry_ts"]), "live_entry": iso(l["entry_ts"]), "live_exit": iso(l["exit_ts"]) if l.get("exit_ts") else "OPEN",
             "vec_bar": iso(v["bar_ts"]) if v else "", "vec_exit_bar": iso(float(v["exit_ts"]) - BAR_S) if v and v.get("exit_ts") else ("OPEN" if v else ""),
             "entry_bar_delta": d_entry, "exit_bar_delta": d_exit, "exit_match": how,
+            "entry_lag_min": (round((float(l["entry_ts"]) - (float(v["bar_ts"]) + BAR_S)) / 60.0, 1) if v else None),
+            "exit_lag_min": (round((float(l["exit_ts"]) - float(v["exit_ts"])) / 60.0, 1) if (v and v.get("exit_ts") and l.get("exit_ts")) else None),
             "live_qty": round(l["open_qty"], 8), "live_notional": round(l["notional"] or 0, 2), "live_net_pnl": round(l["net_pnl"], 4), "live_net_pct": l.get("net_pct"),
             "live_result": sign_name(l["net_pnl"]) if not l["is_open"] else "OPEN",
             "vec_notional": round(v["deployed"], 2) if v else None, "vec_pnl": round(v["pnl_dollars"], 4) if v else None, "vec_pct": v.get("pct") if v else None,
@@ -407,7 +411,12 @@ def main():
     except Exception:
         tradeable = set()
     wanted = [x.strip().upper() for x in a.symsides.split(",") if x.strip()]
-    sym_sides = sorted(set(wanted) if wanted else (set(active) | {k[0] for k in by_key}))
+    try:  # tokenized stocks are not tradeable anywhere (data/excluded_tokenized_stocks.json) and prepare() refuses them as stocks
+        excl = set(json.load(open(ROOT / "data" / "excluded_tokenized_stocks.json")).get("symbols") or [])
+    except Exception:
+        excl = set()
+    sym_sides = sorted(ss for ss in (set(wanted) if wanted else (set(active) | {k[0] for k in by_key}))
+                       if ss.rsplit("_", 1)[0] not in excl)
     errors, segments = [], {}
     for ss in sym_sides:
         segments[ss] = set_segments(con, ss, t_from, now, active)
@@ -440,13 +449,15 @@ def main():
         morning = {}
         for s in segs:
             rr = reruns.get((ss, s["md5"])) or {"status": "NO_RERUN"}
-            mv, rg, rt = metric_verdict(s["claim"], rr, a.trades_ratio)
+            bl = board.get((ss, s["md5"])) or {}
+            mv, dv, rg, rt = metric_verdict(s["claim"], rr, bl, a.trades_ratio)
             m = (rr.get("metrics") or {}) if rr.get("status") == "OK" else {}
             srec["segments"].append({"from": iso(s["seg_from"]), "to": iso(s["seg_to"]) if s["seg_to"] != float("inf") else "now",
                                      "applied_at": s["updated_at"], "applied_before_window": s["applied_before_window"], "set_md5": s["md5"][:8], "writer": s["source"],
                                      "claim": s["claim"], "rerun_status": rr.get("status"),
-                                     "rerun": {"gain_pct": rg, "trades": rt, "bh_pct": m.get("bh_pct"), "max_dd_pct": m.get("max_dd_pct"), "tim_pct": m.get("tim_pct"), "wr_pct": m.get("wr_pct"), "pool_sharpe": m.get("pool_sharpe"), "valid": m.get("valid"), "invalid_reason": m.get("invalid_reason"), "span_days": round((rr.get("store_last", 0) - rr.get("store_first", 0)) / 86400.0, 2) if rr.get("status") == "OK" else None},
-                                     "metric_verdict": mv})
+                                     "rerun_twin_bars": {"gain_pct": rg, "trades": rt, "bh_pct": m.get("bh_pct"), "max_dd_pct": m.get("max_dd_pct"), "tim_pct": m.get("tim_pct"), "wr_pct": m.get("wr_pct"), "pool_sharpe": m.get("pool_sharpe"), "valid": m.get("valid"), "invalid_reason": m.get("invalid_reason"), "span_days": round((rr.get("store_last", 0) - rr.get("store_first", 0)) / 86400.0, 2) if rr.get("status") == "OK" else None},
+                                     "rerun_board_30d": {k: bl.get(k) for k in ("status", "gain_pct", "trades", "bh_pct", "max_dd_pct", "tim_pct", "wr_pct", "valid", "npz", "bars")},
+                                     "claim_verdict": mv, "data_verdict": dv})
         day = dt.datetime.fromtimestamp(t_from, dt.timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         while day.timestamp() < now:
             stamp = day.timestamp() + a.preopen_hour * 3600.0
@@ -461,7 +472,7 @@ def main():
             lts = by_key.get((ss, acct)) or []
             carried = [t for t in lts if t["pre_window"] or t["entry_ts"] < t_from]
             agg = collections.Counter()
-            pair_rows, seg_stats, size_mult = [], [], []
+            pair_rows, seg_stats, size_mult, entry_lag, exit_lag = [], [], [], [], []
             for s in segs:
                 rr = reruns.get((ss, s["md5"])) or {}
                 if rr.get("status") != "OK":
@@ -503,6 +514,10 @@ def main():
                     agg["matched_vec_pct_sum"] += (v.get("pct") or 0.0) if v.get("exit_ts") else 0.0
                     agg["matched_live_pct_sum"] += (l.get("net_pct") or 0.0) if not l["is_open"] else 0.0
                     agg["entry_bar_delta_abs"] += abs(d)
+                    if pr.get("entry_lag_min") is not None:
+                        entry_lag.append(pr["entry_lag_min"])
+                    if pr.get("exit_lag_min") is not None:
+                        exit_lag.append(pr["exit_lag_min"])
                     if v.get("deployed") and l.get("notional"):
                         size_mult.append(float(l["notional"]) / float(v["deployed"]))
                 for j in lonly:
@@ -536,8 +551,9 @@ def main():
             trips_all.extend(pair_rows)
             closed = [t for t in lts if not t["is_open"] and t not in carried]
             live_net = sum(t["net_pnl"] for t in closed)
-            mv_set = [sg["metric_verdict"] for sg in srec["segments"]]
-            verdict = _verdict(agg, mv_set, len(lts), srec["segments"])
+            mv_set = [sg["claim_verdict"] for sg in srec["segments"]]
+            dv_set = [sg["data_verdict"] for sg in srec["segments"]]
+            verdict = _verdict(agg, mv_set, dv_set, len(lts), srec["segments"])
             rec = {"n_live_trips": agg["n_live"], "carried_in": len(carried), **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in agg.items()},
                    "live_net_pnl_usd": round(live_net, 4), "verdict": verdict,
                    "twin_log_bars_with_actions": len(twin_log.get((acct, ss)) or set()) if twin_log else None,
@@ -545,12 +561,16 @@ def main():
             srec["accounts"][acct] = rec
             rows.append({"sym_side": ss, "acct": acct, "verdict": verdict,
                          "sets_in_window": len(srec["segments"]), "set_md5_latest": (srec["segments"][-1]["set_md5"] if srec["segments"] else ""),
-                         "metric_verdicts": ";".join(sorted(set(mv_set))), "claim_gain_pct": (srec["segments"][-1]["claim"]["gain_pct"] if srec["segments"] else None),
+                         "claim_verdicts": ";".join(sorted({str(v).split("_OFF")[0] + "_OFF" if "_OFF_" in str(v) else str(v) for v in mv_set})),
+                         "claim_verdicts_detail": ";".join(sorted(set(mv_set))), "data_verdicts": ";".join(sorted(set(dv_set))),
+                         "claim_gain_pct": (srec["segments"][-1]["claim"]["gain_pct"] if srec["segments"] else None),
                          "claim_trades": (srec["segments"][-1]["claim"]["trades"] if srec["segments"] else None),
-                         "rerun_gain_pct": (srec["segments"][-1]["rerun"]["gain_pct"] if srec["segments"] else None),
-                         "rerun_trades": (srec["segments"][-1]["rerun"]["trades"] if srec["segments"] else None),
-                         "rerun_span_days": (srec["segments"][-1]["rerun"]["span_days"] if srec["segments"] else None),
-                         "rerun_wr_pct": (srec["segments"][-1]["rerun"]["wr_pct"] if srec["segments"] else None),
+                         "board30_gain_pct": (srec["segments"][-1]["rerun_board_30d"].get("gain_pct") if srec["segments"] else None),
+                         "board30_trades": (srec["segments"][-1]["rerun_board_30d"].get("trades") if srec["segments"] else None),
+                         "twin_gain_pct": (srec["segments"][-1]["rerun_twin_bars"]["gain_pct"] if srec["segments"] else None),
+                         "twin_trades": (srec["segments"][-1]["rerun_twin_bars"]["trades"] if srec["segments"] else None),
+                         "twin_span_days": (srec["segments"][-1]["rerun_twin_bars"]["span_days"] if srec["segments"] else None),
+                         "twin_wr_pct": (srec["segments"][-1]["rerun_twin_bars"]["wr_pct"] if srec["segments"] else None),
                          "n_vec_trips": agg["n_vec"], "n_live_trips": agg["n_live"], "matched": agg["matched"],
                          "same_entry_bar": agg["same_entry_bar"], "entry_bar_le1": agg["entry_bar_le1"],
                          "same_exit_bar": agg["same_exit_bar"], "exit_bar_le1": agg["exit_bar_le1"], "both_same_bar": agg["both_same_bar"],
@@ -564,6 +584,8 @@ def main():
                          "matched_live_pct_sum": round(agg["matched_live_pct_sum"], 3), "matched_vec_pct_sum": round(agg["matched_vec_pct_sum"], 3),
                          "exec_diff_usd": round(agg["matched_live_pnl"] - agg["matched_vec_pnl_at_live_size"], 4),
                          "size_mult_median": (round(sorted(size_mult)[len(size_mult) // 2], 3) if size_mult else None),
+                         "entry_lag_min_median": (sorted(entry_lag)[len(entry_lag) // 2] if entry_lag else None),
+                         "exit_lag_min_median": (sorted(exit_lag)[len(exit_lag) // 2] if exit_lag else None),
                          "matched_vec_engine_usd": round(agg["matched_vec_engine_usd"], 4),
                          "live_only_pnl": round(agg["live_only_pnl"], 4), "vec_only_pct_sum": round(agg["vec_only_pct_sum"], 3),
                          "vec_only_engine_usd": round(agg["vec_only_engine_usd"], 4)})
@@ -596,15 +618,17 @@ def main():
     print(f"[retrace] rows={len(rows)} trips={len(trips_all)} errors={len(errors)} elapsed={time.time() - t_start:.0f}s")
 
 
-def _verdict(agg, metric_verdicts, n_live_trips, segs):
+def _verdict(agg, claim_verdicts, data_verdicts, n_live_trips, segs):
     if not segs:
         return "NO_LIVE_SET_IN_SQL"
-    if all(s["rerun_status"] != "OK" for s in segs):
-        return "NO_RERUN_" + str(segs[-1]["rerun_status"])
-    if "CLAIM_POSITIVE_RERUN_NEGATIVE" in metric_verdicts:
-        return "CLAIM_DOES_NOT_SURVIVE_RERUN"
-    if any(str(v).startswith("TRADE_RATE_OFF") for v in metric_verdicts):
+    if "CLAIM_POSITIVE_REMEASURE_NEGATIVE" in claim_verdicts:
+        return "CLAIM_DOES_NOT_SURVIVE_REMEASURE"
+    if any(str(v).startswith("CLAIM_TRADE_RATE_OFF") for v in claim_verdicts):
         return "CLAIM_TRADE_RATE_OFF"
+    if all(s["rerun_status"] != "OK" for s in segs):
+        return "NO_TWIN_RERUN_" + str(segs[-1]["rerun_status"])
+    if "TWIN_BARS_PRODUCE_NO_TRADES" in data_verdicts or "TWIN_BARS_FLIP_THE_SIGN" in data_verdicts:
+        return "LIVE_DATA_DIVERGES_FROM_BOARD"
     if agg["n_vec"] >= 3 and agg["matched"] / max(1, agg["n_vec"]) < 0.5:
         return "LIVE_MISSES_VEC_TRADES"
     if agg["live_only"] > max(1, agg["matched"]):
@@ -681,22 +705,29 @@ def report_md(meta, rows, detail, trips, daily, late_reasons=None, late_usd=None
     for v, n in vc.most_common():
         A(f"| {v} | {n} | {pnl_by_v[v]:+.2f} |")
     A("")
-    mvc = collections.Counter()
+    mvc, dvc = collections.Counter(), collections.Counter()
     for ss, rec in detail.items():
         for s in rec["segments"]:
-            mvc[s["metric_verdict"]] += 1
-    A("## L1 claim vs L2 re-measurement (every applied set in the window)\n")
-    A("| metric verdict | applied sets |")
+            cv = str(s["claim_verdict"])
+            mvc[cv.split("_OFF")[0] + "_OFF" if "_OFF_" in cv else cv] += 1
+            dvc[s["data_verdict"]] += 1
+    A("## L1 claim vs L2b re-measurement in a 30 d board window (every applied set)\n")
+    A("| claim verdict | applied sets |")
     A("|---|---|")
     for v, n in mvc.most_common():
         A(f"| {v} | {n} |")
+    A("\n## L2b board window vs L2 the bars live decided on (is live's data the outlier?)\n")
+    A("| data verdict | applied sets |")
+    A("|---|---|")
+    for v, n in dvc.most_common():
+        A(f"| {v} | {n} |")
     A("")
     A("## Worst 25 by Binance net $\n")
-    A("| sym_side | acct | verdict | claim gain% | rerun gain% (span d) | claim trades | rerun trades | live/vec trips | matched | exits on bar | live G/L | vec G/L | live net $ | matched vec $ @live size |")
-    A("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    A("| sym_side | acct | verdict | claim gain% | board30 gain% | twin gain% (span d) | claim trades | board30 tr | twin tr | live/vec trips | matched | exits on bar | live G/L | vec G/L | live net $ | matched vec $ @live size |")
+    A("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for r in sorted(rows, key=lambda r: r["live_net_pnl_usd"] or 0.0)[:25]:
-        A(f"| {r['sym_side']} | {r['acct']} | {r['verdict']} | {_f(r['claim_gain_pct'])} | {_f(r['rerun_gain_pct'])} ({_f(r['rerun_span_days'],1)}) |"
-          f" {r['claim_trades']} | {r['rerun_trades']} | {r['n_live_trips']}/{r['n_vec_trips']} | {r['matched']} |"
+        A(f"| {r['sym_side']} | {r['acct']} | {r['verdict']} | {_f(r['claim_gain_pct'])} | {_f(r['board30_gain_pct'])} | {_f(r['twin_gain_pct'])} ({_f(r['twin_span_days'],1)}) |"
+          f" {r['claim_trades']} | {r['board30_trades']} | {r['twin_trades']} | {r['n_live_trips']}/{r['n_vec_trips']} | {r['matched']} |"
           f" {r['same_exit_bar'] + r['exit_intrabar']} | {r['live_gain']}/{r['live_loss']} | {r['vec_gain']}/{r['vec_loss']} | {r['live_net_pnl_usd']:+.2f} | {r['matched_vec_pnl_at_live_size']:+.2f} |")
     A("")
     A("## Exit-bar disagreement on matched trips (top 20 by live loss)\n")
@@ -714,6 +745,22 @@ def report_md(meta, rows, detail, trips, daily, late_reasons=None, late_usd=None
         for k, n in late_reasons.most_common(15):
             A(f"| {k} | {n} | {(late_usd or {}).get(k, 0.0):+.2f} |")
         A("")
+    A("## Settings applied per day (the SQL trail: who wrote the live set and when)\n")
+    byday = collections.defaultdict(collections.Counter)
+    for ss, rec in detail.items():
+        for sg in rec["segments"]:
+            if sg["applied_before_window"]:
+                continue
+            d = str(sg["applied_at"] or "")[:10]
+            byday[d]["sets_applied"] += 1
+            byday[d][str(sg["writer"] or "?").split()[0] or "?"] += 1
+    A("| day | sets written to the live store | writers |")
+    A("|---|---|---|")
+    for d in sorted(byday):
+        c = byday[d]
+        w = ", ".join(f"{k} {v}" for k, v in c.most_common() if k != "sets_applied")
+        A(f"| {d} | {c['sets_applied']} | {w} |")
+    A("")
     A("## Per day\n")
     dd = collections.defaultdict(collections.Counter)
     for d in daily:
