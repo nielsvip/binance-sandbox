@@ -90,6 +90,41 @@ def ms_ts(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
 
 
+def absent_path(name: str) -> Path | None:
+    """Sidecar of slots a fetch PROVED the exchange does not have. Lives next to the archive."""
+    dirs = archive_dirs()
+    return (dirs[0] / f"{name}._absent.json") if dirs else None
+
+
+def load_absent(name: str) -> set[int]:
+    """Slots already proven absent upstream, on any drive.
+
+    Without this the tick re-requests unfillable holes forever: 1000000MOGUSDT_1m shows 4408 interior gaps in
+    16231 bars, and a thin pair genuinely has minutes with no trades, so those slots can never be filled. A
+    gap is only recorded here when a fetch window that SPANNED the slot came back without it — i.e. the
+    exchange was asked and had nothing. It is a record of proof, not an assumption."""
+    out: set[int] = set()
+    for d in archive_dirs():
+        p = d / f"{name}._absent.json"
+        try:
+            out |= {int(x) for x in json.loads(p.read_text())}
+        except Exception:
+            continue
+    return out
+
+
+def save_absent(name: str, slots: set[int]) -> None:
+    for d in archive_dirs():
+        p = d / f"{name}._absent.json"
+        try:
+            cur = {int(x) for x in json.loads(p.read_text())} if p.exists() else set()
+            merged = cur | slots
+            if merged != cur:
+                p.write_text(json.dumps(sorted(merged)))
+        except Exception:
+            continue
+
+
 def interior_gaps(bars: list[dict], tf: str) -> list[int]:
     """Missing grid slots strictly between the first and last bar held. Head/tail are extent, not gaps."""
     step = STEP_S.get(tf)
@@ -149,8 +184,10 @@ def pull_s1(name: str, tmp: Path) -> list[tuple[str, Path]]:
     return out
 
 
-def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int]:
-    """One request per contiguous hole, always limit=1500 (same cost as 5 bars). Returns (bars, n_requests)."""
+def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int, set[int]]:
+    """One request per contiguous hole, always limit=1500 (same cost as 5 bars).
+    Returns (bars, n_requests, proven_absent): a slot inside a window the exchange actually answered, that
+    the answer did not contain, is proven absent upstream — not merely missing from our copies."""
     try:
         from tools.klines_backfill_15m import fetch_after
     except Exception:
@@ -170,6 +207,7 @@ def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int]:
     blocks.append(cur)
     got: list[dict] = []
     calls = 0
+    absent: set[int] = set()
     for blk in blocks:
         covered = {b["timestamp"] for b in got}
         if ms_ts(blk[0]) in covered:
@@ -178,10 +216,15 @@ def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int]:
             rows = fetch_after(sym, blk[0], limit=FETCH_LIMIT, interval=interval)
             calls += 1
             got.extend(rows)
+            if rows:
+                # the window the exchange answered: anything inside it that is not in the answer does not exist
+                span_lo, span_hi = ts_ms(rows[0]["timestamp"]), ts_ms(rows[-1]["timestamp"])
+                returned = {ts_ms(r["timestamp"]) for r in rows}
+                absent |= {t for t in blk if span_lo <= t <= span_hi and t not in returned}
             log(f"    fetched {len(rows)} bars from {ms_ts(blk[0])} (hole of {len(blk)}; limit={FETCH_LIMIT})")
         except Exception as e:
             log(f"    fetch failed at {ms_ts(blk[0])}: {e}")
-    return got, calls
+    return got, calls, absent
 
 
 def write_archive(name: str, bars: list[dict]) -> None:
@@ -220,8 +263,10 @@ def fill_one(name: str, no_fetch: bool, apply_local: bool) -> dict:
         rep["skip"] = "no copy anywhere locally"
         return rep
     bars = [merged[k] for k in sorted(merged)]
-    gaps = interior_gaps(bars, tf)
+    known_absent = load_absent(name)
+    gaps = [g for g in interior_gaps(bars, tf) if g not in known_absent]
     rep["gaps_before"] = len(gaps)
+    rep["known_absent"] = len(known_absent)
     if not gaps:
         return rep
     log(f"  {name}: {len(gaps)} interior gap(s) across {len(bars)} bars "
@@ -239,11 +284,14 @@ def fill_one(name: str, no_fetch: bool, apply_local: bool) -> dict:
                 rep["from_s1"] += len(merged) - n0
                 rep["sources_used"].append(label)
     bars = [merged[k] for k in sorted(merged)]
-    gaps = interior_gaps(bars, tf)
+    gaps = [g for g in interior_gaps(bars, tf) if g not in known_absent]
     # 4. fetch, last resort
     if gaps and not no_fetch and is_crypto(sym):
-        got, calls = fetch_missing(sym, tf, gaps)
+        got, calls, proven_absent = fetch_missing(sym, tf, gaps)
         rep["requests"] = calls
+        if proven_absent:
+            save_absent(name, proven_absent)
+            rep["proven_absent"] = len(proven_absent)
         n0 = len(merged)
         for b in got:
             merged.setdefault(b["timestamp"], b)
@@ -251,7 +299,7 @@ def fill_one(name: str, no_fetch: bool, apply_local: bool) -> dict:
         if rep["fetched"]:
             rep["sources_used"].append("binance:1500")
         bars = [merged[k] for k in sorted(merged)]
-        gaps = interior_gaps(bars, tf)
+        gaps = [g for g in interior_gaps(bars, tf) if g not in (known_absent | proven_absent)]
     elif gaps and not is_crypto(sym):
         rep["sources_used"].append("stock: no fetch (massive_backfill_15m --fill-holes owns session repair)")
     rep["still_missing"] = len(gaps)

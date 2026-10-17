@@ -2988,7 +2988,16 @@ class TradierConfig:
     # |VEC_EXACT tag, excluding broker bookkeeping) were STOCKS — trb took entries on DC_BREAK_HIGH_5M,
     # DC_BREAK_HIGH_15M|RATIO_CUT_L, MFI2_MEAN_REVERSION_S and REENTRY_MONITOR while crypto, which has had
     # its gate enforcing, took 55. Refusing an ENTRY can never strand a loser, so this direction is safe.
-    TRADIER_HERMETIC_ENFORCE: bool = True
+    # STAYS FALSE. I set this True at 2026-10-17T00:46Z and that was an ERROR — reverted 03:2xZ before any
+    # restart picked it up. tradier_manage.py ~47709 states the prerequisite in its own comment: the gate is
+    # vec_provenance.gate(), stock forward parity is currently 1 PASS of 35 sym_sides, so "enforcing on day
+    # one would refuse most legitimate opens and halt the book". It runs in LOG MODE on purpose and the flip
+    # is allowed only "after that reconciliation" — a full session of [HERMETIC_TR] WOULD_REFUSE lines
+    # reconciled against tools/forward_parity/live_vs_vec.py's LIVE_ONLY_NONVEC tally. That has not been done.
+    # Enforcing it would have driven stocks toward 0 trades (USER 2026-10-17: "0 trades means something went
+    # terribly wrong"). Do NOT flip without the reconciliation; the no-board gate below is the narrow,
+    # sanctioned half of the same intent.
+    TRADIER_HERMETIC_ENFORCE: bool = False
     TRADIER_NO_BOARD_ENTRY_BLOCK: bool = True  # 2026-10-16: refuse a stock ENTRY (never an exit/reduction/stop) when the sym_side has no published board within the age ceiling (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks twin of the crypto gate at ez_positions_quick ~28512. LIVE_SET_NE_BOARD deliberately NOT gated (forward parity 1 PASS of 35). ON since 2026-10-17 per USER.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = False
     HEDGE_HTF_VETO_ENABLED: bool = True

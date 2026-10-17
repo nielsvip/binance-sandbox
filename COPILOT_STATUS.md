@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 02:58:27 UTC
+# Copilot Status — 2026-10-17 03:03:34 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -9,6 +9,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T02:53:20
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T02:55:26
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T02:57:33
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T02:59:34
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T03:01:38
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +29,7 @@ _None_
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **ZECUSDC** LONG (crypto) peak +5.4%, now +0.0%
-- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +2.5%
+- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +2.4%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -45,9 +47,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 25
-- [MEDIUM] tradier_manage.py for trc is NOT running
+**Issues (last 1h):** 47
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running

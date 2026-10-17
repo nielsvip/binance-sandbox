@@ -44,6 +44,8 @@ SOURCES = ("klines_cache", "klines_cache_gateway", "klines_canonical", "klines_c
 EXT_ROOTS = (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"), Path("/Volumes/TOSHIBA_EXT"))
 ARCH_SUBDIR = Path("binance_archive") / "klines_archive"
 MIN_FREE_GB = 3.0
+CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
+BINANCE_INTERVAL = {"15m": "15m", "1h": "1h", "4h": "4h", "D": "1d", "1d": "1d", "5m": "5m", "3m": "3m", "1m": "1m"}
 LOG = Path("/tmp/klines_ext_archive.log")
 
 
@@ -150,13 +152,32 @@ def _more_complete(new: dict, cur: dict) -> bool:
         return False
 
 
-def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list) -> tuple[str, int, int]:
-    """Union every source into the archive copy. Returns (status, bars_before, bars_after)."""
+def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list,
+              peers: list[Path] = ()) -> tuple[str, int, int]:
+    """Union every source AND every other drive's copy into this archive copy.
+
+    `peers` is what keeps the drives converged. The first full run wrote the drives sequentially and they
+    finished 11,449 bars apart (SSD2T 19,458,485 vs E3T 19,469,934) purely because live klines moved between
+    the two passes — and without peer-merging, a symbol whose sources never change again (a delisted pair)
+    would stay unequal forever. Reading the peers makes every copy the union of everything seen anywhere.
+    Returns (status, bars_before, bars_after)."""
     target = arch_dir / f"{name}.json"
     existing = load_bars(target) if target.exists() else []
     merged = {b["timestamp"]: b for b in existing}
-    before = len(merged)
-    added = upgraded = 0
+    own_before = len(merged)
+    for peer_dir in peers:
+        if peer_dir == arch_dir:
+            continue
+        pp = peer_dir / f"{name}.json"
+        if pp.exists():
+            for b in load_bars(pp):
+                cur = merged.get(b["timestamp"])
+                if cur is None:
+                    merged[b["timestamp"]] = b
+                elif not _same_bar(cur, b) and _more_complete(b, cur):
+                    merged[b["timestamp"]] = b
+    before = own_before
+    added = upgraded = len(merged) - own_before
     for p in srcs:
         for b in load_bars(p):
             ts = b["timestamp"]
@@ -212,6 +233,15 @@ def run(only: str | None, force: bool = False) -> int:
     if only:
         srcs_by_name = {k: v for k, v in srcs_by_name.items() if k == only}
     log(f"klines archive: {len(srcs_by_name)} symbol/timeframe files -> {[d.name for d in drives]}")
+    peer_dirs = [d / ARCH_SUBDIR for d in drives]
+    # every drive's manifest, read once: the skip test needs to know whether THIS drive is behind another,
+    # otherwise a drive that was written first stays permanently short on symbols whose sources never change
+    peer_manifests: dict[str, dict] = {}
+    for pd in peer_dirs:
+        try:
+            peer_manifests[str(pd)] = json.loads((pd / "_manifest.json").read_text())
+        except Exception:
+            peer_manifests[str(pd)] = {}
     for drive in drives:
         arch_dir = drive / ARCH_SUBDIR
         arch_dir.mkdir(parents=True, exist_ok=True)
@@ -226,13 +256,15 @@ def run(only: str | None, force: bool = False) -> int:
         for i, (name, srcs) in enumerate(sorted(srcs_by_name.items())):
             sig = {str(p): [int(p.stat().st_mtime), p.stat().st_size] for p in srcs if p.exists()}
             ent = manifest.get(name) or {}
-            if not force and ent.get("srcs") == sig and (arch_dir / f"{name}.json").exists():
+            peer_bars = [int((peer_manifests.get(str(pd)) or {}).get(name, {}).get("bars") or 0) for pd in peer_dirs]
+            if (not force and ent.get("srcs") == sig and (arch_dir / f"{name}.json").exists()
+                    and int(ent.get("bars") or 0) >= max(peer_bars or [0])):
                 stats["skipped"] += 1
                 continue
             if free_gb(drive) < MIN_FREE_GB:
                 log(f"  {drive.name}: dropped below {MIN_FREE_GB}GB mid-run — stopping writes to this drive")
                 break
-            status, before, after = merge_one(name, srcs, arch_dir, conflicts)
+            status, before, after = merge_one(name, srcs, arch_dir, conflicts, peers=peer_dirs)
             if status.startswith("refused"):
                 stats["refused"] += 1
                 continue
@@ -253,6 +285,108 @@ def run(only: str | None, force: bool = False) -> int:
         log(f"  {drive.name}: {stats} +{bars_added} bars, {len(conflicts)} value conflict(s) recorded, "
             f"{free_gb(drive):.1f}GB free")
     return 0
+
+
+def deepen(names: list[str], tfs: tuple, max_pages: int, pause: float, budget_s: float) -> int:
+    """Page BACKWARDS to the symbol's first bar ever, so the archive is unbounded in history too.
+
+    USER 2026-10-17: "on the ex drive we need infinite ones no clipping ever". The archive itself never
+    clips, but it can only hold what it has seen — and the live stores are deliberately shallow
+    (ez_klines._trim caps 15m at 1500-2000 bars, 1m at 14000-18000). So depth has to be pulled from the
+    exchange: fetch_before from the earliest bar held, limit=1500 per request (same cost as 5), merged
+    append-only, until a page returns nothing older. That symbol/timeframe is then stamped
+    inception_reached in the manifest and never re-paged.
+    Crypto only — a stock symbol has no Binance history and belongs to massive_backfill_15m."""
+    import time as _t
+    try:
+        sys.path.insert(0, str(REPO / "tools"))
+        from klines_backfill_15m import fetch_before
+    except Exception as e:
+        log(f"cannot import fetch_before ({e}) — deepen aborted")
+        return 1
+    drives = real_drives()
+    if not drives:
+        log("no external drive mounted — deepen aborted")
+        return 0
+    arch_dirs = [d / ARCH_SUBDIR for d in drives]
+    t0 = _t.time()
+    for name in names:
+        sym, _, tf = name.rpartition("_")
+        if tf not in tfs or not sym.upper().endswith(CRYPTO_SUFFIX):
+            continue
+        interval = BINANCE_INTERVAL.get(tf)
+        if not interval:
+            continue
+        target = arch_dirs[0] / f"{name}.json"
+        bars = load_bars(target)
+        if not bars:
+            continue
+        man_path = arch_dirs[0] / "_manifest.json"
+        try:
+            manifest = json.loads(man_path.read_text())
+        except Exception:
+            manifest = {}
+        if (manifest.get(name) or {}).get("inception_reached"):
+            continue
+        merged = {b["timestamp"]: b for b in bars}
+        oldest = min(ts_ms_of(b["timestamp"]) for b in bars)
+        start_n = len(merged)
+        pages = 0
+        reached = False
+        while pages < max_pages:
+            if budget_s and (_t.time() - t0) > budget_s:
+                log(f"  deepen budget {budget_s:.0f}s reached — stopping (resumable next run)")
+                break
+            try:
+                rows = fetch_before(sym, oldest - 1, limit=1500, interval=interval)
+            except Exception as e:
+                log(f"  {name}: fetch_before failed ({e})")
+                break
+            pages += 1
+            new = [r for r in rows if r["timestamp"] not in merged]
+            for r in new:
+                merged[r["timestamp"]] = r
+            if not new:
+                reached = True
+                break
+            oldest = min(ts_ms_of(r["timestamp"]) for r in rows)
+            if len(rows) < 1500:
+                reached = True        # the exchange had fewer than a full page left = start of history
+                break
+            _t.sleep(pause)
+        if len(merged) > start_n or reached:
+            out = [merged[k] for k in sorted(merged)]
+            for ad in arch_dirs:
+                p = ad / f"{name}.json"
+                cur = load_bars(p)
+                if len(out) < len(cur):
+                    log(f"  REFUSED {name} on {ad.parents[1].name}: deepen result shorter than archive")
+                    continue
+                tmp = p.with_suffix(".json.tmp")
+                tmp.write_text(json.dumps(out, separators=(",", ":")))
+                if len(load_bars(tmp)) != len(out):
+                    tmp.unlink(missing_ok=True)
+                    log(f"  REFUSED {name} on {ad.parents[1].name}: short write")
+                    continue
+                os.replace(tmp, p)
+                try:
+                    m = json.loads((ad / "_manifest.json").read_text())
+                except Exception:
+                    m = {}
+                e = m.get(name) or {}
+                e.update(bars=len(out), first=out[0]["timestamp"], last=out[-1]["timestamp"],
+                         inception_reached=bool(reached))
+                m[name] = e
+                (ad / "_manifest.json").write_text(json.dumps(m))
+            log(f"  {name}: {start_n} -> {len(out)} bars in {pages} page(s) "
+                f"[{out[0]['timestamp'][:10]} .. {out[-1]['timestamp'][:10]}]"
+                f"{' INCEPTION' if reached else ''}")
+    return 0
+
+
+def ts_ms_of(ts: str) -> int:
+    return int(datetime.strptime(ts.replace("Z", "").split(".")[0], "%Y-%m-%dT%H:%M:%S")
+               .replace(tzinfo=timezone.utc).timestamp() * 1000)
 
 
 def coverage() -> int:
@@ -301,12 +435,20 @@ def main() -> int:
     ap.add_argument("--coverage", action="store_true")
     ap.add_argument("--symbol", help="archive just this SYMBOL_TF")
     ap.add_argument("--verify", help="compare the archive against local sources for one SYMBOL_TF")
+    ap.add_argument("--deepen", action="store_true", help="page BACKWARDS to each symbol's first bar ever (unbounded history on the drives)")
+    ap.add_argument("--timeframes", default="15m,1h,4h,D", help="--deepen: which timeframes to deepen")
+    ap.add_argument("--max-pages", type=int, default=40, help="--deepen: 1500-bar pages per symbol per run")
+    ap.add_argument("--pause", type=float, default=0.25, help="--deepen: seconds between requests")
+    ap.add_argument("--budget", type=float, default=0, help="--deepen: stop after N seconds (resumable)")
     ap.add_argument("--force", action="store_true", help="re-merge even when the manifest says sources are unchanged (use after a merge-rule change)")
     a = ap.parse_args()
     if a.coverage:
         return coverage()
     if a.verify:
         return verify(a.verify)
+    if a.deepen:
+        names = [a.symbol] if a.symbol else sorted(source_files())
+        return deepen(names, tuple(t.strip() for t in a.timeframes.split(",") if t.strip()), a.max_pages, a.pause, a.budget)
     return run(a.symbol, a.force)
 
 
