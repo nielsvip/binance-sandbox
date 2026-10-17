@@ -453,7 +453,13 @@ def sync_plots():
     # Use --update (no --delete) to avoid black-screen when server is mid-write.
     # The redo changed this to --delete which wiped local ext plots during server
     # regeneration, causing 2x8 pages to render with 0-1 plots (black / single-plot).
-    opts = "-az --update -e 'ssh -o BatchMode=yes -o ConnectTimeout=10'"
+    # USER 2026-10-17: --existing added. This pull had no filter and no --delete, so every PNG that exists on S1
+    # and not here was RE-CREATED with its remote mtime — which silently undid ez_rankings.prune_rank_plots()
+    # every ~5 min and kept 1500+ superseded rank slots alive next to the current 80. The Mac is the producer
+    # (S1's ranking services are inactive) and this daemon only READS the newest W/L 20, so it never needs to
+    # create a file. --delete stays absent on purpose: removing it was what stopped the wallpaper blanking
+    # mid-regeneration. --existing refreshes what is here and creates nothing.
+    opts = "-az --update --existing -e 'ssh -o BatchMode=yes -o ConnectTimeout=10'"
     try:
         run(f"rsync {opts} {SERVER_HOST}:{PLOTS_CRYPTO_REMOTE}/*.png {LOCAL_PLOTS_CRYPTO}/", timeout=RSYNC_TIMEOUT)
         run(f"rsync {opts} {SERVER_HOST}:{PLOTS_STOCKS_REMOTE}/*.png {LOCAL_PLOTS_STOCKS}/", timeout=RSYNC_TIMEOUT)

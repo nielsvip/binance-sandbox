@@ -89,17 +89,37 @@ def test_npz_registry_includes_the_archive_dirs_that_held_the_deepest_copies():
     assert ".purged_npz" in paths, "purge dirs must be searchable — they held the deepest copy of 62 symbols"
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="local-host canonical check runs on the Mac")
-def test_every_canonical_mac_path_exists():
-    """If this fails, either the data moved or the registry is lying. Both are bugs worth failing on."""
+def _local_host_key():
+    """Which REGISTRY host are we running on? The registry is synced to S1 at the SAME relative paths
+    (USER 2026-10-17 "make sure they are synced to s1 in the exact same folders"), so this test has to be
+    meaningful on every host rather than skipping everywhere except the Mac."""
+    if sys.platform == "darwin":
+        return "mac"
+    if Path(DL.S1_SANDBOX).is_dir() or Path(DL.S1_LIVE).is_dir():
+        import socket as _s
+        return "s2" if _s.gethostname().startswith("s2") else "s1"
+    return None
+
+
+def test_every_canonical_path_for_this_host_exists():
+    """If this fails, either the data moved or the registry is lying. Both are bugs worth failing on.
+
+    Runs on whichever host the suite is on -- on the Mac it checks the Mac's canonical paths, on S1/s2 it checks
+    theirs. It used to be skipped off darwin, which meant the registry was unverified exactly where most of the
+    data lives."""
+    host = _local_host_key()
+    if host is None:
+        pytest.skip("not a known registry host")
     missing = []
     for kind, hosts in DL.REGISTRY.items():
-        for loc in DL.resolve(kind, "mac") if "mac" in hosts else []:
+        if host not in hosts:
+            continue
+        for loc in DL.resolve(kind, host):
             if loc.role != "canonical":
                 continue
             if not Path(loc.path).exists():
                 missing.append(f"{kind}: {loc.path}")
-    assert not missing, "canonical paths declared but absent:\n  " + "\n  ".join(missing)
+    assert not missing, f"canonical paths declared for {host} but absent:\n  " + "\n  ".join(missing)
 
 
 def test_cli_where_and_unknown_kind_exit_codes():

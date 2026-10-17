@@ -43,6 +43,20 @@ CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 FETCH_LIMIT = 1500
 PAUSE_S = 0.25
 LOG = Path("/tmp/klines_reconcile.log")
+INCLUDE_TOKENIZED = False
+_TOK: set = set()
+
+
+def tokenized() -> set:
+    """The tokenized stock proxies (data/excluded_tokenized_stocks.json, 221 symbols). Archived, never traded."""
+    global _TOK
+    if not _TOK:
+        try:
+            d = json.loads((REPO / "data" / "excluded_tokenized_stocks.json").read_text())
+            _TOK = {str(x).upper() for x in (d.get("symbols") or [])}
+        except Exception:
+            _TOK = {"-"}
+    return _TOK
 
 
 def log(msg: str) -> None:
@@ -116,6 +130,13 @@ def conflicted_timestamps(tfs: tuple, only: str | None) -> dict[str, set[str]]:
             sym = name.rpartition("_")[0]
             if not sym.upper().endswith(CRYPTO_SUFFIX):
                 continue        # only the exchange can settle this, and it only knows crypto
+            # USER 2026-10-17: "keep collecting stocks usdt versions if you want we are not using them for
+            # now as round trip fees kill their advantages vs free". So the tokenized stock proxies stay in
+            # the ARCHIVE (klines_ext_archive takes everything) but are not worth exchange calls to settle:
+            # 61,749 of the 73,727 value conflicts are 1m, and the worst offenders there are GOOGLUSDT /
+            # TSLAUSDT / PLTRUSDT-class proxies that nothing trades. --include-tokenized overrides.
+            if not INCLUDE_TOKENIZED and sym.upper() in tokenized():
+                continue
             out[name].add(c["timestamp"])
     return out
 
@@ -215,8 +236,11 @@ def main() -> int:
     ap.add_argument("--timeframes", default="15m,1h,4h,D")
     ap.add_argument("--symbol")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--include-tokenized", action="store_true", help="also settle the untraded stock-USDT proxies")
     ap.add_argument("--max", type=int, default=0, help="stop after this many symbol/timeframes")
     a = ap.parse_args()
+    global INCLUDE_TOKENIZED
+    INCLUDE_TOKENIZED = bool(a.include_tokenized)
     tfs = tuple(t.strip() for t in a.timeframes.split(",") if t.strip())
     work = conflicted_timestamps(tfs, a.symbol)
     log(f"reconcile: {len(work)} symbol/timeframe(s) with value conflicts in {tfs}"

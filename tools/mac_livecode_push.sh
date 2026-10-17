@@ -37,7 +37,12 @@ EXCLUDES=(--include 'data/' --include 'data/livecode_sync.json' --exclude 'data/
   --exclude 'tra/' --exclude 'trb/' --exclude 'trc/' --exclude 'klines_cache/' --exclude '*.tmp'
   --exclude 'klines_cache_gateway/' --exclude 'klines_canonical/' --exclude 'klines_cache_backtest/' --exclude 'klines_cache_macbook/'
   --exclude 'klines_vault/' --exclude 'klines_*/'
-  --exclude 'agent_inbox_poller.py' --exclude 'vec_paths/mtf_dc_reject.py' --exclude 'vec_paths/live_entry_engine.py')
+  --exclude 'agent_inbox_poller.py' --exclude 'vec_paths/mtf_dc_reject.py' --exclude 'vec_paths/live_entry_engine.py'
+  # USER 2026-10-17: plots are not TRADING CODE. This push has no --delete ("additive, never deletes"), so every
+  # rank plot the Mac ever wrote accumulated on S1 — 589 PNGs of which 569 were superseded slots — and
+  # wallpaper_daemon.py pulled the whole lot back every ~5 min, undoing ez_rankings.prune_rank_plots(). Excluded
+  # for the same reason SPREADSHEETS/, *.npz and klines_*/ already are: bulk output, not code.
+  --exclude 'plots/' --exclude 'plots_tradier/')
 try_push() { # try_push <shell-or-EMPTY> <destination>
     local shell="$1" dest="$2" rc
     if [ -n "$shell" ]; then
