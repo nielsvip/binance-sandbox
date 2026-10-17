@@ -160,3 +160,46 @@ def test_realised_partial_reduce_in_events_counts(tmp_path):
     os.utime(cell / f"{stem}_30d_matrix.html", (OLD, OLD))
     t = G.page_truth(cell / f"{stem}_30d_matrix.html")
     assert t["status"] == "OK" and abs(t["G"] - 11.0) < 1e-9 and t["reduce_pnl_dollars"] == 2.0 and t["realised_reduce_events"] == 1
+
+
+def test_int_token_rounding():
+    assert G.fmt_int_token(12.5) == "13" and G.fmt_int_token(-3.5) == "m4" and G.fmt_int_token(-0.4) == "0" and G.fmt_int_token(16.49) == "16"
+
+
+def test_int_mode_follows_local_parser(tmp_path):
+    cell = _board(tmp_path, "HHHUSDT_LONG_bh1p00_gain10p00_t2")
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    (tools / "v15_final_naming.py").write_text("def parse_final_matrix_name(n):\n    return None\n")
+    assert _run(tmp_path)["actions"] == []  # parser cannot read integers yet -> keep 2-decimal tokens
+    (tools / "v15_final_naming.py").write_text("import re\ndef parse_final_matrix_name(n):\n    m = re.match(r'^(.+)_bh(m?\\d+)_gain(m?\\d+)_t(\\d+)_30d_matrix', n)\n    return {'bh': float(m.group(2)), 'gain': float(m.group(3)), 'trades': int(m.group(4))} if m else None\n")
+    res = _run(tmp_path)
+    assert res["summary"]["int_tokens"] is True
+    assert sorted(p.name for p in cell.iterdir()) == ["HHHUSDT_LONG_bh1_gain10_t2_30d_matrix.html", "HHHUSDT_LONG_bh1_gain10_t2_30d_matrix.xlsx", "HHHUSDT_LONG_bh1_gain10_t2_30d_matrix_manifest.json"]
+    assert _run(tmp_path)["actions"] == []
+
+
+def test_int_mode_converts_pageless_copies_and_2dp_host_ignores_int_peer_targets(tmp_path):
+    root = tmp_path / "SPREADSHEETS"
+    root.mkdir()
+    lone = root / "JJJUSDT_SHORT_bhm2p50_gain7p49_t5_30d_matrix.xlsx"
+    lone.write_bytes(b"PK")
+    os.utime(lone, (OLD, OLD))
+    G.INT_TOKENS_OVERRIDE = True
+    try:
+        _run(tmp_path)
+    finally:
+        G.INT_TOKENS_OVERRIDE = None
+    assert (root / "JJJUSDT_SHORT_bhm3_gain7_t5_30d_matrix.xlsx").exists() and not lone.exists()
+    other = tmp_path / "o"
+    (other / "SPREADSHEETS").mkdir(parents=True)
+    f = other / "SPREADSHEETS" / "KKKUSDT_LONG_bh1p00_gain466p_t2_30d_matrix.xlsx"
+    f.write_bytes(b"PK")
+    os.utime(f, (OLD, OLD))
+    (other / "board_name_truth_peers").mkdir()
+    (other / "board_name_truth_peers" / "mac.json").write_text(json.dumps({"map": {"KKKUSDT_LONG_bh1p00_gain466p_t2": {"new": "KKKUSDT_LONG_bh1_gain10_t2"}}, "quarantined": {}}))
+    G.INT_TOKENS_OVERRIDE = False
+    try:
+        assert _run(other)["actions"] == [] and f.exists()
+    finally:
+        G.INT_TOKENS_OVERRIDE = None

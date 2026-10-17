@@ -44,7 +44,7 @@ import tarfile
 import time
 from pathlib import Path
 
-NAME_RE = re.compile(r"^(?P<ss>[A-Z0-9]+_(?:LONG|SHORT))_bh(?P<bh>m?[0-9]+p[0-9]+)_gain(?P<g>m?[0-9]+p[0-9]*)(?P<t>_t[0-9]+)?_30d_matrix(?P<suf>.*)$")
+NAME_RE = re.compile(r"^(?P<ss>[A-Z0-9]+_(?:LONG|SHORT))_bh(?P<bh>m?[0-9]+(?:p[0-9]+)?)_gain(?P<g>m?[0-9]+(?:p[0-9]*)?)(?P<t>_t[0-9]+)?_30d_matrix(?P<suf>.*)$")
 SCAN_SUBDIRS = ("SPREADSHEETS", "data/reports/charts_1M", "data/reports/charts_1Y", "data/manifest_archive_mac", "spreadheeets")
 SCAN_FLAT = ("", "data")  # board copies dropped loose in the root or data/ (not recursive: those trees are huge)
 SKIP_DIRS = {"backups", ".git", "node_modules", "__pycache__"}
@@ -53,8 +53,10 @@ ANCHOR_SUFFIXES = {".html": (".xlsx", "_manifest.json"), ".html.superseded": (".
 MTM_PREFIXES = ("FINAL_MTM", "WINDOW_END_MTM", "MTM_FINAL", "OPEN_AT_WINDOW_END")
 HDR_GAIN_RE = re.compile(r"gain\s+(-?[\d.]+)%")
 HDR_PEAK_RE = re.compile(r"peak\s+\$(-?[\d.]+)")
+HDR_BH_RE = re.compile(r"BH\s+(-?[\d.]+)%")
 GAIN_TOL = 0.01
-TRUTH_VERSION = 4  # v4 2026-10-17: open position counted at last bar + realised reduce P&L from EVENTS; bump whenever page_truth changes: cached verdicts of older versions are recomputed
+TRUTH_VERSION = 6  # v5 2026-10-17: integer bh/gain tokens once the local v15_final_naming parses them (USER "take the decimals out of the titles")
+# v4 note:  # v4 2026-10-17: open position counted at last bar + realised reduce P&L from EVENTS; bump whenever page_truth changes: cached verdicts of older versions are recomputed
 LOG = Path.home() / "logs" / "board_name_truth_guard.log"
 
 
@@ -73,6 +75,60 @@ def log(msg: str, dry: bool) -> None:
             fh.write(line + "\n")
     except OSError:
         pass
+
+
+def round_half_away(v: float) -> int:
+    f = float(v)
+    return int(math.floor(abs(f) + 0.5)) * (-1 if f < 0 else 1)
+
+
+def fmt_int_token(v: float) -> str:
+    r = round_half_away(v)
+    return ("m" if r < 0 else "") + str(abs(r))
+
+
+def decode_token(tok: str) -> float:
+    neg = tok.startswith("m")
+    body = tok[1:] if neg else tok
+    v = float(body.replace("p", ".")) if "p" in body else float(body)
+    if body.endswith("p"):
+        v = float(body[:-1])
+    return -v if neg else v
+
+
+INT_TOKENS_OVERRIDE = None  # tests / emergency: True|False forces the mode; None = ask the local parser
+
+
+def int_tokens_enabled(root: Path) -> bool:
+    """Integer tokens only once THIS host's tools/v15_final_naming.py (deployed by the S2 version gate) parses them, else the pilot's
+    _standing_best could not read the files. Env BOARD_TRUTH_INT_TOKENS=0/1 overrides."""
+    if INT_TOKENS_OVERRIDE is not None:
+        return bool(INT_TOKENS_OVERRIDE)
+    env = os.environ.get("BOARD_TRUTH_INT_TOKENS")
+    if env in ("0", "1"):
+        return env == "1"
+    try:
+        import importlib.util as _u
+        sp = _u.spec_from_file_location("_v15_final_naming_probe", str(Path(root) / "tools" / "v15_final_naming.py"))
+        mod = _u.module_from_spec(sp)
+        sp.loader.exec_module(mod)
+        d = mod.parse_final_matrix_name("A_LONG_bh1_gain2_t3_30d_matrix.xlsx")
+        return bool(d) and float(d.get("gain")) == 2.0 and float(d.get("bh")) == 1.0 and int(d.get("trades")) == 3
+    except Exception:
+        return False
+
+
+def int_stem(stem: str) -> str:
+    """2-decimal (or older) stem -> integer-token stem (bh and gain rounded half away from zero)."""
+    m = NAME_RE.match(stem + "_30d_matrix.html")
+    if not m:
+        return stem
+    return f"{m.group('ss')}_bh{fmt_int_token(decode_token(m.group('bh')))}_gain{fmt_int_token(decode_token(m.group('g')))}{m.group('t') or ''}"
+
+
+def has_decimals(stem: str) -> bool:
+    m = NAME_RE.match(stem + "_30d_matrix.html")
+    return bool(m) and ("p" in m.group("bh") or "p" in m.group("g"))
 
 
 def fmt_token(v: float) -> str:
@@ -195,7 +251,7 @@ def max_dd(trades, base: float) -> float:
     return min(100.0, worst)
 
 
-def page_truth(path: Path) -> dict:
+def page_truth(path: Path, force_peak_method: str | None = None) -> dict:
     """Everything the guard decides on, computed from the page alone."""
     try:
         text = path.read_text(errors="replace")
@@ -206,7 +262,9 @@ def page_truth(path: Path) -> dict:
         return {"status": "NO_LEDGER", "why": "no parseable const TRADES"}
     events = js_const(text, "EVENTS") or []
     closed = [t for t in trades if isinstance(t, dict) and t.get("pnl_dollars") is not None and not is_unrealised(t)]
-    countable_events = [e for e in events if isinstance(e, dict) and not e.get("unrealised")]
+    # COUNT_MTM (USER 2026-10-17 latest rule): an end-of-window mark is a close at the last bar wherever the page filed it — older pages
+    # put it in EVENTS as an `unrealised` UNREALISED_MARK, newer ones in TRADES
+    countable_events = [e for e in events if isinstance(e, dict) and (COUNT_MTM or not e.get("unrealised"))]
     # realised partial reduces are drawn on the page as reduce markers and live in EVENTS — they are trades shown on the page and
     # the header counts them (2026-10-17: 1000FLOKIUSDT_LONG $100.74 TRADES + $3.23 reduce P&L = 37.13% = header)
     realised_events = [e for e in countable_events if e.get("pnl_dollars") is not None and not e.get("seeded_prewindow") and not is_unrealised(e)]
@@ -217,6 +275,8 @@ def page_truth(path: Path) -> dict:
     mg, mp = HDR_GAIN_RE.search(seg), HDR_PEAK_RE.search(seg)
     hdr_gain = float(mg.group(1)) if mg else None
     hdr_peak = float(mp.group(1)) if mp else None
+    mb = HDR_BH_RE.search(seg)
+    hdr_bh = float(mb.group(1)) if mb else None
     pks = event_peaks(closed + countable_events)
     # the header's printed "peak $X" decides which replay the page was written with; cost basis when it matches or is absent
     # which replay wrote this page: the one whose peak rounds to the printed "$X" AND reproduces the printed gain; cost basis wins ties
@@ -225,9 +285,9 @@ def page_truth(path: Path) -> dict:
         peak_ok = hdr_peak is None or abs(round(pk) - hdr_peak) <= 1.0
         gain_ok = hdr_gain is not None and pk > 0 and abs(round(pnl / pk * 100.0, 2) - hdr_gain) <= GAIN_TOL + 1e-9
         return (peak_ok and gain_ok, peak_ok)
-    peak_method = max(("cost", "price"), key=lambda m: (_fits(m), m == "cost"))
+    peak_method = force_peak_method or max(("cost", "price"), key=lambda m: (_fits(m), m == "cost"))
     peak = pks[peak_method]
-    out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "closed_trades": len(closed), "peak_method": peak_method, "reduce_pnl_dollars": reduce_pnl, "realised_reduce_events": len(realised_events), "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t)), "mtm_rows_counted": sum(1 for t in closed if isinstance(t, dict) and (t.get("unrealised") is True or str(t.get("exit_reason") or "").upper().startswith(MTM_PREFIXES)))}
+    out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "header_bh": hdr_bh, "closed_trades": len(closed), "peak_method": peak_method, "reduce_pnl_dollars": reduce_pnl, "realised_reduce_events": len(realised_events), "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t)), "mtm_rows_counted": sum(1 for t in closed if isinstance(t, dict) and (t.get("unrealised") is True or str(t.get("exit_reason") or "").upper().startswith(MTM_PREFIXES)))}
     if peak <= 0:
         out.update(status="NO_PEAK", why="page peak is 0")
         return out
@@ -254,6 +314,7 @@ class Guard:
             self.state.update(json.loads(state_path.read_text()))
         except (OSError, ValueError):
             pass
+        self.int_mode = int_tokens_enabled(self.roots[0])
         self.peers_loaded = 0
         for pf in sorted((state_path.parent / "board_name_truth_peers").glob("*.json")):
             try:
@@ -421,7 +482,11 @@ class Guard:
                     continue  # unprovable page: its copies still follow the map in pass 2
                 handled.update(members)
                 m = NAME_RE.match(page.name)
-                new_stem = f"{m.group('ss')}_bh{m.group('bh')}_gain{t['token']}{m.group('t') or ''}"
+                if self.int_mode:
+                    _bh = t.get("header_bh") if t.get("header_bh") is not None else decode_token(m.group("bh"))
+                    new_stem = f"{m.group('ss')}_bh{fmt_int_token(_bh)}_gain{fmt_int_token(t['G'])}{m.group('t') or ''}"
+                else:
+                    new_stem = f"{m.group('ss')}_bh{m.group('bh')}_gain{t['token']}{m.group('t') or ''}"
                 quarantine = t["status"] == "QUARANTINE"
                 in_q = QDIR in page.parts
                 true_stems.add(new_stem)
@@ -469,6 +534,10 @@ class Guard:
                 if info and stem in true_stems and QDIR not in p.parts:
                     continue  # a page proves this name true (old-format names can collide) — never chain-rename it away
                 target_stem = info["new"] if info else stem
+                if self.int_mode and has_decimals(target_stem):
+                    target_stem = int_stem(target_stem)  # page-less copy (or a peer's 2-decimal target): integer tokens from its own name
+                elif not self.int_mode and not has_decimals(target_stem) and target_stem != stem:
+                    continue  # integer target from a peer whose parser is ahead of ours: wait for our own gate deploy
                 q = target_stem in self.state["quarantined"] and QDIR not in p.parts
                 if target_stem == stem and not q:
                     continue
@@ -487,7 +556,7 @@ class Guard:
             tmp = mp.with_name(mp.name + ".tmp")
             tmp.write_text(json.dumps({"host": socket.gethostname(), "utc": now_utc(), "map": {k: v for k, v in self.state["map"].items() if not v.get("via_peer")}, "quarantined": {k: v for k, v in self.state["quarantined"].items() if not (isinstance(v, dict) and v.get("via_peer"))}}, default=str))
             os.replace(tmp, mp)
-        summary = {"utc": now_utc(), "host": socket.gethostname(), "dry_run": self.dry, "roots": [str(r) for r in self.roots], "files_scanned": len(files), **self.stats, "peer_maps": self.peers_loaded, "actions": len(self.actions), "alerts": len(self.alerts)}
+        summary = {"utc": now_utc(), "host": socket.gethostname(), "dry_run": self.dry, "roots": [str(r) for r in self.roots], "files_scanned": len(files), "int_tokens": self.int_mode, **self.stats, "peer_maps": self.peers_loaded, "actions": len(self.actions), "alerts": len(self.alerts)}
         log("SUMMARY " + json.dumps(summary), self.dry)
         return {"summary": summary, "actions": self.actions, "alerts": self.alerts}
 
