@@ -395,7 +395,7 @@ def main():
             lts = by_key.get((ss, acct)) or []
             carried = [t for t in lts if t["pre_window"] or t["entry_ts"] < t_from]
             agg = collections.Counter()
-            pair_rows, seg_stats = [], []
+            pair_rows, seg_stats, size_mult = [], [], []
             for s in segs:
                 rr = reruns.get((ss, s["md5"])) or {}
                 if rr.get("status") != "OK":
@@ -433,8 +433,12 @@ def main():
                     agg["matched_live_pnl"] += l["net_pnl"] if not l["is_open"] else 0.0
                     if v.get("pct") is not None:
                         agg["matched_vec_pnl_at_live_size"] += v["pct"] / 100.0 * (l["notional"] or 0.0)
-                    agg["matched_vec_pnl_at_vec_size"] += v["pnl_dollars"] if v.get("exit_ts") else 0.0
+                    agg["matched_vec_engine_usd"] += v["pnl_dollars"] if v.get("exit_ts") else 0.0
+                    agg["matched_vec_pct_sum"] += (v.get("pct") or 0.0) if v.get("exit_ts") else 0.0
+                    agg["matched_live_pct_sum"] += (l.get("net_pct") or 0.0) if not l["is_open"] else 0.0
                     agg["entry_bar_delta_abs"] += abs(d)
+                    if v.get("deployed") and l.get("notional"):
+                        size_mult.append(float(l["notional"]) / float(v["deployed"]))
                 for j in lonly:
                     l = lin[j]
                     pr = trip_view(l, None, None, None, "LIVE_ONLY")
@@ -447,7 +451,8 @@ def main():
                 for i in vonly:
                     v = vts[i]
                     agg["vec_only"] += 1
-                    agg["vec_only_pnl_at_vec_size"] += v["pnl_dollars"] if v.get("exit_ts") else 0.0
+                    agg["vec_only_engine_usd"] += v["pnl_dollars"] if v.get("exit_ts") else 0.0
+                    agg["vec_only_pct_sum"] += (v.get("pct") or 0.0) if v.get("exit_ts") else 0.0
                     if v.get("exit_ts"):
                         agg["vec_only_gain" if v["pnl_dollars"] > 0 else "vec_only_loss"] += 1
                     lg = twin_log.get((acct, ss)) or set()
@@ -490,8 +495,12 @@ def main():
                          "live_gain": agg["live_gain"], "live_loss": agg["live_loss"], "vec_gain": agg["vec_gain"], "vec_loss": agg["vec_loss"],
                          "sign_flip": agg["sign_flip"], "live_net_pnl_usd": round(live_net, 4),
                          "matched_live_pnl": round(agg["matched_live_pnl"], 4), "matched_vec_pnl_at_live_size": round(agg["matched_vec_pnl_at_live_size"], 4),
-                         "matched_vec_pnl_at_vec_size": round(agg["matched_vec_pnl_at_vec_size"], 4),
-                         "live_only_pnl": round(agg["live_only_pnl"], 4), "vec_only_pnl_at_vec_size": round(agg["vec_only_pnl_at_vec_size"], 4)})
+                         "matched_live_pct_sum": round(agg["matched_live_pct_sum"], 3), "matched_vec_pct_sum": round(agg["matched_vec_pct_sum"], 3),
+                         "exec_diff_usd": round(agg["matched_live_pnl"] - agg["matched_vec_pnl_at_live_size"], 4),
+                         "size_mult_median": (round(sorted(size_mult)[len(size_mult) // 2], 3) if size_mult else None),
+                         "matched_vec_engine_usd": round(agg["matched_vec_engine_usd"], 4),
+                         "live_only_pnl": round(agg["live_only_pnl"], 4), "vec_only_pct_sum": round(agg["vec_only_pct_sum"], 3),
+                         "vec_only_engine_usd": round(agg["vec_only_engine_usd"], 4)})
         detail[ss] = srec
     stamp = a.tag
     jpath, cpath, dpath, mpath = (out_dir / f"retrace_{stamp}.json", out_dir / f"retrace_symside_{stamp}.csv",
@@ -502,7 +511,8 @@ def main():
             "twin_log_keys": len(twin_log), "errors": errors[:200], "n_errors": len(errors),
             "caveats": ["L2 runs each segment's set over the whole twin store from its anchor (what the sheet claims); trips are attributed to the segment in force at their decision bar.",
                         "Claim windows (usually 30 d) differ from the twin store span; span_days is reported next to every rerun.",
-                        "Sizing is not parity (BIBLE 68.3a): matched_vec_pnl_at_live_size vs _at_vec_size is the size term, never a divergence verdict.",
+                        "Sizing is not parity (BIBLE 68.3a): the size term is matched_live_pnl vs matched_vec_pnl_at_live_size (the vector's own % on live's notional); it is never a divergence verdict.",
+                        "*_engine_usd are the engine's dollars on ITS capital base (START_CAPITAL x sizing), NOT account dollars - they are kept for internal comparison only and must never be read as account P&L. Percent sums are the comparable vector figures.",
                         "Exchange truth only (userTrades/allOrders/positionRisk); the internal ledger is never used as truth."]}
     jpath.write_text(json.dumps({"meta": meta, "sym_sides": detail}, default=str, indent=1))
     if rows:
@@ -537,7 +547,7 @@ def _verdict(agg, metric_verdicts, n_live_trips, segs):
         return "EXIT_BAR_DRIFT"
     if agg["matched"] >= 3 and agg["sign_flip"] / max(1, agg["matched"]) > 0.3:
         return "RESULT_SIGN_FLIP"
-    if agg["matched"] >= 3 and agg["matched_live_pnl"] < 0 <= agg["matched_vec_pnl_at_vec_size"]:
+    if agg["matched"] >= 3 and agg["matched_live_pnl"] < 0 <= agg["matched_vec_pct_sum"]:
         return "SAME_TRADES_LIVE_LOSES"
     if agg["matched"] == 0 and n_live_trips == 0:
         return "NO_TRADES_IN_WINDOW"
@@ -561,7 +571,8 @@ def report_md(meta, rows, detail, trips, daily, late_reasons=None, late_usd=None
                   "exit_intrabar", "exit_late", "exit_early", "exit_open_disagree"):
             tot[k] += r[k] or 0
             per_acct[r["acct"]][k] += r[k] or 0
-        for k in ("live_net_pnl_usd", "matched_live_pnl", "matched_vec_pnl_at_live_size", "matched_vec_pnl_at_vec_size", "live_only_pnl", "vec_only_pnl_at_vec_size"):
+        for k in ("live_net_pnl_usd", "matched_live_pnl", "matched_vec_pnl_at_live_size", "matched_live_pct_sum", "matched_vec_pct_sum",
+                  "live_only_pnl", "vec_only_pct_sum", "exec_diff_usd"):
             tot[k] += r[k] or 0.0
             per_acct[r["acct"]][k] += r[k] or 0.0
         tot["rows"] += 1
@@ -578,19 +589,21 @@ def report_md(meta, rows, detail, trips, daily, late_reasons=None, late_usd=None
     A(f"- exits: live GAIN {tot['live_gain']} / LOSS {tot['live_loss']} (WR {100.0 * tot['live_gain'] / max(1, tot['live_gain'] + tot['live_loss']):.0f}%)"
       f" vs vector GAIN {tot['vec_gain']} / LOSS {tot['vec_loss']} (WR {100.0 * tot['vec_gain'] / max(1, tot['vec_gain'] + tot['vec_loss']):.0f}%)"
       f" · sign flips on matched trips {tot['sign_flip']}")
-    A(f"- matched trips: live **{tot['matched_live_pnl']:+.2f} $** vs the same vector trips **{tot['matched_vec_pnl_at_live_size']:+.2f} $** at live size"
-      f" / **{tot['matched_vec_pnl_at_vec_size']:+.2f} $** at vector size")
+    A(f"- matched trips: live **{tot['matched_live_pnl']:+.2f} $** vs the same vector trips priced at live's own notional"
+      f" **{tot['matched_vec_pnl_at_live_size']:+.2f} $** · per-trip return summed: live {tot['matched_live_pct_sum']:+.1f}% vs vector {tot['matched_vec_pct_sum']:+.1f}%")
+    A(f"- executing the matched trips at a different bar/price cost **{tot['exec_diff_usd']:+.2f} $** (live $ minus the vector's own return on live's notional)")
     A(f"- live-only trips (no vector decision) **{tot['live_only_pnl']:+.2f} $** over {tot['live_only']} trips"
-      f" · vector trips live never took {tot['vec_only']} worth **{tot['vec_only_pnl_at_vec_size']:+.2f} $** at vector size"
+      f" · vector trips live never took {tot['vec_only']}, summing **{tot['vec_only_pct_sum']:+.1f}%** of deployed capital"
       f" (of those, {tot['vec_only_no_twin_decision']} had no [VEC_EXACT] decision in the live log at all)\n")
     A("## Per account\n")
-    A("| acct | rows | live trips | vec trips | matched | entry on bar | exit on bar | exit late | live WR | vec WR | live net $ | matched live $ | matched vec $ (vec size) | live-only $ | vec-only $ |")
-    A("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    A("| acct | rows | live trips | vec trips | matched | entry on bar | exit on bar | exit late | live WR | vec WR | live net $ | matched live $ | matched vec $ @live size | matched live % | matched vec % | live-only $ | vec-only % |")
+    A("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for acct in sorted(per_acct):
         c = per_acct[acct]
         A(f"| {acct} | {c['rows']} | {c['n_live_trips']} | {c['n_vec_trips']} | {c['matched']} | {c['same_entry_bar']} | {c['same_exit_bar'] + c['exit_intrabar']} | {c['exit_late']} |"
           f" {100.0 * c['live_gain'] / max(1, c['live_gain'] + c['live_loss']):.0f}% | {100.0 * c['vec_gain'] / max(1, c['vec_gain'] + c['vec_loss']):.0f}% |"
-          f" {c['live_net_pnl_usd']:+.2f} | {c['matched_live_pnl']:+.2f} | {c['matched_vec_pnl_at_vec_size']:+.2f} | {c['live_only_pnl']:+.2f} | {c['vec_only_pnl_at_vec_size']:+.2f} |")
+          f" {c['live_net_pnl_usd']:+.2f} | {c['matched_live_pnl']:+.2f} | {c['matched_vec_pnl_at_live_size']:+.2f} |"
+          f" {c['matched_live_pct_sum']:+.1f}% | {c['matched_vec_pct_sum']:+.1f}% | {c['live_only_pnl']:+.2f} | {c['vec_only_pct_sum']:+.1f}% |")
     A("")
     A("## Verdicts\n")
     vc = collections.Counter(r["verdict"] for r in rows)
@@ -613,12 +626,12 @@ def report_md(meta, rows, detail, trips, daily, late_reasons=None, late_usd=None
         A(f"| {v} | {n} |")
     A("")
     A("## Worst 25 by Binance net $\n")
-    A("| sym_side | acct | verdict | claim gain% | rerun gain% (span d) | claim trades | rerun trades | live/vec trips | matched | exits on bar | live G/L | vec G/L | live net $ | vec $ @vec size |")
+    A("| sym_side | acct | verdict | claim gain% | rerun gain% (span d) | claim trades | rerun trades | live/vec trips | matched | exits on bar | live G/L | vec G/L | live net $ | matched vec $ @live size |")
     A("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for r in sorted(rows, key=lambda r: r["live_net_pnl_usd"] or 0.0)[:25]:
         A(f"| {r['sym_side']} | {r['acct']} | {r['verdict']} | {_f(r['claim_gain_pct'])} | {_f(r['rerun_gain_pct'])} ({_f(r['rerun_span_days'],1)}) |"
           f" {r['claim_trades']} | {r['rerun_trades']} | {r['n_live_trips']}/{r['n_vec_trips']} | {r['matched']} |"
-          f" {r['same_exit_bar'] + r['exit_intrabar']} | {r['live_gain']}/{r['live_loss']} | {r['vec_gain']}/{r['vec_loss']} | {r['live_net_pnl_usd']:+.2f} | {r['matched_vec_pnl_at_vec_size']:+.2f} |")
+          f" {r['same_exit_bar'] + r['exit_intrabar']} | {r['live_gain']}/{r['live_loss']} | {r['vec_gain']}/{r['vec_loss']} | {r['live_net_pnl_usd']:+.2f} | {r['matched_vec_pnl_at_live_size']:+.2f} |")
     A("")
     A("## Exit-bar disagreement on matched trips (top 20 by live loss)\n")
     bad = [t for t in trips if t["kind"] == "MATCHED" and t["exit_match"] != "SAME_BAR"]

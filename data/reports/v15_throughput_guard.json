@@ -1,146 +1,65 @@
 {
- "at": "2026-10-17T21:11:15Z",
+ "at": "2026-10-17T22:11:25Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 6,
-   "improved_per_hour": 6.0,
-   "published_n": 7,
-   "flat_or_worse": 1,
-   "unknown": 0,
-   "boards_running": [
-    "CRWD_LONG",
-    "EDUUSDT_LONG"
-   ],
-   "mem_avail_mb": 20803,
-   "load1": 18.9,
-   "nproc": 16,
-   "slots": "2/4",
-   "binding_reason": "scheduler mem guard (disk 20179 MB, mem 20411 MB, est_pair 22400 MB) \u2014 slots 2/4",
-   "error": null,
-   "published": [
-    {
-     "symside": "AU_SHORT",
-     "at": "2026-10-17T20:13:10Z",
-     "baseline": 5.727431622889058,
-     "final": 28.064004364457418,
-     "state": "improved"
-    },
-    {
-     "symside": "CDW_LONG",
-     "at": "2026-10-17T20:36:30Z",
-     "baseline": 21.412116868675028,
-     "final": 21.412116868675028,
-     "state": "flat_or_worse"
-    },
-    {
-     "symside": "CRK_LONG",
-     "at": "2026-10-17T20:49:38Z",
-     "baseline": 8.734175102458678,
-     "final": 27.476931480512977,
-     "state": "improved"
-    },
-    {
-     "symside": "MP_SHORT",
-     "at": "2026-10-17T20:26:38Z",
-     "baseline": 24.362248808254346,
-     "final": 49.54041200852861,
-     "state": "improved"
-    },
-    {
-     "symside": "RBLX_LONG",
-     "at": "2026-10-17T21:01:38Z",
-     "baseline": 32.02542803301823,
-     "final": 54.30310999791713,
-     "state": "improved"
-    },
-    {
-     "symside": "RBLX_SHORT",
-     "at": "2026-10-17T21:06:13Z",
-     "baseline": -4.258883918979735,
-     "final": 17.308105696501226,
-     "state": "improved"
-    },
-    {
-     "symside": "XOP_LONG",
-     "at": "2026-10-17T20:42:48Z",
-     "baseline": 5.968624109373126,
-     "final": 14.851217838008719,
-     "state": "improved"
-    }
-   ],
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "ssh: connect to host 127.0.0.1 port 2201: Connection refused\n",
+   "published": null,
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 4.7,
-   "last_improved_symside": "RBLX_SHORT",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 17.3,
-   "improved_gap_min_max_24h": 170.7,
-   "improved_finishes_24h": 35,
-   "board_cpu_s_median_24h": 2703.2,
-   "board_wall_s_median_24h": 970.3321108818054,
-   "board_cores": 5.01,
-   "nonboard_cores_competing": 2.21,
-   "nonboard_cores_niced": 2.88,
-   "cores_by_bucket": {
-    "other": 0.12,
-    "boards": 5.01,
-    "live_helpers": 1.14,
-    "klines_append": 0.95
-   },
-   "cores_by_bucket_niced": {
-    "other": 1.09,
-    "klines_vault": 1.79
-   }
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
   },
   "s2": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [
-    "ZROUSDT_SHORT"
-   ],
-   "mem_avail_mb": 20878,
-   "load1": 2.31,
-   "nproc": 16,
-   "slots": "1/6",
-   "binding_reason": "scheduler mem guard (disk 52801 MB, mem 20887 MB, est_pair 19118 MB) \u2014 slots 1/6",
-   "error": null,
-   "published": [
-    {
-     "symside": "GALAUSDT_LONG",
-     "at": "2026-10-17T20:22:54Z",
-     "baseline": 59.13304096391141,
-     "final": 68.573504062272,
-     "state": "improved"
-    },
-    {
-     "symside": "ZROUSDT_SHORT",
-     "at": "2026-10-17T20:43:20Z",
-     "baseline": 24.12725240509489,
-     "final": 45.225358418297255,
-     "state": "improved"
-    }
-   ],
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "mux_client_request_session: read from master failed: Broken pipe\nConnection closed by UNKNOWN port 65535\n",
+   "published": null,
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 27.9,
-   "last_improved_symside": "ZROUSDT_SHORT",
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 13.5,
-   "improved_gap_min_max_24h": 311.6,
-   "improved_finishes_24h": 40,
-   "board_cpu_s_median_24h": 2226.8,
-   "board_wall_s_median_24h": 741.8035221099854,
-   "board_cores": 1.0,
-   "nonboard_cores_competing": 0.04,
-   "nonboard_cores_niced": 0,
-   "cores_by_bucket": {
-    "boards": 1.0,
-    "other": 0.04
-   },
-   "cores_by_bucket_niced": {}
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
   }
  },
  "under_target": [
@@ -148,6 +67,7 @@
   "s2"
  ],
  "cadence_breach": [
+  "s1",
   "s2"
  ]
 }
