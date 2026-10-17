@@ -81,7 +81,12 @@ def fmt_token(v: float) -> str:
     return ("m" if r < 0 else "") + f"{abs(r):.2f}".replace(".", "p")
 
 
+COUNT_MTM = os.environ.get("BOARD_TRUTH_COUNT_MTM", "0") == "1"  # USER 2026-10-17 spec: G excludes unrealised/FINAL_MTM rows
+
+
 def is_unrealised(row) -> bool:
+    if COUNT_MTM:
+        return False
     if not isinstance(row, dict):
         return False
     if row.get("unrealised") is True or row.get("is_mtm") is True:
@@ -317,10 +322,14 @@ class Guard:
         self._act("RENAME" if src.parent == dst.parent else "MOVE", src, dst, note)
         if self.dry:
             return
-        self.backup(src)
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        st = src.stat()
-        os.rename(src, dst)
+        try:
+            self.backup(src)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            st = src.stat()
+            os.rename(src, dst)
+        except FileNotFoundError:
+            log(f"VANISHED {src} (moved by another writer mid-run)", self.dry)
+            return
         if dst.name.endswith(("_manifest.json", "_manifest.json.superseded")) and truth is not None:
             self.stamp_manifest(dst, src.name, truth, st)
 
@@ -328,8 +337,11 @@ class Guard:
         self._act("DELETE", src, None, note)
         if self.dry:
             return
-        self.backup(src)
-        src.unlink()
+        try:
+            self.backup(src)
+            src.unlink()
+        except FileNotFoundError:
+            log(f"VANISHED {src} (moved by another writer mid-run)", self.dry)
 
     def stamp_manifest(self, p: Path, old_name: str, truth: dict, st) -> None:
         try:
@@ -352,7 +364,10 @@ class Guard:
 
     # ---------- core ----------
     def truth_for(self, p: Path) -> dict:
-        st = p.stat()
+        try:
+            st = p.stat()
+        except FileNotFoundError:
+            return {"status": "UNREADABLE", "why": "vanished mid-scan"}
         key = str(p)
         c = self.state["cache"].get(key)
         if c and c.get("size") == st.st_size and c.get("mtime") == st.st_mtime:
@@ -382,7 +397,11 @@ class Guard:
                 members = [page] + [sufs[c] for c in companions if c in sufs]
                 if asuf == ".html":
                     members += [p for s, p in sufs.items() if s not in ANCHOR_SUFFIXES and s not in (".xlsx", "_manifest.json", ".xlsx.superseded", "_manifest.json.superseded")]
-                if any(now - x.stat().st_mtime < self.min_age for x in members):
+                try:
+                    young = any(now - x.stat().st_mtime < self.min_age for x in members)
+                except FileNotFoundError:
+                    continue  # another writer moved it mid-scan; next run sees the new state
+                if young:
                     self.stats["young_skipped"] += 1
                     handled.update(members)
                     continue
@@ -430,9 +449,12 @@ class Guard:
         # pass 2: copies without their own page follow the map (old names from syncs die here)
         for (d, stem), sufs in groups.items():
             for suf, p in sufs.items():
-                if p in handled or not p.exists():
+                if p in handled:
                     continue
-                if now - p.stat().st_mtime < self.min_age:
+                try:
+                    if now - p.stat().st_mtime < self.min_age:
+                        continue
+                except FileNotFoundError:
                     continue
                 info = self.state["map"].get(stem)
                 if info and stem in true_stems and QDIR not in p.parts:

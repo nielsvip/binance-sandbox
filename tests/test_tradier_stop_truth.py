@@ -244,10 +244,24 @@ def test_stocks_no_board_entry_gate_never_touches_exits():
     assert "_lb_ok, _lb_why = True," in body, "a gate error must fail OPEN, never stop trading"
 
 
-def test_stocks_no_board_gate_ships_off():
-    """What keeps the gate off is the VALUE, not the absence of the field. binance-21 added
-    `TRADIER_NO_BOARD_ENTRY_BLOCK: bool = False` at config_tradier.py:2967 on 2026-10-16; the gate still cannot
-    fire. Flipping it to True is a deliberate one-line change the user makes."""
+def test_stocks_no_board_gate_is_on_and_stays_narrow():
+    """ENABLED 2026-10-17, reviewed with the operator after it was flipped unannounced at 00:48Z.
+
+    What decides this is the VALUE, not the presence of the field (added as False at config_tradier.py:2967 on
+    2026-10-16, flipped to True on 10-17). It was left ON because the blast radius was MEASURED rather than
+    argued: of 131 tradeable stock sym_sides, 108 pass, and only **16** are refused on the unambiguous
+    NO_LATEST_BOARD branch (ADP_LONG, APA_LONG, AU_SHORT, COHR_SHORT, CRK_LONG, EOG_LONG, INTC_SHORT, KGC_SHORT,
+    MA_LONG, MP_SHORT, MRVL_LONG, NVDA_SHORT, RBLX_SHORT, SLV_SHORT, XLE_LONG, XOP_LONG) — all 16 pinned into the
+    scheduler's operator queue the same day so they get a board before Monday's open. The 7 LIVE_SET_NE_BOARD
+    sym_sides are deliberately NOT refused.
+
+    This stays a tripwire in BOTH directions: the value is pinned, so flipping it again — on or off — has to be a
+    decision someone makes here, with the measurement redone. The guards below are what keep it narrow."""
     from config_tradier import TradierConfig
 
-    assert not bool(getattr(TradierConfig(), "TRADIER_NO_BOARD_ENTRY_BLOCK", False)), "the gate ships OFF; enabling it is the user's call"
+    assert bool(getattr(TradierConfig(), "TRADIER_NO_BOARD_ENTRY_BLOCK", False)), \
+        "the no-board entry gate was reviewed ON 2026-10-17; turning it off is a decision, not a drive-by edit"
+    # the two properties that bound it: only the unambiguous branch refuses, and a gate bug can never halt trading
+    body = MANAGE[MANAGE.index("TRADIER_NO_BOARD_ENTRY_BLOCK"):][:1400]
+    assert 'startswith("NO_LATEST_BOARD")' in body, "only NO_LATEST_BOARD may refuse — LIVE_SET_NE_BOARD must not"
+    assert "_lb_ok, _lb_why = True," in body, "the gate must fail OPEN on error, never stop trading"
