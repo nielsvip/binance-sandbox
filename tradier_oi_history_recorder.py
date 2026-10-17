@@ -9,7 +9,7 @@ NEAREST-BY-DATE historical snapshot per backtest bar, instead of today's
 stale walls. This is the path to making the OI signal backtest-able.
 
 Run via cron once daily (e.g., 23:50 UTC after end-of-day):
-    50 23 * * * /home/niels/.conda/envs/binance_env/bin/python /home/niels/binance-sandbox/tradier_oi_history_recorder.py
+    50 23 * * * /home/niels/.conda/envs/binance_env_mac/bin/python /home/niels/binance-sandbox/tradier_oi_history_recorder.py
 
 Or run manually any time. Idempotent: if today's directory already exists,
 script exits without overwriting (use --force to overwrite).

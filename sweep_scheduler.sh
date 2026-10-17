@@ -30,7 +30,7 @@ fi
 
 # Machine-specific config
 if [[ "$MACHINE" == "s1" ]]; then
-    PY="/home/niels/.conda/envs/binance_env/bin/python"
+    PY="/home/niels/.conda/envs/binance_env_mac/bin/python"
     BASE="/home/niels/binance-sandbox"
     WORKERS_CRYPTO=8
     WORKERS_TRADIER=4

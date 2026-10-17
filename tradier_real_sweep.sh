@@ -4,7 +4,7 @@
 # Every row = reproducible command with ALL parameters
 # ═══════════════════════════════════════════════════════════════════
 
-PY="$HOME/.conda/envs/binance_env/bin/python3"
+PY="$HOME/.conda/envs/binance_env_mac/bin/python3"
 [ -f "$PY" ] || PY="$HOME/miniconda3/envs/binance_env/bin/python3"
 BASE="$HOME/binance"
 RESULTS="$HOME/tradier_real_sweep"

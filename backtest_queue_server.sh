@@ -5,7 +5,7 @@
 # DEADLINE: Must complete by 2026-03-30 00:00 UTC
 
 set -e
-PYTHON="/home/niels/.conda/envs/binance_env/bin/python"
+PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
 SANDBOX="/home/niels/binance-sandbox"
 MAIN="/home/niels/binance"
 WORKERS=15

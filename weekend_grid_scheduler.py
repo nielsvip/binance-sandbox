@@ -25,7 +25,7 @@ from typing import List, Dict, Optional
 
 IS_SERVER = platform.system() == "Linux"
 BASE = Path("/home/niels/binance-sandbox") if IS_SERVER else Path("/Users/niels/Documents/binance")
-PYTHON = "/home/niels/.conda/envs/binance_env/bin/python" if IS_SERVER else "/opt/anaconda3/envs/binance_env/bin/python"
+PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python" if IS_SERVER else "/opt/anaconda3/envs/binance_env/bin/python"
 GRID_DIR = BASE / "data" / "weekend_grid"
 GRID_DIR.mkdir(parents=True, exist_ok=True)
 STATUS_FILE = GRID_DIR / "scheduler_status.json"

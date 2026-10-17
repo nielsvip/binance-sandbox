@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 
 SBX = Path("/home/niels/binance-sandbox")
-PY = "/home/niels/.conda/envs/binance_env/bin/python"
+PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 ENGINE = str(SBX / "backtest_v8_engine_FOTEST.py")
 NPZ = str(SBX / "backtest_v8" / "indicators")
 

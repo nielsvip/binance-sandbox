@@ -6,7 +6,7 @@
 # Outputs CSV summary after EACH run for live spreadsheet tracking.
 # ═══════════════════════════════════════════════════════════════════
 
-PY="$HOME/.conda/envs/binance_env/bin/python3"
+PY="$HOME/.conda/envs/binance_env_mac/bin/python3"
 [ -f "$PY" ] || PY="$HOME/miniconda3/envs/binance_env/bin/python3"
 BASE="$HOME/binance"
 RESULTS_DIR="$HOME/tradier_sweep_results"

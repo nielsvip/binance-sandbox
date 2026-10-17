@@ -46,7 +46,7 @@ SERVERS = {
         "host": "s1-int",
         "user": "niels",
         "base": "/home/niels/binance-sandbox",
-        "python": "/home/niels/.conda/envs/binance_env/bin/python",
+        "python": "/home/niels/.conda/envs/binance_env_mac/bin/python",
         "autochain_screen": None,  # disabled 2026-04-22: autonomous search owns S1 resources
         "autochain_arg": "s1",
         "run_sentinel": False,

@@ -6,13 +6,13 @@
 #   bash run_crypto_sector_sweeps.sh list            — list all sectors and symbol counts
 #
 # Must be run on S1 (s1-int) in /home/niels/binance-sandbox/
-# Python: /home/niels/.conda/envs/binance_env/bin/python
+# Python: /home/niels/.conda/envs/binance_env_mac/bin/python
 # Tier: crypto_sector_baseline | Start: 2022-01-01 (bear + bull market)
 # Workers: 1 per sector (safe on S1 RAM, ~10.8GB/worker peak)
 #
 # Created: 2026-05-14
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 WORKDIR=/home/niels/binance-sandbox
 SECTORS_FILE="$WORKDIR/sectors_crypto.json"
 START_DATE="2022-01-01"

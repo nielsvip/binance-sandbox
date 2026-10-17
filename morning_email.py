@@ -1974,7 +1974,7 @@ def run_scanner_if_stale():
     if data and not data.get("_stale"):
         return
     logger.info("Running options scanner...")
-    py = "/opt/anaconda3/envs/binance_env/bin/python" if platform.system() == "Darwin" else "/home/niels/.conda/envs/binance_env/bin/python"
+    py = "/opt/anaconda3/envs/binance_env/bin/python" if platform.system() == "Darwin" else "/home/niels/.conda/envs/binance_env_mac/bin/python"
     try:
         subprocess.run([py, str(BASE / "tradier_options_analyzer.py"), "scan", "--top", "30"], cwd=str(BASE), timeout=900, capture_output=True)
     except Exception as e:

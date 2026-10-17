@@ -161,7 +161,7 @@ esac
     source = source.replace(
         "SBX=/home/niels/binance-sandbox", f"SBX={shlex.quote(str(sandbox))}", 1
     ).replace(
-        "PY=/home/niels/.conda/envs/binance_env/bin/python",
+        "PY=/home/niels/.conda/envs/binance_env_mac/bin/python",
         f"PY={shlex.quote(os.environ.get('PYTHON', 'python3'))}",
         1,
     ).replace(

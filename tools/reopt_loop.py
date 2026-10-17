@@ -62,7 +62,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 SBX = Path(os.environ.get("REOPT_SBX", "/home/niels/binance-sandbox"))
-PY = os.environ.get("V8_PYTHON", "/home/niels/.conda/envs/binance_env/bin/python")
+PY = os.environ.get("V8_PYTHON", "/home/niels/.conda/envs/binance_env_mac/bin/python")
 ENGINE = str(SBX / "backtest_v8_engine_FOTEST.py")
 NPZ = str(SBX / "backtest_v8" / "indicators")
 LOGS = Path(os.environ.get("REOPT_LOGS", "/home/niels/logs"))

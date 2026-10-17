@@ -38,10 +38,10 @@ if IS_MAC:
     LOG_DIR = Path("/Users/niels/logs")
 else:
     BASE_PATH = Path("/home/niels/binance")
-    PYTHON = "/home/niels/.conda/envs/binance_env/bin/python"
+    PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
     LOG_DIR = Path("/home/niels/logs")
 SERVER = "s1-int"
-SERVER_PYTHON = "/home/niels/.conda/envs/binance_env/bin/python"
+SERVER_PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 SERVER_PATH = "/home/niels/binance"
 SERVER_SANDBOX = "/home/niels/binance-sandbox"
 DATA_DIR = BASE_PATH / "data"

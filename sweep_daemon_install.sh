@@ -18,8 +18,8 @@ SYMBOLS="${5:-fast}"
 BATCH="${6:-20}"
 
 # Detect python
-if [ -f /home/niels/.conda/envs/binance_env/bin/python3 ]; then
-    PYTHON="/home/niels/.conda/envs/binance_env/bin/python3"
+if [ -f /home/niels/.conda/envs/binance_env_mac/bin/python3 ]; then
+    PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python3"
 elif [ -f /home/niels/miniconda3/envs/binance_env/bin/python ]; then
     PYTHON="/home/niels/miniconda3/envs/binance_env/bin/python"
 else

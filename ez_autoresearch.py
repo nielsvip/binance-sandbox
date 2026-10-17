@@ -46,7 +46,7 @@ BEST_DIR = RESULTS_DIR / "best"
 BACKUPS_DIR = RESULTS_DIR / "backups"
 LOG_FILE = RESULTS_DIR / "autoresearch.log"
 
-PYTHON = "/home/niels/.conda/envs/binance_env/bin/python"
+PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 
 
 def ensure_dirs():

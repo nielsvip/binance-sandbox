@@ -1,5 +1,5 @@
 {
- "broken": 109,
+ "broken": 113,
  "checks": {
   "TEMPLATE_NO_CONFIG": [
    "REENTRY_TIER2_MAX_MINUTES_TRADIER: in templates ['STOCKS_LONG'] but in no config"
@@ -34,6 +34,8 @@
    "vec_decisions/stock_live_frames.py: was reachable from simulate_one in the baseline, not any more"
   ],
   "NOT_IN_CAT_SIDE_DEFAULTS": [
+   "PEAK_GIVEBACK_SCOPE [STOCKS_LONG]",
+   "PEAK_GIVEBACK_SCOPE [STOCKS_SHORT]",
    "QTY_STREAK_LOSS_COUNT [CRYPTO_LONG]",
    "QTY_STREAK_LOSS_COUNT [CRYPTO_SHORT]",
    "QTY_STREAK_LOSS_COUNT [STOCKS_LONG]",
@@ -112,17 +114,19 @@
   "COVERAGE": [
    "ACCOUNT_SIDE_MAPPING: wired live+vec (['vec_decisions/cash_settlement.py:189(board_account)'] / ['vec_decisions/cash_settlement.py:189(board_account)']) but in no template",
    "EXIT_DUST_USD: wired live+vec (['ez_manage.py:3498(ez_vigilance_record_close)'] / ['vec_decisions/qty_quantizers.py:186(live_record_close)']) but in no template",
+   "LOSS_PRONE_ENTRY_FILTER_ENABLED: wired live+vec (['loss_prone.py:107(native_entry_ok)'] / ['v12_quick_engine.py:17464(simulate_one)']) but in no template",
+   "LOSS_PRONE_ENTRY_MIN_FILTERS: wired live+vec (['vec_decisions/breakeven_lock.py:49(entry_filters_pass)'] / ['vec_decisions/breakeven_lock.py:49(entry_filters_pass)']) but in no template",
    "MAX_ORDER_VALUE_FIN: wired live+vec (['ez_manage.py:11865(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:110(max_order_usd_for)']) but in no template",
    "MAX_ORDER_VALUE_MEN: wired live+vec (['ez_manage.py:11863(get_max_order_value)'] / ['vec_decisions/small_account_sizer.py:108(max_order_usd_for)']) but in no template",
-   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8423(_air_native_carry)'] / ['v12_quick_engine.py:17652(simulate_one._open)']) but in no template",
+   "MAX_POSITION_SIZE: wired live+vec (['ez_manage.py:8423(_air_native_carry)'] / ['v12_quick_engine.py:17671(simulate_one._open)']) but in no template",
    "MIN_GAIN: wired live+vec (['ez_manage.py:23525(MultiAccountTradeManager._handle_signal_message)'] / ['vec_decisions/aug_gain_gate.py:18(threshold)']) but in no template",
-   "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11322(in_opening_buffer)'] / ['v12_quick_engine.py:17949(simulate_one)']) but in no template",
+   "OPENING_BUFFER_NO_CLOSE_MINUTES: wired live+vec (['tradier_manage.py:11336(in_opening_buffer)'] / ['v12_quick_engine.py:17968(simulate_one)']) but in no template",
    "QTY_LIVE_ORDER_CAP_MULT: wired live+vec (['vec_decisions/qty_quantizers.py:140(cap_dollar)'] / ['vec_decisions/qty_quantizers.py:140(cap_dollar)']) but in no template",
    "QTY_LIVE_POSITION_CAP_MULT: wired live+vec (['vec_decisions/qty_quantizers.py:149(cap_add_qty)'] / ['vec_decisions/qty_quantizers.py:149(cap_add_qty)']) but in no template",
-   "R2_TF_LIST: wired live+vec (['ez_manage.py:52601(process_position)'] / ['v12_quick_engine.py:16882(simulate_one)']) but in no template",
-   "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34923(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
-   "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:21871(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
-   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19503(process_position)'] / ['v12_quick_engine.py:19299(simulate_one)']) but in no template"
+   "R2_TF_LIST: wired live+vec (['ez_manage.py:52624(process_position)'] / ['v12_quick_engine.py:16887(simulate_one)']) but in no template",
+   "RECENT_REDUCTION_GUARD_USE_4BAR: wired live+vec (['ez_manage.py:34936(MultiAccountTradeManager.execute_now)'] / ['vec_decisions/wirec_execnow_guards.py:119(recent_reduction_guard_allow)']) but in no template",
+   "STDEV_BOUNCE_HTF_LIST: wired live+vec (['ez_positions_quick.py:21885(detect_stdev_bounce)'] / ['vec_decisions/check_entry_candidates_stocks__stdev_breakout_bounce.py:66(check_stdev_bounce) [UNREACHABLE]']) but in no template",
+   "STOCKS_OPENING_BUFFER_ENTRY_ENABLED: wired live+vec (['tradier_manage.py:19517(process_position)'] / ['v12_quick_engine.py:19318(simulate_one)']) but in no template"
   ],
   "TAB_FIRST_ROW_NOT_DEFAULT": [],
   "TAB_NO_ORANGE_ROWS": []
@@ -229,7 +233,7 @@
    "WS_URL"
   ],
   "VEC_MODULES_NEVER_CALLED_LEGACY (known baseline)": [
-   "126 modules (list in meta.vec_modules_never_called_from_simulate_one)"
+   "125 modules (list in meta.vec_modules_never_called_from_simulate_one)"
   ]
  }
 }

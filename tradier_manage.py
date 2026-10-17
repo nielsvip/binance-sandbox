@@ -247,6 +247,20 @@ _JSON_MTIME_CACHE: Dict[str, tuple] = {}  # 2026-10-14: path -> (mtime_ns, size,
 _S1_TS_CANDS_CACHE: Dict[str, tuple] = {}
 
 
+def _peak_giveback_scope_ok(cfg_or_scope, position_key, venue):
+    """2026-10-17 PEAK_GIVEBACK_SCOPE (pilot-tested, twin of v12_quick_engine): "loss_prone" covers only positions opened by a
+    function flagged in data/loss_prone_entries.json; "all" (default) covers every position."""
+    sc = cfg_or_scope if isinstance(cfg_or_scope, str) else getattr(cfg_or_scope, "PEAK_GIVEBACK_SCOPE", "all")
+    if str(sc or "all").strip().lower() != "loss_prone":
+        return True
+    try:
+        import loss_prone
+
+        return bool(loss_prone.position_is_loss_prone(str(position_key).split(":")[0], position_key, venue)[0])
+    except Exception:
+        return True
+
+
 def _s1_timestamped_candidates():
     """Newest-first S1 timestamped indicator files, memoised for a few seconds.
 
@@ -34625,7 +34639,7 @@ class StockStrategy:
             _pgp_min_peak = float(_cfg_auto("PEAK_GIVEBACK_MIN_PEAK_PCT", 0.3))
             _be_grace = float(_cfg_auto("BREAKEVEN_GRACE_MINUTES", 15.0))
             _pgp_drop = float(_cfg_auto("PEAK_GIVEBACK_DROP_PCT", 2.0))
-            _pgp_hard_zero = bool(_cfg_auto("PEAK_GIVEBACK_HARD_ZERO_ENABLED", True))
+            _pgp_hard_zero = bool(_cfg_auto("PEAK_GIVEBACK_HARD_ZERO_ENABLED", True)) and _peak_giveback_scope_ok(_cfg_auto("PEAK_GIVEBACK_SCOPE", "all"), position_key, "stocks")  # 2026-10-17 vector twin scope
             _pgp_ind = indicators if indicators else i
             if _pgp_max_g >= _pgp_min_peak and hold_time_min >= _be_grace:
                 # 2026-04-29 USER RULE: PEAK_GIVEBACK must NOT close manually-bought positions that
@@ -47764,6 +47778,20 @@ class TradierTradeManager:
             logger.warning(f"[HERMETIC_TR] {'REFUSED' if (not _hm_ok and _hm_enforce) else 'WOULD_REFUSE(log mode)'} {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_hm_why}")
         if not _hm_ok and _hm_enforce:
             return "BLOCKED_HERMETIC_NOT_VEC"
+        # ─── LOSS_PRONE_ENTRY_FILTER live twin (USER 2026-10-17 "should only be accepted with additional filters"): a NATIVE exposure
+        # increase (no vec provenance) from a function flagged in data/loss_prone_entries.json must pass the vector's filters.
+        # Enforced regardless of TRADIER_HERMETIC_ENFORCE (log mode lets natives through — this is the filter they must pass). ───
+        try:
+            if _vprov_g.increases_exposure(side, position_side, is_full_close, action, False) and not str(_hm_why).startswith("vec:"):
+                import loss_prone as _lpm_g
+
+                _lp_ind = (self.get_indicators(symbol) if hasattr(self, "get_indicators") else {}) or {}
+                _lp_ok, _lp_fam = _lpm_g.native_entry_ok(lambda k, d: _cfg(k, d, account_key, symbol, position_side), reason, "stocks", position_side == "LONG", _lp_ind, float(old_price or 0))
+                if not _lp_ok:
+                    logger.warning(f"⛔ [LOSS_PRONE_ENTRY_FILTER] {position_key} {action}: loss-prone {_lp_fam} failed LOSS_PRONE_ENTRY_MIN_FILTERS (WT 1h/WT 4h/ema50 1h) — refused")
+                    return "BLOCKED_LOSS_PRONE_ENTRY_FILTER"
+        except Exception as _lp_e:
+            logger.debug(f"[LOSS_PRONE_ENTRY_FILTER] {position_key}: check err (fail-open) {_lp_e}")
         # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
         # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or the stuck watcher): broker holdings ->
         # cancel our working orders + protective stop handoff -> ONE market sell / buy_to_cover of the broker qty -> verify flat.

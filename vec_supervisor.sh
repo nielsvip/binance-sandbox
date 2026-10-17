@@ -25,7 +25,7 @@ if [ "$(uname)" = "Darwin" ]; then
     PY="/opt/anaconda3/envs/binance_env/bin/python"
     BASE="/Users/niels/Documents/binance"
 elif [ -d /home/niels/.conda/envs/binance_env ]; then
-    PY="/home/niels/.conda/envs/binance_env/bin/python"
+    PY="/home/niels/.conda/envs/binance_env_mac/bin/python"
     BASE="/home/niels/binance-sandbox"
 else
     PY="/home/niels/miniconda3/envs/binance_env/bin/python"

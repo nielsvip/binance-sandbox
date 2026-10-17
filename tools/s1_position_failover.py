@@ -46,7 +46,7 @@ HEARTBEAT = LIVE_DIR / "data" / "mac_live_heartbeat.json"
 PULSE_PATHS = (LIVE_DIR / "data" / "mac_order_pulse.json", Path("/home/niels/binance-sandbox/data/mac_order_pulse.json"))
 FLAG_FMT = str(LIVE_DIR / "data" / "s1_posfailover_active_{acct}")
 LOG_PREFIX = "[s1_posfailover]"
-CONDA_PY = "/home/niels/.conda/envs/binance_env/bin/python"
+CONDA_PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 
 
 def log(msg):

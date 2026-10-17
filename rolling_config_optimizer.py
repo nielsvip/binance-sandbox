@@ -42,7 +42,7 @@ if IS_SERVER:
     BASE_PATH = Path("/home/niels/binance-sandbox")
     PYTHON = str(next(
         (p for p in [
-            Path("/home/niels/.conda/envs/binance_env/bin/python3"),
+            Path("/home/niels/.conda/envs/binance_env_mac/bin/python3"),
             Path("/home/niels/miniconda3/envs/binance_env/bin/python"),
         ] if p.exists()),
         "python3"

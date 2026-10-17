@@ -2,7 +2,7 @@
 # run_structural_matrix_parallel.sh — Parallel A/B sector matrix for structural gates.
 # 8 variants × 9 sectors = 72 cells, run 4 in parallel.
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 WORKDIR=/home/niels/binance-sandbox
 RUN_TS=$(date +%Y%m%d_%H%M%S)
 OUT_DIR="$WORKDIR/data/sweep_results/structural_matrix_${RUN_TS}"
@@ -51,7 +51,7 @@ echo "Tasks: $N_TASKS" | tee -a "$MASTER_LOG"
 RUNNER="$OUT_DIR/_run_cell.sh"
 cat > "$RUNNER" <<'CELLEOF'
 #!/usr/bin/env bash
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 WORKDIR=/home/niels/binance-sandbox
 OUT_DIR="$1"; VNAME="$2"; OVR="$3"; SECTOR="$4"; SYMS="$5"; START="$6"; TIMEOUT_S="$7"
 override_args=""

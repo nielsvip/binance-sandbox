@@ -11,7 +11,7 @@ NO-LIES compliance:
 - Sample floor: 114 syms × >1yr × usually >100 trades/sym → PASSES.
 
 Usage on S1:
-  V8_USE_VEC_ALL=1 nohup /home/niels/.conda/envs/binance_env/bin/python \
+  V8_USE_VEC_ALL=1 nohup /home/niels/.conda/envs/binance_env_mac/bin/python \
     /home/niels/binance-sandbox/run_random_knob_sweep.py \
     --n-variants 80 --workers 4 --seed 42 > /home/niels/logs/random_knob_sweep_<ts>.log 2>&1 &
 """

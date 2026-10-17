@@ -1,6 +1,6 @@
 #!/bin/bash
 # live OFAT progress + health for /focus4 (USER 2026-07-20 emergency-brake view)
-ssh -o ConnectTimeout=10 s1-int '/home/niels/.conda/envs/binance_env/bin/python - <<PY
+ssh -o ConnectTimeout=10 s1-int '/home/niels/.conda/envs/binance_env_mac/bin/python - <<PY
 import sqlite3, json
 C="stocks_baseline_v2_s4h"
 c=sqlite3.connect("/home/niels/binance-sandbox/data/param_results_stocks.db")

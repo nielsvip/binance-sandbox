@@ -1,4 +1,4 @@
-#!/home/niels/.conda/envs/binance_env/bin/python3
+#!/home/niels/.conda/envs/binance_env_mac/bin/python3
 """ez_prices_ws.py — Real-time 3m kline feed via Binance futures WebSocket.
 Subscribes to kline_3m streams for all symbols, writes to klines_cache, publishes to Redis.
 ez_prices.py (resampler) reads from klines:{symbol}:3m in Redis (use_external_3m=True).

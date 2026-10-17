@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import fields
 
 REPO = "/home/niels/binance-sandbox"
-PY = "/home/niels/.conda/envs/binance_env/bin/python"
+PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 SYMS_FILE = "/tmp/baseline_syms_full.txt"
 KNOBS_FILE = f"{REPO}/vec_aware_knobs.txt"
 BASE_OVERRIDES = {"WT_DC_HTF_GATE": "4h", "QUALITY_BOTTOM_DISABLE_SCATTERGUN": "True"}

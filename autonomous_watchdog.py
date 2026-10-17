@@ -40,7 +40,7 @@ MACHINES = {
     },
     "s1": {
         "host": "niels@157.180.125.52",
-        "python": "/home/niels/.conda/envs/binance_env/bin/python",
+        "python": "/home/niels/.conda/envs/binance_env_mac/bin/python",
         "script": "/home/niels/binance-sandbox/autonomous_search.py",
         "cwd": "/home/niels/binance-sandbox",
         "mode": "crypto",

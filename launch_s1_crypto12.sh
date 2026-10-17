@@ -2,7 +2,7 @@
 # Launch 12 crypto workers on S1: 12 diverse symbols × 15 months
 # Uses 0.7574 baseline as starting point; mix of flip rates for exploration
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 SANDBOX=/home/niels/binance-sandbox
 NPZ=$SANDBOX/backtest_v8/indicators
 BASELINE=$SANDBOX/data/baselines/crypto_0p7574.json

@@ -40,7 +40,7 @@ from pathlib import Path
 SBX = Path(os.environ.get("V8_SBX", "/home/niels/binance-sandbox"))
 if not SBX.exists():
     SBX = Path(__file__).resolve().parent.parent
-PY = os.environ.get("V8_PYTHON", "/home/niels/.conda/envs/binance_env/bin/python")
+PY = os.environ.get("V8_PYTHON", "/home/niels/.conda/envs/binance_env_mac/bin/python")
 if not Path(PY).exists():
     PY = sys.executable
 sys.path.insert(0, str(SBX))

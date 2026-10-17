@@ -96,7 +96,7 @@ def main() -> int:
     env.pop("V8_LADDER_FORCE_INITIAL_SIDE", None)
     env.pop("V8_SIDE_GATE_DISABLED", None)
     py = os.environ.get(
-        "BINANCE_PYTHON", "/home/niels/.conda/envs/binance_env/bin/python"
+        "BINANCE_PYTHON", "/home/niels/.conda/envs/binance_env_mac/bin/python"
     )
     if not Path(py).exists():
         py = sys.executable

@@ -13,7 +13,7 @@
 
 set -u
 
-PYTHON_S1=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON_S1=/home/niels/.conda/envs/binance_env_mac/bin/python
 PYTHON_MAC=/opt/anaconda3/envs/binance_env/bin/python
 SCRIPT=per_sym_crypto_profiler.py
 HOSTNAME=$(hostname -s 2>/dev/null || hostname)

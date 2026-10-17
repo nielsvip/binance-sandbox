@@ -57,7 +57,7 @@ say "=== 2b. RUNNABLE — S1 can actually START the live scripts ==="
 # pandas. ez_indicators had been crash-looping every 32 s since 2026-10-14 22:17 (660 consecutive failures) and
 # S1's newest crypto snapshot was 2.1 DAYS old — while the lease, the arm file, the units and every other signal
 # said the standby was ready. Code being PRESENT and code being RUNNABLE are different claims; assert both.
-S1PY=$($SSH "$HOST" 'P=/home/niels/.conda/envs/binance_env_mac/bin/python; [ -x "$P" ] || P=/home/niels/.conda/envs/binance_env/bin/python; [ -x "$P" ] || P=/home/niels/binance/.venv/bin/python; echo "$P"' 2>/dev/null)
+S1PY=$($SSH "$HOST" 'P=/home/niels/.conda/envs/binance_env_mac/bin/python; [ -x "$P" ] || P=/home/niels/.conda/envs/binance_env_mac/bin/python; [ -x "$P" ] || P=/home/niels/binance/.venv/bin/python; echo "$P"' 2>/dev/null)
 say "  interpreter run_with_watchdog selects on S1: ${S1PY:-UNKNOWN}"
 IMPORTS=$($SSH "$HOST" "cd /home/niels/binance 2>/dev/null || exit 9
 for m in ez_manage ez_indicators ez_klines ez_prices ez_positions_watchdog ez_reentry_daemon tradier_manage tradier_positions tradier_indicators tradier_klines; do

@@ -8,7 +8,7 @@ echo "════════════════════════�
 echo " MATRIX FILL PROGRESS   $(date -u '+%Y-%m-%d %H:%M UTC')"
 echo "════════════════════════════════════════════════════════════════"
 
-ssh s1-int 'cd /home/niels/binance-sandbox && /home/niels/.conda/envs/binance_env/bin/python - <<"PYEOF"
+ssh s1-int 'cd /home/niels/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python - <<"PYEOF"
 import sqlite3
 c = sqlite3.connect("data/param_results_stocks.db")
 q = c.execute

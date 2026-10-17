@@ -20,7 +20,7 @@ else
     # `.venv` is KEPT as a fallback (it is a working interpreter for anything whose deps it does have), just no
     # longer preferred for live scripts. Darwin branch deliberately untouched.
     PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
-    [ -x "$PYTHON" ] || PYTHON="/home/niels/.conda/envs/binance_env/bin/python"
+    [ -x "$PYTHON" ] || PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
     [ -x "$PYTHON" ] || PYTHON="/home/niels/binance/.venv/bin/python"
     [ -x "$PYTHON" ] || PYTHON="/usr/bin/python3"
     [ -x "$PYTHON" ] || PYTHON="python3"

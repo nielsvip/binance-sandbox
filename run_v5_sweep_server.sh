@@ -7,7 +7,7 @@
 LOCKFILE="/home/niels/binance/backtest_v5/sweep_master/server_sweep.lock"
 PIDFILE="/home/niels/binance/backtest_v5/sweep_master/master.pid"
 LOGFILE="/home/niels/binance/backtest_v5/sweep_master/cron_watchdog.log"
-PYTHON="/home/niels/.conda/envs/binance_env/bin/python3"
+PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python3"
 SCRIPT="/home/niels/binance/backtest_v5_master.py"
 WORKDIR="/home/niels/binance"
 

@@ -41,7 +41,7 @@ log(){ echo "[$(ts)] $1" >> "$LOG"; }
 is_market_open_et(){
     # America/New_York 9:30-16:00 Mon-Fri, computed independently on S1 (never trust a
     # possibly-stale heartbeat field for this — Mac could die exactly at a market boundary).
-    TZ=America/New_York /home/niels/.conda/envs/binance_env/bin/python -c "
+    TZ=America/New_York /home/niels/.conda/envs/binance_env_mac/bin/python -c "
 from datetime import datetime, time as dt_time
 from zoneinfo import ZoneInfo
 now = datetime.now(ZoneInfo('America/New_York'))

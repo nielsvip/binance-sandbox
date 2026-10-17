@@ -32124,6 +32124,19 @@ class MultiAccountTradeManager:
             logger.warning(f"[HERMETIC] {'REFUSED' if not _hm_ok else 'WOULD_REFUSE(log mode)'} {position_key} {action} {side}/{position_side} hedge={is_hedge} reason={str(reason)[:80]} — {_hm_why}")
         if not _hm_ok:
             return "BLOCKED_HERMETIC_NOT_VEC"
+        # ─── LOSS_PRONE_ENTRY_FILTER live twin (USER 2026-10-17 "should only be accepted with additional filters"): a NATIVE exposure
+        # increase (no vec provenance) from a function flagged in data/loss_prone_entries.json must pass the vector's filters. ───
+        try:
+            if _vprov_g.increases_exposure(side, position_side, is_full_close, action, is_hedge) and not str(_hm_why).startswith("vec:"):
+                import loss_prone as _lpm_g
+
+                _lp_ind = (self.data_manager._cold_data.get(symbol, {}) if self.data_manager else {}) or {}
+                _lp_ok, _lp_fam = _lpm_g.native_entry_ok(lambda k, d: _psym_get(symbol, position_side, k, d), reason, "crypto", position_side == "LONG", _lp_ind, float(old_price or 0))
+                if not _lp_ok:
+                    logger.warning(f"⛔ [LOSS_PRONE_ENTRY_FILTER] {position_key} {action}: loss-prone {_lp_fam} failed LOSS_PRONE_ENTRY_MIN_FILTERS (WT 1h/WT 4h/ema50 1h) — refused")
+                    return "BLOCKED_LOSS_PRONE_ENTRY_FILTER"
+        except Exception as _lp_e:
+            logger.debug(f"[LOSS_PRONE_ENTRY_FILTER] {position_key}: check err (fail-open) {_lp_e}")
         # ─── EXIT-ENGINE PARITY INSTRUMENTATION (2026-09-28) ────────────────────
         # Log EVERY attempted trade (reason/family/gate) BEFORE any downstream gate
         # (broker-sync, emergency_brake, quarantine) so exit-trigger parity is

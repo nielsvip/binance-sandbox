@@ -6,7 +6,7 @@
 # Usage: bash regenerate_crypto_npz_2022.sh
 # Runtime: ~10-20 min on S1
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 WORKDIR=/home/niels/binance-sandbox
 LOG_DIR=$HOME/logs
 SYMBOLS="BTCUSDC,ETHUSDC,SOLUSDC,ADAUSDC,BNBUSDC,AVAXUSDC,XRPUSDC,LINKUSDC,LTCUSDC,UNIUSDC,DOTUSDT,ATOMUSDT,SANDUSDT,MANAUSDT"

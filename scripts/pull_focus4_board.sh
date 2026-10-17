@@ -4,7 +4,7 @@ mkdir -p $D/_diagnostic/focus4_coverage $D/reports
 /usr/bin/rsync -az --timeout=60 s1-int:/home/niels/binance-sandbox/data/_diagnostic/focus4_scoreboard.json $D/_diagnostic/ 2>/dev/null
 /usr/bin/rsync -az --timeout=60 s1-int:/home/niels/binance-sandbox/data/_diagnostic/focus4_coverage/ $D/_diagnostic/focus4_coverage/ 2>/dev/null
 /usr/bin/rsync -az --timeout=60 s1-int:/home/niels/binance-sandbox/data/reports/stocks_bh_capture.json $D/reports/ 2>/dev/null
-ssh -o ConnectTimeout=10 s1-int 'cd /home/niels/binance-sandbox && /home/niels/.conda/envs/binance_env/bin/python -c "
+ssh -o ConnectTimeout=10 s1-int 'cd /home/niels/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c "
 import sqlite3
 c=sqlite3.connect(\"data/param_results_stocks.db\")
 print(\"param_results_stocks.db: baselines=%d param_cells=%d distinct_params=%d\" % (
@@ -29,5 +29,5 @@ PY
 /usr/bin/rsync -az --timeout=60 s1-int:/home/niels/binance-sandbox/data/reports/LAB_SWITCH_MATRIX.csv /Users/niels/Documents/binance/data/reports/ 2>/dev/null
 /usr/bin/rsync -az --timeout=60 s1-int:/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB.csv.gz /Users/niels/Documents/binance/data/reports/ 2>/dev/null
 /usr/bin/rsync -az --timeout=60 s1-int:/home/niels/binance-sandbox/data/reports/SWITCH_MATRIX_TRB.xlsx /Users/niels/Documents/binance/data/reports/ 2>/dev/null
-ssh -o ConnectTimeout=10 s1-int 'cd /home/niels/binance-sandbox && /home/niels/.conda/envs/binance_env/bin/python tools/export_switch_matrix_xls.py --campaign stocks_baseline_v2_s4h' >/dev/null 2>&1
+ssh -o ConnectTimeout=10 s1-int 'cd /home/niels/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python tools/export_switch_matrix_xls.py --campaign stocks_baseline_v2_s4h' >/dev/null 2>&1
 bash /Users/niels/Documents/binance/scripts/ofat_progress.sh >/dev/null 2>&1

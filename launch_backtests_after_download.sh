@@ -2,7 +2,7 @@
 # Wait for klines download to finish, then launch backtests
 # Run on server: nohup bash launch_backtests_after_download.sh &
 
-PYTHON="/home/niels/.conda/envs/binance_env/bin/python"
+PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
 WORKDIR="/home/niels/binance-sandbox"
 LOG="/home/niels/logs/backtest_launcher.log"
 

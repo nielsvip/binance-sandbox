@@ -6,7 +6,7 @@
 
 LOG_DIR=/home/niels/logs
 WORKDIR=/home/niels/binance-sandbox
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 
 echo "[$(date -u +%H:%M:%S)] waiting for backfill to finish..."
 

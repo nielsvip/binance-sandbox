@@ -80,7 +80,7 @@ def main():
 
     IS_SERVER = sys.platform == "linux"
     if IS_SERVER:
-        python_bin = ("/home/niels/.conda/envs/binance_env/bin/python" if args.mode == "crypto"
+        python_bin = ("/home/niels/.conda/envs/binance_env_mac/bin/python" if args.mode == "crypto"
                       else "/home/niels/miniconda3/envs/binance_env/bin/python")
         base_path = Path("/home/niels/binance-sandbox")
         npz_dir = str(base_path / "backtest_v8" / "indicators")

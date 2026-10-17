@@ -132,7 +132,7 @@ def module4_npz():
         import subprocess
         line = "fresh check timeout - using local fallback"
         try:
-            r=subprocess.run(["ssh","-o","ConnectTimeout=3","-o","BatchMode=yes","s1-int","bash -c 'cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env/bin/python /tmp/check_all_fresh.py 2>/dev/null || echo fresh 0 stale 0'"], capture_output=True, text=True, timeout=8)
+            r=subprocess.run(["ssh","-o","ConnectTimeout=3","-o","BatchMode=yes","s1-int","bash -c 'cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python /tmp/check_all_fresh.py 2>/dev/null || echo fresh 0 stale 0'"], capture_output=True, text=True, timeout=8)
             if r.stdout and r.stdout.strip():
                 line=r.stdout.strip().splitlines()[0]
             else:

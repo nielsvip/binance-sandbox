@@ -14,9 +14,8 @@ from pathlib import Path
 CANDIDATES = (
     "/opt/anaconda3/envs/binance_env/bin/python",
     "~/.conda/envs/binance_env_mac/bin/python",
-    "~/.conda/envs/binance_env/bin/python",
     "/home/niels/.conda/envs/binance_env_mac/bin/python",
-    "/home/niels/.conda/envs/binance_env/bin/python",
+    "/home/niels/.conda/envs/binance_env_mac/bin/python",
     "/usr/bin/python3",
 )
 

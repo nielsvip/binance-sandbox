@@ -28,7 +28,7 @@
 #
 # Created: 2026-05-15
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 WORKDIR=/home/niels/binance-sandbox
 LOG_DIR="$HOME/logs"
 

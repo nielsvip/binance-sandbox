@@ -43,7 +43,7 @@ BASE = Path(__file__).resolve().parent
 # --- Server 1: CRYPTO backtest only ---
 S1_HOST = "s1-int"
 S1_DIR = "/home/niels/binance"
-S1_PYTHON = "/home/niels/.conda/envs/binance_env/bin/python"
+S1_PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 
 # --- Server 2: STOCKS backtest only ---
 S2_HOST = "s2-int"

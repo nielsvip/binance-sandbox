@@ -6,7 +6,7 @@
 # ~/binance/data/tradier/tradier_indicators_latest.json. Both die with the unit (cgroup).
 set -u
 cd /home/niels/binance || exit 1
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 export EZ_LOG_DIR=/home/niels/binance/logs
 
 # 2026-10-16: `systemctl stop` always timed out and left the unit `failed (Result: timeout)`, because these

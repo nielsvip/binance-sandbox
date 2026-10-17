@@ -8,7 +8,7 @@
 
 set -u
 SANDBOX="/home/niels/binance-sandbox"
-PY="/home/niels/.conda/envs/binance_env/bin/python"
+PY="/home/niels/.conda/envs/binance_env_mac/bin/python"
 RESULTS_DIR="${SANDBOX}/data/sweep_results"
 LOG="/tmp/autonomous_orchestrator.log"
 START_TS=$(date -u +%Y%m%d_%H%M%S)

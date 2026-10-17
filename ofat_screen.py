@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 
 SBX = Path("/home/niels/binance-sandbox")
-PY = "/home/niels/.conda/envs/binance_env/bin/python"
+PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 POOL_RE = re.compile(r"pool_sharpe=([+-]?\d+\.\d+)")
 TRADES_RE = re.compile(r"trades=([\d,]+)")
 NSYM_RE = re.compile(r"n_syms=(\d+)")

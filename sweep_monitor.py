@@ -18,7 +18,7 @@ LOG.parent.mkdir(parents=True, exist_ok=True)
 
 S1 = "s1-int"
 S2 = "s2-int"
-S1_PY = "/home/niels/.conda/envs/binance_env/bin/python"
+S1_PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 S2_PY = "/home/niels/miniconda3/envs/binance_env/bin/python"
 SANDBOX = "/home/niels/binance-sandbox"
 

@@ -5,7 +5,7 @@
 WORKDIR="/Users/niels/Documents/binance"
 if [ "$(uname)" = "Linux" ]; then
     WORKDIR="/home/niels/binance"
-    PYTHON="/home/niels/.conda/envs/binance_env/bin/python"
+    PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
 else
     PYTHON="/opt/anaconda3/envs/binance_env/bin/python"
 fi

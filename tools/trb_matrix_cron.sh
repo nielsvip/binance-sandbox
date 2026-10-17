@@ -24,7 +24,7 @@ if pgrep -f "v12_pilot.*matrix" >/dev/null; then
 fi
 # Ensure S1 FULL: CPU 80-99 RAM 65-90 via throttling in Python fleet, not here
 # Check each TRB sym_side
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 TRB_LONG=/home/niels/binance-sandbox/symbols_trb_long.json
 TRB_SHORT=/home/niels/binance-sandbox/symbols_trb_short.json
 # Count done

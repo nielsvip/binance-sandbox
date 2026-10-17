@@ -4,7 +4,7 @@
 # Run on S1: bash run_wtb15m_bounce_vec.sh  (or pass --dry-run to just print commands)
 set -euo pipefail
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 SCRIPT=/home/niels/binance-sandbox/v8_vec_sweep.py
 LOG_DIR=/home/niels/logs
 

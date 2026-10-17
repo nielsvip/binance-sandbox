@@ -7,7 +7,7 @@ scp /Users/niels/Documents/binance/101.csv s1-int:/home/niels/binance/
 scp /Users/niels/Documents/binance/SERVER_LOCKS.md s1-int:/home/niels/binance/
 
 echo "Starting COORDINATOR in screen (runs worker + monitors S2)..."
-ssh s1-int 'mkdir -p /home/niels/binance/sweep_logs && screen -dmS sweep48h /home/niels/.conda/envs/binance_env/bin/python3 /home/niels/binance/sweep_coordinator.py && echo "LAUNCHED" && screen -ls'
+ssh s1-int 'mkdir -p /home/niels/binance/sweep_logs && screen -dmS sweep48h /home/niels/.conda/envs/binance_env_mac/bin/python3 /home/niels/binance/sweep_coordinator.py && echo "LAUNCHED" && screen -ls'
 
 echo "Verifying..."
 sleep 15

@@ -1,5 +1,5 @@
 # pylint: disable=W,C,R,I
-#!/home/niels/.conda/envs/binance_env/bin/python3
+#!/home/niels/.conda/envs/binance_env_mac/bin/python3
 import asyncio
 import glob
 import json

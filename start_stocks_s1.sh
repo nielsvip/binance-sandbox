@@ -4,7 +4,7 @@
 # Idempotent: only starts what is down — safe to run as both the 13:00 starter AND an every-few-min watchdog.
 # Mac stocks are decommissioned; S1 is the sole live owner.
 cd /home/niels/binance || exit 1
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 LOG=/home/niels/logs
 up(){ pgrep -f "$1" >/dev/null 2>&1; }
 ts(){ date -u +%FT%TZ; }

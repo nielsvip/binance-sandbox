@@ -543,9 +543,9 @@ def _refresh_gui_lab_status() -> None:
     """Advance manual queue + compact status without ever reviving vector work."""
     command = (
         "cd /home/niels/binance-sandbox && "
-        "/home/niels/.conda/envs/binance_env/bin/python "
+        "/home/niels/.conda/envs/binance_env_mac/bin/python "
         "tools/gui_lab_manual_v8_runner.py --tick >/dev/null 2>&1; "
-        "/home/niels/.conda/envs/binance_env/bin/python "
+        "/home/niels/.conda/envs/binance_env_mac/bin/python "
         "tools/gui_lab_supervisor.py --once >/dev/null 2>&1"
     )
     try:
@@ -709,7 +709,7 @@ def switch_lab_manual_run():
     compact = base64.b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode()
     command = (
         "cd /home/niels/binance-sandbox && "
-        "/home/niels/.conda/envs/binance_env/bin/python "
+        "/home/niels/.conda/envs/binance_env_mac/bin/python "
         "tools/gui_lab_manual_v8_runner.py --submit-b64 " + compact
     )
     try:
@@ -7384,7 +7384,7 @@ def trb_gen_bt_trades():
 
     # SSH to S1 and run approximation script
     remote_script = "/home/niels/binance/tools/gen_persym_bt_trades.py"
-    python_bin = "/home/niels/.conda/envs/binance_env/bin/python"
+    python_bin = "/home/niels/.conda/envs/binance_env_mac/bin/python"
     cmd = ["ssh", "-o", "ConnectTimeout=15", "-o", "BatchMode=yes", "s1-int",
            f"{python_bin} {remote_script} --sym {sym} --acct {acct} --days {days}"]
     try:
@@ -8034,7 +8034,7 @@ def _bt_batch_s1(acct: str, syms: List[str], days: float) -> Dict[str, Dict[str,
     syms = [s for s in syms if s and s.replace(".", "").isalnum()]
     if not syms:
         return {}
-    py = "/home/niels/.conda/envs/binance_env/bin/python"
+    py = "/home/niels/.conda/envs/binance_env_mac/bin/python"
     remote = (f"cd /home/niels/binance && {py} tools/persym_bt_batch.py "
               f"--acct {acct} --days {days} --syms {','.join(syms)} 2>/dev/null")
     out: Dict[str, Dict[str, Any]] = {}

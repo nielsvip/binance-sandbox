@@ -42,7 +42,7 @@ def _resolve_python_bin() -> str:
     # 2026-05-07: previous Path('/home/niels') fork picked S1's .conda even on S2 (which uses miniconda3) — broke S2 sweeps.
     candidates = [
         '/home/niels/miniconda3/envs/binance_env/bin/python',
-        '/home/niels/.conda/envs/binance_env/bin/python',
+        '/home/niels/.conda/envs/binance_env_mac/bin/python',
         '/opt/anaconda3/envs/binance_env/bin/python',
         sys.executable,
     ]

@@ -71,3 +71,22 @@ def test_newborn_exempt_knob_is_live_authority_only():
     import per_sym_store
 
     assert "NEWBORN_PROTECT_LOSS_PRONE_EXEMPT" in per_sym_store.LIVE_AUTHORITY_KNOBS
+
+
+def test_native_entry_ok_filters_only_flagged_functions(monkeypatch):
+    monkeypatch.setattr(loss_prone, "flagged", lambda venue: frozenset({"B12"}))
+    get = lambda k, d: d
+    bad = {"wt1_1h": -5, "wt2_1h": 1, "wt1_4h": -5, "wt2_4h": 1, "ema_50_1h": 110.0}
+    good = {"wt1_1h": 5, "wt2_1h": 1, "wt1_4h": 5, "wt2_4h": 1, "ema_50_1h": 90.0}
+    assert loss_prone.native_entry_ok(get, "B12", "crypto", True, bad, 100.0) == (False, "B12")
+    assert loss_prone.native_entry_ok(get, "B12", "crypto", True, good, 100.0) == (True, "B12")
+    assert loss_prone.native_entry_ok(get, "B05", "crypto", True, bad, 100.0) == (True, "B05")
+    assert loss_prone.native_entry_ok(lambda k, d: False if k == "LOSS_PRONE_ENTRY_FILTER_ENABLED" else d, "B12", "crypto", True, bad, 100.0)[0]
+
+
+def test_native_entry_filter_wired_at_both_chokepoints():
+    for f in ("ez_manage.py", "tradier_manage.py"):
+        src = (ROOT / f).read_text()
+        assert "native_entry_ok(" in src and "BLOCKED_LOSS_PRONE_ENTRY_FILTER" in src, f
+        assert "_peak_giveback_scope_ok(" in src or f == "ez_manage.py", f
+    assert "_peak_giveback_scope_ok(config, position_key" in (ROOT / "ez_positions_quick.py").read_text()

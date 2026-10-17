@@ -4,7 +4,7 @@
 # Usage: bash start_per_sym_loop.sh [start_after_current]
 #   start_after_current: if set, skips fin+ang on first pass (assumes flz8 just ran)
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 BINANCE=/home/niels/binance-sandbox
 LOG=~/logs/per_sym_loop.log
 YEARS=2.0

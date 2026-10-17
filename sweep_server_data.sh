@@ -12,7 +12,7 @@ set -e
 EXISTING="10.0.0.2"
 CONDA_PY="$HOME/miniconda3/envs/binance_env/bin/python3"
 # Fallback to existing conda path
-[ -f "$CONDA_PY" ] || CONDA_PY="$HOME/.conda/envs/binance_env/bin/python3"
+[ -f "$CONDA_PY" ] || CONDA_PY="$HOME/.conda/envs/binance_env_mac/bin/python3"
 
 echo "═══ STEP 1: Create directory structure ═══"
 mkdir -p ~/binance

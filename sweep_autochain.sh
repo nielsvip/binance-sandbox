@@ -19,7 +19,7 @@ LOGFILE="/tmp/sweep_autochain_${MACHINE}.log"
 log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*" | tee -a "$LOGFILE"; }
 
 if [[ "$MACHINE" == "s1" ]]; then
-    PY="/home/niels/.conda/envs/binance_env/bin/python"
+    PY="/home/niels/.conda/envs/binance_env_mac/bin/python"
     BASE="/home/niels/binance-sandbox"
     W_CRYPTO=3  # was 4 — stay inside safe mem envelope alongside backtest_v8_engine
     W_TRADIER=0  # S1=crypto only; tradier workers on S1 are wrong-machine errors

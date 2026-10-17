@@ -97,3 +97,16 @@ def entry_family_for(account: str, position_key: str, opened_epoch=None) -> str:
 def position_is_loss_prone(account: str, position_key: str, venue: str, opened_epoch=None) -> tuple:
     fam = entry_family_for(account, position_key, opened_epoch)
     return (fam in flagged(venue), fam)
+
+
+def native_entry_ok(get, reason, venue: str, is_long: bool, ind, price) -> tuple:
+    """Live twin of the vector's LOSS_PRONE_ENTRY_FILTER for NATIVE exposure increases (no vec provenance): a loss-prone opening
+    function must pass LOSS_PRONE_ENTRY_MIN_FILTERS of the same three filters. get(knob, default) is the venue's per-sym reader.
+    Returns (ok, family)."""
+    fam = fn_family(reason)
+    if fam not in flagged(venue) or not bool(get("LOSS_PRONE_ENTRY_FILTER_ENABLED", True)):
+        return True, fam
+    import vec_decisions.breakeven_lock as _bel
+
+    ind = ind or {}
+    return _bel.entry_filters_pass(get, is_long, price, ind.get("wt1_1h"), ind.get("wt2_1h"), ind.get("wt1_4h"), ind.get("wt2_4h"), ind.get("ema_50_1h")), fam

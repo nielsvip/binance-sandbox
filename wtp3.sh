@@ -1,6 +1,6 @@
 #!/bin/bash
 LOGS=/home/niels/logs
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 SANDBOX=/home/niels/binance-sandbox
 TS=$(date -u +%Y%m%d_%H%M%S)
 LOG=$LOGS/wtp3_${TS}.log

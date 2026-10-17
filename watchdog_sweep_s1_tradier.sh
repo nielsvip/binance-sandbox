@@ -19,7 +19,7 @@
 LOG=/home/niels/logs/watchdog_sweep_s1_tradier.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 DIR=/home/niels/binance-sandbox
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 STATE=/home/niels/logs/sweep_next_mode
 
 CORE20_TRADIER=AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS

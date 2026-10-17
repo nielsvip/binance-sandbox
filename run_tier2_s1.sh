@@ -4,7 +4,7 @@
 set -uo pipefail
 OUTDIR=/home/niels/logs/tier2_s1_$(date +%Y%m%d_%H%M)
 mkdir -p "$OUTDIR"
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 NPZ_DIR=/home/niels/binance-sandbox/backtest_v8/indicators
 cd /home/niels/binance-sandbox
 

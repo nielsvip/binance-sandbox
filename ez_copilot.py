@@ -1036,14 +1036,14 @@ def _fetch_sandbox_results() -> dict:
     """Pull latest backtest results from server SQLite DBs."""
     results = {"tournament": [], "trigger_sweep": [], "tradier": []}
     # Tournament top combos
-    raw = _run_ssh(f"/home/niels/.conda/envs/binance_env/bin/python -c \"import sqlite3,json;c=sqlite3.connect('{SANDBOX_RESULTS_DIR}/tournament.db');rows=c.execute('SELECT combo_label,avg_sharpe,avg_wr,avg_pf,avg_maxdd,avg_return,total_trades FROM combo_scores ORDER BY avg_sharpe DESC LIMIT 20').fetchall();print(json.dumps(rows))\"", timeout=20)
+    raw = _run_ssh(f"/home/niels/.conda/envs/binance_env_mac/bin/python -c \"import sqlite3,json;c=sqlite3.connect('{SANDBOX_RESULTS_DIR}/tournament.db');rows=c.execute('SELECT combo_label,avg_sharpe,avg_wr,avg_pf,avg_maxdd,avg_return,total_trades FROM combo_scores ORDER BY avg_sharpe DESC LIMIT 20').fetchall();print(json.dumps(rows))\"", timeout=20)
     if raw:
         try:
             results["tournament"] = json.loads(raw)
         except Exception:
             pass
     # Trigger sweep latest
-    raw = _run_ssh(f"/home/niels/.conda/envs/binance_env/bin/python -c \"import sqlite3,json;c=sqlite3.connect('{SANDBOX_RESULTS_DIR}/trigger_sweep.db');cols=[d[1] for d in c.execute('PRAGMA table_info(trigger_results)').fetchall()];rows=c.execute('SELECT * FROM trigger_results ORDER BY rowid DESC LIMIT 20').fetchall();print(json.dumps([dict(zip(cols,r)) for r in rows]))\"", timeout=20)
+    raw = _run_ssh(f"/home/niels/.conda/envs/binance_env_mac/bin/python -c \"import sqlite3,json;c=sqlite3.connect('{SANDBOX_RESULTS_DIR}/trigger_sweep.db');cols=[d[1] for d in c.execute('PRAGMA table_info(trigger_results)').fetchall()];rows=c.execute('SELECT * FROM trigger_results ORDER BY rowid DESC LIMIT 20').fetchall();print(json.dumps([dict(zip(cols,r)) for r in rows]))\"", timeout=20)
     if raw:
         try:
             results["trigger_sweep"] = json.loads(raw)

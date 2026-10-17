@@ -17,8 +17,8 @@ START="${3:-2026-01-01}"
 NUM_WORKERS="${4:-4}"
 
 # Server detection — pick python from local conda env
-if [ -x "/home/niels/.conda/envs/binance_env/bin/python3" ]; then
-  PYTHON="/home/niels/.conda/envs/binance_env/bin/python3"
+if [ -x "/home/niels/.conda/envs/binance_env_mac/bin/python3" ]; then
+  PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python3"
 elif [ -x "/home/niels/miniconda3/envs/binance_env/bin/python3" ]; then
   PYTHON="/home/niels/miniconda3/envs/binance_env/bin/python3"
 elif [ -x "/opt/anaconda3/envs/binance_env/bin/python" ]; then

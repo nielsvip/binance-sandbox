@@ -12,7 +12,7 @@
 # The fallback values are duplicated deliberately — a divergence here is invisible until a failover goes wrong.
 set -u
 BASE=/home/niels/binance
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 LOG=/home/niels/logs/live_failover_s1.log
 UNIT=live-failover-watchdog.service
 # 2026-10-17 PRE-EXISTING BUG, caught live: the pattern was `live_failover_s1.py --loop`, which `pgrep -f` matches

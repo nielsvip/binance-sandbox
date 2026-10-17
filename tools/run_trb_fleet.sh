@@ -5,7 +5,7 @@
 set -e
 HANG_SENTINEL=/tmp/v12_hang_sentinel
 if [ -f "$HANG_SENTINEL" ]; then echo "$(date) HANG SENTINEL active — fleet not launched"; exit 0; fi
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 # Build missing list via python helper
 MISSING=$($PY << 'PYEOF'
 import json, openpyxl
@@ -45,7 +45,7 @@ echo "$(date) fleet: $COUNT missing, launching 4 at a time with timeout"
 echo "$MISSING" | xargs -I{} -P4 bash -c '
   SYM="{}"
   echo "$(date) START $SYM"
-  timeout -k 10 1200 /home/niels/.conda/envs/binance_env/bin/python -u /home/niels/binance-sandbox/v12_pilot.py matrix --symbols "$SYM" --workers 7 2>&1 | tee "/tmp/v12_${SYM}.log"
+  timeout -k 10 1200 /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance-sandbox/v12_pilot.py matrix --symbols "$SYM" --workers 7 2>&1 | tee "/tmp/v12_${SYM}.log"
   RC=${PIPESTATUS[0]}
   if [ $RC -eq 124 ] || [ $RC -eq 137 ]; then
     echo "$(date) HANG TIMEOUT $SYM rc $RC — killing all and setting sentinel"

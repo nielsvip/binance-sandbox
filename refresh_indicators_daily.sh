@@ -1,7 +1,7 @@
 #!/bin/bash
 # Daily durable kline refresh + NPZ rebuild on S1.
 set -euo pipefail
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 SANDBOX=/home/niels/binance-sandbox
 LIVE_KLINES=/home/niels/binance/klines_cache
 BT_KLINES=$SANDBOX/klines_cache_backtest

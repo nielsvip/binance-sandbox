@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Launch 15m crypto klines backfill on S1
 cd /home/niels/binance-sandbox || exit 1
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 TS=$(date +%H%M%S)
 LOG=/home/niels/logs/klines_backfill_15m_${TS}.log
 pkill -f "python.*backfill_crypto_klines" 2>/dev/null

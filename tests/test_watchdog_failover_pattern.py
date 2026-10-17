@@ -14,10 +14,10 @@ OLD_PATTERN = "ez_manage.py.*men"
 NEW_PATTERN = "python.*ez_manage.py.*me[n]"
 
 WORKER_U = "/opt/anaconda3/envs/binance_env/bin/python -u ez_manage.py --account men"
-WORKER_NOU = "/home/niels/.conda/envs/binance_env/bin/python ez_manage.py --account men"
+WORKER_NOU = "/home/niels/.conda/envs/binance_env_mac/bin/python ez_manage.py --account men"
 SUPERVISOR = "bash /home/niels/binance/run_with_watchdog.sh ez_manage.py --account men"
 PROBE = "bash -c pgrep -f \"python.*ez_manage.py.*me[n]\" | head"
-COPILOT_PROC = "/home/niels/.conda/envs/binance_env/bin/python -u /home/niels/binance/ez_copilot.py"
+COPILOT_PROC = "/home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance/ez_copilot.py"
 
 
 def test_old_pattern_matched_supervisor_bug_demo():
@@ -35,7 +35,7 @@ def test_watchdog_failover_pins():
     assert "${arg%?}[$a_last]" in WD
     assert "python.*$SCRIPT" in WD
     assert "/home/niels/binance/.venv/bin/python" in WD
-    assert "/home/niels/.conda/envs/binance_env/bin/python" in WD
+    assert "/home/niels/.conda/envs/binance_env_mac/bin/python" in WD
 
 
 def test_copilot_trader_gate_pins():

@@ -12,7 +12,7 @@
 set -u
 BIN=/home/niels/binance
 LF=$BIN/data/live_failover
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 WD="$PY $BIN/tools/live_failover_s1.py"
 log(){ echo "[$(date -u +%FT%TZ)] [CTL] $1" >> /home/niels/logs/live_failover.log; }
 case "${1:-status}" in

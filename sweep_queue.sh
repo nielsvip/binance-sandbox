@@ -10,7 +10,7 @@
 # ═══════════════════════════════════════════════════════════════════
 
 PY="$HOME/miniconda3/envs/binance_env/bin/python3"
-[ -f "$PY" ] || PY="$HOME/.conda/envs/binance_env/bin/python3"
+[ -f "$PY" ] || PY="$HOME/.conda/envs/binance_env_mac/bin/python3"
 BASE="$HOME/binance"
 SANDBOX="$HOME/binance-sandbox"
 RESULTS_DIR="$SANDBOX/backtest_v5/sweep_structural"

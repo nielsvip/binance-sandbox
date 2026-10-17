@@ -44,7 +44,7 @@ DEFAULT_FLEET = ROOT / "data/reports/path_fleet/queue.db"
 PYTHON = Path(
     os.environ.get(
         "BINANCE_PYTHON",
-        "/home/niels/.conda/envs/binance_env/bin/python",
+        "/home/niels/.conda/envs/binance_env_mac/bin/python",
     )
 )
 if not PYTHON.exists():

@@ -16,8 +16,8 @@ if [ "$(uname -s)" = "Darwin" ] || [ ! -d /home/niels/binance-sandbox ]; then
     exit 2
 fi
 # S1: niels (157.180.125.52), conda env. S2: sweep-box (204.168.181.211), miniconda env.
-if [ -x /home/niels/.conda/envs/binance_env/bin/python ]; then
-    PY=/home/niels/.conda/envs/binance_env/bin/python   # S1
+if [ -x /home/niels/.conda/envs/binance_env_mac/bin/python ]; then
+    PY=/home/niels/.conda/envs/binance_env_mac/bin/python   # S1
 elif [ -x /home/niels/miniconda3/envs/binance_env/bin/python ]; then
     PY=/home/niels/miniconda3/envs/binance_env/bin/python   # S2
 else

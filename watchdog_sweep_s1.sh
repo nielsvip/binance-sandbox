@@ -26,7 +26,7 @@
 LOG=/home/niels/logs/watchdog_sweep_s1.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 DIR=/home/niels/binance-sandbox
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 STATE=/home/niels/logs/sweep_next_mode  # contains "crypto" or "tradier" (which runs NEXT)
 MEM_GUARD_MB=6000   # 2026-06-12: live on S1 uses ~20GB; small-scope sweeps (4-sym crypto, 20-stock tradier, 2026-01-01) peak ~3-4GB not 10GB; 6GB floor allows them while guarding true pressure
 

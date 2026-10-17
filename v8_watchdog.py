@@ -22,7 +22,7 @@ sys.stdout.reconfigure(line_buffering=True)
 
 S1 = "157.180.125.52"
 S2 = "204.168.181.211"
-S1_PY = "/home/niels/.conda/envs/binance_env/bin/python"
+S1_PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 S2_PY = "/home/niels/miniconda3/envs/binance_env/bin/python"
 WORKDIR = "/home/niels/binance"
 NPZ = "/home/niels/binance-sandbox/backtest_v8/indicators"

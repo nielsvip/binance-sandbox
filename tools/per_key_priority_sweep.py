@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SBX = Path("/home/niels/binance-sandbox")
-PY = "/home/niels/.conda/envs/binance_env/bin/python"
+PY = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 DATA = SBX / "data"
 DIAG_DIR = DATA / "_diagnostic"
 LOGDIR = Path("/home/niels/logs")

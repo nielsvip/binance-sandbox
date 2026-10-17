@@ -4,7 +4,7 @@
 # multiprocessing.Pool hung on the heavy imports). Each shard handles keys j%N==i. Merges shard outputs when all
 # done. Log to ~/logs, disown, < /dev/null per SWEEP-LIVENESS MANDATE. Re-launch via cron keeps S1 busy.
 set -u
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 SANDBOX=/home/niels/binance-sandbox
 LOGS=/home/niels/logs
 N=${1:-10}

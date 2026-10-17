@@ -41,7 +41,7 @@ QUEUE_CRYPTO = Path("/tmp/v8_test_queue_pipeline_crypto.json")
 QUEUE_TRADIER = Path("/tmp/v8_test_queue_pipeline_tradier.json")
 
 PYTHON_LOCAL = "/opt/anaconda3/envs/binance_env/bin/python"
-PYTHON_S1 = "/home/niels/.conda/envs/binance_env/bin/python"
+PYTHON_S1 = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 PYTHON_S2 = "/home/niels/miniconda3/envs/binance_env/bin/python"
 ENGINE = BASE / "backtest_v8_engine.py"
 

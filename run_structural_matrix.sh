@@ -4,7 +4,7 @@
 # Writes one JSONL summary per variant×sector under data/sweep_results/structural_matrix_<TS>/.
 # Created 2026-05-16.
 
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 WORKDIR=/home/niels/binance-sandbox
 RUN_TS=$(date +%Y%m%d_%H%M%S)
 OUT_DIR="$WORKDIR/data/sweep_results/structural_matrix_${RUN_TS}"

@@ -10,7 +10,7 @@
 #   bash start_crypto_sweeps.sh kill_tradier  # kill any wrong-mode procs
 
 set -u
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 SANDBOX=/home/niels/binance-sandbox
 LOGS=/home/niels/logs
 mkdir -p "$LOGS"

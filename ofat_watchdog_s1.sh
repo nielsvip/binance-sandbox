@@ -4,7 +4,7 @@
 # internally (free_mb<min_avail -> wait) and marks its workers oom_score_adj=900 so a
 # memory spike sacrifices a backtest worker, never anything important.
 SBX=/home/niels/binance-sandbox
-PY=/home/niels/.conda/envs/binance_env/bin/python
+PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 LOGS=/home/niels/logs
 mkdir -p "$LOGS"
 avail=$(free -m | awk '/Mem:/{print $7}')

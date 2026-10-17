@@ -6,7 +6,7 @@
 
 S1="157.180.125.52"
 S2="204.168.181.211"
-PYTHON_S1="/home/niels/.conda/envs/binance_env/bin/python"
+PYTHON_S1="/home/niels/.conda/envs/binance_env_mac/bin/python"
 PYTHON_S2="/home/niels/miniconda3/envs/binance_env/bin/python"
 SANDBOX="/home/niels/binance-sandbox"
 LOGS="/home/niels/logs"

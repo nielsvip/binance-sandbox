@@ -42,6 +42,20 @@ except ImportError:
     _bb_pullback_gate = None
 
 
+def _peak_giveback_scope_ok(cfg_or_scope, position_key, venue):
+    """2026-10-17 PEAK_GIVEBACK_SCOPE (pilot-tested, twin of v12_quick_engine): "loss_prone" covers only positions opened by a
+    function flagged in data/loss_prone_entries.json; "all" (default) covers every position."""
+    sc = cfg_or_scope if isinstance(cfg_or_scope, str) else getattr(cfg_or_scope, "PEAK_GIVEBACK_SCOPE", "all")
+    if str(sc or "all").strip().lower() != "loss_prone":
+        return True
+    try:
+        import loss_prone
+
+        return bool(loss_prone.position_is_loss_prone(str(position_key).split(":")[0], position_key, venue)[0])
+    except Exception:
+        return True
+
+
 def _bb_pullback_entry_gate(indicators, is_long: bool) -> bool:
     """2026-09-04 VEC_IDENTICAL — identical to tradier_manage + v12_quick_engine."""
     try:
@@ -27052,6 +27066,7 @@ async def check_exit_candidates_for_account(
                     and not is_hedge
                     and not _in_grace_period
                     and bool(getattr(config, "PEAK_GIVEBACK_PROTECTION_ENABLED", True))
+                    and _peak_giveback_scope_ok(config, position_key, "crypto")
                 ):
                     _pgp_max_g = safe_fetch_float(getattr(position, "max_gain", 0), 0)
                     _pgp_min_peak = float(

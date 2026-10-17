@@ -6,7 +6,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] cron check" >> "$LOG"
 if ! ssh -o ConnectTimeout=8 gateway-internal "ps aux | grep -q '[e]z_klines.py'" 2>&1 | grep -q .; then
   echo "gateway ez_klines check" >> "$LOG"
 fi
-ssh -o ConnectTimeout=8 gateway-internal "ps aux | grep -q '[e]z_klines.py' || (nohup /home/niels/.conda/envs/binance_env/bin/python -u /home/niels/binance/ez_klines.py > /home/niels/logs/ez_klines.log 2>&1 & echo restarted)" >> "$LOG" 2>&1
+ssh -o ConnectTimeout=8 gateway-internal "ps aux | grep -q '[e]z_klines.py' || (nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u /home/niels/binance/ez_klines.py > /home/niels/logs/ez_klines.log 2>&1 & echo restarted)" >> "$LOG" 2>&1
 # Check depth simple (no heredoc)
 GW_15M=$(ssh -o ConnectTimeout=8 gateway-internal "python3 -c 'import json, glob; print(sum(1 for f in glob.glob(\"/home/niels/binance/klines_cache/*_15m.json\") if len(json.load(open(f)))>=1200))'" 2>&1)
 echo "GW 15m >=1200: $GW_15M" >> "$LOG"

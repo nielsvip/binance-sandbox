@@ -31,7 +31,7 @@
 # so its paths remain byte-for-byte equivalent; the focused launcher regression uses a private
 # temporary tree and can never touch the real result DB, claims, logs, or reports.
 SBX=${MATRIX_SBX:-/home/niels/binance-sandbox}
-PY=${MATRIX_PY:-/home/niels/.conda/envs/binance_env/bin/python}
+PY=${MATRIX_PY:-/home/niels/.conda/envs/binance_env_mac/bin/python}
 LOGDIR=${MATRIX_LOGDIR:-/home/niels/logs}
 mkdir -p "$LOGDIR"
 

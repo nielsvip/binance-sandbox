@@ -255,7 +255,7 @@ log_message "✅ trade_analytics.py started"
 # STEP 6: Start disk space watchdog
 log_message "STEP 6: Starting ez_disk_watchdog.py..."
 if ! pgrep -f "ez_disk_watchdog.py" >/dev/null 2>&1; then
-    (cd "$BINANCE_DIR" && nohup /home/niels/.conda/envs/binance_env/bin/python -u ez_disk_watchdog.py > /dev/null 2>&1 &)
+    (cd "$BINANCE_DIR" && nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u ez_disk_watchdog.py > /dev/null 2>&1 &)
     log_message "✅ ez_disk_watchdog.py started"
 else
     log_message "ez_disk_watchdog.py already running"

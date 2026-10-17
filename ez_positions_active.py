@@ -1,4 +1,4 @@
-#!/home/niels/.conda/envs/binance_env/bin/python3
+#!/home/niels/.conda/envs/binance_env_mac/bin/python3
 """
 ez_positions_active.py - ACTIVE POSITIONS ONLY
 - Only updates positions that are in symbols_active.json

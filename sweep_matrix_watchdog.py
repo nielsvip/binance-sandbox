@@ -8,7 +8,7 @@ reports for human/agent diagnosis.
 
 Designed to be invoked by cron every 5 minutes:
   */5 * * * * cd /home/niels/binance-sandbox && \
-    /home/niels/.conda/envs/binance_env/bin/python sweep_matrix_watchdog.py \
+    /home/niels/.conda/envs/binance_env_mac/bin/python sweep_matrix_watchdog.py \
     >> /home/niels/logs/sweep_matrix_watchdog.log 2>&1
 
 Usage:
@@ -32,7 +32,7 @@ SWEEP_RESULTS_DIR = os.path.join(SANDBOX_DIR, "data/sweep_results")
 SWEEP_ERRORS_DIR = os.path.join(SANDBOX_DIR, "data/sweep_errors")
 STATUS_FILE = os.path.join(SANDBOX_DIR, "data/sweep_matrix_status.txt")
 LOGS_DIR = "/home/niels/logs"
-PYTHON = "/home/niels/.conda/envs/binance_env/bin/python"
+PYTHON = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 
 # ── thresholds ─────────────────────────────────────────────────────────────
 STALL_TIMEOUT_S = 1200    # 20 min: one variant × safety factor

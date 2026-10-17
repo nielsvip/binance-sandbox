@@ -72,7 +72,7 @@ fi
 # (3) Launch crypto coord
 CRYPTO_LOG="/home/niels/logs/coord_crypto_samplefloor_${TS}.log"
 echo "[watcher] $(date -u +%H:%M:%S) launching CRYPTO coord (n_syms=${CRYPTO_N}) → $CRYPTO_LOG"
-nohup /home/niels/.conda/envs/binance_env/bin/python sweep_coordinator.py \
+nohup /home/niels/.conda/envs/binance_env_mac/bin/python sweep_coordinator.py \
   --mode crypto --account ang --start 2022-01-01 \
   --symbols "$CRYPTO_SYMS" \
   --capital 10000.0 --mem-throttle 85 \
@@ -92,7 +92,7 @@ fi
 # (5) Launch tradier coord
 TRADIER_LOG="/home/niels/logs/coord_tradier_samplefloor_${TS}.log"
 echo "[watcher] $(date -u +%H:%M:%S) launching TRADIER coord (n_syms=${TRADIER_N}) → $TRADIER_LOG"
-nohup /home/niels/.conda/envs/binance_env/bin/python sweep_coordinator.py \
+nohup /home/niels/.conda/envs/binance_env_mac/bin/python sweep_coordinator.py \
   --mode tradier --account trb --start 2024-01-01 \
   --symbols "$TRADIER_SYMS" \
   --capital 10000.0 --mem-throttle 85 \

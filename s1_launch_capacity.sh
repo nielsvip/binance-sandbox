@@ -13,7 +13,7 @@
 LOG=/home/niels/logs/s1_launch_capacity.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 DIR=/home/niels/binance-sandbox
-PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+PYTHON=/home/niels/.conda/envs/binance_env_mac/bin/python
 TARGET_PROCS=18
 
 NCURRENT=$(pgrep -afc "backtest_v8_sweep" 2>/dev/null || echo 0)

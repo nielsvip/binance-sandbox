@@ -110,7 +110,7 @@ def ensure_ez_running(host):
         out2, _, _ = ssh_run(host, f"ls {bin_path} 2>&1 | head -n 2")
         if "No such file" in out2:
             bin_path="/home/niels/binance-sandbox/ez_klines.py"
-        ssh_run(host, f"nohup /home/niels/.conda/envs/binance_env/bin/python -u {bin_path} > /home/niels/logs/ez_klines.log 2>&1 & echo started", timeout=10)
+        ssh_run(host, f"nohup /home/niels/.conda/envs/binance_env_mac/bin/python -u {bin_path} > /home/niels/logs/ez_klines.log 2>&1 & echo started", timeout=10)
         time.sleep(3)
     else:
         log(f"{host} ez_klines running: {out.strip().splitlines()[0][:120]}")

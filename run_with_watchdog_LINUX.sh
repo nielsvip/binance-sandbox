@@ -53,8 +53,8 @@ echo $$ > "$WATCHDOG_LOCK_FILE"
 trap "rm -f \"$WATCHDOG_LOCK_FILE\"" EXIT
 
 # Try to find Python - check common locations
-if [ -f "/home/niels/.conda/envs/binance_env/bin/python" ]; then
-    PYTHON_EXECUTABLE="/home/niels/.conda/envs/binance_env/bin/python"
+if [ -f "/home/niels/.conda/envs/binance_env_mac/bin/python" ]; then
+    PYTHON_EXECUTABLE="/home/niels/.conda/envs/binance_env_mac/bin/python"
 elif [ -f "/usr/bin/python3" ]; then
     PYTHON_EXECUTABLE="/usr/bin/python3"
 elif command -v python3 >/dev/null 2>&1; then

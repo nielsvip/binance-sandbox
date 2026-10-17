@@ -22,7 +22,7 @@
 set -u
 if [ -d /home/niels/binance-sandbox ]; then
     ROOT=/home/niels/binance-sandbox
-    PY=/home/niels/.conda/envs/binance_env/bin/python
+    PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 else
     ROOT=/Users/niels/Documents/binance
     PY=/opt/anaconda3/envs/binance_env/bin/python
