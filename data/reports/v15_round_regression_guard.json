@@ -1,19 +1,23 @@
 {
- "at": "2026-10-17T07:26:05Z",
+ "at": "2026-10-17T08:26:02Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 2,
-   "per_hour": 1.0,
-   "improved_vs_best_start": 2,
-   "mean_uplift_vs_best_start": 54.6294,
-   "median_uplift": 107.0515,
+   "published_n": 3,
+   "per_hour": 1.5,
+   "improved_vs_best_start": 3,
+   "mean_uplift_vs_best_start": 51.676,
+   "median_uplift": 45.7692,
    "chained_from_previous_published": 2,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
+    {
+     "symside": "BHVN_SHORT",
+     "npz_age_h": 12.2
+    },
     {
      "symside": "CDW_LONG",
      "npz_age_h": 11.32
@@ -24,10 +28,25 @@
     }
    ],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)",
-    "2/2 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+    "throughput 1.5/h < 12.0/h (one per 5 min)",
+    "3/3 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
    ],
    "rows": [
+    {
+     "symside": "BHVN_SHORT",
+     "published_at": 1792223822.5087495,
+     "final_gain": 56.72294551150391,
+     "best_start_gain": 10.95369907031698,
+     "best_start_chosen": "incumbent",
+     "best_start_candidates": 2,
+     "baseline_gain": 10.95369907031698,
+     "npz_ts_last": 1792179900.0,
+     "npz_md5": "358a608571ff8507f72da755824a891c",
+     "npz_bars": 1851,
+     "bh": 32.625001668930054,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 12.2
+    },
     {
      "symside": "CDW_LONG",
      "published_at": 1792220650.516465,
