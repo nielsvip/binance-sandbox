@@ -112,13 +112,51 @@ def load_bars(p: Path) -> list[dict]:
     return [b for b in d if isinstance(b, dict) and b.get("timestamp")] if isinstance(d, list) else []
 
 
+def _same_bar(a: dict, b: dict) -> bool:
+    """Equal apart from float round-trip noise. Without this, 2998897.3000000003 vs 2998897.3 is logged as a
+    conflict on every run forever (seen on ZROUSDT_4h 2026-10-14T20:00)."""
+    for k in ("open", "high", "low", "close", "volume"):
+        try:
+            if round(float(a.get(k, 0)), 8) != round(float(b.get(k, 0)), 8):
+                return False
+        except (TypeError, ValueError):
+            if a.get(k) != b.get(k):
+                return False
+    return True
+
+
+def _more_complete(new: dict, cur: dict) -> bool:
+    """True when `new` is a LATER sample of the same forming interval, not a different bar.
+
+    Inside one interval a bar can only accumulate: volume grows, high rises, low falls, open is fixed. So a
+    candidate that dominates on all of those is strictly more complete, and taking it still only ever ADDS
+    information. Measured on ZROUSDT_4h 2026-10-13T20:00, klines_cache held a partial bar (volume 68,811,
+    range 2.0076-2.0156) where the gateway had the finished one (volume 1,682,228, range 2.0057-2.0552);
+    keeping the partial would have frozen a wrong bar into a never-shrinking archive.
+    Anything that does NOT dominate is a genuine disagreement and is logged, never applied."""
+    try:
+        if float(new["volume"]) < float(cur["volume"]):
+            return False
+        if float(new["high"]) < float(cur["high"]):
+            return False
+        if float(new["low"]) > float(cur["low"]):
+            return False
+        if round(float(new["open"]), 8) != round(float(cur["open"]), 8):
+            return False
+        return (float(new["volume"]) > float(cur["volume"])
+                or float(new["high"]) > float(cur["high"])
+                or float(new["low"]) < float(cur["low"]))
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list) -> tuple[str, int, int]:
     """Union every source into the archive copy. Returns (status, bars_before, bars_after)."""
     target = arch_dir / f"{name}.json"
     existing = load_bars(target) if target.exists() else []
     merged = {b["timestamp"]: b for b in existing}
     before = len(merged)
-    added = 0
+    added = upgraded = 0
     for p in srcs:
         for b in load_bars(p):
             ts = b["timestamp"]
@@ -126,10 +164,16 @@ def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list) -> t
             if cur is None:
                 merged[ts] = b
                 added += 1
-            elif cur != b:
-                # never overwrite: a repair and a corruption are indistinguishable here
+            elif _same_bar(cur, b):
+                continue                      # float noise only
+            elif _more_complete(b, cur):
+                merged[ts] = b                # later sample of the same forming interval: strictly more data
+                upgraded += 1
+            else:
+                # genuine disagreement where neither dominates: never overwrite, a repair and a corruption
+                # are indistinguishable to code. Recorded for a human.
                 conflicts.append({"name": name, "timestamp": ts, "kept": cur, "offered": b, "source": str(p)})
-    if added == 0 and target.exists():
+    if added == 0 and upgraded == 0 and target.exists():
         return "unchanged", before, before
     out = [merged[k] for k in sorted(merged)]
     after = len(out)
@@ -159,7 +203,7 @@ def merge_one(name: str, srcs: list[Path], arch_dir: Path, conflicts: list) -> t
     return ("created" if not existing else "grown"), before, after
 
 
-def run(only: str | None) -> int:
+def run(only: str | None, force: bool = False) -> int:
     drives = real_drives()
     if not drives:
         log("no external drive mounted — nothing archived (normal; the next tick catches up)")
@@ -182,7 +226,7 @@ def run(only: str | None) -> int:
         for i, (name, srcs) in enumerate(sorted(srcs_by_name.items())):
             sig = {str(p): [int(p.stat().st_mtime), p.stat().st_size] for p in srcs if p.exists()}
             ent = manifest.get(name) or {}
-            if ent.get("srcs") == sig and (arch_dir / f"{name}.json").exists():
+            if not force and ent.get("srcs") == sig and (arch_dir / f"{name}.json").exists():
                 stats["skipped"] += 1
                 continue
             if free_gb(drive) < MIN_FREE_GB:
@@ -257,12 +301,13 @@ def main() -> int:
     ap.add_argument("--coverage", action="store_true")
     ap.add_argument("--symbol", help="archive just this SYMBOL_TF")
     ap.add_argument("--verify", help="compare the archive against local sources for one SYMBOL_TF")
+    ap.add_argument("--force", action="store_true", help="re-merge even when the manifest says sources are unchanged (use after a merge-rule change)")
     a = ap.parse_args()
     if a.coverage:
         return coverage()
     if a.verify:
         return verify(a.verify)
-    return run(a.symbol)
+    return run(a.symbol, a.force)
 
 
 if __name__ == "__main__":

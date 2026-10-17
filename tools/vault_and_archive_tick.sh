@@ -52,4 +52,10 @@ if [ "$HOUR" = "03" ] && [ ! -f "$STAMP" ]; then
 else
   timeout 1800 "$PY" "$REPO/tools/per_sym_store_archive.py" --sources live >> "$LOG" 2>&1
 fi
+# ---- 3. klines archive: append-only, on every drive present ------------------
+# USER 2026-10-17: "make sure the ext drives hold a full klines backup that only grows never shrinks".
+# Cheap after the first pass: the per-drive _manifest.json skips any symbol whose sources are unchanged by
+# (mtime,size), so a tick normally parses only the files that actually got new bars.
+timeout 1500 "$PY" "$REPO/tools/klines_ext_archive.py" >> "$LOG" 2>&1
+
 log "tick done"

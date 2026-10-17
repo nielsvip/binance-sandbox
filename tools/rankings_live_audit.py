@@ -114,6 +114,15 @@ def _live_set_ages():
     return out
 
 
+def _news_injected():
+    """-> {SYM_SIDE} that ez_news_scanner currently holds as an active injection."""
+    try:
+        active = json.loads((ROOT / "data" / "news_injections.json").read_text()).get("active", [])
+    except Exception:
+        return set()
+    return {"%s_%s" % (str(i.get("symbol", "")).upper(), str(i.get("side", "")).upper()) for i in active if isinstance(i, dict)}
+
+
 def _plot_slots(plots_dir):
     """-> {prefix: {rank: symbol}} plus the full (prefix, rank, symbol) triples present."""
     slots = defaultdict(dict)
@@ -169,18 +178,26 @@ def audit_venue(venue, args, ranking_sets):
     if qualified is not None:
         q_long = rankings_qualify.symbols(qualified, "long")
         q_short = rankings_qualify.symbols(qualified, "short")
+        injected = _news_injected()
+        report["stats"]["news_injected"] = {}
         for label, traded, qual in (("long", traded_long, q_long), ("short", traded_short, q_short)):
             extra = [s for s in traded if s not in qual]
+            # ez_news_scanner legitimately appends conviction picks between ranking cycles. Those are
+            # recorded in data/news_injections.json; anything else on the list is unexplained drift.
+            news = [s for s in extra if "%s_%s" % (s, label.upper()) in injected]
+            drift = [s for s in extra if s not in news]
+            report["stats"]["news_injected"][label] = len(news)
             missing = [s for s in qual if s not in traded]
-            if extra:
-                finding("LISTS", "%s list holds %d symbol(s) the gate did not qualify: %s" % (label, len(extra), ", ".join(extra[:12])))
+            if drift:
+                finding("LISTS", "%s list holds %d symbol(s) the gate did not qualify and news did not inject: %s" % (label, len(drift), ", ".join(drift[:12])))
             if missing:
                 finding("LISTS", "%s list is missing %d qualified symbol(s): %s" % (label, len(missing), ", ".join(missing[:12])))
         cap = qualified.get("cap")
         if cap:
             for label, traded in (("long", traded_long), ("short", traded_short)):
-                if len(traded) > cap:
-                    finding("LISTS", "%s list holds %d symbols over the cap of %d" % (label, len(traded), cap))
+                allowance = cap + report["stats"]["news_injected"].get(label, 0)
+                if len(traded) > allowance:
+                    finding("LISTS", "%s list holds %d symbols over the cap of %d (+%d news-injected)" % (label, len(traded), cap, allowance - cap))
 
     # --- PLOTS -------------------------------------------------------------
     plots_dir = ROOT / spec["plots_dir"]

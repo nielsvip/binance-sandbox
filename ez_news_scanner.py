@@ -330,6 +330,37 @@ def _read_symbol_list(path: Path) -> List[str]:
         pass
     return []
 
+def _opposite_side_path(path: Path) -> Optional[Path]:
+    """symbols_<acct>_long.json <-> symbols_<acct>_short.json, else None."""
+    if path.name.endswith('_long.json'):
+        return path.with_name(path.name[:-len('_long.json')] + '_short.json')
+    if path.name.endswith('_short.json'):
+        return path.with_name(path.name[:-len('_short.json')] + '_long.json')
+    return None
+
+def _drop_opposite_side_conflicts(path: Path, symbols: List[str]) -> List[str]:
+    """Never let an injection put a symbol on BOTH sides (USER 2026-10-17).
+    rankings_qualify.qualify() gives every symbol exactly one side when the ranking loop writes these
+    files, but the scanner appends to them every 120 s afterwards and had no such rule — on 2026-10-17
+    4 crypto and 15 stock symbols were queued LONG and SHORT at once. This refuses the ADD only; nothing
+    already on the list is removed, so the guard is monotone and cannot oscillate with the sibling file."""
+    other = _opposite_side_path(path)
+    if other is None:
+        return symbols
+    opposite = {str(s).upper() for s in _read_symbol_list(other) if s}
+    if not opposite:
+        return symbols
+    existing = {str(s).upper() for s in _read_symbol_list(path) if s}
+    kept, refused = [], []
+    for symbol in symbols:
+        if symbol in opposite and symbol not in existing:
+            refused.append(symbol)
+        else:
+            kept.append(symbol)
+    if refused:
+        logger.warning(f"[INJECT] Refused {len(refused)} symbol(s) already on the opposite side of {path.name}: {refused}")
+    return kept
+
 def _write_symbol_list(path: Path, symbols: List[str]) -> bool:
     """Atomic writer for crypto lists; TRB uses the locked mutator below."""
     temp_path = path.with_name(
@@ -337,6 +368,7 @@ def _write_symbol_list(path: Path, symbols: List[str]) -> bool:
     )
     try:
         normalized = list(dict.fromkeys(str(s).upper() for s in symbols if s))
+        normalized = _drop_opposite_side_conflicts(path, normalized)
         with open(temp_path, 'w') as f:
             json.dump(normalized, f, indent=2)
             f.write('\n')

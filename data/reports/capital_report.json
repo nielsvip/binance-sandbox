@@ -1,195 +1,30 @@
 {
- "generated_at": "2026-10-17 02:44 UTC",
- "total_capital_usd": 239.78,
+ "generated_at": "2026-10-17 02:50 UTC",
+ "total_capital_usd": 12.1,
  "tier_capital": {
-  "A": 29.02,
-  "B": 59.77,
-  "C": 150.97
+  "A": 0.0,
+  "B": 12.1,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 1,
-  "B": 6,
-  "C": 8
+  "A": 0,
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "men:GALAUSDT_LONG",
-  "men:COTIUSDT_LONG",
-  "men:MELANIAUSDT_LONG",
-  "men:1INCHUSDT_LONG",
-  "men:BBUSDT_SHORT",
-  "men:RVNUSDT_SHORT",
-  "men:DASHUSDT_SHORT",
-  "men:GALAUSDT_SHORT"
- ],
- "mediocre": [
-  "men:EGLDUSDT_LONG"
- ],
+ "losers": [],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:GALAUSDT_LONG",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 54.98,
-   "gain_pct": -0.785,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 27205.0,
-   "mark": 0.002021
-  },
-  {
-   "pk": "men:COTIUSDT_LONG",
-   "symbol": "COTIUSDT",
-   "account": "men",
-   "value_usd": 35.62,
-   "gain_pct": -0.404,
-   "tier": "C",
-   "perf_mult": 0.41,
-   "amt": 3135.0,
-   "mark": 0.0113636
-  },
-  {
-   "pk": "men:ENJUSDT_LONG",
-   "symbol": "ENJUSDT",
-   "account": "men",
-   "value_usd": 29.02,
-   "gain_pct": -0.259,
-   "tier": "A",
-   "perf_mult": 9.34,
-   "amt": 986.0,
-   "mark": 0.02943347
-  },
-  {
-   "pk": "men:DOTUSDT_LONG",
-   "symbol": "DOTUSDT",
-   "account": "men",
-   "value_usd": 27.58,
-   "gain_pct": 2.854,
+   "pk": "inf:WLDUSDC_LONG",
+   "symbol": "WLDUSDC",
+   "account": "inf",
+   "value_usd": 12.1,
+   "gain_pct": 0.831,
    "tier": "B",
-   "perf_mult": 4.6,
-   "amt": 23.7,
-   "mark": 1.1639
-  },
-  {
-   "pk": "men:RVNUSDT_SHORT",
-   "symbol": "RVNUSDT",
-   "account": "men",
-   "value_usd": 21.95,
-   "gain_pct": 2.47,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 14636.0,
-   "mark": 0.00150001
-  },
-  {
-   "pk": "men:MELANIAUSDT_LONG",
-   "symbol": "MELANIAUSDT",
-   "account": "men",
-   "value_usd": 14.97,
-   "gain_pct": -0.116,
-   "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 174.3,
-   "mark": 0.08591
-  },
-  {
-   "pk": "men:EGLDUSDT_LONG",
-   "symbol": "EGLDUSDT",
-   "account": "men",
-   "value_usd": 7.39,
-   "gain_pct": -0.162,
-   "tier": "B",
-   "perf_mult": 0.44,
-   "amt": 2.0,
-   "mark": 3.694
-  },
-  {
-   "pk": "men:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "men",
-   "value_usd": 7.25,
-   "gain_pct": 2.62,
-   "tier": "B",
-   "perf_mult": 4.16,
-   "amt": 1.0,
-   "mark": 7.248
-  },
-  {
-   "pk": "men:1INCHUSDT_LONG",
-   "symbol": "1INCHUSDT",
-   "account": "men",
-   "value_usd": 5.97,
-   "gain_pct": -0.054,
-   "tier": "C",
-   "perf_mult": 0.34,
-   "amt": 64.0,
-   "mark": 0.09326
-  },
-  {
-   "pk": "men:XTZUSDT_SHORT",
-   "symbol": "XTZUSDT",
-   "account": "men",
-   "value_usd": 5.95,
-   "gain_pct": 0.399,
-   "tier": "B",
-   "perf_mult": 5.25,
-   "amt": 18.8,
-   "mark": 0.31633296
-  },
-  {
-   "pk": "men:BBUSDT_SHORT",
-   "symbol": "BBUSDT",
-   "account": "men",
-   "value_usd": 5.9,
-   "gain_pct": 1.753,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 700.0,
-   "mark": 0.008427
-  },
-  {
-   "pk": "men:MANAUSDT_SHORT",
-   "symbol": "MANAUSDT",
-   "account": "men",
-   "value_usd": 5.81,
-   "gain_pct": 3.096,
-   "tier": "B",
-   "perf_mult": 0.74,
-   "amt": 66.0,
-   "mark": 0.08807406
-  },
-  {
-   "pk": "men:IOTXUSDT_SHORT",
-   "symbol": "IOTXUSDT",
-   "account": "men",
-   "value_usd": 5.79,
-   "gain_pct": 2.945,
-   "tier": "B",
-   "perf_mult": 3.68,
-   "amt": 1519.0,
-   "mark": 0.003814
-  },
-  {
-   "pk": "men:DASHUSDT_SHORT",
-   "symbol": "DASHUSDT",
-   "account": "men",
-   "value_usd": 5.79,
-   "gain_pct": 2.943,
-   "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 0.119,
-   "mark": 48.69373371
-  },
-  {
-   "pk": "men:GALAUSDT_SHORT",
-   "symbol": "GALAUSDT",
-   "account": "men",
-   "value_usd": 5.79,
-   "gain_pct": 3.394,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 2864.0,
-   "mark": 0.002021
+   "perf_mult": 0.79,
+   "amt": 23.2,
+   "mark": 0.5217
   }
  ]
 }
