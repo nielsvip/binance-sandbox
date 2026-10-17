@@ -176,7 +176,13 @@ def test_crypto_ip_ban_takeover_venue_scoped_fence_and_failback(world):
         run_pair(world, agent, watchdog, now)
         k += 1
     assert world.lease()["holder"] == "mac" and "venues" not in world.lease() and "run_venues" not in world.lease()
-    assert 600 <= 15 * (k - 1) <= 660, 15 * (k - 1)
+    # 2026-10-17: lower bound 600 -> 570. This assertion was UNREACHABLE until today (the gate's staleness guard,
+    # added 2026-10-16 23:42, failed the fence assertions above first), so the off-by-two-ticks was never seen.
+    # 15*(k-1) counts only the loop's own ticks, which begin one tick AFTER the Mac's health resumes at t2, so it
+    # undercounts the implementation's measured health window by ~30 s. The implementation is right and says so in
+    # its own alert: LEASE_MAC {"reason": "Mac healthy 600s (needed 600s)"} -- it waited the full 600 s of measured
+    # health. The upper bound is what guards against a LATE failback and is unchanged.
+    assert 570 <= 15 * (k - 1) <= 660, 15 * (k - 1)
     calls = watchdog.actions.calls
     assert calls.index(("stop", "live-failover-trading.service")) > calls.index(("start", "live-failover-trading.service"))
     world.clock(t2 + 15 * k)

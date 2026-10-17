@@ -3468,6 +3468,20 @@ jsut stated".
 - **13 live per-sym sets carry `PEAK_GIVEBACK_HARD_ZERO_ENABLED=True`** chosen while the switch was inert on boards; their next re-measure is
   the first honest number for them.
 
+### 114.1 — HARD_BREAKEVEN_FLOOR ENGINE VERSION + LIVE = VECTOR, LIVE-ONLY FUNCTIONS PAPER-TRADED (USER 2026-10-17)
+- `HARD_BREAKEVEN_FLOOR_ENABLED` is the override inside the live BREAKEVEN_GAIN_EROSION exit (former winner peak >= MIN_PEAK exits past the
+  HTF veto; never-peaked waits). `vec_decisions/breakeven_gain_erosion.py` is the ONE core; `ez_positions_quick` and `v12_quick_engine` both
+  call it (stocks get it through the VEC_EXACT twin; tradier had stubs only). The old engine stub `_batch1_template_wiring` is dead (no callers).
+- Live defaults put the window at 50–50.5 % (unreachable) and the template options were 25–75 %; reachable 0.0/0.1/0.25 rows added, bold kept.
+  Flip proof 30d, 7 sym_sides [DIAGNOSTIC ONLY]: window 0.1 floor on vs off better on COIN/DOGE/UNI(+2.21 vs +0.55)/SUI, worse AMD/PWR/ZEC;
+  profit-not-required floor on vs off better 6/7 (UNI off: 48 breakeven closes −33.8 % summed). Pilot decides per board.
+- LIVE = VECTOR: executed fills 3d before — crypto 1245 vec / 15 native entries, 1086 / 222 exits; stocks 28 / 270 entries, 4 / 397 exits.
+  `TRADIER_HERMETIC_ENFORCE=True`. Every refusal (HERMETIC, STRICT_VEC_PARITY, both venues) is written by `paper_nonvec.record()`;
+  `tools/paper_nonvec_eval.py` scores exits vs the real lifecycle close and entries by 16-bar forward return net of cost, per function per
+  sym_side; PROMOTE_CANDIDATE after >= 7 days, >= 5 sym_sides, > half positive and pooled > 0. Promotion is a decision, never automatic.
+- OPEN: the exit allowlist still passes intrabar live executions of vector families by token (FIXED_STOP, DAYTRADE/TECHNICAL_TARGET, …);
+  they fire at the vector's own levels, but the trigger clock is live's — verify level identity per family before calling it 100 %.
+
 ### 111.2 — USDC IS NATIVE NOW (USER 2026-10-17 "we used to trade usdc but use usdt data … usdc has full and reliable data"; "usdc and usdt can have >5% price discrepancies so we DEFINITELY need to make it usdc native as well")
 
 **The premise checks out.** All three real kline stores hold REAL USDC bars for every USDC ticker — measured on S1
