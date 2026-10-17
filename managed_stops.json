@@ -1,11 +1,4 @@
 {
-  "ang:JASMYUSDT_SHORT": {
-    "orderId": "4000001974155049",
-    "stopPrice": 0.004725,
-    "entry_sig": "2026-10-17 05:45:06.739000+00:00",
-    "symbol": "JASMYUSDT",
-    "side": "SHORT"
-  },
   "ang:API3USDT_LONG": {
     "orderId": "4000001973966742",
     "stopPrice": 0.2859,
@@ -13,32 +6,11 @@
     "symbol": "API3USDT",
     "side": "LONG"
   },
-  "ang:RVNUSDT_SHORT": {
-    "orderId": "4000001974073401",
-    "stopPrice": 0.001536,
-    "entry_sig": "2026-10-17 04:22:51.144000+00:00",
-    "symbol": "RVNUSDT",
-    "side": "SHORT"
-  },
-  "ang:FARTCOINUSDT_SHORT": {
-    "orderId": "4000001973975098",
-    "stopPrice": 0.1555,
-    "entry_sig": "2026-10-17 02:46:56.112000+00:00",
-    "symbol": "FARTCOINUSDT",
-    "side": "SHORT"
-  },
   "ang:ALTUSDT_LONG": {
     "orderId": "4000001973983207",
     "stopPrice": 0.008166,
     "entry_sig": "2026-10-17 02:55:41.271000+00:00",
     "symbol": "ALTUSDT",
-    "side": "LONG"
-  },
-  "ang:ARKMUSDT_LONG": {
-    "orderId": "4000001974140499",
-    "stopPrice": 0.1214,
-    "entry_sig": "2026-10-17 02:29:44.445000+00:00",
-    "symbol": "ARKMUSDT",
     "side": "LONG"
   },
   "ang:EDUUSDT_LONG": {
@@ -54,6 +26,34 @@
     "entry_sig": "2026-10-17 03:49:02.672000+00:00",
     "symbol": "SKLUSDT",
     "side": "LONG"
+  },
+  "ang:ARKMUSDT_LONG": {
+    "orderId": "4000001974140499",
+    "stopPrice": 0.1214,
+    "entry_sig": "2026-10-17 02:29:44.445000+00:00",
+    "symbol": "ARKMUSDT",
+    "side": "LONG"
+  },
+  "ang:FARTCOINUSDT_SHORT": {
+    "orderId": "4000001973975098",
+    "stopPrice": 0.1555,
+    "entry_sig": "2026-10-17 02:46:56.112000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "ang:RVNUSDT_SHORT": {
+    "orderId": "4000001974073401",
+    "stopPrice": 0.001536,
+    "entry_sig": "2026-10-17 04:22:51.144000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
+  },
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000001974155049",
+    "stopPrice": 0.004725,
+    "entry_sig": "2026-10-17 05:45:06.739000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
   },
   "ang:WLDUSDC_LONG": {
     "orderId": "4000001974140505",

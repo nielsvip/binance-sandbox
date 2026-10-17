@@ -1320,27 +1320,6 @@ def _growth_debt_mb(pairs_pss, est_pair):
     return debt
 
 
-def _mature_growth_debt_mb(pairs_pss, est_pair):
-    """USER 2026-10-17 (reaper churn: S1 OOM guard TERMed 5 boards in 24 h, 1INCHUSDT_SHORT after 14 min): pairs between
-    half and the full estimate still grow toward it — _growth_debt_mb only counts pairs under half, so 4 boards at ~60%
-    of their peak read as "no debt" and a 5th was admitted into the reaper's floor. Sum of (est - m) for est/2 <= m < est.
-    Never raises."""
-    try:
-        e = float(est_pair or 0)
-        vals = pairs_pss.values() if isinstance(pairs_pss, dict) else (pairs_pss or [])
-    except Exception:
-        return 0.0
-    debt = 0.0
-    for v in vals:
-        try:
-            m = float(v or 0)
-        except Exception:
-            continue
-        if e * 0.5 <= m < e:
-            debt += e - m
-    return debt
-
-
 def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0):
     """Largest pair PSS seen on this host in the last 24 h (state-carried across --once ticks): a new board's expected
     peak, not the size of whatever is running right now (young boards understate it). Updates st in place. Never raises."""
@@ -2719,19 +2698,22 @@ def tick(args, cfg, now):
         # Venue-aware: a stocks board peaks ~2 GB, a crypto board 4-9 GB — one host-wide number either starved S2 of stocks
         # boards that fit or admitted crypto boards that did not. Each venue: max(floor, measured x1.25, 24 h peak x1.1).
         _peak_on = os.environ.get("V15_SCHED_PEAK_ADMIT", "1") == "1"
-        est_v = {}
+        est_v, peak_v = {}, {}
         if _peak_on:
             for _vn, _vfloor in (("crypto", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000)), ("stocks", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", "2500") or 2500))):
                 _vm = {k: v for k, v in pairs.items() if k in universe_syms[_vn] and v > 0}
-                est_v[_vn] = max(_est_pair_mb(list(_vm.values()), _vfloor), 1.1 * _host_peak_pair_mb(st, f"{h['name']}|{_vn}", _vm, _now_ts))
+                peak_v[_vn] = max(_host_peak_pair_mb(st, f"{h['name']}|{_vn}", _vm, _now_ts), float(_vfloor) / 1.25)
+                est_v[_vn] = max(_est_pair_mb(list(_vm.values()), _vfloor), 1.1 * peak_v[_vn])
             est_pair = max(est_v.values())
         _est_sym = lambda _s: est_v.get(venue_of(_s), est_pair) if _peak_on else est_pair
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         if _peak_on:
             _debt = 0.0
             for _ps_, _m_ in pairs.items():
-                _e_ = _est_sym(_ps_)
-                _debt += _growth_debt_mb([_m_], _e_) + _mature_growth_debt_mb([_m_], _e_)
+                # a running pair still grows to the host's measured peak for its venue (not to est, which already
+                # carries the x1.25/x1.1 headroom for an unseen NEW board — counting that twice idled S1 at 2 boards)
+                _p_ = peak_v.get(venue_of(_ps_), _est_sym(_ps_))
+                _debt += max(0.0, float(_p_) - float(_m_ or 0))
             proj_mem = s["mem_avail_mb"] - reserve - _debt
         else:
             proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
