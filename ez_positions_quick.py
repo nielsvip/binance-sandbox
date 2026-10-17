@@ -29,6 +29,7 @@ from requests.adapters import HTTPAdapter
 
 import btc_loop as _btc_loop  # 2026-04-28 Phase 6b: BTC dedicated loop decision module (kill switch BTC_DEDICATED_ENABLED defaults False)
 import hedge_decisions as _hd
+import vec_decisions.breakeven_gain_erosion as _bge_core  # 2026-10-17 BREAKEVEN_GAIN_EROSION/HTF_EXIT_VETO/HARD_BREAKEVEN_FLOOR shared core
 from binance.client import Client
 
 # from binance.enums import *
@@ -26044,30 +26045,7 @@ async def check_exit_candidates_for_account(
                             hedge_for = _cand_hedge_for
 
                 hard_exit_reason = ""
-                _trend_veto_active = False
-                if bool(
-                    _sw_get(symbol, position_side, "TREND_REGIME_VETO_ENABLED", True)
-                ):
-                    _v_w1_1h = safe_fetch_float(indicators.get("wt1_1h"), 0.0)
-                    _v_w2_1h = safe_fetch_float(indicators.get("wt2_1h"), 0.0)
-                    _v_w1_4h = safe_fetch_float(indicators.get("wt1_4h"), 0.0)
-                    _v_w2_4h = safe_fetch_float(indicators.get("wt2_4h"), 0.0)
-                    _v_w1_D = safe_fetch_float(indicators.get("wt1_D"), 0.0)
-                    _v_w2_D = safe_fetch_float(indicators.get("wt2_D"), 0.0)
-                    if is_long:
-                        _v_aligned = (
-                            (_v_w1_1h > _v_w2_1h)
-                            and (_v_w1_4h > _v_w2_4h)
-                            and (_v_w1_D > _v_w2_D)
-                        )
-                    else:
-                        _v_aligned = (
-                            (_v_w1_1h < _v_w2_1h)
-                            and (_v_w1_4h < _v_w2_4h)
-                            and (_v_w1_D < _v_w2_D)
-                        )
-                    if _v_aligned:
-                        _trend_veto_active = True
+                _trend_veto_active = _bge_core.trend_veto(lambda k, d: _sw_get(symbol, position_side, k, d), is_long, indicators)  # 2026-10-17 shared core (vec_decisions/breakeven_gain_erosion.py)
                 # ═══ K1M EXTREME REVERSE EXIT (USER RULE 2026-04-27) ═══
                 # Simple top-level: k_1m at overbought/oversold extreme AND turning back = trade is OUT.
                 # Fires ONLY when in profit (current_gain >= 0) per universal "never close at loss" rule.
@@ -26795,36 +26773,7 @@ async def check_exit_candidates_for_account(
                 # ALGOUSDT 2026-04-16: SHORT closed at -0.74% via BREAKEVEN right before big drop.
                 # Root cause: 3m structural stops fire on pullback-in-trend while 1h+4h+D still bearish.
                 # Rule: if 2+ of {1h,4h,D} WT aligned with position AND abs(gain) <= HTF_VETO_MAX_LOSS, skip.
-                _htf_veto_active = False
-                if (
-                    bool(getattr(config, "HTF_EXIT_VETO_ENABLED", True))
-                    and not is_hedge
-                ):
-                    _hv_max_loss = float(
-                        getattr(config, "HTF_EXIT_VETO_MAX_LOSS_PCT", 2.0)
-                    )
-                    if abs(current_gain) <= _hv_max_loss:
-                        _hv_w1_1h = safe_fetch_float(indicators.get("wt1_1h"), 0)
-                        _hv_w2_1h = safe_fetch_float(indicators.get("wt2_1h"), 0)
-                        _hv_w1_4h = safe_fetch_float(indicators.get("wt1_4h"), 0)
-                        _hv_w2_4h = safe_fetch_float(indicators.get("wt2_4h"), 0)
-                        _hv_w1_D = safe_fetch_float(indicators.get("wt1_D"), 0)
-                        _hv_w2_D = safe_fetch_float(indicators.get("wt2_D"), 0)
-                        if is_long:
-                            _hv_aligned = (
-                                int(_hv_w1_1h > _hv_w2_1h)
-                                + int(_hv_w1_4h > _hv_w2_4h)
-                                + int(_hv_w1_D > _hv_w2_D)
-                            )
-                        else:
-                            _hv_aligned = (
-                                int(_hv_w1_1h < _hv_w2_1h)
-                                + int(_hv_w1_4h < _hv_w2_4h)
-                                + int(_hv_w1_D < _hv_w2_D)
-                            )
-                        _htf_veto_active = _hv_aligned >= int(
-                            getattr(config, "HTF_EXIT_VETO_MIN_ALIGNED", 2)
-                        )
+                _htf_veto_active, _hv_aligned = (False, 0) if is_hedge else _bge_core.htf_veto(lambda k, d: getattr(config, k, d), current_gain, is_long, indicators)  # 2026-10-17 shared core
                 if (
                     _trend_veto_active
                     and not hard_exit_reason
@@ -26841,58 +26790,22 @@ async def check_exit_candidates_for_account(
                     and bool(getattr(config, "BREAKEVEN_GAIN_EROSION_ENABLED", True))
                     and not _trend_veto_active
                 ):
+                    # 2026-04-28 USER RULE commission-aware window, 2026-05-21 kill-switch, HARD_BREAKEVEN_FLOOR override — decided by the
+                    # shared core vec_decisions/breakeven_gain_erosion.py (2026-10-17), the same call v12_quick_engine makes per closed bar.
                     _be_grace = float(getattr(config, "BREAKEVEN_GRACE_MINUTES", 15.0))
-                    # 2026-04-28 USER RULE: commission-aware. Close must net positive after fees+slippage.
-                    # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% earlier today.
-                    # Floor lifted to COMMISSION_BUFFER_PCT (0.10%) so a "near-breakeven" close is ACTUALLY breakeven post-fees.
-                    # 2026-05-21 USER MANDATE: hard kill-switch wrapping the whole block. ZECUSDC bled +17% trend via 5+ noise-zone closes.
-                    _be_req_profit = bool(
-                        getattr(config, "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT", True)
-                    )
-                    _be_comm_buf = float(getattr(config, "COMMISSION_BUFFER_PCT", 0.10))
-                    _be_min_gain = float(
-                        getattr(config, "BREAKEVEN_GAIN_EROSION_MIN_GAIN", _be_comm_buf)
-                    )
-                    _be_upper = max(
-                        _be_min_gain + 0.5, 0.02
-                    )  # window must be non-empty
-                    _be_window = (
-                        (_be_min_gain <= current_gain < _be_upper)
-                        if _be_req_profit
-                        else (current_gain < 0.02)
-                    )
-                    if _pos_age_min >= _be_grace and _be_window:
-                        _hbf_enabled = bool(
-                            getattr(config, "HARD_BREAKEVEN_FLOOR_ENABLED", True)
-                        )
-                        _hbf_min_peak = float(
-                            getattr(config, "HARD_BREAKEVEN_MIN_PEAK_PCT", 0.5)
-                        )
-                        _pos_max_g_be = safe_fetch_float(
-                            getattr(position, "max_gain", 0), 0
-                        )
-                        _hbf_override = _hbf_enabled and _pos_max_g_be >= _hbf_min_peak
-                        if _htf_veto_active and not _hbf_override:
-                            logger.info(
-                                f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit"
-                            )
-                        elif _hbf_enabled and _pos_max_g_be < _hbf_min_peak:
-                            logger.info(
-                                f"🛡️[BREAKEVEN_PEAK_GATE] {position_key}: max_gain={_pos_max_g_be:.2f}% < {_hbf_min_peak:.1f}% — position hasn't peaked, waiting for R2/PPL window"
-                            )
-                        else:
-                            if _hbf_override and _htf_veto_active:
-                                logger.critical(
-                                    f"🔥[HARD_BREAKEVEN_FLOOR] {position_key}: max_gain={_pos_max_g_be:.2f}% ≥ {_hbf_min_peak:.1f}% — OVERRIDING HTF veto, gain={current_gain:.2f}% ⚠️ DO NOT DISABLE"
-                                )
-                            hard_exit_reason = f"BREAKEVEN_GAIN_EROSION_STOP_age{_pos_age_min:.0f}m_gain{current_gain:.2f}%"
-                            logger.critical(
-                                f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% max_peak={_pos_max_g_be:.2f}% — taking near-breakeven exit"
-                            )
-                    elif _pos_age_min >= _be_grace and current_gain < 0:
-                        logger.info(
-                            f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED, holding for technical exit"
-                        )
+                    _pos_max_g_be = safe_fetch_float(getattr(position, "max_gain", 0), 0)
+                    _be_fire, _be_why, _be_rs = _bge_core.window_decision(lambda k, d: getattr(config, k, d), current_gain, _pos_max_g_be, _pos_age_min, _htf_veto_active)
+                    if _be_why == "HTF_VETO":
+                        logger.info(f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit")
+                    elif _be_why == "PEAK_GATE":
+                        logger.info(f"🛡️[BREAKEVEN_PEAK_GATE] {position_key}: max_gain={_pos_max_g_be:.2f}% < {float(getattr(config, 'HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5)):.1f}% — position hasn't peaked, waiting for R2/PPL window")
+                    elif _be_why == "LOSS_HOLD":
+                        logger.info(f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — outside the erosion window, holding for technical exit")
+                    elif _be_fire:
+                        if _be_why == "FIRE_HBF_OVERRIDE":
+                            logger.critical(f"🔥[HARD_BREAKEVEN_FLOOR] {position_key}: max_gain={_pos_max_g_be:.2f}% — OVERRIDING HTF veto, gain={current_gain:.2f}%")
+                        hard_exit_reason = _be_rs
+                        logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% max_peak={_pos_max_g_be:.2f}% — taking near-breakeven exit")
                 if (
                     not hard_exit_reason
                     and not _in_grace_period

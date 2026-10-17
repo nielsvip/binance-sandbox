@@ -71,6 +71,7 @@ import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen s
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
+import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
@@ -17461,6 +17462,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _lpm, _lp_flags = None, frozenset()
     _bel_on = bool(getattr(cfg, "PEAK_GIVEBACK_PROTECTION_ENABLED", True)) and (bool(getattr(cfg, "PEAK_GIVEBACK_HARD_ZERO_ENABLED", False)) or bool(getattr(cfg, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False)))
     _bel_thr = vec_decisions.check_exit_candidates_crypto__peak_giveback._peak_giveback_thresholds(cfg)
+    # 2026-10-17 BREAKEVEN_GAIN_EROSION exit twin (live ez_positions_quick) — HARD_BREAKEVEN_FLOOR is its override, HTF_EXIT_VETO / TREND_REGIME_VETO its vetoes
+    _bge_on = bool(getattr(cfg, "BREAKEVEN_GAIN_EROSION_ENABLED", False))
+    if _bge_on:
+        _bge_get = lambda k, d: getattr(cfg, k, d)  # noqa: E731
+        _bge_bmin = _bar_minutes(cfg)
+        _bge_wt = {k: _safe(npz, k, n) for k in ("wt1_1h", "wt2_1h", "wt1_4h", "wt2_4h", "wt1_D", "wt2_D")}
     _lp_on = _lpm is not None and bool(_lp_flags) and bool(getattr(cfg, "LOSS_PRONE_ENTRY_FILTER_ENABLED", True))
     if _lp_on:
         _lp_w11, _lp_w21 = _safe(npz, "wt1_1h", n), _safe(npz, "wt2_1h", n)
@@ -20026,6 +20033,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 continue
         except Exception:
             pass
+        if _bge_on and pos is not None:  # 2026-10-17 BREAKEVEN_GAIN_EROSION twin — same core as live (vec_decisions/breakeven_gain_erosion.py)
+            try:
+                _bge_avg = float(pos.get("avg_price") or 0.0)
+                if _bge_avg > 0 and int(pos.get("entry_bar", i)) < i:
+                    _bge_g = ((px - _bge_avg) / _bge_avg * 100.0) if is_long else ((_bge_avg - px) / _bge_avg * 100.0)
+                    pos["_bge_mfe"] = max(float(pos.get("_bge_mfe", -1e9)), _bge_g)
+                    _bge_age = float(i - int(pos["entry_bar"])) * _bge_bmin
+                    _bge_w = {k: float(v[i]) for k, v in _bge_wt.items()}
+                    _bge_grace = _bgem.in_grace(_bge_age, "REENTRY" in str(pos.get("entry_reason", "")).upper(), int(pos.get("n_augments", 0)) > 0, getattr(cfg, "REENTRY_GRACE_MINUTES", 30.0))
+                    if not _bge_grace and not _bgem.trend_veto(_bge_get, is_long, _bge_w):
+                        _bge_fire, _bge_why, _bge_rs = _bgem.window_decision(_bge_get, _bge_g, pos["_bge_mfe"], _bge_age, _bgem.htf_veto(_bge_get, _bge_g, is_long, _bge_w)[0])
+                        if _bge_fire:
+                            pos["fees"] += abs(pos["qty"] * px) * half_fee
+                            _bge_pnl = pos["realized"] + ((px - pos["avg_price"]) * pos["qty"] if is_long else (pos["avg_price"] - px) * pos["qty"]) - pos["fees"]
+                            _bge_ts = float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                            trades.append({"pnl_dollars": _bge_pnl, "pnl_pct": float(_bge_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0), "deployed": pos["deployed"], "reason": _bge_rs, "type": "CLOSE", "ts": _bge_ts, "price": float(px), "bar_entry": int(pos["entry_bar"]), "bar_exit": int(i), "entry_price": float(pos.get("entry_price", pos["avg_price"])), "exit_price": float(px), "qty": float(pos["qty"]), "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"), "exit_reason": _bge_rs, "bars_held": int(i - pos["entry_bar"]), "hbf_override": _bge_why == "FIRE_HBF_OVERRIDE"})
+                            pos = None
+                            cd = cooldown_bars
+                            has_closed_before = True
+                            continue
+            except Exception:
+                pass
         if _bel_on and pos is not None:  # 2026-10-17 PEAK_GIVEBACK twin (live ez_positions_quick hard-zero/drop) — was imported, never called: pilot rows measured 0
             try:
                 _bel_avg = float(pos.get("avg_price") or 0.0)
