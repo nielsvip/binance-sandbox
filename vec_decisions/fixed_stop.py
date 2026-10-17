@@ -86,6 +86,29 @@ def breached(is_long: bool, price: float, soft_level: float) -> bool:
     return px <= lv if is_long else px >= lv
 
 
+def loosens(is_long: bool, old_level: float, new_level: float) -> bool:
+    """True = new_level sits FURTHER from entry than old_level, i.e. the stop would give back protection.
+
+    USER 2026-10-17 (men:ENJUSDT_LONG): "it is changing in the wrong direction during a trade ... can not move
+    further away from entry price ever". Within ONE lifecycle the level is supposed to be frozen, but the
+    self-healing re-freeze in ez_positions_service accepted whatever it recomputed, in either direction. When the
+    entry-bar klines call timed out it substituted the CURRENT channel over the already-proven level, and the next
+    successful rebuild snapped back to the entry bar — so the live stop wandered for as long as the endpoint was
+    flaky. Measured in the 10-15..10-17 logs: 17 same-lifecycle re-freezes moved the stop further from entry
+    (men:COTIUSDT_LONG -4.12%, men:GALAUSDT_SHORT +3.90%, men:ENJUSDT_LONG -3.85%, men:RVNUSDT_SHORT +3.63%),
+    every large one the away-leg of such a flap pair. Tightening toward entry stays allowed; loosening does not.
+    A genuine new lifecycle carries a different opened_at and is exempt — it is a different trade, not a drift.
+    """
+    try:
+        o = float(old_level or 0.0)
+        n = float(new_level or 0.0)
+    except (TypeError, ValueError):
+        return False
+    if o <= 0 or n <= 0:
+        return False
+    return n < o if is_long else n > o
+
+
 def armed_at_freeze(is_long: bool, price: float, soft_level: float) -> bool:
     """A stop arms only while price is still on the protected side of it (USER 2026-10-15).
 

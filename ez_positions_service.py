@@ -6996,7 +6996,15 @@ class PositionService:
                                 except Exception as _fx_ke:
                                     _fx_fail[position_key] = time.time() + 30.0
                                     logger.warning(f"[FIXED_STOP_FREEZE] {position_key}: entry-bar channel rebuild failed ({_fx_ke}) — falling back to the live channel this cycle")
-                            if _new <= 0:
+                            if _new <= 0 and _lvl > 0:
+                                # USER 2026-10-17 (men:ENJUSDT_LONG): a transport failure is NOT new information about
+                                # where the stop belongs. Substituting "now"'s channel over an already-frozen level is
+                                # what made the live stop wander — 0.027860 -> 0.028977 (LIVE_CHANNEL, klines timed out)
+                                # -> 0.027860 (ENTRY_BAR, snapped back), the exchange backstop cancelled and re-placed
+                                # on each leg. Keep what is frozen and retry; the fallback below is for a position that
+                                # has NO level at all, where any anchor beats naked.
+                                logger.warning(f"🛡️ [FIXED_STOP_FREEZE_KEPT] {position_key}: entry-bar rebuild unavailable — keeping frozen {_lvl:.6f}, NOT substituting the live channel (retry in 30s)")
+                            elif _new <= 0:
                                 try:
                                     _ind = ii(self, _sym) or {}
                                 except Exception:
@@ -7011,6 +7019,14 @@ class PositionService:
                                 except Exception:
                                     _ep = 0.0
                                 _new, _src = _fixed_stop_core.freeze_software_level(_is_long, _dlo, _dhi, _ep), "LIVE_CHANNEL"
+                            if _new > 0 and _lvl > 0 and _oa_ep is not None and abs(_anchor - float(_oa_ep)) <= 1.0 and _fixed_stop_core.loosens(_is_long, _lvl, _new):
+                                # USER 2026-10-17: "can not move further away from entry price ever". opened_at still
+                                # matches the anchor, so this is the SAME trade — the level is frozen, not re-derived.
+                                # A new lifecycle re-stamps opened_at and is exempt (different trade, own entry bar).
+                                logger.critical(f"🛡️ [FIXED_STOP_RATCHET] {position_key}: refusing {_lvl:.6f} -> {_new:.6f} — that is FURTHER from entry inside one lifecycle (opened_at unchanged); frozen level kept")
+                                if _src == "ENTRY_BAR":
+                                    _fx_ver.add(_fx_vkey)
+                                _new = 0.0
                             if _new > 0:
                                 if _src == "ENTRY_BAR":
                                     _fx_ver.add(_fx_vkey)  # this lifecycle's level is now proven against its own entry bar
