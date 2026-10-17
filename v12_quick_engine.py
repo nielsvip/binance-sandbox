@@ -11001,7 +11001,19 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         )
 
     if getattr(cfg, "SMA200_DIST_ENTRY_ENABLED", False):
-        sma_dist = np.where(sma200_1h > 0, (close - sma200_1h) / sma200_1h * 100, 0.0)
+        # 2026-10-17 (USER "no NaN errors and other stupid things can happen anymore"): the divisor is zeroed on the
+        # warm-up bars of every series (measured: sma_200_1h has 2-3 exact zeros per symbol out of 25-40k bars), and
+        # the old form `np.where(sma200_1h > 0, (close - sma200_1h) / sma200_1h * 100, 0.0)` evaluated the division
+        # for EVERY element before masking — so numpy divided by zero, produced inf/nan, raised
+        # "RuntimeWarning: divide by zero encountered in divide", and only then threw the bad values away. The RESULT
+        # was always correct (a full-engine census over 16 sym_sides found this as the ONLY warning site, 32 hits,
+        # and gains were identical across numpy 1.26.4 / 2.4.6 / 2.5.3), but a masked-after-the-fact nan is a trap:
+        # any future edit that drops or loosens the outer mask silently ships inf into the signal.
+        # Substituting 1.0 into the DIVISOR where the mask is false keeps the expression, its operand dtypes and its
+        # promotion identical, so the output is unchanged bit-for-bit — the substituted lane is discarded by the same
+        # outer np.where as before — while nothing is ever divided by zero.
+        _sma200_den = np.where(sma200_1h > 0, sma200_1h, 1.0)
+        sma_dist = np.where(sma200_1h > 0, (close - sma200_1h) / _sma200_den * 100, 0.0)
         thr = getattr(cfg, "SMA200_DIST_LONG_THRESHOLD", -3.0)
         blocks["B_SMA200DIST"] = (sma_dist < thr) if is_long else (sma_dist > -thr)
 
