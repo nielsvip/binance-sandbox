@@ -70,6 +70,7 @@ import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal ins
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
+import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
@@ -5626,6 +5627,13 @@ class QuickConfig:
     STDEV_LADDER_TF: str = "D"  # 1x top -> MAX bottom (vv shorts) on lrL_pct_b_<TF>
     STDEV_LADDER_MAX_MULT: float = 5.0  # USER "should be 1-5x"
     QTY_STREAK_SIZING_ENABLED: bool = False
+    # 2026-10-17 STOP_RECLAIM_REENTRY (vec_decisions/stop_reclaim.py) — swift, very conditional re-entry after FIXED_STOP; off by default
+    STOP_RECLAIM_REENTRY_ENABLED: bool = False
+    STOP_RECLAIM_WINDOW_BARS: int = 4  # 2 / 4 / 8 closed 15m bars after the stop
+    STOP_RECLAIM_MAX_SWEEP_PCT: float = 1.5  # 0.8 / 1.5 / 3.0 — deepest allowed sweep below the stop (vv short)
+    STOP_RECLAIM_BUFFER_PCT: float = 0.10  # 0.05 / 0.10 / 0.20 — close must reclaim the stop by this much
+    STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
+    STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # only full-close moves >= this qualify (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losses before shrinking (1 / 2)
     QTY_STREAK_LOSS_MULT: float = 0.8  # 0.8 / 0.6 / 0.4 of normal size
@@ -17436,6 +17444,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _rt_on = False
     _rt_fired = (-1, "")
+    # 2026-10-17 STOP_RECLAIM_REENTRY inputs (vec_decisions/stop_reclaim.py) — only built when the switch is on
+    _sr_on = _srm.enabled(cfg)
+    _sr_fired = (-1, "")
+    if _sr_on:
+        _sr_lo, _sr_hi = _safe(npz, "low_15m", n), _safe(npz, "high_15m", n)
+        _sr_w1, _sr_w2, _sr_vel = _safe(npz, "wt1_15m", n), _safe(npz, "wt2_15m", n), _safe(npz, "wt_velocity_15m", n)
+        _sr_d4l, _sr_d4h = _safe(npz, "dc_low_4h", n), _safe(npz, "dc_high_4h", n)
+        _sr_w14, _sr_w24, _sr_e50 = _safe(npz, "wt1_4h", n), _safe(npz, "wt2_4h", n), _safe(npz, "ema_50_4h", n)
     # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
     try:
         _n3_k15 = _safe(npz, "stoch_k_15m", n, 50.0)
@@ -18319,6 +18335,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         cd = 0
             except Exception:
                 pass
+        if _sr_on and pos is None and has_closed_before and trades:  # STOP_RECLAIM: decided before the cooldown so a swift reclaim is not held
+            try:
+                _sr_last = trades[-1] if str(trades[-1].get("type", "")) == "CLOSE" else None
+                if _sr_last is not None and _srm.armed(_sr_last.get("exit_reason") or _sr_last.get("reason"), _sr_last.get("entry_reason")):
+                    _sr_xb = int(_sr_last.get("bar_exit", i))
+                    _sr_lvl = float(_sr_last.get("fixed_stop_level") or _sr_last.get("exit_price") or 0.0)
+                    _sr_seg = (_sr_lo if is_long else _sr_hi)[max(0, _sr_xb) : i + 1]
+                    _sr_ext = float(np.nanmin(_sr_seg) if is_long else np.nanmax(_sr_seg)) if len(_sr_seg) else 0.0
+                    if _srm.fire(cfg, is_long, _sr_lvl, i - _sr_xb, _sr_ext, float(px), float(_sr_hi[i]), float(_sr_lo[i]), float(_sr_w1[i]), float(_sr_w2[i]), float(_sr_vel[i]), float(_sr_d4l[i]), float(_sr_d4h[i]), float(_sr_w14[i]), float(_sr_w24[i]), float(_sr_e50[i])):
+                        _sr_fired = (i, _srm.REASON)
+                        cd = 0
+            except Exception:
+                pass
         if force_initial_seed and pos is None and i == 0:
             _dollar = float(cfg.START_POSITION_SIZE)
             try:
@@ -18557,6 +18586,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             fire = True
                 except Exception:
                     pass
+            if not fire and _sr_fired[0] == i:
+                fire = True  # STOP_RECLAIM_REENTRY (single call above, before the cooldown)
             if not fire and _rt_on and has_closed_before and trades and i >= 2:
                 try:  # 2026-10-14 USER re-entry triggers — single call into the shared predicate
                     _rt_last = next((t for t in reversed(trades) if t.get("type") == "CLOSE"), None)
@@ -19014,6 +19045,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _dollar = _dollar * float(
                             getattr(cfg, "GAP_MOC_REENTRY_SIZE_MULT", 1.25)
                         )
+                if _sr_fired[0] == i and not entry_sig[i]:
+                    _dollar = _dollar * _srm.size_mult(cfg, _srm.REASON)  # STOP_RECLAIM_SIZE_MULT (live: twin dispatch applies the same)
                 if _qs_on:  # QTY_STREAK quantizer (live: ez_manage/tradier_manage via vec_decisions/qty_quantizers.py)
                     for _qs_t in trades[_qs_seen:]:
                         if str(_qs_t.get("type", "")) == "CLOSE" and not _qs_t.get("unrealised"):
@@ -19085,10 +19118,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         if _rt_fired[0] == i and not entry_sig[i]:
                             entry_reason = _rt_fired[1]  # 2026-10-14 USER re-entry trigger that fired
                             _hardcoded_fired = True
+                        if _sr_fired[0] == i and not entry_sig[i]:
+                            entry_reason = _sr_fired[1]  # 2026-10-17 STOP_RECLAIM_REENTRY
+                            _hardcoded_fired = True
                         if (
                             has_closed_before
                             and trades
                             and not entry_sig[i]
+                            and _sr_fired[0] != i
                             and bool(
                                 getattr(cfg, "HARDCODED_RALLY_REENTRY_ENABLED", True)
                             )
@@ -19950,6 +19987,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "qty": float(pos["qty"]),
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _fx_fire,
+                        "fixed_stop_level": float(_fx_lvl),
                         "bars_held": int(i - pos["entry_bar"]),
                     }
                 )

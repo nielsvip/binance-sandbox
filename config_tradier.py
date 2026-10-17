@@ -1894,6 +1894,13 @@ class TradierConfig:
     STDEV_LADDER_TF: str = "D"  # STDEV ladder reads lrL_pct_b_<TF>: 1x at the top -> STDEV_LADDER_MAX_MULT at the bottom (vv shorts)
     STDEV_LADDER_MAX_MULT: float = 5.0  # USER "should be 1-5x" (replaces the slope_to_top 10x map / BAND_V2 0.7-1.8 when STDEV_SLOPE_SIZING_ENABLED)
     QTY_STREAK_SIZING_ENABLED: bool = False  # kill switch: resize new opens/reentries after consecutive qualifying full-close results
+    # 2026-10-17 STOP_RECLAIM_REENTRY (vec_decisions/stop_reclaim.py) — swift, very conditional re-entry after FIXED_STOP; off by default
+    STOP_RECLAIM_REENTRY_ENABLED: bool = False
+    STOP_RECLAIM_WINDOW_BARS: int = 4  # 2 / 4 / 8 closed 15m bars after the stop
+    STOP_RECLAIM_MAX_SWEEP_PCT: float = 1.5  # 0.8 / 1.5 / 3.0 — deepest allowed sweep below the stop (vv short)
+    STOP_RECLAIM_BUFFER_PCT: float = 0.10  # 0.05 / 0.10 / 0.20 — close must reclaim the stop by this much
+    STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
+    STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losers before shrinking (1 / 2)
     QTY_STREAK_LOSS_MULT: float = 0.8  # size after the loss streak (0.8 / 0.6 / 0.4)

@@ -28916,6 +28916,11 @@ class MultiAccountTradeManager:
                 _qq_lm = _qq.ladder_from_indicators(i, is_long, _qq_cfg)
                 quantity = quantity * _qq_lm
                 logger.info(f"{position_key} [STDEV_LADDER] lrL_pct_b_{_qq.ladder_tf(_qq_cfg)}={i.get('lrL_pct_b_' + _qq.ladder_tf(_qq_cfg))} x{_qq_lm:.2f} (1-{_qq.ladder_max(_qq_cfg):g}x) -> ${quantity * current_price:.2f}")
+            if "STOP_RECLAIM_REENTRY" in str(reason or "").upper():
+                import vec_decisions.stop_reclaim as _srm
+                _sr_m = _srm.size_mult(_qq_cfg, reason)
+                quantity = quantity * _sr_m
+                logger.info(f"{position_key} [STOP_RECLAIM_SIZE] x{_sr_m:.2f} -> ${quantity * current_price:.2f}")
             if _qq.is_new_lifecycle_action(action) and _qq.streak_on(_qq_cfg):
                 _qq_sm = _qq.live_mult(config.BASE_PATH, "ez", account_key, symbol, position_side, _qq_cfg)
                 quantity = quantity * _qq_sm

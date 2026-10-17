@@ -23743,6 +23743,13 @@ def _qta_entry_sizing(
     # after 1|2 qualifying losers size x0.8/0.6/0.4, after 1|2 qualifying winners x1.2/1.5/1.8 compounding. New lifecycles only.
     try:
         _qq_cfg = _QQTCfg(account_key, symbol, position_side)
+        if "STOP_RECLAIM_REENTRY" in str(reason or "").upper():
+            import vec_decisions.stop_reclaim as _srm
+
+            _sr_m = _srm.size_mult(_qq_cfg, reason)
+            if _sr_m != 1.0:
+                quantity = float(max(1, int(quantity * _sr_m + 1e-9)))
+                logger.info(f"[STOP_RECLAIM_SIZE] {position_key} {action}: x{_sr_m:.2f} -> qty {quantity:.0f}")
         if _qq.is_new_lifecycle_action(action) and _qq.streak_on(_qq_cfg):
             _qq_sm = _qq.live_mult(config.BASE_PATH, "tradier", account_key, symbol, position_side, _qq_cfg)
             if _qq_sm != 1.0:
