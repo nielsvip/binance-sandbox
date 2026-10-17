@@ -157,6 +157,16 @@ def pss_mb(pid):
         return 0.0
 
 
+def _progress_done_epoch(path):
+    """Epoch of the board's result_done_utc (stamped on publish AND on refusal), else None. Never raises."""
+    try:
+        import datetime as _dtm
+        _t = json.loads(open(path).read()).get("result_done_utc")
+        return _dtm.datetime.fromisoformat(str(_t).replace("Z", "+00:00")).timestamp() if _t else None
+    except Exception:
+        return None
+
+
 def _progress_marks(path):
     """(done, quarantined, gain, redo) from a progress JSON. TOP-LEVEL ONLY (USER 2026-10-10,
     1-result-per-2h stall): the old flat "final_gain" regex matched endgame.final_gain (a
@@ -279,13 +289,16 @@ if mode == "probe":
                 stt = os.stat(f)
                 o.setdefault("started_mt", {})[ss] = stt.st_mtime
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
-                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache:
+                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache or key + "|t" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
                     _done, _q, _g, _r = _progress_marks(f)
                     cache[key] = _done
                     cache[key + "|q"] = _q
                     cache[key + "|g"] = _g
                     cache[key + "|r"] = _r
+                    cache[key + "|t"] = _progress_done_epoch(f)
+                if cache.get(key + "|t"):
+                    o.setdefault("boarded_at", {})[ss] = cache[key + "|t"]
                 if cache[key]:
                     o["done"].append(ss)
                     if cache.get(key + "|g") is not None:
@@ -930,6 +943,26 @@ def _npz_end_ts(path):
                 return float(_struct.unpack(fmt, data[-sz:])[0]) if len(data) >= sz else None
     except Exception:
         return None
+
+
+_HARD24 = {"at": {}, "pins": set(), "now": 0.0, "blocked": []}
+
+
+def _boarded_within(ss, boarded_at, now_ts, hours=None, pins=None):
+    """USER 2026-10-17 HARD RULE (misleading names + double scheduling must never happen again): a SYM_SIDE boarded —
+    published OR refused (progress result_done_utc, newest *_matrix_manifest publish) — less than V15_SCHED_HARD_RECENT_H
+    (24) hours ago is NEVER re-dispatched. Only an explicit operator pin (data/pinned sides) overrides. Pure (testable)."""
+    try:
+        h = float(os.environ.get("V15_SCHED_HARD_RECENT_H", "24") if hours is None else hours)
+    except (TypeError, ValueError):
+        h = 24.0
+    if h <= 0 or (pins and ss in pins):
+        return False
+    t = (boarded_at or {}).get(ss)
+    try:
+        return t is not None and (float(now_ts) - float(t)) < h * 3600.0
+    except (TypeError, ValueError):
+        return False
 
 
 def _recent_unmoved(ss, mindex, npz_end, now_ts, recent_h=None, min_new_h=None):
@@ -2119,6 +2152,16 @@ def _dispatch_async(host, symbol, acts, pdir, workers, tag):
     tick returns in seconds. The job launches only after its NPZ is ready (JIT law). The caller holds the slot + a
     dispatch grace (st["dispatch_q"]) so the next tick never double-dispatches."""
     acts = _drop_untradeable(symbol, acts, tag)
+    if os.environ.get("V15_SCHED_HARD_RECENT", "1") == "1":
+        _keep = []
+        for _a in acts:
+            _ss_a = f"{_a.get('sym', symbol)}_{_a.get('side')}"
+            if _a.get("window", "30D") == "30D" and _boarded_within(_ss_a, _HARD24.get("at"), _HARD24.get("now") or time.time(), pins=_HARD24.get("pins")):
+                print(f"[sched] HARD-24H {_ss_a}: boarded {(float(_HARD24.get('now') or time.time()) - float(_HARD24['at'][_ss_a])) / 3600.0:.1f} h ago (published or refused) — never re-dispatched inside 24 h (tag={tag})", flush=True)
+                _HARD24.setdefault("blocked", []).append(_ss_a)
+                continue
+            _keep.append(_a)
+        acts = _keep
     if not acts:
         print(f"[sched] dispatch SKIPPED for {symbol}: no tradeable side left (tag={tag})", flush=True)
         return
@@ -2347,7 +2390,7 @@ def tick(args, cfg, now):
         _quar = _quar_terminal(ss, quar, _no_chain)
         _non_short = side == "SHORT" and venue_of(sym) == "stocks" and sym in NON_SHORTABLE
         # USER 2026-10-12: refresh (rm progress + requeue) skips fresh (<4d matrix) sides — without this the rm fires and fresh-skip blocks the relaunch, destroying the board.
-        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map and not _same_npz_as_last_board(sym, side) and not _unmoved(sym, side):
+        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map and not _same_npz_as_last_board(sym, side) and not _unmoved(sym, side) and not _boarded_within(ss, _HARD24.get("at"), _now_ts, pins=_HARD24.get("pins")):
             _rm_mtime = ((_tiers.get(ss) or {}).get("mtime"))
             _rkey = f"{ss}|{_rm_mtime}"
             _rd = st.setdefault("refresh_done", {})
@@ -2497,6 +2540,18 @@ def tick(args, cfg, now):
     _mdir_now = os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL")
     try:
         _mindex = _manifest_index(_mdir_now)
+        try:
+            _bat = {}
+            for _ssm, _rec in (_mindex or {}).items():
+                if _rec and _rec[0]:
+                    _bat[_ssm] = max(float(_rec[0]), _bat.get(_ssm, 0.0))
+            for _hn, _sx in (stats or {}).items():
+                for _ssm, _tt in ((_sx or {}).get("boarded_at") or {}).items():
+                    if _tt:
+                        _bat[_ssm] = max(float(_tt), _bat.get(_ssm, 0.0))
+            _HARD24.update(at=_bat, pins=set(_pin_sides or ()), now=_now_ts, blocked=[])
+        except Exception as _he:
+            print(f"[sched] HARD-24H index failed ({_he}) — rule fail-open this tick", flush=True)
     except Exception:
         _mindex = {}
     _npz_end_cache = {}
