@@ -35357,6 +35357,16 @@ class MultiAccountTradeManager:
                             or "HTF_AGAINST_FORCE_CLOSE" in _nb_reason_up
                             or "FIXED_STOP" in _nb_reason_up
                         )
+                        if not _nb_emergency and bool(getattr(config, "NEWBORN_PROTECT_LOSS_PRONE_EXEMPT", True)):  # 2026-10-17 USER: loss-prone opening functions get no newborn protection
+                            try:
+                                import loss_prone as _lpm
+
+                                _nb_lp, _nb_lp_fam = _lpm.position_is_loss_prone(account_key, position_key, "crypto", _nb_ref_epoch or None)
+                                if _nb_lp:
+                                    _nb_emergency = True
+                                    logger.warning(f"⚠️ [NEWBORN_LOSS_PRONE_EXEMPT] {position_key}: opened by loss-prone {_nb_lp_fam} (data/loss_prone_entries.json) — no newborn protection")
+                            except Exception as _nb_lp_e:
+                                logger.debug(f"[NEWBORN_LOSS_PRONE_EXEMPT] {position_key}: lookup failed {_nb_lp_e}")
                         if not _nb_dc_broken and not _nb_emergency and not _vd_exempt:
                             logger.critical(
                                 f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({reason[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at dc_3m extreme"

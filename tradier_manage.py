@@ -48142,6 +48142,45 @@ class TradierTradeManager:
                         return "BLOCKED_STALE_SET_HALT"
             except Exception as _ssh_e2:
                 logger.warning(f"[STALE_SET_HALT] entry check err (fail-open): {_ssh_e2}")
+            # ═══ 15-MINUTE NEWBORN PROTECTION — STOCKS twin of ez_manage execute_now (USER 2026-10-17 "newborn protection; should exist in
+            # both with the exceptions just stated"): a native reduce/close of a position < 900 s old (since open or last augment) is refused
+            # unless the finest DC channel broke, the reason is an emergency safety close, the order is vector-decided (VEC_EXACT), or the
+            # position was opened by a loss-prone function (data/loss_prone_entries.json, NEWBORN_PROTECT_LOSS_PRONE_EXEMPT config-only).
+            # exit_guarantee classes BLOCKED_NEWBORN_PROTECT_ as STRATEGY, so an authorized close still escalates. ═══
+            try:
+                if is_reduce and not is_hedge and not _vx_ex:
+                    _nb_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
+                    if _nb_pos and not getattr(_nb_pos, "was_reduced", False) and not getattr(_nb_pos, "is_reduced", False):
+                        _nb_ref = getattr(_nb_pos, "last_augmentation_time", None) or getattr(_nb_pos, "opened_at", None)
+                        import oversize_trim as _nb_ot
+
+                        _nb_ref_epoch = (_nb_ot.epoch(_nb_ref) or 0.0) if _nb_ref else 0.0
+                        _nb_age_s = time.time() - _nb_ref_epoch if _nb_ref_epoch and _nb_ref_epoch > 0 else 999999
+                        if _nb_age_s < 900:
+                            _nb_reason_up = (reason or "").upper()
+                            _nb_emergency = any(t in _nb_reason_up for t in ("DC_BB_D_BREAK_REVERSE", "RIDICULOUS_HOLD", "RIDICULOUS_LOSS", "UNDERWATER_HEDGE_OR_CLOSE", "WT15M_AGAINST", "ALL_TF_AGAINST", "NEWBORN_LOSS_KILL", "R1_DC_LOW4_3M_EMERGENCY", "HTF_AGAINST_FORCE_CLOSE", "FIXED_STOP", "OVERSIZE_TRIM_LOSS"))
+                            _nb_why = "emergency safety reason" if _nb_emergency else ""
+                            if not _nb_emergency and bool(getattr(config, "NEWBORN_PROTECT_LOSS_PRONE_EXEMPT", True)):
+                                import loss_prone as _lpm
+
+                                _nb_lp, _nb_lp_fam = _lpm.position_is_loss_prone(account_key, position_key, "stocks", _nb_ref_epoch or None)
+                                if _nb_lp:
+                                    _nb_emergency, _nb_why = True, f"opened by loss-prone {_nb_lp_fam}"
+                            _nb_dc_broken = False
+                            if not _nb_emergency:
+                                _nb_ind = (self.get_indicators(symbol) if hasattr(self, "get_indicators") else {}) or {}
+                                _nb_lo = float(_nb_ind.get("dc_low_5m") or _nb_ind.get("dc_low_3m") or 0)
+                                _nb_hi = float(_nb_ind.get("dc_high_5m") or _nb_ind.get("dc_high_3m") or 0)
+                                _nb_px = float(old_price or 0)
+                                _nb_dc_broken = _nb_px > 0 and ((is_long and _nb_lo > 0 and _nb_px <= _nb_lo) or ((not is_long) and _nb_hi > 0 and _nb_px >= _nb_hi))
+                            if not _nb_dc_broken and not _nb_emergency:
+                                logger.critical(f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({(reason or '')[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at the dc_5m extreme")
+                                if lock_acquired and self.redis_manager:
+                                    await self.redis_manager.delete(exec_lock_key)
+                                return f"BLOCKED_NEWBORN_PROTECT_{_nb_age_s:.0f}s"
+                            logger.warning(f"⚠️ [NEWBORN_{'EMERGENCY_BYPASS' if _nb_emergency else 'DC_BREAK'}] {position_key}: allowing {action} despite {_nb_age_s:.0f}s age — {_nb_why or f'DC 5m structure broken (price={old_price})'}")
+            except Exception as _nb_e:
+                logger.warning(f"[NEWBORN_PROTECT] check err (fail-open): {_nb_e}")
             # ═══ DC HARD-STOP REENTRY COOLDOWN (CHURN_FIX #2): after ULTIMATE_DC/TRA_DC hard stop,
             # same sym_side re-open refused for DC_HARD_STOP_REENTRY_COOLDOWN_HOURS. ═══
             try:

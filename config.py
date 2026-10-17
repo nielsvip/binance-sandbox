@@ -2146,6 +2146,7 @@ class Config:
     PEAK_GIVEBACK_SCOPE: str = "all"  # all / loss_prone — which positions the PEAK_GIVEBACK hard-zero/drop exit covers (pilot-tested)
     LOSS_PRONE_ENTRY_FILTER_ENABLED: bool = True  # loss-prone entry functions need extra filters (boards may switch it off)
     LOSS_PRONE_ENTRY_MIN_FILTERS: int = 2  # 1 / 2 / 3 of {WT 1h, WT 4h, close vs ema50 1h} with the side
+    NEWBORN_PROTECT_LOSS_PRONE_EXEMPT: bool = True  # config-only (LIVE_AUTHORITY): positions opened by a loss-prone function get no 15-min newborn protection
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)
     QTY_STREAK_LOSS_COUNT: int = 1  # consecutive qualifying losers before shrinking (1 / 2)
     QTY_STREAK_LOSS_MULT: float = 0.8  # size after the loss streak (0.8 / 0.6 / 0.4)
