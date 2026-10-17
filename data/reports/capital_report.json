@@ -1,67 +1,172 @@
 {
- "generated_at": "2026-10-17 14:14 UTC",
- "total_capital_usd": 32.89,
+ "generated_at": "2026-10-17 14:17 UTC",
+ "total_capital_usd": 98.62,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.97,
-  "C": 26.93
+  "B": 29.83,
+  "C": 68.78
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 3
+  "B": 4,
+  "C": 9
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_LONG",
-  "flz:BNBUSDC_LONG",
-  "flz:SOLUSDC_SHORT"
+  "fin:SOLUSDC_LONG",
+  "fin:BTCDOMUSDT_LONG",
+  "fin:SOLUSDC_SHORT",
+  "fin:XLMUSDT_SHORT",
+  "fin:COTIUSDT_SHORT",
+  "fin:SNXUSDT_SHORT",
+  "fin:COMPUSDT_SHORT",
+  "fin:CHRUSDT_SHORT",
+  "fin:SANDUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_LONG",
+   "pk": "fin:RLCUSDT_SHORT",
+   "symbol": "RLCUSDT",
+   "account": "fin",
+   "value_usd": 13.98,
+   "gain_pct": 6.511,
+   "tier": "B",
+   "perf_mult": 0.7,
+   "amt": 18.1,
+   "mark": 0.7725
+  },
+  {
+   "pk": "fin:SOLUSDC_LONG",
    "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 12.46,
-   "gain_pct": -0.563,
+   "account": "fin",
+   "value_usd": 12.45,
+   "gain_pct": -0.58,
    "tier": "C",
    "perf_mult": 0.19,
    "amt": 0.12,
-   "mark": 103.79236652
+   "mark": 103.78402911
   },
   {
-   "pk": "flz:SOLUSDC_SHORT",
+   "pk": "fin:SANDUSDT_LONG",
+   "symbol": "SANDUSDT",
+   "account": "fin",
+   "value_usd": 8.39,
+   "gain_pct": 11.561,
+   "tier": "C",
+   "perf_mult": 0.15,
+   "amt": 136.0,
+   "mark": 0.0616934
+  },
+  {
+   "pk": "fin:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 7.37,
+   "gain_pct": 1.588,
+   "tier": "C",
+   "perf_mult": 0.41,
+   "amt": 661.0,
+   "mark": 0.011152
+  },
+  {
+   "pk": "fin:SNXUSDT_SHORT",
+   "symbol": "SNXUSDT",
+   "account": "fin",
+   "value_usd": 7.35,
+   "gain_pct": 1.707,
+   "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 33.6,
+   "mark": 0.2188
+  },
+  {
+   "pk": "fin:XLMUSDT_SHORT",
+   "symbol": "XLMUSDT",
+   "account": "fin",
+   "value_usd": 7.29,
+   "gain_pct": 1.309,
+   "tier": "C",
+   "perf_mult": 0.22,
+   "amt": 41.0,
+   "mark": 0.17778273
+  },
+  {
+   "pk": "fin:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 7.27,
-   "gain_pct": 0.715,
+   "account": "fin",
+   "value_usd": 7.26,
+   "gain_pct": 0.827,
    "tier": "C",
    "perf_mult": 0.19,
    "amt": 0.07,
-   "mark": 103.79236652
+   "mark": 103.78402911
   },
   {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 7.2,
-   "gain_pct": -0.222,
+   "pk": "fin:CHRUSDT_SHORT",
+   "symbol": "CHRUSDT",
+   "account": "fin",
+   "value_usd": 7.25,
+   "gain_pct": 3.255,
    "tier": "C",
-   "perf_mult": 0.26,
-   "amt": 0.01,
-   "mark": 720.23042667
+   "perf_mult": 0.13,
+   "amt": 375.0,
+   "mark": 0.01932
   },
   {
-   "pk": "flz:XRPUSDC_SHORT",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 5.97,
-   "gain_pct": 0.307,
+   "pk": "fin:UNIUSDC_SHORT",
+   "symbol": "UNIUSDC",
+   "account": "fin",
+   "value_usd": 7.15,
+   "gain_pct": 1.756,
    "tier": "B",
-   "perf_mult": 0.94,
-   "amt": 4.6,
-   "mark": 1.298
+   "perf_mult": 4.16,
+   "amt": 1.0,
+   "mark": 7.15021446
+  },
+  {
+   "pk": "fin:KSMUSDT_SHORT",
+   "symbol": "KSMUSDT",
+   "account": "fin",
+   "value_usd": 6.94,
+   "gain_pct": 2.472,
+   "tier": "B",
+   "perf_mult": 0.26,
+   "amt": 1.6,
+   "mark": 4.339
+  },
+  {
+   "pk": "fin:COMPUSDT_SHORT",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 5.88,
+   "gain_pct": 1.787,
+   "tier": "C",
+   "perf_mult": 0.25,
+   "amt": 0.271,
+   "mark": 21.70500582
+  },
+  {
+   "pk": "fin:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "fin",
+   "value_usd": 5.54,
+   "gain_pct": 0.381,
+   "tier": "C",
+   "perf_mult": 0.25,
+   "amt": 0.001,
+   "mark": 5543.13431959
+  },
+  {
+   "pk": "fin:ATOMUSDT_SHORT",
+   "symbol": "ATOMUSDT",
+   "account": "fin",
+   "value_usd": 1.76,
+   "gain_pct": 2.71,
+   "tier": "B",
+   "perf_mult": 1.09,
+   "amt": 1.03,
+   "mark": 1.7055
   }
  ]
 }
