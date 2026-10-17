@@ -345,7 +345,24 @@ def repair(symbol, cands, apply_it, allow_rebuild=False):
     out["topup"] = topup(symbol)
     after = verify_file(IND / f"{symbol}.npz", symbol, 1)
     out["after"] = after
-    out["action"] = "adopted+topped_up"
+    # Say what the top-up ACTUALLY did. This label used to be an unconditional "adopted+topped_up", which reported
+    # a success that had not happened: MEASURED 2026-10-17, AXLUSDT and AWEUSDT were adopted from the purge dir and
+    # logged "adopted+topped_up" while topup() had returned REFUSE_LEGACY_HTF_ALIGN both times -- the adopted stores
+    # carry no htf_align key at all, so npz_bar_refresh refuses them forever (appending would double-shift their
+    # causal rows) and they sat 422 h stale wearing a success label. A deep store that cannot be tailed is only
+    # half a repair, and the only fix is a real rebuild, so it is named as such and reported as needing one.
+    tstat = str((out.get("topup") or {}).get("last") or "")
+    reached = after is not None and int(after.get("last_ts") or 0) >= int((out.get("topup") or {}).get("last_ts") or 0)
+    refused = any(k in tstat for k in ("REFUSE_LEGACY_HTF_ALIGN", "REFUSE_MS_TIMESTAMPS", "TOO_SHORT_TO_APPEND", "GUARD_REFUSED", "ERROR"))
+    if refused or not appendable(got, symbol):
+        out["action"] = "ADOPTED BUT NOT TAILABLE — needs rebuild"
+        out["note"] = (f"adopted a deeper store ({got.get('rows')} rows) but npz_bar_refresh cannot extend it "
+                       f"({tstat[:120] or 'not appendable: htf_align=' + str(got.get('htf_align'))}); it will stay at its "
+                       "adopted tail until rebuilt from klines")
+    elif reached:
+        out["action"] = "adopted+topped_up"
+    else:
+        out["action"] = "adopted, top-up incomplete (gap remains)"
     # A DEEPER copy can have an OLDER tail (ADP: 14405 rows ending today -> 15895 rows ending 10-07, then walked
     # back to 16101 ending today). Depth is what we adopt for, but a 30D board reads the RECENT window, so if the
     # walk did not restore the tail the adoption made the store worse for its actual use — put the old one back.
