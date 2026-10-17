@@ -109,7 +109,6 @@ Autosave via launchd commits git every 15min. `/backups/` = ONLY reliable histor
 | Revert to backup/older version | Ask user. |
 | delete/pop/clear position dict entries | Count must match positions exactly. |
 | Zero entry_price, max_gain, opened_at | SACRED. |
-| ~~Close positions at a loss on live~~ | **OVERRULED — USER 2026-10-17:** *"that was overruled many months ago take it out and make sure trades are ALWAYS in tandem with whatever is open or closed at any 15m bar from vectorized trades best settings for the sym_side - NO exception."* Parity is king, vector is master: if the vector is flat on a sym_side at a 15m bar, live is flat — at a loss or not. A loss is NOT a reason to refuse or defer a vector-dictated close. See [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md) for the superseded text. Still in force and unaffected: no exit may EVER be skipped for any reason, and exits are never gated by a parity/board/entry check. |
 | Place orders outside `execute_now()` | THE ONLY gate for ALL Binance orders. |
 
 For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**

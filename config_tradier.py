@@ -639,7 +639,7 @@ class TradierConfig:
     # (board path, causal-proven 2789/2789 bars on 3 sym_sides); oracle = the 10-06 in-memory row buffer (empty after restarts).
     TRADIER_VEC_EXACT_ENGINE: str = "npz_twin"
     # USER 2026-10-17 OVERSIZE_TRIM (oversize_trim.py): platform positions above the position cap are trimmed back to it ONLY at a loss
-    # ("not at a gain but definitely at a loss"); manual quantity is never trimmed. Explicit user exception to "never close at a loss".
+    # ("not at a gain but definitely at a loss"); manual quantity is never trimmed.
     OVERSIZE_TRIM_ENABLED: bool = True
     OVERSIZE_TRIM_TOLERANCE_PCT: float = 10.0  # trim only when notional > cap x (1 + this %)
     OVERSIZE_TRIM_COOLDOWN_SEC: float = 900.0  # at most one trim per position per 15 min

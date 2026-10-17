@@ -197,9 +197,15 @@ class Config:
     # 8 sizing knobs. Per-sym values below it are served untouched (their START/order/position ratios and conviction
     # multipliers survive); a per-sym value above it is clamped to the mode's own value. Without this the per-sym store's
     # NORMAL-era sizes (e.g. MAX_POSITION_SIZE 780) bypassed LIGHT entirely. False = per-sym values unbounded (old behaviour).
+    # USER 2026-10-17: "CRYPTO_MODE_SIZE_CEILING_ENABLED True until the 5 accounts produce gains for a day."
+    # STAYS TRUE. This is the one sanctioned deviation from "perfect harmony with the daily vector set": the
+    # board's own sizing (START 28-45, MAX_POSITION_SIZE up to 780) is clamped to the ACTIVE mode table, which
+    # in LIGHT_MODE is START 45 / MAX_POSITION 360 / MAX_ORDER_VALUE 180. Every other override above the board
+    # was removed under that mandate (PERSYM_FINAL_BOOK_ENABLED, CONVICTION_SIZING_ENABLED). Flip to False only
+    # after ang/fin/flz/inf/men book a positive day, and expect exposure to rise to full board sizing when you do.
     CRYPTO_MODE_SIZE_CEILING_ENABLED: bool = True
     # USER 2026-10-17 OVERSIZE_TRIM (oversize_trim.py): platform positions above the position cap are trimmed back to it ONLY at a loss
-    # ("not at a gain but definitely at a loss"); manual quantity is never trimmed. Explicit user exception to "never close at a loss".
+    # ("not at a gain but definitely at a loss"); manual quantity is never trimmed.
     OVERSIZE_TRIM_ENABLED: bool = True
     OVERSIZE_TRIM_TOLERANCE_PCT: float = 10.0  # trim only when notional > cap x (1 + this %)
     OVERSIZE_TRIM_COOLDOWN_SEC: float = 900.0  # at most one trim per position per 15 min
@@ -3575,7 +3581,12 @@ class Config:
         False  # was True 2026-08-21 ("keep True so 900*900 verified winners can promote without config flip")
     )
     CONVICTION_SIZING_ENABLED: bool = (
-        True  # 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: False.
+        # USER 2026-10-17: "CONVICTION_SIZING_ENABLED False CRYPTO_MODE_SIZE_CEILING_ENABLED True until the
+        # 5 accounts produce gains for a day." Conviction scaling read size_mult from data/persym_final_book.json,
+        # which is dated 2026-09-01 and is now inert (PERSYM_FINAL_BOOK_ENABLED False, same mandate) — so it was
+        # sizing live off a 6.5-week-old file, not off the daily vector set. OFF until the five crypto accounts
+        # (ang/fin/flz/inf/men) book a positive day; re-enable only with multipliers rebuilt from the daily boards.
+        False  # was True 2026-06-02 USER: scale base entry size by per-sym conviction (size_mult from FINAL book) so proven winners (ZEC/MU/SNDK) open BIG, tag-alongs small. Applied in _psym_sps. ROLLBACK: True.
     )
     CONVICTION_SIZING_MAX: float = (
         8.0  # safety cap on conviction multiplier (crypto-validated cap; prevents runaway). ZEC size_mult ~3.3 -> base $45 x 3.3 ~= $147.

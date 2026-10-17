@@ -1,7 +1,6 @@
 """OVERSIZE_TRIM — trim a platform-opened position back to the active position cap, ONLY while it is at a loss
 (USER 2026-10-17: "oversized platform positions may be trimmed ... not at a gain but definitely at a loss"; "manually placed
-orders should be exempt of this while they are subject to all normal reductions"). This is an explicit user exception to
-CLAUDE.md "never close at a loss" for the oversized excess of platform positions only.
+orders should be exempt of this while they are subject to all normal reductions").
 
 Why it exists: the vector never holds more than its position cap (QTY_LIVE_POSITION_CAP_MULT), so a live position above the
 active mode's MAX_POSITION_SIZE (mode switched to LIGHT, a cap lowered, a sizing drift) is a divergence from the board. Trimming

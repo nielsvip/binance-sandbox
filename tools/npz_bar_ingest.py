@@ -42,6 +42,7 @@ sys.path.insert(0, str(ROOT))
 IND = ROOT / "backtest_v8" / "indicators"
 INBOX = Path(os.environ.get("NPZ_BAR_INBOX", str(ROOT / "data" / "npz_bar_inbox")))
 DONE = INBOX / "applied"
+REJECTED = INBOX / "rejected"
 REPORT = ROOT / "data" / "reports" / "npz_bar_ingest.json"
 BAR = 900
 
@@ -274,6 +275,7 @@ def main():
         return 0
     import npz_live_generator as gen
     counts, applied, skipped = {}, [], []
+    no_npz_syms = set()
     now = time.time()
     # oldest bar first per symbol so a two-bar backlog applies in order
     staged = []
@@ -294,8 +296,15 @@ def main():
         age_h = (now - ts) / 3600.0
         last = npz_last_ts(sym)
         if last is None:
+            # The producer ships every symbol it tracks; this host has no NPZ for some of them and must NOT create
+            # one from a shipped bar (that would trigger a full precompute, the exact compute this path avoids).
+            # The file is filed under rejected/ rather than left in place: MEASURED 2026-10-17, 293 of 507 staged
+            # bars were NO_NPZ, and leaving them would re-read and re-report the same files every cycle and grow the
+            # inbox by ~28k files/day (293 x 96 cycles).
             counts["NO_NPZ"] = counts.get("NO_NPZ", 0) + 1
-            skipped.append({"symbol": sym, "why": "no NPZ on this host — never created from a shipped bar"})
+            no_npz_syms.add(sym)
+            if a.apply:
+                claim(f, REJECTED)
             continue
         if ts <= last:
             counts["ALREADY_HAVE"] = counts.get("ALREADY_HAVE", 0) + 1
@@ -337,20 +346,25 @@ def main():
             counts["APPEND_FAILED"] = counts.get("APPEND_FAILED", 0) + 1
             skipped.append({"symbol": sym, "ts": ts, "why": "append returned False or the tail did not move"})
     log(f"{'APPLIED' if a.apply else 'DRY-RUN'} inbox={len(files)} {counts}")
+    if no_npz_syms:
+        log(f"NO_NPZ: {len(no_npz_syms)} symbols this host holds no NPZ for (filed under rejected/, never created): "
+            + ",".join(sorted(no_npz_syms)[:8]) + ("..." if len(no_npz_syms) > 8 else ""))
     if skipped:
         log("skipped (first 6): " + json.dumps(skipped[:6])[:420])
     try:
         REPORT.parent.mkdir(parents=True, exist_ok=True)
         REPORT.write_text(json.dumps({"at": now, "apply": a.apply, "inbox": len(files), "counts": counts,
-                                      "applied": applied[:60], "skipped": skipped[:60]}, indent=1, sort_keys=True, default=str))
+                                      "applied": applied[:60], "skipped": skipped[:60],
+                                      "no_npz_symbols": sorted(no_npz_syms)}, indent=1, sort_keys=True, default=str))
         log(f"report -> {REPORT}")
     except OSError as e:
         log(f"report write failed: {e}")
     # prune applied/ so the dir cannot grow without bound
     try:
-        for p in DONE.glob("*.json"):
-            if now - p.stat().st_mtime > 86400:
-                p.unlink()
+        for d, keep_s in ((DONE, 86400), (REJECTED, 21600)):
+            for p in d.glob("*.json"):
+                if now - p.stat().st_mtime > keep_s:
+                    p.unlink()
     except OSError:
         pass
     return 0

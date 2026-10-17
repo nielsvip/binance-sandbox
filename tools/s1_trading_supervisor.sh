@@ -31,6 +31,29 @@ s = C.nyse_session()
 sys.exit(0 if s and s[0] - 2100 <= C.now_s() <= s[1] + 1800 else 1)
 EOF
 }
+# 2026-10-17: `systemctl stop live-failover-trading` TIMED OUT and left the unit `failed`
+# (Result=timeout, TimeoutStopSec=90, KillMode=control-group) during the first real crypto failover drill —
+# observed live at 03:10Z with the lease already handed back to the Mac while S1 still held the unit. A unit stuck
+# in `failed` reads to every health check as "the standby is broken", and the orphaned traders are the double-trading
+# risk the whole lease design exists to prevent. The header's claim that `systemctl stop` is "the single clean stop
+# path" was true in intent and false in practice: this loop had NO signal handling, so TERM reached the children but
+# the supervisor could still be mid-`sleep 20` or mid-`s1_failover_start.sh`, and at least one child did not die on
+# TERM inside the stop timeout. Stop now means stop — the trap is authoritative and exits the script itself.
+# Identical fix, and identical reasoning, to tools/s1_producers_stocks.sh earlier the same night.
+_shutdown() {
+    log "shutdown signal — stopping S1 traders and exiting"
+    for pat in "ez_manage.py --account" "tradier_manage.py --accounts" "ez_positions_watchdog.py" "ez_reentry_daemon.py" "tradier_positions.py"; do
+        for p in $(pgrep -f "$pat" 2>/dev/null); do kill -TERM "$p" 2>/dev/null; done
+    done
+    sleep 5
+    for pat in "ez_manage.py --account" "tradier_manage.py --accounts" "ez_positions_watchdog.py" "ez_reentry_daemon.py" "tradier_positions.py"; do
+        for p in $(pgrep -f "$pat" 2>/dev/null); do kill -KILL "$p" 2>/dev/null; done
+    done
+    log "shutdown complete — no S1 trader left"
+    exit 0
+}
+trap _shutdown TERM INT
+
 log "START pid=$$ lease=$(cat "$BIN/data/live_failover/lease.json" 2>/dev/null | tr -d '\n ' | cut -c1-260)"
 while true; do
     if ! grep -q '"holder": *"s1"' "$BIN/data/live_failover/lease.json" 2>/dev/null; then
