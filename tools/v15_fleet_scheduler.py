@@ -955,6 +955,35 @@ def _recent_unmoved(ss, mindex, npz_end, now_ts, recent_h=None, min_new_h=None):
     return (float(npz_end) - float(rec[0])) < mh * 3600.0
 
 
+def _recent_board_syms(syms, mindex, allowed, now_ts, recent_h=None, open_path=None):
+    """Symbols whose every tradeable side has a board published < recent_h ago (sort-last set for _place_order). A symbol
+    with an open live position on any side is live-relevant and never demoted (open_position_sym_sides.json, pushed by
+    the Mac; ignored when older than 2 h). Pure apart from the optional file read; failures -> no exemption."""
+    try:
+        rh = float(os.environ.get("V15_SCHED_RECENT_H", _RECENT_BOARD_H) if recent_h is None else recent_h)
+    except (TypeError, ValueError):
+        rh = _RECENT_BOARD_H
+    if rh <= 0:
+        return frozenset()
+    live = set()
+    try:
+        op = pathlib.Path(open_path) if open_path else ROOT / "data" / "open_position_sym_sides.json"
+        j = json.loads(op.read_text()) or {}
+        at = datetime.datetime.fromisoformat(str(j.get("at") or "").replace("Z", "+00:00")).timestamp()
+        if float(now_ts) - at < 7200.0:
+            live = {str(x).rsplit("_", 1)[0] for x in (j.get("sym_sides") or [])}
+    except Exception:
+        live = set()
+    out = set()
+    for sym in syms or ():
+        if sym in live:
+            continue
+        sides = [f"{sym}_{sd}" for sd in ("LONG", "SHORT") if not allowed or f"{sym}_{sd}" in allowed]
+        if sides and all(ss in (mindex or {}) and (float(now_ts) - float(mindex[ss][0])) < rh * 3600.0 for ss in sides):
+            out.add(sym)
+    return frozenset(out)
+
+
 # USER 2026-10-13 throughput: the quota must never idle a paid host. V15_NONW_QUOTA_DIV=1 = no quota (every free
 # slot admits work, winners still FIRST via _place_order tier rank); 4 = the 2026-10-09 "90% on winners" default.
 try:
@@ -1289,6 +1318,44 @@ def _growth_debt_mb(pairs_pss, est_pair):
     except Exception:
         return 0.0
     return debt
+
+
+def _mature_growth_debt_mb(pairs_pss, est_pair):
+    """USER 2026-10-17 (reaper churn: S1 OOM guard TERMed 5 boards in 24 h, 1INCHUSDT_SHORT after 14 min): pairs between
+    half and the full estimate still grow toward it — _growth_debt_mb only counts pairs under half, so 4 boards at ~60%
+    of their peak read as "no debt" and a 5th was admitted into the reaper's floor. Sum of (est - m) for est/2 <= m < est.
+    Never raises."""
+    try:
+        e = float(est_pair or 0)
+        vals = pairs_pss.values() if isinstance(pairs_pss, dict) else (pairs_pss or [])
+    except Exception:
+        return 0.0
+    debt = 0.0
+    for v in vals:
+        try:
+            m = float(v or 0)
+        except Exception:
+            continue
+        if e * 0.5 <= m < e:
+            debt += e - m
+    return debt
+
+
+def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0):
+    """Largest pair PSS seen on this host in the last 24 h (state-carried across --once ticks): a new board's expected
+    peak, not the size of whatever is running right now (young boards understate it). Updates st in place. Never raises."""
+    try:
+        book = st.setdefault("pair_peak_mb", {})
+        hist = [x for x in (book.get(host) or []) if isinstance(x, list) and len(x) == 2 and float(now_ts) - float(x[0]) < keep_s]
+        vals = pairs_pss.values() if isinstance(pairs_pss, dict) else (pairs_pss or [])
+        cur = max([float(v or 0) for v in vals] or [0.0])
+        if cur > 0:
+            hist.append([float(now_ts), round(cur, 1)])
+        hist = sorted(hist, key=lambda x: -x[1])[:20]
+        book[host] = hist
+        return max([float(x[1]) for x in hist] or [0.0])
+    except Exception:
+        return 0.0
 
 
 def _swap_admit_ok(stats, pct_max=40.0):
@@ -2442,6 +2509,7 @@ def tick(args, cfg, now):
         _mindex = {}
     _npz_end_cache = {}
     _recent_unmoved_skips = []
+    _recent_syms = None
 
     def _unmoved(sym, side):
         ss_ = f"{sym}_{side}"
@@ -2646,8 +2714,27 @@ def tick(args, cfg, now):
             pairs[ss.rsplit("_", 1)[0]] += r["pss_mb"]
         pair_measure = [v for k, v in pairs.items() if k in universe_syms["stocks"] | universe_syms["crypto"] and v > 0]
         est_pair = _est_pair_mb(pair_measure, float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000))  # 2026-10-14: measured 1.7-3.7 GB/side at 2 workers -> floor 4000 via env (max measured x1.25 still wins)  # USER 2026-10-08 #2: AUTOPSY-INERT boards peak ~4GB/pair -> floor from cfg (measured max x1.25 still wins)
+        # USER 2026-10-17: never launch what the reaper will kill — a new pair is budgeted at the host's 24 h peak pair PSS
+        # (x1.1), and mature-but-growing pairs carry debt too. V15_SCHED_PEAK_ADMIT=0 restores the old estimate.
+        # Venue-aware: a stocks board peaks ~2 GB, a crypto board 4-9 GB — one host-wide number either starved S2 of stocks
+        # boards that fit or admitted crypto boards that did not. Each venue: max(floor, measured x1.25, 24 h peak x1.1).
+        _peak_on = os.environ.get("V15_SCHED_PEAK_ADMIT", "1") == "1"
+        est_v = {}
+        if _peak_on:
+            for _vn, _vfloor in (("crypto", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000)), ("stocks", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", "2500") or 2500))):
+                _vm = {k: v for k, v in pairs.items() if k in universe_syms[_vn] and v > 0}
+                est_v[_vn] = max(_est_pair_mb(list(_vm.values()), _vfloor), 1.1 * _host_peak_pair_mb(st, f"{h['name']}|{_vn}", _vm, _now_ts))
+            est_pair = max(est_v.values())
+        _est_sym = lambda _s: est_v.get(venue_of(_s), est_pair) if _peak_on else est_pair
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
-        proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
+        if _peak_on:
+            _debt = 0.0
+            for _ps_, _m_ in pairs.items():
+                _e_ = _est_sym(_ps_)
+                _debt += _growth_debt_mb([_m_], _e_) + _mature_growth_debt_mb([_m_], _e_)
+            proj_mem = s["mem_avail_mb"] - reserve - _debt
+        else:
+            proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
         swap_ok = _swap_admit_ok(s)
         disk_ok = _disk_admit_ok(s)
         used = len(held[h["name"]])
@@ -2655,7 +2742,7 @@ def tick(args, cfg, now):
             # 2026-10-13 USER "all servers at full capacity": max_pairs is the floor; free memory (after reserve + growth
             # debt of running pairs) buys more pair slots up to 12. The cpu target + mem/swap/disk guards still gate each admission.
             cap = max(cap, min(12, used + int(max(0.0, proj_mem) // max(1.0, est_pair))))
-        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair),
+        info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair), "est_venue_mb": {k: round(v) for k, v in est_v.items()}, "proj_mem_mb": round(proj_mem),
                 "workers_per_side": workers, "launched_pairs": 0}
         launched = 0
         new_launched = 0
@@ -2666,8 +2753,10 @@ def tick(args, cfg, now):
         held_ordered = sorted(held[h["name"]], key=_trk)
         nonw_used = sum(1 for s in held[h["name"]] if _sym_quota_hit(s, _gtiers))
         nonw_quota = max(1, cap // _NONW_QUOTA_DIV)  # USER 2026-10-09: winners own the host; non-winners get 1 new-pair slot (chains still drain, discovery exempt)
+        if _recent_syms is None:
+            _recent_syms = _recent_board_syms(all_syms, _mindex, _allowed, _now_ts)
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides)
+                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms)
         # 2026-10-13 USER LAW: a server never takes a new symbol while one of its own boards is unfinished — enforced by
         # _place_order (pinned=0, unfinished/redo=1, fresh=2): every unfinished board this host owns is evaluated and
         # admitted before any fresh pair in the same tick; slots/mem/cpu/budget that stop it stop the fresh pairs too.
@@ -2701,7 +2790,7 @@ def tick(args, cfg, now):
                 continue
             if needs_slot and new_launched >= args.max_launch:
                 continue  # budget counts only NEW pairs; never break (a break skips held chains sorted later and froze the fleet 03:00-03:35Z)
-            if needs_slot and (used >= cap or proj_mem < est_pair or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
+            if needs_slot and (used >= cap or proj_mem < _est_sym(sym) or cpu >= cfg.get("cpu_target_pct", 90) or not swap_ok or not disk_ok):
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
@@ -2713,7 +2802,7 @@ def tick(args, cfg, now):
             if needs_slot and not _pinned_sym and _quota_blocks(sym, _gtiers, chain_state) and nonw_used >= nonw_quota and f"{sym}_LONG" not in redo and f"{sym}_SHORT" not in redo:
                 log.setdefault("skipped_quota", []).append(f"{h['name']}:{sym}")
                 continue  # USER 2026-10-10 (82 redo backlog): refills never consume winner quota
-            if not needs_slot and (proj_mem < est_pair / 2 or cpu >= 120 or not swap_ok or not disk_ok):
+            if not needs_slot and (proj_mem < _est_sym(sym) / 2 or cpu >= 120 or not swap_ok or not disk_ok):
                 continue
             if not needs_slot and held[h["name"]].get(sym) != "running" and (running_cnt >= cap or chain_launched >= max(args.max_launch, 4)):
                 continue
@@ -2883,7 +2972,7 @@ def tick(args, cfg, now):
                     launched_keys.add(a["key"])
                 log["launched"].append(tag)
             if needs_slot:
-                used += 1; proj_mem -= est_pair + float(rd.get("size_mb") or 0)
+                used += 1; proj_mem -= _est_sym(sym) + float(rd.get("size_mb") or 0)
                 if _sym_quota_hit(sym, _gtiers):
                     nonw_used += 1
                 held[h["name"]][sym] = "new"
@@ -3175,6 +3264,7 @@ def tick(args, cfg, now):
                          "deferred_sides": len(_deferred_sides), "deferred_sample": _deferred_sides[:30]}
     log["fresh_skipped"] = {"sides": len(_fresh_skipped), "sample": _fresh_skipped[:30]}
     log["refresh_skip_same_npz"] = {"sides": len(_same_npz_skips), "sample": _same_npz_skips[:30]}
+    log["recent_unmoved_skip"] = {"sides": len(_recent_unmoved_skips), "sample": _recent_unmoved_skips[:30], "recent_sort_last": len(_recent_syms or ())}
     try:  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick. Guarded: a logging bug must never kill the tick.
         _starve = {"running": [], "waiting_base": [], "capped": [], "venue_gated": [], "unready": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}
         for _ssym in all_syms:
