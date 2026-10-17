@@ -114,6 +114,31 @@ def _live_set_ages():
     return out
 
 
+def _board_divergence(sym_sides):
+    """-> ([(SYM_SIDE, n_differing_keys)], [SYM_SIDE uncomparable]). The live entry gate's own comparator:
+    [] means live IS running the board, whatever per_sym_active.updated_at says."""
+    diverged, undecidable = [], []
+    try:
+        from live_twins import vec_exact as vx
+
+        import per_sym_store as pss
+    except Exception:
+        return diverged, sorted(sym_sides)
+    for sym_side in sym_sides:
+        sym, _, side = sym_side.rpartition("_")
+        try:
+            diff = vx.board_live_diff(sym, side, dict(pss.get_overrides(sym_side) or {}))
+        except Exception:
+            undecidable.append(sym_side)
+            continue
+        if isinstance(diff, list) and diff:
+            diverged.append((sym_side, len(diff)))
+        elif not isinstance(diff, list):
+            undecidable.append(sym_side)
+    diverged.sort(key=lambda t: -t[1])
+    return diverged, undecidable
+
+
 def _news_injected():
     """-> {SYM_SIDE} that ez_news_scanner currently holds as an active injection."""
     try:
@@ -229,17 +254,37 @@ def audit_venue(venue, args, ranking_sets):
         report["stats"]["plot_age_h"] = {"newest": round((time.time() - stalest) / 3600.0, 2), "oldest": round((time.time() - oldest) / 3600.0, 2)}
 
     # --- SETTINGS ----------------------------------------------------------
+    # 2026-10-17: the first version of this check flagged a sym_side whose per_sym_active.updated_at was
+    # older than 24h. That measures when the row was last WRITTEN, not whether live is running the board —
+    # and the applier deliberately skips a write when nothing changed, so a symbol whose board has not moved
+    # in 9 days reads as "219h stale" while being exactly current (TIAUSDC_LONG, SUSHIUSDT_LONG, KAVAUSDT_LONG
+    # all verified live == board at that age). The real question is divergence, so the finding is now
+    # board_live_diff — the same comparator the live entry gate and the go-live no-op check use. Write age is
+    # reported as context only. --age-findings restores the old behaviour.
     ages = _live_set_ages()
     traded_sides = ["%s_LONG" % s for s in traded_long] + ["%s_SHORT" % s for s in traded_short]
     no_set = [ss for ss in traded_sides if ss not in ages]
     stale = sorted(((ages[ss], ss) for ss in traded_sides if ss in ages and ages[ss] > args.settings_age_h), reverse=True)
-    report["stats"]["settings"] = {"traded_sides": len(traded_sides), "no_live_set": len(no_set), "stale": len(stale)}
+    diverged, undecidable = [], []
+    if not args.no_deep:
+        diverged, undecidable = _board_divergence(traded_sides)
+    report["stats"]["settings"] = {
+        "traded_sides": len(traded_sides),
+        "no_live_set": len(no_set),
+        "write_age_over_limit": len(stale),
+        "diverged_from_board": len(diverged),
+        "undecidable": len(undecidable),
+    }
     if not ages:
         finding("SETTINGS", "per_sym store unreadable at %s — cannot prove live settings" % PER_SYM_DB)
     if no_set:
         finding("SETTINGS", "%d traded sym_side(s) have NO live set at all: %s" % (len(no_set), ", ".join(no_set[:15])))
-    if stale:
-        finding("SETTINGS", "%d traded sym_side(s) are older than %.0fh (user wants new settings daily): %s" % (len(stale), args.settings_age_h, ", ".join("%s %.0fh" % (ss, age) for age, ss in stale[:15])))
+    if diverged:
+        finding("SETTINGS", "%d traded sym_side(s) are NOT running their board: %s" % (len(diverged), ", ".join("%s(%d keys)" % (ss, n) for ss, n in diverged[:12])))
+    if undecidable:
+        finding("SETTINGS", "%d traded sym_side(s) could not be compared to their board: %s" % (len(undecidable), ", ".join(undecidable[:8])))
+    if stale and args.age_findings:
+        finding("SETTINGS", "%d traded sym_side(s) written over %.0fh ago: %s" % (len(stale), args.settings_age_h, ", ".join("%s %.0fh" % (ss, age) for age, ss in stale[:15])))
 
     # --- PRIORITY ----------------------------------------------------------
     seen = ranking_sets["long"] | ranking_sets["short"]
@@ -259,6 +304,8 @@ def main():
     parser.add_argument("--max-age-h", type=float, default=float(os.environ.get("RANKINGS_AUDIT_MAX_AGE_H", 6.0)), help="list/artifact freshness limit (default 6)")
     parser.add_argument("--settings-age-h", type=float, default=float(os.environ.get("RANKINGS_AUDIT_SETTINGS_AGE_H", 24.0)), help="per_sym live-set age limit (default 24)")
     parser.add_argument("--plot-n", type=int, default=20, help="how many ranks per side are expected to be plotted")
+    parser.add_argument("--no-deep", action="store_true", help="skip the board-vs-live comparison (~10s for the full fleet)")
+    parser.add_argument("--age-findings", action="store_true", help="also report write-age staleness as a finding (context only by default)")
     parser.add_argument("--json", action="store_true", help="emit the report as JSON")
     args = parser.parse_args()
 
@@ -281,7 +328,7 @@ def main():
         stats = report["stats"]
         print("\n=== %s (%s) — %d long / %d short traded, %d plot files" % (report["venue"].upper(), report["account"], stats["traded"]["long"], stats["traded"]["short"], stats.get("plot_files", 0)))
         print("    ages(h): %s" % json.dumps(stats.get("age_h", {})))
-        print("    settings: %d sides, %d without a live set, %d stale" % (stats["settings"]["traded_sides"], stats["settings"]["no_live_set"], stats["settings"]["stale"]))
+        print("    settings: %d sides, %d without a live set, %d diverged from board, %d written >%.0fh ago" % (stats["settings"]["traded_sides"], stats["settings"]["no_live_set"], stats["settings"]["diverged_from_board"], stats["settings"]["write_age_over_limit"], args.settings_age_h))
         print("    priority: %d/%d sides visible to the scheduler" % (stats["priority"]["seen"], stats["priority"]["of"]))
         if not report["findings"]:
             print("    PASS — plots, lists, freshness, settings and priority all agree")

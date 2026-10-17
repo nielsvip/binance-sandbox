@@ -137,9 +137,13 @@ def coerce_structured(key: str, value):
     v = value
     if isinstance(v, str):
         # USER 2026-10-17: json.loads alone refused every Python-repr dict reaching the registrar as a string —
-        # "{'REENTRY': ['EMA_9_21_FILTER_ENABLED']}" (single quotes) is not JSON. Since the caller refuses the
-        # WHOLE sym_side on one bad value ("type-gate refused ALL (1 bad)"), that quoting difference alone left
-        # ONDOUSDT_LONG, ZROUSDT_LONG and 1000FLOKIUSDT_SHORT unapplied for days with fresh boards on disk.
+        # "{'REENTRY': ['EMA_9_21_FILTER_ENABLED']}" (single quotes) is not JSON. Measured on the 2026-10-17
+        # 02:51 refresh: 27 of 33 refusals were this quoting difference (FILTER_EXEMPTIONS x11, WT_DC_TF_COMBO
+        # x4, OBLIGATORY_REENTRY_SMA_FIELD / HTF_GATE_D_MANDATORY / WT_DC_TF_ENTRY / MI_TF_AGREE_MIN x2 each).
+        # Because the caller refuses the WHOLE sym_side on one bad value ("type-gate refused ALL (1 bad)"), such
+        # a sym_side can register NO change at all while the string form is present. Checked and NOT claimed
+        # beyond that: ONDOUSDT_LONG, ZROUSDT_LONG and 1000FLOKIUSDT_SHORT were already live-equal to their
+        # boards (board_live_diff == []), so what was blocked there was a repeated no-op, not live settings.
         # ast.literal_eval parses literals ONLY (no names, calls or attribute access, so nothing executes); a
         # string that is still not a literal dict keeps refusing exactly as before: fail-closed.
         try:

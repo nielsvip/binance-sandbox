@@ -85,6 +85,17 @@ def local_roots():
     rows with dt_med=0 s over a 20708-day span, which is why grid_ok() exists). The Mac is NAT'd, so it pushes
     into a staging dir named here; nothing is adopted without passing the same fingerprint checks."""
     out = [str(IND), str(Path.home() / "binance" / "backtest_v8" / "indicators")]
+    # 2026-10-17: the QUARANTINE and PURGE dirs are searched too. They are not junk -- they are where the deepest
+    # stores on the host turned out to be sitting. MEASURED that day against the 566-symbol tradeable union: S1's
+    # live dir held 332 NPZs while IND/_quarantine held 482 and IND/.purged_npz/20261013002948 held 191, and of the
+    # 566, 63 symbols were MISSING from live while a 400-1875 day copy sat in the purge dir (C98USDT 180002 rows /
+    # 1875 d, CELOUSDT 176738 / 1841 d) and 89 more were live but SHALLOWER than an existing copy (STORJUSDT live
+    # 207076 rows vs 1011590 purged; PLTR live 3924 vs 123832 on s2). Adoption still has to earn it: better()
+    # installs a candidate only when it is strictly deeper AND grid_ok() AND appendable(), and topup() walks the
+    # adopted store back up to the latest closed bar, so a deep-but-old copy never costs a recent bar.
+    out += [str(IND / "_quarantine")]
+    for parent in (".purged_npz", ".purged_variants"):
+        out += [str(d) for d in sorted((IND / parent).glob("*")) if d.is_dir()]
     out += [str(p) for p in sorted((ROOT / "backups").glob("npz*")) if p.is_dir()]
     out += [r for r in os.environ.get("NPZ_REPAIR_EXTRA_ROOTS", "").split(":") if r.strip()]
     out += [str(ROOT / "data" / "vec_live" / "npz_adopt_inbox")]
@@ -92,7 +103,12 @@ def local_roots():
 
 
 def peer_roots():
-    return ["~/binance-sandbox/backtest_v8/indicators", "~/binance-sandbox/backups/npz*", "~/binance/backtest_v8/indicators"]
+    return ["~/binance-sandbox/backtest_v8/indicators", "~/binance-sandbox/backups/npz*",
+            "~/binance/backtest_v8/indicators",
+            # s2 keeps its own quarantine (482 files) and the pre-rebuild backup that holds the only deep stock
+            # stores: PLTR 123832 rows / USO 112565 / MP 101104 against 2.4-5.2k live on S1.
+            "~/binance-sandbox/backtest_v8/indicators/_quarantine",
+            "~/binance-sandbox/backups/npz_before_history_rebuild_*"]
 
 
 def fingerprint_local(symbols):

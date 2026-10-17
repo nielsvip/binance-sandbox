@@ -325,10 +325,11 @@ def coerce(field, value, venue=None, *, allow_quick_float=False, strict_unknown=
         if isinstance(v, str):
             # USER 2026-10-17: json.loads alone refused every Python-repr dict that reaches the gate as a
             # string — "{'REENTRY': ['EMA_9_21_FILTER_ENABLED']}" (single quotes) is not JSON. Because
-            # switch_parity refuses the WHOLE sym_side on one bad value ("type-gate refused ALL (1 bad)"),
-            # that single quoting difference discarded 21 of 27 refusals on the 2026-10-16 refresh —
-            # FILTER_EXEMPTIONS x10, WT_DC_TF_COMBO x4, OBLIGATORY_REENTRY_SMA_FIELD/HTF_GATE_D_MANDATORY/
-            # WT_DC_TF_ENTRY x2 each — leaving boards like ONDOUSDT_LONG and ZROUSDT_LONG unapplied for days.
+            # switch_parity refuses the WHOLE sym_side on one bad value ("type-gate refused ALL (1 bad)"), a
+            # sym_side carrying the string form can register NO change at all. Measured on the 2026-10-17
+            # 02:51 refresh: 27 of 33 refusals were this quoting difference. Not claimed beyond that — the
+            # refused sym_sides checked (ONDOUSDT_LONG, ZROUSDT_LONG, 1000FLOKIUSDT_SHORT) were already
+            # live-equal to their boards, so what was blocked there was a repeated no-op.
             # ast.literal_eval parses literals ONLY (no names, calls or attribute access, so nothing executes),
             # and anything that is still not a literal dict keeps refusing exactly as before: fail-closed.
             try:
