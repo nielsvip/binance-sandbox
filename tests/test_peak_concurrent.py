@@ -22,7 +22,7 @@ def test_augment_reduce_churn_reports_max_open():
         {"type": "CLOSE", "ts": 4.0, "pnl_dollars": 0.0, "deployed": 1500.0,
          "bar_entry": 0, "bar_exit": 4},
     ]
-    assert _peak_concurrent(led) == 1800.0  # 150 x $12, not fill-sum
+    assert _peak_concurrent(led) == 1600.0  # USER 2026-10-17: highest $ capital invested = cost basis $1000 + $600 (was 150 x $12 = 1800)
 
 
 def test_reduce_before_second_augment_caps_peak():
