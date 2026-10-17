@@ -466,6 +466,7 @@ class TradierConfig:
         "HOOD",
         "ZCSH",
         "CRWD",
+        "RKLB",
     ]  # PLTR both sides per USER 2026-08-15 (was long only, now also short); CRWD added USER 2026-09-28 (both sides)
     NON_SHORTABLE = {
         "HII",
