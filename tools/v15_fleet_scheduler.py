@@ -881,6 +881,80 @@ def _npz_md5_cached(sym, cache):
     return out
 
 
+_RECENT_BOARD_H = 24.0  # USER 2026-10-17 new-information KPI: a side boarded < this many hours ago is not re-boarded ...
+_MIN_NEW_BARS_H = 4.0  # ... unless its NPZ now ends at least this many hours after that board was published (V15_SCHED_RECENT_H / V15_SCHED_MIN_NEW_BARS_H; 0 disables)
+
+
+def _manifest_index(matrix_dir):
+    """{SYM_SIDE: (published_epoch, npz_md5)} from the newest *_30d_matrix_manifest.json per side. One glob per tick
+    (the per-side glob in _same_npz_as_last_board ran ~1100 times a tick). Unreadable dir/file fails open (missing)."""
+    import glob as _glob
+
+    out = {}
+    try:
+        names = _glob.glob(os.path.join(str(matrix_dir), "*_30d_matrix_manifest.json"))
+    except Exception:
+        return out
+    for p in names:
+        try:
+            j = json.loads(pathlib.Path(p).read_text()) or {}
+            ss = str(j.get("symside") or "")
+            ts = datetime.datetime.fromisoformat(str(j.get("published_utc") or "").replace("Z", "+00:00")).timestamp()
+        except Exception:
+            continue
+        if ss and ts > (out.get(ss) or (0.0, ""))[0]:
+            out[ss] = (ts, str(j.get("npz_md5") or ""))
+    return out
+
+
+def _npz_end_ts(path):
+    """Last bar epoch of an NPZ's timestamps array, read from the zip member header + tail (no numpy: cron runs
+    /usr/bin/python3). None on any problem (fail open)."""
+    import ast as _ast
+    import struct as _struct
+    import zipfile as _zip
+
+    try:
+        with _zip.ZipFile(str(path)) as z:
+            with z.open("timestamps.npy") as f:
+                if f.read(6) != b"\x93NUMPY":
+                    return None
+                ver = f.read(2)
+                hl = _struct.unpack("<H", f.read(2))[0] if ver[0] == 1 else _struct.unpack("<I", f.read(4))[0]
+                hdr = _ast.literal_eval(f.read(hl).decode("latin1"))
+                fmt = {"<f8": "<d", "<i8": "<q", "<u8": "<Q", "<f4": "<f", "<i4": "<i"}.get(hdr.get("descr"))
+                if not fmt or hdr.get("fortran_order") or len(hdr.get("shape") or ()) != 1 or not hdr["shape"][0]:
+                    return None
+                sz = _struct.calcsize(fmt)
+                data = f.read()
+                return float(_struct.unpack(fmt, data[-sz:])[0]) if len(data) >= sz else None
+    except Exception:
+        return None
+
+
+def _recent_unmoved(ss, mindex, npz_end, now_ts, recent_h=None, min_new_h=None):
+    """USER 2026-10-17 (zero new information since 03:16Z): True = SYM_SIDE has a board published < recent_h ago AND its
+    NPZ does not end >= min_new_h after that publish -> a re-board re-measures (nearly) the same window and republishes
+    the same result; the slot goes to a never-boarded / older side instead. A frozen/stale NPZ (GRTUSDT frozen-keep loop,
+    last bar 6 h old) therefore re-boards at most once until its NPZ really advances. Missing manifest / NPZ end -> False
+    (fail open: never blocks a side we cannot prove is current). Pure function (testable)."""
+    try:
+        rh = float(os.environ.get("V15_SCHED_RECENT_H", _RECENT_BOARD_H) if recent_h is None else recent_h)
+        mh = float(os.environ.get("V15_SCHED_MIN_NEW_BARS_H", _MIN_NEW_BARS_H) if min_new_h is None else min_new_h)
+    except (TypeError, ValueError):
+        rh, mh = _RECENT_BOARD_H, _MIN_NEW_BARS_H
+    if rh <= 0:
+        return False
+    rec = (mindex or {}).get(ss)
+    if not rec or not rec[0]:
+        return False
+    if (float(now_ts) - float(rec[0])) >= rh * 3600.0:
+        return False
+    if npz_end is None:
+        return False
+    return (float(npz_end) - float(rec[0])) < mh * 3600.0
+
+
 # USER 2026-10-13 throughput: the quota must never idle a paid host. V15_NONW_QUOTA_DIV=1 = no quota (every free
 # slot admits work, winners still FIRST via _place_order tier rank); 4 = the 2026-10-09 "90% on winners" default.
 try:
@@ -1104,7 +1178,7 @@ def _repair_allowed_for_tier(tier, measured):
     return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
@@ -1135,7 +1209,10 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
     # stays primary; neg-365D L-tier exceptions keep sorting last) and before director-priority/attempts.
     # The boost weighs less than a tier step by construction: it only breaks ties within a tier.
     _rkpairs = _RANKPRI.ranking_sets()["pairs"]
-    seq.sort(key=lambda t: (_rk(t[0]), _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
+    # USER 2026-10-17 (new-information KPI): a pair whose every side was boarded < 24 h ago sorts after all other work of
+    # the same resume class — never-boarded / older boards first; it still runs when nothing else is launchable.
+    _rec = recent or frozenset()
+    seq.sort(key=lambda t: (_rk(t[0]), 1 if t[0] in _rec else 0, _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
     return seq
 
 
@@ -2211,7 +2288,7 @@ def tick(args, cfg, now):
         _quar = _quar_terminal(ss, quar, _no_chain)
         _non_short = side == "SHORT" and venue_of(sym) == "stocks" and sym in NON_SHORTABLE
         # USER 2026-10-12: refresh (rm progress + requeue) skips fresh (<4d matrix) sides — without this the rm fires and fresh-skip blocks the relaunch, destroying the board.
-        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map and not _same_npz_as_last_board(sym, side):
+        if _refresh_due(ss, _tiers, _now_ts) and not _quar and not _non_short and ss not in _fresh_map and not _same_npz_as_last_board(sym, side) and not _unmoved(sym, side):
             _rm_mtime = ((_tiers.get(ss) or {}).get("mtime"))
             _rkey = f"{ss}|{_rm_mtime}"
             _rd = st.setdefault("refresh_done", {})
@@ -2356,6 +2433,30 @@ def tick(args, cfg, now):
     _fresh_skipped = []
     _pair_stale = []
     _npz_md5_cache = {}
+    # USER 2026-10-17 new-information KPI: one manifest index + NPZ-end cache per tick; _unmoved = boarded < 24 h ago on an
+    # NPZ that has not advanced >= 4 h past that publish (re-board = same window = same result). Fail-open on any error.
+    _mdir_now = os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL")
+    try:
+        _mindex = _manifest_index(_mdir_now)
+    except Exception:
+        _mindex = {}
+    _npz_end_cache = {}
+    _recent_unmoved_skips = []
+
+    def _unmoved(sym, side):
+        ss_ = f"{sym}_{side}"
+        if ss_ not in _mindex:
+            return False
+        if sym not in _npz_end_cache:
+            _npz_end_cache[sym] = _npz_end_ts(ROOT / "backtest_v8" / "indicators" / f"{sym}.npz")
+        try:
+            hit = _recent_unmoved(ss_, _mindex, _npz_end_cache[sym], _now_ts)
+        except Exception:
+            hit = False
+        if hit and ss_ not in _recent_unmoved_skips:
+            _recent_unmoved_skips.append(ss_)
+        return hit
+
     _same_npz_skips = []
     _fresh_pri = priority_syms()
     _refresh_tick_n = [0]
@@ -2379,14 +2480,14 @@ def tick(args, cfg, now):
             # USER 2026-10-12: never re-calculate a sym_side computed in the last 4 days (matrix mtime).
             # terminal_fresh (NOT terminal_deferred) so backfill can never relaunch it; started/redo drain, priority syms exempt.
             # USER 2026-10-12: W-tier (DAILY) sides are exempt from the 4-day fresh skip — their 24h refresh is the point.
-            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and f"{sym}_{side}" in _fresh_map and sym not in _fresh_pri and _side_tier(f"{sym}_{side}", _gtiers) != "W":
+            if _st[side][0] in ("need30", "waiting_base") and f"{sym}_{side}" not in started and f"{sym}_{side}" not in redo and sym not in _fresh_pri and ((f"{sym}_{side}" in _fresh_map and _side_tier(f"{sym}_{side}", _gtiers) != "W") or _unmoved(sym, side)):
                 _st[side] = ("terminal_fresh", None)
                 _fresh_skipped.append(f"{sym}_{side}")
         # USER 2026-10-13 pair currency: one side re-queues while its sibling's only board ran on an
         # older NPZ -> the sibling was never calculated on this data; re-queue it too (both sides of a
         # tradeable symbol are calculated on the same NPZ; BH then decides where the time goes, in-pilot).
         _stale_sd = _pair_stale_sibling(sym, _st, os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), _npz_md5_cached(sym, _npz_md5_cache))
-        if _stale_sd and f"{sym}_{_stale_sd}" not in started and f"{sym}_{_stale_sd}" not in redo:
+        if _stale_sd and f"{sym}_{_stale_sd}" not in started and f"{sym}_{_stale_sd}" not in redo and not _unmoved(sym, _stale_sd):
             print(f"[sched] PAIR-NPZ-STALE {sym}_{_stale_sd}: manifest NPZ != current NPZ -> requeue need30 (pair calculated on same data)", flush=True)
             _st[_stale_sd] = ("need30", 1)
             _pair_stale.append(f"{sym}_{_stale_sd}")
