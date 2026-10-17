@@ -504,6 +504,16 @@ def publish(out, args):
             return {"published": False, "why": f"ledger metrics missing — a board may not be named from the vector (USER 2026-10-16): {_led.get('why')}"}
         bh = RR._r(_led.get("bh_pct")) if _led.get("bh_pct") is not None else out["baseline"]["bh_pct"]
         gain, trades = float(_led["gain_pct"]), int(_led["trades"])
+        # CHAIN-LAW (USER 2026-10-17 "never add neg deltas"): the floor above compared VECTOR final vs VECTOR baseline, then the
+        # board was named from the LEDGER — 11 topups (KSMUSDT_SHORT vec 16.45->111.58 but ledger 14.72->4.96) published below
+        # their own start. The published metric is the ledger, so the floor is the baseline set's ledger number, same NPZ.
+        _bled = (out.get("baseline") or {}).get("wr_source") if isinstance((out.get("baseline") or {}).get("wr_source"), dict) else {}
+        if _bled.get("gain_pct") is None:
+            return {"published": False, "why": "CHAIN-LAW: baseline ledger gain not measured — a final cannot be proven >= its start"}
+        if gain < float(_bled["gain_pct"]) - 1e-9:
+            out["chain_law"] = {"baseline_ledger": _bled["gain_pct"], "final_ledger": gain, "baseline_vector": out["baseline"]["gain_pct"], "final_vector": out["final"].get("gain_pct")}
+            RR.log(f"  {ss} [CHAIN-LAW] final ledger {gain:+.4f} < baseline ledger {float(_bled['gain_pct']):+.4f} (vector {out['baseline']['gain_pct']} -> {out['final'].get('gain_pct')}) — not published, the standing board stays")
+            return {"published": False, "why": f"CHAIN-LAW: final ledger {gain:.4f} < baseline ledger {float(_bled['gain_pct']):.4f} — vector promotions did not hold on the published metric"}
         out["final"]["gain_pct_vector"] = out["final"].get("gain_pct")
         out["final"]["trades_vector"] = out["final"].get("trades")
         out["final"]["gain_pct"], out["final"]["trades"] = gain, trades
