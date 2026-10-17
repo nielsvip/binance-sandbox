@@ -1,184 +1,78 @@
 {
- "generated_at": "2026-10-17 13:01 UTC",
- "total_capital_usd": 171.09,
+ "generated_at": "2026-10-17 13:05 UTC",
+ "total_capital_usd": 33.86,
  "tier_capital": {
-  "A": 0.0,
-  "B": 29.75,
-  "C": 141.35
+  "A": 1.01,
+  "B": 5.95,
+  "C": 26.9
  },
  "tier_count": {
-  "A": 0,
-  "B": 4,
-  "C": 10
+  "A": 1,
+  "B": 1,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "fin:THETAUSDT_LONG",
-  "fin:SOLUSDC_LONG",
-  "fin:BTCDOMUSDT_LONG",
-  "fin:SOLUSDC_SHORT",
-  "fin:XLMUSDT_SHORT",
-  "fin:COMPUSDT_SHORT",
-  "fin:SNXUSDT_SHORT",
-  "fin:COTIUSDT_SHORT",
-  "fin:CHRUSDT_SHORT",
-  "fin:SANDUSDT_LONG"
+  "flz:SOLUSDC_LONG",
+  "flz:BNBUSDC_LONG",
+  "flz:SOLUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:THETAUSDT_LONG",
-   "symbol": "THETAUSDT",
-   "account": "fin",
-   "value_usd": 73.01,
-   "gain_pct": -1.665,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 374.8,
-   "mark": 0.1948
-  },
-  {
-   "pk": "fin:RLCUSDT_SHORT",
-   "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 13.88,
-   "gain_pct": 7.116,
-   "tier": "B",
-   "perf_mult": 0.7,
-   "amt": 18.1,
-   "mark": 0.76696531
-  },
-  {
-   "pk": "fin:SOLUSDC_LONG",
+   "pk": "flz:SOLUSDC_LONG",
    "symbol": "SOLUSDC",
-   "account": "fin",
+   "account": "flz",
    "value_usd": 12.45,
-   "gain_pct": -0.431,
+   "gain_pct": -0.594,
    "tier": "C",
    "perf_mult": 0.19,
    "amt": 0.12,
-   "mark": 103.71058195
+   "mark": 103.76
   },
   {
-   "pk": "fin:SANDUSDT_LONG",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 8.0,
-   "gain_pct": 10.217,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 136.0,
-   "mark": 0.05885171
-  },
-  {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 7.34,
-   "gain_pct": 1.968,
-   "tier": "C",
-   "perf_mult": 0.41,
-   "amt": 661.0,
-   "mark": 0.011102
-  },
-  {
-   "pk": "fin:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "fin",
-   "value_usd": 7.33,
-   "gain_pct": 1.954,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 33.6,
-   "mark": 0.2181
-  },
-  {
-   "pk": "fin:XLMUSDT_SHORT",
-   "symbol": "XLMUSDT",
-   "account": "fin",
-   "value_usd": 7.3,
-   "gain_pct": 0.855,
-   "tier": "C",
-   "perf_mult": 0.22,
-   "amt": 41.0,
-   "mark": 0.17805
-  },
-  {
-   "pk": "fin:SOLUSDC_SHORT",
+   "pk": "flz:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
-   "account": "fin",
+   "account": "flz",
    "value_usd": 7.26,
-   "gain_pct": 0.678,
+   "gain_pct": 0.746,
    "tier": "C",
    "perf_mult": 0.19,
    "amt": 0.07,
-   "mark": 103.71058195
+   "mark": 103.76
   },
   {
-   "pk": "fin:CHRUSDT_SHORT",
-   "symbol": "CHRUSDT",
-   "account": "fin",
-   "value_usd": 7.24,
-   "gain_pct": 3.433,
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 7.19,
+   "gain_pct": -0.429,
    "tier": "C",
-   "perf_mult": 0.13,
-   "amt": 375.0,
-   "mark": 0.0193
-  },
-  {
-   "pk": "fin:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "fin",
-   "value_usd": 7.15,
-   "gain_pct": 1.343,
-   "tier": "B",
-   "perf_mult": 4.16,
-   "amt": 1.0,
-   "mark": 7.147
-  },
-  {
-   "pk": "fin:KSMUSDT_SHORT",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 6.96,
-   "gain_pct": 2.263,
-   "tier": "B",
    "perf_mult": 0.26,
-   "amt": 1.6,
-   "mark": 4.348
+   "amt": 0.01,
+   "mark": 718.73203426
   },
   {
-   "pk": "fin:COMPUSDT_SHORT",
-   "symbol": "COMPUSDT",
-   "account": "fin",
-   "value_usd": 5.88,
-   "gain_pct": 1.8,
-   "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 0.271,
-   "mark": 21.7144895
-  },
-  {
-   "pk": "fin:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "fin",
-   "value_usd": 5.54,
-   "gain_pct": 0.348,
-   "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 0.001,
-   "mark": 5543.1664409
-  },
-  {
-   "pk": "fin:ATOMUSDT_SHORT",
-   "symbol": "ATOMUSDT",
-   "account": "fin",
-   "value_usd": 1.76,
-   "gain_pct": 2.962,
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 5.95,
+   "gain_pct": 0.661,
    "tier": "B",
-   "perf_mult": 1.09,
-   "amt": 1.03,
-   "mark": 1.704
+   "perf_mult": 0.94,
+   "amt": 4.6,
+   "mark": 1.2934
+  },
+  {
+   "pk": "flz:WLDUSDC_LONG",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 1.01,
+   "gain_pct": -3.05,
+   "tier": "A",
+   "perf_mult": 7.77,
+   "amt": 2.0,
+   "mark": 0.50472125
   }
  ]
 }
