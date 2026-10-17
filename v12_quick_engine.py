@@ -15625,15 +15625,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     try:
         import vec_decisions.gr_htf_direct_entry as _grd_prep
 
-        _grd_m = _grd_prep.gr_direct_masks(npz, n, is_long, cfg, close)
+        _grd_m = _setup_memo("grd_masks", None, cfg, npz, n, is_long, lambda: _grd_prep.gr_direct_masks(npz, n, is_long, cfg, close))
         if _grd_m[0] is not None:
             _grd_entry_fire = np.asarray(_grd_m[0], dtype=bool)
             _grd_entry_dbl = np.asarray(_grd_m[1], dtype=bool)
             _grd_open_mult = np.where(_grd_entry_dbl, 2.0, 1.0)
-        _grd_entry_score, _grd_exit_score = _grd_prep.gr_direct_scores(
-            npz, n, is_long, cfg, close
-        )
-        _grd_xm = _grd_prep.gr_direct_exit_mask(npz, n, is_long, cfg, close)
+        _grd_entry_score, _grd_exit_score = _setup_memo("grd_scores", None, cfg, npz, n, is_long, lambda: _grd_prep.gr_direct_scores(npz, n, is_long, cfg, close))
+        _grd_xm = _setup_memo("grd_exit", None, cfg, npz, n, is_long, lambda: _grd_prep.gr_direct_exit_mask(npz, n, is_long, cfg, close))
         if _grd_xm is not None:
             _grd_exit_raw = np.asarray(_grd_xm, dtype=bool)
             _exit_no_gr = exit_sig & ~_grd_exit_raw

@@ -157,8 +157,11 @@ def _ha_is(arr: np.ndarray | None, want_green: bool, exact: bool) -> np.ndarray 
         return None
 
 
+_ETF_MEMO: dict = {}
+
+
 def _et_fields(ts: Any, n: int) -> tuple:
-    """(mins_since_open, weekday) per live :9933, or (None, None) fail-open."""
+    """(mins_since_open, weekday) per live :9933, or (None, None) fail-open. 2026-10-17 speed: exact memo on the timestamp bytes."""
     if ts is None or _ET is None or n <= 0:
         return None, None
     try:
@@ -170,6 +173,21 @@ def _et_fields(ts: Any, n: int) -> tuple:
     a = a[:n]
     if not bool(np.all(np.isfinite(a))):
         return None, None
+    import hashlib
+
+    key = (n, hashlib.sha1(np.ascontiguousarray(a).tobytes()).hexdigest())
+    hit = _ETF_MEMO.get(key)
+    if hit is not None:
+        return hit[0].copy(), hit[1].copy()
+    out = _et_fields_raw(a, n)
+    if out[0] is not None:
+        if len(_ETF_MEMO) >= 16:
+            _ETF_MEMO.pop(next(iter(_ETF_MEMO)))
+        _ETF_MEMO[key] = (out[0].copy(), out[1].copy())
+    return out
+
+
+def _et_fields_raw(a, n: int) -> tuple:
     try:
         m = np.empty(n, dtype=np.int32)
         w = np.empty(n, dtype=np.int8)

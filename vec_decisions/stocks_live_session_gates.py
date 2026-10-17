@@ -34,8 +34,42 @@ HTF_VETO_BYPASS_TOKENS = ('R1_', 'HEDGE', 'PARTIAL_PROFIT_LOCK', 'EOD_FORCE_FLAT
 VEC_REASON_ALIASES = {'PPL_': 'PARTIAL_PROFIT_LOCK'}
 
 
+_TS_MEMO = {}
+
+
+def _ts_key(tag, ts, *extra):
+    import hashlib
+
+    return (tag, len(ts), hashlib.sha1(np.ascontiguousarray(ts).tobytes()).hexdigest()) + tuple(extra)
+
+
+def _ts_memo_get(key):
+    v = _TS_MEMO.get(key)
+    if v is None:
+        return None
+    return tuple(np.array(x, copy=True) for x in v) if isinstance(v, tuple) else np.array(v, copy=True)
+
+
+def _ts_memo_put(key, v):
+    if len(_TS_MEMO) >= 16:
+        _TS_MEMO.pop(next(iter(_TS_MEMO)))
+    _TS_MEMO[key] = tuple(np.array(x, copy=True) for x in v) if isinstance(v, tuple) else np.array(v, copy=True)
+
+
 def _et_minutes(ts_arr):
-    """(weekday[n], minutes_since_midnight_ET[n]) for epoch-second (or ms) timestamps."""
+    """(weekday[n], minutes_since_midnight_ET[n]) for epoch-second (or ms) timestamps. 2026-10-17 speed: exact memo on the
+    timestamp bytes (pure function of the array; ~1 fromtimestamp per bar per call before)."""
+    ts = np.asarray(ts_arr, dtype=float)
+    key = _ts_key("et", ts)
+    hit = _ts_memo_get(key)
+    if hit is not None:
+        return hit
+    out = _et_minutes_raw(ts)
+    _ts_memo_put(key, out)
+    return out
+
+
+def _et_minutes_raw(ts_arr):
     ts = np.asarray(ts_arr, dtype=float)
     n = len(ts)
     wd = np.full(n, 7, dtype=int)
@@ -130,6 +164,17 @@ def moc_window_masks(ts_label, bar_minutes=15.0, window_minutes=90.0):
 
 def trading_day_lookback_start(ts_label, days):
     """Per bar: index of the first bar of the trading date `days-1` distinct ET dates back (window = last `days` dates)."""
+    ts = np.asarray(ts_label, dtype=float)
+    key = _ts_key("tdl", ts, max(1, int(days)))
+    hit = _ts_memo_get(key)
+    if hit is not None:
+        return hit
+    out = _trading_day_lookback_start_raw(ts, days)
+    _ts_memo_put(key, out)
+    return out
+
+
+def _trading_day_lookback_start_raw(ts_label, days):
     ts = np.asarray(ts_label, dtype=float)
     n = len(ts)
     out = np.zeros(n, dtype=int)

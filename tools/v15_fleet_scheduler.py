@@ -2237,7 +2237,13 @@ def tick(args, cfg, now):
                             for _dk in list(_rd.keys())[:500]:
                                 _rd.pop(_dk, None)
                         return "need30", 1
-                return "terminal_ok", None
+                # USER 2026-10-17: this whole branch means "a FINISHED board is past its refresh window — delete its
+                # progress and requeue". For a side that never finished there is no done_host, so _rm_host is None and
+                # it fell through to terminal_ok: permanently un-schedulable. TIAUSDC_LONG hit this after the pilot was
+                # OOM-killed mid-LONG as TIAUSDC_SHORT's PAIR-IN-RAM partner — 1876 computed cells, no publish, and the
+                # scheduler then listed it in own_unfinished every tick while refusing to queue it. An unfinished side
+                # must RESUME (need30 keeps its done dict, so nothing is recomputed), never go terminal.
+                return ("terminal_ok", None) if ss in done else ("need30", 1)
             return "need30", 1
         if _non_short:
             return "terminal_ok", None  # USER 2026-10-02: config_tradier NON_SHORTABLE: no SHORT compute, ever
@@ -2339,7 +2345,12 @@ def tick(args, cfg, now):
     except Exception:
         _chain_ts = 0.0
     try:
-        _fresh_map = _fresh_computed_sides(os.path.join(HOME, "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), now=_now_ts, min_ts=_chain_ts)
+        # USER 2026-10-17 dead switch: HOME is defined only INSIDE the HOST_PY raw string (line ~128), so it is not a
+        # module attribute — this raised NameError every tick and the bare except below set _fresh_map = {}. Measured:
+        # map size 0 while 186 of 602 matrices qualified, i.e. _FRESH_SKIP_DAYS (cron sets V15_FRESH_SKIP_DAYS=0.33,
+        # so 8 h) has never once skipped anything, and the `ss not in _fresh_map` guard above could never fire.
+        # CLAUDE.md: a dead switch is implemented, never left dead.
+        _fresh_map = _fresh_computed_sides(os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"), now=_now_ts, min_ts=_chain_ts)
     except Exception:
         _fresh_map = {}
     _fresh_skipped = []
