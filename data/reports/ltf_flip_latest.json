@@ -1,18 +1,18 @@
 {
- "generated_utc": "2026-10-16T18:55:23Z",
+ "generated_utc": "2026-10-17T00:49:21Z",
  "window": "live-ending 7d",
- "start_utc": "2026-10-09T18:45Z",
- "end_utc": "2026-10-16T18:45Z",
+ "start_utc": "2026-10-10T00:45Z",
+ "end_utc": "2026-10-17T00:45Z",
  "keys": 896,
  "syms": 463,
- "elapsed_s": 1213.6,
+ "elapsed_s": 858.8,
  "legs": {
   "VEC15": {
-   "exits": 712,
-   "total_pct": 96.633,
-   "per_trade": 0.1357,
-   "active_days": 8,
-   "pos_days": 6
+   "exits": 708,
+   "total_pct": 75.261,
+   "per_trade": 0.1063,
+   "active_days": 7,
+   "pos_days": 5
   },
   "LTF_135": {
    "exits": 52,
@@ -22,11 +22,11 @@
    "pos_days": 2
   },
   "NO_TWIN": {
-   "exits": 1594,
-   "total_pct": 100.796,
-   "per_trade": 0.0632,
+   "exits": 1597,
+   "total_pct": 101.413,
+   "per_trade": 0.0635,
    "active_days": 8,
-   "pos_days": 3
+   "pos_days": 2
   }
  },
  "checks": {
@@ -1974,14 +1974,14 @@
    }
   },
   "fin:1INCHUSDT_LONG": {
-   "exits": 13,
+   "exits": 11,
    "entries": 35,
    "entries_ltf": 13,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": -0.4914,
-    "VEC15": 3.8473
+    "VEC15": 1.0392
    }
   },
   "fin:1INCHUSDT_SHORT": {
@@ -3592,7 +3592,7 @@
   },
   "flz:GRAMUSDT_SHORT": {
    "exits": 9,
-   "entries": 20,
+   "entries": 22,
    "entries_ltf": 3,
    "reconciled": 0,
    "legs": {
@@ -3691,7 +3691,7 @@
   },
   "flz:XRPUSDC_SHORT": {
    "exits": 7,
-   "entries": 23,
+   "entries": 24,
    "entries_ltf": 4,
    "reconciled": 0,
    "legs": {
@@ -4361,13 +4361,13 @@
    }
   },
   "inf:ETHFIUSDC_LONG": {
-   "exits": 7,
-   "entries": 10,
+   "exits": 11,
+   "entries": 13,
    "entries_ltf": 1,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -0.916,
+    "NO_TWIN": -0.7244,
     "VEC15": 0.2754
    }
   },
@@ -4966,14 +4966,14 @@
    }
   },
   "inf:STRKUSDT_LONG": {
-   "exits": 5,
+   "exits": 4,
    "entries": 8,
    "entries_ltf": 0,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
     "NO_TWIN": 4.6496,
-    "VEC15": -3.0684
+    "VEC15": -5.7601
    }
   },
   "inf:THETAUSDT_LONG": {
@@ -7321,7 +7321,7 @@
   },
   "trb:BNO_LONG": {
    "exits": 20,
-   "entries": 44,
+   "entries": 46,
    "entries_ltf": 1,
    "reconciled": 0,
    "legs": {
@@ -7474,13 +7474,13 @@
    }
   },
   "trb:COHR_LONG": {
-   "exits": 1,
+   "exits": 0,
    "entries": 16,
    "entries_ltf": 0,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 0.0883,
+    "NO_TWIN": 0,
     "VEC15": 0
    }
   },
@@ -8321,13 +8321,13 @@
    }
   },
   "trb:PSX_LONG": {
-   "exits": 4,
+   "exits": 5,
    "entries": 34,
    "entries_ltf": 0,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 2.0652,
+    "NO_TWIN": 3.0369,
     "VEC15": 0
    }
   },
@@ -9366,14 +9366,14 @@
    }
   },
   "trc:MNTS_SHORT": {
-   "exits": 9,
+   "exits": 7,
    "entries": 21,
    "entries_ltf": 1,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": 2.6237,
-    "VEC15": 18.5476
+    "NO_TWIN": 2.1657,
+    "VEC15": 2.6754
    }
   },
   "trc:MPC_LONG": {
@@ -9840,7 +9840,7 @@
   },
   "trc:XLE_LONG": {
    "exits": 3,
-   "entries": 9,
+   "entries": 12,
    "entries_ltf": 0,
    "reconciled": 0,
    "legs": {
@@ -9862,7 +9862,7 @@
   },
   "trc:XOP_LONG": {
    "exits": 1,
-   "entries": 3,
+   "entries": 6,
    "entries_ltf": 0,
    "reconciled": 0,
    "legs": {
@@ -9896,75 +9896,75 @@
  },
  "vec_replay": {
   "1000BONKUSDC_SHORT": {
-   "gain_pct": 15.549590886891155,
-   "trades": 150
+   "gain_pct": 12.489863982578502,
+   "trades": 151
   },
   "1000FLOKIUSDT_LONG": {
-   "gain_pct": -4.235914298363807,
+   "gain_pct": -4.518323308456005,
    "trades": 287
   },
   "1000FLOKIUSDT_SHORT": {
-   "gain_pct": 16.939237136666403,
-   "trades": 236
+   "gain_pct": 15.399757178889113,
+   "trades": 238
   },
   "1000LUNCUSDT_SHORT": {
-   "gain_pct": 2.4220548816704124,
+   "gain_pct": 2.1681270550121328,
    "trades": 43
   },
   "1000PEPEUSDC_LONG": {
-   "gain_pct": 66.22973423970363,
-   "trades": 160
+   "gain_pct": 65.9179462431911,
+   "trades": 162
   },
   "1000PEPEUSDC_SHORT": {
-   "gain_pct": 4.302444489674969,
-   "trades": 130
+   "gain_pct": 2.314906724992557,
+   "trades": 133
   },
   "1000SATSUSDT_LONG": {
    "gain_pct": 14.32951667313781,
    "trades": 63
   },
   "1000SHIBUSDC_LONG": {
-   "gain_pct": -14.149669495642,
-   "trades": 540
+   "gain_pct": -15.653359160172315,
+   "trades": 544
   },
   "1INCHUSDT_LONG": {
-   "gain_pct": -0.43841459578855796,
+   "gain_pct": -2.1133987077463456,
    "trades": 85
   },
   "1INCHUSDT_SHORT": {
-   "gain_pct": 1.0598959949484499,
-   "trades": 95
+   "gain_pct": 0.16433147642853554,
+   "trades": 96
   },
   "AAPLUSDT_LONG": {
    "gain_pct": 0.0,
    "trades": 0
   },
   "AAVEUSDC_LONG": {
-   "gain_pct": -3.509761287230296,
+   "gain_pct": -3.7934383794308184,
    "trades": 520
   },
   "ACEUSDT_LONG": {
-   "gain_pct": 2.8602575902619902,
-   "trades": 452
+   "gain_pct": 3.8874368347131067,
+   "trades": 456
   },
   "ACEUSDT_SHORT": {
-   "gain_pct": -2.3378079809413688,
-   "trades": 257
+   "gain_pct": -2.4166831404818527,
+   "trades": 260
   },
   "ADAUSDC_LONG": {
    "gain_pct": 0.0,
    "trades": 0
   },
   "ADAUSDC_SHORT": {
-   "gain_pct": 23.153210113869008,
-   "trades": 112
+   "gain_pct": 22.135184351170118,
+   "trades": 113
   },
   "ADBEUSDT_LONG": {
-   "gain_pct": 0.5961770043022456,
+   "gain_pct": 0.5509490500285332,
    "trades": 30
   },
   "AIAUSDT_LONG": {
-   "gain_pct": -6.923383822855296,
+   "gain_pct": -15.53188149564035,
    "trades": 235
   },
   "ALGOUSDT_LONG": {
@@ -9976,11 +9976,11 @@
    "trades": 0
   },
   "ALTUSDT_LONG": {
-   "gain_pct": -0.31702784299699127,
-   "trades": 532
+   "gain_pct": -1.8960968174049038,
+   "trades": 536
   },
   "AMATUSDT_SHORT": {
-   "gain_pct": 11.744285609689966,
+   "gain_pct": 11.94680696482333,
    "trades": 68
   },
   "AMDUSDT_LONG": {
@@ -9990,24 +9990,24 @@
    "error": "prepare-None npz_flags=[NONE_ANYWHERE]"
   },
   "APEUSDT_LONG": {
-   "gain_pct": 26.51369710234011,
-   "trades": 403
+   "gain_pct": 24.764862691445543,
+   "trades": 414
   },
   "APEUSDT_SHORT": {
-   "gain_pct": -5.355643249068968,
-   "trades": 251
+   "gain_pct": -4.477930486127021,
+   "trades": 254
   },
   "API3USDT_LONG": {
-   "gain_pct": 91.98104610342384,
-   "trades": 558
+   "gain_pct": 88.25720890702861,
+   "trades": 552
   }
  },
  "reconciled_exits": 0,
  "entries_ltf_total": 2947,
  "price_guard": {
-  "checked": 80560,
-  "ok": 33699,
-  "fake": 825,
-  "unchecked": 46036
+  "checked": 80634,
+  "ok": 30810,
+  "fake": 666,
+  "unchecked": 49158
  }
 }

@@ -50,6 +50,25 @@ for a in ang inf flz men fin tra trb trc; do for s in long short; do f=$LF/$a/${
     fi; done
 [ "$($SSH "$HOST" 'ls /home/niels/binance/data/live_failover/mac_state 2>/dev/null | wc -l')" -ge 8 ] || bad "mac_state has fewer than 8 account dirs"
 
+say "=== 2b. RUNNABLE — S1 can actually START the live scripts ==="
+# 2026-10-17: this check exists because its absence produced a FALSE GREEN. The first version of this audit
+# reported "FAILOVER READY — 0 findings" while NINE OF TEN live scripts could not even be imported on S1:
+# run_with_watchdog.sh preferred /home/niels/binance/.venv, the BACKTEST env, which lacks aiofiles / aiohttp /
+# pandas. ez_indicators had been crash-looping every 32 s since 2026-10-14 22:17 (660 consecutive failures) and
+# S1's newest crypto snapshot was 2.1 DAYS old — while the lease, the arm file, the units and every other signal
+# said the standby was ready. Code being PRESENT and code being RUNNABLE are different claims; assert both.
+S1PY=$($SSH "$HOST" 'P=/home/niels/.conda/envs/binance_env_mac/bin/python; [ -x "$P" ] || P=/home/niels/.conda/envs/binance_env/bin/python; [ -x "$P" ] || P=/home/niels/binance/.venv/bin/python; echo "$P"' 2>/dev/null)
+say "  interpreter run_with_watchdog selects on S1: ${S1PY:-UNKNOWN}"
+IMPORTS=$($SSH "$HOST" "cd /home/niels/binance 2>/dev/null || exit 9
+for m in ez_manage ez_indicators ez_klines ez_prices ez_positions_watchdog ez_reentry_daemon tradier_manage tradier_positions tradier_indicators tradier_klines; do
+  r=\$('$S1PY' -c \"import \$m\" 2>&1 | grep -oE 'No module named .[a-zA-Z_.]+.' | tail -1)
+  [ -n \"\$r\" ] && echo \"\$m \$r\"
+done" 2>/dev/null)
+if [ -n "$IMPORTS" ]; then while IFS= read -r l; do bad "S1 cannot import $l — it could not start this on takeover"; done <<< "$IMPORTS"; else say "  all 10 live scripts import cleanly on S1"; fi
+CRASH=$($SSH "$HOST" 'grep -c "RESTART_BACKOFF" /home/niels/logs/ez_indicators_watchdog.log 2>/dev/null | tail -1' 2>/dev/null)
+LASTC=$($SSH "$HOST" 'tail -40 /home/niels/logs/ez_indicators_watchdog.log 2>/dev/null | grep -c "consecutive failure"' 2>/dev/null)
+[ "${LASTC:-0}" -gt 5 ] && bad "S1 ez_indicators watchdog shows ${LASTC} recent 'consecutive failure' lines — it is crash-looping" || say "  S1 ez_indicators watchdog not crash-looping"
+
 say "=== 3. DATA — S1 can see and rebuild the market ==="
 $SSH "$HOST" 'now=$(date -u +%s)
 k=$(ls -t /home/niels/binance/klines_cache/* 2>/dev/null | head -1); [ -n "$k" ] && echo "KL $((now-$(stat -c %Y $k)))" || echo "KL -1"
