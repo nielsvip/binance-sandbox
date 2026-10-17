@@ -1286,9 +1286,8 @@ def _bh_baseline_pct(symbol: str, start_ts: int, end_ts: int) -> Optional[float]
     if start_ts >= end_ts:
         return None
     sym_u = symbol.upper()
+    # USER 2026-10-17: no USDC/USDT conversion — a USDC symbol is charted from USDC klines only.
     candidates = [sym_u]
-    if sym_u.endswith("USDC"):
-        candidates.append(sym_u[:-4] + "USDT")
     for cache_dir in (KLINES_BT_DIR, KLINES_LIVE_DIR):
         if not cache_dir.exists():
             continue

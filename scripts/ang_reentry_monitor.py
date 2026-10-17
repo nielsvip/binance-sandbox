@@ -58,7 +58,7 @@ def load_indicators():
 
 
 def get_sym(name, indicators):
-    for s in [name, name.replace("USDT", "USDC"), name.replace("USDC", "USDT")]:
+    for s in [name]:  # USER 2026-10-17: no USDC/USDT conversion
         if s in indicators:
             return s
     return None

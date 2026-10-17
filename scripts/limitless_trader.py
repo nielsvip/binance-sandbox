@@ -60,11 +60,11 @@ STATS_FILE = DATA_DIR / "stats.json"
 
 # Pyth ticker → Binance symbol mapping
 TICKER_TO_BINANCE = {
-    "BTC": "BTCUSDC", "ETH": "ETHUSDC", "SOL": "SOLUSDC", "DOGE": "DOGEUSDT",
+    "BTC": "BTCUSDC", "ETH": "ETHUSDC", "SOL": "SOLUSDC", "DOGE": "DOGEUSDC",
     "XRP": "XRPUSDC", "BNB": "BNBUSDC", "ADA": "ADAUSDC", "AVAX": "AVAXUSDC",
-    "SUI": "SUIUSDT", "LINK": "LINKUSDC", "PEPE": "PEPEUSDT", "WIF": "WIFUSDT",
+    "SUI": "SUIUSDC", "LINK": "LINKUSDC", "PEPE": "PEPEUSDT", "WIF": "WIFUSDC",
     "LTC": "LTCUSDC", "DOT": "DOTUSDT", "XLM": "XLMUSDT", "TRX": "TRXUSDT",
-    "NEAR": "NEARUSDT", "UNI": "UNIUSDC", "AAVE": "AAVEUSDT", "MNT": "MNTUSDT",
+    "NEAR": "NEARUSDC", "UNI": "UNIUSDC", "AAVE": "AAVEUSDC", "MNT": "MNTUSDT",
     "LEO": "LEOUSDT", "XMR": "XMRUSDT",
 }
 
@@ -246,7 +246,7 @@ def indicator_probability(ticker: str, strike: float, hours_left: float, spot: f
         return 1.0 if spot > strike else 0.0
     if strike <= 0 or spot <= 0:
         return 0.5
-    sym = TICKER_TO_BINANCE.get(ticker, "").replace("USDT", "USDC")
+    sym = TICKER_TO_BINANCE.get(ticker, "")  # USER 2026-10-17: no USDC/USDT conversion — the map names the real symbol
     indicators = load_indicators().get(sym, {})
     if not indicators:
         return _fallback_probability(spot, strike, hours_left)

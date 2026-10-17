@@ -339,11 +339,12 @@ def find_kline_symbol(raw_symbol: str) -> Optional[str]:
     if raw_symbol in SYMBOL_MAP_CACHE:
         return SYMBOL_MAP_CACHE[raw_symbol]
     base = raw_symbol.replace("/", "").replace("-", "").upper()
-    for candidate in [base, base.replace("USDT", "USDC"), base + "USDT", base + "USDC"]:
+    # USER 2026-10-17: no USDC/USDT conversion — try the symbol as given, then plain completions.
+    for candidate in [base, base + "USDT", base + "USDC"]:
         if (KLINES_DIR / f"{candidate}_1h.json").exists():
             SYMBOL_MAP_CACHE[raw_symbol] = candidate
             return candidate
-    for candidate in [base, base.replace("USDT", "USDC")]:
+    for candidate in [base]:  # USER 2026-10-17: no USDC/USDT conversion
         if (KLINES_DIR / f"{candidate}_4h.json").exists():
             SYMBOL_MAP_CACHE[raw_symbol] = candidate
             return candidate

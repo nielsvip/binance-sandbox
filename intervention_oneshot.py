@@ -16,7 +16,7 @@ def _lmd():
     return _LMD_CACHE['data']
 def fetch_mark(symbol: str):
     data = _lmd()
-    rec = data.get(symbol) or data.get(symbol.replace('USDC','USDT')) or data.get(symbol.replace('USDT','USDC'))
+    rec = data.get(symbol)  # USER 2026-10-17: no USDC/USDT conversion
     if not isinstance(rec, dict): return None
     for k in ('current_price','close_3m','close_15m','close_1h','mark_price','price'):
         v = rec.get(k)

@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Build 1y hybrid USDC klines: USDC where available (recent 18d), USDT adjusted for older 347d."""
+"""RETIRED 2026-10-17 — DO NOT RUN. This built a "1y USDC" series by splicing ADJUSTED USDT bars under a USDC
+name (USDC for the recent ~18 d, converted USDT for the older ~347 d). That is exactly the USDC/USDT conversion
+the operator retired: "make sure no usdc/usdt conversion is being applied in any script anymore as it is
+outdated and obsolete". It is also unnecessary — MEASURED 2026-10-17 across 39 USDC symbols: klines_canonical
+~442 d, klines_cache/klines_cache_backtest ~558 d (BTCUSDC/ETHUSDC 1016 d), all REAL USDC, and every USDC NPZ
+matches its own USDC klines 100 % / its USDT twin 0 %. Kept only as a record of what the hybrid did.
+Set USDC_HYBRID_I_UNDERSTAND_THIS_FABRICATES_DATA=1 to override (nothing should).
+"""
+import os
+import sys
+
+if os.environ.get("USDC_HYBRID_I_UNDERSTAND_THIS_FABRICATES_DATA") != "1":
+    sys.exit("build_usdc_hybrid_1y is RETIRED: real USDC history exists (442-1016 d); splicing adjusted USDT bars under a USDC name is forbidden.")
+
 import json, pathlib
 from pathlib import Path
 import datetime as dt

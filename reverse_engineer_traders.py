@@ -159,7 +159,7 @@ def load_okx_trades(path: str) -> List[Dict]:
 def find_kline_symbol(raw_symbol: str) -> Optional[str]:
     """Map trade symbol to klines filename."""
     base = raw_symbol.replace("/", "").replace("-", "").upper()
-    for cand in [base, base + "USDT", base.replace("USDT", "USDC")]:
+    for cand in [base, base + "USDT"]:  # USER 2026-10-17: no USDC/USDT conversion
         for tf in ["15m", "1h"]:
             if (KLINES_DIR / f"{cand}_{tf}.json").exists():
                 return cand

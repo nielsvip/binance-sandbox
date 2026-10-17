@@ -26,7 +26,7 @@ LIMITLESS_API = "https://api.limitless.exchange"
 BINANCE_API = "https://api.binance.com"
 DATA_DIR = Path("./data/poly/limitless_tournament")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-TICKER_TO_BINANCE = {"BTC": "BTCUSDC", "ETH": "ETHUSDC", "SOL": "SOLUSDC", "DOGE": "DOGEUSDT", "XRP": "XRPUSDC", "BNB": "BNBUSDC", "ADA": "ADAUSDC", "AVAX": "AVAXUSDC", "SUI": "SUIUSDT", "LINK": "LINKUSDC", "PEPE": "PEPEUSDT", "WIF": "WIFUSDT", "LTC": "LTCUSDC", "DOT": "DOTUSDT", "NEAR": "NEARUSDT", "UNI": "UNIUSDC"}
+TICKER_TO_BINANCE = {"BTC": "BTCUSDC", "ETH": "ETHUSDC", "SOL": "SOLUSDC", "DOGE": "DOGEUSDC", "XRP": "XRPUSDC", "BNB": "BNBUSDC", "ADA": "ADAUSDC", "AVAX": "AVAXUSDC", "SUI": "SUIUSDC", "LINK": "LINKUSDC", "PEPE": "PEPEUSDT", "WIF": "WIFUSDC", "LTC": "LTCUSDC", "DOT": "DOTUSDT", "NEAR": "NEARUSDC", "UNI": "UNIUSDC"}
 
 INDICATOR_FILE = Path("./data/latest_market_data.json")
 _ind_cache: dict = {}
@@ -110,7 +110,7 @@ def display_price_probability(yes_display: float) -> float:
     return yes_display
 
 def get_lr_direction(ticker, indicators):
-    sym = TICKER_TO_BINANCE.get(ticker, "").replace("USDT", "USDC")
+    sym = TICKER_TO_BINANCE.get(ticker, "")  # USER 2026-10-17: no USDC/USDT conversion — the map names the real symbol
     ind = indicators.get(sym, {})
     slope = 0
     for tf, cm, w in [("3m", 3, 0.5), ("15m", 15, 0.3), ("1h", 60, 0.2)]:
@@ -120,7 +120,7 @@ def get_lr_direction(ticker, indicators):
     return slope
 
 def get_stoch_alignment(ticker, indicators):
-    sym = TICKER_TO_BINANCE.get(ticker, "").replace("USDT", "USDC")
+    sym = TICKER_TO_BINANCE.get(ticker, "")  # USER 2026-10-17: no USDC/USDT conversion — the map names the real symbol
     ind = indicators.get(sym, {})
     bullish = 0
     for tf in ["1m", "3m", "15m"]:

@@ -98,7 +98,9 @@ def load_full_trades(run_dir: Path, run_id: str, sym: str) -> List[Dict]:
 def _load_tf_ohlc(sym: str, tf: str) -> Optional[tuple]:
     """Load (timestamps, high, low, close) arrays from klines_cache_backtest JSON."""
     klines_dir = ROOT / "klines_cache_backtest"
-    for name in [sym, sym.replace("USDC", "USDT")]:
+    # USER 2026-10-17: no USDC/USDT conversion — a USDC symbol is profiled on USDC candles only. Every USDC
+    # pair has its own klines (39 of 39 verified 2026-10-17), so the twin fallback only ever hid a missing file.
+    for name in [sym]:
         p = klines_dir / f"{name}_{tf}.json"
         if p.exists():
             try:

@@ -80,7 +80,8 @@ def load_winning_entries() -> List[Dict]:
 
 def load_npz(symbol: str) -> Optional[Dict]:
     """Load NPZ indicators for a symbol, searching all NPZ directories."""
-    candidates = [symbol, symbol.replace("USDT", ""), symbol + "USDT", symbol.replace("-", "").replace("/", ""), symbol.replace("USDC", "USDT"), symbol.replace("-SWAP", "").replace("-", "") + "USDT"]
+    # USER 2026-10-17: no USDC/USDT conversion — the USDC->USDT candidate is gone; the rest are format normalisations.
+    candidates = [symbol, symbol.replace("USDT", ""), symbol + "USDT", symbol.replace("-", "").replace("/", ""), symbol.replace("-SWAP", "").replace("-", "") + "USDT"]
     for npz_dir in NPZ_DIRS:
         if not npz_dir.exists():
             continue

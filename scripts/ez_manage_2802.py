@@ -2602,11 +2602,7 @@ class WebSocketManager:
         all_symbols = set()
         for sym_set in [getattr(self.trade_manager, 'symbols_ang_long', set()), getattr(self.trade_manager, 'symbols_inf_long', set()), getattr(self.trade_manager, 'symbols_inf_short', set()), getattr(self.trade_manager, 'symbols_men', set()), getattr(self.trade_manager, 'symbols_flz', set()), getattr(self.trade_manager, 'symbols_ang_short', set()), getattr(self.trade_manager, 'symbols_fin', set())]:
             all_symbols.update(sym_set)
-        if symbol.endswith("USDT"):
-            usdc_candidate = symbol.replace("USDT", "USDC")
-            norm = usdc_candidate if usdc_candidate in all_symbols else symbol
-        else:
-            norm = symbol
+        norm = symbol  # USER 2026-10-17: no USDC/USDT conversion
         ts = ensure_tz(timestamp or datetime.now(timezone.utc))
         updated = False
         iso_ts = ts.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
@@ -2660,7 +2656,7 @@ class WebSocketManager:
         client = await self._ensure_redis_client()
         if not client:
             return (None, None)
-        candidates = (symbol, symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol)
+        candidates = (symbol,)  # USER 2026-10-17: no USDC/USDT conversion
         for candidate in candidates:
             try:
                 raw = await asyncio.wait_for(client.get(f"mark_price:{candidate}"), timeout=2.0)
@@ -5479,9 +5475,7 @@ class MultiAccountTradeManager:
         """ The Gatekeeper. Merges data based on source authority. source_type: 'hot' (Bridge/SharedMem/EmergencyRedis) or 'cold' (File/StandardRedis) """
         if not incoming_data: return
         symbol = symbol.strip().upper()
-        if symbol.endswith("USDT"):
-            alt = symbol.replace("USDT", "USDC")
-            if alt in self.indicators_snapshot: symbol = alt
+        # USER 2026-10-17: no USDC/USDT conversion — indicators are keyed by their own symbol.
         if symbol not in self.indicators_snapshot:
             self.indicators_snapshot[symbol] = {}
         existing = self.indicators_snapshot[symbol]
@@ -6411,11 +6405,7 @@ class MultiAccountTradeManager:
         for raw_symbol, new_data in final_payload.items():
             if not isinstance(new_data, dict): continue
             symbol = str(raw_symbol).upper().strip()
-            if symbol.endswith("USDT"):
-                usdc_candidate = symbol.replace("USDT", "USDC")
-                symbol_key = usdc_candidate if usdc_candidate in all_symbols else symbol
-            else:
-                symbol_key = symbol
+            symbol_key = symbol  # USER 2026-10-17: no USDC/USDT conversion
             if symbol_key not in current_snapshot:
                 current_snapshot[symbol_key] = new_data
                 continue
@@ -7361,11 +7351,7 @@ class MultiAccountTradeManager:
             if not isinstance(symbol, str) or not isinstance(data, dict):
                 continue
             symbol = symbol.strip().upper()
-            if symbol.endswith("USDT"):
-                usdc_candidate = symbol.replace("USDT", "USDC")
-                symbol_key = usdc_candidate if usdc_candidate in all_symbols else symbol
-            else:
-                symbol_key = symbol
+            symbol_key = symbol  # USER 2026-10-17: no USDC/USDT conversion
             payload_dict = dict(data)
             symbol_ts = _indicator_payload_timestamp(payload_dict)
             needs_override = True
@@ -7909,8 +7895,9 @@ class MultiAccountTradeManager:
     def get_symbol_config(self, symbol):
         config = self.symbol_configs.get(symbol)
         if not config and symbol.endswith("USDC"):
-            usdt_symbol = symbol.replace("USDC", "USDT")
-            config = self.symbol_configs.get(usdt_symbol)
+            # USER 2026-10-17: never borrow the USDT pair's filters (tick/step/min-notional are per contract)
+            usdt_symbol = None
+            config = None
             if config and self.logger:
                 self.logger.debug(f"[CONFIG_FALLBACK] Used {usdt_symbol} config for {symbol}")
         return config
@@ -9154,11 +9141,7 @@ class MultiAccountTradeManager:
 
         def normalize_symbol(s):
             sym = str(s).strip().upper()
-            if sym.endswith("USDT"):
-                usdc_sym = sym[:-4] + "USDC"
-                if hasattr(self, 'available_usdc_pairs') and usdc_sym in self.available_usdc_pairs:
-                    return usdc_sym
-            return sym
+            return sym  # USER 2026-10-17: no USDC/USDT conversion
 
         async def _load_file(filepath):
             if not filepath: return {}
@@ -9632,9 +9615,8 @@ class MultiAccountTradeManager:
         relevant_symbols.add("ETHUSDC")
         filtered_snapshot = {}
 
-        def clean_sym(s): return s.replace('USDT', 'USDC')
         for sym, data in payload.items():
-            if sym in relevant_symbols or clean_sym(sym) in relevant_symbols:
+            if sym in relevant_symbols:  # USER 2026-10-17: no USDC/USDT conversion
                 filtered_snapshot[sym] = data
         self.indicators_snapshot = filtered_snapshot
         self.indicators_cache_timestamps = {k: time.time() for k in filtered_snapshot.keys()}
