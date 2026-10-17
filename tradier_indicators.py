@@ -1154,7 +1154,21 @@ TIMEFRAMES = {
     "15m": {"sec": 900,  "half": 450, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]},
     "1h":  {"sec": 3600, "half": 1800, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]},
     "4h":  {"sec": 14400,"half": 7200, "dc_window": 20, "atr": 14, "ema": [20, 50, 200], "sma":[]},
-    "D":   {"sec": 86400,"half": 43200, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]}
+    "D":   {"sec": 86400,"half": 43200, "dc_window": 20, "atr": 14, "ema":[20, 50, 200], "sma":[]},
+    # USER 2026-10-17 ("W is only for stocks not crypto"): W/M added so the NPZ row computation can ask for them.
+    # Before this, compute(df, symbol, "W") raised KeyError: 'W' on this dict, which is why every stock NPZ row the
+    # Mac computed carried 0 of its 137 W keys and 0 of its 137 M keys (measured on AAPL: NPZ needs 944 per-bar
+    # keys, the live row supplied 492).
+    # LIVE TRADING IS UNAFFECTED: _schedule_order is ["D","4h","1h","15m","5m","1m"] and does not include W/M, so
+    # nothing in the trading loop asks for these timeframes — only the NPZ row builder does.
+    # Windows mirror what backtest_v8_precompute actually uses for W/M: it imports the indicator FUNCTIONS from
+    # here and calls them with generic windows (atr_series(df, 14), donchian 20), and the EMA/SMA periods below are
+    # the ones its stored W keys prove it wrote (ema_9/14/20/50/200_W, sma_70_W, sma_200_W).
+    # DELIBERATELY NOT TOUCHED: WT_TF_PARAMS_STOCK. wavetrend() does WT_TF_PARAMS_STOCK.get(tf, <default>), so the
+    # builder computes W/M wavetrend with that DEFAULT param set — adding W/M there would change wt1_W/wt2_W away
+    # from what every stored board was built on.
+    "W":   {"sec": 604800, "half": 302400, "dc_window": 20, "atr": 14, "ema":[9, 14, 20, 50, 200], "sma":[("sma_70_W", 70), ("sma_200_W", 200)]},
+    "M":   {"sec": 2592000,"half": 1296000, "dc_window": 20, "atr": 14, "ema":[9, 14, 20, 50, 200], "sma":[("sma_70_M", 70), ("sma_200_M", 200)]}
 }
 
 # Prepared direct routes must never consume the mark-adjusted dataframe used by

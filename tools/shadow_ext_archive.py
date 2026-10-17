@@ -119,6 +119,11 @@ def files_to_archive(extra: list[str], with_npz: bool) -> list[tuple[str, Path]]
         for p in root.rglob("*"):
             if not p.is_file() or p.name in SKIP_NAMES:
                 continue
+            # a dotfile here is a half-written temp from a live writer (seen: .ALTUSDT.npz.CrkBEb, a numpy
+            # savez temp that vanished mid-copy). Archiving those produces a new "created" object on every
+            # run and an error when the name disappears, so skip anything hidden or obviously in-flight.
+            if p.name.startswith(".") or p.name.endswith((".tmp", ".part", ".swp")) or ".tmp." in p.name:
+                continue
             if p.suffix == ".npz" and not with_npz:
                 continue
             out.append((str(p.relative_to(REPO)), p))

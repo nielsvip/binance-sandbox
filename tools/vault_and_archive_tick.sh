@@ -58,6 +58,13 @@ fi
 # (mtime,size), so a tick normally parses only the files that actually got new bars.
 timeout 1500 "$PY" "$REPO/tools/klines_ext_archive.py" >> "$LOG" 2>&1
 
+# ---- 3b. shadow/observation folders ------------------------------------------
+# USER 2026-10-17: use the cleaned drive "for anything that is in the macbook shadow folder that might not be
+# there". These jsonl logs are things that HAPPENED once — unlike an NPZ (rebuildable) or a .py (in git and
+# the script vault, which skips data/ entirely), they cannot be recomputed. Logs grow by extension; anything
+# else is kept content-addressed so no version is overwritten. NPZ excluded by default (744 MB, rebuildable).
+timeout 600 "$PY" "$REPO/tools/shadow_ext_archive.py" >> "$LOG" 2>&1
+
 # ---- 4. deepen history backwards, a little every tick ------------------------
 # USER 2026-10-17: "on the ex drive we need infinite ones no clipping ever". The archive never clips, but the
 # live stores are shallow by design (ez_klines._trim caps 15m at 1500-2000 bars), so depth has to be pulled

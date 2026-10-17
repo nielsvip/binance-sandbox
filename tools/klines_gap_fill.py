@@ -52,6 +52,8 @@ STEP_S = {"15m": 900, "1h": 3600, "4h": 14400, "D": 86400, "1d": 86400, "5m": 30
 BINANCE_INTERVAL = {"15m": "15m", "1h": "1h", "4h": "4h", "D": "1d", "1d": "1d", "5m": "5m", "1m": "1m"}
 CRYPTO_SUFFIX = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 FETCH_LIMIT = 1500           # USER: same cost as 5 bars
+MAX_PAGES_PER_SYMBOL = 40    # per run; a bigger hole simply continues on the next run
+FETCH_PAUSE_S = 0.25
 LOG = Path("/tmp/klines_gap_fill.log")
 
 
@@ -185,17 +187,24 @@ def pull_s1(name: str, tmp: Path) -> list[tuple[str, Path]]:
 
 
 def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int, set[int]]:
-    """One request per contiguous hole, always limit=1500 (same cost as 5 bars).
-    Returns (bars, n_requests, proven_absent): a slot inside a window the exchange actually answered, that
-    the answer did not contain, is proven absent upstream — not merely missing from our copies."""
+    """Fill every hole from the exchange, always limit=1500 per request (USER: same cost as 5 bars).
+
+    Paging continues WITHIN a hole until it is covered: one request returns at most 1500 bars, so the
+    15,168-slot contiguous hole in 1000FLOKIUSDT_1h advanced only 1500 per run before this and would have
+    needed ten runs to close. Each page starts at the earliest slot still uncovered.
+    Returns (bars, n_requests, proven_absent) — a slot inside a window the exchange actually ANSWERED that
+    the answer did not contain is proven absent upstream, not merely missing from our copies.
+    """
+    import time as _t
     try:
-        from tools.klines_backfill_15m import fetch_after
-    except Exception:
         sys.path.insert(0, str(REPO / "tools"))
         from klines_backfill_15m import fetch_after            # type: ignore
+    except Exception as e:
+        log(f"    cannot import fetch_after ({e}) — no fetching")
+        return [], 0, set()
     interval = BINANCE_INTERVAL.get(tf)
     if not interval:
-        return [], 0
+        return [], 0, set()
     step_ms = STEP_S[tf] * 1000
     blocks, cur = [], [gaps[0]]
     for t in gaps[1:]:
@@ -206,24 +215,35 @@ def fetch_missing(sym: str, tf: str, gaps: list[int]) -> tuple[list[dict], int, 
             cur = [t]
     blocks.append(cur)
     got: list[dict] = []
-    calls = 0
     absent: set[int] = set()
+    calls = 0
     for blk in blocks:
-        covered = {b["timestamp"] for b in got}
-        if ms_ts(blk[0]) in covered:
-            continue                       # a previous 1500-bar window already reached this hole
-        try:
-            rows = fetch_after(sym, blk[0], limit=FETCH_LIMIT, interval=interval)
+        while calls < MAX_PAGES_PER_SYMBOL:
+            covered = {ts_ms(b["timestamp"]) for b in got}
+            todo = [t for t in blk if t not in covered]
+            if not todo:
+                break
+            start_ms = todo[0]
+            try:
+                rows = fetch_after(sym, start_ms, limit=FETCH_LIMIT, interval=interval)
+            except Exception as e:
+                log(f"    fetch failed at {ms_ts(start_ms)}: {e}")
+                break
             calls += 1
+            if not rows:
+                break
             got.extend(rows)
-            if rows:
-                # the window the exchange answered: anything inside it that is not in the answer does not exist
-                span_lo, span_hi = ts_ms(rows[0]["timestamp"]), ts_ms(rows[-1]["timestamp"])
-                returned = {ts_ms(r["timestamp"]) for r in rows}
-                absent |= {t for t in blk if span_lo <= t <= span_hi and t not in returned}
-            log(f"    fetched {len(rows)} bars from {ms_ts(blk[0])} (hole of {len(blk)}; limit={FETCH_LIMIT})")
-        except Exception as e:
-            log(f"    fetch failed at {ms_ts(blk[0])}: {e}")
+            span_lo, span_hi = ts_ms(rows[0]["timestamp"]), ts_ms(rows[-1]["timestamp"])
+            returned = {ts_ms(r["timestamp"]) for r in rows}
+            absent |= {t for t in blk if span_lo <= t <= span_hi and t not in returned}
+            log(f"    fetched {len(rows)} bars from {ms_ts(start_ms)} "
+                f"(hole of {len(blk)}, {len(todo)} left; limit={FETCH_LIMIT})")
+            if len(rows) < FETCH_LIMIT or span_hi <= start_ms:
+                break                      # the exchange had nothing more to give from here
+            _t.sleep(FETCH_PAUSE_S)
+        if calls >= MAX_PAGES_PER_SYMBOL:
+            log(f"    page budget {MAX_PAGES_PER_SYMBOL} reached for {sym}_{tf} — resumable next run")
+            break
     return got, calls, absent
 
 
