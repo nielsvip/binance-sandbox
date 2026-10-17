@@ -32,6 +32,14 @@ else
   esac
 fi
 
+# ---- 1b. keep .git free of Finder artefacts ---------------------------------
+# git treats EVERY file under .git/refs as a ref, so a .DS_Store dropped there by Finder makes `git fsck`
+# fail with badRefName/badRefContent (exit 8) and can surface as unexplained git errors — found 2026-10-17
+# with five of them inside .git, including refs/.DS_Store and objects/.DS_Store; fsck went 8 -> 0 once
+# removed. They come back any time someone browses .git in Finder, so sweep them every tick.
+DS=$(find "$REPO/.git" -name ".DS_Store" -print -delete 2>/dev/null | wc -l | tr -d ' ')
+[ "${DS:-0}" != "0" ] && log "removed $DS .DS_Store file(s) from .git (invalid refs / object-dir clutter)"
+
 # ---- 2. per_sym_store archive to every drive present ------------------------
 # --sources live is the cheap top-up. Once a day (or when a drive has just reappeared and is behind) the
 # full union including backups/*.db is worth it, because those snapshots still hold history rows the live DB

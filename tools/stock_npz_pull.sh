@@ -26,7 +26,7 @@ open(sys.argv[1], "w").write("".join(f"{s}.npz\n" for s in sorted(syms)))
 EOF
 n=$(wc -l < "$LIST" | tr -d ' ')
 t0=$(date +%s)
-rsync -a --delay-updates --ignore-missing-args --timeout=120 --files-from="$LIST" -e "ssh -o ConnectTimeout=15 -o BatchMode=yes" \
+rsync -az --delay-updates --ignore-missing-args --timeout=120 --files-from="$LIST" -e "ssh -o ConnectTimeout=15 -o BatchMode=yes" \
     s2:binance-sandbox/backtest_v8/indicators/ "$BASE/backtest_v8/indicators/" 2>>"$LOG"
 rc=$?
 echo "$(date -u +%FT%TZ) PULL rc=$rc symbols=$n secs=$(( $(date +%s) - t0 ))" >>"$LOG"
