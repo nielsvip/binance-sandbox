@@ -7,8 +7,21 @@ WORKDIR="/Users/niels/Documents/binance"
 if [[ "$(uname)" == "Darwin" ]]; then
     PYTHON="/opt/anaconda3/envs/binance_env/bin/python"
 else
-    PYTHON="/home/niels/binance/.venv/bin/python"
+    # 2026-10-17 S1 COULD NOT HAVE TAKEN OVER ANYTHING. `.venv` is the BACKTEST environment and is incomplete:
+    # measured on S1, 9 of 10 live scripts fail to even import under it — ez_manage / tradier_manage /
+    # tradier_positions / ez_indicators / ez_positions_watchdog / tradier_indicators die on `aiofiles`,
+    # ez_klines / ez_prices on `aiohttp`, tradier_klines on `pandas`. Because this preference picked `.venv`
+    # whenever it merely EXISTS, every gated live script S1 started crash-looped on import: ez_indicators had been
+    # restarting every 32 s since 2026-10-14, which is why S1's newest crypto market snapshot was 2.1 DAYS old
+    # while the lease, the arm file and every readiness signal said the standby was ready.
+    # binance_env_mac is the designated live env ("exact copy of the Mac live env", py 3.11.14) and is exactly what
+    # tools/s1_trading_supervisor.sh already uses to start the traders — this only aligns the watchdog with the
+    # supervisor, so both halves of a takeover run the same interpreter as the Mac. All 10 import cleanly under it.
+    # `.venv` is KEPT as a fallback (it is a working interpreter for anything whose deps it does have), just no
+    # longer preferred for live scripts. Darwin branch deliberately untouched.
+    PYTHON="/home/niels/.conda/envs/binance_env_mac/bin/python"
     [ -x "$PYTHON" ] || PYTHON="/home/niels/.conda/envs/binance_env/bin/python"
+    [ -x "$PYTHON" ] || PYTHON="/home/niels/binance/.venv/bin/python"
     [ -x "$PYTHON" ] || PYTHON="/usr/bin/python3"
     [ -x "$PYTHON" ] || PYTHON="python3"
 fi

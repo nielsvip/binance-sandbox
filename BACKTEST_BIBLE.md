@@ -3433,3 +3433,49 @@ cache (1000RATSUSDT, PROVEUSDT, BASUSDT, SAHARAUSDT) there was no source at all.
 - **Templates: one row per (switch, value) per tab; regular rows in ONE tab.** Filter-block (filled) rows repeat per tab by design and are exempt. A bool switch whose rows all carry one value is a missing option, not a copy — the duplicate becomes the opposite value. Repairs only through the bookkeeper: `--dedupe-rows`, `--single-home SWITCH=TAB` (refuses if another tab carries a value or yellow filter the home lacks). Proof: `tools/chain_harmony_check.py` (exit 1 on any HARD) + `tests/test_chain_harmony.py`.
 - **Boards are capped like live** until the system is trusted with size: order ≤ `QTY_LIVE_ORDER_CAP_MULT` (8) × START, position ≤ `QTY_LIVE_POSITION_CAP_MULT` (10) × START. The chart header shows the same set's `uncapped what-if` result on its own labelled line — never as the headline, never tradeable at today's caps.
 - **Live sizing ceilings are mode-dependent and per-sym values bypass them** (OPEN, see §112): `_apply_mode` LIGHT/NORMAL/EXTREME (≈1×/4.3×/7.7× START after 2026-10-16 23:22Z) is switched automatically from `data/market_mode.json` (ez_rankings market index ≥65 EXTREME, ≤35 LIGHT), but `_psym_get` returns the per-sym store's own START/MAX_ORDER_VALUE first, so the mode ceiling only binds where the set has none; CRYPTO_MINIMUM_TRADING_MODE caps everything to the exchange floor on top.
+
+### 111.2 — USDC IS NATIVE NOW (USER 2026-10-17 "we used to trade usdc but use usdt data … usdc has full and reliable data"; "usdc and usdt can have >5% price discrepancies so we DEFINITELY need to make it usdc native as well")
+
+**The premise checks out.** All three real kline stores hold REAL USDC bars for every USDC ticker — measured on S1
+over 39 symbols: `klines_canonical` 442 d typical, `klines_cache` / `klines_cache_backtest` 558 d typical and
+1016 d for BTCUSDC/ETHUSDC, BNBUSDC 569 d. Verified by comparing each file's closes against its USDT twin:
+**real, not cloned**, in canonical/cache/backtest for all 39. And every USDC **NPZ** matches its own USDC klines
+**100 %** (0 % against the USDT twin) — the contamination the 2026-10-14 canonical-wins rule was written against
+is gone. No refetch was necessary for depth or authenticity.
+
+**Two USDT-derived relics existed and are deleted**: `klines_cache_gateway/KAITOUSDC_15m.json` (last bar
+2026-08-30) and `IPUSDC_15m.json` (2026-07-02) — stale leftovers from before the gateway's 2026-10-14 kline fix,
+for symbols the gateway no longer tracks (238 tracked, 33 USDC). `klines_cache`/`backtest` hold 413 d of real
+KAITOUSDC, so nothing was lost. Removed on gateway + S1 + Mac.
+
+**What was still substituted — and it was worse than substitution.** `gateway_data_broadcaster.py` built its
+markPrice streams as `symbol.replace("USDC","USDT")` on the **legacy `/stream?streams=` base**, which klines had
+already left on 2026-10-14. That base is DEAD: the handshake succeeds and not one message arrives. The gateway log
+read, for hours, `✅ Mark price WebSocket batch 0 connected` -> `⚠️ No first mark price message received within 5
+seconds` -> `timeout - no messages for 2 minutes, reconnecting` -> **`💰 Mark Prices: ❌ No mark prices found`** —
+i.e. the gateway was publishing NO mark prices at all, for USDT and USDC alike. PROVEN from the gateway itself:
+5/5 USDC `@markPrice` streams delivered on `/market/stream` (BTCUSDC 81442.70, ETHUSDC 2417.22, BNBUSDC 719.47,
+SOLUSDC 104.21, KAITOUSDC 0.29444736) while the identical request on `/stream` timed out.
+
+FIXED on the gateway's live copy (its own lineage, 341 lines ahead of the repo copy — patched in place, never
+overwritten, backup `gateway_broadcaster/backups_before_usdc_native_202610170032.py`): markPrice now uses
+`MARK_WS_BASE_URL` (`/market/stream`, `GATEWAY_MARK_WS_LEGACY=1` restores) and the native symbol via the existing
+`kline_api_symbol()` whose exception set is empty. RESULT: **`💰 Mark Prices: ✅ 197 live_mark_prices`** sustained,
+zero failure lines after the restart, **36 `*usdc@markPrice` streams** subscribed natively, and Redis publishes
+`mark_price:BNBUSDC {"price": 719.52}` against an exchange BNBUSDC of 719.32-719.48 and a BNBUSDT of 720.11 — the
+published price is the USDC one. The repo copy got the same design ported (`api_symbol_for()`,
+`FSTREAM_WS_BASE_URL`, 4 substitution sites + 3 stream bases, 0 raw substitutions left).
+
+**Measured basis, honestly:** 0.110-0.139 % across BTC/ETH/BNB/SOL/ZEC/LINK/DOGE/KAITO at 00:2xZ — not 5 % in a
+quiet market, but it is a real, moving basis and it widens under stress, so a USDC pair priced off its USDT twin
+is the wrong price either way.
+
+**Side finding, fixed:** the gateway ran **two** broadcasters from two differently-named units — system
+`gateway-broadcaster.service` (what `gateway_watchdog.sh` restarts, no `--user`) and a user-level
+`gateway_data_broadcaster.service` stuck in auto-restart — plus a 65 h manually-started process. Now exactly one
+supervised process (`NRestarts=0`), the user-level duplicate stopped and disabled.
+
+**Settling contracts are an exchange fact, not our bug (correction to §111.1's attribution).** ICXUSDT, STORJUSDT,
+IPUSDC, VANRYUSDT are `status=SETTLING` in `fapi/v1/exchangeInfo`, and `fapi/v1/klines` itself returns the frozen
+settlement close (ICXUSDT 0.0152200). We store faithfully what Binance serves; we do not fabricate it. The
+`source_frozen()` classification and keeping them out of the repair queue stand — only the attribution changed.

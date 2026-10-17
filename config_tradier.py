@@ -2970,8 +2970,14 @@ class TradierConfig:
     # logs every would-be refusal, refuses nothing). Flip True ONLY after the [HERMETIC_TR] WOULD_REFUSE count
     # over a full session reconciles with forward parity's LIVE_ONLY_NONVEC tally — stock parity is 1 PASS of 35
     # today, so enforcing now would refuse most legitimate opens. Exits are never gated in either mode.
-    TRADIER_HERMETIC_ENFORCE: bool = False
-    TRADIER_NO_BOARD_ENTRY_BLOCK: bool = False  # 2026-10-16: refuse a stock ENTRY (never an exit/reduction/stop) when the sym_side has no published board within the age ceiling (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks twin of the crypto gate at ez_positions_quick ~28512. LIVE_SET_NE_BOARD deliberately NOT gated (forward parity 1 PASS of 35). Default False — turning it on is the user's call.
+    # USER 2026-10-17 made the call this switch was waiting for: "they need to switch ANY decision that is
+    # NOT in the vectorized test OFF for live trading so there is NO DISCREPANCY POSSIBLE EVER in ez_ nor in
+    # tradier_." Measured over the 7 days to 2026-10-17: 231 of the 286 ENTRY-side live-only decisions (no
+    # |VEC_EXACT tag, excluding broker bookkeeping) were STOCKS — trb took entries on DC_BREAK_HIGH_5M,
+    # DC_BREAK_HIGH_15M|RATIO_CUT_L, MFI2_MEAN_REVERSION_S and REENTRY_MONITOR while crypto, which has had
+    # its gate enforcing, took 55. Refusing an ENTRY can never strand a loser, so this direction is safe.
+    TRADIER_HERMETIC_ENFORCE: bool = True
+    TRADIER_NO_BOARD_ENTRY_BLOCK: bool = True  # 2026-10-16: refuse a stock ENTRY (never an exit/reduction/stop) when the sym_side has no published board within the age ceiling (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks twin of the crypto gate at ez_positions_quick ~28512. LIVE_SET_NE_BOARD deliberately NOT gated (forward parity 1 PASS of 35). ON since 2026-10-17 per USER.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = False
     HEDGE_HTF_VETO_ENABLED: bool = True
     HEDGE_MAX_ABSOLUTE_USD: float = 100000.0
