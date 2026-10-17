@@ -1,30 +1,102 @@
 {
- "generated_at": "2026-10-17 03:13 UTC",
- "total_capital_usd": 12.11,
+ "generated_at": "2026-10-17 03:37 UTC",
+ "total_capital_usd": 54.92,
  "tier_capital": {
-  "A": 0.0,
-  "B": 12.11,
-  "C": 0.0
+  "A": 7.15,
+  "B": 41.78,
+  "C": 5.99
  },
  "tier_count": {
-  "A": 0,
-  "B": 1,
-  "C": 0
+  "A": 1,
+  "B": 5,
+  "C": 1
  },
- "winners": [],
- "losers": [],
+ "winners": [
+  "ang:KMNOUSDT_LONG"
+ ],
+ "losers": [
+  "ang:MOVRUSDT_SHORT",
+  "ang:FARTCOINUSDT_SHORT",
+  "ang:ARKMUSDT_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "inf:WLDUSDC_LONG",
+   "pk": "ang:WLDUSDC_LONG",
    "symbol": "WLDUSDC",
-   "account": "inf",
-   "value_usd": 12.11,
-   "gain_pct": 0.928,
+   "account": "ang",
+   "value_usd": 11.74,
+   "gain_pct": 2.508,
    "tier": "B",
    "perf_mult": 0.79,
-   "amt": 23.2,
-   "mark": 0.5221
+   "amt": 22.1,
+   "mark": 0.53115569
+  },
+  {
+   "pk": "ang:MOVRUSDT_SHORT",
+   "symbol": "MOVRUSDT",
+   "account": "ang",
+   "value_usd": 7.55,
+   "gain_pct": -1.011,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 5.36,
+   "mark": 1.40841171
+  },
+  {
+   "pk": "ang:FARTCOINUSDT_SHORT",
+   "symbol": "FARTCOINUSDT",
+   "account": "ang",
+   "value_usd": 7.53,
+   "gain_pct": -0.59,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 49.0,
+   "mark": 0.15370191
+  },
+  {
+   "pk": "ang:API3USDT_LONG",
+   "symbol": "API3USDT",
+   "account": "ang",
+   "value_usd": 7.49,
+   "gain_pct": 0.309,
+   "tier": "B",
+   "perf_mult": 0.71,
+   "amt": 25.6,
+   "mark": 0.29253125
+  },
+  {
+   "pk": "ang:ALTUSDT_LONG",
+   "symbol": "ALTUSDT",
+   "account": "ang",
+   "value_usd": 7.47,
+   "gain_pct": -0.5,
+   "tier": "B",
+   "perf_mult": 2.07,
+   "amt": 889.0,
+   "mark": 0.00839717
+  },
+  {
+   "pk": "ang:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "ang",
+   "value_usd": 7.15,
+   "gain_pct": 2.595,
+   "tier": "A",
+   "perf_mult": 7.64,
+   "amt": 181.0,
+   "mark": 0.03953
+  },
+  {
+   "pk": "ang:ARKMUSDT_LONG",
+   "symbol": "ARKMUSDT",
+   "account": "ang",
+   "value_usd": 5.99,
+   "gain_pct": 1.38,
+   "tier": "C",
+   "perf_mult": 0.17,
+   "amt": 48.0,
+   "mark": 0.12484805
   }
  ]
 }

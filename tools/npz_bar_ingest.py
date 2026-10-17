@@ -213,6 +213,35 @@ def sanitize_row(npz_path, row):
     return row, fixed
 
 
+def claim(f, done_dir):
+    """Move a staged bar aside, tolerating a concurrent run that already took it.
+
+    2026-10-17: the installed cron runs this under `flock -n /tmp/npz_bar_ingest.lock` while an operator run does
+    not, so two instances globbed the same inbox and the second died with FileNotFoundError mid-apply, abandoning
+    the rest of the batch. A vanished file is not an error -- the other instance has it, and the ts<=last check
+    already makes a double apply a no-op."""
+    try:
+        done_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(f), str(done_dir / f.name))
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError as e:
+        log(f"could not file {f.name} under applied/: {e}")
+        return False
+
+
+def self_lock():
+    """Take the SAME lock the cron takes, so an operator run and the cron can never interleave."""
+    import fcntl
+    try:
+        fh = open(os.environ.get("NPZ_BAR_INGEST_LOCK", "/tmp/npz_bar_ingest.lock"), "w")
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fh
+    except OSError:
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
@@ -222,6 +251,12 @@ def main():
                          "hole check below (the row must be the next bar that exists in the symbol's own klines), "
                          "not from wall-clock age. 6 h rejected every overnight stock bar when first tried.")
     a = ap.parse_args()
+    _lock = None
+    if a.apply:
+        _lock = self_lock()
+        if _lock is None:
+            log("another ingest holds the lock — exiting (its batch covers this inbox)")
+            return 0
     if not INBOX.is_dir():
         log(f"no inbox at {INBOX} — nothing to do")
         return 0
@@ -257,8 +292,7 @@ def main():
         if ts <= last:
             counts["ALREADY_HAVE"] = counts.get("ALREADY_HAVE", 0) + 1
             if a.apply:
-                DONE.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(f), str(DONE / f.name))
+                claim(f, DONE)
             continue
         if age_h > a.max_age_h:
             counts["TOO_OLD"] = counts.get("TOO_OLD", 0) + 1
@@ -290,8 +324,7 @@ def main():
             counts["APPLIED"] = counts.get("APPLIED", 0) + 1
             applied.append({"symbol": sym, "ts": ts, "keys_applied": len(row), "keys_shipped": n_shipped,
                             "carried_forward": {k: len(v) for k, v in dropped.items()}, "null_fixes": fixes})
-            DONE.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(f), str(DONE / f.name))
+            claim(f, DONE)
         else:
             counts["APPEND_FAILED"] = counts.get("APPEND_FAILED", 0) + 1
             skipped.append({"symbol": sym, "ts": ts, "why": "append returned False or the tail did not move"})
