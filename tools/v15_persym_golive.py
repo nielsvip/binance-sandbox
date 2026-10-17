@@ -57,6 +57,47 @@ EV_KEYS = (
 ARTEFACT_KEYS = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER", "MAX_AUGMENTS_PER_POSITION"}
 
 
+def _ts_epoch(v):
+    """Epoch seconds from an ISO-8601 'Z' stamp or a number; None when unparseable."""
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return datetime.datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def _measured_decision_newer(sym_side, published_at):
+    """Reason to skip when per_sym_active already holds a MEASURED h2h decision newer than this publish, else ''.
+
+    v15_golive_headtohead re-measures incumbent vs candidate on ONE NPZ and is the only writer whose number was
+    observed rather than claimed. Fail-safe in BOTH directions: an unreadable store, a non-h2h row or an h2h row
+    older than the publish all return '' so the normal refresh proceeds untouched. When the publish stamp is
+    missing we keep the measured row, because an unknown age cannot be shown to be newer than a measurement.
+    """
+    try:
+        import per_sym_store as PS
+
+        e = PS.get(sym_side) or {}
+    except Exception:
+        return ""
+    if not str(e.get("source") or "").startswith("v15_golive_headtohead"):
+        return ""
+    m_at = _ts_epoch(e.get("measured_at") or e.get("updated_at"))
+    if m_at is None:
+        return ""
+    p_at = _ts_epoch(published_at)
+    if p_at is not None and p_at >= m_at:
+        return ""
+    return (f"live row is a MEASURED h2h decision ({e.get('measured_at') or e.get('updated_at')}, "
+            f"gain_30d={e.get('gain_30d')}) newer than this board's publish ({published_at or 'unknown'}) — "
+            f"measured beats claimed; h2h re-checks it hourly")
+
+
 def migrate(overrides):
     out, renamed, dropped = {}, {}, []
     for k, v in (overrides or {}).items():
@@ -439,6 +480,21 @@ def golive_rows(a, sp, collected, host_err, src):
         ev, ov = rec["evidence"], rec["overrides"]
         row["evidence"] = ev
         row["registered"] = False
+        # MEASURED BEATS CLAIMED (2026-10-17). The hourly h2h cycle re-measures the incumbent against this exact
+        # published board on ONE NPZ and writes the winner with its MEASURED gain. This refresh then re-registered
+        # the SAME board through switch_parity minutes later and overwrote that decision with the cat_side snapshot
+        # + coerced keys, recording the board's CLAIMED gain. Measured today: PBF_LONG (h2h measured 14.9874, row
+        # became 12.348) and PLTR_SHORT (measured 4.0914, row became the 4.6633 claim with 2 keys off the approved
+        # set) — 2 of the 10 sets h2h had just applied, silently, because both writers "succeeded".
+        # A publish older than the last measurement has nothing new to say, so it must not overwrite it. This is
+        # deliberately narrow: it only skips when the live row IS an h2h decision AND that decision is newer than
+        # this board's publish stamp. Every other registration path is untouched — n_promoted=0 is NOT the trigger
+        # (418 of 551 live rows are legitimately n_promoted=0; refusing those would break most of go-live).
+        _skip_why = _measured_decision_newer(ss, rec.get("published_at"))
+        if _skip_why:
+            row.update(result="SKIP", reason=_skip_why)
+            rows[ss] = row
+            continue
         if (
             ov.get("SIMPLE_PRICE_GT0_ENABLED") is True
             or str(ov.get("SIMPLE_PRICE_GT0_ENABLED")).lower() == "true"
