@@ -55,7 +55,17 @@ rsync -az --timeout=300 -e "$SSH" tools/v15_golive_headtohead.py "$HOST:binance-
 rsync -az --timeout=600 -e "$SSH" "$LIVE" "$HOST:$LIVE" >> "$LOG" 2>&1 || { say "live-set push failed"; exit 1; }
 
 OUT=/tmp/h2h_${VENUE}_${TS}.json
-$SSH "$HOST" "cd ~/binance-sandbox && .venv/bin/python -u tools/v15_golive_headtohead.py measure --live-sets $LIVE --out $OUT" 2>&1 | tail -4 | tee -a "$LOG"
+# USER 2026-10-17 ("nothing trades old backtest settings, >14 days needs to verify whether old settings give
+# better results than latest defaults for cat_sym and use the best scoring one"): V15_H2H_CANDIDATE=catside pits
+# the live set against TODAY'S cat_side defaults instead of the latest published board, and V15_H2H_STALE_DAYS
+# limits the run to sets older than N days. Both default to the previous behaviour, so the standing cron is
+# unchanged. The decision rule is untouched: same NPZ, same window, realised closes, and the challenger must
+# beat the nondeterminism tolerance or the incumbent stays.
+EXTRA=""
+[ -n "${V15_H2H_CANDIDATE:-}" ] && EXTRA="$EXTRA --candidate ${V15_H2H_CANDIDATE}"
+[ -n "${V15_H2H_STALE_DAYS:-}" ] && EXTRA="$EXTRA --stale-days ${V15_H2H_STALE_DAYS}"
+say "measure on $HOST${EXTRA:+ (}${EXTRA}${EXTRA:+ )}"
+$SSH "$HOST" "cd ~/binance-sandbox && .venv/bin/python -u tools/v15_golive_headtohead.py measure --live-sets $LIVE --out $OUT$EXTRA" 2>&1 | tail -4 | tee -a "$LOG"
 rsync -az --timeout=300 -e "$SSH" "$HOST:$OUT" "$OUT" >> "$LOG" 2>&1 || { say "decision pull failed"; exit 1; }
 
 if [ "${V15_H2H_APPLY:-0}" = "1" ]; then

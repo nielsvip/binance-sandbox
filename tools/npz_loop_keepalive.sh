@@ -37,4 +37,17 @@ fi
 
 cd "$ROOT" || exit 1
 klog "starting loop (workers $WORKERS, cap $NPZ_LOOP_MAX_WORKERS, settle ${NPZ_LOOP_SETTLE_S}s)"
-exec setsid nice -n 15 "$ROOT/.venv/bin/python" -u tools/npz_bar_refresh.py --mode both --workers "$WORKERS" --w15 2500 --loop >> "$LOG" 2>&1 < /dev/null
+# USER 2026-10-17 "we will be using conda only for everything". This line was the reason the .venv kept coming
+# back: binance-npz-refresh.service already had a conda drop-in (01:24Z) pointing at binance_env_mac, but the unit
+# sat inactive while THIS keepalive relaunched the loop on the venv every 5 min, so the running loop (started
+# Oct 16 22:13) predated the drop-in and never picked it up.
+# MEASURED SAFE, not assumed: backtest_v8_precompute.compute_symbol('BNBUSDC','crypto', return_arrays=True) run
+# under the sandbox venv (py3.12.3 / numpy 2.5.3 / pandas 3.0.5) and under conda binance_env_mac (py3.11.14 /
+# numpy 2.4.6 / pandas 3.0.6) produced 946 numeric arrays over 42,451 rows that are BIT-IDENTICAL -- 0 moved
+# values, 0 dtype differences. Conda is also strictly MORE capable here: the venv has no scipy, which is what made
+# the stocks row recompute fail ("No module named 'scipy'", AAPL 0/25 bars) while conda does it 25/25.
+PY_CONDA=/home/niels/.conda/envs/binance_env_mac/bin/python
+if [ ! -x "$PY_CONDA" ] && [ -x "$ROOT/tools/pyinterp.sh" ]; then
+    PY_CONDA=$("$ROOT/tools/pyinterp.sh" 2>/dev/null || echo "$PY_CONDA")
+fi
+exec setsid nice -n 15 "$PY_CONDA" -u tools/npz_bar_refresh.py --mode both --workers "$WORKERS" --w15 2500 --loop >> "$LOG" 2>&1 < /dev/null

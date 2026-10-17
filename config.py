@@ -2142,10 +2142,8 @@ class Config:
     STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
     STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
     STOP_RECLAIM_EXCLUSIVE: bool = True  # inside the window only the strict reclaim may re-enter after a FIXED_STOP (fresh entries unaffected)
-    # 2026-10-17 BREAKEVEN_LOCK + LOSS_PRONE_ENTRY_FILTER (vec_decisions/breakeven_lock.py; flags data/loss_prone_entries.json)
-    BREAKEVEN_LOCK_SCOPE: str = "loss_prone"  # off / loss_prone / all — close a former winner before it turns into a loss
-    BREAKEVEN_LOCK_ARM_PCT: float = 0.5  # 0.5 / 1.0 / 1.5 — best close-basis gain needed to arm
-    BREAKEVEN_LOCK_FLOOR_PCT: float = 0.10  # 0.10 / 0.0 / 0.25 — close when the gain falls back to this
+    # 2026-10-17 PEAK_GIVEBACK vector twin scope + LOSS_PRONE_ENTRY_FILTER (vec_decisions/breakeven_lock.py; flags data/loss_prone_entries.json)
+    PEAK_GIVEBACK_SCOPE: str = "all"  # all / loss_prone — which positions the PEAK_GIVEBACK hard-zero/drop exit covers (pilot-tested)
     LOSS_PRONE_ENTRY_FILTER_ENABLED: bool = True  # loss-prone entry functions need extra filters (boards may switch it off)
     LOSS_PRONE_ENTRY_MIN_FILTERS: int = 2  # 1 / 2 / 3 of {WT 1h, WT 4h, close vs ema50 1h} with the side
     QTY_STREAK_MIN_MOVE_PCT: float = 1.0  # a full close qualifies only if |exit vs avg entry| >= this (1.0 / 0.5)

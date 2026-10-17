@@ -1,16 +1,16 @@
-"""BREAKEVEN_LOCK + LOSS_PRONE_ENTRY_FILTER (USER 2026-10-17: "what we do need is a stricter enforcement of 'closing before entering
-into a loss' and a clear database of what functions ended having to close in a loss - these are to be excluded from newborn
-protection and should only be accepted with additional filters in future application (unless backtest deltas say otherwise)").
+"""PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (USER 2026-10-17: "what we do need is a stricter enforcement of 'closing before
+entering into a loss' and a clear database of what functions ended having to close in a loss - these are to be excluded from newborn
+protection and should only be accepted with additional filters in future application (unless backtest deltas say otherwise)";
+"hard-zero breakeven protection ... NEVER SHOULD BE ENABLED OR DISABLED IT IS A SWITCH THAT FLIPS ACCORDING TO v15_pilot.py test results").
 
 Evidence (data/loss_close_db.sqlite, boards' own 30-day ledgers): 128 crypto losers had peaked >= +0.5% first (-350.6% summed),
-44 on stocks (-122.0%). The live HARD_BREAKEVEN_FLOOR was never implemented in the engine, and the PEAK_GIVEBACK hard-zero was
-switched off 2026-04-27 (it closed breakouts at exactly 0% on the first retest) — so no board protected a winner from turning red.
-
-BREAKEVEN_LOCK (decided on CLOSED 15m bars, close basis, so live follows through the VEC_EXACT twin):
-  armed  once the position's best close-basis gain since entry >= BREAKEVEN_LOCK_ARM_PCT (0.5 / 1.0 / 1.5)
-  fires  when the bar's close-basis gain <= BREAKEVEN_LOCK_FLOOR_PCT (0.10 = costs / 0.0 / 0.25) -> CLOSE "BREAKEVEN_LOCK"
-  scope  BREAKEVEN_LOCK_SCOPE: "off" | "loss_prone" (default: only positions opened by a loss-prone function) | "all"
-LOSS_PRONE_ENTRY_FILTER (default on; a template row so a board can switch it off when its delta says so):
+44 on stocks (-122.0%). The close-before-a-loss rule already exists as the PEAK_GIVEBACK family (live ez_positions_quick
+hard-zero / drop branch, pure core vec_decisions/check_exit_candidates_crypto__peak_giveback.py) but the engine never called it,
+so every pilot test of PEAK_GIVEBACK_HARD_ZERO_ENABLED measured delta 0. v12_quick_engine now runs that SAME core per closed bar
+(close basis, reason PEAK_GIVEBACK_GAIN_EROSION_STOP) — the pilot's measured delta flips it; nobody sets it by hand.
+  PEAK_GIVEBACK_SCOPE  "all" (the existing behaviour) | "loss_prone" (only positions opened by a function flagged in
+                       data/loss_prone_entries.json) — a template option the pilot tests like any other.
+LOSS_PRONE_ENTRY_FILTER (template switch; boards switch it off when their delta says so):
   an OPEN whose function is flagged in data/loss_prone_entries.json must also pass LOSS_PRONE_ENTRY_MIN_FILTERS (2) of
   {wt1_1h vs wt2_1h with the side, wt1_4h vs wt2_4h with the side, close vs ema_50_1h with the side}. Missing data = not passed.
 """
@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import math
 
-REASON = "BREAKEVEN_LOCK"
 
 
 def _num(v, d=0.0):
@@ -39,19 +38,11 @@ def _on(cfg, k, d):
     return (str(v).strip().lower() in ("1", "true", "yes")) if isinstance(v, str) else bool(v)
 
 
-def lock_in_scope(cfg, entry_family: str, flags) -> bool:
-    sc = str(_get(cfg, "BREAKEVEN_LOCK_SCOPE", "loss_prone") or "loss_prone").strip().lower()
-    if sc == "all":
-        return True
+def scope_covers(cfg, entry_family: str, flags) -> bool:
+    sc = str(_get(cfg, "PEAK_GIVEBACK_SCOPE", "all") or "all").strip().lower()
     if sc == "loss_prone":
         return str(entry_family or "") in (flags or ())
-    return False
-
-
-def lock_fires(cfg, mfe_close: float, gain_close: float) -> bool:
-    arm = _num(_get(cfg, "BREAKEVEN_LOCK_ARM_PCT", 0.5), 0.5)
-    floor = _num(_get(cfg, "BREAKEVEN_LOCK_FLOOR_PCT", 0.10), 0.10)
-    return _num(mfe_close, 0.0) >= arm and _num(gain_close, 0.0) <= floor
+    return True
 
 
 def entry_filters_pass(cfg, is_long: bool, close: float, wt1_1h: float, wt2_1h: float, wt1_4h: float, wt2_4h: float, ema50_1h: float) -> bool:
