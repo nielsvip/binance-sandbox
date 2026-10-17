@@ -26,6 +26,7 @@ import pandas_market_calendars as mcal
 import pytz
 from matplotlib.ticker import MaxNLocator
 
+import rankings_qualify
 from config import Config
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
@@ -138,6 +139,7 @@ from ez_rankings import (
     merge_htf_band_into_ltf,
     normalize_log_signed,
     parse_timestamp,
+    prune_rank_plots,
     save_cache,
     save_rankings_json,
     to_json_safe,
@@ -2727,6 +2729,26 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             symbols_trb_short = list(dict.fromkeys(
                 s for s in symbols_trb_short if s in _allowed_symbols
             ))
+            # 2026-10-17 USER ("revise the way it qualifies winners and losers"): ONE gate, the last word before
+            # the trb lists are written. The parity padding plus the OI / mandatory / news / AI injections had put
+            # 15 symbols (CRWD, NVDA, INTC, PLTR, MU, HOOD, COIN, MSTR, AAPL, AMZN, TSLA, SLV ...) on the LONG *and*
+            # the SHORT list at the same time on 2026-10-17. A symbol gets exactly one side now — the one with the
+            # larger |final_score_norm| — and the result is published as data/rankings_qualified_stocks.json, the
+            # single list the plot loop, tools/v15_ranking_priority.py and the auditor read. No cap by default:
+            # TRADIER_LIST_CAP sets one. Gate failure saves the ungated lists exactly as before.
+            try:
+                _trb_scores = {e["symbol"]: e.get("final_score_norm", 0.0) for e in final_ranking_data_scalars if e.get("symbol")}
+                _trb_qual = rankings_qualify.qualify("stocks", symbols_trb_long, symbols_trb_short, scores=_trb_scores, cap=int(getattr(config, 'TRADIER_LIST_CAP', 0) or 0) or None, plot_n=20)
+                _gated_long = rankings_qualify.symbols(_trb_qual, "long")
+                _gated_short = rankings_qualify.symbols(_trb_qual, "short")
+                if len(_gated_long) >= 20 and len(_gated_short) >= 20:
+                    symbols_trb_long, symbols_trb_short = _gated_long, _gated_short
+                    rankings_qualify.write_artifact("stocks", _trb_qual)
+                    logger.info(f"[QUALIFY] stocks long={len(symbols_trb_long)} short={len(symbols_trb_short)} dropped conflict={_trb_qual['dropped']['conflict']} over_cap={len(_trb_qual['dropped']['over_cap'])}")
+                else:
+                    logger.error(f"[QUALIFY] stocks gate would leave {len(_gated_long)}L/{len(_gated_short)}S (<20) — ungated lists kept, conflicts remain: {_trb_qual['dropped']['conflict']}")
+            except Exception as _trb_qual_e:
+                logger.error(f"[QUALIFY] stocks gate failed, saving ungated lists: {_trb_qual_e}", exc_info=True)
             if len(symbols_trb_long) < 20 or len(symbols_trb_short) < 20:
                 raise RuntimeError(
                     f"refusing undersized locked symbols_trb overwrite: "
@@ -3083,18 +3105,29 @@ async def plot_loop():
 
             top_n = 20
             total_rankings = len(RANKING_DATA)
-            # Plot the actual long candidate set, not raw high scores that were
-            # vetoed for bearish daily direction or severe drawdown.
-            winners = [item for item in RANKING_DATA if item.get("long_eligible", False)][:top_n]
-            losers = RANKING_DATA[-top_n:] if total_rankings >= top_n else []
             targets = []
-
-            for i, item in enumerate(winners):
-                targets.append((str(i + 1).zfill(2), item))
-
-            for i, item in enumerate(losers):
-                actual_rank = total_rankings - len(losers) + i + 1
-                targets.append((str(actual_rank).zfill(2), item))
+            # 2026-10-17 USER: the plots must be the winners/losers that are actually qualified to trade.
+            # They were not: winners came from raw long_eligible order and losers from the bottom of
+            # RANKING_DATA, neither of which is symbols_trb_long/short, and the bare numeric label (223_LEXX)
+            # never said which side a chart belonged to. Both halves now come from the same qualified
+            # artifact the lists are written from, labelled W01.. / L01.. like the crypto plots.
+            _qual_plot = rankings_qualify.load_artifact("stocks", max_age_s=float(getattr(config, 'QUALIFIED_MAX_AGE_S', 86400)))
+            if _qual_plot:
+                _by_sym = {item.get("symbol"): item for item in RANKING_DATA if item.get("symbol")}
+                for _prefix, _side in (("W", "long"), ("L", "short")):
+                    for _row in _qual_plot.get(_side, [])[:top_n]:
+                        _item = _by_sym.get(_row["symbol"])
+                        if _item:
+                            targets.append((f"{_prefix}{int(_row['rank']):02d}", _item))
+                logger.info(f"[plot_loop] Qualified source: {len(_qual_plot.get('long', []))} winners / {len(_qual_plot.get('short', []))} losers (artifact age {time.time() - _qual_plot.get('generated_at', 0):.0f}s)")
+            else:
+                logger.warning("[plot_loop] data/rankings_qualified_stocks.json missing or stale — falling back to raw RANKING_DATA order (plots may not match the traded lists)")
+                winners = [item for item in RANKING_DATA if item.get("long_eligible", False)][:top_n]
+                losers = RANKING_DATA[-top_n:] if total_rankings >= top_n else []
+                for i, item in enumerate(winners):
+                    targets.append((f"W{i + 1:02d}", item))
+                for i, item in enumerate(losers):
+                    targets.append((f"L{len(losers) - i:02d}", item))
 
             logger.info(f"[plot_loop] Generating {len(targets)} plots...")
 
@@ -3134,6 +3167,7 @@ async def plot_loop():
                     logger.error(f"[plot_loop] Error plotting {sym}: {e}")
 
             last_plotted_ranking_time = LAST_RANKING_TIME
+            prune_rank_plots(str(PLOTS_DIR), [(label, item.get("symbol")) for label, item in targets])
             cleanup_old_plots(str(PLOTS_DIR), days_to_keep=1)
             logger.info(f"[plot_loop] Cycle complete. Waiting for next ranking update...")
 

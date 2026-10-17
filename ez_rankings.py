@@ -50,6 +50,7 @@ from scipy.signal import find_peaks
 from scipy.stats import linregress
 from ta.momentum import StochRSIIndicator
 
+import rankings_qualify
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
 from config import Config
@@ -5773,6 +5774,7 @@ async def save_market_data():
         # 2026-09-06: CRYPTO TESTS ONLY TRADEABLE KEYS — filter ang lists to tradeable before save
         # Prevents empty-XLS waste (e.g. CRDOUSDT_LONG, AMATUSDT_LONG with 0 trades) from polluting
         # symbols_ang_long/short.json and wasting S1/S2 compute. Live gate (tradeable_keys) is separate.
+        _tradeable_fn = None
         try:
             _tk_path = BASE_PATH / "tradeable_keys.json"
             _ps_path = BASE_PATH / "data" / "hourly_reconfig" / "per_sym_active_config.json"
@@ -5792,6 +5794,8 @@ async def save_market_data():
                     pass
             def _is_tradeable_side(_side_key: str) -> bool:
                 return _side_key in _ps_tradeable or any(_k.endswith(f":{_side_key}") for _k in _tk_set)
+            if _tk_set or _ps_tradeable:
+                _tradeable_fn = lambda _s, _side: _is_tradeable_side(f"{_s}_{_side}")
             _before_long, _before_short = len(symbols_ang_long_list), len(symbols_ang_short_list)
             symbols_ang_long_list = [s for s in symbols_ang_long_list if _is_tradeable_side(f"{s}_LONG")]
             symbols_ang_short_list = [s for s in symbols_ang_short_list if _is_tradeable_side(f"{s}_SHORT")]
@@ -5813,6 +5817,22 @@ async def save_market_data():
                 logger.info(f"[TRADEABLE_FILTER] symbols_ang_long { _before_long}->{len(symbols_ang_long_list)} short { _before_short}->{len(symbols_ang_short_list)} (non-tradeable dropped: long {[s for s in ['CRDOUSDT','AMATUSDT'] if s not in symbols_ang_long_list][:3]} )")
         except Exception as _e:
             logger.warning(f"[TRADEABLE_FILTER] filter failed, saving unfiltered: {_e}")
+        # 2026-10-17 USER ("revise the way it qualifies winners and losers"): ONE gate, the last word before
+        # the ang lists are written. Everything above only PROPOSES candidates — ranking_points, WGS_24H_INJECT,
+        # SCALP_V3 and the sticky re-injects all append AFTER the [:25] trim, so the cap did not hold (33 longs on
+        # 2026-10-17) and 4 symbols (AXS/EGLD/PUMP/SKY) were queued LONG *and* SHORT at the same time. The gate
+        # dedups, applies tradeability as a hard filter (no backfill around it), gives a symbol exactly one side
+        # (larger |final_score_norm| wins), caps the side, and publishes data/rankings_qualified_crypto.json —
+        # the single list the plot loop, tools/v15_ranking_priority.py and the auditor all read.
+        try:
+            _qual_cap = int(getattr(config, 'ANG_LIST_CAP', 25) or 25)
+            _qual = rankings_qualify.qualify("crypto", symbols_ang_long_list, symbols_ang_short_list, scores=fs, cap=_qual_cap, tradeable=_tradeable_fn, plot_n=20)
+            symbols_ang_long_list = rankings_qualify.symbols(_qual, "long")
+            symbols_ang_short_list = rankings_qualify.symbols(_qual, "short")
+            rankings_qualify.write_artifact("crypto", _qual)
+            logger.info(f"[QUALIFY] crypto long={len(symbols_ang_long_list)} short={len(symbols_ang_short_list)} cap={_qual_cap} dropped conflict={_qual['dropped']['conflict']} not_tradeable={len(_qual['dropped']['not_tradeable'])} over_cap={len(_qual['dropped']['over_cap'])}")
+        except Exception as _qual_e:
+            logger.error(f"[QUALIFY] crypto gate failed, saving ungated lists: {_qual_e}", exc_info=True)
         await _save_json_async(BASE_PATH / "symbols_ang_short.json", symbols_ang_short_list)
         await _save_json_async(BASE_PATH / "symbols_ang_long.json", symbols_ang_long_list)
         await _save_json_async(BASE_PATH / "symbols_active.json", symbols_active_list)
@@ -6687,6 +6707,31 @@ async def plot_dfs_subplots(
         plt.close(fig)
 
 
+
+_RANK_PLOT_RE = re.compile(r"^(WR|LR|W|L)(\d{2})_(.+)\.png$")
+
+def prune_rank_plots(output_dir_str: str, queue_items):
+    """Delete W/L/WR/LR plots that are not in THIS cycle's queue (USER 2026-10-17).
+    cleanup_old_plots only expires by age, so a symbol that moved from L09 to L11 left L09 behind and the
+    directory accumulated days of rank slots side by side — 1525 files for 80 slots on 2026-10-17, and no way
+    to tell the current losers from last Tuesday's. Keeping exactly the current (prefix, rank, symbol) triples
+    makes the directory the leaderboard it claims to be. Only the four rank prefixes are touched."""
+    output_dir_path = Path(output_dir_str)
+    if not output_dir_path.is_dir() or not queue_items:
+        return
+    current = {f"{label}_{symbol}" for label, symbol in queue_items}
+    removed = 0
+    for file_path_obj in output_dir_path.glob("*.png"):
+        match = _RANK_PLOT_RE.match(file_path_obj.name)
+        if not match or file_path_obj.stem in current:
+            continue
+        try:
+            file_path_obj.unlink()
+            removed += 1
+        except Exception as e_prune_plot:
+            logger.error(f"[prune_rank_plots] Failed to delete {file_path_obj}: {e_prune_plot}")
+    if removed:
+        logger.info(f"[prune_rank_plots] Removed {removed} superseded rank plots, {len(current)} current slots kept")
 
 def cleanup_old_plots(output_dir_str: str, days_to_keep: int = DAYS_PLOT): # Renamed arg
     """Delete plot files older than 'days_to_keep' days from the output directory."""
@@ -7747,12 +7792,32 @@ async def plot_loop():
             # Load fresh signals data for plotting
             logger.debug(f"[plot_loop] Loaded signals data: {len(signals_data)} symbols with events")
 
-            # --- PLOT QUEUE GENERATION FROM FRESH IN-MEMORY DATA ---
-            top_recent_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_recent_norm", 0.0), reverse=True)[:20]
-            bottom_recent_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_recent_norm", 0.0))[:20]
-            top_norm_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)[:20]
-            bottom_norm_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_norm", 0.0))[:20]
-            
+            # --- PLOT QUEUE GENERATION FROM THE QUALIFIED LIST ---
+            # 2026-10-17 USER: the plots must be the winners/losers that are actually qualified to trade.
+            # They were not: W/L ranked raw RANKING_DATA by final_score_norm, so 7-9 of every 20 plotted
+            # symbols (ARBUSDC, BEAMXUSDT, MAGICUSDT, QNTUSDT, ZKUSDT, LUNA2USDT, PENGUUSDC ...) were not in
+            # symbols_ang_long/short at all, while 19 of 33 traded longs were never drawn. All four prefixes
+            # now come from data/rankings_qualified_crypto.json — W/L in qualified rank order, WR/LR the same
+            # qualified universe re-sorted by the recent score. No artifact (first boot / stale) = old behaviour.
+            _qual_plot = rankings_qualify.load_artifact("crypto", max_age_s=float(getattr(config, 'QUALIFIED_MAX_AGE_S', 86400)))
+            if _qual_plot:
+                _q_long = rankings_qualify.symbols(_qual_plot, "long")
+                _q_short = rankings_qualify.symbols(_qual_plot, "short")
+                _by_sym = {item.get("symbol"): item for item in RANKING_DATA if item.get("symbol")}
+                _rows_long = [_by_sym.get(s) or {"symbol": s} for s in _q_long]
+                _rows_short = [_by_sym.get(s) or {"symbol": s} for s in _q_short]
+                top_norm_plot = _rows_long[:20]
+                bottom_norm_plot = _rows_short[:20]
+                top_recent_plot = sorted(_rows_long, key=lambda x: x.get("final_score_recent_norm", 0.0), reverse=True)[:20]
+                bottom_recent_plot = sorted(_rows_short, key=lambda x: x.get("final_score_recent_norm", 0.0))[:20]
+                logger.info(f"[plot_loop] => Qualified source: {len(_q_long)} winners / {len(_q_short)} losers (artifact age {time.time() - _qual_plot.get('generated_at', 0):.0f}s)")
+            else:
+                logger.warning("[plot_loop] => data/rankings_qualified_crypto.json missing or stale — falling back to raw RANKING_DATA order (plots may not match the traded lists)")
+                top_recent_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_recent_norm", 0.0), reverse=True)[:20]
+                bottom_recent_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_recent_norm", 0.0))[:20]
+                top_norm_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)[:20]
+                bottom_norm_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_norm", 0.0))[:20]
+
             plot_queue_items_list = []
 
             def add_to_plot_queue_func(ranked_items, prefix_str):
@@ -7861,6 +7926,7 @@ async def plot_loop():
                 except Exception as e_plot_sym_exc:
                     logger.error(f"[plot_loop] => Failed to plot {symbol_plot} ({rank_label_plot}): {e_plot_sym_exc}", exc_info=True)
             
+            await asyncio.to_thread(prune_rank_plots, str(PLOTS_DIR), plot_queue_items_list)
             await asyncio.to_thread(cleanup_old_plots, str(PLOTS_DIR), days_to_keep=DAYS_PLOT)
             logger.info(f"[plot_loop] => Plotting cycle complete.")
             await asyncio.sleep(config.PLOT_LOOP_INTERVAL_SECONDS)
