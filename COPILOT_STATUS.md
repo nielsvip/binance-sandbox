@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 04:14:52 UTC
+# Copilot Status — 2026-10-17 04:20:14 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -8,6 +8,12 @@
 
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T04:14:51
 - **RATIO_IMBALANCE** [crypto] ang — 2026-10-17T04:14:51
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-17T04:15:53
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-17T04:16:55
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-17T04:17:57
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T04:18:58
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-17T04:18:59
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-17T04:20:02
 
 ## Missed Trades (trader comparison)
 
@@ -19,18 +25,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 22 | **Watching for reentry:** 8 | **Reentered:** 0
+**Held:** 23 | **Watching for reentry:** 8 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +2.4%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +2.5%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +2.0%
-- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +1.2%
+- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +1.6%
+- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +1.4%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +4.5%, now +-0.0%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +4.5%, now +0.1%
 
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 0m ago
 - WATCHING: **MANAUSDT** SHORT (crypto) peaked +7.1%, exited 0m ago
@@ -45,7 +51,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 4
+**Issues (last 1h):** 25
+- [HIGH] ez_market_data.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
