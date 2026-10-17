@@ -1,13 +1,13 @@
 {
- "at": "2026-10-17T00:15:18Z",
+ "at": "2026-10-17T00:30:14Z",
  "s1": {
   "host": "niels",
-  "now": 1792196114.4950883,
+  "now": 1792197010.9297187,
   "merge_crypto": {
    "n": 12,
    "max_lag_min": 15.0,
-   "median_lag_min": 0.0,
-   "worst": "1INCHUSDT",
+   "median_lag_min": 15.0,
+   "worst": "1000BONKUSDC",
    "dead": []
   },
   "merge_stocks": {
@@ -18,16 +18,20 @@
    "dead": []
   },
   "npz_legacy_crypto": [],
-  "append_log_age_min": 0.3,
-  "append_last_secs": 596.3,
-  "append_last_stats": "'appended': 1143, 'created': 0, 'up_to_date': 4916, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 5.2,
+  "append_last_secs": 598.7,
+  "append_last_stats": "'appended': 1070, 'created': 0, 'up_to_date': 4989, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 1,
+  "npz_cycle_last_utc": "00:26:32",
+  "npz_cycle_installed": 69,
+  "npz_cycle_not_ready": 0,
+  "npz_cycle_no_new": 0,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 1.2,
-  "sched_launched": 0,
-  "archive_n": 74,
-  "archive_mb": 1240.9,
-  "archive_newest_min": 86.4,
+  "sched_tick_age_min": 2.1,
+  "sched_launched": 1,
+  "archive_n": 75,
+  "archive_mb": 1254.2,
+  "archive_newest_min": 101.3,
   "_via": "s1-int"
  },
  "red": [],

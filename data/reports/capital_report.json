@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-17 00:27 UTC",
- "total_capital_usd": 4.9,
+ "generated_at": "2026-10-17 00:29 UTC",
+ "total_capital_usd": 7.01,
  "tier_capital": {
-  "A": 0.0,
+  "A": 7.01,
   "B": 0.0,
-  "C": 4.9
+  "C": 0.0
  },
  "tier_count": {
-  "A": 0,
+  "A": 1,
   "B": 0,
-  "C": 1
+  "C": 0
  },
- "winners": [],
- "losers": [
-  "fin:SANDUSDT_SHORT"
+ "winners": [
+  "ang:KMNOUSDT_LONG"
  ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:SANDUSDT_SHORT",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 4.9,
-   "gain_pct": 4.376,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 91.0,
-   "mark": 0.05387143
+   "pk": "ang:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "ang",
+   "value_usd": 7.01,
+   "gain_pct": 0.51,
+   "tier": "A",
+   "perf_mult": 7.64,
+   "amt": 181.0,
+   "mark": 0.03872663
   }
  ]
 }
