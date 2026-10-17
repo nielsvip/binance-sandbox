@@ -46,7 +46,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path("/Users/niels/Documents/binance")
-EXT_VAULT = Path("/Volumes/SSD2T/binance_archive/script_vault")
+# USER 2026-10-17: "we have 3 but they are all flaky and all appear from time to time" — so write to EVERY
+# drive that is genuinely mounted right now, and let a drive that reappears be caught up by the next sweep.
+# A /Volumes entry on the SAME device as the boot volume is a phantom directory, not a drive: /Volumes/WD25
+# was exactly that on 2026-10-17 (present and "flashing", never mounted), and writing there silently fills
+# the internal disk instead of backing anything up.
+EXT_ROOTS = (Path("/Volumes/SSD2T"), Path("/Volumes/E3T"), Path("/Volumes/WD25"), Path("/Volumes/TOSHIBA_EXT"))
+EXT_SUBDIR = Path("binance_archive") / "script_vault"
+EXT_MIN_FREE_GB_ROOT = 3.0
 INDEX = REPO / "data" / "reports" / "script_vault_index.jsonl"
 LOG = Path("/tmp/script_version_vault.log")
 FSWATCH = "/opt/homebrew/bin/fswatch"
@@ -148,31 +155,56 @@ def capture_git(p: Path, rel: str, ts: str, sha12: str) -> str | None:
     return blob
 
 
-def capture_ext(p: Path, rel: str, ts: str, sha12: str) -> str | None:
-    """Gzipped copy on the external drive — recoverable with gunzip alone, no git involved."""
-    global _ext_warned
+def ext_vaults() -> list[Path]:
+    """Every genuinely-mounted external drive's vault dir. Phantom /Volumes dirs (same device as the boot
+    volume) and nearly-full drives are skipped, so a copy is never written to the internal disk by mistake."""
+    out = []
     try:
-        if not EXT_VAULT.parent.parent.is_dir():   # /Volumes/SSD2T itself
-            raise FileNotFoundError("external drive not mounted")
-        st = os.statvfs(EXT_VAULT.parent.parent)
-        free_gb = (st.f_bavail * st.f_frsize) / 1e9
-        if free_gb < EXT_MIN_FREE_GB:
-            raise OSError(f"only {free_gb:.1f}GB free on the external drive")
-        dest = EXT_VAULT / rel / f"{ts}_{sha12}.gz"
-        if dest.exists():
-            return str(dest)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_suffix(".gz.tmp")
-        with p.open("rb") as src, gzip.open(tmp, "wb", compresslevel=6) as out:
-            shutil.copyfileobj(src, out)
-        os.replace(tmp, dest)
-        _ext_warned = False
-        return str(dest)
-    except Exception as e:
+        boot_dev = os.stat("/System/Volumes/Data").st_dev
+    except OSError:
+        boot_dev = None
+    for root in EXT_ROOTS:
+        try:
+            if not root.is_dir() or not os.access(root, os.W_OK):
+                continue
+            if boot_dev is not None and os.stat(root).st_dev == boot_dev:
+                continue
+            st = os.statvfs(root)
+            if (st.f_bavail * st.f_frsize) / 1e9 < EXT_MIN_FREE_GB_ROOT:
+                continue
+            out.append(root / EXT_SUBDIR)
+        except OSError:
+            continue
+    return out
+
+
+def capture_ext(p: Path, rel: str, ts: str, sha12: str) -> str | None:
+    """Gzipped copy on EVERY mounted external drive — recoverable with gunzip alone, no git involved.
+    Returns the first destination written (or already present); absence of all drives is never fatal."""
+    global _ext_warned
+    vaults = ext_vaults()
+    if not vaults:
         if not _ext_warned:
-            log(f"  external copy unavailable ({e}) — git capture continues; will retry silently")
+            log("  no external drive mounted — git capture continues; ext copies resume when one appears")
             _ext_warned = True
         return None
+    _ext_warned = False
+    first = None
+    for vault in vaults:
+        try:
+            dest = vault / rel / f"{ts}_{sha12}.gz"
+            if dest.exists():
+                first = first or str(dest)
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_suffix(".gz.tmp")
+            with p.open("rb") as src, gzip.open(tmp, "wb", compresslevel=6) as out:
+                shutil.copyfileobj(src, out)
+            os.replace(tmp, dest)
+            first = first or str(dest)
+        except Exception as e:
+            log(f"  ext copy failed on {vault.parents[1].name} for {rel}: {e}")
+    return first
 
 
 def capture(path: str) -> bool:
@@ -191,13 +223,22 @@ def capture(path: str) -> bool:
     # restart re-ran `git hash-object -w` once per in-scope file (4494 subprocesses on this repo) just to
     # rediscover versions it already held, which is what put the watcher in uninterruptible disk wait on boot.
     prior_ref = next((r for r in existing_refs_for(rel) if r.endswith(f"_{sha12}")), None)
-    prior_ext = next((g for g in (EXT_VAULT / rel).glob(f"*_{sha12}.gz")), None) if (EXT_VAULT / rel).is_dir() else None
-    if prior_ref and prior_ext:
+    # Per-drive, not "any drive": a vault that is missing this version must still receive it, or a drive that
+    # has just come back (E3T on 2026-10-17) would stay permanently behind because another drive already had
+    # the copy. capture_ext itself is idempotent per destination, so re-running it is free for the drives that
+    # are already current — only the stale one is written.
+    vaults = ext_vaults()
+    have_ext = [v for v in vaults if (v / rel).is_dir() and any((v / rel).glob(f"*_{sha12}.gz"))]
+    prior_ext = next(((v / rel) for v in have_ext), None)
+    if prior_ref and vaults and len(have_ext) == len(vaults):
         _seen[rel] = sha
         return False
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     blob = capture_git(p, rel, ts, sha12) if not prior_ref else prior_ref
-    ext = capture_ext(p, rel, ts, sha12) if not prior_ext else str(prior_ext)
+    # reuse the timestamp already on disk so a backfilled drive matches the original capture name
+    if prior_ext is not None:
+        ts = next(iter(sorted(prior_ext.glob(f"*_{sha12}.gz")))).name.split(f"_{sha12}.gz")[0]
+    ext = capture_ext(p, rel, ts, sha12) if len(have_ext) < len(vaults) else str(next(iter(sorted(prior_ext.glob(f"*_{sha12}.gz")))))
     if blob is None and ext is None:
         log(f"  CAPTURE FAILED on both stores: {rel}")
         return False
@@ -243,14 +284,14 @@ def verify(target: str) -> int:
     print(f"{rel}: {len(refs)} version(s) pinned in git")
     for l in sorted(refs)[-12:]:
         print("   " + l)
-    ext_dir = EXT_VAULT / rel
-    if ext_dir.is_dir():
-        gz = sorted(ext_dir.glob("*.gz"))
-        print(f"{rel}: {len(gz)} version(s) on the external drive, newest:")
+    for vault in ext_vaults():
+        ext_dir = vault / rel
+        gz = sorted(ext_dir.glob("*.gz")) if ext_dir.is_dir() else []
+        print(f"{rel}: {len(gz)} version(s) on {vault.parents[1].name}" + (", newest:" if gz else ""))
         for g in gz[-5:]:
             print(f"   {g}")
-    else:
-        print(f"{rel}: no external copies yet ({ext_dir})")
+    if not ext_vaults():
+        print(f"{rel}: no external drive mounted right now")
     return 0
 
 
@@ -258,7 +299,7 @@ def watch() -> int:
     if not Path(FSWATCH).exists():
         log(f"FATAL: {FSWATCH} not found — install fswatch or run with --once from cron")
         return 1
-    log(f"VAULT STARTED — watching {REPO} (git refs/vault + {EXT_VAULT})")
+    log(f"VAULT STARTED — watching {REPO} (git refs/vault + ext: {[str(v) for v in ext_vaults()] or 'none mounted'})")
     log(f"initial sweep captured {sweep_once()} new version(s)")
     proc = subprocess.Popen(
         [FSWATCH, "-r", "--event", "Updated", "--event", "Created", "--event", "Renamed", str(REPO)],

@@ -8,6 +8,23 @@ REPO="/Users/niels/Documents/binance"
 DST_DIR="/home/niels/binance/"
 LOG="/Users/niels/logs/mac_livecode_push.log"
 mkdir -p "$(dirname "$LOG")"
+# 2026-10-17 USER ("make sure the latest versions of all trading scripts are in the /binance/ folder"): the interval
+# dropped 900 s -> 120 s, so a push must be single-flight — a measured push takes ~27 s but a slow/retrying transport
+# can exceed the interval and two concurrent rsyncs to the same tree is how a half-written file reaches the standby.
+# mkdir is the atomic lock primitive available on macOS without flock. A lock older than LOCK_STALE_S is broken, so a
+# killed push can never wedge the pusher permanently (that class cost 5 h of dead position writers on 2026-10-16).
+LOCK="/tmp/.mac_livecode_push.lock"
+LOCK_STALE_S="${LOCK_STALE_S:-600}"
+if ! mkdir "$LOCK" 2>/dev/null; then
+    _age=$(( $(date +%s) - $(stat -f %m "$LOCK" 2>/dev/null || echo 0) ))
+    if [ "$_age" -lt "$LOCK_STALE_S" ]; then
+        echo "$(date -u +%FT%TZ) push SKIPPED — another push holds the lock (${_age}s old)" >>"$LOG"
+        exit 0
+    fi
+    echo "$(date -u +%FT%TZ) breaking stale push lock (${_age}s old)" >>"$LOG"
+    rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || exit 0
+fi
+trap 'rm -rf "$LOCK"' EXIT INT TERM
 /usr/bin/python3 -c "import json,time; json.dump({'epoch':time.time(),'host':'macbook'}, open('$REPO/data/livecode_sync.json','w'))"
 LOCALHOST_SHELL="ssh -p 2201 -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6 -o ControlMaster=no -o ControlPath=none"
 PUBLIC_SHELL="ssh -i /Users/niels/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=6 -o ControlMaster=no -o ControlPath=none"

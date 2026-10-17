@@ -5772,17 +5772,23 @@ class Config:
             # "MIN_GAIN": 1.2,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 800.0
             # "MAX_POSITION_SIZE_FIN": 900.0#emergency mode
+            # USER 2026-10-17: "we only trade exactly what the vectorized best settings for the symbol
+            # dictates - the trading scripts can only change the side not the bar of the trade." LIGHT_MODE is
+            # therefore SIZING-ONLY. The three knobs below are deliberately NOT overridden here any more, so
+            # they fall through `base` to the values every board was measured with (QuickConfig-exact):
+            #   HIGH_GAIN_AUGMENTATION_MIN_SIZE  light held 100  -> base 50
+            #   REDUCTION_COOLDOWN_SECONDS       light held 30.0 -> base 15.0
+            #   AUGMENTATION_COOLDOWN_SECONDS    light held 660.0 -> base 90.0  (was 7.3x slower than measured)
+            # A cooldown decides WHICH BAR a trade lands on, so a mode table moving it changes the trade the
+            # vector chose. Exposure is cut by the size knobs alone; timing stays the board's.
             "START_POSITION_SIZE": 45.0,  # RESTORED 2026-10-17; minimum mode held 6.0
             "MAX_POSITION_SIZE": 360.0,  # RESTORED 2026-10-17; minimum mode held 12.0
             "MAX_ORDER_VALUE": 180.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_ORDER_VALUE_MEN": 440.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_ORDER_VALUE_MEN": 280.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
             "MAX_ORDER_VALUE_FIN": 180.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
-            "REDUCTION_COOLDOWN_SECONDS": 30.0,
-            "AUGMENTATION_COOLDOWN_SECONDS": 660.0,
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
-            "MAX_POSITION_SIZE_MEN": 360.0,  # RESTORED 2026-10-17; minimum mode held 12.0
-            "MAX_POSITION_SIZE_FIN": 360.0,  # RESTORED 2026-10-17; minimum mode held 12.0
+            "MAX_POSITION_SIZE_MEN": 280.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
+            "MAX_POSITION_SIZE_FIN": 280.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
         }
         base = {
             # "START_POSITION_SIZE": 6.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 15.0
