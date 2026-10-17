@@ -364,6 +364,65 @@ def _should_update_npz(npz_path: Path, last_15m_close: datetime) -> bool:
     # NPZ is behind if last_dt < last_15m_close
     return last_dt < last_15m_close
 
+def bar_outbox(base_path: Path) -> Optional[Path]:
+    """Staging dir for computed-but-not-applied NPZ bars, or None when export is off.
+
+    USER 2026-10-17: "we want to use macbook for the latest npz bar calculations for both tradier and ez ->
+    rsync to s1 -> s1 adds it immediately to the existing npz's. No compute wasted as macbook already did the
+    computing within the indicator scripts; s1 never has to rebuild npz's it just uses the updates just like it
+    appends the klines without fetching them."
+    NPZ_BAR_EXPORT=0 disables the export entirely."""
+    if os.environ.get("NPZ_BAR_EXPORT", "1") != "1":
+        return None
+    d = os.environ.get("NPZ_BAR_OUTBOX")
+    return Path(d) if d else (Path(base_path) / "data" / "npz_bar_outbox")
+
+
+def export_bar_for_symbol(
+    symbol: str,
+    mode: str,
+    kline_manager,
+    calculator,
+    base_path: Path,
+) -> bool:
+    """Compute the latest closed 15m NPZ row with the LIVE calculator and stage it as JSON. Writes no NPZ.
+
+    This is the Mac's half of the trickle: the indicator scripts already hold the calculator and the klines, so
+    the row costs nothing extra here, and S1 then appends it instead of recomputing the bar with the builder.
+    One file per symbol+bar, written atomically, idempotent (an existing file for the same bar is left alone)."""
+    out_dir = bar_outbox(base_path)
+    if out_dir is None:
+        return False
+    try:
+        f = _resolve_kline_path(symbol, "15m", mode, Path(base_path))
+        if f is None:
+            return False
+        df15 = _load_klines_df(f)
+        if df15 is None or df15.empty:
+            return False
+        last_close = df15.index[-1].to_pydatetime().astimezone(timezone.utc)
+        ts_epoch = int(last_close.timestamp())
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out = out_dir / f"{symbol}_{ts_epoch}.json"
+        if out.exists():
+            return False
+        row = _compute_row_for_15m_close(symbol, last_close, kline_manager, calculator, mode)
+        if not row:
+            return False
+        payload = {"symbol": symbol, "mode": mode, "ts": ts_epoch,
+                   "computed_at": datetime.now(timezone.utc).isoformat(),
+                   "host": platform.node(), "keys": len(row), "row": row}
+        tmp = out.with_suffix(".json.tmp")
+        with open(tmp, "w") as fh:
+            json.dump(payload, fh, default=str)
+        os.replace(tmp, out)
+        logger.info(f"[NPZ-EXPORT] {symbol} bar {ts_epoch} staged ({len(row)} keys) -> {out.name}")
+        return True
+    except Exception as e:
+        logger.warning(f"[NPZ-EXPORT] {symbol} failed: {type(e).__name__}: {e}")
+        return False
+
+
 def update_npz_for_symbol(
     symbol: str,
     mode: str,
@@ -378,7 +437,12 @@ def update_npz_for_symbol(
     Only writes on S1 (Linux); Mac is read-only for backtests.
     """
     if not _is_s1_host():
-        return False
+        # USER 2026-10-17: the Mac must not WRITE an NPZ, but it is the host that already computed the bar inside
+        # ez_indicators / tradier_indicators — so it stages the row for S1 instead of returning empty-handed.
+        # Before this, both indicator loops called this function for every symbol every 15 min and it returned
+        # False on the first line, so the Mac "checked 199 symbols" and produced nothing, and the only way to
+        # keep an NPZ current was to run the indicator scripts ON S1 — the compute this is meant to avoid.
+        return export_bar_for_symbol(symbol, mode, kline_manager, calculator, base_path)
     # Determine last closed 15m bar from klines (point-in-time, no wall-time guess)
     # Try multiple kline sources: backtest (long history) then live, then gateway, then sandbox
     def _find_kline_file(sym: str, tf: str, m: str) -> Optional[Path]:

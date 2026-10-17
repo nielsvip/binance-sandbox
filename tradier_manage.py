@@ -14177,7 +14177,13 @@ async def _vec_exact_process_twin(
             logger.warning(f"[VEC_EXACT_SKIP] {position_key}: vec {_ev['type']} {_ev['reason'][:60]} but live amt={_amt} qty={_q}")
             _out.append(f"SKIP:{_ev['type']}")
             continue
-        _res = await queue_trade_action(order_queue, trade_manager, position_key, _ev["type"], _tve.vec_reason(_ev), 100.0, override_qty=_q)
+        from live_twins import vec_provenance as _vprov_t
+
+        _pv_t = _vprov_t.mark(position_key, _bar_ts, _ev["type"], "VEC_EXACT_TWIN")
+        try:
+            _res = await queue_trade_action(order_queue, trade_manager, position_key, _ev["type"], _tve.vec_reason(_ev), 100.0, override_qty=_q)
+        finally:
+            _vprov_t.reset(_pv_t)
         _tve.record_dispatch(config.BASE_PATH, position_key, _ev, (_ev["type"], _q), _res)
         logger.warning(f"[VEC_EXACT] {position_key}: {_ev['type']} qty={_q:.4f} reason={_tve.vec_reason(_ev)[:80]}{' (catchup)' if _a.get('catchup') else ''} -> {_res}")
         _out.append(f"{_ev['type']}:{_res}")
@@ -23280,6 +23286,15 @@ class OrderQueue:
                 _exec_timeout_s = 120.0
             if _exec_timeout_s <= 0:
                 _exec_timeout_s = 120.0
+            _pv_tok = None
+            try:  # 2026-10-17: re-mark the queued vec provenance so the execution task (and HERMETIC_TR) sees the dispatch site's mark
+                _pv_o = order.get("vec_provenance")
+                if isinstance(_pv_o, dict) and str(_pv_o.get("pk")) == str(position_key):
+                    from live_twins import vec_provenance as _vprov_c
+
+                    _pv_tok = _vprov_c.mark(position_key, _pv_o.get("bar_ts", 0.0), _pv_o.get("act", ""), _pv_o.get("kind", "VEC_EXACT"))
+            except Exception:
+                _pv_tok = None
             _exec_task = asyncio.ensure_future(
                 self.trade_manager.execute_trade_action(
                     account_key=account_key,
@@ -23300,6 +23315,8 @@ class OrderQueue:
                     decision_recorded=True,
                 )
             )
+            if _pv_tok is not None:
+                _vprov_c.reset(_pv_tok)
             try:
                 result = await asyncio.wait_for(
                     asyncio.shield(_exec_task), timeout=_exec_timeout_s
@@ -24011,6 +24028,14 @@ async def _queue_vec_exact_order(
         "order_id": f"{position_key}_{action}_{int(time.time())}",
         "override_qty": quantity,
     }
+    try:  # 2026-10-17: carry STRUCTURAL vec provenance (set by the twin dispatch site, never derived from the reason) across the queue
+        from live_twins import vec_provenance as _vprov_q
+
+        _pv = _vprov_q.current()
+        if isinstance(_pv, dict) and str(_pv.get("pk")) == str(position_key):
+            order["vec_provenance"] = dict(_pv)
+    except Exception:
+        pass
     success, msg = await order_queue.add_order(order)
     if not success:
         return f"QUEUE_ADD_REFUSED:{msg}"
@@ -24285,10 +24310,10 @@ async def queue_trade_action(
         # incl. VEC_EXIT_TOKENS_STOCKS for trb/trc). SHADOW mode logs would-block
         # WITHOUT blocking (validate allowlist first). Fail-open on any exception.
         # ═══════════════════════════════════════════════════════════════════════════
-        try:
-            _vp_mode = bool(getattr(config_tradier, "STRICT_VEC_PARITY_MODE", False))
+        try:  # 2026-10-17: read off `config` (TradierConfig()) — the module `config_tradier` has none of these fields, so the gate was never on
+            _vp_mode = bool(getattr(config, "STRICT_VEC_PARITY_MODE", False))
             _vp_shadow = bool(
-                getattr(config_tradier, "STRICT_VEC_PARITY_SHADOW", False)
+                getattr(config, "STRICT_VEC_PARITY_SHADOW", False)
             )
             if _vp_mode or _vp_shadow:
                 _vp_act = (action or "").upper()
@@ -24307,12 +24332,12 @@ async def queue_trade_action(
                 _vp_applies = (
                     _vp_is_entry
                     and bool(
-                        getattr(config_tradier, "STRICT_VEC_PARITY_GATE_ENTRIES", True)
+                        getattr(config, "STRICT_VEC_PARITY_GATE_ENTRIES", True)
                     )
                 ) or (
                     _vp_is_exit
                     and bool(
-                        getattr(config_tradier, "STRICT_VEC_PARITY_GATE_EXITS", True)
+                        getattr(config, "STRICT_VEC_PARITY_GATE_EXITS", True)
                     )
                 )
                 if _vp_applies:
