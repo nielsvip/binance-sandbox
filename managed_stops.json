@@ -1,9 +1,79 @@
 {
-  "inf:WLDUSDC_LONG": {
-    "orderId": "2000001518399099",
+  "ang:JASMYUSDT_SHORT": {
+    "orderId": "4000001974155049",
+    "stopPrice": 0.004725,
+    "entry_sig": "2026-10-17 05:45:06.739000+00:00",
+    "symbol": "JASMYUSDT",
+    "side": "SHORT"
+  },
+  "ang:API3USDT_LONG": {
+    "orderId": "4000001973966742",
+    "stopPrice": 0.2859,
+    "entry_sig": "2026-10-17 02:38:50.439000+00:00",
+    "symbol": "API3USDT",
+    "side": "LONG"
+  },
+  "ang:WLDUSDC_LONG": {
+    "orderId": "4000001974140505",
     "stopPrice": 0.5034,
-    "entry_sig": "2026-10-17 02:17:15.145000+00:00",
+    "entry_sig": "2026-10-17 02:28:46.255000+00:00",
     "symbol": "WLDUSDC",
     "side": "LONG"
+  },
+  "ang:RVNUSDT_SHORT": {
+    "orderId": "4000001974073401",
+    "stopPrice": 0.001536,
+    "entry_sig": "2026-10-17 04:22:51.144000+00:00",
+    "symbol": "RVNUSDT",
+    "side": "SHORT"
+  },
+  "ang:FARTCOINUSDT_SHORT": {
+    "orderId": "4000001973975098",
+    "stopPrice": 0.1555,
+    "entry_sig": "2026-10-17 02:46:56.112000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "ang:ALTUSDT_LONG": {
+    "orderId": "4000001973983207",
+    "stopPrice": 0.008166,
+    "entry_sig": "2026-10-17 02:55:41.271000+00:00",
+    "symbol": "ALTUSDT",
+    "side": "LONG"
+  },
+  "ang:ARKMUSDT_LONG": {
+    "orderId": "4000001974140499",
+    "stopPrice": 0.1214,
+    "entry_sig": "2026-10-17 02:29:44.445000+00:00",
+    "symbol": "ARKMUSDT",
+    "side": "LONG"
+  },
+  "ang:EDUUSDT_LONG": {
+    "orderId": "4000001974046133",
+    "stopPrice": 0.07599,
+    "entry_sig": "2026-10-17 03:56:40.624000+00:00",
+    "symbol": "EDUUSDT",
+    "side": "LONG"
+  },
+  "ang:SKLUSDT_LONG": {
+    "orderId": "4000001974038488",
+    "stopPrice": 0.004731,
+    "entry_sig": "2026-10-17 03:49:02.672000+00:00",
+    "symbol": "SKLUSDT",
+    "side": "LONG"
+  },
+  "ang:ENAUSDC_LONG": {
+    "orderId": "4000001974129952",
+    "stopPrice": 0.19547,
+    "entry_sig": "2026-10-17 05:18:23.493000+00:00",
+    "symbol": "ENAUSDC",
+    "side": "LONG"
+  },
+  "ang:MOVRUSDT_SHORT": {
+    "orderId": "4000001973987683",
+    "stopPrice": 1.4593,
+    "entry_sig": "2026-10-17 03:00:17.884000+00:00",
+    "symbol": "MOVRUSDT",
+    "side": "SHORT"
   }
 }

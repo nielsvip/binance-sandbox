@@ -19,6 +19,29 @@ LOG=/tmp/vault_and_archive_tick.log
 VLOG=/tmp/script_version_vault.log
 log() { echo "[$(date -u +%FT%TZ)] $*" >> "$LOG"; }
 
+# timeout(1) RESOLVED, not assumed. macOS has no /usr/bin/timeout — it exists only as
+# /opt/homebrew/bin/timeout (GNU coreutils), and launchd runs this with a bare PATH of /usr/bin:/bin:...
+# so every `timeout ...` line here died with "command not found": 32 silent failures across all six call
+# sites between 00:0x and 06:01Z on 2026-10-17, i.e. the per_sym, klines, shadow and deepen steps did
+# NOTHING while the log still said "tick done". Interactive runs worked because a login PATH has Homebrew.
+# The PATH export above fixes it; this resolves the binary anyway so a moved/removed coreutils is LOUD
+# rather than silent, and the steps still run (unbounded) instead of being skipped.
+TO="$(command -v timeout || command -v gtimeout || true)"
+if [ -z "$TO" ]; then
+  log "WARNING: no timeout(1) found (looked on PATH=$PATH) — running steps WITHOUT a time limit"
+  run_to() { shift; "$@"; }                 # drop the seconds argument, run unbounded
+else
+  run_to() { local s="$1"; shift; "$TO" "$s" "$@"; }
+fi
+step() {                                     # step <name> <seconds> <cmd...>
+  local name="$1" secs="$2"; shift 2
+  if run_to "$secs" "$@" >> "$LOG" 2>&1; then
+    log "  step $name ok"
+  else
+    log "  step $name FAILED rc=$? — see $LOG"
+  fi
+}
+
 # ---- 1. vault liveness -------------------------------------------------------
 PID=$(pgrep -f "script_version_vault.py" | head -1)
 if [ -z "${PID:-}" ]; then
@@ -49,28 +72,28 @@ HOUR=$(date -u +%H)
 STAMP=/tmp/per_sym_archive_full_$(date -u +%F)
 if [ "$HOUR" = "03" ] && [ ! -f "$STAMP" ]; then
   log "daily full union archive"
-  timeout 5400 "$PY" "$REPO/tools/per_sym_store_archive.py" --sources all >> "$LOG" 2>&1 && touch "$STAMP"
+  step per_sym_full 5400 "$PY" "$REPO/tools/per_sym_store_archive.py" --sources all && touch "$STAMP"
 else
-  timeout 1800 "$PY" "$REPO/tools/per_sym_store_archive.py" --sources live >> "$LOG" 2>&1
+  step per_sym_live 1800 "$PY" "$REPO/tools/per_sym_store_archive.py" --sources live
 fi
 # ---- 3. klines archive: append-only, on every drive present ------------------
 # USER 2026-10-17: "make sure the ext drives hold a full klines backup that only grows never shrinks".
 # Cheap after the first pass: the per-drive _manifest.json skips any symbol whose sources are unchanged by
 # (mtime,size), so a tick normally parses only the files that actually got new bars.
-timeout 1500 "$PY" "$REPO/tools/klines_ext_archive.py" >> "$LOG" 2>&1
+step klines_archive 1500 "$PY" "$REPO/tools/klines_ext_archive.py"
 
 # ---- 3b. shadow/observation folders ------------------------------------------
 # USER 2026-10-17: use the cleaned drive "for anything that is in the macbook shadow folder that might not be
 # there". These jsonl logs are things that HAPPENED once — unlike an NPZ (rebuildable) or a .py (in git and
 # the script vault, which skips data/ entirely), they cannot be recomputed. Logs grow by extension; anything
 # else is kept content-addressed so no version is overwritten. NPZ excluded by default (744 MB, rebuildable).
-timeout 600 "$PY" "$REPO/tools/shadow_ext_archive.py" >> "$LOG" 2>&1
+step shadow_archive 600 "$PY" "$REPO/tools/shadow_ext_archive.py"
 
 # ---- 4. deepen history backwards, a little every tick ------------------------
 # USER 2026-10-17: "on the ex drive we need infinite ones no clipping ever". The archive never clips, but the
 # live stores are shallow by design (ez_klines._trim caps 15m at 1500-2000 bars), so depth has to be pulled
 # from the exchange. A 420 s budget per tick walks backwards gradually instead of hammering the API, and each
 # symbol/timeframe is stamped inception_reached once its first bar ever is in, so it is never re-paged.
-timeout 600 "$PY" "$REPO/tools/klines_ext_archive.py" --deepen --budget 420 --pause 0.25 >> "$LOG" 2>&1
+step klines_deepen 600 "$PY" "$REPO/tools/klines_ext_archive.py" --deepen --budget 420 --pause 0.25
 
 log "tick done"

@@ -47827,6 +47827,23 @@ class TradierTradeManager:
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: stop placement TIMED OUT after {_timeout:.0f}s — POSITION MAY BE UNPROTECTED")
             self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, "timeout")
             return "FAILED_TIMEOUT"
+        # SKIPPED_STOP_RECONCILE_IN_FLIGHT is not a failure — ensure_fixed_stop_backstop_tradier serialises per
+        # position (2026-10-16 duplicate-placement race) and the 10 s reconcile may legitimately hold the lock at
+        # the exact moment a fill lands. Verifying right now would see no stop yet and raise a FALSE "UNPROTECTED"
+        # alarm on a position that is about to be protected a second later, which is how a loud alarm gets ignored.
+        # Give the in-flight pass a bounded chance to finish, then verify its work like any other.
+        if "IN_FLIGHT" in str(_r).upper():
+            for _ in range(int(max(1, min(_timeout, 15)))):
+                await asyncio.sleep(1)
+                _s = await self._fixed_stop_broker_stops(account_key, symbol, position_side)
+                if _s:
+                    logger.info(f"🛡️ [ENTRY_STOP_OK] {position_key}: {result} -> {len(_s)} resting broker stop(s) placed by the in-flight reconcile ({time.time() - _t0:.1f}s)")
+                    try:
+                        (getattr(self, "entry_stop_unprotected", None) or {}).pop(str(position_key), None)
+                    except Exception:
+                        pass
+                    return f"SUCCESS:{len(_s)}"
+            _r = f"{_r}+waited"
         # VERIFY AT THE BROKER, never on the return string. None = listing failed = UNVERIFIED, which is not "fine":
         # it is exactly the state that let 14 unprotected positions look healthy, so it is recorded like a failure.
         _stops = await self._fixed_stop_broker_stops(account_key, symbol, position_side)

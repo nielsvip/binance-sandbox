@@ -60,7 +60,14 @@ RUN_TIMEOUT_MIN = float(os.environ.get("V15_GATE_RUN_TIMEOUT_MIN", "720"))  # 8 
 MIN_FREE_MB = float(os.environ.get("V15_GATE_MIN_FREE_MB", "20000"))
 SRC = HOME / "binance-sandbox"
 DEPLOY = [("local", HOME / "binance-sandbox"), ("local", HOME / "binance"), ("10.0.0.3", "/home/niels/binance-sandbox"), ("10.0.0.3", "/home/niels/binance")]
-GATED = ("v15_pilot.py",)
+# USER 2026-10-17 ("all of it should be fed into the next v15_pilot calculations then it gets into live trading if
+# proven successful"): switch_types.py and switch_parity.py were NOT gated, yet v15_pilot imports both and
+# tools/switch_types.coerce IS the pilot's type law (_types_coerce_reason, v15_pilot:2193) — "a candidate the engine
+# cannot consume must never be evaluated". A change there can therefore add or remove candidate cells and move board
+# output with no bench at all. Widening the allowlist only makes the gate STRICTER (more files must PASS to deploy).
+# The 2026-10-17 parse fix that exposed this was measured inert first: 0 of 241,471 template candidate values
+# changed accept/reject verdict, so it moved nothing — the hole was in coverage, not in that change.
+GATED = ("v15_pilot.py", "switch_parity.py", "switch_types.py", "tools/switch_types.py")
 GATED_PREFIX = ("tools/v15_", "tools/v17_")
 CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_*", "archive", "backups", ".venv", "backtest_framework", ".git", "logs", "*.log", "*.db", "*.sqlite", "*.npz", "*.xlsx", "__pycache__", ".history", ".elastic"]
 

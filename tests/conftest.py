@@ -47,6 +47,8 @@ def _shadowing_fixture_modules():
 @pytest.fixture(autouse=True)
 def _evict_tmp_fixture_modules():
     yield
+    if os.environ.get("TEST_TMP_MODULE_EVICT") == "0":
+        return
     for name in _shadowing_fixture_modules():
         sys.modules.pop(name, None)
     for entry in [e for e in sys.path if _under_tmp(e)]:

@@ -3722,3 +3722,44 @@ a trade worth making). Pre-edit images: `backups/before_conda_tier1_*.tar.gz` (v
 `backups/before_conda_tier2_PREIMAGE_6a8c18beb_*.tar.gz` (rebuilt from the pre-edit commit after the first attempt
 archived the ALREADY-EDITED files, because the 15-min autosave cron had committed them and `git show HEAD:` was
 therefore post-edit), and per-worker `backups/{conda_worker_local,venv_to_conda}_<ts>/`.
+
+### 111.7 — ONE REGISTRY ANSWERS "WHERE IS THIS DATA" (USER 2026-10-17 "we have 2 ext drives and gateway and macbook and s1 full of klines costing huge resources and you are looking in the WRONG FOLDERS? MAKE A SYSTEM that understands WHERE THINGS ARE … AND CAN NEVER FUCK UP ON SIMPLE ISSUES LIKE THIS")
+
+**`tools/data_locations.py` is the single source of truth for every data location, and `tests/test_data_locations.py`
+holds it to that.** `--where <kind> --host <host>` prints the authoritative path; `--audit` measures every declared
+path on every host (mac / s1 / s2 / gateway / the 4 ext drives) and reports existence, file+symlink+subdir counts,
+size and age; `--kinds` lists what it knows. Kinds today: `klines_crypto`, `klines_stocks`, `market_data_crypto`,
+`indicators_snapshot_crypto`, `indicators_snapshot_stocks`, `positions_crypto`, `positions_stocks`,
+`positions_failover_mirror`, `npz_indicators`, `npz_bar_outbox`, `npz_bar_inbox`, `failover_state`,
+`failover_stage`, `failover_outbox`, `producer_logs`.
+
+**THE THREE RULES THAT MAKE IT WORTH HAVING.**
+1. **Env overrides are part of the truth.** A kind whose path is decided at runtime declares the variable, and
+   resolution reads it FIRST. This is the bug that caused the module: `mac_failover_agent.STAGE` is
+   `LF_STAGE` defaulting to `/Users/niels/live_failover_stage`, which is **NOT under `LF_BASE`**. A diagnostic
+   looked under `<base>/data/live_failover/stage`, found nothing, and reported a working S1→Mac delivery as broken.
+2. **An unknown kind RAISES; it never returns a plausible default.** `where("klines_banana")` exits non-zero and
+   lists the known kinds. A wrong path that looks right is the whole failure class.
+3. **Unverified is a PROBLEM, not a pass.** A canonical path whose probe could not run is reported as
+   `UNVERIFIED`, because silence reading as success is how this goes wrong quietly.
+
+**IT CAUGHT ITS OWN AUTHOR TWICE, WHICH IS THE POINT.** The first registry declared positions at
+`data/positions`; the audit immediately reported 5 missing canonical paths, and the real layout is per-account
+files (`<base>/<acct>/{long,short,augmented,reduced,options}_positions.json`, crypto ang/fin/flz/inf/men, stocks
+tra/trb/trc) — exactly what `live_failover_state_check.side_files()` reads. The first probe counted only regular
+files and so reported `indicators/_quarantine` as "6 files" when it holds **482 entries** (476 are symlinks the NPZ
+adopter makes) and `.purged_npz` as "0" when it holds dated **subdirs** full of stores; it now counts files,
+symlinks and subdirs separately. The first remote probe passed its script as quoted JSON through ssh, got mangled,
+and reported every remote host as `?` — it is base64-encoded now, and a failed probe records WHY in the note.
+
+**WHAT THE FIRST FULL AUDIT FOUND (2026-10-17 06:0xZ), all worth acting on separately:**
+* **Only ONE of the two ext drives is actually backing up.** `/Volumes/SSD2T/binance_archive/` holds 2.5 GB crypto
+  klines (5870 files) and 6.2 GB stocks klines (9416 files), both ~2.4 h fresh. The same two dirs **exist and are
+  EMPTY on `/Volumes/TOSHIBA_EXT`**, and are absent from E3T and WD25.
+* **`backtest_npz_master` is GONE from all four drives** although INFRASTRUCTURE.md still documents it as the
+  4.4 GB master NPZ archive.
+* **S1's sandbox and live trees disagree hugely on stocks klines**: 29,916 files (5.7 GB) in
+  `binance-sandbox/klines_cache_backtest/tradier` vs 4,744 (5.6 GB) in `binance/klines_cache/tradier`.
+* The Mac's `klines_cache_backtest` holds **8 files / 12.6 MB** — effectively empty, so any sweep pointed at the
+  Mac's backtest store is reading nothing.
+* S1's live NPZ store is **497-501 stores / 7.0 GB** (it was 332 at the start of the night).

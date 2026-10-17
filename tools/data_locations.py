@@ -54,6 +54,13 @@ GATEWAY_BASE = "/home/niels/binance"
 # ext drives are Mac-mounted only; TOSHIBA_EXT/SSD2T are the two the operator means by "2 ext drives"
 EXT_DRIVES = ("/Volumes/TOSHIBA_EXT", "/Volumes/SSD2T", "/Volumes/E3T", "/Volumes/WD25")
 
+# Positions are NOT in data/positions. They are per-account files `<base>/<acct>/{long,short}_positions.json`
+# (also augmented_/reduced_/options_positions.json), which is what live_failover_state_check.side_files() reads.
+# The first version of this registry guessed `data/positions` and the audit immediately reported 5 missing
+# canonical paths -- that is the module working: a declared path that does not exist is an error, not a shrug.
+CRYPTO_ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
+STOCKS_ACCOUNTS = ("tra", "trb", "trc")
+
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "StrictHostKeyChecking=accept-new",
        "-o", "ControlMaster=no"]
 HOSTS = {
@@ -81,6 +88,8 @@ class Location:
     n_files: int | None = None
     bytes_: int | None = None
     newest_epoch: float | None = None
+    n_links: int | None = None
+    n_dirs: int | None = None
 
     @property
     def age_s(self):
@@ -133,15 +142,15 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     },
     # ---------------------------------------------------------------- positions
     "positions_crypto": {
-        "mac": [("{base}/data/positions", "canonical", "written ONLY by ez_positions_service (single-writer law 2026-10-14)", None)],
-        "s1": [("{base}/data/positions", "canonical", "S1 writes these only while it holds the lease", None)],
+        "mac": [("{base}/{crypto_acct}", "canonical", "<acct>/{long,short}_positions.json — written ONLY by ez_positions_service (single-writer law 2026-10-14)", None)],
+        "s1": [("{base}/{crypto_acct}", "canonical", "S1 writes these only while it holds the lease; stale copies here are staging leftovers, NOT the takeover source", None)],
     },
     "positions_stocks": {
-        "mac": [("{base}/data/tradier/positions", "canonical", "tradier_positions is the truth vs the broker", None)],
-        "s1": [("{base}/data/tradier/positions", "canonical", "", None)],
+        "mac": [("{base}/{stocks_acct}", "canonical", "<acct>/{long,short,options}_positions.json — tradier_positions is the truth vs the broker", None)],
+        "s1": [("{base}/{stocks_acct}", "canonical", "", None)],
     },
     "positions_failover_mirror": {
-        "mac": [("{base}/data/live_failover/mac_state", "canonical", "account state pushed to S1 every 30 s; merged at takeover", None)],
+        "mac": [("{base}/data/live_failover", "canonical", "the Mac SENDS state (it has no mac_state dir of its own); S1 holds the received copy", None)],
         "s1": [("{base}/data/live_failover/mac_state", "canonical", "received copy of the Mac's state", None)],
     },
     # ---------------------------------------------------------------- NPZ
@@ -194,7 +203,14 @@ def _expand(host: str, template: str) -> list[str]:
     info = HOSTS.get(host) or {}
     if "{ext}" in template:
         return [template.replace("{ext}", d) for d in EXT_DRIVES]
-    return [template.replace("{base}", info.get("base", "")).replace("{sandbox}", info.get("sandbox", info.get("base", "")))]
+    base = info.get("base", "")
+    sandbox = info.get("sandbox", base)
+    resolved = template.replace("{base}", base).replace("{sandbox}", sandbox)
+    if "{crypto_acct}" in resolved:
+        return [resolved.replace("{crypto_acct}", a) for a in CRYPTO_ACCOUNTS]
+    if "{stocks_acct}" in resolved:
+        return [resolved.replace("{stocks_acct}", a) for a in STOCKS_ACCOUNTS]
+    return [resolved]
 
 
 def resolve(kind: str, host: str) -> list[Location]:
@@ -246,17 +262,26 @@ for spec in json.loads(sys.argv[1]):
     if rec["exists"]:
         try:
             if os.path.isdir(p):
-                n = 0; size = 0; newest = 0.0
+                # Count SYMLINKS and SUBDIRS too, and say so. Counting only regular files reported
+                # indicators/_quarantine as "6 files" when it holds 482 entries (the NPZ adopter hardlinks/symlinks
+                # them in) and .purged_npz as "0" when it holds dated SUBDIRS full of stores -- an audit that
+                # undercounts is worse than no audit, because it reads as "nothing there".
+                n = links = dirs = 0; size = 0; newest = 0.0
                 with os.scandir(p) as it:
                     for e in it:
                         try:
                             st = e.stat(follow_symlinks=False)
                         except OSError:
                             continue
-                        if e.is_file(follow_symlinks=False):
+                        if e.is_symlink():
+                            links += 1
+                            size += st.st_size
+                        elif e.is_dir(follow_symlinks=False):
+                            dirs += 1
+                        else:
                             n += 1; size += st.st_size
                         newest = max(newest, st.st_mtime)
-                rec.update(n_files=n, bytes=size, newest=newest or None, is_dir=True)
+                rec.update(n_files=n, n_links=links, n_dirs=dirs, bytes=size, newest=newest or None, is_dir=True)
             else:
                 st = os.stat(p)
                 rec.update(n_files=1, bytes=st.st_size, newest=st.st_mtime, is_dir=False)
@@ -274,13 +299,26 @@ def _measure(host: str, locs: list[Location]) -> None:
     ssh_host = (HOSTS.get(host) or {}).get("ssh")
     try:
         if ssh_host:
+            # base64 the probe AND its payload: passing either through an ssh command line as quoted JSON got it
+            # mangled by the remote shell, which is why every remote host first audited as "?" -- a registry that
+            # cannot see the hosts it describes is worth nothing.
+            import base64
+            src = _PROBE.replace("sys.argv[1]", repr(payload))
+            blob = base64.b64encode(src.encode()).decode()
             py = "/home/niels/.conda/envs/binance_env_mac/bin/python"
-            cmd = SSH + [ssh_host, f"{py} -c {json.dumps(_PROBE)} {json.dumps(payload)}"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+            remote = f"{py} -c 'import base64;exec(base64.b64decode(\"{blob}\").decode())'"
+            res = subprocess.run(SSH + [ssh_host, remote], capture_output=True, text=True, timeout=120)
         else:
-            res = subprocess.run([sys.executable, "-c", _PROBE, payload], capture_output=True, text=True, timeout=120)
-        rows = json.loads((res.stdout or "[]").strip().splitlines()[-1])
-    except Exception:
+            res = subprocess.run([sys.executable, "-c", _PROBE, payload], capture_output=True, text=True, timeout=180)
+        text = (res.stdout or "").strip()
+        if not text:
+            for loc in locs:
+                loc.note = (loc.note + f" [probe failed: {(res.stderr or '').strip()[:60]}]").strip()
+            return
+        rows = json.loads(text.splitlines()[-1])
+    except Exception as exc:
+        for loc in locs:
+            loc.note = (loc.note + f" [probe error: {type(exc).__name__}]").strip()
         return
     by_path = {r["path"]: r for r in rows}
     for loc in locs:
@@ -289,6 +327,8 @@ def _measure(host: str, locs: list[Location]) -> None:
             continue
         loc.exists = r.get("exists")
         loc.n_files = r.get("n_files")
+        loc.n_links = r.get("n_links")
+        loc.n_dirs = r.get("n_dirs")
         loc.bytes_ = r.get("bytes")
         loc.newest_epoch = r.get("newest")
 
@@ -311,10 +351,15 @@ def audit(kinds=None, hosts=None) -> dict:
         for loc in locs:
             entry = report["kinds"].setdefault(loc.kind, {}).setdefault(host, [])
             entry.append({"path": loc.path, "role": loc.role, "from_env": loc.from_env, "env": loc.env,
-                          "exists": loc.exists, "n_files": loc.n_files, "bytes": loc.bytes_,
+                          "exists": loc.exists, "n_files": loc.n_files, "n_links": loc.n_links,
+                          "n_dirs": loc.n_dirs, "bytes": loc.bytes_,
                           "age_s": None if loc.age_s is None else round(loc.age_s), "note": loc.note})
             if loc.role == "canonical" and loc.exists is False:
                 report["problems"].append(f"MISSING canonical {loc.kind} on {host}: {loc.path}")
+            elif loc.role == "canonical" and loc.exists is None:
+                # UNVERIFIED IS NOT OK. A probe that could not run leaves exists=None, and reporting that as
+                # "no problems" is the failure mode this module exists to kill: silence reading as success.
+                report["problems"].append(f"UNVERIFIED canonical {loc.kind} on {host}: {loc.path} ({loc.note[-90:] or 'probe did not run'})")
     return report
 
 
@@ -380,7 +425,12 @@ def main():
                 src = f" <${row['env']}>" if row["from_env"] else ""
                 print(f"  [{mark}] {host:8s} {row['role']:9s} {row['path']}{src}")
                 if row["exists"]:
-                    print(f"           files={row['n_files'] or 0:<7d} size={_fmt_bytes(row['bytes']):>8s} newest={_fmt_age(row['age_s']):>6s}")
+                    extra = ""
+                    if row.get("n_links"):
+                        extra += f" links={row['n_links']}"
+                    if row.get("n_dirs"):
+                        extra += f" subdirs={row['n_dirs']}"
+                    print(f"           files={row['n_files'] or 0:<7d} size={_fmt_bytes(row['bytes']):>8s} newest={_fmt_age(row['age_s']):>6s}{extra}")
                 if row["note"]:
                     print(f"           note: {row['note'][:150]}")
     if rep["problems"]:
