@@ -198,6 +198,11 @@ class Config:
     # multipliers survive); a per-sym value above it is clamped to the mode's own value. Without this the per-sym store's
     # NORMAL-era sizes (e.g. MAX_POSITION_SIZE 780) bypassed LIGHT entirely. False = per-sym values unbounded (old behaviour).
     CRYPTO_MODE_SIZE_CEILING_ENABLED: bool = True
+    # USER 2026-10-17 OVERSIZE_TRIM (oversize_trim.py): platform positions above the position cap are trimmed back to it ONLY at a loss
+    # ("not at a gain but definitely at a loss"); manual quantity is never trimmed. Explicit user exception to "never close at a loss".
+    OVERSIZE_TRIM_ENABLED: bool = True
+    OVERSIZE_TRIM_TOLERANCE_PCT: float = 10.0  # trim only when notional > cap x (1 + this %)
+    OVERSIZE_TRIM_COOLDOWN_SEC: float = 900.0  # at most one trim per position per 15 min
     # USER 2026-10-16 "GET IT OUT": stoch-K may not gate a GUARANTEED_REENTRY in either direction (ez_manage
     # ~40049). The system gates reentries on WT + HTF. True restores the pre-2026-10-16 K behaviour.
     GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED: bool = False

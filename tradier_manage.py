@@ -14199,6 +14199,44 @@ async def _vec_exact_process_twin(
 
 
 _VX_TWIN_FALLBACK_LOGGED: set = set()
+_TR_OVERSIZE_TRIM_TS: Dict[str, float] = {}
+
+
+async def _tr_oversize_trim(account_key, position_key, symbol, position_side, order_queue, trade_manager, position, current_price) -> bool:
+    """Stocks twin of ez_manage._pp_oversize_trim (oversize_trim.py): a platform position above the per-symbol hard value cap
+    x (1 + tolerance), at a LOSS, is reduced back to the cap by the platform's own share (bot order ledger: buy/sell for longs,
+    sell_short/buy_to_cover for shorts since the open). Never at a gain, never manual quantity, once per cooldown per key."""
+    try:
+        import oversize_trim as _ot
+
+        if not _ot.enabled(config):
+            return False
+        _now = time.time()
+        if _now - float(_TR_OVERSIZE_TRIM_TS.get(position_key, 0.0)) < float(getattr(config, "OVERSIZE_TRIM_COOLDOWN_SEC", 900.0) or 900.0):
+            return False
+        _amt = abs(float(getattr(position, "positionAmt", 0) or 0)) if position else 0.0
+        _entry = float(getattr(position, "entry_price", 0) or getattr(position, "entryPrice", 0) or 0) if position else 0.0
+        _px = float(current_price or 0.0)
+        if _amt <= 0 or _entry <= 0 or _px <= 0:
+            return False
+        _caps = [float(_cfg(k, 0.0, account_key, symbol, position_side) or 0.0) for k in ("HARD_MAX_SYMBOL_VALUE_TRADIER", "MAX_SYMBOL_VALUE_TRADIER")]
+        _caps = [c for c in _caps if c > 0]
+        if not _caps:
+            return False
+        _cap = min(_caps)
+        _rows = _odg.get_tradier_guard(account_key, cfg=config, logger=logger).ledger.orders(symbol)
+        _plat = _ot.platform_qty(_rows, position_side == "LONG", position_side, _ot.epoch(getattr(position, "opened_at", None)), "tradier")
+        _q, _why = _ot.decide(config, position_side == "LONG", _amt, _plat, _entry, _px, _cap, 1.0, whole_shares=True)
+        if _q <= 0:
+            return False
+        _TR_OVERSIZE_TRIM_TS[position_key] = _now
+        logger.critical(f"✂️ [OVERSIZE_TRIM_LOSS] {position_key}: {_why}")
+        _res = await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"OVERSIZE_TRIM_LOSS_cap{_cap:.0f}", 100.0, override_qty=_q)
+        logger.warning(f"[OVERSIZE_TRIM_LOSS] {position_key}: REDUCE {_q:.0f} -> {_res}")
+        return True
+    except Exception as _ote:
+        logger.warning(f"[OVERSIZE_TRIM] {position_key}: check error (no trim): {_ote}")
+        return False
 
 
 async def _vec_exact_process(
@@ -14624,6 +14662,9 @@ async def process_position(
             current_price,
         ):
             return "PRE_TWIN_HARD_STOP_CLOSED"
+        # USER 2026-10-17 "oversized platform positions may be trimmed ... not at a gain but definitely at a loss" (manual exempt)
+        if has_position and await _tr_oversize_trim(account_key, position_key, symbol, position_side, order_queue, trade_manager, position, current_price):
+            return "OVERSIZE_TRIM_LOSS"
         # PARITY LOOP STOCKS 2026-10-06: PARITY_VEC_EXACT_MODE (default False = live byte-identical) -> the vec decision drives this bar.
         if bool(
             _cfg("PARITY_VEC_EXACT_MODE", False, account_key, symbol, position_side)

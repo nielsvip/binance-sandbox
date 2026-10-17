@@ -35449,7 +35449,7 @@ class MultiAccountTradeManager:
             # (live_guardian: "CLOSE FIXED_STOP decided ... no fill in 1800s and no refusal logged"). It is hard-coded
             # here beside LIQUIDATION, NOT added to the config list, because a mandate that a config edit can disable is
             # not a mandate.
-            _ung_bypass = is_hedge or "FIXED_STOP" in reason_upper or "LIQUIDATION" in reason_upper or "FORCE_REDUCE" in reason_upper or "EMERGENCY_OVERSIZE" in reason_upper
+            _ung_bypass = is_hedge or "FIXED_STOP" in reason_upper or "LIQUIDATION" in reason_upper or "FORCE_REDUCE" in reason_upper or "EMERGENCY_OVERSIZE" in reason_upper or "OVERSIZE_TRIM_LOSS" in reason_upper  # 2026-10-17 USER: oversized platform positions trimmed "definitely at a loss"
             # 2026-04-16: bypass for technical-exit reasons (WT cross, ratio-close-losing).
             # Default list covers the exits I added today. User controls via config.
             if not _ung_bypass and bool(
@@ -50355,6 +50355,49 @@ _VEC_EXACT_STALE_LOGGED: set = set()
 _PRE_TWIN_STOP_FIRED_TS: dict = {}
 
 
+_OVERSIZE_TRIM_TS: Dict[str, float] = {}
+
+
+async def _pp_oversize_trim(trade_manager, account_key, position_key) -> bool:
+    """USER 2026-10-17 "oversized platform positions may be trimmed ... not at a gain but definitely at a loss" (manual orders exempt,
+    normal reductions still apply to them). A platform position above the active mode's MAX_POSITION_SIZE x (1 + tolerance), at a
+    LOSS, is reduced back to the cap by the platform's own share only (oversize_trim.py; quantity attributed from the bot's
+    broker-confirmed order ledger). Never at a gain, never the manual quantity, once per OVERSIZE_TRIM_COOLDOWN_SEC per key."""
+    try:
+        import oversize_trim as _ot
+        if not _ot.enabled(_ezm_base_config) or not position_key or ":" not in str(position_key):
+            return False
+        _now = time.time()
+        if _now - float(_OVERSIZE_TRIM_TS.get(position_key, 0.0)) < float(getattr(_ezm_base_config, "OVERSIZE_TRIM_COOLDOWN_SEC", 900.0) or 900.0):
+            return False
+        _ak, _sym, _side = parse_position_key(position_key)
+        if _side not in ("LONG", "SHORT"):
+            return False
+        _pos = await trade_manager.get_position(position_key) if hasattr(trade_manager, "get_position") else None
+        _amt = abs(safe_float(getattr(_pos, "positionAmt", 0))) if _pos is not None else 0.0
+        if _amt <= 0:
+            return False
+        _entry = safe_fetch_float(getattr(_pos, "entryPrice", 0.0), 0.0) or safe_fetch_float(getattr(_pos, "entry_price", 0.0), 0.0)
+        try:
+            _px, _ = await price(_sym, _pos, withts=True)
+        except Exception:
+            _px = safe_fetch_float(getattr(_pos, "mark_price", 0.0), 0.0)
+        _is_long = _side == "LONG"
+        _cap = float(get_max_position_size(_sym, account_key=account_key) or 0.0)
+        _rows = _odg.get_binance_guard(account_key, cfg=config, logger=logger).ledger.orders(_sym)
+        _plat = _ot.platform_qty(_rows, _is_long, _side, _ot.epoch(getattr(_pos, "opened_at", None)), "binance")
+        _q, _why = _ot.decide(_ezm_base_config, _is_long, _amt, _plat, _entry, _px, _cap, float(getattr(config, "EXIT_DUST_USD", 5.0) or 5.0))
+        if _q <= 0:
+            return False
+        _OVERSIZE_TRIM_TS[position_key] = _now
+        logger.critical(f"✂️ [OVERSIZE_TRIM_LOSS] {position_key}: {_why}")
+        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=("SELL" if _is_long else "BUY"), position_side=_side, quantity=_q, old_price=_px, unique_id=f"{_ot.REASON}_{int(_now)}", reason=f"{_ot.REASON}_cap{_cap:.0f}", is_full_close=False, action="REDUCE")
+        return True
+    except Exception as _ote:
+        logger.warning(f"[OVERSIZE_TRIM] {position_key}: check error (no trim): {_ote}")
+        return False
+
+
 async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key, _ind_override=None, _px_override=None) -> bool:
     """2026-10-08 USER FIX (ARUSDT/NEARUSDC/AIAUSDT/RENDERUSDT stranded 40h with zero exit paths): hard stops are NOT a twinnable family. Runs BEFORE the VEC_EXACT delegation in process_position, twin-owned or not. Predicates + reason tokens mirror the in-body VIGILANCE_DC4_STOP / ULTIMATE_DC_HARD_STOP blocks (same bypass tokens); the in-body blocks stay as backstop for the native path."""
     try:
@@ -50924,6 +50967,8 @@ async def process_position(
     # 2026-10-08 USER FIX: hard stops run BEFORE the VEC_EXACT delegation (twin-owned or not) — a position must never exist with zero live exit paths.
     if await _pp_unconditional_hard_stops(trade_manager, account_key, position_key):
         return f"{EvalStatus.ACTION_TAKEN}:PRE_TWIN_HARD_STOP_CLOSED"
+    if await _pp_oversize_trim(trade_manager, account_key, position_key):
+        return f"{EvalStatus.ACTION_TAKEN}:OVERSIZE_TRIM_LOSS"
     # parity-loop-crypto 2026-10-06: PARITY_VEC_EXACT_MODE — the twinned families are decided by the vec twin only
     # FIX 2026-10-06: bare `config` is function-local (assigned line ~48386) → UnboundLocalError killed every monitor cycle. Use trade_manager.config (this function's own convention).
     if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(getattr(trade_manager, "config", None), "PARITY_VEC_EXACT_MODE", False)):

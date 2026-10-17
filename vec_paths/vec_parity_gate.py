@@ -86,6 +86,7 @@ VEC_EXIT_TOKENS = (
     "LH_LL_TOP_EXIT",                         # vec_decisions/lh_ll_top_exit.py LH_LL_TOP_EXIT arm=...
     "GAP_MOC_EXIT",                           # v12_quick_engine reason "GAP_MOC_EXIT" (live GAP_MOC_EXIT_VV_*)
     "WT_PERCENTILE",                          # vec_decisions/ported_exit.py WT_PERCENTILE_EXIT (D/4h OB/OS) on exit_sig
+    "OVERSIZE_TRIM_LOSS",                     # 2026-10-17 USER: parity CORRECTION — the vector never holds more than its position cap; trims live back to it (oversize_trim.py)
 )
 # NOT vector exits (live-only, no emitting line in the engine) — blocked under STRICT_VEC_PARITY_GATE_EXITS:
 #   PRE_CLOSE (stocks flatten; engine has the DC_DAYTRADE_PRE_CLOSE_MINUTES field but never emits the close),
