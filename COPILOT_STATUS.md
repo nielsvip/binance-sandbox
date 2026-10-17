@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 11:19:20 UTC
+# Copilot Status — 2026-10-17 11:24:23 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T10:56:21
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T10:58:25
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:00:29
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:04:39
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:06:43
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:12:56
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:15:00
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T11:19:08
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T11:21:13
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T11:23:18
 
 ## Missed Trades (trader comparison)
 
@@ -30,18 +30,18 @@ _None_
 **Held:** 22 | **Watching for reentry:** 12 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-1.5%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.5%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +-0.9%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
-- HELD: **UNIUSDC** SHORT (crypto) peak +4.8%, now +-0.4%
+- HELD: **UNIUSDC** SHORT (crypto) peak +4.8%, now +-0.3%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
 
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 0m ago
-- WATCHING: **SANDUSDT** LONG (crypto) peaked +8.5%, exited 0m ago
+- WATCHING: **SANDUSDT** LONG (crypto) peaked +9.6%, exited 0m ago
 - WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **MANAUSDT** SHORT (crypto) peaked +7.1%, exited 0m ago
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +7.0%, exited 0m ago
