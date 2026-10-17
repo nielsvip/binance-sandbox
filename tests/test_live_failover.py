@@ -307,7 +307,13 @@ def test_full_takeover_fence_and_failback_cycle(world):
         if world.lease()["holder"] == "s1":
             taken = now - T_SATURDAY
             break
-    assert taken is not None and 300 <= taken <= 360, taken
+    # 2026-10-17 USER: "3min all trading is taken over seamlessly on s1". The 300-360 window came from the source
+    # default LF_TAKEOVER_HB_S=300; it is now 60 (USER 2026-10-15 "ARM s1 SO IT CAN ALWAYS ENTER"), so a fully dead
+    # Mac is taken at 60 s absent + LF_TAKEOVER_CONFIRM=4 x 15 s ticks = ~105-120 s. The old lower bound now asserts
+    # the OPPOSITE of the requirement -- it would fail precisely because takeover is fast enough. Upper bound is the
+    # user's 3-minute bar; the lower bound keeps a sub-90 s takeover (which would read a 30-45 s Mac stall under
+    # load as death, per the source comment) a failure.
+    assert taken is not None and 90 <= taken <= 180, taken
     assert ("start", "live-failover-trading.service") in watchdog.actions.calls
     assert json.loads((world.s1 / "ang" / "tracker.json").read_text()) == {"from_mac": 1}
     assert (world.s1 / "ang" / "extra_s1_only.json").exists()

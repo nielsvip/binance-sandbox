@@ -49,10 +49,20 @@ def test_crypto_order_paths_are_reachable_only_from_execute_now():
     funcs = _funcs(src)
     emitters = {_enclosing(funcs, i) for i, line in enumerate(src.splitlines(), 1)
                 if "futures_create_order" in line and not line.lstrip().startswith("#") and '"""' not in line}
-    assert emitters <= {"_fixed_stop_taker_backstop", "place_maker_order", "execute_now"}, \
-        f"a NEW crypto order emitter appeared outside the known set: {sorted(emitters)}"
-    for fn in ("place_maker_order", "_fixed_stop_taker_backstop"):
-        assert _callers_of(src, fn) == {"execute_now"}, f"{fn} must be reachable only from execute_now"
+    allowed = {
+        "place_maker_order",            # ← execute_now only
+        "send_webhook",                 # the DIRECT market wire leg (legacy name, "replaces Finandy webhook")
+        "_fixed_stop_taker_backstop",   # FIXED_STOP algo leg, ← execute_now only
+        "_exit_force_market",           # exit_guarantee FORCE leg — a close, never blockable
+        "initialize",                   # NOT an emitter: wrap_binance_client() names the method while wrapping it
+        "execute_now",
+    }
+    assert emitters <= allowed, f"a NEW crypto order emitter appeared outside the known set: {sorted(emitters - allowed)}"
+    # the three real wire legs must stay downstream of the gate
+    assert _callers_of(src, "place_maker_order") == {"execute_now"}
+    assert _callers_of(src, "_fixed_stop_taker_backstop") == {"execute_now"}
+    assert _callers_of(src, "send_webhook") <= {"execute_now", "place_maker_order"}, \
+        "send_webhook is the wire leg; a caller outside execute_now/place_maker_order would bypass the parity gate"
 
 
 def test_stock_order_paths_are_accounted_for():
