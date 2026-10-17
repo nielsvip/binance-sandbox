@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-17 10:48:16 UTC
+# Copilot Status — 2026-10-17 10:53:27 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T10:25:17
-- **STALE_INDICATORS** [tradier]  — 2026-10-17T10:27:21
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T10:29:25
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T10:33:33
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T10:35:37
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T10:41:50
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T10:43:54
 - **STALE_INDICATORS** [tradier]  — 2026-10-17T10:45:58
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T10:50:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-17T10:52:14
 
 ## Missed Trades (trader comparison)
 
@@ -30,12 +30,12 @@ _None_
 **Held:** 22 | **Watching for reentry:** 12 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +-0.1%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +0.1%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +-0.7%
+- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +0.1%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
-- HELD: **UNIUSDC** SHORT (crypto) peak +4.8%, now +-0.8%
+- HELD: **UNIUSDC** SHORT (crypto) peak +4.8%, now +-0.7%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
