@@ -1,11 +1,4 @@
 {
-  "ang:EGLDUSDT_SHORT": {
-    "orderId": "4000001975068296",
-    "stopPrice": 3.643,
-    "entry_sig": "2026-10-17 17:54:55.550000+00:00",
-    "symbol": "EGLDUSDT",
-    "side": "SHORT"
-  },
   "ang:NMRUSDT_LONG": {
     "orderId": "4000001975068364",
     "stopPrice": 12.197,
@@ -34,18 +27,32 @@
     "symbol": "ENJUSDT",
     "side": "SHORT"
   },
-  "ang:ALTUSDT_LONG": {
-    "orderId": "4000001975082233",
-    "stopPrice": 0.00831,
-    "entry_sig": "2026-10-17 18:06:24.970000+00:00",
-    "symbol": "ALTUSDT",
-    "side": "LONG"
-  },
   "ang:JASMYUSDT_SHORT": {
     "orderId": "4000001975083598",
     "stopPrice": 0.004621,
     "entry_sig": "2026-10-17 18:07:22.609000+00:00",
     "symbol": "JASMYUSDT",
+    "side": "SHORT"
+  },
+  "ang:RSRUSDT_LONG": {
+    "orderId": "4000001975100216",
+    "stopPrice": 0.00191,
+    "entry_sig": "2026-10-17 18:22:36.444000+00:00",
+    "symbol": "RSRUSDT",
+    "side": "LONG"
+  },
+  "ang:MANAUSDT_LONG": {
+    "orderId": "4000001975107050",
+    "stopPrice": 0.08638,
+    "entry_sig": "2026-10-17 18:29:16.935000+00:00",
+    "symbol": "MANAUSDT",
+    "side": "LONG"
+  },
+  "ang:SNXUSDT_SHORT": {
+    "orderId": "4000001975109111",
+    "stopPrice": 0.2204,
+    "entry_sig": "2026-10-17 18:31:08.535000+00:00",
+    "symbol": "SNXUSDT",
     "side": "SHORT"
   }
 }
