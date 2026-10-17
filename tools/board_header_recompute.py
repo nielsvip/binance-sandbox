@@ -55,7 +55,7 @@ def recompute(page: Path) -> dict:
     return {"status": "CONSISTENT" if hdr_ok else "RECOMPUTE", "truth": t}
 
 
-def rewrite(page: Path, ss: str, t: dict) -> str:
+def rewrite(page: Path, ss: str, t: dict):
     text = page.read_text(errors="replace")
     i = text.find('<div class="metrics">')
     j = text.find("</div>", i)
