@@ -61,6 +61,30 @@ def test_sym_sides_round_trip():
     assert sorted(Q.sym_sides(result)) == ["NVDA_LONG", "TSLA_SHORT"]
 
 
+def test_golive_blocklisted_sym_side_never_qualifies():
+    # USER 2026-10-17 "fix lexx": LEXX_SHORT is golive-blocklisted (vendor bad-print clusters) and the registrar
+    # refuses it every run, yet it kept appearing in symbols_trb_short.json. A symbol the go-live gate will never
+    # configure must not be offered to the trader.
+    bl = {"LEXX_SHORT": {"reason": "DATA_SAWTOOTH"}}
+    result = Q.qualify("stocks", ["LEXX", "NVDA"], ["LEXX", "TSLA"], scores={"LEXX": -9.0, "NVDA": 5.0, "TSLA": -5.0}, blocklist=bl)
+    assert Q.symbols(result, "short") == ["TSLA"]
+    assert "LEXX" in Q.symbols(result, "long")  # only the blocklisted SIDE is dropped, not the symbol
+    assert result["dropped"]["blocklisted"] == ["LEXX_SHORT"]
+
+
+def test_blocklist_absent_or_empty_changes_nothing():
+    for bl in (None, {}):
+        result = Q.qualify("stocks", ["NVDA"], ["TSLA"], blocklist=bl)
+        assert Q.symbols(result, "long") == ["NVDA"] and Q.symbols(result, "short") == ["TSLA"]
+        assert result["dropped"]["blocklisted"] == []
+
+
+def test_real_blocklist_loads_and_is_keyed_by_sym_side():
+    bl = Q.load_golive_blocklist()
+    assert isinstance(bl, dict)
+    assert all("_" in k for k in list(bl)[:20])
+
+
 def _write_tree(root, crypto_artifact=None, trb_long=None, trb_short=None, ang_long=None):
     (root / "data").mkdir(parents=True, exist_ok=True)
     if crypto_artifact is not None:

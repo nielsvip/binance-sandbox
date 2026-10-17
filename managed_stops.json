@@ -6,13 +6,6 @@
     "symbol": "SOLUSDC",
     "side": "LONG"
   },
-  "flz:WLDUSDC_LONG": {
-    "orderId": "1000002626600888",
-    "stopPrice": 0.5038,
-    "entry_sig": "2026-10-17 02:56:19.769000+00:00",
-    "symbol": "WLDUSDC",
-    "side": "LONG"
-  },
   "flz:BNBUSDC_LONG": {
     "orderId": "1000002626643515",
     "stopPrice": 716.77,
@@ -20,11 +13,11 @@
     "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "flz:DOGEUSDC_SHORT": {
-    "orderId": "1000002626661645",
-    "stopPrice": 0.08117,
-    "entry_sig": "2026-10-17 04:03:00.497817+00:00",
-    "symbol": "DOGEUSDC",
+  "flz:SOLUSDC_SHORT": {
+    "orderId": "1000002626674495",
+    "stopPrice": 105.37,
+    "entry_sig": "2026-10-17 04:18:10.180000+00:00",
+    "symbol": "SOLUSDC",
     "side": "SHORT"
   },
   "flz:XRPUSDC_SHORT": {
@@ -34,11 +27,11 @@
     "symbol": "XRPUSDC",
     "side": "SHORT"
   },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002626674495",
-    "stopPrice": 105.37,
-    "entry_sig": "2026-10-17 04:18:10.180000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "SHORT"
+  "flz:WLDUSDC_LONG": {
+    "orderId": "1000002626600888",
+    "stopPrice": 0.5038,
+    "entry_sig": "2026-10-17 02:56:19.769000+00:00",
+    "symbol": "WLDUSDC",
+    "side": "LONG"
   }
 }

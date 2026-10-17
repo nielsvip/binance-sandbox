@@ -257,6 +257,34 @@ def export_live(a):
     return 0
 
 
+KV_CATSIDE_VERIFIED = "catside_verified"
+
+
+def _stamp(decisions_doc):
+    """Record that each sym_side in this run was re-measured against today's cat_side defaults."""
+    if (decisions_doc.get("candidate_source") or decisions_doc.get("candidate")) not in ("catside", None):
+        pass
+    try:
+        import per_sym_store as PS
+        prev = PS.kv_get(KV_CATSIDE_VERIFIED) or {}
+        if not isinstance(prev, dict):
+            prev = {}
+        at = decisions_doc.get("ts") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        n = 0
+        for x in decisions_doc.get("decisions", []):
+            ss = x.get("sym_side")
+            if not ss or not x.get("verdict"):
+                continue
+            prev[ss] = {"at": at, "verdict": x["verdict"],
+                        "live": (x.get("live") or {}).get("gain_pct"),
+                        "cand": (x.get("candidate") or {}).get("gain_pct")}
+            n += 1
+        PS.kv_put(KV_CATSIDE_VERIFIED, prev)
+        print(f"[h2h-apply] stamped {n} sym_side(s) as cat_side-verified at {at}")
+    except Exception as e:
+        print(f"[h2h-apply] stamp skipped ({type(e).__name__}: {str(e)[:70]}) — decisions unaffected")
+
+
 def apply_(a):
     import per_sym_store as PS
     d = json.load(open(a.inp))
@@ -267,6 +295,13 @@ def apply_(a):
     if not a.apply:
         print("[h2h-apply] DRY RUN — pass --apply to write")
         return 0
+    # USER 2026-10-17: a KEEP_LIVE verdict deliberately does NOT rewrite the row, so per_sym_active.updated_at
+    # stays old and the set keeps reading as "stale" although it was just measured and beat today's cat_side
+    # defaults. That is exactly the write-recency-vs-staleness confusion this whole check exists to end, so the
+    # verdict itself is stamped: {SYM_SIDE: {at, verdict, live, cand}} in the store KV, which the auditor reads
+    # to tell "old and never re-checked" apart from "old but verified today". Never fatal — a stamp failure
+    # must not stop a measured winner from going live.
+    _stamp(d)
     ok, fail = 0, []
     for x in todo:
         ss = x["sym_side"]

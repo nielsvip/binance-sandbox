@@ -2738,7 +2738,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
             # TRADIER_LIST_CAP sets one. Gate failure saves the ungated lists exactly as before.
             try:
                 _trb_scores = {e["symbol"]: e.get("final_score_norm", 0.0) for e in final_ranking_data_scalars if e.get("symbol")}
-                _trb_qual = rankings_qualify.qualify("stocks", symbols_trb_long, symbols_trb_short, scores=_trb_scores, cap=int(getattr(config, 'TRADIER_LIST_CAP', 0) or 0) or None, plot_n=20)
+                _trb_qual = rankings_qualify.qualify("stocks", symbols_trb_long, symbols_trb_short, scores=_trb_scores, cap=int(getattr(config, 'TRADIER_LIST_CAP', 0) or 0) or None, plot_n=20, blocklist=rankings_qualify.load_golive_blocklist())
                 _gated_long = rankings_qualify.symbols(_trb_qual, "long")
                 _gated_short = rankings_qualify.symbols(_trb_qual, "short")
                 if len(_gated_long) >= 20 and len(_gated_short) >= 20:

@@ -54,6 +54,17 @@ FILES = {"CRYPTO_LONG": "TEMPLATE_CRYPTO_LONG.xlsx", "CRYPTO_SHORT": "TEMPLATE_C
 FLEET = ["s1-via-gateway", "s2"]
 
 
+
+def _opt_key(v):
+    """2026-10-17: compare option values numerically — a typed 50.0 candidate must match a '50' cell (extend refused it)."""
+    t = str(v).strip()
+    if isinstance(v, bool) or t.lower() in ("true", "false"):
+        return t.lower()
+    try:
+        return repr(float(t))
+    except ValueError:
+        return t
+
 def die(msg):
     sys.exit(f"REFUSED: {msg}")
 
@@ -697,7 +708,7 @@ def main():
         wb = openpyxl.load_workbook(str(p))
         try:
             ws = wb[a.tab]
-            have = {str(ws.cell(r, 2).value).strip() for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value == sw and ws.cell(r, 2).value is not None}
+            have = {_opt_key(ws.cell(r, 2).value) for r in range(3, ws.max_row + 1) if ws.cell(r, 1).value == sw and ws.cell(r, 2).value is not None}
             if have and not a.extend:
                 die(f"{sw} already has rows in {fn}!{a.tab} — pass --extend to install only the MISSING candidates")
             if have:
@@ -705,8 +716,8 @@ def main():
                 # a switch installed with one option can only ever read as its own default, so the board never
                 # measures the other legs. Only the missing candidates are inserted and the EXISTING bold default is
                 # left untouched — the defaults gate still requires exactly one bold is_default=YES in the group.
-                miss = [o for o in ordered if str(o).strip() not in have]
-                if str(dflt).strip() not in have:
+                miss = [o for o in ordered if _opt_key(o) not in have]
+                if _opt_key(dflt) not in have:
                     die(f"{fn}!{a.tab}: {sw} exists but its rows do not include the default {dflt!r} (have {sorted(have)}) — fix the default row first")
                 if not miss:
                     print(f"[{cs}] {fn}!{a.tab}: all {len(ordered)} candidates already present — nothing to do", flush=True)

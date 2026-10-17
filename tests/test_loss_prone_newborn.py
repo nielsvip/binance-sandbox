@@ -90,3 +90,31 @@ def test_native_entry_filter_wired_at_both_chokepoints():
         assert "native_entry_ok(" in src and "BLOCKED_LOSS_PRONE_ENTRY_FILTER" in src, f
         assert "_peak_giveback_scope_ok(" in src or f == "ez_manage.py", f
     assert "_peak_giveback_scope_ok(config, position_key" in (ROOT / "ez_positions_quick.py").read_text()
+
+
+def test_breakeven_core_hard_floor_semantics():
+    import vec_decisions.breakeven_gain_erosion as bge
+
+    cfg = {"BREAKEVEN_GAIN_EROSION_MIN_GAIN": 0.1, "BREAKEVEN_GRACE_MINUTES": 5.0, "HARD_BREAKEVEN_FLOOR_ENABLED": True, "HARD_BREAKEVEN_MIN_PEAK_PCT": 0.5}
+    get = lambda k, d: cfg.get(k, d)
+    assert bge.window_decision(get, 0.2, 1.0, 30, False)[:2] == (True, "FIRE")
+    assert bge.window_decision(get, 0.2, 1.0, 30, True)[:2] == (True, "FIRE_HBF_OVERRIDE")
+    assert bge.window_decision(get, 0.2, 0.3, 30, False)[:2] == (False, "PEAK_GATE")
+    assert bge.window_decision(get, 0.2, 1.0, 2, False)[:2] == (False, "GRACE")
+    assert bge.window_decision(get, -1.0, 1.0, 30, False)[:2] == (False, "LOSS_HOLD")
+    cfg["HARD_BREAKEVEN_FLOOR_ENABLED"] = False
+    assert bge.window_decision(get, 0.2, 0.3, 30, False)[:2] == (True, "FIRE")
+    assert bge.window_decision(get, 0.2, 1.0, 30, True)[:2] == (False, "HTF_VETO")
+    up = {"wt1_1h": 2, "wt2_1h": 1, "wt1_4h": 2, "wt2_4h": 1, "wt1_D": 2, "wt2_D": 1}
+    assert bge.trend_veto(lambda k, d: d, True, up) and not bge.trend_veto(lambda k, d: d, False, up)
+    assert bge.htf_veto(lambda k, d: d, 0.5, True, up) == (True, 3)
+    assert bge.htf_veto(lambda k, d: d, -3.0, True, up) == (False, 0)
+
+
+def test_breakeven_core_called_by_live_and_engine():
+    live = (ROOT / "ez_positions_quick.py").read_text()
+    eng = (ROOT / "v12_quick_engine.py").read_text()
+    for call in ("_bge_core.trend_veto(", "_bge_core.htf_veto(", "_bge_core.window_decision("):
+        assert call in live, call
+    for call in ("_bgem.trend_veto(", "_bgem.htf_veto(", "_bgem.window_decision(", "_bgem.in_grace("):
+        assert call in eng, call

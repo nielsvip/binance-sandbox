@@ -49,6 +49,21 @@ def artifact_path(venue: str) -> Path:
     return ARTIFACT_DIR / f"rankings_qualified_{venue}.json"
 
 
+def load_golive_blocklist(root: Optional[Path] = None) -> Dict[str, Any]:
+    """data/golive_blocklist.json -> {SYM_SIDE: {added, reason}}. Fail-open: {} when unreadable.
+
+    USER 2026-10-17 ("fix lexx"): LEXX_SHORT has been golive-blocklisted since 2026-10-09 (vendor history has
+    transient 16-23x bad-print clusters plus zero bars) and the registrar refuses it every run — yet it kept
+    appearing in symbols_trb_short.json, so the trader was still offered a symbol the settings pipeline will
+    never configure. A symbol the go-live gate refuses must not be qualified to trade in the first place."""
+    path = (Path(root) if root else ROOT) / "data" / "golive_blocklist.json"
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def _clean(seq: Optional[Iterable[Any]]) -> List[str]:
     out: List[str] = []
     seen = set()
@@ -71,11 +86,22 @@ def _strength(symbol: str, side: str, scores: Optional[Dict[str, Any]]) -> float
     return value if side == "LONG" else -value
 
 
-def qualify(venue, long_candidates, short_candidates, scores=None, cap=None, tradeable=None, plot_n=DEFAULT_PLOT_N):
-    """-> qualification dict. `tradeable(symbol, side) -> bool`; None allows all."""
+def qualify(venue, long_candidates, short_candidates, scores=None, cap=None, tradeable=None, plot_n=DEFAULT_PLOT_N, blocklist=None):
+    """-> qualification dict. `tradeable(symbol, side) -> bool`; None allows all. `blocklist` = {SYM_SIDE: ...}
+    the go-live registrar refuses (load_golive_blocklist); those never reach a traded list."""
     longs = _clean(long_candidates)
     shorts = _clean(short_candidates)
-    dropped = {"not_tradeable": [], "conflict": [], "over_cap": []}
+    dropped = {"not_tradeable": [], "conflict": [], "over_cap": [], "blocklisted": []}
+    if blocklist:
+        kept_long, kept_short = [], []
+        for symbols, side, keep in ((longs, "LONG", kept_long), (shorts, "SHORT", kept_short)):
+            for symbol in symbols:
+                sym_side = "%s_%s" % (symbol, side)
+                if sym_side in blocklist:
+                    dropped["blocklisted"].append(sym_side)
+                else:
+                    keep.append(symbol)
+        longs, shorts = kept_long, kept_short
     if tradeable is not None:
         kept_long = []
         for symbol in longs:

@@ -193,6 +193,9 @@ def audit_venue(venue, args, ranking_sets):
             finding("FRESH", "qualification artifact is %.1fh old (limit %.0fh)" % (age, args.max_age_h))
 
     # --- LISTS -------------------------------------------------------------
+    blocked = [ss for ss in (["%s_LONG" % s for s in traded_long] + ["%s_SHORT" % s for s in traded_short]) if ss in rankings_qualify.load_golive_blocklist()]
+    if blocked:
+        finding("LISTS", "%d traded sym_side(s) are golive-blocklisted and can never be configured: %s" % (len(blocked), ", ".join(blocked[:10])))
     both = sorted(set(traded_long) & set(traded_short))
     if both:
         finding("LISTS", "%d symbol(s) qualified LONG *and* SHORT at once: %s" % (len(both), ", ".join(both)))

@@ -5826,7 +5826,7 @@ async def save_market_data():
         # the single list the plot loop, tools/v15_ranking_priority.py and the auditor all read.
         try:
             _qual_cap = int(getattr(config, 'ANG_LIST_CAP', 25) or 25)
-            _qual = rankings_qualify.qualify("crypto", symbols_ang_long_list, symbols_ang_short_list, scores=fs, cap=_qual_cap, tradeable=_tradeable_fn, plot_n=20)
+            _qual = rankings_qualify.qualify("crypto", symbols_ang_long_list, symbols_ang_short_list, scores=fs, cap=_qual_cap, tradeable=_tradeable_fn, plot_n=20, blocklist=rankings_qualify.load_golive_blocklist())
             symbols_ang_long_list = rankings_qualify.symbols(_qual, "long")
             symbols_ang_short_list = rankings_qualify.symbols(_qual, "short")
             rankings_qualify.write_artifact("crypto", _qual)
