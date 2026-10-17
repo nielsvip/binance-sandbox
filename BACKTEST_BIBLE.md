@@ -3479,3 +3479,52 @@ supervised process (`NRestarts=0`), the user-level duplicate stopped and disable
 IPUSDC, VANRYUSDT are `status=SETTLING` in `fapi/v1/exchangeInfo`, and `fapi/v1/klines` itself returns the frozen
 settlement close (ICXUSDT 0.0152200). We store faithfully what Binance serves; we do not fabricate it. The
 `source_frozen()` classification and keeping them out of the repair queue stand — only the attribution changed.
+
+### 111.3 — NO USDC/USDT CONVERSION ANYWHERE (USER 2026-10-17 "make sure no usdc/usdt conversion is being applied in any script anymore as it is outdated and obsolete")
+
+**Proven safe before touching anything:** the conversion was ALREADY a no-op for the live universe — no live symbol
+source (`symbols_*.json`, `tradeable_keys.json`, `data/vec_live/vec_driven.json`) contained a USDT name whose USDC
+sibling we hold data for (39 USDC pairs with klines, 38 in `live_usdc_pairs.json`). So removing it cannot change
+behaviour today; it stops the silent rewriting going forward and makes a stale symbol LIST visible instead.
+
+Swept the working tree (backups/worktrees/staged copies excluded): **65 active conversion sites in 27 files ->
+24 left in 9 files**, of which 21 are inside LOCKED files and 3 are deliberate (below).
+
+REMOVED (unlocked files, each compiled, backup per file in `backups/before_usdc_native_*`):
+- `ez_mark_prices_v2.py` ×3 — `fetch_klines` fetched the USDT twin's candles for a USDC symbol; the
+  api_symbol->original map is now identity; a redis fallback price is published under the symbol it belongs to.
+- `gateway_data_broadcaster.py` (both lineages, repo + the gateway's own newer copy) — `api_symbol_for`/
+  `kline_api_symbol` are pure identity, `force_usdc_if_needed` is a NO-OP that WARNS instead of rewriting, and the
+  three "relabel an incoming USDT stream as the USDC pair" blocks are gone. See §111.2 for the dead-base fix.
+- `per_sym_{ang,fin,men}_profiles.py` ×3 — `_load_tf_ohlc` loaded the USDT twin's candles when the USDC file was
+  missing, i.e. it profiled a USDC symbol on USDT bars.
+- `tools/npz_fundoi/fetch_fundoi.py` — funding and open interest are PER CONTRACT; this borrowed the USDT perp's
+  funding/OI into the USDC symbol's `cov_funding`/`oi_*` NPZ keys. Native only (deployed S1+s2, md5 verified).
+- `tools/npz_3m/fetch_klines_3m1m.py` — same fallback for the 3m/1m NPZ inputs (deployed S1+s2).
+- `tools/wmh/pull_wm.py` — wrote a `{sym}_{tf}.proxyUSDT.json` weekly/monthly "proxy" for USDC symbols. Retired.
+- `ez_manage_sandbox.py` ×8 and `scripts/ez_manage_2802.py` ×8 — incoming-symbol normalisation, mark-price
+  candidates, indicator-snapshot aliasing, and `get_symbol_config`'s USDT fallback. **That last one mattered most:
+  tick size, step size and min notional are per contract, so a USDC order sized on the USDT pair's filters can be
+  rejected or mis-rounded.** It now logs a missing config instead of borrowing one.
+- `scripts/limitless_{trader,tournament}.py` — the ticker map named USDT pairs and the code force-converted them;
+  the MAP now names the real symbol (DOGE/SUI/WIF/NEAR, plus AAVE in the trader) and the conversion is gone.
+  DOT/XLM/TRX/MNT/LEO/XMR stay USDT because **those USDC pairs have never existed** (operator confirmed; verified
+  absent from `fapi/v1/exchangeInfo`), and PEPE stays USDT because its USDC contract is `1000PEPEUSDC` — a
+  different contract size, not a twin.
+- `scripts/ang_reentry_monitor.py`, `flz_dashboard.py`, `gate_analysis.py`, `intervention_oneshot.py`,
+  `trader_deep_analyzer.py` ×2, `backtest_derived_strategies.py`, `reverse_engineer_traders.py` — twin lookups in
+  kline/NPZ/mark-price resolution.
+- `tools/build_usdc_hybrid_1y.py` — **RETIRED behind a hard refusal.** It built a "1y USDC" series from ADJUSTED
+  USDT bars (USDC for ~18 d, converted USDT for ~347 d). Unnecessary: real USDC history is 442-1016 d.
+
+DELIBERATELY LEFT (3 sites, none applies a conversion):
+1. `gateway_data_broadcaster.py:192` — the `.replace` only DETECTS that a USDC pair exists so the no-op can warn.
+2. `tools/build_usdc_hybrid_1y.py:33` — inside the retired script, unreachable behind the refusal.
+3. `vec_decisions/small_account_sizer.py:78` — `step_size_for`'s USDT fallback is the VECTOR TWIN of the live
+   fallback in `ez_manage.py` (locked). Removing one side alone would create a vec-vs-live sizing divergence, so
+   both must go in the same change.
+
+STILL TO DO — LOCKED FILES, 21 sites (CLAUDE.md STEP 0b; HANDS_FREE explicitly does NOT override LOCKED_FILES):
+`ez_manage.py` 13, `ez_prices.py` 2, `utils.py` 2 (`force_usdc_if_needed`/`force_usdc_in_list`, whose callers are
+`ez_positions_service.py` and `ez_mark_prices.py`), `ez_positions_quick.py` 2, `ez_double.py` 1,
+`ez_mark_prices.py` 1 — plus `vec_decisions/small_account_sizer.py` in the same pass for parity.
