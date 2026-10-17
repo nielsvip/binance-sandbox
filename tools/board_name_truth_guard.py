@@ -54,6 +54,7 @@ MTM_PREFIXES = ("FINAL_MTM", "WINDOW_END_MTM", "MTM_FINAL", "OPEN_AT_WINDOW_END"
 HDR_GAIN_RE = re.compile(r"gain\s+(-?[\d.]+)%")
 HDR_PEAK_RE = re.compile(r"peak\s+\$(-?[\d.]+)")
 GAIN_TOL = 0.01
+TRUTH_VERSION = 3  # bump whenever page_truth changes: cached verdicts of older versions are recomputed
 LOG = Path.home() / "logs" / "board_name_truth_guard.log"
 
 
@@ -214,9 +215,13 @@ def page_truth(path: Path) -> dict:
     hdr_peak = float(mp.group(1)) if mp else None
     pks = event_peaks(closed + countable_events)
     # the header's printed "peak $X" decides which replay the page was written with; cost basis when it matches or is absent
-    peak_method = "cost"
-    if hdr_peak is not None and abs(round(pks["cost"]) - hdr_peak) > 1.0 and abs(round(pks["price"]) - hdr_peak) <= 1.0:
-        peak_method = "price"
+    # which replay wrote this page: the one whose peak rounds to the printed "$X" AND reproduces the printed gain; cost basis wins ties
+    def _fits(m):
+        pk = pks[m]
+        peak_ok = hdr_peak is None or abs(round(pk) - hdr_peak) <= 1.0
+        gain_ok = hdr_gain is not None and pk > 0 and abs(round(pnl / pk * 100.0, 2) - hdr_gain) <= GAIN_TOL + 1e-9
+        return (peak_ok and gain_ok, peak_ok)
+    peak_method = max(("cost", "price"), key=lambda m: (_fits(m), m == "cost"))
     peak = pks[peak_method]
     out = {"sum_pnl_dollars": pnl, "peak": peak, "peak_header": hdr_peak, "peak_sweep": sweep_peak(closed), "header_gain": hdr_gain, "closed_trades": len(closed), "peak_method": peak_method, "mtm_rows_excluded": sum(1 for t in trades if isinstance(t, dict) and is_unrealised(t))}
     if peak <= 0:
@@ -370,11 +375,11 @@ class Guard:
             return {"status": "UNREADABLE", "why": "vanished mid-scan"}
         key = str(p)
         c = self.state["cache"].get(key)
-        if c and c.get("size") == st.st_size and c.get("mtime") == st.st_mtime:
+        if c and c.get("size") == st.st_size and c.get("mtime") == st.st_mtime and c.get("v") == TRUTH_VERSION:
             return c["truth"]
         t = page_truth(p)
         t["page"] = str(p)
-        self.state["cache"][key] = {"size": st.st_size, "mtime": st.st_mtime, "truth": t}
+        self.state["cache"][key] = {"size": st.st_size, "mtime": st.st_mtime, "v": TRUTH_VERSION, "truth": t}
         return t
 
     def run(self) -> dict:
