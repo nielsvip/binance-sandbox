@@ -86,11 +86,36 @@ def test_caps_clamp_crypto_and_spare_stocks():
 
 
 def test_caps_off_is_a_pure_passthrough():
-    """Minimum mode OFF must hand back the board set untouched — the real sizes reach live unchanged."""
+    """Minimum mode OFF and the mode ceiling OFF must hand back the board set untouched."""
+    import config as cfg
+
     saved = _force_min_mode(False)
+    old = getattr(cfg.Config, "CRYPTO_MODE_SIZE_CEILING_ENABLED", True)
+    cfg.Config.CRYPTO_MODE_SIZE_CEILING_ENABLED = False
     try:
         raw = {k: 10_000.0 for k in pls.CRYPTO_MIN_SIZE_CAPS}
         assert pls._apply_caps("BTCUSDT_LONG", raw) is raw
+    finally:
+        cfg.Config.CRYPTO_MODE_SIZE_CEILING_ENABLED = old
+        pls._min_mode_on = saved
+        pls._cap_memo.clear()
+
+
+def test_mode_ceiling_clamps_above_and_keeps_below():
+    """USER 2026-10-17 "LIGHT_MODE temporarily but not take out any order size differentiation ... ~1-8x": with minimum mode
+    off, a board size ABOVE the active mode's own value is clamped to it, a size BELOW passes untouched (ratios survive)."""
+    import config as cfg
+
+    saved = _force_min_mode(False)
+    try:
+        table = pls._cap_table()
+        assert table and set(table) == set(pls.CRYPTO_MIN_SIZE_CAPS)
+        raw = {k: v * 10 for k, v in table.items()}
+        raw["START_POSITION_SIZE"] = table["START_POSITION_SIZE"] / 2
+        got = pls._apply_caps("BTCUSDT_LONG", raw)
+        assert got["START_POSITION_SIZE"] == table["START_POSITION_SIZE"] / 2
+        assert all(got[k] == table[k] for k in table if k != "START_POSITION_SIZE")
+        assert pls._apply_caps("AAPL_LONG", raw) is raw
     finally:
         pls._min_mode_on = saved
         pls._cap_memo.clear()
@@ -124,7 +149,9 @@ def test_live_board_is_served():
         if min_mode:
             assert float(got[knob]) <= cap, knob
         else:
-            assert got[knob] == board[knob], f"{knob}: caps off must pass the board value through"
+            ceil = (pls._cap_table() or {}).get(knob)
+            want = board[knob] if ceil is None or float(board[knob]) <= ceil else ceil
+            assert float(got[knob]) == float(want), f"{knob}: board value under the active-mode ceiling must pass through"
     off = [
         k
         for k, v in board.items()

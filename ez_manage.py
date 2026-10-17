@@ -8214,6 +8214,31 @@ CRYPTO_MIN_SIZE_CAPS = {
 }
 
 
+_CRYPTO_MODE_CEILING_LOGGED: set = set()
+
+
+def _crypto_mode_ceiling(knob: str, value):
+    """USER 2026-10-17 "LIGHT_MODE temporarily but not take out any order size differentiation ... ~1-8x flexibility": a per-sym
+    sizing value above the ACTIVE mode table's own value (config._apply_mode, switched live from market_mode.json) is clamped
+    to it; values below pass untouched. Minimum-trading mode keeps its own flat caps (_crypto_min_size_cap, checked first).
+    Kill switch CRYPTO_MODE_SIZE_CEILING_ENABLED. Twin of per_sym_live_set._cap_table (the _PerSymProxy / quick path)."""
+    if knob not in CRYPTO_MIN_SIZE_CAPS:
+        return value
+    try:
+        if bool(getattr(_ezm_base_config, "CRYPTO_MINIMUM_TRADING_MODE", False)) or not bool(getattr(_ezm_base_config, "CRYPTO_MODE_SIZE_CEILING_ENABLED", True)):
+            return value
+        cap = float(getattr(_ezm_base_config, knob))
+        if value is not None and float(value) > cap:
+            _k = f"{knob}:{getattr(_ezm_base_config, 'MARKET_MODE', '?')}"
+            if _k not in _CRYPTO_MODE_CEILING_LOGGED:
+                _CRYPTO_MODE_CEILING_LOGGED.add(_k)
+                logger.warning(f"[MODE_SIZE_CEILING] {knob}: per-sym {value} > {getattr(_ezm_base_config, 'MARKET_MODE', '?')} {cap} -> {cap} (logged once per knob+mode)")
+            return cap
+    except (TypeError, ValueError):
+        pass
+    return value
+
+
 def _crypto_min_size_cap(knob: str, value):
     """-> capped value when CRYPTO_MINIMUM_TRADING_MODE is on and `knob` is a sizing knob, else None.
     Caps, never raises: a per_sym value already BELOW the cap is left alone. Fail-SAFE — on any error the cap is
@@ -8294,13 +8319,13 @@ def _psym_get(symbol: str, side: str, knob: str, default):
             import per_sym_store as _pss
             _ov = _pss.get_overrides(f"{symbol}_{side}")
             if _ov is not None and knob in _ov:
-                return _ov[knob]
+                return _crypto_mode_ceiling(knob, _ov[knob])
         except Exception:
             pass
     if symbol and side:
         _csd_v = _ezm_cat_side_default(symbol, side, knob)
         if _csd_v is not _EZM_CSD_MISSING:
-            return _csd_v
+            return _crypto_mode_ceiling(knob, _csd_v)
     return getattr(config, knob, default)
 
 
@@ -8690,9 +8715,9 @@ def _psym_sps_raw(symbol: str, side: str):
         if "START_POSITION_SIZE_OVERRIDE_USD" in ov:
             v = ov["START_POSITION_SIZE_OVERRIDE_USD"]
             if v is not None:
-                return float(v) * _cv
+                return float(_crypto_mode_ceiling("START_POSITION_SIZE", v)) * _cv  # mode ceiling on the base; conviction still differentiates
         if "START_POSITION_SIZE" in ov:
-            return float(ov["START_POSITION_SIZE"]) * _cv
+            return float(_crypto_mode_ceiling("START_POSITION_SIZE", ov["START_POSITION_SIZE"])) * _cv
     except Exception:
         pass
     base = float(getattr(_ezm_base_config, "START_POSITION_SIZE", 45.0)) * _ezm_conviction_mult(symbol, side)

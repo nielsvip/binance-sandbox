@@ -115,15 +115,36 @@ def _min_mode_on() -> bool:
         return True
 
 
+def _cap_table():
+    """Sizing ceiling for crypto: the flat CRYPTO_MIN_SIZE_CAPS in minimum-trading mode, else (USER 2026-10-17 "LIGHT_MODE
+    temporarily but not take out any order size differentiation ... ~1-8x") the ACTIVE mode table's own values
+    (config._apply_mode via the live Config instances). None = no ceiling (CRYPTO_MODE_SIZE_CEILING_ENABLED False).
+    Twin of ez_manage._crypto_mode_ceiling. Fail-SAFE like _min_mode_on: an error returns the flat minimum caps."""
+    if _min_mode_on():
+        return CRYPTO_MIN_SIZE_CAPS
+    try:
+        import config as _cfg
+
+        if not bool(getattr(_cfg.Config, "CRYPTO_MODE_SIZE_CEILING_ENABLED", True)):
+            return None
+        inst = next(iter(list(getattr(_cfg.Config, "_INSTANCES", []) or [])), None) or _cfg.Config()
+        return {k: float(getattr(inst, k)) for k in CRYPTO_MIN_SIZE_CAPS if getattr(inst, k, None) is not None}
+    except Exception:
+        return CRYPTO_MIN_SIZE_CAPS
+
+
 def _apply_caps(sym_side: str, full: dict) -> dict:
     """Clamp the 8 sizing knobs to CRYPTO_MIN_SIZE_CAPS. Returns `full` itself when nothing is above a
     cap (no copy — the hot path reads this thousands of times per cycle), otherwise a capped copy
     memoized for PER_SYM_OVR_MEMO_SEC. Crypto only; a stock sym_side is never capped."""
     sym = sym_side.rpartition("_")[0]
-    if not sym.endswith(CRYPTO_SUFFIXES) or not _min_mode_on():
+    if not sym.endswith(CRYPTO_SUFFIXES):
+        return full
+    caps = _cap_table()
+    if not caps:
         return full
     over = {}
-    for knob, cap in CRYPTO_MIN_SIZE_CAPS.items():
+    for knob, cap in caps.items():
         v = full.get(knob)
         if v is None:
             continue
@@ -135,14 +156,15 @@ def _apply_caps(sym_side: str, full: dict) -> dict:
     if not over:
         return full
     now = time.monotonic()
+    _sig = tuple(sorted(over.items()))
     hit = _cap_memo.get(sym_side)
-    if hit is not None and now - hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "30.0")):
+    if hit is not None and now - hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "30.0")) and (len(hit) < 3 or hit[2] == _sig):
         return hit[1]
     capped = dict(full)
     capped.update(over)
     if len(_cap_memo) >= _CAP_MEMO_MAX:
         _cap_memo.clear()
-    _cap_memo[sym_side] = (now, capped)
+    _cap_memo[sym_side] = (now, capped, _sig)
     return capped
 
 

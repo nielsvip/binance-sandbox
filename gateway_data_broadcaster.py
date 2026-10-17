@@ -83,6 +83,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# USER 2026-10-17 (USDC NATIVE): USD-M USDC perps have their OWN REST klines, kline streams and markPrice
+# streams. PROVEN on the gateway: 5/5 USDC markPrice streams delivered on wss://fstream.binance.com/market/stream
+# (BTCUSDC 81442.70, BNBUSDC 719.47, KAITOUSDC 0.29444736) and 36 usdc@markPrice streams now subscribe there,
+# while the same request on the legacy /stream base timed out. Pricing a USDC pair off its USDT twin is simply the
+# wrong price: measured basis 0.11-0.14% across BTC/ETH/BNB/SOL/LINK/DOGE/KAITO at 00:2xZ, and it widens under
+# stress. Only symbols listed here keep the old substitution (none today).
+USDC_WITHOUT_OWN_FUTURES_STREAM = set()
+# The legacy /stream base is DEAD for BOTH markPrice and kline streams here: the handshake succeeds and not one message arrives, which on
+# the gateway read "connected" -> "No first mark price message received within 5 seconds" -> "timeout - no messages
+# for 2 minutes, reconnecting" -> "Mark Prices: No mark prices found", forever. GATEWAY_MARK_WS_LEGACY=1 restores.
+FSTREAM_WS_BASE_URL = ("wss://fstream.binance.com/stream?streams="
+                    if os.environ.get("GATEWAY_MARK_WS_LEGACY") == "1"
+                    else "wss://fstream.binance.com/market/stream?streams=")
+
+
+def api_symbol_for(symbol: str) -> str:
+    """native symbol; the USDT twin only for symbols that genuinely have no USD-M stream of their own."""
+    if symbol.endswith("USDC") and symbol in USDC_WITHOUT_OWN_FUTURES_STREAM:
+        return symbol.replace("USDC", "USDT")
+    return symbol
+
+
 # Process management
 PID_FILE = str(Path.home() / "logs" / "gateway_broadcaster.pid")
 
@@ -832,8 +854,7 @@ class GatewayDataBroadcaster:
         if not self.http_session:
             return []
             
-        # For USDC pairs, use the USDT endpoint as required by the API
-        api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+        api_symbol = api_symbol_for(symbol)
         
         # Convert internal interval to Binance format
         binance_interval = '1d' if interval == 'D' else interval
@@ -1414,11 +1435,10 @@ class GatewayDataBroadcaster:
                     # Create mark price stream for this batch
                     symbol_streams = []
                     for symbol in symbol_batch:
-                        # For USDC pairs, use the USDT endpoint as required by the API
-                        api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+                        api_symbol = api_symbol_for(symbol)
                         symbol_streams.append(f"{api_symbol.lower()}@markPrice")
                     
-                    stream_url = f"wss://fstream.binance.com/stream?streams={'/'.join(symbol_streams)}"
+                    stream_url = f"{FSTREAM_WS_BASE_URL}{'/'.join(symbol_streams)}"
                     
                     # Start the WebSocket connection for this batch
                     asyncio.create_task(self._handle_mark_price_stream_direct(stream_url, batch_num))
@@ -1460,13 +1480,12 @@ class GatewayDataBroadcaster:
                     # Create kline stream for this batch
                     symbol_streams = []
                     for symbol in symbol_batch:
-                        # For USDC pairs, use the USDT endpoint as required by the API
-                        api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+                        api_symbol = api_symbol_for(symbol)
                         # Convert internal timeframe to Binance WebSocket format
                         binance_timeframe = '1d' if timeframe == 'D' else timeframe
                         symbol_streams.append(f"{api_symbol.lower()}@kline_{binance_timeframe}")
                     
-                    stream_url = f"wss://fstream.binance.com/stream?streams={'/'.join(symbol_streams)}"
+                    stream_url = f"{FSTREAM_WS_BASE_URL}{'/'.join(symbol_streams)}"
                     
                     # Start the WebSocket connection for this batch
                     asyncio.create_task(self._handle_kline_stream(stream_url, timeframe, batch_num))
@@ -1649,11 +1668,10 @@ class GatewayDataBroadcaster:
             # Create mark price stream for this batch
             symbol_streams = []
             for symbol in symbol_batch:
-                # For USDC pairs, use the USDT endpoint as required by the API
-                api_symbol = symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol
+                api_symbol = api_symbol_for(symbol)
                 symbol_streams.append(f"{api_symbol.lower()}@markPrice")
             
-            stream_url = f"wss://fstream.binance.com/stream?streams={'/'.join(symbol_streams)}"
+            stream_url = f"{FSTREAM_WS_BASE_URL}{'/'.join(symbol_streams)}"
             
             logger.info(f"🔄 Reconnecting mark price WebSocket batch {batch_num} in 5 seconds...")
             await asyncio.sleep(5)

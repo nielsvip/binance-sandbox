@@ -192,6 +192,12 @@ class Config:
     # table coherently. Set this True again for a true floor-exposure emergency; CRYPTO_MIN_SIZE_CAPS
     # (ez_manage) and per_sym_live_set._apply_caps are both still wired and keyed off this flag.
     CRYPTO_MINIMUM_TRADING_MODE: bool = False
+    # USER 2026-10-17 "change to LIGHT_MODE temporarily but not take out any order size differentiation and augments ... make sure
+    # we have the ~1-8x flexibility again": the ACTIVE mode table (LIGHT/NORMAL/EXTREME, _apply_mode) is the ceiling for the
+    # 8 sizing knobs. Per-sym values below it are served untouched (their START/order/position ratios and conviction
+    # multipliers survive); a per-sym value above it is clamped to the mode's own value. Without this the per-sym store's
+    # NORMAL-era sizes (e.g. MAX_POSITION_SIZE 780) bypassed LIGHT entirely. False = per-sym values unbounded (old behaviour).
+    CRYPTO_MODE_SIZE_CEILING_ENABLED: bool = True
     # USER 2026-10-16 "GET IT OUT": stoch-K may not gate a GUARANTEED_REENTRY in either direction (ez_manage
     # ~40049). The system gates reentries on WT + HTF. True restores the pre-2026-10-16 K behaviour.
     GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED: bool = False
