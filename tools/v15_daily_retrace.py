@@ -174,6 +174,7 @@ def rerun_symbol(symbol: str, jobs, errors, board: dict, board_leg: bool = True)
     measured in. Comparing L1 vs L2b asks "is the published number reproducible at all"; comparing L2b vs L2 asks
     "do live's own bars differ from the board's bars". Metrics only, so the memo cache may serve it."""
     from live_twins import vec_exact as VX
+    from tools import live_vs_board_parity as LVB
     from tools.opt import evaluate_v12 as E
     from tools.opt import v12_pilot as P
 
@@ -226,7 +227,8 @@ def rerun_symbol(symbol: str, jobs, errors, board: dict, board_leg: bool = True)
             res = E.evaluate_prepared(prep, ov, include_ledger=True)
             out[(ss, md5)] = {"status": "OK", "store_first": float(ts[0]), "store_last": float(ts[-1]), "bars": int(len(ts)),
                               "metrics": {k: res.get(k) for k in ("gain_pct", "trades", "bh_pct", "max_dd_pct", "tim_pct", "wr_pct", "valid", "invalid_reason", "pool_sharpe", "gain_dollars", "net_gain_dollars", "peak_notional", "data_days", "window_days", "mean_deployed")},
-                              "ledger": res.get("execution_ledger") or []}
+                              "trips": LVB.board_trips(res.get("execution_ledger") or []),
+                              "ledger_rows": len(res.get("execution_ledger") or [])}
         except Exception as exc:
             errors.append(f"{ss} {md5[:8]}: eval failed: {exc}")
             out[(ss, md5)] = {"status": f"EVAL_ERROR:{type(exc).__name__}"}
@@ -481,7 +483,7 @@ def main():
                 if rr.get("status") != "OK":
                     continue
                 last = float(rr["store_last"])
-                vts = [t for t in LVB.board_trips(rr["ledger"]) if s["seg_from"] <= t["bar_ts"] < s["seg_to"] and t["bar_ts"] <= last]
+                vts = [t for t in rr["trips"] if s["seg_from"] <= t["bar_ts"] < s["seg_to"] and t["bar_ts"] <= last]
                 lin = [t for t in lts if t not in carried and s["seg_from"] + BAR_S <= t["entry_ts"] < s["seg_to"] + BAR_S and t["entry_ts"] <= last + BAR_S * (a.tol_bars + 1)]
                 pairs, vonly, lonly = match(vts, lin, a.tol_bars, a.tol_early)
                 for i, j, d in pairs:
