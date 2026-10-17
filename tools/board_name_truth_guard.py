@@ -82,7 +82,7 @@ def fmt_token(v: float) -> str:
     return ("m" if r < 0 else "") + f"{abs(r):.2f}".replace(".", "p")
 
 
-COUNT_MTM = os.environ.get("BOARD_TRUTH_COUNT_MTM", "0") == "1"  # USER 2026-10-17 spec: G excludes unrealised/FINAL_MTM rows
+COUNT_MTM = os.environ.get("BOARD_TRUTH_COUNT_MTM", "1") == "1"  # USER 2026-10-17: "a position still open needs to be considered closed at the last bar - if not a huge loser at the end would give the best number" (= metrics_guard.count_unrealised_enabled default, engine, evaluator, chart header)
 
 
 def is_unrealised(row) -> bool:
