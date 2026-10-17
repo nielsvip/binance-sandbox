@@ -14736,23 +14736,11 @@ class HedgeEngine:
             logger.warning(
                 f"🔁 [HEDGE_ORIGIN_SIDE_MISMATCH] {origin_key}: origin_side={origin_side} but symbols_{account_key}_*.json primary={_primary_dbg} — origin may itself be a stale hedge. Proceeding with hedge_side={hedge_side} (opposite of origin)."
             )
-        # 2026-04-17 USER RULE: if origin is USDT AND USDC sibling exists → use USDC as hedge vehicle.
-        # Zero commissions on USDC pairs. Hedge is temporary, so USDC savings compound quickly.
+        # USER 2026-10-17 ("no usdc/usdt conversion ... outdated and obsolete") SUPERSEDES the 2026-04-17 rule
+        # that hedged a USDT position through its USDC sibling for the commission saving: the sibling is a
+        # DIFFERENT CONTRACT, so that hedge carried the USDC/USDT basis (measured 0.11-0.14% on 2026-10-17, wider
+        # under stress) instead of offsetting the position. A hedge is placed on the same contract, full stop.
         hedge_symbol = symbol
-        if symbol.endswith("USDT"):
-            _usdc_sibling = symbol[:-4] + "USDC"
-            # Only redirect when live_usdc_pairs is explicitly populated (exchange init). No file fallback —
-            # backtest/sandbox has live_usdc_pairs empty, so USDT hedge stays USDT (no NPZ for USDC pairs).
-            _live_usdc = (
-                getattr(self.trade_manager, "live_usdc_pairs", None)
-                or getattr(self.trade_manager, "available_usdc_pairs", None)
-                or set()
-            )
-            if _usdc_sibling in _live_usdc:
-                hedge_symbol = _usdc_sibling
-                logger.warning(
-                    f"💱 [HEDGE_USDC_REDIRECT] origin={symbol} USDT in loss → hedging via {_usdc_sibling} (zero commission)"
-                )
         hedge_key = f"{account_key}:{hedge_symbol}_{hedge_side}"
         # 2026-04-26 RACE FIX: cross-check BOTH in-flight sets (dual + same). Without this, parallel
         # execute_dual_hedge can fire a same-symbol-fallback order while we're awaiting our own
@@ -22551,7 +22539,8 @@ async def execute_trade_wrapper(
         )
         if _usdc_candidate in _live_usdc:
             logger.warning(
-                f"[USDC_GATE_ANOMALY] {position_key}: USDT reached gate despite upgrade — {_usdc_candidate} available. Proceeding on USDT."
+                f"[USDC_LIST_STALE] {position_key}: open on {_gate_sym} although {_usdc_candidate} exists — "
+                f"proceeding on the symbol as given (no USDC/USDT conversion); fix the symbol list"
             )
     # ═══════════════════════════════════════════════════════════════════════════
     # TRADEABLE_KEYS GATE — position MUST be in tradeable_keys.json. NO BYPASS.

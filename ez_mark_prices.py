@@ -1956,8 +1956,9 @@ class MarkPriceStreamer:
                             # Publish fallback prices using unified manager
                             for symbol, price in fallback_prices.items():
                                 try:
-                                    # Convert to original symbol format if needed
-                                    original_symbol = symbol.replace("USDT", "USDC") if symbol.endswith("USDT") else symbol
+                                    # USER 2026-10-17: no USDC/USDT conversion — relabelling a USDT
+                                    # fallback price as the USDC pair published a different contract's price.
+                                    original_symbol = symbol
                                     
                                     # Publish using unified manager
                                     await broadcast_mark_prices_to_redis({original_symbol: price})

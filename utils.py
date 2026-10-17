@@ -1650,27 +1650,18 @@ def clean_nans(obj):
         return obj
 
 def force_usdc_if_needed(symbol: str, available_usdc_pairs: set) -> str:
-    """Correct a single symbol if it has a USDC version."""
-    if symbol.endswith("USDT"):
-        usdc_symbol = symbol.replace("USDT", "USDC")
-        # --- FIX: Checks against the provided set ---
-        if usdc_symbol in available_usdc_pairs:
-            return usdc_symbol
+    """NO-OP by design (USER 2026-10-17: "no usdc/usdt conversion ... anymore as it is outdated and obsolete").
+
+    PROVEN inert before removal: no live symbol source (symbols_*.json, tradeable_keys.json, vec_driven.json)
+    contained a USDT name whose USDC sibling we hold data for. Rewriting a symbol here hid the real fault — a
+    list that still names the USDT pair — so that is now reported instead."""
+    if symbol.endswith("USDT") and symbol[:-4] + "USDC" in (available_usdc_pairs or ()):
+        logger.warning(f"⚠️ {symbol} passed in although {symbol[:-4]}USDC exists — fix the symbol list (no conversion applied)")
     return symbol
 
 def force_usdc_in_list(symbols: list[str], available_usdc_pairs: set) -> list[str]:
-    """Convert USDT symbols to USDC if available."""
-    converted = []
-    for symbol in symbols:
-        if symbol.endswith("USDT"):
-            usdc_version = symbol.replace("USDT", "USDC")
-            if usdc_version in available_usdc_pairs:
-                converted.append(usdc_version)
-            else:
-                converted.append(symbol)
-        else:
-            converted.append(symbol)
-    return converted
+    """NO-OP by design — see force_usdc_if_needed (USER 2026-10-17: no USDC/USDT conversion)."""
+    return [force_usdc_if_needed(symbol, available_usdc_pairs) for symbol in symbols]
 
 def safe_fetch_float(value, default=None):
     """Safely convert a value to float, returning default if conversion fails."""

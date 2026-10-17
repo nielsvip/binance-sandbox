@@ -70,12 +70,11 @@ def _step_map(path: str = "") -> dict:
 
 
 def step_size_for(symbol: str) -> float | None:
-    """Lot step for a symbol, with live's USDC->USDT fallback. None if unknown."""
+    """Lot step for a symbol. No USDC->USDT fallback (USER 2026-10-17): step_size is PER CONTRACT, and live's
+    matching fallback in ez_manage.get_symbol_config was removed in the same pass, so vec == live."""
     symbol = _bare(symbol)
     m = _step_map()
     conf = m.get(symbol)
-    if not conf and symbol.endswith("USDC"):
-        conf = m.get(symbol.replace("USDC", "USDT"))
     if not conf:
         return None
     try:

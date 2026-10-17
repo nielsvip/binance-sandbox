@@ -4406,11 +4406,10 @@ class ResamplingAndGapFillEngine:
 
             final_workload = set()
             for symbol in symbols_from_file:
-                # If a USDT pair has a corresponding USDC version, use the USDC pair.
-                if symbol.endswith("USDT") and f"{symbol.replace('USDT', 'USDC')}" in live_usdc_pairs:
-                    final_workload.add(symbol.replace("USDT", "USDC"))
-                else:
-                    final_workload.add(symbol)
+                # USER 2026-10-17: no USDC/USDT conversion — fetch exactly the symbols the list names. The lists
+                # are USDC-native already (verified: no live symbol source holds a USDT name whose USDC sibling
+                # we have data for), so swapping them here only ever hid a stale list.
+                final_workload.add(symbol)
         
             self.symbols_to_run = sorted(list(final_workload))
             self.logger.info(f" Final workload determined. Processing {len(self.symbols_to_run)} symbols after USDC conversion.")

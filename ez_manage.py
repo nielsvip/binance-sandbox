@@ -12535,9 +12535,9 @@ class WebSocketManager:
                 safe_json_loads(_sym_path.read_bytes()) if _sym_path.exists() else []
             )
             _sym_set = set(_sym_list) if isinstance(_sym_list, list) else set()
-            self._valid_mark_symbols: set = _sym_set | {
-                s.replace("USDC", "USDT") for s in _sym_set if s.endswith("USDC")
-            }
+            # USER 2026-10-17: no USDC/USDT conversion — the mark-price stream is native per symbol
+            # (36 usdc@markPrice streams verified on the gateway), so the USDT twin is not a valid alias.
+            self._valid_mark_symbols: set = set(_sym_set)
         except Exception:
             self._valid_mark_symbols = set()
 
@@ -13000,11 +13000,7 @@ class WebSocketManager:
             getattr(self.trade_manager, "symbols_fin", set()),
         ]:
             all_symbols.update(sym_set)
-        if symbol.endswith("USDT"):
-            usdc_candidate = symbol.replace("USDT", "USDC")
-            norm = usdc_candidate if usdc_candidate in all_symbols else symbol
-        else:
-            norm = symbol
+        norm = symbol  # USER 2026-10-17: no USDC/USDT conversion
         ts = ensure_tz(timestamp or datetime.now(timezone.utc))
         updated = False
         iso_ts = ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -13066,10 +13062,7 @@ class WebSocketManager:
         client = await self._ensure_redis_client()
         if not client:
             return (None, None)
-        candidates = (
-            symbol,
-            symbol.replace("USDC", "USDT") if symbol.endswith("USDC") else symbol,
-        )
+        candidates = (symbol,)  # USER 2026-10-17: no USDC/USDT conversion
         for candidate in candidates:
             try:
                 raw = await asyncio.wait_for(client.get(f"mark_price:{candidate}"), timeout=0.1)
@@ -16933,10 +16926,7 @@ class MultiAccountTradeManager:
         if not incoming_data:
             return
         symbol = symbol.strip().upper()
-        if symbol.endswith("USDT"):
-            alt = symbol.replace("USDT", "USDC")
-            if alt in self.indicators_snapshot:
-                symbol = alt
+        # USER 2026-10-17: no USDC/USDT conversion — indicators are keyed by their own symbol.
         if symbol not in self.indicators_snapshot:
             self.indicators_snapshot[symbol] = {}
         existing = self.indicators_snapshot[symbol]
@@ -19010,11 +19000,7 @@ class MultiAccountTradeManager:
             if not isinstance(new_data, dict):
                 continue
             symbol = str(raw_symbol).upper().strip()
-            if symbol.endswith("USDT"):
-                usdc_candidate = symbol.replace("USDT", "USDC")
-                symbol_key = usdc_candidate if usdc_candidate in all_symbols else symbol
-            else:
-                symbol_key = symbol
+            symbol_key = symbol  # USER 2026-10-17: no USDC/USDT conversion
             if symbol_key not in current_snapshot:
                 current_snapshot[symbol_key] = new_data
                 continue
@@ -20390,11 +20376,7 @@ class MultiAccountTradeManager:
             if not isinstance(symbol, str) or not isinstance(data, dict):
                 continue
             symbol = symbol.strip().upper()
-            if symbol.endswith("USDT"):
-                usdc_candidate = symbol.replace("USDT", "USDC")
-                symbol_key = usdc_candidate if usdc_candidate in all_symbols else symbol
-            else:
-                symbol_key = symbol
+            symbol_key = symbol  # USER 2026-10-17: no USDC/USDT conversion
             payload_dict = dict(data)
             symbol_ts = _indicator_payload_timestamp(payload_dict)
             needs_override = True
@@ -21134,13 +21116,13 @@ class MultiAccountTradeManager:
 
     def get_symbol_config(self, symbol):
         config = self.symbol_configs.get(symbol)
-        if not config and symbol.endswith("USDC"):
-            usdt_symbol = symbol.replace("USDC", "USDT")
-            config = self.symbol_configs.get(usdt_symbol)
-            if config and self.logger:
-                self.logger.debug(
-                    f"[CONFIG_FALLBACK] Used {usdt_symbol} config for {symbol}"
-                )
+        if not config and symbol.endswith("USDC") and self.logger:
+            # USER 2026-10-17: NEVER borrow the USDT pair's symbol config. tick_size, step_size and min notional
+            # are PER CONTRACT, so sizing a USDC order on the USDT pair's filters mis-rounds the quantity or gets
+            # the order rejected. Missing config is reported, never substituted.
+            self.logger.warning(
+                f"[CONFIG_MISSING] no symbol_config for {symbol} — refusing the USDT fallback (per-contract filters)"
+            )
         return config
 
     async def round_quantity_to_lot(self, symbol: str, quantity: float) -> float:
@@ -24447,13 +24429,7 @@ class MultiAccountTradeManager:
 
         def normalize_symbol(s):
             sym = str(s).strip().upper()
-            if sym.endswith("USDT"):
-                usdc_sym = sym[:-4] + "USDC"
-                if (
-                    hasattr(self, "available_usdc_pairs")
-                    and usdc_sym in self.available_usdc_pairs
-                ):
-                    return usdc_sym
+            # USER 2026-10-17: no USDC/USDT conversion — leaderboard symbols are used as given.
             return sym
 
         async def _load_file(filepath):
@@ -24856,11 +24832,8 @@ class MultiAccountTradeManager:
         relevant_symbols.add("ETHUSDC")
         filtered_snapshot = {}
 
-        def clean_sym(s):
-            return s.replace("USDT", "USDC")
-
         for sym, data in payload.items():
-            if sym in relevant_symbols or clean_sym(sym) in relevant_symbols:
+            if sym in relevant_symbols:  # USER 2026-10-17: no USDC/USDT conversion
                 filtered_snapshot[sym] = data
         self.indicators_snapshot = filtered_snapshot
         self.indicators_cache_timestamps.clear()
@@ -33846,7 +33819,7 @@ class MultiAccountTradeManager:
                     # Accepting any valid price here eliminates the REST-API dependency.
                     if _stale_age_s > 0:
                         _ps_sym = getattr(_stale_pos, "symbol", None) or symbol
-                        _ps_alt = (_ps_sym.replace("USDC", "USDT") if _ps_sym and _ps_sym.endswith("USDC") else None)
+                        _ps_alt = None  # USER 2026-10-17: no USDC/USDT conversion
                         _proactive_done = False
                         for _ppc in (self.price_cache, getattr(self, "price_cache_2", {}), getattr(self, "price_cache_3", {})):
                             if not isinstance(_ppc, dict) or _proactive_done:
@@ -33877,13 +33850,9 @@ class MultiAccountTradeManager:
                             # WebSocketManager, not MultiAccountTradeManager — calling self.*
                             # raises AttributeError caught silently, so refresh never ran.
                             # Fix: query in-memory price caches directly (WS-updated, no TTL).
-                            # Mark-price stream publishes USDT syms; _apply_mark_price normalises
-                            # USDT→USDC for the 10 majors before storing, so check both.
-                            _usdt_alt = (
-                                _stale_sym.replace("USDC", "USDT")
-                                if _stale_sym and _stale_sym.endswith("USDC")
-                                else None
-                            )
+                            # USER 2026-10-17: the mark-price stream is NATIVE per symbol now (36
+                            # usdc@markPrice streams verified on the gateway), so there is no USDT alias to check.
+                            _usdt_alt = None
                             _now_ref = datetime.now(timezone.utc)
                             for _pc in (
                                 self.price_cache,
@@ -33946,11 +33915,10 @@ class MultiAccountTradeManager:
                         # the exchange directly (USDC perp REST symbol = USDT stream sym).
                         if _stale_age_s > _stale_max_age and _stale_sym and account_key:
                             try:
-                                _rest_sym = (
-                                    _stale_sym.replace("USDC", "USDT")
-                                    if _stale_sym.endswith("USDC")
-                                    else _stale_sym
-                                )
+                                # USER 2026-10-17: a USDC perp has its own REST book — pricing a USDC
+                                # position off the USDT book was reading a different contract (basis measured
+                                # 0.11-0.14% on 2026-10-17, wider under stress).
+                                _rest_sym = _stale_sym
                                 _rest_client = self.get_client(account_key)
                                 if _rest_client:
                                     _book = await asyncio.wait_for(
@@ -34347,11 +34315,13 @@ class MultiAccountTradeManager:
                 or set()
             )
             if _usdc_sym_en in _live_usdc_en:
-                _old_pk_en = position_key
-                symbol = _usdc_sym_en
-                position_key = f"{account_key}:{_usdc_sym_en}_{position_side}"
-                logger.info(
-                    f"[USDC_UPGRADE] {_old_pk_en} → {position_key}: auto-redirected USDT→USDC (zero commissions)"
+                # USER 2026-10-17: the silent USDT->USDC open redirect is RETIRED. The symbol lists are
+                # USDC-native (verified: no live symbol source holds a USDT name whose USDC sibling we have), so
+                # this never fired for the current universe; if it ever would, the LIST is wrong and gets said out
+                # loud instead of a different contract being opened than the one that was decided on.
+                logger.warning(
+                    f"[USDC_LIST_STALE] {position_key}: open requested on {symbol} although {_usdc_sym_en} exists — "
+                    f"NOT redirected (no USDC/USDT conversion); fix the symbol list"
                 )
         # 2026-05-11 REMOVED: WT_3M_OPEN_GATE block (was here) — killed all crypto entries when getattr default fired True on processes started before config.py had WT_3M_OPEN_GATE_ENABLED=False. Inf 25→2 trades/day, flz/men → 0. Block deleted entirely; rule was a misinterpretation per user clarification 2026-05-10.
         # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.

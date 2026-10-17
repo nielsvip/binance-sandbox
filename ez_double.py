@@ -237,11 +237,10 @@ def safe_float(value, default=0.0):
         return default
 
 def force_usdc_if_needed(symbol: str) -> str:
-    """Correct a single symbol if it has a USDC version."""
-    if symbol.endswith("USDT"):
-        usdc_symbol = symbol.replace("USDT", "USDC")
-        if usdc_symbol in config.USDC_SYMBOLS:
-            return usdc_symbol
+    """NO-OP (USER 2026-10-17: no USDC/USDT conversion anywhere). Kept as a seam for existing callers; a symbol
+    that should have been USDC means the LIST is stale, which is now said out loud instead of rewritten."""
+    if symbol.endswith("USDT") and symbol[:-4] + "USDC" in getattr(config, "USDC_SYMBOLS", ()):
+        logger.warning(f"⚠️ {symbol} passed in although {symbol[:-4]}USDC exists — fix the symbol list (no conversion applied)")
     return symbol
 
 def force_usdc_in_list(symbols: list[str]) -> list[str]:
