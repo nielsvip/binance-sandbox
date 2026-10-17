@@ -1,90 +1,32 @@
 {
- "generated_at": "2026-10-17 19:52 UTC",
- "total_capital_usd": 39.82,
+ "generated_at": "2026-10-17 20:43 UTC",
+ "total_capital_usd": 5.98,
  "tier_capital": {
-  "A": 6.1,
-  "B": 11.21,
-  "C": 22.51
+  "A": 0.0,
+  "B": 5.98,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 1,
-  "B": 2,
-  "C": 3
+  "A": 0,
+  "B": 1,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:NMRUSDT_LONG",
-  "ang:TRUMPUSDC_SHORT",
-  "ang:RSRUSDT_LONG",
-  "ang:SNXUSDT_SHORT"
+ "losers": [],
+ "mediocre": [
+  "flz:XRPUSDC_SHORT"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "ang:TRUMPUSDC_SHORT",
-   "symbol": "TRUMPUSDC",
-   "account": "ang",
-   "value_usd": 7.57,
-   "gain_pct": -1.021,
-   "tier": "C",
-   "perf_mult": 0.46,
-   "amt": 4.25,
-   "mark": 1.781
-  },
-  {
-   "pk": "ang:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 7.51,
-   "gain_pct": -0.485,
-   "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 34.4,
-   "mark": 0.21835324
-  },
-  {
-   "pk": "ang:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "ang",
-   "value_usd": 7.47,
-   "gain_pct": 0.442,
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 5.98,
+   "gain_pct": 0.21,
    "tier": "B",
-   "perf_mult": 0.22,
-   "amt": 737.0,
-   "mark": 0.01013497
-  },
-  {
-   "pk": "ang:RSRUSDT_LONG",
-   "symbol": "RSRUSDT",
-   "account": "ang",
-   "value_usd": 7.43,
-   "gain_pct": -0.978,
-   "tier": "C",
-   "perf_mult": 0.25,
-   "amt": 3667.0,
-   "mark": 0.002026
-  },
-  {
-   "pk": "ang:ENJUSDT_SHORT",
-   "symbol": "ENJUSDT",
-   "account": "ang",
-   "value_usd": 6.1,
-   "gain_pct": -2.011,
-   "tier": "A",
-   "perf_mult": 9.39,
-   "amt": 210.0,
-   "mark": 0.02906
-  },
-  {
-   "pk": "ang:NMRUSDT_LONG",
-   "symbol": "NMRUSDT",
-   "account": "ang",
-   "value_usd": 3.74,
-   "gain_pct": -1.05,
-   "tier": "B",
-   "perf_mult": 0.39,
-   "amt": 0.3,
-   "mark": 12.47263404
+   "perf_mult": 0.94,
+   "amt": 4.6,
+   "mark": 1.29926883
   }
  ]
 }
