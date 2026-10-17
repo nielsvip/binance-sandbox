@@ -22,12 +22,11 @@ SKIP_DIRS = {".git", ".venv", "backups", "__pycache__", ".backup", ".claude", "t
 # only compared. These are the shapes that assign/return it.
 APPLY = re.compile(
     r"""(?x)
-    (?:^|[^#\n]*?)                                   # not a comment-only line (checked separately)
+    (?: =\s* | return\s+ )                            # the rewritten symbol is ASSIGNED or RETURNED
+    [A-Za-z_][\w\.\[\]"']{0,60}                        # a bounded symbol expression (no runaway backtracking)
     (?:
-        =\s*[A-Za-z_][\w\.\[\]"']*\.replace\(\s*["'](?:USDC|USDT)["']\s*,\s*["'](?:USDT|USDC)["']\s*\)
-      | return\s+[A-Za-z_][\w\.\[\]"']*\.replace\(\s*["'](?:USDC|USDT)["']\s*,\s*["'](?:USDT|USDC)["']\s*\)
-      | =\s*[A-Za-z_][\w\.\[\]"']*\[:-4\]\s*\+\s*["'](?:USDT|USDC)["']\s*$
-      | return\s+[A-Za-z_][\w\.\[\]"']*\[:-4\]\s*\+\s*["'](?:USDT|USDC)["']
+        \.replace\(\s*["'](?:USDC|USDT)["']\s*,\s*["'](?:USDT|USDC)["']\s*\)
+      | \[:-4\]\s*\+\s*["'](?:USDT|USDC)["']
     )
     """
 )
