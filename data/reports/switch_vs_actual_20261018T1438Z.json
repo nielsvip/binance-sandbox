@@ -1,0 +1,53 @@
+{
+ "window_from": "10-18 13:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 29,
+  "STATE_CONVERGENCE": 1,
+  "FILLED_ON_BAR": 1,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "men",
+   "sym_side": "SNXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 13:38",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "SOLUSDC_SHORT",
+   "dictated_bar": "10-18 14:00",
+   "dictated": "CLOSE",
+   "dictated_reason": "EXIT_VELOCITY_WT against-short g0.18%",
+   "actual_at": "10-18 14:13",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": -1,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "UNIUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 14:06",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
