@@ -5838,11 +5838,11 @@ class Config:
             #   AUGMENTATION_COOLDOWN_SECONDS    light held 660.0 -> base 90.0  (was 7.3x slower than measured)
             # A cooldown decides WHICH BAR a trade lands on, so a mode table moving it changes the trade the
             # vector chose. Exposure is cut by the size knobs alone; timing stays the board's.
-            "START_POSITION_SIZE": 15.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_POSITION_SIZE": 120.0,  # RESTORED 2026-10-17; minimum mode held 12.0
-            "MAX_ORDER_VALUE": 80.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_ORDER_VALUE_MEN": 80.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
-            "MAX_ORDER_VALUE_FIN": 80.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "START_POSITION_SIZE": 25.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 140.0,  # RESTORED 2026-10-17; minimum mode held 12.0
+            "MAX_ORDER_VALUE": 120.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_ORDER_VALUE_MEN": 120.0,  # USER 2026-10-17 "280 is more than enough with the error prone system we are running now" (light table had 440, above normal's 280); QuickConfig-exact
+            "MAX_ORDER_VALUE_FIN": 120.0,  # RESTORED 2026-10-17; minimum mode held 6.0
             "MIN_GAIN": 3.0,  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
             "MAX_POSITION_SIZE_MEN": 120.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
             "MAX_POSITION_SIZE_FIN": 120.0,  # 2026-10-17 aligned to QuickConfig 280 (light/base tables held 360) — vector-exact and lower
