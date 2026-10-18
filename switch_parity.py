@@ -534,6 +534,17 @@ def register_workbook_result(
             f"type-gate refused ALL ({len(bad)} bad): {dict(list(bad.items())[:6])}"
         )
         return rep
+    if os.environ.get("CLAIM_BACKING_GATE", "0") != "0":  # USER 2026-10-18 "NOTHING EVER EVER CAN CLAIM A GAIN THAT IS NOT COMPLETELY BACKED UP WITH TRADE BY TRADE XLSX AND HTML AND JSON EVER" — a gain reaches no surface unless a board on disk reproduces it from its own per-trade rows (fail-closed; CLAIM_BACKING_GATE=0 off, =1 refuse, =warn record only)
+        try:
+            sys.path.insert(0, str(root / "tools"))
+            from claim_backing_gate import check_claim_backed as _cbg
+            _cb_ok, _cb_why, _cb_rec = _cbg(sym_side, ev, root=root, tol=float(os.environ.get("CLAIM_BACKING_TOL", "0.48")), require_sidecar=os.environ.get("CLAIM_BACKING_SIDECAR", "0") == "1")
+        except Exception as _cbe:
+            _cb_ok, _cb_why, _cb_rec = False, f"claim_backing_gate unavailable — refusing (fail-closed): {_cbe}", {}
+        rep["claim_backing"] = _cb_rec
+        if not _cb_ok and os.environ.get("CLAIM_BACKING_GATE") != "warn":
+            rep["reason"] = f"claim-backing gate refused: {_cb_why}"
+            return rep
     book = _book_path(sym_side, root)
     old_entry, old_tag = {}, ""
     try:

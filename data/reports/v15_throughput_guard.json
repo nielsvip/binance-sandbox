@@ -1,190 +1,107 @@
 {
- "at": "2026-10-18T04:11:15Z",
+ "at": "2026-10-18T07:11:07Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
    "improved": 1,
    "improved_per_hour": 1.0,
+   "published_n": 2,
+   "flat_or_worse": 1,
+   "unknown": 0,
+   "boards_running": [
+    "TIAUSDC_LONG"
+   ],
+   "mem_avail_mb": 17350,
+   "load1": 24.53,
+   "nproc": 16,
+   "slots": "1/4",
+   "binding_reason": "scheduler mem guard (disk 14905 MB, mem 17652 MB, est_pair 15544 MB) \u2014 slots 1/4",
+   "error": null,
+   "published": [
+    {
+     "symside": "GRTUSDT_LONG",
+     "at": "2026-10-18T06:59:17Z",
+     "baseline": 91.83359848716651,
+     "final": 65.76570264905266,
+     "state": "flat_or_worse"
+    },
+    {
+     "symside": "GRTUSDT_SHORT",
+     "at": "2026-10-18T06:36:04Z",
+     "baseline": 31.99692850537427,
+     "final": 40.17319848152868,
+     "state": "improved"
+    }
+   ],
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": 34.6,
+   "last_improved_symside": "GRTUSDT_SHORT",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 10.3,
+   "improved_gap_min_max_24h": 309.6,
+   "improved_finishes_24h": 63,
+   "board_cpu_s_median_24h": 1573.9,
+   "board_wall_s_median_24h": 663.0708677768707,
+   "board_cores": 1.92,
+   "nonboard_cores_competing": 4.16,
+   "nonboard_cores_niced": 9.52,
+   "cores_by_bucket": {
+    "other": 1.13,
+    "live_helpers": 2.1,
+    "boards": 1.92,
+    "klines_append": 0.93
+   },
+   "cores_by_bucket_niced": {
+    "other": 8.59,
+    "klines_vault": 0.93
+   }
+  },
+  "s2": {
+   "improved": 1,
+   "improved_per_hour": 1.0,
    "published_n": 1,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "EDUUSDT_LONG"
+    "ALGOUSDT_LONG"
    ],
-   "mem_avail_mb": 16736,
-   "load1": 31.05,
-   "nproc": 16,
-   "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 15828 MB, mem 19082 MB, est_pair 15544 MB) \u2014 slots 1/4",
-   "error": null,
-   "published": [
-    {
-     "symside": "LINKUSDC_SHORT",
-     "at": "2026-10-18T03:17:51Z",
-     "baseline": -2.480930650124271,
-     "final": 32.796397575578276,
-     "state": "improved"
-    }
-   ],
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 16.5,
-   "last_improved_symside": "1000PEPEUSDC_LONG",
-   "cadence_ok": false,
-   "improved_gap_min_median_24h": 10.3,
-   "improved_gap_min_max_24h": 170.7,
-   "improved_finishes_24h": 61,
-   "board_cpu_s_median_24h": 1627.4,
-   "board_wall_s_median_24h": 674.3377549648285,
-   "board_cores": 0.99,
-   "nonboard_cores_competing": 4.14,
-   "nonboard_cores_niced": 9.58,
-   "cores_by_bucket": {
-    "other": 1.1,
-    "live_helpers": 2.19,
-    "boards": 0.99,
-    "klines_append": 0.85
-   },
-   "cores_by_bucket_niced": {
-    "other": 8.4,
-    "klines_vault": 1.18
-   }
-  },
-  "s2": {
-   "improved": 13,
-   "improved_per_hour": 13.0,
-   "published_n": 14,
-   "flat_or_worse": 1,
-   "unknown": 0,
-   "boards_running": [
-    "WLDUSDC_LONG"
-   ],
-   "mem_avail_mb": 27776,
-   "load1": 3.07,
+   "mem_avail_mb": 12102,
+   "load1": 5.3,
    "nproc": 16,
    "slots": "1/6",
-   "binding_reason": "scheduler mem guard (disk 77187 MB, mem 28289 MB, est_pair 20728 MB) \u2014 slots 1/6",
+   "binding_reason": "scheduler mem guard (disk 76721 MB, mem 13401 MB, est_pair 21300 MB) \u2014 slots 1/6",
    "error": null,
    "published": [
     {
-     "symside": "COP_LONG",
-     "at": "2026-10-18T04:00:05Z",
-     "baseline": 19.07621465781282,
-     "final": 26.003133286870867,
-     "state": "improved"
-    },
-    {
-     "symside": "FCX_LONG",
-     "at": "2026-10-18T03:24:31Z",
-     "baseline": 4.298541639746585,
-     "final": 20.056273516473798,
-     "state": "improved"
-    },
-    {
-     "symside": "PLTR_LONG",
-     "at": "2026-10-18T03:53:40Z",
-     "baseline": 6.671202338059295,
-     "final": 30.994104518402494,
-     "state": "improved"
-    },
-    {
-     "symside": "PLTR_SHORT",
-     "at": "2026-10-18T03:53:55Z",
-     "baseline": -4.638516999479301,
-     "final": 10.009651912528755,
-     "state": "improved"
-    },
-    {
-     "symside": "PR_LONG",
-     "at": "2026-10-18T03:49:39Z",
-     "baseline": 12.962409657826225,
-     "final": 15.987305525622746,
-     "state": "improved"
-    },
-    {
-     "symside": "PSX_LONG",
-     "at": "2026-10-18T03:35:19Z",
-     "baseline": 18.4981940158659,
-     "final": 22.91207868892431,
-     "state": "improved"
-    },
-    {
-     "symside": "QLYS_LONG",
-     "at": "2026-10-18T03:13:13Z",
-     "baseline": 41.844204114515655,
-     "final": 43.00970921054733,
-     "state": "improved"
-    },
-    {
-     "symside": "SCHW_SHORT",
-     "at": "2026-10-18T03:29:54Z",
-     "baseline": 8.533842729877538,
-     "final": 18.680810561475575,
-     "state": "improved"
-    },
-    {
-     "symside": "SLV_SHORT",
-     "at": "2026-10-18T03:42:29Z",
-     "baseline": 27.650612046515526,
-     "final": 27.650612046515526,
-     "state": "flat_or_worse"
-    },
-    {
-     "symside": "SPY_LONG",
-     "at": "2026-10-18T04:05:16Z",
-     "baseline": 1.8437219148574675,
-     "final": 3.76774177975585,
-     "state": "improved"
-    },
-    {
-     "symside": "UNH_LONG",
-     "at": "2026-10-18T03:23:17Z",
-     "baseline": 15.442194435914164,
-     "final": 19.584117928980366,
-     "state": "improved"
-    },
-    {
-     "symside": "VALE_SHORT",
-     "at": "2026-10-18T04:03:09Z",
-     "baseline": 23.81990181273403,
-     "final": 28.051017442710226,
-     "state": "improved"
-    },
-    {
-     "symside": "V_LONG",
-     "at": "2026-10-18T03:37:27Z",
-     "baseline": 7.452255965095402,
-     "final": 15.03501559893164,
-     "state": "improved"
-    },
-    {
-     "symside": "ZETA_LONG",
-     "at": "2026-10-18T03:42:35Z",
-     "baseline": 19.029265115546174,
-     "final": 19.936256593707547,
+     "symside": "ALGOUSDT_LONG",
+     "at": "2026-10-18T06:38:50Z",
+     "baseline": 21.829945689430875,
+     "final": 76.68153600249089,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 5.8,
-   "last_improved_symside": "SPY_LONG",
+   "minutes_since_last_improved": 32.0,
+   "last_improved_symside": "ALGOUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 7.3,
-   "improved_gap_min_max_24h": 367.9,
+   "improved_gap_min_max_24h": 463.6,
    "improved_finishes_24h": 75,
-   "board_cpu_s_median_24h": 1831.8,
-   "board_wall_s_median_24h": 614.2534630298615,
-   "board_cores": 6.1,
+   "board_cpu_s_median_24h": 1813.9,
+   "board_wall_s_median_24h": 607.154168844223,
+   "board_cores": 4.17,
    "nonboard_cores_competing": 0,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 6.1
+    "boards": 4.17
    },
    "cores_by_bucket_niced": {}
   }
  },
  "under_target": [
-  "s1"
+  "s1",
+  "s2"
  ],
  "cadence_breach": [
   "s1",
