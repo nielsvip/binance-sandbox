@@ -1,0 +1,1217 @@
+{
+ "tag": "20261018T071730Z",
+ "host": "MacBook-Pro.local",
+ "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+ "args": {
+  "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+  "symside": "EDUUSDT_LONG",
+  "glob": "*_30d_matrix.html",
+  "limit": 0,
+  "latest_only": false,
+  "tol": 0.01,
+  "npz": false,
+  "no_xlsx": false,
+  "rerun": false,
+  "rerun_tol": 2.5,
+  "keep_rerun": false,
+  "verbose": false,
+  "fail_on": "",
+  "out": ""
+ },
+ "counts": {
+  "PASS": 0,
+  "WARN": 2,
+  "FAIL": 6,
+  "UNPARSEABLE": 0,
+  "UNREADABLE": 0
+ },
+ "findings_by_id": {
+  "ROW_CLOSED_SIZE_UNSTATED": 7,
+  "LA_OFF_SERIES_FILL": 6,
+  "SRC_NO_XLSX": 5,
+  "SRC_CHART_WINDOW_AFTER_MANIFEST": 5,
+  "GAIN_FILENAME_VS_LEDGER": 4,
+  "SRC_FILENAME_TRADES": 4,
+  "SRC_XLSX_BASELINE_STALE": 3,
+  "SRC_XLSX_GREEDY_ABOVE_FINAL": 2,
+  "SRC_PROGRESS_GAIN": 1,
+  "LA_UNREALISED_MTM": 1
+ },
+ "charts": [
+  {
+   "chart": "EDUUSDT_LONG_bh28_gain61_t452_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "26/452 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "15/426 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 5.01
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no EDUUSDT_LONG_bh28_gain61_t452_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=44.1061/+5bps=18.3924/+10bps=-24.4639"
+    }
+   ],
+   "filename_claims": {
+    "gain": 61.0,
+    "trades": 452,
+    "bh": 28.0
+   },
+   "recomputed": {
+    "trades": 452,
+    "pnl_dollars": 17.15,
+    "peak_event_replay": 28.0,
+    "peak_sweepline": 28.0,
+    "gain_pct_event_peak": 61.2486,
+    "gain_pct_sweep_peak": 61.2486,
+    "wins": 251,
+    "wr_pct": 55.53,
+    "max_dd_pct": 4.85,
+    "tim_pct": 21.17,
+    "bh_pct": 27.5024,
+    "cost_ladder": {
+     "2bps": 44.1061,
+     "5bps": 18.3924,
+     "10bps": -24.4639
+    },
+    "pool_sharpe": 0.1418,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 426
+   },
+   "header": {
+    "gain_pct": 61.25,
+    "bh_pct": 27.5,
+    "delta_vs_bh": 33.75,
+    "trades": 452,
+    "pool_sharpe": 0.1418,
+    "max_dd_pct": 4.85,
+    "max_dd_mae_pct": null,
+    "tim_pct": 21.17,
+    "wr_pct": 55.53,
+    "bars": 2881,
+    "peak_capital": 28.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 452,
+     "opens": 452,
+     "augments": 0,
+     "reduces": 31
+    },
+    "last_label": "2026-10-13 12:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 61.248642387116405,
+    "trades": 452,
+    "tim_pct": 21.17,
+    "max_dd_pct": 4.852135234677172,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 27.502370848291395,
+    "gain_vs_bh": 33.74627153882501
+   },
+   "secs": 0.08
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh45_gain21_t484_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +21% (integer slot) but the ledger sums to +20.56%",
+     "claimed": 21.0,
+     "recomputed": [
+      20.5568,
+      20.5568
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "36/484 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no EDUUSDT_LONG_bh45_gain21_t484_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_CHART_WINDOW_AFTER_MANIFEST",
+     "msg": "the chart's last bar is 2026-10-12 but the manifest was published 2026-10-10 \u2014 the html was regenerated on a LATER window than the board it is named for, so these pictograms are not the trades the manifest scored"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_PROGRESS_GAIN",
+     "msg": "EDUUSDT_LONG_v14_progress.json final_gain +42.8054% != manifest gain +20.5568% for the same override set"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=13.5911/+5bps=3.1427/+10bps=-14.2714"
+    }
+   ],
+   "filename_claims": {
+    "gain": 21.0,
+    "trades": 484,
+    "bh": 45.0
+   },
+   "recomputed": {
+    "trades": 484,
+    "pnl_dollars": 28.1,
+    "peak_event_replay": 136.69,
+    "peak_sweepline": 136.69,
+    "gain_pct_event_peak": 20.5568,
+    "gain_pct_sweep_peak": 20.5568,
+    "wins": 249,
+    "wr_pct": 51.45,
+    "max_dd_pct": 3.84,
+    "tim_pct": 21.87,
+    "bh_pct": 44.6349,
+    "cost_ladder": {
+     "2bps": 13.5911,
+     "5bps": 3.1427,
+     "10bps": -14.2714
+    },
+    "pool_sharpe": 0.1105,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 448
+   },
+   "header": {
+    "gain_pct": 20.56,
+    "bh_pct": 44.63,
+    "delta_vs_bh": -24.08,
+    "trades": 484,
+    "pool_sharpe": 0.1105,
+    "max_dd_pct": 3.84,
+    "max_dd_mae_pct": null,
+    "tim_pct": 21.87,
+    "wr_pct": 51.45,
+    "bars": 2881,
+    "peak_capital": 137.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 484,
+     "opens": 484,
+     "augments": 0,
+     "reduces": 49
+    },
+    "last_label": "2026-10-12 04:30"
+   },
+   "manifest_metrics": {
+    "gain_pct": 20.556764733567064,
+    "trades": 484,
+    "tim_pct": 21.867407150295037,
+    "max_dd_pct": 3.843055840154192,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 44.634860257363506,
+    "gain_vs_bh": -24.078095523796442
+   },
+   "secs": 0.07
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh58_gain15_t557_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +15% (integer slot) but the ledger sums to +14.84%",
+     "claimed": 15.0,
+     "recomputed": [
+      14.835,
+      14.835
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "30/479 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "10/448 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 1.63
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "18 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 116,
+       "price": 0.05018422577530146,
+       "bar_close": 0.050360001623630524,
+       "qty": 248.96266344794503,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 129,
+       "price": 0.05002462456002832,
+       "bar_close": 0.04981999844312668,
+       "qty": 1002.1873196865778,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 457,
+       "price": 0.05098222441971302,
+       "bar_close": 0.0516199991106987,
+       "qty": 820.6005353512057,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1241,
+       "price": 0.05149094911292196,
+       "bar_close": 0.051500000059604645,
+       "qty": 99.42182581827376,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1255,
+       "price": 0.051221626242622734,
+       "bar_close": 0.051430001854896545,
+       "qty": 483.70421868036397,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (0.01 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 2879,
+       "pnl_dollars": -0.01
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_CHART_WINDOW_AFTER_MANIFEST",
+     "msg": "the chart's last bar is 2026-10-17 but the manifest was published 2026-10-16 \u2014 the html was regenerated on a LATER window than the board it is named for, so these pictograms are not the trades the manifest scored"
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_FILENAME_TRADES",
+     "msg": "filename claims t557 but the chart draws 479 trades"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "EDUUSDT_LONG_bh58_gain15_t557_30d_matrix.xlsx!EDUUSDT_LONG_BASELINE_METRICS still carries gain +18.1676% / 491 trades while the published chart says +14.8350% / 479 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_GREEDY_ABOVE_FINAL",
+     "msg": "EDUUSDT_LONG_bh58_gain15_t557_30d_matrix.xlsx greedy column tops out at +48.37% but the published gain is +14.83% \u2014 E/G cells and the headline do not tell the same story"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=6.1853/+5bps=-6.7892/+10bps=-28.4134"
+    }
+   ],
+   "filename_claims": {
+    "gain": 15.0,
+    "trades": 557,
+    "bh": 58.0
+   },
+   "recomputed": {
+    "trades": 479,
+    "pnl_dollars": 8.29,
+    "peak_event_replay": 55.87,
+    "peak_sweepline": 55.87,
+    "gain_pct_event_peak": 14.835,
+    "gain_pct_sweep_peak": 14.835,
+    "wins": 260,
+    "wr_pct": 54.28,
+    "max_dd_pct": 3.85,
+    "tim_pct": 22.67,
+    "bh_pct": 57.9789,
+    "cost_ladder": {
+     "2bps": 6.1853,
+     "5bps": -6.7892,
+     "10bps": -28.4134
+    },
+    "pool_sharpe": 0.0755,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 448
+   },
+   "header": {
+    "gain_pct": 14.83,
+    "bh_pct": 57.98,
+    "delta_vs_bh": -43.14,
+    "trades": 479,
+    "pool_sharpe": 0.0755,
+    "max_dd_pct": 3.85,
+    "max_dd_mae_pct": 4.53,
+    "tim_pct": 22.67,
+    "wr_pct": 54.28,
+    "bars": 2880,
+    "peak_capital": 56.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 479,
+     "opens": 479,
+     "augments": 0,
+     "reduces": 38
+    },
+    "last_label": "2026-10-17 20:15"
+   },
+   "manifest_metrics": {
+    "gain_pct": 14.834991098100456,
+    "trades": 479,
+    "tim_pct": 25.3,
+    "max_dd_pct": 3.8466989177838737,
+    "valid": true,
+    "invalid_reason": null,
+    "bh": 63.4319,
+    "gain_vs_bh": -40.0026,
+    "peak_capital": 55.8695675864114,
+    "header_gain_pct": 14.83,
+    "net_gain_dollars": 6.654157,
+    "max_invested_dollars": 55.869568,
+    "avg_invested_dollars": 25.183593,
+    "flat_gain_pct": 25.908083,
+    "sizing_lift_pct": -11.073092,
+    "size_return_corr": 0.002491,
+    "lifecycles": 479
+   },
+   "secs": 1.22
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh58_gain21_t478_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "25/443 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "13/417 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 9.5
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "13 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 129,
+       "price": 0.05002462456002832,
+       "bar_close": 0.04981999844312668,
+       "qty": 4454.16586527368,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 457,
+       "price": 0.05098222441971302,
+       "bar_close": 0.0516199991106987,
+       "qty": 2806.453830901124,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1255,
+       "price": 0.051221626242622734,
+       "bar_close": 0.051430001854896545,
+       "qty": 2176.668984061638,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1487,
+       "price": 0.05131140053272248,
+       "bar_close": 0.05136999860405922,
+       "qty": 1709.633671541172,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1665,
+       "price": 0.05209942549467087,
+       "bar_close": 0.05200999975204468,
+       "qty": 112.90929724227567,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (0.03 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 2879,
+       "pnl_dollars": -0.03
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_CHART_WINDOW_AFTER_MANIFEST",
+     "msg": "the chart's last bar is 2026-10-17 but the manifest was published 2026-10-16 \u2014 the html was regenerated on a LATER window than the board it is named for, so these pictograms are not the trades the manifest scored"
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_FILENAME_TRADES",
+     "msg": "filename claims t478 but the chart draws 443 trades"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "EDUUSDT_LONG_bh58_gain21_t478_30d_matrix.xlsx!EDUUSDT_LONG_BASELINE_METRICS still carries gain +32.8824% / 591 trades while the published chart says +21.1095% / 443 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_GREEDY_ABOVE_FINAL",
+     "msg": "EDUUSDT_LONG_bh58_gain21_t478_30d_matrix.xlsx greedy column tops out at +44.59% but the published gain is +21.11% \u2014 E/G cells and the headline do not tell the same story"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=13.4304/+5bps=1.9119/+10bps=-17.2857"
+    }
+   ],
+   "filename_claims": {
+    "gain": 21.0,
+    "trades": 478,
+    "bh": 58.0
+   },
+   "recomputed": {
+    "trades": 443,
+    "pnl_dollars": 47.29,
+    "peak_event_replay": 224.0,
+    "peak_sweepline": 224.0,
+    "gain_pct_event_peak": 21.1095,
+    "gain_pct_sweep_peak": 21.1095,
+    "wins": 248,
+    "wr_pct": 55.98,
+    "max_dd_pct": 3.71,
+    "tim_pct": 19.48,
+    "bh_pct": 57.9789,
+    "cost_ladder": {
+     "2bps": 13.4304,
+     "5bps": 1.9119,
+     "10bps": -17.2857
+    },
+    "pool_sharpe": 0.0915,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 417
+   },
+   "header": {
+    "gain_pct": 21.11,
+    "bh_pct": 57.98,
+    "delta_vs_bh": -36.87,
+    "trades": 443,
+    "pool_sharpe": 0.0915,
+    "max_dd_pct": 3.71,
+    "max_dd_mae_pct": 3.91,
+    "tim_pct": 19.48,
+    "wr_pct": 55.98,
+    "bars": 2880,
+    "peak_capital": 224.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 443,
+     "opens": 443,
+     "augments": 0,
+     "reduces": 28
+    },
+    "last_label": "2026-10-17 20:15"
+   },
+   "manifest_metrics": {
+    "gain_pct": 21.109474542399283,
+    "trades": 443,
+    "tim_pct": 20.65,
+    "max_dd_pct": 3.714990406395028,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 63.43189371270782,
+    "gain_vs_bh": -18.42786962796884,
+    "peak_capital": 224.00000000000003,
+    "header_gain_pct": 21.11,
+    "net_gain_dollars": 37.78372,
+    "max_invested_dollars": 224.0,
+    "avg_invested_dollars": 94.264086,
+    "flat_gain_pct": 30.776147,
+    "sizing_lift_pct": -9.666672,
+    "size_return_corr": 0.036586,
+    "lifecycles": 443
+   },
+   "secs": 1.17
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh59_gain15_t557_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +15% (integer slot) but the ledger sums to +14.85%",
+     "claimed": 15.0,
+     "recomputed": [
+      14.8455,
+      14.8455
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "30/478 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "10/448 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 1.63
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "18 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 121,
+       "price": 0.05018422577530146,
+       "bar_close": 0.050360001623630524,
+       "qty": 248.96266344794503,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 134,
+       "price": 0.05002462456002832,
+       "bar_close": 0.04981999844312668,
+       "qty": 1002.1873196865778,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 462,
+       "price": 0.05098222441971302,
+       "bar_close": 0.0516199991106987,
+       "qty": 820.6005353512057,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1246,
+       "price": 0.05149094911292196,
+       "bar_close": 0.051500000059604645,
+       "qty": 99.42182581827376,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1260,
+       "price": 0.051221626242622734,
+       "bar_close": 0.051430001854896545,
+       "qty": 483.70421868036397,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no EDUUSDT_LONG_bh59_gain15_t557_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_CHART_WINDOW_AFTER_MANIFEST",
+     "msg": "the chart's last bar is 2026-10-17 but the manifest was published 2026-10-16 \u2014 the html was regenerated on a LATER window than the board it is named for, so these pictograms are not the trades the manifest scored"
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_FILENAME_TRADES",
+     "msg": "filename claims t557 but the chart draws 478 trades"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=6.2168/+5bps=-6.7263/+10bps=-28.2981"
+    }
+   ],
+   "filename_claims": {
+    "gain": 15.0,
+    "trades": 557,
+    "bh": 59.0
+   },
+   "recomputed": {
+    "trades": 478,
+    "pnl_dollars": 8.29,
+    "peak_event_replay": 55.87,
+    "peak_sweepline": 55.87,
+    "gain_pct_event_peak": 14.8455,
+    "gain_pct_sweep_peak": 14.8455,
+    "wins": 260,
+    "wr_pct": 54.39,
+    "max_dd_pct": 3.85,
+    "tim_pct": 22.67,
+    "bh_pct": 58.6988,
+    "cost_ladder": {
+     "2bps": 6.2168,
+     "5bps": -6.7263,
+     "10bps": -28.2981
+    },
+    "pool_sharpe": 0.0756,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 448
+   },
+   "header": {
+    "gain_pct": 14.85,
+    "bh_pct": 58.7,
+    "delta_vs_bh": -43.85,
+    "trades": 478,
+    "pool_sharpe": 0.0756,
+    "max_dd_pct": 3.85,
+    "max_dd_mae_pct": 4.53,
+    "tim_pct": 22.67,
+    "wr_pct": 54.39,
+    "bars": 2880,
+    "peak_capital": 56.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 478,
+     "opens": 478,
+     "augments": 0,
+     "reduces": 38
+    },
+    "last_label": "2026-10-17 19:00"
+   },
+   "manifest_metrics": {
+    "gain_pct": 14.84547002090082,
+    "trades": 478,
+    "tim_pct": 25.3,
+    "max_dd_pct": 3.8466989177838737,
+    "valid": true,
+    "invalid_reason": null,
+    "bh": 63.4319,
+    "gain_vs_bh": -40.0026,
+    "peak_capital": 55.8695675864114,
+    "header_gain_pct": 14.85,
+    "net_gain_dollars": 6.660012,
+    "max_invested_dollars": 55.869568,
+    "avg_invested_dollars": 25.183593,
+    "flat_gain_pct": 25.928083,
+    "sizing_lift_pct": -11.082613,
+    "size_return_corr": 0.002554,
+    "lifecycles": 478
+   },
+   "secs": 0.07
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh59_gain21_t478_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "25/442 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "13/417 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 9.5
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "13 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 134,
+       "price": 0.05002462456002832,
+       "bar_close": 0.04981999844312668,
+       "qty": 4454.16586527368,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 462,
+       "price": 0.05098222441971302,
+       "bar_close": 0.0516199991106987,
+       "qty": 2806.453830901124,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1260,
+       "price": 0.051221626242622734,
+       "bar_close": 0.051430001854896545,
+       "qty": 2176.668984061638,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1492,
+       "price": 0.05131140053272248,
+       "bar_close": 0.05136999860405922,
+       "qty": 1709.633671541172,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1670,
+       "price": 0.05209942549467087,
+       "bar_close": 0.05200999975204468,
+       "qty": 112.90929724227567,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no EDUUSDT_LONG_bh59_gain21_t478_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_CHART_WINDOW_AFTER_MANIFEST",
+     "msg": "the chart's last bar is 2026-10-17 but the manifest was published 2026-10-16 \u2014 the html was regenerated on a LATER window than the board it is named for, so these pictograms are not the trades the manifest scored"
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_FILENAME_TRADES",
+     "msg": "filename claims t478 but the chart draws 442 trades"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=13.4657/+5bps=1.9824/+10bps=-17.1564"
+    }
+   ],
+   "filename_claims": {
+    "gain": 21.0,
+    "trades": 478,
+    "bh": 59.0
+   },
+   "recomputed": {
+    "trades": 442,
+    "pnl_dollars": 47.31,
+    "peak_event_replay": 224.0,
+    "peak_sweepline": 224.0,
+    "gain_pct_event_peak": 21.1212,
+    "gain_pct_sweep_peak": 21.1212,
+    "wins": 248,
+    "wr_pct": 56.11,
+    "max_dd_pct": 3.71,
+    "tim_pct": 19.48,
+    "bh_pct": 58.6988,
+    "cost_ladder": {
+     "2bps": 13.4657,
+     "5bps": 1.9824,
+     "10bps": -17.1564
+    },
+    "pool_sharpe": 0.0916,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 417
+   },
+   "header": {
+    "gain_pct": 21.12,
+    "bh_pct": 58.7,
+    "delta_vs_bh": -37.58,
+    "trades": 442,
+    "pool_sharpe": 0.0916,
+    "max_dd_pct": 3.71,
+    "max_dd_mae_pct": 3.91,
+    "tim_pct": 19.48,
+    "wr_pct": 56.11,
+    "bars": 2880,
+    "peak_capital": 224.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 442,
+     "opens": 442,
+     "augments": 0,
+     "reduces": 28
+    },
+    "last_label": "2026-10-17 19:00"
+   },
+   "manifest_metrics": {
+    "gain_pct": 21.121235872690914,
+    "trades": 442,
+    "tim_pct": 20.65,
+    "max_dd_pct": 3.714990406395028,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 63.43189371270782,
+    "gain_vs_bh": -18.42786962796884,
+    "peak_capital": 224.00000000000003,
+    "header_gain_pct": 21.12,
+    "net_gain_dollars": 37.810065,
+    "max_invested_dollars": 224.0,
+    "avg_invested_dollars": 94.264086,
+    "flat_gain_pct": 30.796147,
+    "sizing_lift_pct": -9.674911,
+    "size_return_corr": 0.036749,
+    "lifecycles": 442
+   },
+   "secs": 0.08
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh60_gain58_t437_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +58% (integer slot) but the ledger sums to +57.67%",
+     "claimed": 58.0,
+     "recomputed": [
+      57.6708,
+      57.6708
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "26/437 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "7/411 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 4.29
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "13 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 100,
+       "price": 0.05002462456002832,
+       "bar_close": 0.04981999844312668,
+       "qty": 4454.16586527368,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 428,
+       "price": 0.05098222441971302,
+       "bar_close": 0.0516199991106987,
+       "qty": 4290.365878595207,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1226,
+       "price": 0.051221626242622734,
+       "bar_close": 0.051430001854896545,
+       "qty": 4344.453099346181,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1458,
+       "price": 0.05131140053272248,
+       "bar_close": 0.05136999860405922,
+       "qty": 4341.926784866469,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1636,
+       "price": 0.05209942549467087,
+       "bar_close": 0.05200999975204468,
+       "qty": 270.89318753478875,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "EDUUSDT_LONG_bh60_gain58_t437_30d_matrix.xlsx!EDUUSDT_LONG_BASELINE_METRICS still carries gain +20.8713% / 452 trades while the published chart says +57.6708% / 437 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=43.121/+5bps=21.2964/+10bps=-15.078"
+    }
+   ],
+   "filename_claims": {
+    "gain": 58.0,
+    "trades": 437,
+    "bh": 60.0
+   },
+   "recomputed": {
+    "trades": 437,
+    "pnl_dollars": 129.18,
+    "peak_event_replay": 224.0,
+    "peak_sweepline": 224.0,
+    "gain_pct_event_peak": 57.6708,
+    "gain_pct_sweep_peak": 57.6708,
+    "wins": 247,
+    "wr_pct": 56.52,
+    "max_dd_pct": 7.11,
+    "tim_pct": 20.03,
+    "bh_pct": 60.3522,
+    "cost_ladder": {
+     "2bps": 43.121,
+     "5bps": 21.2964,
+     "10bps": -15.078
+    },
+    "pool_sharpe": 0.0998,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 411
+   },
+   "header": {
+    "gain_pct": 57.67,
+    "bh_pct": 60.35,
+    "delta_vs_bh": -2.68,
+    "trades": 437,
+    "pool_sharpe": 0.0998,
+    "max_dd_pct": 7.11,
+    "max_dd_mae_pct": 7.56,
+    "tim_pct": 20.03,
+    "wr_pct": 56.52,
+    "bars": 2880,
+    "peak_capital": 224.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 437,
+     "opens": 437,
+     "augments": 0,
+     "reduces": 29
+    },
+    "last_label": "2026-10-18 03:30"
+   },
+   "manifest_metrics": {
+    "gain_pct": 57.67078913931376,
+    "trades": 437,
+    "tim_pct": 20.03,
+    "max_dd_pct": 7.112471008123005,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": 60.3521601858227,
+    "net_gain_dollars": 124.89167,
+    "max_invested_dollars": 224.0,
+    "avg_invested_dollars": 178.312109,
+    "flat_gain_pct": 41.157694,
+    "sizing_lift_pct": 16.513095,
+    "size_return_corr": 0.149612,
+    "lifecycles": 437,
+    "gain_vs_bh": -2.6813710465089358
+   },
+   "secs": 1.13
+  },
+  {
+   "chart": "EDUUSDT_LONG_bh61_gain23_t589_30d_matrix.html",
+   "symside": "EDUUSDT_LONG",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "29/589 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "ROW_CLOSED_SIZE_UNSTATED",
+     "msg": "16/559 row(s) carry a qty that is the REMAINING size, not the size closed (qty x entry_price != deployed), so the chart does not show how much was sold \u2014 their P&L cannot be reproduced from the pictograms, only trusted",
+     "dollars": 4.78
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "16 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 270,
+       "price": 0.05018422577530146,
+       "bar_close": 0.050360001623630524,
+       "qty": 138.31259080441396,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 283,
+       "price": 0.05002462456002832,
+       "bar_close": 0.04981999844312668,
+       "qty": 556.77073315921,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 611,
+       "price": 0.05098222441971302,
+       "bar_close": 0.0516199991106987,
+       "qty": 536.2957348244008,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1395,
+       "price": 0.05149094911292196,
+       "bar_close": 0.051500000059604645,
+       "qty": 135.34415876363005,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1409,
+       "price": 0.051221626242622734,
+       "bar_close": 0.051430001854896545,
+       "qty": 543.0566374182727,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (0.01 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 2880,
+       "pnl_dollars": -0.01
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no EDUUSDT_LONG_bh61_gain23_t589_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no EDUUSDT_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "4.00 bps round turn already deducted per trade; net with further cost added: +2bps=8.0191/+5bps=-14.5984/+10bps=-52.2943"
+    }
+   ],
+   "filename_claims": {
+    "gain": 23.0,
+    "trades": 589,
+    "bh": 61.0
+   },
+   "recomputed": {
+    "trades": 589,
+    "pnl_dollars": 9.7,
+    "peak_event_replay": 42.0,
+    "peak_sweepline": 42.0,
+    "gain_pct_event_peak": 23.0974,
+    "gain_pct_sweep_peak": 23.0974,
+    "wins": 305,
+    "wr_pct": 51.78,
+    "max_dd_pct": 5.5,
+    "tim_pct": 26.31,
+    "bh_pct": 60.9248,
+    "cost_ladder": {
+     "2bps": 8.0191,
+     "5bps": -14.5984,
+     "10bps": -52.2943
+    },
+    "pool_sharpe": 0.0531,
+    "cost_model_bps": 4.0,
+    "single_leg_rows": 559
+   },
+   "header": {
+    "gain_pct": 23.1,
+    "bh_pct": 60.92,
+    "delta_vs_bh": -37.83,
+    "trades": 589,
+    "pool_sharpe": 0.0531,
+    "max_dd_pct": 5.5,
+    "max_dd_mae_pct": 6.06,
+    "tim_pct": 26.31,
+    "wr_pct": 51.78,
+    "bars": 2881,
+    "peak_capital": 42.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 589,
+     "opens": 589,
+     "augments": 0,
+     "reduces": 39
+    },
+    "last_label": "2026-10-16 05:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 23.0974,
+    "trades": 589,
+    "tim_pct": 26.31,
+    "max_dd_pct": 5.5033,
+    "valid": true,
+    "invalid_reason": null,
+    "bh": 60.9248,
+    "gain_vs_bh": -37.8274
+   },
+   "secs": 0.06
+  }
+ ]
+}

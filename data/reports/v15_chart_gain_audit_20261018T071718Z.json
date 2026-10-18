@@ -1,0 +1,597 @@
+{
+ "tag": "20261018T071718Z",
+ "host": "MacBook-Pro.local",
+ "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+ "args": {
+  "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+  "symside": "FCX_LONG",
+  "glob": "*_30d_matrix.html",
+  "limit": 0,
+  "latest_only": false,
+  "tol": 0.01,
+  "npz": false,
+  "no_xlsx": false,
+  "rerun": false,
+  "rerun_tol": 2.5,
+  "keep_rerun": false,
+  "verbose": false,
+  "fail_on": "",
+  "out": ""
+ },
+ "counts": {
+  "PASS": 0,
+  "WARN": 2,
+  "FAIL": 3,
+  "UNPARSEABLE": 0,
+  "UNREADABLE": 0
+ },
+ "findings_by_id": {
+  "LA_ZERO_COST": 5,
+  "LA_UNREALISED_MTM": 3,
+  "SRC_NO_XLSX": 3,
+  "SRC_XLSX_BASELINE_STALE": 2,
+  "LA_OFF_SERIES_FILL": 2,
+  "GAIN_FILENAME_VS_LEDGER": 2,
+  "SRC_FILENAME_TRADES": 1,
+  "SRC_XLSX_GREEDY_ABOVE_FINAL": 1
+ },
+ "charts": [
+  {
+   "chart": "FCX_LONG_bhm3_gain20_t46_30d_matrix.html",
+   "symside": "FCX_LONG",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "FCX_LONG_bhm3_gain20_t46_30d_matrix.xlsx!FCX_LONG_BASELINE_METRICS still carries gain +4.2985% / 37 trades while the published chart says +20.0563% / 46 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no FCX_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=18.6003/+5bps=16.4164/+10bps=12.7766"
+    }
+   ],
+   "filename_claims": {
+    "gain": 20.0,
+    "trades": 46,
+    "bh": -3.0
+   },
+   "recomputed": {
+    "trades": 46,
+    "pnl_dollars": 802.04,
+    "peak_event_replay": 3998.96,
+    "peak_sweepline": 3998.96,
+    "gain_pct_event_peak": 20.0563,
+    "gain_pct_sweep_peak": 20.0563,
+    "wins": 30,
+    "wr_pct": 65.22,
+    "max_dd_pct": 1.3,
+    "tim_pct": 32.82,
+    "bh_pct": -2.7692,
+    "cost_ladder": {
+     "2bps": 18.6003,
+     "5bps": 16.4164,
+     "10bps": 12.7766
+    },
+    "pool_sharpe": 0.2479,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 46
+   },
+   "header": {
+    "gain_pct": 20.06,
+    "bh_pct": -2.77,
+    "delta_vs_bh": 22.83,
+    "trades": 46,
+    "pool_sharpe": 0.2479,
+    "max_dd_pct": 1.3,
+    "max_dd_mae_pct": 2.54,
+    "tim_pct": 32.82,
+    "wr_pct": 65.22,
+    "bars": 905,
+    "peak_capital": 3999.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 46,
+     "opens": 46,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-16 19:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 20.056273516473798,
+    "trades": 46,
+    "tim_pct": 32.82,
+    "max_dd_pct": 1.3005678035358923,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -2.7692354642427883,
+    "net_gain_dollars": 802.042397,
+    "max_invested_dollars": 3998.960205,
+    "avg_invested_dollars": 3160.969422,
+    "flat_gain_pct": 13.84196,
+    "sizing_lift_pct": 6.214313,
+    "size_return_corr": 0.463839,
+    "lifecycles": 46,
+    "gain_vs_bh": 22.825508980716585
+   },
+   "secs": 0.94
+  },
+  {
+   "chart": "FCX_LONG_bhm3_gain4_t33_30d_matrix.html",
+   "symside": "FCX_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "3 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 446,
+       "price": 69.75499725341797,
+       "bar_close": 70.87139892578125,
+       "qty": 55.0,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 694,
+       "price": 70.5999984741211,
+       "bar_close": 71.2300033569336,
+       "qty": 8.0,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 786,
+       "price": 72.77261432647705,
+       "bar_close": 72.86499786376953,
+       "qty": 54.0,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "ERROR",
+     "id": "SRC_FILENAME_TRADES",
+     "msg": "filename claims t33 but the chart draws 37 trades"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "FCX_LONG_bhm3_gain4_t33_30d_matrix.xlsx!FCX_LONG_BASELINE_METRICS still carries gain +3.3831% / 17 trades while the published chart says +4.2985% / 37 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_GREEDY_ABOVE_FINAL",
+     "msg": "FCX_LONG_bhm3_gain4_t33_30d_matrix.xlsx greedy column tops out at +12.86% but the published gain is +4.30% \u2014 E/G cells and the headline do not tell the same story"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no FCX_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=3.1074/+5bps=1.3207/+10bps=-1.6572"
+    }
+   ],
+   "filename_claims": {
+    "gain": 4.0,
+    "trades": 33,
+    "bh": -3.0
+   },
+   "recomputed": {
+    "trades": 37,
+    "pnl_dollars": 171.39,
+    "peak_event_replay": 3987.21,
+    "peak_sweepline": 3987.21,
+    "gain_pct_event_peak": 4.2985,
+    "gain_pct_sweep_peak": 4.2985,
+    "wins": 23,
+    "wr_pct": 62.16,
+    "max_dd_pct": 5.01,
+    "tim_pct": 34.59,
+    "bh_pct": -2.7692,
+    "cost_ladder": {
+     "2bps": 3.1074,
+     "5bps": 1.3207,
+     "10bps": -1.6572
+    },
+    "pool_sharpe": -0.0031,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 37
+   },
+   "header": {
+    "gain_pct": 4.3,
+    "bh_pct": -2.77,
+    "delta_vs_bh": 7.07,
+    "trades": 37,
+    "pool_sharpe": -0.0031,
+    "max_dd_pct": 5.01,
+    "max_dd_mae_pct": 6.08,
+    "tim_pct": 34.59,
+    "wr_pct": 62.16,
+    "bars": 905,
+    "peak_capital": 3987.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 37,
+     "opens": 37,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-16 19:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 4.298541639746585,
+    "trades": 37,
+    "tim_pct": 38.04,
+    "max_dd_pct": 5.007419103320167,
+    "valid": true,
+    "invalid_reason": null,
+    "bh": -7.5242,
+    "gain_vs_bh": 13.9727,
+    "peak_capital": 3987.210159301758,
+    "header_gain_pct": 4.3,
+    "net_gain_dollars": 171.391889,
+    "max_invested_dollars": 3987.210159,
+    "avg_invested_dollars": 3344.802781,
+    "flat_gain_pct": -0.176417,
+    "sizing_lift_pct": 4.474958,
+    "size_return_corr": 0.242713,
+    "lifecycles": 37
+   },
+   "secs": 0.83
+  },
+  {
+   "chart": "FCX_LONG_bhm4_gain7_t23_30d_matrix.html",
+   "symside": "FCX_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +7% (integer slot) but the ledger sums to +6.93%",
+     "claimed": 7.0,
+     "recomputed": [
+      6.9337,
+      6.9337
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (14.79 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 1607,
+       "pnl_dollars": 14.79
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no FCX_LONG_bhm4_gain7_t23_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no FCX_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=6.4188/+5bps=5.6465/+10bps=4.3594"
+    }
+   ],
+   "filename_claims": {
+    "gain": 7.0,
+    "trades": 23,
+    "bh": -4.0
+   },
+   "recomputed": {
+    "trades": 23,
+    "pnl_dollars": 260.53,
+    "peak_event_replay": 3757.52,
+    "peak_sweepline": 3757.52,
+    "gain_pct_event_peak": 6.9337,
+    "gain_pct_sweep_peak": 6.9337,
+    "wins": 11,
+    "wr_pct": 47.83,
+    "max_dd_pct": 1.49,
+    "tim_pct": 20.34,
+    "bh_pct": -3.7958,
+    "cost_ladder": {
+     "2bps": 6.4188,
+     "5bps": 5.6465,
+     "10bps": 4.3594
+    },
+    "pool_sharpe": 0.0762,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 22
+   },
+   "header": {
+    "gain_pct": 6.93,
+    "bh_pct": -3.8,
+    "delta_vs_bh": 10.73,
+    "trades": 23,
+    "pool_sharpe": 0.0762,
+    "max_dd_pct": 1.49,
+    "max_dd_mae_pct": null,
+    "tim_pct": 20.34,
+    "wr_pct": 47.83,
+    "bars": 1608,
+    "peak_capital": 3758.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 23,
+     "opens": 23,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-12 11:00"
+   },
+   "manifest_metrics": {
+    "gain_pct": 6.93368943021075,
+    "trades": 23,
+    "tim_pct": 20.34,
+    "max_dd_pct": 1.4921998584235607,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -3.7958134397374206,
+    "gain_vs_bh": 10.72950286994817
+   },
+   "secs": 0.0
+  },
+  {
+   "chart": "FCX_LONG_bhm6_gain9_t14_30d_matrix.html",
+   "symside": "FCX_LONG",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "WARN",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (0.04 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 1657,
+       "pnl_dollars": -0.04
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no FCX_LONG_bhm6_gain9_t14_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no FCX_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=8.9513/+5bps=8.4799/+10bps=7.6941"
+    }
+   ],
+   "filename_claims": {
+    "gain": 9.0,
+    "trades": 14,
+    "bh": -6.0
+   },
+   "recomputed": {
+    "trades": 14,
+    "pnl_dollars": 199.79,
+    "peak_event_replay": 2156.25,
+    "peak_sweepline": 2156.25,
+    "gain_pct_event_peak": 9.2657,
+    "gain_pct_sweep_peak": 9.2657,
+    "wins": 7,
+    "wr_pct": 50.0,
+    "max_dd_pct": 1.54,
+    "tim_pct": 26.24,
+    "bh_pct": -6.4262,
+    "cost_ladder": {
+     "2bps": 8.9513,
+     "5bps": 8.4799,
+     "10bps": 7.6941
+    },
+    "pool_sharpe": 0.0995,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 13
+   },
+   "header": {
+    "gain_pct": 9.27,
+    "bh_pct": -6.43,
+    "delta_vs_bh": 15.69,
+    "trades": 14,
+    "pool_sharpe": 0.0995,
+    "max_dd_pct": 1.54,
+    "max_dd_mae_pct": null,
+    "tim_pct": 26.24,
+    "wr_pct": 50.0,
+    "bars": 1658,
+    "peak_capital": 2156.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 14,
+     "opens": 14,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-09 23:30"
+   },
+   "manifest_metrics": {
+    "gain_pct": 9.265665336277173,
+    "trades": 14,
+    "tim_pct": 26.24,
+    "max_dd_pct": 1.5390581226651014,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -6.4262099261778065,
+    "gain_vs_bh": 15.69187526245498
+   },
+   "secs": 0.0
+  },
+  {
+   "chart": "FCX_LONG_bhm8_gain5_t40_30d_matrix.html",
+   "symside": "FCX_LONG",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +5% (integer slot) but the ledger sums to +4.94%",
+     "claimed": 5.0,
+     "recomputed": [
+      4.9434,
+      4.9434
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "6 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 477,
+       "price": 69.75499725341797,
+       "bar_close": 70.87139892578125,
+       "qty": 34.0,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 663,
+       "price": 71.81002286911011,
+       "bar_close": 71.45999908447266,
+       "qty": 6.0,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 725,
+       "price": 70.5999984741211,
+       "bar_close": 71.2300033569336,
+       "qty": 3.0,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 817,
+       "price": 72.77261432647705,
+       "bar_close": 72.86499786376953,
+       "qty": 34.0,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 820,
+       "price": 72.26887195587159,
+       "bar_close": 71.95999908447266,
+       "qty": 34.0,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (10.26 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 940,
+       "pnl_dollars": -10.26
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no FCX_LONG_bhm8_gain5_t40_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no FCX_LONG_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_ZERO_COST",
+     "msg": "this chart deducts 0.00 bps per round turn \u2014 no commission, no slippage, no spread is modelled at all. Net gain with cost added: +2bps=3.9034/+5bps=2.3434/+10bps=-0.2565"
+    }
+   ],
+   "filename_claims": {
+    "gain": 5.0,
+    "trades": 40,
+    "bh": -8.0
+   },
+   "recomputed": {
+    "trades": 40,
+    "pnl_dollars": 186.86,
+    "peak_event_replay": 3780.0,
+    "peak_sweepline": 3780.0,
+    "gain_pct_event_peak": 4.9434,
+    "gain_pct_sweep_peak": 4.9434,
+    "wins": 21,
+    "wr_pct": 52.5,
+    "max_dd_pct": 4.32,
+    "tim_pct": 41.02,
+    "bh_pct": -7.5242,
+    "cost_ladder": {
+     "2bps": 3.9034,
+     "5bps": 2.3434,
+     "10bps": -0.2565
+    },
+    "pool_sharpe": -0.0902,
+    "cost_model_bps": 0.0,
+    "single_leg_rows": 39
+   },
+   "header": {
+    "gain_pct": 4.94,
+    "bh_pct": -7.52,
+    "delta_vs_bh": 12.47,
+    "trades": 40,
+    "pool_sharpe": -0.0902,
+    "max_dd_pct": 4.32,
+    "max_dd_mae_pct": 5.69,
+    "tim_pct": 41.02,
+    "wr_pct": 52.5,
+    "bars": 941,
+    "peak_capital": 3780.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 40,
+     "opens": 40,
+     "augments": 0,
+     "reduces": 0
+    },
+    "last_label": "2026-10-15 23:30"
+   },
+   "manifest_metrics": {
+    "gain_pct": 4.9434,
+    "trades": 40,
+    "tim_pct": 41.02,
+    "max_dd_pct": 4.321,
+    "valid": true,
+    "invalid_reason": null,
+    "bh": -7.5242,
+    "gain_vs_bh": 12.467600000000001
+   },
+   "secs": 0.0
+  }
+ ]
+}

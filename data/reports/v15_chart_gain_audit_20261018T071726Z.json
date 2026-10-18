@@ -1,0 +1,562 @@
+{
+ "tag": "20261018T071726Z",
+ "host": "MacBook-Pro.local",
+ "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+ "args": {
+  "dir": "/Users/niels/Documents/binance/SPREADSHEETS/V15_V16_CELL_BY_CELL",
+  "symside": "ZROUSDT_SHORT",
+  "glob": "*_30d_matrix.html",
+  "limit": 0,
+  "latest_only": false,
+  "tol": 0.01,
+  "npz": false,
+  "no_xlsx": false,
+  "rerun": false,
+  "rerun_tol": 2.5,
+  "keep_rerun": false,
+  "verbose": false,
+  "fail_on": "",
+  "out": ""
+ },
+ "counts": {
+  "PASS": 0,
+  "WARN": 2,
+  "FAIL": 2,
+  "UNPARSEABLE": 0,
+  "UNREADABLE": 0
+ },
+ "findings_by_id": {
+  "LA_OFF_SERIES_FILL": 3,
+  "GAIN_FILENAME_VS_LEDGER": 2,
+  "SRC_NO_XLSX": 2,
+  "SRC_XLSX_BASELINE_STALE": 2,
+  "GAIN_PEAK_BASE_FORK": 1,
+  "LA_UNREALISED_MTM": 1
+ },
+ "charts": [
+  {
+   "chart": "ZROUSDT_SHORT_bhm100_gain29_t135_30d_matrix.html",
+   "symside": "ZROUSDT_SHORT",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +29% (integer slot) but the ledger sums to +28.74%",
+     "claimed": 29.0,
+     "recomputed": [
+      28.7388,
+      28.7388
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "14/135 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no ZROUSDT_SHORT_bhm100_gain29_t135_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no ZROUSDT_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "3.99 bps round turn already deducted per trade; net with further cost added: +2bps=23.7631/+5bps=16.2994/+10bps=3.86"
+    }
+   ],
+   "filename_claims": {
+    "gain": 29.0,
+    "trades": 135,
+    "bh": -100.0
+   },
+   "recomputed": {
+    "trades": 135,
+    "pnl_dollars": 129.32,
+    "peak_event_replay": 450.0,
+    "peak_sweepline": 450.0,
+    "gain_pct_event_peak": 28.7388,
+    "gain_pct_sweep_peak": 28.7388,
+    "wins": 101,
+    "wr_pct": 74.81,
+    "max_dd_pct": 10.46,
+    "tim_pct": 20.62,
+    "bh_pct": -100.0,
+    "cost_ladder": {
+     "2bps": 23.7631,
+     "5bps": 16.2994,
+     "10bps": 3.86
+    },
+    "pool_sharpe": 0.1365,
+    "cost_model_bps": 3.99,
+    "single_leg_rows": 121
+   },
+   "header": {
+    "gain_pct": 28.74,
+    "bh_pct": -100.0,
+    "delta_vs_bh": 128.74,
+    "trades": 135,
+    "pool_sharpe": 0.1365,
+    "max_dd_pct": 10.46,
+    "max_dd_mae_pct": null,
+    "tim_pct": 20.62,
+    "wr_pct": 74.81,
+    "bars": 2881,
+    "peak_capital": 450.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 135,
+     "opens": 135,
+     "augments": 0,
+     "reduces": 24
+    },
+    "last_label": "2026-10-14 03:30"
+   },
+   "manifest_metrics": {
+    "gain_pct": 28.7388333213683,
+    "trades": 135,
+    "tim_pct": 20.62,
+    "max_dd_pct": 10.460769648110315,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -100.0,
+    "gain_vs_bh": 128.7388333213683
+   },
+   "secs": 0.02
+  },
+  {
+   "chart": "ZROUSDT_SHORT_bhm62_gain51_t122_30d_matrix.html",
+   "symside": "ZROUSDT_SHORT",
+   "verdict": "FAIL",
+   "findings": [
+    {
+     "sev": "ERROR",
+     "id": "GAIN_FILENAME_VS_LEDGER",
+     "msg": "filename says gain +51% (integer slot) but the ledger sums to +50.55%",
+     "claimed": 51.0,
+     "recomputed": [
+      50.5495,
+      50.5495
+     ]
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "2/122 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "5 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 1596,
+       "price": 2.0194360053539273,
+       "bar_close": 2.020400047302246,
+       "qty": 22.969924506869745,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2148,
+       "price": 1.9833459919691085,
+       "bar_close": 1.9837000370025635,
+       "qty": 24.41236794309941,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2206,
+       "price": 2.0187342584133146,
+       "bar_close": 1.9930000305175781,
+       "qty": 23.77216624416222,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2509,
+       "price": 2.0901121520996093,
+       "bar_close": 2.0785000324249268,
+       "qty": 121.10234867129509,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2670,
+       "price": 2.150663161277771,
+       "bar_close": 2.1877999305725098,
+       "qty": 173.72839957305104,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "ZROUSDT_SHORT_bhm62_gain51_t122_30d_matrix.xlsx!ZROUSDT_SHORT_BASELINE_METRICS still carries gain +43.7762% / 124 trades while the published chart says +50.5495% / 122 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no ZROUSDT_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "3.99 bps round turn already deducted per trade; net with further cost added: +2bps=46.6934/+5bps=40.9092/+10bps=31.269"
+    }
+   ],
+   "filename_claims": {
+    "gain": 51.0,
+    "trades": 122,
+    "bh": -62.0
+   },
+   "recomputed": {
+    "trades": 122,
+    "pnl_dollars": 181.98,
+    "peak_event_replay": 360.0,
+    "peak_sweepline": 360.0,
+    "gain_pct_event_peak": 50.5495,
+    "gain_pct_sweep_peak": 50.5495,
+    "wins": 99,
+    "wr_pct": 81.15,
+    "max_dd_pct": 3.25,
+    "tim_pct": 20.41,
+    "bh_pct": -61.6898,
+    "cost_ladder": {
+     "2bps": 46.6934,
+     "5bps": 40.9092,
+     "10bps": 31.269
+    },
+    "pool_sharpe": 0.2262,
+    "cost_model_bps": 3.99,
+    "single_leg_rows": 120
+   },
+   "header": {
+    "gain_pct": 50.55,
+    "bh_pct": -61.69,
+    "delta_vs_bh": 112.24,
+    "trades": 122,
+    "pool_sharpe": 0.2262,
+    "max_dd_pct": 3.25,
+    "max_dd_mae_pct": 6.77,
+    "tim_pct": 20.41,
+    "wr_pct": 81.15,
+    "bars": 2881,
+    "peak_capital": 360.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 122,
+     "opens": 122,
+     "augments": 0,
+     "reduces": 2
+    },
+    "last_label": "2026-10-18 04:45"
+   },
+   "manifest_metrics": {
+    "gain_pct": 50.54947263728581,
+    "trades": 122,
+    "tim_pct": 20.41,
+    "max_dd_pct": 3.253640321782583,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -61.68977198796668,
+    "net_gain_dollars": 181.978101,
+    "max_invested_dollars": 360.0,
+    "avg_invested_dollars": 274.465932,
+    "flat_gain_pct": 38.106305,
+    "sizing_lift_pct": 12.443167,
+    "size_return_corr": 0.354109,
+    "lifecycles": 122,
+    "gain_vs_bh": 112.2392446252525
+   },
+   "secs": 1.04
+  },
+  {
+   "chart": "ZROUSDT_SHORT_bhm82_gain45_t125_30d_matrix.html",
+   "symside": "ZROUSDT_SHORT",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "WARN",
+     "id": "GAIN_PEAK_BASE_FORK",
+     "msg": "the two capital bases the codebase uses disagree: event-replay peak $360.0 -> +45.2254% vs sweep-line peak $459.41 -> +35.4389%"
+    },
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "5/125 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "5 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 1646,
+       "price": 2.0194360053539273,
+       "bar_close": 2.020400047302246,
+       "qty": 22.665612707594867,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2198,
+       "price": 1.9833459919691085,
+       "bar_close": 1.9837000370025635,
+       "qty": 23.578967582098375,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2256,
+       "price": 2.0187342584133146,
+       "bar_close": 1.9930000305175781,
+       "qty": 23.393678571376956,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2559,
+       "price": 2.0901121520996093,
+       "bar_close": 2.0785000324249268,
+       "qty": 120.5800389982768,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2720,
+       "price": 2.150663161277771,
+       "bar_close": 2.1877999305725098,
+       "qty": 173.72839957305104,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_UNREALISED_MTM",
+     "msg": "1 FINAL_MTM row(s) in the gain \u2014 an OPEN position marked to market at the window edge, never sold (0.07 paper dollars)",
+     "rows": [
+      {
+       "bar_exit": 2880,
+       "pnl_dollars": -0.07
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_XLSX_BASELINE_STALE",
+     "msg": "ZROUSDT_SHORT_bhm82_gain45_t125_30d_matrix.xlsx!ZROUSDT_SHORT_BASELINE_METRICS still carries gain +24.1273% / 91 trades while the published chart says +45.2254% / 125 \u2014 the board tab was never refreshed by the publish that renamed it"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no ZROUSDT_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "3.99 bps round turn already deducted per trade; net with further cost added: +2bps=41.2316/+5bps=35.2409/+10bps=25.2565"
+    }
+   ],
+   "filename_claims": {
+    "gain": 45.0,
+    "trades": 125,
+    "bh": -82.0
+   },
+   "recomputed": {
+    "trades": 125,
+    "pnl_dollars": 162.81,
+    "peak_event_replay": 360.0,
+    "peak_sweepline": 459.41,
+    "gain_pct_event_peak": 45.2254,
+    "gain_pct_sweep_peak": 35.4389,
+    "wins": 102,
+    "wr_pct": 81.6,
+    "max_dd_pct": 3.27,
+    "tim_pct": 20.03,
+    "bh_pct": -82.2047,
+    "cost_ladder": {
+     "2bps": 41.2316,
+     "5bps": 35.2409,
+     "10bps": 25.2565
+    },
+    "pool_sharpe": 0.2334,
+    "cost_model_bps": 3.99,
+    "single_leg_rows": 119
+   },
+   "header": {
+    "gain_pct": 45.23,
+    "bh_pct": -82.2,
+    "delta_vs_bh": 127.43,
+    "trades": 125,
+    "pool_sharpe": 0.2334,
+    "max_dd_pct": 3.27,
+    "max_dd_mae_pct": 6.79,
+    "tim_pct": 20.03,
+    "wr_pct": 81.6,
+    "bars": 2881,
+    "peak_capital": 360.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 125,
+     "opens": 125,
+     "augments": 10,
+     "reduces": 13
+    },
+    "last_label": "2026-10-17 16:15"
+   },
+   "manifest_metrics": {
+    "gain_pct": 45.225358418297255,
+    "trades": 125,
+    "tim_pct": 20.03,
+    "max_dd_pct": 3.26505908129193,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -82.20471313973363,
+    "gain_vs_bh": 127.43007155803087
+   },
+   "secs": 0.89
+  },
+  {
+   "chart": "ZROUSDT_SHORT_bhm91_gain37_t127_30d_matrix.html",
+   "symside": "ZROUSDT_SHORT",
+   "verdict": "WARN",
+   "findings": [
+    {
+     "sev": "INFO",
+     "id": "ROW_MULTI_LEG",
+     "msg": "6/127 trade(s) scaled mid-life (AUGMENT/REDUCE inside their span) \u2014 single-leg arithmetic does not apply, they are verified only in the aggregate sum"
+    },
+    {
+     "sev": "WARN",
+     "id": "LA_OFF_SERIES_FILL",
+     "msg": "6 fill(s) at a price that is on no bar close \u2014 a stop/limit level filled intrabar. UNPROVEN either way until the bar's own [low,high] is read: run --npz on S1/S2",
+     "sample": [
+      {
+       "side": "exit",
+       "bar": 170,
+       "price": 0.9779387375712394,
+       "bar_close": 0.9793999791145325,
+       "qty": 56.673591813971896,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 178,
+       "price": 0.9866605007648468,
+       "bar_close": 0.9848999977111816,
+       "qty": 36.7969516612163,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1660,
+       "price": 1.8850007951259613,
+       "bar_close": 1.8454999923706055,
+       "qty": 255.9872575787311,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 1913,
+       "price": 2.0194360053539273,
+       "bar_close": 2.020400047302246,
+       "qty": 27.405014825216995,
+       "reason": "FIXED_STOP"
+      },
+      {
+       "side": "exit",
+       "bar": 2465,
+       "price": 1.9833459919691085,
+       "bar_close": 1.9837000370025635,
+       "qty": 43.43466309925949,
+       "reason": "FIXED_STOP"
+      }
+     ]
+    },
+    {
+     "sev": "WARN",
+     "id": "SRC_NO_XLSX",
+     "msg": "no ZROUSDT_SHORT_bhm91_gain37_t127_30d_matrix.xlsx beside the chart"
+    },
+    {
+     "sev": "INFO",
+     "id": "SRC_PROGRESS_NOT_FOUND",
+     "msg": "no ZROUSDT_SHORT_v14_progress.json whose md5(cumulative_overrides) == manifest overrides_md5 \u2014 the set that produced this board cannot be recovered on this host"
+    },
+    {
+     "sev": "INFO",
+     "id": "LA_COST_MODEL",
+     "msg": "3.99 bps round turn already deducted per trade; net with further cost added: +2bps=32.9642/+5bps=26.7583/+10bps=16.4152"
+    }
+   ],
+   "filename_claims": {
+    "gain": 37.0,
+    "trades": 127,
+    "bh": -91.0
+   },
+   "recomputed": {
+    "trades": 127,
+    "pnl_dollars": 166.96,
+    "peak_event_replay": 450.0,
+    "peak_sweepline": 450.0,
+    "gain_pct_event_peak": 37.1015,
+    "gain_pct_sweep_peak": 37.1015,
+    "wins": 102,
+    "wr_pct": 80.31,
+    "max_dd_pct": 9.66,
+    "tim_pct": 20.06,
+    "bh_pct": -91.0689,
+    "cost_ladder": {
+     "2bps": 32.9642,
+     "5bps": 26.7583,
+     "10bps": 16.4152
+    },
+    "pool_sharpe": 0.1603,
+    "cost_model_bps": 3.99,
+    "single_leg_rows": 121
+   },
+   "header": {
+    "gain_pct": 37.1,
+    "bh_pct": -91.07,
+    "delta_vs_bh": 128.17,
+    "trades": 127,
+    "pool_sharpe": 0.1603,
+    "max_dd_pct": 9.66,
+    "max_dd_mae_pct": 9.93,
+    "tim_pct": 20.06,
+    "wr_pct": 80.31,
+    "bars": 2881,
+    "peak_capital": 450.0,
+    "fork_note": null,
+    "ledger_counts": {
+     "trades": 127,
+     "opens": 127,
+     "augments": 0,
+     "reduces": 6
+    },
+    "last_label": "2026-10-14 21:30"
+   },
+   "manifest_metrics": {
+    "gain_pct": 37.10147914016914,
+    "trades": 127,
+    "tim_pct": 20.06,
+    "max_dd_pct": 9.663296875692385,
+    "valid": true,
+    "invalid_reason": "",
+    "bh": -91.06892618873151,
+    "gain_vs_bh": 128.17040532890064
+   },
+   "secs": 0.0
+  }
+ ]
+}

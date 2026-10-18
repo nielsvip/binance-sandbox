@@ -164,7 +164,7 @@ class Cache:
             st = p.stat()
         except OSError:
             return None
-        k = f"{p}|{int(st.st_mtime)}|{st.st_size}"
+        k = f"{p}|{int(st.st_mtime)}|{st.st_size}|mtm{os.environ.get('METRICS_COUNT_UNREALISED_MTM', '1')}"
         if self.enabled and k in self.d:
             return self.d[k]
         v = chart_numbers(p)
