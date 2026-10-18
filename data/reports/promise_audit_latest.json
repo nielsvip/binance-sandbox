@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-18T18:12:03.028213+00:00",
+ "generated_utc": "2026-10-18T19:12:01.565619+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 258,
-  "entry_broken_no_delivery": 258,
-  "exit_promises": 374,
+  "entry_promises": 260,
+  "entry_broken_no_delivery": 260,
+  "exit_promises": 380,
   "exit_kept_in_bar": 42,
-  "exit_kept_late": 13,
+  "exit_kept_late": 14,
   "exit_skipped_inflight": 279,
-  "exit_broken_no_delivery": 319
+  "exit_broken_no_delivery": 324
  },
  "per_key": {
   "fin:MANAUSDT_SHORT": {
@@ -258,8 +258,8 @@
    "exit_skipped_inflight": 24,
    "exit_kept_late": 1,
    "exit_broken_no_delivery": 6,
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3
   },
   "men:WLDUSDC_SHORT": {
    "exit_promises": 2,
@@ -308,10 +308,10 @@
   "fin:IOTXUSDT_SHORT": {
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
-   "exit_promises": 4,
+   "exit_promises": 5,
    "exit_skipped_inflight": 4,
    "exit_kept_in_bar": 1,
-   "exit_broken_no_delivery": 3
+   "exit_broken_no_delivery": 4
   },
   "men:BBUSDT_LONG": {
    "exit_promises": 1,
@@ -358,10 +358,10 @@
    "entry_broken_no_delivery": 3
   },
   "ang:1000FLOKIUSDT_SHORT": {
-   "entry_promises": 5,
-   "entry_broken_no_delivery": 5,
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 3
+   "entry_promises": 6,
+   "entry_broken_no_delivery": 6,
+   "exit_promises": 4,
+   "exit_broken_no_delivery": 4
   },
   "men:GRTUSDT_SHORT": {
    "exit_promises": 1,
@@ -420,8 +420,8 @@
    "entry_broken_no_delivery": 6
   },
   "men:ATOMUSDT_SHORT": {
-   "exit_promises": 6,
-   "exit_broken_no_delivery": 6
+   "exit_promises": 7,
+   "exit_broken_no_delivery": 7
   },
   "men:KMNOUSDT_SHORT": {
    "exit_promises": 3,
@@ -876,19 +876,25 @@
   },
   "flz:DOGEUSDC_SHORT": {
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_kept_late": 1
   },
   "flz:XRPUSDC_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
   "fin:QTUMUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
   },
   "fin:XRPUSDC_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
+  },
+  "flz:ZECUSDC_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -6790,6 +6796,86 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "TECHNICAL_EXIT dc_4h_high",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DOGEUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-18 18:00",
+   "late_min": 16.7,
+   "action": "CLOSE",
+   "reason": "MTF_GR_WT_EXIT_15m_grTFs=3",
+   "outcome": "BLOCKED_DISPATCH_TIMEOUT->TIMEOUT_EXIT_F"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-18 18:00",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_SHORT",
+   "kind": "entry",
+   "bar": "10-18 18:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "DC_BREAKOUT_ENTRY",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "IOTXUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-18 18:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "MULTI_TF_EXIT s57/55 g-2.07%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "QTUMUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-18 18:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "MTF_DC_REJECT_1h_px0.8402",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "1000FLOKIUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-18 18:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_KZONE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ATOMUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-18 18:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "1000FLOKIUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-18 18:30",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF",
    "outcome": "NO_DELIVERY"
   }
  ],
