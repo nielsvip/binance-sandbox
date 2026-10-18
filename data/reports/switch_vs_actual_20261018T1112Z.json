@@ -1,0 +1,25 @@
+{
+ "window_from": "10-18 10:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 152,
+  "status_OK": 177,
+  "dictated_but_no_account_traded_it": 41,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "inf",
+   "sym_side": "ZROUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 10:56",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
