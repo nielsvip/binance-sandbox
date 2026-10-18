@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 06:16:22 UTC
+# Copilot Status — 2026-10-18 06:21:31 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:55:00
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:57:06
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:59:12
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T06:01:22
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T06:03:33
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T06:09:44
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T06:11:47
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T06:13:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T06:18:26
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T06:20:30
 
 ## Missed Trades (trader comparison)
 
@@ -27,14 +27,14 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 21 | **Watching for reentry:** 14 | **Reentered:** 0
+**Held:** 21 | **Watching for reentry:** 15 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.7%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +0.6%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.9%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +0.7%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +6.2%
+- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +6.4%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -56,8 +56,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running

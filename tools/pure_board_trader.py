@@ -164,7 +164,9 @@ def live_trader_running(accounts):
 
 
 async def execute_live(tm, acct, ss, action, qty, price, reason):
-    """Orders only ever leave through ez_manage.execute_trade_action -> execute_now (the one sanctioned gate)."""
+    """Orders leave through ez_manage's normal path — `execute_trade_action` -> `execute_now` — with the system's own
+    order placement (maker chase included). USER 2026-10-18: "NOT FUCKING MARKET CLOSES ... TRADE WHAT THE SYSTEM TELLS
+    YOU"; the lane decides WHAT and WHEN from the board, it does not second-guess HOW the order is placed."""
     sym = ss.rsplit("_", 1)[0]
     side = "LONG" if ss.endswith("_LONG") else "SHORT"
     a = str(action).upper()
@@ -173,9 +175,6 @@ async def execute_live(tm, acct, ss, action, qty, price, reason):
     return await tm.execute_trade_action(account_key=acct, position_key=f"{acct}:{ss}", symbol=sym, quantity=abs(float(qty)),
                                          current_price=float(price), side=oside, position_side=side,
                                          reason=f"{reason} |PURE_BOARD", is_reduce=(not opening), is_full_close=(a == "CLOSE"))
-
-
-FROZEN = Path(os.environ.get("VEC_EXACT_FROZEN_DIR", "/tmp/vec_exact_frozen"))
 
 
 def prepared_from_frozen(symside: str):
@@ -313,7 +312,7 @@ def _eval_one(job):
         return ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}
 
 
-def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=None):
+def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=None, close_only=False):
     from concurrent.futures import ProcessPoolExecutor
 
     stats = collections.Counter()
@@ -352,6 +351,9 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                 if verdict in ("AGREE_HOLD", "AGREE_FLAT"):
                     continue
                 conv = "CONVERGE_OPEN" if verdict == "BOARD_HOLDS_LIVE_FLAT" else "CONVERGE_CLOSE"
+                if close_only and conv == "CONVERGE_OPEN":
+                    stats["SKIPPED_OPEN_CLOSE_ONLY"] += 1
+                    continue
                 row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": conv,
                        "reason": f"{verdict} board_qty={eng_qty:.6f} live_qty={lh:.6f} since={est.get('since')}",
                        "price": float(est.get("entry_price") or 0.0) or None, "vec_qty": (eng_qty if conv == "CONVERGE_OPEN" else lh),
@@ -419,6 +421,7 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--live", action="store_true", help="send real orders through ez_manage.execute_now (the account's own ez_manage must be stopped)")
+    ap.add_argument("--close-only", action="store_true", help="converge by CLOSING only: every position the board no longer holds is closed on its bar, nothing new is opened")
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--bar", type=float, default=0.0, help="evaluate this bar ts instead of the last closed one")
     ap.add_argument("--offset", type=float, default=8.0, help="seconds after the 15m bar close to start the pass")
@@ -433,7 +436,9 @@ def main():
             + ", ".join(f"{a_}:{s_}" for a_, s_ in adopted[:10]) + (" …" if len(adopted) > 10 else ""))
     bds = boards()
     missing = sorted({ss for _ac, ss in uni if ss not in bds})
-    log(f"universe {len(uni)} keys / {len({s for _a, s in uni})} sym_sides over accounts {accounts}; published boards {len(bds)}; without a board: {len(missing)}")
+    log(f"universe {len(uni)} keys / {len({s for _a, s in uni})} sym_sides over accounts {accounts}; published boards {len(bds)}; without a board: {len(missing)}"
+        + ("  [CLOSE-ONLY: the board's exits are traded, no new exposure]" if a.close_only else "")
+        + ("  [LIVE ORDERS]" if a.live else "  [paper]"))
     if missing:
         log(f"NO PUBLISHED BOARD (never traded by this script): {', '.join(missing[:12])}{' …' if len(missing) > 12 else ''}")
     live_tm = None
@@ -455,7 +460,7 @@ def main():
         day = dt.datetime.fromtimestamp(bar, dt.timezone.utc).strftime("%Y-%m-%d")
         t0 = time.time()
         held = live_positions(accounts)
-        stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers, held=held)
+        stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers, held=held, close_only=a.close_only)
         acts = sum(v for k, v in stats.items() if k.startswith("ACT_"))
         lat = [r.get("decided_s_after_bar_close") for r in intents if r.get("decided_s_after_bar_close") is not None]
         if lat:
