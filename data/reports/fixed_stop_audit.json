@@ -1,14 +1,14 @@
 {
  "findings": [],
  "n_findings": 0,
- "n_positions": 9,
+ "n_positions": 6,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.29583774999999995,
    "key": "fin:XTZUSDT_SHORT",
    "live_level": 0.29583774999999995,
-   "mark": 0.2947,
+   "mark": 0.2938,
    "opened_at": "2026-10-18T21:24:05.126000Z",
    "resting_trigger": 0.2963
   },
@@ -17,7 +17,7 @@
    "entry_bar_level": 21.613899999999997,
    "key": "fin:COMPUSDT_SHORT",
    "live_level": 21.613899999999997,
-   "mark": 21.07241754,
+   "mark": 21.04,
    "opened_at": "2026-10-18T06:20:10.049000Z",
    "resting_trigger": 21.65
   },
@@ -26,52 +26,25 @@
    "entry_bar_level": 0.22526175,
    "key": "fin:SNXUSDT_SHORT",
    "live_level": 0.22526175,
-   "mark": 0.2088,
+   "mark": 0.20834324,
    "opened_at": "2026-10-17T05:27:14.538000Z",
    "resting_trigger": 0.2256
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 4.2796725,
-   "key": "fin:KSMUSDT_SHORT",
-   "live_level": 4.2796725,
-   "mark": 4.1702309,
-   "opened_at": "2026-10-18T06:58:56.472000Z",
-   "resting_trigger": 4.287
   },
   {
    "armed": true,
    "entry_bar_level": 0.0190876,
    "key": "fin:CHRUSDT_SHORT",
    "live_level": 0.0190876,
-   "mark": 0.01806866,
+   "mark": 0.01802586,
    "opened_at": "2026-10-18T07:39:58.339000Z",
    "resting_trigger": 0.01912
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 5504.803500000001,
-   "key": "fin:BTCDOMUSDT_LONG",
-   "live_level": 5504.803500000001,
-   "mark": 5617.3,
-   "opened_at": "2026-10-17T05:40:26.259959Z",
-   "resting_trigger": 5496.5
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 104.36025,
-   "key": "fin:SOLUSDC_SHORT",
-   "live_level": 104.36025,
-   "mark": 103.21310018,
-   "opened_at": "2026-10-18T09:01:29.961000Z",
-   "resting_trigger": 104.52
   },
   {
    "armed": true,
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5618.4,
+   "mark": 5617.93440824,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5551.7
   },
@@ -80,10 +53,10 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.10864696,
+   "mark": 7.113,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.551
   }
  ],
- "ts": "2026-10-18T22:22:22.932471+00:00"
+ "ts": "2026-10-18T22:34:39.062975+00:00"
 }

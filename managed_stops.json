@@ -1,30 +1,23 @@
 {
+  "fin:SNXUSDT_SHORT": {
+    "orderId": "3000002255036008",
+    "stopPrice": 0.2254,
+    "entry_sig": "2026-10-17 05:27:14.538000+00:00",
+    "symbol": "SNXUSDT",
+    "side": "SHORT"
+  },
   "fin:COMPUSDT_SHORT": {
-    "orderId": "3000002257901663",
-    "stopPrice": 21.65,
+    "orderId": "3000002256830233",
+    "stopPrice": 21.63,
     "entry_sig": "2026-10-18 06:20:10.049000+00:00",
     "symbol": "COMPUSDT",
     "side": "SHORT"
   },
   "fin:CHRUSDT_SHORT": {
-    "orderId": "3000002257901711",
-    "stopPrice": 0.01912,
+    "orderId": "3000002256915301",
+    "stopPrice": 0.0191,
     "entry_sig": "2026-10-18 07:39:58.339000+00:00",
     "symbol": "CHRUSDT",
-    "side": "SHORT"
-  },
-  "fin:SNXUSDT_SHORT": {
-    "orderId": "3000002257901713",
-    "stopPrice": 0.2256,
-    "entry_sig": "2026-10-17 05:27:14.538000+00:00",
-    "symbol": "SNXUSDT",
-    "side": "SHORT"
-  },
-  "fin:XTZUSDT_SHORT": {
-    "orderId": "3000002257970313",
-    "stopPrice": 0.2963,
-    "entry_sig": "2026-10-18 21:24:05.126000+00:00",
-    "symbol": "XTZUSDT",
     "side": "SHORT"
   }
 }

@@ -84,7 +84,9 @@ def connect(path, write=True):
     p = Path(path)
     if write:
         p.parent.mkdir(parents=True, exist_ok=True)
-    c = sqlite3.connect(str(p) if write else f"file:{p}?mode=ro", uri=not write, timeout=600.0, isolation_level=None)
+    # uri=True on BOTH paths: do_merge ATTACHes its sources as `file:...?mode=ro`, and a connection opened with
+    # uri=False parses that as a literal filename and silently skips every source (2026-10-18: "+0 rows" merge).
+    c = sqlite3.connect(str(p) if write else f"file:{p}?mode=ro", uri=True, timeout=600.0, isolation_level=None)
     if write:
         # Speed pragmas only: journal_mode needs exclusive access, and a concurrent READER (an audit or a row count
         # over a 45 GB file on USB) must not turn a merge into a crash. 2026-10-18: it did.
