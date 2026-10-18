@@ -1,14 +1,25 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 11,
+ "findings": [
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 1.3014455,
+   "key": "flz:XRPUSDC_SHORT",
+   "live_level": 1.302849,
+   "mark": 1.26874182,
+   "opened_at": "2026-10-18T16:35:23.331000Z",
+   "resting_trigger": 1.3021
+  }
+ ],
+ "n_findings": 1,
+ "n_positions": 15,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.18220437499999997,
    "key": "fin:XLMUSDT_SHORT",
    "live_level": 0.18220437499999997,
-   "mark": 0.17451,
+   "mark": 0.17426,
    "opened_at": "2026-10-17T03:00:16.228000Z",
    "resting_trigger": 0.1823
   },
@@ -17,7 +28,7 @@
    "entry_bar_level": 21.613899999999997,
    "key": "fin:COMPUSDT_SHORT",
    "live_level": 21.613899999999997,
-   "mark": 21.03,
+   "mark": 20.98,
    "opened_at": "2026-10-18T06:20:10.049000Z",
    "resting_trigger": 21.63
   },
@@ -26,7 +37,7 @@
    "entry_bar_level": 0.22526175,
    "key": "fin:SNXUSDT_SHORT",
    "live_level": 0.22526175,
-   "mark": 0.2076,
+   "mark": 0.20723369,
    "opened_at": "2026-10-17T05:27:14.538000Z",
    "resting_trigger": 0.2254
   },
@@ -35,7 +46,7 @@
    "entry_bar_level": 4.2796725,
    "key": "fin:KSMUSDT_SHORT",
    "live_level": 4.2796725,
-   "mark": 4.135,
+   "mark": 4.127,
    "opened_at": "2026-10-18T06:58:56.472000Z",
    "resting_trigger": 4.282
   },
@@ -44,7 +55,7 @@
    "entry_bar_level": 0.0190876,
    "key": "fin:CHRUSDT_SHORT",
    "live_level": 0.0190876,
-   "mark": 0.018,
+   "mark": 0.01799,
    "opened_at": "2026-10-18T07:39:58.339000Z",
    "resting_trigger": 0.0191
   },
@@ -53,7 +64,7 @@
    "entry_bar_level": 5504.803500000001,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5504.803500000001,
-   "mark": 5642.9,
+   "mark": 5640.72364447,
    "opened_at": "2026-10-17T05:40:26.259959Z",
    "resting_trigger": 5502.0
   },
@@ -62,7 +73,7 @@
    "entry_bar_level": 104.36025,
    "key": "fin:SOLUSDC_SHORT",
    "live_level": 104.36025,
-   "mark": 101.77321986,
+   "mark": 101.75,
    "opened_at": "2026-10-18T09:01:29.961000Z",
    "resting_trigger": 104.42
   },
@@ -71,7 +82,7 @@
    "entry_bar_level": 0.057765225,
    "key": "men:SANDUSDT_LONG",
    "live_level": 0.057765225,
-   "mark": 0.05845613,
+   "mark": 0.05853,
    "opened_at": "2026-10-18T02:55:56.063000Z",
    "resting_trigger": 0.05773
   },
@@ -80,7 +91,7 @@
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5643.38283555,
+   "mark": 5641.14241868,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5557.2
   },
@@ -89,19 +100,55 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 6.96475337,
+   "mark": 6.963,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.543
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 1.357385,
+   "key": "flz:GRAMUSDT_SHORT",
+   "live_level": 1.357385,
+   "mark": 1.334233,
+   "opened_at": "2026-10-18T16:37:41.646000Z",
+   "resting_trigger": 1.359
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.5024529999999999,
+   "key": "flz:WLDUSDC_SHORT",
+   "live_level": 0.5024529999999999,
+   "mark": 0.4746,
+   "opened_at": "2026-10-18T16:36:02.845000Z",
+   "resting_trigger": 0.5028
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 1.3014455,
+   "key": "flz:XRPUSDC_SHORT",
+   "live_level": 1.302849,
+   "mark": 1.26874182,
+   "opened_at": "2026-10-18T16:35:23.331000Z",
+   "resting_trigger": 1.3021
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.079748875,
+   "key": "flz:DOGEUSDC_SHORT",
+   "live_level": 0.079748875,
+   "mark": 0.07734,
+   "opened_at": "2026-10-18T16:35:56.816000Z",
+   "resting_trigger": 0.07979
   },
   {
    "armed": true,
    "entry_bar_level": 1136.103175,
    "key": "flz:ZECUSDC_SHORT",
    "live_level": 1136.103175,
-   "mark": 1079.99,
+   "mark": 1080.92066195,
    "opened_at": "2026-10-18T16:05:05.907000Z",
    "resting_trigger": 1136.68
   }
  ],
- "ts": "2026-10-18T16:30:57.923263+00:00"
+ "ts": "2026-10-18T16:40:52.307275+00:00"
 }
