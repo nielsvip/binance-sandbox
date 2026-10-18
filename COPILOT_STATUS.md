@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 02:47:06 UTC
+# Copilot Status — 2026-10-18 02:52:05 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -7,6 +7,12 @@
 ## Recent Anomalies (last 1h)
 
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:47:04
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:48:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:49:00
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:49:11
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:50:13
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:51:04
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:51:15
 
 ## Missed Trades (trader comparison)
 
@@ -21,11 +27,11 @@ _None_
 **Held:** 22 | **Watching for reentry:** 15 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.1%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.0%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.4%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +3.5%
+- HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.6%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +3.2%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -46,7 +52,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 4
+**Issues (last 1h):** 20
+- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
