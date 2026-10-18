@@ -108,7 +108,16 @@ PY
   rm -f /tmp/s2_guard_bk.$$
 fi
 # --- E eval cache only when switched off in the champion env
+# USER 2026-10-18: this guard now runs on S1 too, where the version gate (and so gate/champion/meta.json) does not exist.
+# S1 reached 97% / 11 GB free with a 29.7 GB eval_cache_v1.db that had not been written for 33 h, and the fleet scheduler
+# idles a host below 5 GB — ez_disk_cleanup.py cannot see it (it is scoped to ~/binance, the cache lives in the sandbox).
+# When the local gate meta is absent, ask the gate host for the champion env; if that fails EC stays empty and E is skipped.
 EC=$(python3 -c "import json;m=json.load(open('$BENCH/gate/champion/meta.json'));print((m.get('env') or {}).get('V15_EVAL_CACHE',''))" 2>/dev/null)
+if [ -z "$EC" ] && [ -n "${S2_GUARD_GATE_HOST:-}" ]; then
+    EC=$(ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new "niels@${S2_GUARD_GATE_HOST}" \
+        "python3 -c \"import json;m=json.load(open('/home/niels/v15_bench/gate/champion/meta.json'));print((m.get('env') or {}).get('V15_EVAL_CACHE',''))\"" 2>/dev/null | tr -dc '0-9')
+    [ -n "$EC" ] && log "E: champion env read from gate host ${S2_GUARD_GATE_HOST}: V15_EVAL_CACHE='${EC}'"
+fi
 if [ "$EC" = "0" ]; then
   for c in $H/binance-sandbox/data/eval_cache_v1.db $H/binance-sandbox/data/eval_cache_v1.db-wal $H/binance-sandbox/data/eval_cache_v1.db-shm; do [ -e "$c" ] && zap "$c" "E:eval-cache-off"; done
 else
