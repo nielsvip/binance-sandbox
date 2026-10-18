@@ -16,13 +16,46 @@ Only this module + 3 call sites in _vec_exact_process_position. No other paths.
 """
 import asyncio
 import logging
+import os
+import sys
 import time
+from pathlib import Path
+
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 logger = logging.getLogger(__name__)
 
 INFLIGHT = {}
 STALE_GRACE_S = 60.0
 WIRE_LIVE = ("NEW", "PARTIALLY_FILLED", "PENDING", "OPEN", "WORKING")
+_FORCED = {}
+
+
+def _env_f(name, default):
+    try:
+        return float(os.environ.get(name) or default)
+    except Exception:
+        return float(default)
+
+
+def _is_exit(label) -> bool:
+    try:
+        import promise_ledger as _pl
+
+        return _pl.is_exit_label(label)
+    except Exception:
+        s = str(label or "").upper()
+        return s.split(" ", 1)[0] in ("CLOSE", "REDUCE") or "VEC_EXIT_OWED" in s or "STALE_FLATTEN" in s
+
+
+def _ledger(fn, *a, **k):
+    try:
+        import promise_ledger as _pl
+
+        getattr(_pl, fn)(*a, **k)
+    except Exception:
+        pass
 
 
 async def fire_exit_market(trade_manager, position_key, symbol, side, position_side):
@@ -116,7 +149,9 @@ def _live(key):
     ent = INFLIGHT.get(key)
     if not ent:
         return None
-    task, born, timeout = ent
+    task, born, timeout = ent[0], ent[1], ent[2]
+    if len(ent) < 4:  # tolerate a legacy 3-tuple (hot reload / older writer) instead of crashing the dispatcher
+        ent = INFLIGHT[key] = (task, born, timeout, "OTHER")
     if task.done():
         INFLIGHT.pop(key, None)
         return None
@@ -134,9 +169,39 @@ async def dispatch_tracked(position_key, label, coro_fn, timeout, on_timeout=Non
     sweep is cancelled — the execution itself continues detached. On inner
     timeout, runs on_timeout() first (exit->MARKET conversion) when provided.
     """
-    if _live(position_key):
-        logger.warning(f"[VEC_EXACT] {position_key} {label} SKIPPED_VX_INFLIGHT (execution already running, no dup dispatch)")
-        return "SKIPPED_VX_INFLIGHT"
+    ent = _live(position_key)
+    if ent:
+        # USER 2026-10-18 "trade what you promised nothing more nothing less": the single-flight guard is keyed on the
+        # position only, so a vec full-close used to queue behind ANY slower execution on that key (maker chase, augment)
+        # and was answered SKIPPED_VX_INFLIGHT on every retry — measured on 2026-10-18 fin:RLCUSDT_SHORT (04:26:22 ->
+        # 04:29:32, every 20 s skipped) and as 23 VEC_STALE_FLATTEN closes worth -13.31 $ over 7 d, i.e. the exit the
+        # vector promised at bar b was delivered hours late by the backstop. An exit may never wait behind a non-exit.
+        _in_exit = bool(ent[3] == "EXIT")
+        _me_exit = _is_exit(label)
+        if _me_exit and not _in_exit and os.environ.get("VX_EXIT_PREEMPT", "1") != "0":
+            logger.critical(f"[VEC_EXACT] {position_key} {label} EXIT_PREEMPTS_INFLIGHT (non-exit execution still running; the promised exit is dispatched now, execute_now cancels the stale working orders and re-reads the live amount)")
+            _ledger("delivery", position_key, label, "EXIT_PREEMPTS_INFLIGHT")
+        elif _me_exit and _in_exit:
+            age = time.time() - float(ent[1])
+            after = _env_f("VX_EXIT_FORCE_AFTER_S", 90.0)
+            cool = _env_f("VX_EXIT_FORCE_COOLDOWN_S", 300.0)
+            if age >= after and on_timeout is not None and (time.time() - float(_FORCED.get(position_key, 0.0))) >= cool:
+                _FORCED[position_key] = time.time()
+                logger.critical(f"[VEC_EXACT] {position_key} {label} EXIT_FORCE_ESCALATION (in-flight exit wedged {age:.0f}s >= {after:.0f}s -> FORCE market leg now)")
+                _ledger("broken", position_key, label, "EXIT_WEDGED_FORCED", f"inflight_age_s={age:.0f}")
+                try:
+                    res = await on_timeout()
+                except Exception as exc:
+                    res = f"FORCE_ERR {exc}"
+                _ledger("delivery", position_key, label, "EXIT_FORCE_ESCALATION", str(res)[:120])
+                return f"EXIT_FORCE_ESCALATION {res}"
+            logger.warning(f"[VEC_EXACT] {position_key} {label} SKIPPED_VX_INFLIGHT (exit already running {age:.0f}s, no dup dispatch)")
+            _ledger("delivery", position_key, label, "SKIPPED_VX_INFLIGHT", f"inflight=EXIT age_s={age:.0f}")
+            return "SKIPPED_VX_INFLIGHT"
+        else:
+            logger.warning(f"[VEC_EXACT] {position_key} {label} SKIPPED_VX_INFLIGHT (execution already running, no dup dispatch)")
+            _ledger("delivery", position_key, label, "SKIPPED_VX_INFLIGHT", f"inflight={ent[3]}")
+            return "SKIPPED_VX_INFLIGHT"
 
     async def _run():
         try:
@@ -155,9 +220,12 @@ async def dispatch_tracked(position_key, label, coro_fn, timeout, on_timeout=Non
     inner = asyncio.ensure_future(_run())
 
     def _done(t):
-        INFLIGHT.pop(position_key, None)
+        cur = INFLIGHT.get(position_key)
+        if cur is not None and cur[0] is t:  # a preempted non-exit must not clear the exit that superseded it
+            INFLIGHT.pop(position_key, None)
         try:
             res = t.result()
+            _ledger("delivery", position_key, label, str(res)[:60] or "DONE")
             logger.info(f"[VEC_EXACT] {position_key} {label} TRACKED_DONE -> {str(res)[:120]}")
         except asyncio.CancelledError:
             logger.warning(f"[VEC_EXACT] {position_key} {label} TRACKED_CANCELLED (inner died)")
@@ -165,7 +233,7 @@ async def dispatch_tracked(position_key, label, coro_fn, timeout, on_timeout=Non
             logger.error(f"[VEC_EXACT] {position_key} {label} TRACKED_ERROR: {e}")
 
     inner.add_done_callback(_done)
-    INFLIGHT[position_key] = (inner, born, timeout)
+    INFLIGHT[position_key] = (inner, born, timeout, "EXIT" if _is_exit(label) else "OTHER")
     try:
         return await asyncio.shield(inner)
     except asyncio.CancelledError:

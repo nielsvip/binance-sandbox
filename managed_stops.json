@@ -55,12 +55,12 @@
     "symbol": "BNBUSDC",
     "side": "LONG"
   },
-  "fin:EGLDUSDT_SHORT": {
-    "orderId": "3000002256641961",
-    "stopPrice": 3.625,
-    "entry_sig": "2026-10-18 03:39:47.129000+00:00",
-    "symbol": "EGLDUSDT",
-    "side": "SHORT"
+  "fin:SOLUSDC_LONG": {
+    "orderId": "3000002256677795",
+    "stopPrice": 102.2,
+    "entry_sig": "2026-10-18 04:07:17.068000+00:00",
+    "symbol": "SOLUSDC",
+    "side": "LONG"
   },
   "fin:UNIUSDC_LONG": {
     "orderId": "3000002256675961",
@@ -69,12 +69,12 @@
     "symbol": "UNIUSDC",
     "side": "LONG"
   },
-  "fin:SOLUSDC_LONG": {
-    "orderId": "3000002256677795",
-    "stopPrice": 102.2,
-    "entry_sig": "2026-10-18 04:07:17.068000+00:00",
+  "fin:SOLUSDC_SHORT": {
+    "orderId": "3000002256692800",
+    "stopPrice": 104.93,
+    "entry_sig": "2026-10-18 04:20:00.515000+00:00",
     "symbol": "SOLUSDC",
-    "side": "LONG"
+    "side": "SHORT"
   },
   "fin:ATOMUSDT_SHORT": {
     "orderId": "3000002254903729",
@@ -83,32 +83,25 @@
     "symbol": "ATOMUSDT",
     "side": "SHORT"
   },
+  "fin:EGLDUSDT_SHORT": {
+    "orderId": "3000002256641961",
+    "stopPrice": 3.625,
+    "entry_sig": "2026-10-18 03:39:47.129000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "fin:ADAUSDC_SHORT": {
+    "orderId": "3000002256693745",
+    "stopPrice": 0.222,
+    "entry_sig": "2026-10-18 03:11:26.309000+00:00",
+    "symbol": "ADAUSDC",
+    "side": "SHORT"
+  },
   "fin:XTZUSDT_SHORT": {
     "orderId": "3000002256642923",
     "stopPrice": 0.3037,
     "entry_sig": "2026-10-18 03:40:24.731000+00:00",
     "symbol": "XTZUSDT",
-    "side": "SHORT"
-  },
-  "fin:SOLUSDC_SHORT": {
-    "orderId": "3000002256692800",
-    "stopPrice": 104.93,
-    "entry_sig": "2026-10-18 04:20:00.515000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "SHORT"
-  },
-  "fin:ZENUSDT_SHORT": {
-    "orderId": "3000002256693743",
-    "stopPrice": 5.997,
-    "entry_sig": "2026-10-18 04:21:13.671000+00:00",
-    "symbol": "ZENUSDT",
-    "side": "SHORT"
-  },
-  "fin:ADAUSDC_SHORT": {
-    "orderId": "3000002256695869",
-    "stopPrice": 0.2218,
-    "entry_sig": "2026-10-18 03:11:26.309000+00:00",
-    "symbol": "ADAUSDC",
     "side": "SHORT"
   }
 }
