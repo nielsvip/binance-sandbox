@@ -1,102 +1,44 @@
 {
- "generated_at": "2026-10-18 12:46 UTC",
- "total_capital_usd": 62.04,
+ "generated_at": "2026-10-18 12:51 UTC",
+ "total_capital_usd": 14.5,
  "tier_capital": {
   "A": 0.0,
-  "B": 14.46,
-  "C": 47.58
+  "B": 0.0,
+  "C": 14.5
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 5
+  "B": 0,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "men:SOLUSDC_SHORT",
-  "men:SANDUSDT_LONG",
-  "men:BTCDOMUSDT_LONG",
-  "men:SNXUSDT_SHORT",
-  "men:RVNUSDT_SHORT"
+  "flz:SOLUSDC_SHORT",
+  "flz:BNBUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:RVNUSDT_SHORT",
-   "symbol": "RVNUSDT",
-   "account": "men",
-   "value_usd": 20.83,
-   "gain_pct": 7.37,
-   "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 14636.0,
-   "mark": 0.0014235
-  },
-  {
-   "pk": "men:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "men",
-   "value_usd": 7.47,
-   "gain_pct": 0.263,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 35.1,
-   "mark": 0.21282833
-  },
-  {
-   "pk": "men:SANDUSDT_LONG",
-   "symbol": "SANDUSDT",
-   "account": "men",
-   "value_usd": 7.45,
-   "gain_pct": -0.0,
-   "tier": "C",
-   "perf_mult": 0.27,
-   "amt": 122.0,
-   "mark": 0.06106
-  },
-  {
-   "pk": "men:UNIUSDC_LONG",
-   "symbol": "UNIUSDC",
-   "account": "men",
-   "value_usd": 7.23,
-   "gain_pct": -0.221,
-   "tier": "B",
-   "perf_mult": 2.99,
-   "amt": 1.0,
-   "mark": 7.229
-  },
-  {
-   "pk": "men:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "men",
-   "value_usd": 7.23,
-   "gain_pct": 2.942,
-   "tier": "B",
-   "perf_mult": 2.99,
-   "amt": 1.0,
-   "mark": 7.229
-  },
-  {
-   "pk": "men:SOLUSDC_SHORT",
+   "pk": "flz:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
-   "account": "men",
-   "value_usd": 6.24,
-   "gain_pct": -0.132,
+   "account": "flz",
+   "value_usd": 7.27,
+   "gain_pct": -0.514,
    "tier": "C",
    "perf_mult": 0.15,
-   "amt": 0.06,
-   "mark": 103.92
+   "amt": 0.07,
+   "mark": 103.89216791
   },
   {
-   "pk": "men:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "men",
-   "value_usd": 5.59,
-   "gain_pct": 0.235,
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 7.23,
+   "gain_pct": -0.17,
    "tier": "C",
    "perf_mult": 0.24,
-   "amt": 0.001,
-   "mark": 5592.0
+   "amt": 0.01,
+   "mark": 722.54711216
   }
  ]
 }
