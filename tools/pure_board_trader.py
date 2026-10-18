@@ -367,6 +367,16 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                 if live_tm is not None:
                     try:
                         px = float((held.get((acct, ss)) or {}).get("mark") or est.get("entry_price") or 0.0)
+                        if conv == "CONVERGE_OPEN" and px > 0:
+                            # The board decides WHAT and WHEN; the account's own sizing decides HOW MUCH (BIBLE 68.3a).
+                            # The engine's qty is on ITS capital base (START_POSITION_SIZE x multipliers) and would
+                            # oversize a small live book, so a fresh open is sized like live sizes one and then passes
+                            # through execute_now's own caps (CRYPTO_MINIMUM_TRADING_MODE etc.).
+                            import config as _cfg_live
+                            _base = float(getattr(_cfg_live.Config, "START_POSITION_SIZE", 0.0) or 0.0)
+                            if _base > 0:
+                                row["vec_qty"] = _base / px
+                                row["sized_by"] = f"live START_POSITION_SIZE ${_base:.0f}"
                         r_ = asyncio.get_event_loop().run_until_complete(
                             execute_live(live_tm, acct, ss, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
                                          row["vec_qty"], px, row["reason"]))

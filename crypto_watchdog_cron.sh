@@ -95,6 +95,14 @@ for proc in "${CRITICAL_PROCESSES[@]}"; do
         # wrapper only counts as self-healing for ITS OWN account. Bug 2026-07-01:
         # matching bare "$script_name" meant ang's wrapper made the cron skip
         # relaunching inf/men/flz/fin forever (they stayed dead after an OOM burst).
+        # USER 2026-10-18: an account handed to tools/pure_board_trader.py must NOT be relaunched here — two traders on
+        # one account is how FIXED_STOP wars and double closes happen. Touch data/no_autostart_<acct>.flag to hold it;
+        # delete the flag and this cron brings the account back within 2 minutes.
+        hold_acct=$(echo "$proc" | sed -n 's/.*--account \([a-z]*\).*/\1/p')
+        if [ -n "$hold_acct" ] && [ -f "$WORKDIR/data/no_autostart_${hold_acct}.flag" ]; then
+            log "HOLD: $proc — data/no_autostart_${hold_acct}.flag present (handed to pure_board_trader), not relaunching"
+            continue
+        fi
         if $is_watchdog_managed && pgrep -f "run_with_watchdog.*$proc" >/dev/null 2>&1; then
             # Wrapper alive — it will restart the process. Don't interfere.
             log "SKIP: $proc — run_with_watchdog wrapper alive, will self-heal"
