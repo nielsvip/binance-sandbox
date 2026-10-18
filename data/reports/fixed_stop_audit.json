@@ -1,6 +1,12 @@
 {
- "findings": [],
- "n_findings": 0,
+ "findings": [
+  {
+   "account": "flz",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [429]>, 429, '{\"code\":-1003,\"msg\":\"Too many requests; current limit of IP(217.146.82.84) is 2400 requests per minute. Please use t"
+  }
+ ],
+ "n_findings": 1,
  "n_positions": 10,
  "positions": [
   {
@@ -8,7 +14,7 @@
    "entry_bar_level": 0.18220437499999997,
    "key": "fin:XLMUSDT_SHORT",
    "live_level": 0.18220437499999997,
-   "mark": 0.17496488,
+   "mark": 0.17513,
    "opened_at": "2026-10-17T03:00:16.228000Z",
    "resting_trigger": 0.1823
   },
@@ -17,7 +23,7 @@
    "entry_bar_level": 21.613899999999997,
    "key": "fin:COMPUSDT_SHORT",
    "live_level": 21.613899999999997,
-   "mark": 21.05250012,
+   "mark": 21.05,
    "opened_at": "2026-10-18T06:20:10.049000Z",
    "resting_trigger": 21.63
   },
@@ -26,7 +32,7 @@
    "entry_bar_level": 0.22526175,
    "key": "fin:SNXUSDT_SHORT",
    "live_level": 0.22526175,
-   "mark": 0.2071,
+   "mark": 0.208,
    "opened_at": "2026-10-17T05:27:14.538000Z",
    "resting_trigger": 0.2254
   },
@@ -35,7 +41,7 @@
    "entry_bar_level": 4.2796725,
    "key": "fin:KSMUSDT_SHORT",
    "live_level": 4.2796725,
-   "mark": 4.15592708,
+   "mark": 4.13455,
    "opened_at": "2026-10-18T06:58:56.472000Z",
    "resting_trigger": 4.282
   },
@@ -44,7 +50,7 @@
    "entry_bar_level": 0.0190876,
    "key": "fin:CHRUSDT_SHORT",
    "live_level": 0.0190876,
-   "mark": 0.01803,
+   "mark": 0.018045,
    "opened_at": "2026-10-18T07:39:58.339000Z",
    "resting_trigger": 0.0191
   },
@@ -53,7 +59,7 @@
    "entry_bar_level": 5504.803500000001,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5504.803500000001,
-   "mark": 5625.11962436,
+   "mark": 5621.8,
    "opened_at": "2026-10-17T05:40:26.259959Z",
    "resting_trigger": 5502.0
   },
@@ -62,7 +68,7 @@
    "entry_bar_level": 104.36025,
    "key": "fin:SOLUSDC_SHORT",
    "live_level": 104.36025,
-   "mark": 101.95,
+   "mark": 101.9,
    "opened_at": "2026-10-18T09:01:29.961000Z",
    "resting_trigger": 104.42
   },
@@ -71,7 +77,7 @@
    "entry_bar_level": 0.057765225,
    "key": "men:SANDUSDT_LONG",
    "live_level": 0.057765225,
-   "mark": 0.06085,
+   "mark": 0.06067,
    "opened_at": "2026-10-18T02:55:56.063000Z",
    "resting_trigger": 0.05773
   },
@@ -80,7 +86,7 @@
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5625.4,
+   "mark": 5621.2,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5557.2
   },
@@ -89,10 +95,10 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.014,
+   "mark": 7.002,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.543
   }
  ],
- "ts": "2026-10-18T14:40:48.196853+00:00"
+ "ts": "2026-10-18T14:50:46.769050+00:00"
 }
