@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 00:37:04 UTC
+# Copilot Status — 2026-10-18 00:41:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -8,6 +8,12 @@
 
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T00:36:10
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T00:36:12
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T00:37:27
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T00:38:11
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T00:38:30
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T00:39:33
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T00:40:18
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T00:40:38
 
 ## Missed Trades (trader comparison)
 
@@ -32,24 +38,24 @@ _None_
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
 - HELD: **AMAT** SHORT (tradier) peak +4.4%, now +3.9%
 
-- WATCHING: **SANDUSDT** LONG (crypto) peaked +19.1%, exited 1m ago
-- WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 1m ago
-- WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 1m ago
-- WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 1m ago
-- WATCHING: **XTZUSDT** SHORT (crypto) peaked +7.6%, exited 1m ago
-- WATCHING: **RLCUSDT** SHORT (crypto) peaked +7.6%, exited 1m ago
-- WATCHING: **DOTUSDT** LONG (crypto) peaked +7.0%, exited 1m ago
-- WATCHING: **CHRUSDT** SHORT (crypto) peaked +6.8%, exited 1m ago
-- WATCHING: **SNXUSDT** SHORT (crypto) peaked +6.6%, exited 1m ago
-- WATCHING: **DASHUSDT** SHORT (crypto) peaked +5.8%, exited 1m ago
+- WATCHING: **SANDUSDT** LONG (crypto) peaked +19.1%, exited 0m ago
+- WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 0m ago
+- WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
+- WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
+- WATCHING: **XTZUSDT** SHORT (crypto) peaked +7.6%, exited 0m ago
+- WATCHING: **RLCUSDT** SHORT (crypto) peaked +7.6%, exited 0m ago
+- WATCHING: **DOTUSDT** LONG (crypto) peaked +7.0%, exited 0m ago
+- WATCHING: **CHRUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
+- WATCHING: **SNXUSDT** SHORT (crypto) peaked +6.6%, exited 0m ago
+- WATCHING: **DASHUSDT** SHORT (crypto) peaked +5.8%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 9
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+**Issues (last 1h):** 28
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
+- [HIGH] ez_manage.py for ang is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
