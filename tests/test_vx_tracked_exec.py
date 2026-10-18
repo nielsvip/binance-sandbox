@@ -1,12 +1,14 @@
 """Tracked VEC_EXACT dispatch — execution survives sweep cancellation."""
 
 import asyncio
+import os
 import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
+os.environ["PROMISE_LEDGER"] = "0"  # a test dispatch must never write into the live promise ledger
 
 import vx_tracked_exec as T
 

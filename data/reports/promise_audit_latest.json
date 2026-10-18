@@ -1,0 +1,54 @@
+{
+ "generated_utc": "2026-10-18T04:43:21.653769+00:00",
+ "days": 1.0,
+ "totals": {
+  "entry_promises": 1,
+  "entry_broken_no_delivery": 1,
+  "exit_promises": 3,
+  "exit_kept_in_bar": 2,
+  "exit_skipped_inflight": 3,
+  "exit_broken_no_delivery": 1
+ },
+ "per_key": {
+  "fin:MANAUSDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "inf:INJUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
+  },
+  "flz:ZECUSDC_LONG": {
+   "exit_promises": 1,
+   "exit_skipped_inflight": 3,
+   "exit_kept_in_bar": 1
+  },
+  "fin:ADAUSDC_SHORT": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  }
+ },
+ "detail": [
+  {
+   "acct": "fin",
+   "sym_side": "MANAUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-18 04:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_KZONE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ADAUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-18 04:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "E_1_WT_DELTA_EXIT_delta=+56_thr=50",
+   "outcome": "NO_DELIVERY"
+  }
+ ],
+ "broken": []
+}

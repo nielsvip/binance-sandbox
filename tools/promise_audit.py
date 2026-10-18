@@ -74,6 +74,7 @@ def main():
     ap.add_argument("--top", type=int, default=25)
     ap.add_argument("--json", default="")
     ap.add_argument("--match-window-s", type=float, default=3600.0, help="how long after its bar a delivery may still be attributed to a promise")
+    ap.add_argument("--pending-grace-s", type=float, default=900.0, help="a promise this young with no delivery yet is still in flight, not broken")
     a = ap.parse_args()
     promises, deliveries, broken = load(a.days)
     if a.acct:
@@ -96,7 +97,8 @@ def main():
         rows = deliveries.get(key) or []
         ts_list = [float(r.get("ts") or 0) for r in rows]
         i = bisect.bisect_left(ts_list, bar)
-        hit, state = None, "broken_no_delivery"
+        now = dt.datetime.now(dt.timezone.utc).timestamp()
+        hit, state = None, ("pending" if now - (bar + BAR_S) < a.pending_grace_s else "broken_no_delivery")
         for j in range(i, len(rows)):
             r = rows[j]
             if j in used[key] or bool(r.get("is_exit")) != is_exit:
@@ -130,10 +132,11 @@ def main():
     print(f"=== promise_audit  last {a.days} d  ledger={LED}  keys={len(per)} ===")
     for kind in ("exit", "entry"):
         p_, ib, late, nb = tot[f"{kind}_promises"], tot[f"{kind}_kept_in_bar"], tot[f"{kind}_kept_late"], tot[f"{kind}_broken_no_delivery"]
+        pend = tot[f"{kind}_pending"]
         allk = [x for (g, k), v in lags.items() if k == kind for x in v]
         med = sorted(allk)[len(allk) // 2] if allk else None
         print(f"{kind.upper():5s} promises {p_:6d} | kept in bar {ib:6d} ({100.0 * ib / max(1, p_):5.1f}%) | kept late {late:5d} | no delivery {nb:5d}"
-              f" | skipped_inflight {tot[f'{kind}_skipped_inflight']:5d} | preempted {tot[f'{kind}_preempted']:4d} | forced {tot[f'{kind}_forced']:4d}"
+              f" | pending {pend:4d} | skipped_inflight {tot[f'{kind}_skipped_inflight']:5d} | preempted {tot[f'{kind}_preempted']:4d} | forced {tot[f'{kind}_forced']:4d}"
               f" | median lag {('%.1f min' % med) if med is not None else 'n/a'}")
     print(f"\nBROKEN rows written by the live dispatch: {len(broken)}")
     for b in broken[-5:]:
