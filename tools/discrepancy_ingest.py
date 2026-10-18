@@ -32,7 +32,13 @@ import discrepancy_ledger as DL  # noqa: E402
 
 BAR_S = 900.0
 ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
-BOOKKEEPING = ("BROKER_RECONCILED", "SYNC_DETECTION", "MARGIN_FREE_FOR", "RECONCIL")
+# Bookkeeping = the ledger mirroring a fill the broker already made (no decision of its own).
+BOOKKEEPING = ("BROKER_RECONCILED", "SYNC_DETECTION")
+# The protective stop is a VECTOR family too (vec_paths allowlist: FIXED_STOP / DAYTRADE_STOP ...); an exchange STOP_MARKET
+# fill simply carries no |VEC_EXACT tag because the exchange filled the resting order, not a live decision. Kept in the
+# ledger (the bar it fills on still differs from the vector's 15m-close check, BIBLE 106 C1) but attributed separately so
+# "live traded something the vector never asked for" stays an honest count.
+STOP_FAMILIES = ("FIXED_STOP", "DAYTRADE_STOP", "MAKER_PROFIT_EXIT_FIXED_STOP", "FROZEN_STOP", "PPL_SL")
 VEC_TAG = "|VEC_EXACT"
 
 
@@ -88,8 +94,9 @@ def ing_live_only_fills(con, t_from):
                     if VEC_TAG in reason or any(b in reason.upper() for b in BOOKKEEPING):
                         continue
                     px, qty = r.get("price"), r.get("qty")
+                    who = "EXCHANGE_STOP" if any(f in reason.upper() for f in STOP_FAMILIES) else "LIVE"
                     n += DL.add(con, "LIVE_ONLY_FILL", ts, acct, ss, bar_ts=bar_of(ts), action=str(r.get("type") or ""),
-                                side=("SHORT" if ss.endswith("_SHORT") else "LONG"), who_wanted="LIVE", live_reason=reason,
+                                side=("SHORT" if ss.endswith("_SHORT") else "LONG"), who_wanted=who, live_reason=reason,
                                 live_price=px, qty=qty, notional=r.get("value"),
                                 source=f"history:{acct}", detail={"indicators_price": (r.get("indicators") or {}).get("price")},
                                 fp_extra=reason[:40])

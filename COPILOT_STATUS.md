@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 04:54:31 UTC
+# Copilot Status — 2026-10-18 04:59:40 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T04:32:36
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T04:34:44
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:36:52
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:38:55
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:41:00
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:49:26
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:51:28
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:53:36
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T04:55:38
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T04:57:42
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,15 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 22 | **Watching for reentry:** 16 | **Reentered:** 0
+**Held:** 22 | **Watching for reentry:** 15 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +4.9%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +-0.0%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.0%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +0.0%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +5.9%
-- HELD: **MANAUSDT** SHORT (crypto) peak +7.1%, now +0.6%
+- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +6.0%
+- HELD: **MANAUSDT** SHORT (crypto) peak +7.1%, now +0.3%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -49,7 +49,7 @@ _None_
 - WATCHING: **SNXUSDT** SHORT (crypto) peaked +6.6%, exited 0m ago
 - WATCHING: **DASHUSDT** SHORT (crypto) peaked +5.8%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +5.7%, exited 0m ago
-- WATCHING: **DOTUSDT** SHORT (crypto) peaked +5.6%, exited 0m ago
+- WATCHING: **BLURUSDT** SHORT (crypto) peaked +5.0%, exited 0m ago
 
 ## Supervisor
 
