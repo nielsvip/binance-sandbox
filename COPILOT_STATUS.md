@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 02:57:08 UTC
+# Copilot Status — 2026-10-18 03:02:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:50:13
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:51:04
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:51:15
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:52:17
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:53:08
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:53:19
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:54:23
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:55:14
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:55:25
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:56:27
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:57:18
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:57:28
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:58:30
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:59:21
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:59:33
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:00:37
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:01:28
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:01:40
 
 ## Missed Trades (trader comparison)
 
@@ -27,18 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 22 | **Watching for reentry:** 15 | **Reentered:** 0
+**Held:** 23 | **Watching for reentry:** 14 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.9%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.7%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +-0.1%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.5%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +3.2%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +2.9%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
-- HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
 
 - WATCHING: **SANDUSDT** LONG (crypto) peaked +19.1%, exited 0m ago
 - WATCHING: **GALAUSDT** SHORT (crypto) peaked +10.8%, exited 0m ago
@@ -55,8 +55,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 41
-- [MEDIUM] ez_prices.py running but log stale (10min)
+**Issues (last 1h):** 50
+- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
