@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 05:15:00 UTC
+# Copilot Status — 2026-10-18 05:20:01 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T04:55:38
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T04:57:42
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T04:59:50
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:02:00
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:04:03
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:10:35
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:12:50
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:15:00
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:17:10
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:19:21
 
 ## Missed Trades (trader comparison)
 
@@ -34,8 +34,8 @@ _None_
 - HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +0.2%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +5.8%
-- HELD: **MANAUSDT** SHORT (crypto) peak +7.1%, now +0.2%
+- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +5.9%
+- HELD: **MANAUSDT** SHORT (crypto) peak +7.1%, now +0.5%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%

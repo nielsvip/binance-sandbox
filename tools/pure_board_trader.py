@@ -146,6 +146,37 @@ async def execute_live(tm, acct, ss, action, qty, price, reason):
                                          reason=f"{reason} |PURE_BOARD", is_reduce=(not opening), is_full_close=(a == "CLOSE"))
 
 
+FROZEN = Path(os.environ.get("VEC_EXACT_FROZEN_DIR", "/tmp/vec_exact_frozen"))
+
+
+def prepared_from_frozen(symside: str):
+    """The twin's own append-only frozen bars = exactly what live decided on, without paying its ~20 s live rebuild."""
+    import pickle
+
+    from live_twins import vec_exact as VX
+
+    path = FROZEN / f"{symside.rsplit('_', 1)[0]}.pkl"
+    if not path.exists():
+        return None
+    with open(path, "rb") as fh:
+        raw = pickle.load(fh)
+    return VX._prepare_from_arrays(symside, dict(raw))
+
+
+def _board_gain(pb):
+    """The gain the published board claimed for this set (evidence is a dict on fresh selections, a JSON string on older)."""
+    ev = (pb or {}).get("evidence")
+    if isinstance(ev, str):
+        try:
+            ev = json.loads(ev.replace("'", '"'))
+        except Exception:
+            return None
+    try:
+        return round(float((ev or {}).get("gain_pct")), 3)
+    except Exception:
+        return None
+
+
 def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
     from concurrent.futures import ThreadPoolExecutor
     from live_twins import vec_exact as VX
@@ -163,7 +194,10 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
         ov = pb["overrides"]
         sym, side = ss.rsplit("_", 1)
         try:
-            res = VX.actions_at(sym, side, bar_ts + BAR_S - 1, overrides=ov)
+            prep = prepared_from_frozen(ss)
+            if prep is None:
+                return (ss, {"status": "SKIP_NO_TWIN_STORE", "actions": []}, pb)
+            res = VX.actions_at(sym, side, bar_ts + BAR_S - 1, overrides=ov, prepared=prep)
         except Exception as exc:
             return (ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}, pb)
         return (ss, res, pb)
@@ -188,7 +222,8 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
                 qty = float(a.get("vec_qty") or 0.0)
                 row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": action, "reason": reason,
                        "price": px, "vec_qty": qty, "qty_frac": a.get("qty_frac"), "status": status,
-                       "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": ((pb or {}).get("evidence") or "")[:0] or None}
+                       "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
+                       "board_published_at": (pb or {}).get("published_at")}
                 paper = book.apply(f"{acct}:{ss}", action, qty or 1.0, px, bar_ts, reason, ss.endswith("_LONG"))
                 row["paper"] = paper
                 stats[f"ACT_{action}"] += 1
