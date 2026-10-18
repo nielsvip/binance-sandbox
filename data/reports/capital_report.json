@@ -1,43 +1,30 @@
 {
- "generated_at": "2026-10-18 13:51 UTC",
- "total_capital_usd": 14.41,
+ "generated_at": "2026-10-18 14:06 UTC",
+ "total_capital_usd": 5.71,
  "tier_capital": {
-  "A": 0.0,
-  "B": 7.19,
-  "C": 7.22
+  "A": 5.71,
+  "B": 0.0,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 0,
-  "B": 1,
-  "C": 1
+  "A": 1,
+  "B": 0,
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "ang:SNXUSDT_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 7.22,
-   "gain_pct": 3.398,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 34.4,
-   "mark": 0.20994216
-  },
-  {
-   "pk": "ang:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "ang",
-   "value_usd": 7.19,
-   "gain_pct": 4.417,
-   "tier": "B",
-   "perf_mult": 0.21,
-   "amt": 737.0,
-   "mark": 0.00975
+   "pk": "inf:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "inf",
+   "value_usd": 5.71,
+   "gain_pct": -3.408,
+   "tier": "A",
+   "perf_mult": 9.87,
+   "amt": 3.2,
+   "mark": 1.78408157
   }
  ]
 }

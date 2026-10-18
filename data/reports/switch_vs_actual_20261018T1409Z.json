@@ -1,0 +1,79 @@
+{
+ "window_from": "10-18 13:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 46,
+  "STATE_CONVERGENCE": 3,
+  "EXTRA": 1,
+  "FILLED": 1
+ },
+ "rows": [
+  {
+   "acct": "men",
+   "sym_side": "RVNUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 13:10",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "SNXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 13:15",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "SNXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 13:38",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "TIAUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 13:11",
+   "actual": "REDUCE",
+   "actual_reason": "TIER1_PRICE_CROSS_REENTRY_exit0.6319_cur0.6406_k3m40 |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "men",
+   "sym_side": "UNIUSDC_LONG",
+   "dictated_bar": "10-18 13:15",
+   "dictated": "CLOSE",
+   "dictated_reason": "FIXED_STOP",
+   "actual_at": "10-18 14:06",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 2,
+   "verdict": "FILLED_LATE_2bars",
+   "vec_tagged": true
+  }
+ ]
+}
