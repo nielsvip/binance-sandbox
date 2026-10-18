@@ -1,32 +1,105 @@
 {
- "generated_at": "2026-10-18 10:51 UTC",
- "total_capital_usd": 7.27,
+ "generated_at": "2026-10-18 11:00 UTC",
+ "total_capital_usd": 47.78,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 7.27
+  "B": 13.09,
+  "C": 34.7
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 2,
+  "C": 5
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "fin:COMPUSDT_SHORT",
+  "fin:SOLUSDC_SHORT",
+  "fin:CHRUSDT_SHORT",
+  "fin:BTCDOMUSDT_LONG",
+  "fin:XLMUSDT_SHORT",
+  "fin:SNXUSDT_SHORT"
  ],
- "mediocre": [],
+ "mediocre": [
+  "fin:KSMUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
+   "pk": "fin:COMPUSDT_SHORT",
+   "symbol": "COMPUSDT",
+   "account": "fin",
+   "value_usd": 7.6,
+   "gain_pct": -1.393,
+   "tier": "B",
+   "perf_mult": 0.25,
+   "amt": 0.353,
+   "mark": 21.52355334
+  },
+  {
+   "pk": "fin:CHRUSDT_SHORT",
+   "symbol": "CHRUSDT",
+   "account": "fin",
+   "value_usd": 7.41,
+   "gain_pct": 1.092,
+   "tier": "C",
+   "perf_mult": 0.13,
+   "amt": 399.0,
+   "mark": 0.018565
+  },
+  {
+   "pk": "fin:XLMUSDT_SHORT",
+   "symbol": "XLMUSDT",
+   "account": "fin",
+   "value_usd": 7.28,
+   "gain_pct": 1.471,
+   "tier": "C",
+   "perf_mult": 0.21,
+   "amt": 41.0,
+   "mark": 0.17748843
+  },
+  {
+   "pk": "fin:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
-   "account": "flz",
+   "account": "fin",
    "value_usd": 7.27,
-   "gain_pct": -0.529,
+   "gain_pct": -0.549,
    "tier": "C",
    "perf_mult": 0.15,
    "amt": 0.07,
-   "mark": 103.86
+   "mark": 103.83390557
+  },
+  {
+   "pk": "fin:SNXUSDT_SHORT",
+   "symbol": "SNXUSDT",
+   "account": "fin",
+   "value_usd": 7.14,
+   "gain_pct": 4.537,
+   "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 33.6,
+   "mark": 0.2125
+  },
+  {
+   "pk": "fin:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "fin",
+   "value_usd": 5.6,
+   "gain_pct": 1.365,
+   "tier": "C",
+   "perf_mult": 0.24,
+   "amt": 0.001,
+   "mark": 5596.07590308
+  },
+  {
+   "pk": "fin:KSMUSDT_SHORT",
+   "symbol": "KSMUSDT",
+   "account": "fin",
+   "value_usd": 5.49,
+   "gain_pct": -0.25,
+   "tier": "B",
+   "perf_mult": 0.26,
+   "amt": 1.3,
+   "mark": 4.2251
   }
  ]
 }
