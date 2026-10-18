@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 09:12:54 UTC
+# Copilot Status — 2026-10-18 09:18:02 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T09:07:07
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:08:05
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T09:08:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:09:10
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T09:09:10
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T09:09:21
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:10:20
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:11:17
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T09:11:28
 - **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:12:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:13:38
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T09:13:49
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:14:40
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:15:46
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T09:15:57
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:16:49
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T09:17:51
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T09:18:02
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 17 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.3%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.2%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
@@ -52,7 +52,7 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [HIGH] ez_indicators.py is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
