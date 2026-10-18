@@ -1,16 +1,16 @@
 {
-  "men:UNIUSDC_SHORT": {
-    "orderId": "2000001519318930",
-    "stopPrice": 7.543,
-    "entry_sig": "2026-10-16 01:30:19.727000+00:00",
-    "symbol": "UNIUSDC",
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002629031743",
+    "stopPrice": 1.3021,
+    "entry_sig": "2026-10-18 16:35:23.331000+00:00",
+    "symbol": "XRPUSDC",
     "side": "SHORT"
   },
-  "men:BTCDOMUSDT_LONG": {
-    "orderId": "2000001520590475",
-    "stopPrice": 5557.2,
-    "entry_sig": "2026-10-18 02:53:16.627000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002628989514",
+    "stopPrice": 1136.68,
+    "entry_sig": "2026-10-18 16:05:05.907000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
   }
 }
