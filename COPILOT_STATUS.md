@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 03:07:20 UTC
+# Copilot Status — 2026-10-18 03:12:28 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:00:37
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:01:28
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:01:40
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:02:42
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:03:33
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:03:44
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:04:46
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:05:37
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:05:47
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:06:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:07:40
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:07:51
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:08:52
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:09:43
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:09:54
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:10:55
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:11:46
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:11:57
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,15 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 23 | **Watching for reentry:** 14 | **Reentered:** 0
+**Held:** 23 | **Watching for reentry:** 16 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.7%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +-0.2%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.3%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +-0.5%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.3%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +2.8%
+- HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.1%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +2.5%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -45,11 +45,11 @@ _None_
 - WATCHING: **BBUSDT** SHORT (crypto) peaked +8.8%, exited 0m ago
 - WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **XTZUSDT** SHORT (crypto) peaked +7.6%, exited 0m ago
+- WATCHING: **RLCUSDT** SHORT (crypto) peaked +7.6%, exited 0m ago
 - WATCHING: **DOTUSDT** LONG (crypto) peaked +7.0%, exited 0m ago
 - WATCHING: **CHRUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
 - WATCHING: **ZENUSDT** SHORT (crypto) peaked +6.7%, exited 0m ago
 - WATCHING: **SNXUSDT** SHORT (crypto) peaked +6.6%, exited 0m ago
-- WATCHING: **ALGOUSDT** SHORT (crypto) peaked +6.2%, exited 0m ago
 
 ## Supervisor
 

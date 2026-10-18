@@ -471,7 +471,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 0.0001
+    "tick_size": 1e-05
   },
   "APTUSDT": {
     "price_precision": 5,
@@ -807,7 +807,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 0.0001
+    "tick_size": 1e-05
   },
   "BELUSDT": {
     "price_precision": 5,
@@ -1431,7 +1431,7 @@
     "price_precision": 5,
     "quantity_precision": 2,
     "step_size": 0.01,
-    "tick_size": 0.01
+    "tick_size": 0.001
   },
   "CSOPSKHYNIX2LUSDT": {
     "price_precision": 5,
@@ -2019,7 +2019,7 @@
     "price_precision": 5,
     "quantity_precision": 2,
     "step_size": 0.01,
-    "tick_size": 0.01
+    "tick_size": 0.001
   },
   "FLOCKUSDT": {
     "price_precision": 7,
@@ -3263,6 +3263,12 @@
     "step_size": 0.01,
     "tick_size": 0.01
   },
+  "MSTUUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
+  },
   "MTLUSDT": {
     "price_precision": 4,
     "quantity_precision": 0,
@@ -4013,6 +4019,12 @@
     "step_size": 1.0,
     "tick_size": 1e-05
   },
+  "RDWUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
+  },
   "RECALLUSDT": {
     "price_precision": 7,
     "quantity_precision": 0,
@@ -4107,7 +4119,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-05
+    "tick_size": 1e-06
   },
   "RONINUSDT": {
     "price_precision": 6,
@@ -4137,7 +4149,7 @@
     "price_precision": 5,
     "quantity_precision": 2,
     "step_size": 0.01,
-    "tick_size": 0.01
+    "tick_size": 0.001
   },
   "RUNEUSDT": {
     "price_precision": 4,
@@ -4368,6 +4380,12 @@
     "tick_size": 0.01
   },
   "SNOWUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
+  },
+  "SNPSUSDT": {
     "price_precision": 5,
     "quantity_precision": 2,
     "step_size": 0.01,
@@ -5379,7 +5397,7 @@
     "price_precision": 7,
     "quantity_precision": 0,
     "step_size": 1.0,
-    "tick_size": 1e-06
+    "tick_size": 1e-07
   },
   "XPLUSDT": {
     "price_precision": 7,
@@ -5458,6 +5476,12 @@
     "quantity_precision": 0,
     "step_size": 1.0,
     "tick_size": 1e-05
+  },
+  "ZCSHUSDT": {
+    "price_precision": 5,
+    "quantity_precision": 2,
+    "step_size": 0.01,
+    "tick_size": 0.01
   },
   "ZECUSDC": {
     "price_precision": 2,
