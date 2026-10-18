@@ -1,0 +1,133 @@
+{
+ "window_from": "10-18 09:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 152,
+  "status_OK": 177,
+  "dictated_but_no_account_traded_it": 41,
+  "FILLED_ON_BAR": 1,
+  "NOT_FILLED": 3,
+  "FILLED": 1,
+  "EXTRA": 2,
+  "STATE_CONVERGENCE": 2
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "ATOMUSDT_SHORT",
+   "dictated_bar": "10-18 09:30",
+   "dictated": "CLOSE",
+   "dictated_reason": "MTF_GR_WT_EXIT_1h_grTFs=3",
+   "actual_at": "10-18 09:53",
+   "actual": "REDUCE",
+   "actual_reason": "MTF_GR_WT_EXIT_1h_grTFs=3 |VEC_EXACT",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ATOMUSDT_SHORT",
+   "dictated_bar": "10-18 09:45",
+   "dictated": "OPEN",
+   "dictated_reason": "REENTRY_LOWER_HIGH",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "men",
+   "sym_side": "ATOMUSDT_SHORT",
+   "dictated_bar": "10-18 09:30",
+   "dictated": "CLOSE",
+   "dictated_reason": "MTF_GR_WT_EXIT_1h_grTFs=3",
+   "actual_at": "10-18 10:01",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "ATOMUSDT_SHORT",
+   "dictated_bar": "10-18 09:45",
+   "dictated": "OPEN",
+   "dictated_reason": "REENTRY_LOWER_HIGH",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "fin",
+   "sym_side": "EGLDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 09:09",
+   "actual": "REDUCE",
+   "actual_reason": "MAKER_PROFIT_EXIT_WT_LOWER_CROSS_EXIT wt_1h higher wt+price |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "men",
+   "sym_side": "EGLDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 09:17",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "KSMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 10:03",
+   "actual": "REDUCE",
+   "actual_reason": "MAKER_PROFIT_EXIT_VEC_DRIVEN_CLOSE_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "MANAUSDT_SHORT",
+   "dictated_bar": "10-18 09:45",
+   "dictated": "OPEN",
+   "dictated_reason": "B_KZONE",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "fin",
+   "sym_side": "MANAUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 09:09",
+   "actual": "REDUCE",
+   "actual_reason": "MAKER_PROFIT_EXIT_PEAK_GIVEBACK_GAIN_EROSION_STOP |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
