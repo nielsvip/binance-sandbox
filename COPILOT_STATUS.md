@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 08:17:10 UTC
+# Copilot Status — 2026-10-18 08:22:07 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T08:13:06
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:13:58
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:13:58
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:15:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:15:01
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T08:15:12
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:16:05
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:16:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:17:09
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:17:09
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:18:17
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:18:17
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:19:22
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:19:22
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T08:19:33
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:20:27
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:20:27
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T08:21:36
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T08:21:36
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T08:21:47
 
 ## Missed Trades (trader comparison)
 
@@ -30,10 +30,10 @@ _None_
 **Held:** 19 | **Watching for reentry:** 10 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.2%
+- HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.1%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +5.5%
+- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +5.4%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
