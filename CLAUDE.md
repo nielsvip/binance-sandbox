@@ -214,3 +214,4 @@ For full list, **see [`ABSOLUTE_PROHIBITIONS.md`](ABSOLUTE_PROHIBITIONS.md).**
 - **Parity testing**: [`PARITY_TESTING.md`](PARITY_TESTING.md)
 - **Infrastructure**: [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)
 - **Trading paths**: [`TRADING_PATHS.md`](TRADING_PATHS.md)
+- **Self-learning corpora + what may be archived to an ext drive**: [`SELF_LEARNING_DATA.md`](SELF_LEARNING_DATA.md) — USER 2026-10-18: older backtest results may live on an external drive, but the brain's delta-log window (14 d, no env override) never leaves a host, and the eval_cache master/rebuild live on TOSHIBA_EXT. Machine-readable: `python3 tools/data_locations.py --where <kind>`.
