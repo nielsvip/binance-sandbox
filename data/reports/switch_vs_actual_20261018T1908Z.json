@@ -1,0 +1,25 @@
+{
+ "window_from": "10-18 18:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 11,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "DOGEUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 18:30",
+   "actual": "REDUCE",
+   "actual_reason": "MTF_GR_WT_EXIT_15m_grTFs=3 |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
