@@ -1,0 +1,65 @@
+{
+ "window_from": "10-18 20:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 148,
+  "status_OK": 181,
+  "dictated_but_no_account_traded_it": 7,
+  "EXTRA": 2,
+  "NOT_FILLED": 2
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "XRPUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 20:14",
+   "actual": "REDUCE",
+   "actual_reason": "TECHNICAL_EXIT dc_1h_low |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "10-18 20:15",
+   "dictated": "REDUCE",
+   "dictated_reason": "HAIKU_REDUCE_2.5pct<2.5",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "10-18 20:15",
+   "dictated": "REDUCE",
+   "dictated_reason": "DD_BOUNCE_STOP px1057.0200 aug_px1053.5800 qty0.0165",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 20:18",
+   "actual": "AUGMENT",
+   "actual_reason": "PPL_TP_g2.45%>=1.50%_stopBE1091.5404 |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
