@@ -9,8 +9,11 @@ module so the math cannot drift between paths.
 Levels:
   software (maker-first regular exit): LONG entry-bar dc_low_15m * 0.9975,
     SHORT entry-bar dc_high_15m * 1.0025. Frozen at first entry, never moved.
-  exchange (STOP_MARKET taker backstop): 0.05% beyond software, so the
-    regular exit is tried first and taker fees are the last resort.
+  exchange (STOP_MARKET taker backstop): beyond software, so the regular exit
+    is tried first and taker fees are the last resort. Binance sits at
+    CRYPTO_EXCHANGE_TOTAL_PCT (0.40%) from the frozen channel (USER
+    2026-10-18, was 0.2999%); Tradier keeps EXCHANGE_EXTRA_PCT (0.05%) past
+    software, i.e. 0.2999% from the channel.
 Fallback when the entry-bar channel is missing/zero: entry price based.
 Pure math only — no config/env imports (import-cycle safe).
 """
@@ -20,6 +23,7 @@ import math
 REASON = "FIXED_STOP"
 FIXED_STOP_BUFFER_PCT = 0.25
 EXCHANGE_EXTRA_PCT = 0.05
+CRYPTO_EXCHANGE_TOTAL_PCT = 0.40  # USER 2026-10-18: the Binance STOP_MARKET backstop sits 0.40% beyond the frozen entry-bar dc_15m (was software -0.25% then -0.05% = 0.2999%)
 STOP_ORDER_PREFIX = "EZMSTOP_FX_"
 
 
@@ -46,6 +50,24 @@ def exchange_level(is_long: bool, soft_level: float) -> float:
     if s <= 0:
         return 0.0
     return s * 0.9995 if is_long else s * 1.0005
+
+
+def crypto_exchange_level(is_long: bool, soft_level: float) -> float:
+    """Binance STOP_MARKET level: CRYPTO_EXCHANGE_TOTAL_PCT beyond the frozen entry-bar dc_15m (USER 2026-10-18).
+
+    Derived from the software level rather than from the channel so the ONE frozen number still drives both legs:
+    software is the channel * (1 -+ 0.25%), so dividing that out and applying the total gives exactly
+    dc_low_15m * 0.9960 for a LONG and dc_high_15m * 1.0040 for a SHORT. Tradier keeps exchange_level().
+    """
+    try:
+        s = float(soft_level or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    if s <= 0:
+        return 0.0
+    if is_long:
+        return s * (1.0 - CRYPTO_EXCHANGE_TOTAL_PCT / 100.0) / (1.0 - FIXED_STOP_BUFFER_PCT / 100.0)
+    return s * (1.0 + CRYPTO_EXCHANGE_TOTAL_PCT / 100.0) / (1.0 + FIXED_STOP_BUFFER_PCT / 100.0)
 
 
 def needs_freeze(stored_level: float, stored_anchor: float, opened_at_epoch: float) -> bool:
@@ -142,7 +164,7 @@ def round_to_tick(is_long: bool, level: float, tick: float) -> float:
 
 
 def build_stop_params(is_long: bool, soft_level: float, tick: float) -> dict:
-    lvl = exchange_level(is_long, soft_level)
+    lvl = crypto_exchange_level(is_long, soft_level)
     return {
         "side": "SELL" if is_long else "BUY",
         "stopPrice": round_to_tick(is_long, lvl, tick),

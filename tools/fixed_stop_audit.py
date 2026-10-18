@@ -118,7 +118,7 @@ def main():
                 findings.append({**rec, "code": "LEVEL_NOT_ENTRY_BAR"})
             elif trig <= 0 and armed:
                 findings.append({**rec, "code": "ARMED_BUT_NO_EXCHANGE_STOP"})
-            elif trig > 0 and abs(trig - FX.exchange_level(is_long, live)) / FX.exchange_level(is_long, live) > 2e-3:
+            elif trig > 0 and abs(trig - FX.crypto_exchange_level(is_long, live)) / FX.crypto_exchange_level(is_long, live) > 2e-3:
                 findings.append({**rec, "code": "EXCHANGE_STOP_WRONG_LEVEL"})
             rows.append(rec)
     out = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(), "n_positions": len(rows),

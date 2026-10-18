@@ -51651,7 +51651,7 @@ async def process_position(
         except Exception as _nt_e:
             logger.warning(f"[NON_TRADEABLE] {position_key} probe err: {_nt_e}")
     # ═══════════════════════════════════════════════════════════════════════════
-    # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no veto, no min-hold, evaluated on EVERY bar. Maker-first software leg; the exchange STOP_MARKET backstop (0.05% beyond) is ensured below so a dead system still exits taker.
+    # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no veto, no min-hold, evaluated on EVERY bar. Maker-first software leg; the exchange STOP_MARKET backstop (dc_15m -0.40%, vv shorts — USER 2026-10-18, was -0.2999%) is ensured below so a dead system still exits taker.
     # ═══════════════════════════════════════════════════════════════════════════
     if position and abs(safe_float(getattr(position, "positionAmt", 0))) > 0:
         try:

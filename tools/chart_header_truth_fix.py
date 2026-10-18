@@ -47,6 +47,14 @@ OUT = ROOT / "data" / "reports" / "chart_truth_fix"
 DEFAULT_DIRS = ("data/reports/charts_1M", "data/reports/charts_1Y", "SPREADSHEETS")
 METRICS_OPEN = '<div class="metrics">'
 SYMSIDE_RE = re.compile(r"^([A-Z0-9]+_(?:LONG|SHORT))")
+# A gain token in a NON-matrix chart name (zoom / REAL_ZOOMABLE / S6GS). `tools/board_name_truth_guard.py` owns every
+# `*_30d_matrix*` name and its triplet map, so those are never touched here; the generators reference these pages by
+# suffix pattern (`_30d_zoom.html`, `S6GS_REAL_ZOOMABLE`), never by the gain token, so correcting the token is safe.
+GAINTOK_RE = re.compile(r"_gain(m?\d+(?:p\d+)?)")
+
+
+def gain_token(v: float) -> str:
+    return "gain" + ("m" if v < 0 else "") + f"{abs(v):.2f}".replace(".", "p")
 TOK = {
     "gain_pct": re.compile(r"(gain\s+)([+-]?[\d.]+)(%)"),
     "trades": re.compile(r"(trades\s+)(\d+)"),
@@ -77,9 +85,7 @@ def check_one(args):
     except Exception as exc:
         rec["verdict"] = f"UNREADABLE:{type(exc).__name__}"
         return rec
-    if BANNER_ID in text:
-        rec["verdict"] = "ALREADY_CORRECTED"
-        return rec
+    already = BANNER_ID in text
     try:
         from tools.opt import chart_truth as CT
 
@@ -102,9 +108,13 @@ def check_one(args):
         rec["verdict"] = f"RECOMPUTE_FAILED:{type(exc).__name__}"
         rec["error"] = str(exc)[:160]
         return rec
+    rec["true_gain"] = round(float(true["gain_pct"]), 4)  # computed even for an already-corrected page, so --rename can judge its NAME
     i = text.find(METRICS_OPEN)
     if i < 0:
         rec["verdict"] = "NO_HEADER"
+        return rec
+    if already:
+        rec["verdict"] = "ALREADY_CORRECTED"
         return rec
     j = text.find("</div>", i)
     head = text[i:j]
@@ -128,6 +138,7 @@ def check_one(args):
     mt = TITLE_RE.search(text)
     true_title = f"{ss} gain {float(true['gain_pct']):+.2f}% · trades {int(true['trades'])} (verified from its own trades)"
     title_wrong = (not mt) or (mt.group(1).strip() != true_title)
+    rec["true_gain"] = round(float(true["gain_pct"]), 4)
     if not rec["changed"] and not title_wrong:
         rec["verdict"] = "ALREADY_TRUE"
         return rec
@@ -168,6 +179,7 @@ def main():
     ap.add_argument("--tol", type=float, default=0.01)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--rename", action="store_true", help="also correct the gain token in NON-matrix chart filenames (zoom / ZOOMABLE); *_30d_matrix* names belong to board_name_truth_guard and are never touched")
     ap.add_argument("--json", default="")
     a = ap.parse_args()
     files = []
@@ -183,6 +195,48 @@ def main():
             recs.append(r)
             if i % 1000 == 0:
                 print(f"[chart_truth_fix] {i}/{len(files)}", flush=True)
+    renames = []
+    if a.rename:
+        for r in recs:
+            f = Path(r["file"])
+            if "_30d_matrix" in f.name:
+                r["rename"] = "SKIP_MATRIX_OWNED_BY_NAME_TRUTH_GUARD"
+                continue
+            m = GAINTOK_RE.search(f.name)
+            true_g = r.get("true_gain", r.get("after", {}).get("gain_pct"))
+            if not m or true_g is None:
+                continue
+            want = gain_token(float(true_g))
+            if m.group(0) == "_" + want:
+                continue
+            new = f.with_name(f.name[: m.start()] + "_" + want + f.name[m.end():])
+            if new.exists():
+                r["rename"] = f"TARGET_EXISTS {new.name}"
+                continue
+            renames.append((f, new, m.group(1), want))
+            if a.apply:
+                try:
+                    os.replace(f, new)
+                    r["rename"] = f"RENAMED -> {new.name}"
+                except Exception as exc:
+                    r["rename"] = f"RENAME_FAILED {type(exc).__name__}: {exc}"
+            else:
+                r["rename"] = f"WOULD_RENAME -> {new.name}"
+        print(f"\nfilenames whose gain token disagrees with the page: {len(renames)}")
+        for f, new, old_tok, want in renames[:12]:
+            print(f"  {f.name[:58]:58s} _{old_tok} -> _{want}")
+        if renames:
+            mp = OUT / "renames_old_to_new.json"
+            OUT.mkdir(parents=True, exist_ok=True)
+            prev = {}
+            if mp.exists():
+                try:
+                    prev = json.loads(mp.read_text())
+                except Exception:
+                    prev = {}
+            prev.update({f.name: new.name for f, new, _o, _w in renames})
+            mp.write_text(json.dumps(prev, indent=1))
+            print(f"  map: {mp}")
     v = collections.Counter(r["verdict"] for r in recs)
     print("\n=== verdicts ===")
     for k, n in v.most_common():

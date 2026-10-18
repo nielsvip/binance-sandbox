@@ -27,6 +27,15 @@ def test_exchange_level_extra_distance():
     assert abs(fx.exchange_level(False, 100.25) - 100.25 * 1.0005) < 1e-12
 
 
+def test_crypto_exchange_level_is_channel_minus_40_bps():
+    """USER 2026-10-18: the Binance STOP_MARKET sits 0.40% beyond the frozen entry-bar dc_15m, not 0.2999%."""
+    assert abs(fx.crypto_exchange_level(True, fx.freeze_software_level(True, 100.0, 0.0, 100.0)) - 99.60) < 1e-9
+    assert abs(fx.crypto_exchange_level(False, fx.freeze_software_level(False, 0.0, 100.0, 100.0)) - 100.40) < 1e-9
+    assert fx.crypto_exchange_level(True, 99.75) < fx.exchange_level(True, 99.75)
+    assert fx.crypto_exchange_level(False, 100.25) > fx.exchange_level(False, 100.25)
+    assert fx.crypto_exchange_level(True, 0.0) == 0.0
+
+
 def test_breach_sides_and_touch():
     assert fx.breached(True, 99.75, 99.75) is True
     assert fx.breached(True, 99.76, 99.75) is False
@@ -45,10 +54,10 @@ def test_stop_params_builder():
     p = fx.build_stop_params(True, 99.75, 0.01)
     assert p["side"] == "SELL" and p["closePosition"] is True
     assert p["workingType"] == "MARKET" or p["workingType"] == "MARK_PRICE"
-    assert abs(p["stopPrice"] - 99.75 * 0.9995) < 0.011
+    assert abs(p["stopPrice"] - 99.60) < 0.011  # dc_low_15m 100.0 -> -0.40%
     q = fx.build_stop_params(False, 100.25, 0.01)
     assert q["side"] == "BUY" and q["closePosition"] is True
-    assert abs(q["stopPrice"] - 100.25 * 1.0005) < 0.011
+    assert abs(q["stopPrice"] - 100.40) < 0.011  # dc_high_15m 100.0 -> +0.40%
 
 
 def _mk(n, close, dl15, dh15):
