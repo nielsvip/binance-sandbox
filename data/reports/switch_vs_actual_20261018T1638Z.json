@@ -1,0 +1,65 @@
+{
+ "window_from": "10-18 15:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 11,
+  "FILLED": 3,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "DOGEUSDC_SHORT",
+   "dictated_bar": "10-18 16:00",
+   "dictated": "OPEN",
+   "dictated_reason": "B_KZONE",
+   "actual_at": "10-18 16:36",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_SHORT",
+   "dictated_bar": "10-18 16:00",
+   "dictated": "OPEN",
+   "dictated_reason": "B_SRS_ENTRY",
+   "actual_at": "10-18 16:36",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "XRPUSDC_SHORT",
+   "dictated_bar": "10-18 16:00",
+   "dictated": "OPEN",
+   "dictated_reason": "B_KZONE",
+   "actual_at": "10-18 16:35",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 16:05",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
