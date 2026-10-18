@@ -1,18 +1,4 @@
 {
-  "men:BTCDOMUSDT_LONG": {
-    "orderId": "2000001520590475",
-    "stopPrice": 5557.2,
-    "entry_sig": "2026-10-18 02:53:16.627000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
-  "men:SANDUSDT_LONG": {
-    "orderId": "2000001520594137",
-    "stopPrice": 0.05773,
-    "entry_sig": "2026-10-18 02:55:56.063000+00:00",
-    "symbol": "SANDUSDT",
-    "side": "LONG"
-  },
   "men:RVNUSDT_SHORT": {
     "orderId": "2000001518778554",
     "stopPrice": 0.001573,
@@ -27,12 +13,19 @@
     "symbol": "UNIUSDC",
     "side": "SHORT"
   },
-  "men:KSMUSDT_SHORT": {
-    "orderId": "2000001520751538",
-    "stopPrice": 4.325,
-    "entry_sig": "2026-10-18 04:51:01.507000+00:00",
-    "symbol": "KSMUSDT",
-    "side": "SHORT"
+  "men:BTCDOMUSDT_LONG": {
+    "orderId": "2000001520590475",
+    "stopPrice": 5557.2,
+    "entry_sig": "2026-10-18 02:53:16.627000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "men:SANDUSDT_LONG": {
+    "orderId": "2000001520594137",
+    "stopPrice": 0.05773,
+    "entry_sig": "2026-10-18 02:55:56.063000+00:00",
+    "symbol": "SANDUSDT",
+    "side": "LONG"
   },
   "men:COMPUSDT_SHORT": {
     "orderId": "2000001520760027",
