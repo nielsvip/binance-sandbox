@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 23:15:51 UTC
+# Copilot Status — 2026-10-18 23:21:08 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -9,6 +9,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T23:10:51
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T23:13:00
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T23:15:05
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T23:17:11
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T23:19:14
 
 ## Missed Trades (trader comparison)
 
@@ -20,7 +22,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 15 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 15 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
@@ -34,6 +36,7 @@ _None_
 - HELD: **ABBV** LONG (tradier) peak +3.7%, now +1.6%
 
 - WATCHING: **CHRUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
+- WATCHING: **ZROUSDT** LONG (crypto) peaked +5.8%, exited 0m ago
 - WATCHING: **COMPUSDT** SHORT (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 0m ago
 
@@ -41,7 +44,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 24
+**Issues (last 1h):** 45
 - [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
