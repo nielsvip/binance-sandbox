@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 03:02:11 UTC
+# Copilot Status — 2026-10-18 03:07:20 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:55:25
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:56:27
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:57:18
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:57:28
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:58:30
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T02:59:21
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T02:59:33
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:00:37
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T03:01:28
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:01:40
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:02:42
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:03:33
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:03:44
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:04:46
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T03:05:37
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:05:47
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T03:06:49
 
 ## Missed Trades (trader comparison)
 
@@ -31,11 +31,11 @@ _None_
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
 - HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.7%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +-0.1%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +-0.2%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.5%
-- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +2.9%
+- HELD: **UNIUSDC** SHORT (crypto) peak +6.0%, now +0.3%
+- HELD: **DASHUSDT** SHORT (crypto) peak +5.8%, now +2.8%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
