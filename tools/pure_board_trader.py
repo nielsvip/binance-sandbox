@@ -72,6 +72,31 @@ def universe(accounts):
     return sorted(out)
 
 
+def live_positions(accounts):
+    """What the accounts actually hold right now, from the position writer's own snapshots ({acct}/{long,short}_positions.json,
+    the files ez_positions_service keeps in step with the exchange). Read-only; the lane never writes them."""
+    out = {}
+    for acct in accounts:
+        for side in ("long", "short"):
+            fp = ROOT / acct / f"{side}_positions.json"
+            try:
+                d = json.load(open(fp))
+            except Exception:
+                continue
+            for key, p in (d or {}).items():
+                try:
+                    amt = abs(float(p.get("positionAmt") or 0.0))
+                    if amt <= 0:
+                        continue
+                    ss = key.split(":", 1)[1] if ":" in key else key
+                    out[(acct, ss)] = {"qty": amt, "entry": float(p.get("entry_price") or 0.0),
+                                       "mark": float(p.get("mark_price") or 0.0), "gain": p.get("gain"),
+                                       "opened_at": p.get("opened_at")}
+                except Exception:
+                    continue
+    return out
+
+
 def boards():
     doc = json.load(open(ROOT / "data" / "published_selection.json"))
     return doc.get("sym_sides") or {}
@@ -217,8 +242,49 @@ def actions_from_engine(symside: str, overrides: dict, prepared: dict, bar_ts: f
             frac = 1.0 if (typ == "CLOSE" or qv <= 0 or pos_q <= 0) else min(1.0, qv / pos_q)
             acts.append({"type": typ, "reason": reason, "vec_qty": qv, "vec_price": float(e.get("price") or 0.0), "qty_frac": round(frac, 4)})
             pos_q = max(0.0, pos_q - qv)
-    return {"status": "OK", "actions": acts, "bar_ts": cut, "vec_holds": pos_q > 0, "engine_trades": r.get("trades"),
-            "engine_gain": r.get("gain_pct")}
+    return {"status": "OK", "actions": acts, "bar_ts": cut, "engine_trades": r.get("trades"),
+            "engine_gain": r.get("gain_pct"), "engine_state": engine_state(r.get("execution_ledger") or [])}
+
+
+def engine_state(ledger) -> dict:
+    """Does the board's own strategy HOLD at the last bar of the window, and from which bar?
+
+    This is the state the lane converges to, and it is why a position cannot sit open for hours: an event can be missed,
+    a state cannot. If the engine is flat and live holds, the position is closed on that bar — no 2-hour timer
+    (USER 2026-10-18: "IT IS ABOUT NOT CLOSING FOR HOURS OR DAYS").
+    """
+    last_open = last_close = None
+    entry_px = qty = 0.0
+    for e in ledger or []:
+        typ = str(e.get("type") or "").upper()
+        reason = str(e.get("reason") or e.get("exit_reason") or "")
+        if reason.startswith("FINAL_MTM"):
+            continue  # a window-edge mark is not a close
+        ts = float(e.get("ts") or 0.0)
+        if typ in ("OPEN", "AUGMENT"):
+            if last_open is None or last_close is None or ts >= last_open:
+                pass
+            last_open = ts
+            q = abs(float(e.get("qty") or 0.0))
+            px = float(e.get("price") or 0.0)
+            if typ == "OPEN" or qty <= 0:
+                qty, entry_px = q, px
+            else:
+                tot = qty + q
+                entry_px = (entry_px * qty + px * q) / tot if tot else entry_px
+                qty = tot
+        elif typ == "CLOSE" or (typ == "REDUCE" and e.get("pnl_dollars") is not None and float(e.get("qty") or 0.0) == 0.0):
+            last_close = ts
+            qty, entry_px = 0.0, 0.0
+        elif typ == "REDUCE":
+            q = abs(float(e.get("qty") or 0.0))
+            qty = max(0.0, qty - q)
+            if qty <= 1e-12:
+                last_close = ts
+                entry_px = 0.0
+    holding = last_open is not None and (last_close is None or last_open > last_close) and qty > 0
+    return {"holding": bool(holding), "qty": round(qty, 10), "entry_price": entry_px,
+            "since": last_open if holding else None, "last_close": last_close}
 
 
 def _board_gain(pb):
@@ -247,7 +313,7 @@ def _eval_one(job):
         return ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}
 
 
-def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
+def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=None):
     from concurrent.futures import ProcessPoolExecutor
 
     stats = collections.Counter()
@@ -268,10 +334,46 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
         with ProcessPoolExecutor(max_workers=max(1, int(workers))) as ex:
             for ss, res in ex.map(_eval_one, jobs, chunksize=1):
                 results.append((ss, res, bds.get(ss)))
+    held = held or {}
     for ss, res, pb in results:
         status = res.get("status", "?")
         stats[status] += 1
         acts = res.get("actions") or []
+        # THE TRADED DECISION: the board's own position state at this bar vs what the account actually holds.
+        # An event can be missed; a state cannot — this is what stops a position sitting open for hours or days.
+        est = res.get("engine_state") or {}
+        if status == "OK":
+            for acct in by_ss[ss]:
+                lh = (held.get((acct, ss)) or {}).get("qty", 0.0)
+                eng_hold, eng_qty = bool(est.get("holding")), float(est.get("qty") or 0.0)
+                verdict = ("AGREE_HOLD" if (eng_hold and lh > 0) else "AGREE_FLAT" if (not eng_hold and lh <= 0)
+                           else "BOARD_HOLDS_LIVE_FLAT" if eng_hold else "BOARD_FLAT_LIVE_HOLDS")
+                stats[f"STATE_{verdict}"] += 1
+                if verdict in ("AGREE_HOLD", "AGREE_FLAT"):
+                    continue
+                conv = "CONVERGE_OPEN" if verdict == "BOARD_HOLDS_LIVE_FLAT" else "CONVERGE_CLOSE"
+                row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": conv,
+                       "reason": f"{verdict} board_qty={eng_qty:.6f} live_qty={lh:.6f} since={est.get('since')}",
+                       "price": float(est.get("entry_price") or 0.0) or None, "vec_qty": (eng_qty if conv == "CONVERGE_OPEN" else lh),
+                       "qty_frac": (1.0 if conv == "CONVERGE_CLOSE" else None), "status": status,
+                       "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
+                       "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
+                       "board_published_at": (pb or {}).get("published_at"), "engine_trades": res.get("engine_trades"),
+                       "engine_gain": res.get("engine_gain"), "live_entry": (held.get((acct, ss)) or {}).get("entry"),
+                       "live_gain_pct": (held.get((acct, ss)) or {}).get("gain")}
+                stats[f"CONV_{conv}"] += 1
+                if live_tm is not None:
+                    try:
+                        px = float((held.get((acct, ss)) or {}).get("mark") or est.get("entry_price") or 0.0)
+                        r_ = asyncio.get_event_loop().run_until_complete(
+                            execute_live(live_tm, acct, ss, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
+                                         row["vec_qty"], px, row["reason"]))
+                        row["live_result"] = str(r_)[:120]
+                        stats["LIVE_SENT"] += 1
+                    except Exception as exc:
+                        row["live_result"] = f"ERROR {type(exc).__name__}: {exc}"[:160]
+                        stats["LIVE_ERROR"] += 1
+                intents.append(row)
         if not acts:
             if status not in ("OK", "WARMUP"):
                 for acct in by_ss[ss]:
@@ -323,6 +425,12 @@ def main():
     a = ap.parse_args()
     accounts = [x.strip() for x in a.accounts.split(",") if x.strip()]
     uni = universe(accounts)
+    held = live_positions(accounts)
+    adopted = sorted(set(held) - set(uni))
+    if adopted:
+        uni = sorted(set(uni) | set(adopted))
+        log(f"ADOPTED {len(adopted)} open position(s) outside tradeable_keys — they are managed too, never stranded: "
+            + ", ".join(f"{a_}:{s_}" for a_, s_ in adopted[:10]) + (" …" if len(adopted) > 10 else ""))
     bds = boards()
     missing = sorted({ss for _ac, ss in uni if ss not in bds})
     log(f"universe {len(uni)} keys / {len({s for _a, s in uni})} sym_sides over accounts {accounts}; published boards {len(bds)}; without a board: {len(missing)}")
@@ -346,15 +454,18 @@ def main():
         bar = a.bar or last_closed_bar()
         day = dt.datetime.fromtimestamp(bar, dt.timezone.utc).strftime("%Y-%m-%d")
         t0 = time.time()
-        stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers)
+        held = live_positions(accounts)
+        stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers, held=held)
         acts = sum(v for k, v in stats.items() if k.startswith("ACT_"))
         lat = [r.get("decided_s_after_bar_close") for r in intents if r.get("decided_s_after_bar_close") is not None]
         if lat:
             lat.sort()
             log(f"decision latency after the bar closed: min {lat[0]:.0f}s  p50 {lat[len(lat) // 2]:.0f}s  max {lat[-1]:.0f}s")
         log(f"bar {dt.datetime.fromtimestamp(bar, dt.timezone.utc).strftime('%m-%d %H:%M')}Z evaluated in {time.time() - t0:.0f}s: "
-            f"{acts} actions, paper book {len(book.pos)} open / {len(book.closed)} closed, "
-            f"status {dict(sorted((k, v) for k, v in stats.items() if not k.startswith(('ACT_', 'PAPER_'))))}")
+            f"{acts} engine acts, paper book {len(book.pos)} open / {len(book.closed)} closed, "
+            f"status {dict(sorted((k, v) for k, v in stats.items() if not k.startswith(('ACT_', 'PAPER_', 'STATE_', 'CONV_'))))}")
+        log(f"  STATE vs the accounts: " + ", ".join(f"{k[6:]}={v}" for k, v in sorted(stats.items()) if k.startswith("STATE_"))
+            + (" | TO TRADE: " + ", ".join(f"{k[5:]}={v}" for k, v in sorted(stats.items()) if k.startswith("CONV_")) if any(k.startswith("CONV_") for k in stats) else " | nothing to converge"))
         if acts:
             log("  " + "; ".join(f"{r['acct']}:{r['sym_side']} {r['action']} {r['reason'][:40]} -> {r.get('paper')}" for r in intents if r.get("action"))[:800])
         if not a.loop:
