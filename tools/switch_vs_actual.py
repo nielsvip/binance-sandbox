@@ -208,11 +208,16 @@ def main():
                              "actual": fill["type"] if fill else "", "actual_reason": fill["reason"] if fill else "",
                              "late_bars": d_bars, "verdict": v, "vec_tagged": (fill or {}).get("vec")})
             for f_ in extra:
-                tot["EXTRA"] += 1
-                per_acct[acct]["EXTRA"] += 1
+                # A VEC_DRIVEN / PURE_BOARD reconcile IS the switches being followed: the board's position STATE dictated
+                # it even though no engine act fell on that bar (board flat, live still held -> close). Counting those as
+                # "a trade no switch dictated" would fill the discrepancy database with false positives.
+                _r = str(f_.get("reason") or "").upper()
+                _v = "STATE_CONVERGENCE" if ("VEC_DRIVEN" in _r or "PURE_BOARD" in _r) else "EXTRA"
+                tot[_v] += 1
+                per_acct[acct][_v] += 1
                 rows.append({"acct": acct, "sym_side": ss, "dictated_bar": "", "dictated": "", "dictated_reason": "",
                              "actual_at": iso(f_["ts"]), "actual": f_["type"], "actual_reason": f_["reason"],
-                             "late_bars": None, "verdict": "EXTRA", "vec_tagged": f_.get("vec")})
+                             "late_bars": None, "verdict": _v, "vec_tagged": f_.get("vec")})
             nf = sum(1 for p in pairs if p[1] is None)
             if nf or extra:
                 worst.append((acct, ss, len(acts), len(f), nf, len(extra)))
@@ -224,17 +229,17 @@ def main():
       f"engine on the twin's bars · ACTUAL = the account's own fills (bookkeeping mirrors excluded)\n")
     A("| | count |")
     A("|---|---|")
-    for k in ("FILLED_ON_BAR", "FILLED", "NOT_FILLED", "EXTRA"):
+    for k in ("FILLED_ON_BAR", "FILLED", "NOT_FILLED", "STATE_CONVERGENCE", "EXTRA"):
         if tot[k]:
             A(f"| {'FILLED_LATE (1+ bars)' if k == 'FILLED' else k} | {tot[k]} |")
     A(f"| dictated acts on sym_sides no account traded | {tot['dictated_but_no_account_traded_it']} |")
     A("")
     A("## Per account\n")
-    A("| acct | on bar | late | not filled | extra (no switch said so) |")
-    A("|---|---|---|---|---|")
+    A("| acct | on bar | late | not filled | state convergence | extra (nothing dictated it) |")
+    A("|---|---|---|---|---|---|")
     for ac in sorted(per_acct):
         c = per_acct[ac]
-        A(f"| {ac} | {c['FILLED_ON_BAR']} | {c['FILLED']} | {c['NOT_FILLED']} | {c['EXTRA']} |")
+        A(f"| {ac} | {c['FILLED_ON_BAR']} | {c['FILLED']} | {c['NOT_FILLED']} | {c['STATE_CONVERGENCE']} | {c['EXTRA']} |")
     A("")
     A("## Every mismatch, newest first\n")
     A("| acct | sym_side | switch said | at bar | actually | at | late bars | verdict | actual reason |")
@@ -265,6 +270,8 @@ def main():
             for r in rows:
                 if r["verdict"] == "FILLED_ON_BAR":
                     continue
+                if r["verdict"] == "STATE_CONVERGENCE":
+                    continue  # the switches' own state dictated it: never a discrepancy row
                 cls = "PROMISE_NOT_DELIVERED" if r["verdict"] == "NOT_FILLED" else ("LIVE_ONLY_FILL" if r["verdict"] == "EXTRA" else "PROMISE_LATE")
                 n += DL.add(con, cls, now, r["acct"], r["sym_side"], action=r["dictated"] or r["actual"],
                             who_wanted=("VECTOR" if r["verdict"] != "EXTRA" else "LIVE"),
