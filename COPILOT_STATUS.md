@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 23:26:22 UTC
+# Copilot Status — 2026-10-18 23:31:57 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -14,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T23:21:19
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T23:23:23
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T23:25:29
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T23:27:31
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T23:29:42
 
 ## Missed Trades (trader comparison)
 
