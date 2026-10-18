@@ -179,7 +179,10 @@ async def dispatch_tracked(position_key, label, coro_fn, timeout, on_timeout=Non
         _in_exit = bool(ent[3] == "EXIT")
         _me_exit = _is_exit(label)
         if _me_exit and not _in_exit and os.environ.get("VX_EXIT_PREEMPT", "1") != "0":
-            logger.critical(f"[VEC_EXACT] {position_key} {label} EXIT_PREEMPTS_INFLIGHT (non-exit execution still running; the promised exit is dispatched now, execute_now cancels the stale working orders and re-reads the live amount)")
+            # The superseded entry/augment task is NOT cancelled: it keeps shepherding whatever it already placed (the
+            # 2026-10-13 stranding lesson). It can therefore still fill after the close, leaving a small position the
+            # vector does not hold — the twin closes that on the next bar, and that close is no longer suppressed either.
+            logger.critical(f"[VEC_EXACT] {position_key} {label} EXIT_PREEMPTS_INFLIGHT (non-exit execution keeps shepherding its own order; the promised exit is dispatched NOW on the broker's fresh quantity instead of waiting behind it)")
             _ledger("delivery", position_key, label, "EXIT_PREEMPTS_INFLIGHT")
         elif _me_exit and _in_exit:
             age = time.time() - float(ent[1])
