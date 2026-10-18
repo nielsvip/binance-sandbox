@@ -1,70 +1,30 @@
 {
- "generated_at": "2026-10-18 03:50 UTC",
- "total_capital_usd": 29.69,
+ "generated_at": "2026-10-18 04:07 UTC",
+ "total_capital_usd": 6.9,
  "tier_capital": {
-  "A": 7.23,
-  "B": 7.52,
-  "C": 14.94
+  "A": 0.0,
+  "B": 6.9,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 1,
+  "A": 0,
   "B": 1,
-  "C": 2
+  "C": 0
  },
- "winners": [
-  "ang:XMRUSDT_LONG"
- ],
- "losers": [
-  "ang:TRUMPUSDC_SHORT",
-  "ang:SNXUSDT_SHORT"
- ],
- "mediocre": [
-  "ang:BLURUSDT_SHORT"
- ],
+ "winners": [],
+ "losers": [],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "ang",
-   "value_usd": 7.52,
-   "gain_pct": -0.196,
+   "pk": "inf:INJUSDT_LONG",
+   "symbol": "INJUSDT",
+   "account": "inf",
+   "value_usd": 6.9,
+   "gain_pct": -0.324,
    "tier": "B",
-   "perf_mult": 0.22,
-   "amt": 737.0,
-   "mark": 0.0102
-  },
-  {
-   "pk": "ang:TRUMPUSDC_SHORT",
-   "symbol": "TRUMPUSDC",
-   "account": "ang",
-   "value_usd": 7.5,
-   "gain_pct": -0.113,
-   "tier": "C",
-   "perf_mult": 0.45,
-   "amt": 4.25,
-   "mark": 1.765
-  },
-  {
-   "pk": "ang:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 7.44,
-   "gain_pct": 0.506,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 34.4,
-   "mark": 0.2162
-  },
-  {
-   "pk": "ang:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
-   "account": "ang",
-   "value_usd": 7.23,
-   "gain_pct": 1.85,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 0.012,
-   "mark": 602.73
+   "perf_mult": 1.0,
+   "amt": 0.8,
+   "mark": 8.61891827
   }
  ]
 }
