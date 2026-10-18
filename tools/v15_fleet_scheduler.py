@@ -1367,8 +1367,17 @@ def _growth_debt_mb(pairs_pss, est_pair):
 
 
 def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0):
-    """Largest pair PSS seen on this host in the last 24 h (state-carried across --once ticks): a new board's expected
-    peak, not the size of whatever is running right now (young boards understate it). Updates st in place. Never raises."""
+    """Expected peak PSS of ONE new side on this host, from the book of sizes seen in the last 24 h (state-carried
+    across --once ticks; young boards understate their own future). Updates st in place. Never raises.
+
+    V15_SCHED_PEAK_Q (default 1.0 = the old behaviour, the MAX) picks a quantile of the book instead. Measured
+    2026-10-18 with 132 of 234 stock sym_sides still unrecounted 13.8 h before the open, both hosts idle on "mem
+    guard" and S2's CPU at 10%: the book's top-20 for `s2|stocks|side` was max 18,821 MB against a median of 7,442
+    and a min of 6,196, so ONE pathological side budgeted every new stocks board at 20,703 MB (1.1x peak) and
+    reserved the same amount as growth debt for the single board already running -- on a 30 GB host that is one board
+    at a time, forever, from one outlier. The book only ever keeps the 20 LARGEST values, so a quantile over it is
+    still high-biased, and the per-venue floor (`V15_SCHED_PAIR_FLOOR_MB{,_STOCKS}`) and the OOM reaper stay in force.
+    """
     try:
         book = st.setdefault("pair_peak_mb", {})
         hist = [x for x in (book.get(host) or []) if isinstance(x, list) and len(x) == 2 and float(now_ts) - float(x[0]) < keep_s]
@@ -1378,7 +1387,12 @@ def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0):
             hist.append([float(now_ts), round(cur, 1)])
         hist = sorted(hist, key=lambda x: -x[1])[:20]
         book[host] = hist
-        return max([float(x[1]) for x in hist] or [0.0])
+        sizes = sorted(float(x[1]) for x in hist)
+        if not sizes:
+            return 0.0
+        q = float(os.environ.get("V15_SCHED_PEAK_Q", "1.0") or 1.0)
+        q = min(1.0, max(0.0, q))
+        return sizes[min(len(sizes) - 1, int(round(q * (len(sizes) - 1))))]
     except Exception:
         return 0.0
 
