@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-18 10:27 UTC",
- "total_capital_usd": 69.68,
+ "generated_at": "2026-10-18 10:46 UTC",
+ "total_capital_usd": 69.72,
  "tier_capital": {
   "A": 0.0,
-  "B": 22.11,
-  "C": 47.59
+  "B": 22.14,
+  "C": 47.58
  },
  "tier_count": {
   "A": 0,
@@ -16,8 +16,8 @@
   "men:COMPUSDT_SHORT",
   "men:SOLUSDC_SHORT",
   "men:SANDUSDT_LONG",
-  "men:BTCDOMUSDT_LONG",
   "men:SNXUSDT_SHORT",
+  "men:BTCDOMUSDT_LONG",
   "men:RVNUSDT_SHORT"
  ],
  "mediocre": [],
@@ -26,89 +26,89 @@
    "pk": "men:RVNUSDT_SHORT",
    "symbol": "RVNUSDT",
    "account": "men",
-   "value_usd": 20.83,
-   "gain_pct": 7.477,
+   "value_usd": 20.82,
+   "gain_pct": 7.508,
    "tier": "C",
    "perf_mult": 0.14,
    "amt": 14636.0,
-   "mark": 0.001423
+   "mark": 0.00142252
   },
   {
    "pk": "men:COMPUSDT_SHORT",
    "symbol": "COMPUSDT",
    "account": "men",
-   "value_usd": 7.55,
-   "gain_pct": -0.938,
+   "value_usd": 7.56,
+   "gain_pct": -1.079,
    "tier": "B",
    "perf_mult": 0.25,
    "amt": 0.351,
-   "mark": 21.51
+   "mark": 21.55
   },
   {
    "pk": "men:SNXUSDT_SHORT",
    "symbol": "SNXUSDT",
    "account": "men",
-   "value_usd": 7.47,
-   "gain_pct": 0.328,
+   "value_usd": 7.48,
+   "gain_pct": 0.187,
    "tier": "C",
    "perf_mult": 0.16,
    "amt": 35.1,
-   "mark": 0.2127
+   "mark": 0.213
   },
   {
    "pk": "men:SANDUSDT_LONG",
    "symbol": "SANDUSDT",
    "account": "men",
    "value_usd": 7.45,
-   "gain_pct": -0.087,
+   "gain_pct": -0.155,
    "tier": "C",
    "perf_mult": 0.27,
    "amt": 122.0,
-   "mark": 0.0610629
+   "mark": 0.06102526
   },
   {
    "pk": "men:UNIUSDC_LONG",
    "symbol": "UNIUSDC",
    "account": "men",
-   "value_usd": 7.28,
-   "gain_pct": 0.511,
+   "value_usd": 7.29,
+   "gain_pct": 0.704,
    "tier": "B",
    "perf_mult": 2.99,
    "amt": 1.0,
-   "mark": 7.27594718
+   "mark": 7.291
   },
   {
    "pk": "men:UNIUSDC_SHORT",
    "symbol": "UNIUSDC",
    "account": "men",
-   "value_usd": 7.28,
-   "gain_pct": 2.23,
+   "value_usd": 7.29,
+   "gain_pct": 2.042,
    "tier": "B",
    "perf_mult": 2.99,
    "amt": 1.0,
-   "mark": 7.27594718
+   "mark": 7.291
   },
   {
    "pk": "men:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
    "account": "men",
    "value_usd": 6.24,
-   "gain_pct": -0.212,
+   "gain_pct": -0.222,
    "tier": "C",
    "perf_mult": 0.15,
    "amt": 0.06,
-   "mark": 103.99
+   "mark": 104.0
   },
   {
    "pk": "men:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
    "account": "men",
-   "value_usd": 5.6,
-   "gain_pct": 0.31,
+   "value_usd": 5.59,
+   "gain_pct": 0.266,
    "tier": "C",
    "perf_mult": 0.24,
    "amt": 0.001,
-   "mark": 5595.8
+   "mark": 5594.85475177
   }
  ]
 }
