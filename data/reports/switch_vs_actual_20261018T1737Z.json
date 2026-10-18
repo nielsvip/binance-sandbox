@@ -1,0 +1,39 @@
+{
+ "window_from": "10-18 16:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 5,
+  "NOT_FILLED": 1,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "10-18 17:00",
+   "dictated": "CLOSE",
+   "dictated_reason": "MTF_DC_REJECT_1h_px1.3320",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 16:37",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
