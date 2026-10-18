@@ -1,0 +1,104 @@
+{
+ "window_from": "10-18 21:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 147,
+  "status_OK": 182,
+  "dictated_but_no_account_traded_it": 15,
+  "EXTRA": 6,
+  "FILLED_ON_BAR": 1
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "DASHUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 21:23",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 21:58",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 22:01",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "XLMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 21:45",
+   "actual": "REDUCE",
+   "actual_reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "XTZUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 21:24",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "10-18 21:30",
+   "dictated": "CLOSE",
+   "dictated_reason": "PPL_SL_CLOSE_upgraded-scalp_px1072.8900_stop1063.7300",
+   "actual_at": "10-18 21:50",
+   "actual": "REDUCE",
+   "actual_reason": "PPL_SL_CLOSE_upgraded-scalp_px1072.8900_stop1063.7300 |VEC_EXACT",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ZENUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 21:24",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}

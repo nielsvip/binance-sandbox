@@ -192,6 +192,71 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
         "mac": [("/Users/niels/logs", "canonical", "ez_klines.log / tradier_klines.log 418+timeout lines gate data failover", "LF_LOGDIR")],
         "s1": [("/home/niels/logs", "canonical", "", "LF_LOGDIR")],
     },
+    # ------------------------------------------------- self-learning corpora (USER 2026-10-18)
+    # "you can leave older backtest results on external drive but document clearly where v15_pilot's self learning
+    # should find it". Every corpus v15_pilot's learning path reads is declared here, WITH the env var that moves it,
+    # because the one that has no env var (the brain's delta logs) is the one archiving can silently starve.
+    # RETENTION CONTRACT, measured 2026-10-18:
+    #   * brain_corpus_delta_logs — tools/v15_brain.py globs ~/v15_run*/[progress/]v15_delta_log/*.jsonl and filters by
+    #     ROW ts, not file mtime, over the last V15_BRAIN_SINCE_D (default 14) days; rebuilt daily 03:20 on S2 by
+    #     tools/v15_brain_export.sh, models pushed to S1. On S2 this is 9.7 GB in 372 files of which only 0.1 GB is
+    #     outside the 14-day window: the ACTIVE run dir holds 9.61 GB and must NOT be archived. Archive a run dir only
+    #     once it is finished AND no row in it is younger than the window, and point a longer retrain at the archive
+    #     with `v15_brain build --glob '<archive>/v15_run*/progress/v15_delta_log/*.jsonl'`.
+    #   * eval_cache — the corpus tools/v17_priors_mine.py mines into causal priors. S1's 29.7 GB copy was deleted
+    #     2026-10-18; the surviving native rows and the artefact rebuild live on TOSHIBA_EXT (see below).
+    "brain_corpus_delta_logs": {
+        "s2": [("/home/niels/v15_run*/progress/v15_delta_log", "canonical", "largest delta-log volume; the daily brain rebuild runs HERE (v15_brain_export.sh, 03:20)", None),
+               ("/home/niels/v15_run*/v15_delta_log", "canonical", "older layout, same glob set", None)],
+        "s1": [("/home/niels/v15_run*/progress/v15_delta_log", "canonical", "", None),
+               ("/home/niels/v15_run*/v15_delta_log", "canonical", "", None)],
+        "mac": [("/Users/niels/v15_run*/progress/v15_delta_log", "mirror", "only if a run was driven from the Mac", None)],
+        "ext": [("{ext}/fleet_archive/*/v15_run*/progress/v15_delta_log", "archive", "finished runs only; reachable by v15_brain --glob, NOT by its default globs", None)],
+    },
+    "brain_models": {
+        "s2": [("{sandbox}/data/brain", "canonical", "brain_<CAT_SIDE>.json x4, written atomically by v15_brain_export.sh", None)],
+        "s1": [("{sandbox}/data/brain", "mirror", "rsynced from S2 after every successful rebuild", None)],
+    },
+    "eval_cache": {
+        "mac": [("{base}/data/eval_cache_v1.db", "canonical", "this host's memoized real-engine evals", "V15_EVAL_CACHE_DB")],
+        "s1": [("{sandbox}/data/eval_cache_v1.db", "canonical", "DELETED 2026-10-18 (29.7 GB, 927,777 rows, cold 33 h, champion env V15_EVAL_CACHE=0); rebuilt rows live on TOSHIBA_EXT", "V15_EVAL_CACHE_DB")],
+        "s2": [("{sandbox}/data/eval_cache_v1.db", "canonical", "", "V15_EVAL_CACHE_DB"),
+               ("/home/niels/eval_archive/eval_cache_v1_20261014.zst", "archive", "481 MB zstd -> 45.58 GB, 1,539,007 rows, window 2026-10-13 02:42..10-14 19:05", None),
+               ("/home/niels/v15_bench/runs/*/*/eval_cache.db", "mirror", "per-side gate/bench caches, same schema; 14 dbs = 166,110 unique rows", None)],
+        "ext": [("{ext}/binance_archive/eval_cache/eval_cache_v1_master.db", "archive", "the MASTER: native rows only (archive + bench + mac + E3T), real 40-hex keys", None),
+                ("{ext}/binance_archive/eval_cache/eval_cache_rebuilt_v1.db", "archive", "artefact rebuild by tools/eval_cache_rebuild.py: metrics verbatim from the delta logs, overrides replayed; keys prefixed rebuilt1: so they can NEVER mis-hit the live cache", None),
+                ("/Volumes/E3T/mac_backup_20261014/data/eval_cache_v1.db", "legacy", "657 rows, the pre-2026-10-18 'existing one on ext drive'; merged into the master", None)],
+    },
+    "priors_causal": {
+        "s1": [("{sandbox}/data/causal/v17_priors.json", "canonical", "read by tools/v17_priors.load() inside v15_pilot", "V17_PRIORS_PATH")],
+        "s2": [("{sandbox}/data/causal/v17_priors.json", "canonical", "", "V17_PRIORS_PATH")],
+        "mac": [("{base}/data/causal/v17_priors.json", "mirror", "", "V17_PRIORS_PATH")],
+    },
+    "per_trade_returns": {
+        "mac": [("{base}/data/per_trade_returns", "canonical", "daily *_<day>.jsonl mined by tools/v15_causal_learner.py", None)],
+        "s1": [("{sandbox}/data/per_trade_returns", "canonical", "", None)],
+    },
+    "causal_learner_db": {
+        "s1": [("{sandbox}/data/causal_learner.db", "canonical", "2.2 GB; built from per_trade_returns", None)],
+    },
+    "combo_library": {
+        "s1": [("{sandbox}/data/v17_combo_library.sqlite", "canonical", "76k combos searched by tools/v17_combo_engine", "V17_COMBO_LIB")],
+        "s2": [("{sandbox}/data/v17_combo_library.sqlite", "canonical", "", "V17_COMBO_LIB")],
+    },
+    "knowledge_graph": {
+        "s1": [("{sandbox}/data/encyclopedia_v2/graph.json", "canonical", "tools/v15_graph_search", None)],
+        "s2": [("{sandbox}/data/encyclopedia_v2/graph.json", "canonical", "", None)],
+    },
+    "endgame_knowledge": {
+        "s1": [("{sandbox}/data/endgame/endgame_knowledge_fleet.json", "canonical", "tools/v15_endgame_knowledge_merge.load_ev, merged --pull --push hourly :23", "V15_ENDGAME_KNOWLEDGE")],
+        "s2": [("{sandbox}/data/endgame/endgame_knowledge_fleet.json", "canonical", "", "V15_ENDGAME_KNOWLEDGE")],
+    },
+    "backtest_results_archive": {
+        "ext": [("{ext}/fleet_archive", "archive", "per-host offloads of finished runs (S1_offload_<stamp>/ ...) with archive.log", None),
+                ("{ext}/binance_archive", "archive", "long-lived archives: klines_archive, eval_cache, script_vault, per_sym_store_complete.db", None),
+                ("{ext}/v15_mega_progress_mirror", "archive", "MEGA_{crypto,stocks}_jump boards", None),
+                ("{ext}/s1_daily_reports_20261013", "archive", "per-day S1 report trees", None)],
+    },
 }
 
 KINDS = tuple(REGISTRY)
