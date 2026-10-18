@@ -6,7 +6,9 @@ USER 2026-10-15 ("I NEED ABSOLUTE SOLID PROOF THIS CAN NOT HAPPEN AGAIN EVER"). 
 days because nothing ever compared the three numbers that must agree:
     1. the 20-bar 15m Donchian of the bar that entered   (the definition of the level)
     2. <acct>/{long,short}_positions.json fixed_stop_price (what live believes)
-    3. the triggerPrice of the resting STOP_MARKET algo order at Binance (what actually protects the money)
+    3. the triggerPrice of the resting STOP_MARKET algo order at Binance (what actually protects the money) —
+       expected at fixed_stop.crypto_exchange_level(), i.e. the frozen channel ∓0.40% (USER 2026-10-18; the
+       software/maker leg stays at ∓0.25%, so the venue order is 0.15pp further out)
 Any disagreement is a finding. Read-only; exit 1 when anything is off, so a cron/guardian can act on it.
 
 Usage: python3 tools/fixed_stop_audit.py [--json PATH] [--quiet]
