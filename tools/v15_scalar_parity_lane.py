@@ -39,6 +39,11 @@ STALE_RETRY_MIN = float(os.environ.get("PARITY_LANE_STALE_RETRY_MIN", "60"))
 S1_BAN_FILE = os.environ.get("PARITY_LANE_S1_BAN_FILE", "binance/ez_s1_stack/data/ez_klines_ban_state.json")
 
 
+def _is_crypto(sym_side):
+    """A Binance venue key — the only kind a Binance REST ban on S1 can hold (USER 2026-10-18)."""
+    return str(sym_side).upper().rsplit("_", 1)[0].endswith(("USDT", "USDC", "BUSD"))
+
+
 def s1_ban_remaining_s():
     """Binance REST ban on S1's IP (ez_klines persists it): while active, a dispatch would make S1 call Binance (tail refresh)
     and extend the ban — the lane dispatches nothing. Unreadable -> 0 (the stale-NPZ check still protects the run)."""
@@ -254,10 +259,17 @@ def main():
     # the lane had produced 3 DONE in total. A stale NPZ is that ITEM's problem: it goes back to PENDING after
     # STALE_RETRY_MIN and is re-checked once its NPZ refreshes, while items whose NPZ is fresh keep the lane busy.
     requeued = _requeue_stale(items)
-    hold = f"S1 Binance ban {ban_s:.0f}s more" if ban_s > 0 else ""
-    for it in ([] if hold else items):
+    # USER 2026-10-18: the ban hold is a CRYPTO hold. Measured today: S1 was 418-banned until 22:40Z (real — a REST probe
+    # from S1 returns 418), and the global hold had parked the whole queue at RUNNING 0 with 360 PENDING, 221 of them
+    # STOCK sym_sides. A stocks job reads S2's own stock NPZ store (S2 is the stocks refresh host) and never calls
+    # Binance, so a Binance ban must not stop it. Crypto items still wait, for the original reason: dispatching one makes
+    # S1 refresh its tail and extends the ban.
+    hold = f"S1 Binance ban {ban_s:.0f}s more (crypto only)" if ban_s > 0 else ""
+    for it in items:
         if running >= MAX_JOBS or os.getloadavg()[0] >= MAX_LOAD:
             break
+        if ban_s > 0 and _is_crypto(it.get("sym_side", "")):
+            continue
         if _state(_jobdir(it))[0] != "PENDING":
             continue  # DONE, RUNNING, or DIED (a died/timed-out job is reported, not silently retried)
         try:
