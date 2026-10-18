@@ -1847,6 +1847,18 @@ class Config:
     VEC_EXACT_FROZEN_KEEP_DAYS: float = (
         21.0  # span kept at a re-anchor (one re-anchor per symbol per ~8 days)
     )
+    VEC_EXACT_DISPATCH_LIMIT: int = (
+        16  # USER 2026-10-18 "make sure the gains from the vectorized tests are realized no exception". Was never declared, so
+        # ez_positions_quick fell back to 8 concurrent keys with a 600 s budget each: measured 60,682 BLOCKED_DISPATCH_TIMEOUT
+        # on 2026-10-18 alone (24,757 by 05:00Z) — a vector decision cancelled before the vector could make it, 191 keys
+        # affected, men evaluating only 45-73 of its 106+ keys per 15m bucket. The engine itself costs 219 ms p50 / 486 ms p90
+        # per key, so the queue was never compute-bound. 106 keys / 16 slots x 120 s worst case = 795 s < the 900 s bar.
+    )
+    VEC_EXACT_DISPATCH_TIMEOUT_S: float = (
+        120.0  # USER 2026-10-18: per-key budget inside the sweep. At the old 600 s fallback eight wedged keys stalled the whole
+        # sweep for a full bar, which is the mechanism behind the 60,682 cancellations; a genuinely hung key is now dropped in
+        # 2 min and the rest of the universe still gets decided on its own bar. Raise only with the cancellation count in hand.
+    )
     VEC_EXACT_PIN_SET_PER_POSITION: bool = (
         False  # USER 2026-10-18 "BLOCK OR REVERSE any trade that was not in the switches from the last best settings in the sql. RIGHT NOW": True meant ENTRIES used the latest set while a held position's EXITS kept using the set it was opened under, so live kept exiting on superseded switches. Measured on men that morning: 8 of 34 held positions were pinned to sets from 10-15/10-16 differing by 13-96 switches (DAYTRADE_DC_TARGET_TF, RZ_BREAKOUT_ENTRY_ENABLED, EMA_9_21_FILTER_FILTER_TF ...), and 5 of those 8 were positions the latest board said to CLOSE while live held them. The append-only frozen store (same day) already fixes the paper-drift this pin was the second belt for. True = legacy pin. ORIGINAL NOTE: 2026-10-14 twin drift root cause #2: a held position's exits follow the per-sym set it is held under until flat (data/vec_exact_pinned_{acct}.json); go-live set changes flipped the paper state of 28% of changed sym_sides. Entries always use the latest set; AUGMENT refused while pinned != latest. False = re-simulate held positions under the latest set (pre-fix)
     )
