@@ -286,6 +286,58 @@ def engine_state(ledger) -> dict:
             "since": last_open if holding else None, "last_close": last_close}
 
 
+VEC_LIVE = ROOT / "data" / "vec_live"
+
+
+def write_registry(keys, hours: float):
+    """data/vec_live/vec_driven.json — which (sym_side, account) ez_manage may drive from our intents, and for how long.
+
+    The registry carries its own expiry by design (USER 2026-10-06 "very dangerous, can only run for a couple of hours"):
+    past expires_utc every entry resolves back to SHADOW and native management takes the position back, and
+    `data/vec_live/KILL` does the same instantly. The lane refreshes the expiry each pass while it is alive, so stopping
+    the lane is itself the kill switch.
+    """
+    reg = {"_why": "tools/pure_board_trader.py — the latest published board set per sym_side decides, ez_manage executes",
+           "_written_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+           "expires_utc": dt.datetime.fromtimestamp(time.time() + hours * 3600.0, dt.timezone.utc).isoformat()}
+    for acct, ss in keys:
+        e = reg.setdefault(ss, {"mode": "live", "account": []})
+        if isinstance(e.get("account"), list) and acct not in e["account"]:
+            e["account"].append(acct)
+    for k, v in reg.items():
+        if isinstance(v, dict) and isinstance(v.get("account"), list) and len(v["account"]) == 1:
+            v["account"] = v["account"][0]
+    VEC_LIVE.mkdir(parents=True, exist_ok=True)
+    tmp = VEC_LIVE / "vec_driven.json.tmp"
+    tmp.write_text(json.dumps(reg, indent=1))
+    os.replace(tmp, VEC_LIVE / "vec_driven.json")
+    return reg
+
+
+def write_intent(acct: str, ss: str, bar_ts: float, typ: str, reason: str, target_holding: bool, qty_frac=None):
+    """One intent file for ez_manage's consumer: it translates this into an execute_now call, idempotent by intent_id."""
+    d = VEC_LIVE / "intents"
+    d.mkdir(parents=True, exist_ok=True)
+    iid = f"PB-{acct}-{ss}-{int(bar_ts)}-{typ}"
+    rec = {"intent_id": iid, "ss": ss, "account": acct, "bar_ts": int(bar_ts), "type": typ,
+           "reason": f"PURE_BOARD {reason}"[:120], "target_state": ("LONG" if target_holding and ss.endswith("_LONG")
+                                                                    else "SHORT" if target_holding else "FLAT"),
+           "mode": "live", "written_utc": dt.datetime.now(dt.timezone.utc).isoformat()}
+    if qty_frac is not None:
+        rec["qty_frac"] = float(qty_frac)
+    tmp = d / f"{iid}.json.tmp"
+    tmp.write_text(json.dumps(rec, indent=1))
+    os.replace(tmp, d / f"{iid}.json")
+    sd = VEC_LIVE / "state"
+    sd.mkdir(parents=True, exist_ok=True)
+    st = {"ss": ss, "target_state": rec["target_state"], "bar_ts": int(bar_ts),
+          "written_utc": rec["written_utc"], "source": "pure_board_trader"}
+    tmp2 = sd / f"{ss}.json.tmp"
+    tmp2.write_text(json.dumps(st, indent=1))
+    os.replace(tmp2, sd / f"{ss}.json")
+    return iid
+
+
 def _board_gain(pb):
     """The gain the published board claimed for this set (evidence is a dict on fresh selections, a JSON string on older)."""
     ev = (pb or {}).get("evidence")
@@ -312,7 +364,7 @@ def _eval_one(job):
         return ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}
 
 
-def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=None, close_only=False):
+def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=None, close_only=False, vec_driven=False):
     from concurrent.futures import ProcessPoolExecutor
 
     stats = collections.Counter()
@@ -364,6 +416,16 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                        "engine_gain": res.get("engine_gain"), "live_entry": (held.get((acct, ss)) or {}).get("entry"),
                        "live_gain_pct": (held.get((acct, ss)) or {}).get("gain")}
                 stats[f"CONV_{conv}"] += 1
+                if vec_driven:
+                    try:
+                        iid = write_intent(acct, ss, bar_ts, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
+                                           row["reason"], target_holding=(conv == "CONVERGE_OPEN"),
+                                           qty_frac=(1.0 if conv == "CONVERGE_CLOSE" else None))
+                        row["intent_id"] = iid
+                        stats["INTENT_WRITTEN"] += 1
+                    except Exception as exc:
+                        row["intent_error"] = f"{type(exc).__name__}: {exc}"[:120]
+                        stats["INTENT_ERROR"] += 1
                 if live_tm is not None:
                     try:
                         px = float((held.get((acct, ss)) or {}).get("mark") or est.get("entry_price") or 0.0)
@@ -431,6 +493,8 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--live", action="store_true", help="send real orders through ez_manage.execute_now (the account's own ez_manage must be stopped)")
+    ap.add_argument("--vec-driven", action="store_true", help="hand every decision to ez_manage's own VEC_DRIVEN consumer (it executes through execute_now); the lane places no orders itself")
+    ap.add_argument("--registry-hours", type=float, default=12.0, help="how long the vec_driven registry entries stay live before they expire back to shadow")
     ap.add_argument("--close-only", action="store_true", help="converge by CLOSING only: every position the board no longer holds is closed on its bar, nothing new is opened")
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--bar", type=float, default=0.0, help="evaluate this bar ts instead of the last closed one")
@@ -470,7 +534,9 @@ def main():
         day = dt.datetime.fromtimestamp(bar, dt.timezone.utc).strftime("%Y-%m-%d")
         t0 = time.time()
         held = live_positions(accounts)
-        stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers, held=held, close_only=a.close_only)
+        if a.vec_driven:
+            write_registry(uni, a.registry_hours)
+        stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers, held=held, close_only=a.close_only, vec_driven=a.vec_driven)
         acts = sum(v for k, v in stats.items() if k.startswith("ACT_"))
         lat = [r.get("decided_s_after_bar_close") for r in intents if r.get("decided_s_after_bar_close") is not None]
         if lat:
