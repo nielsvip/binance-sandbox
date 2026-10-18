@@ -50,6 +50,7 @@ sys.path.insert(0, str(ROOT))
 os.environ.setdefault("V12_ALLOW_STALE_NPZ", "1")
 BAR_S = 900.0
 OUT = ROOT / "data" / "pure_board"
+FROZEN = Path(os.environ.get("VEC_EXACT_FROZEN_DIR", "/tmp/vec_exact_frozen"))
 ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
 COST_PCT = 0.10
 
