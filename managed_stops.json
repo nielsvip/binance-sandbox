@@ -20,13 +20,6 @@
     "symbol": "SNXUSDT",
     "side": "SHORT"
   },
-  "fin:UNIUSDC_LONG": {
-    "orderId": "3000002256675961",
-    "stopPrice": 7.057,
-    "entry_sig": "2026-10-18 04:05:57.689000+00:00",
-    "symbol": "UNIUSDC",
-    "side": "LONG"
-  },
   "fin:SOLUSDC_LONG": {
     "orderId": "3000002256677795",
     "stopPrice": 102.2,
@@ -34,11 +27,25 @@
     "symbol": "SOLUSDC",
     "side": "LONG"
   },
+  "fin:UNIUSDC_LONG": {
+    "orderId": "3000002256675961",
+    "stopPrice": 7.057,
+    "entry_sig": "2026-10-18 04:05:57.689000+00:00",
+    "symbol": "UNIUSDC",
+    "side": "LONG"
+  },
   "fin:ATOMUSDT_SHORT": {
     "orderId": "3000002254903729",
     "stopPrice": 1.782,
     "entry_sig": "2026-10-17 02:59:17.202000+00:00",
     "symbol": "ATOMUSDT",
+    "side": "SHORT"
+  },
+  "fin:EGLDUSDT_SHORT": {
+    "orderId": "3000002256641961",
+    "stopPrice": 3.625,
+    "entry_sig": "2026-10-18 03:39:47.129000+00:00",
+    "symbol": "EGLDUSDT",
     "side": "SHORT"
   },
   "fin:XTZUSDT_SHORT": {
@@ -55,39 +62,18 @@
     "symbol": "SANDUSDT",
     "side": "LONG"
   },
-  "fin:EGLDUSDT_SHORT": {
-    "orderId": "3000002256641961",
-    "stopPrice": 3.625,
-    "entry_sig": "2026-10-18 03:39:47.129000+00:00",
-    "symbol": "EGLDUSDT",
-    "side": "SHORT"
-  },
-  "fin:ZENUSDT_SHORT": {
-    "orderId": "3000002256786041",
-    "stopPrice": 5.997,
-    "entry_sig": "2026-10-18 04:21:13.671000+00:00",
-    "symbol": "ZENUSDT",
-    "side": "SHORT"
-  },
-  "fin:IOTXUSDT_SHORT": {
-    "orderId": "3000002256788439",
-    "stopPrice": 0.003878,
-    "entry_sig": "2026-10-18 05:40:38.294000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "SHORT"
-  },
   "fin:MANAUSDT_SHORT": {
-    "orderId": "3000002256788438",
+    "orderId": "3000002256752116",
     "stopPrice": 0.08861,
     "entry_sig": "2026-10-18 04:39:29.558000+00:00",
     "symbol": "MANAUSDT",
     "side": "SHORT"
   },
-  "fin:UNIUSDC_SHORT": {
-    "orderId": "3000002256788166",
-    "stopPrice": 7.322,
-    "entry_sig": "2026-10-18 05:41:07.160000+00:00",
-    "symbol": "UNIUSDC",
+  "fin:ZENUSDT_SHORT": {
+    "orderId": "3000002256753809",
+    "stopPrice": 5.997,
+    "entry_sig": "2026-10-18 04:21:13.671000+00:00",
+    "symbol": "ZENUSDT",
     "side": "SHORT"
   }
 }

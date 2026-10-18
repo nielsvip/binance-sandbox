@@ -235,8 +235,20 @@ def _board_gain(pb):
         return None
 
 
+def _eval_one(job):
+    """One sym_side on one bar, in its own process. Returns only JSON-able data (no numpy, no engine objects)."""
+    ss, ov, bar_ts = job
+    try:
+        prep = prepared_from_frozen(ss)
+        if prep is None:
+            return ss, {"status": "SKIP_NO_BAR_STORE", "actions": []}
+        return ss, actions_from_engine(ss, ov, prep, bar_ts)
+    except Exception as exc:
+        return ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}
+
+
 def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ProcessPoolExecutor
 
     stats = collections.Counter()
     intents = []
@@ -244,23 +256,18 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
     for acct, ss in uni:
         by_ss[ss].append(acct)
 
-    def one(ss):
+    jobs, skipped = [], []
+    for ss in sorted(by_ss):
         pb = bds.get(ss)
         if not pb or not (pb.get("overrides") or {}):
-            return (ss, {"status": "SKIP_NO_PUBLISHED_BOARD", "actions": []}, None)
-        ov = pb["overrides"]
-        sym, side = ss.rsplit("_", 1)
-        try:
-            prep = prepared_from_frozen(ss)
-            if prep is None:
-                return (ss, {"status": "SKIP_NO_BAR_STORE", "actions": []}, pb)
-            res = actions_from_engine(ss, ov, prep, bar_ts)
-        except Exception as exc:
-            return (ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}, pb)
-        return (ss, res, pb)
-
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        results = list(ex.map(one, sorted(by_ss)))
+            skipped.append((ss, {"status": "SKIP_NO_PUBLISHED_BOARD", "actions": []}, None))
+            continue
+        jobs.append((ss, pb["overrides"], bar_ts))
+    results = list(skipped)
+    if jobs:
+        with ProcessPoolExecutor(max_workers=max(1, int(workers))) as ex:
+            for ss, res in ex.map(_eval_one, jobs, chunksize=1):
+                results.append((ss, res, bds.get(ss)))
     for ss, res, pb in results:
         status = res.get("status", "?")
         stats[status] += 1
@@ -279,6 +286,7 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
                 qty = float(a.get("vec_qty") or 0.0)
                 row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": action, "reason": reason,
                        "price": px, "vec_qty": qty, "qty_frac": a.get("qty_frac"), "status": status,
+                       "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
                        "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
                        "board_published_at": (pb or {}).get("published_at")}
                 paper = book.apply(f"{acct}:{ss}", action, qty or 1.0, px, bar_ts, reason, ss.endswith("_LONG"))
@@ -309,8 +317,9 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--live", action="store_true", help="send real orders through ez_manage.execute_now (the account's own ez_manage must be stopped)")
-    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--bar", type=float, default=0.0, help="evaluate this bar ts instead of the last closed one")
+    ap.add_argument("--offset", type=float, default=8.0, help="seconds after the 15m bar close to start the pass")
     a = ap.parse_args()
     accounts = [x.strip() for x in a.accounts.split(",") if x.strip()]
     uni = universe(accounts)
@@ -339,6 +348,10 @@ def main():
         t0 = time.time()
         stats, intents = run_bar(uni, bds, book, bar, live_tm=live_tm, ledger=OUT / f"intents_{day}.jsonl", workers=a.workers)
         acts = sum(v for k, v in stats.items() if k.startswith("ACT_"))
+        lat = [r.get("decided_s_after_bar_close") for r in intents if r.get("decided_s_after_bar_close") is not None]
+        if lat:
+            lat.sort()
+            log(f"decision latency after the bar closed: min {lat[0]:.0f}s  p50 {lat[len(lat) // 2]:.0f}s  max {lat[-1]:.0f}s")
         log(f"bar {dt.datetime.fromtimestamp(bar, dt.timezone.utc).strftime('%m-%d %H:%M')}Z evaluated in {time.time() - t0:.0f}s: "
             f"{acts} actions, paper book {len(book.pos)} open / {len(book.closed)} closed, "
             f"status {dict(sorted((k, v) for k, v in stats.items() if not k.startswith(('ACT_', 'PAPER_'))))}")
@@ -346,8 +359,13 @@ def main():
             log("  " + "; ".join(f"{r['acct']}:{r['sym_side']} {r['action']} {r['reason'][:40]} -> {r.get('paper')}" for r in intents if r.get("action"))[:800])
         if not a.loop:
             return 0
-        nxt = last_closed_bar(time.time()) + 2 * BAR_S + 20.0
-        time.sleep(max(20.0, nxt - time.time()))
+        # On the bar. Not 8 minutes after it, not 12: the next 15m boundary plus --offset seconds for the closing
+        # candle to land in the store, then every key is decided in one pass.
+        nxt = ((time.time() // BAR_S) + 1) * BAR_S + a.offset
+        while nxt - time.time() < 1.0:
+            nxt += BAR_S
+        log(f"next pass at {dt.datetime.fromtimestamp(nxt, dt.timezone.utc).strftime('%H:%M:%S')}Z (bar close + {a.offset:.0f}s) — sleeping {nxt - time.time():.0f}s")
+        time.sleep(max(1.0, nxt - time.time()))
 
 
 if __name__ == "__main__":
