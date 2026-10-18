@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-18 05:40 UTC",
- "total_capital_usd": 7.46,
+ "generated_at": "2026-10-18 05:55 UTC",
+ "total_capital_usd": 6.81,
  "tier_capital": {
-  "A": 7.46,
+  "A": 0.0,
   "B": 0.0,
-  "C": 0.0
+  "C": 6.81
  },
  "tier_count": {
-  "A": 1,
+  "A": 0,
   "B": 0,
-  "C": 0
+  "C": 1
  },
- "winners": [
-  "flz:WLDUSDC_SHORT"
+ "winners": [],
+ "losers": [
+  "inf:INJUSDT_LONG"
  ],
- "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 7.46,
-   "gain_pct": 0.304,
-   "tier": "A",
-   "perf_mult": 7.77,
-   "amt": 15.4,
-   "mark": 0.48422175
+   "pk": "inf:INJUSDT_LONG",
+   "symbol": "INJUSDT",
+   "account": "inf",
+   "value_usd": 6.81,
+   "gain_pct": 0.188,
+   "tier": "C",
+   "perf_mult": 0.43,
+   "amt": 0.8,
+   "mark": 8.51200341
   }
  ]
 }
