@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 05:30:19 UTC
+# Copilot Status — 2026-10-18 05:35:20 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:10:35
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:12:50
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:15:00
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:17:10
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:19:21
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:25:32
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:27:43
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T05:29:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:32:00
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T05:34:09
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,15 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 23 | **Watching for reentry:** 13 | **Reentered:** 0
+**Held:** 24 | **Watching for reentry:** 13 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
 - HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.9%
-- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +0.6%
+- HELD: **MELANIAUSDT** SHORT (crypto) peak +9.6%, now +0.8%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +6.5%
-- HELD: **MANAUSDT** SHORT (crypto) peak +7.1%, now +1.5%
+- HELD: **MANAUSDT** SHORT (crypto) peak +7.1%, now +1.6%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
@@ -56,7 +56,7 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
+- [MEDIUM] ez_prices.py running but log stale (11min)
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
