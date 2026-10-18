@@ -1,43 +1,32 @@
 {
  "generated_at": "2026-10-18 14:51 UTC",
- "total_capital_usd": 14.33,
+ "total_capital_usd": 7.14,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.18,
-  "C": 7.16
+  "B": 0.0,
+  "C": 7.14
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:SNXUSDT_SHORT"
+  "flz:SOLUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "ang",
-   "value_usd": 7.18,
-   "gain_pct": 4.42,
-   "tier": "B",
-   "perf_mult": 0.21,
-   "amt": 737.0,
-   "mark": 0.00973721
-  },
-  {
-   "pk": "ang:SNXUSDT_SHORT",
-   "symbol": "SNXUSDT",
-   "account": "ang",
-   "value_usd": 7.16,
-   "gain_pct": 4.418,
+   "pk": "flz:SOLUSDC_SHORT",
+   "symbol": "SOLUSDC",
+   "account": "flz",
+   "value_usd": 7.14,
+   "gain_pct": -0.029,
    "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 34.4,
-   "mark": 0.208
+   "perf_mult": 0.14,
+   "amt": 0.07,
+   "mark": 101.93107193
   }
  ]
 }
