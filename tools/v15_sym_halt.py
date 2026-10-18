@@ -28,6 +28,34 @@ DB = os.environ.get("PER_SYM_STORE_DB") or os.path.join(ROOT, "data", "hourly_re
 LEDGER_DIR = os.path.join(ROOT, "data", "per_trade_returns")
 CONFIRMED = os.path.join(ROOT, "data", "confirmed_365d.json")
 OUT = os.path.join(ROOT, "data", "v15_sym_halt.json")
+TRADE_ONLY = os.path.join(ROOT, "data", "v15_trade_only.json")
+_only_cache = {}
+
+
+def trade_only_symbols(path=TRADE_ONLY):
+    """USER 2026-10-18: "only trade zec btc dash doge while you get to the bottom of" the published numbers.
+
+    An allowlist of SYMBOLS (not sym_sides) that may take NEW exposure. Everything else is halted for opens/augments/
+    reentries while the board numbers are under investigation; exits are untouched by construction, because the manager
+    only consults this predicate for OPEN/AUGMENT/REENTRY/REVERSE. Separate file from v15_sym_halt.json on purpose: that
+    one is rewritten wholesale every 5 minutes by this tool's own writer. Empty/missing/unreadable = no restriction
+    (fail-open), env V15_TRADE_ONLY=SYM1,SYM2 overrides the file, V15_TRADE_ONLY=ALL lifts it.
+    """
+    env = os.environ.get("V15_TRADE_ONLY")
+    if env:
+        e = env.strip()
+        return set() if e.upper() in ("ALL", "*", "NONE") else {x.strip().upper() for x in e.split(",") if x.strip()}
+    try:
+        key = int(datetime.datetime.now(datetime.timezone.utc).timestamp() // 60)
+        if _only_cache.get("k") != key:
+            with open(path) as fh:
+                d = json.load(fh)
+            _only_cache.clear()
+            _only_cache["k"] = key
+            _only_cache["v"] = {str(x).upper() for x in (d.get("symbols") or [])} if bool(d.get("enabled", True)) else set()
+        return _only_cache.get("v") or set()
+    except Exception:
+        return set()
 CRYPTO_ACCOUNTS = ("ang", "fin", "flz", "inf", "men")
 HALT_N = int(os.environ.get("V15_SYM_HALT_N", "3"))
 EXPIRY_S = int(os.environ.get("V15_SYM_HALT_EXPIRY_S", str(24 * 3600)))
@@ -173,6 +201,11 @@ def sym_halt_active(account_key, sym_side, flag_path=OUT):
         if key not in _cache:
             _cache.clear()
             _cache[key] = _read_state(flag_path)
+        only = trade_only_symbols()
+        if only:
+            sym = str(sym_side).rsplit("_", 1)[0].upper()
+            if sym not in only:
+                return True, f"not in trade-only allowlist ({len(only)} symbols) — new exposure halted, exits untouched"
         rec = (_cache[key].get(str(account_key)) or {}).get(str(sym_side))
         if rec and not rec.get("reanchor_only"):
             return True, f"sym-halted streak {rec.get('streak')} since apply"

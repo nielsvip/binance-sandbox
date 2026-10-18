@@ -1,1 +1,86 @@
-{}
+{
+  "fin:BTCDOMUSDT_LONG": {
+    "orderId": "3000002256553915",
+    "stopPrice": 5502.0,
+    "entry_sig": "2026-10-17 05:40:26.259959+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "fin:XLMUSDT_SHORT": {
+    "orderId": "3000002254904564",
+    "stopPrice": 0.1823,
+    "entry_sig": "2026-10-17 03:00:16.228000+00:00",
+    "symbol": "XLMUSDT",
+    "side": "SHORT"
+  },
+  "fin:SNXUSDT_SHORT": {
+    "orderId": "3000002255036008",
+    "stopPrice": 0.2254,
+    "entry_sig": "2026-10-17 05:27:14.538000+00:00",
+    "symbol": "SNXUSDT",
+    "side": "SHORT"
+  },
+  "fin:SOLUSDC_LONG": {
+    "orderId": "3000002256677795",
+    "stopPrice": 102.2,
+    "entry_sig": "2026-10-18 04:07:17.068000+00:00",
+    "symbol": "SOLUSDC",
+    "side": "LONG"
+  },
+  "fin:ATOMUSDT_SHORT": {
+    "orderId": "3000002254903729",
+    "stopPrice": 1.782,
+    "entry_sig": "2026-10-17 02:59:17.202000+00:00",
+    "symbol": "ATOMUSDT",
+    "side": "SHORT"
+  },
+  "fin:XTZUSDT_SHORT": {
+    "orderId": "3000002256642923",
+    "stopPrice": 0.3037,
+    "entry_sig": "2026-10-18 03:40:24.731000+00:00",
+    "symbol": "XTZUSDT",
+    "side": "SHORT"
+  },
+  "fin:SANDUSDT_LONG": {
+    "orderId": "3000002256746855",
+    "stopPrice": 0.05773,
+    "entry_sig": "2026-10-18 05:07:45.502000+00:00",
+    "symbol": "SANDUSDT",
+    "side": "LONG"
+  },
+  "fin:EGLDUSDT_SHORT": {
+    "orderId": "3000002256641961",
+    "stopPrice": 3.625,
+    "entry_sig": "2026-10-18 03:39:47.129000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "fin:UNIUSDC_LONG": {
+    "orderId": "3000002256791800",
+    "stopPrice": 7.057,
+    "entry_sig": "2026-10-18 04:05:57.689000+00:00",
+    "symbol": "UNIUSDC",
+    "side": "LONG"
+  },
+  "fin:COTIUSDT_SHORT": {
+    "orderId": "3000002256817701",
+    "stopPrice": 0.011268,
+    "entry_sig": "2026-10-18 06:07:53.234000+00:00",
+    "symbol": "COTIUSDT",
+    "side": "SHORT"
+  },
+  "fin:DOTUSDT_SHORT": {
+    "orderId": "3000002256820522",
+    "stopPrice": 1.1241,
+    "entry_sig": "2026-10-18 05:48:30.523000+00:00",
+    "symbol": "DOTUSDT",
+    "side": "SHORT"
+  },
+  "fin:SOLUSDC_SHORT": {
+    "orderId": "3000002256822709",
+    "stopPrice": 104.93,
+    "entry_sig": "2026-10-18 05:51:03.848000+00:00",
+    "symbol": "SOLUSDC",
+    "side": "SHORT"
+  }
+}
