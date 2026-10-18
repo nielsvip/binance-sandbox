@@ -426,6 +426,27 @@ class Guard:
             man.setdefault("final_name_before_name_truth", man.get("final_name"))
             man["final_name"] = new_xlsx
         man["name_truth"] = {"G": truth.get("G"), "sum_pnl_dollars": truth.get("sum_pnl_dollars"), "peak": truth.get("peak"), "peak_header": truth.get("peak_header"), "header_gain": truth.get("header_gain"), "max_dd_pct": truth.get("max_dd_pct"), "closed_trades": truth.get("closed_trades"), "old_name": old_name, "page": truth.get("page"), "status": truth.get("status"), "checked_utc": now_utc()}
+        # USER 2026-10-18: WRITE THE TRUTH INTO THE CLAIM, NOT BESIDE IT. Until now this guard measured G from the page's
+        # own trades, renamed the file, recorded `nolies_correction.true_gain_pct` — and left `metrics.gain_pct` untouched,
+        # which is the field every consumer reads (v15_settings_history -> per_sym_history -> v15_published_selection ->
+        # go-live -> per_sym_active). Measured that morning: 203 of 566 applied claims were contradicted by their own
+        # manifest's truth field, median overstatement +6.35pp, max +1658pp (SNXUSDT_LONG filename gain14, truth 14.20,
+        # metrics 386.07 — and 386.07 was what traded). The pre-correction values are kept under
+        # `metrics_before_name_truth` so nothing is lost and the two engines stay comparable.
+        # Kill switch: NAME_TRUTH_WRITE_METRICS=0 restores the old side-field-only behaviour.
+        if os.environ.get("NAME_TRUTH_WRITE_METRICS", "1") != "0" and truth.get("G") is not None:
+            _m = man.get("metrics")
+            if isinstance(_m, dict):
+                _before = {k: _m.get(k) for k in ("gain_pct", "max_dd_pct", "trades") if k in _m}
+                if _before and "metrics_before_name_truth" not in man:
+                    man["metrics_before_name_truth"] = _before
+                _m["gain_pct"] = truth.get("G")
+                if truth.get("max_dd_pct") is not None:
+                    _m["max_dd_pct"] = truth.get("max_dd_pct")
+                if truth.get("closed_trades") is not None:  # the truth dict's own key; "n_trades" never existed
+                    _m["trades"] = truth.get("closed_trades")
+                _m["gain_source"] = "page_trades_sum_over_peak (board_name_truth_guard)"
+                man["metrics"] = _m
         man["nolies_correction"] = {"claimed_gain_pct": claimed, "true_gain_pct": truth.get("G"), "true_max_dd_pct": truth.get("max_dd_pct"), "window": "board", "method": "sum(page TRADES pnl_dollars) / page peak (event replay = header peak)", "measured_utc": now_utc(), "evaluator_md5": "40479fd2c1a99840b37bd4c15f42693b"}
         tmp = p.with_name(p.name + ".nametruth.tmp")
         tmp.write_text(json.dumps(man, indent=1, default=str))

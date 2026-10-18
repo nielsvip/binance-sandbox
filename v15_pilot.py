@@ -2687,6 +2687,15 @@ def _md5_file(path, chunk=1 << 20) -> str | None:
         return None
 
 
+def _pt_metrics_patch(symside, fresh):
+    """Page-truth metrics for the manifest (tools/v15_page_truth.metrics_patch). {} on any problem — never breaks a publish."""
+    try:
+        from tools.v15_page_truth import metrics_patch as _mp
+        return _mp(symside, fresh, 30)
+    except Exception:
+        return {}
+
+
 def _build_publish_manifest(symside, final_name, metrics, counts, overrides_md5, file_md5, npz_name, npz_md5, span_days, pilot_md5, template_name, host) -> dict:
     """USER 2026-10-03 (xlsx source-of-truth): every published xlsx ships a manifest sidecar binding the file (md5 + F/C/E counts) to its metrics, override set, NPZ data, and pilot code. tools/sheet_audit.py --verify re-checks all of it."""
     _mm = {k: metrics.get(k) for k in ("gain_pct", "trades", "tim_pct", "max_dd_pct", "valid", "invalid_reason", "bh")}
@@ -9362,11 +9371,22 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _final_trades = (_fresh_final or {}).get("trades")
             if _final_trades is None:
                 raise RuntimeError("final trades unknown — refusing bh/gain publish (no-lies)")
-            _final_name = _final_matrix_name(new_symside, _bh_raw, float(final_gain), int(_final_trades), 30)
+            # USER 2026-10-18 "make sure v15_pilot writes them correctly immediately from now on so we dont need double
+            # checks": the name used to come from `final_gain` (this pilot's VECTOR eval) while the chart page is drawn by
+            # a SECOND evaluation (hires_chart -> ledger) that verifies its own header. Two engines, one filename. The page
+            # is the artifact a human reads and the one board_name_truth_guard judges, so the page's own trades name the
+            # board. Fail-open: no fresh page -> the old number, logged. Kill switch V15_NAME_FROM_PAGE=0.
+            _pub_gain, _pub_trades, _pt_src, _pt_note = float(final_gain), int(_final_trades), "caller", ""
+            try:
+                from tools.v15_page_truth import reconcile as _pt_reconcile
+                _pub_gain, _pub_trades, _pt_src, _pt_note = _pt_reconcile(new_symside, float(final_gain), int(_final_trades), 30)
+            except Exception as _pt_e:
+                print(f"[page-truth] {new_symside}: helper unavailable, naming from the pilot's own number ({_pt_e})", flush=True)
+            _final_name = _final_matrix_name(new_symside, _bh_raw, float(_pub_gain), int(_pub_trades), 30)
             import shutil as _sh_pub
             _cand_class = "BEST_EFFORT" if _best_effort is not None else "QUALIFIED"
             _zero_flush_book()
-            _active_name, _won = _apply_best_publish(OUT_DIR, new_symside, _final_name, float(final_gain), _cand_class, wb_path)
+            _active_name, _won = _apply_best_publish(OUT_DIR, new_symside, _final_name, float(_pub_gain), _cand_class, wb_path)
             _final_path = OUT_DIR / _active_name
             for _vk in ("verdict", "verdict_reasons", "verdict_npz_mtime_ns"):
                 progress.pop(_vk, None)
@@ -9424,7 +9444,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     import hashlib as _hl_m, socket as _sock_m
                     _ovm = _hl_m.md5(json.dumps(cumulative_overrides, sort_keys=True, default=str).encode()).hexdigest()
                     _npp = _npz_path(new_symside)
-                    _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
+                    _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw, **_pt_metrics_patch(new_symside, _fresh_final)}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
                     try:  # TASK 07.1: the same provenance record ships in the manifest sidecar (drift watch source)
                         _man["provenance"] = progress.get("provenance") or board_provenance(new_symside, cumulative_overrides, final_gain, getattr(args, "template", None), progress.get("npz_id"))
@@ -14813,6 +14833,11 @@ def _main_single():
             print(f"[legacy-publish-slow-warn] {new_symside}: {_leg_e2}", flush=True)
     if _leg_trades is None:
         raise RuntimeError("final trades unknown — refusing bh/gain publish (no-lies)")
+    try:  # same page-truth rule as the main publish path (USER 2026-10-18); fail-open to the legacy numbers
+        from tools.v15_page_truth import reconcile as _pt_rec_leg
+        _leg_gain, _leg_trades, _leg_src, _leg_note = _pt_rec_leg(new_symside, float(_leg_gain), int(_leg_trades), 30)
+    except Exception as _leg_e:
+        print(f"[page-truth] {new_symside}: legacy naming kept its own number ({_leg_e})", flush=True)
     final_name = _final_matrix_name_legacy(new_symside, float(bh_raw), _leg_gain, _leg_trades, 30)
     final_path = OUT_DIR / final_name
     if final_path.exists():
@@ -15276,6 +15301,11 @@ def _main_single():
                 # gain/bh in filename per user request (like 30D bh/gain); USER 2026-10-03: int-percent gain + _t{trades}
                 try:
                     from tools.v15_final_naming import final_matrix_name as _final_matrix_name365
+                    try:  # 365d pages follow the same rule, judged against a 365d page
+                        from tools.v15_page_truth import reconcile as _pt_rec_365
+                        _365_gain, _365_trades, _365_src, _365_note = _pt_rec_365(new_symside, float(_365_gain), int(_365_trades), 365)
+                    except Exception as _365_e:
+                        print(f"[page-truth] {new_symside}: 365d naming kept its own number ({_365_e})", flush=True)
                     _365_final_name = _final_matrix_name365(new_symside, _365_bh, _365_gain, _365_trades, 365)
                 except Exception:
                     _bh_str = f"bh{'m' if _365_bh is not None and _365_bh<0 else ''}{abs(_365_bh):.2f}".replace('.','p') if _365_bh is not None else "bhnan"
