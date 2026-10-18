@@ -5858,11 +5858,11 @@ class Config:
             # "MIN_GAIN": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 12.0,  # CRYPTO_MINIMUM_TRADING_MODE 2026-10-16 (USER): was 160.0
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 25.0,  # RESTORED 2026-10-17; minimum mode held 6.0
-            "MAX_POSITION_SIZE": 180.0,  # RESTORED 2026-10-17; minimum mode held 62.0
-            "MAX_ORDER_VALUE": 120.0,  # RESTORED 2026-10-17; minimum mode held 26.0
+            "START_POSITION_SIZE": 45.0,  # RESTORED 2026-10-17; minimum mode held 6.0
+            "MAX_POSITION_SIZE": 280.0,  # RESTORED 2026-10-17; minimum mode held 62.0
+            "MAX_ORDER_VALUE": 140.0,  # RESTORED 2026-10-17; minimum mode held 26.0
             "MAX_ORDER_VALUE_MEN": 120.0,  # RESTORED 2026-10-17; minimum mode held 26.0
-            "MAX_ORDER_VALUE_FIN": 120.0,  # RESTORED 2026-10-17; minimum mode held 62.0
+            "MAX_ORDER_VALUE_FIN": 140.0,  # RESTORED 2026-10-17; minimum mode held 62.0
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
             "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
             "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug

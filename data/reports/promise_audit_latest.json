@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-18T20:12:01.090098+00:00",
+ "generated_utc": "2026-10-18T21:12:02.214154+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 266,
-  "entry_broken_no_delivery": 266,
-  "exit_promises": 390,
+  "entry_promises": 270,
+  "entry_broken_no_delivery": 270,
+  "exit_promises": 393,
   "exit_kept_in_bar": 42,
   "exit_kept_late": 16,
   "exit_skipped_inflight": 279,
-  "exit_broken_no_delivery": 332
+  "exit_broken_no_delivery": 335
  },
  "per_key": {
   "fin:MANAUSDT_SHORT": {
@@ -102,8 +102,8 @@
    "exit_broken_no_delivery": 6
   },
   "flz:DASHUSDT_SHORT": {
-   "entry_promises": 4,
-   "entry_broken_no_delivery": 4,
+   "entry_promises": 5,
+   "entry_broken_no_delivery": 5,
    "exit_promises": 4,
    "exit_broken_no_delivery": 4
   },
@@ -116,10 +116,10 @@
   "fin:DASHUSDT_SHORT": {
    "entry_promises": 5,
    "entry_broken_no_delivery": 5,
-   "exit_promises": 3,
+   "exit_promises": 4,
    "exit_skipped_inflight": 8,
    "exit_kept_in_bar": 2,
-   "exit_broken_no_delivery": 1
+   "exit_broken_no_delivery": 2
   },
   "flz:SOLUSDC_SHORT": {
    "exit_promises": 6,
@@ -302,8 +302,8 @@
   "fin:XLMUSDT_SHORT": {
    "exit_promises": 2,
    "exit_broken_no_delivery": 2,
-   "entry_promises": 4,
-   "entry_broken_no_delivery": 4
+   "entry_promises": 5,
+   "entry_broken_no_delivery": 5
   },
   "fin:IOTXUSDT_SHORT": {
    "entry_promises": 2,
@@ -512,8 +512,8 @@
    "exit_broken_no_delivery": 3
   },
   "ang:PUMPUSDT_SHORT": {
-   "entry_promises": 4,
-   "entry_broken_no_delivery": 4,
+   "entry_promises": 5,
+   "entry_broken_no_delivery": 5,
    "exit_promises": 4,
    "exit_broken_no_delivery": 4
   },
@@ -844,8 +844,8 @@
    "entry_broken_no_delivery": 5
   },
   "flz:GRAMUSDT_SHORT": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2,
+   "entry_promises": 3,
+   "entry_broken_no_delivery": 3,
    "exit_promises": 3,
    "exit_broken_no_delivery": 2,
    "exit_kept_late": 1
@@ -895,8 +895,8 @@
    "entry_broken_no_delivery": 1
   },
   "flz:ZECUSDC_SHORT": {
-   "exit_promises": 3,
-   "exit_broken_no_delivery": 2,
+   "exit_promises": 5,
+   "exit_broken_no_delivery": 4,
    "exit_kept_late": 1,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
@@ -7053,6 +7053,76 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "XLMUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-18 19:15",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B14",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "ang",
+   "sym_side": "PUMPUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-18 20:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B12",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DASHUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-18 20:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_LOWER_HIGH",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "DASHUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-18 20:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-short g0.11%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-18 20:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "HAIKU_REDUCE_2.5pct<2.5",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-18 20:15",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "DD_BOUNCE_STOP px1057.0200 aug_px1053.5800 qty0.0165",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "kind": "entry",
+   "bar": "10-18 20:30",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_KZONE",
    "outcome": "NO_DELIVERY"
   }
  ],
