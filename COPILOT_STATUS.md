@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 12:17:09 UTC
+# Copilot Status — 2026-10-18 12:22:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T11:57:09
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T11:59:11
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T12:01:14
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T12:03:17
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T12:05:19
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T12:11:28
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T12:13:31
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T12:15:34
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T12:19:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T12:21:51
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 17 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 17 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
 - HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +6.8%
@@ -43,7 +43,6 @@ _None_
 - WATCHING: **CHRUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
 - WATCHING: **SNXUSDT** SHORT (crypto) peaked +6.6%, exited 0m ago
 - WATCHING: **KSMUSDT** SHORT (crypto) peaked +5.8%, exited 0m ago
-- WATCHING: **ZROUSDT** LONG (crypto) peaked +5.8%, exited 0m ago
 - WATCHING: **COMPUSDT** SHORT (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 0m ago
 
