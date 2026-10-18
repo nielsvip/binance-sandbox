@@ -1,1 +1,30 @@
-{}
+{
+  "fin:CHRUSDT_SHORT": {
+    "orderId": "3000002257901711",
+    "stopPrice": 0.01912,
+    "entry_sig": "2026-10-18 07:39:58.339000+00:00",
+    "symbol": "CHRUSDT",
+    "side": "SHORT"
+  },
+  "fin:XTZUSDT_SHORT": {
+    "orderId": "3000002258153249",
+    "stopPrice": 0.3019,
+    "entry_sig": "2026-10-18 23:40:53.717000+00:00",
+    "symbol": "XTZUSDT",
+    "side": "SHORT"
+  },
+  "fin:UNIUSDC_LONG": {
+    "orderId": "3000002258172487",
+    "stopPrice": 6.77,
+    "entry_sig": "2026-10-18 23:55:17.125000+00:00",
+    "symbol": "UNIUSDC",
+    "side": "LONG"
+  },
+  "fin:SOLUSDC_SHORT": {
+    "orderId": "3000002258172586",
+    "stopPrice": 104.59,
+    "entry_sig": "2026-10-18 23:55:19.500000+00:00",
+    "symbol": "SOLUSDC",
+    "side": "SHORT"
+  }
+}
