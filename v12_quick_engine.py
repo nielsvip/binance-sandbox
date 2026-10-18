@@ -20089,7 +20089,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _vig_blocked = True
             _vig_block_px = float(px)
             continue
-        # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no cfg read, no veto, evaluated on EVERY bar of EVERY calc. Maker-first software leg; the exchange STOP_MARKET backstop (0.05% beyond) lives on the venue.
+        # 2026-10-12 USER MANDATE — FIXED_STOP: frozen-at-entry dc_15m -0.25% (vv shorts). Non-negotiable: no switch, no cfg read, no veto, evaluated on EVERY bar of EVERY calc. The vector models THIS maker-first software leg (-0.25%, unchanged — USER 2026-10-18 "REGULAR and non negotiable stop orders in the script (maker) should stay at +/- 0.25"); the exchange STOP_MARKET backstop lives on the venue and moved to dc_15m -0.40% / +0.40% (was 0.2999%) so the maker leg gets more room to fill before the taker order takes over.
         try:
             _fx_fire = ""
             if pos is not None:

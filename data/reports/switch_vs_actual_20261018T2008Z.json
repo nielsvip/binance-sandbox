@@ -1,0 +1,66 @@
+{
+ "window_from": "10-18 19:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 148,
+  "status_OK": 181,
+  "dictated_but_no_account_traded_it": 11,
+  "EXTRA": 2,
+  "FILLED": 1,
+  "NOT_FILLED": 1
+ },
+ "rows": [
+  {
+   "acct": "men",
+   "sym_side": "SANDUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 19:24",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 19:51",
+   "actual": "REDUCE",
+   "actual_reason": "EXIT_VELOCITY_WT against-short g0.55% |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "10-18 19:15",
+   "dictated": "REDUCE",
+   "dictated_reason": "PPL_TP_g2.45%>=1.50%_stopBE1091.5404",
+   "actual_at": "10-18 19:51",
+   "actual": "REDUCE",
+   "actual_reason": "PPL_TP_g2.45%>=1.50%_stopBE1091.5404 |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "10-18 19:30",
+   "dictated": "AUGMENT",
+   "dictated_reason": "HAIKU_WINNER_AUG_3.5pct",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  }
+ ]
+}
