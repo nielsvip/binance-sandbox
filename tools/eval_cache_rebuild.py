@@ -72,7 +72,12 @@ ROOT = Path(__file__).resolve().parents[1]
 EVAL_LABELS_SKIP = ("BOARD_CTX", "ROW_DONE")
 METRIC_KEYS = ("gain_pct", "trades", "tim", "max_dd_pct", "pool_sharpe", "wr_pct", "valid", "invalid_reason")
 SCHEMA = ("CREATE TABLE IF NOT EXISTS evals (key TEXT PRIMARY KEY, result TEXT NOT NULL, created REAL, hits INT DEFAULT 0)",
-          "CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+          "CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)",
+          "CREATE TABLE IF NOT EXISTS bases (base_id TEXT PRIMARY KEY, symside TEXT, n_keys INT, source TEXT, overrides TEXT NOT NULL)",
+          "CREATE TABLE IF NOT EXISTS evals_compact (ek TEXT PRIMARY KEY, base_id TEXT NOT NULL, symside TEXT, created REAL,"
+          " switch TEXT, cand TEXT, filter_key TEXT, filter_val TEXT, ctx TEXT, metrics TEXT, prov TEXT)",
+          "CREATE INDEX IF NOT EXISTS ix_compact_created ON evals_compact (created)",
+          "CREATE INDEX IF NOT EXISTS ix_compact_symside ON evals_compact (symside)")
 
 
 def connect(path, write=True):
@@ -162,11 +167,17 @@ def coerce(v):
         return v
 
 
+def base_id_of(symside, d):
+    return hashlib.sha1((str(symside) + "|" + json.dumps(d, sort_keys=True, separators=(",", ":"), default=str)).encode()).hexdigest()
+
+
 def rebuild_file(path, cx, base, base_source, since_epoch, ctx_default, counters, max_bytes, written_bytes):
-    """Stream one delta log, replaying the greedy chain, writing one cache-shaped row per measured eval."""
+    """Stream one delta log, replaying the greedy chain, writing one COMPACT row per measured eval + its shared base."""
     cur = dict(base)
     ctx = dict(ctx_default)
-    batch = []
+    batch, bbatch = [], []
+    seen_bases = set()
+    symside_hint = Path(path).name.split("_jump")[0].replace(".jsonl", "")
     with open(path, errors="ignore") as fh:
         for ln, line in enumerate(fh, 1):
             if '"label"' not in line:
@@ -194,40 +205,47 @@ def rebuild_file(path, cx, base, base_source, since_epoch, ctx_default, counters
             if since_epoch and (created or 0) < since_epoch:
                 counters["before_since"] += 1
                 continue
-            ov = dict(cur)
+            symside = d.get("sym_side") or symside_hint
+            bid = base_id_of(symside, cur)
+            if bid not in seen_bases:
+                seen_bases.add(bid)
+                bbatch.append((bid, symside, len(cur), base_source, json.dumps(cur, sort_keys=True, separators=(",", ":"), default=str)))
+                counters["bases"] += 1
             sw, cand = d.get("switch"), d.get("cand")
-            if sw and str(sw) not in ("BEST_START",) and cand not in (None, ""):
-                ov[str(sw)] = coerce(cand)
             fk, fv = parse_filter_label(label)
-            if fk:
-                ov[fk] = coerce(fv)
-            result = {"symside": d.get("sym_side"), "window_days": d.get("window_days") or ctx.get("window_days"),
-                      "offset_days": d.get("offset_days", 0), "bh_pct": ctx.get("bh_pct"), "bars": d.get("bars"),
-                      "gain_pct": d.get("gain_pct"), "trades": d.get("trades"), "tim_pct": d.get("tim"),
-                      "max_dd_pct": d.get("max_dd_pct"), "pool_sharpe": d.get("pool_sharpe"), "wr_pct": d.get("wr_pct"),
-                      "valid": d.get("valid"), "invalid_reason": d.get("invalid_reason"), "overrides": ov,
-                      "behavior_fingerprint": d.get("fp"),
-                      "rebuilt": {"src": str(path), "line": ln, "ts": ts, "label": label, "sheet": d.get("sheet"),
-                                  "row": d.get("row"), "switch": sw, "cand": cand, "nav": d.get("nav"),
-                                  "cum_before": d.get("cum_before"), "delta": d.get("delta"), "secs": d.get("secs"),
-                                  "cached_when_logged": d.get("cached"), "fn": d.get("fn"), "round": ctx.get("round"),
-                                  "cat_side": ctx.get("cat_side"), "tier": ctx.get("tier"),
-                                  "base_source": base_source, "base_keys": len(base),
-                                  "metrics": "verbatim from the delta log", "overrides": "replayed greedy chain",
-                                  "tool": "tools/eval_cache_rebuild.py"}}
-            blob = json.dumps(result, separators=(",", ":"), default=str)
-            key = "rebuilt1:" + hashlib.sha1(f"{path}|{ln}|{ts}|{d.get('sym_side')}|{d.get('sheet')}|{d.get('row')}|{sw}|{cand}|{label}".encode()).hexdigest()
-            batch.append((key, blob, created))
-            written_bytes[0] += len(blob) + len(key)
+            ctxj = json.dumps({"window_days": d.get("window_days") or ctx.get("window_days"), "offset_days": d.get("offset_days", 0),
+                               "bh_pct": ctx.get("bh_pct"), "bars": d.get("bars"), "cat_side": ctx.get("cat_side"),
+                               "tier": ctx.get("tier"), "round": ctx.get("round")}, separators=(",", ":"), default=str)
+            metj = json.dumps({"gain_pct": d.get("gain_pct"), "trades": d.get("trades"), "tim_pct": d.get("tim"),
+                               "max_dd_pct": d.get("max_dd_pct"), "pool_sharpe": d.get("pool_sharpe"), "wr_pct": d.get("wr_pct"),
+                               "valid": d.get("valid"), "invalid_reason": d.get("invalid_reason"),
+                               "behavior_fingerprint": d.get("fp")}, separators=(",", ":"), default=str)
+            provj = json.dumps({"src": str(path), "line": ln, "ts": ts, "label": label, "sheet": d.get("sheet"),
+                                "row": d.get("row"), "nav": d.get("nav"), "cum_before": d.get("cum_before"),
+                                "delta": d.get("delta"), "secs": d.get("secs"), "cached_when_logged": d.get("cached"),
+                                "fn": d.get("fn"), "base_source": base_source,
+                                "metrics": "verbatim from the delta log", "overrides": "replayed greedy chain",
+                                "tool": "tools/eval_cache_rebuild.py"}, separators=(",", ":"), default=str)
+            ek = "rebuilt1:" + hashlib.sha1(f"{path}|{ln}|{ts}|{symside}|{d.get('sheet')}|{d.get('row')}|{sw}|{cand}|{label}".encode()).hexdigest()
+            batch.append((ek, bid, symside, created, (str(sw) if sw else None), (str(cand) if cand not in (None, "") else None),
+                          fk, fv, ctxj, metj, provj))
+            written_bytes[0] += len(ctxj) + len(metj) + len(provj) + 120
             counters["rows"] += 1
-            if len(batch) >= 2000:
-                cx.executemany("INSERT OR IGNORE INTO evals (key, result, created) VALUES (?,?,?)", batch)
+            if len(batch) >= 5000:
+                cx.executemany("INSERT OR IGNORE INTO evals_compact (ek, base_id, symside, created, switch, cand, filter_key, filter_val, ctx, metrics, prov)"
+                               " VALUES (?,?,?,?,?,?,?,?,?,?,?)", batch)
                 batch.clear()
+            if bbatch:
+                cx.executemany("INSERT OR IGNORE INTO bases (base_id, symside, n_keys, source, overrides) VALUES (?,?,?,?,?)", bbatch)
+                bbatch.clear()
             if max_bytes and written_bytes[0] >= max_bytes:
                 counters["stopped_on_max_gb"] += 1
                 break
     if batch:
-        cx.executemany("INSERT OR IGNORE INTO evals (key, result, created) VALUES (?,?,?)", batch)
+        cx.executemany("INSERT OR IGNORE INTO evals_compact (ek, base_id, symside, created, switch, cand, filter_key, filter_val, ctx, metrics, prov)"
+                       " VALUES (?,?,?,?,?,?,?,?,?,?,?)", batch)
+    if bbatch:
+        cx.executemany("INSERT OR IGNORE INTO bases (base_id, symside, n_keys, source, overrides) VALUES (?,?,?,?,?)", bbatch)
 
 
 def do_rebuild(a):
@@ -240,7 +258,7 @@ def do_rebuild(a):
         sys.exit(f"[rebuild] no delta logs matched {a.logs}")
     since_epoch = epoch_of(a.since) if a.since else None
     counters = {"rows": 0, "malformed": 0, "promoted_applied": 0, "before_since": 0, "stopped_on_max_gb": 0, "files": 0,
-                "base_progress_json": 0, "base_xlsx_col_c": 0, "base_none": 0}
+                "bases": 0, "base_progress_json": 0, "base_xlsx_col_c": 0, "base_none": 0}
     written = [0]
     max_bytes = int(float(a.max_gb) * (1 << 30)) if a.max_gb else 0
     t0 = time.time()
@@ -264,9 +282,67 @@ def do_rebuild(a):
                                        "key_prefix": "rebuilt1: (49 chars) — can never collide with a real 40-hex cache key",
                                        "metrics": "verbatim from v15_delta_log rows", "overrides": "replayed from the logged greedy chain",
                                        "logs": a.logs, "progress_dir": a.progress_dir, "xlsx_dir": a.xlsx_dir})))
-    n = cx.execute("SELECT count(*) FROM evals").fetchone()[0]
-    print(f"[rebuild] DONE {counters['rows']:,} rows written · {n:,} in db · {written[0]/(1<<30):.2f} GB · {time.time()-t0:.0f}s")
+    n = cx.execute("SELECT count(*) FROM evals_compact").fetchone()[0]
+    nb = cx.execute("SELECT count(*) FROM bases").fetchone()[0]
+    print(f"[rebuild] DONE {counters['rows']:,} evals written · {n:,} in db · {nb:,} shared bases · {time.time()-t0:.0f}s")
     print(f"[rebuild] base sources: progress_json {counters['base_progress_json']} · xlsx_col_c {counters['base_xlsx_col_c']} · none {counters['base_none']}")
+    print(f"[rebuild] next: --materialize {a.out} --max-gb N   (fills cache-schema `evals` for v17_priors_mine, newest first)")
+    cx.close()
+
+
+def do_materialize(a):
+    """Expand compact rows into cache-schema `evals` rows (newest first) until --max-gb, so v17_priors_mine runs unchanged."""
+    cx = connect(a.materialize)
+    budget = int(float(a.max_gb) * (1 << 30)) if a.max_gb else 0
+    if a.fresh:
+        cx.execute("DELETE FROM evals WHERE key LIKE 'rebuilt1:%'")
+    bases = {}
+    written = n = 0
+    t0 = time.time()
+    batch = []
+    q = "SELECT ek, base_id, symside, created, switch, cand, filter_key, filter_val, ctx, metrics, prov FROM evals_compact"
+    if a.since:
+        q += f" WHERE created >= {epoch_of(a.since) or 0}"
+    q += " ORDER BY created DESC"
+    for ek, bid, symside, created, sw, cand, fk, fv, ctxj, metj, provj in cx.execute(q):
+        if bid not in bases:
+            row = cx.execute("SELECT overrides FROM bases WHERE base_id = ?", (bid,)).fetchone()
+            bases[bid] = json.loads(row[0]) if row else {}
+            if len(bases) > 4000:
+                bases.clear()
+                bases[bid] = json.loads(row[0]) if row else {}
+        ov = dict(bases[bid])
+        if sw and sw != "BEST_START" and cand not in (None, ""):
+            ov[sw] = coerce(cand)
+        if fk:
+            ov[fk] = coerce(fv)
+        ctx, met, prov = json.loads(ctxj), json.loads(metj), json.loads(provj)
+        result = dict(met)
+        result.update({"symside": symside, "window_days": ctx.get("window_days"), "offset_days": ctx.get("offset_days", 0),
+                       "bh_pct": ctx.get("bh_pct"), "bars": ctx.get("bars"), "overrides": ov,
+                       "rebuilt": dict(prov, switch=sw, cand=cand, filter_key=fk, filter_val=fv,
+                                       cat_side=ctx.get("cat_side"), tier=ctx.get("tier"), round=ctx.get("round"),
+                                       base_id=bid, base_keys=len(bases[bid]))})
+        blob = json.dumps(result, separators=(",", ":"), default=str)
+        batch.append((ek, blob, created))
+        written += len(blob) + len(ek)
+        n += 1
+        if len(batch) >= 1000:
+            cx.executemany("INSERT OR REPLACE INTO evals (key, result, created) VALUES (?,?,?)", batch)
+            batch.clear()
+            if n % 50000 == 0:
+                print(f"[materialize] {n:,} rows · {written/(1<<30):.2f} GB · {time.time()-t0:.0f}s", flush=True)
+        if budget and written >= budget:
+            print(f"[materialize] STOP at --max-gb {a.max_gb}")
+            break
+    if batch:
+        cx.executemany("INSERT OR REPLACE INTO evals (key, result, created) VALUES (?,?,?)", batch)
+    total = cx.execute("SELECT count(*) FROM evals").fetchone()[0]
+    print(f"[materialize] DONE {n:,} rows ({written/(1<<30):.2f} GB) · evals table now {total:,} rows · {time.time()-t0:.0f}s")
+    cx.execute("INSERT OR REPLACE INTO meta (k, v) VALUES (?,?)",
+               ("materialized", json.dumps({"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "rows": n,
+                                            "bytes": written, "since": a.since, "max_gb": a.max_gb,
+                                            "order": "created DESC (newest evals first)"})))
     cx.close()
 
 
@@ -302,7 +378,17 @@ def do_audit(a):
     reb = cx.execute("SELECT count(*) FROM evals WHERE key LIKE 'rebuilt1:%'").fetchone()[0]
     mn, mx = cx.execute("SELECT min(created), max(created) FROM evals").fetchone()
     f = lambda t: time.strftime("%Y-%m-%d %H:%M", time.gmtime(t)) if t else "?"
-    print(f"{a.audit}\n  rows {n:,} (real {n-reb:,} · rebuilt {reb:,}) · created {f(mn)} -> {f(mx)}")
+    print(f"{a.audit}\n  evals rows {n:,} (real {n-reb:,} · rebuilt {reb:,}) · created {f(mn)} -> {f(mx)}")
+    for t in ("evals_compact", "bases"):
+        try:
+            c2 = cx.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+            extra = ""
+            if t == "evals_compact":
+                a2, b2 = cx.execute("SELECT min(created), max(created) FROM evals_compact").fetchone()
+                extra = f" · {f(a2)} -> {f(b2)}"
+            print(f"  {t}: {c2:,} rows{extra}")
+        except Exception:
+            print(f"  {t}: absent")
     try:
         print("  meta:", dict(cx.execute("SELECT k, v FROM meta").fetchall()).get("rebuilt", "")[:300])
     except Exception:
@@ -323,10 +409,14 @@ def main():
     ap.add_argument("--max-gb", type=float, default=60.0, help="stop before the drive fills; 0 = no limit")
     ap.add_argument("--merge-native")
     ap.add_argument("--from", dest="from_db", action="append", default=[])
+    ap.add_argument("--materialize", help="expand compact rows into cache-schema `evals` (newest first)")
+    ap.add_argument("--fresh", action="store_true", help="with --materialize: drop existing rebuilt1: rows first")
     ap.add_argument("--audit")
     a = ap.parse_args()
     if a.audit:
         return do_audit(a)
+    if a.materialize:
+        return do_materialize(a)
     if a.merge_native:
         return do_merge(a)
     if not a.out:

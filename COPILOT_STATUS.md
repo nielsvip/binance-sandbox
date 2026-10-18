@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 22:13:40 UTC
+# Copilot Status — 2026-10-18 22:18:57 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:07:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:08:06
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T22:08:28
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:09:26
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:10:21
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T22:10:33
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:11:25
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:12:28
 - **STALE_INDICATORS** [tradier]  — 2026-10-18T22:12:40
 - **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:13:28
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:14:32
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T22:14:46
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:15:36
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:16:37
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T22:16:49
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:17:34
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T22:18:45
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T22:18:57
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 15 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
