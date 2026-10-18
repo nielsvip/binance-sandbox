@@ -1,44 +1,43 @@
 {
- "generated_at": "2026-10-18 12:51 UTC",
- "total_capital_usd": 14.5,
+ "generated_at": "2026-10-18 13:06 UTC",
+ "total_capital_usd": 11.46,
  "tier_capital": {
-  "A": 0.0,
-  "B": 0.0,
-  "C": 14.5
+  "A": 5.83,
+  "B": 5.63,
+  "C": 0.0
  },
  "tier_count": {
-  "A": 0,
-  "B": 0,
-  "C": 2
+  "A": 1,
+  "B": 1,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT",
-  "flz:BNBUSDC_LONG"
+  "inf:TIAUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 7.27,
-   "gain_pct": -0.514,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 0.07,
-   "mark": 103.89216791
+   "pk": "inf:ZROUSDT_LONG",
+   "symbol": "ZROUSDT",
+   "account": "inf",
+   "value_usd": 5.83,
+   "gain_pct": -1.396,
+   "tier": "A",
+   "perf_mult": 9.87,
+   "amt": 3.2,
+   "mark": 1.8232
   },
   {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 7.23,
-   "gain_pct": -0.17,
-   "tier": "C",
-   "perf_mult": 0.24,
-   "amt": 0.01,
-   "mark": 722.54711216
+   "pk": "inf:TIAUSDC_LONG",
+   "symbol": "TIAUSDC",
+   "account": "inf",
+   "value_usd": 5.63,
+   "gain_pct": -2.616,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 9.0,
+   "mark": 0.6251
   }
  ]
 }
