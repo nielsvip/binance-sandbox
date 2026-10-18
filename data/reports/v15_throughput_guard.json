@@ -1,193 +1,155 @@
 {
- "at": "2026-10-18T01:11:15Z",
+ "at": "2026-10-18T02:11:01Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 8,
-   "improved_per_hour": 8.0,
-   "published_n": 8,
+   "improved": 9,
+   "improved_per_hour": 9.0,
+   "published_n": 9,
    "flat_or_worse": 0,
    "unknown": 0,
-   "boards_running": [
-    "CAT_SHORT",
-    "OLED_SHORT"
-   ],
-   "mem_avail_mb": 15437,
-   "load1": 35.83,
+   "boards_running": [],
+   "mem_avail_mb": 5994,
+   "load1": 36.79,
    "nproc": 16,
-   "slots": "3/4",
-   "binding_reason": "scheduler mem guard (disk 14835 MB, mem 9679 MB, est_pair 15544 MB) \u2014 slots 3/4",
+   "slots": "0/4",
+   "binding_reason": "scheduler mem guard (disk 10141 MB, mem 2920 MB, est_pair 15544 MB) \u2014 slots 0/4",
    "error": null,
    "published": [
     {
-     "symside": "AMZN_LONG",
-     "at": "2026-10-18T00:14:33Z",
-     "baseline": 7.301692263416094,
-     "final": 10.820558615697719,
+     "symside": "AAPL_LONG",
+     "at": "2026-10-18T01:24:22Z",
+     "baseline": 9.966198771281002,
+     "final": 14.44471481023304,
      "state": "improved"
     },
     {
-     "symside": "AMZN_SHORT",
-     "at": "2026-10-18T00:31:16Z",
-     "baseline": 9.638536409908113,
-     "final": 13.760055006688216,
+     "symside": "AAPL_SHORT",
+     "at": "2026-10-18T01:26:10Z",
+     "baseline": 7.183692937076613,
+     "final": 8.393374789608993,
      "state": "improved"
     },
     {
-     "symside": "HOOD_LONG",
-     "at": "2026-10-18T00:11:29Z",
-     "baseline": 8.017881563400188,
-     "final": 9.128787181677527,
+     "symside": "CAT_SHORT",
+     "at": "2026-10-18T01:14:33Z",
+     "baseline": 12.897391171578136,
+     "final": 15.689028863117304,
      "state": "improved"
     },
     {
-     "symside": "KMNOUSDT_LONG",
-     "at": "2026-10-18T00:47:42Z",
-     "baseline": 68.98210356125027,
-     "final": 115.47808641813005,
+     "symside": "CDE_SHORT",
+     "at": "2026-10-18T01:42:49Z",
+     "baseline": 19.510602627999543,
+     "final": 45.5992952923871,
      "state": "improved"
     },
     {
-     "symside": "MNTS_SHORT",
-     "at": "2026-10-18T00:41:14Z",
-     "baseline": 52.55540164931861,
-     "final": 57.94558978444028,
+     "symside": "CVX_LONG",
+     "at": "2026-10-18T01:26:07Z",
+     "baseline": 5.6189058106993555,
+     "final": 10.001807048586139,
      "state": "improved"
     },
     {
-     "symside": "PBF_LONG",
-     "at": "2026-10-18T01:03:20Z",
-     "baseline": 14.893334275992931,
-     "final": 35.95930678545759,
+     "symside": "DHR_LONG",
+     "at": "2026-10-18T01:43:32Z",
+     "baseline": 6.693393089859071,
+     "final": 15.165096180089478,
      "state": "improved"
     },
     {
-     "symside": "SAP_LONG",
-     "at": "2026-10-18T01:10:21Z",
-     "baseline": 6.0468116820895705,
-     "final": 12.708198159069777,
+     "symside": "OLED_SHORT",
+     "at": "2026-10-18T01:13:21Z",
+     "baseline": 7.410913411821429,
+     "final": 27.69764562636298,
      "state": "improved"
     },
     {
-     "symside": "U_SHORT",
-     "at": "2026-10-18T00:53:05Z",
-     "baseline": 25.165796717716372,
-     "final": 27.39127214551425,
+     "symside": "TSLA_LONG",
+     "at": "2026-10-18T01:22:51Z",
+     "baseline": 5.317878720179257,
+     "final": 9.338640472987874,
+     "state": "improved"
+    },
+    {
+     "symside": "TSLA_SHORT",
+     "at": "2026-10-18T01:34:33Z",
+     "baseline": 11.61464393404824,
+     "final": 13.242046200852206,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.5,
-   "last_improved_symside": "SAP_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 11.5,
+   "minutes_since_last_improved": 27.1,
+   "last_improved_symside": "DHR_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 10.1,
    "improved_gap_min_max_24h": 170.7,
-   "improved_finishes_24h": 52,
-   "board_cpu_s_median_24h": 1852.5,
-   "board_wall_s_median_24h": 712.1557140350342,
-   "board_cores": 6.95,
-   "nonboard_cores_competing": 3.43,
-   "nonboard_cores_niced": 4.79,
+   "improved_finishes_24h": 59,
+   "board_cpu_s_median_24h": 1614.0,
+   "board_wall_s_median_24h": 703.5672311782837,
+   "board_cores": 0.0,
+   "nonboard_cores_competing": 10.23,
+   "nonboard_cores_niced": 5.23,
    "cores_by_bucket": {
-    "other": 1.07,
-    "live_helpers": 1.46,
-    "boards": 6.95,
-    "klines_append": 0.9
+    "other": 0.49,
+    "live_helpers": 8.79,
+    "klines_append": 0.95
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.92,
-    "other": 3.87
+    "klines_vault": 1.33,
+    "other": 3.9
    }
   },
   "s2": {
-   "improved": 8,
-   "improved_per_hour": 8.0,
-   "published_n": 8,
+   "improved": 2,
+   "improved_per_hour": 2.0,
+   "published_n": 2,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "CHRUSDT_LONG",
-    "DOGEUSDC_LONG"
+    "BBUSDT_LONG",
+    "BNBUSDC_LONG"
    ],
-   "mem_avail_mb": 18159,
-   "load1": 13.97,
+   "mem_avail_mb": 5855,
+   "load1": 9.33,
    "nproc": 16,
    "slots": "2/6",
-   "binding_reason": "concurrency 2 boards: 12/h needs <= 10 min per sym_side (measured median 11 min) \u2014 raise concurrent sides or cut evals per board",
+   "binding_reason": "scheduler mem guard (disk 78397 MB, mem 7136 MB, est_pair 23555 MB) \u2014 slots 2/6",
    "error": null,
    "published": [
     {
-     "symside": "1000FLOKIUSDT_SHORT",
-     "at": "2026-10-18T00:26:39Z",
-     "baseline": 14.145811446109155,
-     "final": 17.907336884532604,
+     "symside": "DOGEUSDC_LONG",
+     "at": "2026-10-18T01:21:19Z",
+     "baseline": 34.057229175419316,
+     "final": 52.407129069454115,
      "state": "improved"
     },
     {
-     "symside": "AMAT_SHORT",
-     "at": "2026-10-18T00:14:41Z",
-     "baseline": 19.103016646575,
-     "final": 22.07804187015411,
-     "state": "improved"
-    },
-    {
-     "symside": "APO_SHORT",
-     "at": "2026-10-18T00:15:11Z",
-     "baseline": 19.397467771420867,
-     "final": 29.354177830908117,
-     "state": "improved"
-    },
-    {
-     "symside": "A_LONG",
-     "at": "2026-10-18T00:40:57Z",
-     "baseline": 25.405153291086158,
-     "final": 31.30544217974797,
-     "state": "improved"
-    },
-    {
-     "symside": "CRM_LONG",
-     "at": "2026-10-18T00:52:39Z",
-     "baseline": 3.6990847739978814,
-     "final": 21.67637900676832,
-     "state": "improved"
-    },
-    {
-     "symside": "CRWV_SHORT",
-     "at": "2026-10-18T00:48:18Z",
-     "baseline": 32.45324502483384,
-     "final": 36.25348835025721,
-     "state": "improved"
-    },
-    {
-     "symside": "SKYUSDT_SHORT",
-     "at": "2026-10-18T00:36:16Z",
-     "baseline": 17.564838013481957,
-     "final": 49.750884204566674,
-     "state": "improved"
-    },
-    {
-     "symside": "WMT_LONG",
-     "at": "2026-10-18T00:55:18Z",
-     "baseline": 14.507854800522704,
-     "final": 17.82655909340628,
+     "symside": "SHOP_LONG",
+     "at": "2026-10-18T01:49:51Z",
+     "baseline": 43.54213109009375,
+     "final": 48.251143758678076,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 15.9,
-   "last_improved_symside": "WMT_LONG",
+   "minutes_since_last_improved": 21.0,
+   "last_improved_symside": "SHOP_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 10.2,
+   "improved_gap_min_median_24h": 10.1,
    "improved_gap_min_max_24h": 419.1,
-   "improved_finishes_24h": 54,
+   "improved_finishes_24h": 56,
    "board_cpu_s_median_24h": 1925.4,
    "board_wall_s_median_24h": 639.0957939624786,
-   "board_cores": 13.12,
-   "nonboard_cores_competing": 0,
+   "board_cores": 8.99,
+   "nonboard_cores_competing": 0.01,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 13.12
+    "other": 0.01,
+    "boards": 8.99
    },
    "cores_by_bucket_niced": {}
   }
@@ -197,6 +159,7 @@
   "s2"
  ],
  "cadence_breach": [
+  "s1",
   "s2"
  ]
 }
