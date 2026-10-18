@@ -1,0 +1,25 @@
+{
+ "window_from": "10-18 17:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 5,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 17:46",
+   "actual": "REDUCE",
+   "actual_reason": "MTF_DC_REJECT_1h_px1.3320 |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
