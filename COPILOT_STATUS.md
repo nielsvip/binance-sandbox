@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-18 07:31:03 UTC
+# Copilot Status — 2026-10-18 07:35:57 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:27:44
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:27:45
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T07:27:56
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:28:59
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:28:59
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:30:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:30:01
-- **STALE_INDICATORS** [tradier]  — 2026-10-18T07:30:13
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:31:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:31:02
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:32:05
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:32:05
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T07:32:27
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:33:07
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:33:07
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:34:05
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:34:05
+- **STALE_INDICATORS** [tradier]  — 2026-10-18T07:34:36
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-18T07:35:15
+- **RATIO_IMBALANCE** [crypto] fin — 2026-10-18T07:35:15
 
 ## Missed Trades (trader comparison)
 
@@ -33,8 +33,8 @@ _None_
 - HELD: **RVNUSDT** SHORT (crypto) peak +11.0%, now +5.7%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
-- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +5.8%
-- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +-0.7%
+- HELD: **XTZUSDT** SHORT (crypto) peak +7.6%, now +6.1%
+- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +-1.1%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%

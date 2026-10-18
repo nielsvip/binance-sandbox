@@ -1,21 +1,21 @@
 {
- "now": "2026-10-18T06:36:37.163383+00:00",
+ "now": "2026-10-18T07:36:41.127006+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 1355,
- "last_exit_ts": "2026-10-18T06:34:59.123086+00:00",
+ "n_exit_rows": 1398,
+ "last_exit_ts": "2026-10-18T07:35:06.525589+00:00",
  "n_leaks": 0,
- "n_gate_on": 6,
+ "n_gate_on": 31,
  "n_ungated": 2,
  "n_safety": 0,
- "n_unmapped": 318,
+ "n_unmapped": 302,
  "n_unverified": 0,
- "since": "2026-10-16T06:36:37.163383+00:00",
+ "since": "2026-10-16T07:36:41.127006+00:00",
  "vec_exact_by_action": {
-  "OPEN": 759,
-  "CLOSE": 148,
-  "REDUCE": 122
+  "OPEN": 750,
+  "CLOSE": 159,
+  "REDUCE": 154
  },
- "native_rows": 326,
+ "native_rows": 335,
  "unverified_by_family": {},
  "leaks_by_family": {},
  "leak_keys": {},
@@ -23,7 +23,8 @@
   "DELTA_EXIT (DELTA_EXIT_ENABLED)": 1,
   "CYCLE_TP (CYCLE_TP_TIERED_ENABLED)": 2,
   "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 2,
-  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 1
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 1,
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 25
  },
  "ungated_by_family": {
   "BREAK_EVEN_GUARD": 2
@@ -31,7 +32,7 @@
  "safety_by_family": {},
  "unmapped": {
   "FIXED_STOP_LONG": 211,
-  "FIXED_STOP_SHORT": 95,
+  "FIXED_STOP_SHORT": 79,
   "DC_BB_D_BREAK_REVERSE_close_BB_BREAK_D": 2,
   "HEDGE_CLOSE_WT3M1H_PRE_GATE": 2,
   "WT_SIMPLE_GUARANTEE_15m_wt-8.3vs-8.3_g": 1,
@@ -44,9 +45,9 @@
   "EMERGENCY_PRICE_-6.9%": 1
  },
  "actions": {
-  "OPEN": 759,
-  "CLOSE": 470,
-  "REDUCE": 124,
+  "OPEN": 750,
+  "CLOSE": 490,
+  "REDUCE": 156,
   "QUICK_CLOSE": 1,
   "None": 1
  }
