@@ -84,10 +84,15 @@ def connect(path, write=True):
     p = Path(path)
     if write:
         p.parent.mkdir(parents=True, exist_ok=True)
-    c = sqlite3.connect(str(p) if write else f"file:{p}?mode=ro", uri=not write, timeout=120.0, isolation_level=None)
+    c = sqlite3.connect(str(p) if write else f"file:{p}?mode=ro", uri=not write, timeout=600.0, isolation_level=None)
     if write:
-        c.execute("PRAGMA synchronous=OFF")
-        c.execute("PRAGMA journal_mode=MEMORY")
+        # Speed pragmas only: journal_mode needs exclusive access, and a concurrent READER (an audit or a row count
+        # over a 45 GB file on USB) must not turn a merge into a crash. 2026-10-18: it did.
+        for pragma in ("PRAGMA synchronous=OFF", "PRAGMA journal_mode=MEMORY"):
+            try:
+                c.execute(pragma)
+            except sqlite3.OperationalError as exc:
+                print(f"[cache] {pragma} skipped ({exc}) — continuing with the file's current settings", flush=True)
         for s in SCHEMA:
             c.execute(s)
     return c
