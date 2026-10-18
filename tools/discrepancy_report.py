@@ -145,6 +145,27 @@ def score_rows(con, horizon: int, rescore: bool):
     return n_scored, len(rows)
 
 
+# A live-only family that has been switched OFF is HISTORY, not a current cause. These three were turned off together
+# (USER 2026-10-13 "NOTHING can ever be live only"): their rows in this ledger predate the flip and must never be summed
+# into a verdict about today. The switch is read from config at report time, so the table cannot drift from reality.
+OFF_SWITCH = {"MARGIN_FREE_FOR": "MARGIN_FREE_CLOSE_ENABLED", "MAKER_PROFIT_EXIT": "MARGIN_FREE_CLOSE_ENABLED",
+              "SUBSTITUTION": "SUBSTITUTION_CLOSE_ENABLED", "CB_HTF_EXHAUST": "CB_HTF_EXHAUST_EXIT_ENABLED"}
+INERT_AFTER_H = 48.0
+
+
+def _switch_state(family: str):
+    """(switch_name, is_on) for a family we know a kill switch for, else (None, None)."""
+    for tok, sw in OFF_SWITCH.items():
+        if tok.upper() in str(family).upper():
+            try:
+                from config import Config
+
+                return sw, bool(getattr(Config(), sw, False))
+            except Exception:
+                return sw, None
+    return None, None
+
+
 def _family(reason: str) -> str:
     """The live function behind the order, via the live code's own classifier when it can name it."""
     r = str(reason or "")
@@ -198,14 +219,15 @@ def report(con, days: float, horizon: int) -> str:
         A(f"| {v or '-'} | {n} | {usd:+.2f} | {p:+.3f}% |")
     tot = con.execute("SELECT COUNT(*), SUM(COALESCE(cf_usd,0)) FROM discrepancy WHERE day>=? AND class IN ('LIVE_ONLY_FILL','GATE_REFUSED') AND who_wanted='LIVE'", (day_from,)).fetchone()
     A(f"\n**Net: following live instead of the vector on those {tot[0]} decisions would have been {tot[1] or 0:+.2f} $** "
-      f"(forward {horizon} bars, costs in).\n")
+      f"(forward {horizon} bars, costs in) — read the per-function table below before attributing any of it to today: a "
+      f"function whose kill switch is off contributed to this sum only before it was turned off.\n")
     A("## Which live-only FUNCTION is worth keeping (the promotion question)\n")
     A("A function is only a candidate when it wins on most of its rows AND on the sum; one −25 $ tail outweighs ten +1 $ wins.\n")
-    A("| live function family | rows | live right | vector right | counterfactual $ | mean % | worst row $ |")
-    A("|---|---|---|---|---|---|---|")
-    fam = collections.defaultdict(lambda: [0, 0, 0, 0.0, 0.0, 0.0])
-    for reason, v, usd, pct in con.execute(
-        "SELECT live_reason, verdict, COALESCE(cf_usd,0), COALESCE(cf_pct,0) FROM discrepancy WHERE day>=?"
+    A("| live function family | rows | live right | vector right | counterfactual $ | mean % | worst row $ | last seen | state |")
+    A("|---|---|---|---|---|---|---|---|---|")
+    fam = collections.defaultdict(lambda: [0, 0, 0, 0.0, 0.0, 0.0, 0.0])
+    for reason, v, usd, pct, ts in con.execute(
+        "SELECT live_reason, verdict, COALESCE(cf_usd,0), COALESCE(cf_pct,0), ts FROM discrepancy WHERE day>=?"
         " AND class IN ('LIVE_ONLY_FILL','GATE_REFUSED') AND who_wanted='LIVE' AND cf_usd IS NOT NULL", (day_from,)):
         f = _family(reason)
         e = fam[f]
@@ -215,9 +237,28 @@ def report(con, days: float, horizon: int) -> str:
         e[3] += usd
         e[4] += pct
         e[5] = min(e[5], usd)
+        e[6] = max(e[6], float(ts or 0))
+    now_ts = time.time()
+    active_sum = inert_sum = 0.0
     for f, e in sorted(fam.items(), key=lambda kv: kv[1][3]):
-        A(f"| {f} | {e[0]} | {e[1]} | {e[2]} | {e[3]:+.2f} | {(e[4] / max(1, e[0])):+.3f}% | {e[5]:+.2f} |")
+        sw, on = _switch_state(f)
+        age_h = (now_ts - e[6]) / 3600.0 if e[6] else 1e9
+        if on is False:
+            state = f"INERT ({sw}=False)"
+        elif age_h > INERT_AFTER_H:
+            state = f"QUIET {age_h / 24.0:.1f}d"
+        else:
+            state = "ACTIVE"
+        if state.startswith("ACTIVE"):
+            active_sum += e[3]
+        else:
+            inert_sum += e[3]
+        last = dt.datetime.fromtimestamp(e[6], dt.timezone.utc).strftime("%m-%d %H:%MZ") if e[6] else "-"
+        A(f"| {f} | {e[0]} | {e[1]} | {e[2]} | {e[3]:+.2f} | {(e[4] / max(1, e[0])):+.3f}% | {e[5]:+.2f} | {last} | {state} |")
     A("")
+    A(f"**Of that counterfactual, {active_sum:+.2f} $ belongs to functions that can still fire and {inert_sum:+.2f} $ to "
+      f"functions already switched off or silent for more than {INERT_AFTER_H / 24:.0f} days — the second number is history "
+      f"and says nothing about today.**\n")
     A("## What the vector's own timing was worth (matched trips that differed by a bar)\n")
     r = con.execute("SELECT COUNT(*), SUM(COALESCE(live_usd,0)), SUM(COALESCE(cf_usd,0)) FROM discrepancy WHERE day>=? AND class='BAR_MISMATCH'", (day_from,)).fetchone()
     A(f"- {r[0]} trips, live realised **{r[1] or 0:+.2f} $**, and **{r[2] or 0:+.2f} $** is live's timing minus the vector's own return on the same notional "

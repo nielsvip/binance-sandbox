@@ -10,10 +10,14 @@ WHAT IT IS. One process, one rule, no second opinion:
   settings   `data/published_selection.json` -> the LATEST published board per sym_side (tools/v15_published_selection.py:
              the newest `fleet_orchestrator_publish` row per sym_side, i.e. the sheet in SPREADSHEETS/V15_V16_CELL_BY_CELL).
              No per-sym store, no cat_side layer, no config fallback: a key with no published board is SKIPPED, loudly.
-  decision   the live twin's own bars and its own action extraction (`live_twins.vec_exact.actions_at(..., overrides=board)`)
-             -> the exact code path the sheets measure. This script implements NO trading logic of its own.
+  decision   the BACKTEST ENGINE and nothing else: `tools.opt.evaluate_v12.evaluate_prepared(include_ledger=True)` on the
+             frozen 15m bars, and the acts for the newest closed bar are read out of the ledger it returns. This script
+             imports no trading script, holds no decision logic of its own, and cannot change what live does
+             (USER 2026-10-18: "you just need to trade a set of switches not screw with the trading scripts / OUTSIDE OF
+             THE SCRIPTS"). The one exception is --live below, because an order may not leave by any other door.
   execution  --paper (default): nothing is sent; the intent and a paper position are recorded.
-             --live: every order goes through `ez_manage` `execute_now` (the only sanctioned gate, CLAUDE.md). It REFUSES to
+             --live: the ONLY thing borrowed from the trading scripts, unmodified: orders leave through `ez_manage`
+             `execute_now`, because CLAUDE.md makes it the single gate for every order. It REFUSES to
              start when an `ez_manage --account <acct>` process is alive for a traded account — two traders on one account is
              how FIXED_STOP wars and double closes happen.
   ledger     `data/pure_board/intents_<date>.jsonl` (every intent, kept or skipped, with the bar and the board md5) and the
@@ -150,17 +154,71 @@ FROZEN = Path(os.environ.get("VEC_EXACT_FROZEN_DIR", "/tmp/vec_exact_frozen"))
 
 
 def prepared_from_frozen(symside: str):
-    """The twin's own append-only frozen bars = exactly what live decided on, without paying its ~20 s live rebuild."""
+    """Build the engine's own prepare on the frozen 15m bars — nothing from the trading scripts is imported.
+
+    USER 2026-10-18 "you just need to trade a set of switches not screw with the trading scripts / OUTSIDE OF THE SCRIPTS":
+    this lane talks ONLY to the backtest engine (`tools.opt.evaluate_v12`, the same call the sheets and the charts use) and
+    to data files. `evaluate_v12.prepare` normally loads an NPZ; here its store accessor is swapped for the frozen bar arrays
+    for the duration of the call, which is the engine's documented way to prepare from memory.
+    """
     import pickle
 
-    from live_twins import vec_exact as VX
+    from tools.opt import evaluate_v12 as E
 
     path = FROZEN / f"{symside.rsplit('_', 1)[0]}.pkl"
     if not path.exists():
         return None
     with open(path, "rb") as fh:
-        raw = pickle.load(fh)
-    return VX._prepare_from_arrays(symside, dict(raw))
+        raw = dict(pickle.load(fh))
+    o_store, o_start = E._store, E._frozen_npz_start_date
+    E._store = lambda sym, mode, start: raw
+    E._frozen_npz_start_date = lambda *a, **k: "1970-01-01"
+    try:
+        return E.prepare(symside, 30)
+    finally:
+        E._store, E._frozen_npz_start_date = o_store, o_start
+
+
+def actions_from_engine(symside: str, overrides: dict, prepared: dict, bar_ts: float) -> dict:
+    """The engine's own decisions AT that bar, read out of its execution ledger. No decision logic lives here.
+
+    `evaluate_prepared(include_ledger=True)` returns the ledger the sheets and charts are built from; every row carries the
+    bar it happened on, so the acts for the newest closed bar are a filter, not a re-derivation. FINAL_MTM (the window-edge
+    mark) is never an action.
+    """
+    import numpy as np
+    from tools.opt import evaluate_v12 as E
+
+    ts = np.asarray(prepared["npz_prepared"]["timestamps"], dtype=float)
+    if ts.size < 101:
+        return {"status": "WARMUP", "actions": [], "bar_ts": bar_ts}
+    k = int(np.searchsorted(ts, float(bar_ts), side="right")) - 1
+    if k < 0:
+        return {"status": "BEFORE_ANCHOR", "actions": [], "bar_ts": bar_ts}
+    cut = float(ts[k])
+    q = dict(prepared)
+    q["npz_prepared"] = {a: (v[: k + 1] if isinstance(v, np.ndarray) and v.shape[:1] == (ts.size,) else v)
+                         for a, v in prepared["npz_prepared"].items()}
+    r = E.evaluate_prepared(q, dict(overrides or {}), include_ledger=True)
+    acts, pos_q = [], 0.0
+    for e in r.get("execution_ledger") or []:
+        typ = str(e.get("type") or "").upper()
+        reason = str(e.get("reason") or e.get("exit_reason") or e.get("entry_reason") or "")
+        if reason.startswith("FINAL_MTM"):
+            continue
+        qv = abs(float(e.get("qty") or 0.0))
+        if float(e.get("ts") or 0.0) < cut:
+            pos_q = pos_q + qv if typ in ("OPEN", "AUGMENT") else max(0.0, pos_q - qv)
+            continue
+        if typ in ("OPEN", "AUGMENT"):
+            acts.append({"type": typ, "reason": reason, "vec_qty": qv, "vec_price": float(e.get("price") or 0.0), "qty_frac": None})
+            pos_q += qv
+        elif typ in ("CLOSE", "REDUCE"):
+            frac = 1.0 if (typ == "CLOSE" or qv <= 0 or pos_q <= 0) else min(1.0, qv / pos_q)
+            acts.append({"type": typ, "reason": reason, "vec_qty": qv, "vec_price": float(e.get("price") or 0.0), "qty_frac": round(frac, 4)})
+            pos_q = max(0.0, pos_q - qv)
+    return {"status": "OK", "actions": acts, "bar_ts": cut, "vec_holds": pos_q > 0, "engine_trades": r.get("trades"),
+            "engine_gain": r.get("gain_pct")}
 
 
 def _board_gain(pb):
@@ -179,7 +237,6 @@ def _board_gain(pb):
 
 def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
     from concurrent.futures import ThreadPoolExecutor
-    from live_twins import vec_exact as VX
 
     stats = collections.Counter()
     intents = []
@@ -196,8 +253,8 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4):
         try:
             prep = prepared_from_frozen(ss)
             if prep is None:
-                return (ss, {"status": "SKIP_NO_TWIN_STORE", "actions": []}, pb)
-            res = VX.actions_at(sym, side, bar_ts + BAR_S - 1, overrides=ov, prepared=prep)
+                return (ss, {"status": "SKIP_NO_BAR_STORE", "actions": []}, pb)
+            res = actions_from_engine(ss, ov, prep, bar_ts)
         except Exception as exc:
             return (ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}, pb)
         return (ss, res, pb)
