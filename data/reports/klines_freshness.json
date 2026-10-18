@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-18T07:25:05Z",
+ "generated_utc": "2026-10-18T07:30:05Z",
  "tol_min": 35,
  "crypto": {
   "status": "BREACH",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 55.1,
+  "worst_lag_min": 60.1,
   "worst_sym": "ETHUSDC"
  },
  "stocks": {
@@ -13,6 +13,6 @@
   "mode": "off-hours",
   "missing": [],
   "stale_vs_close": [],
-  "worst_lag_min": 2125.1
+  "worst_lag_min": 2130.1
  }
 }

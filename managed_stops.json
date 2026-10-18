@@ -1,43 +1,29 @@
 {
-  "fin:BTCDOMUSDT_LONG": {
-    "orderId": "3000002256553915",
-    "stopPrice": 5502.0,
-    "entry_sig": "2026-10-17 05:40:26.259959+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
-  "fin:XLMUSDT_SHORT": {
-    "orderId": "3000002254904564",
-    "stopPrice": 0.1823,
-    "entry_sig": "2026-10-17 03:00:16.228000+00:00",
-    "symbol": "XLMUSDT",
+  "men:RVNUSDT_SHORT": {
+    "orderId": "2000001518778554",
+    "stopPrice": 0.001573,
+    "entry_sig": "2026-10-15 20:56:42.532000+00:00",
+    "symbol": "RVNUSDT",
     "side": "SHORT"
   },
-  "fin:SNXUSDT_SHORT": {
-    "orderId": "3000002255036008",
-    "stopPrice": 0.2254,
-    "entry_sig": "2026-10-17 05:27:14.538000+00:00",
-    "symbol": "SNXUSDT",
+  "men:COTIUSDT_SHORT": {
+    "orderId": "2000001518778553",
+    "stopPrice": 0.011529,
+    "entry_sig": "2026-10-17 02:59:29.774000+00:00",
+    "symbol": "COTIUSDT",
     "side": "SHORT"
   },
-  "fin:ATOMUSDT_SHORT": {
-    "orderId": "3000002254903729",
-    "stopPrice": 1.782,
-    "entry_sig": "2026-10-17 02:59:17.202000+00:00",
-    "symbol": "ATOMUSDT",
+  "men:UNIUSDC_SHORT": {
+    "orderId": "2000001519318930",
+    "stopPrice": 7.543,
+    "entry_sig": "2026-10-16 01:30:19.727000+00:00",
+    "symbol": "UNIUSDC",
     "side": "SHORT"
   },
-  "fin:EGLDUSDT_SHORT": {
-    "orderId": "3000002256641961",
-    "stopPrice": 3.625,
-    "entry_sig": "2026-10-18 03:39:47.129000+00:00",
-    "symbol": "EGLDUSDT",
-    "side": "SHORT"
-  },
-  "fin:XTZUSDT_SHORT": {
-    "orderId": "3000002256642923",
-    "stopPrice": 0.3037,
-    "entry_sig": "2026-10-18 03:40:24.731000+00:00",
+  "men:XTZUSDT_SHORT": {
+    "orderId": "2000001518785770",
+    "stopPrice": 0.3261,
+    "entry_sig": "2026-10-16 10:14:08.615000+00:00",
     "symbol": "XTZUSDT",
     "side": "SHORT"
   }
