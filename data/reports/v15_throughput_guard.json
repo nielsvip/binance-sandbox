@@ -1,5 +1,5 @@
 {
- "at": "2026-10-18T03:11:02Z",
+ "at": "2026-10-18T04:11:15Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -10,183 +10,175 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "LINKUSDC_SHORT"
+    "EDUUSDT_LONG"
    ],
-   "mem_avail_mb": 20019,
-   "load1": 24.82,
+   "mem_avail_mb": 16736,
+   "load1": 31.05,
    "nproc": 16,
    "slots": "1/4",
-   "binding_reason": "scheduler mem guard (disk 13498 MB, mem 22029 MB, est_pair 15544 MB) \u2014 slots 1/4",
+   "binding_reason": "scheduler mem guard (disk 15828 MB, mem 19082 MB, est_pair 15544 MB) \u2014 slots 1/4",
    "error": null,
    "published": [
     {
-     "symside": "AAVEUSDC_LONG",
-     "at": "2026-10-18T03:03:46Z",
-     "baseline": 44.61149500712188,
-     "final": 72.61026055359636,
+     "symside": "LINKUSDC_SHORT",
+     "at": "2026-10-18T03:17:51Z",
+     "baseline": -2.480930650124271,
+     "final": 32.796397575578276,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 6.8,
-   "last_improved_symside": "AAVEUSDC_LONG",
+   "minutes_since_last_improved": 16.5,
+   "last_improved_symside": "1000PEPEUSDC_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 10.2,
+   "improved_gap_min_median_24h": 10.3,
    "improved_gap_min_max_24h": 170.7,
-   "improved_finishes_24h": 60,
+   "improved_finishes_24h": 61,
    "board_cpu_s_median_24h": 1627.4,
-   "board_wall_s_median_24h": 705.5671691894531,
-   "board_cores": 4.27,
-   "nonboard_cores_competing": 5.28,
-   "nonboard_cores_niced": 4.86,
+   "board_wall_s_median_24h": 674.3377549648285,
+   "board_cores": 0.99,
+   "nonboard_cores_competing": 4.14,
+   "nonboard_cores_niced": 9.58,
    "cores_by_bucket": {
-    "other": 2.2,
-    "live_helpers": 2.17,
-    "klines_append": 0.91,
-    "boards": 4.27
+    "other": 1.1,
+    "live_helpers": 2.19,
+    "boards": 0.99,
+    "klines_append": 0.85
    },
    "cores_by_bucket_niced": {
-    "other": 3.27,
-    "klines_vault": 1.59
+    "other": 8.4,
+    "klines_vault": 1.18
    }
   },
   "s2": {
    "improved": 13,
    "improved_per_hour": 13.0,
-   "published_n": 15,
-   "flat_or_worse": 2,
+   "published_n": 14,
+   "flat_or_worse": 1,
    "unknown": 0,
    "boards_running": [
-    "PATH_LONG",
-    "QLYS_LONG"
+    "WLDUSDC_LONG"
    ],
-   "mem_avail_mb": 22371,
-   "load1": 10.07,
+   "mem_avail_mb": 27776,
+   "load1": 3.07,
    "nproc": 16,
-   "slots": "3/6",
-   "binding_reason": "scheduler mem guard (disk 77897 MB, mem 19176 MB, est_pair 20728 MB) \u2014 slots 3/6",
+   "slots": "1/6",
+   "binding_reason": "scheduler mem guard (disk 77187 MB, mem 28289 MB, est_pair 20728 MB) \u2014 slots 1/6",
    "error": null,
    "published": [
     {
-     "symside": "ABBV_LONG",
-     "at": "2026-10-18T02:38:59Z",
-     "baseline": 12.237418459927687,
-     "final": 12.237418459927687,
+     "symside": "COP_LONG",
+     "at": "2026-10-18T04:00:05Z",
+     "baseline": 19.07621465781282,
+     "final": 26.003133286870867,
+     "state": "improved"
+    },
+    {
+     "symside": "FCX_LONG",
+     "at": "2026-10-18T03:24:31Z",
+     "baseline": 4.298541639746585,
+     "final": 20.056273516473798,
+     "state": "improved"
+    },
+    {
+     "symside": "PLTR_LONG",
+     "at": "2026-10-18T03:53:40Z",
+     "baseline": 6.671202338059295,
+     "final": 30.994104518402494,
+     "state": "improved"
+    },
+    {
+     "symside": "PLTR_SHORT",
+     "at": "2026-10-18T03:53:55Z",
+     "baseline": -4.638516999479301,
+     "final": 10.009651912528755,
+     "state": "improved"
+    },
+    {
+     "symside": "PR_LONG",
+     "at": "2026-10-18T03:49:39Z",
+     "baseline": 12.962409657826225,
+     "final": 15.987305525622746,
+     "state": "improved"
+    },
+    {
+     "symside": "PSX_LONG",
+     "at": "2026-10-18T03:35:19Z",
+     "baseline": 18.4981940158659,
+     "final": 22.91207868892431,
+     "state": "improved"
+    },
+    {
+     "symside": "QLYS_LONG",
+     "at": "2026-10-18T03:13:13Z",
+     "baseline": 41.844204114515655,
+     "final": 43.00970921054733,
+     "state": "improved"
+    },
+    {
+     "symside": "SCHW_SHORT",
+     "at": "2026-10-18T03:29:54Z",
+     "baseline": 8.533842729877538,
+     "final": 18.680810561475575,
+     "state": "improved"
+    },
+    {
+     "symside": "SLV_SHORT",
+     "at": "2026-10-18T03:42:29Z",
+     "baseline": 27.650612046515526,
+     "final": 27.650612046515526,
      "state": "flat_or_worse"
     },
     {
-     "symside": "AG_SHORT",
-     "at": "2026-10-18T03:10:03Z",
-     "baseline": 45.546923082391174,
-     "final": 51.538740187685185,
+     "symside": "SPY_LONG",
+     "at": "2026-10-18T04:05:16Z",
+     "baseline": 1.8437219148574675,
+     "final": 3.76774177975585,
      "state": "improved"
     },
     {
-     "symside": "AXON_SHORT",
-     "at": "2026-10-18T03:02:05Z",
-     "baseline": 41.95106767023674,
-     "final": 43.873261424715935,
+     "symside": "UNH_LONG",
+     "at": "2026-10-18T03:23:17Z",
+     "baseline": 15.442194435914164,
+     "final": 19.584117928980366,
      "state": "improved"
     },
     {
-     "symside": "BBUSDT_LONG",
-     "at": "2026-10-18T02:12:06Z",
-     "baseline": 74.19577553791319,
-     "final": 97.69657174799437,
+     "symside": "VALE_SHORT",
+     "at": "2026-10-18T04:03:09Z",
+     "baseline": 23.81990181273403,
+     "final": 28.051017442710226,
      "state": "improved"
     },
     {
-     "symside": "BBUSDT_SHORT",
-     "at": "2026-10-18T02:23:15Z",
-     "baseline": 2.9205617021271735,
-     "final": 25.982664004875687,
+     "symside": "V_LONG",
+     "at": "2026-10-18T03:37:27Z",
+     "baseline": 7.452255965095402,
+     "final": 15.03501559893164,
      "state": "improved"
     },
     {
-     "symside": "BNBUSDC_LONG",
-     "at": "2026-10-18T02:17:55Z",
-     "baseline": -2.0645967843613056,
-     "final": 14.955995461011085,
-     "state": "improved"
-    },
-    {
-     "symside": "BNBUSDC_SHORT",
-     "at": "2026-10-18T02:31:08Z",
-     "baseline": 5.435874995242967,
-     "final": 6.8028874403282575,
-     "state": "improved"
-    },
-    {
-     "symside": "CME_LONG",
-     "at": "2026-10-18T02:47:13Z",
-     "baseline": 13.115522792533293,
-     "final": 13.115522792533293,
-     "state": "flat_or_worse"
-    },
-    {
-     "symside": "MSTR_LONG",
-     "at": "2026-10-18T02:53:36Z",
-     "baseline": 0.7857655758989052,
-     "final": 34.71682469304396,
-     "state": "improved"
-    },
-    {
-     "symside": "MSTR_SHORT",
-     "at": "2026-10-18T02:42:45Z",
-     "baseline": 7.6418069987559125,
-     "final": 40.501632611607384,
-     "state": "improved"
-    },
-    {
-     "symside": "NLR_SHORT",
-     "at": "2026-10-18T02:54:38Z",
-     "baseline": 20.67430197082211,
-     "final": 38.285025234223966,
-     "state": "improved"
-    },
-    {
-     "symside": "PATH_LONG",
-     "at": "2026-10-18T03:11:11Z",
-     "baseline": 19.480558915453724,
-     "final": 22.29072568789217,
-     "state": "improved"
-    },
-    {
-     "symside": "QBTS_SHORT",
-     "at": "2026-10-18T02:39:38Z",
-     "baseline": 46.17018649216288,
-     "final": 46.33802812688165,
-     "state": "improved"
-    },
-    {
-     "symside": "SNDK_LONG",
-     "at": "2026-10-18T02:58:16Z",
-     "baseline": 41.10228519365094,
-     "final": 43.68697503860568,
-     "state": "improved"
-    },
-    {
-     "symside": "SNDK_SHORT",
-     "at": "2026-10-18T03:02:15Z",
-     "baseline": 39.71472099305067,
-     "final": 39.73734789275065,
+     "symside": "ZETA_LONG",
+     "at": "2026-10-18T03:42:35Z",
+     "baseline": 19.029265115546174,
+     "final": 19.936256593707547,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.0,
-   "last_improved_symside": "PATH_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 8.4,
+   "minutes_since_last_improved": 5.8,
+   "last_improved_symside": "SPY_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 7.3,
    "improved_gap_min_max_24h": 367.9,
-   "improved_finishes_24h": 63,
-   "board_cpu_s_median_24h": 1869.9,
-   "board_wall_s_median_24h": 639.0957939624786,
-   "board_cores": 6.45,
+   "improved_finishes_24h": 75,
+   "board_cpu_s_median_24h": 1831.8,
+   "board_wall_s_median_24h": 614.2534630298615,
+   "board_cores": 6.1,
    "nonboard_cores_competing": 0,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 6.45
+    "boards": 6.1
    },
    "cores_by_bucket_niced": {}
   }
@@ -195,6 +187,7 @@
   "s1"
  ],
  "cadence_breach": [
-  "s1"
+  "s1",
+  "s2"
  ]
 }
