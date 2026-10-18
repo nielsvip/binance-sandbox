@@ -1,0 +1,105 @@
+{
+ "window_from": "10-18 15:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 150,
+  "status_OK": 179,
+  "dictated_but_no_account_traded_it": 8,
+  "EXTRA": 3,
+  "NOT_FILLED": 3,
+  "FILLED": 1
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "KSMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 15:12",
+   "actual": "REDUCE",
+   "actual_reason": "WT_CROSS_EXIT_1h_bull |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SNXUSDT_SHORT",
+   "dictated_bar": "10-18 15:15",
+   "dictated": "OPEN",
+   "dictated_reason": "LH_TRIGGER_ENTRY",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SNXUSDT_SHORT",
+   "dictated_bar": "10-18 15:30",
+   "dictated": "CLOSE",
+   "dictated_reason": "EXIT_VELOCITY_WT against-short g0.19%",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "ang",
+   "sym_side": "SNXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 15:13",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_EXIT_OWED paper-flat-live-holds-retry |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SOLUSDC_SHORT",
+   "dictated_bar": "10-18 15:30",
+   "dictated": "CLOSE",
+   "dictated_reason": "EXIT_VELOCITY_WT against-short g0.20%",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SOLUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-18 15:12",
+   "actual": "AUGMENT",
+   "actual_reason": "REENTRY_DC4_15M_BREAK |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "ZECUSDC_SHORT",
+   "dictated_bar": "10-18 15:15",
+   "dictated": "OPEN",
+   "dictated_reason": "DC_BREAKOUT_ENTRY",
+   "actual_at": "10-18 16:05",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 2,
+   "verdict": "FILLED_LATE_2bars",
+   "vec_tagged": true
+  }
+ ]
+}
