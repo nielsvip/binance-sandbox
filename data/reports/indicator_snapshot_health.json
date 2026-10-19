@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-19T17:20:03Z",
+ "generated_utc": "2026-10-19T17:24:43Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 79.5,
+  "age_s": 116.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 31443,
-  "proc_age_s": 4980.0,
-  "log_age_s": 53.2,
+  "proc_age_s": 5280.0,
+  "log_age_s": 16.6,
   "warmup_done": true,
   "timeframes_since_restart": [
    "1h",
@@ -59,10 +59,14 @@
    "3m",
    "4h",
    "1h",
+   "15m",
+   "3m",
+   "4h",
+   "1h",
    "15m"
   ],
   "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-19T17:14:50Z",
+  "last_timeframe_utc": "2026-10-19T17:23:18Z",
   "last_restart_utc": "2026-10-19T15:56:43Z",
   "restarts_last_hour": 0
  },
@@ -85,7 +89,8 @@
   }
  },
  "s1_failover": {
-  "error": "TimeoutExpired: Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', 's1-pub', 'python3 -c \"import json,time;s=json.load(open(\\'/home/niels/binance/data/live_failover/state.json\\'));h=json.load(open(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\'));v=(s.get(\\'venues\\') or {}).get(\\'crypto\\') or {};c=(h.get(\\'venues\\') or {}).get(\\'crypto\\') or {};print(json.dumps({\\'mode\\':v.get(\\'mode\\'),\\'since_epoch\\':v.get(\\'since_epoch\\'),\\'activations\\':v.get(\\'activations\\'),\\'hb_mtime\\':__import__(\\'os\\').stat(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\').st_mtime,\\'mac_snapshot_age_s\\':c.get(\\'snapshot_age_s\\'),\\'mac_stale\\':c.get(\\'stale\\'),\\'now\\':time.time()}))\"']' timed out after 20 seconds"
+  "error": "TimeoutExpired: Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', 's1-pub', 'python3 -c \"import json,time;s=json.load(open(\\'/home/niels/binance/data/live_failover/state.json\\'));h=json.load(open(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\'));v=(s.get(\\'venues\\') or {}).get(\\'crypto\\') or {};c=(h.get(\\'venues\\') or {}).get(\\'crypto\\') or {};print(json.dumps({\\'mode\\':v.get(\\'mode\\'),\\'since_epoch\\':v.get(\\'since_epoch\\'),\\'activations\\':v.get(\\'activations\\'),\\'hb_mtime\\':__import__(\\'os\\').stat(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\').st_mtime,\\'mac_snapshot_age_s\\':c.get(\\'snapshot_age_s\\'),\\'mac_stale\\':c.get(\\'stale\\'),\\'now\\':time.time()}))\"']' timed out after 20 seconds",
+  "from_cache_age_s": 280.0
  },
  "alerts": [],
  "verdict": "OK"
