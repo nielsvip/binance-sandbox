@@ -1426,12 +1426,31 @@ class ResamplingAndGapFillEngine:
                     _stem = fp.stem
                     _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''
                     keep_n = max(1800, _keep_by_tf.get(_tf, 1800))
-                    merged = pd.concat([existing_df, df], ignore_index=True)
-                    merged = merged.dropna(subset=['timestamp'])
-                    merged['timestamp'] = pd.to_datetime(merged['timestamp'], utc=True, errors='coerce')
-                    merged = merged.dropna(subset=['timestamp']).sort_values('timestamp').drop_duplicates(subset=['timestamp'], keep='last').reset_index(drop=True)
+                    # 2026-10-19 USER (never destroy a kline): APPEND-ONLY merge. The old concat+coerce+dedup silently
+                    # dropped 1000+ valid existing rows (BSVUSDT 4h 1766->540) when old rows failed timestamp coercion —
+                    # the shrink triggered refetch loops that burned the egress into -1003 bans. Existing rows are now
+                    # never touched; only strictly-newer incoming rows append. Shrinking is a hard block, not a write.
+                    try:
+                        _existing_max = pd.to_datetime(existing_df['timestamp'], utc=True, errors='coerce').max()
+                    except Exception:
+                        _existing_max = None
+                    if _existing_max is not None and not pd.isna(_existing_max):
+                        try:
+                            _df_ts = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                            _new_only = df[_df_ts > _existing_max].copy()
+                        except Exception:
+                            _new_only = df
+                    else:
+                        _new_only = df
+                    merged = pd.concat([existing_df, _new_only], ignore_index=True)
+                    if len(merged) < len(existing_df):
+                        self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: append-only merge shrank {len(existing_df)}->{len(merged)} - KEEPING EXISTING")
+                        return
                     if len(merged) > keep_n:
                         merged = merged.tail(keep_n).reset_index(drop=True)
+                    if len(merged) < 1200:
+                        self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: merged only {len(merged)} bars (<1200 floor) - KEEPING EXISTING")
+                        return
                     merged_rows = standardize_kline_data_for_json(merged)
                     if not merged_rows or len(merged) < 50:
                         self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: {result} merge produced only {len(merged)} bars - KEEPING EXISTING")
@@ -4845,22 +4864,11 @@ class ResamplingAndGapFillEngine:
                         _stem = json_file.stem
                         _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''
                         if env == 'server':
-                            # S1 and ext drive keep 400D of 15m (38400 bars) + buffer
-                            _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (38400, 40000),
-                                     '1h': (9600, 10000), '4h': (2400, 3000), 'D': (400, 500),
-                                     'W': (300, 500), 'M': (60, 100)}
-                            _keep, _cap = _trim.get(_tf, (1200, 1800))
-                            if not df.empty and len(df) > _cap:
-                                before_bars = len(df)
-                                df_clipped = df.tail(_keep).copy()
-                                await self._write_file_unlocked(df_clipped, json_file)
-                                new_size = json_file.stat().st_size
-                                freed_space += (original_size - new_size)
-                                clipped_files += 1
-                                self.logger.debug(f"Clipped {json_file.name}: {before_bars} → {_keep} bars (400D), saved {(original_size - new_size) / 1024:.1f}KB")
+                            # 2026-10-19 USER (never destroy a kline): S1 NEVER clips — keeps everything for backtesting.
                             continue
+                        # 2026-10-19 USER: MacBook trims only above cap, never below the 1200-bar floor.
                         _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (8640, 10000),
-                                 '1h': (2160, 2500), '4h': (540, 700), 'D': (400, 500),
+                                 '1h': (2160, 2500), '4h': (1200, 1800), 'D': (1200, 1800),
                                  'W': (300, 500), 'M': (60, 100)}
                         _stem = json_file.stem
                         _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''

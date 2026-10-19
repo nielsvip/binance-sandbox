@@ -6408,6 +6408,7 @@ class Config:
     EZ_KLINES_SEMAPHORE: Dict[str, int] = field(
         default_factory=lambda: {"gateway": 10, "server": 10, "macbook": 15}
     )
+    MIN_KLINES_THRESHOLD: int = 1200  # 2026-10-19 USER: klines completeness floor everywhere (API + trims) — never below 1200 bars
 
     # # --- EZ_POSITIONS CONTROLS (gateway, server, macbook) ---
     # EZ_POSITIONS_API_RATE_LIMIT: Dict[str, float] = field(default_factory=lambda: {
