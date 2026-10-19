@@ -1,0 +1,25 @@
+{
+ "window_from": "10-19 12:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "dictated_but_no_account_traded_it": 22,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "VETUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 13:19",
+   "actual": "REDUCE",
+   "actual_reason": "REENTRY_EXIT_PRICE_BREAK |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
