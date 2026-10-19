@@ -1702,6 +1702,34 @@ def gate_env_inline(path=None):
     return "".join(f" {k}={shlex.quote(str(v))}" for k, v in sorted(env.items()) if GATE_ENV_KEY_RE.match(str(k)))
 
 
+def _round_id_of(pdir):
+    """'run33' from '/home/niels/v15_run33_20261019/progress' — the round a launch belongs to. '' when unrecognisable."""
+    m = re.search(r"v15_(run\d+)", str(pdir or ""))
+    return m.group(1) if m else ""
+
+
+def round_env_inline(round_id, path=None):
+    """USER 2026-10-19: "START SKIPPING MORE ROWS FOR THE CURRENT RUN ONLY TO COMPLY WITH WHAT WE NEED BY MARKET OPEN".
+
+    data/v15_round_env.json = {"round": "run33", "note": "...", "env": {K: V}} and applies ONLY while the fleet is on
+    that exact round, so it EXPIRES BY ITSELF the moment the round rolls — that is what makes it "this run only" rather
+    than a permanent corner cut. Appended after gate_env_inline(), so it deliberately overrides the benched launch env:
+    the gate exists to expose corner cutting, so anything set here is an explicit, dated, self-expiring operator
+    decision and must be benched (`v15_version_gate submit --env K=V`) before it is ever made permanent.
+    Delete the file (or roll the round) to revert instantly. V15_SCHED_ROUND_ENV=0 ignores it.
+    """
+    if os.environ.get("V15_SCHED_ROUND_ENV", "1") == "0":
+        return ""
+    try:
+        doc = json.loads(pathlib.Path(path or (ROOT / "data" / "v15_round_env.json")).read_text())
+    except (OSError, ValueError):
+        return ""
+    if str(doc.get("round") or "") != str(round_id or ""):
+        return ""
+    env = doc.get("env") or {}
+    return "".join(f" {k}={shlex.quote(str(v))}" for k, v in sorted(env.items()) if GATE_ENV_KEY_RE.match(str(k)))
+
+
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
     """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd. USER 2026-10-11: spawn-guarded (see _spawn_guard)."""
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
@@ -1711,6 +1739,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         if os.environ.get("V15_SCHED_V17", "1") == "1":
             env += " V15_V17_ROUNDS=1"  # USER 2026-10-13: >=12 finalized V17 boards per hour per server (V15_SCHED_V17=0 = old pilot)
         env += gate_env_inline()  # USER 2026-10-16: the gate-benched launch env is authoritative (appended last = it wins)
+        env += round_env_inline(_round_id_of(pdir))  # USER 2026-10-19: self-expiring, round-scoped override (see round_env_inline)
         body = f"{env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
     elif window == "365D":
         body = (f"mkdir -p {chain}/v365 && nice -n 10 /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_365_cycle.py --sym-side {ss} --progress {pdir}/{ss}_v14_progress.json "
