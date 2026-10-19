@@ -1135,9 +1135,55 @@ def get_binance_guard(account: str, cfg: Any = None, logger: Optional[logging.Lo
     return g
 
 
+_BINANCE_SUFFIXES = ("binance.com", "binance.us")
+_SOURCE_BIND_DONE = {"on": False}
+
+
+def _install_binance_source_bind(ip: str, log=None) -> bool:
+    import socket as _s
+    try:
+        _parts = str(ip or "").strip().split(".")
+        if len(_parts) != 4 or not all(p.isdigit() and 0 <= int(p) <= 255 for p in _parts):
+            return False
+    except Exception:
+        return False
+    if _SOURCE_BIND_DONE["on"]:
+        return True
+    try:
+        _orig = _s.create_connection
+    except Exception:
+        return False
+
+    def _bound(address, *args, **kwargs):
+        try:
+            _host = str((address or (None,))[0] or "").lower()
+            if _host and _host.endswith(_BINANCE_SUFFIXES) and "source_address" not in kwargs:
+                kwargs["source_address"] = (str(ip).strip(), 0)
+        except Exception:
+            pass
+        return _orig(address, *args, **kwargs)
+
+    try:
+        _s.create_connection = _bound
+    except Exception:
+        return False
+    _SOURCE_BIND_DONE["on"] = True
+    try:
+        (_LOG if log is None else log).warning(f"[BINANCE_EGRESS] Binance-bound sockets source={str(ip).strip()} (fail-open; localhost/redis untouched)")
+    except Exception:
+        pass
+    return True
+
+
 def wrap_binance_client(client, account: str, cfg: Any = None, logger: Optional[logging.Logger] = None, ledger_dir: Optional[Path] = None):
     if client is None or isinstance(client, GuardedBinanceClient):
         return client
+    try:
+        _env_ip = os.environ.get("BINANCE_LOCAL_IP") or ""
+        if _env_ip.strip():
+            _install_binance_source_bind(_env_ip, logger)
+    except Exception:
+        pass
     try:
         key = str(getattr(client, "API_KEY", "") or "")
         if key:
