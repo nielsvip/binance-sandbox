@@ -12,6 +12,7 @@ import threading
 import time
 
 _LAST_FAIL = {"t": 0.0}
+_LAST_ERROR = {"reason": "", "t": 0.0}
 
 
 def connect_store(address=("127.0.0.1", 50005), authkey=b"ez_secret_key", timeout=3.0, backoff_s=30.0):
@@ -39,4 +40,17 @@ def connect_store(address=("127.0.0.1", 50005), authkey=b"ez_secret_key", timeou
     store = box.get("store")
     if store is None:
         _LAST_FAIL["t"] = time.time()
+        # 2026-10-19: record WHY. The caller's message was "Could not connect to Shared Memory (timeout/None)" and
+        # it was logged 3785 times on 2026-10-19 alone with no cause attached, because the real exception landed in
+        # this function's local box and was discarded. Distinguishing "still handshaking" (server saturated) from an
+        # exception is the whole diagnosis: on 2026-10-19 23:3xZ the port accepted TCP in 0.00s while 328
+        # connections were ESTABLISHED to it (151 held by the server, 26 by ez_manage --account fin after 29 min of
+        # life), so the handshake was hanging on a saturated server, not failing.
+        _LAST_ERROR["reason"] = "still handshaking after %.1fs (server saturated?)" % timeout if th.is_alive() else repr(box.get("err"))
+        _LAST_ERROR["t"] = time.time()
     return store
+
+
+def last_error():
+    """Why the most recent connect_store() returned None, for the caller's log line. '' if never failed."""
+    return _LAST_ERROR.get("reason") or ""

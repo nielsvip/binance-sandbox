@@ -2747,7 +2747,8 @@ class IndicatorOrchestrator:
                 if self.shared_proxy is not None:
                     logger.info("✅ [ORCHESTRATOR] Connected to Shared Indicator Memory")
                 else:
-                    logger.warning("⚠️ [ORCHESTRATOR] Could not connect to Shared Memory (timeout/None) — fallback paths")
+                    from shared_mem_safe import last_error as _shm_why
+                    logger.warning(f"⚠️ [ORCHESTRATOR] Could not connect to Shared Memory — fallback paths (Redis / market_data). Reason: {_shm_why() or 'unknown'}")
         except Exception as e:
             logger.error(f"Shared Memory connect fail: {e}")
             self.shared_proxy = None
