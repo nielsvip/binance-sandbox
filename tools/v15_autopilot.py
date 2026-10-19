@@ -380,11 +380,23 @@ def stage_restart(st, dry):
     rdef = f"{nid}-json{md5(SWEEP_DEF)[:8] if SWEEP_DEF.exists() else 'none'}-tpl{md5(ROOT / TEMPLATES[0])[:12]}-eng{eng}"
     if dry:
         return True
+    # USER 2026-10-18: an UNREACHABLE host must not veto the roll. s5/s6 were destroyed on 2026-10-13 and every
+    # restart since then died on `restart: s5 failed` BEFORE reset_attempts/st.update — so the round was pinned to
+    # run32_20261011 for 8 days, every board resumed cells from that dir instead of recomputing, and 78 of the 80 most
+    # recent board logs were "returning early". The round watchdog was already taught to ignore unreachable hosts
+    # (2026-10-15); this stage never was. A roll now needs at least one host to take the new dir, not all of them.
+    ok_hosts, bad_hosts = [], []
     for h in hosts():
         pd = f"$HOME/v15_{tag}/progress"
         rc, o = rsh(h, f"mkdir -p {pd} && echo {pd} > ~/v15_current_progress_dir.txt && echo {rdef} > ~/v15_defaults_round.txt && cat ~/v15_current_progress_dir.txt")
+        (ok_hosts if rc == 0 else bad_hosts).append(h["name"])
         if rc != 0:
-            log(f"restart: {h['name']} failed {o}"); return False
+            log(f"restart: {h['name']} unreachable/failed ({o}) — skipped, not vetoing the roll")
+    if not ok_hosts:
+        log("restart: NO host accepted the new progress dir — aborting the roll")
+        return False
+    if bad_hosts:
+        log(f"restart: rolled on {','.join(ok_hosts)}; skipped {','.join(bad_hosts)}")
     if not reset_attempts(False):
         return False
     st.update(prev_round=st["round"], round=nid, round_started=now_utc().isoformat(), quiet_ticks=0, resets=0, defaults_round=rdef)
