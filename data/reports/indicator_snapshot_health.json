@@ -1,35 +1,36 @@
 {
- "generated_utc": "2026-10-19T13:06:45Z",
+ "generated_utc": "2026-10-19T13:11:51Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 485.5,
+  "age_s": 791.1,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 34168,
-  "proc_age_s": 282.0,
-  "log_age_s": 4.1,
+  "proc_age_s": 588.0,
+  "log_age_s": 0.2,
   "warmup_done": false,
   "timeframes_since_restart": [
-   "1h"
+   "1h",
+   "15m"
   ],
-  "last_timeframe": "1h",
-  "last_timeframe_utc": "2026-10-19T13:05:37Z",
+  "last_timeframe": "15m",
+  "last_timeframe_utc": "2026-10-19T13:08:53Z",
   "last_restart_utc": "2026-10-19T13:02:03Z",
   "restarts_last_hour": 2
  },
  "heartbeat": {
   "written": 1,
   "lines": [
-   "[2026-10-19 13:06:34,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=34168 warm-up in progress \u2014 alive and progressing (cpu +1.36s in 10.0s, last progress 47s ago) (tools/ez_indicators_warmup_guard.py)"
+   "[2026-10-19 13:11:50,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=34168 warm-up in progress \u2014 alive and progressing (cpu +1.88s in 10.0s, last progress 167s ago) (tools/ez_indicators_warmup_guard.py)"
   ],
   "decisions": [
-   "log fresh (30s < 45s)",
-   "log fresh (36s < 45s)",
-   "log fresh (41s < 45s)",
-   "alive and progressing (cpu +1.36s in 10.0s, last progress 47s ago)",
-   "log fresh (5s < 45s)",
-   "log fresh (4s < 45s)"
+   "log fresh (19s < 45s)",
+   "log fresh (25s < 45s)",
+   "log fresh (31s < 45s)",
+   "log fresh (37s < 45s)",
+   "log fresh (43s < 45s)",
+   "alive and progressing (cpu +1.88s in 10.0s, last progress 167s ago)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -42,16 +43,17 @@
   "mode": "ACTIVE",
   "since_epoch": 1792385811.7512133,
   "activations": 150,
-  "hb_mtime": 1792414960.193171,
-  "mac_snapshot_age_s": 236.85729122161865,
+  "hb_mtime": 1792415324.7235994,
+  "mac_snapshot_age_s": 594.2108092308044,
   "mac_stale": true,
-  "now": 1792414971.065897,
-  "from_cache_age_s": 234.6,
-  "heartbeat_age_s": 10.9,
-  "active_s": 29159.3
+  "now": 1792415327.9995148,
+  "from_cache_age_s": 183.3,
+  "heartbeat_age_s": 3.3,
+  "active_s": 29516.2,
+  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO FAILOVER: mode=ACTIVE for 29159s while the Mac heartbeat is fresh (10s) AND the Mac snapshot is fresh (485s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "SNAPSHOT STALE: latest_market_data.json is 791s old (> 600s). ez_indicators pid=34168 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
