@@ -1,69 +1,70 @@
 {
- "at": "2026-10-19T21:26:01Z",
+ "at": "2026-10-19T22:26:00Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 0,
-   "per_hour": 0.0,
-   "improved_vs_best_start": 0,
-   "mean_uplift_vs_best_start": null,
-   "median_uplift": null,
+   "published_n": 2,
+   "per_hour": 1.0,
+   "improved_vs_best_start": 2,
+   "mean_uplift_vs_best_start": 6.2353,
+   "median_uplift": 10.3601,
    "chained_from_previous_published": 0,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.0/h < 12.0/h (one per 5 min)"
-   ],
-   "rows": [],
-   "error": null
-  },
-  "s2": {
-   "published_n": 4,
-   "per_hour": 2.0,
-   "improved_vs_best_start": 4,
-   "mean_uplift_vs_best_start": 13.716,
-   "median_uplift": 16.2115,
-   "chained_from_previous_published": 0,
-   "no_floor_recorded": 0,
-   "backslides": [],
-   "stale_npz": [],
-   "fails": [
-    "throughput 2.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
-     "symside": "DHR_LONG",
-     "published_at": 1792439873.9853685,
-     "final_gain": 21.804068212531387,
-     "best_start_gain": 5.592533919889906,
+     "symside": "AR_LONG",
+     "published_at": 1792446505.196954,
+     "final_gain": 13.266636091774316,
+     "best_start_gain": 11.156097179303902,
      "best_start_chosen": "incumbent",
-     "best_start_candidates": 3,
-     "baseline_gain": 5.592533919889906,
-     "npz_ts_last": 1792435500.0,
-     "npz_md5": "5787be8ffcaff92a491276339d9bef4c",
-     "npz_bars": 5221,
-     "bh": 10.014633550876525,
+     "best_start_candidates": 4,
+     "baseline_gain": 11.156097179303902,
+     "npz_ts_last": 1792440000.0,
+     "npz_md5": "21c85576277175ae260a09657af90d66",
+     "npz_bars": 4991,
+     "bh": -2.461691807159346,
      "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 1.21
+     "npz_age_h_at_publish": 1.81
     },
     {
-     "symside": "DHR_SHORT",
-     "published_at": 1792438574.7605953,
-     "final_gain": 9.308785159482168,
-     "best_start_gain": 5.742758862135045,
+     "symside": "TECK_SHORT",
+     "published_at": 1792448646.7535543,
+     "final_gain": 15.62160562186747,
+     "best_start_gain": 5.261534526294224,
      "best_start_chosen": "incumbent",
-     "best_start_candidates": 2,
-     "baseline_gain": 0.9184212341492661,
+     "best_start_candidates": 3,
+     "baseline_gain": 5.261534526294224,
      "npz_ts_last": 1792439100.0,
-     "npz_md5": "61facef4e97241e74463c01729c4f0f6",
-     "npz_bars": 5225,
-     "bh": -10.014633550876525,
-     "verdict": null,
-     "npz_age_h_at_publish": -0.15
-    },
+     "npz_md5": "aa1e97647e4675baaf2e01a32b340246",
+     "npz_bars": 5415,
+     "bh": 11.308109429998039,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 2.65
+    }
+   ],
+   "error": null
+  },
+  "s2": {
+   "published_n": 2,
+   "per_hour": 1.0,
+   "improved_vs_best_start": 2,
+   "mean_uplift_vs_best_start": 17.5433,
+   "median_uplift": 29.0322,
+   "chained_from_previous_published": 0,
+   "no_floor_recorded": 0,
+   "backslides": [],
+   "stale_npz": [],
+   "fails": [
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
+   ],
+   "rows": [
     {
      "symside": "LEXX_LONG",
      "published_at": 1792442278.1708272,
