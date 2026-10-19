@@ -1135,18 +1135,31 @@ def get_binance_guard(account: str, cfg: Any = None, logger: Optional[logging.Lo
     return g
 
 
-_BINANCE_SUFFIXES = ("binance.com", "binance.us")
-_SOURCE_BIND_DONE = {"on": False}
+_BAN_UNTIL_RE = None
 
 
-def ensure_binance_egress(log=None) -> bool:
+def ban_cooldown_seconds(exc, minimum: float = 900.0) -> float:
+    """Cooldown honoring the exchange's real ban expiry (USER 2026-10-19: never-stop-trading).
+
+    Binance -1003 carries 'banned until <epoch-ms>'; the rotation machinery marked every ban 900s, so a 7h ban
+    re-entered rotation 15 min later and re-banned on sight (escalating durations all day). Returns
+    max(minimum, ban_until - now), minimum when the text carries no expiry.
+    """
+    global _BAN_UNTIL_RE
     try:
-        _env_ip = os.environ.get("BINANCE_LOCAL_IP") or ""
-        if not _env_ip.strip():
-            return False
-        return _install_binance_source_bind(_env_ip, log)
+        import re as _re
+        import time as _t
+        if _BAN_UNTIL_RE is None:
+            _BAN_UNTIL_RE = _re.compile(r"banned until (\d+)")
+        _m = _BAN_UNTIL_RE.search(str(exc))
+        if not _m:
+            return float(minimum)
+        return max(float(minimum), max(0.0, (float(_m.group(1)) / 1000.0) - _t.time()))
     except Exception:
-        return False
+        try:
+            return float(minimum)
+        except Exception:
+            return 900.0
 
 
 def _install_binance_source_bind(ip: str, log=None) -> bool:
