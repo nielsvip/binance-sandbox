@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-19 00:19 UTC",
- "total_capital_usd": 12.45,
+ "generated_at": "2026-10-19 00:22 UTC",
+ "total_capital_usd": 12.55,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 12.45
+  "C": 12.55
  },
  "tier_count": {
   "A": 0,
@@ -13,20 +13,20 @@
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "inf:ETHFIUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 12.45,
-   "gain_pct": 0.132,
+   "pk": "inf:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "inf",
+   "value_usd": 12.55,
+   "gain_pct": 0.454,
    "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 0.12,
-   "mark": 103.75302387
+   "perf_mult": 0.42,
+   "amt": 18.3,
+   "mark": 0.68582316
   }
  ]
 }
