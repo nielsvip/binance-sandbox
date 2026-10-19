@@ -1,32 +1,78 @@
 {
- "generated_at": "2026-10-18 23:37 UTC",
- "total_capital_usd": 12.47,
+ "generated_at": "2026-10-19 00:12 UTC",
+ "total_capital_usd": 50.71,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 12.47
+  "B": 19.72,
+  "C": 30.99
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 2,
+  "C": 3
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "fin:SOLUSDC_SHORT",
+  "fin:BTCDOMUSDT_LONG",
+  "fin:CHRUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
+   "pk": "fin:XTZUSDT_SHORT",
+   "symbol": "XTZUSDT",
+   "account": "fin",
+   "value_usd": 12.54,
+   "gain_pct": -0.3,
+   "tier": "B",
+   "perf_mult": 4.5,
+   "amt": 41.7,
+   "mark": 0.3007
+  },
+  {
+   "pk": "fin:SOLUSDC_SHORT",
    "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 12.47,
-   "gain_pct": 0.001,
+   "account": "fin",
+   "value_usd": 12.48,
+   "gain_pct": -0.038,
    "tier": "C",
-   "perf_mult": 0.16,
+   "perf_mult": 0.14,
    "amt": 0.12,
-   "mark": 103.89
+   "mark": 104.04
+  },
+  {
+   "pk": "fin:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "fin",
+   "value_usd": 11.2,
+   "gain_pct": 0.032,
+   "tier": "C",
+   "perf_mult": 0.26,
+   "amt": 0.002,
+   "mark": 5602.31324349
+  },
+  {
+   "pk": "fin:CHRUSDT_SHORT",
+   "symbol": "CHRUSDT",
+   "account": "fin",
+   "value_usd": 7.31,
+   "gain_pct": 2.451,
+   "tier": "C",
+   "perf_mult": 0.13,
+   "amt": 399.0,
+   "mark": 0.01831
+  },
+  {
+   "pk": "fin:UNIUSDC_LONG",
+   "symbol": "UNIUSDC",
+   "account": "fin",
+   "value_usd": 7.18,
+   "gain_pct": 0.139,
+   "tier": "B",
+   "perf_mult": 2.99,
+   "amt": 1.0,
+   "mark": 7.18
   }
  ]
 }
