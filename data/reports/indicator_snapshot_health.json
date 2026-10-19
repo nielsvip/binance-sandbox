@@ -1,31 +1,31 @@
 {
- "generated_utc": "2026-10-19T03:29:00Z",
+ "generated_utc": "2026-10-19T03:33:13Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 24154.3,
+  "age_s": 24404.7,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 57405,
-  "proc_age_s": 1881.0,
-  "log_age_s": 6.9,
+  "proc_age_s": 2134.0,
+  "log_age_s": 70.9,
   "warmup_done": false,
   "timeframes_since_restart": [],
-  "last_timeframe": "4h",
-  "last_timeframe_utc": "2026-10-19T03:20:57Z",
-  "last_restart_utc": "2026-10-19T03:21:51Z",
-  "restarts_last_hour": 24
+  "last_timeframe": "1h",
+  "last_timeframe_utc": "2026-10-19T03:29:10Z",
+  "last_restart_utc": "2026-10-19T03:31:59Z",
+  "restarts_last_hour": 23
  },
  "heartbeat": {
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (25s < 60s)",
-   "log fresh (4s < 60s)",
-   "log fresh (9s < 60s)",
    "log fresh (14s < 60s)",
-   "log fresh (1s < 60s)",
-   "log fresh (6s < 60s)"
+   "log fresh (27s < 60s)",
+   "log fresh (38s < 60s)",
+   "log fresh (48s < 60s)",
+   "log fresh (57s < 60s)",
+   "no warm-up progress for 2128s > 1200s \u2014 warm-up is wedged, let it be killed"
   ],
   "policy": {
    "when_log_age_s": 60,
@@ -38,17 +38,17 @@
   "mode": "ACTIVE",
   "since_epoch": 1792356095.9000766,
   "activations": 149,
-  "hb_mtime": 1792380534.528057,
-  "mac_snapshot_age_s": 24118.14675617218,
+  "hb_mtime": 1792380791.8351076,
+  "mac_snapshot_age_s": 24375.41078019142,
   "mac_stale": true,
-  "now": 1792380541.0590153,
-  "heartbeat_age_s": 6.5,
-  "active_s": 24445.2,
+  "now": 1792380793.3876383,
+  "heartbeat_age_s": 1.6,
+  "active_s": 24697.5,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 24154s old (> 600s). ez_indicators pid=57405 warmup_done=False tfs_since_restart=[] restarts_last_hour=24. Live crypto decisions are reading a stale indicator snapshot.",
-  "RESTART CHURN: 24 ez_indicators restarts in the last hour \u2014 warm-up cannot complete between kills (run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120)."
+  "SNAPSHOT STALE: latest_market_data.json is 24404s old (> 600s). ez_indicators pid=57405 warmup_done=False tfs_since_restart=[] restarts_last_hour=23. Live crypto decisions are reading a stale indicator snapshot.",
+  "RESTART CHURN: 23 ez_indicators restarts in the last hour \u2014 warm-up cannot complete between kills (run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120)."
  ],
  "verdict": "ALERT"
 }
