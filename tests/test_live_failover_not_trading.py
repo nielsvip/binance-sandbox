@@ -182,7 +182,10 @@ def test_crypto_ip_ban_takeover_venue_scoped_fence_and_failback(world):
     # undercounts the implementation's measured health window by ~30 s. The implementation is right and says so in
     # its own alert: LEASE_MAC {"reason": "Mac healthy 600s (needed 600s)"} -- it waited the full 600 s of measured
     # health. The upper bound is what guards against a LATE failback and is unchanged.
-    assert 570 <= 15 * (k - 1) <= 660, 15 * (k - 1)
+    # 2026-10-19: bounds moved off the hardcoded 600 onto the module constant (USER default 600 -> 60), keeping
+    # the same -30 s undercount allowance and +60 s late-failback guard.
+    need = world.S1.FAILBACK_S
+    assert need - 30 <= 15 * (k - 1) <= need + 60, 15 * (k - 1)
     calls = watchdog.actions.calls
     assert calls.index(("stop", "live-failover-trading.service")) > calls.index(("start", "live-failover-trading.service"))
     world.clock(t2 + 15 * k)
@@ -264,6 +267,11 @@ def test_stocks_order_path_dead_takeover_and_crypto_growth(world):
         now = t1 + 15 * k
         world.mac_produce(now)
         crypto_poll(world, now, ok=False)
+        # 2026-10-19: stocks must KEEP stalling through the growth phase — that is the scenario (stocks still
+        # dead, crypto dies too). The loop used to omit it and relied on LF_FAILBACK_S=600 being longer than the
+        # loop itself to keep the stocks lease from going home; at the USER's 60 s default stocks legitimately
+        # failed back mid-loop and the lease had no "venues" key to grow.
+        stocks_activity(world, now, stalled=True)
         run_pair(world, agent, watchdog, now)
         lease = world.lease()
         if lease["venues"] == "crypto,stocks" and grown is None:
@@ -277,7 +285,11 @@ def test_stocks_order_path_dead_takeover_and_crypto_growth(world):
 
 def test_failback_backoff_doubles_after_repeat_takeover(world):
     arm(world)
-    world.monkeypatch.setenv("LF_FAILBACK_S", "600")
+    # 2026-10-19: this was setenv("LF_FAILBACK_S","600"), which did NOTHING — FAILBACK_S is read once at import
+    # and the module is already imported by then. The test only passed because 600 happened to be the default,
+    # so it never actually controlled the window it asserts on. Patch the constant the code reads.
+    base = 600.0
+    world.monkeypatch.setattr(world.S1, "FAILBACK_S", base)
     t0 = T_SATURDAY
     agent, watchdog = start(world, t0)
     now = t0
@@ -295,7 +307,7 @@ def test_failback_backoff_doubles_after_repeat_takeover(world):
             run_pair(world, agent, watchdog, now)
             healthy_from = healthy_from or watchdog.state["failback"].get("healthy_since")
             need = watchdog.state["failback"].get("needed_s") or need
-        assert need == 600 * (2 ** cycle), (cycle, need)
+        assert need == base * (2 ** cycle), (cycle, need)
     assert len(watchdog.state["nt_history"]) == 2
 
 

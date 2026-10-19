@@ -143,7 +143,7 @@ def test_crypto_ban_lines_mark_stale(world):
 def test_stocks_not_applicable_when_market_closed(world):
     world.mac_produce(T_SATURDAY - 86400 * 2)
     reading = world.C.measure_stocks(world.mac, T_SATURDAY)
-    assert reading == {"applicable": False, "stale": False, "reasons": ["market_closed"]}
+    assert reading == {"applicable": False, "stale": False, "trading_stale": False, "reasons": ["market_closed"]}
 
 
 def test_stocks_session_stale_klines_and_timeouts(world):
@@ -342,15 +342,19 @@ def test_full_takeover_fence_and_failback_cycle(world):
     assert local["holder"] == "s1" and local["gen"] == gen_s1
     assert gate(world.mac, "ez_manage.py") == 0 and gate(world.mac, "tradier_manage.py") == 0
     assert gate(world.mac, "ez_klines.py") == 1  # data feeds never gated
-    # healthy for 600 s -> S1 stops its traders FIRST, then hands the lease back (gen+1)
+    # healthy for LF_FAILBACK_S -> S1 stops its traders FIRST, then hands the lease back (gen+1).
+    # 2026-10-19: bound expressed against the module constant, not a hardcoded 600, because the USER set the
+    # default to 60 s ("stop again immediately when macbook comes back"). What this asserts is unchanged: the
+    # lease comes back after the configured window of MEASURED health and not a tick sooner.
+    need = world.S1.FAILBACK_S
     k = 1
-    while world.lease()["holder"] == "s1" and k < 60:
+    while world.lease()["holder"] == "s1" and k < 60 + int(need / 15):
         now = t2 + 15 * k
         world.mac_produce(now)
         run_pair(world, agent, watchdog, now)
         k += 1
     assert world.lease()["holder"] == "mac" and world.lease()["gen"] == gen_s1 + 1
-    assert 600 <= 15 * (k - 1) <= 645
+    assert need <= 15 * (k - 1) <= need + 45, 15 * (k - 1)
     calls = watchdog.actions.calls
     assert calls.index(("stop", "live-failover-trading.service")) > calls.index(("start", "live-failover-trading.service"))
     world.clock(t2 + 15 * k)
