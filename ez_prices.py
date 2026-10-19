@@ -1448,8 +1448,9 @@ class ResamplingAndGapFillEngine:
                         return
                     if len(merged) > keep_n:
                         merged = merged.tail(keep_n).reset_index(drop=True)
-                    if len(merged) < 1200:
-                        self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: merged only {len(merged)} bars (<1200 floor) - KEEPING EXISTING")
+                    _floor = int(min(1200, len(existing_df)))
+                    if len(merged) < _floor:
+                        self.logger.error(f"🚨 CRITICAL BLOCK: {fp.name}: merged only {len(merged)} bars (<floor {_floor}) - KEEPING EXISTING")
                         return
                     merged_rows = standardize_kline_data_for_json(merged)
                     if not merged_rows or len(merged) < 50:
