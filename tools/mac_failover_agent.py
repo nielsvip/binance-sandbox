@@ -52,6 +52,20 @@ HOSTS = tuple(os.environ.get("LF_HOSTS", "s1-pub s1-int").split())
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2", "-o", "ControlMaster=no", "-o", "ControlPath=none"]
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
+SNAP_PUSH_S = float(os.environ.get("LF_SNAP_PUSH_S", "120"))  # 2026-10-19 USER ("ez/tradier_indicators rsync to s1
+# so when it has to take over it has all data (incl positions)"): stage the Mac's LIVE indicator snapshots on S1
+# continuously, so a takeover starts from data that is minutes old instead of waiting out S1's own ez_indicators
+# warm-up. Measured 2026-10-19 23:1xZ, with S1's crypto producers ACTIVE: S1's own latest_market_data.json was
+# 2838 s old and its tradier_indicators_latest.json 7780 s old, because ez_indicators does not write the snapshot
+# at all until all five timeframes finish one pass (25-47 min) and it had just restarted. tools/
+# mac_market_data_push_s1.sh already pushes the TIMESTAMPED snapshots, but those are ez_indicators' HOURLY backup
+# files, so that seed is up to an hour stale by construction.
+# These land in mac_state/root/data/, so live_failover_s1.merge_mac_state applies them with its existing
+# newer-mtime-wins rule: S1 adopts the Mac's snapshot only while the Mac's is actually fresher, and keeps its own
+# the moment S1 is producing better data. That IS "the system with the best data should trade", as data.
+# 120 s not 30 s: 13.8 MB of JSON per round, and no takeover can happen in under ~120 s anyway (heartbeat absent
+# 60 s + TAKEOVER_CONFIRM 4 ticks). Compressed (-z) because these are large and highly compressible.
+SNAP_SOURCES = ("data/latest_market_data.json", "data/tradier/tradier_indicators_latest.json")
 # 2026-10-15 (USER live takeover test, Mac disconnected ~15 min): ez_positions_service_main.py / ez_positions_realtime.py
 # were NOT gated. Since the 2026-10-14 single-writer refactor the writer is also an ORDER PATH — its FIXED_STOP live
 # leg calls trade_manager.execute_now() directly — so while S1 held the lease and traded, the Mac could still have
@@ -272,6 +286,7 @@ class Agent:
         LF.mkdir(parents=True, exist_ok=True)
         self.delivered = C.read_json(LF / "delivered_index.json", {}) or {}
         self.last_state_push = 0.0
+        self.last_snap_push = 0.0
         self.host_idx = 0
         self.published_s1 = []
         self.pull = C.read_json(LF / "pull_state.json", {}) or {}
@@ -429,6 +444,20 @@ class Agent:
         rsync([str(BASE / "managed_stops.json"), f"{host}:{REMOTE_LF}/mac_state/root/"])
         if result.returncode not in (0, 23, 24):
             log(f"STATE_PUSH rc={result.returncode} {result.stderr[-200:]}")
+
+    def push_snapshots(self, host, now):
+        """Stage the Mac's live indicator snapshots on S1 for merge_mac_state (see SNAP_PUSH_S)."""
+        if os.environ.get("LF_NO_SSH") == "1" or now - self.last_snap_push < SNAP_PUSH_S:
+            return
+        self.last_snap_push = now
+        for rel in SNAP_SOURCES:
+            src = BASE / rel
+            if not src.is_file():
+                continue
+            dest_dir = f"{REMOTE_LF}/mac_state/root/{os.path.dirname(rel)}"
+            result = rsync(["-z", "--rsync-path", f"mkdir -p {dest_dir} && rsync", str(src), f"{host}:{dest_dir}/"], timeout=120)
+            if result.returncode not in (0, 23, 24):
+                log(f"SNAP_PUSH {rel} rc={result.returncode} {result.stderr[-200:]}")
 
     def deliver(self, venue, host, now):
         stage = STAGE / venue
@@ -711,6 +740,9 @@ class Agent:
         elif lease and lease.get("holder") == "mac":
             if self.unfence(lease, host):
                 self.push_state(host, now)
+            # Every tick while the Mac holds the lease, not only on an unfence transition: the point is that S1 is
+            # ALREADY warm when it has to take over, and a takeover happens without any unfence first.
+            self.push_snapshots(host, now)
         if isinstance(state, dict):
             C.atomic_write_json(LF / "s1_state.json", state)
             vstates = state.get("venues") or {}
