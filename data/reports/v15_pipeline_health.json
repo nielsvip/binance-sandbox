@@ -1,48 +1,11 @@
 {
- "at": "2026-10-19T17:01:29Z",
+ "at": "2026-10-19T17:19:21Z",
  "s1": {
-  "host": "niels",
-  "now": 1792429240.6151333,
-  "merge_crypto": {
-   "n": 12,
-   "max_lag_min": 30.0,
-   "median_lag_min": 15.0,
-   "worst": "1000CHEEMSUSDT",
-   "dead": []
-  },
-  "merge_stocks": {
-   "n": 12,
-   "max_lag_min": 0.0,
-   "median_lag_min": 0.0,
-   "worst": "A",
-   "dead": []
-  },
-  "npz_legacy_crypto": [
-   "HBARUSDC",
-   "MOVEUSDT",
-   "NEOUSDC",
-   "QNTUSDT",
-   "WLFIUSDC",
-   "XVGUSDT"
-  ],
-  "append_log_age_min": 25.9,
-  "append_last_secs": 1183.5,
-  "append_last_stats": "'appended': 278, 'created': 0, 'up_to_date': 5781, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
-  "npz_loop_pids": 9,
-  "npz_loop_has_settle": true,
-  "sched_tick_age_min": 24.6,
-  "sched_launched": 0,
-  "archive_n": 142,
-  "archive_mb": 1828.1,
-  "archive_newest_min": 158.7,
-  "_via": "s1-int"
+  "error": "s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
  },
  "red": [
-  "L2 appender silent for 25.9 min (cron */5) ",
-  "L4 scheduler last ticked 24.6 min ago (cron */2)"
+  "s1 unreachable: s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
  ],
- "warn": [
-  "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT"
- ],
+ "warn": [],
  "ok": false
 }
