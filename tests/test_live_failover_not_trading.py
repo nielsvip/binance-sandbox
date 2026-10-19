@@ -184,7 +184,7 @@ def test_crypto_ip_ban_takeover_venue_scoped_fence_and_failback(world):
     # health. The upper bound is what guards against a LATE failback and is unchanged.
     # 2026-10-19: bounds moved off the hardcoded 600 onto the module constant (USER default 600 -> 60), keeping
     # the same -30 s undercount allowance and +60 s late-failback guard.
-    need = world.S1.FAILBACK_S
+    need = world.S1.FAILBACK_NT_S  # nt takeover -> the nt dwell, not the whole-host one
     assert need - 30 <= 15 * (k - 1) <= need + 60, 15 * (k - 1)
     calls = watchdog.actions.calls
     assert calls.index(("stop", "live-failover-trading.service")) > calls.index(("start", "live-failover-trading.service"))
@@ -289,7 +289,7 @@ def test_failback_backoff_doubles_after_repeat_takeover(world):
     # and the module is already imported by then. The test only passed because 600 happened to be the default,
     # so it never actually controlled the window it asserts on. Patch the constant the code reads.
     base = 600.0
-    world.monkeypatch.setattr(world.S1, "FAILBACK_S", base)
+    world.monkeypatch.setattr(world.S1, "FAILBACK_NT_S", base)
     t0 = T_SATURDAY
     agent, watchdog = start(world, t0)
     now = t0

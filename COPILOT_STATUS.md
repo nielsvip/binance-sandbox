@@ -1,21 +1,14 @@
-# Copilot Status — 2026-10-19 14:11:18 UTC
+# Copilot Status — 2026-10-19 22:49:33 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T14:08:56
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-19T14:08:56
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T14:09:27
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-19T14:09:27
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T14:10:04
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-19T14:10:04
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T14:10:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-19T14:10:34
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T14:11:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-19T14:11:18
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T22:48:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-19T22:48:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-19T22:48:42
 
 ## Missed Trades (trader comparison)
 
@@ -27,24 +20,22 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **XLMUSDT** SHORT (crypto) peak +4.7%, now +0.6%
-- HELD: **GRAMUSDT** SHORT (crypto) peak +4.0%, now +1.0%
-- HELD: **BNO** LONG (tradier) peak +3.5%, now +-1.2%
-- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +1.1%
+- HELD: **WLDUSDC** LONG (crypto) peak +6.0%, now +2.7%
+- HELD: **BNO** LONG (tradier) peak +3.5%, now +-1.1%
+- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.3%
+- HELD: **JNJ** SHORT (tradier) peak +3.1%, now +3.1%
 
-- WATCHING: **AVAXUSDC** SHORT (crypto) peaked +6.4%, exited 1m ago
-- WATCHING: **IOTXUSDT** SHORT (crypto) peaked +5.8%, exited 1m ago
-- WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
+- WATCHING: **DOTUSDT** SHORT (crypto) peaked +5.6%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 38
-- [HIGH] ez_manage.py for ang is NOT running
-- [MEDIUM] ez_market_data.py running but log stale (33min)
-- [HIGH] ez_market_data.py is NOT running
-- [HIGH] ez_indicators.py is NOT running
-- [MEDIUM] ez_market_data.py running but log stale (36min)
+**Issues (last 1h):** 9
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running

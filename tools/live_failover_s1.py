@@ -79,6 +79,15 @@ FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "60"))  # 2026-10-19 USER ("i
 # is NOT the safety: `healthy` already demands a fresh heartbeat, non-stale data on every leased venue and zero
 # not-trading kinds, and failback() still stops the S1 trading unit and verifies no S1 trader survived before the
 # lease moves. Flap protection stays in failback_needed_s (nt backoff) for the repeat-takeover case.
+FAILBACK_NT_S = float(os.environ.get("LF_FAILBACK_NT_S", "600"))  # 2026-10-19: base dwell for a NOT-TRADING
+# takeover only (Mac host alive, one venue/account not reaching the broker). It stays at the old 600 s while
+# FAILBACK_S drops to 60, because the two cases have different evidence. A whole-host takeover is provably over:
+# the heartbeat is back, the data is fresh, no kind fires — hand it back at once. An nt takeover is NOT provable
+# while the Mac is fenced: a fenced trader places no orders, so order_path_dead/broker_unreachable stop firing
+# and the venue reads "healthy" merely because it is idle (measured: MAC_TRADING_AGAIN stocks after_s=330 with
+# the stall fixture still stalling). Handing back on that would take -> 60 s -> give back -> kind refires ->
+# retake, moving live trading between hosts every minute. The nt arm keeps its dwell + backoff; failback_fast
+# still shortcuts it when the record has been clean for FAILBACK_FAST_MIN_STABLE_S.
 FAILBACK_FAST_S = float(os.environ.get("LF_FAILBACK_FAST_S", "120"))
 FAILBACK_FAST_MIN_STABLE_S = float(os.environ.get("LF_FAILBACK_FAST_MIN_STABLE_S", "3600"))
 ACCT_YIELD_S = float(os.environ.get("LF_ACCT_YIELD_S", "600"))
@@ -592,8 +601,8 @@ class Watchdog:
         # takeovers. A flap in progress always has a recent takeover, so it stays on the slow arm.
         last_tk = float(self.state.get("last_takeover_epoch") or 0)
         if not recent and last_tk and now - last_tk >= FAILBACK_FAST_MIN_STABLE_S:
-            return min(FAILBACK_S, FAILBACK_FAST_S)
-        return FAILBACK_S * (2 ** min(max(len(recent) - 1, 0), NT_BACKOFF_MAX))
+            return min(FAILBACK_NT_S, FAILBACK_FAST_S)
+        return FAILBACK_NT_S * (2 ** min(max(len(recent) - 1, 0), NT_BACKOFF_MAX))
 
     def _scoped_accounts(self, nt, taken):
         """Named-account scope for an nt-driven venue takeover: only when the driving kinds name a
