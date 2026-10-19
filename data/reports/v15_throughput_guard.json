@@ -1,46 +1,36 @@
 {
- "at": "2026-10-19T14:11:28Z",
+ "at": "2026-10-19T15:14:00Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
    "improved": 0,
    "improved_per_hour": 0.0,
-   "published_n": 0,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [
-    "SNDK_LONG"
-   ],
-   "mem_avail_mb": 16206,
-   "load1": 23.17,
-   "nproc": 16,
-   "slots": "1/6",
-   "binding_reason": "board CPU DEMAND, not host capacity: 1 running sides pull only 1.8 cores (1.81 core/side) of 11.8 usable -> 5.8 boards/h. 12/h needs 3.7 board-cores = 2 sides at this per-side draw (niced filler 9.3 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
-   "error": null,
-   "published": [],
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "ssh: connect to host 127.0.0.1 port 2201: Connection refused\n",
+   "published": null,
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 2.9,
-   "last_improved_symside": "SNDK_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 14.0,
-   "improved_gap_min_max_24h": 297.0,
-   "improved_finishes_24h": 27,
-   "board_cpu_s_median_24h": 1116.7,
-   "board_wall_s_median_24h": 501.0207209587097,
-   "board_cores": 1.81,
-   "nonboard_cores_competing": 4.2,
-   "nonboard_cores_niced": 9.3,
-   "cores_by_bucket": {
-    "other": 0.1,
-    "klines_append": 0.89,
-    "boards": 1.81,
-    "live_helpers": 3.21
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 1.75,
-    "other": 7.55
-   }
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
   },
   "s2": {
    "improved": 0,
@@ -49,34 +39,32 @@
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
+    "ADP_SHORT",
     "ALKT_LONG",
-    "BHVN_LONG",
-    "BKR_LONG",
-    "CDE_LONG",
-    "COHR_LONG"
+    "EOG_SHORT"
    ],
-   "mem_avail_mb": 15835,
-   "load1": 14.03,
+   "mem_avail_mb": 19644,
+   "load1": 7.2,
    "nproc": 16,
-   "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 43823 MB, mem 18185 MB, est_pair 12000 MB) \u2014 slots 1/8",
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side (measured median 10 min) \u2014 raise concurrent sides or cut evals per board",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 4.2,
-   "last_improved_symside": "ALKT_SHORT",
+   "minutes_since_last_improved": 1.9,
+   "last_improved_symside": "ADP_SHORT",
    "cadence_ok": true,
    "improved_gap_min_median_24h": 16.1,
    "improved_gap_min_max_24h": 191.7,
    "improved_finishes_24h": 55,
-   "board_cpu_s_median_24h": 1534.3,
-   "board_wall_s_median_24h": 608.7357449531555,
-   "board_cores": 10.89,
-   "nonboard_cores_competing": 0.27,
+   "board_cpu_s_median_24h": 1667.8,
+   "board_wall_s_median_24h": 577.2532999515533,
+   "board_cores": 10.69,
+   "nonboard_cores_competing": 0.0,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.27,
-    "boards": 10.89
+    "other": 0.0,
+    "boards": 10.69
    },
    "cores_by_bucket_niced": {}
   }
@@ -85,5 +73,7 @@
   "s1",
   "s2"
  ],
- "cadence_breach": []
+ "cadence_breach": [
+  "s1"
+ ]
 }
