@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-19 01:55:39 UTC
+# Copilot Status — 2026-10-19 02:00:35 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T01:35:09
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T01:37:27
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T01:39:27
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T01:41:37
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T01:43:50
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T01:50:18
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T01:52:35
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T01:54:40
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T01:56:56
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T01:59:20
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 16 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.3%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.5%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
@@ -48,8 +48,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_rankings.py running but log stale (13min)

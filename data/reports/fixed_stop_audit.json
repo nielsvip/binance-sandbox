@@ -1,14 +1,25 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 6,
+ "findings": [
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 6.8159175,
+   "key": "fin:UNIUSDC_LONG",
+   "live_level": 6.79098,
+   "mark": 7.26136014,
+   "opened_at": "2026-10-19T01:53:51.258000Z",
+   "resting_trigger": 6.805
+  }
+ ],
+ "n_findings": 1,
+ "n_positions": 7,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.30135149999999994,
    "key": "fin:XTZUSDT_SHORT",
    "live_level": 0.30135149999999994,
-   "mark": 0.301,
+   "mark": 0.30060581,
    "opened_at": "2026-10-18T23:40:53.717000Z",
    "resting_trigger": 0.3019
   },
@@ -17,7 +28,7 @@
    "entry_bar_level": 0.72827475,
    "key": "fin:RLCUSDT_LONG",
    "live_level": 0.72827475,
-   "mark": 0.75220412,
+   "mark": 0.75198904,
    "opened_at": "2026-10-19T01:24:17.384000Z",
    "resting_trigger": 0.7271
   },
@@ -26,16 +37,25 @@
    "entry_bar_level": 5584.005,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5584.005,
-   "mark": 5594.7,
+   "mark": 5592.00508633,
    "opened_at": "2026-10-19T00:12:02.436000Z",
    "resting_trigger": 5575.6
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 6.8159175,
+   "key": "fin:UNIUSDC_LONG",
+   "live_level": 6.79098,
+   "mark": 7.26136014,
+   "opened_at": "2026-10-19T01:53:51.258000Z",
+   "resting_trigger": 6.805
   },
   {
    "armed": true,
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5595.5,
+   "mark": 5592.1550603,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5551.7
   },
@@ -44,7 +64,7 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.27443159,
+   "mark": 7.263,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.551
   },
@@ -53,10 +73,10 @@
    "entry_bar_level": 0.63630525,
    "key": "inf:ETHFIUSDC_LONG",
    "live_level": 0.63630525,
-   "mark": 0.69060164,
+   "mark": 0.6929,
    "opened_at": "2026-10-19T01:49:11.481000Z",
    "resting_trigger": 0.6353
   }
  ],
- "ts": "2026-10-19T01:51:52.573766+00:00"
+ "ts": "2026-10-19T02:02:07.527521+00:00"
 }
