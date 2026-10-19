@@ -72,7 +72,13 @@ TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "60"))  # USER 2026-10-
 # stayed up — is now repaired locally in <=60 s by tools/mac_pos_writer_keepalive.sh, which is both faster and
 # safer than moving the whole venue to another host; this threshold is the whole-host backstop behind it.
 TAKEOVER_CONFIRM = int(os.environ.get("LF_TAKEOVER_CONFIRM", "4"))
-FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "600"))
+FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "60"))  # 2026-10-19 USER ("if macbook goes offline ... s1 has
+# to kick in immediately take over all trading and data generation — and stop again immediately when macbook comes
+# back"): 600 -> 60. 60 s = 4 consecutive healthy ticks at LF_TICK_S=15, deliberately the same confirm count
+# TAKEOVER_CONFIRM uses in the other direction, so handing the lease back is exactly as fast as taking it. The dwell
+# is NOT the safety: `healthy` already demands a fresh heartbeat, non-stale data on every leased venue and zero
+# not-trading kinds, and failback() still stops the S1 trading unit and verifies no S1 trader survived before the
+# lease moves. Flap protection stays in failback_needed_s (nt backoff) for the repeat-takeover case.
 FAILBACK_FAST_S = float(os.environ.get("LF_FAILBACK_FAST_S", "120"))
 FAILBACK_FAST_MIN_STABLE_S = float(os.environ.get("LF_FAILBACK_FAST_MIN_STABLE_S", "3600"))
 ACCT_YIELD_S = float(os.environ.get("LF_ACCT_YIELD_S", "600"))
@@ -317,10 +323,20 @@ def venue_reading(view, venue, now):
     hb = view["hb"]
     if hb is not None and view["hb_age"] is not None and view["hb_age"] <= HB_FRESH_S:
         reading = (hb.get("venues") or {}).get(venue) or {}
-        return {"applicable": bool(reading.get("applicable")), "stale": bool(reading.get("applicable") and reading.get("stale")), "reasons": reading.get("reasons", []), "source": "mac_heartbeat"}
+        # trading_stale (live_failover_common, 2026-10-19) is the snapshot-relaxed bar that decides whether the
+        # TRADING lease may sit with the Mac; `stale` stays the eager bar that starts/stops S1 producers. An older
+        # Mac agent that does not ship the key falls back to `stale` — fail-closed, never silently healthy.
+        trading_stale = reading.get("trading_stale")
+        if trading_stale is None:
+            trading_stale = reading.get("stale")
+        return {"applicable": bool(reading.get("applicable")), "stale": bool(reading.get("applicable") and reading.get("stale")),
+                "trading_stale": bool(reading.get("applicable") and trading_stale),
+                "reasons": reading.get("reasons", []), "trading_reasons": reading.get("trading_reasons") or reading.get("reasons", []),
+                "source": "mac_heartbeat"}
     applicable = True if venue == "crypto" else C.stocks_applicable(now)
     age = view["hb_age"]
-    return {"applicable": applicable, "stale": applicable, "reasons": [f"heartbeat_absent age={None if age is None else int(age)}s"] if applicable else ["market_closed"], "source": "s1_inference"}
+    absent = [f"heartbeat_absent age={None if age is None else int(age)}s"] if applicable else ["market_closed"]
+    return {"applicable": applicable, "stale": applicable, "trading_stale": applicable, "reasons": absent, "trading_reasons": absent, "source": "s1_inference"}
 
 
 def _link_or_copy(src, dst):
@@ -695,16 +711,28 @@ class Watchdog:
         mac_fenced = _mac_fence_acked(view.get("hb"), lease)
         mac_silent = hb_absent or (hb_age is not None and hb_age >= FENCE_WAIT_S)
         nt_left = [v for v in scope if nt.get(v, {}).get("kinds")]
-        healthy = (hb_age is not None and hb_age <= HB_FRESH_S and not any(r["applicable"] and r["stale"] for r in readings.values()) and not nt_left)
+        # 2026-10-19: `trading_stale`, not `stale`. `stale` is the deliberately eager 90 s producer bar, which
+        # the Mac trips at random inside the normal snapshot write cadence — holding the lease on it meant
+        # "Mac healthy" was unreachable and the Mac stayed fenced indefinitely (see TRADING_SNAPSHOT_STALE_S).
+        data_stale = [v for v, r in readings.items() if r["applicable"] and r.get("trading_stale", r["stale"])]
+        hb_stale = hb_age is None or hb_age > HB_FRESH_S
+        healthy = not hb_stale and not data_stale and not nt_left
         if pin == "mac" or (pin != "s1" and healthy):
             fb["healthy_since"] = fb.get("healthy_since") or now
             need = self.failback_needed_s(lease, now)
             fb["needed_s"] = need
+            fb["blocked_by"] = []
             if pin == "mac" or now - fb["healthy_since"] >= need:
                 return self.failback(lease, "manual force-mac" if pin == "mac" else f"Mac healthy {int(now - fb['healthy_since'])}s (needed {int(need)}s) venues={scope}")
         else:
             fb["healthy_since"] = None
-            fb["blocked_by"] = nt_left
+            # Every reason, not just nt_left. Before this, a lease blocked purely by a data reading or an absent
+            # heartbeat reported blocked_by=[] with healthy_since=null and no operator could tell why the Mac was
+            # not getting its venues back (2026-10-19 22:2xZ: blocked_by=[] while the real blocker was
+            # readings.crypto snapshot_age).
+            fb["blocked_by"] = ([f"heartbeat age={None if hb_age is None else int(hb_age)}s > {int(HB_FRESH_S)}s"] if hb_stale else []) \
+                + [f"{v} data: {', '.join(readings[v].get('trading_reasons') or readings[v]['reasons'])}" for v in data_stale] \
+                + [f"{v} not_trading: {', '.join(nt.get(v, {}).get('kinds') or [])}" for v in nt_left]
         if mac_fenced or mac_silent:
             if C.lease_venues(dict(venues=lease.get("run_venues"))) != scope or lease.get("run_venues") is None:
                 lease = set_run_venues(lease, scope)

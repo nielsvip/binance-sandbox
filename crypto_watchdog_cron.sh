@@ -58,6 +58,7 @@ CRITICAL_PROCESSES=(
     "ez_indicators_merger.py"  # 2026-08-12 added — SIGTERM'd 2026-08-11 23:08:34 and stayed dead 70min+ while cron logged "All healthy"; its death is the direct cause of INDICATOR_SNAPSHOT_STALE growing linearly across ang/flz/fin/men (4520 CRITICAL/hr, age 3900s+) because it is the only publisher of the 326-symbol indicator snapshot broadcast
     "ez_positions_watchdog.py"  # 2026-10-04 added — manager of ez_positions_quick x5 + realtime; had NO resurrection path (not in cron, no plist) so the 07:10 mass-death left quick dead with nobody to relaunch it
     "ez_share_ind.py"  # 2026-10-04 added — shared-memory bridge (hot 1m/3m path for get_hot_state); was wrapper-managed pre-07:10, dead since with no relaunch
+    "ez_rankings.py"  # 2026-10-19 added (USER "the light/normal/extreme mode selection that needs to be calculated and set automatically seems to have been overridden") — it is the ONLY computer of the market movement index and therefore the ONLY writer of data/market_mode.json, i.e. of LIGHT/NORMAL/EXTREME. Its only lifeline was an iTerm tab (Parent: bash /tmp/iterm_launch_ez_rankings.sh); that watchdog shut down 2026-10-19 20:05:23 and NOTHING resurrected it, so the mode froze at whatever config.py was pinned to. Also the sole publisher of the arrow/ranking signals.
 )
 
 # Scripts that ALREADY have a run_with_watchdog.sh wrapper in an iTerm tab.
@@ -75,6 +76,7 @@ WATCHDOG_MANAGED=(
     "ez_indicators_merger.py"  # 2026-08-12 added — run_with_watchdog.sh:154 already defines NO_OUTPUT_TIMEOUT=120 for it
     "ez_positions_watchdog.py"  # 2026-10-04 added — wrapper-managed pre-07:10 (ez_positions_watchdog_watchdog.log exists)
     "ez_share_ind.py"  # 2026-10-04 added — wrapper-managed pre-07:10 (ez_share_ind_watchdog.log exists)
+    "ez_rankings.py"  # 2026-10-19 added — wrapper-managed (ez_rankings_watchdog.log exists, NO_OUTPUT_TIMEOUT=300) so it gets RSS recycling; it died 3x on jetsam SIGKILL today
 )
 
 MISSING=""

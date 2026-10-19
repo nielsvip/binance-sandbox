@@ -218,7 +218,11 @@ NEWS_EXTREME_MIN_SOURCES = 2
 # Cooldown: don't flip mode more than once per N seconds
 NEWS_EXTREME_COOLDOWN_SECONDS = 600
 _last_extreme_trigger_time = 0.0
-MARKET_MODE_FILE = '/tmp/binance-monitoring/market_mode.json'
+# USER 2026-10-19 (automatic light/normal/extreme selection restored): was
+# /tmp/binance-monitoring/market_mode.json, which macOS wipes on reboot. The news-driven EXTREME trigger
+# and its 30-min expiry must write the SAME file ez_rankings computes and ez_manage/tradier_manage read,
+# or a news EXTREME never reaches an engine. config.Config.MARKET_MODE_FILE is the same path.
+MARKET_MODE_FILE = str(Path(__file__).resolve().parent / "data" / "market_mode.json")
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer

@@ -43,6 +43,15 @@ SNAPSHOT_STALE_S = float(os.environ.get("LF_SNAPSHOT_STALE_S", "90"))  # USER 20
 # KLINE_STALE_S / CRYPTO_3M_STALE_S deliberately stay at 600: those are the noisy median-bars-behind measures
 # that flapped the failover 16x/day at 180 (USER 2026-10-14). Moving TRADING still needs the heartbeat absent
 # (LF_TAKEOVER_HB_S) plus LF_TAKEOVER_CONFIRM consecutive ticks — data staleness alone never moves trading.
+TRADING_SNAPSHOT_STALE_S = float(os.environ.get("LF_TRADING_SNAPSHOT_STALE_S", "420"))  # 2026-10-19 USER
+# ("if macbook goes offline or ... stops generating market data for any reason at all s1 has to kick in immediately
+# ... and stop again immediately when macbook comes back"): the 90 s bar above is deliberately eager because starting
+# an S1 PRODUCER is cheap and reversible. MOVING OR HOLDING THE TRADING LEASE is not: 90 s is inside the normal
+# dedupe-gated write cadence of latest_market_data.json (measured 2026-10-19 21:0x-21:2xZ: 60-140 s between writes,
+# one 13-min gap), so a 90 s trading bar means the Mac is "stale" at random and can never prove itself healthy
+# enough to take its own venue back. 420 s = ~3x the worst normal gap and still well inside the 600 s the
+# not-trading kinds allow. Only the SNAPSHOT bar is relaxed: every other staleness reason (klines behind, ban
+# lines, producer errors) blocks the trading lease exactly as before.
 CRYPTO_3M_STALE_S = float(os.environ.get("LF_CRYPTO_3M_STALE_S", "600"))  # USER 2026-10-14: 600 (no <15m trading)
 PRODUCER_LOOKBACK_S = float(os.environ.get("LF_PRODUCER_LOOKBACK_S", "180"))
 TRADIER_ERR_MIN = int(os.environ.get("LF_TRADIER_ERR_MIN", "5"))
@@ -243,7 +252,23 @@ def log_hits(path, rx, now, lookback_s=None):
 
 
 def newest_own_snapshot_age(data_dir, now):
+    """Write age of the freshest Mac-own crypto indicator snapshot.
+
+    2026-10-19: this used to scan ONLY market_data_<ts>.json, which ez_indicators writes as an
+    HOURLY BACKUP (`backup_file`, and not at all when WORKER_TOTAL_INSTANCES > 1). The live snapshot
+    every engine actually reads is latest_market_data.json (config.LATEST_MARKET_DATA_FILE), rewritten
+    every ~60-140 s. Measured against SNAPSHOT_STALE_S=90 the hourly backup made the Mac read "stale"
+    for ~98% of every hour even with klines 0 s behind and zero ban lines, so live_failover_s1's
+    `healthy` gate could never be satisfied and the Mac could never get its trading lease back
+    (2026-10-19 22:2xZ: holder=s1, readings.crypto.stale=true, sole reason snapshot_age=102s, while
+    latest_market_data.json was 79 s old and k15/k3 were 0 s behind). Both files now count and the
+    FRESHEST wins: a genuinely stalled producer still ages both (the 21:34->22:27Z indicators stall
+    showed up in latest_market_data.json too), so nothing is hidden — only the hourly artefact is."""
     newest = 0.0
+    try:
+        newest = max(newest, (Path(data_dir) / "latest_market_data.json").stat().st_mtime)
+    except OSError:
+        pass
     try:
         with os.scandir(data_dir) as entries:
             for entry in entries:
@@ -257,7 +282,7 @@ def newest_own_snapshot_age(data_dir, now):
                 except OSError:
                     continue
     except OSError:
-        return None
+        return (now - newest) if newest else None
     return (now - newest) if newest else None
 
 
@@ -278,8 +303,11 @@ def measure_crypto(base, now=None, ez_klines_log=None, delivered=None):
     snap_age = newest_own_snapshot_age(base / "data", now)
     bans = log_hits(ez_klines_log, BAN_RX, now) if ez_klines_log else 0
     reasons = []
+    trading_reasons = []
     if snap_age is None or snap_age > SNAPSHOT_STALE_S:
         reasons.append(f"snapshot_age={None if snap_age is None else int(snap_age)}s")
+    if snap_age is None or snap_age > TRADING_SNAPSHOT_STALE_S:
+        trading_reasons.append(f"snapshot_age={None if snap_age is None else int(snap_age)}s")
     if k15["n"] and k15["median_behind_s"] > KLINE_STALE_S:
         reasons.append(f"15m_behind={int(k15['median_behind_s'])}s")
     if k3["n"] and k3["median_behind_s"] > CRYPTO_3M_STALE_S:
@@ -288,7 +316,9 @@ def measure_crypto(base, now=None, ez_klines_log=None, delivered=None):
         reasons.append("no_own_klines")
     if bans:
         reasons.append(f"producer_ban_lines={bans}")
+    trading_reasons += [r for r in reasons if not r.startswith("snapshot_age=")]
     return {"applicable": True, "stale": bool(reasons), "reasons": reasons, "snapshot_age_s": snap_age,
+            "trading_stale": bool(trading_reasons), "trading_reasons": trading_reasons,
             "k15": k15, "k3": k3, "producer_ban_lines": bans, "n_symbols": len(symbols)}
 
 
@@ -296,7 +326,7 @@ def measure_stocks(base, now=None, tradier_klines_log=None, delivered=None):
     now = now_s() if now is None else now
     base = Path(base)
     if not stocks_applicable(now):
-        return {"applicable": False, "stale": False, "reasons": ["market_closed"]}
+        return {"applicable": False, "stale": False, "trading_stale": False, "reasons": ["market_closed"]}
     session = nyse_session(now)
     symbols = symbols_for(base, STOCK_ACCOUNTS)
     exclude = (lambda path: str(path) in delivered) if delivered else None
@@ -317,7 +347,11 @@ def measure_stocks(base, now=None, tradier_klines_log=None, delivered=None):
         reasons.append(f"indicators_age={None if ind_age is None else int(ind_age)}s")
     if errors >= TRADIER_ERR_MIN:
         reasons.append(f"producer_error_lines={errors}")
+    trading_reasons = [r for r in reasons if not r.startswith("indicators_age=")]
+    if ind_age is None or ind_age > TRADING_SNAPSHOT_STALE_S:
+        trading_reasons.append(f"indicators_age={None if ind_age is None else int(ind_age)}s")
     return {"applicable": True, "stale": bool(reasons), "reasons": reasons, "indicators_age_s": ind_age,
+            "trading_stale": bool(trading_reasons), "trading_reasons": trading_reasons,
             "k5": k5, "k15": k15, "producer_error_lines": errors, "n_symbols": len(symbols)}
 
 

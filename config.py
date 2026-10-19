@@ -5980,7 +5980,15 @@ class Config:
             f"dc_basis_{tf}",
         )
 
-    MARKET_MODE_FILE: Path = Path("/tmp/binance-monitoring/market_mode.json")
+    # USER 2026-10-19 ("the light/normal/extreme mode selection that needs to be calculated and set
+    # automatically seems to have been overridden we need to put that system back"): was
+    # /tmp/binance-monitoring/market_mode.json. macOS wipes /tmp on reboot, data/market_mode.json was a
+    # symlink into that directory, and once the directory was gone ez_rankings raised on every tick
+    # ("Error in market movement monitor: [Errno 2] ... data/market_mode.json", once a minute through
+    # 2026-10-19 20:05) so no computed mode ever reached an engine. The mode file now lives in the repo
+    # with the engines that read it. __file__ (not BASE_PATH/DATA_DIR) because both are defined further
+    # down this class body; config.py sits in the repo root on the Mac and on S1, so the paths agree.
+    MARKET_MODE_FILE: Path = Path(__file__).resolve().parent / "data" / "market_mode.json"
 
     async def save_market_mode(self):
         import json as _json
