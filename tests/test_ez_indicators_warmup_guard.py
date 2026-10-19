@@ -201,6 +201,46 @@ def test_guard_only_appends_to_the_log_it_watches():
     assert all(m in ("a", "ab", "rb") for m in modes), f"LOG opened in a non-append/read mode: {modes}"
 
 
+def test_s1_probe_reads_the_trading_lease(guard):
+    """The S1 alert MUST be lease-aware.
+
+    2026-10-19: with S1 holding the live crypto lease, "data failover ACTIVE while the Mac is fresh" looks
+    identical to the bug but is correct behaviour (live_failover_s1.py:398,415-416 pins it ON for the trading
+    host). An alert that recommended stopping the producers would have blinded the host placing the orders.
+    """
+    probe_src = GUARD.read_text()
+    for field in ("lease_holder", "lease_venues", "lease_since", "lease_reason"):
+        assert field in probe_src, f"the S1 probe must read {field} so the alert can tell the two cases apart"
+    assert "do NOT stop the producers" in probe_src, "the lease-held case must warn against stopping producers"
+
+
+def test_revert_command_never_recommended_while_s1_holds_the_lease(guard):
+    """The one-command revert may only appear in the branch where the Mac holds the lease."""
+    import ast
+
+    tree = ast.parse(GUARD.read_text())
+    main = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "main")
+
+    def holds_revert(stmts):
+        return "REVERT_CMD" in ast.dump(ast.Module(body=list(stmts), type_ignores=[]))
+
+    # The INNERMOST `if` that emits REVERT_CMD — outer blocks legitimately enclose it without naming the lease.
+    innermost = [
+        node
+        for node in ast.walk(main)
+        if isinstance(node, ast.If)
+        and holds_revert(node.body)
+        and not any(isinstance(c, ast.If) and holds_revert(c.body) for c in ast.walk(ast.Module(body=node.body, type_ignores=[])))
+    ]
+    assert innermost, "expected a branch that emits REVERT_CMD"
+    for node in innermost:
+        test_src = ast.dump(node.test)
+        assert "lease_holder" in test_src or "s1_is_trading" in test_src, (
+            "the REVERT_CMD branch must be gated on who holds the lease, explicitly in its own condition "
+            "rather than relying on elif ordering"
+        )
+
+
 def test_guard_reports_and_alert_paths_are_under_data_reports(guard):
     assert guard.OUT.parent == ROOT / "data" / "reports"
     assert guard.ALERT.parent == ROOT / "data" / "reports"

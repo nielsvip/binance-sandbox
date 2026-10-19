@@ -385,7 +385,12 @@ def _probe_s1(timeout=20):
         "c=(h.get('venues') or {}).get('crypto') or {};"
         "print(json.dumps({'mode':v.get('mode'),'since_epoch':v.get('since_epoch'),"
         "'activations':v.get('activations'),'hb_mtime':__import__('os').stat('%s').st_mtime,"
-        "'mac_snapshot_age_s':c.get('snapshot_age_s'),'mac_stale':c.get('stale'),'now':time.time()}))\""
+        "'mac_snapshot_age_s':c.get('snapshot_age_s'),'mac_stale':c.get('stale'),"
+        "'lease_holder':(s.get('lease') or {}).get('holder'),"
+        "'lease_venues':(s.get('lease') or {}).get('venues'),"
+        "'lease_since':(s.get('lease') or {}).get('since'),"
+        "'lease_reason':(s.get('lease') or {}).get('reason'),"
+        "'now':time.time()}))\""
         % (S1_STATE, S1_MAC_HB, S1_MAC_HB)
     )
     try:
@@ -454,11 +459,46 @@ def main():
         s1["heartbeat_age_s"] = round(hb_age, 1)
         s1["active_s"] = round(active_s, 1)
         mac_fresh = snap_age is not None and snap_age <= SNAPSHOT_STALE_ALERT_S
-        if s1.get("mode") == "ACTIVE" and active_s > S1_FAILOVER_ALERT_S and hb_age < 300 and mac_fresh:
+        # S1 HOLDING THE TRADING LEASE IS THE OVERRIDING CASE, AND IT MAKES PRODUCERS CORRECT, NOT WASTEFUL.
+        # 2026-10-19 21:0xZ, caught before this alert could do harm: S1's crypto data failover was ACTIVE for
+        # 16 h with the Mac heartbeat AND snapshot both fresh — which looks exactly like the bug this guard is
+        # meant to catch. It was not. S1 held the TRADING lease (gen 57, venues "crypto,stocks", since 14:39:22Z,
+        # reason "Mac down while S1 held ['crypto']: grow to all venues") and was running all five ez_manage
+        # accounts. tools/live_failover_s1.py:398,415-416 pins the data failover ON in exactly that case
+        # (`hold = lease["holder"] == "s1" and ... venue in lease_venues` resets `fresh_since` every tick), and it
+        # is RIGHT to: the host that is trading crypto must be the host producing crypto data. Running the revert
+        # command here would have stripped live crypto data from the host actually placing the orders.
+        lease_holder = s1.get("lease_holder")
+        s1_is_trading = lease_holder == "s1" and "crypto" in (s1.get("lease_venues") or "")
+        if s1_is_trading:
+            s1["note"] = (
+                f"producers are CORRECT: S1 holds the TRADING lease (venues={s1.get('lease_venues')!r}, "
+                f"since {s1.get('lease_since')}, reason {s1.get('lease_reason')!r}), so S1 must produce crypto "
+                "data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
+            )
+            if mac_fresh and hb_age < 300:
+                alerts.append(
+                    f"S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues="
+                    f"{s1.get('lease_venues')!r} since {s1.get('lease_since')} "
+                    f"(reason {s1.get('lease_reason')!r}), Mac heartbeat {int(hb_age)}s, Mac snapshot "
+                    f"{int(snap_age)}s. S1 is therefore running the live engines AND the producers instead of "
+                    "backtests. This is a LEASE/failback question — do NOT stop the producers (that would leave "
+                    "the trading host blind). Operator decision: hand the lease back to the Mac only after "
+                    "confirming the Mac's pushes and heartbeat are stable."
+                )
+        elif (
+            not s1_is_trading                       # explicit, not merely implied by the elif — see the note above
+            and lease_holder != "s1"
+            and s1.get("mode") == "ACTIVE"
+            and active_s > S1_FAILOVER_ALERT_S
+            and hb_age < 300
+            and mac_fresh
+        ):
             alerts.append(
-                f"S1 STUCK IN CRYPTO FAILOVER: mode=ACTIVE for {int(active_s)}s while the Mac heartbeat is fresh "
-                f"({int(hb_age)}s) AND the Mac snapshot is fresh ({int(snap_age)}s). S1 is spending cores on live "
-                f"producers instead of backtests. ONE-COMMAND REVERT: {REVERT_CMD}"
+                f"S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for {int(active_s)}s while the Mac holds the "
+                f"lease (holder={lease_holder!r}), the Mac heartbeat is fresh ({int(hb_age)}s) AND the Mac "
+                f"snapshot is fresh ({int(snap_age)}s). S1 is spending cores on live producers instead of "
+                f"backtests. ONE-COMMAND REVERT: {REVERT_CMD}"
             )
         elif s1.get("mode") == "ACTIVE" and active_s > S1_FAILOVER_ALERT_S:
             # Not a failover bug: S1 is correctly covering a genuinely stale Mac. Recorded, not alerted on.
