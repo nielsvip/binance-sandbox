@@ -11,6 +11,7 @@ S1 live = `~/binance` on niels. Mac = `/Users/niels/Documents/binance`. Times UT
 5. 🆕 **ORCHESTRATOR shared-memory connect failure** (reported 20:06, investigating next).
 
 ## P1 — data pipeline (wrong data = wrong trades)
+- ✅ **15GB sync skip REMOVED** (`scripts/rsync_helpers.sh`: remote skip → always-sync warn-only; local size-cleaner that DELETED oldest-first → warn-only. Backup `backups/before_always_sync_202610192025_rsync_helpers.sh`). The cleaner was a prime delete-loop suspect.
 6. ✅ **S1 live missing `published_selection.json`** → all S1 entries refused fail-closed. Backfilled sandbox→live md5-OK.
 7. ✅ **`fetch_klines_api`: TOP-UP ONLY** (`startTime`+small limit; full 1500 cold-start only). Was: 1500 bars for a 1-bar gap.
 8. ✅ **Startup max-history gated** to below-MIN-depth files + breaker-aware (was: unconditional multi-year redownload every restart).
