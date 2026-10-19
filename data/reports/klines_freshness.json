@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-19T06:40:09Z",
+ "generated_utc": "2026-10-19T06:45:14Z",
  "tol_min": 35,
  "crypto": {
   "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 25.2,
+  "worst_lag_min": 30.2,
   "worst_sym": "BTCUSDC"
  },
  "stocks": {
@@ -13,6 +13,6 @@
   "mode": "off-hours",
   "missing": [],
   "stale_vs_close": [],
-  "worst_lag_min": 3520.2
+  "worst_lag_min": 3525.2
  }
 }
