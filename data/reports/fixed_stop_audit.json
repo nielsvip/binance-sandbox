@@ -6,7 +6,7 @@
    "entry_bar_level": 0.01095933,
    "key": "fin:COTIUSDT_SHORT",
    "live_level": 0.010956322499999999,
-   "mark": 0.01091945,
+   "mark": 0.01088145,
    "opened_at": "2026-10-19T02:08:42.700000Z",
    "resting_trigger": 0.010973
   },
@@ -16,20 +16,30 @@
    "entry_bar_level": 6.8159175,
    "key": "fin:UNIUSDC_LONG",
    "live_level": 6.79098,
-   "mark": 7.308,
+   "mark": 7.259,
    "opened_at": "2026-10-19T01:53:51.258000Z",
    "resting_trigger": 6.805
+  },
+  {
+   "armed": true,
+   "code": "ARMED_BUT_NO_EXCHANGE_STOP",
+   "entry_bar_level": 0.58403625,
+   "key": "inf:TIAUSDC_LONG",
+   "live_level": 0.58403625,
+   "mark": 0.6181,
+   "opened_at": "2026-10-19T02:19:19.313000Z",
+   "resting_trigger": 0.0
   }
  ],
- "n_findings": 2,
- "n_positions": 6,
+ "n_findings": 3,
+ "n_positions": 7,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.01095933,
    "key": "fin:COTIUSDT_SHORT",
    "live_level": 0.010956322499999999,
-   "mark": 0.01091945,
+   "mark": 0.01088145,
    "opened_at": "2026-10-19T02:08:42.700000Z",
    "resting_trigger": 0.010973
   },
@@ -38,7 +48,7 @@
    "entry_bar_level": 5584.005,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5584.005,
-   "mark": 5588.3,
+   "mark": 5594.9,
    "opened_at": "2026-10-19T00:12:02.436000Z",
    "resting_trigger": 5575.6
   },
@@ -47,7 +57,7 @@
    "entry_bar_level": 6.8159175,
    "key": "fin:UNIUSDC_LONG",
    "live_level": 6.79098,
-   "mark": 7.308,
+   "mark": 7.259,
    "opened_at": "2026-10-19T01:53:51.258000Z",
    "resting_trigger": 6.805
   },
@@ -56,7 +66,7 @@
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5587.1,
+   "mark": 5594.9,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5551.7
   },
@@ -65,19 +75,28 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.309,
+   "mark": 7.25328719,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.551
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.58403625,
+   "key": "inf:TIAUSDC_LONG",
+   "live_level": 0.58403625,
+   "mark": 0.6181,
+   "opened_at": "2026-10-19T02:19:19.313000Z",
+   "resting_trigger": 0.0
   },
   {
    "armed": true,
    "entry_bar_level": 0.63630525,
    "key": "inf:ETHFIUSDC_LONG",
    "live_level": 0.63630525,
-   "mark": 0.695,
+   "mark": 0.6925,
    "opened_at": "2026-10-19T01:49:11.481000Z",
    "resting_trigger": 0.6353
   }
  ],
- "ts": "2026-10-19T02:11:50.568691+00:00"
+ "ts": "2026-10-19T02:22:02.989136+00:00"
 }
