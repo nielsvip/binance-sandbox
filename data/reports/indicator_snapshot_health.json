@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-19T19:38:44Z",
+ "generated_utc": "2026-10-19T19:43:43Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 43.8,
+  "age_s": 89.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 63446,
-  "proc_age_s": 1933.0,
-  "log_age_s": 35.0,
+  "proc_age_s": 2232.0,
+  "log_age_s": 20.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "1h",
@@ -29,10 +29,16 @@
    "15m",
    "3m",
    "1h",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
    "15m"
   ],
   "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-19T19:37:17Z",
+  "last_timeframe_utc": "2026-10-19T19:42:29Z",
   "last_restart_utc": "2026-10-19T19:06:31Z",
   "restarts_last_hour": 2
  },
@@ -58,15 +64,16 @@
   "mode": "ACTIVE",
   "since_epoch": 1792385811.7512133,
   "activations": 150,
-  "hb_mtime": 1792438104.199523,
-  "mac_snapshot_age_s": 104.44301843643188,
+  "hb_mtime": 1792438830.4032826,
+  "mac_snapshot_age_s": 35.827083587646484,
   "mac_stale": true,
-  "now": 1792438548.0886924,
-  "from_cache_age_s": 176.6,
-  "heartbeat_age_s": 443.9,
-  "active_s": 52736.3,
-  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
+  "now": 1792438909.599426,
+  "from_cache_age_s": 108.0,
+  "heartbeat_age_s": 79.2,
+  "active_s": 53097.8
  },
- "alerts": [],
- "verdict": "OK"
+ "alerts": [
+  "S1 STUCK IN CRYPTO FAILOVER: mode=ACTIVE for 53097s while the Mac heartbeat is fresh (79s) AND the Mac snapshot is fresh (89s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+ ],
+ "verdict": "ALERT"
 }

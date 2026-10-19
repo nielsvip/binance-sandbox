@@ -731,27 +731,52 @@ async def fetch_historical_paginated(symbol, interval, session, semaphore):
     return total_added
 
 async def fetch_all_max_historical(intervals=None):
-    """Fetch maximum historical klines for all active symbols across all requested intervals.
-    Runs once at startup as background task — builds deep history for backtesting.
-    Default intervals: 15m, 1h, 4h, D (best ROI for multi-TF backtesting)."""
+    """Backfill deep history ONLY for files below MIN depth (USER 2026-10-19: never-stop-trading weight triage).
+
+    This used to paginate backwards (up to 500 x limit=1500, top weight tier) for EVERY active symbol x TF on EVERY
+    process start — ~10k weight just to re-confirm history already held, and a full multi-year redownload whenever a
+    restart coincided with shallow files. That startup burst is what kept banning the shared egress (escalating -1003s
+    on .52, then the Mac IP at 19:26Z). Routine top-up is fetch_klines_api (startTime-based); WS feeds first.
+    Runs once at startup as background task. Default intervals: 15m, 1h, 4h, D (best ROI for multi-TF backtesting)."""
     if intervals is None:
         intervals = ['15m', '1h', '4h', 'D']
+    if _throttle_state.get('ban_until', 0.0) > time.monotonic():
+        log('fetch_all_max_historical: breaker active — deep backfill deferred (top-up path only)')
+        return
     symbols = sorted(get_active_symbols())
     if not symbols: log('fetch_all_max_historical: no active symbols'); return
-    log(f'fetch_all_max_historical: building max history for {len(symbols)} symbols x {intervals}...')
+    plan = []
+    for interval in intervals:
+        _need = MIN_KLINES_PER_INTERVAL.get(interval, MIN_KLINES_THRESHOLD)
+        for symbol in symbols:
+            try:
+                _, _count, _ = get_best_klines_file(symbol, interval)
+            except Exception:
+                _count = 0
+            if (_count or 0) < _need:
+                plan.append((symbol, interval))
+    if not plan:
+        log(f'fetch_all_max_historical: all {len(symbols)} symbols already at MIN depth — nothing to backfill, skipping')
+        return
+    log(f'fetch_all_max_historical: backfilling {len(plan)} shallow symbol/TF (rest at depth, skipped)...')
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
     bind_kwargs = _resolve_local_bind_kwargs()
     connector = aiohttp.TCPConnector(limit_per_host=MAX_CONCURRENT_REQUESTS, limit=MAX_CONCURRENT_REQUESTS, **bind_kwargs)
     async with aiohttp.ClientSession(connector=connector) as session:
+        by_tf = {}
+        for symbol, interval in plan:
+            by_tf.setdefault(interval, []).append(symbol)
         for interval in intervals:
+            _syms = by_tf.get(interval) or []
+            if not _syms: continue
             total = 0
-            log(f'fetch_all_max_historical: starting {interval}...')
-            for i, symbol in enumerate(symbols):
+            log(f'fetch_all_max_historical: starting {interval} ({len(_syms)} shallow)...')
+            for i, symbol in enumerate(_syms):
                 try:
                     added = await fetch_historical_paginated(symbol, interval, session, semaphore)
-                    if added > 0: log(f'  [{i+1}/{len(symbols)}] {symbol} {interval}: +{added} bars')
+                    if added > 0: log(f'  [{i+1}/{len(_syms)}] {symbol} {interval}: +{added} bars')
                     total += added
-                except Exception as e: log(f'  [{i+1}/{len(symbols)}] {symbol} {interval}: error {e}')
+                except Exception as e: log(f'  [{i+1}/{len(_syms)}] {symbol} {interval}: error {e}')
             log(f'fetch_all_max_historical: {interval} done — +{total} bars added')
     log('fetch_all_max_historical: all intervals complete')
 
