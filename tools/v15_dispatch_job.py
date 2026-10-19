@@ -7,7 +7,7 @@ market is open) killed every tick from 13:44Z and the fleet launched nothing. Th
 ok=False from the prep tool = sym_side must not launch (stale tail it could not heal) -> skip, the scheduler retries later.
 Prep tool crash / lock wait timeout = launch with what the host has (USER 2026-10-13: "work with what you have").
 Every outcome is one JSON line in /tmp/v15_dispatch.log."""
-import argparse, datetime, fcntl, hashlib, json, os, pathlib, re, subprocess, sys, time
+import argparse, datetime, fcntl, hashlib, json, os, pathlib, re, signal, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LOG = pathlib.Path(os.environ.get("V15_DISPATCH_LOG", "/tmp/v15_dispatch.log"))
@@ -98,10 +98,24 @@ def prep(symbol, push):
     cmd = [sys.executable, str(ROOT / "tools" / "v15_npz_prep.py"), "--symbol", symbol]
     if push:
         cmd += ["--push", push]
+    # USER 2026-10-19: subprocess.run's timeout kills only the DIRECT child, so v15_npz_prep's multiprocessing workers
+    # survived as orphans — two of them (VALE, RBLX) spun at 98% CPU for 10,664 s, nearly 3x the 2400 s timeout, taking
+    # two of S1's 16 cores and leaving the host running ONE board at load 24.5. The prep now runs in its own session
+    # and a timeout kills the whole process group, so an over-running rebuild can never choke the fleet again.
+    _to = float(os.environ.get("V15_NPZ_PREP_TIMEOUT_S", "2400"))
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=float(os.environ.get("V15_NPZ_PREP_TIMEOUT_S", "2400")), cwd=str(ROOT))
-        lines = [l for l in (r.stdout or "").strip().splitlines() if l.strip()]
-        res = json.loads(lines[-1]) if lines else {"ok": None, "reason": f"no-output rc={r.returncode} {(r.stderr or '')[-160:]}"}
+        _p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=str(ROOT), start_new_session=True)
+        try:
+            _out, _err = _p.communicate(timeout=_to)
+            lines = [l for l in (_out or "").strip().splitlines() if l.strip()]
+            res = json.loads(lines[-1]) if lines else {"ok": None, "reason": f"no-output rc={_p.returncode} {(_err or '')[-160:]}"}
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(_p.pid), signal.SIGKILL)
+            except (OSError, ProcessLookupError):
+                _p.kill()
+            _p.wait(timeout=30)
+            res = {"ok": None, "reason": f"prep-timeout {_to:.0f}s (process group killed)"}
     except subprocess.TimeoutExpired:
         res = {"ok": None, "reason": "prep-timeout"}
     except (OSError, ValueError) as e:
