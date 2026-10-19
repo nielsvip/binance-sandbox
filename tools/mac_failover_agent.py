@@ -152,6 +152,19 @@ def fenced_venues(local):
     return C.lease_venues(local) if (local or {}).get("holder") == "s1" else []
 
 
+def _npz_tail_ok(ts):
+    """Same currency standard the dispatch gate holds workers to (tools/npz_cutoffs.tail_currency):
+    a tail is current iff it reaches the latest RTH close for stocks — so Friday bars read FRESH at
+    Monday's bell (nothing newer can exist; boards decided Friday) and stale mid-session. Fail-closed
+    to the wall-clock bar on import error (never silently fresh). Monkeypatchable in tests."""
+    try:
+        from npz_cutoffs import tail_currency as _tc
+        ok, _ = _tc(float(ts), "stocks")
+        return bool(ok)
+    except Exception:
+        return (time.time() - float(ts)) <= LF_INDICATORS_STALE_S
+
+
 def _stock_indicator_universe():
     """Traded stock symbols whose NPZs the VEC_EXACT twin needs (lists + held + candidates)."""
     syms = set()
@@ -495,7 +508,7 @@ class Agent:
                     n += 1
                     age = now - ts
                     mx = max(mx, age)
-                    if age > LF_INDICATORS_STALE_S:
+                    if not _npz_tail_ok(ts):
                         old += 1
                 frac = (old / n) if n else 0.0
                 stocks["indicators_age_s"] = round(mx, 1)
@@ -504,7 +517,7 @@ class Agent:
                 if n >= LF_INDICATORS_MIN_N and frac > LF_INDICATORS_STALE_FRAC:
                     stocks["kinds"] = list(stocks.get("kinds") or []) + ["indicators_stale"]
                     stocks["reasons"] = list(stocks.get("reasons") or []) + [
-                        f"indicators_stale {old}/{n} stock NPZs older than {int(LF_INDICATORS_STALE_S)}s (twin falls back to native -> entries die)"]
+                        f"indicators_stale {old}/{n} stock NPZ tails behind the latest RTH close (twin falls back to native -> entries die)"]
                     stocks["not_trading"] = True
             for venue, accts, files in (("stocks", C.STOCK_ACCOUNTS, _STOCK_POSITION_FILES),
                                         ("crypto", C.CRYPTO_ACCOUNTS, _CRYPTO_POSITION_FILES)):

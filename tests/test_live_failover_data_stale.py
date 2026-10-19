@@ -57,6 +57,7 @@ def _health(applicable=True):
 
 
 def test_fresh_everything_no_kinds(tmp_path, monkeypatch):
+    monkeypatch.setattr(mfa, "_npz_tail_ok", lambda ts: True)
     ag = _agent(monkeypatch, _mkbase(tmp_path, 900.0, 30.0))
     h = _health()
     ag.augment_data_freshness(h, T0, ())
@@ -66,6 +67,7 @@ def test_fresh_everything_no_kinds(tmp_path, monkeypatch):
 
 
 def test_stale_npz_majority_fires(tmp_path, monkeypatch):
+    monkeypatch.setattr(mfa, "_npz_tail_ok", lambda ts: False)
     ag = _agent(monkeypatch, _mkbase(tmp_path, 20000.0, 30.0))
     h = _health()
     ag.augment_data_freshness(h, T0, ())
@@ -80,10 +82,22 @@ def test_stale_minority_quiet(tmp_path, monkeypatch):
         p = base / "backtest_v8" / "indicators" / f"{s}.npz"
         np.savez(str(p), timestamps=np.array([T0 - 90000.0, T0 - 20000.0]))
         os.utime(p, (T0, T0))
+    monkeypatch.setattr(mfa, "_npz_tail_ok", lambda ts: ts > T0 - 3600)
     ag = _agent(monkeypatch, base)
     h = _health()
     ag.augment_data_freshness(h, T0, ())
     assert "indicators_stale" not in h["stocks"]["kinds"], h["stocks"]
+    assert h["stocks"]["indicators_stale_frac"] == 0.25
+
+
+def test_tail_currency_is_rth_aware():
+    from npz_cutoffs import tail_currency
+    now_monday_open = 1792441800.0  # Mon 2026-10-19 13:30 UTC
+    fri_close = 1792252800.0 - 3600.0  # Fri 16:00 ET ~= 20:00 UTC minus a bar
+    ok, _ = tail_currency(fri_close, "stocks", now=now_monday_open)
+    assert ok, "Friday bars must read current at Monday's bell"
+    ok2, _ = tail_currency(fri_close, "stocks", now=now_monday_open + 6 * 3600)
+    assert not ok2, "Friday bars must read stale mid-Monday-session"
 
 
 def test_wedged_position_loop_fires(tmp_path, monkeypatch):
