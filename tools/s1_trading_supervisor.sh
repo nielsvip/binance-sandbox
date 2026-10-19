@@ -62,6 +62,7 @@ while true; do
     fi
     if ! lf_lease_fenced ez_manage.py "$BIN"; then
         for acct in ang inf flz men fin; do
+            pgrep -f "s1_failover_start.sh crypto $acct" >/dev/null && continue  # 2026-10-19 single-flight: the start path waits up to 240s in the positions gate; a lap-spawned duplicate multiplies broker polling during IP bans
             pgrep -f "ez_manage.py --account $acct" >/dev/null || { log "starting crypto:$acct"; bash "$BIN/tools/s1_failover_start.sh" crypto "$acct"; }
         done
         for extra in ez_positions_watchdog.py ez_reentry_daemon.py; do
@@ -73,6 +74,7 @@ while true; do
     fi
     if ! lf_lease_fenced tradier_manage.py "$BIN" && stocks_window; then
         for acct in trb trc tra; do
+            pgrep -f "s1_failover_start.sh stocks $acct" >/dev/null && continue  # 2026-10-19 single-flight: same as crypto above
             pgrep -f "tradier_manage.py --accounts $acct" >/dev/null || { log "starting stocks:$acct"; bash "$BIN/tools/s1_failover_start.sh" stocks "$acct"; }
         done
     fi
