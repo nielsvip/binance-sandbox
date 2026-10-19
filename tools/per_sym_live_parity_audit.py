@@ -50,6 +50,16 @@ import per_sym_live_set as _live_reader
 # deliberate, newer than any board: USER 2026-10-16 "reduce crypto trading to minimum"
 CAP_KNOBS = dict(_live_reader.CRYPTO_MIN_SIZE_CAPS)
 
+
+def _mode_name():
+    """Which mode the ceiling is currently taken from, for the report line only."""
+    try:
+        import config as _cfg
+
+        return str(getattr(_cfg.Config, "_CURRENT_MARKET_MODE", "?"))
+    except Exception:
+        return "?"
+
 DB = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
 PROXY_JSONS = (ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json",
                ROOT / "data" / "hourly_reconfig" / "per_sym_active_config_stocks.json")
@@ -217,9 +227,17 @@ def main():
     for k, n in reader_keys.most_common(15):
         print(f"      {n:4d} sym_sides  {k}")
     if capped_hits:
-        print("    DELIBERATE (not breaches) — CRYPTO_MINIMUM_TRADING_MODE clamps, USER 2026-10-16:")
+        # 2026-10-19: print the EFFECTIVE ceiling, not the flat CRYPTO_MIN_SIZE_CAPS literal. Since
+        # per_sym_live_set._cap_table() was made mode-aware (USER 2026-10-17 "make sure the light-normal-extreme
+        # modes get their sizes back"), the ceiling is the ACTIVE mode table whenever CRYPTO_MINIMUM_TRADING_MODE
+        # is False — measured LIGHT_MODE 25/140/120 — while this line still announced "-> 6.0 / -> 12.0". An
+        # operator reading it concluded live crypto was pinned at the exchange floor when it was not. The caps are
+        # read from the live reader itself so the two can never drift again.
+        eff = _live_reader._cap_table()
+        why = "CRYPTO_MINIMUM_TRADING_MODE (USER 2026-10-16)" if _live_reader._min_mode_on() else f"ACTIVE MODE TABLE = {_mode_name()}"
+        print(f"    DELIBERATE (not breaches) — sizing ceiling beats the board, source: {why}:")
         for k, n in capped_hits.most_common():
-            print(f"      {n:4d} sym_sides  {k} -> {CAP_KNOBS[k]}")
+            print(f"      {n:4d} sym_sides  {k} -> {eff.get(k, CAP_KNOBS[k])}")
     report["reader_capped"] = dict(capped_hits)
     report["reader_absent"] = sorted(absent)
     report["reader_drift"] = {k: len(v) for k, v in drifted.items()}
