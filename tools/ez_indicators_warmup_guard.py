@@ -81,8 +81,9 @@ OUT = ROOT / "data" / "reports" / "indicator_snapshot_health.json"
 ALERT = ROOT / "data" / "reports" / "ALERT_INDICATOR_SNAPSHOT.txt"
 
 # --- heartbeat policy (every bound below is a reason the watchdog KEEPS its kill) -----------------------------
-HB_WHEN_LOG_AGE_S = int(os.environ.get("EZIND_HB_WHEN_LOG_AGE_S", "60"))
-#   Watchdog kills at 120 s of log silence (run_with_watchdog.sh:186). Top up at 60 s: half the budget.
+HB_WHEN_LOG_AGE_S = int(os.environ.get("EZIND_HB_WHEN_LOG_AGE_S", "45"))
+#   Watchdog kills at 120 s of log silence (run_with_watchdog.sh:186). Top up at 45 s, leaving 75 s of margin for
+#   a missed cron minute. MEASURED 2026-10-19 04:0xZ: at 60 s this was too tight — see S1_PROBE_EVERY_S below.
 TF_MAX_GAP_S = int(os.environ.get("EZIND_TF_MAX_GAP_S", "1200"))
 #   Largest MEASURED gap between two warm-up timeframe lines was 712 s (D 01:36:33 -> 4h 01:48:25). 1200 s gives
 #   that 68% headroom and still declares a warm-up that has genuinely stopped progressing dead within 20 min.
@@ -99,6 +100,14 @@ CPU_MIN_DELTA_S = float(os.environ.get("EZIND_CPU_MIN_DELTA_S", "0.05"))
 # --- alert policy --------------------------------------------------------------------------------------------
 SNAPSHOT_STALE_ALERT_S = int(os.environ.get("EZIND_SNAPSHOT_STALE_ALERT_S", "600"))
 S1_FAILOVER_ALERT_S = int(os.environ.get("EZIND_S1_FAILOVER_ALERT_S", "900"))
+S1_PROBE_EVERY_S = int(os.environ.get("EZIND_S1_PROBE_EVERY_S", "300"))
+#   MEASURED 2026-10-19 04:02Z — THE GUARD'S OWN FIRST BUG. A full pass (55 s heartbeat loop + an unconditional
+#   ssh probe of S1) took >60 s, so `v15_lock_run.sh` found its lock held and skipped every other cron minute:
+#   30 runs in 60 minutes, leaving ~70 s holes. With the heartbeat threshold at 60 s a 124 s silence fitted inside
+#   one hole and the watchdog killed the process anyway at 03:45:55 (after 2904 s — far better than the 195-500 s
+#   before the guard, but still a kill). The probe is now throttled and cached so a pass stays well inside a
+#   minute: heartbeat coverage must never depend on how long an ssh round trip takes.
+S1_CACHE = ROOT / "data" / "reports" / ".ezind_s1_probe_cache.json"
 S1_HOST = os.environ.get("EZIND_S1_HOST", "s1-pub")
 S1_STATE = "/home/niels/binance/data/live_failover/state.json"
 S1_MAC_HB = "/home/niels/binance/data/live_failover/mac_data_heartbeat.json"
@@ -290,7 +299,29 @@ def _write_heartbeat(pid, reason):
     return line.strip()
 
 
-def _probe_s1(timeout=25):
+def _probe_s1_cached(timeout=20):
+    """S1's state, re-probed at most every S1_PROBE_EVERY_S and otherwise served from disk.
+
+    Keeps a pass short enough that cron never skips a minute (see S1_PROBE_EVERY_S) and keeps the ssh/CPU
+    footprint on S1 — which is running the backtest fleet — to one tiny read-only python per 5 min.
+    """
+    try:
+        if S1_CACHE.exists() and (time.time() - S1_CACHE.stat().st_mtime) < S1_PROBE_EVERY_S:
+            cached = json.loads(S1_CACHE.read_text())
+            cached["from_cache_age_s"] = round(time.time() - S1_CACHE.stat().st_mtime, 1)
+            return cached
+    except Exception:
+        pass
+    fresh = _probe_s1(timeout=timeout)
+    try:
+        S1_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        S1_CACHE.write_text(json.dumps(fresh, default=str))
+    except Exception:
+        pass
+    return fresh
+
+
+def _probe_s1(timeout=20):
     probe = (
         "python3 -c \"import json,time;"
         "s=json.load(open('%s'));"
@@ -317,7 +348,7 @@ def _probe_s1(timeout=25):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="single check, no internal top-up loop")
-    ap.add_argument("--loop-seconds", type=int, default=55, help="internal top-up window (cron runs us every 60s)")
+    ap.add_argument("--loop-seconds", type=int, default=40, help="internal top-up window (cron runs us every 60s)")
     ap.add_argument("--dry-run", action="store_true", help="never append a heartbeat")
     ap.add_argument("--no-s1", action="store_true", help="skip the ssh probe of S1")
     args = ap.parse_args()
@@ -358,7 +389,7 @@ def main():
             "warm-up cannot complete between kills (run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120)."
         )
 
-    s1 = None if args.no_s1 else _probe_s1()
+    s1 = None if args.no_s1 else _probe_s1_cached()
     if s1 and not s1.get("error"):
         hb_age = (s1.get("now") or 0) - (s1.get("hb_mtime") or 0)
         active_s = (s1.get("now") or 0) - (s1.get("since_epoch") or 0) if s1.get("mode") == "ACTIVE" else 0
