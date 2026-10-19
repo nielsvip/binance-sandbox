@@ -21,6 +21,8 @@ S1 live = `~/binance` on niels. Mac = `/Users/niels/Documents/binance`. Times UT
 12. 🆕 **Stale indicators blocking entries** (`STALE_INDICATORS 91m`). Feeds re-bounced; watch warmup.
 
 ## P2 — supervision / infra
+- 🆕 **S1 OOM: 30/30G used, 0 free.** Top: flz 3.9G, men 3.7G, inf 2.9G, fin 2.4G, ang 1.8G + rankings. OOM-killer prime suspect for indicators crash-burst (20:52-55) and flz/fin deaths. Triage: killed `tradier_rankings.py` (2.5G, stocks closed; RESTART pre-open Tue: `setsid nohup /home/niels/.conda/envs/binance_env_mac/bin/python /home/niels/binance/tradier_rankings.py >> ~/logs/tradier_rankings.log 2>&1 </dev/null &`). Engines' RSS climbs for hours — leak watch open.
+- 🆕 **Orchestrator shm (20:06): NOT a fault.** Server (ez_share_ind.py:97452) healthy, heartbeat unbroken; symptom was a 53s planned-restart outage, self-recovered. No change.
 13. 🆕 **Engines dying on their own** (flz+fin died ~18:12 uncommanded; stocks trb/trc crash-loop every ~10 min). OOM? ban-crash? NOT investigated yet. My own bounces are logged separately — do not confuse.
 14. 🆕 **Supervisor loop starves crypto**: synchronous `s1_failover_start.sh` (up to 240s gate) blocks all later accounts; stocks crash-loop makes it chronic. Single-flight added (active next supervisor start — never signal it: TERM trap kills all traders; HUP restarts unit via cgroup kill).
 15. 🆕 **S1 lease file 3.5h stale** (14:39) + Mac `lease.json` empty; tunnel/SSH flapping (banner timeouts on all new handshakes — use `cm-pulse-s1` master, split pgrep patterns or supervisor sees phantoms).

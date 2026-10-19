@@ -22,6 +22,18 @@ for f in glob.glob("symbols_tr[abc]_*.json"):
         syms |= {str(x).upper() for x in l if str(x).strip()}
     except Exception:
         pass
+# 2026-10-19: also cover HELD and candidate syms (positions outlive the symbol lists;
+# their twin must stay fresh for exits/reentries too — zero-discrepancy rule).
+for f in glob.glob("tr[abc]/*_positions.json") + glob.glob("tr[abc]/reentry_candidates.json"):
+    try:
+        d = json.load(open(f))
+        rows = d if isinstance(d, list) else list(d.keys())
+        for r in rows:
+            s = str(r).split(":")[-1].rsplit("_", 1)[0].upper()
+            if s:
+                syms.add(s)
+    except Exception:
+        pass
 open(sys.argv[1], "w").write("".join(f"{s}.npz\n" for s in sorted(syms)))
 EOF
 n=$(wc -l < "$LIST" | tr -d ' ')

@@ -53,6 +53,27 @@ to finish. The watchdog keeps every one of its teeth for the cases it exists for
 
 So the guard removes ONLY the false positive. It never restarts, kills, or signals anything.
 
+WHAT THIS GUARD DOES *NOT* FIX — MEASURED 2026-10-19 14:00-16:00Z, STATE IT PLAINLY
+-----------------------------------------------------------------------------------
+Steady state is deliberately NOT protected, and steady state can stall. Proven: pid started 14:11:41, warm-up
+done (`[3m]` 14:21:39), saves ran 14:21:46 / 14:23:55 / 14:25:16 ... and then STOPPED at 14:41:03 while the
+process stayed alive; the watchdog killed it at 14:52:37 after "No output for 694s". That kill was CORRECT — the
+snapshot really had stopped advancing — and the restart really did recover it (`[3m]` 15:14:44, saves from
+15:14). Whether the stall was `_save_data`'s hash dedupe returning silently (ez_indicators.py:3752-3756, which
+logs nothing) or a block inside `_save_data` is NOT proven here.
+
+The expensive consequence is the recovery cost, not the kill: every restart pays a 25-47 min warm-up during
+which the snapshot does not advance at all, because `_save_loop` does not exist until all five timeframes finish
+(ez_indicators.py:2926-2930). That blackout is long enough for S1 to escalate. It did: a kill at 14:52:37 ->
+warm-up -> no snapshot until 15:14 made S1's failover agent read the Mac as down and GROW THE TRADING LEASE to
+every venue (lease gen 57, "Mac down while S1 held ['crypto']: grow to all venues", 2026-10-19T14:39:22Z), after
+which S1 ran all five ez_manage accounts and the whole live stack. One 34-minute Mac blackout cost a live
+trading takeover.
+
+So the ordering of remaining work is: (1) land the in-code warm-up heartbeat below so kills stop; (2) make the
+snapshot advance during warm-up, or shorten warm-up, so a kill is cheap; (3) find why steady-state saves stall.
+Until (2) exists, this guard reduces the frequency of the blackout but cannot remove it.
+
 It also reports, every run, to data/reports/indicator_snapshot_health.json, and raises
 data/reports/ALERT_INDICATOR_SNAPSHOT.txt + exit 1 when either half of the chain is broken:
   * the Mac snapshot is older than SNAPSHOT_STALE_ALERT_S                      (the defect above, caught in minutes)

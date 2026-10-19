@@ -46,6 +46,13 @@ def test_no_uncapable_rsync_flag():
                 f"bare `rsync` invocation bypasses the pinned binary: {ln[:120]}"
 
 
+def test_pull_list_covers_held_and_candidate_syms():
+    """Positions outlive the symbol lists — the twin needs their NPZs too."""
+    src = SCRIPT.read_text()
+    assert "reentry_candidates" in src, "pull list must union reentry candidates"
+    assert "_positions.json" in src, "pull list must union held positions"
+
+
 def test_backup_proves_the_bug():
     """The pre-fix script must FAIL this contract (authentic failure, not a tautology)."""
     assert BACKUP.exists(), "pre-fix backup is the failing fixture"
