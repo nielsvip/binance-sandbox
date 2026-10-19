@@ -1,16 +1,37 @@
 {
-  "ang:RENDERUSDT_LONG": {
-    "orderId": "4000001977813685",
-    "stopPrice": 1.765,
-    "entry_sig": "2026-10-19 03:14:02.291000+00:00",
-    "symbol": "RENDERUSDT",
+  "fin:BTCDOMUSDT_LONG": {
+    "orderId": "3000002258205869",
+    "stopPrice": 5575.6,
+    "entry_sig": "2026-10-19 00:12:02.436000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "ang:LTCUSDC_LONG": {
-    "orderId": "4000001977865164",
-    "stopPrice": 58.3,
-    "entry_sig": "2026-10-19 03:43:25.595000+00:00",
-    "symbol": "LTCUSDC",
+  "fin:SNXUSDT_LONG": {
+    "orderId": "3000002259477196",
+    "stopPrice": 0.2106,
+    "entry_sig": "2026-10-19 13:59:13.739000+00:00",
+    "symbol": "SNXUSDT",
     "side": "LONG"
+  },
+  "fin:IOTXUSDT_SHORT": {
+    "orderId": "3000002259477756",
+    "stopPrice": 0.003996,
+    "entry_sig": "2026-10-19 13:59:19.682000+00:00",
+    "symbol": "IOTXUSDT",
+    "side": "SHORT"
+  },
+  "fin:AVAXUSDC_SHORT": {
+    "orderId": "3000002259495123",
+    "stopPrice": 9.817,
+    "entry_sig": "2026-10-19 13:59:21.110000+00:00",
+    "symbol": "AVAXUSDC",
+    "side": "SHORT"
+  },
+  "fin:XLMUSDT_SHORT": {
+    "orderId": "3000002259496335",
+    "stopPrice": 0.17943,
+    "entry_sig": "2026-10-19 13:59:46.974000+00:00",
+    "symbol": "XLMUSDT",
+    "side": "SHORT"
   }
 }
