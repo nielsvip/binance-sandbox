@@ -88,10 +88,13 @@ TF_MAX_GAP_S = int(os.environ.get("EZIND_TF_MAX_GAP_S", "1200"))
 #   that 68% headroom and still declares a warm-up that has genuinely stopped progressing dead within 20 min.
 WARMUP_GRACE_S = int(os.environ.get("EZIND_WARMUP_GRACE_S", "3600"))
 #   A full warm-up measured >30 min. 60 min is generous; past it, protection stops unconditionally.
-CPU_SAMPLE_S = float(os.environ.get("EZIND_CPU_SAMPLE_S", "3.0"))
-CPU_MIN_DELTA_S = float(os.environ.get("EZIND_CPU_MIN_DELTA_S", "0.3"))
-#   ez_indicators runs at 5-100% CPU while computing; 0.3 s of CPU per 3 s wall is a floor a live process clears
-#   easily and a parked/deadlocked one cannot.
+CPU_SAMPLE_S = float(os.environ.get("EZIND_CPU_SAMPLE_S", "10.0"))
+CPU_MIN_DELTA_S = float(os.environ.get("EZIND_CPU_MIN_DELTA_S", "0.05"))
+#   MEASURED 2026-10-19 03:09Z: the warm-up is I/O-bound, not CPU-bound — pid 57405 had burned 29.5 s of CPU in
+#   706 s of wall clock (4%) while legitimately fetching klines for 199 symbols, and a first attempt at a 0.3 s /
+#   3 s floor (10% CPU) rejected that healthy process outright. The CPU check is therefore only a FLOOR against a
+#   fully parked interpreter (a deadlocked process accrues ~0); the real liveness evidence is TF_MAX_GAP_S below,
+#   which is warm-up progress itself, plus the absolute WARMUP_GRACE_S bound.
 
 # --- alert policy --------------------------------------------------------------------------------------------
 SNAPSHOT_STALE_ALERT_S = int(os.environ.get("EZIND_SNAPSHOT_STALE_ALERT_S", "600"))
@@ -140,17 +143,23 @@ def _pid():
         return None
 
 
-def _cpu_seconds(pid):
-    """Cumulative CPU time of pid, in seconds. ps prints [[dd-]hh:]mm:ss[.ff]."""
+def _ps_seconds(pid, keyword):
+    """Parse a ps time column into seconds. macOS prints [[dd-]hh:]mm:ss[.ff].
+
+    2026-10-19: this helper exists because macOS `ps` has NO `etimes` keyword (that is GNU/procps only) — asking
+    for it makes BSD ps print its whole keyword list instead of a number, which silently made the process-age
+    check return None and suppressed every heartbeat. Same class of bug as the missing GNU flock/timeout on this
+    host. `etime` and `cputime` are both BSD keywords and share this one format.
+    """
     if not pid:
         return None
     try:
         raw = subprocess.run(
-            ["ps", "-o", "cputime=", "-p", str(pid)], capture_output=True, text=True, timeout=10
+            ["ps", "-o", f"{keyword}=", "-p", str(pid)], capture_output=True, text=True, timeout=10
         ).stdout.strip()
     except Exception:
         return None
-    if not raw:
+    if not raw or not re.match(r"^\d+[-:.\d]*$", raw):
         return None
     days = 0
     if "-" in raw:
@@ -168,16 +177,12 @@ def _cpu_seconds(pid):
     return total + days * 86400.0
 
 
+def _cpu_seconds(pid):
+    return _ps_seconds(pid, "cputime")
+
+
 def _proc_age_s(pid):
-    if not pid:
-        return None
-    try:
-        raw = subprocess.run(
-            ["ps", "-o", "etimes=", "-p", str(pid)], capture_output=True, text=True, timeout=10
-        ).stdout.strip()
-        return float(raw) if raw else None
-    except Exception:
-        return None
+    return _ps_seconds(pid, "etime")
 
 
 def _scan_log(tail_bytes=512 * 1024):

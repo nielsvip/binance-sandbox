@@ -19,5 +19,33 @@
     "entry_sig": "2026-10-19 02:24:41.976000+00:00",
     "symbol": "RLCUSDT",
     "side": "LONG"
+  },
+  "fin:ALGOUSDT_SHORT": {
+    "orderId": "3000002258444116",
+    "stopPrice": 0.11333,
+    "entry_sig": "2026-10-19 02:53:36.380000+00:00",
+    "symbol": "ALGOUSDT",
+    "side": "SHORT"
+  },
+  "fin:AVAXUSDC_LONG": {
+    "orderId": "3000002258450376",
+    "stopPrice": 9.416,
+    "entry_sig": "2026-10-19 02:57:41.742000+00:00",
+    "symbol": "AVAXUSDC",
+    "side": "LONG"
+  },
+  "fin:MANAUSDT_SHORT": {
+    "orderId": "3000002258450851",
+    "stopPrice": 0.08576,
+    "entry_sig": "2026-10-19 02:58:00.472000+00:00",
+    "symbol": "MANAUSDT",
+    "side": "SHORT"
+  },
+  "fin:DASHUSDT_SHORT": {
+    "orderId": "3000002258451696",
+    "stopPrice": 49.66,
+    "entry_sig": "2026-10-19 02:58:32.591000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "SHORT"
   }
 }
