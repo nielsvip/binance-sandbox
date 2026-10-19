@@ -108,5 +108,58 @@ S1 live = `~/binance` on niels. Mac = `/Users/niels/Documents/binance`. Times UT
     landed in `tools/live_failover_s1.py` mid-edit). All edits here were surgical string replacements, never
     whole-file writes, and Mac↔S1 md5 parity was verified afterwards on all six touched shared files.
 
+## Round 3 — 23:2x–23:4xZ (USER: indicators→S1, where the disk went, best-data-trades, overlap)
+
+31. ✅ **THE DISK: 58.5 GB reclaimed, 30 GB → 89 GB free (94% → 80%).** `backups/` held **68 copies of ONE 1.2 GB
+    SQLite store** (`before_h2h_{crypto,stocks}_<stamp>.db`) = **79 GB**, written hourly by the `:25`/`:55` h2h
+    cycles (`tools/v15_h2h_cycle.sh:94`) with no retention at all. `tools/backup_retention_prune.py` had already
+    diagnosed this on 2026-10-18 ("96.3 GB was 79 hourly copies of one 1.2 GB SQLite store") and **was never
+    scheduled** — the tool existed, the cron line did not. Ran `--apply` (keeps newest 3 per group + anything
+    <6 h + the last snapshot of every day, never a sole copy; audit JSON in `data/reports/backup_retention/`) and
+    installed `# BACKUP_RETENTION_PRUNE` hourly at `:45`, between the two h2h cycles. This is the missing ~65 GB.
+32. ✅ **Mac → S1 live indicator snapshots, continuously** (USER "ez/tradier_indicators rsync to s1 so when it has
+    to take over it has all data (incl positions)"). `tools/mac_market_data_push_s1.sh` existed since 2026-10-15
+    for this request but pushes only the TIMESTAMPED snapshots — which are ez_indicators' HOURLY backups — so S1's
+    seed was up to an hour stale by construction. New `Agent.push_snapshots` (`LF_SNAP_PUSH_S=120`, `-z`) stages
+    `data/latest_market_data.json` + `data/tradier/tradier_indicators_latest.json` into
+    `mac_state/root/data/` every tick while the Mac holds the lease, so `merge_mac_state`'s EXISTING
+    newer-mtime-wins rule hands S1 the Mac's snapshot at takeover only while the Mac's is genuinely fresher — which
+    is "the system with the best data should trade", expressed as data. **Verified: 8.4 MB staged on S1, mtime
+    preserved so the comparison is honest.** Positions were already correct and are untouched: `merge_mac_state`
+    never copies `*_positions.json` (broker is the only source, USER law) and writes identity seeds so held
+    `opened_at` carries.
+    Measured need, with S1's crypto producers ACTIVE: S1's own `latest_market_data.json` was **2838 s** old and its
+    `tradier_indicators_latest.json` **7780 s** old, because S1 runs the same `ez_indicators` and was mid-warm-up.
+33. ✅ **30-minute data overlap on S1** (USER "maybe we should have a 30min overlap if you think that is what it
+    takes?" — yes, and the number is S1's own warm-up). `LF_RECOVER_S` 180 → **1800** in
+    `takeover-timings.conf`, daemon-reloaded, watchdog restarted, verified in the effective environment. At 180 s
+    S1 stood its producers down 3 min after the Mac looked fresh; if the Mac then relapsed — and today it relapsed
+    every few minutes — S1 had to cold-start a 25–47 min warm-up with NO data. Detection stays at 90 s, so this
+    widens only the stand-DOWN, never the reaction.
+34. ✅ **`ez_indicators` kill-loop is BROKEN, proven live.** The `[WARMUP] <tf> n/N` heartbeat emits every 1–2 min
+    (`15m 75/199 … 199/199`, 23:20:55→23:28:56Z), and the last bogus kill was **23:06:39Z — before the fix
+    landed**. The process has now run unkilled since 23:06:48 and is completing a full warm-up for the first time
+    today. NOTE: the `SCRIPT RESTART` banner in the application log is import-time noise, not a restart — judge
+    restarts only from `ez_indicators_watchdog.log`.
+35. 🆕 **SHARED MEMORY: 294–328 ESTABLISHED connections on 127.0.0.1:50005, 150 threads in the server.** The
+    warning fired **3785 times today** with no cause attached because the real exception was captured into a local
+    and discarded. Now surfaced (`shared_mem_safe.last_error()`), and the diagnosis is measured: TCP accepts in
+    **0.00 s** and a FRESH client completes `connect()` + `get_store()` + `health_check()` fine, so nothing is
+    dead — the handshake stalls on a saturated server. Cause is architectural: a `BaseProxy` opens ONE CONNECTION
+    PER THREAD, and the proxy is used from short-lived asyncio worker threads, so each long-lived client
+    accumulates connections (`ez_manage --account fin`: 26 connections in 29 min of life). **Deliberately NOT
+    "fixed" by restarting the server or rewriting multiprocessing internals on a live trading box** — the hot path
+    has documented fallbacks (Redis / market_data files) and the server answers fresh clients. The real fix is
+    thread-local proxy reuse or a server-side connection cap; it needs its own scoped change.
+36. ✅ **`# V15_TRADIER_OPEN` cron line deleted** (USER "delete if necessary"), commented out in place with the
+    full reason. Crontab backed up to `backups/crontab_before_prune_and_tradier_open_202610192326.txt` (139 lines,
+    non-empty-verified before install per the 2026-10-13 crontab-wipe lesson); new crontab 147 lines, all key
+    lines spot-checked present.
+37. ℹ️ **On Mac load: the USER's call is that the Mac has ample RAM to run both ez_ and tradier_, and it does
+    (36 GB).** Item 25 stands as measurement, not as an argument to move trading: the actionable part of it was
+    the DISK (item 31), now fixed. While crypto indicators are stale the engines refuse ENTRIES
+    (`STALE_INDICATORS`) rather than trade on bad data — exits are never gated — so a warm-up blackout costs
+    opportunity, not correctness.
+
 ## Post-lift checklist (~01:23 UTC)
 - [ ] S1 .52 unbanned (no fresh `banned until` lines) · [ ] unpause klines_append · [ ] audit 0 findings · [ ] SUCCESS lines flowing · [ ] Mac failback if healthy · [ ] close 9/10/11/13/14/15.
