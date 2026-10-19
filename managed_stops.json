@@ -1,4 +1,11 @@
 {
+  "ang:VETUSDT_SHORT": {
+    "orderId": "4000001977869275",
+    "stopPrice": 0.006939,
+    "entry_sig": "2026-10-19 03:45:44.370000+00:00",
+    "symbol": "VETUSDT",
+    "side": "SHORT"
+  },
   "ang:RENDERUSDT_LONG": {
     "orderId": "4000001977813685",
     "stopPrice": 1.765,
@@ -12,12 +19,5 @@
     "entry_sig": "2026-10-19 03:43:25.595000+00:00",
     "symbol": "LTCUSDC",
     "side": "LONG"
-  },
-  "ang:VETUSDT_SHORT": {
-    "orderId": "4000001977869275",
-    "stopPrice": 0.006939,
-    "entry_sig": "2026-10-19 03:45:44.370000+00:00",
-    "symbol": "VETUSDT",
-    "side": "SHORT"
   }
 }
