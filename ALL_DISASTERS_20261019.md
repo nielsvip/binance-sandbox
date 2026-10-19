@@ -15,8 +15,8 @@ S1 live = `~/binance` on niels. Mac = `/Users/niels/Documents/binance`. Times UT
 6. ✅ **S1 live missing `published_selection.json`** → all S1 entries refused fail-closed. Backfilled sandbox→live md5-OK.
 7. ✅ **`fetch_klines_api`: TOP-UP ONLY** (`startTime`+small limit; full 1500 cold-start only). Was: 1500 bars for a 1-bar gap.
 8. ✅ **Startup max-history gated** to below-MIN-depth files + breaker-aware (was: unconditional multi-year redownload every restart).
-9. 🆕 **"Marked maxed (1 bars), won't retry 168h".** Thin files wrongly maxed → never repaired. Fix: mark maxed ONLY at/above MIN depth; thin files retry (capped), never 168h silence.
-10. 🆕 **ez_prices CLIP loop** (`CRITICAL_SHRINK 899->540`, 4h floor≥1800 violated). Rules: S1 NEVER clips; Mac 1800→≥1200 only. Badly clipped files rebuilt FROM S1 klines, never refetched. Find the delete/refetch loop.
+9. ✅ **"Marked maxed (1 bars), won't retry 168h".** Root: top-up fetches return 1-3 bars → old condition maxed EVERY fresh file. Now: maxed only when file complete (≥threshold) with nothing newer. (168h gates dead code — `is_symbol_maxed` has no callers.)
+10. ✅ **ez_prices CLIP loop.** Real destroyer = the MERGE (concat+coerce+dedup dropped 1000+ valid rows, BSV 4h 1766→540) → shrink → refetch → bans. Merge now APPEND-ONLY (existing rows untouched, shrink = hard block, floor = min(1200, existing) so young listings pass). Cleanup: S1 NEVER clips; Mac 4h/D floors raised to (1200,1800). 535 thin Mac files pulled from S1 (535→526; rest are young listings complete since listing — correct as-is).
 11. 🆕 **15GB sync skip** (`Remote ... exceeds 15GB, skipping sync`). User: ALWAYS SYNC. Find guard, remove skip (keep warning).
 12. 🆕 **Stale indicators blocking entries** (`STALE_INDICATORS 91m`). Feeds re-bounced; watch warmup.
 

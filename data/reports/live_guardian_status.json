@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-19T20:29:58Z",
+ "ts": "2026-10-19T20:34:49Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -125,109 +125,109 @@
   "fin": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 23169.0
+   "log_age_s": 23460.0
   },
   "men": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 22611.0
+   "log_age_s": 22902.0
   },
   "ang": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 23602.0
+   "log_age_s": 23892.0
   },
   "inf": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 22620.0
+   "log_age_s": 22910.0
   },
   "flz": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 22620.0
+   "log_age_s": 22910.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19141.0
+   "log_age_s": 19431.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19141.0
+   "log_age_s": 19431.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "fin",
    "evidence": "no ez_manage.py --account fin process"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 23169s"
+   "evidence": "ez_manage_fin.log not written for 23460s"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "men",
    "evidence": "no ez_manage.py --account men process"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 22611s"
+   "evidence": "ez_manage_men.log not written for 22902s"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "ang",
    "evidence": "no ez_manage.py --account ang process"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 23602s"
+   "evidence": "ez_manage_ang.log not written for 23892s"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "inf",
    "evidence": "no ez_manage.py --account inf process"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 22620s"
+   "evidence": "ez_manage_inf.log not written for 22910s"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "flz",
    "evidence": "no ez_manage.py --account flz process"
   },
   {
-   "ts": "2026-10-19T20:29:59Z",
+   "ts": "2026-10-19T20:34:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 22620s"
+   "evidence": "ez_manage_flz.log not written for 22910s"
   }
  ],
  "alert_counts": {
@@ -266,5 +266,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.43
+ "sweep_s": 0.44
 }
