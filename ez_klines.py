@@ -437,8 +437,12 @@ async def fetch_missing_klines(missing_bars, auto_confirm=AUTO_CONFIRM):
                     saved_count += 1
                     add_issue(symbol, interval, 'REFRESHED', 'INFO', f'{len(data)} bars fetched (+{added})')
                     fetch_threshold = MIN_KLINES_PER_INTERVAL.get(interval, MIN_KLINES_THRESHOLD)
-                    if len(data) < fetch_threshold and added <= 1:
-                        mark_symbol_maxed(symbol, interval, len(data))
+                    try:
+                        _, _file_total, _ = get_best_klines_file(symbol, interval)
+                    except Exception:
+                        _file_total = 0
+                    if added <= 0 and (_file_total or 0) >= fetch_threshold:
+                        mark_symbol_maxed(symbol, interval, _file_total)  # 2026-10-19: maxed = file COMPLETE and nothing newer (was: top-up fetches of 1-3 bars wrongly maxed thin files for 168h)
             except Exception as e:
                 log(f"Error updating {symbol} {interval}: {e}")
         # Run all fetches concurrently — semaphore + throttle control concurrency

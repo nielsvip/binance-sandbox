@@ -1,81 +1,16 @@
 {
- "generated_utc": "2026-10-19T19:12:00.870835+00:00",
+ "generated_utc": "2026-10-19T20:12:01.307881+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 725,
-  "exit_kept_late": 12,
-  "exit_broken_no_delivery": 690,
-  "entry_promises": 498,
-  "entry_broken_no_delivery": 498,
+  "entry_promises": 492,
+  "entry_broken_no_delivery": 492,
+  "exit_promises": 715,
   "exit_skipped_inflight": 87,
+  "exit_kept_late": 10,
+  "exit_broken_no_delivery": 682,
   "exit_kept_in_bar": 23
  },
  "per_key": {
-  "flz:ZECUSDC_SHORT": {
-   "exit_promises": 5,
-   "exit_kept_late": 1,
-   "exit_broken_no_delivery": 3,
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1,
-   "exit_skipped_inflight": 2,
-   "exit_kept_in_bar": 1
-  },
-  "fin:UNIUSDC_SHORT": {
-   "entry_promises": 5,
-   "entry_broken_no_delivery": 5,
-   "exit_promises": 4,
-   "exit_broken_no_delivery": 4
-  },
-  "fin:MANAUSDT_SHORT": {
-   "exit_promises": 16,
-   "exit_broken_no_delivery": 16,
-   "entry_promises": 8,
-   "entry_broken_no_delivery": 8
-  },
-  "flz:BTCDOMUSDT_LONG": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2
-  },
-  "ang:1000FLOKIUSDT_SHORT": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_promises": 4,
-   "exit_broken_no_delivery": 4
-  },
-  "fin:ATOMUSDT_SHORT": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_promises": 18,
-   "exit_broken_no_delivery": 18
-  },
-  "men:1INCHUSDT_SHORT": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2
-  },
-  "flz:WLDUSDC_SHORT": {
-   "exit_promises": 3,
-   "exit_kept_late": 2,
-   "exit_skipped_inflight": 4,
-   "exit_broken_no_delivery": 1
-  },
-  "ang:1INCHUSDT_SHORT": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2,
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "flz:XRPUSDC_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "men:BTCDOMUSDT_LONG": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
   "fin:XLMUSDT_SHORT": {
    "entry_promises": 3,
    "entry_broken_no_delivery": 3,
@@ -102,6 +37,12 @@
    "entry_promises": 5,
    "entry_broken_no_delivery": 5
   },
+  "flz:ZECUSDC_SHORT": {
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 2,
+   "exit_skipped_inflight": 2,
+   "exit_kept_in_bar": 1
+  },
   "flz:GRAMUSDT_SHORT": {
    "entry_promises": 2,
    "entry_broken_no_delivery": 2,
@@ -117,6 +58,12 @@
    "entry_broken_no_delivery": 1,
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "fin:MANAUSDT_SHORT": {
+   "exit_promises": 15,
+   "exit_broken_no_delivery": 15,
+   "entry_promises": 8,
+   "entry_broken_no_delivery": 8
   },
   "fin:ADAUSDC_SHORT": {
    "entry_promises": 7,
@@ -156,6 +103,12 @@
    "exit_promises": 6,
    "exit_broken_no_delivery": 6
   },
+  "fin:ATOMUSDT_SHORT": {
+   "exit_promises": 18,
+   "exit_broken_no_delivery": 18,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2
+  },
   "ang:STRKUSDT_LONG": {
    "entry_promises": 6,
    "entry_broken_no_delivery": 6,
@@ -176,6 +129,12 @@
    "exit_skipped_inflight": 4
   },
   "ang:BTCDOMUSDT_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "flz:BTCDOMUSDT_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1,
    "entry_promises": 1,
@@ -290,6 +249,12 @@
    "exit_promises": 2,
    "exit_broken_no_delivery": 2
   },
+  "ang:1000FLOKIUSDT_SHORT": {
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2
+  },
   "ang:MINAUSDT_SHORT": {
    "entry_promises": 4,
    "entry_broken_no_delivery": 4,
@@ -362,6 +327,12 @@
    "exit_promises": 2,
    "exit_broken_no_delivery": 2
   },
+  "men:1INCHUSDT_SHORT": {
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2
+  },
   "inf:ZROUSDT_LONG": {
    "entry_promises": 11,
    "entry_broken_no_delivery": 11,
@@ -426,6 +397,12 @@
   "ang:XMRUSDT_LONG": {
    "exit_promises": 1,
    "exit_broken_no_delivery": 1
+  },
+  "fin:UNIUSDC_SHORT": {
+   "entry_promises": 4,
+   "entry_broken_no_delivery": 4,
+   "exit_promises": 3,
+   "exit_broken_no_delivery": 3
   },
   "inf:ETHFIUSDC_LONG": {
    "exit_promises": 23,
@@ -544,6 +521,12 @@
    "exit_broken_no_delivery": 3
   },
   "ang:API3USDT_SHORT": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
+  },
+  "ang:1INCHUSDT_SHORT": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1,
    "exit_promises": 1,
@@ -838,6 +821,12 @@
    "entry_broken_no_delivery": 5,
    "exit_promises": 4,
    "exit_broken_no_delivery": 4
+  },
+  "flz:WLDUSDC_SHORT": {
+   "exit_promises": 2,
+   "exit_skipped_inflight": 4,
+   "exit_kept_late": 1,
+   "exit_broken_no_delivery": 1
   },
   "fin:1INCHUSDT_LONG": {
    "entry_promises": 2,
@@ -1228,166 +1217,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-18 18:45",
-   "late_min": 51.6,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bull",
-   "outcome": "SUCCESS"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "UNIUSDC_SHORT",
-   "kind": "entry",
-   "bar": "10-18 18:30",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_LOWER_HIGH",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "MANAUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-18 18:45",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "WT_LOWER_CROSS_EXIT wt_15m higher wt+price",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-18 19:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "WT_LOWER_CROSS_EXIT wt_1h lower wt+price",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "ang",
-   "sym_side": "1000FLOKIUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-18 18:45",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "B_KZONE",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "ATOMUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-18 19:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_DC4_15M_BREAK",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-18 19:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "DC_BREAKOUT_ENTRY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "1INCHUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-18 18:45",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "DC_BREAKOUT_ENTRY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "UNIUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-18 19:00",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bull",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-18 19:15",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "PPL_TP_g2.45%>=1.50%_stopBE1091.5404",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "WLDUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-18 19:15",
-   "late_min": 22.7,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-short g0.55%",
-   "outcome": "BLOCKED_DISPATCH_TIMEOUT->TIMEOUT_EXIT_F"
-  },
-  {
-   "acct": "ang",
-   "sym_side": "1INCHUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-18 19:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "DAYTRADE_TARGET dc_15m_low +0.10% TARGET_BUF",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "XRPUSDC_SHORT",
-   "kind": "exit",
-   "bar": "10-18 19:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "TECHNICAL_EXIT dc_1h_low",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_SHORT",
-   "kind": "entry",
-   "bar": "10-18 19:30",
-   "late_min": null,
-   "action": "AUGMENT",
-   "reason": "HAIKU_WINNER_AUG_3.5pct",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "BTCDOMUSDT_LONG",
-   "kind": "exit",
-   "bar": "10-18 19:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "WT_LOWER_CROSS_EXIT wt_1h lower wt+price",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "ang",
-   "sym_side": "1000FLOKIUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-18 19:15",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "SATOSHIT_EXIT_PARTIAL 0.70",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "fin",
    "sym_side": "XLMUSDT_SHORT",
