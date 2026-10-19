@@ -12562,7 +12562,7 @@ class WebSocketManager:
         return aiohttp.ClientSession(connector=connector, timeout=timeout)
 
     async def start(self):
-        self.client = Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10})
+        self.client = _odg.wrap_binance_client(Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10}), "wsmulti", cfg=getattr(self, "config", None), logger=logger)  # 2026-10-19 egress bind: time-sync/listen-key client takes the same BINANCE_LOCAL_IP clean path (was unbound -> banned .52)
         self.sync_binance_time()
         self.session = await self._init_session()
         # User-data WS owned by ez_positions_service.WebSocketManager (canonical). Binance

@@ -302,12 +302,25 @@ async def fetch_klines_api(symbol, interval, semaphore, session):
         # API endpoint
         url = f"https://fapi.binance.com/fapi/v1/klines"
 
-        # Parameters - fetch last 1500 bars
+        # USER 2026-10-19 (never-stop-trading weight triage): TOP-UP ONLY. A full limit=1500 pull (top weight tier)
+        # for a 1-bar gap banned the shared egress IP repeatedly (escalating -1003s); cold files still bootstrap 1500 once.
+        _start, _lim = None, 1500
+        try:
+            _, _, _latest_dt = get_best_klines_file(symbol, interval)
+            if _latest_dt is not None:
+                _last_ms = int(_latest_dt.astimezone(timezone.utc).timestamp() * 1000)
+                _step_ms = int(interval_minutes.get(interval, 60) * 60 * 1000)
+                _miss = max(0, int((int(datetime.now(timezone.utc).timestamp() * 1000) - _last_ms) // max(1, _step_ms)))
+                _start, _lim = _last_ms + 1, int(min(1500, max(10, _miss + 5)))
+        except Exception:
+            _start, _lim = None, 1500
         params = {
             'symbol': symbol,
             'interval': binance_interval,
-            'limit': 1500
+            'limit': _lim
         }
+        if _start is not None:
+            params['startTime'] = _start
 
         await throttle_api_request()
         if semaphore:
