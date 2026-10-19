@@ -1,51 +1,36 @@
 {
- "at": "2026-10-19T09:11:38Z",
+ "at": "2026-10-19T11:11:35Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
-   "flat_or_worse": 0,
-   "unknown": 0,
-   "boards_running": [],
-   "mem_avail_mb": 22226,
-   "load1": 15.8,
-   "nproc": 16,
-   "slots": "1/6",
-   "binding_reason": "scheduler mem guard (disk 35640 MB, mem 18418 MB, est_pair 12000 MB) \u2014 slots 1/6",
-   "error": null,
-   "published": [
-    {
-     "symside": "XOM_LONG",
-     "at": "2026-10-19T09:10:52Z",
-     "baseline": 12.458648686694149,
-     "final": 14.408618024455702,
-     "state": "improved"
-    }
-   ],
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": null,
+   "flat_or_worse": null,
+   "unknown": null,
+   "boards_running": null,
+   "mem_avail_mb": null,
+   "load1": null,
+   "nproc": null,
+   "slots": null,
+   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n",
+   "published": null,
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.4,
-   "last_improved_symside": "XOM_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 11.2,
-   "improved_gap_min_max_24h": 94.2,
-   "improved_finishes_24h": 27,
-   "board_cpu_s_median_24h": 1153.5,
-   "board_wall_s_median_24h": 519.1977088451385,
-   "board_cores": 0.0,
-   "nonboard_cores_competing": 2.22,
-   "nonboard_cores_niced": 7.99,
-   "cores_by_bucket": {
-    "other": 0.11,
-    "klines_append": 0.96,
-    "live_helpers": 1.15
-   },
-   "cores_by_bucket_niced": {
-    "klines_vault": 1.99,
-    "other": 6.0
-   }
+   "minutes_since_last_improved": null,
+   "last_improved_symside": null,
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": null,
+   "improved_gap_min_max_24h": null,
+   "improved_finishes_24h": null,
+   "board_cpu_s_median_24h": null,
+   "board_wall_s_median_24h": null,
+   "board_cores": null,
+   "nonboard_cores_competing": null,
+   "nonboard_cores_niced": null,
+   "cores_by_bucket": null,
+   "cores_by_bucket_niced": null
   },
   "s2": {
    "improved": 0,
@@ -56,40 +41,39 @@
    "boards_running": [
     "ADP_SHORT",
     "ALKT_SHORT",
-    "APA_SHORT",
-    "HOOD_LONG",
-    "NVDA_SHORT"
+    "APA_SHORT"
    ],
-   "mem_avail_mb": 10891,
-   "load1": 12.05,
+   "mem_avail_mb": 16936,
+   "load1": 5.8,
    "nproc": 16,
-   "slots": "3/8",
-   "binding_reason": "scheduler mem guard (disk 50555 MB, mem 18269 MB, est_pair 12000 MB) \u2014 slots 3/8",
+   "slots": null,
+   "binding_reason": "board CPU DEMAND, not host capacity: 3 running sides pull only 5.8 cores (1.93 core/side) of 16.0 usable -> 11.6 boards/h. 12/h needs 6.0 board-cores = 3 sides at this per-side draw (niced filler 0 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
    "error": null,
    "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 3.2,
+   "minutes_since_last_improved": 3.3,
    "last_improved_symside": "ALKT_SHORT",
    "cadence_ok": true,
-   "improved_gap_min_median_24h": 13.3,
+   "improved_gap_min_median_24h": 14.6,
    "improved_gap_min_max_24h": 159.5,
-   "improved_finishes_24h": 69,
-   "board_cpu_s_median_24h": 1851.1,
-   "board_wall_s_median_24h": 571.6017799377441,
-   "board_cores": 10.01,
-   "nonboard_cores_competing": 0,
-   "nonboard_cores_niced": 1.0,
+   "improved_finishes_24h": 65,
+   "board_cpu_s_median_24h": 1807.3,
+   "board_wall_s_median_24h": 565.3421540260315,
+   "board_cores": 5.8,
+   "nonboard_cores_competing": 0.03,
+   "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 10.01
+    "other": 0.03,
+    "boards": 5.8
    },
-   "cores_by_bucket_niced": {
-    "other": 1.0
-   }
+   "cores_by_bucket_niced": {}
   }
  },
  "under_target": [
   "s1",
   "s2"
  ],
- "cadence_breach": []
+ "cadence_breach": [
+  "s1"
+ ]
 }

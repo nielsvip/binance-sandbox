@@ -1,0 +1,92 @@
+{
+ "window_from": "10-19 10:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "dictated_but_no_account_traded_it": 40,
+  "NOT_FILLED": 2,
+  "EXTRA": 3,
+  "FILLED_ON_BAR": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "BNBUSDC_LONG",
+   "dictated_bar": "10-19 10:15",
+   "dictated": "REDUCE",
+   "dictated_reason": "REGIME_REDUCE",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "flz",
+   "sym_side": "BNBUSDC_LONG",
+   "dictated_bar": "10-19 10:30",
+   "dictated": "REDUCE",
+   "dictated_reason": "REGIME_REDUCE",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "flz",
+   "sym_side": "BNBUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 10:17",
+   "actual": "AUGMENT",
+   "actual_reason": "WT_CROSS_EXIT_1h_bear |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DOGEUSDC_LONG",
+   "dictated_bar": "10-19 10:15",
+   "dictated": "CLOSE",
+   "dictated_reason": "UNCOND_DC_LOW_15M",
+   "actual_at": "10-19 10:31",
+   "actual": "REDUCE",
+   "actual_reason": "MAKER_PROFIT_EXIT_FIXED_STOP_LONG_px0.078770_lvl0.078812_g-0.53",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "DOGEUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 10:17",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 10:17",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}
