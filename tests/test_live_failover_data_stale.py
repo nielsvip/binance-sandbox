@@ -111,3 +111,52 @@ def test_s1_honours_new_kinds():
     assert s1.NT_NEED["positions_stale"] == float(os.environ.get("LF_NT_POSITIONS_S", "0"))
     assert set(s1.NT_NEED) >= {"broker_unreachable", "order_path_dead", "traders_dead",
                                "account_dead", "indicators_stale", "positions_stale"}
+
+
+def _sacct(alive=1, dead=False, bad=False):
+    return {"trader_alive": alive, "order_path_dead": dead, "broker_unreachable": bad,
+            "orders_submitted_window": 0, "last_order_submitted_age_s": None}
+
+
+def test_single_stock_account_order_dead_takes_venue():
+    import live_failover_s1 as s1
+    acc = {"trb": _sacct(dead=True), "trc": _sacct(), "tra": _sacct()}
+    kinds, reasons, named = s1.stock_single_dead(acc, {}, T0)
+    assert kinds == ["stock_account_dead"] and named == ["trb"], (kinds, named)
+    assert "trb" in reasons[0] and "trc" in reasons[0]
+
+
+def test_all_stock_accounts_dead_is_not_single():
+    import live_failover_s1 as s1
+    acc = {"trb": _sacct(dead=True), "trc": _sacct(dead=True), "tra": _sacct(dead=True)}
+    kinds, _, named = s1.stock_single_dead(acc, {}, T0)
+    assert kinds == [] and named == [], (kinds, named)
+
+
+def test_vanished_engine_needs_dwell_then_fires():
+    import live_failover_s1 as s1
+    acc = {"trb": _sacct(alive=0), "trc": _sacct(), "tra": _sacct()}
+    ms = {}
+    kinds, _, _ = s1.stock_single_dead(acc, ms, T0)
+    assert kinds == [], kinds
+    kinds, reasons, named = s1.stock_single_dead(acc, ms, T0 + 241)
+    assert kinds == ["stock_account_dead"] and named == ["trb"], (kinds, named)
+
+
+def test_vanished_engine_recovers_and_restarts_timer():
+    import live_failover_s1 as s1
+    acc = {"trb": _sacct(alive=0), "trc": _sacct(), "tra": _sacct()}
+    ms = {}
+    s1.stock_single_dead(acc, ms, T0)
+    whole = {"trb": _sacct(), "trc": _sacct(), "tra": _sacct()}
+    kinds, _, _ = s1.stock_single_dead(whole, ms, T0 + 100)
+    assert kinds == [] and ms == {}, (kinds, ms)
+    kinds, _, _ = s1.stock_single_dead(acc, ms, T0 + 200)
+    assert kinds == [], kinds
+
+
+def test_all_vanished_is_not_single():
+    import live_failover_s1 as s1
+    acc = {a: _sacct(alive=0) for a in ("trb", "trc", "tra")}
+    kinds, _, _ = s1.stock_single_dead(acc, {}, T0 + 9999)
+    assert kinds == [], kinds

@@ -98,7 +98,52 @@ NT_POS_S = float(os.environ.get("LF_NT_POSITIONS_S", "0"))  # 2026-10-19 USER ("
 # positions_stale kind (oldest per-loop position file per venue older than LF_POSITIONS_STALE_S=600 s — a wedged
 # writer loop no engine/broker kind can see) carries its own bar; TAKEOVER_CONFIRM still gates the move.
 NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S,
-           "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S}
+           "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S, "stock_account_dead": 0.0}
+STOCK_ACCT_MISSING_S = float(os.environ.get("LF_STOCK_ACCT_MISSING_S", "240"))  # S1-side dwell for a
+# vanished single stock engine (no Mac-side age exists for a dead process; 240 s clears ordinary restarts,
+# mirroring LF_ACCT_DEAD_S on crypto).
+
+
+def stock_single_dead(accounts, miss_state, now):
+    """S1-side derivation: ONE stock account dead while its siblings are fine.
+
+    2026-10-19 USER ("if any account fails it should be taken over by s1 ... If trb fails tradier_
+    has to take over on s1 immediately"): Mac-side order_path_dead needs ORDER_DEAD_FRAC=0.5 of the
+    three stock accounts, so one dead account (trb stalls while trc/tra submit) was invisible to S1
+    forever — the crypto blind spot account_dead closed on 10-16, unmirrored on stocks. Derived HERE
+    (not in common.py) from the per-account heartbeat dict Mac already ships.
+    Two evidences, one kind:
+      A. Mac-flagged order_path_dead on account(s) while a sibling shows NO distress (alive, no
+         order_dead, no broker_bad — quiet-but-healthy counts; distress isolated = single pathology).
+      B. engine process vanished on account(s) while siblings live — S1-side timer in miss_state
+         (restart-flap guard, STOCK_ACCT_MISSING_S); timers reset the tick every sibling set is whole.
+    Returns (kinds, reasons, named) — kinds is [] or ["stock_account_dead"]. Pure: fully testable.
+    """
+    accounts = accounts or {}
+    alive = sorted(a for a, v in accounts.items() if isinstance(v, dict) and int(v.get("trader_alive") or 0) > 0)
+    missing = sorted(a for a in accounts if a not in alive)
+    for a in list(miss_state):
+        if a not in missing:
+            miss_state.pop(a, None)
+    flagged = sorted(a for a, v in accounts.items() if isinstance(v, dict) and v.get("order_path_dead"))
+    calm = sorted(a for a, v in accounts.items()
+                  if isinstance(v, dict) and a not in flagged and int(v.get("trader_alive") or 0) > 0
+                  and not v.get("order_path_dead") and not v.get("broker_unreachable"))
+    if flagged and calm:
+        return (["stock_account_dead"],
+                [f"stock_account_dead ({','.join(flagged)}) order path dead with stalls/lag while siblings ({','.join(calm)}) show no distress — isolated single-account pathology"],
+                flagged)
+    if missing and alive:
+        for a in missing:
+            miss_state.setdefault(a, now)
+        ready = sorted(a for a in missing if now - float(miss_state.get(a, now)) >= STOCK_ACCT_MISSING_S)
+        if ready:
+            return (["stock_account_dead"],
+                    [f"stock_account_dead ({','.join(ready)}) engine vanished while siblings ({','.join(alive)}) live for >= {int(STOCK_ACCT_MISSING_S)}s"],
+                    ready)
+    else:
+        miss_state.clear()
+    return ([], [], [])
 STATE_CHECK = Path(__file__).resolve().parent / "live_failover_state_check.py"
 
 
@@ -449,6 +494,11 @@ class Watchdog:
             st = self.state["not_trading"].setdefault(venue, {})
             reading = health.get(venue) or {}
             kinds = [k for k in reading.get("kinds") or [] if k in NT_NEED and not (reading.get("fenced") and k == "traders_dead")]
+            if venue == "stocks" and hb and reading.get("applicable") and not reading.get("fenced"):
+                miss = self.state.setdefault("stock_acct_missing", {})
+                extra, xreasons, _named = stock_single_dead(reading.get("accounts"), miss, now)
+                kinds = kinds + [k for k in extra if k not in kinds]
+                reading = dict(reading, reasons=list(reading.get("reasons") or []) + xreasons)
             bad = bool(hb) and bool(reading.get("applicable")) and bool(kinds)
             if bad:
                 st["since"] = st.get("since") or now
