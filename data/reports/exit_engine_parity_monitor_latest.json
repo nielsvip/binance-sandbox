@@ -1,21 +1,21 @@
 {
- "now": "2026-10-19T14:53:02.970659+00:00",
+ "now": "2026-10-19T16:13:18.472998+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 2288,
+ "n_exit_rows": 2235,
  "last_exit_ts": "2026-10-19T14:11:09.365169+00:00",
  "n_leaks": 0,
  "n_gate_on": 37,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 291,
+ "n_unmapped": 261,
  "n_unverified": 0,
- "since": "2026-10-17T14:53:02.970659+00:00",
+ "since": "2026-10-17T16:13:18.472998+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1455,
-  "REDUCE": 261,
+  "REDUCE": 251,
+  "OPEN": 1442,
   "CLOSE": 244
  },
- "native_rows": 328,
+ "native_rows": 298,
  "unverified_by_family": {},
  "leaks_by_family": {},
  "leak_keys": {},
@@ -25,13 +25,13 @@
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
-  "FIXED_STOP_LONG": 188,
-  "FIXED_STOP_SHORT": 102,
+  "FIXED_STOP_LONG": 159,
+  "FIXED_STOP_SHORT": 101,
   "BB_TAKE_1h_g5.70": 1
  },
  "actions": {
-  "OPEN": 1455,
-  "CLOSE": 572,
-  "REDUCE": 261
+  "REDUCE": 251,
+  "OPEN": 1442,
+  "CLOSE": 542
  }
 }
