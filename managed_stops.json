@@ -1,44 +1,30 @@
 {
-  "ang:RLCUSDT_LONG": {
-    "orderId": "4000001977796078",
-    "stopPrice": 0.7319,
-    "entry_sig": "2026-10-19 02:59:53.917000+00:00",
-    "symbol": "RLCUSDT",
+  "fin:BTCDOMUSDT_LONG": {
+    "orderId": "3000002258205869",
+    "stopPrice": 5575.6,
+    "entry_sig": "2026-10-19 00:12:02.436000+00:00",
+    "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "ang:RENDERUSDT_LONG": {
-    "orderId": "4000001977813685",
-    "stopPrice": 1.765,
-    "entry_sig": "2026-10-19 03:14:02.291000+00:00",
-    "symbol": "RENDERUSDT",
-    "side": "LONG"
-  },
-  "ang:FARTCOINUSDT_SHORT": {
-    "orderId": "4000001977842493",
-    "stopPrice": 0.1474,
-    "entry_sig": "2026-10-19 03:30:14.863000+00:00",
-    "symbol": "FARTCOINUSDT",
-    "side": "SHORT"
-  },
-  "ang:COTIUSDT_SHORT": {
-    "orderId": "4000001977844020",
-    "stopPrice": 0.010976,
-    "entry_sig": "2026-10-19 03:31:00.475000+00:00",
+  "fin:COTIUSDT_SHORT": {
+    "orderId": "3000002258380202",
+    "stopPrice": 0.010973,
+    "entry_sig": "2026-10-19 02:08:42.700000+00:00",
     "symbol": "COTIUSDT",
     "side": "SHORT"
   },
-  "ang:LTCUSDC_LONG": {
-    "orderId": "4000001977865164",
-    "stopPrice": 58.3,
-    "entry_sig": "2026-10-19 03:43:25.595000+00:00",
-    "symbol": "LTCUSDC",
-    "side": "LONG"
+  "fin:MANAUSDT_SHORT": {
+    "orderId": "3000002258450851",
+    "stopPrice": 0.08576,
+    "entry_sig": "2026-10-19 02:58:00.472000+00:00",
+    "symbol": "MANAUSDT",
+    "side": "SHORT"
   },
-  "ang:VETUSDT_SHORT": {
-    "orderId": "4000001977869275",
-    "stopPrice": 0.006939,
-    "entry_sig": "2026-10-19 03:45:44.370000+00:00",
-    "symbol": "VETUSDT",
+  "fin:DASHUSDT_SHORT": {
+    "orderId": "3000002258451696",
+    "stopPrice": 49.66,
+    "entry_sig": "2026-10-19 02:58:32.591000+00:00",
+    "symbol": "DASHUSDT",
     "side": "SHORT"
   }
 }
