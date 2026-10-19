@@ -1,69 +1,32 @@
 {
- "generated_at": "2026-10-19 05:35 UTC",
- "total_capital_usd": 29.47,
+ "generated_at": "2026-10-19 05:50 UTC",
+ "total_capital_usd": 11.19,
  "tier_capital": {
   "A": 0.0,
-  "B": 9.15,
-  "C": 20.32
+  "B": 0.0,
+  "C": 11.19
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 3
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:RENDERUSDT_LONG",
-  "ang:FARTCOINUSDT_SHORT",
-  "ang:LTCUSDC_LONG"
+  "fin:BTCDOMUSDT_LONG"
  ],
- "mediocre": [
-  "ang:VETUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:LTCUSDC_LONG",
-   "symbol": "LTCUSDC",
-   "account": "ang",
-   "value_usd": 12.51,
-   "gain_pct": 0.472,
-   "tier": "C",
-   "perf_mult": 0.33,
-   "amt": 0.21,
-   "mark": 59.59
-  },
-  {
-   "pk": "ang:VETUSDT_SHORT",
-   "symbol": "VETUSDT",
-   "account": "ang",
-   "value_usd": 9.15,
-   "gain_pct": -0.272,
-   "tier": "B",
-   "perf_mult": 0.32,
-   "amt": 1341.0,
-   "mark": 0.00682149
-  },
-  {
-   "pk": "ang:RENDERUSDT_LONG",
-   "symbol": "RENDERUSDT",
-   "account": "ang",
-   "value_usd": 5.95,
-   "gain_pct": -0.798,
-   "tier": "C",
-   "perf_mult": 0.38,
-   "amt": 3.3,
-   "mark": 1.8025
-  },
-  {
-   "pk": "ang:FARTCOINUSDT_SHORT",
-   "symbol": "FARTCOINUSDT",
-   "account": "ang",
-   "value_usd": 1.86,
-   "gain_pct": -0.411,
+   "pk": "fin:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "fin",
+   "value_usd": 11.19,
+   "gain_pct": -0.13,
    "tier": "C",
    "perf_mult": 0.26,
-   "amt": 12.7,
-   "mark": 0.1465
+   "amt": 0.002,
+   "mark": 5593.40812089
   }
  ]
 }
