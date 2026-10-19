@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-19 12:47:33 UTC
+# Copilot Status — 2026-10-19 12:52:39 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T12:26:06
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T12:28:09
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T12:30:18
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T12:32:32
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T12:34:52
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T12:41:04
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T12:43:07
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T12:45:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T12:49:23
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T12:51:26
 
 ## Missed Trades (trader comparison)
 
@@ -38,7 +38,7 @@ _None_
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
 - HELD: **AMAT** SHORT (tradier) peak +4.4%, now +3.9%
 - HELD: **RRC** LONG (tradier) peak +4.1%, now +1.7%
-- HELD: **GRAMUSDT** SHORT (crypto) peak +4.0%, now +0.4%
+- HELD: **GRAMUSDT** SHORT (crypto) peak +4.0%, now +0.3%
 
 - WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
 - WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 0m ago
