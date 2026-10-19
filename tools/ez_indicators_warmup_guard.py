@@ -61,6 +61,26 @@ data/reports/ALERT_INDICATOR_SNAPSHOT.txt + exit 1 when either half of the chain
 
 Read-only except for the heartbeat line and its own report files.
 
+WHY THIS LIVES OUTSIDE ez_indicators.py, AND THE IN-CODE FIX STILL OWED
+-----------------------------------------------------------------------
+Both files that carry the defect are LOCKED — `ez_indicators.py` (LOCKED_FILES.md:372) and
+`run_with_watchdog.sh` (LOCKED_FILES.md:388, :537) — and CLAUDE.md STEP 0b allows an edit only when the USER says
+"unlock <file>" in the same message. That did not happen, so neither was touched. This guard is a complete,
+tested fix for the kill loop, but it is an external one: it depends on a cron staying installed.
+
+THE PERMANENT IN-CODE FIX, for whenever the operator unlocks it — ONE addition, no behaviour change, and it is the
+pattern this repo has already used for exactly this failure: `run_with_watchdog.sh:197` records that
+`tradier_rankings` was SIGKILLed 67x/day because one synchronous loop "logged NOTHING", and the fix was "a progress
+heartbeat was added to the loop". The same is owed here — inside `_process_timeframe` (or the warm-up loop at
+ez_indicators.py:2926), emit one INFO line every N symbols, e.g.:
+
+    if processed % 25 == 0:
+        logger.info(f"[WARMUP] {timeframe} {processed}/{len(self.symbols)}")
+
+That makes ez_indicators self-sufficient under the existing 120 s timeout, needs no cron, and lets this guard fall
+back to being pure detection. Until then the heartbeat here is load-bearing: DO NOT remove the cron line
+(`# EZIND_WARMUP_GUARD`) without landing that change first.
+
 Usage:
     tools/ez_indicators_warmup_guard.py                 # one pass + internal top-up loop (cron: every minute)
     tools/ez_indicators_warmup_guard.py --once          # single check, no loop (for tests/manual)
