@@ -74,6 +74,7 @@ Autosave via launchd commits git every 15min. `/backups/` = ONLY reliable histor
 - **NEVER** present backtest from reimplemented logic. Only real `process_position()`, `check_entry/exit_candidates()` produce valid numbers.
 - **NEVER** inflate/extrapolate/cherry-pick. Report exactly what code produced.
 - **NEVER** cover up errors. Say "I made an error in X" immediately.
+- **NEVER give an old test a newer date (USER 2026-10-18: "deceiving which is lying which is forbidden").** A board's date must be the date its CELLS were computed, never the date it was re-published, re-stamped, renamed or resumed. The truth source is the `v15_delta_log` eval `ts` for that sym_side, never a file mtime. A resume that returns early (`[spec-fill] workbook complete … returning early`) publishes OLD cells — it may not be presented as today's result. Audit: `tools/board_vintage_audit.py --host s1-int --host s2 --since <ISO>` (reports only; re-stamping published sheets is itself the forbidden act). Measured 2026-10-19: 827 of 3,284 boards wore a date their cells did not back, worst 323 h, because the round could not roll for 8 days.
 - **NEVER** blame external systems before exhausting code-level causes.
 
 ---

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-19 00:23:21 UTC
+# Copilot Status — 2026-10-19 00:28:24 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,9 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T00:02:08
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T00:04:11
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T00:06:33
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T00:08:49
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T00:10:54
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T00:12:58
@@ -16,6 +13,9 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T00:17:08
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T00:19:25
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T00:21:32
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T00:23:41
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T00:25:51
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T00:27:53
 
 ## Missed Trades (trader comparison)
 
@@ -27,18 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 18 | **Watching for reentry:** 3 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +0.1%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
+- HELD: **SANDUSDT** SHORT (crypto) peak +5.1%, now +0.1%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
 - HELD: **CLS** LONG (tradier) peak +4.7%, now +-3.0%
 - HELD: **ORCL** SHORT (tradier) peak +4.7%, now +4.4%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +3.1%
 - HELD: **AMAT** SHORT (tradier) peak +4.4%, now +3.9%
-- HELD: **RRC** LONG (tradier) peak +4.1%, now +1.7%
-- HELD: **ABBV** LONG (tradier) peak +3.7%, now +1.6%
 
 - WATCHING: **CHRUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
 - WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
@@ -49,8 +49,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
+- [MEDIUM] ez_prices.py running but log stale (11min)
