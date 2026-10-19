@@ -28465,9 +28465,10 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                     pass
                 return f"SKIP_LIVE_HOLDS_{_pk}"
             _vx_sent = False
-            for _a in await __import__("positions_truth").offloop_serialized(
-                _vx.take, _sym, _side, time.time(), ("OPEN",)
-            ):  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT)
+            _taken, _snap = await __import__("positions_truth").offloop_serialized(
+                _vx.take_plus, _sym, _side, time.time(), ("OPEN",)
+            )  # 2026-10-06 director: off the event loop (men PAU_TIMEOUT); 2026-10-19: single acquisition — _snap reuses the same bar snapshot for converge below instead of a second serialized eval
+            for _a in _taken:
                 _px = safe_fetch_float(_a.get("vec_price"), 0.0)
                 _act, _oside, _qty, _full = _vx.order_args(_a, _side, _amt, _px)
                 try:
@@ -28505,7 +28506,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … EXIT FAST AND REENTER FAST" +
                 # "vector has to have the 100% guarantee so when live follows vector it also has": live follows the vec POSITION,
                 # not only its one-shot OPEN event. Vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> open now.
-                _cv = await __import__("positions_truth").offloop_serialized(_vx.actions_at, _sym, _side, time.time())  # 2026-10-14: off the event loop (live_klines rebuild ~20 s)
+                _cv = _snap  # 2026-10-19: reuse the take_plus snapshot (same bar, no second serialized eval); 2026-10-14 offloop rationale still holds for the take_plus acquisition above
                 if _cv.get("status") == "OK" and _cv.get("vec_holds") is True and _vx.owned_fresh(_pk):
                     # 2026-10-13 men EGLD double open: a twin OPEN dispatched 22:54:54 was still in flight (local still flat) when
                     # converge fired 22:55:26. owned_add() runs BEFORE every twin OPEN is sent -> fresh-owned = an OPEN is in flight/recent.
