@@ -92,6 +92,47 @@ def test_timeout_of_a_flat_key_does_not_drop_a_held_key_result():
     assert out[0][0] is False and "BLOCKED_DISPATCH_TIMEOUT" in str(out[0][1])
 
 
+def test_entry_label_evaluates_flat_keys_before_held_keys():
+    """ENTRY sweep: a held key unconditionally skips (SKIP_LIVE_HOLDS) after a full serial eval, so flat keys go first.
+
+    USER 2026-10-19 unlock-and-fix: ang/men/fin burned tens of thousands of BLOCKED_DISPATCH_TIMEOUT on ENTRY while held
+    keys spent the serial offloop budget ahead of real entries. Exits keep held-first (test above); kill switch still wins.
+    """
+    _set_holders({"ENJUSDT_LONG"})
+    started = []
+
+    def mk(name):
+        async def fn():
+            started.append(name)
+            await asyncio.sleep(0.01)
+            return f"res:{name}"
+
+        return fn
+
+    calls = [("men:ENJUSDT_LONG", mk("men:ENJUSDT_LONG")), ("men:FLATA_SHORT", mk("men:FLATA_SHORT")),
+             ("men:FLATB_LONG", mk("men:FLATB_LONG"))]
+    out = asyncio.run(VD.run_all(calls, limit=1, timeout_s=5.0, label="VEC_EXACT_ENTRY"))
+    assert started[:2] == ["men:FLATA_SHORT", "men:FLATB_LONG"], started
+    assert [r[1] for r in out] == ["res:men:ENJUSDT_LONG", "res:men:FLATA_SHORT", "res:men:FLATB_LONG"]
+
+
+def test_exit_label_keeps_held_first():
+    _set_holders({"ENJUSDT_LONG"})
+    started = []
+
+    def mk(name):
+        async def fn():
+            started.append(name)
+            await asyncio.sleep(0.01)
+            return f"res:{name}"
+
+        return fn
+
+    calls = [("men:FLATA_SHORT", mk("men:FLATA_SHORT")), ("men:ENJUSDT_LONG", mk("men:ENJUSDT_LONG"))]
+    asyncio.run(VD.run_all(calls, limit=1, timeout_s=5.0, label="VEC_EXACT_EXIT"))
+    assert started[0] == "men:ENJUSDT_LONG", started
+
+
 def test_holders_file_shape_is_what_the_writer_produces():
     """The registry this reads is data/open_position_sym_sides.json: {"at":…, "sym_sides":[…]}."""
     p = ROOT / "data" / "open_position_sym_sides.json"
