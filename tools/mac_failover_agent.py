@@ -27,6 +27,7 @@ com.niels.live-failover-agent (KeepAlive). Every LF_TICK_S (15 s):
    A holder=s1 lease may cover only some venues (lease "venues"): only those venues' gated traders are fenced.
 Fixtures/tests: LF_BASE, LF_STAGE, LF_NO_SSH=1, LF_REMOTE_DIR, LF_LOGDIR.
 """
+import glob
 import json
 import os
 import signal
@@ -56,6 +57,18 @@ STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
 # fired a FIXED_STOP close on the same account: two hosts, one position. In this test no breach happened on the Mac
 # (0 breaches 19:27-19:39Z) so nothing double-fired, but the path was open. The fence now closes it.
 GATED = ("ez_manage.py", "tradier_manage.py", "ez_positions_watchdog.py", "ez_positions.py", "ez_copilot.py", "ez_reentry_daemon.py", "tradier_positions.py", "ez_positions_service_main.py", "ez_positions_realtime.py")
+# 2026-10-19 USER ("s1 ... instantly takes over whenever macbook is not trading or has old indicators"):
+# S1 decides takeovers from trading_health kinds, but the two data-freshness signals that stranded
+# 2026-10-19's stock entries (160/178 NPZs Friday-frozen -> 285 VEC_EXACT_STALE_FALLBACK, one open all
+# morning) were never kinds. Measured HERE — the Mac owns the files, S1 must not infer them — and
+# shipped inside trading_health[venue], so live_failover_s1.not_trading() picks them up via NT_NEED
+# with no common.py change. Advisory + fail-closed: any error leaves existing kinds untouched.
+LF_INDICATORS_STALE_S = float(os.environ.get("LF_INDICATORS_STALE_S", "7200"))
+LF_INDICATORS_STALE_FRAC = float(os.environ.get("LF_INDICATORS_STALE_FRAC", "0.5"))
+LF_INDICATORS_MIN_N = int(os.environ.get("LF_INDICATORS_MIN_N", "10"))
+LF_POSITIONS_STALE_S = float(os.environ.get("LF_POSITIONS_STALE_S", "600"))
+_STOCK_POSITION_FILES = ("state.json", "long_positions.json")
+_CRYPTO_POSITION_FILES = ("long_positions.json", "short_positions.json")
 TRADER_RX = r"python[^ ]* .*(" + "|".join(name.replace(".", r"\.") for name in GATED) + r")"
 ACCOUNTS = C.CRYPTO_ACCOUNTS + C.STOCK_ACCOUNTS
 VERSION = "2026-10-14.2"
@@ -139,6 +152,29 @@ def fenced_venues(local):
     return C.lease_venues(local) if (local or {}).get("holder") == "s1" else []
 
 
+def _stock_indicator_universe():
+    """Traded stock symbols whose NPZs the VEC_EXACT twin needs (lists + held + candidates)."""
+    syms = set()
+    for f in glob.glob(str(BASE / "symbols_tr[abc]_*.json")):
+        try:
+            d = json.load(open(f))
+            l = d if isinstance(d, list) else (d.get("symbols") or list(d.keys()))
+            syms |= {str(x).upper() for x in l if str(x).strip()}
+        except Exception:
+            pass
+    for f in glob.glob(str(BASE / "tr[abc]" / "*_positions.json")) + glob.glob(str(BASE / "tr[abc]" / "reentry_candidates.json")):
+        try:
+            d = json.load(open(f))
+            rows = d if isinstance(d, list) else list(d.keys())
+            for r in rows:
+                s = str(r).split(":")[-1].rsplit("_", 1)[0].upper()
+                if s:
+                    syms.add(s)
+        except Exception:
+            pass
+    return syms
+
+
 class Agent:
     def __init__(self):
         LF.mkdir(parents=True, exist_ok=True)
@@ -148,6 +184,7 @@ class Agent:
         self.published_s1 = []
         self.pull = C.read_json(LF / "pull_state.json", {}) or {}
         self.health = C.TradingHealth(LOGDIR)
+        self._npz_bar = {}
 
     def delivered_set(self):
         live = set()
@@ -422,6 +459,79 @@ class Agent:
                 setattr(self, key, verdict)
                 log(f"TRADING_HEALTH {venue}: kinds={verdict} reasons={(health.get(venue) or {}).get('reasons')}")
 
+    def _npz_last_ts(self, sym):
+        """Last bar ts of a stock NPZ, cached on (mtime, size) so unchanged files cost one stat."""
+        p = BASE / "backtest_v8" / "indicators" / f"{sym}.npz"
+        try:
+            st = p.stat()
+        except OSError:
+            return None
+        key = (st.st_mtime_ns, st.st_size)
+        hit = self._npz_bar.get(sym)
+        if hit and hit[0] == key:
+            return hit[1]
+        try:
+            import numpy as _np
+            with _np.load(str(p), mmap_mode="r", allow_pickle=True) as z:
+                ts = _np.asarray(z["timestamps"], dtype="float64").ravel()
+                ts = ts[_np.isfinite(ts)]
+                last = float(ts[-1]) if ts.size else None
+        except Exception:
+            return hit[1] if hit else None
+        self._npz_bar[sym] = (key, last)
+        return last
+
+    def augment_data_freshness(self, health, now, fenced):
+        """Append indicators_stale / positions_stale kinds to trading_health (see module constants)."""
+        try:
+            stocks = health.get("stocks") if isinstance(health, dict) else None
+            if isinstance(stocks, dict) and stocks.get("applicable") and "stocks" not in (fenced or ()):
+                syms = _stock_indicator_universe()
+                old, mx, n = 0, 0.0, 0
+                for s in syms:
+                    ts = self._npz_last_ts(s)
+                    if ts is None:
+                        continue
+                    n += 1
+                    age = now - ts
+                    mx = max(mx, age)
+                    if age > LF_INDICATORS_STALE_S:
+                        old += 1
+                frac = (old / n) if n else 0.0
+                stocks["indicators_age_s"] = round(mx, 1)
+                stocks["indicators_stale_frac"] = round(frac, 3)
+                stocks["indicators_universe_n"] = n
+                if n >= LF_INDICATORS_MIN_N and frac > LF_INDICATORS_STALE_FRAC:
+                    stocks["kinds"] = list(stocks.get("kinds") or []) + ["indicators_stale"]
+                    stocks["reasons"] = list(stocks.get("reasons") or []) + [
+                        f"indicators_stale {old}/{n} stock NPZs older than {int(LF_INDICATORS_STALE_S)}s (twin falls back to native -> entries die)"]
+                    stocks["not_trading"] = True
+            for venue, accts, files in (("stocks", C.STOCK_ACCOUNTS, _STOCK_POSITION_FILES),
+                                        ("crypto", C.CRYPTO_ACCOUNTS, _CRYPTO_POSITION_FILES)):
+                sec = health.get(venue) if isinstance(health, dict) else None
+                if not isinstance(sec, dict) or venue in (fenced or ()) or sec.get("applicable") is False:
+                    continue
+                oldest, detail, seen = 0.0, None, 0
+                for a in accts:
+                    for fn in files:
+                        try:
+                            age = now - (BASE / a / fn).stat().st_mtime
+                        except OSError:
+                            continue
+                        seen += 1
+                        if age >= oldest:
+                            oldest, detail = age, f"{a}/{fn}"
+                if not seen:
+                    continue
+                sec["positions_age_s"] = round(oldest, 1)
+                if oldest > LF_POSITIONS_STALE_S:
+                    sec["kinds"] = list(sec.get("kinds") or []) + ["positions_stale"]
+                    sec["reasons"] = list(sec.get("reasons") or []) + [
+                        f"positions_stale {detail} age {int(oldest)}s > {int(LF_POSITIONS_STALE_S)}s (position loop wedged)"]
+                    sec["not_trading"] = True
+        except Exception as exc:
+            log(f"data_freshness advisory error: {exc!r}")
+
     def alarm_if_gagged(self, lease, state, now):
         """Scream, every single tick, while the failover cannot take over (USER 2026-10-15).
 
@@ -470,6 +580,10 @@ class Agent:
             health = self.health.measure(now, procs=self.fake_procs() if os.environ.get("LF_FAKE_PROCS") else None, fenced=fenced)
         except Exception as exc:  # health is advisory: never let it stop the heartbeat
             health = {"error": repr(exc)}
+        try:
+            self.augment_data_freshness(health, now, fenced)
+        except Exception as exc:  # advisory on top of advisory: the heartbeat must always go out
+            log(f"augment_data_freshness outer error: {exc!r}")
         heartbeat = {"epoch": now, "ts": C.iso(now), "host": "macbook", "version": VERSION, "venues": venues, "trading_procs": procs,
                      "lease_local": local, "pull_request": pulls, "fence_ack_gen": local.get("gen") if local.get("holder") == "s1" and procs == 0 else None,
                      "trading_health": health}

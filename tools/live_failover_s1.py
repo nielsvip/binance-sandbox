@@ -90,7 +90,15 @@ NT_ACCT_S = float(os.environ.get("LF_NT_ACCT_S", "0"))  # 2026-10-16 USER ("NO a
 # is already in the kind itself, and TAKEOVER_CONFIRM still demands 4 consecutive ticks (~60 s) before anything moves.
 # Before this the kind did not exist: one or two stopped accounts out of five were invisible to S1 forever, because
 # traders_dead requires ALL FIVE engines gone and broker_unreachable requires BROKER_DEAD_FRAC=0.6 (3 of 5).
-NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S}
+NT_IND_S = float(os.environ.get("LF_NT_INDICATORS_S", "0"))  # 2026-10-19 USER ("...or has old indicators"):
+# the indicators_stale kind (mac_failover_agent: >LF_INDICATORS_STALE_FRAC of the traded stock-NPZ universe older
+# than LF_INDICATORS_STALE_S=2h — on 10-19 it was 160/178 Friday-frozen, 285 twin fallbacks, one open all morning)
+# already encodes the bar, so like account_dead it needs no extra S1-side dwell beyond TAKEOVER_CONFIRM.
+NT_POS_S = float(os.environ.get("LF_NT_POSITIONS_S", "0"))  # 2026-10-19 USER ("positions information"): the
+# positions_stale kind (oldest per-loop position file per venue older than LF_POSITIONS_STALE_S=600 s — a wedged
+# writer loop no engine/broker kind can see) carries its own bar; TAKEOVER_CONFIRM still gates the move.
+NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S,
+           "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S}
 STATE_CHECK = Path(__file__).resolve().parent / "live_failover_state_check.py"
 
 
