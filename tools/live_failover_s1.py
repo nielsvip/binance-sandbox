@@ -72,22 +72,22 @@ TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "60"))  # USER 2026-10-
 # stayed up — is now repaired locally in <=60 s by tools/mac_pos_writer_keepalive.sh, which is both faster and
 # safer than moving the whole venue to another host; this threshold is the whole-host backstop behind it.
 TAKEOVER_CONFIRM = int(os.environ.get("LF_TAKEOVER_CONFIRM", "4"))
-FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "60"))  # 2026-10-19 USER ("if macbook goes offline ... s1 has
-# to kick in immediately take over all trading and data generation — and stop again immediately when macbook comes
-# back"): 600 -> 60. 60 s = 4 consecutive healthy ticks at LF_TICK_S=15, deliberately the same confirm count
-# TAKEOVER_CONFIRM uses in the other direction, so handing the lease back is exactly as fast as taking it. The dwell
-# is NOT the safety: `healthy` already demands a fresh heartbeat, non-stale data on every leased venue and zero
-# not-trading kinds, and failback() still stops the S1 trading unit and verifies no S1 trader survived before the
-# lease moves. Flap protection stays in failback_needed_s (nt backoff) for the repeat-takeover case.
-FAILBACK_NT_S = float(os.environ.get("LF_FAILBACK_NT_S", "600"))  # 2026-10-19: base dwell for a NOT-TRADING
-# takeover only (Mac host alive, one venue/account not reaching the broker). It stays at the old 600 s while
-# FAILBACK_S drops to 60, because the two cases have different evidence. A whole-host takeover is provably over:
-# the heartbeat is back, the data is fresh, no kind fires — hand it back at once. An nt takeover is NOT provable
-# while the Mac is fenced: a fenced trader places no orders, so order_path_dead/broker_unreachable stop firing
-# and the venue reads "healthy" merely because it is idle (measured: MAC_TRADING_AGAIN stocks after_s=330 with
-# the stall fixture still stalling). Handing back on that would take -> 60 s -> give back -> kind refires ->
-# retake, moving live trading between hosts every minute. The nt arm keeps its dwell + backoff; failback_fast
-# still shortcuts it when the record has been clean for FAILBACK_FAST_MIN_STABLE_S.
+FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "300"))  # 2026-10-19: 600 -> 300, matching what S1's unit has
+# pinned since 2026-10-17 (/etc/systemd/system/live-failover-watchdog.service.d/takeover-timings.conf) so the source
+# default and the deployed value can no longer disagree. NOT lower, and 60 in particular is FORBIDDEN here: that was
+# tried on 2026-10-17 for this exact request ("stop again immediately when macbook comes back") and MEASURED as the
+# flap — bringing a venue up takes ~2-3 min (s1_trading_supervisor.sh starts one account per 20 s loop), so a 60 s
+# hand-back yanked the lease before either host had finished starting, tore down a half-started venue, and the
+# restart read unhealthy again: lease gen 23 -> 39 in ~100 min and twice BOTH hosts sat at 0 engines. Failback must
+# outlast venue startup or the lease oscillates faster than either host can trade. The way to make the hand-back
+# genuinely faster is to make venue startup faster, not to shorten this.
+FAILBACK_NT_S = float(os.environ.get("LF_FAILBACK_NT_S", "300"))  # 2026-10-19: base dwell for a NOT-TRADING
+# takeover (Mac host alive, a venue/account not reaching the broker), split from FAILBACK_S only so the two cases
+# can be tuned apart — they are NOT the same evidence. A whole-host takeover is provably over: heartbeat back,
+# data fresh, no kind firing. An nt takeover is NOT provable while the Mac is fenced, because a fenced trader
+# places no orders, so order_path_dead/broker_unreachable stop firing and the venue reads "healthy" merely
+# because it is idle (measured: MAC_TRADING_AGAIN stocks after_s=330 with the stall fixture still stalling). Both
+# sit at 300 s today; if the hand-back is ever shortened, shorten the whole-host arm FIRST and leave this one.
 FAILBACK_FAST_S = float(os.environ.get("LF_FAILBACK_FAST_S", "120"))
 FAILBACK_FAST_MIN_STABLE_S = float(os.environ.get("LF_FAILBACK_FAST_MIN_STABLE_S", "3600"))
 ACCT_YIELD_S = float(os.environ.get("LF_ACCT_YIELD_S", "600"))

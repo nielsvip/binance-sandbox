@@ -229,8 +229,8 @@ def test_failback_fast_only_with_clean_record():
     w = object.__new__(s1.Watchdog)
     w.state = {"nt_history": [], "last_takeover_epoch": T0 - 7200}
     lease = {"nt": True}
-    # 2026-10-19: the nt arm is based on FAILBACK_NT_S (600 s, evidence hidden behind the fence); only the
-    # whole-host arm uses FAILBACK_S (60 s, USER "stop again immediately when macbook comes back").
+    # 2026-10-19: the nt arm is based on FAILBACK_NT_S (evidence is hidden behind the fence), the whole-host arm
+    # on FAILBACK_S. Both are 300 s today; the split exists so they can be tuned apart, never merged by accident.
     assert w.failback_needed_s(lease, T0) == min(s1.FAILBACK_NT_S, s1.FAILBACK_FAST_S)
     w.state = {"nt_history": [T0 - 100], "last_takeover_epoch": T0 - 7200}
     assert w.failback_needed_s(lease, T0) == s1.FAILBACK_NT_S
@@ -239,7 +239,7 @@ def test_failback_fast_only_with_clean_record():
     w.state = {"nt_history": []}
     assert w.failback_needed_s(lease, T0) == s1.FAILBACK_NT_S
     assert w.failback_needed_s({"nt": False}, T0) == s1.FAILBACK_S
-    assert s1.FAILBACK_S < s1.FAILBACK_NT_S
+    assert s1.FAILBACK_S <= s1.FAILBACK_NT_S  # the nt arm is never the FASTER of the two
 
 
 def test_yield_drops_stable_account(monkeypatch):

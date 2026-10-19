@@ -187,7 +187,7 @@ case "$SCRIPT_BASE" in
     ez_indicators_merger) NO_OUTPUT_TIMEOUT=120  ;;  # writes every ~3s
     ez_market_data)      NO_OUTPUT_TIMEOUT=180  ;;  # writes every ~30s
     ez_crosses)          NO_OUTPUT_TIMEOUT=300  ;;  # writes every ~3min (signal save cycle)
-    ez_rankings)         NO_OUTPUT_TIMEOUT=300  ;;  # writes every ~4s but init can be slow
+    ez_rankings)         NO_OUTPUT_TIMEOUT=900  ;;  # 2026-10-19: 300 -> 900. "init can be slow" is measured as slower than 300 s on a loaded box: the 22:40:12 start logged its last init line at 22:40:57 and was SIGKILLed at 22:57:05 for "No output for 305s" having never reached the task set, so the market-movement monitor (the ONLY writer of data/market_mode.json, i.e. of LIGHT/NORMAL/EXTREME) never ran. Same shape and same remedy as tradier_rankings below: a quiet synchronous phase needs headroom, not a tighter trigger. 900 s still catches a genuinely dead process, and once init completes the loop logs every ~4 s so the real steady-state bar is unchanged.
     ez_prices|ez_prices_ws) NO_OUTPUT_TIMEOUT=600 ;;  # writes every ~3min, bursts
     ez_klines)           NO_OUTPUT_TIMEOUT=600  ;;  # scheduled every 5min
     ez_manage)           NO_OUTPUT_TIMEOUT=600  ;;  # quick_general writes every ~30-300s
