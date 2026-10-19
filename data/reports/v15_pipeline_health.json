@@ -1,11 +1,47 @@
 {
- "at": "2026-10-19T17:19:21Z",
+ "at": "2026-10-19T17:30:13Z",
  "s1": {
-  "error": "s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
+  "host": "niels",
+  "now": 1792431008.3402455,
+  "merge_crypto": {
+   "n": 12,
+   "max_lag_min": 60.0,
+   "median_lag_min": 45.0,
+   "worst": "1000BONKUSDC",
+   "dead": []
+  },
+  "merge_stocks": {
+   "n": 12,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
+   "worst": "A",
+   "dead": []
+  },
+  "npz_legacy_crypto": [
+   "HBARUSDC",
+   "MOVEUSDT",
+   "NEOUSDC",
+   "QNTUSDT",
+   "WLFIUSDC",
+   "XVGUSDT"
+  ],
+  "append_log_age_min": 1.6,
+  "append_last_secs": 3209.0,
+  "append_last_stats": "'appended': 307, 'created': 0, 'up_to_date': 5752, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "npz_loop_pids": 1,
+  "npz_loop_has_settle": true,
+  "sched_tick_age_min": 2.1,
+  "sched_launched": 2,
+  "archive_n": 142,
+  "archive_mb": 1828.1,
+  "archive_newest_min": 188.1,
+  "_via": "s1-int"
  },
  "red": [
-  "s1 unreachable: s1-int: Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
+  "L2 merge crypto: s1's long store is 60 min behind the freshest copy on the box (worst 1000BONKUSDC) \u2014 klines_append is not merging"
  ],
- "warn": [],
+ "warn": [
+  "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT"
+ ],
  "ok": false
 }
