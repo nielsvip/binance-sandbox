@@ -1,9 +1,23 @@
 {
-  "fin:BTCDOMUSDT_LONG": {
-    "orderId": "3000002258205869",
-    "stopPrice": 5575.6,
-    "entry_sig": "2026-10-19 00:12:02.436000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "ang:RENDERUSDT_LONG": {
+    "orderId": "4000001977813685",
+    "stopPrice": 1.765,
+    "entry_sig": "2026-10-19 03:14:02.291000+00:00",
+    "symbol": "RENDERUSDT",
     "side": "LONG"
+  },
+  "ang:LTCUSDC_LONG": {
+    "orderId": "4000001977865164",
+    "stopPrice": 58.3,
+    "entry_sig": "2026-10-19 03:43:25.595000+00:00",
+    "symbol": "LTCUSDC",
+    "side": "LONG"
+  },
+  "ang:VETUSDT_SHORT": {
+    "orderId": "4000001977869275",
+    "stopPrice": 0.006939,
+    "entry_sig": "2026-10-19 03:45:44.370000+00:00",
+    "symbol": "VETUSDT",
+    "side": "SHORT"
   }
 }
