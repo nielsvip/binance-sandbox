@@ -1,12 +1,12 @@
 {
- "at": "2026-10-19T08:30:08Z",
+ "at": "2026-10-19T08:45:18Z",
  "s1": {
   "host": "niels",
-  "now": 1792398604.6446068,
+  "now": 1792399514.7336922,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 15.0,
-   "median_lag_min": 15.0,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
    "worst": "1000000MOGUSDT",
    "dead": []
   },
@@ -25,26 +25,26 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 5.6,
-  "append_last_secs": 567.3,
-  "append_last_stats": "'appended': 766, 'created': 0, 'up_to_date': 5293, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 1.2,
+  "append_last_secs": 541.2,
+  "append_last_stats": "'appended': 617, 'created': 0, 'up_to_date': 5442, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 1,
-  "npz_cycle_last_utc": "08:27:30",
-  "npz_cycle_installed": 117,
+  "npz_cycle_last_utc": "08:42:42",
+  "npz_cycle_installed": 124,
   "npz_cycle_not_ready": 0,
-  "npz_cycle_no_new": 4,
+  "npz_cycle_no_new": 3,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 2.0,
+  "sched_tick_age_min": 1.2,
   "sched_launched": 0,
   "archive_n": 141,
   "archive_mb": 1822.8,
-  "archive_newest_min": 584.8,
+  "archive_newest_min": 600.0,
   "_via": "s1-int"
  },
  "red": [],
  "warn": [
   "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT",
-  "L5 newest archived board NPZ is 585 min old \u2014 publishes may not be recording"
+  "L5 newest archived board NPZ is 600 min old \u2014 publishes may not be recording"
  ],
  "ok": true
 }
