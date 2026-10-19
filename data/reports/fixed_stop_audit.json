@@ -1,61 +1,41 @@
 {
- "findings": [
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 6.7879875,
-   "key": "fin:UNIUSDC_LONG",
-   "live_level": 6.7859925,
-   "mark": 7.22400461,
-   "opened_at": "2026-10-19T01:10:35.789000Z",
-   "resting_trigger": 6.777
-  }
- ],
- "n_findings": 1,
- "n_positions": 6,
+ "findings": [],
+ "n_findings": 0,
+ "n_positions": 5,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.30135149999999994,
    "key": "fin:XTZUSDT_SHORT",
    "live_level": 0.30135149999999994,
-   "mark": 0.30041623,
+   "mark": 0.3005,
    "opened_at": "2026-10-18T23:40:53.717000Z",
    "resting_trigger": 0.3019
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.72827475,
+   "key": "fin:RLCUSDT_LONG",
+   "live_level": 0.72827475,
+   "mark": 0.7541,
+   "opened_at": "2026-10-19T01:24:17.384000Z",
+   "resting_trigger": 0.7271
   },
   {
    "armed": true,
    "entry_bar_level": 5584.005,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5584.005,
-   "mark": 5601.8,
+   "mark": 5596.6,
    "opened_at": "2026-10-19T00:12:02.436000Z",
    "resting_trigger": 5575.6
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.004085187499999999,
-   "key": "fin:IOTXUSDT_SHORT",
-   "live_level": 0.004085187499999999,
-   "mark": 0.003977,
-   "opened_at": "2026-10-19T00:57:12.579000Z",
-   "resting_trigger": 0.004092
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 6.7879875,
-   "key": "fin:UNIUSDC_LONG",
-   "live_level": 6.7859925,
-   "mark": 7.22400461,
-   "opened_at": "2026-10-19T01:10:35.789000Z",
-   "resting_trigger": 6.777
   },
   {
    "armed": true,
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5601.8,
+   "mark": 5596.6,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5551.7
   },
@@ -64,10 +44,10 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.22396041,
+   "mark": 7.25376223,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.551
   }
  ],
- "ts": "2026-10-19T01:21:58.493315+00:00"
+ "ts": "2026-10-19T01:32:05.528610+00:00"
 }
