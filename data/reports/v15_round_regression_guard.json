@@ -1,45 +1,23 @@
 {
- "at": "2026-10-19T10:26:04Z",
+ "at": "2026-10-19T11:26:02Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
-   "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 1.95,
-   "median_uplift": 1.95,
-   "chained_from_previous_published": 1,
+   "published_n": 0,
+   "per_hour": 0.0,
+   "improved_vs_best_start": 0,
+   "mean_uplift_vs_best_start": null,
+   "median_uplift": null,
+   "chained_from_previous_published": 0,
    "no_floor_recorded": 0,
    "backslides": [],
-   "stale_npz": [
-    {
-     "symside": "XOM_LONG",
-     "npz_age_h": 61.43
-    }
-   ],
+   "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)",
-    "1/1 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+    "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
-   "rows": [
-    {
-     "symside": "XOM_LONG",
-     "published_at": 1792401052.0979853,
-     "final_gain": 14.408618024455702,
-     "best_start_gain": 12.458648686694149,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 6,
-     "baseline_gain": 12.458648686694149,
-     "npz_ts_last": 1792179900.0,
-     "npz_md5": "d39936c0949d2a75a5673e58b017ff6a",
-     "npz_bars": 8642,
-     "bh": 10.90359188546071,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 61.43
-    }
-   ],
+   "rows": [],
    "error": null
   },
   "s2": {
