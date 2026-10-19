@@ -1139,6 +1139,16 @@ _BINANCE_SUFFIXES = ("binance.com", "binance.us")
 _SOURCE_BIND_DONE = {"on": False}
 
 
+def ensure_binance_egress(log=None) -> bool:
+    try:
+        _env_ip = os.environ.get("BINANCE_LOCAL_IP") or ""
+        if not _env_ip.strip():
+            return False
+        return _install_binance_source_bind(_env_ip, log)
+    except Exception:
+        return False
+
+
 def _install_binance_source_bind(ip: str, log=None) -> bool:
     import socket as _s
     try:
