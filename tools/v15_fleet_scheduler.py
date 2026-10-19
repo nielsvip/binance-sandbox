@@ -3083,10 +3083,34 @@ def tick(args, cfg, now):
                     st.setdefault("dispatch_host", {})[sym] = h["name"]
                     log.setdefault("dispatch_async", []).append(tag)
                 else:
-                    try:
-                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
-                    except subprocess.TimeoutExpired:
-                        print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
+                    # USER 2026-10-19 ("NO progress"): the dispatch result was NEVER checked. A dropped ssh (S1 had 61
+                    # established sshd connections against `MaxStartups 50:100:200`, so sshd randomly refuses above 50)
+                    # left the scheduler marking the key launched, setting launched_at — which then makes
+                    # _launched_recently SUPPRESS the retry — and reporting it in `launched`. Result: the log claimed
+                    # 3 launches per tick while nothing spawned (VICR_LONG's sweep log was hours stale with 0
+                    # processes, RRC_SHORT's from 11:36) and the fleet ran ONE board. A failed dispatch must not be
+                    # recorded as a launch; the next tick retries it. A TIMEOUT still counts as launched because the
+                    # job may have started and the spawn guard dedups.
+                    _rc, _err = 0, ""
+                    for _t_i, _target in enumerate([h.get("_via") or h["ssh"][0]] + [x for x in h["ssh"] if x != (h.get("_via") or h["ssh"][0])]):
+                        try:
+                            _r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", _target, pair_launch_cmd(h, acts, pd, workers)],
+                                                timeout=40, capture_output=True, text=True)
+                            _rc, _err = _r.returncode, (_r.stderr or "").strip()
+                            if _rc == 0:
+                                h["_via"] = _target
+                                break
+                            print(f"[sched] launch ssh rc={_rc} via {_target} for {h['name']} {sym}: {_err[:140]}", flush=True)
+                        except subprocess.TimeoutExpired:
+                            print(f"[sched] launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
+                            _rc = 0
+                            break
+                        except Exception as _le:
+                            _rc, _err = 99, str(_le)[:140]
+                    if _rc != 0:
+                        log.setdefault("dispatch_failed", []).append(f"{tag}:rc{_rc}:{_err[:60]}")
+                        print(f"[sched] DISPATCH FAILED {h['name']} {sym} rc={_rc} — NOT marked launched, retrying next tick", flush=True)
+                        continue
                 for a in acts:
                     if a["window"] == "30D":
                         _slice_progress_reset(st, a["key"], started_mt.get(f"{a['sym']}_{a['side']}"))
