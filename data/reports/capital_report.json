@@ -1,32 +1,65 @@
 {
- "generated_at": "2026-10-19 01:07 UTC",
- "total_capital_usd": 12.53,
+ "generated_at": "2026-10-19 01:12 UTC",
+ "total_capital_usd": 43.5,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 12.53
+  "B": 32.28,
+  "C": 11.21
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
+  "B": 3,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:SOLUSDC_SHORT"
+  "fin:BTCDOMUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:SOLUSDC_SHORT",
-   "symbol": "SOLUSDC",
-   "account": "flz",
-   "value_usd": 12.53,
-   "gain_pct": -0.486,
+   "pk": "fin:XTZUSDT_SHORT",
+   "symbol": "XTZUSDT",
+   "account": "fin",
+   "value_usd": 12.54,
+   "gain_pct": -0.401,
+   "tier": "B",
+   "perf_mult": 4.5,
+   "amt": 41.7,
+   "mark": 0.3008
+  },
+  {
+   "pk": "fin:IOTXUSDT_SHORT",
+   "symbol": "IOTXUSDT",
+   "account": "fin",
+   "value_usd": 12.52,
+   "gain_pct": -0.27,
+   "tier": "B",
+   "perf_mult": 2.07,
+   "amt": 3158.0,
+   "mark": 0.00396533
+  },
+  {
+   "pk": "fin:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "fin",
+   "value_usd": 11.21,
+   "gain_pct": 0.078,
    "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 0.12,
-   "mark": 104.39537126
+   "perf_mult": 0.26,
+   "amt": 0.002,
+   "mark": 5605.09776359
+  },
+  {
+   "pk": "fin:UNIUSDC_LONG",
+   "symbol": "UNIUSDC",
+   "account": "fin",
+   "value_usd": 7.22,
+   "gain_pct": 0.194,
+   "tier": "B",
+   "perf_mult": 2.99,
+   "amt": 1.0,
+   "mark": 7.224
   }
  ]
 }
