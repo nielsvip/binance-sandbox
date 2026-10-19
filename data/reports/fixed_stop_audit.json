@@ -1,14 +1,20 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 7,
+ "findings": [
+  {
+   "account": "flz",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [400]>, 400, '{\"code\":-1021,\"msg\":\"Timestamp for this request is outside of the recvWindow.\"}')"
+  }
+ ],
+ "n_findings": 1,
+ "n_positions": 5,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 1.7685675,
    "key": "ang:RENDERUSDT_LONG",
    "live_level": 1.7685675,
-   "mark": 1.79808792,
+   "mark": 1.79136198,
    "opened_at": "2026-10-19T03:14:02.291000Z",
    "resting_trigger": 1.765
   },
@@ -17,7 +23,7 @@
    "entry_bar_level": 58.39365,
    "key": "ang:LTCUSDC_LONG",
    "live_level": 58.39365,
-   "mark": 59.96,
+   "mark": 59.87149663,
    "opened_at": "2026-10-19T03:43:25.595000Z",
    "resting_trigger": 58.3
   },
@@ -26,7 +32,7 @@
    "entry_bar_level": 5584.005,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5584.005,
-   "mark": 5602.10727936,
+   "mark": 5610.9,
    "opened_at": "2026-10-19T00:12:02.436000Z",
    "resting_trigger": 5575.6
   },
@@ -35,37 +41,19 @@
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5602.4,
+   "mark": 5609.25608099,
    "opened_at": "2026-10-18T02:53:16.627000Z",
-   "resting_trigger": 5557.2
+   "resting_trigger": 5551.7
   },
   {
    "armed": true,
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.31465641,
+   "mark": 7.28915853,
    "opened_at": "2026-10-16T01:30:19.727000Z",
-   "resting_trigger": 7.543
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 1.35538,
-   "key": "flz:GRAMUSDT_SHORT",
-   "live_level": 1.35538,
-   "mark": 1.34204233,
-   "opened_at": "2026-10-19T06:55:02.898000Z",
-   "resting_trigger": 1.358
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 719.586525,
-   "key": "flz:BNBUSDC_LONG",
-   "live_level": 719.586525,
-   "mark": 727.21814281,
-   "opened_at": "2026-10-19T04:37:24.940000Z",
-   "resting_trigger": 718.5
+   "resting_trigger": 7.551
   }
  ],
- "ts": "2026-10-19T13:44:35.390956+00:00"
+ "ts": "2026-10-19T13:59:28.317419+00:00"
 }
