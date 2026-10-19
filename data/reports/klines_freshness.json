@@ -1,18 +1,18 @@
 {
- "generated_utc": "2026-10-19T12:05:01Z",
+ "generated_utc": "2026-10-19T12:10:01Z",
  "tol_min": 35,
  "crypto": {
-  "status": "BREACH",
+  "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 35.0,
-  "worst_sym": "ETHUSDC"
+  "worst_lag_min": 25.0,
+  "worst_sym": "BNBUSDC"
  },
  "stocks": {
   "status": "OK_CLOSED",
   "mode": "off-hours",
   "missing": [],
   "stale_vs_close": [],
-  "worst_lag_min": 3845.0
+  "worst_lag_min": 3850.0
  }
 }
