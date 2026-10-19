@@ -1,5 +1,5 @@
 {
- "at": "2026-10-19T17:26:00Z",
+ "at": "2026-10-19T18:26:00Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
@@ -18,7 +18,7 @@
     "throughput 0.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [],
-   "error": "Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
+   "error": null
   },
   "s2": {
    "published_n": 0,
