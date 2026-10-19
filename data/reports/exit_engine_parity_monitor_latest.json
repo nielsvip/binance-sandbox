@@ -1,21 +1,21 @@
 {
- "now": "2026-10-19T01:38:59.086353+00:00",
+ "now": "2026-10-19T02:39:04.856596+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 1619,
- "last_exit_ts": "2026-10-19T01:29:39.986360+00:00",
+ "n_exit_rows": 1669,
+ "last_exit_ts": "2026-10-19T02:34:20.927708+00:00",
  "n_leaks": 0,
  "n_gate_on": 39,
  "n_ungated": 1,
  "n_safety": 0,
- "n_unmapped": 335,
+ "n_unmapped": 345,
  "n_unverified": 0,
- "since": "2026-10-17T01:38:59.086353+00:00",
+ "since": "2026-10-17T02:39:04.856596+00:00",
  "vec_exact_by_action": {
-  "OPEN": 770,
-  "CLOSE": 244,
+  "OPEN": 808,
+  "CLOSE": 246,
   "REDUCE": 230
  },
- "native_rows": 375,
+ "native_rows": 385,
  "unverified_by_family": {},
  "leaks_by_family": {},
  "leak_keys": {},
@@ -30,7 +30,7 @@
  "safety_by_family": {},
  "unmapped": {
   "FIXED_STOP_LONG": 237,
-  "FIXED_STOP_SHORT": 91,
+  "FIXED_STOP_SHORT": 101,
   "DC_BB_D_BREAK_REVERSE_close_BB_BREAK_D": 2,
   "HEDGE_CLOSE_WT3M1H_PRE_GATE": 2,
   "BB_TAKE_D": 1,
@@ -38,8 +38,8 @@
   "BB_TAKE_1h_g5.70": 1
  },
  "actions": {
-  "OPEN": 770,
-  "CLOSE": 617,
+  "OPEN": 808,
+  "CLOSE": 629,
   "REDUCE": 231,
   "None": 1
  }
