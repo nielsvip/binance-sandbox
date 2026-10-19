@@ -12562,7 +12562,7 @@ class WebSocketManager:
         return aiohttp.ClientSession(connector=connector, timeout=timeout)
 
     async def start(self):
-        self.client = _odg.wrap_binance_client(Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10}), "wsmulti", cfg=getattr(self, "config", None), logger=logger)  # 2026-10-19 egress bind: time-sync/listen-key client takes the same BINANCE_LOCAL_IP clean path (was unbound -> banned .52)
+        self.client = Client(api_key=self.api_key, api_secret=self.api_secret, requests_params={"timeout": 10})
         self.sync_binance_time()
         self.session = await self._init_session()
         # User-data WS owned by ez_positions_service.WebSocketManager (canonical). Binance
@@ -20120,7 +20120,7 @@ class MultiAccountTradeManager:
                 await delete_heartbeat_on_ban()
                 account = self.accounts.get(account_key)
                 if account and hasattr(account, "handle_api_ban"):
-                    account.handle_api_ban()
+                    account.handle_api_ban(cooldown_seconds=_odg.ban_cooldown_seconds(exc))  # 2026-10-19: real exchange expiry, not 900s
             else:
                 self.logger.error(f"[get_cached_open_orders] Failed to fetch: {exc}")
             if cached and "orders" in cached:
@@ -61687,7 +61687,7 @@ async def initialize_websocket_managers(accounts, config, symbols, trade_manager
             for account_key in account_keys:
                 account = accounts.get(account_key)
                 if account and hasattr(account, "handle_api_ban"):
-                    account.handle_api_ban()
+                    account.handle_api_ban(cooldown_seconds=_odg.ban_cooldown_seconds(e))  # 2026-10-19: real exchange expiry, not 900s
         else:
             logger.error(
                 f"Failed to start WebSocket for {','.join(account_keys)} due to Binance API Error: {e}"

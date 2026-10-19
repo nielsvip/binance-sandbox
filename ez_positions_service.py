@@ -59,6 +59,7 @@ from binance.exceptions import BinanceAPIException
 from dateutil.parser import isoparse
 from redis.asyncio import Redis
 from requests.adapters import HTTPAdapter
+import order_dedupe_guard as _odg  # 2026-10-19: ban_cooldown_seconds only (stdlib-only module, no cycle)
 
 from config import Config
 from utils import get_current_environment
@@ -3873,7 +3874,7 @@ class StopLevelsManager:
                             account = self.accounts.get(key)
                             if not account or not hasattr(account, "handle_api_ban"):
                                 continue
-                            account.handle_api_ban(cooldown_seconds=900)
+                            account.handle_api_ban(cooldown_seconds=_odg.ban_cooldown_seconds(e))  # 2026-10-19: real exchange expiry, not 900s (a 7h ban re-entered rotation in 15min and re-banned)
                 raise e 
 
     def _check_rate_limit(self):
@@ -6744,7 +6745,7 @@ class PositionService:
                         else: return {}
                     elif e.status_code == 429 or getattr(e, "code", None) == -1003:
                         _record_ip_ban_from_exc(e)
-                        if account and hasattr(account, "handle_api_ban"): account.handle_api_ban(cooldown_seconds=900)
+                        if account and hasattr(account, "handle_api_ban"): account.handle_api_ban(cooldown_seconds=_odg.ban_cooldown_seconds(e))  # 2026-10-19: real exchange expiry, not 900s
                         if attempt < retries - 1: continue
                         else: return {}
                     elif e.status_code in [500, 502, 503, 504]:
