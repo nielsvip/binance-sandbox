@@ -2879,7 +2879,14 @@ def tick(args, cfg, now):
                 continue  # over-cap/exhausted host: skip this admission, keep evaluating (held chains need no slot)
             if venue_of(sym) not in h["venues"]:
                 continue
-            if needs_slot and not _pinned_sym and not _venue_allowed(sym, _native_syms, phase=_host_phase):
+            # USER 2026-10-18 "100% stocks until all stocks are done": a PRIORITY PIN is a hint about ORDER, it may not
+            # override an explicit venue pin. V15_SCHED_PRIORITY_SYMS is regenerated with crypto symbols at the front
+            # (RLCUSDT, BBUSDT, COMPUSDT, ... at 00:30Z), and because pinned symbols skipped this gate entirely the
+            # fleet launched SKYUSDT/ZROUSDT/PUMPUSDT while pinned to stocks. A pin now bypasses the venue gate only
+            # when no V15_SCHED_VENUE_ONLY is set (the old behaviour, which exists so a hand-pinned symbol can jump an
+            # auto-derived phase).
+            _pin_may_bypass_venue = _pinned_sym and not _VENUE_ONLY
+            if needs_slot and not _pin_may_bypass_venue and not _venue_allowed(sym, _native_syms, phase=_host_phase):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
