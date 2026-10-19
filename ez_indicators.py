@@ -3210,7 +3210,28 @@ class IndicatorOrchestrator:
                 if close_ts is not None and await self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price):
                     mid_count += 1
 
-        tasks = [asyncio.create_task(process_symbol(symbol)) for symbol in self.symbols]
+        # USER 2026-10-19 ("the root cause needs to be fixed forever at once this is not supposed to be possible"):
+        # the warm-up loop in run() calls this once per timeframe BEFORE _save_loop exists, so a 199-symbol pass
+        # emits ONE log line minutes apart (measured 712s/370s/291s) while run_with_watchdog.sh:186 kills
+        # ez_indicators after NO_OUTPUT_TIMEOUT=120s of log silence. 38 kills in six hours on 2026-10-19, 34 of
+        # them "No output for 12Xs" against a perfectly healthy process, and every kill restarts the warm-up from
+        # "D" — a trap that cannot be escaped once entered, because the traffic that keeps the process alive is
+        # produced by the loop that only starts after warm-up. This is the in-code heartbeat
+        # tools/ez_indicators_warmup_guard.py was written to stand in for; with it the watchdog needs no external
+        # cron to tell a warming process from a wedged one, and it keeps every tooth for the genuinely wedged case
+        # (no progress line for 120s still means dead). Same pattern as the tradier_rankings fix in
+        # run_with_watchdog.sh:197. Counted in a finally so early returns still advance it.
+        done = 0
+        total = len(self.symbols)
+        async def _tracked(symbol: str) -> None:
+            nonlocal done
+            try:
+                await process_symbol(symbol)
+            finally:
+                done += 1
+                if done % 25 == 0 or done == total:
+                    logger.info(f"[WARMUP] {timeframe} {done}/{total} symbols")
+        tasks = [asyncio.create_task(_tracked(symbol)) for symbol in self.symbols]
         await asyncio.gather(*tasks)
 
         # OPTIMIZATION: Push to Shared Memory in a single BATCH
