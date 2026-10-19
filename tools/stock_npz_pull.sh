@@ -26,7 +26,16 @@ open(sys.argv[1], "w").write("".join(f"{s}.npz\n" for s in sorted(syms)))
 EOF
 n=$(wc -l < "$LIST" | tr -d ' ')
 t0=$(date +%s)
-rsync -az --delay-updates --ignore-missing-args --timeout=120 --files-from="$LIST" -e "ssh -o ConnectTimeout=15 -o BatchMode=yes" \
+# 2026-10-19 FIX: /usr/bin/rsync on the Mac is openrsync (no --ignore-missing-args) -> every pull since 10-17 failed rc=1
+# and the stocks VEC_EXACT twin went stale (zero vec entries all day 10-19). Pin real rsync 3.x when present.
+RSYNC_BIN=/opt/homebrew/bin/rsync
+if [ -x "$RSYNC_BIN" ] && "$RSYNC_BIN" --help 2>/dev/null | grep -q -- --ignore-missing-args; then
+  MISSING_ARGS="--ignore-missing-args"
+else
+  RSYNC_BIN=rsync
+  MISSING_ARGS=""
+fi
+"$RSYNC_BIN" -az --delay-updates $MISSING_ARGS --timeout=120 --files-from="$LIST" -e "ssh -o ConnectTimeout=15 -o BatchMode=yes" \
     s2:binance-sandbox/backtest_v8/indicators/ "$BASE/backtest_v8/indicators/" 2>>"$LOG"
 rc=$?
 echo "$(date -u +%FT%TZ) PULL rc=$rc symbols=$n secs=$(( $(date +%s) - t0 ))" >>"$LOG"
