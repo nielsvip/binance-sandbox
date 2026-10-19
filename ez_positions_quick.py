@@ -28548,11 +28548,7 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
         _lim = int(getattr(config, "VEC_EXACT_DISPATCH_LIMIT", 8) or 8)
     except Exception:
         _lim = 8
-    try:
-        _tmo = float(getattr(config, "VEC_EXACT_DISPATCH_TIMEOUT_S", 600.0) or 600.0)
-    except Exception:
-        _tmo = 600.0
-    _res_all = await _vd.run_all(_calls, limit=_lim, timeout_s=_tmo, label="VEC_EXACT_ENTRY")
+    _res_all = await _vd.run_all(_calls, limit=_lim, timeout_s=None, label="VEC_EXACT_ENTRY")  # 2026-10-19 USER: entries NEVER time out — PLACE_MAKER_ORDER 120-150s then market fallback runs inside _one; a dropped act is a lost trade. Slots still bound concurrency; slow keys complete late. (VEC_EXACT_DISPATCH_TIMEOUT_S retired from this path.)
     for _rk, (_rok, _rres) in zip([c[0] for c in _calls], _res_all or []):
         if not _rok:
             logger.warning(f"[VEC_EXACT] {_rk} ENTRY DISPATCH result={str(_rres)[:120]} (act consumed at hand-out, no auto-retry; next fresh vec act governs)")

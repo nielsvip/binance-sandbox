@@ -60,6 +60,28 @@ def test_no_holders_keeps_original_order():
     assert [r[1] for r in out] == [f"men:K{i}_LONG" for i in range(4)]
 
 
+def test_no_timeout_waits_for_slow_keys():
+    """USER 2026-10-19: entries NEVER time out — maker 120-150s then market fallback runs inside the worker."""
+    _set_holders(set())
+
+    async def slow():
+        await asyncio.sleep(0.3)
+        return "late-fill"
+
+    out = asyncio.run(VD.run_all([("men:SLOW_LONG", slow)], limit=1, timeout_s=None))
+    assert out == [(True, "late-fill")]
+
+
+def test_numeric_timeout_still_timeboxes():
+    _set_holders(set())
+
+    async def hang():
+        await asyncio.sleep(5.0)
+
+    out = asyncio.run(VD.run_all([("men:HANG_SHORT", hang)], limit=1, timeout_s=0.1))
+    assert out[0][0] is False and "BLOCKED_DISPATCH_TIMEOUT" in str(out[0][1])
+
+
 def test_kill_switch_restores_plain_order(monkeypatch):
     _set_holders({"ENJUSDT_LONG"})
     monkeypatch.setenv("VEC_DISPATCH_HOLDERS_FIRST", "0")
