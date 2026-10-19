@@ -1,0 +1,143 @@
+{
+ "window_from": "10-19 21:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 9,
+  "dictated_but_no_account_traded_it": 6,
+  "FILLED": 1
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1INCHUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:27",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "AVAXUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:20",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "DOTUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:43",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:20",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "IOTXUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:20",
+   "actual": "REDUCE",
+   "actual_reason": "REENTRY_DC4_15M_BREAK |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "MANAUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:30",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:20",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:53",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "XLMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 21:20",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "ang",
+   "sym_side": "XMRUSDT_LONG",
+   "dictated_bar": "10-19 21:15",
+   "dictated": "OPEN",
+   "dictated_reason": "B12",
+   "actual_at": "10-19 21:59",
+   "actual": "AUGMENT",
+   "actual_reason": "B12 |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  }
+ ]
+}
