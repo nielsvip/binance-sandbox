@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-19T21:00:24Z",
+ "ts": "2026-10-19T21:05:34Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -30,7 +30,7 @@
    "fills_6h": 1,
    "open_positions": 5,
    "unrealised_usd": 0.14,
-   "pos_mismatch": 1,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -125,120 +125,112 @@
   "fin": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24996.0
+   "log_age_s": 25305.0
   },
   "men": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24438.0
+   "log_age_s": 24747.0
   },
   "ang": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 25428.0
+   "log_age_s": 25737.0
   },
   "inf": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24446.0
+   "log_age_s": 24755.0
   },
   "flz": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 24446.0
+   "log_age_s": 24755.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20967.0
+   "log_age_s": 21276.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20967.0
+   "log_age_s": 21276.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-19T21:00:25Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:XLMUSDT_SHORT",
-   "evidence": "positions file amt 70 vs fill-ledger amt 332"
-  },
-  {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "fin",
    "evidence": "no ez_manage.py --account fin process"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 24996s"
+   "evidence": "ez_manage_fin.log not written for 25305s"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "men",
    "evidence": "no ez_manage.py --account men process"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 24438s"
+   "evidence": "ez_manage_men.log not written for 24747s"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "ang",
    "evidence": "no ez_manage.py --account ang process"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 25428s"
+   "evidence": "ez_manage_ang.log not written for 25737s"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "inf",
    "evidence": "no ez_manage.py --account inf process"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 24446s"
+   "evidence": "ez_manage_inf.log not written for 24755s"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "flz",
    "evidence": "no ez_manage.py --account flz process"
   },
   {
-   "ts": "2026-10-19T21:00:25Z",
+   "ts": "2026-10-19T21:05:35Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 24446s"
+   "evidence": "ez_manage_flz.log not written for 24755s"
   }
  ],
  "alert_counts": {
-  "POSITION_STATE_MISMATCH": 1,
   "PROCESS_DOWN": 5,
   "STALE_LOG": 5
  },
@@ -274,5 +266,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.65
+ "sweep_s": 0.46
 }
