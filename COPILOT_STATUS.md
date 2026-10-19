@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-19 02:49:51 UTC
+# Copilot Status — 2026-10-19 02:54:12 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -7,6 +7,8 @@
 ## Recent Anomalies (last 1h)
 
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T02:49:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:51:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:53:13
 
 ## Missed Trades (trader comparison)
 
@@ -18,10 +20,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 6 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.3%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-0.9%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
@@ -31,17 +33,20 @@ _None_
 - HELD: **AMAT** SHORT (tradier) peak +4.4%, now +3.9%
 - HELD: **RRC** LONG (tradier) peak +4.1%, now +1.7%
 
-- WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 1m ago
-- WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
-- WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 1m ago
+- WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
+- WATCHING: **ZENUSDT** SHORT (crypto) peaked +6.7%, exited 0m ago
+- WATCHING: **ALGOUSDT** SHORT (crypto) peaked +6.2%, exited 0m ago
+- WATCHING: **ZROUSDT** LONG (crypto) peaked +5.8%, exited 0m ago
+- WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
+- WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 8
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
+**Issues (last 1h):** 24
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
