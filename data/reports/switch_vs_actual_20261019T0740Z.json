@@ -1,0 +1,53 @@
+{
+ "window_from": "10-19 06:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "dictated_but_no_account_traded_it": 41,
+  "EXTRA": 1,
+  "FILLED_ON_BAR": 1,
+  "NOT_FILLED": 1
+ },
+ "rows": [
+  {
+   "acct": "flz",
+   "sym_side": "GRAMUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 06:55",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "XRPUSDC_LONG",
+   "dictated_bar": "10-19 07:00",
+   "dictated": "CLOSE",
+   "dictated_reason": "TECHNICAL_EXIT dc_15m_high",
+   "actual_at": "10-19 07:20",
+   "actual": "REDUCE",
+   "actual_reason": "TECHNICAL_EXIT dc_15m_high |VEC_EXACT",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "XRPUSDC_LONG",
+   "dictated_bar": "10-19 07:15",
+   "dictated": "OPEN",
+   "dictated_reason": "B14",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  }
+ ]
+}
