@@ -30,6 +30,7 @@ Fixtures/tests: LF_BASE, LF_STAGE, LF_NO_SSH=1, LF_REMOTE_DIR, LF_LOGDIR.
 import glob
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -130,12 +131,27 @@ def rsync(args, timeout=60):
     return subprocess.run(["rsync", "-a", "--timeout=30", "-e", shell, *args], capture_output=True, text=True, timeout=timeout)
 
 
-def trader_pids(venues=None):
-    """Gated trader pids, optionally only those of `venues` (tradier_* = stocks, the rest = crypto)."""
+def _cmd_account(cmd):
+    m = re.search(r"--accounts?\s+(\S+)", cmd or "")
+    return m.group(1) if m else None
+
+
+def _acct_venue(account):
+    return "stocks" if account in C.STOCK_ACCOUNTS else "crypto"
+
+
+def trader_pids(venues=None, accounts=None):
+    """Gated trader pids, optionally only those of `venues` (tradier_* = stocks, the rest = crypto)
+    and, with 2026-10-19 account scope, only those of `accounts` ({venue: [accts]}).
+    Scripts without an --account(s) flag (venue-wide daemons) follow the venue rule: they are fenced
+    whenever their venue is leased at all — shared-daemon degradation for siblings is bounded, while
+    a venue daemon firing for an S1-held account would be dual trading."""
     out = subprocess.run(["pgrep", "-f", TRADER_RX], capture_output=True, text=True).stdout.split()
     pids = [int(pid) for pid in out if pid.strip().isdigit() and int(pid) != os.getpid()]
     if venues is None or set(venues) >= set(C.VENUES):
-        return pids
+        venues = list(C.VENUES)
+    if not accounts:
+        accounts = None
     keep = []
     for pid in pids:
         try:
@@ -143,7 +159,14 @@ def trader_pids(venues=None):
         except Exception:
             continue
         name = next((g for g in GATED if g in cmd), None)
-        if name and C.script_venue(name) in venues:
+        if not name or C.script_venue(name) not in venues:
+            continue
+        if accounts is None:
+            keep.append(pid)
+            continue
+        acct = _cmd_account(cmd)
+        venue = C.script_venue(name)
+        if acct is None or acct in (accounts.get(venue) or ()):
             keep.append(pid)
     return keep
 
@@ -262,12 +285,16 @@ class Agent:
                 return lease, state, host
         return None, None, None
 
-    def seed_from_s1(self, host):
+    def seed_from_s1(self, host, venues=None):
         """While S1 holds the lease its ez_positions_service is the authoritative writer: pull its position files
-        to a stage (never into the account dirs) and hand the Mac writer their opened_at via .identity_seed.json."""
+        to a stage (never into the account dirs) and hand the Mac writer their opened_at via .identity_seed.json.
+        2026-10-19: scoped to leased venues (seeding a Mac-live sibling from S1's stale files would corrupt it)."""
         stage = STAGE / "s1_positions"
         seeded = {}
-        for account in ACCOUNTS:
+        wanted = set(ACCOUNTS)
+        if venues:
+            wanted = {a for a in ACCOUNTS if _acct_venue(a) in venues}
+        for account in sorted(wanted):
             target = stage / account
             target.mkdir(parents=True, exist_ok=True)
             if os.environ.get("LF_NO_SSH") == "1":

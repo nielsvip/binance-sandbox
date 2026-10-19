@@ -73,6 +73,9 @@ TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "60"))  # USER 2026-10-
 # safer than moving the whole venue to another host; this threshold is the whole-host backstop behind it.
 TAKEOVER_CONFIRM = int(os.environ.get("LF_TAKEOVER_CONFIRM", "4"))
 FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "600"))
+FAILBACK_FAST_S = float(os.environ.get("LF_FAILBACK_FAST_S", "120"))
+FAILBACK_FAST_MIN_STABLE_S = float(os.environ.get("LF_FAILBACK_FAST_MIN_STABLE_S", "3600"))
+ACCT_YIELD_S = float(os.environ.get("LF_ACCT_YIELD_S", "600"))
 FENCE_WAIT_S = float(os.environ.get("LF_FENCE_WAIT_S", "120"))
 WITNESS_S = float(os.environ.get("LF_WITNESS_S", "300"))
 TRADING_DEAD_S = float(os.environ.get("LF_TRADING_DEAD_S", "600"))  # > max normal ez_manage restart (300 s backoff cap + ~80 s startup) + margin
@@ -226,19 +229,25 @@ def load_lease():
     return lease
 
 
-def write_lease(lease, holder, reason, venues=None, nt=False):
+def write_lease(lease, holder, reason, venues=None, nt=False, accounts=None):
     """holder=s1: venues = what the Mac must fence (default all); run_venues = what S1 may run, set by set_run_venues()
-    only once the Mac acknowledged the fence for this gen. A growing S1 lease keeps its current run_venues."""
+    only once the Mac acknowledged the fence for this gen. A growing S1 lease keeps its current run_venues.
+    2026-10-19 ACCOUNT SCOPE: accounts={"stocks": ["trb"]} narrows an S1 holding to those accounts — siblings
+    keep trading on the Mac. Absent/empty = whole leased venues (legacy). Cleared on every mac failback."""
     new = dict(lease, holder=holder, gen=int(lease.get("gen", 0)) + 1, since=C.iso(), since_epoch=C.now_s(), reason=reason, by=HOST)
     if holder == "s1":
         new["venues"] = C.venues_str(venues or C.VENUES)
         new["run_venues"] = lease.get("run_venues", "") if lease.get("holder") == "s1" else ""
         new["nt"] = bool(nt or (lease.get("holder") == "s1" and lease.get("nt")))
+        if accounts:
+            new["accounts"] = {k: sorted(v) for k, v in accounts.items() if v}
+        else:
+            new.pop("accounts", None)
     else:
-        for key in ("venues", "run_venues", "nt"):
+        for key in ("venues", "run_venues", "nt", "accounts"):
             new.pop(key, None)
     C.atomic_write_json(LF / "lease.json", new)
-    alert("LEASE_" + holder.upper(), gen=new["gen"], reason=reason, venues=new.get("venues"))
+    alert("LEASE_" + holder.upper(), gen=new["gen"], reason=reason, venues=new.get("venues"), accounts=new.get("accounts"))
     return new
 
 
@@ -494,20 +503,24 @@ class Watchdog:
             st = self.state["not_trading"].setdefault(venue, {})
             reading = health.get(venue) or {}
             kinds = [k for k in reading.get("kinds") or [] if k in NT_NEED and not (reading.get("fenced") and k == "traders_dead")]
+            named = []
             if venue == "stocks" and hb and reading.get("applicable") and not reading.get("fenced"):
                 miss = self.state.setdefault("stock_acct_missing", {})
                 extra, xreasons, _named = stock_single_dead(reading.get("accounts"), miss, now)
                 kinds = kinds + [k for k in extra if k not in kinds]
                 reading = dict(reading, reasons=list(reading.get("reasons") or []) + xreasons)
+                named = list(_named)
+            if venue == "crypto" and "account_dead" in kinds:
+                named = sorted(set(named) | {a for a in (reading.get("account_dead_accounts") or [])})
             bad = bool(hb) and bool(reading.get("applicable")) and bool(kinds)
             if bad:
                 st["since"] = st.get("since") or now
                 st["confirm"] = int(st.get("confirm", 0)) + 1
-                st.update(kinds=kinds, reasons=reading.get("reasons"))
+                st.update(kinds=kinds, reasons=reading.get("reasons"), accounts=named)
             else:
                 if st.get("alerted"):
                     alert("MAC_TRADING_AGAIN", venue=venue, after_s=int(now - (st.get("since") or now)))
-                st.update(since=None, confirm=0, kinds=[], reasons=None, alerted=False)
+                st.update(since=None, confirm=0, kinds=[], reasons=None, alerted=False, accounts=[])
             need = min(NT_NEED[k] for k in kinds) if bad else None
             st["need_s"] = need
             st["ready"] = bool(bad and now - st["since"] >= need and st["confirm"] >= TAKEOVER_CONFIRM)
@@ -545,7 +558,56 @@ class Watchdog:
         if not lease.get("nt"):
             return FAILBACK_S
         recent = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S]
+        # 2026-10-19 USER ("stop trading immediately ... as soon as macbook is back online"): fast yield
+        # when the record is clean — no takeover of any kind for FAST_MIN_STABLE_S and no recent nt
+        # takeovers. A flap in progress always has a recent takeover, so it stays on the slow arm.
+        last_tk = float(self.state.get("last_takeover_epoch") or 0)
+        if not recent and last_tk and now - last_tk >= FAILBACK_FAST_MIN_STABLE_S:
+            return min(FAILBACK_S, FAILBACK_FAST_S)
         return FAILBACK_S * (2 ** min(max(len(recent) - 1, 0), NT_BACKOFF_MAX))
+
+    def _scoped_accounts(self, nt, taken):
+        """Named-account scope for an nt-driven venue takeover: only when the driving kinds name a
+        strict subset of the venue's accounts (single dead account, siblings healthy). Else None =
+        whole venue (legacy)."""
+        scope = {}
+        universe = {"crypto": list(C.CRYPTO_ACCOUNTS), "stocks": list(C.STOCK_ACCOUNTS)}
+        for venue in taken:
+            named = sorted(set((nt.get(venue) or {}).get("accounts") or []))
+            if named and set(named) < set(universe.get(venue, named)):
+                scope[venue] = named
+        return scope or None
+
+    def _yield_scoped_accounts(self, lease, scope, view, now):
+        """Hand scoped accounts back to the Mac one by one after a stable S1 tenure (ACCT_YIELD_S)
+        with the Mac host alive. A still-broken account refires its kinds on the Mac and is retaken
+        on fresh evidence — each cycle re-verifies instead of assuming. Last account out = full failback."""
+        scope_accts = dict(lease.get("accounts") or {})
+        if not scope_accts:
+            return lease
+        hb_fresh = view.get("hb_age") is not None and view["hb_age"] <= HB_FRESH_S
+        holds = self.state.setdefault("acct_hold", {})
+        if not hb_fresh:
+            return lease
+        held_for = {}
+        for venue, accts in list(scope_accts.items()):
+            for a in list(accts):
+                key = f"{venue}:{a}"
+                holds.setdefault(key, now)
+                held_for[key] = now - float(holds.get(key, now))
+        for key, secs in held_for.items():
+            if secs >= ACCT_YIELD_S:
+                venue, a = key.split(":", 1)
+                scope_accts[venue] = [x for x in scope_accts.get(venue, []) if x != a]
+                holds.pop(key, None)
+                alert("ACCOUNT_YIELDED", venue=venue, account=a, held_s=int(secs))
+        scope_accts = {k: v for k, v in scope_accts.items() if v}
+        if scope_accts == (lease.get("accounts") or {}):
+            return lease
+        if not scope_accts:
+            return self.failback(lease, "all scoped accounts yielded back to a live Mac")
+        return write_lease(lease, "s1", "yield stable scoped account(s) back to Mac", venues=scope,
+                           nt=lease.get("nt"), accounts=scope_accts)
 
     def _nt_reason(self, nt, venues):
         return "Mac reachable but NOT TRADING: " + "; ".join(f"{v}: {', '.join(nt[v].get('reasons') or nt[v].get('kinds') or [])} for {int(C.now_s() - (nt[v].get('since') or C.now_s()))}s" for v in venues)
@@ -583,18 +645,25 @@ class Watchdog:
             if want:
                 lease = write_lease(lease, "s1", "manual force-s1" if pin == "s1" else f"Mac down: hb_age={None if hb_age is None else int(hb_age)}s pushes_stopped unreachable={unreachable} trading_dead={trading_dead}")
                 taken = list(C.VENUES)
+                self.state["last_takeover_epoch"] = now
             else:
                 taken = self.nt_candidates(nt, pin, [], now)
                 if not taken:
                     return lease
-                lease = write_lease(lease, "s1", self._nt_reason(nt, taken), venues=taken, nt=True)
+                scope = self._scoped_accounts(nt, taken)
+                lease = write_lease(lease, "s1", self._nt_reason(nt, taken), venues=taken, nt=True, accounts=scope)
                 self.state["nt_history"] = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S] + [now]
+                self.state["last_takeover_epoch"] = now
             merge_mac_state()
             build_outbox("crypto", now)
             if C.stocks_applicable(now) or readings["stocks"]["applicable"]:
                 build_outbox("stocks", now)
             bridge_local(now)
         # holder == s1
+        scope = C.lease_venues(lease)
+        lease = self._yield_scoped_accounts(lease, scope, view, now)
+        if lease.get("holder") != "s1":
+            return lease
         scope = C.lease_venues(lease)
         grow = []
         if pin != "mac" and set(scope) != set(C.VENUES):

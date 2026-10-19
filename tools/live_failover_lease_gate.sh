@@ -1,15 +1,35 @@
 #!/bin/bash
 # LIVE FAILOVER lease gate (2026-10-13 USER: Mac and S1 must never both trade). Sourced by
 # run_with_watchdog.sh (Mac + S1 live dir), tools/s1_trading_supervisor.sh and tools/s1_failover_start.sh (S1).
-# lf_lease_fenced <script> <workdir> -> exit 0 when THIS machine must NOT spawn <script>:
+# lf_lease_fenced <script> <workdir> [account] -> exit 0 when THIS machine must NOT spawn <script>:
 #   Mac (Darwin): data/live_failover/lease_local.json says holder "s1" (written by
 #                 tools/mac_failover_agent.py from S1's authoritative lease.json) AND the script's venue is in
 #                 its "venues" (no "venues" field = every venue, the pre-2026-10-14 full-lease behaviour).
 #   S1 (Linux)  : data/live_failover/lease.json does not say holder "s1", OR it has a "run_venues" field that does
 #                 not contain the script's venue (run_venues is set by tools/live_failover_s1.py only after the Mac
 #                 acknowledged the fence for that venue; no field = legacy full lease).
+# 2026-10-19 ACCOUNT SCOPE (USER "if any account fails it should be taken over by s1 ... If trb fails
+# tradier_ has to take over on s1 immediately"): S1's lease may carry "accounts": {"stocks": ["trb"]}
+# meaning S1 holds ONLY those accounts — the Mac keeps trading their siblings. With a scope present,
+# an account in scope is fenced on the Mac / runnable on S1; an account outside scope is the reverse.
+# No scope (or unreadable scope) = legacy venue-wide behaviour. An UNSPECIFIED account with a scope
+# present reads FENCED (fail-safe: never spawn into doubt).
 # Venue: tradier_manage.py / tradier_positions.py = stocks, every other gated script = crypto (2026-10-14 per-venue
 # not-trading takeover). Only order-placing / authoritative-position procs are gated; data feeds always run.
+lf_lease_scope() {
+    python3 -c "import json,sys; d=json.load(open(sys.argv[1])); a=d.get('accounts') or {}; print(' '.join(sorted(f\"{k}={','.join(v)}\" for k,v in a.items() if v)))" "$1" 2>/dev/null
+}
+lf_account_held() {
+    local scope="$1" venue="$2" account="$3" entry
+    [[ -z "$scope" ]] && return 1
+    for entry in $scope; do
+        if [[ "$entry" == "$venue="* ]]; then
+            [[ ",${entry#*=}," == *",$account,"* ]] && return 0
+            return 1
+        fi
+    done
+    return 1
+}
 lf_is_gated_script() {
     case "$1" in
         ez_manage.py|tradier_manage.py|ez_positions_watchdog.py|ez_positions.py|ez_copilot.py|ez_reentry_daemon.py|tradier_positions.py) return 0 ;;
@@ -23,7 +43,7 @@ lf_script_venue() {
     esac
 }
 lf_lease_fenced() {
-    local script="$1" workdir="$2" venue file
+    local script="$1" workdir="$2" account="${3:-}" venue file scope
     lf_is_gated_script "$script" || return 1
     venue="$(lf_script_venue "$script")"
     if [[ "$(uname)" == "Darwin" ]]; then
@@ -52,12 +72,28 @@ lf_lease_fenced() {
             fi
         fi
         grep -q '"venues":' "$file" 2>/dev/null || return 0
-        grep -q "\"venues\": *\"[^\"]*${venue}" "$file" 2>/dev/null && return 0
-        return 1
+        grep -q "\"venues\": *\"[^\"]*${venue}" "$file" 2>/dev/null || return 1
+        scope="$(lf_lease_scope "$file")"
+        if [[ -n "$scope" ]]; then
+            if [[ -z "$account" ]]; then
+                return 0
+            fi
+            lf_account_held "$scope" "$venue" "$account" && return 0
+            return 1
+        fi
+        return 0
     fi
     file="$workdir/data/live_failover/lease.json"
     grep -q '"holder": *"s1"' "$file" 2>/dev/null || return 0
     grep -q '"run_venues":' "$file" 2>/dev/null || return 1
-    grep -q "\"run_venues\": *\"[^\"]*${venue}" "$file" 2>/dev/null && return 1
-    return 0
+    grep -q "\"run_venues\": *\"[^\"]*${venue}" "$file" 2>/dev/null || return 0
+    scope="$(lf_lease_scope "$file")"
+    if [[ -n "$scope" ]]; then
+        if [[ -z "$account" ]]; then
+            return 0
+        fi
+        lf_account_held "$scope" "$venue" "$account" && return 1
+        return 0
+    fi
+    return 1
 }

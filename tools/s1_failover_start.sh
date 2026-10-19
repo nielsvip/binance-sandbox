@@ -31,7 +31,9 @@ GATE_SCRIPT=ez_manage.py
 [ "$MODE" = "stocks" ] && GATE_SCRIPT=tradier_manage.py
 if [ -f tools/live_failover_lease_gate.sh ]; then
     source tools/live_failover_lease_gate.sh
-    if lf_lease_fenced "$GATE_SCRIPT" /home/niels/binance; then echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 does not hold the live-trading lease for this venue" >> "$LOG/s1_failover.log"; exit 3; fi
+    # 2026-10-19 ACCOUNT SCOPE: pass the account so a venue lease scoped to OTHER accounts refuses
+    # this one (and an account-scoped lease allows exactly this one).
+    if lf_lease_fenced "$GATE_SCRIPT" /home/niels/binance "$ACCT"; then echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 does not hold the live-trading lease for this venue/account" >> "$LOG/s1_failover.log"; exit 3; fi
 fi
 # 2026-10-14 USER (S1 held takeover-time opened_at + phantom March rows after 40 s blind sleeps): a trader starts only once
 # S1's OWN position writer has written this account since the takeover AND its held rows match a fresh broker read

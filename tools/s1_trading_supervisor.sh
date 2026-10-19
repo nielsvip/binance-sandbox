@@ -55,16 +55,39 @@ _shutdown() {
 trap _shutdown TERM INT
 
 log "START pid=$$ lease=$(cat "$BIN/data/live_failover/lease.json" 2>/dev/null | tr -d '\n ' | cut -c1-260)"
+# 2026-10-19 ACCOUNT SCOPE: with lease "accounts": {"stocks": ["trb"]} S1 holds ONLY those accounts —
+# siblings keep trading on the Mac (per-account gate answers in lf_lease_fenced). Scope detail lives in
+# the gate; here each account is started when UNfenced-for-S1 and TERM-stopped when fenced-away.
+stop_account_traders() {
+    local mode="$1" acct="$2" p
+    if [ "$mode" = "crypto" ]; then
+        for pat in "ez_manage.py --account $acct" "ez_positions_service_main.py $acct" "ez_positions_realtime.py $acct"; do
+            for p in $(pgrep -f "$pat" 2>/dev/null); do kill -TERM "$p" 2>/dev/null; done
+        done
+    else
+        for pat in "tradier_manage.py --accounts $acct" "tradier_positions.py --accounts $acct"; do
+            for p in $(pgrep -f "$pat" 2>/dev/null); do kill -TERM "$p" 2>/dev/null; done
+        done
+    fi
+}
 while true; do
     if ! grep -q '"holder": *"s1"' "$BIN/data/live_failover/lease.json" 2>/dev/null; then
         log "lease no longer held by S1 — exiting (systemd stops all S1 traders)"
         exit 0
     fi
-    if ! lf_lease_fenced ez_manage.py "$BIN"; then
-        for acct in ang inf flz men fin; do
-            pgrep -f "s1_failover_start.sh crypto $acct" >/dev/null && continue  # 2026-10-19 single-flight: the start path waits up to 240s in the positions gate; a lap-spawned duplicate multiplies broker polling during IP bans
-            pgrep -f "ez_manage.py --account $acct" >/dev/null || { log "starting crypto:$acct"; bash "$BIN/tools/s1_failover_start.sh" crypto "$acct"; }
-        done
+    for acct in ang inf flz men fin; do
+        if lf_lease_fenced ez_manage.py "$BIN" "$acct"; then
+            stop_account_traders crypto "$acct"
+            continue
+        fi
+        pgrep -f "s1_failover_start.sh crypto $acct" >/dev/null && continue  # 2026-10-19 single-flight: the start path waits up to 240s in the positions gate; a lap-spawned duplicate multiplies broker polling during IP bans
+        pgrep -f "ez_manage.py --account $acct" >/dev/null || { log "starting crypto:$acct"; bash "$BIN/tools/s1_failover_start.sh" crypto "$acct"; }
+    done
+    _venue_held=0
+    for acct in ang inf flz men fin; do
+        lf_lease_fenced ez_manage.py "$BIN" "$acct" || { _venue_held=1; break; }
+    done
+    if [ "$_venue_held" = "1" ]; then
         for extra in ez_positions_watchdog.py ez_reentry_daemon.py; do
             if [ -f "$BIN/$extra" ] && ! pgrep -f "python.*$extra" >/dev/null; then
                 setsid nohup "$PY" -u "$extra" >> "/home/niels/logs/failover_${extra}.log" 2>&1 </dev/null &
@@ -72,8 +95,12 @@ while true; do
             fi
         done
     fi
-    if ! lf_lease_fenced tradier_manage.py "$BIN" && stocks_window; then
+    if stocks_window; then
         for acct in trb trc tra; do
+            if lf_lease_fenced tradier_manage.py "$BIN" "$acct"; then
+                stop_account_traders stocks "$acct"
+                continue
+            fi
             pgrep -f "s1_failover_start.sh stocks $acct" >/dev/null && continue  # 2026-10-19 single-flight: same as crypto above
             pgrep -f "tradier_manage.py --accounts $acct" >/dev/null || { log "starting stocks:$acct"; bash "$BIN/tools/s1_failover_start.sh" stocks "$acct"; }
         done

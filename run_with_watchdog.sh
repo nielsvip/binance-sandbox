@@ -572,7 +572,9 @@ main() {
         # wrapper now does NOTHING: no duplicate reaping, no spawn. Only a wrapper that is allowed to RUN the venue may kill for it.
         if [[ -f "$WORKDIR/tools/live_failover_lease_gate.sh" ]] && [[ "$(uname)" == "Darwin" || -d "$WORKDIR/data/live_failover" ]]; then
             source "$WORKDIR/tools/live_failover_lease_gate.sh"
-            if lf_lease_fenced "$SCRIPT" "$WORKDIR"; then log "[LEASE_FENCED] the other machine holds the live-trading lease for this venue (data/live_failover/lease_local.json on the Mac, lease.json run_venues on S1) — NOT spawning $SCRIPT on $(uname), and NOT killing any running instance. Retrying in 30s..."; sleep 30; continue; fi
+            # 2026-10-19 ACCOUNT SCOPE: pass this wrapper's account so a sibling fenced on the other
+            # machine does not fence this one (ACCT_SUFFIX parsed at line ~151 from --account/--accounts).
+            if lf_lease_fenced "$SCRIPT" "$WORKDIR" "${ACCT_SUFFIX#_}"; then log "[LEASE_FENCED] the other machine holds the live-trading lease for this venue (data/live_failover/lease_local.json on the Mac, lease.json run_venues on S1) — NOT spawning $SCRIPT on $(uname), and NOT killing any running instance. Retrying in 30s..."; sleep 30; continue; fi
         fi
         # Kill any duplicate python instances before launching (only reached when this wrapper may actually run the venue)
         kill_duplicate_python

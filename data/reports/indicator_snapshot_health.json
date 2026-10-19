@@ -1,18 +1,23 @@
 {
- "generated_utc": "2026-10-19T22:25:43Z",
+ "generated_utc": "2026-10-19T22:30:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 2856.1,
+  "age_s": 97.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 86258,
-  "proc_age_s": 80.0,
-  "log_age_s": 2.2,
-  "warmup_done": false,
-  "timeframes_since_restart": [],
+  "proc_age_s": 381.0,
+  "log_age_s": 4.7,
+  "warmup_done": true,
+  "timeframes_since_restart": [
+   "1h",
+   "15m",
+   "3m",
+   "15m"
+  ],
   "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-19T21:55:09Z",
+  "last_timeframe_utc": "2026-10-19T22:29:28Z",
   "last_restart_utc": "2026-10-19T22:24:23Z",
   "restarts_last_hour": 3
  },
@@ -20,12 +25,12 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (0s < 45s)",
-   "log fresh (5s < 45s)",
-   "log fresh (2s < 45s)",
-   "log fresh (2s < 45s)",
-   "log fresh (0s < 45s)",
-   "log fresh (2s < 45s)"
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -38,21 +43,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792385811.7512133,
   "activations": 150,
-  "hb_mtime": 1792448656.9387789,
-  "mac_snapshot_age_s": 2627.4810643196106,
-  "mac_stale": true,
+  "hb_mtime": 1792449038.1689248,
+  "mac_snapshot_age_s": 87.1040141582489,
+  "mac_stale": false,
   "lease_holder": "s1",
   "lease_venues": "crypto,stocks",
   "lease_since": "2026-10-19T22:18:57Z",
   "lease_reason": "Mac down: hb_age=370s pushes_stopped unreachable=True trading_dead=False",
-  "now": 1792448695.635682,
-  "from_cache_age_s": 48.0,
-  "heartbeat_age_s": 38.7,
-  "active_s": 62883.9,
+  "now": 1792449045.6726253,
+  "heartbeat_age_s": 7.5,
+  "active_s": 63233.9,
   "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto,stocks', since 2026-10-19T22:18:57Z, reason 'Mac down: hb_age=370s pushes_stopped unreachable=True trading_dead=False'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 2856s old (> 600s). ez_indicators pid=86258 warmup_done=False tfs_since_restart=[] restarts_last_hour=3. Live crypto decisions are reading a stale indicator snapshot."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto,stocks' since 2026-10-19T22:18:57Z (reason 'Mac down: hb_age=370s pushes_stopped unreachable=True trading_dead=False'), Mac heartbeat 7s, Mac snapshot 97s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
