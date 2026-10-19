@@ -2207,7 +2207,7 @@ def _dispatch_async(host, symbol, acts, pdir, workers, tag):
         acts = _keep
     if not acts:
         print(f"[sched] dispatch SKIPPED for {symbol}: no tradeable side left (tag={tag})", flush=True)
-        return
+        return False
     import tempfile
     tgt = (host.get("ssh") or [None])[0]
     push = str(tgt) if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1") else ""
@@ -2216,6 +2216,7 @@ def _dispatch_async(host, symbol, acts, pdir, workers, tag):
         f.write(pair_launch_cmd(host, acts, pdir, workers))
     cmd = [sys.executable, str(ROOT / "tools" / "v15_dispatch_job.py"), "--symbol", str(symbol), "--push", push, "--via", host.get("_via", host["ssh"][0]), "--cmd-file", cmd_file, "--tag", tag]
     subprocess.Popen(cmd, cwd=str(ROOT), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=open("/tmp/v15_dispatch_job.err", "a"), start_new_session=True)
+    return True
 
 
 def load_state():
@@ -3078,7 +3079,14 @@ def tick(args, cfg, now):
                 if not pd:
                     continue
                 if _async_npz or _ALL_LAUNCH_NPZ:  # USER 2026-10-13: S1 recalcs + sends the latest NPZ for EVERY launch, every host incl. itself
-                    _dispatch_async(h, sym, acts, pd, workers, tag)
+                    # USER 2026-10-19 ("NO progress"): _dispatch_async returns False when it dispatched NOTHING (every
+                    # side dropped as untradeable or by the HARD-24H rule). The result was ignored, so the tick marked
+                    # the key launched, set the dispatch grace and reported it in `launched` — the fleet then idled
+                    # while the log claimed 2-4 launches every tick. VICR_LONG's sweep log was 4 DAYS old while being
+                    # "launched" every 2 minutes. A skipped dispatch is now visible and retried, not booked.
+                    if not _dispatch_async(h, sym, acts, pd, workers, tag):
+                        log.setdefault("dispatch_skipped", []).append(tag)
+                        continue
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                     st.setdefault("dispatch_host", {})[sym] = h["name"]
                     log.setdefault("dispatch_async", []).append(tag)
