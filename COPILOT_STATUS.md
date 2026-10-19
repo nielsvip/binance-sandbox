@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-19 02:46:51 UTC
+# Copilot Status — 2026-10-19 02:49:51 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,7 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:23:34
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:25:34
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:27:45
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:30:02
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:34:21
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:36:40
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:38:44
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:40:53
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:43:02
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:45:13
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:49:09
 
 ## Missed Trades (trader comparison)
 
@@ -40,17 +31,17 @@ _None_
 - HELD: **AMAT** SHORT (tradier) peak +4.4%, now +3.9%
 - HELD: **RRC** LONG (tradier) peak +4.1%, now +1.7%
 
-- WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
-- WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 0m ago
+- WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 1m ago
+- WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
+- WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
+**Issues (last 1h):** 8
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
