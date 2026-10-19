@@ -1,14 +1,14 @@
 {
  "findings": [],
  "n_findings": 0,
- "n_positions": 5,
+ "n_positions": 6,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.30135149999999994,
    "key": "fin:XTZUSDT_SHORT",
    "live_level": 0.30135149999999994,
-   "mark": 0.3007,
+   "mark": 0.301,
    "opened_at": "2026-10-18T23:40:53.717000Z",
    "resting_trigger": 0.3019
   },
@@ -17,7 +17,7 @@
    "entry_bar_level": 0.72827475,
    "key": "fin:RLCUSDT_LONG",
    "live_level": 0.72827475,
-   "mark": 0.7546,
+   "mark": 0.75220412,
    "opened_at": "2026-10-19T01:24:17.384000Z",
    "resting_trigger": 0.7271
   },
@@ -26,7 +26,7 @@
    "entry_bar_level": 5584.005,
    "key": "fin:BTCDOMUSDT_LONG",
    "live_level": 5584.005,
-   "mark": 5591.5,
+   "mark": 5594.7,
    "opened_at": "2026-10-19T00:12:02.436000Z",
    "resting_trigger": 5575.6
   },
@@ -35,7 +35,7 @@
    "entry_bar_level": 5560.0650000000005,
    "key": "men:BTCDOMUSDT_LONG",
    "live_level": 5560.0650000000005,
-   "mark": 5591.5,
+   "mark": 5595.5,
    "opened_at": "2026-10-18T02:53:16.627000Z",
    "resting_trigger": 5551.7
   },
@@ -44,10 +44,19 @@
    "entry_bar_level": 7.538799999999999,
    "key": "men:UNIUSDC_SHORT",
    "live_level": 7.538799999999999,
-   "mark": 7.26332939,
+   "mark": 7.27443159,
    "opened_at": "2026-10-16T01:30:19.727000Z",
    "resting_trigger": 7.551
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.63630525,
+   "key": "inf:ETHFIUSDC_LONG",
+   "live_level": 0.63630525,
+   "mark": 0.69060164,
+   "opened_at": "2026-10-19T01:49:11.481000Z",
+   "resting_trigger": 0.6353
   }
  ],
- "ts": "2026-10-19T01:42:04.652894+00:00"
+ "ts": "2026-10-19T01:51:52.573766+00:00"
 }
