@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-19 11:28 UTC",
- "total_capital_usd": 27.38,
+ "generated_at": "2026-10-19 11:47 UTC",
+ "total_capital_usd": 27.41,
  "tier_capital": {
   "A": 0.0,
   "B": 9.0,
-  "C": 18.37
+  "C": 18.41
  },
  "tier_count": {
   "A": 0,
@@ -22,34 +22,34 @@
    "pk": "ang:LTCUSDC_LONG",
    "symbol": "LTCUSDC",
    "account": "ang",
-   "value_usd": 12.47,
-   "gain_pct": 0.159,
+   "value_usd": 12.5,
+   "gain_pct": 0.337,
    "tier": "C",
    "perf_mult": 0.33,
    "amt": 0.21,
-   "mark": 59.4045292
+   "mark": 59.51
   },
   {
    "pk": "ang:VETUSDT_SHORT",
    "symbol": "VETUSDT",
    "account": "ang",
    "value_usd": 9.0,
-   "gain_pct": 1.38,
+   "gain_pct": 1.308,
    "tier": "B",
    "perf_mult": 0.32,
    "amt": 1341.0,
-   "mark": 0.00670913
+   "mark": 0.006714
   },
   {
    "pk": "ang:RENDERUSDT_LONG",
    "symbol": "RENDERUSDT",
    "account": "ang",
-   "value_usd": 5.9,
-   "gain_pct": -1.523,
+   "value_usd": 5.91,
+   "gain_pct": -1.486,
    "tier": "C",
    "perf_mult": 0.38,
    "amt": 3.3,
-   "mark": 1.78931906
+   "mark": 1.79
   }
  ]
 }
