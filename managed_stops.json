@@ -1,23 +1,16 @@
 {
-  "flz:BNBUSDC_LONG": {
-    "orderId": "1000002629962435",
-    "stopPrice": 718.5,
-    "entry_sig": "2026-10-19 04:37:24.940000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "LONG"
-  },
-  "flz:DOGEUSDC_LONG": {
-    "orderId": "1000002630007897",
-    "stopPrice": 0.07869,
-    "entry_sig": "2026-10-19 05:04:25.127000+00:00",
-    "symbol": "DOGEUSDC",
-    "side": "LONG"
-  },
   "flz:GRAMUSDT_SHORT": {
     "orderId": "1000002630144272",
     "stopPrice": 1.358,
     "entry_sig": "2026-10-19 06:55:02.898000+00:00",
     "symbol": "GRAMUSDT",
     "side": "SHORT"
+  },
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002630385745",
+    "stopPrice": 718.5,
+    "entry_sig": "2026-10-19 04:37:24.940000+00:00",
+    "symbol": "BNBUSDC",
+    "side": "LONG"
   }
 }
