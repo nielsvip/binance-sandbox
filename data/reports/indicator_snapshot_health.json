@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-19T11:29:49Z",
+ "generated_utc": "2026-10-19T11:34:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1394.3,
+  "age_s": 1690.9,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 91085,
-  "proc_age_s": 1207.0,
-  "log_age_s": 2.3,
+  "proc_age_s": 1503.0,
+  "log_age_s": 16.3,
   "warmup_done": false,
   "timeframes_since_restart": [
    "1h"
@@ -22,12 +22,12 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (17s < 45s)",
-   "log fresh (24s < 45s)",
-   "log fresh (3s < 45s)",
-   "log fresh (9s < 45s)",
-   "log fresh (14s < 45s)",
-   "log fresh (0s < 45s)"
+   "log fresh (2s < 45s)",
+   "log fresh (10s < 45s)",
+   "log fresh (1s < 45s)",
+   "log fresh (2s < 45s)",
+   "log fresh (8s < 45s)",
+   "log fresh (15s < 45s)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -44,12 +44,13 @@
   "mac_snapshot_age_s": 1381.4583151340485,
   "mac_stale": true,
   "now": 1792409389.4791229,
+  "from_cache_age_s": 295.8,
   "heartbeat_age_s": 5.9,
   "active_s": 23577.7,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1394s old (> 600s). ez_indicators pid=91085 warmup_done=False tfs_since_restart=['1h'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1690s old (> 600s). ez_indicators pid=91085 warmup_done=False tfs_since_restart=['1h'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
