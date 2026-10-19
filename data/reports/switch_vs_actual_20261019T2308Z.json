@@ -1,0 +1,105 @@
+{
+ "window_from": "10-19 22:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "FILLED": 4,
+  "dictated_but_no_account_traded_it": 8,
+  "EXTRA": 2,
+  "NOT_FILLED": 1
+ },
+ "rows": [
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "10-19 22:15",
+   "dictated": "OPEN",
+   "dictated_reason": "HARDCODED_RALLY_REENTRY",
+   "actual_at": "10-19 22:47",
+   "actual": "AUGMENT",
+   "actual_reason": "HARDCODED_RALLY_REENTRY |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BATUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 22:52",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "BTCDOMUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 22:12",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px5581.240598_lvl5584.005000_g-0.35",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "COTIUSDT_SHORT",
+   "dictated_bar": "10-19 22:15",
+   "dictated": "OPEN",
+   "dictated_reason": "B_KZONE",
+   "actual_at": "10-19 22:51",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "COTIUSDT_SHORT",
+   "dictated_bar": "10-19 22:30",
+   "dictated": "REDUCE",
+   "dictated_reason": "WT_CROSS_EXIT_1h_bull",
+   "actual_at": "",
+   "actual": "",
+   "actual_reason": "",
+   "late_bars": null,
+   "verdict": "NOT_FILLED",
+   "vec_tagged": null
+  },
+  {
+   "acct": "fin",
+   "sym_side": "QTUMUSDT_LONG",
+   "dictated_bar": "10-19 22:15",
+   "dictated": "OPEN",
+   "dictated_reason": "REENTRY_HIGHER_LOW",
+   "actual_at": "10-19 22:50",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "THETAUSDT_LONG",
+   "dictated_bar": "10-19 22:15",
+   "dictated": "OPEN",
+   "dictated_reason": "REENTRY_HIGHER_LOW",
+   "actual_at": "10-19 22:54",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": 1,
+   "verdict": "FILLED_LATE_1bars",
+   "vec_tagged": true
+  }
+ ]
+}
