@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-19T07:33:57Z",
+ "generated_utc": "2026-10-19T07:38:57Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 4238.5,
+  "age_s": 4538.9,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 88305,
-  "proc_age_s": 3084.0,
-  "log_age_s": 36.9,
+  "proc_age_s": 3384.0,
+  "log_age_s": 53.0,
   "warmup_done": false,
   "timeframes_since_restart": [
    "1h",
@@ -23,11 +23,12 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (37s < 45s)",
-   "log fresh (6s < 45s)",
-   "log fresh (18s < 45s)",
-   "log fresh (28s < 45s)",
-   "log fresh (35s < 45s)"
+   "log fresh (11s < 45s)",
+   "log fresh (19s < 45s)",
+   "log fresh (29s < 45s)",
+   "log fresh (35s < 45s)",
+   "log fresh (44s < 45s)",
+   "no warm-up progress for 1816s > 1800s \u2014 warm-up is wedged, let it be killed"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -40,17 +41,17 @@
   "mode": "ACTIVE",
   "since_epoch": 1792385811.7512133,
   "activations": 150,
-  "hb_mtime": 1792394989.8345344,
-  "mac_snapshot_age_s": 3824.748682498932,
+  "hb_mtime": 1792395309.4505463,
+  "mac_snapshot_age_s": 4144.354934692383,
   "mac_stale": true,
-  "now": 1792394999.843683,
-  "from_cache_age_s": 237.6,
-  "heartbeat_age_s": 10.0,
-  "active_s": 9188.1,
+  "now": 1792395313.4170513,
+  "from_cache_age_s": 224.4,
+  "heartbeat_age_s": 4.0,
+  "active_s": 9501.7,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 4238s old (> 600s). ez_indicators pid=88305 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 4538s old (> 600s). ez_indicators pid=88305 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
