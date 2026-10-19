@@ -2886,7 +2886,10 @@ def tick(args, cfg, now):
             # when no V15_SCHED_VENUE_ONLY is set (the old behaviour, which exists so a hand-pinned symbol can jump an
             # auto-derived phase).
             _pin_may_bypass_venue = _pinned_sym and not _VENUE_ONLY
-            if needs_slot and not _pin_may_bypass_venue and not _venue_allowed(sym, _native_syms, phase=_host_phase):
+            # `needs_slot` alone left a hole: a HELD chain launches without needing a new slot, so it never reached the
+            # venue gate and the 00:36Z tick started KMNOUSDT/ZROUSDT while pinned to stocks. An explicit venue pin
+            # applies to every launch, slot or no slot.
+            if (needs_slot or _VENUE_ONLY) and not _pin_may_bypass_venue and not _venue_allowed(sym, _native_syms, phase=_host_phase):
                 log.setdefault("skipped_venue_only", []).append(f"{h['name']}:{sym}")
                 continue  # TEMPORARY USER 2026-10-10: stocks-only weekend push — new crypto pairs blocked; held chains (needs_slot=False) drain untouched
             if sym in owner and owner[sym] != h["name"]:
