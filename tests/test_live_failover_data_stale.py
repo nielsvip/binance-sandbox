@@ -193,3 +193,81 @@ def test_all_vanished_is_not_single():
     acc = {a: _sacct(alive=0) for a in ("trb", "trc", "tra")}
     kinds, _, _ = s1.stock_single_dead(acc, {}, T0 + 9999)
     assert kinds == [], kinds
+
+
+def test_mac_fence_ack_scoped():
+    import live_failover_s1 as s1
+    lease = {"gen": 9, "accounts": {"stocks": ["trb"]}}
+    assert s1._mac_fence_acked({"fence_ack_gen": 9, "fence_ack_accounts": ["trb"]}, lease) is True
+    assert s1._mac_fence_acked({"fence_ack_gen": 9, "fence_ack_accounts": []}, lease) is False
+    assert s1._mac_fence_acked({"fence_ack_gen": 8, "fence_ack_accounts": ["trb"]}, lease) is False
+    assert s1._mac_fence_acked(None, lease) is False
+
+
+def test_mac_fence_ack_legacy():
+    import live_failover_s1 as s1
+    lease = {"gen": 4}
+    assert s1._mac_fence_acked({"fence_ack_gen": 4, "trading_procs": 0}, lease) is True
+    assert s1._mac_fence_acked({"fence_ack_gen": 4, "trading_procs": 3}, lease) is False
+
+
+def test_scoped_takeover_subset_only():
+    import live_failover_s1 as s1
+    w = object.__new__(s1.Watchdog)
+    nt = {"stocks": {"kinds": ["stock_account_dead"], "accounts": ["trb"]}}
+    assert w._scoped_accounts(nt, ["stocks"]) == {"stocks": ["trb"]}
+    nt = {"stocks": {"kinds": ["stock_account_dead"], "accounts": ["trb", "trc", "tra"]}}
+    assert w._scoped_accounts(nt, ["stocks"]) is None
+    nt = {"crypto": {"kinds": ["account_dead"], "accounts": ["flz"]}}
+    assert w._scoped_accounts(nt, ["crypto"]) == {"crypto": ["flz"]}
+    nt = {"stocks": {"kinds": ["indicators_stale"], "accounts": []}}
+    assert w._scoped_accounts(nt, ["stocks"]) is None
+
+
+def test_failback_fast_only_with_clean_record():
+    import live_failover_s1 as s1
+    w = object.__new__(s1.Watchdog)
+    w.state = {"nt_history": [], "last_takeover_epoch": T0 - 7200}
+    lease = {"nt": True}
+    assert w.failback_needed_s(lease, T0) == min(s1.FAILBACK_S, s1.FAILBACK_FAST_S)
+    w.state = {"nt_history": [T0 - 100], "last_takeover_epoch": T0 - 7200}
+    assert w.failback_needed_s(lease, T0) == s1.FAILBACK_S
+    w.state = {"nt_history": [], "last_takeover_epoch": T0 - 60}
+    assert w.failback_needed_s(lease, T0) == s1.FAILBACK_S
+    w.state = {"nt_history": []}
+    assert w.failback_needed_s(lease, T0) == s1.FAILBACK_S
+    assert w.failback_needed_s({"nt": False}, T0) == s1.FAILBACK_S
+
+
+def test_yield_drops_stable_account(monkeypatch):
+    import live_failover_s1 as s1
+    monkeypatch.setattr(s1, "alert", lambda *a, **k: None)
+    w = object.__new__(s1.Watchdog)
+    w.state = {}
+    lease = {"holder": "s1", "venues": "stocks", "nt": True,
+             "accounts": {"stocks": ["trb"]}}
+    view = {"hb_age": 5}
+    out = w._yield_scoped_accounts(dict(lease), ["stocks"], view, T0)
+    assert out["accounts"] == {"stocks": ["trb"]}
+    w.state = {"acct_hold": {"stocks:trb": T0 - 601}}
+    called = {}
+    def fake_failback(self, lse, why):
+        called.update(why=why)
+        return {"holder": "mac"}
+    monkeypatch.setattr(s1.Watchdog, "failback", fake_failback)
+    out = w._yield_scoped_accounts(dict(lease), ["stocks"], view, T0)
+    assert "yielded" in called["why"] and out["holder"] == "mac", called
+    # partial yield keeps the lease: two scoped accounts, one stable
+    w.state = {"acct_hold": {"stocks:trb": T0 - 601, "stocks:trc": T0 - 10}}
+    lease2 = {"holder": "s1", "venues": "stocks", "nt": True,
+              "accounts": {"stocks": ["trb", "trc"]}}
+    seen = {}
+
+    def fake_write(lse, holder, reason, venues=None, nt=False, accounts=None):
+        seen.update(accounts=accounts)
+        nxt = dict(lse)
+        nxt["accounts"] = accounts
+        return nxt
+    monkeypatch.setattr(s1, "write_lease", fake_write)
+    out = w._yield_scoped_accounts(dict(lease2), ["stocks"], view, T0)
+    assert seen["accounts"] == {"stocks": ["trc"]}, seen

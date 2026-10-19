@@ -107,6 +107,19 @@ STOCK_ACCT_MISSING_S = float(os.environ.get("LF_STOCK_ACCT_MISSING_S", "240"))  
 # mirroring LF_ACCT_DEAD_S on crypto).
 
 
+def _mac_fence_acked(hb, lease):
+    """Scope-aware fence acknowledgment (2026-10-19 account scope): with lease accounts, the Mac acks
+    per account (fence_ack_accounts) — the legacy trading_procs==0 bar can never clear while siblings
+    keep trading. Without scope, the legacy bar stands."""
+    if not isinstance(hb, dict) or hb.get("fence_ack_gen") != (lease or {}).get("gen"):
+        return False
+    scope = {k: list(v) for k, v in ((lease or {}).get("accounts") or {}).items() if v}
+    if not scope:
+        return hb.get("trading_procs") == 0
+    acked = set(hb.get("fence_ack_accounts") or [])
+    return bool(scope) and all(a in acked for v in scope.values() for a in v)
+
+
 def stock_single_dead(accounts, miss_state, now):
     """S1-side derivation: ONE stock account dead while its siblings are fine.
 
@@ -679,7 +692,7 @@ class Watchdog:
                     self.state["nt_history"] = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S] + [now]
                 merge_mac_state()
                 scope = C.lease_venues(lease)
-        mac_fenced = isinstance(view["hb"], dict) and view["hb"].get("fence_ack_gen") == lease["gen"] and view["hb"].get("trading_procs") == 0
+        mac_fenced = _mac_fence_acked(view.get("hb"), lease)
         mac_silent = hb_absent or (hb_age is not None and hb_age >= FENCE_WAIT_S)
         nt_left = [v for v in scope if nt.get(v, {}).get("kinds")]
         healthy = (hb_age is not None and hb_age <= HB_FRESH_S and not any(r["applicable"] and r["stale"] for r in readings.values()) and not nt_left)

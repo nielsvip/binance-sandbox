@@ -7441,6 +7441,27 @@ async def check_market_index_alerts(market_index: float, previous_index: float =
     elif market_index <= CRASH_ALERT:
         alerts.append({"type": "MARKET_CRASH", "severity": "CRITICAL", "index": market_index, "message": f"Market crash conditions: {market_index:.1f}"})
     return alerts
+def _write_market_mode_file(mode_data: dict):
+    """Publish data/market_mode.json for the trading engines, atomically and fail-soft.
+    USER 2026-10-19 ("the light/normal/extreme mode selection that needs to be calculated and set
+    automatically seems to have been overridden we need to put that system back"): data/market_mode.json
+    was a symlink to /tmp/binance-monitoring/market_mode.json (made 2026-09-30) and macOS wiped /tmp, so
+    every tick raised "Error in market movement monitor: [Errno 2] ... data/market_mode.json" (once a
+    minute from 2026-10-19 20:02 back to the reboot). The write came BEFORE Config.set_market_mode, so the
+    raise also killed the mode application in this process, and ez_manage's monitor found no file at all
+    and kept config.py's pinned mode forever. A dangling symlink is replaced by the real file here, the
+    mode is applied before the write (above), and a write failure can never again swallow the mode."""
+    mode_file = DATA_DIR / "market_mode.json"
+    try:
+        if mode_file.is_symlink() and not mode_file.exists():
+            mode_file.unlink()
+            logger.warning(f"market_mode.json was a dangling symlink — replaced by a real file at {mode_file}")
+        mode_file.parent.mkdir(parents=True, exist_ok=True)
+        tmp = mode_file.with_name(f".market_mode.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(mode_data, indent=2))
+        os.replace(tmp, mode_file)
+    except Exception as exc:
+        logger.error(f"Could not publish market_mode.json ({exc!r}) — mode {mode_data.get('mode')} is applied in-process but the engines will not see it")
 async def trigger_market_mode(market_index: float) -> tuple:
     global last_market_mode, signals_data
     EXTREME_THRESHOLD = 65
@@ -7458,10 +7479,8 @@ async def trigger_market_mode(market_index: float) -> tuple:
         },
         "mode_changed": mode_changed
     }
-    mode_file = DATA_DIR / "market_mode.json"
-    async with aiofiles.open(mode_file, "w") as f:
-        await f.write(json.dumps(mode_data, indent=2))
     Config.set_market_mode(new_mode)
+    await asyncio.to_thread(_write_market_mode_file, mode_data)
     if mode_changed:
         await record_market_mode_signal(new_mode, market_index)
         if new_mode == "EXTREME_MODE":

@@ -46,7 +46,7 @@ lf_lease_fenced() {
     local script="$1" workdir="$2" account="${3:-}" venue file scope
     lf_is_gated_script "$script" || return 1
     venue="$(lf_script_venue "$script")"
-    if [[ "$(uname)" == "Darwin" ]]; then
+    if [[ "${LF_UNAME:-$(uname)}" == "Darwin" ]]; then
         file="$workdir/data/live_failover/lease_local.json"
         grep -q '"holder": *"s1"' "$file" 2>/dev/null || return 1
         # 2026-10-16 A GHOST LEASE MUST NOT FENCE FOREVER (USER: "trading can only stop because macbook went offline,

@@ -175,6 +175,46 @@ def fenced_venues(local):
     return C.lease_venues(local) if (local or {}).get("holder") == "s1" else []
 
 
+def _acct_proc_patterns(venue, account):
+    if venue == "stocks":
+        return [f"tradier_manage.py --accounts {account}", f"tradier_positions.py --accounts {account}"]
+    return [f"ez_manage.py --account {account}", f"ez_positions_service_main.py {account}",
+            f"ez_positions_realtime.py {account}"]
+
+
+def scoped_fence_ack(local):
+    """2026-10-19 ACCOUNT SCOPE: (gen, acked_accounts). gen when S1 holds the lease AND every scoped
+    account's order-placing/writing processes are gone — siblings keep running, so the legacy
+    trading_procs==0 bar can never clear on a scoped lease. Unscoped (legacy) keeps the old bar."""
+    local = local or {}
+    if local.get("holder") != "s1":
+        return (None, [])
+    scope = {k: list(v) for k, v in (local.get("accounts") or {}).items() if v}
+    if not scope:
+        pids = [] if os.environ.get("LF_NO_KILL") == "1" else trader_pids(C.lease_venues(local) or None)
+        return (local.get("gen") if not pids else None, [])
+    if os.environ.get("LF_NO_KILL") == "1":
+        return (local.get("gen"), sorted({a for v in scope.values() for a in v}))
+    acked = []
+    for venue, accts in scope.items():
+        for account in accts:
+            alive = False
+            for pat in _acct_proc_patterns(venue, account):
+                try:
+                    out = subprocess.run(["pgrep", "-f", pat], capture_output=True, text=True).stdout
+                except Exception:
+                    continue
+                if any(pid.strip().isdigit() for pid in out.split()):
+                    alive = True
+                    break
+            if not alive:
+                acked.append(account)
+    want = sorted({a for v in scope.values() for a in v})
+    if sorted(acked) == want:
+        return (local.get("gen"), want)
+    return (None, acked)
+
+
 def _npz_tail_ok(ts):
     """Same currency standard the dispatch gate holds workers to (tools/npz_cutoffs.tail_currency):
     a tail is current iff it reaches the latest RTH close for stocks — so Friday bars read FRESH at
@@ -308,12 +348,22 @@ class Agent:
         return seeded
 
     def fence(self, lease, host=None):
+        # 2026-10-19 ACCOUNT SCOPE: lease "accounts" narrows the fence to those accounts; siblings keep
+        # trading. A shrunken scope (yield) unfences the dropped accounts: best-effort state pull, then
+        # the watchdog respawns them via the scope-aware gate. Scope lives in lease_local.json.
         local = C.read_json(LF / "lease_local.json", {}) or {}
         venues = C.lease_venues(lease)
-        if local.get("holder") != "s1" or local.get("gen") != lease.get("gen") or C.lease_venues(local) != venues:
-            C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "venues": C.venues_str(venues), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
-            alert("MAC_FENCED", gen=lease.get("gen"), venues=venues, reason=lease.get("reason"))
-        pids = [] if os.environ.get("LF_NO_KILL") == "1" else trader_pids(venues)
+        scope = {k: sorted(v) for k, v in (lease.get("accounts") or {}).items() if v}
+        prev_scope = {k: sorted(v) for k, v in (local.get("accounts") or {}).items() if v}
+        if (local.get("holder") != "s1" or local.get("gen") != lease.get("gen")
+                or C.lease_venues(local) != venues or prev_scope != scope):
+            C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "venues": C.venues_str(venues), "accounts": scope, "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
+            alert("MAC_FENCED", gen=lease.get("gen"), venues=venues, accounts=scope or "all", reason=lease.get("reason"))
+        yielded = sorted({a for v in venues for a in (prev_scope.get(v) or []) if a not in (scope.get(v) or [])})
+        if yielded and local.get("holder") == "s1" and local.get("gen") == lease.get("gen"):
+            ok = self.pull_state_back(host, venues, accounts=yielded) if host else True
+            log(f"UNFENCE scoped accounts {yielded} (state pull ok={ok}) — watchdog respawns via gate")
+        pids = [] if os.environ.get("LF_NO_KILL") == "1" else trader_pids(venues, scope or None)
         for pid in pids:
             try:
                 os.kill(pid, signal.SIGTERM)
@@ -351,12 +401,15 @@ class Agent:
             C.atomic_write_json(LF / "lease_local.json", {"holder": "mac", "gen": lease.get("gen"), "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
         return True
 
-    def pull_state_back(self, host, venues=C.VENUES):
-        """Only the accounts of venues S1 actually traded (a partial-venue lease never touches the Mac's other venue)."""
+    def pull_state_back(self, host, venues=C.VENUES, accounts=None):
+        """Only the accounts of venues S1 actually traded (a partial-venue lease never touches the Mac's other venue).
+        2026-10-19: with account scope, only the yielded accounts (pulling S1's stale files for a Mac-live
+        sibling would corrupt it — --update skips older, but the explicit list is exact)."""
         if os.environ.get("LF_NO_SSH") == "1":
             return True
         ok = True
-        accounts = (C.CRYPTO_ACCOUNTS if "crypto" in venues else ()) + (C.STOCK_ACCOUNTS if "stocks" in venues else ())
+        if accounts is None:
+            accounts = (C.CRYPTO_ACCOUNTS if "crypto" in venues else ()) + (C.STOCK_ACCOUNTS if "stocks" in venues else ())
         for account in accounts:
             result = rsync(["--update", "--exclude=.*", "--exclude=backups/", "--exclude=*.bak", "--exclude=*_positions.json", f"{host}:{REMOTE_LIVE}/{account}/", str(BASE / account) + "/"])
             if result.returncode not in (0, 23, 24):
@@ -641,8 +694,9 @@ class Agent:
             self.augment_data_freshness(health, now, fenced)
         except Exception as exc:  # advisory on top of advisory: the heartbeat must always go out
             log(f"augment_data_freshness outer error: {exc!r}")
+        ack_gen, ack_accts = scoped_fence_ack(local)
         heartbeat = {"epoch": now, "ts": C.iso(now), "host": "macbook", "version": VERSION, "venues": venues, "trading_procs": procs,
-                     "lease_local": local, "pull_request": pulls, "fence_ack_gen": local.get("gen") if local.get("holder") == "s1" and procs == 0 else None,
+                     "lease_local": local, "pull_request": pulls, "fence_ack_gen": ack_gen, "fence_ack_accounts": ack_accts,
                      "trading_health": health}
         self.note_health(health)
         C.atomic_write_json(LF / "mac_data_heartbeat.json", heartbeat)
