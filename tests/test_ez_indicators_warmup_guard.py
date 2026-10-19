@@ -137,7 +137,9 @@ def test_refuses_when_warmup_progress_has_stalled(guard, live_pid):
 
 def test_refuses_past_the_absolute_grace_bound(guard, live_pid, monkeypatch):
     """Patience is bounded: past WARMUP_GRACE_S the guard stops protecting no matter how healthy it looks."""
-    monkeypatch.setattr(guard, "WARMUP_GRACE_S", 0)
+    # -1, not 0: `ps -o etime=` has 1-second granularity, so a process spawned moments ago reports age 0.0 and
+    # would not be strictly greater than a 0 grace.
+    monkeypatch.setattr(guard, "WARMUP_GRACE_S", -1)
     ok, reason = guard._heartbeat_decision(live_pid, _log_info(guard), False)
     assert ok is False
     assert "protection bounded" in reason
@@ -162,10 +164,41 @@ def test_heartbeat_line_is_tagged_and_timestamped(guard, tmp_path, monkeypatch):
 
 
 def test_guard_never_kills_or_signals_anything():
-    """The guard's contract: it appends a log line and writes reports. Nothing else."""
-    src = GUARD.read_text()
-    for forbidden in ("kill(", "SIGTERM", "SIGKILL", "pkill", "killall", "terminate()", "os.kill"):
-        assert forbidden not in src, f"the guard must never signal a process ({forbidden} found)"
+    """The guard's contract: it appends a log line and writes reports. It never signals a process.
+
+    Checked over the AST, not the raw text, so the docstring may keep describing the SIGTERM behaviour of
+    run_with_watchdog.sh (which is the whole point of the file) without tripping the assertion.
+    """
+    import ast
+
+    tree = ast.parse(GUARD.read_text())
+    banned_names = {"kill", "killpg", "terminate", "pkill", "killall", "send_signal"}
+    banned_attrs = {"SIGTERM", "SIGKILL"}
+    offenders = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            fn = node.func
+            name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", None)
+            if name in banned_names:
+                offenders.append(f"call to {name}()")
+        if isinstance(node, ast.Attribute) and node.attr in banned_attrs:
+            offenders.append(f"reference to signal.{node.attr}")
+    assert not offenders, f"the guard must never signal a process: {offenders}"
+
+
+def test_guard_only_appends_to_the_log_it_watches():
+    """The log must be opened in append mode only — never truncated, never rewritten."""
+    import ast
+
+    tree = ast.parse(GUARD.read_text())
+    modes = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "open":
+            tgt = node.func.value
+            if isinstance(tgt, ast.Name) and tgt.id == "LOG":
+                modes += [a.value for a in node.args if isinstance(a, ast.Constant)]
+    assert modes, "expected at least one LOG.open(...) call"
+    assert all(m in ("a", "ab", "rb") for m in modes), f"LOG opened in a non-append/read mode: {modes}"
 
 
 def test_guard_reports_and_alert_paths_are_under_data_reports(guard):

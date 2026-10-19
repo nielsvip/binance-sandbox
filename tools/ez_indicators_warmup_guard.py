@@ -19,8 +19,11 @@ ONE error line was written. The chain, each link proven from the log:
   3. `run_with_watchdog.sh:186` sets `NO_OUTPUT_TIMEOUT=120` for ez_indicators — "writes every ~1s" — and the kill
      criterion is purely the mtime of /Users/niels/logs/ez_indicators.log (run_with_watchdog.sh:383-398). During
      warm-up the process legitimately logs ONE line per timeframe, minutes apart, so the watchdog SIGTERMs a
-     perfectly healthy process (`exit=143`, `signal 15: TERM`) partway through, over and over — 5088 restart banners
-     in this log — and every restart throws the warm-up away and begins again at "D".
+     perfectly healthy process (`exit=143`, `signal 15: TERM`) partway through, over and over, and every restart
+     throws the warm-up away and begins again at "D". COUNTED FROM THE WATCHDOG'S OWN LOG (the application log's
+     "SCRIPT RESTART" banner is import-time noise — see _real_restarts_last_hour): 12 real restarts in the 20:00
+     hour, then 60 / 30 / 61 / 26 / 11 / 19 through 02:00, and of the 38 kills in that span 34 carry the reason
+     "No output for 12Xs". The two others ("415s", "306s") are the genuinely stuck processes the timeout is for.
   4. `[3m] full=` — the last timeframe, the one that gates the task set — last appeared at 2026-10-18 20:04:17 and
      then never again. `sentiment_top_40.json` 20:04, `sentiment_bottom_40.json` 20:05, `ranking_points.json` 20:05
      (all written off the end of that pass) agree to the minute.
@@ -84,11 +87,15 @@ ALERT = ROOT / "data" / "reports" / "ALERT_INDICATOR_SNAPSHOT.txt"
 HB_WHEN_LOG_AGE_S = int(os.environ.get("EZIND_HB_WHEN_LOG_AGE_S", "45"))
 #   Watchdog kills at 120 s of log silence (run_with_watchdog.sh:186). Top up at 45 s, leaving 75 s of margin for
 #   a missed cron minute. MEASURED 2026-10-19 04:0xZ: at 60 s this was too tight — see S1_PROBE_EVERY_S below.
-TF_MAX_GAP_S = int(os.environ.get("EZIND_TF_MAX_GAP_S", "1200"))
-#   Largest MEASURED gap between two warm-up timeframe lines was 712 s (D 01:36:33 -> 4h 01:48:25). 1200 s gives
-#   that 68% headroom and still declares a warm-up that has genuinely stopped progressing dead within 20 min.
-WARMUP_GRACE_S = int(os.environ.get("EZIND_WARMUP_GRACE_S", "3600"))
-#   A full warm-up measured >30 min. 60 min is generous; past it, protection stops unconditionally.
+TF_MAX_GAP_S = int(os.environ.get("EZIND_TF_MAX_GAP_S", "1800"))
+#   MEASURED gaps between consecutive warm-up timeframe lines, 2026-10-19 (pid 57405, the first process the guard
+#   kept alive long enough to watch): D 03:09:24 -> 4h 03:20:57 (693 s) -> 1h 03:29:10 (493 s) -> 15m 03:40:25
+#   (675 s). The FIFTH and last pass, "3m", is the heaviest (199 symbols at the finest granularity) and has not yet
+#   been timed end to end, so 1800 s leaves it room while still calling a warm-up that has genuinely stopped
+#   progressing dead within 30 min.
+WARMUP_GRACE_S = int(os.environ.get("EZIND_WARMUP_GRACE_S", "5400"))
+#   A full warm-up is ~47 min at 199 symbols (02:58:56 start, four of five passes done by 03:40:25). 90 min is
+#   generous without being open-ended; past it, protection stops unconditionally and the watchdog takes over.
 CPU_SAMPLE_S = float(os.environ.get("EZIND_CPU_SAMPLE_S", "10.0"))
 CPU_MIN_DELTA_S = float(os.environ.get("EZIND_CPU_MIN_DELTA_S", "0.05"))
 #   MEASURED 2026-10-19 03:09Z: the warm-up is I/O-bound, not CPU-bound — pid 57405 had burned 29.5 s of CPU in
@@ -194,18 +201,49 @@ def _proc_age_s(pid):
     return _ps_seconds(pid, "etime")
 
 
-def _scan_log(tail_bytes=512 * 1024):
-    """Last restart banner, warm-up progress and whether warm-up has completed since that restart.
+def _real_restarts_last_hour():
+    """Count REAL restarts from run_with_watchdog.sh's own log, which is the only authoritative source.
 
+    2026-10-19 04:0xZ: the `SCRIPT RESTART - ez_indicators` banner in the application log is NOT a restart count.
+    ez_indicators.py:246 writes that banner at IMPORT time, and `tools/failover_readiness_audit.sh:63` imports the
+    module every 20 min (Mac cron */20) precisely to prove it is runnable. Measured in the 03:00-03:59 window: 18
+    banners, but only 1 real restart. Counting banners would have made this guard overstate churn by ~18x, so the
+    count comes from the watchdog's "Starting ez_indicators.py" lines instead.
+    """
+    path = Path("/Users/niels/logs/ez_indicators_watchdog.log")
+    cutoff = time.time() - 3600
+    n = 0
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            fh.seek(max(0, size - 256 * 1024))
+            for line in fh.read().decode("utf-8", "replace").splitlines():
+                if "Starting ez_indicators.py" not in line:
+                    continue
+                m = re.match(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]", line)
+                epoch = _parse_ts(m.group(1)) if m else None
+                if epoch and epoch >= cutoff:
+                    n += 1
+    except Exception:
+        return None
+    return n
+
+
+def _scan_log(boundary_epoch=None, tail_bytes=512 * 1024):
+    """Warm-up progress, and whether warm-up has completed since the CURRENT process started.
+
+    `boundary_epoch` is the running process's start time. It is used in preference to the log's own
+    "SCRIPT RESTART" banner because that banner is written on import by unrelated tools (see
+    _real_restarts_last_hour) and a spurious one would otherwise look like a fresh warm-up.
     Only the tail is read — the live log is tens of MB.
     """
     info = {
-        "last_restart_epoch": None,
+        "last_restart_epoch": boundary_epoch,
         "last_tf": None,
         "last_tf_epoch": None,
         "tfs_since_restart": [],
         "warmup_done": None,
-        "restarts_last_hour": 0,
+        "restarts_last_hour": _real_restarts_last_hour(),
         "log_age_s": _age(LOG),
     }
     try:
@@ -216,17 +254,14 @@ def _scan_log(tail_bytes=512 * 1024):
     except Exception as exc:
         info["error"] = f"{type(exc).__name__}: {exc}"
         return info
-    now = time.time()
-    restart_epochs = []
-    for line in lines:
-        m = RESTART_RE.match(line)
-        if m:
-            epoch = _parse_ts(m.group(1))
-            if epoch:
-                restart_epochs.append(epoch)
-    if restart_epochs:
-        info["last_restart_epoch"] = restart_epochs[-1]
-        info["restarts_last_hour"] = sum(1 for e in restart_epochs if now - e <= 3600)
+    if info["last_restart_epoch"] is None:
+        # No running process to date the boundary from: fall back to the newest banner, worth more than nothing.
+        for line in lines:
+            m = RESTART_RE.match(line)
+            if m:
+                epoch = _parse_ts(m.group(1))
+                if epoch:
+                    info["last_restart_epoch"] = epoch
     cut = info["last_restart_epoch"] or 0.0
     done = False
     for line in lines:
@@ -357,7 +392,8 @@ def main():
     heartbeats, decisions = [], []
     while True:
         pid = _pid()
-        log_info = _scan_log()
+        _pa = _proc_age_s(pid)
+        log_info = _scan_log(None if _pa is None else time.time() - _pa)
         ok, reason = _heartbeat_decision(pid, log_info, args.dry_run)
         decisions.append(reason)
         if ok:
@@ -370,7 +406,8 @@ def main():
         time.sleep(5)
 
     pid = _pid()
-    log_info = _scan_log()
+    proc_age = _proc_age_s(pid)
+    log_info = _scan_log(None if proc_age is None else time.time() - proc_age)
     snap_age = _age(SNAPSHOT)
     alerts = []
     if snap_age is None:
@@ -385,8 +422,9 @@ def main():
         )
     if (log_info.get("restarts_last_hour") or 0) >= 6:
         alerts.append(
-            f"RESTART CHURN: {log_info['restarts_last_hour']} ez_indicators restarts in the last hour — "
-            "warm-up cannot complete between kills (run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120)."
+            f"RESTART CHURN: {log_info['restarts_last_hour']} REAL ez_indicators restarts in the last hour "
+            "(counted from run_with_watchdog.sh's own log, not the import-time banner) — warm-up cannot complete "
+            "between kills (run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120)."
         )
 
     s1 = None if args.no_s1 else _probe_s1_cached()
@@ -415,7 +453,7 @@ def main():
         },
         "ez_indicators": {
             "pid": pid,
-            "proc_age_s": _proc_age_s(pid),
+            "proc_age_s": proc_age,
             "log_age_s": None if log_info.get("log_age_s") is None else round(log_info["log_age_s"], 1),
             "warmup_done": log_info.get("warmup_done"),
             "timeframes_since_restart": log_info.get("tfs_since_restart"),
