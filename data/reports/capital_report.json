@@ -1,32 +1,57 @@
 {
- "generated_at": "2026-10-19 08:50 UTC",
- "total_capital_usd": 11.18,
+ "generated_at": "2026-10-19 09:15 UTC",
+ "total_capital_usd": 27.74,
  "tier_capital": {
   "A": 0.0,
-  "B": 0.0,
-  "C": 11.18
+  "B": 9.15,
+  "C": 18.59
  },
  "tier_count": {
   "A": 0,
-  "B": 0,
-  "C": 1
+  "B": 1,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "fin:BTCDOMUSDT_LONG"
+  "ang:RENDERUSDT_LONG",
+  "ang:LTCUSDC_LONG"
  ],
- "mediocre": [],
+ "mediocre": [
+  "ang:VETUSDT_SHORT"
+ ],
  "positions": [
   {
-   "pk": "fin:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "fin",
-   "value_usd": 11.18,
-   "gain_pct": -0.102,
+   "pk": "ang:LTCUSDC_LONG",
+   "symbol": "LTCUSDC",
+   "account": "ang",
+   "value_usd": 12.59,
+   "gain_pct": 1.068,
    "tier": "C",
-   "perf_mult": 0.26,
-   "amt": 0.002,
-   "mark": 5592.1766374
+   "perf_mult": 0.33,
+   "amt": 0.21,
+   "mark": 59.94343469
+  },
+  {
+   "pk": "ang:VETUSDT_SHORT",
+   "symbol": "VETUSDT",
+   "account": "ang",
+   "value_usd": 9.15,
+   "gain_pct": -0.289,
+   "tier": "B",
+   "perf_mult": 0.32,
+   "amt": 1341.0,
+   "mark": 0.00682265
+  },
+  {
+   "pk": "ang:RENDERUSDT_LONG",
+   "symbol": "RENDERUSDT",
+   "account": "ang",
+   "value_usd": 6.0,
+   "gain_pct": 0.11,
+   "tier": "C",
+   "perf_mult": 0.38,
+   "amt": 3.3,
+   "mark": 1.819
   }
  ]
 }
