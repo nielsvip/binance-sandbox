@@ -1,32 +1,103 @@
 {
- "generated_at": "2026-10-19 03:00 UTC",
- "total_capital_usd": 5.97,
+ "generated_at": "2026-10-19 03:50 UTC",
+ "total_capital_usd": 78.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.97,
-  "C": 0.0
+  "B": 18.22,
+  "C": 60.76
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 2,
+  "C": 5
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "ang:RLCUSDT_LONG"
+ "losers": [
+  "fin:RLCUSDT_LONG",
+  "fin:AVAXUSDC_LONG",
+  "fin:DASHUSDT_SHORT",
+  "fin:BTCDOMUSDT_LONG",
+  "fin:COTIUSDT_SHORT",
+  "fin:ALGOUSDT_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:RLCUSDT_LONG",
-   "symbol": "RLCUSDT",
-   "account": "ang",
-   "value_usd": 5.97,
-   "gain_pct": -0.201,
+   "pk": "fin:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "fin",
+   "value_usd": 12.44,
+   "gain_pct": -0.057,
+   "tier": "C",
+   "perf_mult": 0.22,
+   "amt": 0.253,
+   "mark": 49.18
+  },
+  {
+   "pk": "fin:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "fin",
+   "value_usd": 12.4,
+   "gain_pct": 0.833,
+   "tier": "C",
+   "perf_mult": 0.36,
+   "amt": 1145.0,
+   "mark": 0.010832
+  },
+  {
+   "pk": "fin:MANAUSDT_SHORT",
+   "symbol": "MANAUSDT",
+   "account": "fin",
+   "value_usd": 12.38,
+   "gain_pct": 0.906,
    "tier": "B",
-   "perf_mult": 0.32,
-   "amt": 8.0,
-   "mark": 0.7466
+   "perf_mult": 0.56,
+   "amt": 147.0,
+   "mark": 0.08419
+  },
+  {
+   "pk": "fin:AVAXUSDC_LONG",
+   "symbol": "AVAXUSDC",
+   "account": "fin",
+   "value_usd": 12.36,
+   "gain_pct": -0.407,
+   "tier": "C",
+   "perf_mult": 0.23,
+   "amt": 1.27,
+   "mark": 9.73318301
+  },
+  {
+   "pk": "fin:ALGOUSDT_SHORT",
+   "symbol": "ALGOUSDT",
+   "account": "fin",
+   "value_usd": 12.36,
+   "gain_pct": 1.117,
+   "tier": "C",
+   "perf_mult": 0.39,
+   "amt": 111.6,
+   "mark": 0.11073
+  },
+  {
+   "pk": "fin:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "fin",
+   "value_usd": 11.2,
+   "gain_pct": -0.046,
+   "tier": "C",
+   "perf_mult": 0.26,
+   "amt": 0.002,
+   "mark": 5598.1
+  },
+  {
+   "pk": "fin:RLCUSDT_LONG",
+   "symbol": "RLCUSDT",
+   "account": "fin",
+   "value_usd": 5.84,
+   "gain_pct": -2.641,
+   "tier": "B",
+   "perf_mult": 0.31,
+   "amt": 7.9,
+   "mark": 0.7394
   }
  ]
 }
