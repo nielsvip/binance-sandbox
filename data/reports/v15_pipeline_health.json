@@ -1,13 +1,13 @@
 {
- "at": "2026-10-19T16:30:22Z",
+ "at": "2026-10-19T16:48:09Z",
  "s1": {
   "host": "niels",
-  "now": 1792427403.6970236,
+  "now": 1792428445.9985418,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 30.0,
+   "max_lag_min": 15.0,
    "median_lag_min": 15.0,
-   "worst": "1000CHEEMSUSDT",
+   "worst": "1000000MOGUSDT",
    "dead": []
   },
   "merge_stocks": {
@@ -25,21 +25,23 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 18.6,
-  "append_last_secs": 675.9,
-  "append_last_stats": "'appended': 574, 'created': 0, 'up_to_date': 5485, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 12.6,
+  "append_last_secs": 1183.5,
+  "append_last_stats": "'appended': 278, 'created': 0, 'up_to_date': 5781, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 9,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 2.0,
+  "sched_tick_age_min": 11.4,
   "sched_launched": 0,
   "archive_n": 142,
   "archive_mb": 1828.1,
-  "archive_newest_min": 128.1,
+  "archive_newest_min": 145.4,
   "_via": "s1-int"
  },
- "red": [],
+ "red": [
+  "L4 scheduler last ticked 11.4 min ago (cron */2)"
+ ],
  "warn": [
   "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT"
  ],
- "ok": true
+ "ok": false
 }
