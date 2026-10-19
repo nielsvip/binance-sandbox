@@ -90,14 +90,33 @@ def test_stale_minority_quiet(tmp_path, monkeypatch):
     assert h["stocks"]["indicators_stale_frac"] == 0.25
 
 
-def test_tail_currency_is_rth_aware():
+def test_tail_currency_matches_dispatch_gate():
     from npz_cutoffs import tail_currency
-    now_monday_open = 1792441800.0  # Mon 2026-10-19 13:30 UTC
-    fri_close = 1792252800.0 - 3600.0  # Fri 16:00 ET ~= 20:00 UTC minus a bar
-    ok, _ = tail_currency(fri_close, "stocks", now=now_monday_open)
-    assert ok, "Friday bars must read current at Monday's bell"
-    ok2, _ = tail_currency(fri_close, "stocks", now=now_monday_open + 6 * 3600)
-    assert not ok2, "Friday bars must read stale mid-Monday-session"
+    import datetime
+    U = datetime.timezone.utc
+    mon_open = datetime.datetime(2026, 10, 19, 13, 30, tzinfo=U)
+    fri_close = datetime.datetime(2026, 10, 16, 20, 0, tzinfo=U)
+    ok, detail = tail_currency(fri_close.timestamp(), "stocks", mon_open)
+    assert not ok, f"Friday tails are stale at Monday's bell by dispatch-gate standard: {detail}"
+    mon_mid = datetime.datetime(2026, 10, 19, 15, 0, tzinfo=U)
+    ok2, _ = tail_currency(mon_mid.timestamp(), "stocks",
+                           mon_open + datetime.timedelta(hours=6))
+    assert not ok2, "a 4.5h-old Monday tail is stale mid-session"
+
+
+def test_open_grace_suppresses_first_hour(tmp_path, monkeypatch):
+    import datetime
+    monkeypatch.setattr(mfa, "_npz_tail_ok", lambda ts: False)
+    ag = _agent(monkeypatch, _mkbase(tmp_path, 20000.0, 30.0))
+    mon_945et = datetime.datetime(2026, 10, 19, 13, 45, tzinfo=datetime.timezone.utc).timestamp()
+    h = _health()
+    ag.augment_data_freshness(h, mon_945et, ())
+    assert "indicators_stale" not in h["stocks"]["kinds"], h["stocks"]
+    assert h["stocks"]["indicators_open_grace"] is True
+    mon_1100et = datetime.datetime(2026, 10, 19, 15, 0, tzinfo=datetime.timezone.utc).timestamp()
+    h2 = _health()
+    ag.augment_data_freshness(h2, mon_1100et, ())
+    assert "indicators_stale" in h2["stocks"]["kinds"], h2["stocks"]
 
 
 def test_wedged_position_loop_fires(tmp_path, monkeypatch):

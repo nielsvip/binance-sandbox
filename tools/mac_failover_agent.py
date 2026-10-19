@@ -165,6 +165,22 @@ def _npz_tail_ok(ts):
         return (time.time() - float(ts)) <= LF_INDICATORS_STALE_S
 
 
+def _in_open_grace(now):
+    """First 60 min of the RTH session: Monday bars are still landing fleet-wide (S1 builds +
+    5-min pulls), so NEITHER host can have fresh tails yet — firing here would hand S1 a venue
+    nobody can enter on while churning exits through a startup gap. The kind arms at 10:30 ET."""
+    try:
+        import datetime as _dt
+        from npz_cutoffs import ET as _ET
+        et = _dt.datetime.fromtimestamp(float(now), _dt.timezone.utc).astimezone(_ET)
+        if et.weekday() >= 5:
+            return False
+        mm = et.hour * 60 + et.minute
+        return 570 <= mm < 630
+    except Exception:
+        return False
+
+
 def _stock_indicator_universe():
     """Traded stock symbols whose NPZs the VEC_EXACT twin needs (lists + held + candidates)."""
     syms = set()
@@ -514,7 +530,8 @@ class Agent:
                 stocks["indicators_age_s"] = round(mx, 1)
                 stocks["indicators_stale_frac"] = round(frac, 3)
                 stocks["indicators_universe_n"] = n
-                if n >= LF_INDICATORS_MIN_N and frac > LF_INDICATORS_STALE_FRAC:
+                stocks["indicators_open_grace"] = bool(_in_open_grace(now))
+                if n >= LF_INDICATORS_MIN_N and frac > LF_INDICATORS_STALE_FRAC and not _in_open_grace(now):
                     stocks["kinds"] = list(stocks.get("kinds") or []) + ["indicators_stale"]
                     stocks["reasons"] = list(stocks.get("reasons") or []) + [
                         f"indicators_stale {old}/{n} stock NPZ tails behind the latest RTH close (twin falls back to native -> entries die)"]

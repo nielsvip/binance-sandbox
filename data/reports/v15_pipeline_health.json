@@ -1,12 +1,12 @@
 {
- "at": "2026-10-19T21:45:05Z",
+ "at": "2026-10-19T22:00:22Z",
  "s1": {
   "host": "niels",
-  "now": 1792446302.3148873,
+  "now": 1792447211.662007,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 225.0,
-   "median_lag_min": 225.0,
+   "max_lag_min": 240.0,
+   "median_lag_min": 240.0,
    "worst": "1000000MOGUSDT",
    "dead": []
   },
@@ -25,29 +25,28 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 204.0,
+  "append_log_age_min": 219.1,
   "append_last_secs": 959.0,
   "append_last_stats": "'appended': 494, 'created': 0, 'up_to_date': 5565, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 1,
-  "npz_cycle_last_utc": "21:35:35",
-  "npz_cycle_installed": 8,
+  "npz_cycle_last_utc": "21:52:37",
+  "npz_cycle_installed": 0,
   "npz_cycle_not_ready": 0,
   "npz_cycle_no_new": 6,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 1.0,
+  "sched_tick_age_min": 2.2,
   "sched_launched": 0,
-  "archive_n": 142,
-  "archive_mb": 1828.1,
-  "archive_newest_min": 443.0,
+  "archive_n": 143,
+  "archive_mb": 1830.4,
+  "archive_newest_min": 99.7,
   "_via": "s1-int"
  },
  "red": [
-  "L2 merge crypto: s1's long store is 225 min behind the freshest copy on the box (worst 1000000MOGUSDT) \u2014 klines_append is not merging",
-  "L2 appender silent for 204.0 min (cron */5) "
+  "L2 merge crypto: s1's long store is 240 min behind the freshest copy on the box (worst 1000000MOGUSDT) \u2014 klines_append is not merging",
+  "L2 appender silent for 219.1 min (cron */5) "
  ],
  "warn": [
-  "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT",
-  "L5 newest archived board NPZ is 443 min old \u2014 publishes may not be recording"
+  "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT"
  ],
  "ok": false
 }
