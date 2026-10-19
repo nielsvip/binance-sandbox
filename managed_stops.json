@@ -1,30 +1,9 @@
 {
-  "ang:RENDERUSDT_LONG": {
-    "orderId": "4000001977813685",
-    "stopPrice": 1.765,
-    "entry_sig": "2026-10-19 03:14:02.291000+00:00",
-    "symbol": "RENDERUSDT",
+  "flz:BNBUSDC_LONG": {
+    "orderId": "1000002629962435",
+    "stopPrice": 718.5,
+    "entry_sig": "2026-10-19 04:37:24.940000+00:00",
+    "symbol": "BNBUSDC",
     "side": "LONG"
-  },
-  "ang:LTCUSDC_LONG": {
-    "orderId": "4000001977865164",
-    "stopPrice": 58.3,
-    "entry_sig": "2026-10-19 03:43:25.595000+00:00",
-    "symbol": "LTCUSDC",
-    "side": "LONG"
-  },
-  "ang:VETUSDT_SHORT": {
-    "orderId": "4000001977869275",
-    "stopPrice": 0.006939,
-    "entry_sig": "2026-10-19 03:45:44.370000+00:00",
-    "symbol": "VETUSDT",
-    "side": "SHORT"
-  },
-  "ang:FARTCOINUSDT_SHORT": {
-    "orderId": "4000001977967209",
-    "stopPrice": 0.1469,
-    "entry_sig": "2026-10-19 03:30:14.863000+00:00",
-    "symbol": "FARTCOINUSDT",
-    "side": "SHORT"
   }
 }
