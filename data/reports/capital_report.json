@@ -1,56 +1,32 @@
 {
- "generated_at": "2026-10-19 02:50 UTC",
- "total_capital_usd": 29.6,
+ "generated_at": "2026-10-19 03:00 UTC",
+ "total_capital_usd": 5.97,
  "tier_capital": {
   "A": 0.0,
-  "B": 5.95,
-  "C": 23.64
+  "B": 5.97,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
   "B": 1,
-  "C": 2
+  "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:RLCUSDT_LONG",
-  "fin:BTCDOMUSDT_LONG",
-  "fin:COTIUSDT_SHORT"
+ "losers": [],
+ "mediocre": [
+  "ang:RLCUSDT_LONG"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 12.46,
-   "gain_pct": 0.35,
-   "tier": "C",
-   "perf_mult": 0.36,
-   "amt": 1145.0,
-   "mark": 0.010885
-  },
-  {
-   "pk": "fin:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "fin",
-   "value_usd": 11.18,
-   "gain_pct": -0.154,
-   "tier": "C",
-   "perf_mult": 0.26,
-   "amt": 0.002,
-   "mark": 5592.1
-  },
-  {
-   "pk": "fin:RLCUSDT_LONG",
+   "pk": "ang:RLCUSDT_LONG",
    "symbol": "RLCUSDT",
-   "account": "fin",
-   "value_usd": 5.95,
-   "gain_pct": -0.515,
+   "account": "ang",
+   "value_usd": 5.97,
+   "gain_pct": -0.201,
    "tier": "B",
-   "perf_mult": 0.31,
-   "amt": 7.9,
-   "mark": 0.7537
+   "perf_mult": 0.32,
+   "amt": 8.0,
+   "mark": 0.7466
   }
  ]
 }
