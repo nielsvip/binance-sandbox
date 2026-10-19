@@ -27,6 +27,7 @@ ROOT = Path(os.path.expanduser("~/binance-sandbox"))
 HOME = Path(os.path.expanduser("~"))
 SCHED_LOG = Path("/tmp/v15_fleet_sched.log")
 PRIO = HOME / "v15_priority_syms.txt"
+FRONT = HOME / "v15_priority_front.txt"  # operator-set head of the priority queue (USER 2026-10-18), always first
 OUT = ROOT / "data" / "daily_chain"
 # 24 -> 64 (USER 2026-10-15 recalc triage): V15_SCHED_PRIORITY_SYMS is consumed as a SET by the scheduler
 # (priority_syms() returns a set — order inside the file does not rank), so a 24-cap could only ever prefer 24 of the
@@ -240,8 +241,23 @@ def main():
             print("[director] tradeable universe EMPTY — filter skipped (fail-open), check symbols_trb_*/tradeable_keys")
     except Exception as _ue:
         print(f"[director] tradeable-universe filter unavailable: {_ue}")
+    # USER 2026-10-18 ("the most important ones (the trading ones) ... redone before market open if not yet done since
+    # Thursday"): ~/v15_priority_front.txt is an operator-set head of the queue and ALWAYS comes first. The director
+    # rebuilds ~/v15_priority_syms.txt from its own sources every run, so a hand-edited order was silently reverted
+    # within the hour (measured 2026-10-19 00:30Z: 39 trading sym_sides with no eval since Thursday had been placed
+    # first, the regenerated file put crypto first and 0 of the 39 had been touched 40 minutes later). One symbol per
+    # line or comma-separated; unknown/stale entries are harmless because the scheduler still gates on the venue,
+    # readiness and the chain.
+    front = []
+    try:
+        if FRONT.exists():
+            front = [s.strip().upper() for s in FRONT.read_text().replace("\n", ",").split(",") if s.strip()]
+            if front:
+                print(f"[director] priority FRONT from {FRONT.name}: {len(front)} syms -> {', '.join(front[:12])}{' ...' if len(front) > 12 else ''}")
+    except Exception as _fe:
+        print(f"[director] priority front unreadable: {_fe}")
     seen, ordered = set(), []
-    for s in prio:
+    for s in front + prio:
         if s not in seen:
             seen.add(s); ordered.append(s)
     ordered = ordered[:MAX_PRIO]
