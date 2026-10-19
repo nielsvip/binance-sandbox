@@ -4,7 +4,9 @@
 USER: no CPU on non-tradeable keys UNLESS they have an open position. The positions live on the Mac; the universe /
 chain run on S1. This writes data/open_position_sym_sides.json (atomic) from every account's {acct}/long_positions.json +
 short_positions.json (crypto flz/men/ang/inf/fin, stocks tra/trb/trc; dict keyed "acct:SYM_SIDE", open = |positionAmt| > 0)
-and rsyncs it to S1/s2/s5 ~/binance-sandbox/data/ (rsync writes a temp file then renames = atomic), md5-verified.
+and rsyncs it to S1/s2/s5 ~/binance-sandbox/data/ (rsync writes a temp file then renames = atomic), md5-verified,
+then mirrors sandbox -> ~/binance/data/ on each host (2026-10-19: the S1 live engines read the live dir and ran with
+zero holders until this mirror existed).
 Any unreadable positions file aborts the run and keeps the last good file (a partial list would drop open positions).
 Mac cron: */5 * * * * ... tools/v15_open_positions_push.py --push   # V15_OPEN_POSITIONS_PUSH
 """
@@ -76,6 +78,11 @@ def main():
             m = subprocess.run(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", t, "md5sum ~/binance-sandbox/data/open_position_sym_sides.json"], capture_output=True, text=True, timeout=30)
             ok = m.stdout.split()[:1] == [md5]
             print(f"[open-pos] push {h['name']} via {t}: md5 {'OK' if ok else 'MISMATCH ' + m.stdout.strip()[:60]}")
+            if ok:
+                r2 = subprocess.run(["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes", t, f"cp ~/binance-sandbox/data/open_position_sym_sides.json ~/binance/data/.open_position_sym_sides.tmp && mv ~/binance/data/.open_position_sym_sides.tmp ~/binance/data/open_position_sym_sides.json && md5sum ~/binance/data/open_position_sym_sides.json"], capture_output=True, text=True, timeout=30)
+                live_ok = r2.stdout.split()[:1] == [md5]
+                print(f"[open-pos] live {h['name']} via {t}: md5 {'OK' if live_ok else 'MISMATCH ' + r2.stdout.strip()[:60]}")
+                ok = ok and live_ok
             break
         bad += 0 if ok else 1
     return 1 if bad else 0
