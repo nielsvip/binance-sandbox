@@ -88,9 +88,13 @@ def connect(path, write=True):
     # uri=False parses that as a literal filename and silently skips every source (2026-10-18: "+0 rows" merge).
     c = sqlite3.connect(str(p) if write else f"file:{p}?mode=ro", uri=True, timeout=600.0, isolation_level=None)
     if write:
-        # Speed pragmas only: journal_mode needs exclusive access, and a concurrent READER (an audit or a row count
-        # over a 45 GB file on USB) must not turn a merge into a crash. 2026-10-18: it did.
-        for pragma in ("PRAGMA synchronous=OFF", "PRAGMA journal_mode=MEMORY"):
+        # 2026-10-18: `synchronous=OFF` + `journal_mode=MEMORY` left the 45 GB master on exfat/USB "database disk
+        # image is malformed" when a merge died mid-write. Those pragmas are for building a THROWAWAY db fast, never
+        # for writing into an archive on removable storage, so they are opt-in (EVAL_CACHE_FAST_PRAGMAS=1) and the
+        # default is sqlite's own crash-safe journalling. A concurrent reader must also never turn a merge into a
+        # crash, so each pragma is best-effort.
+        pragmas = ("PRAGMA synchronous=OFF", "PRAGMA journal_mode=MEMORY") if os.environ.get("EVAL_CACHE_FAST_PRAGMAS") == "1" else ("PRAGMA synchronous=NORMAL",)
+        for pragma in pragmas:
             try:
                 c.execute(pragma)
             except sqlite3.OperationalError as exc:
