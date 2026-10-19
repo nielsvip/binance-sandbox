@@ -1,31 +1,31 @@
 {
- "generated_utc": "2026-10-19T03:19:07Z",
+ "generated_utc": "2026-10-19T03:23:06Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 23560.0,
+  "age_s": 23799.1,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 57405,
-  "proc_age_s": 1288.0,
-  "log_age_s": 11.6,
+  "proc_age_s": 1527.0,
+  "log_age_s": 13.2,
   "warmup_done": false,
   "timeframes_since_restart": [],
-  "last_timeframe": "D",
-  "last_timeframe_utc": "2026-10-19T03:09:24Z",
-  "last_restart_utc": "2026-10-19T03:16:28Z",
+  "last_timeframe": "4h",
+  "last_timeframe_utc": "2026-10-19T03:20:57Z",
+  "last_restart_utc": "2026-10-19T03:21:51Z",
   "restarts_last_hour": 25
  },
  "heartbeat": {
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (33s < 60s)",
-   "log fresh (40s < 60s)",
-   "log fresh (47s < 60s)",
-   "log fresh (53s < 60s)",
+   "log fresh (11s < 60s)",
    "log fresh (1s < 60s)",
-   "log fresh (8s < 60s)"
+   "log fresh (10s < 60s)",
+   "log fresh (0s < 60s)",
+   "log fresh (6s < 60s)",
+   "log fresh (12s < 60s)"
   ],
   "policy": {
    "when_log_age_s": 60,
@@ -38,16 +38,16 @@
   "mode": "ACTIVE",
   "since_epoch": 1792356095.9000766,
   "activations": 149,
-  "hb_mtime": 1792379939.784304,
-  "mac_snapshot_age_s": 23523.306957006454,
+  "hb_mtime": 1792380175.8319683,
+  "mac_snapshot_age_s": 23759.37316083908,
   "mac_stale": true,
-  "now": 1792379947.746869,
-  "heartbeat_age_s": 8.0,
-  "active_s": 23851.8,
+  "now": 1792380186.28785,
+  "heartbeat_age_s": 10.5,
+  "active_s": 24090.4,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 23559s old (> 600s). ez_indicators pid=57405 warmup_done=False tfs_since_restart=[] restarts_last_hour=25. Live crypto decisions are reading a stale indicator snapshot.",
+  "SNAPSHOT STALE: latest_market_data.json is 23799s old (> 600s). ez_indicators pid=57405 warmup_done=False tfs_since_restart=[] restarts_last_hour=25. Live crypto decisions are reading a stale indicator snapshot.",
   "RESTART CHURN: 25 ez_indicators restarts in the last hour \u2014 warm-up cannot complete between kills (run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120)."
  ],
  "verdict": "ALERT"

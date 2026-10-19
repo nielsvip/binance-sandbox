@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-19 03:15:15 UTC
+# Copilot Status — 2026-10-19 03:20:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:55:14
-- **STALE_INDICATORS** [tradier]  — 2026-10-19T02:57:25
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T02:59:32
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T03:01:41
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T03:03:50
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T03:10:05
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T03:12:12
 - **STALE_INDICATORS** [tradier]  — 2026-10-19T03:14:15
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T03:16:26
+- **STALE_INDICATORS** [tradier]  — 2026-10-19T03:18:34
 
 ## Missed Trades (trader comparison)
 
@@ -27,10 +27,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 16 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 16 | **Watching for reentry:** 4 | **Reentered:** 0
 
 - HELD: **UUUU** SHORT (tradier) peak +16.2%, now +-6.5%
-- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-1.7%
+- HELD: **RLCUSDT** LONG (crypto) peak +15.1%, now +-2.3%
 - HELD: **MU** SHORT (tradier) peak +8.5%, now +6.4%
 - HELD: **SNDK** SHORT (tradier) peak +7.7%, now +4.7%
 - HELD: **BHVN** SHORT (tradier) peak +5.1%, now +-0.9%
@@ -42,7 +42,6 @@ _None_
 
 - WATCHING: **COTIUSDT** SHORT (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **ALGOUSDT** SHORT (crypto) peaked +6.2%, exited 0m ago
-- WATCHING: **ZROUSDT** LONG (crypto) peaked +5.8%, exited 0m ago
 - WATCHING: **BTCDOMUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
 - WATCHING: **COST** LONG (tradier) peaked +3.3%, exited 0m ago
 

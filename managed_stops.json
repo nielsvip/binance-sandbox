@@ -1,51 +1,16 @@
 {
-  "fin:BTCDOMUSDT_LONG": {
-    "orderId": "3000002258205869",
-    "stopPrice": 5575.6,
-    "entry_sig": "2026-10-19 00:12:02.436000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "inf:TIAUSDC_LONG": {
+    "orderId": "2000001522795564",
+    "stopPrice": 0.5831,
+    "entry_sig": "2026-10-19 02:19:19.313000+00:00",
+    "symbol": "TIAUSDC",
     "side": "LONG"
   },
-  "fin:COTIUSDT_SHORT": {
-    "orderId": "3000002258380202",
-    "stopPrice": 0.010973,
-    "entry_sig": "2026-10-19 02:08:42.700000+00:00",
-    "symbol": "COTIUSDT",
-    "side": "SHORT"
-  },
-  "fin:RLCUSDT_LONG": {
-    "orderId": "3000002258402354",
-    "stopPrice": 0.7283,
-    "entry_sig": "2026-10-19 02:24:41.976000+00:00",
-    "symbol": "RLCUSDT",
+  "inf:ETHFIUSDC_LONG": {
+    "orderId": "2000001522865860",
+    "stopPrice": 0.6539,
+    "entry_sig": "2026-10-19 03:04:50.700000+00:00",
+    "symbol": "ETHFIUSDC",
     "side": "LONG"
-  },
-  "fin:ALGOUSDT_SHORT": {
-    "orderId": "3000002258444116",
-    "stopPrice": 0.11333,
-    "entry_sig": "2026-10-19 02:53:36.380000+00:00",
-    "symbol": "ALGOUSDT",
-    "side": "SHORT"
-  },
-  "fin:AVAXUSDC_LONG": {
-    "orderId": "3000002258450376",
-    "stopPrice": 9.416,
-    "entry_sig": "2026-10-19 02:57:41.742000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
-  "fin:MANAUSDT_SHORT": {
-    "orderId": "3000002258450851",
-    "stopPrice": 0.08576,
-    "entry_sig": "2026-10-19 02:58:00.472000+00:00",
-    "symbol": "MANAUSDT",
-    "side": "SHORT"
-  },
-  "fin:DASHUSDT_SHORT": {
-    "orderId": "3000002258451696",
-    "stopPrice": 49.66,
-    "entry_sig": "2026-10-19 02:58:32.591000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "SHORT"
   }
 }
