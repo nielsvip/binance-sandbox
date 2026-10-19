@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-19 13:41 UTC",
- "total_capital_usd": 12.93,
+ "generated_at": "2026-10-19 13:52 UTC",
+ "total_capital_usd": 12.9,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.34,
-  "C": 5.6
+  "B": 7.29,
+  "C": 5.61
  },
  "tier_count": {
   "A": 0,
@@ -21,23 +21,23 @@
    "pk": "men:UNIUSDC_SHORT",
    "symbol": "UNIUSDC",
    "account": "men",
-   "value_usd": 7.34,
-   "gain_pct": 1.33,
+   "value_usd": 7.29,
+   "gain_pct": 2.098,
    "tier": "B",
    "perf_mult": 2.99,
    "amt": 1.0,
-   "mark": 7.337
+   "mark": 7.29001287
   },
   {
    "pk": "men:BTCDOMUSDT_LONG",
    "symbol": "BTCDOMUSDT",
    "account": "men",
-   "value_usd": 5.6,
-   "gain_pct": 0.204,
+   "value_usd": 5.61,
+   "gain_pct": 0.505,
    "tier": "C",
    "perf_mult": 0.26,
    "amt": 0.001,
-   "mark": 5596.9
+   "mark": 5607.8
   }
  ]
 }
