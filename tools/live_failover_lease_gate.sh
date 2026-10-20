@@ -73,6 +73,26 @@ lf_lease_fenced() {
         fi
         grep -q '"venues":' "$file" 2>/dev/null || return 0
         grep -q "\"venues\": *\"[^\"]*${venue}" "$file" 2>/dev/null || return 1
+        # 2026-10-20 NEVER FENCE A VENUE S1 WILL NOT RUN. The lease has two fields: "venues" = what the Mac must
+        # fence, "run_venues" = what S1 is actually allowed to run. They can disagree, and when they do this gate
+        # used to fence on "venues" alone and nobody traded the venue at all.
+        # MEASURED 2026-10-20 14:24Z, market open: lease gen 70 holder=s1 venues="crypto,stocks" run_venues="crypto",
+        # S1 running ZERO tradier_manage processes, and all three Mac stock accounts (trb/trc/tra) sitting in
+        # [LEASE_FENCED] — stocks fenced here, unrun there. The recovery path was blocked too: tradier_positions.py is
+        # itself a gated script, so the stale tra/state.json that triggered the takeover could never refresh and the
+        # Mac could never prove health. Same shape as the 2026-10-16 incident ("S1 — which does not run stocks at all
+        # — held the lease") and the same principle stated there: only a host that may RUN the venue may fence for it.
+        # If run_venues is present and non-empty and does NOT name this venue, S1 has told us it will not run it, so
+        # this host keeps trading. An absent/empty run_venues is the pre-ack window and still fences (fail-safe:
+        # S1 is about to take it), which preserves the "never both trade" guarantee.
+        if grep -q '"run_venues":' "$file" 2>/dev/null; then
+            local _rv
+            _rv="$(sed -n 's/.*"run_venues"[^"]*"\([^"]*\)".*/\1/p' "$file" 2>/dev/null | head -1)"
+            if [[ -n "$_rv" ]] && [[ "$_rv" != *"${venue}"* ]]; then
+                echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [LEASE_NOT_FENCED] lease holder=s1 fences '${venue}' but its run_venues='${_rv}' excludes it — S1 will not run this venue, so NOT fencing $script here (nobody would trade it)" >&2
+                return 1
+            fi
+        fi
         scope="$(lf_lease_scope "$file")"
         if [[ -n "$scope" ]]; then
             if [[ -z "$account" ]]; then

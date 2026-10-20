@@ -70,6 +70,8 @@ CHURN_QUIET_S = float(os.environ.get("LF_PIN_CHURN_QUIET_S", "600"))
 LOAD_MAX = float(os.environ.get("LF_PIN_LOAD_MAX", "4.0"))
 MIN_INTERVAL_S = float(os.environ.get("LF_PIN_MIN_INTERVAL_S", "300"))
 S1_IND_STALE_MAX_PCT = float(os.environ.get("LF_PIN_S1_IND_STALE_MAX_PCT", "25"))
+S1_REFUSAL_MAX = float(os.environ.get("LF_PIN_S1_REFUSAL_MAX", "0"))
+REFUSAL_WINDOW_MIN = float(os.environ.get("LF_PIN_S1_REFUSAL_WINDOW_MIN", "10"))
 CHURN_PATTERNS = ("ez_manage", "tradier_manage", "ez_indicators", "ez_positions")
 REMOTE_IND = r"""
 import json, time
@@ -194,8 +196,38 @@ def mac_readiness():
     return not reasons, reasons + warnings, measured
 
 
+def s1_refusals():
+    """(refusal_count, sampled, detail) from S1's OWN manager logs — what the entry gate actually decided.
+
+    The snapshot FILE is not the signal. Measured 2026-10-20: S1's data/latest_market_data.json had freshened
+    to 49% stale by 14:19Z (inside the 25% bar once its ez_indicators finished warming at ~14:1xZ), and this
+    tool therefore called S1 capable and pinned the lease to it at 14:20:08Z — while S1's own ez_manage was
+    still refusing every entry as `BLOCKED - STALE_INDICATORS (282m old)` at 14:26Z, because the manager's
+    in-memory `ind` does not track that file promptly. A file check alone will keep making that mistake, so
+    capability now also demands the host's own recent decisions."""
+    minutes = [datetime.datetime.fromtimestamp(_now() - 60 * i, datetime.timezone.utc).strftime("%m-%d %H:%M") for i in range(int(REFUSAL_WINDOW_MIN) + 1)]
+    window = "|".join(m.replace(" ", " ") for m in minutes)
+    cmd = ("for f in /home/niels/logs/failover_ez_manage_*.log; do [ -f \"$f\" ] && tail -c 400000 \"$f\"; done 2>/dev/null"
+           f" | grep -E '^\\[({window})' | grep -c 'BLOCKED - STALE_INDICATORS'; pgrep -c -f 'ez_manage.py --account' || echo 0")
+    try:
+        res = _ssh(S1_HOST, cmd, timeout=60)
+    except Exception as exc:
+        return None, 0, f"{S1_HOST} log probe failed: {exc}"
+    lines = [l.strip() for l in (res.stdout or "").splitlines() if l.strip().isdigit()]
+    if len(lines) < 2:
+        return None, 0, f"{S1_HOST} log probe unreadable: {(res.stdout or res.stderr)[:80]}"
+    return int(lines[0]), int(lines[1]), f"{S1_HOST} {lines[0]} STALE_INDICATORS refusals in the last {int(REFUSAL_WINDOW_MIN)} min, {lines[1]} ez_manage running"
+
+
 def s1_capable():
-    """(capable, detail) — is S1 a host that could actually trade if we pinned the lease to it?"""
+    """(capable, detail) — pin to S1 only when S1 can be PROVEN able to trade, never merely not-disproven.
+
+    Three conditions, all required:
+      1. its snapshot's timestamp_15m is inside the live 90-min window for most symbols;
+      2. its own ez_manage accounts are up — a host with no traders cannot be the one that keeps trading;
+      3. those traders are not refusing entries for stale indicators.
+    An unreachable host, an unreadable snapshot or an unreadable log is NOT capable: this lever may only
+    move live routing on positive evidence."""
     try:
         res = _ssh(S1_HOST, "/home/niels/.conda/envs/binance_env_mac/bin/python - <<'PYEOF'\n" + REMOTE_IND + "\nPYEOF")
     except Exception as exc:
@@ -204,8 +236,17 @@ def s1_capable():
     if not payload or "error" in payload:
         return False, f"{S1_HOST} snapshot unreadable: {(payload or {}).get('error', res.stderr[:80])}"
     pct = payload.get("stale_pct", 100.0)
-    ok = pct <= S1_IND_STALE_MAX_PCT
-    return ok, f"{S1_HOST} indicators {payload.get('stale')}/{payload.get('symbols')} stale ({pct}%)"
+    snapshot_detail = f"{S1_HOST} snapshot {payload.get('stale')}/{payload.get('symbols')} stale ({pct}%)"
+    if pct > S1_IND_STALE_MAX_PCT:
+        return False, snapshot_detail
+    refusals, running, refusal_detail = s1_refusals()
+    if refusals is None:
+        return False, f"{snapshot_detail}; {refusal_detail}"
+    if running < 1:
+        return False, f"{snapshot_detail}; {refusal_detail} — no trader to keep trading"
+    if refusals > S1_REFUSAL_MAX:
+        return False, f"{snapshot_detail}; {refusal_detail} — entries are being refused"
+    return True, f"{snapshot_detail}; {refusal_detail}"
 
 
 def current_pin():

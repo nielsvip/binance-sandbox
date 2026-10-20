@@ -165,6 +165,9 @@ def archive_board_npz(symside, npz_name, npz_md5, host, root=None, run=None):
         return f"{type(e).__name__}"[:40]
 
 
+RESTAMP_MAX_LAG_H = float(os.environ.get("RESTAMP_MAX_LAG_H", "2.0"))  # 2026-10-20: refuse a stamp more than this far after its own result_done_utc
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hosts", default=os.environ.get("V15_HIST_HOSTS", "127.0.0.1,10.0.0.4"))
@@ -195,7 +198,7 @@ def main():
             if k not in boards or (r["set"] and not boards[k]["set"]):
                 boards[k] = dict(r, host=host)
     tpl = {cs: template_md5(cs) for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
-    wrote, dup, noset = 0, 0, 0
+    wrote, dup, noset, restamped = 0, 0, 0, 0
     for (ss, pub, ovm), r in sorted(boards.items(), key=lambda kv: kv[0][1]):
         hit = con.execute("SELECT 1 FROM per_sym_history WHERE sym_side=? AND updated_at=? AND json_extract(meta_json,'$.overrides_md5')=? LIMIT 1",
                           (ss, pub, ovm)).fetchone()
@@ -209,6 +212,37 @@ def main():
             continue
         m, s = r["manifest"], r["set"]
         mt = m.get("metrics") or {}
+        # ═══ 2026-10-20 RESTAMP GUARD (USER: "make sure it wont happen ever again") ═══
+        # docs/v15_pending/19_RESTAMP_FORENSICS_20261020.md found NO re-stamp in the 332 boards investigated (259 of
+        # 259 verifiable stamps land within 1 h of that run's newest eval; updated_at - result_done_utc is
+        # -0.78..+0.01 min). It named ONE residual way it can still happen, pre-existing since BOARD_DATE_TRUTH
+        # 10-19: "a pilot that resumes (`returning early`) publishes with a new stamp over old cells". This is the
+        # single chokepoint for that — every publish row reaches the DB through here, from the fleet scheduler hook
+        # and the :25 cron alike. CLAUDE.md: "A board's date must be the date its CELLS were computed, never the date
+        # it was re-published, re-stamped, renamed or resumed."
+        # EVIDENCE RULE, deliberately asymmetric:
+        #   contradicting evidence  -> REFUSE. The manifest's own result_done_utc predates published_utc by more than
+        #                              RESTAMP_MAX_LAG_H: the stamp is newer than the computation it claims to describe.
+        #   absent evidence         -> RECORD, and say so. 156 of 474 boards have no delta log on the publishing host
+        #                              (S1's run32 directory was removed), so refusing on absence would block
+        #                              legitimate publishes and is NOT what the forensics supports.
+        # Never silently accept: a refusal is logged with both timestamps and counted in the summary.
+        _lag_h = None
+        try:
+            _rdu = m.get("result_done_utc") or (m.get("meta") or {}).get("result_done_utc")
+            if _rdu and pub:
+                import datetime as _rdt
+                def _p(x):
+                    _t = _rdt.datetime.fromisoformat(str(x).replace("Z", "+00:00"))
+                    return (_t if _t.tzinfo else _t.replace(tzinfo=_rdt.timezone.utc))
+                _lag_h = (_p(pub) - _p(_rdu)).total_seconds() / 3600.0
+        except Exception:
+            _lag_h = None
+        if _lag_h is not None and _lag_h > RESTAMP_MAX_LAG_H:
+            restamped += 1
+            print(f"[settings-history] REFUSED RESTAMP {ss}: published_utc={pub} is {_lag_h:.1f}h AFTER its own "
+                  f"result_done_utc={_rdu} (> {RESTAMP_MAX_LAG_H}h) — a resumed/republished board may not wear a new date")
+            continue
         ov = s.get("overrides")
         source = "manifest_backfill" if args.backfill else ("fleet_orchestrator_publish" if ov else "fleet_orchestrator_publish_noset")
         noset += 0 if ov else 1
@@ -246,7 +280,7 @@ def main():
     syms = con.execute("SELECT COUNT(DISTINCT sym_side) FROM per_sym_history").fetchone()[0]
     newest = con.execute("SELECT MAX(updated_at) FROM per_sym_history").fetchone()[0]
     con.close()
-    print(json.dumps({"db": args.db, "check": ok, "per_host_manifests": per_host, "boards": len(boards), "written": wrote, "written_without_set": noset,
+    print(json.dumps({"db": args.db, "check": ok, "per_host_manifests": per_host, "boards": len(boards), "written": wrote, "written_without_set": noset, "refused_restamp": restamped,
                       "already_recorded": dup, "history_rows": total, "distinct_days": days, "distinct_sym_sides": syms, "newest_row": newest,
                       "backfill": bool(args.backfill), "dry_run": bool(args.dry_run)}, indent=1))
     return 0

@@ -386,7 +386,7 @@ class Agent:
         if not _changed and local.get("holder") == "s1":
             C.atomic_write_json(LF / "lease_local.json", dict(local, fetched_epoch=C.now_s(), fetched_at=C.iso()))
         if _changed:
-            C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "venues": C.venues_str(venues), "accounts": scope, "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
+            C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "venues": C.venues_str(venues), "run_venues": (lease.get("run_venues") or ""), "accounts": scope, "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
             alert("MAC_FENCED", gen=lease.get("gen"), venues=venues, accounts=scope or "all", reason=lease.get("reason"))
         yielded = sorted({a for v in venues for a in (prev_scope.get(v) or []) if a not in (scope.get(v) or [])})
         if yielded and local.get("holder") == "s1" and local.get("gen") == lease.get("gen"):

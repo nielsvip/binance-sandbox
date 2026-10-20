@@ -319,12 +319,15 @@ def verify_launch_tail(symbol, tr):
     try:
         sys.path.insert(0, str(ROOT))
         from tools.npz_bar_refresh import npz_last_ts
-        from tools.npz_cutoffs import MAX_NPZ_AGE_MIN, npz_age_min
+        import tools.npz_cutoffs as _nc
+        # self-sufficient on purpose: the gate deploys npz_cutoffs on its own schedule, an older copy must not turn this verdict into a pass
+        MAX_NPZ_AGE_MIN = float(getattr(_nc, "MAX_NPZ_AGE_MIN", None) or os.environ.get("V15_NPZ_MAX_AGE_MIN", "20") or 20)
         mode = "crypto" if symbol.endswith(("USDT", "USDC")) else "stocks"
         last = npz_last_ts(str(ROOT / "backtest_v8" / "indicators"), symbol)
         if last is None:
             return True, {"npz_last_bar_utc": None, "npz_age_min": None, "verify": "no-npz-ts"}
-        age = npz_age_min(last, mode)
+        _cut = _nc.last_closed_bar() if mode == "crypto" else _nc.last_rth_close_bar()
+        age = round(max(0.0, (float(_cut) - float(last)) / 60.0), 1) if _cut else None
         info = {"npz_last_bar_ts": int(last), "npz_last_bar_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(last))), "npz_age_min": age, "limit_min": MAX_NPZ_AGE_MIN}
         if age is not None and age > MAX_NPZ_AGE_MIN and os.environ.get("V15_SCHED_RUN_STALE", "0") != "1":
             return False, info
