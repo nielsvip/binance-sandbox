@@ -51,13 +51,18 @@ def _install_cap_hook():
     psa.masks = masks
 
 
-def _install_frozen_npz(frozen_dir: Path, symbol: str):
+def _install_frozen_npz(frozen_dir: Path, symbol: str, published_md5: str = ""):
     import numpy as np
     import v12_quick_engine as V
     from tools.opt import evaluate_v12 as E
 
     src = None
+    arch = ROOT / "data" / "parity" / "npz_archive" / f"{symbol}__{published_md5}.npz"
+    if published_md5 and arch.exists():
+        src = arch  # the board's own NPZ, content-addressed (same NPZ as the published run)
     for prefix in ("backtest_v8", "backtest_v7"):
+        if src is not None:
+            break
         p = ROOT / prefix / "indicators" / f"{symbol}.npz"
         if p.exists():
             src = p
@@ -206,7 +211,7 @@ def main():
     symbol = ss.rsplit("_", 1)[0]
     is_stock = not any(symbol.endswith(s) for s in ("USDT", "USDC", "BUSD", "FDUSD"))
     _install_cap_hook()
-    npz_md5 = _install_frozen_npz(Path(a.frozen_dir).expanduser(), symbol)
+    npz_md5 = _install_frozen_npz(Path(a.frozen_dir).expanduser(), symbol, str((prog.get("npz_id") or {}).get("md5") or ""))
     rows = []
 
     def run(fam, label, ov, env, cap):

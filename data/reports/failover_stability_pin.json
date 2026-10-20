@@ -1,13 +1,13 @@
 {
- "generated_utc": "2026-10-20T16:16:02Z",
+ "generated_utc": "2026-10-20T16:22:01Z",
  "apply": true,
  "lease": {
-  "holder": "s1",
-  "pin": "s1",
+  "holder": "mac",
+  "pin": "mac",
   "pin_source": "s1:lease.json",
-  "gen": 76,
-  "venues": "crypto,stocks",
-  "reason": "Mac reachable but NOT TRADING: crypto: positions_stale fin/long_positions.json age 3171s > 600s (position loop wedged) \u2014 stale accounts: ang,fin,flz,inf,men of 5 for 51s; stocks: indicators_stale 162/219 stock NPZ tails behind the latest RTH close (twin falls back to native -> entries die) for 51s"
+  "gen": 77,
+  "venues": null,
+  "reason": "manual force-mac"
  },
  "mac_ready": false,
  "ready_since": null,
@@ -16,25 +16,27 @@
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
   "manager restart churn (newest marker 0s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 13.60/core > 4.0 (warning only)"
+  "load 12.78/core > 4.0 (warning only)",
+  "and s1-pub snapshot 0/199 stale (0.0%); s1-pub 12728 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running \u2014 entries are being refused \u2014 pin NOT moved"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 963,
+  "readiness_age_s": 122,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 0,
    "stale_pct": 0.0,
-   "median_age_min": 15.1,
+   "median_age_min": 20.0,
    "sample": []
   },
   "churn": "newest marker 0s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 13.6,
+  "load_per_core": 12.78,
   "warnings": [
-   "load 13.60/core > 4.0 (warning only)"
-  ]
+   "load 12.78/core > 4.0 (warning only)"
+  ],
+  "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 12728 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running \u2014 entries are being refused"
  },
- "action": null,
+ "action": "NEITHER_HOST_CAPABLE",
  "action_result": null,
  "last_action_at": 1792507921.916924,
  "ready_since_epoch": null

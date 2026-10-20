@@ -399,6 +399,17 @@ def main():
             skipped.append({"symbol": sym, "ts": ts, "why": f"append raised {type(e).__name__}: {e}"[:140]})
         if ok and npz_last_ts(sym) == ts:
             bump("APPLIED")
+            if mode == "crypto":
+                # 2026-10-20 PROVISIONAL (USER "boards must compute on exchange-closed bars"): this row is the Mac's snapshot of the bar (its OHLCV and
+                # every indicator were computed from the live cache), measured different from the exchange-closed bar in 25-70% of symbols. It stays in
+                # the NPZ for freshness but is MARKED here; tools/npz_bar_refresh.py rewinds and rebuilds every marked row from klines_canonical as soon
+                # as the canonical closed bar exists and clears the mark.
+                try:
+                    from tools.npz_bar_refresh import prov_mark
+                    prov_mark(sym, [ts], "ingest")
+                except Exception as e:
+                    bump("PROV_MARK_FAILED")
+                    log(f"{sym}: provisional mark failed {type(e).__name__}: {e}"[:160])
             applied.append({"symbol": sym, "ts": ts, "keys_applied": len(row), "keys_shipped": n_shipped,
                             "carried_forward": {k: len(v) for k, v in dropped.items()}, "null_fixes": fixes})
             claim(f, DONE)

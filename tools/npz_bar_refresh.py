@@ -982,7 +982,7 @@ def repair_queue_update(results, path=None):
 # path re-appends it from the builder (canonical-primary), so every indicator, HTF as-of key, augment and sentiment of those rows is recomputed, not
 # just OHLCV. Never shrinks: the rewound bars are re-appended in the same write and a result shorter than / ending before the original is refused.
 HEAL_BARS = int(os.environ.get("NPZ_HEAL_BARS", "24"))
-HEAL_MAX_REWIND = int(os.environ.get("NPZ_HEAL_MAX_REWIND", "1300"))
+HEAL_MAX_REWIND = int(os.environ.get("NPZ_HEAL_MAX_REWIND", "3600"))
 HEAL_ENABLED = os.environ.get("NPZ_HEAL_CANONICAL", "1") == "1"
 PROV_DIR = ROOT / "data" / "vec_live" / "npz_provisional"
 HEAL_FIELDS = (("open_15m", "open"), ("high_15m", "high"), ("low_15m", "low"), ("close_15m", "close"), ("volume_15m", "volume"))
@@ -1153,6 +1153,7 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
     orig_ts, orig_close = np.asarray(L["timestamps"]).astype(np.int64), None
     if heal_n:
         orig_close = np.asarray(L["close_15m"]).astype(np.float64)[n_orig - heal_n:]
+        orig_mss = np.asarray(L["market_sentiment_score"])[n_orig - heal_n:].copy() if "market_sentiment_score" in L and len(L["market_sentiment_score"]) == n_orig else None
         for _k in list(L):
             if np.ndim(L[_k]) >= 1 and len(L[_k]) == n_orig and _k != "htf_align":
                 L[_k] = L[_k][:n_orig - heal_n]
@@ -1210,7 +1211,7 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
         gap = int((((_fts > ts_last) & (_fts <= cutoff)).sum()))
     else:
         gap = (cutoff - ts_last) // BAR
-    if gap > 1400:
+    if gap - int(heal_n) > 1400:
         return {**res, "status": "GAP_TOO_LARGE", "gap_bars": int(gap)}
     b = builder or Builder()
     t2 = time.time()
@@ -1239,6 +1240,10 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
                     "reason": "rewound span not fully re-covered by the closed-bar source yet; NPZ left untouched"}
         _nc = np.asarray(D["close_15m"]).astype(np.float64)
         _pos = np.searchsorted(_dts, orig_ts[n_orig - heal_n:])
+        if orig_mss is not None and "market_sentiment_score" in D and len(D["market_sentiment_score"]) == len(_dts):
+            # breadth sentiment of a rewound bar was real; keep it until wave 2 re-scores it (a zero placeholder would be a regression)
+            D["market_sentiment_score"] = np.asarray(D["market_sentiment_score"]).copy()
+            D["market_sentiment_score"][_pos] = orig_mss.astype(D["market_sentiment_score"].dtype)
         res["heal_close_changed"] = int((~np.isclose(orig_close, _nc[_pos], rtol=1e-6, atol=0.0)).sum())
         res["heal_close_max_rel"] = float(np.max(np.abs(orig_close - _nc[_pos]) / np.maximum(1e-12, np.abs(orig_close)))) if len(_pos) else 0.0
     if dry_run:
@@ -1255,7 +1260,10 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
         pass
     os.replace(tmp, path)
     if mode == "crypto" and res.get("canon_last") is not None:
-        _cl = int(res["canon_last"])
+        try:
+            _cl = int(canonical_window(symbol, 2)[1] or res["canon_last"])
+        except Exception:
+            _cl = int(res["canon_last"])
         _newset = set(res.get("new_ts") or [])
         _prov = {t: v for t, v in prov_read(symbol).items() if t > _cl and t not in _newset}
         _prov.update({int(t): "fresh_tail" for t in _newset if int(t) > _cl})
@@ -1724,7 +1732,7 @@ def stamp(results, patched=None, stamp_path=None):
                 e.update({"ts_last": r["ts_after"], "ts_last_iso": dt.datetime.fromtimestamp(r["ts_after"], dt.timezone.utc).isoformat(), "built_at": now, "md5": r.get("md5"),
                           "bars": r.get("n_old", 0) + r.get("appended", 0), "appended": r.get("appended"), "latency_s": r.get("latency_from_bar_close_s"),
                           "overlap_worst": r.get("overlap_worst"), "overlap_worst_key": r.get("overlap_worst_key")})
-                e["sent_through"] = patched.get(s, r.get("ts_before"))
+                e["sent_through"] = patched.get(s, min(r.get("ts_before"), r["heal_from_ts"] - BAR) if r.get("heal_from_ts") else r.get("ts_before"))
                 e.pop("error", None)
             elif r.get("status") == "FRESH":
                 e.setdefault("ts_last", r.get("ts_before"))
@@ -1966,7 +1974,14 @@ def main():
     ap.add_argument("--global-lock", action="store_true", help="one-shot runs: also take the daemon singleton lock (legacy behaviour; targeted runs need only their per-symbol locks)")
     ap.add_argument("--cutoff", type=int, default=0, help="one-shot: append only up to this bar instead of the latest closed one. The ONLY way to close a hole bigger than the per-pass limit (refresh_symbol refuses gap>1400): walk it in capped steps, e.g. tools/npz_repair.py does min(last+1400 bars, latest).")
     ap.add_argument("--allow-mac", action="store_true", help="override the macOS refusal (debugging only; live NPZs exist on S1 only)")
+    ap.add_argument("--heal-bars", type=int, default=None, help="canonical heal span in bars (default NPZ_HEAL_BARS=24; a one-off deep pass may use up to NPZ_HEAL_MAX_REWIND=3600); 0 = off")
+    ap.add_argument("--no-heal", action="store_true", help="do not compare NPZ rows with klines_canonical")
     a = ap.parse_args()
+    global HEAL_BARS, HEAL_ENABLED
+    if a.heal_bars is not None:
+        HEAL_BARS = a.heal_bars
+    if a.no_heal:
+        HEAL_ENABLED = False
     if sys.platform == "darwin" and not a.allow_mac and (a.loop or not a.dry_run):
         ap.error("macOS refused: the refresh loop and live installs run on S1 only (Mac holds no live NPZs); pass --allow-mac to override")
     # 2026-10-16: the singleton lock guards the DAEMON only. A targeted run (dispatch JIT top-up, v15_npz_ensure,
@@ -1993,9 +2008,9 @@ def main():
     if a.dry_run:
         log(f"dry-run summary: {json.dumps(summ, default=str)}")
     cnt = (summ.get("counts") if isinstance(summ, dict) else None) or {}
-    bad = sum(v for k, v in cnt.items() if k not in ("INSTALLED", "FRESH", "NO_NEW_ROWS", "DRY_RUN_OK", "SOURCE_NO_NEW_BAR"))
+    bad = sum(v for k, v in cnt.items() if k not in ("INSTALLED", "FRESH", "NO_NEW_ROWS", "DRY_RUN_OK", "SOURCE_NO_NEW_BAR", "HEAL_DEFERRED_NO_SHRINK"))
     if bad:
-        log(f"exit 3: {bad} of {sum(cnt.values())} symbol(s) did NOT reach the latest bar ({ {k: v for k, v in cnt.items() if k not in ('INSTALLED', 'FRESH', 'NO_NEW_ROWS', 'DRY_RUN_OK', 'SOURCE_NO_NEW_BAR')} })")
+        log(f"exit 3: {bad} of {sum(cnt.values())} symbol(s) did NOT reach the latest bar ({ {k: v for k, v in cnt.items() if k not in ('INSTALLED', 'FRESH', 'NO_NEW_ROWS', 'DRY_RUN_OK', 'SOURCE_NO_NEW_BAR', 'HEAL_DEFERRED_NO_SHRINK')} })")
         sys.exit(3)
 
 
