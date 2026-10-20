@@ -199,3 +199,28 @@ def test_no_cap_refusal_and_broken_promise_on_zero_size():
         assert t2 is None and [r[0] for r in rows] == ["PROMISE", "BROKEN"] and rows[1][1][2] == "LIVE_SIZING_ZERO"
     finally:
         PL.promise, PL.broken, PL.delivery = o
+
+
+def test_reentry_crossback_condition():
+    import vec_decisions.reentry_crossback as XB
+
+    g = _get({})
+    assert XB.law_enabled(g) is False  # default = previous engine behaviour
+    assert XB.crossed_back(g, False, 99.79, 100.0) is True  # SHORT: below exit by >= 0.2 %
+    assert XB.crossed_back(g, False, 99.85, 100.0) is False
+    assert XB.crossed_back(g, True, 100.21, 100.0) is True  # LONG: above exit by >= 0.2 %
+    assert XB.crossed_back(g, True, 100.1, 100.0) is False
+    assert XB.crossed_back(g, True, 101.0, 0.0) is False
+    assert XB.allows_reentry(g, True, 99.0, 100.0) is True  # law off -> pathways unchanged
+    assert XB.allows_reentry(_get({"REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED": True}), True, 99.0, 100.0) is False
+
+
+def test_crossback_fields_default_off():
+    import v12_quick_engine as V
+    import config_tradier as CT
+    import config as C
+
+    f = {x.name: x.default for x in dataclasses.fields(V.QuickConfig)}
+    assert f["REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED"] is False
+    assert CT.TradierConfig().REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED is False
+    assert C.Config.REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED is False

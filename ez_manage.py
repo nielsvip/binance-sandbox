@@ -54525,6 +54525,16 @@ async def process_position(
             }
             _re_signal = await evaluate_reentry(_re_ctx)
             if _re_signal and getattr(_re_signal, "action", None) == "REENTRY":
+                try:  # 2026-10-20 USER LAW (vec_decisions.reentry_crossback; REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED default False = inert)
+                    import vec_decisions.reentry_crossback as _xb_e
+                    _xb_g = lambda _k, _d=None: _psym_get(symbol, position_side, _k, getattr(config, _k, _d))
+                    _xb_pos = await trade_manager.get_position(position_key)
+                    if _xb_e.law_enabled(_xb_g) and not _xb_e.crossed_back(_xb_g, position_side == "LONG", safe_fetch_float(current_price, 0), safe_fetch_float(getattr(_xb_pos, "last_reduction_price", 0), 0)):
+                        logger.info(f"[REENTRY_CROSSBACK] {position_key}: {getattr(_re_signal, 'reason', '')} refused as REENTRY (exit price not crossed back)")
+                        _re_signal = None
+                except Exception:
+                    pass
+            if _re_signal and getattr(_re_signal, "action", None) == "REENTRY":
                 _re_qty = float(getattr(_re_signal, "quantity", 0) or 0)
                 _re_reason = getattr(_re_signal, "reason", "EVAL_REENTRY_FIRED")
                 if _re_qty > 0:

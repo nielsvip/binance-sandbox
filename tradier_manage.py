@@ -18496,6 +18496,20 @@ async def process_position(
                     symbol, position, indicators_raw
                 )
             )
+            try:  # 2026-10-20 USER LAW (vec_decisions.reentry_crossback, switch REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED, default False = inert):
+                # a reentry only on a bar where price passed the exit price favourably; otherwise it is a fresh entry -> the fresh-entry path decides.
+                import vec_decisions.reentry_crossback as _xb_t
+
+                _xb_get = lambda _k, _d=None: _cfg(_k, _d, account_key, symbol, position_side)
+                if (
+                    re_action not in ("HOLD", "NO_ACTION")
+                    and _xb_t.law_enabled(_xb_get)
+                    and not _xb_t.crossed_back(_xb_get, position_side == "LONG", safe_fetch_float(current_price, 0.0), safe_fetch_float(getattr(position, "last_reduction_price", 0), 0.0))
+                ):
+                    logger.info(f"[REENTRY_CROSSBACK] {position_key}: {re_reason} refused as REENTRY (exit price not crossed back) -> fresh-entry path decides")
+                    re_action = "HOLD"
+            except Exception as _xb_e:
+                logger.debug(f"[REENTRY_CROSSBACK] {position_key}: {_xb_e}")
             # WAVE2-REENTRY-GATE 2026-10-04 lane B2: live twins for DELTA_GATE_REENTRY (vec v12:9296), REENTRY_FILTER_MIN_PASS (vec v12:12486+13232), GUARANTEED_REENTRY_DELTA_GATE_ENABLED (vec v12:8615), DELTA_EXIT_MANDATORY_REENTRY_ENABLED (vec v12:8629), COOLDOWN_BARS_TRADIER/COOLDOWN_BARS (vec v12:12521). Veto by demoting re_action to HOLD; original calls preserved. All inert at default.
             try:
                 _w2_long = str(position_side) == "LONG"
