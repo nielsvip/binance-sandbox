@@ -49,6 +49,7 @@ import socket
 import subprocess
 import sys
 import time
+import datetime as _dt
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -90,6 +91,13 @@ FAILBACK_NT_S = float(os.environ.get("LF_FAILBACK_NT_S", "300"))  # 2026-10-19: 
 # because it is idle (measured: MAC_TRADING_AGAIN stocks after_s=330 with the stall fixture still stalling). Both
 # sit at 300 s today; if the hand-back is ever shortened, shorten the whole-host arm FIRST and leave this one.
 FAILBACK_FAST_S = float(os.environ.get("LF_FAILBACK_FAST_S", "120"))
+# S1_VENUE_BLIND (2026-10-20): the share of S1's OWN recent manager decisions that are STALE_INDICATORS
+# refusals (ez_positions_quick.py:3498) above which S1 is holding a venue it cannot actually trade.
+BLIND_STALE_FRAC = float(os.environ.get("LF_BLIND_STALE_FRAC", "0.5"))
+BLIND_MIN_N = int(os.environ.get("LF_BLIND_MIN_N", "20"))
+BLIND_WINDOW_MIN = float(os.environ.get("LF_BLIND_WINDOW_MIN", "10"))
+BLIND_TAIL_BYTES = int(os.environ.get("LF_BLIND_TAIL_BYTES", "400000"))
+BLIND_LOG_DIR = os.environ.get("LF_BLIND_LOG_DIR", "/home/niels/logs")
 FAILBACK_FAST_MIN_STABLE_S = float(os.environ.get("LF_FAILBACK_FAST_MIN_STABLE_S", "3600"))
 ACCT_YIELD_S = float(os.environ.get("LF_ACCT_YIELD_S", "600"))
 FENCE_WAIT_S = float(os.environ.get("LF_FENCE_WAIT_S", "120"))
@@ -613,7 +621,60 @@ class Watchdog:
             return []
         return [v for v in wanted if self.s1_broker_ok(v, now)]
 
+    def s1_venue_blind(self, venue, now):
+        """True when S1's OWN manager for `venue` is refusing entries on stale indicators right now.
+
+        MEASURED 2026-10-20: S1 took crypto at 12:49:51Z (broker probe 5/5 OK) and held crypto+stocks across the
+        13:30Z bell while every rate decision in its ez_manage logs read
+        `BLOCKED - STALE_INDICATORS (259m old, ts=2026-10-20T09:30:00)` — ez_positions_quick.py:3498 refuses an
+        entry when timestamp_15m is over 90 min old unless _tick_ts is inside 120 s. All 11 orders S1 placed that
+        hour were EXITs; not one position opened, for 59 minutes, with nothing saying so. The broker probe proves
+        S1 can REACH the exchange, never that it can DECIDE.
+
+        The manager's log is the only honest instrument here. The snapshot FILE is not: at 14:4xZ S1's
+        data/latest_market_data.json reported 0 of 199 symbols stale while its ez_manage was logging 12,400
+        STALE_INDICATORS refusals per 10 minutes, because the manager's in-memory `ind` does not track that file
+        promptly. The first version of this probe read the file and answered "not blind" against that reality.
+
+        This never blocks a takeover — "trading can only stop because macbook went offline, NEVER is there any
+        possibility that it just stops" (USER 2026-10-16). It raises the alarm and lets failback_needed_s send the
+        lease home on the floor dwell instead of the full one. No recent manager log -> not blind (never invent a
+        reason to move the lease; a venue S1 holds with no manager at all is a different condition)."""
+        pattern = "failover_ez_manage_*.log" if venue == "crypto" else "failover_tradier_manage_*.log"
+        window = [time.strftime("%m-%d %H:%M", time.gmtime(now - 60 * i)) for i in range(int(BLIND_WINDOW_MIN) + 1)]
+        refusals, lines = 0, 0
+        try:
+            for path in sorted(Path(BLIND_LOG_DIR).glob(pattern)):
+                try:
+                    with path.open("rb") as fh:
+                        fh.seek(0, os.SEEK_END)
+                        fh.seek(max(0, fh.tell() - BLIND_TAIL_BYTES))
+                        tail = fh.read().decode("utf-8", "replace")
+                except OSError:
+                    continue
+                for line in tail.splitlines():
+                    if not line.startswith("["):
+                        continue
+                    if not any(line.startswith("[" + w) for w in window):
+                        continue
+                    lines += 1
+                    if "BLOCKED - STALE_INDICATORS" in line:
+                        refusals += 1
+        except Exception:
+            return False
+        if lines < BLIND_MIN_N:
+            return False
+        return (refusals / lines) > BLIND_STALE_FRAC
+
     def failback_needed_s(self, lease, now):
+        blind = [v for v in C.lease_venues(lease) if self.s1_venue_blind(v, now)]
+        if blind:
+            if sorted(blind) != sorted(self.state.get("blind_alerted") or []):
+                alert("S1_VENUE_BLIND", venues=blind, detail=f"S1 holds {blind} but its own managers are refusing entries on STALE_INDICATORS — failback dwell cut to {int(FAILBACK_FAST_S)}s")
+                self.state["blind_alerted"] = sorted(blind)
+            return min(FAILBACK_S, FAILBACK_FAST_S)
+        if self.state.get("blind_alerted"):
+            self.state["blind_alerted"] = []
         if not lease.get("nt"):
             return FAILBACK_S
         recent = [t for t in self.state["nt_history"] if now - float(t) <= NT_BACKOFF_WINDOW_S]

@@ -70,19 +70,50 @@ stop_account_traders() {
         done
     fi
 }
+# USER 2026-10-20: "s1 should keep trading until macbook is stable" — which it cannot do if it takes a third of an
+# hour to get its traders up. MEASURED that morning, with S1 holding crypto+stocks across the 13:30Z bell:
+#   starting crypto:ang 13:53:48  inf 13:54:30  flz 13:55:12  men 13:55:54  fin 13:56:36   (one per 42 s lap)
+#   starting stocks:trb 13:46:06  (16 min AFTER the open)      trc 14:04:00   tra never in that window
+# The cause is here, not in the lease: s1_failover_start.sh is called SYNCHRONOUSLY and waits up to 240 s in its own
+# positions gate, so one account per lap is the ceiling, and the stocks block sits behind the whole crypto ramp even
+# though crypto trades 24/7 and the stock session has a bell.
+# Two changes, both narrow:
+#   * starts run in the BACKGROUND, at most START_INFLIGHT at a time. The existing single-flight pgrep guard already
+#     prevents a duplicate start per account (the thing that "multiplies broker polling during IP bans"); what it
+#     never needed was for the starts to be serial. Children stay in this unit's cgroup, so `systemctl stop` and
+#     the _shutdown trap are unaffected.
+#   * inside the stocks window stocks are started FIRST. Crypto loses nothing by waiting one lap; stocks lose the open.
+START_INFLIGHT=${S1_SUP_MAX_START_INFLIGHT:-3}
+# `pgrep -fc` prints 0 AND exits 1 on no match, so `pgrep -fc ... || echo 0` yields TWO lines and the
+# arithmetic test below dies on "0\n0". Piping through wc -l always prints exactly one integer and always exits 0.
+_starts_in_flight() { pgrep -f "s1_failover_start\.sh" 2>/dev/null | wc -l | tr -d ' '; }
+start_venue() {
+    local mode="$1" script="$2" pat="$3" acct
+    shift 3
+    for acct in "$@"; do
+        if lf_lease_fenced "$script" "$BIN" "$acct"; then
+            stop_account_traders "$mode" "$acct"
+            continue
+        fi
+        pgrep -f "s1_failover_start.sh $mode $acct" >/dev/null && continue
+        pgrep -f "$pat $acct" >/dev/null && continue
+        if [ "$(_starts_in_flight)" -ge "$START_INFLIGHT" ]; then
+            log "start queue full ($START_INFLIGHT in flight) — $mode:$acct next lap"
+            continue
+        fi
+        log "starting $mode:$acct"
+        setsid bash "$BIN/tools/s1_failover_start.sh" "$mode" "$acct" >> /home/niels/logs/s1_failover.log 2>&1 </dev/null &
+    done
+}
 while true; do
     if ! grep -q '"holder": *"s1"' "$BIN/data/live_failover/lease.json" 2>/dev/null; then
         log "lease no longer held by S1 — exiting (systemd stops all S1 traders)"
         exit 0
     fi
-    for acct in ang inf flz men fin; do
-        if lf_lease_fenced ez_manage.py "$BIN" "$acct"; then
-            stop_account_traders crypto "$acct"
-            continue
-        fi
-        pgrep -f "s1_failover_start.sh crypto $acct" >/dev/null && continue  # 2026-10-19 single-flight: the start path waits up to 240s in the positions gate; a lap-spawned duplicate multiplies broker polling during IP bans
-        pgrep -f "ez_manage.py --account $acct" >/dev/null || { log "starting crypto:$acct"; bash "$BIN/tools/s1_failover_start.sh" crypto "$acct"; }
-    done
+    if stocks_window; then
+        start_venue stocks tradier_manage.py "tradier_manage.py --accounts" trb trc tra
+    fi
+    start_venue crypto ez_manage.py "ez_manage.py --account" ang inf flz men fin
     _venue_held=0
     for acct in ang inf flz men fin; do
         lf_lease_fenced ez_manage.py "$BIN" "$acct" || { _venue_held=1; break; }
@@ -93,16 +124,6 @@ while true; do
                 setsid nohup "$PY" -u "$extra" >> "/home/niels/logs/failover_${extra}.log" 2>&1 </dev/null &
                 log "started $extra"
             fi
-        done
-    fi
-    if stocks_window; then
-        for acct in trb trc tra; do
-            if lf_lease_fenced tradier_manage.py "$BIN" "$acct"; then
-                stop_account_traders stocks "$acct"
-                continue
-            fi
-            pgrep -f "s1_failover_start.sh stocks $acct" >/dev/null && continue  # 2026-10-19 single-flight: same as crypto above
-            pgrep -f "tradier_manage.py --accounts $acct" >/dev/null || { log "starting stocks:$acct"; bash "$BIN/tools/s1_failover_start.sh" stocks "$acct"; }
         done
     fi
     sleep 20

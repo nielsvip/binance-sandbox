@@ -1264,7 +1264,7 @@ def _repair_allowed_for_tier(tier, measured):
     return os.environ.get("V15_REPAIR_ALL_TIERS") == "1" or tier == "W" or not measured
 
 
-def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None):
+def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attempts=None, launched_at=None, pri=frozenset(), cont=None, pinned=None, recent=None, age_key=None):
     """USER 2026-10-09 (trb gainers absolute priority): W chains + W new before ALL M/L work. Stable sort
     keeps chain-first within a tier. Running pilots are never touched — this orders new launches only.
     USER 2026-10-10 (82 redo backlog): needs_redo RESUMES outrank everything (paid work finalises in
@@ -1298,7 +1298,8 @@ def _place_order(held_ordered, adopted_owned, new_syms, tiers, redo=None, attemp
     # USER 2026-10-17 (new-information KPI): a pair whose every side was boarded < 24 h ago sorts after all other work of
     # the same resume class — never-boarded / older boards first; it still runs when nothing else is launchable.
     _rec = recent or frozenset()
-    seq.sort(key=lambda t: (_rk(t[0]), 1 if t[0] in _rec else 0, _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
+    _ak = age_key or (lambda b: (2, 0.0, 0.0))  # 2026-10-20 USER: catch-up violators, then due live gainers, then oldest-first; default = no effect
+    seq.sort(key=lambda t: (_rk(t[0]), _ak(t[0]), 1 if t[0] in _rec else 0, _sym_tier_rank(t[0], tiers), 0 if t[0] in _rkpairs else 1, 1 if t[1] else 0, 0 if t[0] in _pri else 1, _min_att.get(t[0], -1.0), _old_ts.get(t[0], -1.0)))
     return seq
 
 
@@ -1755,6 +1756,7 @@ def _workers_for(sym, workers):
     return workers
 
 
+_AGE_KEY = [None]  # per-tick sym -> (class, sub, key) closure built from the age rules / live gain cadence
 _CATCHUP_MODE = [False]  # 2026-10-20 USER LAW: set per tick by the coverage hysteresis; side_cmd adds V18_CATCHUP=1 to 30D launches while True
 
 _REMOTE_MANIFEST_PY = (
@@ -1880,6 +1882,65 @@ def _throughput(rows, now_ts, window_h=1.0, target=12):
         sides.setdefault(sym, set()).add(side)
     return {"window_h": window_h, "target_per_host": target, "published_per_host": {h: len(v) for h, v in sorted(per_host.items())},
             "symbols_both_sides": sum(1 for v in sides.values() if len(v) == 2), "sym_sides": sum(len(v) for v in per_host.values())}
+
+
+def _qualifying_ages(allowed, rows, now_ts, npz_min=20.0):
+    """{sym_side: age_h of its newest PUBLISHED board computed on an NPZ <= npz_min old, or None when no such board exists}. Pure (tested)."""
+    best = {}
+    for r in rows or []:
+        try:
+            ts = datetime.datetime.fromisoformat(str(r[1]).replace("Z", "+00:00")).timestamp()
+        except Exception:
+            continue
+        if not r[0] or ts <= best.get(r[0], 0.0):
+            continue
+        lag = _board_npz_age_min(r, venue_of(r[0].rsplit("_", 1)[0]))
+        if lag is not None and lag <= npz_min:
+            best[r[0]] = ts
+    return {ss: ((now_ts - best[ss]) / 3600.0 if ss in best else None) for ss in (allowed or [])}
+
+
+def _catchup_rules(ages, trading, any_h=216.0, trading_h=96.0):
+    """USER 2026-10-20 age rules. Catch-up is ON when ANY tradeable sym_side's qualifying board is older than any_h (9 d; none = infinitely
+    old) OR any actively trading sym_side's is older than trading_h (4 d). It turns OFF only when neither holds. Pure (tested)."""
+    inf = float("inf")
+    a = {ss: (inf if v is None else float(v)) for ss, v in (ages or {}).items()}
+    tr = set(trading or ()) & set(a)
+    over_any = sorted((ss for ss, v in a.items() if v > any_h), key=lambda x: -a[x])
+    over_tr = sorted((ss for ss in tr if a[ss] > trading_h), key=lambda x: -a[x])
+    fin = lambda v: None if v == inf else round(v, 1)
+    return {"mode": bool(over_any or over_tr), "n_tradeable": len(a), "n_never_qualifying": sum(1 for v in a.values() if v == inf),
+            "n_over_any": len(over_any), "n_trading": len(tr), "n_trading_over": len(over_tr),
+            "max_age_any_h": ("never" if any(v == inf for v in a.values()) else fin(max(a.values()))) if a else None,
+            "max_age_trading_h": ("never" if any(a[ss] == inf for ss in tr) else fin(max((a[ss] for ss in tr), default=0.0))) if tr else None,
+            "over_any": over_any, "over_trading": over_tr, "any_h": any_h, "trading_h": trading_h}
+
+
+def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_gain=None):
+    """{sym_side: (class, sub, key)} sort key (lower = launch first). class 0 = catch-up violators (trading > trading_h first, then the
+    oldest), class 1 = LIVE-realised gainers whose cadence is DUE (top decile of gainers 6 h, next quartile 12 h, rest 24 h; ordered by 7-day
+    realised P&L, the board gain only breaks ties), class 2 = everyone else, oldest first (never-boarded oldest). Losers/flat sit in class 2
+    so they are never deferred behind a gainer beyond the 24 h cadence. Also returns the per-gainer cadence table. Pure (tested)."""
+    inf = float("inf")
+    live = live or {}
+    bg = board_gain or {}
+    gainers = sorted((ss for ss in ages if (live.get(ss) or {}).get("pnl_usd", 0.0) > 0), key=lambda x: (-live[x]["pnl_usd"], -(bg.get(x) or 0.0)))
+    n = len(gainers)
+    top, nxt = (max(1, -(-n // 10)) if n else 0), (max(1, -(-n // 4)) if n else 0)
+    cad = {ss: (6.0 if i < top else 12.0 if i < top + nxt else 24.0) for i, ss in enumerate(gainers)}
+    trset = set(trading or ())
+    out = {}
+    for ss, age in ages.items():
+        a = inf if age is None else float(age)
+        if (ss in trset and a > trading_h) or a > any_h:
+            out[ss] = (0, 0.0 if (ss in trset and a > trading_h) else 1.0, -a)
+        elif ss in cad and a >= cad[ss]:
+            out[ss] = (1, float(gainers.index(ss)), -(bg.get(ss) or 0.0))
+        else:
+            out[ss] = (2, 0.0, -a)
+    table = [{"sym_side": ss, "pnl_usd_7d": live[ss]["pnl_usd"], "board_age_h": (None if ages[ss] is None else round(ages[ss], 1)), "cadence_h": cad[ss],
+              "next_due_in_h": (0.0 if ages[ss] is None else round(max(0.0, cad[ss] - ages[ss]), 1))} for ss in gainers[:10]]
+    return out, table
 
 
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
@@ -3044,17 +3105,42 @@ def tick(args, cfg, now):
                     pass
                 _rc[_hh["name"]] = _ent
             _mrows += _ent[1]
-        _cov = _coverage(uni.get("allowed_sym_sides") or [], _mrows, _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")))
-        _below, _exit = float(os.environ.get("V15_SCHED_CATCHUP_BELOW", "0.80")), float(os.environ.get("V15_SCHED_CATCHUP_EXIT", "0.95"))
-        _prev = bool(st.get("catchup_mode"))
-        _now_mode = _select_catchup_mode(_prev, _cov["coverage"], _below, _exit)
+        _allowed_l = uni.get("allowed_sym_sides") or []
+        _cov = _coverage(_allowed_l, _mrows, _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")))  # informational only
+        _ages = _qualifying_ages(_allowed_l, _mrows, _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")))
+        _live, _live_age_h = {}, None
+        try:
+            _lj = json.loads(pathlib.Path(ROOT / "data" / "v15_live_gain_7d.json").read_text())
+            _live_age_h = (_now_ts - float(_lj.get("generated_ts") or 0)) / 3600.0
+            if _live_age_h <= float(os.environ.get("V15_SCHED_LIVE_GAIN_MAX_AGE_H", "12")):
+                _live = _lj.get("sym_sides") or {}
+                _trading = set(_lj.get("trading") or []) | set(uni.get("open_position_sym_sides") or [])
+            else:
+                _trading = set(uni.get("open_position_sym_sides") or [])
+        except Exception:
+            _trading = set(uni.get("open_position_sym_sides") or [])
+        _any_h, _tr_h = float(os.environ.get("V15_SCHED_CATCHUP_ANY_D", "9")) * 24.0, float(os.environ.get("V15_SCHED_CATCHUP_TRADING_D", "4")) * 24.0
+        _rules = _catchup_rules(_ages, _trading, _any_h, _tr_h)
+        _now_mode = bool(_rules["mode"])
         st["catchup_mode"] = _now_mode
         _CATCHUP_MODE[0] = _now_mode
+        _bgain = {k: v.get("final_gain") for k, v in (_ledger or {}).items() if isinstance(v, dict)} if isinstance(_ledger, dict) else {}
+        _prio, _gtable = _refresh_priority(_ages, _live, _trading, _any_h, _tr_h, _bgain)
+        _psym = {}
+        for _k, _v in _prio.items():
+            _sy = _k.rsplit("_", 1)[0]
+            if _sy not in _psym or _v < _psym[_sy]:
+                _psym[_sy] = _v
+        _AGE_KEY[0] = (lambda b, _m=_psym: _m.get(b, (2, 0.0, 0.0)))
         _thr = _throughput(_mrows, _now_ts)
         log["coverage"] = {"coverage": _cov["coverage"], "covered": _cov["covered"], "n": _cov["n"], "published_24h": _cov["published_24h"], "median_board_age_h": _cov["median_board_age_h"],
-                           "mode": "catchup" if _now_mode else "slow", "below": _below, "exit": _exit, "per_cat": _cov["per_cat"], "throughput": _thr}
-        print(f"[sched] coverage={_cov['coverage']:.3f} ({_cov['covered']}/{_cov['n']}; published<24h {_cov['published_24h']}; median board age {_cov['median_board_age_h']} h) mode={'CATCHUP' if _now_mode else 'slow'} (below {_below}, exit {_exit}); "
-              f"published/h per host {_thr['published_per_host']} target {_thr['target_per_host']}/h/host; symbols with both sides published (1h) {_thr['symbols_both_sides']}", flush=True)
+                           "mode": "catchup" if _now_mode else "slow", "per_cat": _cov["per_cat"], "throughput": _thr,
+                           "rules": {k: v for k, v in _rules.items() if k not in ("over_any", "over_trading")}, "over_trading_sample": _rules["over_trading"][:12], "over_any_sample": _rules["over_any"][:12],
+                           "top_gainers": _gtable, "live_gain": {"file_age_h": (None if _live_age_h is None else round(_live_age_h, 1)), "sym_sides": len(_live), "trading": len(_trading)}}
+        print(f"[sched] mode={'CATCHUP' if _now_mode else 'slow'} max_age_any={_rules['max_age_any_h']}h max_age_trading={_rules['max_age_trading_h']}h "
+              f"behind>{_any_h/24:.0f}d={_rules['n_over_any']}/{_rules['n_tradeable']} (never-qualifying {_rules['n_never_qualifying']}) trading>{_tr_h/24:.0f}d={_rules['n_trading_over']}/{_rules['n_trading']}; "
+              f"coverage(info)={_cov['coverage']:.3f}; published/h per host {_thr['published_per_host']} target {_thr['target_per_host']}/h/host; both-sides symbols (1h) {_thr['symbols_both_sides']}; "
+              f"top gainers {[(g['sym_side'], g['pnl_usd_7d'], g['board_age_h'], g['cadence_h']) for g in _gtable[:3]]}", flush=True)
         if not (args.dry_run or sim):
             _fp = ROOT / "data" / "reports" / "fleet_coverage.json"
             _fp.parent.mkdir(parents=True, exist_ok=True)
@@ -3156,7 +3242,7 @@ def tick(args, cfg, now):
         if _recent_syms is None:
             _recent_syms = _recent_board_syms(all_syms, _mindex, _allowed, _now_ts)
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
-                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms)
+                             [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])
         # 2026-10-13 USER LAW: a server never takes a new symbol while one of its own boards is unfinished — enforced by
         # _place_order (pinned=0, unfinished/redo=1, fresh=2): every unfinished board this host owns is evaluated and
         # admitted before any fresh pair in the same tick; slots/mem/cpu/budget that stop it stop the fresh pairs too.
