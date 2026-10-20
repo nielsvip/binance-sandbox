@@ -4211,3 +4211,49 @@ Before any parity verdict is quoted, four things must be stated or it is not a v
 4. **the NPZ freeze and the scoring window**, measured from each NPZ's own last bar.
 A run missing any of them measures the harness, not the system. All three causes above were silent: every leg
 exited 0, wrote a report, and printed a number.
+
+### 118.7 THE STOCKS CENSUS — 21.6% ENTRY IDENTITY, AND IT IS NOT THE HARNESS
+Run with the three 118.1–118.3 controls in place (live store pinned via `PER_SYM_STORE_DB`, gate OK 92/92,
+`TRADE_PARITY_VEC_EXACT=0` = the native mode production runs, NPZ frozen on S2 fresh to 19:45Z, 30 sessions,
+sets 3,525–3,555 keys, digest `cfcbb87483ddf1404267e29f2f083f72`). **92 reports, 91 scored, 0 lost.**
+
+| measure | stocks (91 sym_sides) | crypto (28, §118.4) |
+|---|---|---|
+| vector trips | 3,888 | 2,293 |
+| live trips | 3,044 | — |
+| **matched on the identical bar** | **838 = 21.6% of vector, 27.5% of live** | **90.4%** |
+| **exit identity on matched pairs** | **460/838 = 54.9%** | **96.3%** |
+| sym_sides bit-exact on every entry | **0 of 91** | 11 of 28 |
+| VEC_ONLY trips (vector entered, live did not) | **3,050** | 216 |
+| LIVE_ONLY trips (live entered, vector did not) | **2,206** | 62 |
+
+**31 of 91 stock sym_sides never opened a single live position while the vector made 7–79 trips** — HOOD_SHORT 79,
+AMZN_LONG 78, COIN_SHORT 76, MRVL_LONG 76, VICR_SHORT 72, ZCSH_SHORT 71, SNDK_LONG 64, MSFT_LONG 43, ASML_LONG 43
+… `[V8_CANDIDATE_DIAG] … results=['PROCESSED']` every step, i.e. the native path ran and declined, it did not
+error. Best agreement anywhere is MU_SHORT 68.0% and OLED_LONG 65.0%; SCHW_SHORT is 12.9% on 147 vector trips.
+By USER 2026-10-20 (`vector_dictates_live_executes`) a vector entry live refuses is a **live defect**, so 3,050
+of them is the finding, not a tolerance.
+
+**Asymmetry by family, summed over 92** — LIVE_ONLY: `MANDATORY_REENTRY_PRICE_CROSS_CROSSED_BACK_GUARANTEED`
+**1,251**, `WT_BOUNCE_OPEN_S` 358, `WT_BOUNCE_OPEN_L` 237, `WT_SIMPLE_GUARANTEE_L` 122. VEC_ONLY:
+`B_SRS_ENTRY` **972**, `HARDCODED_RALLY_REENTRY` **873**, `B12` 343, `B` 184, `REENTRY_BREAK` 163.
+**These are reason LABELS and §97's trap applies — a label is not a gate, and `B_SRS_ENTRY` is not even an opener
+(`v12_quick_engine.py:10992` sets `blocks["B_SRS_ENTRY"] = ~srs_block`, an entry PERMISSION; `history_prov.py:95`
+calls it "entry permission = NOT the SRS pctb block"). Do not conclude "unwired" from a grep count.**
+
+**ONE CAUSE IS CONFIRMED, NOT A LEAD.** `tradier_manage.py:11` imports `rally_ok as _rally_ok` and `:40529`
+calls `_rally_ok(config, …)` where `config` is the module-level bare `TradierConfig()` (`:6764`, never
+proxy-wrapped — the §117 GLOBAL_LEAK). So every `HARDCODED_RALLY_*` resolves GLOBAL on stocks, while measured on
+the 92 live stock sets: `HARDCODED_RALLY_HTF_TREND_TF` **44 of 92** differ from the global default,
+`_MIN_AGE_MIN` **44**, `_DC_POS_MAX` **25**, `_MIN_MOVE_PCT` **20**, `_REENTRY_REQUIRE_WT` 11,
+`_SMA200_SIDE_ENABLED` 11, and `_REENTRY_ENABLED` itself **8**. The vector evaluates this re-entry with the
+board's per-sym values; live evaluates it with one global. **873 VEC_ONLY `HARDCODED_RALLY_REENTRY` trips is the
+exact signature of that leak** — the vector permits the re-entry the board paid for and live asks a different
+question. Fix shape: pass the per-sym getter adapter, the pattern `tradier_manage.py:15484` already uses.
+NOT patched here: `tradier_manage.py` is in `LOCKED_FILES.md` and no unlock was given.
+
+**WHAT THIS DOES NOT SAY.** It does not say crypto is fine and stocks are broken as a venue: §116's indicator
+defect (`adx_1h` recomputed from broadcast HTF arrays, disagreeing with live on 138/138 bars) is upstream of
+both, and stocks additionally run a per-venue opener set the vector may not model at all. It says only this:
+**measured at the bar, stocks execute 21.6% of what their boards decided, so no stock board's published gain can
+currently be claimed as the gain live would have earned.**
