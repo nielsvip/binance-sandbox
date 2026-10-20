@@ -1366,7 +1366,7 @@ def _growth_debt_mb(pairs_pss, est_pair):
     return debt
 
 
-def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0):
+def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0, workers=None):
     """Expected peak PSS of ONE new side on this host, from the book of sizes seen in the last 24 h (state-carried
     across --once ticks; young boards understate their own future). Updates st in place. Never raises.
 
@@ -1380,11 +1380,13 @@ def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0):
     """
     try:
         book = st.setdefault("pair_peak_mb", {})
-        hist = [x for x in (book.get(host) or []) if isinstance(x, list) and len(x) == 2 and float(now_ts) - float(x[0]) < keep_s]
+        # 2026-10-20 USER: a sample is only evidence for the worker count it was measured at (6-worker sides peak 6-21 GB, 3-worker
+        # sides about half). Entries are [ts, mb, workers]; untagged legacy entries are the 6-worker era. workers=None = old behaviour.
+        hist = [x for x in (book.get(host) or []) if isinstance(x, list) and len(x) in (2, 3) and float(now_ts) - float(x[0]) < keep_s and (workers is None or int(x[2] if len(x) == 3 else 6) == int(workers))]
         vals = pairs_pss.values() if isinstance(pairs_pss, dict) else (pairs_pss or [])
         cur = max([float(v or 0) for v in vals] or [0.0])
         if cur > 0:
-            hist.append([float(now_ts), round(cur, 1)])
+            hist.append([float(now_ts), round(cur, 1)] + ([int(workers)] if workers is not None else []))
         hist = sorted(hist, key=lambda x: -x[1])[:20]
         book[host] = hist
         sizes = sorted(float(x[1]) for x in hist)
@@ -2835,7 +2837,7 @@ def tick(args, cfg, now):
             for _vn, _vfloor in (("crypto", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000)), ("stocks", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", "2500") or 2500))):
                 _vm = {k: v for k, v in _units.items() if k.rsplit("_", 1)[0] in universe_syms[_vn] and v > 0} if _per_side else {k: v for k, v in pairs.items() if k in universe_syms[_vn] and v > 0}
                 _bk = f"{h['name']}|{_vn}|side" if _per_side else f"{h['name']}|{_vn}"
-                peak_v[_vn] = max(_host_peak_pair_mb(st, _bk, _vm, _now_ts), float(_vfloor) / 1.25)
+                peak_v[_vn] = max(_host_peak_pair_mb(st, _bk, _vm, _now_ts, workers=workers), float(_vfloor) / 1.25)
                 est_v[_vn] = max(_est_pair_mb(list(_vm.values()), _vfloor), 1.1 * peak_v[_vn])
             est_pair = max(est_v.values())
         _est_sym = lambda _s: est_v.get(venue_of(_s), est_pair) if _peak_on else est_pair

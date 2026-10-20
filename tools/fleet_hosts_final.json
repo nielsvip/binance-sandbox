@@ -12,7 +12,7 @@
     "crypto"
    ],
    "mem_reserve_mb": 6000,
-   "max_pairs": 6,
+   "max_pairs": 8,
    "workers_per_side": 4,
    "oom_mb": 2000,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
@@ -29,7 +29,7 @@
     "crypto"
    ],
    "mem_reserve_mb": 5000,
-   "max_pairs": 8,
+   "max_pairs": 12,
    "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",

@@ -74,3 +74,12 @@ def test_learn_file_falls_back_to_the_gated_tools_path(tmp_path, monkeypatch):
     (tmp_path / "data" / "brain").mkdir(parents=True)
     (tmp_path / "data" / "brain" / "v18_brain_CRYPTO_LONG.json").write_text("{}")
     assert V.learn_file("v18_brain_CRYPTO_LONG.json", tmp_path, "brain") == tmp_path / "data" / "brain" / "v18_brain_CRYPTO_LONG.json"
+
+
+
+def test_learn_file_flat_gate_deploy_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("V18_DIGEST_DIR", raising=False)
+    (tmp_path / "tools").mkdir()
+    flat = tmp_path / "tools" / "v18_data_learn_needed_filters_CRYPTO_LONG.json"
+    flat.write_text("{}")
+    assert V.learn_file("needed_filters_CRYPTO_LONG.json", tmp_path) == flat

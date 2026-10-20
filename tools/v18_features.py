@@ -562,6 +562,100 @@ def build(cat_side, ctx=None):
     return {"meta": meta, "coverage": cov, "switches": sw_attrs, "settings": set_b, "filters": f_attrs, "options": opt_b}
 
 
+# ------------------------------------------------------------------------------------------------ chain context (E8d, v2)
+
+INACTIVE_VALUES = frozenset({"OFF", "False", "0", "None", "", "<absent>"})
+CTX_SKIP_PREFIX = ("ABLATION_",)
+CTX_SKIP_KEYS = frozenset({"MODE", "VENUE", "IS_TRADIER", "SIMPLE_PRICE_GT0_ENABLED"})
+
+
+def canon_value(v):
+    """One spelling per value so a store set (python types), a template cell (str) and a delta-log cand compare equal:
+    bools -> True/False, numbers -> shortest float form ('1.0' -> '1'), strings stripped. TF words stay as they are."""
+    if v is None:
+        return "None"
+    if isinstance(v, bool):
+        return "True" if v else "False"
+    if isinstance(v, (int, float)):
+        f = float(v)
+    else:
+        s = str(v).strip()
+        if s.lower() in ("true", "false"):
+            return s.capitalize()
+        try:
+            f = float(s)
+        except ValueError:
+            return s
+        if not math.isfinite(f) or re.match(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$", s) is None:
+            return s
+    if not math.isfinite(f):
+        return str(f)
+    if f.is_integer() and abs(f) < 1e15:
+        return str(int(f))
+    return f"{f:.10g}"
+
+
+class ContextEncoder:
+    """CHAIN CONTEXT of an eval (E8d): the full set in force, reduced to what differs from the cat_side's TEMPLATE bold,
+    over the template's own vocabulary (switch rows + yellow filter keys). Sparse multi-hot features:
+      X.f:<FILTER>=<v>   a yellow-filter key whose value in force differs from its bold (an ACTIVE filter option, or a filter
+                         the chain switched off where the bold had it on)
+      X.s:<SWITCH>=<v>   any other template switch whose value in force differs from its bold
+    A key without a known bold is a feature only when its value is active (not OFF/False/0/None). Keys outside the template,
+    ABLATION_* levers and MODE/VENUE are ignored. The diff dict is the representation; feats() is its sorted feature tuple."""
+
+    def __init__(self, fctx):
+        self.fctx = fctx
+        self.filter_keys = frozenset(fctx.fopts)
+        self.keys = frozenset(k for k in set(fctx.cands) | set(fctx.fopts) if not k.startswith(CTX_SKIP_PREFIX) and k not in CTX_SKIP_KEYS)
+        self.bold = {}
+        for k in self.keys:
+            d = fctx.default(k, is_filter=k in self.filter_keys and k not in fctx.cands)
+            self.bold[k] = None if d is None else canon_value(d)
+
+    def differs(self, key, cv):
+        b = self.bold.get(key)
+        if b is None:
+            return cv not in INACTIVE_VALUES
+        return cv != b
+
+    def diff(self, full):
+        """full set dict -> {key: canon value} of the template keys whose value differs from the bold."""
+        out = {}
+        for k, v in (full or {}).items():
+            if k not in self.keys:
+                continue
+            cv = canon_value(v)
+            if cv == "<absent>":
+                continue
+            if self.differs(k, cv):
+                out[k] = cv
+        return out
+
+    def overlay(self, diff, mods):
+        """diff + chain modifications {key: value} (promotions on the board after the stored base) -> new diff dict."""
+        if not mods:
+            return diff
+        out = dict(diff)
+        for k, v in mods.items():
+            if k not in self.keys:
+                continue
+            cv = canon_value(v)
+            if cv == "<absent>" or not self.differs(k, cv):
+                out.pop(k, None)
+            else:
+                out[k] = cv
+        return out
+
+    def feats(self, diff):
+        return tuple(sorted((f"X.f:{k}={v}" if k in self.filter_keys else f"X.s:{k}={v}") for k, v in diff.items()))
+
+    @staticmethod
+    def filter_signature(feats):
+        """the ACTIVE-FILTER SET of a context (its X.f features) -> the 'never-tried context' split key."""
+        return tuple(f for f in feats if f.startswith("X.f:"))
+
+
 def cmd_build(a):
     out_dir = Path(a.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

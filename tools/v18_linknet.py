@@ -74,7 +74,7 @@ DS_DIR = LEARN_DIR / "linknet"
 REGIMES = ("ALL", "FLAT", "UP", "DOWN", "STRONG_UP", "STRONG_DOWN")
 KINDS = ("R", "F", "PH")
 HEADS = ("p_pos", "log_e_delta_pos", "d_tim", "d_dd", "d_wr", "p_forward")
-LS, LF, LC = 32, 32, 5
+LS, LF, LC = 32, 32, 6
 MSCALE = 5.0
 PRED_LABEL = "PREDICTED_NOT_MEASURED"
 EXCLUDE_PREFIX = ("ABLATION_",)
@@ -130,16 +130,17 @@ def _tier(t):
 class _Cols:
     """Compact column store (array.array) of one cat_side's examples."""
 
-    F_COLS = ("kind", "set_i", "filt_i", "sc_i", "fc_i", "inf_src", "ctx_i", "ts", "b_t0", "board_i", "y", "d", "valid", "m_tim", "m_dd", "m_wr", "w")
+    F_COLS = ("kind", "set_i", "filt_i", "sc_i", "fc_i", "inf_src", "ctx_i", "ts", "b_t0", "board_i", "y", "d", "valid", "m_tim", "m_dd", "m_wr", "w", "x_i", "prov")
     TYPES = {"kind": "b", "set_i": "i", "filt_i": "i", "sc_i": "i", "fc_i": "i", "inf_src": "b", "ctx_i": "i", "ts": "d", "b_t0": "d", "board_i": "i", "y": "b", "d": "f", "valid": "b",
-             "m_tim": "f", "m_dd": "f", "m_wr": "f", "w": "f"}
+             "m_tim": "f", "m_dd": "f", "m_wr": "f", "w": "f", "x_i": "i", "prov": "b"}
+    DEFAULTS = {"x_i": -1, "prov": 0}
 
     def __init__(self):
         self.c = {k: array.array(self.TYPES[k]) for k in self.F_COLS}
 
     def add(self, **kw):
         for k in self.F_COLS:
-            self.c[k].append(kw[k])
+            self.c[k].append(kw[k] if k in kw else self.DEFAULTS[k])
 
     def np(self):
         return {k: np.frombuffer(v, dtype={"b": np.int8, "i": np.int32, "d": np.float64, "f": np.float32}[v.typecode]).copy() for k, v in self.c.items()}
@@ -165,8 +166,16 @@ class CatDS:
     # precision-extract chain codes (tools/v18_precision_extract.py, per-board two-pass resolution) -> our in-force source
     CK_MAP = {"P": "P", "B": "T", "BI": "T", "Z": "Z", "A": "A", "NB": "N", "U": "U"}
 
-    def __init__(self, cs, defaults=None):
+    PROV = {"log": 0, "native": 1}
+
+    def __init__(self, cs, defaults=None, ctxj=None, enc=None):
         self.cs = cs
+        self.ctxj = ctxj
+        self.enc = enc if (enc is not None or ctxj is None) else FT.ContextEncoder(FT.load_context(cs))
+        self.xctx = Interner()
+        self.bpromo = collections.defaultdict(dict)
+        self.last_base = {}
+        self.xcache = {}
         self.ex = _Cols()
         self.sets, self.filts, self.ctxs, self.boards = Interner(), Interner(), Interner(), Interner()
         self.scombo, self.fcombo = Interner(), Interner()
@@ -183,8 +192,47 @@ class CatDS:
     def _f(x):
         return float("nan") if x is None else float(x)
 
-    def _ctx(self, kind, regime, sym, tier, ph=""):
-        return self.ctxs((kind, regime or "UNK", sym, _tier(tier), ph or ""))
+    def _ctx(self, kind, regime, sym, tier, ph="", prov="log"):
+        return self.ctxs((kind, regime or "UNK", sym, _tier(tier), ph or "", prov))
+
+    def _xctx(self, sym, base_ci):
+        """chain context id: the store's chain set (base_ci) overlaid with this board's promotions so far (idempotent for the
+        promotions the stored base already holds; adds the later ones, e.g. phases whose stored base froze after the main pass)."""
+        if base_ci is None or self.ctxj is None:
+            return -1
+        promos = self.bpromo.get(sym) or {}
+        ck = (base_ci, tuple(sorted(promos.items())))
+        x = self.xcache.get(ck)
+        if x is None:
+            feats = self.ctxj["ctxs"][base_ci]
+            if promos:
+                d = {}
+                for f in feats:
+                    k, _, v = f[4:].partition("=")
+                    d[k] = v
+                d = self.enc.overlay(d, promos)
+                feats = self.enc.feats(d)
+            x = self.xcache[ck] = self.xctx(tuple(feats))
+        return x
+
+    def _base_of(self, ev, t):
+        """store chain set of a delta-log row event: (sym_side, cum_before) -> the base set whose ts range holds (or is nearest to) t."""
+        if self.ctxj is None:
+            return None
+        if str(ev.get("b") or "").startswith("NAT|"):
+            ci = self.ctxj["natmap"].get(ev.get("rk"))
+            self.c["ctx_native_joined" if ci is not None else "ctx_native_unjoined"] += 1
+            return ci
+        c = self.ctxj["cbmap"].get((ev["s"], _cb_key(ev.get("cb"))))
+        if not c:
+            self.c["ctx_log_unjoined"] += 1
+            return None
+        if len(c) == 1:
+            self.c["ctx_log_joined"] += 1
+            return c[0][0]
+        best = min(c, key=lambda r: (0.0 if r[2] - 1 <= t <= r[3] + 1 else min(abs(t - r[2]), abs(t - r[3])), -r[1]))
+        self.c["ctx_log_joined_ambiguous_cb"] += 1
+        return best[0]
 
     def _new_board(self, sym, b):
         old = self.board_of.get(sym)
@@ -195,6 +243,8 @@ class CatDS:
         self._resolve(sym, b)
         self.pending[sym] = {sw: dict(v, alt=[], own=[]) for sw, v in self.cur_promos.pop(sym, {}).items()}
         self.board_of[sym] = b
+        self.bpromo[sym] = {}
+        self.last_base.pop(sym, None)
 
     def _resolve(self, sym, new_b):
         pend = self.pending.pop(sym, None)
@@ -231,6 +281,13 @@ class CatDS:
     def row(self, ev, ts):
         sym = ev["s"]
         b = ev.get("b")
+        nat = str(b or "").startswith("NAT|")
+        if nat and self.cs.startswith("STOCKS"):
+            # coordinator 2026-10-20: stocks native cache rows are positive 6.57% / 3.10% vs 1.0% / 0.82% in the delta logs of
+            # the same days -> not the same measurement; excluded from training and evaluation (crypto native: 1.93% vs 1.84%, kept)
+            self.c["stocks_native_rows_excluded"] += 1
+            return
+        prov = "native" if nat else "log"
         cur = self.board_of.get(sym)
         foreign = False
         if cur != b:
@@ -248,6 +305,10 @@ class CatDS:
         b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
         bi = self.boards(b)
         si = self.sets(f"{sheet}|{sw}={cand}")
+        base = self._base_of(ev, t)
+        if base is not None and not foreign:
+            self.last_base[sym] = base
+        xi = self._xctx(sym, base)
         if "ck" in ev:
             src = self.CK_MAP.get(ev.get("ck"), "U")
             inf = ev.get("cv") if src not in ("N", "U") else None
@@ -272,10 +333,12 @@ class CatDS:
             if inf is not None and str(cand) == str(inf):
                 self.c["R_identity_cand_eq_inforce"] += 1
             else:
-                self.ex.add(kind=0, set_i=si, filt_i=-1, sc_i=sci, fc_i=-1, inf_src=self.INF_SRC[src], ctx_i=self._ctx("R", reg, sym, tier), ts=t, b_t0=b_t0,
+                self.ex.add(kind=0, set_i=si, filt_i=-1, sc_i=sci, fc_i=-1, inf_src=self.INF_SRC[src], ctx_i=self._ctx("R", reg, sym, tier, prov=prov), ts=t, b_t0=b_t0,
                             board_i=bi, y=y, d=self._f(d if d is not None else 0.0), valid=int(bool(naked[1])), m_tim=self._f(naked[3]),
-                            m_dd=self._f(naked[5]), m_wr=self._f(naked[7]), w=float(naked[8] or 1.0))
+                            m_dd=self._f(naked[5]), m_wr=self._f(naked[7]), w=float(naked[8] or 1.0), x_i=xi, prov=self.PROV[prov])
                 self.c["R"] += 1
+                self.c["R_with_context" if xi >= 0 else "R_without_context"] += 1
+                self.c[f"R_prov_{prov}"] += 1
                 self.c["R_pos"] += y
                 self.c[f"R_inf_{src}"] += 1
         ci = None
@@ -285,7 +348,7 @@ class CatDS:
             if fk in EXCLUDE_KEYS:
                 continue
             if ci is None:
-                ci = self._ctx("F", reg, sym, tier)
+                ci = self._ctx("F", reg, sym, tier, prov=prov)
             fopt = hdr.partition("=")[2]
             finf, fsrc = self.in_force(sym, fk)
             if finf is not None and str(fopt) == str(finf):
@@ -298,8 +361,10 @@ class CatDS:
             y = 1 if (valid and md is not None and md > EPS) else 0
             self.c[f"F_inf_{src}"] += 1
             self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), sc_i=sci, fc_i=self.fcombo(f"{hdr}|INF={finf}|{fsrc}"), inf_src=self.INF_SRC[src], ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md if md is not None else 0.0),
-                        valid=int(bool(valid)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0))
+                        valid=int(bool(valid)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0), x_i=xi, prov=self.PROV[prov])
             self.c["F"] += 1
+            self.c["F_with_context" if xi >= 0 else "F_without_context"] += 1
+            self.c[f"F_prov_{prov}"] += 1
             self.c["F_pos"] += y
         pend = None if foreign else (self.pending.get(sym) or {}).get(sw)
         if pend is not None and naked is not None and naked[-1] and naked[1] and naked[0] is not None:
@@ -307,6 +372,7 @@ class CatDS:
         if ev.get("p") and not foreign:
             self.cur_promos[sym][sw] = {"cand": cand, "set_i": sci, "ctx_i": self._ctx("R", reg, sym, tier), "ts": t}
             self.inforce[sym][sw] = cand
+            self.bpromo[sym][sw] = cand
             self.c["promotions"] += 1
 
     def phase(self, ev, ts):
@@ -329,11 +395,13 @@ class CatDS:
         m = ev.get("m") or [None] * 5
         b = self.board_of.get(ev["s"]) or f"{ev['s']}|{ts}"
         b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
+        xi = self._xctx(ev["s"], self.last_base.get(ev["s"]))
         self.ex.add(kind=2, set_i=self.sets(f"{sheet}|{sw}={cand}"), filt_i=-1, sc_i=self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}"), fc_i=-1,
                     inf_src=self.INF_SRC[src], ctx_i=self._ctx("PH", None, ev["s"], None, ev.get("ph")), ts=t,
                     b_t0=b_t0, board_i=self.boards(b), y=y, d=self._f(d if d is not None else 0.0), valid=int(v), m_tim=self._f(m[0]),
-                    m_dd=self._f(m[2]), m_wr=self._f(m[4]), w=float(ev.get("w") or 1.0))
+                    m_dd=self._f(m[2]), m_wr=self._f(m[4]), w=float(ev.get("w") or 1.0), x_i=xi, prov=0)
         self.c["PH"] += 1
+        self.c["PH_with_context" if xi >= 0 else "PH_without_context"] += 1
         self.c["PH_pos"] += y
 
     def save(self, out_dir):
@@ -346,7 +414,7 @@ class CatDS:
         np.savez_compressed(tmp, **cols, **fw)
         os.replace(tmp, p)
         keys = {"cat_side": self.cs, "sets": self.sets.keys, "filts": self.filts.keys, "set_combos": self.scombo.keys, "filt_combos": self.fcombo.keys, "ctxs": [list(c) for c in self.ctxs.keys], "boards": self.boards.keys,
-                "counters": dict(self.c), "built_at": utc_now()}
+                "xctxs": [list(c) for c in self.xctx.keys], "counters": dict(self.c), "built_at": utc_now()}
         with gzip.open(out_dir / f"ds_{self.cs}_keys.json.gz", "wt") as fh:
             json.dump(keys, fh)
         return p
@@ -371,7 +439,13 @@ def cmd_dataset(a):
     srt = tmp / "events_sorted.tsv"
     files = VB.sorted_events(a.spill_dir, tmp, srt)
     t_sort = time.time() - t0
-    dss = {cs: CatDS(cs, defaults=_template_defaults(cs, a)) for cs in CAT_SIDES}
+    ctx_dir = getattr(a, "ctx_dir", None)
+    dss = {}
+    for cs in CAT_SIDES:
+        cj = load_ctxjoin(cs, ctx_dir) if ctx_dir else None
+        if ctx_dir and cj is None:
+            print(f"[dataset] {cs}: no ctxjoin in {ctx_dir} -> rows without chain context", flush=True)
+        dss[cs] = CatDS(cs, defaults=_template_defaults(cs, a), ctxj=cj, enc=getattr(a, "encoders", {}).get(cs) if hasattr(a, "encoders") else None)
     seen = set()
     cnt = collections.Counter()
     n = 0
@@ -425,6 +499,149 @@ def cmd_dataset(a):
         except OSError:
             pass
     return 0
+
+
+# ------------------------------------------------------------------------------------------------ v2: chain context join (E8d)
+
+def _cb_key(x):
+    return None if x is None else round(float(x), 3)
+
+
+def _vstr(v):
+    if isinstance(v, bool):
+        return "True" if v else "False"
+    return str(v)
+
+
+def build_ctx_join(cs, store, fctx=None, native=None, log=_log):
+    """FULL SET IN FORCE of every eval of one cat_side, from the experience store (read-only). -> dict
+      ctxs    [feature tuple]  every distinct chain context (ContextEncoder.feats of the set's diff vs the template bold)
+      cbmap   {(sym_side, round(cum_before, 3)): [(ctx_id, n, ts_min, ts_max)]}   rebuilt + log rows: base_set_id = the chain
+              the eval ran on (the pilot's set before the row's switch=cand); joined to delta-log events by sym_side + cum_before
+      natmap  {rk: ctx_id}   crypto native rows: the PARENT set of each one-key child, rebuilt exactly as
+              tools/v18_precision_extract.run_store does (same grouping, same rk = h64('NATR|X|P|switch')), so the precision
+              events' native rows join by their own row key. Stocks native rows are not joined (coordinator 2026-10-20: they do
+              not measure what the delta logs measure; 6.57% / 3.10% positive vs 1.0% / 0.82%) and are excluded from training.
+    Nothing is written to the store."""
+    import sqlite3
+    t0 = time.time()
+    fctx = fctx or FT.load_context(cs)
+    enc = FT.ContextEncoder(fctx)
+    native = cs.startswith("CRYPTO") if native is None else native
+    ctxs = Interner()
+    cbmap = collections.defaultdict(list)
+    natmap = {}
+    cnt = collections.Counter()
+    base_ctx = {}
+    for shard in sorted(Path(store).glob(f"experience_{cs}_*.db")):
+        con = sqlite3.connect(f"file:{shard}?mode=ro", uri=True, timeout=600)
+        rows = con.execute("SELECT sym_side, cum_before, base_set_id, count(*), min(ts), max(ts) FROM evals WHERE provenance IN ('rebuilt','log') "
+                           "AND base_set_id IS NOT NULL AND cum_before IS NOT NULL GROUP BY sym_side, round(cum_before, 3), base_set_id").fetchall()
+        cnt["cb_groups"] += len(rows)
+        need = {r[2] for r in rows} - set(base_ctx)
+        bases = {}
+
+        def load_set(sid):
+            row = con.execute("SELECT gz FROM sets WHERE set_id = ?", (sid,)).fetchone()
+            if row is None:
+                return None
+            try:
+                return json.loads(gzip.decompress(row[0]))
+            except Exception:
+                try:
+                    return json.loads(row[0])
+                except Exception:
+                    return None
+        for sid in need:
+            s = load_set(sid)
+            if s is None:
+                cnt["base_set_missing"] += 1
+                continue
+            bases[sid] = enc.diff(s)
+            base_ctx[sid] = ctxs(enc.feats(bases[sid]))
+        for sym, cb, sid, n, tmin, tmax in rows:
+            ci = base_ctx.get(sid)
+            if ci is None:
+                continue
+            cbmap[(sym, _cb_key(cb))].append((ci, int(n), float(tmin or 0), float(tmax or 0)))
+            cnt["evals_with_chain_set"] += int(n)
+        if native:
+            groups = collections.defaultdict(dict)
+            nb = set()
+            q = ("SELECT eval_id, sym_side, base_set_id, window_days, offset_days, bh_pct, bars, delta, gain FROM evals "
+                 "WHERE provenance='native' AND delta_rule='explicit'")
+            for eid, ss, bid, wd, od, bh, bars, delta, gain in con.execute(q):
+                if gain is None:
+                    continue
+                try:
+                    dj = json.loads(delta) if delta else {}
+                except ValueError:
+                    continue
+                items = [(k, _vstr(v)) for k, v in (dj.get("set") or {}).items() if k not in VB.DENY]
+                items += [(k, "<absent>") for k in (dj.get("del") or [])]
+                fs = frozenset(items)
+                g = groups[(ss, bid, wd, od, None if bh is None else round(float(bh), 6), bars)]
+                if fs not in g:
+                    g[fs] = eid
+                    nb.add(bid)
+            ndiff = {}
+            for bid in nb:
+                s = load_set(bid)
+                ndiff[bid] = enc.diff(s) if s is not None else None
+            pcache = {}
+            for ctx, g in groups.items():
+                bd = ndiff.get(ctx[1])
+                if bd is None:
+                    cnt["native_base_missing_groups"] += 1
+                    continue
+                for fs, x_eid in g.items():
+                    for it in fs:
+                        par = fs - {it}
+                        p_eid = g.get(par)
+                        if p_eid is None:
+                            continue
+                        ck = (ctx[1], par)
+                        ci = pcache.get(ck)
+                        if ci is None:
+                            ci = pcache[ck] = ctxs(enc.feats(enc.overlay(bd, dict(par))))
+                        natmap[VB.h64(f"NATR|{x_eid}|{p_eid}|{it[0]}")] = ci
+                        cnt["native_one_key_children"] += 1
+            cnt["native_groups"] += len(groups)
+            del groups
+        con.close()
+        log(f"[ctxjoin] {cs} {shard.name}: {dict(cnt)} ctxs {len(ctxs.keys):,} {time.time() - t0:.0f}s")
+    sizes = np.array([len(c) for c in ctxs.keys]) if ctxs.keys else np.zeros(1)
+    rep = {"cat_side": cs, "store": str(store), "contexts": len(ctxs.keys), "cb_keys": len(cbmap), "native_children": len(natmap),
+           "context_size_mean": round(float(sizes.mean()), 1), "context_size_p50": float(np.median(sizes)), "context_size_max": int(sizes.max()),
+           "counters": dict(cnt), "secs": round(time.time() - t0, 1), "built_at": utc_now()}
+    return {"ctxs": ctxs.keys, "cbmap": dict(cbmap), "natmap": natmap, "report": rep}
+
+
+def cmd_ctxjoin(a):
+    import pickle
+    out_dir = Path(a.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    reps = {}
+    for cs in a.cat_side or CAT_SIDES:
+        j = build_ctx_join(cs, a.store)
+        p = out_dir / f"ctxjoin_{cs}.pkl.gz"
+        tmp = out_dir / f".ctxjoin_{cs}.tmp"
+        with gzip.open(tmp, "wb", compresslevel=3) as fh:
+            pickle.dump(j, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp, p)
+        reps[cs] = dict(j["report"], file=str(p), bytes=p.stat().st_size)
+        print(json.dumps(reps[cs]), flush=True)
+    (out_dir / "ctxjoin_report.json").write_text(json.dumps(reps, indent=1))
+    return 0
+
+
+def load_ctxjoin(cs, ctx_dir):
+    import pickle
+    p = Path(ctx_dir) / f"ctxjoin_{cs}.pkl.gz"
+    if not p.exists():
+        return None
+    with gzip.open(p, "rb") as fh:
+        return pickle.load(fh)
 
 
 def load_ds(cs, ds_dir=DS_DIR):
@@ -488,9 +705,11 @@ class Featurizer:
 
     @staticmethod
     def ctx_feats(ctx):
-        kind, reg, sym, tier, ph = ctx
+        kind, reg, sym, tier, ph = ctx[:5]
+        prov = ctx[5] if len(ctx) > 5 else "log"
         out = [("C.sym:" + sym, 1.0) if sym else ("<pad>", 0.0), ("C.reg:" + reg, 1.0) if reg and reg != "ALL" else ("<pad>", 0.0),
-               ("C.tier:" + tier, 1.0) if tier and tier != "U" else ("<pad>", 0.0), ("C.kind:" + kind, 1.0), ("C.ph:" + ph, 1.0) if ph else ("<pad>", 0.0)]
+               ("C.tier:" + tier, 1.0) if tier and tier != "U" else ("<pad>", 0.0), ("C.kind:" + kind, 1.0), ("C.ph:" + ph, 1.0) if ph else ("<pad>", 0.0),
+               ("C.prov:" + prov, 1.0) if prov and prov != "log" else ("<pad>", 0.0)]
         return out
 
     def table(self, feat_lists, L):
@@ -1770,6 +1989,11 @@ def main(argv=None):
     d.add_argument("--tmp-dir", required=True)
     d.add_argument("--out-dir", default=str(DS_DIR))
     d.add_argument("--keep-sorted", action="store_true")
+    d.add_argument("--ctx-dir", default=None, help="v2: data/learn/linknet/v2 (ctxjoin_<CS>.pkl.gz) -> every eval carries its chain context")
+    j = sub.add_parser("ctxjoin")
+    j.add_argument("--cat-side", action="append", choices=CAT_SIDES)
+    j.add_argument("--store", default=str(ROOT / "data" / "experience"))
+    j.add_argument("--out-dir", default=str(DS_DIR / "v2"))
     t = sub.add_parser("train")
     t.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     t.add_argument("--ds-dir", default=str(DS_DIR))
@@ -1791,7 +2015,7 @@ def main(argv=None):
     c.add_argument("--note", default=None)
     c.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     a = ap.parse_args(argv)
-    return {"dataset": cmd_dataset, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
+    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
 
 
 if __name__ == "__main__":

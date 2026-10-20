@@ -308,7 +308,10 @@ def learn_file(name: str, root=None, sub: str = "learn") -> Path:
     if first.exists() or env:
         return first
     alt = base / "tools" / "v18_data" / sub / name
-    return alt if alt.exists() else first
+    if alt.exists():
+        return alt
+    flat = base / "tools" / f"v18_data_{sub}_{name}"  # the version gate deploys a file only into an EXISTING parent dir: tools/ exists on every host
+    return flat if flat.exists() else first
 
 
 def load_digest(cat_side: str, root=None):
