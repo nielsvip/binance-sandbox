@@ -70,6 +70,10 @@ class TradierConfig:
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = (
         6.0  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
     )
+    STOCK_AUGMENT_VENUE_GUARD_ENABLED: bool = (
+        True  # 2026-10-20 augment revival (= QuickConfig): True = venue law, stocks augment only from live sources (today); False + STOCK_LIVE_AUGMENT_ONLY False = tradier_manage runs the vector's LADDER/PYRAMID/BOUNCE sources via vec_decisions.augment_core
+    )
+    STOCK_LIVE_AUGMENT_ONLY: bool = False  # 2026-10-20 (= QuickConfig, was absent here so live had no field): only consulted once the guard above is False
     BB_PCTB_ENTRY_ENABLED: bool = (
         False  # parity 2026-08-17: vector->live (was vector-only)
     )

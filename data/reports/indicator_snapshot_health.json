@@ -1,33 +1,34 @@
 {
- "generated_utc": "2026-10-20T16:27:44Z",
+ "generated_utc": "2026-10-20T16:32:49Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 342.5,
+  "age_s": 647.1,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 80101,
-  "proc_age_s": 34.0,
-  "log_age_s": 3.4,
+  "proc_age_s": 338.0,
+  "log_age_s": 2.5,
   "warmup_done": false,
-  "timeframes_since_restart": [],
-  "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-20T16:14:25Z",
+  "timeframes_since_restart": [
+   "4h",
+   "1h"
+  ],
+  "last_timeframe": "1h",
+  "last_timeframe_utc": "2026-10-20T16:31:15Z",
   "last_restart_utc": "2026-10-20T16:27:10Z",
   "restarts_last_hour": 2
  },
  "heartbeat": {
-  "written": 1,
-  "lines": [
-   "[2026-10-20 16:27:22,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=80101 warm-up in progress \u2014 alive and progressing (cpu +1.09s in 10.0s, last progress 2s ago) (tools/ez_indicators_warmup_guard.py)"
-  ],
+  "written": 0,
+  "lines": [],
   "decisions": [
-   "no ez_indicators process",
-   "alive and progressing (cpu +1.09s in 10.0s, last progress 2s ago)",
-   "log fresh (5s < 45s)",
    "log fresh (0s < 45s)",
-   "log fresh (2s < 45s)",
-   "log fresh (2s < 45s)"
+   "log fresh (6s < 45s)",
+   "log fresh (12s < 45s)",
+   "log fresh (4s < 45s)",
+   "log fresh (10s < 45s)",
+   "log fresh (1s < 45s)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -40,18 +41,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792451066.3983662,
   "activations": 151,
-  "hb_mtime": 1792513654.962421,
-  "mac_snapshot_age_s": 279.2356753349304,
+  "hb_mtime": 1792513950.2002332,
+  "mac_snapshot_age_s": 573.4199759960175,
   "mac_stale": true,
   "lease_holder": "s1",
-  "lease_venues": "stocks",
-  "lease_since": "2026-10-20T16:26:12Z",
-  "lease_reason": "Mac reachable but NOT TRADING: stocks: indicators_stale 122/219 stock NPZ tails behind the latest RTH close (twin falls back to native -> entries die) for 205s",
-  "now": 1792513664.8654,
-  "heartbeat_age_s": 9.9,
-  "active_s": 62598.5,
-  "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
+  "lease_venues": "crypto,stocks",
+  "lease_since": "2026-10-20T16:32:26Z",
+  "lease_reason": "manual force-s1",
+  "now": 1792513969.503144,
+  "heartbeat_age_s": 19.3,
+  "active_s": 62903.1,
+  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto,stocks', since 2026-10-20T16:32:26Z, reason 'manual force-s1'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
- "alerts": [],
- "verdict": "OK"
+ "alerts": [
+  "SNAPSHOT STALE: latest_market_data.json is 647s old (> 600s). ez_indicators pid=80101 warmup_done=False tfs_since_restart=['4h', '1h'] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
+ ],
+ "verdict": "ALERT"
 }

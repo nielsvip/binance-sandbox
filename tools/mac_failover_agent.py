@@ -654,11 +654,25 @@ class Agent:
                 stocks["indicators_stale_frac"] = round(frac, 3)
                 stocks["indicators_universe_n"] = n
                 stocks["indicators_open_grace"] = bool(_in_open_grace(now))
+                # 2026-10-20 NPZ FRESHNESS IS NOT A LIVE-TRADING HEALTH SIGNAL. USER, verbatim: "NPZ has FUCK ALL to
+                # do with live trading, live trading indicators are NEVER more than 30s behind or s1 also kicks in to
+                # supply indicators to macbook". The reason string below even states the dead premise — "twin falls
+                # back to native -> entries die" — which was true only while PARITY_VEC_EXACT_MODE=True made the twin
+                # decide on NPZs. Since that flipped False (USER 2026-10-20 "NOTHING can live trade an npz"), native
+                # producers decide from data/tradier/tradier_indicators_latest.json and NPZ tails gate nothing live.
+                # MEASURED COST: 2026-10-20 16:26Z this probe declared "stocks: indicators_stale 122/219 stock NPZ
+                # tails behind the latest RTH close" -> not_trading -> S1 took the stocks venue -> the Mac's trb/trc/tra
+                # were fenced. Stock trading stopped during market hours over the freshness of files live never reads.
+                # The kind and the numbers are KEPT as advisory (they are real, and they matter for BACKTESTS — a sweep
+                # on a stale NPZ is §115.8's STALE_NPZ_SKIPPED), but they no longer set not_trading and no longer
+                # appear in the trading-health kinds that drive a takeover. Live staleness is judged by the live
+                # snapshot probes in live_failover_common (latest_market_data.json / tradier_indicators_latest.json),
+                # which is the data live actually reads.
                 if n >= LF_INDICATORS_MIN_N and frac > LF_INDICATORS_STALE_FRAC and not _in_open_grace(now):
-                    stocks["kinds"] = list(stocks.get("kinds") or []) + ["indicators_stale"]
-                    stocks["reasons"] = list(stocks.get("reasons") or []) + [
-                        f"indicators_stale {old}/{n} stock NPZ tails behind the latest RTH close (twin falls back to native -> entries die)"]
-                    stocks["not_trading"] = True
+                    stocks["npz_tails_stale"] = f"{old}/{n}"
+                    stocks["advisory"] = list(stocks.get("advisory") or []) + [
+                        f"npz_tails_stale {old}/{n} stock NPZ tails behind the latest RTH close — BACKTEST signal only, "
+                        f"live reads tradier_indicators_latest.json (not a not_trading condition since 2026-10-20)"]
             for venue, accts, files in (("stocks", C.STOCK_ACCOUNTS, _STOCK_POSITION_FILES),
                                         ("crypto", C.CRYPTO_ACCOUNTS, _CRYPTO_POSITION_FILES)):
                 sec = health.get(venue) if isinstance(health, dict) else None

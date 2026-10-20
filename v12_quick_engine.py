@@ -4993,6 +4993,9 @@ class QuickConfig:
     STOCK_LIVE_AUGMENT_ONLY: bool = (
         False  # [N4 2b] stocks: vector augments ONLY from live's sources (False = pre-N4 gain-ladder/pullback/pyramid too)
     )
+    STOCK_AUGMENT_VENUE_GUARD_ENABLED: bool = (
+        True  # 2026-10-20 augment revival: True = venue law (stocks augment only from live sources, forced as before); False = STOCK_LIVE_AUGMENT_ONLY decides and tradier_manage runs the vec sources live via vec_decisions.augment_core
+    )
     PPL_WHOLE_SHARE_RULE_ENABLED: bool = (
         False  # [N4 2b] stocks PPL: whole-share floor + skip-if-would-close (tradier_manage.py:19320-19340)
     )
@@ -16295,9 +16298,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # USER 2026-10-14 venue law (engine level, was flag-only): tradier ALWAYS live-only — a swept
     # STOCK_LIVE_AUGMENT_ONLY=False re-enabled crypto augments on stocks (SNDK_LONG -0.50% vs +40.49%).
     # Kill switch V12_STOCK_LIVE_AUGMENT_GUARD=0 restores the flag's say. AT_LOSS stays: live tradier source.
+    # 2026-10-20 augment revival: the forced guard is now the switch STOCK_AUGMENT_VENUE_GUARD_ENABLED (default True = the
+    # venue law above, byte-identical). False hands the decision back to STOCK_LIVE_AUGMENT_ONLY; tradier_manage executes the
+    # same sources live through vec_decisions.augment_core under the identical predicate (augment_core.live_enabled).
     _n4_live_only = getattr(cfg, "MODE", "crypto") == "tradier" and (
         bool(getattr(cfg, "STOCK_LIVE_AUGMENT_ONLY", False))
-        or os.environ.get("V12_STOCK_LIVE_AUGMENT_GUARD", "1") != "0"
+        or (
+            os.environ.get("V12_STOCK_LIVE_AUGMENT_GUARD", "1") != "0"
+            and bool(getattr(cfg, "STOCK_AUGMENT_VENUE_GUARD_ENABLED", True))
+        )
     )
     _typed_aug_on = bool(
         getattr(cfg, "AUGMENT_TYPED_MIN_GAIN_ENABLED", False)

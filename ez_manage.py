@@ -42784,6 +42784,29 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             trade_manager._aug_at_loss_state[position_key] = _aal_new
     except Exception:
         pass
+    # 2026-10-20 AUGMENT REVIVAL: the vector's LADDER (UAG obligatory + PULLBACK dip) / PYRAMID / BOUNCE augment sources through the
+    # ONE shared core vec_decisions.augment_core (same predicate the crypto vector fires on every board). AUGMENT_CORE_LIVE_ENABLED
+    # (config.py, default False) -> inert = today. The Signal goes through execute_now like every augment (UAG / losing-position /
+    # augment-level gates still apply there).
+    try:
+        import vec_decisions.augment_core as _acore
+        _ac_side = ctx.get("position_side") or ("LONG" if is_long else "SHORT")
+        _ac_get = lambda _k, _d=None: _psym_get(symbol, _ac_side, _k, getattr(config, _k, _d))
+        if pos_amt > 0 and _acore.live_enabled(_ac_get, "crypto"):
+            _ac_peak = safe_fetch_float(getattr(position, "max_gain", gain), gain)
+            _ac_last = safe_fetch_float(getattr(position, "last_augmentation_price", 0), 0)
+            _ac_entry = safe_fetch_float(getattr(position, "entry_price", 0), 0)
+            _ac_lat = getattr(position, "last_augmentation_time", None)
+            try:
+                _ac_secs = (datetime.now(timezone.utc) - _ac_lat).total_seconds() if _ac_lat else None
+            except Exception:
+                _ac_secs = None
+            _ac_fire, _ac_src, _ac_reason, _ac_qty = _acore.decide(_ac_get, is_long, current_price, _ac_entry, _ac_last, gain, _ac_peak, pos_amt, i, i.get("stoch_k_15m_prev"), _ac_secs)
+            if _ac_fire and _ac_qty > 0:
+                logger.warning(f"[AUGMENT_CORE] {position_key}: {_ac_reason[:120]} qty={_ac_qty:.6f}")
+                return Signal(action="AUGMENT", reason=_ac_reason, conviction=80.0, quantity=_ac_qty)
+    except Exception as _ac_e:
+        logger.debug(f"[AUGMENT_CORE] {position_key}: skipped ({type(_ac_e).__name__}: {_ac_e})")
     if pos_amt <= 0 or gain < 0.3:
         return None
     now = datetime.now(timezone.utc)

@@ -14445,6 +14445,62 @@ def _dc_stop_prev_aware(ind, field, use_prior):
     return safe_fetch_float((ind or {}).get(field, 0), 0.0)
 
 
+async def _augment_core_try(trade_manager, order_queue, position_key, position, indicators_raw, market_context, symbol, position_side, account_key, current_price, market_open, position_age_minutes, fresh_ok):
+    """2026-10-20 AUGMENT REVIVAL (USER "SHOP_LONG is completely skipping all augment functions"): the vector's LADDER (UAG
+    obligatory + PULLBACK dip) / PYRAMID / BOUNCE augment sources, executed live through the ONE shared decision core
+    vec_decisions.augment_core. Inert unless augment_core.live_enabled(..., "tradier") — i.e. STOCK_AUGMENT_VENUE_GUARD_ENABLED
+    False AND STOCK_LIVE_AUGMENT_ONLY False, the identical predicate that lets v12_quick_engine fire these sources on a stock sim
+    (`_n4_live_only`). Defaults True/False -> returns None before reading anything (today's behaviour). Called from BOTH the
+    BB4H-ladder branch (when no ladder stage fired) and the ordinary augment branch of process_position, because the BB4H elif
+    shadows the augment branch whenever BB4H_BREAKOUT_LADDER_ENABLED is True (default) and the vector has no such shadow.
+    Order goes through queue_trade_action -> execute_now like every augment; vec provenance (live_twins.vec_provenance.mark,
+    kind AUGMENT_CORE, act AUGMENT:<source>) is carried on the queued order. Returns a tag when an order was queued, else None."""
+    try:
+        from vec_decisions import augment_core as _acore
+
+        _get = lambda _k, _d=None: _cfg(_k, _d, account_key, symbol, position_side)
+        if not _acore.live_enabled(_get, "tradier"):
+            return None
+        if not market_open or not fresh_ok or float(position_age_minutes or 0.0) <= 6.0:
+            return None
+        _is_long = position_side == "LONG"
+        _px = safe_fetch_float(current_price, 0.0)
+        _qty = abs(safe_fetch_float(getattr(position, "positionAmt", 0), 0.0))
+        _entry = safe_fetch_float(getattr(position, "entry_price", 0), 0.0)
+        _gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
+        _peak = safe_fetch_float(getattr(position, "max_gain", _gain), _gain)
+        _last = safe_fetch_float(getattr(position, "last_augmentation_price", 0), 0.0)
+        _lat = getattr(position, "last_augmentation_time", None)
+        _lat_dt = safe_datetime(_lat) if _lat else None
+        _secs = (time.time() - _lat_dt.timestamp()) if _lat_dt else None
+        _ind = indicators_raw if isinstance(indicators_raw, dict) else {}
+        _fire, _src, _reason, _add = _acore.decide(_get, _is_long, _px, _entry, _last, _gain, _peak, _qty, _ind, _ind.get("stoch_k_15m_prev"), _secs)
+        if not _fire or _add <= 0:
+            return None
+        _base_q = float(max(1, int(_add)))  # whole shares, = v12 _size_qty(cfg, qty*px*mult, px) floor >= 1
+        _q = await trade_manager.strategy.calculate_quantity_complex(symbol, "AUGMENT", position_side, _base_q, _ind, position, market_context)
+        if not _q or _q <= 0:
+            return None
+        _tok = None
+        _vp = None
+        try:
+            from live_twins import vec_provenance as _vp
+
+            _tok = _vp.mark(position_key, safe_fetch_float(_ind.get("timestamp_15m", _ind.get("timestamp", 0)), 0.0), f"AUGMENT:{_src}", "AUGMENT_CORE")
+        except Exception:
+            _tok = None
+        try:
+            _res = await queue_trade_action(order_queue, trade_manager, position_key, "AUGMENT", _reason, 80.0, override_qty=_q)
+        finally:
+            if _tok is not None and _vp is not None:
+                _vp.reset(_tok)
+        logger.warning(f"[AUGMENT_CORE] {position_key}: {_reason[:120]} base={_base_q} qty={_q} -> {_res}")
+        return f"AUGMENT_CORE:{_src}"
+    except Exception as _ac_e:
+        logger.warning(f"[AUGMENT_CORE] {position_key}: skipped ({type(_ac_e).__name__}: {_ac_e})")
+        return None
+
+
 async def process_position(
     account_key: str,
     position_key: str,
@@ -18860,6 +18916,10 @@ async def process_position(
                     logger.warning(
                         f"[BB4H_BREAKOUT_LADDER_HELD] {position_key}: {_ladder_err}"
                     )
+                if not action_taken:  # 2026-10-20 AUGMENT_CORE: this elif shadows the augment branch below; inert by default
+                    _acore_tag = await _augment_core_try(trade_manager, order_queue, position_key, position, indicators_raw, market_context, symbol, position_side, account_key, current_price, market_open, position_age_minutes, not (m1_stale or is_stale))
+                    if _acore_tag:
+                        return _acore_tag
 
             # Exact selected-recipe production envelope.  Bottom-A has already
             # been evaluated by evaluate_stop; do not let any reduce/augment
@@ -18928,6 +18988,9 @@ async def process_position(
                         log_rec = "HOLD"
                         log_reason = f"Stale ({freshness_reason})"
                     else:
+                        _acore_tag = await _augment_core_try(trade_manager, order_queue, position_key, position, indicators_raw, market_context, symbol, position_side, account_key, current_price, market_open, position_age_minutes, True)  # 2026-10-20 AUGMENT_CORE (inert by default)
+                        if _acore_tag:
+                            return _acore_tag
                         # TWIN_SIZING_REDUCE 2026-10-04 PYRAMID augment twin (once per position): add into structural strength.
                         try:
                             if (

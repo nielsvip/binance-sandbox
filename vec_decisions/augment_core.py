@@ -79,7 +79,7 @@ def live_enabled(get: Get, venue: str) -> bool:
 def profit_ok(get: Get, gain_pct: float) -> bool:
     """v12 `_augment_allowed` for the LADDER/PYRAMID/BOUNCE sources: AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER -> gain > 0, else
     gain <= BOUNCE_AUGMENT_MIN_LOSS_PCT (the vector's literal fallback)."""
-    if _b(get, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", False):
+    if _b(get, "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER", True):  # QuickConfig default True
         return gain_pct > 0
     return gain_pct <= _f(get("BOUNCE_AUGMENT_MIN_LOSS_PCT", -0.5), -0.5)
 
