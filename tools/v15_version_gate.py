@@ -22,6 +22,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -68,7 +69,11 @@ DEPLOY = [("local", HOME / "binance-sandbox"), ("local", HOME / "binance"), ("10
 # The 2026-10-17 parse fix that exposed this was measured inert first: 0 of 241,471 template candidate values
 # changed accept/reject verdict, so it moved nothing — the hole was in coverage, not in that change.
 GATED = ("v15_pilot.py", "switch_parity.py", "switch_types.py", "tools/switch_types.py")
-GATED_PREFIX = ("tools/v15_", "tools/v17_")
+GATED_PREFIX = ("tools/v15_", "tools/v17_", "tools/v18_")
+# 2026-10-20: V18 brain code + its data (trained models, digests) are bench inputs too; the bench tree is a full copy of the champion
+# tree, so data files copied here are visible to the candidate pilot. Deploy is the same generic path: a destination whose parent dir
+# does not exist is skipped (not failed), exactly as the local branch already did.
+GATED_DATA_RE = re.compile(r"^data/(brain/v18_brain_[A-Za-z0-9_]+|learn/digest_[A-Za-z0-9_]+)\.json$")
 CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_*", "archive", "backups", ".venv", "backtest_framework", ".git", "logs", "*.log", "*.db", "*.sqlite", "*.npz", "*.xlsx", "__pycache__", ".history", ".elastic"]
 
 
@@ -101,7 +106,7 @@ def ensure_champion():
 
 
 def gated_path(rel):
-    return rel in GATED or rel.startswith(GATED_PREFIX)
+    return rel in GATED or rel.startswith(GATED_PREFIX) or bool(GATED_DATA_RE.match(rel))
 
 
 def snap_manifest():
@@ -166,7 +171,7 @@ def cmd_submit(a):
         src, _, rel = spec.partition("=")
         rel = rel or os.path.relpath(os.path.abspath(src), str(SRC))
         if not gated_path(rel):
-            print(f"[gate] {rel}: not a gated file (v15_pilot.py, tools/v15_*, tools/v17_*) — refused", file=sys.stderr)
+            print(f"[gate] {rel}: not a gated file (v15_pilot.py, tools/v15_*, tools/v17_*, tools/v18_*, data/brain/v18_brain_*.json, data/learn/digest_*.json) — refused", file=sys.stderr)
             shutil.rmtree(cd)
             return 2
         (cd / "tree" / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -384,6 +389,8 @@ def deploy(cd, meta):
             else:
                 tmpr = f"{root}/.{Path(rel).name}.gate.tmp"
                 subprocess.run(["rsync", "-a", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", str(src), f"{host}:{tmpr}"], check=False)
+                if GATED_DATA_RE.match(rel) and subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"test -d {root}/{Path(rel).parent}"]).returncode != 0:
+                    continue
                 r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"test -d {root}/{Path(rel).parent} && mv {tmpr} {root}/{rel} && md5sum {root}/{rel} || rm -f {tmpr}"], capture_output=True, text=True)
                 got = (r.stdout.split() or [""])[0]
             out.append({"host": host, "root": str(root), "file": rel, "ok": got == want})
