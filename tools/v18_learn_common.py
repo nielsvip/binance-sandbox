@@ -131,13 +131,54 @@ def _fn_family(reason):
         return r or "UNKNOWN"
 
 
+_TF_TOKENS = frozenset({"1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "D", "W", "M"})
+_PARAM_CHARS = re.compile(r"[=\[\]%<>]")
+_ALIASES = (("EXIT_OWED", "VEC_EXIT_OWED"),)
+
+
+def canon_family(fam):
+    """The vector-label extension of fn_family (doc 17 §3.2): cut the parameter tail fn_family leaves on underscore-joined
+    reasons (`DC_HOPELESS_entry=43.36_dc=[..]`, `PEAK_GIVEBACK_GAIN_EROSION_STOP_peak0.66%`, `WT_DC_EXIT_100_g=-0.96%`,
+    `DAYTRADE_TARGET_dc_15m_high_-0.10%_TARGET_BUF`, `WHOLE_SHARE_REDUCE_TO_FLAT[SATOSHIT_EXIT_PARTIAL`): stop at the first
+    token carrying = [ ] % < > or starting lower-case (TF tokens 15m/1h/4h... are kept), then drop trailing pure numbers."""
+    f = str(fam or "")
+    f = _PARAM_CHARS.split(f, 1)[0] if "[" in f else f
+    out = []
+    for tok in f.split("_"):
+        if not tok:
+            continue
+        if (_PARAM_CHARS.search(tok) or (tok[0].islower() and tok not in _TF_TOKENS) or tok[0] in "-+."
+                or re.fullmatch(r"\d*\.\d+\w*", tok)):
+            break
+        out.append(tok)
+    while out and re.fullmatch(r"[-+]?\d+(\.\d+)?", out[-1]):
+        out.pop()
+    f = "_".join(out) or str(fam or "UNKNOWN")
+    for pre, alias in _ALIASES:
+        if f.startswith(pre):
+            return alias
+    return f
+
+
 def exit_family(reason):
     """loss_prone.fn_family, then the maker-leg prefix folded onto the family it executes (MAKER_PROFIT_EXIT_EXIT_VELOCITY_WT ->
-    EXIT_VELOCITY_WT, MAKER_PROFIT_EXIT_FIXED_STOP -> FIXED_STOP), so board ledgers and /history share one vocabulary."""
+    EXIT_VELOCITY_WT, MAKER_PROFIT_EXIT_FIXED_STOP -> FIXED_STOP), then canon_family, so board ledgers and /history share one
+    vocabulary."""
     fam = _fn_family(reason)
     if fam.startswith(MAKER_PREFIX) and len(fam) > len(MAKER_PREFIX):
         fam = fam[len(MAKER_PREFIX):]
-    return fam or "UNKNOWN"
+    return canon_family(fam) or "UNKNOWN"
+
+
+def map_to_vocab(fam, vocab):
+    """Longest vocabulary family that is a token-prefix of `fam` (UNCOND_DC_LOW_15M_UNCOND -> UNCOND_DC_LOW_15M); else fam."""
+    if fam in vocab:
+        return fam
+    best = None
+    for v in vocab:
+        if fam.startswith(v + "_") and (best is None or len(v) > len(best)):
+            best = v
+    return best or fam
 
 
 def entry_family(reason):

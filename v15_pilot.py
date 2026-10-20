@@ -4225,6 +4225,51 @@ def v17_killers(eff_without, eff_by_filter: dict, frac: float = 0.5) -> list:
     return sorted(out, key=lambda f: float(eff_by_filter[f]))
 
 
+def v18_parts_to_overrides(parts, defaults: dict):
+    """[(key, raw value)] of one V18 path (digest winner / repair-menu path / ablation remedy) -> (delta override set, '') or
+    (None, refusal reason). Refused, never a candidate: GLOBAL_ONLY, ABLATION_* (a lever, never a setting), MAXAUG 0, unwired,
+    *_ALT, type law (tools/switch_types), not a config field, promotion-blocked (DEAD_VEC / LIVE_ONLY / ...), hard-set,
+    protective stop OFF, engine artefacts (MODE / VENUE / ...)."""
+    dov = {}
+    for k, raw in parts or []:
+        k = str(k).strip()
+        if not k:
+            return None, "EMPTY_KEY"
+        if k in GLOBAL_ONLY_KEYS:
+            return None, f"GLOBAL_ONLY:{k}"
+        if k.startswith("ABLATION_"):
+            return None, f"ABLATION_IS_A_LEVER:{k}"
+        if k == "MAX_AUGMENTS_PER_POSITION" and _maxaug_is_zero(str(raw)):
+            return None, "MAXAUG_NEVER_ZERO"
+        if k in UNWIRED_SWITCHES or k in UNWIRED_FILTERS:
+            return None, f"NOT_WIRED_VEC:{k}"
+        if isinstance(raw, str) and raw.strip().upper().endswith("_ALT"):
+            return None, f"INVENTED_ALT:{k}"
+        _tv = _switch_type_violation(k, raw, defaults)
+        if _tv:
+            return None, _tv
+        try:
+            pv = raw if isinstance(raw, (dict, list)) else _parse_opt_value(raw, (defaults or {}).get(k))
+        except Exception:
+            return None, f"PARSE:{k}"
+        sub = _switch_overrides(k, pv) or {}
+        if not sub:
+            continue
+        for k2 in sub:
+            if k2 not in known_config_fields():
+                return None, f"NOT_IN_CONFIG:{k2}"
+        _blk = promotion_block_reason(k, None)
+        if _blk:
+            return None, _blk
+        dov.update(sub)
+    if not dov:
+        return None, "EMPTY"
+    _why = _V18P.deny_reason(dov) if _V18P is not None else ""
+    if _why:
+        return None, _why
+    return dov, ""
+
+
 V17_P3_MIN_SHARE = {"WINNER": 0.5, "MEDIOCRE": 0.4, "LOSER": 0.25, "LOST_CAUSE": 0.1}
 V17_P3_MAX_DEFAULT = {"WINNER": 1500.0, "MEDIOCRE": 540.0, "LOSER": 300.0, "LOST_CAUSE": 120.0}
 
@@ -8295,6 +8340,446 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[V17-WARN] probe {_p1e}\n{_tb_p1.format_exc()[-1200:]}", flush=True)
         _v17_t["p2"] = _v17_phase_start("P2_WORST_FIRST")
         _v17_t["p2"]["rows_pending"] = len(pending_queue)
+    # ── V18 PHASES (doc 17 §3.3 / §3.5 / §5, principles 12-13; USER 2026-10-19/20) — before the main pass: R1 WINNERS (+ XPOLL),
+    # R2 EXIT REPAIR, R3 ABLATION by group (and again after the main pass for the exit groups). Every eval goes through the
+    # same _get/_submit/pool/cache/delta-log as the fill; every adoption is a fresh real eval of the exact set, greedy vs the
+    # LATEST chain (_v17_greedy), under the pilot gates (_v17_ok) + DD <= QUAL_DD_MAX + WR measured. Kill switches
+    # V18_WINNERS / V18_EXIT_REPAIR / V18_ABLATION (default OFF; the S2 version gate decides). Digests are read for THIS
+    # board's cat_side only (meta.cat_side asserted at load); cross-cat_side ideas run only as labelled XPOLL rows.
+    _v18_r1_on = bool(_V18P is not None and _V18P.flag_on("V18_WINNERS"))
+    _v18_r2_on = bool(_V18P is not None and _V18P.flag_on("V18_EXIT_REPAIR"))
+    _v18_r3_on = bool(_V18P is not None and _V18P.flag_on("V18_ABLATION"))
+    _v18_any = _v18_r1_on or _v18_r2_on or _v18_r3_on
+    _v18 = progress.setdefault("v18", {}) if _v18_any else {}
+    _v18_phases_on = bool(_v18_any and prepared is not None and fast_switches is None and not is_hustle and (_v18.get("on") or not _v17_main_done))
+    if _v18_any and not _v18_phases_on:
+        print(f"[V18] {new_symside} phases OFF for this board (legacy resume / fast / hustle / no prepared NPZ)", flush=True)
+    _v18_dg, _v18_dg_why = (_V18P.load_digest(_v18_floor_cs, ROOT) if _v18_phases_on else (None, "phases off"))
+    if _v18_phases_on:
+        _v18["on"] = True
+        _v18["digest"] = {"why": _v18_dg_why, "meta": (_v18_dg or {}).get("meta"), "coverage": (_v18_dg or {}).get("coverage")}
+        print(f"[V18-DIGEST] {new_symside} {_v18_floor_cs}: {_v18_dg_why}", flush=True)
+    def _v18_phase_end(ph: dict, **extra):
+        rec = {"wall_s": round(_t.time() - ph["t0"], 1), "evals": int(_v17_evals[0] - ph["e0"]), "lift": round(float(cumulative_gain) - ph["g0"], 4), "entry_gain": round(ph["g0"], 4), "exit_gain": round(float(cumulative_gain), 4), "promotions": int(ph.get("prom", 0)), "tested": int(ph.get("tested", 0)), "done": True, "at": utcnow()}
+        rec.update(extra)
+        _v18.setdefault("phases", {})[ph["name"]] = rec
+        print(f"[V18-PHASE] {ph['name']} evals={rec['evals']} wall={rec['wall_s']}s lift={rec['lift']:+.4f} promotions={rec['promotions']} tested={rec['tested']} {ph['g0']:.4f}->{float(cumulative_gain):.4f}", flush=True)
+        _maybe_write_json(force=True)
+    def _v18_phase_done(name: str) -> bool:
+        return bool(((_v18.get("phases") or {}).get(name) or {}).get("done"))
+    def _v18_chain_dd():
+        try:
+            return (_EVAL_CACHE.get(_ck(sanitize_overrides(dict(cumulative_overrides), defaults)[0])) or {}).get("max_dd_pct")
+        except Exception:
+            return None
+    def _v18_accept(res: dict) -> bool:
+        return not _V18P.extra_gate_reason(res, _v18_chain_dd(), QUAL_DD_MAX)
+    def _v18_adopted(prefix: str) -> set:
+        return {str(p.get("what")) for p in (_v18.get("promotions") or []) if p.get("phase") == prefix}
+    def _v18_records(items: list, prefix: str) -> list:
+        ad = _v18_adopted(prefix)
+        out = []
+        for it in items or []:
+            r_ = it.get("res") or {}
+            out.append({"label": it.get("label"), "delta": None if it.get("d") is None else round(float(it["d"]), 4), "tim": r_.get("tim_pct"), "dd": r_.get("max_dd_pct"), "trades": r_.get("trades"), "wr": r_.get("wr_pct"), "valid": r_.get("valid"), "err": it.get("err") or "", "gate": "" if it.get("d") is None else (_V18P.extra_gate_reason(r_, None, QUAL_DD_MAX) or ""), "adopted": it.get("label") in ad, "score": it.get("score"), "family": it.get("family")})
+        return out
+    def _v18_cand(label: str, parts: list, refused: dict, **extra):
+        dov, why = v18_parts_to_overrides(parts, defaults)
+        if dov is None:
+            refused[label] = why
+            return None
+        _b = _v17_blocked(dov)
+        if _b:
+            refused[label] = _b
+            return None
+        sw, c = str(parts[0][0]).strip(), parts[0][1]
+        row = _v17_find_row(sw, c)
+        return {"label": label, "delta_ov": dov, "sw": sw, "cand": c, "sheet": row[0] if row else "V18", "row": row[1] if row else None, "parts": [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in dov.items()], **extra}
+    def _v18_winners(deadline: float):
+        # R1 WINNERS (doc 17 §3.5): the cat_side digest's top-K winners, each as switch+cand WITH its companion filters (one
+        # candidate) and naked, one batch vs the start set; greedy joint on positives <= V18_WINNERS_MAX_ADOPT
+        tag = "R1_WINNERS"
+        if _v18_phase_done(tag):
+            return
+        ph = _v17_phase_start(tag)
+        k = int(os.environ.get("V18_WINNERS_K", "60"))
+        cands, refused = [], {}
+        for w in _V18P.winners_take(_v18_dg, k) if _v18_dg else []:
+            sw, c, comps = str(w["switch"]).strip(), w["cand"], _V18P.companions_of(w)
+            if comps:
+                x = _v18_cand(f"WINNERS:PACK:{sw}={c}+" + "+".join(f"{f}={o}" for f, o in comps), [(sw, c)] + comps, refused, score=w.get("score"))
+                if x:
+                    cands.append(x)
+            x = _v18_cand(f"WINNERS:NAKED:{sw}={c}", [(sw, c)], refused, score=w.get("score"))
+            if x:
+                cands.append(x)
+        first = _v17_greedy(cands, "v18_winners", "WINNERS", deadline, ph, accept=_v18_accept, max_prom=int(os.environ.get("V18_WINNERS_MAX_ADOPT", "8")), book=_v18) if cands else []
+        _v18["winners"] = {"k": k, "offered": len(cands), "refused": refused, "tried": _v18_records(first, "WINNERS"), "digest": _v18_dg_why}
+        _v18_phase_end(ph, cands=len(cands), refused=len(refused))
+    def _v18_xpoll(deadline: float):
+        # PRINCIPLE 13: another cat_side's winner is only ever TRIED here, labelled XPOLL:<from>, at most V18_XPOLL_K per board,
+        # same gates, booked separately (progress["v18"]["xpoll"]); nothing else from another cat_side touches this board
+        tag = "R1_XPOLL"
+        kx = int(os.environ.get("V18_XPOLL_K", "5"))
+        if _v18_phase_done(tag) or kx <= 0 or not _v18_dg:
+            return
+        ph = _v17_phase_start(tag)
+        cands, refused = [], {}
+        for x in _V18P.xpoll_take(_v18_dg, _v18_floor_cs, kx):
+            sw, c, frm = str(x["switch"]).strip(), x["cand"], str(x.get("from_cat_side")).upper()
+            it = _v18_cand(f"XPOLL:{frm}:{sw}={c}", [(sw, c)] + _V18P.companions_of(x), refused, score=x.get("score"))
+            if it:
+                cands.append(it)
+        first = _v17_greedy(cands, "v18_xpoll", "XPOLL", deadline, ph, accept=_v18_accept, max_prom=kx, book=_v18) if cands else []
+        _v18["xpoll"] = {"k": kx, "offered": len(cands), "refused": refused, "tried": _v18_records(first, "XPOLL")}
+        _v18_phase_end(ph, cands=len(cands), refused=len(refused))
+    def _v18_ledger(ov: dict):
+        # one include_ledger eval of an exact set on this board's NPZ (main process) -> (result, classified trades, missed moves)
+        from tools import v15_trade_autopsy as _TA
+        from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_l
+        res = _eps_l(prepared, sanitize_overrides(dict(ov), defaults)[0], args.window_days, include_ledger=True)
+        rows = _TA.scaled_rows(res)
+        npz = (prepared or {}).get("npz_prepared") or {}
+        close = [float(x) for x in (npz.get("close") if npz.get("close") is not None else [])]
+        is_long = new_symside.upper().endswith("_LONG")
+        base = _TA.classify(rows, close, is_long) if close else rows
+        moves = _TA.missed_moves(base, close, is_long) if close else []
+        return res, base, moves
+    def _v18_exit_repair(deadline: float):
+        # R2 EXIT REPAIR (doc 17 §3.3): ledger of the current best set -> this board's exit-family loss table (+ drift-into-loss)
+        # merged with the cat_side digest's exit_loss_rank (board 1, digest 0.5) -> the top V18_EXIT_FAMILIES families -> repair
+        # paths (digest menu with companions, curated map, exit rows sharing the family's tokens, FIXED_STOP rows the digest
+        # lists) -> full real evals vs the chain -> greedy adopt -> attribution (losers fixed / winners hurt / Δ metrics) of the
+        # top candidates -> re-diagnose while an iteration lifts >= V15_V17_MIN_LIFT_PM pp/min.
+        tag = "R2_EXIT_REPAIR"
+        if _v18_phase_done(tag):
+            return
+        ph = _v17_phase_start(tag)
+        book = _v18.setdefault("exit_repair", {"iterations": []})
+        from tools import v15_trade_autopsy as _TA
+        try:
+            from loss_prone import fn_family as _fam
+        except Exception:
+            def _fam(r):
+                return str(r or "").split("|")[0].split(" ")[0] or "UNKNOWN"
+        nfam = int(os.environ.get("V18_EXIT_FAMILIES", "4"))
+        drift = float(os.environ.get("V18_DRIFT_MFE_PCT", "1.0"))
+        hard = ph["t0"] + float(os.environ.get("V18_EXIT_REPAIR_HARD_S", "900"))
+        exit_tabs = set(_V18P.GROUP_TABS["EXIT"])
+        it_n = 0
+        while _t.time() < deadline - 10.0:
+            it_n += 1
+            t_i, g_i = _t.time(), float(cumulative_gain)
+            try:
+                base_res, base, moves = _v18_ledger(cumulative_overrides)
+            except Exception as _le:
+                book["error"] = f"ledger {_le}"[:200]
+                print(f"[V18-WARN] exit repair ledger {_le}", flush=True)
+                break
+            table = _V18P.board_family_table(base, _fam, drift)
+            ranked = _V18P.merge_family_rank(table, (_v18_dg or {}).get("exit_loss_rank"), 1.0, 0.5)
+            top = ranked[:nfam]
+            cands, refused, seen = [], {}, set()
+            def _add(x, fam):
+                if not x:
+                    return
+                sig = json.dumps(x["delta_ov"], sort_keys=True, default=str)
+                if sig in seen:
+                    return
+                seen.add(sig)
+                x["family"] = fam
+                cands.append(x)
+            names = set()
+            for fam, sc, det in top:
+                names.update(_V18P.curated_switches_for(fam, det))
+            opts = _v17_opts_of(names | {str(w).strip() for (_s, _r, w, _c) in queue if _s in exit_tabs})
+            for fam, sc, det in top:
+                for e in _V18P.repair_entries(_v18_dg, fam)[: int(os.environ.get("V18_EXIT_MENU_N", "24"))]:
+                    comps = _V18P.companions_of(e)
+                    _add(_v18_cand(f"EXITREP:{fam}:{e['switch']}={e['cand']}" + ("+" + "+".join(f"{f}={o}" for f, o in comps) if comps else ""), [(str(e["switch"]).strip(), e["cand"])] + comps, refused, src=e.get("source") or "digest"), fam)
+                for sw in _V18P.curated_switches_for(fam, det):
+                    for v, _pv in _v17_value_cands(sw, opts.get(sw, []), include_off=False)[:6]:
+                        _add(_v18_cand(f"EXITREP:{fam}:curated:{sw}={v}", [(sw, v)], refused, src="curated"), fam)
+                ftok = {t for t in str(fam).upper().split("_") if len(t) > 2}
+                per = 0
+                for (_s, _r, _w, _c) in queue:
+                    if per >= int(os.environ.get("V18_EXIT_TOKEN_N", "24")):
+                        break
+                    _w = str(_w).strip()
+                    if _s not in exit_tabs or not (ftok & {t for t in _w.upper().split("_") if len(t) > 2}):
+                        continue
+                    try:
+                        if _row_static(_s, _r, _w, _c).get("kind") != "eval":
+                            continue
+                    except Exception:
+                        continue
+                    n0 = len(cands)
+                    _add(_v18_cand(f"EXITREP:{fam}:token:{_w}={_c}", [(_w, _c)], refused, src="token"), fam)
+                    per += len(cands) - n0
+            for e in _V18P.fixed_stop_entries(_v18_dg):
+                comps = _V18P.companions_of(e)
+                _add(_v18_cand(f"EXITREP:FIXED_STOP:{e['switch']}={e['cand']}", [(str(e["switch"]).strip(), e["cand"])] + comps, refused, src="digest_fixed_stop"), "FIXED_STOP")
+            cands = cands[: int(os.environ.get("V18_EXIT_CANDS_MAX", "240"))]
+            n_p0 = int(ph.get("prom", 0))
+            first = _v17_greedy(cands, "v18_exit_repair", "EXITREP", deadline, ph, accept=_v18_accept, max_prom=n_p0 + int(os.environ.get("V18_EXIT_PROM_PER_IT", "3")), book=_v18) if cands else []
+            ad = _v18_adopted("EXITREP")
+            att_items = sorted([x for x in first if x.get("d") is not None and x.get("res")], key=lambda x: -float(x["d"]))[: int(os.environ.get("V18_EXIT_ATTR_MAX", "8"))]
+            att_items += [x for x in first if x.get("label") in ad and x not in att_items]
+            cards = {}
+            for x in att_items:
+                if _t.time() > deadline + 30.0:
+                    break
+                try:
+                    cres, ctr, _ = _v18_ledger(x["ov"])
+                    cards[x["label"]] = _V18P.attribution_card(base, ctr, base_res, cres, _TA.attribute, _TA.scorecard, moves)
+                except Exception as _ae:
+                    cards[x["label"]] = {"error": f"{_ae}"[:120]}
+            recs = _v18_records(first, "EXITREP")
+            for r_ in recs:
+                if r_["label"] in cards:
+                    r_["attribution"] = cards[r_["label"]]
+            lift = float(cumulative_gain) - g_i
+            wall = _t.time() - t_i
+            book["iterations"].append({"it": it_n, "gain_before": round(g_i, 4), "gain_after": round(float(cumulative_gain), 4), "wall_s": round(wall, 1), "families": [{"family": f, "score": sc, **{k: v for k, v in d.items() if k != "board"}, "board": d.get("board")} for f, sc, d in ranked[: max(nfam, 8)]], "top": [f for f, _, _ in top], "offered": len(cands), "refused": refused, "tried": recs})
+            print(f"[V18-EXITREP] {new_symside} it={it_n} families={[f for f, _, _ in top]} offered={len(cands)} refused={len(refused)} lift={lift:+.4f} ({_V18P.lift_pm(lift, wall):.2f} pp/min)", flush=True)
+            _maybe_write_json(force=True)
+            if lift <= 1e-9 or not cands:
+                break
+            deadline = _V18P.extend_deadline(_V18P.lift_pm(lift, wall), _t.time(), deadline, wall, hard)
+            if _V18P.lift_pm(lift, wall) < _V18P.min_lift_pm() and deadline - _t.time() < 30.0:
+                break
+        _v18_phase_end(ph, iterations=it_n)
+    def _v18_ablation(deadline: float, tag: str, exit_only: bool = False):
+        # R3 ABLATION (doc 17 §5, USER 2026-10-20 "the stage where I think the biggest gains will be found"): per GROUP of
+        # vec_decisions/filter_ablation_groups (ENTRY split by tab family): STRIP the group's ON filters (a discovery base, never
+        # adopted) -> DISCOVER the path switches that group gates -> ATTRIBUTE by restoring one filter at a time -> per killer
+        # remedy, in order: (i) scoped FILTER_EXEMPTIONS, (ii) the filter RE-SET to another template option (GLOBAL_RESET — the
+        # engine has no per-path re-set), (iii) the filter OFF globally as a measured GLOBAL_OFF candidate (never a silent
+        # proxy) -> every filter restored, fresh eval on the full chain, adopted only above the latest best. The digest's
+        # filter_veto entries go first as ready-made (switch, filter, remedy) candidates.
+        if _v18_phase_done(tag):
+            return
+        ph = _v17_phase_start(tag)
+        book = _v18.setdefault("ablation", {}).setdefault(tag, {"groups": {}, "veto": None})
+        hard = ph["t0"] + float(os.environ.get("V18_ABL_HARD_X", "3")) * max(1.0, deadline - ph["t0"])
+        try:
+            from vec_decisions import filter_ablation_groups as _FAG
+            from vec_decisions import filter_exemptions as _FXM
+        except Exception as _ie:
+            book["error"] = f"import {_ie}"[:200]
+            _v18_phase_end(ph, error=book["error"])
+            return
+        exm = v17_load_exemptions()
+        row_tab = {}
+        for (_s, _r, _w, _c) in queue:
+            row_tab.setdefault(str(_w).strip(), _s)
+        groups = _V18P.ablation_groups(_FAG.GROUPS, row_tab)
+        if exit_only:
+            groups = {g: m for g, m in groups.items() if _V18P.is_exit_group(g)}
+        fopts = _v17_opts_of({m for ms in groups.values() for m in ms})
+        win_sc = {f"{str(w.get('switch')).strip()}={str(w.get('cand')).strip()}": float(w.get("score") or 0.0) for w in ((_v18_dg or {}).get("winners") or []) if isinstance(w, dict)}
+        if not exit_only and _v18_dg and book.get("veto") is None:
+            vrefused, vc = {}, []
+            for v in _V18P.veto_candidates(_v18_dg, int(os.environ.get("V18_ABL_VETO_MAX", "40"))):
+                kind = str((v.get("remedy") or {}).get("kind"))
+                lab = _V18P.REMEDY_LABEL.get(kind, kind)
+                parts = [(str(v["switch"]).strip(), v["cand"])] + [(k2, v2) for k2, v2 in (v["remedy"]["override"] or {}).items()]
+                x = _v18_cand(f"ABL_VETO:{lab}:{v['switch']}={v['cand']}~{v.get('filter')}", parts, vrefused, done_key=f"ABL!VETO:{v['switch']}={v['cand']}+{lab}")
+                if x and isinstance(x["delta_ov"].get("FILTER_EXEMPTIONS"), dict):
+                    x["delta_ov"]["FILTER_EXEMPTIONS"] = v17_merge_exemptions(None, x["delta_ov"]["FILTER_EXEMPTIONS"])
+                if x:
+                    vc.append(x)
+            vfirst = _v17_greedy(vc, "v18_ablation_veto", "ABL", deadline, ph, accept=_v18_accept, book=_v18) if vc else []
+            book["veto"] = {"offered": len(vc), "refused": vrefused, "tried": _v18_records(vfirst, "ABL")}
+        gl = [g for g in groups if not (book["groups"].get(g) or {}).get("done")]
+        for gi, g in enumerate(gl):
+            if _t.time() > deadline - 5.0:
+                break
+            t_g, g_g = _t.time(), float(cumulative_gain)
+            gdl = _t.time() + (deadline - _t.time()) / max(1, len(gl) - gi)
+            cat = _V18P.group_category(g)
+            strip = {}
+            for f in groups[g]:
+                if f not in known_config_fields() or f in UNWIRED_FILTERS or f in UNWIRED_SWITCHES:
+                    continue
+                cur = cumulative_overrides.get(f, defaults.get(f))
+                off = v17_filter_off_value(cur, fopts.get(f, []))
+                if off is None:
+                    continue
+                pv = _parse_opt_value(off, defaults.get(f)) if not isinstance(off, bool) else off
+                if _same_val(cur, pv):
+                    continue
+                strip[f] = pv
+            gb = {"filters_on": len(strip), "chain_before": round(g_g, 4)}
+            book["groups"][g] = gb
+            if not strip:
+                gb.update(done=True, skipped="no ON member with an honest OFF value")
+                continue
+            base_ov = sanitize_overrides({**cumulative_overrides, **strip}, defaults)[0]
+            bi = _v17_batch([{"label": f"ABL_STRIP:{g}", "ov": base_ov, "sheet": "V18_ABL"}], float(cumulative_gain), gdl)[0]
+            r_s = bi.get("res") or {}
+            if r_s.get("gain_pct") is None or not r_s.get("valid") or int(r_s.get("trades") or 0) <= 0:
+                gb.update(done=True, skipped=f"strip base invalid ({bi.get('err') or r_s.get('invalid_reason')})")
+                continue
+            g_s = float(r_s["gain_pct"])
+            fp_s = r_s.get("behavior_fingerprint") or None
+            gb["strip_gain"] = round(g_s, 4)
+            tabs_g = set(_V18P.group_tabs(g))
+            path, seen = [], set()
+            for (_s, _r, _w, _c) in queue:
+                _w = str(_w).strip()
+                if _s not in tabs_g and not (cat == "augment" and _w.startswith("AUGMENT")):
+                    continue
+                if (_s, _r) in orange_rows or v17_is_filter_key(_w):
+                    continue
+                try:
+                    if _row_static(_s, _r, _w, _c).get("kind") != "eval":
+                        continue
+                    dov = _switch_overrides(_w, _parse_opt_value(_c, defaults.get(_w)))
+                except Exception:
+                    continue
+                if not dov or _v17_blocked(dov) or _V18P.deny_reason(dov) or all(_same_val(base_ov.get(k2, defaults.get(k2)), v2) for k2, v2 in dov.items()):
+                    continue
+                ck_ = _canon_key("X", _w, _c)
+                if ck_ in seen:
+                    continue
+                seen.add(ck_)
+                path.append({"label": f"ABL_DISCOVER:{g}:{_w}={_c}", "delta_ov": dov, "ov": sanitize_overrides({**base_ov, **dov}, defaults)[0], "sw": _w, "cand": _c, "sheet": _s, "row": _r, "ev": win_sc.get(f"{_w}={str(_c).strip()}", 0.0) + 0.01 * v17_ev(f"{_w}={_c}", _v17_know, _v17_prior)})
+            path.sort(key=lambda x: -x["ev"])
+            path = path[: int(os.environ.get("V18_ABL_DISCOVER_MAX", "300"))]
+            _v17_batch(path, g_s, gdl)
+            ph["tested"] = ph.get("tested", 0) + len(path)
+            disc = sorted([x for x in path if x.get("ok") and x.get("d") is not None and float(x["d"]) > 1e-9 and int((x.get("res") or {}).get("trades") or 0) >= ADAPT_FLOOR_TRADES], key=lambda x: -float(x["d"]))[: int(os.environ.get("V18_ABL_ATTR_MAX", "8"))]
+            gb.update(discover_n=len(path), discovered=len(disc))
+            if not disc:
+                gb["done"] = True
+                continue
+            fb = [{"label": f"ABL_RESTORE1:{g}:{f}", "ov": sanitize_overrides({**base_ov, f: cumulative_overrides.get(f, defaults.get(f))}, defaults)[0], "f": f, "sheet": "V18_ABL"} for f in strip]
+            _v17_batch(fb, g_s, gdl)
+            g_f = {}
+            for x in fb:
+                r_ = x.get("res") or {}
+                if r_.get("gain_pct") is None or int(r_.get("trades") or 0) <= 0:
+                    continue
+                if (r_.get("behavior_fingerprint") or None) != fp_s or abs(float(r_["gain_pct"]) - g_s) > 1e-9:
+                    g_f[x["f"]] = float(r_["gain_pct"])
+            cross = [{"label": f"ABL_ATTR:{g}:{x['sw']}={x['cand']}+{f}", "ov": sanitize_overrides({**base_ov, f: cumulative_overrides.get(f, defaults.get(f)), **x["delta_ov"]}, defaults)[0], "f": f, "disc": x, "sheet": "V18_ABL"} for x in disc for f in g_f]
+            _v17_batch(cross, g_s, gdl)
+            eff = {}
+            for x in cross:
+                r_ = x.get("res") or {}
+                if r_.get("gain_pct") is not None and int(r_.get("trades") or 0) > 0:
+                    eff.setdefault(id(x["disc"]), {})[x["f"]] = float(r_["gain_pct"]) - g_f[x["f"]]
+            recs, tier_a, tier_b, tier_c = [], [], [], []
+            for x in disc:
+                kills = v17_killers(float(x["d"]), eff.get(id(x), {}), float(os.environ.get("V15_V17_ABL_KILL_FRAC", "0.5")))
+                rec = {"group": g, "switch": f"{x['sw']}={x['cand']}", "tab": x["sheet"], "strip_gain": round(g_s, 4), "discovery_delta": round(float(x["d"]), 4), "killers": kills, "remedies": [], "adopted": None, "final_delta": None}
+                recs.append(rec)
+                base_it = {"sw": x["sw"], "cand": x["cand"], "sheet": x["sheet"], "row": x["row"], "rec_i": len(recs) - 1}
+                tier_a.append({**base_it, "label": f"ABL_RESTORE:{g}:{x['sw']}={x['cand']}", "delta_ov": dict(x["delta_ov"]), "done_key": f"ABL!{g}:{x['sw']}={x['cand']}", "remedy": "RESTORE", "parts": [f"{x['sw']}={x['cand']}"]})
+                ex_all, ex_lab = {}, []
+                for f in kills:
+                    ex_ov, scope = _V18P.scoped_exemption(x["sw"], x["cand"], f, cat, exm, _FXM.FILTER_KEYS, _FXM.AUGMENT_GATE_KEYS)
+                    if ex_ov:
+                        for _ek, _ev_ in ex_ov.items():
+                            ex_all[_ek] = v17_merge_exemptions(ex_all.get(_ek), _ev_) if _ek == "FILTER_EXEMPTIONS" else _ev_
+                        ex_lab.append(f"{f}:{scope}")
+                    for v, pv in _v17_value_cands(f, fopts.get(f, []), include_off=False)[: int(os.environ.get("V18_ABL_RESET_MAX", "6"))]:
+                        if _same_val(pv, strip.get(f)):
+                            continue
+                        tier_b.append({**base_it, "label": f"ABL_GLOBAL_RESET:{g}:{x['sw']}={x['cand']}~{f}={v}", "delta_ov": {**x["delta_ov"], f: pv}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+GLOBAL_RESET:{f}={v}", "remedy": "GLOBAL_RESET", "parts": [f"{x['sw']}={x['cand']}", f"{f}={v}"]})
+                    if f in strip:
+                        tier_c.append({**base_it, "label": f"ABL_GLOBAL_OFF:{g}:{x['sw']}={x['cand']}~{f}", "delta_ov": {**x["delta_ov"], f: strip[f]}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+GLOBAL_OFF:{f}", "remedy": "GLOBAL_OFF", "parts": [f"{x['sw']}={x['cand']}", f"{f}={strip[f]}"]})
+                if ex_all:
+                    if isinstance(ex_all.get("FILTER_EXEMPTIONS"), dict):
+                        try:
+                            _FXM.parse(ex_all["FILTER_EXEMPTIONS"])
+                        except Exception:
+                            ex_all = {}
+                if ex_all:
+                    tier_a.append({**base_it, "label": f"ABL_EXEMPT:{g}:{x['sw']}={x['cand']}~" + ",".join(ex_lab), "delta_ov": {**x["delta_ov"], **ex_all}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+EXEMPT", "remedy": "EXEMPT", "parts": [f"{x['sw']}={x['cand']}"] + [f"{k2}={json.dumps(v2, sort_keys=True) if isinstance(v2, (dict, list)) else v2}" for k2, v2 in ex_all.items()]})
+            done_rec = set()
+            for tier in (tier_a, tier_b, tier_c):
+                tier = [c for c in tier if c["rec_i"] not in done_rec and not _V18P.deny_reason(c["delta_ov"]) and not _v17_blocked(c["delta_ov"])]
+                if not tier or _t.time() > max(gdl, _t.time() + 10.0) - 2.0:
+                    continue
+                n_p0 = len(_v18.get("promotions") or [])
+                tfirst = _v17_greedy(tier, f"v18_ablation_{g}", "ABL", max(gdl, _t.time() + 10.0), ph, accept=_v18_accept, book=_v18)
+                for c in tfirst:
+                    r_ = recs[c["rec_i"]]
+                    r_["remedies"].append({"remedy": c["remedy"], "label": c["label"], "delta": None if c.get("d") is None else round(float(c["d"]), 4)})
+                    if c.get("d") is not None and (r_["final_delta"] is None or float(c["d"]) > r_["final_delta"]):
+                        r_["final_delta"] = round(float(c["d"]), 4)
+                for p in (_v18.get("promotions") or [])[n_p0:]:
+                    for c in tier:
+                        if c["label"] == p.get("what"):
+                            recs[c["rec_i"]]["adopted"] = c["remedy"]
+                            done_rec.add(c["rec_i"])
+            gb.update(done=True, records=recs, chain_after=round(float(cumulative_gain), 4), wall_s=round(_t.time() - t_g, 1))
+            _maybe_write_json(force=True)
+            _lift = float(cumulative_gain) - g_g
+            if _lift > 1e-9:
+                deadline = _V18P.extend_deadline(_V18P.lift_pm(_lift, _t.time() - t_g), _t.time(), deadline, _t.time() - t_g, hard)
+        _v18_phase_end(ph, groups={g: {k2: v2 for k2, v2 in (b or {}).items() if k2 != "records"} for g, b in book["groups"].items()})
+    def _v18_sheet():
+        try:
+            for name in ("WINNERS", "EXIT_REPAIR", "ABLATION"):
+                if name in wb.sheetnames:
+                    del wb[name]
+            if _v18.get("winners") or _v18.get("xpoll"):
+                ws_w = wb.create_sheet("WINNERS")
+                ws_w.append(["phase", "candidate", "delta", "TIM", "DD", "trades", "WR", "adopted", "score", "gate", "err"])
+                for ph_n in ("winners", "xpoll"):
+                    for r_ in (_v18.get(ph_n) or {}).get("tried") or []:
+                        ws_w.append([ph_n.upper(), r_.get("label"), r_.get("delta"), r_.get("tim"), r_.get("dd"), r_.get("trades"), r_.get("wr"), r_.get("adopted"), r_.get("score"), r_.get("gate"), r_.get("err")])
+                    for lab, why in ((_v18.get(ph_n) or {}).get("refused") or {}).items():
+                        ws_w.append([ph_n.upper(), lab, None, None, None, None, None, False, None, f"REFUSED {why}"[:200], ""])
+            if _v18.get("exit_repair"):
+                ws_e = wb.create_sheet("EXIT_REPAIR")
+                for itr in (_v18["exit_repair"].get("iterations") or []):
+                    ws_e.append(["iteration", itr.get("it"), "gain_before", itr.get("gain_before"), "gain_after", itr.get("gain_after"), "wall_s", itr.get("wall_s"), "top", ",".join(itr.get("top") or [])])
+                    ws_e.append(["family", "score", "board_share", "digest_share", "n", "losers", "loss_sum_pct", "one_bar_share", "mean_bars_held", "giveback_sum", "premature_sum", "drift_into_loss_n", "drift_into_loss_sum"])
+                    for fr in itr.get("families") or []:
+                        b_ = fr.get("board") or {}
+                        ws_e.append([fr.get("family"), fr.get("score"), fr.get("board_share"), fr.get("digest_share"), b_.get("n"), b_.get("losers"), b_.get("loss_sum_pct"), b_.get("one_bar_share"), b_.get("mean_bars_held"), b_.get("giveback_sum"), b_.get("premature_sum"), b_.get("drift_into_loss_n"), b_.get("drift_into_loss_sum")])
+                    ws_e.append(["candidate", "family", "delta", "TIM", "DD", "trades", "WR", "adopted", "losers_fixed", "winners_hurt", "saved", "hurt", "d_gain", "d_dd", "d_wr", "d_tim", "d_trades", "gate"])
+                    for r_ in itr.get("tried") or []:
+                        a_ = r_.get("attribution") or {}
+                        ws_e.append([r_.get("label"), r_.get("family"), r_.get("delta"), r_.get("tim"), r_.get("dd"), r_.get("trades"), r_.get("wr"), r_.get("adopted"), a_.get("losers_fixed"), a_.get("winners_hurt"), a_.get("saved"), a_.get("hurt"), a_.get("d_gain"), a_.get("d_dd"), a_.get("d_wr"), a_.get("d_tim"), a_.get("d_trades"), r_.get("gate")])
+                    ws_e.append([])
+            if _v18.get("ablation"):
+                ws_a = wb.create_sheet("ABLATION")
+                ws_a.append(["pass", "group", "filters_on", "strip_gain", "discover_n", "discovered", "chain_before", "chain_after", "skipped"])
+                for tg, bk in (_v18.get("ablation") or {}).items():
+                    for g, gb in ((bk or {}).get("groups") or {}).items():
+                        ws_a.append([tg, g, gb.get("filters_on"), gb.get("strip_gain"), gb.get("discover_n"), gb.get("discovered"), gb.get("chain_before"), gb.get("chain_after"), gb.get("skipped")])
+                ws_a.append([])
+                ws_a.append(["pass", "group", "switch", "tab", "strip_gain", "discovery_delta", "killers", "remedies_tried", "final_delta", "adopted_remedy"])
+                for tg, bk in (_v18.get("ablation") or {}).items():
+                    for g, gb in ((bk or {}).get("groups") or {}).items():
+                        for r_ in gb.get("records") or []:
+                            ws_a.append([tg, g, r_.get("switch"), r_.get("tab"), r_.get("strip_gain"), r_.get("discovery_delta"), ",".join(r_.get("killers") or []), "; ".join(f"{m.get('remedy')} {m.get('delta')}" for m in r_.get("remedies") or [])[:300], r_.get("final_delta"), r_.get("adopted")])
+                    for r_ in ((bk or {}).get("veto") or {}).get("tried") or []:
+                        ws_a.append([tg, "VETO", r_.get("label"), None, None, None, None, r_.get("gate"), r_.get("delta"), r_.get("adopted")])
+        except Exception as _vse:
+            print(f"[V18-WARN] sheet write failed: {_vse}", flush=True)
+    if _v18_phases_on:
+        try:
+            if _v18_r1_on:
+                _v18_winners(_t.time() + float(os.environ.get("V18_WINNERS_S", "240")))
+                _v18_xpoll(_t.time() + float(os.environ.get("V18_XPOLL_S", "90")))
+            if _v18_r2_on:
+                _v18_exit_repair(_t.time() + float(os.environ.get("V18_EXIT_REPAIR_S", "300")))
+            if _v18_r3_on:
+                _v18_ablation(_t.time() + _V18P.abl_budget(v17_p3_cap(_tier_name)), "R3_ABLATION_PRE")
+        except V15Shutdown:
+            raise
+        except Exception as _v18e:
+            import traceback as _tb_v18
+            print(f"[V18-WARN] pre-pass phases {type(_v18e).__name__}: {str(_v18e)[:200]}\n{_tb_v18.format_exc()[-1500:]}", flush=True)
+        finally:
+            _v18_sheet()
+            _maybe_write_json(force=True)
     _sacred_prev_tab = [None]
     _v18_tab = [None]
     def _v18_chain_hash():
@@ -8848,6 +9333,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["prior_policy"]["stats"] = dict(_prior_stats)
         except Exception:
             pass
+    if _v18_phases_on and _v18_r3_on:
+        try:  # V18 R3 again after the main pass for the EXIT / REDUCE groups (doc 17 §5), own budget share
+            _v18_ablation(_t.time() + _V18P.abl_budget(v17_p3_cap(_tier_name)) * float(os.environ.get("V18_ABL_POST_SHARE", "0.5")), "R3_ABLATION_POST", exit_only=True)
+        except V15Shutdown:
+            raise
+        except Exception as _v18pe:
+            import traceback as _tb_v18p
+            print(f"[V18-WARN] post-pass ablation {type(_v18pe).__name__}: {str(_v18pe)[:200]}\n{_tb_v18p.format_exc()[-1500:]}", flush=True)
+        finally:
+            _v18_sheet()
+            _maybe_write_json(force=True)
     # USER 2026-10-12 FOCUS ROUND: tier budget on what moved this sym_side (runs with the fork pool still hot)
     # V17: the enlarged P3 PINPOINT round (retest -> ablation route -> essential proof -> focus yellows/grid/pairs)
     try:
@@ -11882,6 +12378,22 @@ def _main_single():
             _pb_tpl = dict(locals().get("_tpl_defaults") or {})
             _pb_list = [(_l, {**_pb_tpl, **dict(_o.get("overrides") if isinstance(_o, dict) and "overrides" in _o else _o)}) for _l, _o in _pb_list]
             _pb_list.append(("template_cat_side_defaults_today", dict(_pb_tpl)))
+            if _V18P is not None and _V18P.flag_on("V18_WINNERS"):
+                try:  # V18 doc 17 §3.5/§6 R0: "template defaults + full winners pack" of THIS cat_side is the third start candidate
+                    _v18_dg0, _v18_why0 = _V18P.load_digest(map_key_for_symside(new_symside), ROOT)
+                    _v18_pack, _v18_pref = {}, {}
+                    for _v18_k, _v18_raw in _V18P.winners_pack(_V18P.winners_take(_v18_dg0, int(os.environ.get("V18_WINNERS_K", "60")))) if _v18_dg0 else []:
+                        _v18_d, _v18_w = v18_parts_to_overrides([(_v18_k, _v18_raw)], defaults)
+                        if _v18_d is None:
+                            _v18_pref[_v18_k] = _v18_w
+                            continue
+                        for _v18_k2, _v18_v2 in _v18_d.items():
+                            _v18_pack.setdefault(_v18_k2, _v18_v2)
+                    if _v18_pack:
+                        _pb_list.append(("template_defaults_plus_winners_pack", {**_pb_tpl, **_v18_pack}))
+                    print(f"[BEST-START] {new_symside} V18 winners pack: {len(_v18_pack)} keys, {len(_v18_pref)} refused ({_v18_why0})", flush=True)
+                except Exception as _v18_bse:
+                    print(f"[BEST-START-warn] {new_symside} V18 winners pack {_v18_bse}", flush=True)
             _pb_best = (_pb_score(baseline_vec, ADAPT_FLOOR_TRADES, ADAPT_ULTRA_NEG_PCT), "incumbent")
             for _lbl, _ov in _pb_list:
                 _ov = dict(_ov.get("overrides") if isinstance(_ov, dict) and "overrides" in _ov else _ov)

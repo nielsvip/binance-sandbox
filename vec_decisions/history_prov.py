@@ -170,6 +170,20 @@ def enabled(cfg=None) -> bool:
     return False
 
 
+_CRYPTO_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
+
+
+def venue_of(symbol: str, full_set=None) -> str:
+    """'crypto' for exchange-quote symbols (per_sym_live_set.CRYPTO_SUFFIXES), else 'stocks'. The set's MODE is NOT trusted: the sqlite
+    overrides of stock rows do not carry it (CRWD_LONG), only the JSON full_config does."""
+    sym = str(symbol or "").upper()
+    if sym.endswith(_CRYPTO_SUFFIXES):
+        return "crypto"
+    if sym:
+        return "stocks"
+    return "stocks" if str((full_set or {}).get("MODE", "crypto")) == "tradier" else "crypto"
+
+
 def canon(obj) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str)
 

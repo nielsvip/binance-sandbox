@@ -4,8 +4,8 @@ ledgers (tools/v18_ledger_replay.py) and on the hermetic live truth (/history), 
 
 THREE COLUMNS, NEVER SUMMED
   board           trade rows of the replayed board ledgers (one real include_ledger eval of each latest published final set)
-  live_hermetic   /history lifecycles of the cat_side's accounts that OPENED at/after the hermetic cut (crypto 2026-10-14T13:00Z,
-                  stocks 2026-10-17T13:00Z) and closed on a vector family (crypto reasons carry |VEC_EXACT; stock reasons carry
+  live_hermetic   /history lifecycles of the cat_side's accounts whose CLOSE (the exit decision) is at/after the hermetic cut
+                  (crypto 2026-10-14T13:00Z, stocks 2026-10-17T13:00Z; `opened_pre_hermetic` flags entries made before it) on a vector family (crypto reasons carry |VEC_EXACT; stock reasons carry
                   no tag, all stock exits are vector since TRADIER_HERMETIC_ENFORCE)
   stop_execution  the same lifecycles closed by FIXED_STOP* / VEC_STALE_FLATTEN / VEC_EXIT_OWED / VEC_CONVERGE_* (reported, never
                   a repair target of the board)
@@ -104,6 +104,8 @@ def load_ledgers(cat_side, ledger_dir):
                     metas.append(d)
                 elif d.get("kind") == "trade" and meta is not None:
                     d["sym_side"] = meta["sym_side"]
+                    d["exit_family"] = C.exit_family(d.get("exit_reason"))
+                    d["entry_family"] = C.entry_family(d.get("entry_reason"))
                     d["peak"] = meta.get("max_invested_dollars")
                     rows.append(d)
     return rows, metas
@@ -183,7 +185,7 @@ def live_lifecycles(cat_side, root=ROOT, klines=None):
         if C.is_tokenized(ss):
             counters["tokenized_skipped"] += 1
             continue
-        evs = []
+        evs, seen_ev = [], set()
         with open(p, errors="replace") as fh:
             for line in fh:
                 try:
@@ -198,6 +200,11 @@ def live_lifecycles(cat_side, root=ROOT, klines=None):
                     if ep >= cut:
                         counters["broker_echo_dropped"] += 1
                     continue
+                ek = (d.get("ts"), d.get("type"), d.get("qty"), d.get("price"), d.get("reason"))
+                if ek in seen_ev:
+                    counters["duplicate_event_dropped"] += 1
+                    continue
+                seen_ev.add(ek)
                 evs.append((ep, d))
         evs.sort(key=lambda x: x[0])
         qty = cost = peak_cost = realised = 0.0
@@ -210,6 +217,9 @@ def live_lifecycles(cat_side, root=ROOT, klines=None):
             if q <= 0 or px <= 0:
                 continue
             if typ in ("OPEN", "AUGMENT", "REENTRY"):
+                if typ == "OPEN" and qty > 1e-12:
+                    counters["lifecycle_abandoned_unclosed"] += 1  # its close was a broker-sync echo (dropped); a fresh OPEN starts anew
+                    qty = 0.0
                 if qty <= 1e-12:
                     life = {"open_ts": ep, "entry_reason": d.get("reason"), "first_px": px, "prov_open": d.get("prov"), "events": 0}
                     qty = cost = peak_cost = realised = 0.0
@@ -230,9 +240,11 @@ def live_lifecycles(cat_side, root=ROOT, klines=None):
                 if qty <= max(1e-9, 1e-6 * q):
                     reason = d.get("reason")
                     fam = C.exit_family(reason)
-                    if life["open_ts"] < cut:
-                        counters["lifecycle_opened_pre_hermetic"] += 1
+                    if ep < cut:
+                        counters["close_pre_hermetic"] += 1
                     else:
+                        if life["open_ts"] < cut:
+                            counters["hermetic_close_of_pre_hermetic_open"] += 1
                         tag = "VEC_EXACT" if "VEC_EXACT" in str(reason) else "untagged"
                         if C.is_stop_execution(fam):
                             col = "stop_execution"
@@ -245,7 +257,8 @@ def live_lifecycles(cat_side, root=ROOT, klines=None):
                                           "bars_held": int(round((ep - life["open_ts"]) / BAR_S)), "entry_reason": life["entry_reason"],
                                           "exit_reason": reason, "entry_family": C.entry_family(life["entry_reason"]), "exit_family": fam,
                                           "pnl_dollars": realised, "deployed": peak_cost, "entry_price": avg_in, "exit_price": px,
-                                          "pnl_pct": realised / peak_cost * 100.0 if peak_cost else 0.0, "prov": d.get("prov"), "prov_tag": tag})
+                                          "pnl_pct": realised / peak_cost * 100.0 if peak_cost else 0.0, "prov": d.get("prov"), "prov_tag": tag,
+                                          "opened_pre_hermetic": life["open_ts"] < cut})
                     qty = cost = 0.0
                     life = None
         if rows_here:
@@ -260,6 +273,23 @@ def live_lifecycles(cat_side, root=ROOT, klines=None):
             out.extend(rows_here)
             counters["lifecycles"] += len(rows_here)
     return out, dict(counters)
+
+
+def relabel_unlabelled_exits(lrows, brows, counters):
+    """A /history close whose reason is an ENTRY label (e.g. `REDUCE ... B_KZONE |VEC_EXACT`) names no exit: it is booked as
+    family UNLABELLED_EXIT (raw label kept), never ranked as if B_KZONE were an exit. Vocabulary = this cat_side's board ledgers."""
+    exits = {r["exit_family"] for r in brows}
+    entries = {r.get("entry_family") for r in brows}
+    for r in lrows:
+        fam = C.map_to_vocab(r["exit_family"], exits)
+        if fam != r["exit_family"]:
+            r["exit_family_raw"] = r["exit_family"]
+            r["exit_family"] = fam
+            counters["live_family_mapped_to_board_vocab"] = counters.get("live_family_mapped_to_board_vocab", 0) + 1
+        if fam == r.get("entry_family") or (fam in entries and fam not in exits):
+            r.setdefault("exit_family_raw", fam)
+            r["exit_family"] = "UNLABELLED_EXIT"
+            counters["unlabelled_exit_relabelled"] = counters.get("unlabelled_exit_relabelled", 0) + 1
 
 
 # ------------------------------------------------------------------------------------------------------------ ranking
@@ -495,6 +525,7 @@ def build(a):
     for cs in cats:
         brows, metas = load_ledgers(cs, ledger_dir)
         lrows, lcount = live_lifecycles(cs, ROOT, klines)
+        relabel_unlabelled_exits(lrows, brows, lcount)
         cols = {"board": brows, "live_hermetic": [r for r in lrows if r["column"] == "live_hermetic"],
                 "stop_execution": [r for r in lrows if r["column"] == "stop_execution"]}
         other = [r for r in lrows if r["column"] == "live_other"]

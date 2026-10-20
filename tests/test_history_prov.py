@@ -336,3 +336,8 @@ def test_leaked_block_never_crosses_position_keys():
     finally:
         vp.reset(tok)
         vp._HIST_PROV.set(None)
+
+
+def test_venue_is_decided_by_symbol_not_by_set_mode():
+    assert H.venue_of("BONKUSDC", {}) == "crypto" and H.venue_of("1000PEPEUSDT", {}) == "crypto"
+    assert H.venue_of("CRWD", {"MODE": "crypto"}) == "stocks" and H.venue_of("AMD", {}) == "stocks"
