@@ -7011,6 +7011,16 @@ class Config:
     #   send_webhook) emit a diagnostic log if they fire >N seconds after the last
     #   execute_now() entry — a future-bypass tripwire. Log-only, never blocks.
     # ═══════════════════════════════════════════════════════════════════════════
+    CRYPTO_BOARD_ENTRY_BLOCK: bool = (
+        True  # USER 2026-10-20 "make sure they dont trade if they dont have new backtest results from <9 days".
+        # Crypto mirror of TRADIER_NO_BOARD_ENTRY_BLOCK. Refuses an ENTRY (never an exit/reduce/stop) when
+        # live_twins.vec_exact.latest_board_ok says the sym_side has no latest published board, its board is older
+        # than LIVE_BOARD_MAX_AGE_H (216 h = 9 days), or the live per-sym set differs from that board. Enforced at
+        # execute_now so every caller is covered. It replaces a gate that silently stopped applying to crypto when
+        # PARITY_VEC_EXACT_MODE went False: its only crypto caller, _vec_exact_entries, runs only in twin mode.
+        # Measured at the 9-day bar over 469 published sym_sides: 445 OK, 0 too old, 24 refused on LIVE_SET_NE_BOARD.
+        # ROLLBACK: False (then stale-set crypto sym_sides can open again).
+    )
     STRICT_VEC_PARITY_MODE: bool = (
         False  # USER 2026-10-20: "switches and filters ARE the config/config_tradier values for that sym_side THERE ARE
         # NOT 11 or 14 THERE ARE 3600 CUSTOM SETTINGS FOR EACH SYM_SIDE". Authorization belongs to the per_sym set, not to

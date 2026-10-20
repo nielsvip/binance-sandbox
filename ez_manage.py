@@ -33355,6 +33355,35 @@ class MultiAccountTradeManager:
         except Exception as _vp_e:
             logger.warning(f"[STRICT_VEC_PARITY] check error (fail-open): {_vp_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🧮 BOARD-BACKED ENTRY GATE ON THE NATIVE PATH (USER 2026-10-20: "make sure they dont trade if they
+        # dont have new backtest results from <9 days ... and trade exactly what the switches calculate").
+        # live_twins.vec_exact.latest_board_ok was ALREADY the gate for this — but its only crypto caller is
+        # _vec_exact_entries in ez_positions_quick.py, whose own docstring reads "PARITY_VEC_EXACT_MODE ENTRY
+        # family" and which the caller runs ONLY under that flag (ez_positions_quick.py:28578). Flipping
+        # PARITY_VEC_EXACT_MODE=False tonight (per "NOTHING can live trade an npz") therefore removed the gate
+        # from crypto entirely: native OPENs/AUGMENTs stopped being checked against the board at all. Stocks kept
+        # theirs (tradier_manage.py:48070 under TRADIER_NO_BOARD_ENTRY_BLOCK); crypto had no equivalent.
+        # This restores it at execute_now, the single order gate, so it applies to EVERY caller.
+        # MEASURED across all 469 published sym_sides at the 9-day bar: 445 OK, 0 too old, 24 refused on
+        # LIVE_SET_NE_BOARD (live set differs from its own board on 5-81 keys) — those 24 are the ones that must
+        # not open. ENTRY ONLY: exits/reduces are never gated here, so nothing already held can be trapped.
+        # Fail-OPEN on any error — a gate bug must never stop trading. ROLLBACK: CRYPTO_BOARD_ENTRY_BLOCK=False.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if bool(getattr(config, "CRYPTO_BOARD_ENTRY_BLOCK", True)):
+                _bg_is_entry = ("OPEN" in _kill_act or "AUGMENT" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act) and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act
+                if _bg_is_entry:
+                    from live_twins import vec_exact as _bg_vx
+                    try:
+                        _bg_ok, _bg_why = _bg_vx.latest_board_ok(_sym, position_side)
+                    except Exception as _bg_e:
+                        _bg_ok, _bg_why = True, f"board check error {_bg_e}"
+                    if not _bg_ok:
+                        logger.critical(f"🧮 [BOARD_ENTRY_BLOCK] {position_key}: {_bg_why} — ENTRY refused (exits unaffected). action={action} reason={(reason or '')[:70]}")
+                        return f"BLOCKED_BOARD_ENTRY_{str(_bg_why)[:40]}"
+        except Exception as _bg_outer:
+            logger.warning(f"[BOARD_ENTRY_BLOCK] check error (fail-open): {_bg_outer}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ TOP_OF_RANGE_BLOCK (USER 2026-05-22, post-ORDIUSDC mandate)
         # Block OPEN/AUGMENT when price is in the top THRESHOLD% of DC channel on
         # ALL listed TFs (default 1h,4h,D at 0.95). For LONG: blocks when at top.
