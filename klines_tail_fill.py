@@ -27,6 +27,8 @@ S1_DIR = os.environ.get("KLINES_S1_DIR", "binance-sandbox/klines_cache")
 S1_SUBDIRS = ("gateway/", "")
 _TS_RE = re.compile(rb'"timestamp"\s*:\s*"([0-9T:\-\.]+)Z?"')
 _s1_last_try = {}
+LAST_ERROR = [""]
+_GNU_RSYNC = [None]
 
 
 def ts_ms(ts):
@@ -157,7 +159,7 @@ def prefill(base, cache_dir, items, use_s1=True, log=None):
             key = behind[n][:2]
             out[key] = out.get(key, []) + rows
         if log:
-            log(f"[tail_fill] {len(behind)} files >{MAX_REST_BARS} bars behind after local stores -> S1 supplied {len(got)}/{len(warm)} warm, {len(got_cold)}/{len(cold)} cold")
+            log(f"[tail_fill] {len(behind)} files >{MAX_REST_BARS} bars behind after local stores -> S1 supplied {len(got)}/{len(warm)} warm, {len(got_cold)}/{len(cold)} cold" + (f" — S1 PULL FAILED {LAST_ERROR[0]}" if LAST_ERROR[0] else ""))
     return out
 
 
@@ -176,9 +178,18 @@ def s1_tail(wanted, timeout=90, subdirs=S1_SUBDIRS):
         lst = tmp / "files.txt"
         lst.write_text("".join(f"{sub}{n}\n" for n in names for sub in subdirs))
         ssh = "ssh -o BatchMode=yes -o ConnectTimeout=10"
+        # 2026-10-20 measured: under launchd PATH=/usr/bin, `rsync` is macOS openrsync, which rejects
+        # --ignore-missing-args — every S1 pull failed silently (rc 1). Prefer GNU rsync; else no such flag
+        # (a missing file then only makes rc 23, the other files still arrive).
+        if _GNU_RSYNC[0] is None:
+            _GNU_RSYNC[0] = next((p for p in ("/opt/homebrew/bin/rsync", "/usr/local/bin/rsync", "/usr/bin/rsync") if os.path.exists(p) and "openrsync" not in subprocess.run([p, "--version"], capture_output=True, text=True).stdout), "")
+        gnu = _GNU_RSYNC[0]
+        cmd = [gnu, "-a", "--timeout=60", "--ignore-missing-args"] if gnu else ["rsync", "-a", "--timeout=60"]
         try:
-            subprocess.run(["rsync", "-a", "--timeout=60", "--ignore-missing-args", "-e", ssh, f"--files-from={lst}", f"{S1_HOST}:{S1_DIR}/", str(tmp / "s1") + "/"], capture_output=True, timeout=timeout)
-        except (OSError, subprocess.SubprocessError):
+            r = subprocess.run(cmd + ["-e", ssh, f"--files-from={lst}", f"{S1_HOST}:{S1_DIR}/", str(tmp / "s1") + "/"], capture_output=True, timeout=timeout)
+            LAST_ERROR[0] = "" if r.returncode in (0, 23, 24) else f"rsync rc {r.returncode}: {(r.stderr or b'').decode(errors='replace').strip()[-160:]}"
+        except (OSError, subprocess.SubprocessError) as e:
+            LAST_ERROR[0] = f"rsync {type(e).__name__}: {e}"[:200]
             return {}
         for n in names:
             by_ts = {}
