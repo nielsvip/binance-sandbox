@@ -2720,6 +2720,117 @@ def save_state(st):
     tmp.replace(STATE)
 
 
+_NEVER_REBOOT = {"s1", "niels", "gateway", "localhost", "127.0.0.1", "::1"}
+
+
+def _local_nodename():
+    try:
+        return os.uname().nodename.split(".")[0].lower()
+    except Exception:
+        return ""
+
+
+def _host_second_opinion(host):
+    """Fresh (non-multiplexed) ssh echo to rule out probe flakes. True = reachable. Never raises."""
+    for target in host.get("ssh") or []:
+        if str(target) in ("127.0.0.1", "localhost", "::1"):
+            return True
+        try:
+            r = subprocess.run(["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new", str(target), "echo ok"],
+                               capture_output=True, text=True, timeout=25)
+            if r.returncode == 0 and "ok" in (r.stdout or ""):
+                host["_via"] = target
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _rebootable_host(host):
+    """USER 2026-10-20: s1/gateway/localhost and the host we run on are NEVER rebooted by the fleet."""
+    name = host.get("name", "")
+    if name in _NEVER_REBOOT or name == _local_nodename():
+        return False
+    return not any(str(t) in ("127.0.0.1", "localhost", "::1") for t in host.get("ssh") or [])
+
+
+def _server_watchdog(hosts, stats, st, args):
+    """USER 2026-10-20 (operator: monitor every server + its dispatched sym_sides, reboot/resume stuck servers):
+    per-tick reachability from the probe. A rebootable worker unreachable for V15_SCHED_DOWN_TICKS consecutive
+    ticks (default 6) gets data/daily_chain/ALERT_REBOOT_<host>.txt for the Mac deleter's hcloud reboot path —
+    the same convention (and never-s1/gateway rule) as v15_results_watchdog strike-1. Stuck SYMBOLS need nothing
+    new: the per-tick reaper already kills wedged pilots and the 30D launch env now resumes them at their done
+    cells instead of restarting. Recovery clears the counter and our stale alert; held symbols relaunch through
+    the normal launch pass. Report-only under --dry-run/--simulate or off-S1. Never raises."""
+    rep = {"unreachable": {}, "running": {}, "held": {}, "alerted": [], "recovered": [], "would_alert": [], "throttled": []}
+    try:
+        down_ticks = int(os.environ.get("V15_SCHED_DOWN_TICKS", "6") or 6)
+        cooldown_s = int(os.environ.get("V15_SCHED_REBOOT_COOLDOWN_S", "21600") or 21600)
+        enabled = os.environ.get("V15_SCHED_SERVER_REBOOT", "1") == "1"
+        acting = enabled and not (args.dry_run or getattr(args, "simulate", None)) and _local_nodename() == "niels"
+        hd = st.setdefault("host_down", {})
+        now_ts = time.time()
+        for h in hosts:
+            name = h["name"]
+            rep["running"][name] = sorted((stats.get(name) or {}).get("running") or {})
+            rep["held"][name] = sorted((st.get("held") or {}).get(name) or {})
+            e = hd.setdefault(name, {"fails": 0})
+            if stats.get(name):
+                if e.get("fails"):
+                    rep["recovered"].append(name)
+                    print(f"[server-wd] {name} reachable again after {e['fails']} failed ticks", flush=True)
+                e["fails"] = 0
+                if e.pop("alert_ours", False):
+                    try:
+                        ap = ROOT / "data" / "daily_chain" / f"ALERT_REBOOT_{name}.txt"
+                        if ap.exists():
+                            ap.unlink()
+                            print(f"[server-wd] {name} stale ALERT_REBOOT cleared on recovery", flush=True)
+                    except Exception:
+                        pass
+                continue
+            e["fails"] = int(e.get("fails", 0)) + 1
+            rep["unreachable"][name] = e["fails"]
+            if e["fails"] < down_ticks:
+                continue
+            if not _host_second_opinion(h):
+                if not _rebootable_host(h):
+                    print(f"[server-wd] {name} unreachable x{e['fails']} but never-rebootable -> no action", flush=True)
+                    continue
+                if not enabled:
+                    continue
+                if now_ts - float(e.get("last_alert", 0) or 0) < cooldown_s:
+                    if name not in rep["throttled"]:
+                        rep["throttled"].append(name)
+                    continue
+                if not acting:
+                    if name not in rep["would_alert"]:
+                        rep["would_alert"].append(name)
+                    print(f"[server-wd] {name} unreachable x{e['fails']} -> WOULD alert (dry-run/off-S1/disabled)", flush=True)
+                    continue
+                try:
+                    ad = ROOT / "data" / "daily_chain"
+                    ad.mkdir(parents=True, exist_ok=True)
+                    ap = ad / f"ALERT_REBOOT_{name}.txt"
+                    if ap.exists() and now_ts - ap.stat().st_mtime < 3600:
+                        continue
+                    ap.write_text(f"{datetime.datetime.fromtimestamp(now_ts, datetime.timezone.utc).isoformat()} {name} unreachable x{e['fails']} scheduler ticks (probe+ssh) -> hcloud reboot\n")
+                    e["last_alert"] = now_ts
+                    e["alert_ours"] = True
+                    rep["alerted"].append(name)
+                    print(f"[server-wd] {name} unreachable x{e['fails']} -> ALERT_REBOOT written (Mac deleter hcloud-reboots; held {rep['held'][name]} resume after)", flush=True)
+                except Exception as _we:
+                    print(f"[server-wd] {name} alert write failed: {_we}", flush=True)
+            else:
+                if e["fails"] == down_ticks:
+                    print(f"[server-wd] {name} probe failed x{e['fails']} but ssh ok -> probe flake, counter reset", flush=True)
+                e["fails"] = 0
+        return rep
+    except Exception as _e:
+        print(f"[server-wd] FAILED (non-fatal): {_e}", flush=True)
+        return rep
+
+
 def legacy_rank(cfg, venue):
     p = ROOT / cfg.get("order_dir", "data/reports/per_sym_recheck_20260929") / f"run_order_{venue}.txt"
     return {l.strip(): i for i, l in enumerate(open(p)) if l.strip()} if p.exists() else {}
@@ -2809,6 +2920,8 @@ def tick(args, cfg, now):
                         except Exception:
                             pass
     _ph("reap")
+    server_wd = _server_watchdog(hosts, stats, st, args)
+    _ph("server_watchdog")
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
     if cur_pdir and st.get("attempts_pdir") != cur_pdir:
         st["attempts"] = {}
@@ -3221,7 +3334,7 @@ def tick(args, cfg, now):
             print(f"[autokill] REPORT-ONLY (fresh={_ak_fresh} on={_ak_on} dry={bool(args.dry_run or sim)}): {json.dumps(_ak_report)}", flush=True)
     _ph("held_autokill")
     log = {"now": now.isoformat(), "market_open": is_open, "venue_order": vorder, "priority_syms": sorted(priority_syms()), "min_to_open": round(mto), "universe_source": how,
-           "universe": uni["counts"], "reaped": reaped, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
+           "universe": uni["counts"], "reaped": reaped, "server_watchdog": server_wd, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
            "autokilled": _ak_killed, "autokill_report": _ak_report}
 
     # ---- candidate work
