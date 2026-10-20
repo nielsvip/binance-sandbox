@@ -1,0 +1,22 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:STOCKS_SHORT": 17267,
+  "inserted": {
+   "evals:STOCKS_SHORT": 17267,
+   "sets:STOCKS_SHORT": 6
+  },
+  "offered": {
+   "evals:STOCKS_SHORT": 17267,
+   "sets:STOCKS_SHORT": 7
+  },
+  "secs": 20.0,
+  "source_rows": 17267
+ },
+ "finished": "2026-10-20T00:30:23Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/COIN_SHORT/eval_cache.db",
+ "started": "2026-10-20T00:30:03Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

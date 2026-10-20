@@ -1,0 +1,22 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:CRYPTO_LONG": 12763,
+  "inserted": {
+   "evals:CRYPTO_LONG": 12763,
+   "sets:CRYPTO_LONG": 5
+  },
+  "offered": {
+   "evals:CRYPTO_LONG": 12763,
+   "sets:CRYPTO_LONG": 6
+  },
+  "secs": 11.8,
+  "source_rows": 12763
+ },
+ "finished": "2026-10-20T00:30:35Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/DOTUSDT_LONG/eval_cache.db",
+ "started": "2026-10-20T00:30:24Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

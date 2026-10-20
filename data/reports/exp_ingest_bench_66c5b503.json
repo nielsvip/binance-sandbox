@@ -1,0 +1,22 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:CRYPTO_SHORT": 13618,
+  "inserted": {
+   "evals:CRYPTO_SHORT": 13618,
+   "sets:CRYPTO_SHORT": 3
+  },
+  "offered": {
+   "evals:CRYPTO_SHORT": 13618,
+   "sets:CRYPTO_SHORT": 4
+  },
+  "secs": 10.4,
+  "source_rows": 13618
+ },
+ "finished": "2026-10-20T00:29:24Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/MINAUSDT_SHORT/eval_cache.db",
+ "started": "2026-10-20T00:29:14Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

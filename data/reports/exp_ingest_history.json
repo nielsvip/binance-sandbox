@@ -1,0 +1,38 @@
+{
+ "apply": true,
+ "counters": {
+  "dropped_broker_echo:CRYPTO_LONG": 957,
+  "dropped_broker_echo:CRYPTO_SHORT": 830,
+  "dropped_broker_echo:STOCKS_LONG": 1132,
+  "dropped_broker_echo:STOCKS_SHORT": 995,
+  "files": 920,
+  "inserted": {
+   "live_events:CRYPTO_LONG": 7664,
+   "live_events:CRYPTO_SHORT": 6025,
+   "live_events:STOCKS_LONG": 15874,
+   "live_events:STOCKS_SHORT": 7828
+  },
+  "lines": 41305,
+  "live_events:CRYPTO_LONG:hermetic": 1366,
+  "live_events:CRYPTO_LONG:pre_hermetic": 6298,
+  "live_events:CRYPTO_SHORT:hermetic": 1594,
+  "live_events:CRYPTO_SHORT:pre_hermetic": 4431,
+  "live_events:STOCKS_LONG:hermetic": 23,
+  "live_events:STOCKS_LONG:pre_hermetic": 15851,
+  "live_events:STOCKS_SHORT:hermetic": 14,
+  "live_events:STOCKS_SHORT:pre_hermetic": 7814,
+  "offered": {
+   "live_events:CRYPTO_LONG": 7664,
+   "live_events:CRYPTO_SHORT": 6025,
+   "live_events:STOCKS_LONG": 15874,
+   "live_events:STOCKS_SHORT": 7828
+  },
+  "secs": 1.6
+ },
+ "finished": "2026-10-20T00:33:46Z",
+ "host": "MacBook-Pro.local",
+ "kind": "history",
+ "source": "",
+ "started": "2026-10-20T00:33:44Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

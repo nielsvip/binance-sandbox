@@ -1,0 +1,268 @@
+{
+ "tool": "tools/v18_experience.py audit",
+ "at": "2026-10-20T00:30:50Z",
+ "host": "MacBook-Pro.local",
+ "store": "/Users/niels/Documents/binance/data/experience",
+ "shards": {
+  "experience_CRYPTO_LONG_202610.db": {
+   "bytes": 115576832,
+   "tables": {
+    "sets": 20,
+    "evals": 34238,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 0,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "native|hermetic": 34238
+   },
+   "evals_by_delta_rule": {
+    "explicit": 34238
+   },
+   "live_by_era": {},
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_CRYPTO_SHORT_202610.db": {
+   "bytes": 64524288,
+   "tables": {
+    "sets": 8,
+    "evals": 23849,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 0,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "native|hermetic": 23849
+   },
+   "evals_by_delta_rule": {
+    "explicit": 23849
+   },
+   "live_by_era": {},
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202610.db": {
+   "bytes": 170749952,
+   "tables": {
+    "sets": 21,
+    "evals": 63226,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 0,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "native|hermetic": 63226
+   },
+   "evals_by_delta_rule": {
+    "explicit": 63226
+   },
+   "live_by_era": {},
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202610.db": {
+   "bytes": 112320512,
+   "tables": {
+    "sets": 18,
+    "evals": 44797,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 0,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "native|hermetic": 44797
+   },
+   "evals_by_delta_rule": {
+    "explicit": 44797
+   },
+   "live_by_era": {},
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  }
+ },
+ "totals_by_cat_side": {
+  "CRYPTO_LONG": {
+   "sets": 20,
+   "evals": 34238,
+   "settlements": 0,
+   "row_done": 0,
+   "boards": 0,
+   "live_events": 0,
+   "trades": 0,
+   "log_other": 0
+  },
+  "CRYPTO_SHORT": {
+   "sets": 8,
+   "evals": 23849,
+   "settlements": 0,
+   "row_done": 0,
+   "boards": 0,
+   "live_events": 0,
+   "trades": 0,
+   "log_other": 0
+  },
+  "STOCKS_LONG": {
+   "sets": 21,
+   "evals": 63226,
+   "settlements": 0,
+   "row_done": 0,
+   "boards": 0,
+   "live_events": 0,
+   "trades": 0,
+   "log_other": 0
+  },
+  "STOCKS_SHORT": {
+   "sets": 18,
+   "evals": 44797,
+   "settlements": 0,
+   "row_done": 0,
+   "boards": 0,
+   "live_events": 0,
+   "trades": 0,
+   "log_other": 0
+  }
+ },
+ "problems": [],
+ "watermarks": {
+  "n": 14,
+  "by_kind": {
+   "native": 14
+  },
+  "rows_by_kind": {
+   "native": 172088
+  }
+ },
+ "ingests": [
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T054554Z_champ/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:10Z",
+   "finished": "2026-10-20T00:28:15Z",
+   "counters": "{\"source_rows\": 5979, \"evals:CRYPTO_LONG\": 5979, \"inserted\": {\"sets:CRYPTO_LONG\": 7, \"evals:CRYPTO_LONG\": 5979}, \"offered\": {\"sets:CRYPTO_LONG\": 7, \"evals:CRYPTO_LONG\": 5979}, \"secs\": 4.7}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/ALGOUSDT_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:15Z",
+   "finished": "2026-10-20T00:28:23Z",
+   "counters": "{\"source_rows\": 10231, \"evals:CRYPTO_SHORT\": 10231, \"inserted\": {\"sets:CRYPTO_SHORT\": 5, \"evals:CRYPTO_SHORT\": 10231}, \"offered\": {\"sets:CRYPTO_SHORT\": 5, \"evals:CRYPTO_SHORT\": 10231}, \"secs\": 8.1}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/AMD_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:23Z",
+   "finished": "2026-10-20T00:28:40Z",
+   "counters": "{\"source_rows\": 18950, \"evals:STOCKS_LONG\": 18950, \"inserted\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 18950}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 18950}, \"secs\": 17.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CDE_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:40Z",
+   "finished": "2026-10-20T00:28:41Z",
+   "counters": "{\"source_rows\": 1863, \"evals:STOCKS_SHORT\": 1863, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 1863}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 1863}, \"secs\": 1.2}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:41Z",
+   "finished": "2026-10-20T00:28:52Z",
+   "counters": "{\"source_rows\": 13086, \"evals:CRYPTO_LONG\": 13086, \"inserted\": {\"sets:CRYPTO_LONG\": 3, \"evals:CRYPTO_LONG\": 7108}, \"offered\": {\"sets:CRYPTO_LONG\": 9, \"evals:CRYPTO_LONG\": 13086}, \"secs\": 10.9}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/COIN_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:52Z",
+   "finished": "2026-10-20T00:29:05Z",
+   "counters": "{\"source_rows\": 13439, \"evals:STOCKS_SHORT\": 13439, \"inserted\": {\"sets:STOCKS_SHORT\": 7, \"evals:STOCKS_SHORT\": 13439}, \"offered\": {\"sets:STOCKS_SHORT\": 7, \"evals:STOCKS_SHORT\": 13439}, \"secs\": 13.0}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/DOTUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:06Z",
+   "finished": "2026-10-20T00:29:14Z",
+   "counters": "{\"source_rows\": 8388, \"evals:CRYPTO_LONG\": 8388, \"inserted\": {\"sets:CRYPTO_LONG\": 5, \"evals:CRYPTO_LONG\": 8388}, \"offered\": {\"sets:CRYPTO_LONG\": 6, \"evals:CRYPTO_LONG\": 8388}, \"secs\": 8.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/MINAUSDT_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:14Z",
+   "finished": "2026-10-20T00:29:24Z",
+   "counters": "{\"source_rows\": 13618, \"evals:CRYPTO_SHORT\": 13618, \"inserted\": {\"sets:CRYPTO_SHORT\": 3, \"evals:CRYPTO_SHORT\": 13618}, \"offered\": {\"sets:CRYPTO_SHORT\": 4, \"evals:CRYPTO_SHORT\": 13618}, \"secs\": 10.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/QBTS_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:25Z",
+   "finished": "2026-10-20T00:29:31Z",
+   "counters": "{\"source_rows\": 7965, \"evals:STOCKS_LONG\": 7965, \"inserted\": {\"sets:STOCKS_LONG\": 5, \"evals:STOCKS_LONG\": 7965}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 7965}, \"secs\": 6.7}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/AMD_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:31Z",
+   "finished": "2026-10-20T00:29:54Z",
+   "counters": "{\"source_rows\": 25649, \"evals:STOCKS_LONG\": 25649, \"inserted\": {\"sets:STOCKS_LONG\": 5, \"evals:STOCKS_LONG\": 25649}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 25649}, \"secs\": 22.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/CDE_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:54Z",
+   "finished": "2026-10-20T00:30:03Z",
+   "counters": "{\"source_rows\": 12228, \"evals:STOCKS_SHORT\": 12228, \"inserted\": {\"sets:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 12228}, \"offered\": {\"sets:STOCKS_SHORT\": 5, \"evals:STOCKS_SHORT\": 12228}, \"secs\": 9.5}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/COIN_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:30:03Z",
+   "finished": "2026-10-20T00:30:23Z",
+   "counters": "{\"source_rows\": 17267, \"evals:STOCKS_SHORT\": 17267, \"inserted\": {\"sets:STOCKS_SHORT\": 6, \"evals:STOCKS_SHORT\": 17267}, \"offered\": {\"sets:STOCKS_SHORT\": 7, \"evals:STOCKS_SHORT\": 17267}, \"secs\": 20.0}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/DOTUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:30:24Z",
+   "finished": "2026-10-20T00:30:35Z",
+   "counters": "{\"source_rows\": 12763, \"evals:CRYPTO_LONG\": 12763, \"inserted\": {\"sets:CRYPTO_LONG\": 5, \"evals:CRYPTO_LONG\": 12763}, \"offered\": {\"sets:CRYPTO_LONG\": 6, \"evals:CRYPTO_LONG\": 12763}, \"secs\": 11.8}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/QBTS_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:30:35Z",
+   "finished": "2026-10-20T00:30:46Z",
+   "counters": "{\"source_rows\": 10662, \"evals:STOCKS_LONG\": 10662, \"inserted\": {\"sets:STOCKS_LONG\": 5, \"evals:STOCKS_LONG\": 10662}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 10662}, \"secs\": 10.2}"
+  }
+ ],
+ "proofs": [],
+ "colds": []
+}
