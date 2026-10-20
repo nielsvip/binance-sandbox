@@ -47,6 +47,28 @@ if [[ -n "${WATCHDOG_TEST_WORKDIR:-}" ]]; then WORKDIR="$WATCHDOG_TEST_WORKDIR";
 # Timeouts and limits
 TIMEOUT=0                 # DISABLED — never kill healthy processes. NO_OUTPUT_TIMEOUT handles stuck ones.
 NO_OUTPUT_TIMEOUT=300     # 5 minutes default — overridden per-script below
+# NO-OUTPUT CPU GATE (2026-10-20). A silent log only triggers a restart when the process ALSO made no CPU
+# progress. CPU_MIN_S of CPU observed over CPU_WINDOW_S means "working, leave it alone"; HARD_MULT bounds how
+# long a silent-but-busy process can be shielded, so a spinning process is still recycled eventually.
+NO_OUTPUT_CPU_MIN_S=${NO_OUTPUT_CPU_MIN_S:-2}
+NO_OUTPUT_CPU_WINDOW_S=${NO_OUTPUT_CPU_WINDOW_S:-120}
+NO_OUTPUT_HARD_MULT=${NO_OUTPUT_HARD_MULT:-6}
+
+# Cumulative CPU seconds of a pid. `ps -o time=` is the one format both macOS and Linux emit:
+# `[DD-]HH:MM:SS` or `MM:SS.ss`. Returns 0 when the pid is gone or unparseable (never a false "working").
+_cpu_secs() {
+    # A dead pid makes `ps` print NOTHING, so awk's main block never runs; without the END guard this
+    # returned the empty string and `$((cpu - base))` would abort the watchdog's monitor loop.
+    ps -o time= -p "$1" 2>/dev/null | awk '
+        { gsub(/^[ \t]+|[ \t]+$/, "", $0); if ($0 == "") { print 0; ok = 1; exit }
+          d = 0; t = $0
+          if (t ~ /-/) { split(t, a, "-"); d = a[1] + 0; t = a[2] }
+          n = split(t, p, ":")
+          s = 0
+          for (i = 1; i <= n; i++) s = s * 60 + (p[i] + 0)
+          printf "%d\n", d * 86400 + s; ok = 1; exit }
+        END { if (!ok) print 0 }' 2>/dev/null || echo 0
+}
 MIN_RESTART_INTERVAL=5  # EMERGENCY 2026-08-14 tradier_indicators must be 60s; 60s gap caused STALE_HOLD sink  # 2026-04-28 user: bumped 3→60s. Workers OOM-killing every ~60s with 3s respawn = no recovery time for memory pages. 60s lets the OS reclaim before next allocation spike.
 MAX_RAPID_RESTARTS=15      # Max restarts within rapid window
 RAPID_WINDOW=300          # 5 minutes for rapid restart detection
@@ -56,6 +78,20 @@ if [ -z "$1" ]; then
     echo "Error: No script name provided"
     echo "Usage: $0 script_name.py [args...]"
     exit 1
+fi
+
+# SELF-REEXEC SUPPORT (2026-10-20). A bash script is parsed once at startup, so a long-lived wrapper keeps the
+# `case` timeouts, the fence logic and every other value it was BORN with. Measured 2026-10-20 17:23Z: the
+# ez_market_data (pid 5216) and ez_indicators (pid 4708) wrappers had been running since Sun Oct 18 02:36 against a
+# file last modified two and a half days later, so EVERY timeout fix and the 2026-10-20 account-scope fence fix were
+# unloaded on exactly the two worst churners. Proof it mattered: ez_rankings (started Oct 19 23:04) was still
+# killing at the OLD limit — "No output for 903s (limit: 900s)" — while the file on disk had said 1800 for hours.
+# Keep the original argv so the loop can re-exec itself cleanly between runs (never mid-run).
+WD_ARGV=("$0" "$@")
+if [[ "$(uname)" == "Darwin" ]]; then
+    WD_SELF_MTIME=$(stat -f "%m" "$0" 2>/dev/null || echo 0)
+else
+    WD_SELF_MTIME=$(stat -c "%Y" "$0" 2>/dev/null || echo 0)
 fi
 
 SCRIPT="$1"
@@ -215,15 +251,16 @@ for _candidate in "$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}.log" "$WORKDIR/logs/${SC
         break
     fi
 done
-# For ez_manage, also check quick_general log (more reliable heartbeat)
-if [[ "$SCRIPT_BASE" == "ez_manage" && -n "$ACCT_SUFFIX" ]]; then
-    _quick_log="$LOGDIR/ez_positions_quick_general${ACCT_SUFFIX}.log"
-    # 2026-10-14: the quick log went silent after the single-writer change (ez_manage no longer writes positions) -> every launch was
-    # killed at once for "no output 5497s" + 600 s SIGKILL backoff. Use it only when it is fresher than the ez_manage log.
-    if [[ -f "$_quick_log" ]] && { [[ -z "$PYTHON_LOG" ]] || [[ "$_quick_log" -nt "$PYTHON_LOG" ]]; }; then
-        PYTHON_LOG="$_quick_log"
-    fi
-fi
+# 2026-10-20 REMOVED: the ez_manage quick_general heartbeat override.
+# It pointed the no-output check at ez_positions_quick_general_<acct>.log, which ez_manage DOES NOT WRITE — that
+# file belongs to ez_positions_quick.py (:368/:406), a different process, and since the single-writer change
+# ez_manage never touches positions at all. `lsof ~/logs/ez_manage_<acct>.log` shows exactly one writer: the child
+# itself. So the engine was being judged on another process's silence, and 9 of the 16 no-output kills in the
+# 24 h to 2026-10-20 17:07Z were provably wrong — in 5 of them the child had written its OWN log in the very
+# second it was SIGKILLed, e.g. "No output for 4389s" charged to a 123-second-old process (2026-10-20 13:51:48,
+# ang). Each kill then surfaced as exit 137 and was relabelled `[SIGKILL_EXTERNAL] … external kill, NOT memory
+# pressure`, so the watchdog blamed an outside agent for a child it had killed itself two seconds earlier.
+# The engine's own log is its only correct, exclusive heartbeat.
 # If no log found yet, set expected path so watchdog can detect when it appears
 if [[ -z "$PYTHON_LOG" ]]; then
     PYTHON_LOG="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}.log"
@@ -378,6 +415,8 @@ run_script() {
     local script_pid=$!
     CHILD_PID=$script_pid
     local rss_over_count=0
+    # NO-OUTPUT CPU GATE state (see the gate below). Empty baseline = the log is not currently over its limit.
+    local _sil_cpu0="" _sil_base_t=0
 
     # Monitor the script
     while kill -0 "$script_pid" 2>/dev/null; do
@@ -403,21 +442,60 @@ run_script() {
                 if [[ -f "$_try" ]]; then _check_log="$_try"; break; fi
             done
         fi
-        if [[ "$SCRIPT" != "ez_vpn.py" && "$SCRIPT" != "ez_double.py" && -f "$_check_log" && "$runtime" -gt 120 ]]; then
+        # ARMING GUARD was 120 s, which is SHORTER THAN STARTUP. Measured over 36 ez_manage launches: `Starting` ->
+        # first trading-loop line is 10-255 s, median ~140 s (outliers 797/859/887 s). Six kills fired at run_age
+        # 108/115/116/120/121/123 s — on the FIRST check after arming, every time. Silence must only ever be
+        # measured over a window the child actually owned, so arm at NO_OUTPUT_TIMEOUT instead.
+        local _arm_after="$NO_OUTPUT_TIMEOUT"
+        [ "$_arm_after" -lt 120 ] && _arm_after=120
+        if [[ "$SCRIPT" != "ez_vpn.py" && "$SCRIPT" != "ez_double.py" && -f "$_check_log" && "$runtime" -gt "$_arm_after" ]]; then
             local last_mod
             if [[ "$(uname)" == "Darwin" ]]; then
                 last_mod=$(stat -f "%m" "$_check_log" 2>/dev/null || echo 0)
             else
                 last_mod=$(stat -c "%Y" "$_check_log" 2>/dev/null || echo 0)
             fi
+            # CLAMP THE AGE TO THIS RUN. The raw mtime age is inherited from BEFORE the child was born, so the first
+            # launch after any quiet period is killed for someone else's silence: tradier_rankings 2026-10-20
+            # 13:36:07 "No output for 63302s (limit: 900s). Restarting..." — 63302 s IS the overnight market-closed
+            # gap, charged to a 2-minute-old process. A child can only be held responsible for the time it has run.
+            [ "$last_mod" -lt "$start_time" ] && last_mod="$start_time"
             local no_output_time=$((now - last_mod))
             if [ "$NO_OUTPUT_TIMEOUT" -gt 0 ] && [ "$no_output_time" -gt "$NO_OUTPUT_TIMEOUT" ]; then
-                log "⚠️ No output for ${no_output_time}s (limit: ${NO_OUTPUT_TIMEOUT}s) on ${_check_log}. Restarting..."
+                # USER 2026-10-20: "make sure the watchdogs do not intervene innecessarily ... every restart
+                # destabilizes the system". Log mtime is NOT liveness. This single check has kill-looped healthy
+                # processes at least three times already, each time "fixed" by widening or disabling the limit for
+                # one script: ez_orderbook -> 0 (killed every ~10 min), tradier_manage -> 0 (RotatingFileHandler
+                # race froze trb/tra's own log while they were alive and trading), tradier_rankings 600 -> 900
+                # (SIGKILLed 67x in one day inside a silent pandas loop, so tradier_rankings.json went unwritten
+                # for 5 WEEKS). Every one of those was the same bug: a process doing work while writing nothing.
+                # Per-script constants cannot fix that, because the safe limit depends on the workload of the hour.
+                # So ask the process instead: has it burned CPU since the log went quiet? CPU advancing proves it
+                # is NOT wedged, whatever its log says, and a wedged process (deadlock, dead socket wait, spin in
+                # uninterruptible sleep) shows no progress and is still killed exactly as before. A genuinely busy
+                # but silent process is now left alone up to a hard ceiling, so nothing can be shielded forever.
+                local _cpu_now; _cpu_now=$(_cpu_secs "$script_pid")
+                local _hard=$((NO_OUTPUT_TIMEOUT * NO_OUTPUT_HARD_MULT))
+                if [ -z "$_sil_cpu0" ]; then _sil_cpu0="$_cpu_now"; _sil_base_t="$now"; fi
+                local _gain=$((_cpu_now - _sil_cpu0))
+                local _waited=$((now - _sil_base_t))
+                if [ "$no_output_time" -ge "$_hard" ]; then
+                    log "⚠️ No output for ${no_output_time}s (limit: ${NO_OUTPUT_TIMEOUT}s, HARD ceiling ${_hard}s) on ${_check_log} — CPU gain ${_gain}s is not enough to keep shielding it. Restarting..."
+                elif [ "$_gain" -ge "$NO_OUTPUT_CPU_MIN_S" ]; then
+                    log "[NO_OUTPUT_BUT_WORKING] ${_check_log} silent ${no_output_time}s (limit ${NO_OUTPUT_TIMEOUT}s) but the process burned ${_gain}s CPU in the last ${_waited}s — NOT restarting (hard ceiling ${_hard}s)"
+                    _sil_cpu0="$_cpu_now"; _sil_base_t="$now"
+                    continue
+                elif [ "$_waited" -lt "$NO_OUTPUT_CPU_WINDOW_S" ]; then
+                    continue    # still inside the observation window — decide once we have really watched it
+                else
+                    log "⚠️ No output for ${no_output_time}s (limit: ${NO_OUTPUT_TIMEOUT}s) on ${_check_log} AND only ${_gain}s CPU in ${_waited}s — wedged. Restarting..."
+                fi
                 kill -TERM "$script_pid" 2>/dev/null || true
                 sleep 2
                 kill -KILL "$script_pid" 2>/dev/null || true
                 break
             fi
+            _sil_cpu0=""    # log is fresh again — drop the baseline
         fi
         # 2026-04-26: Preemptive RSS recycling for ez_manage workers — beat jetsam to the punch
         # with a graceful TERM so positions/locks save cleanly. Mac jetsam SIGKILLs at ~1GB+ when
@@ -580,8 +658,15 @@ main() {
     local consecutive_fail=0
     local _run_started_at=0
     while true; do
-        # Check for rapid restarts
-        check_rapid_restarts
+        # 2026-10-20 check_rapid_restarts MOVED to just before run_script (was here, at the top of the loop).
+        # Every gate below — the lease fence, FAILOVER_IDLE, PRESSURE_GATE — `continue`s the loop WITHOUT launching
+        # anything, and each of those iterations was writing a restart into $RESTART_TRACKER. A fenced wrapper
+        # re-checks every 30 s, so a host that spawned nothing at all still accumulated restarts at 10 per 300 s:
+        # measured 1557 "ALERT: restart churn" lines against 152 real launches in the 24 h to 2026-10-20 17:07Z.
+        # That made the churn marker meaningless, and worse, it is one cadence change away from reaching
+        # MAX_RAPID_RESTARTS=15, whose branch EXITS the wrapper entirely ("Too many rapid restarts ... Exiting to
+        # prevent crash loop") — i.e. a long fence could permanently retire the supervisor of a live account.
+        # Counting only actual launches is the whole fix.
 
         # ═══ LIVE FAILOVER LEASE GATE (2026-10-13 USER, Mac only, applies even with TRADIER_LOCAL_ONLY=1) ═══
         # S1 holds the live-trading lease -> the Mac never spawns a gated trader (tools/live_failover_lease_gate.sh).
@@ -643,6 +728,23 @@ main() {
             sleep 60
             _pg_wait=$((_pg_wait + 60))
         done
+        # Pick up our own fixes before launching. Between runs the child is dead, so an exec here is free: the pid
+        # is preserved, which keeps $WATCHDOG_LOCK and the [WATCHDOG_SINGLETON] guard valid, and no live process is
+        # touched. Without this, a watchdog edit only reaches a wrapper when something else happens to restart it.
+        local _now_mtime
+        if [[ "$(uname)" == "Darwin" ]]; then
+            _now_mtime=$(stat -f "%m" "${WD_ARGV[0]}" 2>/dev/null || echo 0)
+        else
+            _now_mtime=$(stat -c "%Y" "${WD_ARGV[0]}" 2>/dev/null || echo 0)
+        fi
+        if [[ "$_now_mtime" != "0" && "$_now_mtime" != "$WD_SELF_MTIME" ]] && bash -n "${WD_ARGV[0]}" 2>/dev/null; then
+            log "[WD_SELF_REEXEC] $(basename "${WD_ARGV[0]}") changed on disk (mtime $WD_SELF_MTIME -> $_now_mtime) and parses clean — re-exec'ing to load it (pid $$ preserved, no child running)"
+            exec /bin/bash "${WD_ARGV[@]}"
+        fi
+
+        # Only NOW does a launch actually happen, so only now may it be counted (see the note at the loop head).
+        check_rapid_restarts
+
         # Run the script
         _run_started_at=$(date +%s)
         run_script
@@ -737,7 +839,17 @@ main() {
                 sleep 1
                 continue
             fi
-            if [[ "$_last_exit" -ne 0 && "$_last_exit" -ne 143 ]]; then
+            # 2026-10-20 EXIT CODES THAT ARE NOT CRASHES. An externally-signalled or deliberately-chosen exit must
+            # never be charged to the crash-loop backoff (5/10/20/…/300 s), because that compounds someone else's
+            # kill into minutes of not trading. Measured in the 24 h to 2026-10-20 17:07Z:
+            #   130 — tradier_manage.py:60904 `raise KeyboardInterrupt` from its SIGTERM handler; CPython exits 130.
+            #         55 of 83 stock exits. Classified as a crash, it reached "[RESTART_BACKOFF] consecutive
+            #         failure #6 (code 130) — sleeping 160s" on trb at 14:46:06 — 160 s of RTH, for a clean stop.
+            #   42  — ez_positions_service.py:6796-6799 `os._exit(42)` after 3 consecutive process_account_update
+            #         hangs. 6 crypto exits. This is the engine deliberately recycling itself; the hang is the bug,
+            #         the exit is the designed response.
+            # 143 (SIGTERM before a handler exists) and 0 were already exempt.
+            if [[ "$_last_exit" -ne 0 && "$_last_exit" -ne 143 && "$_last_exit" -ne 130 && "$_last_exit" -ne 42 ]]; then
                 consecutive_fail=$((consecutive_fail + 1))
                 local _fbo=$((5 * (1 << (consecutive_fail - 1))))
                 if [[ "$_fbo" -gt 300 ]]; then _fbo=300; fi
