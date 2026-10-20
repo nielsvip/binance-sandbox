@@ -1,116 +1,32 @@
 {
- "generated_at": "2026-10-20 00:05 UTC",
- "total_capital_usd": 99.36,
+ "generated_at": "2026-10-20 00:10 UTC",
+ "total_capital_usd": 5.66,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.63,
-  "C": 86.74
+  "B": 0.0,
+  "C": 5.66
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 7
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:DOTUSDT_SHORT",
-  "fin:QTUMUSDT_LONG",
-  "fin:THETAUSDT_LONG",
-  "fin:MANAUSDT_LONG",
-  "fin:COTIUSDT_SHORT",
-  "fin:1INCHUSDT_LONG",
-  "fin:SANDUSDT_SHORT",
-  "fin:SNXUSDT_LONG"
+  "inf:ARUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:THETAUSDT_LONG",
-   "symbol": "THETAUSDT",
-   "account": "fin",
-   "value_usd": 24.93,
-   "gain_pct": -0.256,
+   "pk": "inf:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "inf",
+   "value_usd": 5.66,
+   "gain_pct": -0.026,
    "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 133.3,
-   "mark": 0.18702
-  },
-  {
-   "pk": "fin:DOTUSDT_SHORT",
-   "symbol": "DOTUSDT",
-   "account": "fin",
-   "value_usd": 12.63,
-   "gain_pct": -1.552,
-   "tier": "B",
-   "perf_mult": 5.18,
-   "amt": 11.0,
-   "mark": 1.14814128
-  },
-  {
-   "pk": "fin:COTIUSDT_SHORT",
-   "symbol": "COTIUSDT",
-   "account": "fin",
-   "value_usd": 12.52,
-   "gain_pct": -0.184,
-   "tier": "C",
-   "perf_mult": 0.35,
-   "amt": 1157.0,
-   "mark": 0.0108179
-  },
-  {
-   "pk": "fin:1INCHUSDT_LONG",
-   "symbol": "1INCHUSDT",
-   "account": "fin",
-   "value_usd": 12.46,
-   "gain_pct": 0.087,
-   "tier": "C",
-   "perf_mult": 0.31,
-   "amt": 135.0,
-   "mark": 0.09226
-  },
-  {
-   "pk": "fin:QTUMUSDT_LONG",
-   "symbol": "QTUMUSDT",
-   "account": "fin",
-   "value_usd": 12.45,
-   "gain_pct": -0.26,
-   "tier": "C",
-   "perf_mult": 0.38,
-   "amt": 14.5,
-   "mark": 0.85856021
-  },
-  {
-   "pk": "fin:SANDUSDT_SHORT",
-   "symbol": "SANDUSDT",
-   "account": "fin",
-   "value_usd": 12.43,
-   "gain_pct": 0.625,
-   "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 211.0,
-   "mark": 0.05892
-  },
-  {
-   "pk": "fin:SNXUSDT_LONG",
-   "symbol": "SNXUSDT",
-   "account": "fin",
-   "value_usd": 6.03,
-   "gain_pct": 0.804,
-   "tier": "C",
-   "perf_mult": 0.15,
-   "amt": 27.9,
-   "mark": 0.21602333
-  },
-  {
-   "pk": "fin:MANAUSDT_LONG",
-   "symbol": "MANAUSDT",
-   "account": "fin",
-   "value_usd": 5.92,
-   "gain_pct": -0.228,
-   "tier": "C",
-   "perf_mult": 0.5,
-   "amt": 72.0,
-   "mark": 0.08217252
+   "perf_mult": 0.58,
+   "amt": 1.5,
+   "mark": 3.774
   }
  ]
 }

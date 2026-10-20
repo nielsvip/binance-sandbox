@@ -335,8 +335,195 @@ def join(records, apply, min_free_gb, join_tfs=JOIN_TFS):
     return {"planned": len(plan), "tally": tally, "backup_dir": str(bk)}
 
 
+PROVE_TFS = set(PERIOD) | {"W", "M"}
+REL_TOL = 1e-6
+
+
+def store_index_all():
+    """rel -> path for every store file incl. W/M (store_files() keeps the gap-measured TFs only)."""
+    out = {}
+    for p in KC.rglob("*.json"):
+        parts = set(p.relative_to(KC).parts[:-1])
+        if parts & {".guard_snap", "gateway", "macbook", "backups", "consolidated_klines"} or ".tmp" in p.name:
+            continue
+        stem = p.name.split(".")[0]
+        if "_" in stem and stem.rsplit("_", 1)[-1] in PROVE_TFS:
+            out[str(p.relative_to(KC))] = p
+    return out
+
+
+def _vals(r):
+    try:
+        return tuple(float(r[k]) for k in SCHEMA)
+    except Exception:
+        return None
+
+
+def _rowmap(rows):
+    out = {}
+    for r in rows:
+        if isinstance(r, dict) and r.get("timestamp"):
+            out[str(r["timestamp"])[:19].replace(" ", "T")] = _vals(r)
+    return out
+
+
+def _cmp(mine, theirs):
+    """same | store_dominates | copy_dominates | conflict. Float32 round-trips (rel <= 1e-6) are the same bar; a
+    partial (forming) sample is dominated by the finished one (volume/high only grow, low only falls, open fixed)."""
+    if mine is None or theirs is None:
+        return "same" if mine == theirs else "conflict"
+    if all(abs(a - b) <= REL_TOL * max(abs(a), abs(b), 1e-12) for a, b in zip(mine, theirs)):
+        return "same"
+    o1, h1, l1, c1, v1 = mine
+    o2, h2, l2, c2, v2 = theirs
+    if abs(o1 - o2) > REL_TOL * max(abs(o1), abs(o2), 1e-12):
+        return "conflict"
+    if v1 >= v2 and h1 >= h2 and l1 <= l2:
+        return "store_dominates"
+    if v2 >= v1 and h2 >= h1 and l2 <= l1:
+        return "copy_dominates"
+    return "conflict"
+
+
+def copy_units(p):
+    """(virtual rel, rows) per kline series a copy file carries; klines_master's {SYM}.klines.json.gz = {tf: rows}."""
+    name = p.name
+    if name.endswith(".klines.json.gz"):
+        d = json.loads(gzip.decompress(p.read_bytes()))
+        sym = name[: -len(".klines.json.gz")]
+        return [(f"{sym}_{tf}.json", rows) for tf, rows in d.items() if isinstance(rows, list)] if isinstance(d, dict) else []
+    stem = name.split(".")[0]
+    if not (name.endswith((".json", ".json.gz")) and "_" in stem and stem.rsplit("_", 1)[-1] in PROVE_TFS):
+        return None
+    return [(name[:-3] if name.endswith(".gz") else name, load_rows(p))]
+
+
+def prove_root(name, root, store_idx, conflicts_fh=None, examples=20):
+    """Every file of a copy, against the store: bars it holds, bars the store LACKS, value disagreements.
+    Reclaimable only when lacks == conflicts == copy_dominates == orphans == unreadable == non_kline == 0."""
+    rec = {"name": name, "root": str(root), "files": 0, "kline_files": 0, "non_kline_files": 0, "unreadable": 0, "bars": 0, "lacks": 0,
+           "lacks_files": 0, "lacks_out_of_session_stock15m": 0, "lacks_non_join_tf": 0, "orphan_files": 0, "orphan_bars": 0,
+           "overlap": 0, "same": 0, "store_dominates": 0, "copy_dominates": 0, "conflicts": 0, "conflict_files": 0, "bytes": 0}
+    if not root.is_dir():
+        rec["verdict"] = "absent"
+        return rec
+    non_kline, lack_files = [], []
+    cache = {}
+    for p in sorted(root.rglob("*")):
+        if not p.is_file():
+            continue
+        rec["files"] += 1
+        rec["bytes"] += p.stat().st_size
+        rel_dir = p.parent.relative_to(root)
+        try:
+            units = copy_units(p)
+        except Exception:
+            rec["unreadable"] += 1
+            non_kline.append(str(p.relative_to(root)))
+            continue
+        if units is None:
+            rec["non_kline_files"] += 1
+            non_kline.append(str(p.relative_to(root)))
+            continue
+        rec["kline_files"] += 1
+        if p.stat().st_size > 2 and not any(rows for _, rows in units):
+            rec["unreadable"] += 1
+        for vrel, rows in units:
+            mine = _rowmap(rows)
+            rec["bars"] += len(mine)
+            rel = str(rel_dir / vrel) if str(rel_dir) != "." else vrel
+            tgt = pick(store_idx, rel)
+            if tgt is None:
+                rec["orphan_files"] += 1
+                rec["orphan_bars"] += len(mine)
+                lack_files.append({"file": str(p.relative_to(root)), "series": vrel, "orphan": True, "bars": len(mine)})
+                continue
+            if tgt not in cache:
+                if len(cache) > 8:
+                    cache.clear()
+                try:
+                    cache[tgt] = _rowmap(load_rows(tgt))
+                except Exception:
+                    cache[tgt] = {}
+            have = cache[tgt]
+            lacks = [k for k in mine if k not in have]
+            if lacks:
+                tf = vrel.split(".")[0].rsplit("_", 1)[-1]
+                rec["lacks"] += len(lacks)
+                rec["lacks_files"] += 1
+                if tf not in JOIN_TFS:
+                    rec["lacks_non_join_tf"] += len(lacks)
+                elif tf == "15m" and not is_crypto(vrel):
+                    import klines_multi_restore as MR
+
+                    rec["lacks_out_of_session_stock15m"] += sum(1 for k in lacks if not MR._in_session(k))
+                lack_files.append({"file": str(p.relative_to(root)), "series": vrel, "target": str(tgt.relative_to(KC)), "lacks": len(lacks), "first": min(lacks), "last": max(lacks)})
+            bad = []
+            for k, v in mine.items():
+                if k not in have:
+                    continue
+                rec["overlap"] += 1
+                c = _cmp(have[k], v)
+                rec[{"same": "same", "store_dominates": "store_dominates", "copy_dominates": "copy_dominates"}.get(c, "conflicts")] += 1
+                if c in ("copy_dominates", "conflict"):
+                    bad.append((k, c, have[k], v))
+            if bad:
+                rec["conflict_files"] += 1
+                if conflicts_fh:
+                    conflicts_fh.write(json.dumps({"root": name, "file": str(p.relative_to(root)), "target": str(tgt.relative_to(KC)), "n": len(bad),
+                                                   "copy_dominates": sum(1 for b in bad if b[1] == "copy_dominates"),
+                                                   "examples": [{"ts": k, "kind": c, "store": s, "copy": m} for k, c, s, m in bad[:examples]]}) + "\n")
+    blockers = {k: rec[k] for k in ("lacks", "orphan_files", "unreadable", "non_kline_files", "conflicts", "copy_dominates") if rec[k]}
+    rec["gb"] = round(rec["bytes"] / 1e9, 3)
+    rec["verdict"] = "PROVEN — holds nothing the store lacks" if not blockers else "HOLD"
+    rec["blockers"] = blockers
+    rec["non_kline_examples"] = non_kline[:20]
+    rec["lack_examples"] = sorted(lack_files, key=lambda x: -x.get("lacks", x.get("bars", 0)))[:30]
+    return rec
+
+
+def prove(conflicts_path=None):
+    idx = store_index_all()
+    out = []
+    fh = open(conflicts_path, "a") if conflicts_path else None
+    try:
+        for name, root, keep in MIRRORS:
+            t0 = time.time()
+            r = prove_root(name, root, idx, fh)
+            r["keep"] = keep
+            r["secs"] = round(time.time() - t0, 1)
+            out.append(r)
+            print(json.dumps({k: v for k, v in r.items() if k not in ("lack_examples", "non_kline_examples")}), flush=True)
+    finally:
+        if fh:
+            fh.close()
+    return out
+
+
 def dedupe(apply):
-    """A copy may only go once the store holds every timestamp it has — that is the whole point of the join."""
+    """A copy may only go once the store holds every timestamp it has — that is the whole point of the join.
+    E9 2026-10-20: the verdict is prove_root()'s — a file the index cannot read (klines_master's per-symbol dict, an
+    npz, a W/M series, a script) used to count as 'nothing unique' and would have been deleted unseen."""
+    idx = store_index_all()
+    out = []
+    for name, root, keep in MIRRORS:
+        if keep or not root.is_dir():
+            out.append({"root": str(root), "name": name, "verdict": "keep" if keep else "absent"})
+            continue
+        rec = prove_root(name, root, idx)
+        rec = {k: v for k, v in rec.items() if k not in ("lack_examples", "non_kline_examples")}
+        if rec["blockers"]:
+            rec["verdict"] = "HOLD — join it first"
+        elif not apply:
+            rec["verdict"] = f"would reclaim {rec['gb']:.2f} GB"
+        else:
+            shutil.rmtree(root, ignore_errors=True)
+            rec["verdict"] = f"reclaimed {rec['gb']:.2f} GB" if not root.exists() else "rmtree incomplete"
+        out.append(rec)
+    return out
+
+
+def _dedupe_legacy(apply):
     store = {str(p.relative_to(KC)): p for p in store_files()}
     cache = {}
     out = []
@@ -385,6 +572,8 @@ def main():
     ap.add_argument("--from-report", default=None, help="join from an existing report instead of re-auditing (the audit is a ~30 min full-store parse)")
     ap.add_argument("--store", default=None, help="measure against this store instead of the repo's klines_cache (for the external-drive backups)")
     ap.add_argument("--mirror", action="append", default=[], help="NAME=PATH extra copy to compare, repeatable; replaces the built-in S1 list")
+    ap.add_argument("--prove", action="store_true", help="per-root proof: files, bars, bars the store lacks, value conflicts (read-only)")
+    ap.add_argument("--conflicts", default=None, help="--prove: append per-file value disagreements (copy-dominates + conflicts) to this jsonl")
     a = ap.parse_args()
     if a.store:
         globals()["KC"] = Path(os.path.expanduser(a.store))
@@ -411,10 +600,18 @@ def main():
         print(json.dumps({"audit": tally}), flush=True)
         if a.join:
             print(json.dumps({"join": join(recs, a.apply, a.min_free_gb, jtfs)}), flush=True)
+    if a.prove:
+        roots = prove(a.conflicts)
+        if a.report:
+            rp = Path(a.report)
+            doc = json.loads(rp.read_text()) if rp.exists() and (a.audit or a.join) else {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+            doc["roots"] = roots
+            doc["prove_ts"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            rp.write_text(json.dumps(doc))
     if a.dedupe:
         for r in dedupe(a.apply):
             print(json.dumps(r), flush=True)
-    if not (a.audit or a.join or a.dedupe):
+    if not (a.audit or a.join or a.dedupe or a.prove):
         ap.print_help()
         return 2
     return 0
