@@ -73,6 +73,64 @@ def test_absent_from_every_live_per_sym_set():
     assert not offenders, f"{len(offenders)} live rows still carry {KEY}: {offenders[:8]}"
 
 
+REENTRY_DEAD = {"REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES"}
+REENTRY_LIVE_SIBLINGS = {"REENTRY_TIER2_MIN_MINUTES", "REENTRY_TIER2_PRICE_PCT",
+                         "REENTRY_TIER2_SIZE_MULT", "REENTRY_TIER2_MIN_MINUTES_TRADIER",
+                         "REENTRY_TIER2_PRICE_PCT_TRADIER", "REENTRY_TIER2_SIZE_MULT_TRADIER"}
+REENTRY_SEED_FILES = ["data/cat_side_defaults_4.json", "data/per_sym_settings.json",
+                      "data/cat_side_promotions.json", "data/per_sym_full_sets.json"]
+
+
+def _reentry_hits(obj):
+    found = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in REENTRY_DEAD:
+                    found.append(k)
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(obj)
+    return found
+
+
+@pytest.mark.parametrize("rel", REENTRY_SEED_FILES)
+def test_reentry_dead_keys_absent_from_seeding_files(rel):
+    import json
+    doc = json.loads((ROOT / rel).read_text())
+    hits = _reentry_hits(doc)
+    assert not hits, f"{rel} still seeds dead keys: {sorted(set(hits))}"
+
+
+def test_reentry_dead_keys_absent_from_live_store():
+    import json
+    import sqlite3
+    db = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
+    if not db.exists():
+        pytest.skip("no live store on this host")
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30.0)
+    try:
+        rows = con.execute("SELECT sym_side, overrides_json, full_config_json, defaults_snapshot_json "
+                           "FROM per_sym_active").fetchall()
+    finally:
+        con.close()
+    offenders = [r[0] for r in rows
+                 if any(c and any(k in c for k in REENTRY_DEAD) for c in r[1:])]
+    assert not offenders, f"{len(offenders)} live rows still carry dead reentry keys: {offenders[:8]}"
+
+
+def test_reentry_live_siblings_survive_the_purge():
+    """The purge must take exactly the dead MAX keys, never the live tier-2 family."""
+    from config_tradier import TradierConfig
+    cfg = TradierConfig()
+    for k in REENTRY_LIVE_SIBLINGS:
+        assert hasattr(cfg, k), f"live sibling purged by accident: {k}"
+
+
 def test_max_order_value_is_still_a_live_switch():
     """The sibling the user kept: deleting MAX_AUGMENTS must not take MAX_ORDER_VALUE with it."""
     from config import Config

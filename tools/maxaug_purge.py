@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 TAG = "maxaug_purge_20261020"
 PREFIX = "MAX_AUGMENTS"
+EXACT = {"REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES"}
 LEDGER = ROOT / "data" / "reports" / "maxaug_purge_20261020_ledger.json"
 TEXT_FILES = ["data/engine_only_knobs.txt", "data/vec_aware_knobs.txt"]
 EXTRA_JSON = ["data/SWITCH_BIBLE.json", "data/switch_dependencies.json", "data/knob_registry.json", "data/v15_wired_switches.json", "data/opportune_filter_map.json"]
@@ -31,7 +32,7 @@ DATA_FILES = ["data/per_sym_settings.json", "data/cat_side_defaults_4.json", "da
 
 
 def bad(k):
-    return isinstance(k, str) and k.startswith(PREFIX)
+    return isinstance(k, str) and (k.startswith(PREFIX) or k in EXACT)
 
 
 def scrub(o, lists=False):
@@ -129,7 +130,7 @@ def purge_store(apply, ts, ledger):
                 if not raw:
                     continue
                 txt = pss._maybe_decompress(raw)
-                if PREFIX not in (txt or ""):
+                if PREFIX not in (txt or "") and not any(k in (txt or "") for k in EXACT):
                     continue
                 doc = json.loads(txt)
                 n = scrub(doc)
@@ -173,10 +174,49 @@ def purge_store(apply, ts, ledger):
             ledger["kv"][key]["keys_after"] = count_keys(again)
 
 
+SEED_TOP_KEYS = ("cumulative_overrides", "hustler_overrides")
+
+
+def purge_progress(dirs, apply, ts, ledger):
+    """Targeted scrub of the top-level seeding dicts in pilot progress JSONs.
+
+    Only cumulative_overrides / hustler_overrides are touched (the sets a new
+    board ingests as prior-best). Per-row done cells are evidence and stay.
+    """
+    n_files, n_keys = 0, 0
+    for d in dirs:
+        for path in sorted(Path(d).expanduser().glob("*_v14_progress.json")):
+            try:
+                doc = json.loads(path.read_text())
+            except Exception:
+                continue
+            removed = 0
+            for sk in SEED_TOP_KEYS:
+                sub = doc.get(sk)
+                if isinstance(sub, dict):
+                    for k in [k for k in sub if bad(k)]:
+                        del sub[k]
+                        removed += 1
+            if removed:
+                n_files += 1
+                n_keys += removed
+                if apply:
+                    shutil.copy2(path, ROOT / "backups" / f"before_maxaug_purge_{ts}_{path.name}")
+                    text = path.read_text()
+                    ind = 2 if text.startswith("{\n  ") else 1
+                    write_json_atomic(path, doc, ind, False)
+                print(f"[progress] {path} seed keys removed: {removed}", flush=True)
+    ledger["progress_dirs"] = dirs
+    ledger["progress_files"] = n_files
+    ledger["progress_keys"] = n_keys if apply else "dry-run"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--json-only", nargs="*", default=None)
+    ap.add_argument("--progress", nargs="*", default=None,
+                    help="scrub top-level seeding dicts in progress dirs (default: none)")
     a = ap.parse_args()
     ts = time.strftime("%Y%m%d%H%M")
     (ROOT / "backups").mkdir(exist_ok=True)
@@ -184,6 +224,12 @@ def main():
     if a.json_only is not None:
         for f in a.json_only:
             purge_json_file(f, a.apply, ts, ledger)
+        return 0
+    if a.progress is not None:
+        purge_progress(a.progress, a.apply, ts, ledger)
+        if a.apply:
+            LEDGER.parent.mkdir(parents=True, exist_ok=True)
+            (LEDGER.parent / f"maxaug_purge_progress_{ts}.json").write_text(json.dumps(ledger, indent=1))
         return 0
     purge_store(a.apply, ts, ledger)
     for f in DATA_FILES + EXTRA_JSON + TEXT_FILES:
