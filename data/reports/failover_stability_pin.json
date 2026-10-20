@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-20T14:50:02Z",
+ "generated_utc": "2026-10-20T14:54:08Z",
  "apply": true,
  "lease": {
   "holder": "s1",
-  "pin": null,
+  "pin": "s1",
   "pin_source": "s1:lease.json",
   "gen": 76,
   "venues": "crypto,stocks",
@@ -15,13 +15,12 @@
  "stable_needed_s": 900.0,
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 5s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 11.38/core > 4.0 (warning only)",
-  "and s1-pub snapshot 0/199 stale (0.0%); s1-pub 483 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running \u2014 entries are being refused \u2014 pin NOT moved"
+  "manager restart churn (newest marker 1s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 10.23/core > 4.0 (warning only)"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 603,
+  "readiness_age_s": 849,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 0,
@@ -29,15 +28,14 @@
    "median_age_min": 25.0,
    "sample": []
   },
-  "churn": "newest marker 5s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 11.38,
+  "churn": "newest marker 1s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 10.23,
   "warnings": [
-   "load 11.38/core > 4.0 (warning only)"
-  ],
-  "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 483 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running \u2014 entries are being refused"
+   "load 10.23/core > 4.0 (warning only)"
+  ]
  },
- "action": "NEITHER_HOST_CAPABLE",
+ "action": null,
  "action_result": null,
- "last_action_at": 1792506483.2533581,
+ "last_action_at": 1792507921.916924,
  "ready_since_epoch": null
 }
