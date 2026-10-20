@@ -1,0 +1,336 @@
+{
+ "generated_utc": "2026-10-20",
+ "universe": "scheduler _tradeable_universe() crypto symbols on S1 (75), data: v15_fleet_scheduler._tradeable_universe",
+ "age_definition": "hours since the layer's own LAST BAR OPEN timestamp (NPZ timestamps[-1]; klines last row timestamp), not mtime. A fully current 15m bar read just after a close is ~0.25-0.5 h old by this definition.",
+ "preflight_crypto_limit_h": 1.5,
+ "before": {
+  "mac": {
+   "npz_tail": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.88,
+    "p90_h": 1.38,
+    "max_h": 31.13,
+    "over_1p5h": 6,
+    "over_6h": 2,
+    "over_24h": 2
+   },
+   "klines_canonical": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.38,
+    "p90_h": 0.63,
+    "max_h": 0.63,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache": {
+    "n": 73,
+    "missing": 2,
+    "median_h": 0.38,
+    "p90_h": 0.38,
+    "max_h": 0.38,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "_measured_at_utc": "06:51-06:53"
+  },
+  "s1": {
+   "npz_tail": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.61,
+    "p90_h": 0.86,
+    "max_h": 30.86,
+    "over_1p5h": 2,
+    "over_6h": 1,
+    "over_24h": 1
+   },
+   "klines_canonical": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.61,
+    "p90_h": 0.61,
+    "max_h": 0.61,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache_backtest": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.36,
+    "p90_h": 0.36,
+    "max_h": 1.11,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.36,
+    "p90_h": 0.36,
+    "max_h": 1.11,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache_macbook": {
+    "n": 73,
+    "missing": 2,
+    "median_h": 8.11,
+    "p90_h": 8.11,
+    "max_h": 8.11,
+    "over_1p5h": 58,
+    "over_6h": 58,
+    "over_24h": 0
+   },
+   "_measured_at_utc": "06:51-06:53"
+  },
+  "s2": {
+   "npz_tail": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.88,
+    "p90_h": 0.88,
+    "max_h": 31.13,
+    "over_1p5h": 3,
+    "over_6h": 2,
+    "over_24h": 2
+   },
+   "klines_canonical": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 1.13,
+    "p90_h": 1.13,
+    "max_h": 1.13,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache_backtest": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 145.38,
+    "p90_h": 145.38,
+    "max_h": 145.38,
+    "over_1p5h": 75,
+    "over_6h": 75,
+    "over_24h": 75
+   },
+   "klines_cache": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 145.38,
+    "p90_h": 145.38,
+    "max_h": 145.38,
+    "over_1p5h": 75,
+    "over_6h": 75,
+    "over_24h": 75
+   },
+   "_measured_at_utc": "06:51-06:53"
+  }
+ },
+ "after": {
+  "mac": {
+   "npz_tail": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 1.33,
+    "p90_h": 1.33,
+    "max_h": 31.83,
+    "over_1p5h": 3,
+    "over_6h": 1,
+    "over_24h": 1
+   },
+   "klines_canonical": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.33,
+    "p90_h": 0.58,
+    "max_h": 0.58,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache": {
+    "n": 73,
+    "missing": 2,
+    "median_h": 0.33,
+    "p90_h": 0.33,
+    "max_h": 0.33,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "_measured_at_utc": "07:49"
+  },
+  "s1": {
+   "npz_tail": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.82,
+    "p90_h": 0.82,
+    "max_h": 31.82,
+    "over_1p5h": 1,
+    "over_6h": 1,
+    "over_24h": 1
+   },
+   "klines_canonical": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.57,
+    "p90_h": 0.57,
+    "max_h": 0.57,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache_backtest": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.32,
+    "p90_h": 0.57,
+    "max_h": 0.57,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "_measured_at_utc": "07:49"
+  },
+  "s2": {
+   "npz_tail": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.82,
+    "p90_h": 0.82,
+    "max_h": 31.82,
+    "over_1p5h": 1,
+    "over_6h": 1,
+    "over_24h": 1
+   },
+   "klines_canonical": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 0.57,
+    "p90_h": 0.57,
+    "max_h": 0.57,
+    "over_1p5h": 0,
+    "over_6h": 0,
+    "over_24h": 0
+   },
+   "klines_cache_backtest": {
+    "n": 75,
+    "missing": 0,
+    "median_h": 146.32,
+    "p90_h": 146.32,
+    "max_h": 146.32,
+    "over_1p5h": 75,
+    "over_6h": 75,
+    "over_24h": 75
+   },
+   "_measured_at_utc": "07:49"
+  }
+ },
+ "s1_npz_over_1p5h": {
+  "before": {
+   "CHRUSDT": 2.86,
+   "KMNOUSDT": 30.86
+  },
+  "after": {
+   "KMNOUSDT": 31.82
+  }
+ },
+ "scheduler_windows": {
+  "stall_2026-10-19T17:28_to_2026-10-20T02:06": {
+   "ticks": 207,
+   "tail_stale_min": 5,
+   "tail_stale_max": 79,
+   "ok_min": 0,
+   "ok_max": 187,
+   "crypto_launches": 0,
+   "crypto_launch_tags": []
+  },
+  "recovered_2026-10-20T02:06_to_06:52": {
+   "ticks": 137,
+   "tail_stale_min": 4,
+   "tail_stale_max": 12,
+   "ok_min": 177,
+   "ok_max": 185,
+   "crypto_launches": 14,
+   "crypto_launch_tags": [
+    "s1:BBUSDT:S30D",
+    "s1:PUMPUSDT:L30D+S30D",
+    "s2:ENJUSDT:L30D+S30D",
+    "s1:DUSKUSDT:L30D+S30D",
+    "s1:DOGEUSDC:L30D+S30D",
+    "s2:ENJUSDT:S30D",
+    "s2:CHRUSDT:S30D",
+    "s1:DUSKUSDT:S30D",
+    "s1:IOTAUSDT:L30D+S30D",
+    "s2:DOTUSDT:S30D",
+    "s2:SKYUSDT:L30D+S30D",
+    "s1:API3USDT:L30D",
+    "s2:KMNOUSDT:L30D+S30D",
+    "s2:KMNOUSDT:S30D"
+   ]
+  },
+  "before_06:30_to_06:52": {
+   "ticks": 11,
+   "tail_stale_min": 7,
+   "tail_stale_max": 8,
+   "ok_min": 181,
+   "ok_max": 182,
+   "crypto_launches": 2,
+   "crypto_launch_tags": [
+    "s2:KMNOUSDT:L30D+S30D",
+    "s2:KMNOUSDT:S30D"
+   ]
+  },
+  "after_07:18_to_07:48": {
+   "ticks": 16,
+   "tail_stale_min": 3,
+   "tail_stale_max": 4,
+   "ok_min": 185,
+   "ok_max": 186,
+   "crypto_launches": 2,
+   "crypto_launch_tags": [
+    "s2:SNXUSDT:L30D+S30D",
+    "s2:SNXUSDT:S30D"
+   ]
+  }
+ },
+ "mac_daemon_cycles_took_s": {
+  "2026-10-19T20:47:08Z": 121.0,
+  "2026-10-19T21:02:48Z": 160.7,
+  "2026-10-19T21:17:05Z": 117.7,
+  "2026-10-19T21:41:41Z": 693.7,
+  "2026-10-19T21:56:51Z": 703.5,
+  "2026-10-19T22:15:18Z": 910.7,
+  "2026-10-19T22:48:37Z": 599.8,
+  "2026-10-19T23:16:05Z": 957.6,
+  "2026-10-19T23:43:37Z": 809.9,
+  "2026-10-19T23:58:15Z": 787.7,
+  "2026-10-20T00:17:10Z": 1022.2,
+  "2026-10-20T00:50:52Z": 1244.0,
+  "2026-10-20T01:36:51Z": 2203.7,
+  "2026-10-20T02:01:03Z": 955.5,
+  "2026-10-20T02:26:40Z": 691.9,
+  "2026-10-20T02:41:54Z": 706.0,
+  "2026-10-20T03:00:13Z": 905.2,
+  "2026-10-20T03:56:14Z": 2465.6,
+  "2026-10-20T04:16:03Z": 955.5,
+  "2026-10-20T04:41:31Z": 683.0,
+  "2026-10-20T04:57:00Z": 712.5,
+  "2026-10-20T05:17:51Z": 1063.7,
+  "2026-10-20T05:45:15Z": 907.2,
+  "2026-10-20T06:18:03Z": 1074.3,
+  "2026-10-20T06:43:31Z": 802.8,
+  "2026-10-20T06:56:50Z": 701.8,
+  "2026-10-20T07:16:21Z": 973.8,
+  "2026-10-20T07:43:17Z": 789.5
+ }
+}

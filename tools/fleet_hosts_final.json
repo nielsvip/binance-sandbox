@@ -28,8 +28,8 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 5000,
-   "max_pairs": 12,
+   "mem_reserve_mb": 14000,
+   "max_pairs": 6,
    "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",

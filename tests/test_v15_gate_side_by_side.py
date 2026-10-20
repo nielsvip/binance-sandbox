@@ -119,3 +119,44 @@ def test_truth_numbers_replace_self_reported_and_missing_truth_blocks():
         ca[s].pop("truth")
     d = gate.decide(ch, ca, SIDES)
     assert not d["PASS"] and any("TRUTH_MISSING" in r for r in d["reasons"])
+
+
+def test_champion_arm_missing_sides_is_harness_fail_and_names_champion(tmp_path):
+    ch = {s: _res(10, 1, 1000, 100) for s in SIDES}
+    ca = {s: _res(10, 1, 1000, 100) for s in SIDES}
+    ch["A_LONG"] = {"err": "no progress json", "wall_s": 5.0}
+    ch["C_LONG"] = {}
+    d = gate.decide(ch, ca, SIDES)
+    assert not d["PASS"] and d["harness_fail"]
+    assert d["missing_champ"] == ["A_LONG", "C_LONG"] and d["missing_cand"] == []
+    assert any("CHAMPION arm lost boards" in r and "HARNESS_FAIL" in r for r in d["reasons"])
+    assert not any("candidate lost" in r.lower() for r in d["reasons"])
+    cd = tmp_path / "cand"
+    cd.mkdir()
+    gate.DECISIONS = tmp_path / "decisions.jsonl"
+    gate.CHAMP = tmp_path / "champion"
+    gate.CHAMP.mkdir()
+    (gate.CHAMP / "meta.json").write_text("{}")
+    gate.write_status = lambda champ: None
+    meta = {"id": "X1", "note": "n", "files": {}, "flags": {}}
+    gate.finalize(cd, meta, d)
+    assert meta["state"] == "HARNESS_FAIL"
+    assert '"HARNESS_FAIL"' in gate.DECISIONS.read_text()
+
+
+def test_candidate_arm_missing_sides_still_fails_and_names_candidate():
+    ch = {s: _res(10, 1, 1000, 100) for s in SIDES}
+    ca = dict(ch)
+    ca["B_SHORT"] = {}
+    d = gate.decide(ch, ca, SIDES)
+    assert not d["PASS"] and not d["harness_fail"]
+    assert d["missing_cand"] == ["B_SHORT"] and d["missing_champ"] == []
+    assert any("CANDIDATE arm lost boards" in r for r in d["reasons"])
+
+
+def test_candidate_fails_only_on_sides_both_arms_finished():
+    ch = {s: _res(10, 1, 1000, 100) for s in SIDES}
+    ca = {s: _res(5, 1, 1000, 100) for s in SIDES}
+    ch["D_SHORT"] = {}
+    d = gate.decide(ch, ca, SIDES)
+    assert d["harness_fail"] and d["scored"] == ["A_LONG", "B_SHORT", "C_LONG"]

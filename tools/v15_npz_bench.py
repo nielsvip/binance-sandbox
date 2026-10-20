@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -313,6 +314,114 @@ def _write_json_atomic(path, obj):
     os.replace(tmp, p)
 
 
+def _pgrp_alive(pgid):
+    """True while any process of the group still exists (zombies of a reaped leader do not count)."""
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def lock_holders(lock_path):
+    """Pids holding an open fd on lock_path (Linux /proc scan). A flock lives as long as ANY fd of the open file
+    description exists, so a pilot's forked workers keep a sacrificed pilot's DEDUP lock alive after the parent died."""
+    out = []
+    target = os.path.realpath(str(lock_path))
+    try:
+        pids = [d for d in os.listdir("/proc") if d.isdigit()]
+    except OSError:
+        return out
+    for d in pids:
+        fd_dir = f"/proc/{d}/fd"
+        try:
+            for fd in os.listdir(fd_dir):
+                try:
+                    if os.path.realpath(os.readlink(f"{fd_dir}/{fd}")) == target:
+                        out.append(int(d))
+                        break
+                except OSError:
+                    continue
+        except OSError:
+            continue
+    return out
+
+
+def lock_is_free(lock_path):
+    import fcntl
+    try:
+        fh = open(lock_path, "a")
+    except OSError:
+        return True
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (IOError, OSError):
+        return False
+    finally:
+        fh.close()
+
+
+def reap_pilot(pr, grace_s=60.0, kill_wait_s=30.0):
+    """2026-10-20: terminate()+wait() only signalled the pilot's leader; its workers (and the DEDUP flock fd they inherit)
+    outlived it and the requeued board exited after 5 s with "another v15_pilot already owns". Signal the whole process
+    group (the pilot is started in its own session), poll until the group is gone, SIGKILL after the grace period."""
+    pgid = pr.pid
+    t0 = time.time()
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError):
+        pass
+    killed = False
+    while True:
+        try:
+            pr.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            pass
+        if not _pgrp_alive(pgid):
+            break
+        waited = time.time() - t0
+        if not killed and waited >= grace_s:
+            try:
+                os.killpg(pgid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+            killed = True
+        if waited >= grace_s + kill_wait_s:
+            break
+        time.sleep(0.3)
+    return round(time.time() - t0, 1), killed
+
+
+def clear_side_lock(root, ss, timeout_s=60.0):
+    """Verify the sacrificed side's DEDUP lock(s) are released before it is requeued: lock files under root/data/locks
+    matching the side, flock-probed; any process still holding one is SIGKILLed. Stale lock files are removed.
+    Returns (cleared: bool, waited_s)."""
+    t0 = time.time()
+    locks = sorted((Path(root) / "data" / "locks").glob(f"v15_pilot_{ss}_*.lock"))
+    while True:
+        busy = [lk for lk in locks if lk.exists() and not lock_is_free(lk)]
+        if not busy:
+            break
+        for lk in busy:
+            for pid in lock_holders(lk):
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    pass
+        if time.time() - t0 >= timeout_s:
+            return False, round(time.time() - t0, 1)
+        time.sleep(0.5)
+    for lk in locks:
+        try:
+            lk.unlink()
+        except OSError:
+            pass
+    return True, round(time.time() - t0, 1)
+
+
 def cmd_run(args):
     snap = BENCH / f"snap_{args.snap}"
     man = json.loads((snap / "manifest.json").read_text())
@@ -371,7 +480,7 @@ def cmd_run(args):
                 env["V15_START_OVERRIDES"] = str(st)
             cmd = [str(root / ".venv" / "bin" / "python"), "-u", "v15_pilot.py", "--sym-side", ss, "--template", str(root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template_for(ss)), "--seq-mode", "worst2best", "--window-days", str(fit_days), "--vector-only", "--workers", str(args.workers)]
             log = open(sd / "pilot.log", "w")
-            pr = subprocess.Popen(["nice", "-n", str(args.nice)] + cmd, cwd=str(root), env=env, stdout=log, stderr=subprocess.STDOUT)
+            pr = subprocess.Popen(["nice", "-n", str(args.nice)] + cmd, cwd=str(root), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
             running[ss] = (pr, time.time(), log)
             print(f"[bench] start {ss} pid {pr.pid}", flush=True)
         time.sleep(5)
@@ -380,20 +489,21 @@ def cmd_run(args):
             # reaper TERM'd GALAUSDT_LONG / SKLUSDT_LONG): the bench kills its own newest pilot and requeues the side
             ss_v = max(running, key=lambda k: running[k][1])
             pr_v, _t0v, log_v = running.pop(ss_v)
-            pr_v.terminate()
-            try:
-                pr_v.wait(timeout=60)
-            except Exception:
-                pr_v.kill()
+            _mem_v = mem_avail_mb()
+            _tree_s, _hard = reap_pilot(pr_v, grace_s=args.reap_grace_s)
             log_v.close()
+            _cleared, _lock_s = clear_side_lock(root, ss_v)
+            if not _cleared:
+                print(f"[bench] ERROR lock of {ss_v} still held after {_lock_s}s - requeue would exit on DEDUP", flush=True)
             queue.insert(0, ss_v)
-            print(f"[bench] MEM {mem_avail_mb():.0f} MB < {args.sacrifice_mb} -> sacrificed own {ss_v}, requeued", flush=True)
+            print(f"[bench] MEM {_mem_v:.0f} MB < {args.sacrifice_mb} -> sacrificed own {ss_v}, requeued", flush=True)
+            print(f"[bench] requeue {ss_v} after {_tree_s + _lock_s:.1f}s ({'SIGKILL' if _hard else 'SIGTERM'} tree gone in {_tree_s}s), lock {'cleared' if _cleared else 'NOT cleared'}", flush=True)
             time.sleep(120)
             continue
         for ss, (pr, t0, log) in list(running.items()):
             rc = pr.poll()
             if rc is None and time.time() - t0 > args.timeout_s:
-                pr.terminate()
+                reap_pilot(pr, grace_s=args.reap_grace_s)
                 rc = "TIMEOUT"
             if rc is None:
                 continue
@@ -509,6 +619,7 @@ def main(argv=None):
     r.add_argument("--timeout-s", type=float, default=3 * 3600)
     r.add_argument("--force", action="store_true")
     r.add_argument("--min-free-mb", type=float, default=10000.0, help="start a side only above this MemAvailable")
+    r.add_argument("--reap-grace-s", type=float, default=60.0, help="seconds a sacrificed/timed-out pilot tree gets after SIGTERM before SIGKILL")
     r.add_argument("--sacrifice-mb", type=float, default=3000.0, help="below this the bench kills its own newest pilot")
     r.add_argument("--window-days", type=int, default=30, help="requested fit window; a holdout shortens it to window-holdout so the snapshot still covers it")
     r.add_argument("--min-disk-mb", type=float, default=20000.0, help="refuse to start below this free disk (ENOSPC truncates results.json/meta.json)")

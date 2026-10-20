@@ -287,7 +287,7 @@ def _cov(m, k):
 
 def decide(ch, ca, sides=None):
     sides = sides or gate_sides() or sorted(set(ch) | set(ca))
-    rows, missing, drops, uninformative, scored = [], [], [], [], []
+    rows, missing, missing_champ, missing_cand, drops, uninformative, scored = [], [], [], [], [], [], []
     sf_ch = sf_ca = so_ch = so_ca = 0.0
     cov = {"cells_champ": 0, "cells_cand": 0, "naked_champ": 0, "naked_cand": 0, "rows_champ": 0, "rows_cand": 0}
     n_truth = 0
@@ -315,6 +315,12 @@ def decide(ch, ca, sides=None):
             continue
         if None in (fa, fb, oa, ob):
             missing.append(s)
+            # 2026-10-20: attribute the loss to the arm that lost it. The champion arm missing a board is the HARNESS
+            # (OOM sacrifice / lingering pilot lock killed the reference run) and says nothing about the candidate.
+            if None in (fa, oa):
+                missing_champ.append(s)
+            if None in (fb, ob):
+                missing_cand.append(s)
             continue
         scored.append(s)
         sf_ch += fa
@@ -339,8 +345,10 @@ def decide(ch, ca, sides=None):
     reasons = []
     if not scored:
         reasons.append("no side scored on both versions")
-    if missing:
-        reasons.append(f"candidate lost boards: {missing}")
+    if missing_champ:
+        reasons.append(f"HARNESS_FAIL: CHAMPION arm lost boards {missing_champ} (harness kill / lingering lock, not a candidate result) - no verdict on the candidate; requeue")
+    if missing_cand:
+        reasons.append(f"CANDIDATE arm lost boards: {missing_cand}")
     if drops:
         reasons.append(f"side fit drop > {TOL_SIDE}: {drops}")
     if scored and n_truth < len(scored) and REQUIRE_TRUTH:
@@ -359,7 +367,7 @@ def decide(ch, ca, sides=None):
     ok = not reasons
     wc = sum(r["wall_champ"] or 0 for r in rows)
     wn = sum(r["wall_cand"] or 0 for r in rows)
-    return {"PASS": ok, "reasons": reasons, "corner_cut": corner_cut, "truth_sides": n_truth, "scorer": "chart-truth (tools/v15_bench_truth.py, common scorer, window-edge mark counted)" if n_truth else "self-reported final_gain/oos_final", "coverage": {**cov, "cell_ratio": None if cell_ratio is None else round(cell_ratio, 4), "naked_ratio": None if naked_ratio is None else round(naked_ratio, 4), "min": COVERAGE_MIN},
+    return {"PASS": ok, "harness_fail": bool(missing_champ), "missing_champ": missing_champ, "missing_cand": missing_cand, "reasons": reasons, "corner_cut": corner_cut, "truth_sides": n_truth, "scorer": "chart-truth (tools/v15_bench_truth.py, common scorer, window-edge mark counted)" if n_truth else "self-reported final_gain/oos_final", "coverage": {**cov, "cell_ratio": None if cell_ratio is None else round(cell_ratio, 4), "naked_ratio": None if naked_ratio is None else round(naked_ratio, 4), "min": COVERAGE_MIN},
             "scored": scored, "missing": missing, "uninformative": uninformative, "side_drops": drops,
             "noise_floor_per_side": NOISE_FLOOR_PER_SIDE, "noise_floor_sum": _sum_floor,
             "sum_delta": round(sf_ca - sf_ch, 3), "sum_delta_in_noise": bool(abs(sf_ca - sf_ch) <= _sum_floor),
@@ -506,9 +514,11 @@ def finalize(cd, meta, d):
     meta["decision"] = d
     meta["finished"] = now()
     meta["state"] = "PASS" if d["PASS"] else "FAIL"
-    if not d.get("scored"):
-        # No side produced a result on both versions = the harness failed; never booked as a verdict on the candidate.
+    if not d.get("scored") or d.get("harness_fail"):
+        # No side produced a result on both versions, or the CHAMPION arm lost sides = the harness failed; never booked
+        # as a verdict on the candidate. A candidate FAILs only on measured results of sides both arms finished.
         meta["state"] = "HARNESS_FAIL"
+        meta["decision"]["PASS"] = False
     if d["PASS"]:
         meta["deploy"] = deploy(cd, meta)
         if all(x["ok"] for x in meta["deploy"]):
