@@ -259,6 +259,7 @@ def main() -> int:
             shutil.copy2(persym_path, bk)
             raw = json.loads(persym_path.read_text())
             rows = raw.get("sym_sides", raw)
+            n_rows_before = len(rows)
             n = 0
             # COERCE FIRST, DEFAULT ONLY AS A LAST RESORT.
             # Resetting every violation to the template default would have been destructive: 606 of the 619 are
@@ -274,14 +275,14 @@ def main() -> int:
                 node = rows.get(f["sym_side"])
                 cfg = node.get("full_set") or node.get("full_config") or node
                 d = dom[f["key"]]
-                raw = cfg.get(f["key"])
+                cur = cfg.get(f["key"])
                 newv, how = None, None
-                if d["kind"] == "BOOL" and is_num(raw) and float(str(raw)) in (0.0, 1.0):
-                    newv, how = bool(float(str(raw))), "coerced"
-                elif d["kind"] == "BOOL" and str(raw).strip().lower() in ("true", "false"):
-                    newv, how = str(raw).strip().lower() == "true", "coerced"
-                elif d["kind"] == "NUM" and is_num(raw):
-                    newv, how = float(str(raw)), "coerced"
+                if d["kind"] == "BOOL" and is_num(cur) and float(str(cur)) in (0.0, 1.0):
+                    newv, how = bool(float(str(cur))), "coerced"
+                elif d["kind"] == "BOOL" and str(cur).strip().lower() in ("true", "false"):
+                    newv, how = str(cur).strip().lower() == "true", "coerced"
+                elif d["kind"] == "NUM" and is_num(cur):
+                    newv, how = float(str(cur)), "coerced"
                 if newv is None:
                     lit = d["default"]
                     newv = {"true": True, "false": False}.get(str(lit).strip().lower(), lit)
@@ -292,7 +293,7 @@ def main() -> int:
                             pass
                     how = "template_default"
                 cfg[f["key"]] = newv
-                changes.append({"sym_side": f["sym_side"], "key": f["key"], "was": raw, "now": newv, "how": how})
+                changes.append({"sym_side": f["sym_side"], "key": f["key"], "was": cur, "now": newv, "how": how})
                 n += 1
                 if how == "coerced":
                     coerced += 1
@@ -303,8 +304,23 @@ def main() -> int:
             print(f"  adopted TEMPLATE default (value was uninterpretable): {defaulted}")
             for c in [x for x in changes if x["how"] == "template_default"]:
                 print(f"     {c['sym_side']:18s} {c['key']:38s} {c['was']!r} -> {c['now']!r}")
+            # WRITE GUARD. 2026-10-20: an earlier version of this block used `raw` as the loop variable for the
+            # CURRENT VALUE, shadowing the whole-file object of the same name. json.dumps then serialised the last
+            # scalar it had seen and `os.replace` put it over the real file: data/per_sym_full_sets.json went from
+            # 96,534,678 bytes / 767 sym_sides to 3 bytes containing `0.0`. Restored from the backup this block
+            # had just taken. The loop variable is now `cur`, and no write may proceed unless the object really is
+            # the whole mapping, with no row count lost.
+            if not isinstance(raw, dict) or len(raw) < n_rows_before:
+                print(f"REFUSING TO WRITE: object is {type(raw).__name__} with "
+                      f"{len(raw) if hasattr(raw, '__len__') else 'n/a'} rows, expected a dict of >= {n_rows_before}. "
+                      f"Nothing written; {bk} still holds the original.")
+                return 2
             tmp = persym_path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(raw, indent=1, default=str))
+            payload = json.dumps(raw, indent=1, default=str)
+            if len(payload) < 1_000_000:
+                print(f"REFUSING TO WRITE: serialised payload is only {len(payload)} bytes. Nothing written.")
+                return 2
+            tmp.write_text(payload)
             os.replace(tmp, persym_path)
             print(f"\nFIXED {n} per-sym values to their TEMPLATE default; backup {bk}")
     print(f"\nwrote {a.json}")

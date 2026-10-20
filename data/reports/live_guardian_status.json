@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T19:54:49Z",
+ "ts": "2026-10-20T19:59:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 270,
-   "open_positions": 11,
-   "unrealised_usd": 60.83,
+   "fills_6h": 273,
+   "open_positions": 12,
+   "unrealised_usd": -1.53,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 164,
    "open_positions": 18,
-   "unrealised_usd": 61.01,
+   "unrealised_usd": 15.3,
    "pos_mismatch": 0
   },
   "fin": {
@@ -137,78 +137,78 @@
    "pids": [
     "65053"
    ],
-   "starts_30m": 3,
-   "log_age_s": 2.0
+   "starts_30m": 2,
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 2,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "64303"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 132.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
-   "starts_30m": 3,
-   "log_age_s": 0.0
+   "starts_30m": 2,
+   "log_age_s": 7.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 2,
-   "log_age_s": 8.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [
     "66599"
    ],
-   "starts_30m": 2,
-   "log_age_s": -0.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
     "33811"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 17.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T19:54:49Z",
+   "ts": "2026-10-20T19:59:56Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $29.12 since 2026-10-20T19:50:47Z (now $+60.83)"
+   "evidence": "unrealised PnL of the same open positions fell $97.02 since 2026-10-20T19:58:06Z (now $-1.53)"
   },
   {
-   "ts": "2026-10-20T19:54:51Z",
+   "ts": "2026-10-20T19:59:56Z",
    "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "fin",
-   "evidence": "3 new process ids in 30 min (['79919', '62164', '65053'])"
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trc",
+   "evidence": "unrealised PnL of the same open positions fell $49.48 since 2026-10-20T19:53:21Z (now $+15.30)"
   },
   {
-   "ts": "2026-10-20T19:54:51Z",
+   "ts": "2026-10-20T19:59:57Z",
    "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "inf",
-   "evidence": "3 new process ids in 30 min (['79171', '61681', '64834'])"
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 132s"
   }
  ],
  "alert_counts": {
-  "ACCOUNT_EQUITY_DROP": 1,
-  "RESTART_LOOP": 2
+  "ACCOUNT_EQUITY_DROP": 2,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -242,5 +242,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.88
+ "sweep_s": 1.71
 }
