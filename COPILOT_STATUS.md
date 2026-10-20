@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-20 17:03:11 UTC
+# Copilot Status — 2026-10-20 17:07:06 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,7 +6,7 @@
 
 ## Recent Anomalies (last 1h)
 
-_None_
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:05:54
 
 ## Missed Trades (trader comparison)
 
@@ -18,15 +18,14 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 8 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CRWD** SHORT (tradier) peak +9.5%, now +0.1%
-- HELD: **ACN** LONG (tradier) peak +6.1%, now +0.1%
-- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.8%
-- HELD: **U** SHORT (tradier) peak +4.8%, now +0.7%
+- HELD: **CRWD** SHORT (tradier) peak +9.5%, now +-0.0%
+- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.4%
+- HELD: **U** SHORT (tradier) peak +4.8%, now +0.0%
 - HELD: **BHVN** SHORT (tradier) peak +4.8%, now +0.1%
 - HELD: **PR** LONG (tradier) peak +4.7%, now +0.6%
-- HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.1%
+- HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.0%
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +-0.2%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.5%
 
