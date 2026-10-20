@@ -1898,8 +1898,11 @@ def build_report(st, floor=DEFAULT_FLOOR):
         per[cs] = {"counters": sb["c"], "nodes": len(V.nodes), "node_kinds": dict(kinds), "edges": len(V.k), "edge_kinds": dict(ekinds),
                    "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "prequential": sb["capture"], "forward": sb["forward"]}
         try:
-            per[cs]["exit_families"] = losing_exit_families(sb, 3)
-            per[cs]["explain_exit_families"] = {f["family"]: explain_family(sb, f["family"], top=20) for f in per[cs]["exit_families"]}
+            board, live = losing_exit_families(sb, 3)
+            per[cs]["exit_families_board"] = board
+            per[cs]["exit_families_live"] = live
+            fams = [f["family"] for f in board] + [f["family"] for f in live if f["family"] not in {g["family"] for g in board}]
+            per[cs]["explain_exit_families"] = {f: explain_family(sb, f, top=20) for f in fams}
             sm = most_suffocated(sb, 5)
             per[cs]["most_suffocated"] = sm
             per[cs]["explain_suffocated"] = {r["switch"]: explain_switch(sb, r["switch"], top=20) for r in sm}
@@ -1908,8 +1911,9 @@ def build_report(st, floor=DEFAULT_FLOOR):
     return {"meta_short": {k: meta[k] for k in ("schema", "at", "cut", "events_read", "dedupe", "sort_secs", "train_secs")}, "meta": meta, "per_cat_side": per}
 
 
-def losing_exit_families(sb, k=3):
-    """Exit families by loss: hermetic live first (truth), board ledgers beside it — never summed."""
+def losing_exit_families(sb, k=3, min_live=3):
+    """Exit families by loss, two rankings never summed: board = replayed ledger trades (sum of losers, pp of peak), live =
+    hermetic /history lifecycles with >= min_live closes. Each row carries both columns."""
     live = {f[2:]: v for f, v in sb["live_fam"].items() if f.startswith("X:")}
     led = sb["ledger"]
     rows = []
@@ -1918,8 +1922,9 @@ def losing_exit_families(sb, k=3):
         ld = led.get(fam, [0, 0, 0.0, 0.0])
         rows.append({"family": fam, "live_n": lv[0], "live_pos": lv[1], "live_pnl_pp": round(lv[2], 3), "live_loss_pp": round(lv[3], 3),
                      "ledger_trades": ld[0], "ledger_pos": ld[1], "ledger_pnl_pp": round(ld[2], 3), "ledger_loss_pp": round(ld[3], 3)})
-    rows.sort(key=lambda r: (r["live_loss_pp"] if r["live_n"] else 0.0, r["ledger_loss_pp"]))
-    return rows[:k]
+    board = sorted((r for r in rows if r["ledger_trades"]), key=lambda r: r["ledger_loss_pp"])[:k]
+    live = sorted((r for r in rows if r["live_n"] >= min_live), key=lambda r: r["live_loss_pp"])[:k]
+    return board, live
 
 
 def _family_switches(sb, fam):
