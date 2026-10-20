@@ -2632,6 +2632,11 @@ class Scorer2(Scorer):
                 self.fz.fctx.add_seen_values(sw, vals)
         self.unknown_feature_hits = collections.Counter()
         self.unknown_context_features = collections.Counter()
+        try:
+            self.platt_all = json.loads((Path(ds_dir) / f"report_v2_{cs}.json").read_text()).get("platt_on_test") or {}
+        except Exception:
+            self.platt_all = {}
+        self.secondary = self.net1 is not None
 
     def evidence(self):
         super().evidence()
@@ -2670,9 +2675,10 @@ class Scorer2(Scorer):
         Xb = sp.csr_matrix((np.ones(len(cols), np.float32), (np.zeros(len(cols), np.int64), np.asarray(cols, np.int64))), shape=(1, self.net2.VX))
         return self.net2.xpool(Xb)
 
-    def raw(self, s, f, c, xp):
-        """pooled S/F/C (+ context pool xp) -> raw head outputs of the network the production scorer uses."""
-        if self.net1 is not None:
+    def raw(self, s, f, c, xp, v2=False):
+        """pooled S/F/C (+ context pool xp) -> raw head outputs of the network the production scorer uses (v2=True: the v2 net,
+        whose pools must come from self.net2)."""
+        if self.net1 is not None and not v2:
             return self.net1.heads(s[0], f[0], c[0], s[1] + f[1] + c[1], s[2] + f[2] + c[2])
         B = len(s[0])
         xs = np.broadcast_to(xp[0], (B, xp[0].shape[1]))
@@ -2686,6 +2692,13 @@ class Scorer2(Scorer):
         else:
             p = hybrid_p(p_net, n, pos, prior)
         ab = self.platt.get(kind)
+        return apply_platt(p, ab) if ab else p
+
+    def v2ctx_p(self, out2, n, pos, prior, kind):
+        """SECONDARY (only when the production scorer is v1-based): hybrid_v2 = counts shrunk toward the CONTEXT-CONDITIONAL v2 net,
+        Platt of hybrid_v2 on the held-out boards. A PREDICTION shown for transparency; never the production ranking of the cells."""
+        p = hybrid_p(sigmoid(out2[:, 0]), n, pos, prior)
+        ab = (self.platt_all.get("hybrid_v2") or {}).get(kind)
         return apply_platt(p, ab) if ab else p
 
     def heads_out(self, out, n, pos, prior, kind):
@@ -2727,6 +2740,9 @@ class Scorer2(Scorer):
         s_all, f_all, f0 = net.pool(*ST), net.pool(*FTb), net.pool(*FT0)
         CR, CF = self.ctx_table("R"), self.ctx_table("F")
         cR, cF = net.pool(*CR), net.pool(*CF)
+        if self.secondary:
+            n2 = self.net2
+            s2_, f2_, f02, cR2, cF2 = n2.pool(*ST), n2.pool(*FTb), n2.pool(*FT0), n2.pool(*CR), n2.pool(*CF)
         cell_r, cell_y = [], []
         for tab, blk in tidx["tabs"].items():
             ys = [yel_ix[y] for y in blk["yellows"]]
@@ -2761,12 +2777,15 @@ class Scorer2(Scorer):
         for ci, (name, feats) in enumerate(ctx_list):
             xp = self.xpool(feats)
             gl = range(G) if (ci == 0 and regimes_for_first) else range(1)
-            rows = {h: np.zeros((nR, len(gl)), np.float32) for h in ("p_pos", "p_net", "e_delta", "d_tim", "d_dd", "d_wr", "fwd")}
-            cells = {h: np.zeros((N, len(gl)), np.float16) for h in (("p_pos", "p_net", "e_delta", "d_tim", "d_dd", "d_wr") if ci == 0 else ("p_pos", "e_delta"))}
+            rows = {h: np.zeros((nR, len(gl)), np.float32) for h in ("p_pos", "p_net", "e_delta", "d_tim", "d_dd", "d_wr", "fwd") + (("p_v2ctx",) if self.secondary else ())}
+            cells = {h: np.zeros((N, len(gl)), np.float16) for h in (("p_pos", "p_net", "e_delta", "d_tim", "d_dd", "d_wr") if ci == 0 else ("p_pos", "e_delta")) + (("p_v2ctx",) if self.secondary else ())}
+            rep1 = lambda P_, g_, n_: (np.repeat(P_[0][g_:g_ + 1], n_, 0), np.repeat(P_[1][g_:g_ + 1], n_, 0), np.repeat(P_[2][g_:g_ + 1], n_, 0))
             for gi, g in enumerate(gl):
-                c1 = (np.repeat(cR[0][g:g + 1], nR, 0), np.repeat(cR[1][g:g + 1], nR, 0), np.repeat(cR[2][g:g + 1], nR, 0))
-                f1 = (np.repeat(f0[0], nR, 0), np.repeat(f0[1], nR, 0), np.repeat(f0[2], nR, 0))
+                c1 = rep1(cR, g, nR)
+                f1 = rep1(f0, 0, nR)
                 o = self.heads_out(self.raw(s_all, f1, c1, xp), row_n, row_pos, np.full(nR, self.p0["R"]), "R")
+                if self.secondary:
+                    o["p_v2ctx"] = self.v2ctx_p(self.raw(s2_, rep1(f02, 0, nR), rep1(cR2, g, nR), xp, v2=True), row_n, row_pos, np.full(nR, self.p0["R"]), "R")
                 for h in rows:
                     rows[h][:, gi] = o[h]
                 for a in range(0, N, CH):
@@ -2776,6 +2795,10 @@ class Scorer2(Scorer):
                     f = (f_all[0][y], f_all[1][y], f_all[2][y])
                     c = (np.broadcast_to(cF[0][g], (B, cF[0].shape[1])), np.broadcast_to(cF[1][g], (B, cF[1].shape[1])), np.full(B, cF[2][g]))
                     o = self.heads_out(self.raw(s, f, c, xp), n_meas[a:a + CH], pos_meas[a:a + CH], cell_prior[a:a + CH], "F")
+                    if self.secondary:
+                        c2 = (np.broadcast_to(cF2[0][g], (B, cF2[0].shape[1])), np.broadcast_to(cF2[1][g], (B, cF2[1].shape[1])), np.full(B, cF2[2][g]))
+                        o["p_v2ctx"] = self.v2ctx_p(self.raw((s2_[0][r], s2_[1][r], s2_[2][r]), (f2_[0][y], f2_[1][y], f2_[2][y]), c2, xp, v2=True),
+                                                    n_meas[a:a + CH], pos_meas[a:a + CH], cell_prior[a:a + CH], "F")
                     for h in cells:
                         cells[h][a:a + B, gi] = o[h]
             res["ctx"].append({"name": name, "feats": feats, "rows": rows, "cells": cells})
@@ -2806,7 +2829,13 @@ class Scorer2(Scorer):
                 pr.append(self.p0["R"])
             n_.append(a)
             p_.append(b)
-        return self.heads_out(self.raw(s, f, c, self.xpool(feats)), np.array(n_), np.array(p_), np.array(pr), kind)
+        xp = self.xpool(feats)
+        n_, p_, pr = np.array(n_), np.array(p_), np.array(pr)
+        out = self.heads_out(self.raw(s, f, c, xp), n_, p_, pr, kind)
+        if self.secondary:
+            n2 = self.net2
+            out["p_v2ctx"] = self.v2ctx_p(self.raw(n2.pool(*ST), n2.pool(*FTb), n2.pool(*Cg), xp, v2=True), n_, p_, pr, kind)
+        return out
 
 
 def _tab_for(fctx, sw, flt=None):
@@ -2850,14 +2879,14 @@ def pair_with_context(sc, chains, dflt_feats, positives, out_path, log=_log):
                 continue
             hd = sc.predict_items([(f"{items[ii]['tab']}|{items[ii]['key']}", items[ii]["filter"]) for ii in sel], feats, kind)
             for j, ii in enumerate(sel):
-                out.append([ii, round(float(hd["p_pos"][j]), 5), round(float(hd["e_delta"][j]), 4)])
+                out.append([ii, round(float(hd["p_pos"][j]), 5), round(float(hd["e_delta"][j]), 4)] + ([round(float(hd["p_v2ctx"][j]), 5)] if "p_v2ctx" in hd else []))
             n_pred += len(sel)
         out.sort(key=lambda r: -r[1])
         per_sym[sym] = {"context": ctx_descr(src.split(" ")[0] + ":" + sym, feats), "ranked": out}
     doc = {"meta": {"cat_side": sc.cs, "built_at": utc_now(), "production_scorer": sc.prod, "label": "PREDICTION: p_pos_pred / e_delta_pred of each MUST item under the "
                     "sym_side's own live chain; the must-set stays mandatory (p = 1), the prediction only ORDERS it", "positives_built_at": (positives.get("_meta") or {}).get("built_at"),
                     "n_items": len(items), "n_predictions": n_pred, "context_sources": dict(ctx_src), "secs": round(time.time() - t0, 1),
-                    "ranked_row": ["item_index", "p_pos_pred", "e_delta_pred"]},
+                    "ranked_row": ["item_index", "p_pos_pred", "e_delta_pred"] + (["p_v2ctx_pred (hybrid_v2 under this live chain; secondary, not the production ranking)"] if getattr(sc, "secondary", False) else [])},
            "items": [{k_: v for k_, v in it.items() if k_ != "untried_on"} for it in items], "per_sym": per_sym}
     tmp = Path(str(out_path) + ".tmp")
     with gzip.open(tmp, "wt") as fh:
@@ -2903,6 +2932,7 @@ def cmd_score2(a):
                             chain_cell_p_pos=np.stack([c_["cells"]["p_pos"][:, 0] for c_ in res["ctx"][1:]], 1) if len(res["ctx"]) > 1 else np.zeros((len(res["cell_row"]), 0), np.float16),
                             chain_cell_e_delta=np.stack([c_["cells"]["e_delta"][:, 0] for c_ in res["ctx"][1:]], 1) if len(res["ctx"]) > 1 else np.zeros((len(res["cell_row"]), 0), np.float16),
                             chain_row_p_pos=np.stack([c_["rows"]["p_pos"][:, 0] for c_ in res["ctx"][1:]], 1).astype(np.float16) if len(res["ctx"]) > 1 else np.zeros((len(res["row_keys"]), 0), np.float16),
+                            **({"chain_cell_p_v2ctx": np.stack([c_["cells"]["p_v2ctx"][:, 0] for c_ in res["ctx"][1:]], 1)} if sc.secondary and len(res["ctx"]) > 1 else {}),
                             meta=np.frombuffer(json.dumps(meta).encode(), np.uint8))
         nm = res["n_meas"]
         row_of = lambda i: int(res["cell_row"][i])
@@ -2917,6 +2947,8 @@ def cmd_score2(a):
             it = {"switch": sw, "cand": cnd, "filter": fk, "opt": fo, "tab": tab, "cat_side": cs, "regime": "ALL", "label": "PREDICTION", "scorer": sc.prod,
                   "context": ctx_descr(ctx_name, feats), "p_pos_pred": _r(C_["p_pos"][i, 0]), "e_delta_pred": _r(C_["e_delta"][i, 0], 4),
                   "status": PRED_LABEL if nm[i] == 0 else "HAS_TEMPLATE_ROW", "n_measured_pair": int(nm[i]), "pos_measured_pair": int(res["pos_meas"][i])}
+            if "p_v2ctx" in C_:
+                it["p_v2ctx_pred"] = _r(C_["p_v2ctx"][i, 0])
             if not full:
                 return it
             G0 = C_["p_pos"].shape[1]
@@ -2943,11 +2975,15 @@ def cmd_score2(a):
         top = diversity_cap(order, row_of, k=PROPOSALS_K * 2)
         props = [cell_item(i, "CAT_SIDE_DEFAULTS", dflt, 0) for i in top]
         by_chain = []
+        chain_rank_key = "p_v2ctx" if sc.secondary else "p_pos"
         for ci, t in enumerate(tops, start=1):
-            pc = res["ctx"][ci]["cells"]["p_pos"][:, 0].astype(np.float32)
+            pc = res["ctx"][ci]["cells"][chain_rank_key][:, 0].astype(np.float32)
             oc = cand[np.argsort(-pc[cand], kind="stable")]
             tc = diversity_cap(oc, row_of, k=CHAIN_K)
-            by_chain.append({"chain_id": t["chain_id"], "sym_sides": t["sym_sides"], "n_sym_sides": t["n_sym_sides"], "typicality": t["typicality"],
+            by_chain.append({"chain_id": t["chain_id"], "ranked_by": ("p_v2ctx_pred: hybrid_v2, CONDITIONAL on this chain; the production scorer " + sc.prod + " is context-free on this cat_side "
+                                                                     "(v2 did not beat v1 on held-out never-tried pairs AND contexts), so its ranking is the same under every chain")
+                             if sc.secondary else "p_pos_pred (production " + sc.prod + ", conditional on this chain)",
+                             "sym_sides": t["sym_sides"], "n_sym_sides": t["n_sym_sides"], "typicality": t["typicality"],
                              "context": ctx_descr(t["chain_id"], t["feats"], sym_sides=t["sym_sides"][:10]), "active_filter_options": [f[4:] for f in t["feats"] if f.startswith("X.f:")],
                              "items": [cell_item(i, t["chain_id"], t["feats"], ci, full=False) for i in tc]})
         rows_untried = []
@@ -2975,12 +3011,13 @@ def cmd_score2(a):
             pwc_meta = pw["meta"]
             for sym, blk in pw["per_sym"].items():
                 lst = []
-                for ii, p_, e_ in blk["ranked"][:PWC_TOP]:
+                for rr in blk["ranked"][:PWC_TOP]:
+                    ii, p_, e_ = rr[:3]
                     it = pw["items"][ii]
                     sw, _, cnd = str(it["key"]).partition("=")
                     fk, _, fo = str(it["filter"] or "").partition("=")
                     lst.append({"switch": sw, "cand": cnd, "filter": fk or None, "opt": fo or None, "tab": it["tab"], "p_pos_pred": p_, "e_delta_pred": e_,
-                                "measured_elsewhere_n": it["n"], "measured_elsewhere_pos": it["n_pos"], "label": "PREDICTION"})
+                                "measured_elsewhere_n": it["n"], "measured_elsewhere_pos": it["n_pos"], "label": "PREDICTION", **({"p_v2ctx_pred": rr[3]} if len(rr) > 3 else {})})
                 pwc_top[sym] = {"context": blk["context"], "top": lst}
         v1p = LEARN_DIR / f"linknet_proposals_{cs}.json"
         v1doc = {}
@@ -2990,6 +3027,9 @@ def cmd_score2(a):
             pass
         doc = {"meta": {"schema": SCHEMA2, "cat_side": cs, "built_at": utc_now(), "model_trained_at": sc.meta2["trained_at"], "corpus_last_ts": sc.meta2.get("corpus_last_ts"),
                         "production_scorer": sc.prod, "platt": sc.platt, "diversity_cap_per_row": DIVERSITY_CAP,
+                        "production_is_context_free": bool(sc.prod in ("v1", "hybrid_v1", "counts")),
+                        "secondary_p_v2ctx": ("p_v2ctx_pred = hybrid_v2 conditional on the item's context, shown because the production scorer is v1-based; a PREDICTION, "
+                                              "not the ranking of template_untried / pair_with_context") if sc.secondary else None,
                         "label": "every *_pred value here is a PREDICTION of tools/v18_linknet.py (v2, conditional on the chain context named in each item), never a measurement; "
                                  "nearest_evidence items are MEASURED; nothing is adopted except by the real engine",
                         "scores_npz": str(npz), "n_predictions_scored": res["n_predictions"], "secs_grid": res["secs"],
