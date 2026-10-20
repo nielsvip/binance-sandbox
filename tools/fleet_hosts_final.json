@@ -45,11 +45,12 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 4000,
-   "max_pairs": 4,
-   "workers_per_side": 4,
+   "mem_reserve_mb": 5000,
+   "max_pairs": 5,
+   "workers_per_side": 3,
    "oom_mb": 1500,
-   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
+   "_note": "2026-10-20 WP1 (V19 full-course round): revived as S1 image, 16C/30G/245G. max_pairs 5 = (30 GB - 5 GB reserve) / ~5 GB measured crypto pair PSS at 3 workers (2 for crypto via V15_SCHED_WORKERS_PER_SIDE_CRYPTO); stocks 1-2.5 GB/side; PSS mem guard bounds it. Backtest-only: no NPZ builder/ingest, no Binance fetch, no live stack. NPZ arrives per launch from S1 (dispatch JIT tail refresh + md5 push)."
   },
   {
    "name": "s6",
@@ -61,11 +62,12 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 4000,
-   "max_pairs": 4,
-   "workers_per_side": 4,
+   "mem_reserve_mb": 5000,
+   "max_pairs": 5,
+   "workers_per_side": 3,
    "oom_mb": 1500,
-   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM"
+   "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
+   "_note": "2026-10-20 WP1 (V19 full-course round): revived as S1 image, 16C/30G/245G. max_pairs 5 = (30 GB - 5 GB reserve) / ~5 GB measured crypto pair PSS at 3 workers (2 for crypto via V15_SCHED_WORKERS_PER_SIDE_CRYPTO); stocks 1-2.5 GB/side; PSS mem guard bounds it. Backtest-only: no NPZ builder/ingest, no Binance fetch, no live stack. NPZ arrives per launch from S1 (dispatch JIT tail refresh + md5 push)."
   }
  ],
  "cpu_target_pct": 200,

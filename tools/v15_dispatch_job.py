@@ -578,7 +578,10 @@ def main():
         rc = r.returncode
     except subprocess.TimeoutExpired:
         rc = "ssh-timeout (job may still have started; pgrep dedups)"
-    log({"event": "launched", "symbol": a.symbol, "tag": a.tag, "via": a.via, "ssh_rc": rc, "prep": res, "workers": int(_wm.group(1)) if _wm else None, "autotune": at_info})
+    # 2026-10-20 WP1 (USER: workers never make NPZs, S1 ships them): name where the NPZ the pilot reads came from, per launch.
+    _act = str(res.get("action") or "")
+    _src = {"fast30d-push": f"s1-refreshed, pushed to {a.push}", "fast30d-local": "s1-refreshed, local", "target-fresh-keep": f"target {a.push} own copy (S1 mirror/-u), not re-pushed", "frozen-keep": "target keeps frozen board NPZ"}.get(_act, f"prep:{_act}")
+    log({"event": "launched", "symbol": a.symbol, "tag": a.tag, "via": a.via, "ssh_rc": rc, "prep": res, "workers": int(_wm.group(1)) if _wm else None, "autotune": at_info, "npz_source": _src, "npz_last_bar_utc": res.get("npz_last_bar_utc"), "npz_age_min": res.get("npz_age_min")})
     cmd_path.unlink(missing_ok=True)
     return 0
 

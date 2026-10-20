@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-20T18:52:45Z",
+ "generated_utc": "2026-10-20T18:57:50Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 4435.3,
+  "age_s": 4740.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 94641,
-  "proc_age_s": 1399.0,
-  "log_age_s": 16.9,
+  "proc_age_s": 1703.0,
+  "log_age_s": 1.1,
   "warmup_done": false,
   "timeframes_since_restart": [
    "1h",
@@ -23,12 +23,12 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (15s < 45s)",
-   "log fresh (23s < 45s)",
-   "log fresh (29s < 45s)",
-   "log fresh (4s < 45s)",
-   "log fresh (10s < 45s)",
-   "log fresh (16s < 45s)"
+   "log fresh (42s < 45s)",
+   "log fresh (2s < 45s)",
+   "log fresh (8s < 45s)",
+   "log fresh (13s < 45s)",
+   "log fresh (19s < 45s)",
+   "log fresh (0s < 45s)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -41,21 +41,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792451066.3983662,
   "activations": 151,
-  "hb_mtime": 1792522288.4582884,
-  "mac_snapshot_age_s": 4350.571277141571,
+  "hb_mtime": 1792522633.3808346,
+  "mac_snapshot_age_s": 4697.033035993576,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-20T16:54:28Z",
   "lease_reason": "Mac healthy 124s (needed 120s) venues=['crypto', 'stocks']",
-  "now": 1792522316.502468,
-  "from_cache_age_s": 48.8,
-  "heartbeat_age_s": 28.0,
-  "active_s": 71250.1,
+  "now": 1792522670.8890262,
+  "heartbeat_age_s": 37.5,
+  "active_s": 71604.5,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 4435s old (> 600s). ez_indicators pid=94641 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=3. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 4740s old (> 600s). ez_indicators pid=94641 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=3. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

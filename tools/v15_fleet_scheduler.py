@@ -3662,6 +3662,9 @@ def tick(args, cfg, now):
             else:
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
+                    # 2026-10-20 WP1: s5/s6 were revived without ~/v15_current_progress_dir.txt, so every candidate was dropped HERE
+                    # with no log line and the host reported "no eligible ready symbol" for 40+ min. Never drop silently.
+                    log.setdefault("skipped_no_pdir", []).append(f"{h['name']}:{sym}")
                     continue
                 if _async_npz or _ALL_LAUNCH_NPZ:  # USER 2026-10-13: S1 recalcs + sends the latest NPZ for EVERY launch, every host incl. itself
                     # USER 2026-10-19 ("NO progress"): _dispatch_async returns False when it dispatched NOTHING (every
@@ -3804,6 +3807,9 @@ def tick(args, cfg, now):
                 acts = [{"sym": sym2, "side": sd2, "window": "30D", "attempt": 1, "key": key2}]
                 pd = s.get("pdir") or cfg.get("fallback_pdir")
                 if not pd:
+                    # 2026-10-20 WP1: s5/s6 were revived without ~/v15_current_progress_dir.txt, so every candidate was dropped HERE
+                    # with no log line and the host reported "no eligible ready symbol" for 40+ min. Never drop silently.
+                    log.setdefault("skipped_no_pdir", []).append(f"{h['name']}:{sym}")
                     continue
                 tag = f"BACKFILL {h['name']}:{sym2}:{sd2[0]}30D"
                 if args.dry_run or sim:
@@ -3834,7 +3840,7 @@ def tick(args, cfg, now):
         info["slots"] = f"{len(held[h['name']])}/{cap}"
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
-            info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "no eligible ready symbol for this host"
+            info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "NO PROGRESS DIR on host (~/v15_current_progress_dir.txt missing)" if not (s.get("pdir") or cfg.get("fallback_pdir")) else "no eligible ready symbol for this host"
             info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu), "npz_stale_jit": len(log.get("npz_stale_jit", [])), "npz_stale_held": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_) and str(v_).startswith(h["name"])), "npz_stale_refused_150s": _dispatch_stale_recent()}
         log["hosts"][h["name"]] = info
     if _pin_sides:  # 2026-10-13: every pinned side names its state each tick (an idle pin must explain itself)
