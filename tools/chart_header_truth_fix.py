@@ -136,7 +136,19 @@ def check_one(args):
         fmt = f"{int(round(want))}" if key == "trades" else f"{want:+.2f}" if key == "gain_pct" else f"{want:.2f}"
         new_head = new_head[: m.start()] + m.group(1) + fmt + (m.group(3) if m.lastindex and m.lastindex >= 3 else "") + new_head[m.end():]
     mt = TITLE_RE.search(text)
-    true_title = f"{ss} gain {float(true['gain_pct']):+.2f}% · trades {int(true['trades'])} (verified from its own trades)"
+    # USER 2026-10-20: "it is a CAPITAL SIN to publish old results as if they were new ... it keeps faking the servers are
+    # producing new data but in fact it is OLD and UNRELIABLE data". This tool made the header truthful about the NUMBER and
+    # left it silent about the AGE, while rewriting the file refreshed its mtime — the only age signal a reader has. Measured
+    # 2026-10-20: all 537 published charts carry mtime 2026-10-18T18:04:01Z (one batch, this tool) over cells from
+    # 2026-09-10..09-26 — a 526-908 h lie, and tools/board_vintage_audit.py flags 537 of 537 as "wearing a date their cells
+    # do not back". The vintage is DERIVED FROM THE PAGE'S OWN EVIDENCE (max ts across TRADES+EVENTS), never from the
+    # filesystem, so the same "truth is never invented here" rule holds. CLAUDE.md forbids re-stamping already-published
+    # sheets, so this only governs what is written from now on; the existing 537 are reported by the audit, not rewritten.
+    _vts = [r.get("ts") for r in list(trades or []) + list(events or [])
+            if isinstance(r, dict) and isinstance(r.get("ts"), (int, float)) and r.get("ts") > 1e8]
+    _vintage = (f" · cells thru {dt.datetime.fromtimestamp(max(_vts), dt.timezone.utc).strftime('%Y-%m-%d')}"
+                if _vts else " · cells thru UNKNOWN")
+    true_title = f"{ss} gain {float(true['gain_pct']):+.2f}% · trades {int(true['trades'])}{_vintage} (verified from its own trades)"
     title_wrong = (not mt) or (mt.group(1).strip() != true_title)
     rec["true_gain"] = round(float(true["gain_pct"]), 4)
     if not rec["changed"] and not title_wrong:

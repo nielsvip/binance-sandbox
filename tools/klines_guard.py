@@ -188,10 +188,16 @@ def tripwire(restore=True):
         for k, v in cur.items():
             if k not in prev or prev[k][0] == "ERR" or v[0] == "ERR":
                 continue
-            if v[1] < prev[k][1] and prev[k][0] >= MIN_KEEP_DAYS:
+            # USER 2026-10-20 "make sure NOTHING destroys klines on s1": the store is grow-only, so ANY row loss is a shrink
+            # (was: only files spanning >= MIN_KEEP_DAYS — a younger file could lose its tail unseen and be refetched).
+            if v[1] < prev[k][1]:
                 shrunk.append((k, prev[k], v))
             elif isinstance(v[0], (int, float)) and isinstance(prev[k][0], (int, float)) and v[0] + 1.0 < prev[k][0]:
                 shrunk.append((k, prev[k], v))
+        # a DELETED file is the worst shrink — it used to be ignored ("restores shrinks, not deletions") and refetched via REST
+        for k, a in prev.items():
+            if k not in cur and a and a[0] != "ERR" and not (ROOT / k).exists():
+                shrunk.append((k, a, ["GONE", 0, "", 0, 0]))
     restored = []
     if shrunk and restore:
         for k, a, b in shrunk:
@@ -200,14 +206,28 @@ def tripwire(restore=True):
                 dst = ROOT / k
                 gz, raw = snap_of(rel), SNAP / rel
                 if gz.exists():
-                    tmp = dst.with_suffix(".json.restore")
-                    with gzip.open(gz, "rb") as fh, open(tmp, "wb") as out:
-                        shutil.copyfileobj(fh, out, 1 << 20)
-                    os.replace(tmp, dst)
-                    restored.append(k)
+                    with gzip.open(gz, "rb") as fh:
+                        snap_rows = json.loads(fh.read())
                 elif raw.exists():
-                    shutil.copy2(raw, dst)
-                    restored.append(k)
+                    snap_rows = json.loads(raw.read_text())
+                else:
+                    continue
+                live_rows = []
+                if dst.exists():
+                    try:
+                        live_rows = json.loads(dst.read_text())
+                    except Exception:
+                        live_rows = []
+                # merge, never overwrite: bars the live file gained after the snapshot survive the restore
+                by_ts = {r.get("timestamp"): r for r in list(snap_rows or []) + list(live_rows if isinstance(live_rows, list) else []) if isinstance(r, dict) and r.get("timestamp")}
+                rows = [by_ts[t] for t in sorted(by_ts)]
+                if len(rows) < len(snap_rows or []):
+                    rows = snap_rows
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                tmp = dst.with_suffix(".json.restore")
+                tmp.write_text(json.dumps(rows))
+                os.replace(tmp, dst)
+                restored.append(k)
             except Exception:
                 pass
     alert = None

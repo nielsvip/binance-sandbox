@@ -54,7 +54,21 @@ def _denied_rel(rel):
 
 
 def _is_staging(rel):
-    return bool(set(Path(rel).parts[:-1]) & STAGING_DIRS)
+    # USER 2026-10-20: dot-dirs are tool-private (klines_guard's .guard_snap) — sealing them made every --enforce "restore"
+    # 6651 snapshot files (~1 GB rewritten every 2 min, 98% CPU on S1).
+    parts = Path(rel).parts[:-1]
+    return bool(set(parts) & STAGING_DIRS) or any(p.startswith(".") for p in parts)
+
+
+def _merge_rows(sealed, live_rows):
+    """union by timestamp, live wins on a shared bar — a restore may only ADD rows, never drop bars newer than the seal."""
+    by_ts = {}
+    for r in (sealed or []) + (live_rows or []):
+        try:
+            by_ts[r["timestamp"]] = r
+        except Exception:
+            continue
+    return [by_ts[k] for k in sorted(by_ts)]
 
 
 def _tail(rows):
@@ -272,7 +286,8 @@ def enforce():
         try:
             live.parent.mkdir(parents=True, exist_ok=True)
             tmp = live.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(sealed))
+            merged = _merge_rows(sealed, live_rows)
+            tmp.write_text(json.dumps(merged if len(merged) >= len(sealed) else sealed))
             os.replace(tmp, live)
             restored.append(rel)
         except Exception as e:

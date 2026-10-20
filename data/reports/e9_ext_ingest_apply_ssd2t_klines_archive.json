@@ -1,0 +1,60 @@
+{
+ "ts": "2026-10-20T01:48:22Z",
+ "end": "2026-10-20T01:51:57Z",
+ "mode": "apply",
+ "drive": "E3T",
+ "archive": "/Volumes/E3T/binance_archive/klines_archive",
+ "floor_gb": 10.0,
+ "free_gb_start": 13.62,
+ "free_gb_end": 13.62,
+ "stopped": null,
+ "totals": {
+  "names": 2984,
+  "names_grown": 139,
+  "names_created": 1,
+  "bars_added": 13115,
+  "bytes_written_delta": 1385361,
+  "refused": 0,
+  "deferred_names": 0,
+  "projected_bytes_delta": 1385361,
+  "projected_bars_added": 13115
+ },
+ "copies": {
+  "ssd2t_klines_archive": {
+   "root": "/Volumes/SSD2T/binance_archive/klines_archive",
+   "files": 3732,
+   "kline_files": 2984,
+   "non_kline_files": 4,
+   "salvaged_files": 0,
+   "unreadable_files": 0,
+   "bytes": 2949297806,
+   "series": 2984,
+   "bars": 23358566,
+   "present_same": 23343163,
+   "present_archive_dominates": 869,
+   "copy_dominates": 176,
+   "conflicts": 1243,
+   "new": 13115,
+   "new_added": 13115,
+   "new_via_other_copy": 0,
+   "new_deferred": 0,
+   "gateway_new_held": 0,
+   "names_with_new": 140,
+   "pinned_files": 744,
+   "blockers": {
+    "conflicts": 1243,
+    "copy_dominates": 176,
+    "non_kline_files": 4
+   },
+   "verdict": "HOLD",
+   "gb": 2.949,
+   "non_kline_examples": [
+    "_conflicts.jsonl",
+    "_corrections.jsonl",
+    "_manifest.json",
+    "summary.json"
+   ]
+  }
+ },
+ "deferred_names": []
+}

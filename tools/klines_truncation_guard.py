@@ -14,8 +14,8 @@ except as degraded HTF frames for those symbols, and a symbol whose ONLY store i
 
 This does NOT touch the fetcher. Per file:
   RESTORE  a parseable copy of the same symbol+TF in another local store with at least as many rows wins.
-  DELETE   nothing to restore from -> remove it, which is what makes the fetcher fetch it again (and frees the
-           blocks the half-written file still occupies).
+  SALVAGE  nothing to restore from -> keep every complete row before the cut, in place (2026-10-20: never delete —
+           a delete forced a Binance refetch; the Mac pulls missing bars from S1, never the API).
 A file is only ever replaced by a LONGER one, never a shorter one.
 
 usage:
@@ -68,6 +68,25 @@ def rows_of(p):
         return None
 
 
+def salvage_rows(p):
+    """complete rows of a JSON list cut off mid-write: cut after the last '}' that closes a row, close the array."""
+    try:
+        raw = open(p, "rb").read()
+    except OSError:
+        return None
+    end = len(raw)
+    for _ in range(64):
+        end = raw.rfind(b"}", 0, end)
+        if end < 0:
+            return None
+        try:
+            rows = json.loads(raw[:end + 1].decode("utf8", "replace").rstrip().rstrip(",") + "]")
+            return rows if isinstance(rows, list) and rows else None
+        except ValueError:
+            continue
+    return None
+
+
 def scan(roots):
     bad, good = [], {}
     for r in roots:
@@ -110,16 +129,23 @@ def main():
                     continue
             restored.append({"file": rel, "from": str(src[0]), "rows": src[1]})
         else:
+            # USER 2026-10-20: "make sure NOTHING destroys klines … NO unnecessary api calls". A delete forced a REST refetch
+            # (bans). Salvage every complete row before the cut instead; an unsalvageable file is left in place untouched.
+            rows = salvage_rows(p)
+            if not rows:
+                kept.append(rel)
+                continue
             if a.apply:
+                tmp = p.with_suffix(".json.salvagetmp")
                 try:
-                    os.unlink(p)
+                    tmp.write_text(json.dumps(rows))
+                    os.replace(tmp, p)
                 except OSError as e:
-                    log(f"delete failed {rel}: {e}")
+                    log(f"salvage failed {rel}: {e}")
                     kept.append(rel)
                     continue
-            deleted.append({"file": str(p), "bytes": sz})
-            freed += sz
-    log(f"{'APPLIED' if a.apply else 'DRY-RUN'}: restored {len(restored)} from a longer local copy, deleted {len(deleted)} ({freed/1e6:.1f} MB) for the fetcher to refetch, {len(kept)} could not be handled")
+            deleted.append({"file": str(p), "bytes": sz, "salvaged_rows": len(rows)})
+    log(f"{'APPLIED' if a.apply else 'DRY-RUN'}: restored {len(restored)} from a longer local copy, salvaged {len(deleted)} in place (never deleted), {len(kept)} left untouched")
     try:
         REPORT.parent.mkdir(parents=True, exist_ok=True)
         REPORT.write_text(json.dumps({"at": time.time(), "host": os.uname().nodename, "apply": a.apply, "root": str(ROOT),
