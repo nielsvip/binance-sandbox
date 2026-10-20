@@ -411,13 +411,29 @@ def attribute(reason: str, ev_type: str, side: str, venue: str, full_set, symsid
         return {"v": VERSION, "src": src, "label": str(reason)[:80], "switch": "UNATTRIBUTED:attribution_error:" + type(exc).__name__, "cand": None, "filters": [], "tf": EXECUTION_TF, "set_id": "UNAVAILABLE", "ev": str(ev_type or "").upper()}
 
 
+_FX_REF_RX = re.compile(r"_REF([a-z_]+)\.([0-9a-z]+)\.b([0-9]+(?:\.[0-9]+)?)(?:\.T([a-z_]+))?")
+
+
+def fixed_stop_ref(reason: str):
+    """E7: {field, tf, buffer_pct, tighten} from a FIXED_STOP reason tail `_REF<field>.<tf>.b<buf>[.T<mode>]`; None when absent (= default spec)."""
+    m = _FX_REF_RX.search(str(reason or ""))
+    if not m:
+        return None
+    return {"field": m.group(1), "tf": m.group(2), "buffer_pct": float(m.group(3)), "tighten": m.group(4) or "off"}
+
+
 def classify_event(reason: str, trade_type: str) -> dict:
     """Block for a history event with no registered vector provenance (broker sync, native paths, stops written outside the vec dispatch)."""
     try:
         tok = classify_token(reason)
         r = str(reason or "")
         if tok is not None:
-            return {"v": VERSION, "src": tok[0], "label": strip_label(r)[:80], "switch": tok[1], "cand": None, "filters": [], "tf": EXECUTION_TF, "set_id": None, "ev": str(trade_type or "").upper()}
+            _blk = {"v": VERSION, "src": tok[0], "label": strip_label(r)[:80], "switch": tok[1], "cand": None, "filters": [], "tf": EXECUTION_TF, "set_id": None, "ev": str(trade_type or "").upper()}
+            if tok[0] == "FIXED_STOP":
+                _ref = fixed_stop_ref(r)
+                if _ref:
+                    _blk["ref"] = _ref  # E7 2026-10-20: the reference the stop was frozen at (only for a non-default spec; default lines unchanged)
+            return _blk
         if "|VEC_EXACT" in r or r.startswith("VEC_EXACT_"):
             return {"v": VERSION, "src": "VEC_EXACT", "label": strip_label(r)[:80], "switch": "UNATTRIBUTED:vec_prov_not_matched_to_fill", "cand": None, "filters": [], "tf": EXECUTION_TF, "set_id": None, "ev": str(trade_type or "").upper()}
         return {"v": VERSION, "src": "NATIVE", "label": strip_label(r)[:80], "switch": "UNATTRIBUTED:non_vector_reason", "cand": None, "filters": [], "tf": EXECUTION_TF, "set_id": None, "ev": str(trade_type or "").upper()}

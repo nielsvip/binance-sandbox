@@ -6981,11 +6981,25 @@ class PositionService:
                     # per process start, bounded and cached by (key, lifecycle).
                     _fx_ver = self.__dict__.setdefault("_fx_entry_verified", set())
                     _fx_vkey = (position_key, int(_oa_ep or 0))
-                    if _fixed_stop_core.needs_freeze(_lvl, _anchor, _oa_ep) or _fx_vkey not in _fx_ver:
+                    # E7 2026-10-20: a sym_side on a non-default FIXED_STOP reference has no entry-bar klines rebuild (that rebuild
+                    # derives dc_low/high_15m only); it freezes from the indicator snapshot at the configured reference, once per
+                    # lifecycle, exactly like ez_manage. Default reference -> the code below runs unchanged.
+                    _fx_spec_s = _svc_fixed_stop_spec(_sym, _pside)
+                    _fx_ref_def = _fixed_stop_core.is_default_reference(_fx_spec_s)
+                    if _fixed_stop_core.needs_freeze(_lvl, _anchor, _oa_ep) or (_fx_vkey not in _fx_ver and _fx_ref_def):
                         _fx_fail = self.__dict__.setdefault("_fx_freeze_retry_at", {})
                         if time.time() >= float(_fx_fail.get(position_key, 0) or 0):
                             _new, _src = 0.0, ""
-                            if _oa_ep is not None:
+                            if not _fx_ref_def:
+                                try:
+                                    _ind_s = ii(self, _sym) or {}
+                                except Exception:
+                                    _ind_s = {}
+                                _new, _src = _fixed_stop_core.freeze_level_spec(_is_long, _fx_spec_s, (_ind_s.get if isinstance(_ind_s, dict) else (lambda _k: None)), float(getattr(position, "entry_price", 0) or 0))
+                                _src = "SPEC_LIVE:" + _src
+                                if _src.startswith("SPEC_LIVE:FALLBACK"):
+                                    logger.warning(f"🛡️ [FIXED_STOP_REF_FALLBACK] {position_key}: reference {_fx_spec_s[0]}_{_fx_spec_s[1]} unusable ({_src}) — frozen at today's dc_15m level {_new:.6f}")
+                            elif _oa_ep is not None:
                                 try:
                                     _cli = self.get_client(account_key)
                                     if _cli is None:
@@ -7029,7 +7043,7 @@ class PositionService:
                                     _fx_ver.add(_fx_vkey)
                                 _new = 0.0
                             if _new > 0:
-                                if _src == "ENTRY_BAR":
+                                if _src == "ENTRY_BAR" or _src.startswith("SPEC_LIVE:"):
                                     _fx_ver.add(_fx_vkey)  # this lifecycle's level is now proven against its own entry bar
                                 _fx_changed = not (_lvl > 0 and abs(_new - _lvl) / _new < 1e-6)
                                 if not _fx_changed:
@@ -7083,9 +7097,9 @@ class PositionService:
                         _cs = "SELL" if _is_long else "BUY"
                         logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {_px:.6f} breached frozen {'dc_low_15m' if _is_long else 'dc_high_15m'} stop {_lvl:.6f} g={_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)")
                         _inflight.add(position_key)
-                        async def _fx_fire(_tm=tm, _pk=position_key, _ak=account_key, _s=_sym, _a=_amt, _c=_cs, _p=_pside, _x=_px, _g=_gain, _il=_is_long, _lv=_lvl, _fl=_inflight):
+                        async def _fx_fire(_tm=tm, _pk=position_key, _ak=account_key, _s=_sym, _a=_amt, _c=_cs, _p=_pside, _x=_px, _g=_gain, _il=_is_long, _lv=_lvl, _fl=_inflight, _tg=_svc_fixed_stop_ref_tag(_fx_spec_s)):
                             try:
-                                await _tm.execute_now(position_key=_pk, account_key=_ak, symbol=_s, original_positionAmt=_a, side=_c, position_side=_p, quantity=_a, old_price=_x, unique_id=f"FIXED_STOP_{int(time.time())}", reason=f"FIXED_STOP_{'LONG' if _il else 'SHORT'}_px{_x:.6f}_lvl{_lv:.6f}_g{_g:.2f}", is_full_close=True, action="CLOSE")
+                                await _tm.execute_now(position_key=_pk, account_key=_ak, symbol=_s, original_positionAmt=_a, side=_c, position_side=_p, quantity=_a, old_price=_x, unique_id=f"FIXED_STOP_{int(time.time())}", reason=f"FIXED_STOP_{'LONG' if _il else 'SHORT'}_px{_x:.6f}_lvl{_lv:.6f}_g{_g:.2f}{_tg}", is_full_close=True, action="CLOSE")
                             except Exception as _fe:
                                 try:
                                     logger.error(f"[FIXED_STOP] {_pk} close err: {_fe}")
@@ -13785,6 +13799,22 @@ def calculate_tier_mult(i: dict, is_long: bool) -> int:
 
 _SVC_CSD_MISSING = object()
 
+def _svc_fixed_stop_spec(symbol: str, side: str):
+    """E7 2026-10-20: FIXED_STOP reference spec of this sym_side via _svc_psym_get (same layers as ez_manage._fixed_stop_spec_for). Never raises."""
+    try:
+        return _fixed_stop_core.normalize_spec(_svc_psym_get(symbol, side, "FIXED_STOP_REF_FIELD", getattr(config, "FIXED_STOP_REF_FIELD", "dc_low")), _svc_psym_get(symbol, side, "FIXED_STOP_REF_TF", getattr(config, "FIXED_STOP_REF_TF", "15m")), _svc_psym_get(symbol, side, "FIXED_STOP_BUFFER_PCT", getattr(config, "FIXED_STOP_BUFFER_PCT", 0.25)), _svc_psym_get(symbol, side, "FIXED_STOP_TIGHTEN_MODE", getattr(config, "FIXED_STOP_TIGHTEN_MODE", "off")), _svc_psym_get(symbol, side, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", getattr(config, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0)))
+    except Exception:
+        return _fixed_stop_core.DEFAULT_SPEC
+
+def _svc_fixed_stop_ref_tag(spec) -> str:
+    """E7: reason tail for a non-default reference ("" for today's spec, so default reasons stay byte-identical)."""
+    try:
+        if _fixed_stop_core.is_default_spec(spec):
+            return ""
+        return f"_REF{spec[0]}.{spec[1]}.b{spec[2]:g}" + (f".T{spec[3]}" if spec[3] != "off" else "")
+    except Exception:
+        return ""
+
 def _svc_psym_get(symbol: str, side: str, knob: str, default):
     """2026-10-13 chain-route: per-sym override > cat_side default > global (mirrors ez_manage._psym_get; local copy avoids a circular import since ez_manage imports this module)."""
     if symbol and side and os.environ.get("PER_SYM_STORE_SQLITE_DISABLED") != "1" and os.environ.get("V8_DISABLE_PER_SYM") != "1" and bool(getattr(config, "PER_SYM_CONFIG_ENABLED", True)):
@@ -13842,7 +13872,11 @@ async def check_position_reductions(service, position_key: str, account_key: str
                 _fx_ep0 = float(getattr(position, 'entry_price', 0) or 0)
             except Exception:
                 _fx_ep0 = 0.0
-            _fx_lvl0 = _fixed_stop_core.freeze_software_level(is_long, _fx_dlo, _fx_dhi, _fx_ep0)
+            _fx_spec0 = _svc_fixed_stop_spec(symbol, position_side)
+            if _fixed_stop_core.is_default_reference(_fx_spec0):
+                _fx_lvl0 = _fixed_stop_core.freeze_software_level(is_long, _fx_dlo, _fx_dhi, _fx_ep0)
+            else:
+                _fx_lvl0 = _fixed_stop_core.freeze_level_spec(is_long, _fx_spec0, (i.get if isinstance(i, dict) else (lambda _k: None)), _fx_ep0)[0]  # E7 configured reference
             if _fx_lvl0 > 0:
                 try:
                     position.fixed_stop_price = _fx_lvl0
@@ -13859,7 +13893,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
         if _fx_lvl0 > 0 and bool(getattr(position, "fixed_stop_armed", True)) and _fixed_stop_core.breached(is_long, current_price, _fx_lvl0):
             _fx_side0 = 'SELL' if is_long else 'BUY'
             logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_lvl0:.6f} g={float(gain or 0):.2f}% → HARD_STOP CLOSE (non-negotiable)")
-            await service.trade_manager.execute_now(position_key, account_key, symbol, pos_amt, _fx_side0, position_side, pos_amt, current_price, f"FIXED_STOP_{int(time.time())}", f"FIXED_STOP_{position_side}_px{current_price:.6f}_lvl{_fx_lvl0:.6f}_g{float(gain or 0):.2f}", True, 'CLOSE')
+            await service.trade_manager.execute_now(position_key, account_key, symbol, pos_amt, _fx_side0, position_side, pos_amt, current_price, f"FIXED_STOP_{int(time.time())}", f"FIXED_STOP_{position_side}_px{current_price:.6f}_lvl{_fx_lvl0:.6f}_g{float(gain or 0):.2f}{_svc_fixed_stop_ref_tag(_svc_fixed_stop_spec(symbol, position_side))}", True, 'CLOSE')
             return
         if gain < -1.5 and pos_amt > pos_min_qty:
             # We verify if an active hedge ACTUALLY exists before trusting STRICT_NO_LOSS

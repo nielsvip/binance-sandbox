@@ -7915,6 +7915,58 @@ def _cfg_auto(param, default=None):
             pass
 
 
+def _tr_fixed_stop_spec(account_key, symbol, side):
+    """E7 2026-10-20: FIXED_STOP reference spec of this sym_side through _cfg (per-sym > cat_side > TradierConfig). Never raises."""
+    try:
+        return _fixed_stop_core.normalize_spec(_cfg("FIXED_STOP_REF_FIELD", getattr(config, "FIXED_STOP_REF_FIELD", "dc_low"), account_key, symbol, side), _cfg("FIXED_STOP_REF_TF", getattr(config, "FIXED_STOP_REF_TF", "15m"), account_key, symbol, side), _cfg("FIXED_STOP_BUFFER_PCT", getattr(config, "FIXED_STOP_BUFFER_PCT", 0.25), account_key, symbol, side), _cfg("FIXED_STOP_TIGHTEN_MODE", getattr(config, "FIXED_STOP_TIGHTEN_MODE", "off"), account_key, symbol, side), _cfg("FIXED_STOP_TIGHTEN_TRIGGER_PCT", getattr(config, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0), account_key, symbol, side))
+    except Exception:
+        return _fixed_stop_core.DEFAULT_SPEC
+
+
+def _tr_fixed_stop_ref_default(account_key, symbol, side) -> bool:
+    return _fixed_stop_core.is_default_reference(_tr_fixed_stop_spec(account_key, symbol, side))
+
+
+def _tr_fixed_stop_freeze(account_key, symbol, side, is_long, ind, entry_price) -> float:
+    """E7: software level at the configured (non-default) reference; falls back to today's dc_15m level, logged."""
+    _spec = _tr_fixed_stop_spec(account_key, symbol, side)
+    _ind = ind if isinstance(ind, dict) else {}
+    _lvl, _src = _fixed_stop_core.freeze_level_spec(is_long, _spec, _ind.get, entry_price)
+    if _src.startswith("FALLBACK"):
+        logger.warning(f"🛡️ [FIXED_STOP_REF_FALLBACK_TR] {symbol}_{side}: reference {_spec[0]}_{_spec[1]} unusable ({_src}) — frozen at today's dc_15m level {_lvl:.4f}")
+    return _lvl
+
+
+def _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, side, is_long, frozen, entry_price, max_gain, ind, lifecycle) -> float:
+    """E7 FIXED_STOP_TIGHTEN_MODE, software leg only (crypto twin: ez_manage._fixed_stop_effective_level). Mode off -> frozen."""
+    try:
+        _spec = _tr_fixed_stop_spec(account_key, symbol, side)
+        if _spec[3] == "off" or float(frozen or 0.0) <= 0:
+            return frozen
+        _tm = trade_manager.__dict__.setdefault("_fixed_stop_tight_levels", {})
+        _k = (str(position_key), str(lifecycle or ""))
+        _eff = _fixed_stop_core.tightened(is_long, frozen, float(_tm.get(_k, 0.0) or 0.0))
+        _ind = ind if isinstance(ind, dict) else {}
+        _ref = _fixed_stop_core.ref_value(is_long, _spec[0], _spec[1], _ind.get)[0]
+        _nxt = _fixed_stop_core.tightened(is_long, _eff, _fixed_stop_core.tighten_candidate(is_long, _spec, entry_price, max_gain, _ref))
+        if abs(_nxt - float(_tm.get(_k, 0.0) or 0.0)) > 1e-12 and abs(_nxt - float(frozen)) > 1e-12:
+            logger.critical(f"🛡️ [FIXED_STOP_TIGHTEN_TR] {position_key}: {_spec[3]} (trigger {_spec[4]:.2f}% peak {float(max_gain or 0):.2f}%) software stop {_eff:.4f} -> {_nxt:.4f} (frozen {float(frozen):.4f}; broker stop stays frozen)")
+        _tm[_k] = _nxt
+        return _eff
+    except Exception:
+        return frozen
+
+
+def _tr_fixed_stop_ref_tag(account_key, symbol, side) -> str:
+    try:
+        _spec = _tr_fixed_stop_spec(account_key, symbol, side)
+        if _fixed_stop_core.is_default_spec(_spec):
+            return ""
+        return f"_REF{_spec[0]}.{_spec[1]}.b{_spec[2]:g}" + (f".T{_spec[3]}" if _spec[3] != "off" else "")
+    except Exception:
+        return ""
+
+
 def _cfg_ps(param, default=None, account_key=None, symbol=None, side=None):
     """PARITY LANE C 2026-10-06: per-sym PROMOTION > cat_side default > global (no full_config snapshot). Used by every lane-C read."""
     return _cfg(param, default, account_key, symbol, side, _promotions_only=True)
@@ -15197,7 +15249,7 @@ async def process_position(
                 _fx_have = _fx_lvmap.get(position_key) if isinstance(_fx_lvmap.get(position_key), dict) else None
                 _fx_lvl = float((_fx_have or {}).get("level", 0) or 0) if (_fx_have and str(_fx_have.get("sig", "")) == _fx_sig) else 0.0
                 if _fx_lvl <= 0:
-                    _fx_lvl = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0)))
+                    _fx_lvl = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0))) if _tr_fixed_stop_ref_default(account_key, symbol, position_side) else _tr_fixed_stop_freeze(account_key, symbol, position_side, is_long, i, safe_float(getattr(position, "entry_price", 0)))
                     if _fx_lvl > 0:
                         _fx_lvmap[position_key] = {"level": _fx_lvl, "sig": _fx_sig}
                         try:
@@ -15216,7 +15268,7 @@ async def process_position(
                             _fx_oa2 = datetime.fromisoformat(_fx_oa2.replace("Z", "+00:00"))
                         _fx_oa_day = _fx_oa2.astimezone(_fx_ZI("America/New_York")).date().isoformat() if isinstance(_fx_oa2, datetime) else _fx_today
                         if _fx_e.get("sess") != _fx_today and _fx_oa_day < _fx_today:
-                            _fx_new = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0)))
+                            _fx_new = _fixed_stop_core.freeze_software_level(is_long, safe_fetch_float(i.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(i.get("dc_high_15m", 0) or 0, 0.0), safe_float(getattr(position, "entry_price", 0))) if _tr_fixed_stop_ref_default(account_key, symbol, position_side) else _tr_fixed_stop_freeze(account_key, symbol, position_side, is_long, i, safe_float(getattr(position, "entry_price", 0)))
                             if _fx_new > 0:
                                 logger.critical(f"🛡️ [SESSION_OPEN_STOP_REFREEZE] {position_key}: session {_fx_today} open — stop {_fx_lvl:.4f} -> new dc_15m {'low' if is_long else 'high'} level {_fx_new:.4f}")
                                 _fx_lvl = _fx_new
@@ -15224,17 +15276,18 @@ async def process_position(
                                 trade_manager._fixed_stop_registry_save()
                 except Exception as _fx_se:
                     logger.warning(f"[SESSION_OPEN_STOP_REFREEZE] {position_key}: {_fx_se}")
-                if _fixed_stop_core.breached(is_long, current_price, _fx_lvl):
+                _fx_chk = _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, position_side, is_long, _fx_lvl, safe_float(getattr(position, "entry_price", 0)), safe_fetch_float(getattr(position, "max_gain", 0), 0.0), i, _fx_sig)  # E7 tighten mode (off -> _fx_lvl)
+                if _fixed_stop_core.breached(is_long, current_price, _fx_chk):
                     _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     logger.critical(
-                        f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_lvl:.6f} g={_fx_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)"
+                        f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if is_long else 'dc_high_15m'} stop {_fx_chk:.6f} g={_fx_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)"
                     )
                     await queue_trade_action(
                         order_queue,
                         trade_manager,
                         position_key,
                         "CLOSE",
-                        f"FIXED_STOP_{'LONG' if is_long else 'SHORT'}_px{current_price:.6f}_lvl{_fx_lvl:.6f}_g{_fx_gain:.2f}",
+                        f"FIXED_STOP_{'LONG' if is_long else 'SHORT'}_px{current_price:.6f}_lvl{_fx_chk:.6f}_g{_fx_gain:.2f}{_tr_fixed_stop_ref_tag(account_key, symbol, position_side)}",
                         100.0,
                         override_qty=999999,
                     )
@@ -44628,7 +44681,10 @@ class TradierTradeManager:
             _augmented = _prev_qty > 0 and _qty > _prev_qty
             if _augmented:
                 try:
-                    _ref = _fixed_stop_core.freeze_software_level(_is_long, float(dc_low_15m or 0.0), float(dc_high_15m or 0.0), float(getattr(position, "entry_price", 0) or 0))
+                    if _tr_fixed_stop_ref_default(account_key, symbol, position_side):
+                        _ref = _fixed_stop_core.freeze_software_level(_is_long, float(dc_low_15m or 0.0), float(dc_high_15m or 0.0), float(getattr(position, "entry_price", 0) or 0))
+                    else:  # E7: the augment re-freeze uses the configured reference too (current snapshot), like the entry freeze
+                        _ref = _tr_fixed_stop_freeze(account_key, symbol, position_side, _is_long, self.get_indicators(symbol) or {}, float(getattr(position, "entry_price", 0) or 0))
                 except Exception:
                     _ref = 0.0
                 if _ref > 0:

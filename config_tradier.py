@@ -4108,7 +4108,7 @@ class TradierConfig:
     STRENGTH_MIN_SCORE: float = 5.0
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
     STRICT_VEC_PARITY_GATE_EXITS: bool = True  # USER 2026-10-17 total parity: closes only on vector exit families (vec_paths/vec_parity_gate.py, incl. FIXED_STOP/DAYTRADE_*/TECHNICAL_TARGET/ULTIMATE_DC/VIGILANCE_DC4/UNCOND_DC, |VEC_EXACT); live-only PRE_CLOSE / E3_STRUCT_EXIT / Market_Against_Position_Bias are refused in queue_trade_action
-    STRICT_VEC_PARITY_SHADOW: bool = False
+    STRICT_VEC_PARITY_SHADOW: bool = True  # 2026-10-20: log every would-block, block nothing (mirrors config.py).
     ST_LT_SPLIT_ENABLED: bool = True
     ST_SCORE_WEIGHT_LTF: float = 0.7
     SWEEP_DEEP_TEST_GAIN_PER_MO_MIN_PCT: float = 1.0
@@ -7121,7 +7121,15 @@ class TradierConfig:
     SCALP_V3_ENABLED: bool = False  # added
 
     STRICT_VEC_PARITY_MODE: bool = (
-        True  # 2026-09-26 PARITY LOCK — live trades ONLY vec-achievable routes. Was False, now True per user 20% churn fix.
+        False  # USER 2026-10-20: "switches and filters ARE the config/config_tradier values for that sym_side THERE ARE
+        # NOT 11 or 14 THERE ARE 3600 CUSTOM SETTINGS FOR EACH SYM_SIDE" — authorization is the per_sym set, not a
+        # reason-name allowlist. Same measurement and same reasoning as config.py STRICT_VEC_PARITY_MODE (see there for
+        # the full census). Stocks-specific evidence, 2026-10-20: 524 native OPEN proposals observed, 524 refused,
+        # 524/524 by this one gate, e.g. "BLOCKED — reason not vec-achievable. action=OPEN
+        # reason=TRADIER_DC_BREAKOUT_S_adx33" — a path gated on the switch DC_BREAKOUT_ENTRY_ENABLED and reading
+        # DC_BREAKOUT_TF_EXPANDED (tradier_manage.py:21963), i.e. the vector's own DC_BREAKOUT_ENTRY family under a
+        # stocks-prefixed name. With this True and PARITY_VEC_EXACT_MODE=False, stocks would have taken ZERO of the 232
+        # board trades at the 13:30Z open. SHADOW=True keeps the gate running and logging; it blocks nothing.
     )
 
     # ═══ INDEX NEWS STRATEGY (tradier_index_news.py) — SPY/QQQ/VT news+ORB — 2026-09-28 ═══

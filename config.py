@@ -6998,9 +6998,28 @@ class Config:
     #   execute_now() entry — a future-bypass tripwire. Log-only, never blocks.
     # ═══════════════════════════════════════════════════════════════════════════
     STRICT_VEC_PARITY_MODE: bool = (
-        True  # 2026-09-26 PARITY LOCK — live trades ONLY vec-achievable routes (SPREADSHEETS/BEST/ 7D forward). Default True = parity-only (no overtrade). Set False only for paper 1/3m test arm. Was False, now True per user 20% churn fix.
+        False  # USER 2026-10-20: "switches and filters ARE the config/config_tradier values for that sym_side THERE ARE
+        # NOT 11 or 14 THERE ARE 3600 CUSTOM SETTINGS FOR EACH SYM_SIDE". Authorization belongs to the per_sym set, not to
+        # a curated reason-name list. vec_paths/vec_parity_gate.py matches a live reason STRING against 11 entry tokens
+        # written 2026-05-28 for an engine that no longer exists; it is not an authorization mechanism and cannot become
+        # one by growing the list. MEASURED 2026-10-20 over the board corpus and the live emitters:
+        #   ENTRIES  0 of 582,689 board entry rows (4,738 charts in data/reports/charts_1M) admitted — 100% refused.
+        #            0 of 58 distinct live OPEN/AUGMENT reason literals in ez_manage/tradier_manage/ez_positions_quick
+        #            admitted. The refused families (HARDCODED_RALLY_REENTRY 159,841, B_SRS_ENTRY 104,911, B12 85,470,
+        #            B_KZONE 72,070, DC_BREAKOUT_ENTRY 12,813, ...) are every one of them EMITTED BY THE VECTOR ENGINE,
+        #            verified at source in v12_quick_engine.py + vec_decisions/ for all 50 families.
+        #   EXITS    350,243 of 582,306 board exit rows refused (60.1%), including STOP_LOSS, MTF_ATR_TRAIL (4,388),
+        #            PEAK_GIVEBACK_GAIN_EROSION_STOP (2,219) and TECHNICAL_EXIT (40,999) — i.e. the 2026-09-28
+        #            stranded-losers failure, latent again. The GATE_EXITS=True note below cites "0 of 1096 crypto closes
+        #            blocked"; that census ran while PARITY_VEC_EXACT_MODE=True put "VEC_EXACT" in every reason, which
+        #            short-circuits is_vec_achievable() at its first line. It never tested a native reason.
+        # MODE=True was therefore harmless ONLY while the replay was on. Flipping PARITY_VEC_EXACT_MODE=False the same
+        # night (native producers, per "NOTHING can live trade an npz") made the pair lethal: no OPEN can pass and 60% of
+        # closes cannot pass. SHADOW=True below keeps the gate WIRED AND RUNNING (nothing removed, GATE_ENTRIES/EXITS stay
+        # True, every would-block is logged) while the per_sym set — which the native producers already resolve through
+        # _PerSymProxy / per_sym_live_set.full_set, audited 0 of 753 live rows off-board — decides what may trade.
     )
-    STRICT_VEC_PARITY_SHADOW: bool = False
+    STRICT_VEC_PARITY_SHADOW: bool = True  # 2026-10-20: log every would-block, block nothing. The gate's own docstring calls this "the honest validation loop"; it was never run before MODE went True on 2026-09-26.
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
     STRICT_VEC_PARITY_GATE_EXITS: bool = (
         True  # USER 2026-10-17 "we need total parity so it should be True": live closes only on vector exit families. The 2026-09-28 OFF reason (allowlist lacked every live stop-loss token -> stranded losers) is fixed: FIXED_STOP / ULTIMATE_DC / VIGILANCE_DC4 / DAYTRADE_* / TECHNICAL_TARGET / UNCOND_DC / LH_LL_TOP_EXIT added to vec_paths/vec_parity_gate.py (all emitted by the engine); |VEC_EXACT always allowed. 3-day census: 0 of 1096 crypto closes would be blocked. Blocked = BLOCKED_VEC_PARITY_* (exit_guarantee POLICY, never FORCE-escalated). Was: 2026-09-28 SAFETY — was True and STRANDED LOSERS: the vec allowlist (vec_paths/vec_parity_gate.py) omits every live stop-loss reason, so STRICT_VEC_PARITY blocked VIGILANCE_MAX_LOSS_HARD_STOP_USER (6376×/day), MTF_ATR_TRAIL (735×), DC_BREACH_REDUCE (593×), VIGILANCE_DC4 (230×), BREAK_EVEN_GUARD (12

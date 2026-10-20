@@ -8484,6 +8484,59 @@ def _fixed_stop_freeze_level(is_long: bool, dc_low_15m: float, dc_high_15m: floa
     return 0.0, "ZERO"
 
 
+def _fixed_stop_spec_for(symbol, side):
+    """E7 2026-10-20: the FIXED_STOP reference spec of this sym_side (per-sym set > cat_side > config, like every switch). Never raises."""
+    try:
+        return _fixed_stop_core.normalize_spec(_psym_get(symbol, side, "FIXED_STOP_REF_FIELD", getattr(_ezm_base_config, "FIXED_STOP_REF_FIELD", "dc_low")), _psym_get(symbol, side, "FIXED_STOP_REF_TF", getattr(_ezm_base_config, "FIXED_STOP_REF_TF", "15m")), _psym_get(symbol, side, "FIXED_STOP_BUFFER_PCT", getattr(_ezm_base_config, "FIXED_STOP_BUFFER_PCT", 0.25)), _psym_get(symbol, side, "FIXED_STOP_TIGHTEN_MODE", getattr(_ezm_base_config, "FIXED_STOP_TIGHTEN_MODE", "off")), _psym_get(symbol, side, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", getattr(_ezm_base_config, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0)))
+    except Exception:
+        return _fixed_stop_core.DEFAULT_SPEC
+
+
+def _fixed_stop_freeze_level_spec(symbol, side, is_long: bool, ind, entry_price: float):
+    """E7: (level, source) at the configured reference. Default reference = _fixed_stop_freeze_level(dc_low_15m, dc_high_15m) unchanged."""
+    _spec = _fixed_stop_spec_for(symbol, side)
+    _ind = ind if isinstance(ind, dict) else {}
+    if _fixed_stop_core.is_default_reference(_spec):
+        return _fixed_stop_freeze_level(is_long, safe_fetch_float(_ind.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(_ind.get("dc_high_15m", 0) or 0, 0.0), entry_price)
+    _lvl, _src = _fixed_stop_core.freeze_level_spec(is_long, _spec, _ind.get, entry_price)
+    if _src.startswith("FALLBACK"):
+        logger.warning(f"🛡️ [FIXED_STOP_REF_FALLBACK] {symbol}_{side}: reference {_spec[0]}_{_spec[1]} unusable ({_src}) — frozen at today's dc_15m level {_lvl:.6f}")
+    return _lvl, _src
+
+
+def _fixed_stop_effective_level(trade_manager, position_key, symbol, side, is_long: bool, frozen: float, entry_price: float, max_gain: float, ind, lifecycle) -> float:
+    """E7 FIXED_STOP_TIGHTEN_MODE (software leg only): the ratcheted level for THIS check, from state through the previous check;
+    then the ratchet advances with the current max_gain / reference. Mode off -> `frozen` untouched. The exchange backstop keeps
+    the frozen level (ensure_fixed_stop_backstop is always given the frozen level). Never looser than `frozen`, never raises."""
+    try:
+        _spec = _fixed_stop_spec_for(symbol, side)
+        if _spec[3] == "off" or float(frozen or 0.0) <= 0:
+            return frozen
+        _tm = trade_manager.__dict__.setdefault("_fixed_stop_tight_levels", {})
+        _k = (str(position_key), float(lifecycle or 0.0))
+        _eff = _fixed_stop_core.tightened(is_long, frozen, float(_tm.get(_k, 0.0) or 0.0))
+        _ind = ind if isinstance(ind, dict) else {}
+        _ref = _fixed_stop_core.ref_value(is_long, _spec[0], _spec[1], _ind.get)[0]
+        _nxt = _fixed_stop_core.tightened(is_long, _eff, _fixed_stop_core.tighten_candidate(is_long, _spec, entry_price, max_gain, _ref))
+        if abs(_nxt - float(_tm.get(_k, 0.0) or 0.0)) > 1e-12 and abs(_nxt - frozen) > 1e-12:
+            logger.critical(f"🛡️ [FIXED_STOP_TIGHTEN] {position_key}: {_spec[3]} (trigger {_spec[4]:.2f}% peak {float(max_gain or 0):.2f}%) software stop {_eff:.6f} -> {_nxt:.6f} (frozen {float(frozen):.6f}; exchange backstop stays frozen)")
+        _tm[_k] = _nxt
+        return _eff
+    except Exception:
+        return frozen
+
+
+def _fixed_stop_ref_tag(symbol, side) -> str:
+    """E7: reason tail for a non-default reference ("" for today's spec, so default reasons stay byte-identical)."""
+    try:
+        _spec = _fixed_stop_spec_for(symbol, side)
+        if _fixed_stop_core.is_default_spec(_spec):
+            return ""
+        return f"_REF{_spec[0]}.{_spec[1]}.b{_spec[2]:g}" + (f".T{_spec[3]}" if _spec[3] != "off" else "")
+    except Exception:
+        return ""
+
+
 def _fixed_stop_level_absurd(is_long: bool, level: float, entry_price: float) -> bool:
     """True = a previously frozen level sits impossibly far from entry (stale first-freeze) or on the wrong side — exactly one re-freeze is warranted, never a drift."""
     try:
@@ -32185,7 +32238,7 @@ class MultiAccountTradeManager:
         _augment = _grew or "AUGMENT" in str(action or "").upper() or "AUGMENT" in str(reason or "").upper()
         _refreeze = _augment and bool(getattr(config, "FIXED_STOP_AUGMENT_REFREEZE", True))
         if _lvl <= 0 or _refreeze or _fixed_stop_level_absurd(_is_long, _lvl, _ep):
-            _new, _src = _fixed_stop_freeze_level(_is_long, _dc_lo, _dc_hi, _ep)
+            _new, _src = _fixed_stop_freeze_level_spec(symbol, position_side, _is_long, _ind, _ep)
             if _new > 0:
                 if _lvl > 0 and abs(_new - _lvl) > 1e-12:
                     logger.critical(f"🛡️ [ENTRY_STOP_REFREEZE] {position_key}: {'augment' if _refreeze else 'stale level'} — whole position {_amt:.6f} moves {_lvl:.6f} -> {_new:.6f} ({_src})")
@@ -51673,7 +51726,7 @@ async def process_position(
             # opened_at is the lifecycle: a new one re-freezes. No percentage anywhere.
             if _fixed_stop_core.needs_freeze(_fx_lvl, _fx_anchor, _fx_oa_ep) or _fixed_stop_level_absurd(_fx_is_long, _fx_lvl, _fx_ep):
                 _fx_old = _fx_lvl
-                _fx_lvl, _fx_src = _fixed_stop_freeze_level(_fx_is_long, safe_fetch_float(_pp_shared_ind.get("dc_low_15m", 0) or 0, 0.0), safe_fetch_float(_pp_shared_ind.get("dc_high_15m", 0) or 0, 0.0), _fx_ep)
+                _fx_lvl, _fx_src = _fixed_stop_freeze_level_spec(symbol, position_side, _fx_is_long, _pp_shared_ind, _fx_ep)
                 if _fx_lvl > 0:
                     position.fixed_stop_price = _fx_lvl
                     _fx_armed0 = _fixed_stop_core.armed_at_freeze(_fx_is_long, current_price, _fx_lvl)
@@ -51687,12 +51740,13 @@ async def process_position(
             if _fx_lvl > 0 and not bool(getattr(position, "fixed_stop_armed", True)) and not _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl):
                 position.fixed_stop_armed = True
                 logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl:.6f} — stop is live again")
-            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl) and bool(getattr(position, "fixed_stop_armed", True)):
+            _fx_chk = _fixed_stop_effective_level(trade_manager, position_key, symbol, position_side, _fx_is_long, _fx_lvl, _fx_ep, safe_fetch_float(getattr(position, "max_gain", 0), 0.0), _pp_shared_ind, _fx_oa_ep)  # E7 tighten mode (off -> _fx_lvl)
+            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)):
                 _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _fx_side = "SELL" if _fx_is_long else "BUY"
-                logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if _fx_is_long else 'dc_high_15m'} stop {_fx_lvl:.6f} g={_fx_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)")
-                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_fx_amt, side=_fx_side, position_side=position_side, quantity=_fx_amt, old_price=current_price, unique_id=f"FIXED_STOP_{int(time.time())}", reason=f"FIXED_STOP_{'LONG' if _fx_is_long else 'SHORT'}_px{current_price:.6f}_lvl{_fx_lvl:.6f}_g{_fx_gain:.2f}", is_full_close=True, action="CLOSE")
+                logger.critical(f"⛔ [FIXED_STOP] {position_key}: price {current_price:.6f} breached frozen {'dc_low_15m' if _fx_is_long else 'dc_high_15m'} stop {_fx_chk:.6f} g={_fx_gain:.2f}% → HARD_STOP CLOSE (non-negotiable)")
+                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_fx_amt, side=_fx_side, position_side=position_side, quantity=_fx_amt, old_price=current_price, unique_id=f"FIXED_STOP_{int(time.time())}", reason=f"FIXED_STOP_{'LONG' if _fx_is_long else 'SHORT'}_px{current_price:.6f}_lvl{_fx_chk:.6f}_g{_fx_gain:.2f}{_fixed_stop_ref_tag(symbol, position_side)}", is_full_close=True, action="CLOSE")
                 trade_manager.processing_keys.discard(position_key)
                 return f"{EvalStatus.ACTION_TAKEN}:FIXED_STOP_CLOSED"
             try:

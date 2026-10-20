@@ -350,6 +350,74 @@ def regime_cuts(board_meta):
     return [float(x) for x in np.quantile(bh, [0.2, 0.4, 0.6, 0.8])]
 
 
+# ------------------------------------------------------------------------------------------------ board bh for boards without BOARD_CTX
+
+_KL = {}
+
+
+def _ep(s):
+    from datetime import datetime, timezone
+    return datetime.strptime(str(s)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+
+
+def _series(sym, stocks):
+    if (sym, stocks) in _KL:
+        return _KL[(sym, stocks)]
+    p = ROOT / "klines_cache" / ("tradier" if stocks else "") / f"{sym}_1h.json"
+    out = None
+    if p.exists():
+        try:
+            d = json.loads(p.read_text())
+            ts = np.array([_ep(x["timestamp"]) for x in d])
+            cl = np.array([float(x["close"]) for x in d])
+            o = np.argsort(ts)
+            out = (ts[o], cl[o])
+        except Exception:
+            out = None
+    _KL[(sym, stocks)] = out
+    return out
+
+
+def bh_from_klines(sym_side, t, cs):
+    """Side-adjusted buy-and-hold of the board window from exchange-native 1h klines (crypto 30 d, stocks 45 calendar d - the
+    windows that reproduce the logged BOARD_CTX bh, see fill_bh validation). None when the klines do not cover the window."""
+    stocks = cs.startswith("STOCKS")
+    days = 45 if stocks else 30
+    s = _series(sym_side.rsplit("_", 1)[0], stocks)
+    if s is None or t is None:
+        return None
+    ts, cl = s
+    e = _ep(t)
+    i = np.searchsorted(ts, e, side="right") - 1
+    j = np.searchsorted(ts, e - days * 86400, side="left")
+    if i < 0 or j >= len(ts) or j >= i or ts[j] - (e - days * 86400) > 3 * 86400 or e - ts[i] > 3 * 86400:
+        return None
+    r = (cl[i] / cl[j] - 1) * 100
+    return float(-r if cs.endswith("SHORT") else r)
+
+
+def fill_bh(cs, board_meta):
+    err = []
+    for m in board_meta.values():
+        if m.get("bh") is not None:
+            v = bh_from_klines(m["s"], m.get("t"), cs)
+            if v is not None:
+                err.append(abs(v - m["bh"]))
+            m["bh_src"] = "BOARD_CTX"
+    filled = 0
+    for m in board_meta.values():
+        if m.get("bh") is None:
+            v = bh_from_klines(m["s"], m.get("t"), cs)
+            if v is not None:
+                m["bh"], m["bh_src"] = v, "klines_1h"
+                filled += 1
+            else:
+                m["bh_src"] = "none"
+    return {"validated_on_boards": len(err), "median_abs_err_pp": r4(float(np.median(err))) if err else None,
+            "p90_abs_err_pp": r4(float(np.quantile(err, 0.9))) if err else None, "filled_boards": filled,
+            "still_unknown": sum(1 for m in board_meta.values() if m.get("bh") is None)}
+
+
 REGIMES = ("STRONG_DOWN", "DOWN", "FLAT", "UP", "STRONG_UP", "UNK")
 
 
@@ -435,8 +503,10 @@ def candidate_verdict(e, i, is_bold_row):
         return "UNTRIED", "NO_EVALS"
     lo, hi = e["p_lo"][i], e["p_hi"][i]
     mlo, mhi = e["mean_lo"][i], e["mean_hi"][i]
-    if lo > T["p_w"] and (np.isnan(e["mean_c"][i]) or e["mean_c"][i] > 0 or (e["epos_shr"][i] or 0) > 0) and e["pos_syms"][i] >= 2:
-        return "WORKS", "P_POS_LB_GT_P_W"
+    if lo > T["p_w"] and e["pos_syms"][i] >= 2:
+        if np.isnan(mhi) or mhi >= 0:
+            return "WORKS", "P_POS_LB_GT_P_W"
+        return "CONTESTED", "P_POS_LB_GT_P_W_BUT_MEAN_UB_LT_0(per sym_side only)"
     if n >= T["n_min"] and ns >= T["s_min"]:
         if e["zero"][i] >= T["inert_share"] * n and e["zero_syms"][i] >= T["s_min"]:
             return "INERT", "NO_EFFECT"
@@ -540,6 +610,7 @@ def build_cs(cs, a):
     keys, filts, syms = L["keys"], L["filts"], L["syms"]
     R, C = L["R"], L["C"]
     nk = len(keys.names)
+    bh_fill = fill_bh(cs, L["board_meta"])
     cuts = regime_cuts(L["board_meta"])
     breg = {bi: regime_of(m.get("bh"), cuts) for bi, m in L["board_meta"].items()}
     R["reg"] = np.array([breg.get(int(b), 5) for b in R["board"]], np.int64)
@@ -733,6 +804,8 @@ def build_cs(cs, a):
                 v, sub = "DAMAGING", "PAIRED_LEDGER_ALL_NEGATIVE"
             if is_def:
                 state = "DEFAULT"
+            elif v == "DAMAGING" and E["pos_syms"][i] >= 2 and E["p_lo"][i] > T["p_c"]:
+                state, sub = "CONTESTED", sub + ";AS_DEFAULT_DAMAGING_BUT_WINS_PER_SYM_SIDE"
             else:
                 state = v
             ps = pairs_of_key.get(i, [])
@@ -758,7 +831,8 @@ def build_cs(cs, a):
                 if kk == k and akill >= 2:
                     exm = rem.get(("ABL_EXEMPT", f"{k}+{ff}")) or rem.get(("ABL_EXEMPT", ff))
                     suff.append({"f": ff, "remedy": "exemption", "remedy_delta": r4(exm[2] / exm[0]) if exm else r4((add - aeff) / max(1, an)),
-                                 "remedy_basis": "ABL_EXEMPT measured" if exm else "ablation dd - eff (discovered minus restored)", "n": an, "kills": akill,
+                                 "remedy_basis": "ABL_EXEMPT measured on the board" if exm else "STRIPPED-CONTEXT dd - eff per attribution (ablation board, not the live chain)",
+                                 "n": an, "kills": akill, "ctx": "board" if exm else "stripped",
                                  "basis": "ablation attribution (killer when restored gain < 0.5 x discovered)", "fdr": None})
             for (rk2, ff), lst in vev.items():
                 if rk2 == k and lst:
@@ -766,7 +840,7 @@ def build_cs(cs, a):
                     if s_d > EPS:
                         suff.append({"f": ff, "remedy": f"off ({lst[0][3]})", "remedy_delta": r4(s_d / len(lst)), "n": len(lst), "n_syms": len({x[0] for x in lst}),
                                      "basis": "paired real evals (veto_measure: base + switch=cand vs + filter off)", "fdr": None})
-            suff.sort(key=lambda x: -(x.get("remedy_delta") or 0))
+            suff.sort(key=lambda x: (x.get("ctx") == "stripped", -(x.get("remedy_delta") or 0)))
             pos_views = sorted([x for x in views if x["pos"] > 0], key=lambda x: (-(x["lift_ci"][0] if x["lift_ci"][0] is not None else -9), -x["pos"]))
             # pilot list (contract kept): needed -> suffocating -> evidence_pos, deduped, <= needed_max, ranked by interval lower bound
             picked, seen = {"needed": [], "suffocating": [], "evidence_pos": []}, set()
@@ -812,6 +886,7 @@ def build_cs(cs, a):
                             "class": x["class"], "fdr": x["fdr"]} for x in need[:8]],
                 "suffocating": suff[:8],
                 "default_companions": [x["f"] for x in views if x["class"] == "DEFAULT_COMPANION"][:12],
+                "_filters_pos": pos_views[:10],
                 "exits_cooccurrence": o.get("exits_cooccurrence"),
                 "coverage": {"pairs_total": len(ylist), "pairs_n_ge3": sum(1 for x in views if x["n"] >= 3 and x["f"] in ylist),
                              "pairs_n_1_2": sum(1 for x in views if 1 <= x["n"] < 3 and x["f"] in ylist), "pairs_untried_n0": max(0, len(ylist) - n_seen)},
@@ -831,7 +906,7 @@ def build_cs(cs, a):
         n_alt_vb = sum((r["vs_bold"] or {}).get("n", 0) for r in alts)
         syms_alt_vb = max([(r["vs_bold"] or {}).get("n_syms", 0) for r in alts] + [0])
         any_w = [r for r in alts if r["cand_verdict"] == "WORKS"]
-        contested = [r for r in alts if r["cand_verdict"] in ("CONTESTED", "WORKS")]
+        contested = [r for r in alts if r["pos_syms"] >= 2 and (r["interval"][0] or 0) > T["p_c"]]
         reg_w = [(r["cand"], g, d) for r in alts for g, d in r["regime"].items() if (d.get("p_pos_ci") or [0])[0] is not None and d["p_pos_ci"][0] > T["p_w"] and d["pos"] >= 2]
         dmg = [r for r in alts if r["cand_verdict"] == "DAMAGING"]
         inert = [r for r in alts if r["cand_verdict"] == "INERT"]
@@ -871,6 +946,13 @@ def build_cs(cs, a):
                 bbr[g] = {"cand": best[1], "p_pos": best[2]["p_pos"], "p_pos_ci": best[2]["p_pos_ci"], "n": best[2]["n"], "pos": best[2]["pos"], "mean_d": best[2]["mean_d"], "thin": best[2]["thin"]}
         agg_need = collections.defaultdict(lambda: [0, -9.0, None])
         agg_suff = collections.defaultdict(lambda: [0, -9.0, None])
+        agg_suff_key = lambda kv: (kv[1][2] is not None and kv[1][2].get("ctx") == "stripped", -kv[1][1])
+        best_f = {}
+        for r in rr:
+            for x in r.get("_filters_pos", []):
+                cur = best_f.get(x["f"])
+                if cur is None or (x["lift_ci"][0] if x["lift_ci"][0] is not None else -9) > (cur["lift_ci"][0] if cur["lift_ci"][0] is not None else -9):
+                    best_f[x["f"]] = dict(x, row=r["cand"])
         for r in rr:
             for x in r["needed"]:
                 e = agg_need[x["filter_opt"]]
@@ -896,9 +978,11 @@ def build_cs(cs, a):
             "best_cand": best_row["cand"] if best_row and best_row["n_syms"] else None,
             "interval": best_row["interval"] if best_row else None,
             "best_by_regime": bbr, "regime": bbr,
+            "filters_evidence": [{"filter_opt": f, "cand": x["row"], "class": x["class"], "lift": x["lift"], "interval": x["lift_ci"], "n": x["n"], "n_syms": x["n_syms"], "pos": x["pos"], "fdr": x["fdr"]}
+                                 for f, x in sorted(best_f.items(), key=lambda kv: -(kv[1]["lift_ci"][0] if kv[1]["lift_ci"][0] is not None else -9))[:10]],
             "damaging_cands": [r["cand"] for r in dmg], "inert_cands": [r["cand"] for r in inert],
             "needed_filters": [{"filter_opt": f, "rows": e[0], "lb": r4(e[1]), "lift": e[2]["lift"], "interval": e[2]["interval"], "fdr": e[2]["fdr"]} for f, e in sorted(agg_need.items(), key=lambda x: -x[1][1])[:10]],
-            "suffocating_filters": [{"filter_opt": f, "rows": e[0], "remedy": e[2].get("remedy"), "remedy_delta": e[2].get("remedy_delta"), "basis": e[2].get("basis")} for f, e in sorted(agg_suff.items(), key=lambda x: -x[1][1])[:10]],
+            "suffocating_filters": [{"filter_opt": f, "rows": e[0], "remedy": e[2].get("remedy"), "remedy_delta": e[2].get("remedy_delta"), "basis": e[2].get("basis"), "ctx": e[2].get("ctx", "board")} for f, e in sorted(agg_suff.items(), key=agg_suff_key)[:10]],
             "forward": {"n": sum(r["forward"]["n"] for r in rr), "pos": sum(r["forward"]["pos"] for r in rr), "promoted": sum(r["forward"]["promoted"] for r in rr),
                         "survived_start": sum(r["forward"]["survived_start"] for r in rr), "beaten": sum(r["forward"]["beaten"] for r in rr)},
             "live": {"n": sum(r["live"]["n"] for r in rr), "pos": sum(r["live"]["pos"] for r in rr), "pnl_pp": r4(sum(r["live"]["pnl_pp"] or 0 for r in rr), 3), "basis": "co-occurrence"},
@@ -914,6 +998,8 @@ def build_cs(cs, a):
                 r["verdict"] = switches[sw]["verdict"]
             elif state == "SETTLED_OFF" and r["cand_verdict"] in ("LOSES_TO_DEFAULT", "DAMAGING", "INERT"):
                 r["state"] = "SETTLED_OFF" if r["cand_verdict"] != "DAMAGING" else "DAMAGING"
+    for r in rows_out.values():
+        r["filters_evidence"] = [{"filter_opt": x["f"], "class": x["class"], "lift": x["lift"], "interval": x["lift_ci"], "n": x["n"], "n_syms": x["n_syms"], "pos": x["pos"]} for x in r.pop("_filters_pos", [])[:4]]
     # ---------------- positives_all
     uni = universe(cs, syms.names)
     uidx = {s: i for i, s in enumerate(uni)}
@@ -973,7 +1059,7 @@ def build_cs(cs, a):
     # ---------------- precision stats (before / after)
     stats = precision_stats(cs, E, EP, npairs, old_rows, old_sw, rows_out, switches, tmpl_pairs, rej_gt, rej_lt, rej_gt_t, pair_class, loose, keys, filts, pk_u, row_yellows)
     stats.update({"rho_rows": r4(rho_rows), "p0_rows": r4(p0_rows), "rho_pairs": r4(EP["rho"]) if EP else None, "p0_pairs": r4(EP["p0"]) if EP else None,
-                  "regime_cuts_bh": cuts, "regime_counts_boards": dict(collections.Counter(REGIMES[v] for v in breg.values())),
+                  "regime_cuts_bh": cuts, "bh_fill": bh_fill, "regime_counts_boards": dict(collections.Counter(REGIMES[v] for v in breg.values())),
                   "regime_counts_evals": {REGIMES[gi]: int(er["n"].sum()) for gi, er in ER.items()},
                   "negative_mass": {"valid_negative_by_default_provenance": {k: {"n": neg_n[k], "sum_d": r4(v, 2)} for k, v in neg_split.items()},
                                     "invalid_evals": {"n": int(invmask.sum()), "sum_d": r4(inv_mass, 2), "note": "gate-invalid (e.g. < 10 trades): never adoptable, kept apart from both"},
@@ -1019,6 +1105,12 @@ def precision_stats(cs, E, EP, npairs, old_rows, old_sw, rows_out, switches, tmp
     tmpl_keys = set(rows_out)
     rows_n = np.array([r["n_evals"] for r in rows_out.values()])
     wa_rows = np.array([r["interval"][1] - r["interval"][0] for r in rows_out.values() if r["n_evals"] > 0 and r["interval"][0] is not None])
+    wa_rows_flat = []
+    for r in rows_out.values():
+        if r["n_evals"] > 0:
+            n_, p_ = r["n_valid"] + r["n_invalid"], r["n_pos_evals"]
+            lo, hi = beta_ci(1 + p_, 1 + n_ - p_)
+            wa_rows_flat.append(hi - lo)
     wa_sw = np.array([s["interval"][1] - s["interval"][0] for s in switches.values() if s["interval"] and s["interval"][0] is not None and s["n_evals"] > 0])
     if npairs:
         pn = EP["n"]
@@ -1045,6 +1137,8 @@ def precision_stats(cs, E, EP, npairs, old_rows, old_sw, rows_out, switches, tmp
                   "median_n_per_row": r4(float(np.median(rows_n))), "median_n_per_tried_row": r4(float(np.median(rows_n[rows_n > 0]))) if (rows_n > 0).any() else None,
                   "median_ci_width_p_pos_rows": r4(float(np.median(wa_rows))) if len(wa_rows) else None,
                   "median_ci_width_p_pos_switch": r4(float(np.median(wa_sw))) if len(wa_sw) else None,
+                  "median_ci_width_p_pos_rows_flat_prior_same_counts": r4(float(np.median(wa_rows_flat))) if wa_rows_flat else None,
+                  "median_ci_width_p_pos_rows_n_ge_10": r4(float(np.median([r["interval"][1] - r["interval"][0] for r in rows_out.values() if r["n_evals"] >= 10]))) if any(r["n_evals"] >= 10 for r in rows_out.values()) else None,
                   "median_ci_width_p_pos_pairs": r4(float(np.median(wa_pairs))) if len(wa_pairs) else None,
                   "median_ci_width_mean_marginal_pairs_pp": r4(float(np.median(wa_pairs_mean))) if len(wa_pairs_mean) else None,
                   "ci_method": "hierarchical Beta (m0=8 at cat_side, design-effect weights 1/(1+(n_g-1)rho) per sym_side cluster) 90%; means: cluster-robust normal 90%",
@@ -1068,14 +1162,21 @@ def make_card(sw, s, rows):
             "cands": {r["cand"]: [r["cand_verdict"][:4], r["n_evals"], r["pos_syms"], r["interval"][0], r["interval"][1]] for r in alts[:6]},
             "regime": {g: [d["cand"], d["p_pos_ci"][0], d["p_pos_ci"][1], d["n"], d["thin"]] for g, d in s["best_by_regime"].items()},
             "needed": [[x["filter_opt"], x["lift"], x["interval"][0] if x["interval"] else None, x["interval"][1] if x["interval"] else None, x["fdr"]] for x in s["needed_filters"][:5]],
-            "suffocators": [[x["filter_opt"], x["remedy"], x["remedy_delta"]] for x in s["suffocating_filters"][:3]],
+            "filters": [[x["filter_opt"], x["class"][:12], x["lift"], x["interval"][0], x["interval"][1], x["n_syms"]] for x in s.get("filters_evidence", [])[:5]],
+            "suffocators": [[x["filter_opt"], x["remedy"], x["remedy_delta"], x.get("ctx", "board")] for x in s["suffocating_filters"][:3]],
             "exit_shift": None, "fwd": [s["forward"]["promoted"], s["forward"]["survived_start"], s["forward"]["beaten"]], "live": [s["live"]["n"], s["live"]["pos"], s["live"]["pnl_pp"]],
             "untried_cands": len(s["untried_cands"]), "untried_pair_share": r4(s["coverage"]["pairs_untried_n0"] / s["coverage"]["pairs_total"], 3) if s["coverage"]["pairs_total"] else None,
             "damaging": s["damaging_cands"][:6], "secs": s["eval_secs"]}
     xs = s.get("exit_shift")
     if xs:
-        t = xs["top_transitions"][:2]
-        card["exit_shift"] = {"moved": xs["moved_share"], "top": [[x["from"], x["to"], x["n"], x["d_pnl_pp"]] for x in t], "d_loss": xs["sum_d_loss_pp"], "d_gain": xs["sum_d_gain_pp"], "syms": xs["n_syms"], "basis": "causal"}
+        t = xs.get("family_changes", [])[:2]
+        card["exit_shift"] = {"moved": xs["moved_share"], "filtered": xs.get("filtered"), "added": xs.get("added"), "top": [[x["from"], x["to"], x["n"], x["d_pnl_pp"]] for x in t],
+                              "d_loss": xs["sum_d_loss_pp"], "d_gain": xs["sum_d_gain_pp"], "syms": xs["n_syms"], "basis": "causal"}
+    else:
+        co = s.get("exits_cooccurrence") or {}
+        fams = co.get("families") or []
+        if fams:
+            card["exit_shift"] = {"basis": "co-occurrence only (board ledgers whose set carries the switch; NOT causal)", "top_loss": [[f["exit_family"], f["trades"], f["loss_sum_pp"]] for f in fams[:2]]}
     txt = json.dumps(card, separators=(",", ":"))
     while len(txt) > T["card_bytes"]:
         for fld, keep in (("cands", 3), ("regime", 3), ("needed", 3), ("damaging", 2), ("suffocators", 2), ("why", 40)):
@@ -1132,10 +1233,11 @@ def render_cards_md(cs, res):
         s = S[r["switch"]]
         reg = max(r["regime"].items(), key=lambda kv: (kv[1]["p_pos_ci"][0] or 0), default=None)
         regs = f"{reg[0]} {fnum(reg[1]['p_pos'], 2)} n={reg[1]['n']}" if reg else "-"
-        nd = "; ".join(f"{x['filter_opt']} {fnum(x['lift'], 2)} {ci(x['interval'], 2)}{'*' if x['fdr'] else ''}" for x in r["needed"][:2]) or "-"
+        fe = r["needed"][:2] or r.get("filters_evidence", [])[:2]
+        nd = "; ".join(f"{x['filter_opt']} {fnum(x['lift'], 2)} {ci(x['interval'], 2)} {str(x.get('class', ''))[:7]}{'*' if x.get('fdr') else ''}" for x in fe) or "-"
         L.append(f"| {r['switch']}={r['cand']} ({s['default']}) | {r['cand_verdict']} | {fnum(r['p_pos'], 3)} {ci(r['interval'])} | {r['pos_syms']}/{r['n_syms']} | {r['n_evals']} | "
                  f"{fnum(r['mean_delta'], 2)} {ci(r['interval_mean_delta'], 2)} | {fnum(r['e_delta_pos'], 2)} | {regs} | {nd} |")
-    L += ["", "(* = survives Benjamini-Hochberg)", "", "## 2. Keep / switch OFF: default beats its alternatives (SETTLED_WINNING / SETTLED_OFF), top by alternative evals", "",
+    L += ["", "(filters column: NEEDED* = marginal lift LB > 0 and survives Benjamini-Hochberg; otherwise the best-evidenced filter with its class: NEEDED_U = LB > 0 but not FDR-confirmed, OPEN = interval spans 0)", "", "## 2. Keep / switch OFF: default beats its alternatives (SETTLED_WINNING / SETTLED_OFF), top by alternative evals", "",
           "| switch | default | state | alternatives n / max syms | Σdelta of alternatives | promoted from evidence | fwd promoted/survived/beaten |", "|---|---|---|---|---|---|---|"]
     sett = [(sw, s) for sw, s in S.items() if s["state"] in ("SETTLED_WINNING", "SETTLED_OFF")]
     sett.sort(key=lambda x: -x[1]["n_evals"])
@@ -1148,21 +1250,40 @@ def render_cards_md(cs, res):
     stop.sort(key=lambda r: -(r["eval_secs"] or 0))
     for r in stop[:45]:
         L.append(f"| {r['switch']}={r['cand']} | {r['cand_verdict']} | {r['n_evals']} / {r['n_syms']} | {fnum(r['p_pos'], 3)} {ci(r['interval'])} | {fnum(r['mean_delta'], 2)} {ci(r['interval_mean_delta'], 2)} | {fnum(r['sum_delta'], 1)} | {fnum(r['eval_secs'], 0)} |")
-    L += ["", "## 4. Suffocated switches: filter state that kills the row, with the best measured remedy", "",
-          "| switch | suffocator | remedy | remedy delta | basis |", "|---|---|---|---|---|"]
-    suf = [(sw, x) for sw, s in S.items() for x in s["suffocating_filters"][:1] if (x.get("remedy_delta") or 0) > 0]
-    suf.sort(key=lambda t: -(t[1]["remedy_delta"] or 0))
-    for sw, x in suf[:25]:
-        L.append(f"| {sw} | {x['filter_opt']} | {x['remedy']} | {fnum(x['remedy_delta'], 2)} | {(x['basis'] or '')[:60]} |")
+    L += ["", "## 4a. Suffocated switches, ON-BOARD evidence (yellow rescue / strict option harms while the loose option does not / paired veto evals)", "",
+          "| switch | suffocator | remedy | remedy delta pp | basis |", "|---|---|---|---|---|"]
+    suf = [(sw, x) for sw, s in S.items() for x in s["suffocating_filters"] if x.get("ctx", "board") == "board" and (x.get("remedy_delta") or 0) > 0]
+    best = {}
+    for sw, x in suf:
+        if sw not in best or (x["remedy_delta"] or 0) > (best[sw]["remedy_delta"] or 0):
+            best[sw] = x
+    for sw, x in sorted(best.items(), key=lambda t: -(t[1]["remedy_delta"] or 0))[:20]:
+        L.append(f"| {sw} | {x['filter_opt']} | {x['remedy']} | {fnum(x['remedy_delta'], 2)} | {(x['basis'] or '')[:70]} |")
+    L += ["", "## 4b. Suffocators from ablation records (STRIPPED context: the discovered gain with all filters stripped minus the gain with this filter restored; a ranking of killers, not a board gain)", "",
+          "| switch | killer filter | kills | stripped-context dd - eff (pp per attribution) |", "|---|---|---|---|"]
+    ab = []
+    for sw, s in S.items():
+        for x in s["suffocating_filters"]:
+            if x.get("ctx") == "stripped":
+                ab.append((x["remedy_delta"] or 0, sw, x))
+                break
+    for v, sw, x in sorted(ab, key=lambda t: -t[0])[:15]:
+        L.append(f"| {sw} | {x['filter_opt']} | {x.get('rows')} rows | {fnum(v, 2)} |")
     L += ["", "## 5. Causal exit shifts (same set ± one key, same NPZ, trades matched by entry bar)", "",
-          "| switch | from->to | syms | exits moved | top shift (n, Δpnl pp) | Σ Δloss pp | Σ Δgain pp (+/-) |", "|---|---|---|---|---|---|---|"]
+          "Direction = the published set's value -> the most-evaluated other template value (None = the set does not carry the key). exits moved = base trades whose exit bar, family or pnl changed; FILTERED = base entries gone; ADDED = new entries. Δloss > 0 = fewer losses.", "",
+          "| switch | syms | exits moved | filtered / added | top family changes (n, Δpnl pp) | Σ Δloss pp | Σ Δgain pp (+/- syms) |", "|---|---|---|---|---|---|---|"]
     xs = [(sw, s["exit_shift"]) for sw, s in S.items() if s.get("exit_shift")]
     xs.sort(key=lambda t: t[1]["sum_d_gain_pp"])
     for sw, x in xs[:15]:
-        t = x["top_transitions"][0] if x["top_transitions"] else None
-        L.append(f"| {sw} | {', '.join(x['directions'])[:40]} | {x['n_syms']} | {fnum((x['moved_share'] or 0) * 100, 1)}% | "
-                 f"{(t['from'] + '->' + t['to'] + ' ' + str(t['n']) + ', ' + fnum(t['d_pnl_pp'], 1)) if t else '-'} | {fnum(x['sum_d_loss_pp'], 1)} | {fnum(x['sum_d_gain_pp'], 1)} ({x['n_gain_pos']}/{x['n_gain_neg']}) |")
-    L += ["", "## 6. Untried, worth a first trial (sibling evidence only - NOT measured)", "",
+        fc = "; ".join(f"{t['from']}->{t['to']} {t['n']} ({fnum(t['d_pnl_pp'], 1)})" for t in x.get("family_changes", [])[:2]) or "-"
+        L.append(f"| {sw} | {x['n_syms']} | {fnum((x['moved_share'] or 0) * 100, 1)}% | {x.get('filtered')} / {x.get('added')} | {fc} | {fnum(x['sum_d_loss_pp'], 1)} | {fnum(x['sum_d_gain_pp'], 1)} ({x['n_gain_pos']}/{x['n_gain_neg']}) |")
+    L += ["", "## 6a. Measured but thin, with positives: worth more trials (these keys are in positives_all and must reach every untried sym_side)", "",
+          "| switch=cand (default) | pos evals / n | pos syms / tried syms | P(pos) [CI] | best delta |", "|---|---|---|---|---|"]
+    thin = [r for r in Rw.values() if not r["is_default"] and r["cand_verdict"] == "UNTESTED" and r["n_pos_evals"] > 0]
+    thin.sort(key=lambda r: (-(r["p_pos"] or 0), -r["n_pos_evals"]))
+    for r in thin[:20]:
+        L.append(f"| {r['switch']}={r['cand']} ({S[r['switch']]['default']}) | {r['n_pos_evals']} / {r['n_evals']} | {r['pos_syms']} / {r['n_syms']} | {fnum(r['p_pos'], 3)} {ci(r['interval'])} | {fnum(r['sum_pos_delta'], 2)} |")
+    L += ["", "## 6b. Untried values, sibling evidence only (NOT measured)", "",
           "| switch | untried cands | sibling with best P(pos) LB | its CI |", "|---|---|---|---|"]
     ut = []
     for sw, s in S.items():

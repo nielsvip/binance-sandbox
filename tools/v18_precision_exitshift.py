@@ -227,11 +227,15 @@ def attribute(a):
     out = {}
     for (cs, sw), e in agg.items():
         tops = sorted(e["transitions"].items(), key=lambda kv: -kv[1])[:8]
+        cross = sorted(((k, v) for k, v in e["transitions"].items() if k[0] != k[1] and k[0] != "ADDED" and k[1] != "FILTERED"), key=lambda kv: -kv[1])[:6]
         out.setdefault(cs, {})[sw] = {
             "n_syms": e["n_syms"], "directions": dict(e["directions"]), "base_exits": e["base_exits"], "moved": e["moved"],
             "moved_share": round(e["moved"] / e["base_exits"], 4) if e["base_exits"] else None,
             "top_transitions": [{"from": fa, "to": fb, "n": n, "share_of_base_exits": round(n / e["base_exits"], 4) if (e["base_exits"] and fa != "ADDED") else None,
                                  "d_pnl_pp": round(e["transition_pnl"][(fa, fb)], 3)} for (fa, fb), n in tops],
+            "family_changes": [{"from": fa, "to": fb, "n": n, "share_of_base_exits": round(n / e["base_exits"], 4) if e["base_exits"] else None,
+                                "d_pnl_pp": round(e["transition_pnl"][(fa, fb)], 3)} for (fa, fb), n in cross],
+            "filtered": sum(v for k, v in e["transitions"].items() if k[1] == "FILTERED"), "added": sum(v for k, v in e["transitions"].items() if k[0] == "ADDED"),
             "sum_d_loss_pp": round(e["d_loss_pp"], 3), "sum_d_gain_pp": round(e["d_gain_pp"], 3), "n_gain_pos": e["n_gain_pos"], "n_gain_neg": e["n_gain_neg"],
             "per_sym": e["per_sym"], "basis": "CAUSAL: same set +/- one key, same NPZ, trades matched by entry bar"}
     doc = {"meta": dict(raw.get("meta") or {}, attributed_at=utc(), rule="d_loss_pp = Σ losing pnl_pp (cand) - Σ losing pnl_pp (base); > 0 = fewer losses; d_gain_pp = cand gain - base gain"),
@@ -239,8 +243,8 @@ def attribute(a):
     Path(a.out).write_text(json.dumps(doc, indent=1))
     for cs, d in out.items():
         for sw, e in sorted(d.items(), key=lambda kv: kv[1]["sum_d_gain_pp"]):
-            t = e["top_transitions"][0] if e["top_transitions"] else {}
-            print(f"{cs} {sw} syms={e['n_syms']} moved={e['moved_share']} top={t.get('from')}->{t.get('to')} n={t.get('n')} dloss={e['sum_d_loss_pp']} dgain={e['sum_d_gain_pp']}")
+            t = e["family_changes"][0] if e["family_changes"] else {}
+            print(f"{cs} {sw} syms={e['n_syms']} moved={e['moved_share']} filtered={e['filtered']} added={e['added']} top_change={t.get('from')}->{t.get('to')} n={t.get('n')} dpnl={t.get('d_pnl_pp')} dloss={e['sum_d_loss_pp']} dgain={e['sum_d_gain_pp']} +{e['n_gain_pos']}/-{e['n_gain_neg']}")
     return 0
 
 
