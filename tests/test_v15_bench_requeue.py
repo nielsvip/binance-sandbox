@@ -90,3 +90,52 @@ def test_clear_side_lock_kills_escaped_holder_outside_the_group(tmp_path):
 
 def test_clear_side_lock_noop_when_no_locks(tmp_path):
     assert bench.clear_side_lock(tmp_path, "NOPE_LONG", timeout_s=1)[0]
+
+
+def _run_args(**kw):
+    import argparse
+    base = dict(snap="t", label="cand", code=None, force=False, min_disk_mb=20000.0, reap_grace_s=1.0, env_file=None, set=None, window_days=30, only=None, parallel=1, min_free_mb=0, sacrifice_mb=0, workers=1, nice=0, timeout_s=10)
+    base.update(kw)
+    return argparse.Namespace(**base)
+
+
+def _fake_snap(tmp_path):
+    snap = tmp_path / "snap_t"
+    snap.mkdir()
+    (snap / "manifest.json").write_text('{"sides": [], "npz": {}}')
+    return snap
+
+
+def test_disk_refused_builds_no_directories(tmp_path, monkeypatch):
+    monkeypatch.setattr(bench, "BENCH", tmp_path)
+    _fake_snap(tmp_path)
+    called = []
+    monkeypatch.setattr(bench, "build_root", lambda *a, **k: called.append(1))
+    monkeypatch.setattr(bench.shutil, "disk_usage", lambda p: type("U", (), {"free": 1 << 20})())
+    assert bench.cmd_run(_run_args()) == 3
+    assert not called, "build_root must not run when the disk gate refuses"
+    assert not (tmp_path / "runs").exists() or not list((tmp_path / "runs").iterdir())
+
+
+def test_abort_after_build_removes_resultless_run_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(bench, "BENCH", tmp_path)
+    _fake_snap(tmp_path)
+    monkeypatch.setattr(bench.shutil, "disk_usage", lambda p: type("U", (), {"free": 1 << 40})())
+
+    def boom(snap, run_dir, code):
+        (run_dir / "root").mkdir(parents=True)
+        (run_dir / "root" / "big").write_text("x")
+        raise RuntimeError("rsync failed")
+
+    monkeypatch.setattr(bench, "build_root", boom)
+    with pytest.raises(RuntimeError):
+        bench.cmd_run(_run_args())
+    assert not (tmp_path / "runs" / "t__cand").exists()
+
+
+def test_abort_keeps_run_with_results_json(tmp_path):
+    rd = tmp_path / "t__old"
+    (rd / "root").mkdir(parents=True)
+    (rd / "results.json").write_text('{"results": {}}')
+    bench.cleanup_aborted_run(rd, {}, True)
+    assert (rd / "results.json").exists() and not (rd / "root").exists()

@@ -20996,8 +20996,19 @@ async def process_position(
                         logger.info(
                             f"[WT_DC_HARD_LT] {symbol} S: final_score_norm_lt={_wt_dc_final:.2f} >= {_wt_dc_final_max:.2f} (strong uptrend)"
                         )
+                    # 2026-10-20 WT_DC_ENTRY_ENABLED MADE A REAL GATE (was a no-op probe).
+                    # The vector gates this family on WT_DC_ENTRY_ENABLED (v12_quick_engine.py:10199, default False)
+                    # and every per_sym set carries it OFF: measured 764 of 765 sym_sides = False, 1 absent. Live's two
+                    # "references" to it were stub probes that read the switch and threw the result away —
+                    # tradier_manage.py:62270-62271 `if bool(_cfg("WT_DC_ENTRY_ENABLED", ...)): _ = 1` and
+                    # ez_manage.py:65276 — so they satisfied a getattr-style wiring audit while changing nothing, and
+                    # this block fired regardless of the board. MEASURED consequence in the 60-sym_side native stocks
+                    # run over 2026-10-01..10-10: WT_DC_ENTRY_BULL was the single largest live-only entry family at 201
+                    # events against ZERO in the vector — i.e. live opened 201 positions no board authorised.
+                    # The switch now decides, with the vector's own default. ROLLBACK: WT_DC_ENTRY_ENABLED=True.
                     if (
-                        _entry_score >= _entry_threshold
+                        bool(_cfg_auto("WT_DC_ENTRY_ENABLED", False))
+                        and _entry_score >= _entry_threshold
                         and not _k5m_block
                         and not _htf_block
                         and not _htf_align_block

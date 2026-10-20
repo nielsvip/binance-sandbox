@@ -429,7 +429,51 @@ def cmd_run(args):
     if run_dir.exists() and not args.force:
         print(f"run exists: {run_dir} (--force to redo)", file=sys.stderr)
         return 2
+    # 2026-10-20: the free-disk gate runs BEFORE any directory is built — a refused run used to have already copied the
+    # 5.4 GB snapshot (root) and left ~10.8 GB per refused gate attempt (two arms) behind, starving every later bench.
+    _free_mb = shutil.disk_usage(str(BENCH)).free / (1 << 20)
+    if _free_mb < args.min_disk_mb:
+        print(f"[bench] REFUSED: {_free_mb:.0f} MB free on {BENCH} < {args.min_disk_mb:.0f} MB — a bench that runs out of space truncates results.json/meta.json to 0 bytes (2026-10-14 ENOSPC killed the gate)", file=sys.stderr)
+        return 3
+    pre_existing = run_dir.exists()
     run_dir.mkdir(parents=True, exist_ok=True)
+    args._running = {}
+    prev_term = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, lambda *_a: sys.exit(143))
+    try:
+        rc = _cmd_run_body(args, snap, man, run_dir)
+    except BaseException:
+        cleanup_aborted_run(run_dir, args._running, pre_existing, args.reap_grace_s)
+        raise
+    finally:
+        signal.signal(signal.SIGTERM, prev_term)
+    if rc not in (0, None):
+        cleanup_aborted_run(run_dir, args._running, pre_existing, args.reap_grace_s)
+    return rc
+
+
+def cleanup_aborted_run(run_dir, running, pre_existing, grace_s=60.0):
+    """Remove what an aborted/refused run built. Never touches a run that has a results file or is still owned by a live pilot we cannot reap."""
+    for ss, (pr, _t0, log) in list(running.items()):
+        try:
+            reap_pilot(pr, grace_s=grace_s)
+            log.close()
+        except Exception:
+            pass
+        running.pop(ss, None)
+    run_dir = Path(run_dir)
+    if not run_dir.exists():
+        return
+    rp = run_dir / "results.json"
+    if rp.exists() and rp.stat().st_size > 0:
+        shutil.rmtree(run_dir / "root", ignore_errors=True)
+        print(f"[bench] aborted run kept its results.json; removed only {run_dir / 'root'}", flush=True)
+        return
+    shutil.rmtree(run_dir, ignore_errors=True)
+    print(f"[bench] aborted run left no results: removed {run_dir}", flush=True)
+
+
+def _cmd_run_body(args, snap, man, run_dir):
     code = Path(args.code or SRC)
     root = build_root(snap, run_dir, code)
     pmd5 = md5(root / "v15_pilot.py")
@@ -456,14 +500,11 @@ def cmd_run(args):
         if _want < MIN_WINDOW_COVERAGE * int(args.window_days):
             fit_days = max([w for w in ALLOWED_WINDOWS if w <= _want] or [min(ALLOWED_WINDOWS)])
         print(f"[bench] holdout {_ho:.0f}d -> fit window {fit_days}d (requested {args.window_days}d, {_want}d survives the cut, coverage floor {MIN_WINDOW_COVERAGE:.0%})", flush=True)
-    _free_mb = shutil.disk_usage(str(BENCH)).free / (1 << 20)
-    if _free_mb < args.min_disk_mb:
-        print(f"[bench] REFUSED: {_free_mb:.0f} MB free on {BENCH} < {args.min_disk_mb:.0f} MB — a bench that runs out of space truncates results.json/meta.json to 0 bytes (2026-10-14 ENOSPC killed the gate)", file=sys.stderr)
-        return 3
     sides = [s for s in man["sides"] if sym_of(s) in man["npz"]]
     if args.only:
         sides = [s for s in sides if s in set(args.only.split(","))]
-    queue, running, results = list(sides), {}, {}
+    queue, results = list(sides), {}
+    running = args._running
     t_all = time.time()
     while queue or running:
         while queue and len(running) < args.parallel and mem_avail_mb() >= args.min_free_mb:
