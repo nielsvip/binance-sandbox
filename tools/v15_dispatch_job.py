@@ -310,6 +310,24 @@ def tail_refresh(symbol):
     return out
 
 
+def remote_npz_age(host, symbol):
+    """npz_age_min of <host>:binance-sandbox/backtest_v8/indicators/<symbol>.npz, judged with the SAME cut as verify_launch_tail. None on any failure."""
+    snippet = ("import sys,json,numpy as np\n"
+               "sys.path.insert(0,'.')\n"
+               "import tools.npz_cutoffs as nc\n"
+               "z=np.load('backtest_v8/indicators/%s.npz',mmap_mode='r',allow_pickle=True)\n"
+               "t=int(np.asarray(z['timestamps']).astype('int64')[-1]); t=t//1000 if t>10**11 else t\n"
+               "c=nc.last_rth_close_bar()\n"
+               "print(json.dumps({'npz_last_bar_ts':t,'npz_age_min':round(max(0.0,(c-t)/60.0),1) if c else None}))\n") % symbol
+    try:
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, "cd binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bin/python -c \"$(cat)\""], input=snippet, capture_output=True, text=True, timeout=60)
+        d = json.loads((r.stdout.strip().splitlines() or [""])[-1])
+        d["npz_last_bar_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(d["npz_last_bar_ts"])))
+        return d
+    except Exception:
+        return None
+
+
 def verify_launch_tail(symbol, tr):
     """USER LAW 2026-10-20 "all new calculations calculate up to the latest kline bar, max 15m old in the npz": the JIT tail refresh is
     mandatory and its RESULT is verified by the NPZ itself (not rc, not mtime). Returns (ok, info) with npz_last_bar_utc / npz_age_min
@@ -378,6 +396,14 @@ def fast_push(symbol, push):
             _ledger_npz({"event": "gap-refused", **_npz_identity(symbol), "reason": str(gap_info.get("reason"))[:160]})
             return {"ok": False, "action": "gap-refused", "reason": f"STOCK_NPZ_GAP {gap_info.get('reason')}", "prep_s": 0.0}
     _tv_ok, _tv = verify_launch_tail(symbol, tr)
+    if not _tv_ok and push and not symbol.endswith(("USDT", "USDC")):
+        # STOCKS: S1 cannot refresh a stock NPZ (Tradier is reachable from s2 only) so S1's copy is routinely the older one; the target's own
+        # copy (built by s2's loop) may already be current. Judge the copy the pilot will READ and never push S1's older bytes over it.
+        _ra = remote_npz_age(push, symbol)
+        if _ra is not None and _ra.get("npz_age_min") is not None and _ra["npz_age_min"] <= _tv.get("limit_min", 20):
+            log({"event": "tail-verified", "symbol": symbol, "ok": True, "tail": "target-fresh", "s1_age_min": _tv.get("npz_age_min"), **_ra})
+            _ledger_npz({"event": "push", "action": "target-fresh-keep", **_npz_identity(symbol)})
+            return {"ok": True, "action": "target-fresh-keep", "reason": f"S1 copy {_tv.get('npz_age_min')} min behind, target copy current ({_ra['npz_age_min']} min): no push", "prep_s": tr.get("tail_s", 0.0), "npz_last_bar_utc": _ra.get("npz_last_bar_utc"), "npz_age_min": _ra["npz_age_min"]}
     log({"event": "tail-verified", "symbol": symbol, "ok": _tv_ok, "tail": tr.get("tail"), "tail_s": tr.get("tail_s"), **_tv})
     if not _tv_ok:
         _ledger_npz({"event": "stale-refused", **_npz_identity(symbol), "npz_age_min": _tv.get("npz_age_min")})

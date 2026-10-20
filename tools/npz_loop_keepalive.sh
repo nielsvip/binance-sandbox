@@ -11,7 +11,9 @@ set -u
 ROOT=/home/niels/binance-sandbox
 LOG=/tmp/npz_loop.log
 MAX_LOG_AGE=${NPZ_LOOP_MAX_LOG_AGE:-900}   # a healthy cycle logs a line per installed symbol; 900 s = one bar of silence
-export NPZ_LOOP_SETTLE_S=${NPZ_LOOP_SETTLE_S:-300}
+# USER LAW 2026-10-20 (NPZ <= 15 min): was 300. The closed 15m bar now reaches S1 canonical ~45-60 s after the close (S2 canonical daemon + tail bundles,
+# docs/v15_pending/19_NPZ_15MIN_LAW_20261020.md) and cache_bar_final() accepts it straight from there, so the install need not wait out klines_append.
+export NPZ_LOOP_SETTLE_S=${NPZ_LOOP_SETTLE_S:-90}
 export NPZ_LOOP_MAX_WORKERS=${NPZ_LOOP_MAX_WORKERS:-8}
 WORKERS=${NPZ_LOOP_WORKERS:-6}
 # 2026-10-20 MODE OVERRIDE (USER "every 15min ALL npz get a bar appended - NO EXCEPTIONS"). Default stays "both",

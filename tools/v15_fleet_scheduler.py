@@ -1822,6 +1822,18 @@ def _dispatch_stale_recent(window_s=150.0, path="/tmp/v15_dispatch.log"):
                 out["verified_launch_ok"] += 1
     except Exception:
         pass
+    try:  # the pilot's own start check (v15_pilot STALE_NPZ_SKIPPED) leaves <progress_dir>/v18_skips/<SS>.json - count the fresh ones with their tail age
+        import glob
+        pdir = open(os.path.expanduser("~/v15_current_progress_dir.txt")).read().strip()
+        sk = {}
+        for f in glob.glob(os.path.join(pdir, "v18_skips", "*.json")):
+            if time.time() - os.path.getmtime(f) <= window_s * 4:
+                d = json.load(open(f))
+                if "STALE_NPZ" in str(d.get("reason")):
+                    sk[d.get("sym_side")] = d.get("npz_age_min")
+        out["pilot_skips_600s"] = sk
+    except Exception:
+        pass
     return out
 
 
@@ -1874,6 +1886,59 @@ def npz_prep(host, symbol):
 
 
 _NPZ_PREFLIGHT_ON = os.environ.get("V15_SCHED_NPZ_PREFLIGHT", "1") == "1"
+_RUN_STALE_ACK = "i-accept-old-npz"
+
+
+def _run_stale_allowed():
+    """USER 2026-10-20: "no more backtests can run on old npz's". V15_SCHED_RUN_STALE=1 alone no longer buys it.
+
+    That one variable used to be the whole escape hatch, and it was being honoured somewhere nobody was
+    looking: measured 2026-10-20 from S1's /tmp/v15_dispatch.log, 612 dispatches that day logged
+    `npz-degraded ... DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1)` and then launched anyway — the
+    worst nameable one SAP_LONG at 14:21:11Z on a tail 18.6 h / 73 bars behind a 0.85 h limit, while the
+    fleet scheduler's own cron had V15_SCHED_RUN_STALE=0. Running on bars that old is the silent 0-trades
+    producer, and a board published from it wears a date its data does not back.
+
+    Deliberate use survives, but it now takes two keys in the same breath:
+        V15_SCHED_RUN_STALE=1 V15_SCHED_RUN_STALE_ACK=i-accept-old-npz
+    so no inherited or forgotten environment can turn the law off by itself."""
+    if os.environ.get("V15_SCHED_RUN_STALE", "0") != "1":
+        return False
+    return os.environ.get("V15_SCHED_RUN_STALE_ACK", "") == _RUN_STALE_ACK
+
+
+def _s1_source_tail_ok(symbol):
+    """(ok, why) — can the JIT tail refresh still reach the latest closed bar for this symbol from HERE?
+
+    Under the JIT law S1's own NPZ tail is legitimately behind until tools/v15_dispatch_job.tail_refresh
+    appends the missing closed bars (~9 s), so "S1 is behind" is not by itself a reason to skip. What IS a
+    reason is a gap no tail-append can close: the refresh pulls a bounded window (fetch_fresh asks for
+    gap+3 bars, stocks come from the local klines cache), so a tail tens of bars behind needs a rebuild, and
+    booking a dispatch for it only burns the slot — the job refreshes, still misses the latest bar and
+    refuses with action=stale-npz. Measured 2026-10-20: SAP's source NPZ was 73 bars / 18.6 h behind.
+
+    So: within V15_SCHED_SRC_MAX_BARS_BEHIND bars -> the job can fix it, proceed. Beyond -> ask for the
+    sanctioned prep and let the next symbol take the slot. No NPZ at all is handled by the npz-missing
+    branch, and every error fails OPEN (the dispatch job verifies the bytes again before it launches)."""
+    try:
+        if str(ROOT / "tools") not in sys.path:
+            sys.path.insert(0, str(ROOT / "tools"))
+        from npz_bar_refresh import npz_last_ts as _last
+        import npz_cutoffs as _nc
+
+        last = _last(str(ROOT / "backtest_v8" / "indicators"), symbol)
+        if last is None:
+            return True, "no-npz-ts"
+        cut = _nc.last_closed_bar() if _nc.is_crypto_symbol(symbol) else _nc.last_rth_close_bar()
+        if not cut:
+            return True, "no-cutoff"
+        behind = int((int(cut) - int(last)) // _nc.BAR)
+        limit = int(os.environ.get("V15_SCHED_SRC_MAX_BARS_BEHIND", "8"))
+        if behind > limit:
+            return False, f"source {behind} bars ({behind * _nc.BAR / 3600.0:.1f}h) behind > {limit}"
+        return True, f"source {behind} bars behind"
+    except Exception as exc:
+        return True, f"source-check-unavailable ({type(exc).__name__})"
 _NPZ_DEFER_MAX = int(float(os.environ.get("V15_SCHED_NPZ_DEFER_MAX", "3") or 3))
 _NPZ_REBUILD_COOLDOWN_S = float(os.environ.get("V15_SCHED_NPZ_REBUILD_COOLDOWN_S", "1800") or 1800)
 _PAIR_FRESH_REQUEUE = os.environ.get("V15_SCHED_PAIR_FRESH_REQUEUE", "0") == "1"
@@ -1934,8 +1999,8 @@ def _npz_preflight(symbol, window_days=30, ind_dir=None, check_freshness=True):
     # Same rule as v15_dispatch_job.npz_preflight: older bars are a FLEET policy (V15_SCHED_RUN_STALE, and the
     # tail-stale branch of the is_ready gate above), not this gate's call — blocking on them stopped every
     # crypto dispatch on 2026-10-15. A structural/thin/holed build always blocks: that is the 0-trades producer.
-    if not res.get("ok") and reasons and all(r.startswith("stale tail:") for r in reasons) and os.environ.get("V15_SCHED_RUN_STALE", "0") == "1":
-        return True, "DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1): " + "; ".join(reasons)[:220], res
+    if not res.get("ok") and reasons and all(r.startswith("stale tail:") for r in reasons) and _run_stale_allowed():
+        return True, "DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1 + ACK): " + "; ".join(reasons)[:220], res
     return bool(res.get("ok")), "; ".join(reasons)[:300], res
 
 
@@ -2992,7 +3057,7 @@ def tick(args, cfg, now):
                 continue
             rd = is_ready(h["name"], sym)
             _cont_ss = _cont_sides(sym)
-            if not rd.get("ok") and str(rd.get("reason") or "").startswith(("tail-stale:", "stale:")) and (os.environ.get("V15_SCHED_RUN_STALE", "0") == "1" or (_cont_ss and _CONT_FREEZE_ON and _cont_age_ok(rd))):
+            if not rd.get("ok") and str(rd.get("reason") or "").startswith(("tail-stale:", "stale:")) and (_run_stale_allowed() or (_cont_ss and _CONT_FREEZE_ON and _cont_age_ok(rd))):
                 # USER 2026-10-13 V16: an unfinished board resumes on the NPZ it was measured on (RULE#4) — a tail-stale
                 # gate would hold it forever, a rebuild would wipe it. Frozen resume is consistent by construction.
                 log.setdefault("cont_npz_frozen", []).append(f"{h['name']}:{sym}:{','.join(_cont_ss)}:{rd.get('reason')}")
@@ -3002,6 +3067,18 @@ def tick(args, cfg, now):
                 # USER LAW 2026-10-20: with V15_SCHED_RUN_STALE=0 a stale WORKER copy must not strand the side here - the dispatch job is
                 # the gate: it tail-refreshes S1's NPZ, pushes it md5-verified and REFUSES the launch (kind stale-npz, counted) when the
                 # NPZ's own last bar is still > V15_NPZ_MAX_AGE_MIN behind. Counted per tick below with the worker tail age.
+                #
+                # USER 2026-10-20 "if it can't, skip temporarily and dispatch next one that can": a stale WORKER copy is
+                # genuinely not a blocker, because the job pushes S1's copy over it. A stale S1 SOURCE is a different
+                # thing — then the job will refresh, fail to reach the latest bar and refuse (exit 3), and the slot was
+                # spent on a side that could never run. So the source is checked HERE: fresh/refreshable source ->
+                # proceed as before; stale source -> ask for the sanctioned prep and give the slot to the next symbol.
+                _src_ok, _src_why = _s1_source_tail_ok(sym)
+                if not _src_ok:
+                    log.setdefault("npz_source_stale_skipped", []).append(f"{h['name']}:{sym}:{_src_why}")
+                    if os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
+                        npz_prep(h, sym)
+                    continue
                 log.setdefault("npz_stale_jit", []).append(f"{h['name']}:{sym}:{rd.get('age_h')}h")
                 rd = dict(rd, ok=True)
             if not rd.get("ok") and rd.get("reason") == "npz missing" and needs_slot and not _cont_ss and _ASYNC_DISPATCH and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and not (args.dry_run or sim):

@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-20T14:34:45Z",
+ "generated_utc": "2026-10-20T14:39:44Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 14.1,
+  "age_s": 37.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 36248,
-  "proc_age_s": 1557.0,
-  "log_age_s": 14.1,
+  "proc_age_s": 1856.0,
+  "log_age_s": 11.8,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -22,7 +22,7 @@
   "last_timeframe": "15m",
   "last_timeframe_utc": "2026-10-20T14:34:31Z",
   "last_restart_utc": "2026-10-20T14:08:48Z",
-  "restarts_last_hour": 2
+  "restarts_last_hour": 1
  },
  "heartbeat": {
   "written": 0,
@@ -54,12 +54,13 @@
   "lease_since": "2026-10-20T14:28:26Z",
   "lease_reason": "manual force-s1",
   "now": 1792506885.9687018,
+  "from_cache_age_s": 299.1,
   "heartbeat_age_s": 11.9,
   "active_s": 55819.6,
   "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto,stocks', since 2026-10-20T14:28:26Z, reason 'manual force-s1'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto,stocks' since 2026-10-20T14:28:26Z (reason 'manual force-s1'), Mac heartbeat 11s, Mac snapshot 14s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto,stocks' since 2026-10-20T14:28:26Z (reason 'manual force-s1'), Mac heartbeat 11s, Mac snapshot 37s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }

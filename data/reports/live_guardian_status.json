@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T14:35:05Z",
+ "ts": "2026-10-20T14:40:09Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,16 +27,16 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 19,
-   "open_positions": 11,
-   "unrealised_usd": -50.68,
-   "pos_mismatch": 0
+   "fills_6h": 23,
+   "open_positions": 13,
+   "unrealised_usd": -0.01,
+   "pos_mismatch": 4
   },
   "trc": {
    "fills_6h": 11,
    "open_positions": 5,
-   "unrealised_usd": 10.72,
-   "pos_mismatch": 0
+   "unrealised_usd": 13.36,
+   "pos_mismatch": 3
   },
   "fin": {
    "fills_6h": 2,
@@ -58,7 +58,7 @@
    "fills_6h": 2,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 0,
+   "pos_mismatch": 2,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -74,7 +74,7 @@
    "fills_6h": 1,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 0,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -122,10 +122,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 226,
+  "total": 241,
   "per_acct": {
    "fin": 62,
-   "ang": 50,
+   "ang": 65,
    "men": 96,
    "flz": 17,
    "inf": 1
@@ -134,239 +134,237 @@
  "reconcile": {},
  "process": {
   "fin": {
-   "pids": [],
-   "starts_30m": 3,
-   "log_age_s": 1189.0
+   "pids": [
+    "38959"
+   ],
+   "starts_30m": 5,
+   "log_age_s": 20.0
   },
   "men": {
-   "pids": [],
-   "starts_30m": 2,
-   "log_age_s": 353.0
+   "pids": [
+    "36790"
+   ],
+   "starts_30m": 3,
+   "log_age_s": 4.0
   },
   "ang": {
    "pids": [],
-   "starts_30m": 3,
-   "log_age_s": 1169.0
+   "starts_30m": 4,
+   "log_age_s": 26.0
   },
   "inf": {
-   "pids": [],
-   "starts_30m": 3,
-   "log_age_s": 1255.0
+   "pids": [
+    "38681"
+   ],
+   "starts_30m": 5,
+   "log_age_s": 14.0
   },
   "flz": {
-   "pids": [],
-   "starts_30m": 2,
-   "log_age_s": 370.0
+   "pids": [
+    "36837"
+   ],
+   "starts_30m": 4,
+   "log_age_s": 1.0
   },
   "trb": {
-   "pids": [],
+   "pids": [
+    "37434"
+   ],
    "starts_30m": 6,
-   "log_age_s": 388.0
+   "log_age_s": 1.0
   },
   "trc": {
-   "pids": [],
-   "starts_30m": 6,
-   "log_age_s": 388.0
+   "pids": [
+    "37621"
+   ],
+   "starts_30m": 7,
+   "log_age_s": 2.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T14:35:05Z",
-   "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $47.08 since 2026-10-20T14:21:50Z (now $-50.68)"
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trb:MSFT_LONG",
+   "evidence": "positions file amt 6 vs fill-ledger amt 14"
   },
   {
-   "ts": "2026-10-20T14:35:05Z",
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trb:COP_LONG",
+   "evidence": "positions file amt 11 vs fill-ledger amt 16"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trb:CRK_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 249"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trb:AXON_SHORT",
+   "evidence": "positions file amt 9 vs fill-ledger amt 34.9989"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $37.78 since 2026-10-20T13:55:23Z (now $+10.72)"
+   "evidence": "unrealised PnL of the same open positions fell $34.12 since 2026-10-20T13:55:23Z (now $+13.36)"
   },
   {
-   "ts": "2026-10-20T14:35:06Z",
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trc:XOM_LONG",
+   "evidence": "positions file amt 17 vs fill-ledger amt 41"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trc:EXEL_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 24"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "trc:VZ_SHORT",
+   "evidence": "positions file amt 4 vs fill-ledger amt 0"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:BTCDOMUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.009"
+  },
+  {
+   "ts": "2026-10-20T14:40:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:UNIUSDC_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 3"
+  },
+  {
+   "ts": "2026-10-20T14:40:11Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T14:35:06Z",
+   "ts": "2026-10-20T14:40:11Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
    "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:11Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 11.3"
+  },
+  {
+   "ts": "2026-10-20T14:40:11Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T09:07:23Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:11Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T12:31:33Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:11Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:ARUSDT_LONG",
    "evidence": "REDUCE BB_TAKE_15m_g0.48 @ 2026-10-20T12:24:53Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:11Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "inf:ARUSDT_LONG",
    "evidence": "REDUCE VEL_EXIT_v4h-7.05_g1.46 @ 2026-10-20T12:26:38Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "3 new process ids in 30 min (['46815', '96052', '97959'])"
+   "evidence": "5 new process ids in 30 min (['46815', '96052', '97959', '35113', '38959'])"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "fin",
-   "evidence": "no ez_manage.py --account fin process"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1189s"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
+   "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "no ez_manage.py --account men process"
+   "evidence": "3 new process ids in 30 min (['46870', '95716', '36790'])"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 353s"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "3 new process ids in 30 min (['46560', '96335', '97457'])"
+   "evidence": "4 new process ids in 30 min (['46560', '96335', '97457', '34792'])"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "ang",
    "evidence": "no ez_manage.py --account ang process"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 1169s"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "3 new process ids in 30 min (['46949', '96028', '97661'])"
+   "evidence": "5 new process ids in 30 min (['46949', '96028', '97661', '35114', '38681'])"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "inf",
-   "evidence": "no ez_manage.py --account inf process"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1255s"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
+   "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "no ez_manage.py --account flz process"
+   "evidence": "4 new process ids in 30 min (['46856', '95717', '33444', '36837'])"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 370s"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trb",
-   "evidence": "6 new process ids in 30 min (['35695', '41350', '43639', '47129', '70381', '96953'])"
+   "evidence": "6 new process ids in 30 min (['41350', '43639', '47129', '70381', '96953', '37434'])"
   },
   {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "trb",
-   "evidence": "no tradier_manage.py --accounts trb process"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "trb",
-   "evidence": "tradier_manage_trb.log not written for 388s"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
+   "ts": "2026-10-20T14:40:12Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trc",
-   "evidence": "6 new process ids in 30 min (['35573', '40816', '43552', '46989', '78300', '96579'])"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "trc",
-   "evidence": "no tradier_manage.py --accounts trc process"
-  },
-  {
-   "ts": "2026-10-20T14:35:07Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "trc",
-   "evidence": "tradier_manage_trc.log not written for 388s"
+   "evidence": "7 new process ids in 30 min (['40816', '43552', '46989', '78300', '96579', '35723', '37621'])"
   }
  ],
  "alert_counts": {
-  "ACCOUNT_EQUITY_DROP": 2,
+  "POSITION_STATE_MISMATCH": 10,
+  "ACCOUNT_EQUITY_DROP": 1,
   "FILL_WITHOUT_VEC_DECISION": 2,
   "NATIVE_FILL_IN_EXACT_MODE": 4,
-  "RESTART_LOOP": 5,
-  "PROCESS_DOWN": 7,
-  "STALE_LOG": 7
+  "RESTART_LOOP": 7,
+  "PROCESS_DOWN": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -400,5 +398,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.94
+ "sweep_s": 2.48
 }

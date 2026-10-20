@@ -72,6 +72,7 @@ TAKEOVER_HB_S = float(os.environ.get("LF_TAKEOVER_HB_S", "60"))  # USER 2026-10-
 # stayed up — is now repaired locally in <=60 s by tools/mac_pos_writer_keepalive.sh, which is both faster and
 # safer than moving the whole venue to another host; this threshold is the whole-host backstop behind it.
 TAKEOVER_CONFIRM = int(os.environ.get("LF_TAKEOVER_CONFIRM", "4"))
+VENUE_UNRUN_S = float(os.environ.get("LF_VENUE_UNRUN_S", "180"))  # 2026-10-20: hold a venue this long with no trader for it -> yield it back
 FAILBACK_S = float(os.environ.get("LF_FAILBACK_S", "300"))  # 2026-10-19: 600 -> 300, matching what S1's unit has
 # pinned since 2026-10-17 (/etc/systemd/system/live-failover-watchdog.service.d/takeover-timings.conf) so the source
 # default and the deployed value can no longer disagree. NOT lower, and 60 in particular is FORBIDDEN here: that was
@@ -246,6 +247,17 @@ class Actions:
         if self.dry:
             return 1 if UNITS["trading"] in self.fake_active else 0
         out = subprocess.run(["pgrep", "-f", TRADER_PATTERN], capture_output=True, text=True).stdout.split()
+        return len([pid for pid in out if pid.strip() and int(pid) != os.getpid()])
+
+    def traders_alive_venue(self, venue):
+        """Traders running HERE for ONE venue. 2026-10-20: traders_alive() matches ez_manage AND tradier_manage
+        through a single pattern, so S1 could hold the stocks venue, run only its crypto trader, and still see
+        "traders alive" — which is exactly what happened at 14:23Z (lease gen 70 run_venues="crypto,stocks",
+        zero tradier_manage processes, all three Mac stock accounts fenced, stocks traded nowhere for 58 min)."""
+        if self.dry:
+            return 1 if UNITS["trading"] in self.fake_active else 0
+        pat = r"python.*tradier_manage\.py --accounts" if venue == "stocks" else r"python.*ez_manage\.py --account"
+        out = subprocess.run(["pgrep", "-f", pat], capture_output=True, text=True).stdout.split()
         return len([pid for pid in out if pid.strip() and int(pid) != os.getpid()])
 
 
@@ -550,6 +562,15 @@ class Watchdog:
                 named = list(_named)
             if venue == "crypto" and "account_dead" in kinds:
                 named = sorted(set(named) | {a for a in (reading.get("account_dead_accounts") or [])})
+            # 2026-10-20 positions_stale is account-scoped on BOTH venues (USER: "if any binance account stops
+            # trading its watchdog should fix it but if it stays down s1 should start trading that account only").
+            # mac_failover_agent now reports positions_stale_accounts; merging it here lets _scoped_accounts narrow
+            # the takeover to the wedged account when its siblings are healthy. Without this the kind named no
+            # account and took the whole venue: 2026-10-20 14:23Z one stale tra/state.json fenced trb/trc/tra and
+            # stocks traded nowhere for 58 min. An EMPTY list still means whole-venue (every account stale = the
+            # host is the problem), which preserves the "Mac down -> S1 takes everything" half of the rule.
+            if "positions_stale" in kinds:
+                named = sorted(set(named) | {a for a in (reading.get("positions_stale_accounts") or [])})
             bad = bool(hb) and bool(reading.get("applicable")) and bool(kinds)
             if bad:
                 st["since"] = st.get("since") or now
@@ -746,6 +767,35 @@ class Watchdog:
             if C.lease_venues(dict(venues=lease.get("run_venues"))) != scope or lease.get("run_venues") is None:
                 lease = set_run_venues(lease, scope)
             self.actions.start(UNITS["trading"])
+            # 2026-10-20 NEVER HOLD A VENUE WE ARE NOT RUNNING. Fencing the Mac for a venue S1 does not actually
+            # trade means NOBODY trades it, and the recovery path can be self-blocking (tradier_positions.py is a
+            # gated script, so the stale state.json that triggered the takeover could never refresh and the Mac
+            # could never prove health). MEASURED 2026-10-20 13:30-14:28Z: S1 held stocks with zero tradier_manage
+            # processes while trb/trc/tra sat [LEASE_FENCED]; it took a manual `--pin mac_once` to recover.
+            # After VENUE_UNRUN_S of holding a venue with no trader for it, hand that venue back. Crypto is
+            # unaffected while S1 runs its accounts. A venue yielded this way is re-taken normally if the Mac is
+            # still not trading it, so this cannot mask a real Mac failure — it only stops a dead hold.
+            try:
+                for _v in list(scope):
+                    if self.actions.traders_alive_venue(_v) > 0:
+                        self.state.pop(f"unrun_{_v}", None)
+                        continue
+                    _since = self.state.get(f"unrun_{_v}") or now
+                    self.state[f"unrun_{_v}"] = _since
+                    if now - _since >= VENUE_UNRUN_S:
+                        _keep = [x for x in scope if x != _v]
+                        alert("LEASE_YIELD_UNRUN", venue=_v, held_s=int(now - _since), keeping=_keep,
+                              reason=f"S1 held {_v} for {int(now - _since)}s with no trader for it — handing it back so it is not fenced on both hosts")
+                        log(f"LEASE_YIELD_UNRUN {_v}: no S1 trader for {int(now - _since)}s -> yielding (keeping {_keep})")
+                        self.state.pop(f"unrun_{_v}", None)
+                        if _keep:
+                            lease = write_lease(lease, "s1", f"yield {_v}: S1 was not running it", venues=_keep, nt=lease.get("nt"), accounts=lease.get("accounts"))
+                            lease = set_run_venues(lease, _keep)
+                        else:
+                            return self.failback(lease, f"yield {_v}: S1 was not running it and holds nothing else")
+                        break
+            except Exception as _uv_e:
+                log(f"unrun-venue check error (ignored): {_uv_e!r}")
         else:
             log(f"TRADING_FAILOVER: lease gen {lease['gen']} held by S1 (venues={scope}) but Mac not yet fenced (hb_age={hb_age}) — waiting before S1 runs them")
         return lease

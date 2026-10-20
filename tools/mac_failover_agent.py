@@ -664,7 +664,19 @@ class Agent:
                 sec = health.get(venue) if isinstance(health, dict) else None
                 if not isinstance(sec, dict) or venue in (fenced or ()) or sec.get("applicable") is False:
                     continue
+                # 2026-10-20 NAME THE STALE ACCOUNTS so a wedged single account is taken over ALONE.
+                # USER: "if any binance account stops trading its watchdog should fix it but if it stays down s1
+                # should start trading that account only". The per-account machinery already exists on both sides
+                # (live_failover_s1._scoped_accounts narrows a takeover when the driving kinds name a STRICT SUBSET
+                # of the venue's accounts, with universe = CRYPTO_ACCOUNTS / STOCK_ACCOUNTS), but positions_stale
+                # only ever recorded the single OLDEST file and named no account, so it always escalated the WHOLE
+                # venue. MEASURED 2026-10-20 14:23Z: "stocks: positions_stale tra/state.json age 666s > 600s" took
+                # the entire stocks venue — lease gen 70 venues="crypto,stocks", accounts={} — while S1 ran zero
+                # tradier_manage processes, so trb/trc/tra all sat [LEASE_FENCED] and stocks traded NOWHERE from
+                # 13:30 to 14:28 with the market open. One account's wedged loop must not stop its siblings.
+                # Tracking per-account ages (not just the max) is what lets the scope be a strict subset.
                 oldest, detail, seen = 0.0, None, 0
+                per_acct = {}
                 for a in accts:
                     for fn in files:
                         try:
@@ -672,15 +684,20 @@ class Agent:
                         except OSError:
                             continue
                         seen += 1
+                        if age > per_acct.get(a, -1.0):
+                            per_acct[a] = age
                         if age >= oldest:
                             oldest, detail = age, f"{a}/{fn}"
                 if not seen:
                     continue
                 sec["positions_age_s"] = round(oldest, 1)
                 if oldest > LF_POSITIONS_STALE_S:
+                    _stale = sorted(a for a, age in per_acct.items() if age > LF_POSITIONS_STALE_S)
                     sec["kinds"] = list(sec.get("kinds") or []) + ["positions_stale"]
+                    sec["positions_stale_accounts"] = _stale
                     sec["reasons"] = list(sec.get("reasons") or []) + [
-                        f"positions_stale {detail} age {int(oldest)}s > {int(LF_POSITIONS_STALE_S)}s (position loop wedged)"]
+                        f"positions_stale {detail} age {int(oldest)}s > {int(LF_POSITIONS_STALE_S)}s (position loop wedged)"
+                        + (f" — stale accounts: {','.join(_stale)} of {len(per_acct)}" if _stale else "")]
                     sec["not_trading"] = True
         except Exception as exc:
             log(f"data_freshness advisory error: {exc!r}")
