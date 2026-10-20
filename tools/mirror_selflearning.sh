@@ -15,13 +15,15 @@ MASTER="$TOSH/binance_archive/eval_cache/eval_cache_v1_master.db"
 LOG=/tmp/mirror_selflearning.log
 say() { echo "$(date -u +%FT%TZ) $*" >>"$LOG"; }
 [ -d "$TOSH" ] || { say "SKIP TOSHIBA_EXT not mounted"; exit 0; }
-mkdir -p "$BRAIN"
+# The drive is flaky (USER 2026-10-20): every touch below is time-boxed so a hung
+# device degrades to a logged SKIP instead of wedging the 6h chain.
+if ! timeout 60 mkdir -p "$BRAIN" 2>>"$LOG"; then say "SKIP TOSHIBA_EXT unresponsive"; exit 0; fi
 for f in per_sym_settings.json per_sym_full_sets.json causal_learner.db; do
-    [ -f "$BASE/data/$f" ] && cp -f "$BASE/data/$f" "$BRAIN/$f" 2>>"$LOG"
+    [ -f "$BASE/data/$f" ] && timeout 120 cp -f "$BASE/data/$f" "$BRAIN/$f" 2>>"$LOG"
 done
-[ -f "$BASE/data/causal/v17_priors.json" ] && cp -f "$BASE/data/causal/v17_priors.json" "$BRAIN/v17_priors.json" 2>>"$LOG"
+[ -f "$BASE/data/causal/v17_priors.json" ] && timeout 120 cp -f "$BASE/data/causal/v17_priors.json" "$BRAIN/v17_priors.json" 2>>"$LOG"
 if [ -f "$MASTER" ]; then
-    sqlite3 "$MASTER" "PRAGMA wal_checkpoint(TRUNCATE);" >>"$LOG" 2>&1 || true
+    timeout 300 sqlite3 "$MASTER" "PRAGMA wal_checkpoint(TRUNCATE);" >>"$LOG" 2>&1 || say "WARN checkpoint timed out, rsync proceeds anyway"
 fi
 RSYNC_BIN=/opt/homebrew/bin/rsync
 [ -x "$RSYNC_BIN" ] || RSYNC_BIN=rsync
