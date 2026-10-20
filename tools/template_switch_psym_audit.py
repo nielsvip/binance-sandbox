@@ -110,6 +110,34 @@ def template_keys(paths: list) -> dict:
     return out
 
 
+def proxy_backed(path: pathlib.Path) -> bool:
+    """True when this module's module-level `config` is a PER-SYM PROXY, so `getattr(config, "KNOB")` inside it
+    already resolves per-sym and is NOT a global read.
+
+    This distinction is the whole audit. Measured 2026-10-20 — the LAST module-level binding wins:
+      ez_manage.py:7879            config = _ezm_base_config            (placeholder)
+      ez_manage.py:8874            config = _PerSymProxy(_ezm_base_config)   <- WINS, so ez_manage is per-sym
+      ez_positions_quick.py:304    config = Config()                    plain, never wrapped
+      tradier_manage.py:6764       config = TradierConfig()             plain, never wrapped
+      ez_positions_service.py:435  config = Config()                    plain, never wrapped
+    `_PerSymProxy.__getattribute__` (ez_manage.py:8848) intercepts every UPPERCASE name, reads
+    `_psym_ctx_var` (set per position via ez_manage.py:7842) and returns `_ezm_per_sym_layer(sym, side)[name]`
+    when the board carries it. So an ez_manage `getattr(config, KNOB)` is per-sym WHENEVER THE CONTEXT IS SET —
+    a first pass that counted those as global overstated the defect by 420 sites. The residual ez_manage risk is
+    a read on a path where the context var is None, which falls through to the base: that is a
+    context-coverage question, not a call-site question, and needs runtime instrumentation, not grep.
+    """
+    try:
+        src = path.read_text(errors="ignore")
+    except Exception:
+        return False
+    last = None
+    for line in src.splitlines():
+        if re.match(r"^config\s*=", line):
+            last = line
+    return bool(last and "Proxy" in last)
+
+
 def _fname(node) -> str:
     f = getattr(node, "func", None)
     if isinstance(f, ast.Name):
@@ -119,7 +147,7 @@ def _fname(node) -> str:
     return ""
 
 
-def scan_module(path: pathlib.Path, keys: set) -> list:
+def scan_module(path: pathlib.Path, keys: set, proxy: bool = False) -> list:
     """[{key, kind, line, func, fixable_in_place}] for every reference to a template key."""
     try:
         tree = ast.parse(path.read_text(errors="ignore"), filename=str(path))
@@ -198,6 +226,8 @@ def scan_module(path: pathlib.Path, keys: set) -> list:
                 kind = "GLOBAL"
             elif isinstance(a0, ast.Attribute) and a0.attr in GLOBAL_OBJS:
                 kind = "GLOBAL"
+        if kind == "GLOBAL" and proxy:
+            kind = "PROXY_PSYM"   # per-sym via _PerSymProxy whenever _psym_ctx_var is set
         if kind == "GLOBAL":
             assign = next((a for a in anc if isinstance(a, ast.Assign)), None)
             if assign is not None and len(assign.targets) == 1 and isinstance(assign.targets[0], ast.Name) and assign.targets[0].id == "_":
@@ -251,7 +281,7 @@ def main() -> int:
         mods += [pathlib.Path(p) for p in sorted(glob.glob(str(ROOT / g))) if not pathlib.Path(p).name.startswith("test_")]
     per_key = collections.defaultdict(list)
     for m in mods:
-        for h in scan_module(m, keys):
+        for h in scan_module(m, keys, proxy=proxy_backed(m)):
             h["module"] = m.name if m.parent == ROOT else f"{m.parent.name}/{m.name}"
             per_key[h["key"]].append(h)
     print(f"live modules scanned: {len(mods)}")
@@ -263,7 +293,7 @@ def main() -> int:
         globals_ = [h for h in hs if h["kind"] == "GLOBAL"]
         if globals_:
             v = "GLOBAL_LEAK"
-        elif kinds.get("PSYM"):
+        elif kinds.get("PSYM") or kinds.get("PROXY_PSYM"):
             v = "OK"
         elif hs:
             v = "INERT"   # only probe-farm / dead-code / namelist references: live reads it nowhere that acts
@@ -272,7 +302,7 @@ def main() -> int:
         verdicts[v] += 1
         rows.append({"key": k, "verdict": v, "n_psym": kinds.get("PSYM", 0), "n_global": len(globals_),
                      "n_discarded": kinds.get("DISCARDED", 0), "n_namelist": kinds.get("NAMELIST", 0),
-                     "n_dead": kinds.get("DEAD", 0),
+                     "n_dead": kinds.get("DEAD", 0), "n_proxy_psym": kinds.get("PROXY_PSYM", 0),
                      "templates": sorted(tkeys[k]["templates"]), "switch_tabs": sorted(tkeys[k]["switch_tabs"]),
                      "filter_tabs": sorted(tkeys[k]["filter_tabs"]),
                      "global_sites": [{"module": g["module"], "line": g["line"], "func": g["func"],
