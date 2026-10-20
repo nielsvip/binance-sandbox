@@ -53669,8 +53669,19 @@ async def process_position(
                 from golden_rule_htf import score_entry_htf as _gr_htf_exit_fn
 
                 _grde_exit_is_long = position_side == "LONG"
-                _grde_exit_min_ind = int(getattr(config, "GOLDEN_RULE_MIN_IND", 1))
-                _grde_exit_min_tfs = int(getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 1))
+                # 2026-10-20 (USER: "golden rule is psym right ... how many tf's need to agree with an entry or
+                # exit this can not be global") — THE EXIT HALF WAS GLOBAL WHILE THE ENTRY HALF WAS PER-SYM.
+                # Both knobs are pilot-tested per sym_side in GLOBAL_RISK_GATES of all four TEMPLATE_FINAL_NORM
+                # files (GOLDEN_RULE_HTF_MIN_TFS candidates 0/1/2/3, GOLDEN_RULE_MIN_IND 1/2/3/4), and the crypto
+                # ENTRY path already honoured the board: ez_manage.py:18529 and :44689 both resolve via _psym_get.
+                # This EXIT site read the GLOBAL instead, so a board that tuned "how many TFs must agree" changed
+                # when a position OPENED and was ignored when it CLOSED — the two halves of the same rule running
+                # on different numbers, and the measured delta for those rows was earned against a value live
+                # never applied on exit.
+                # The global stays as the DEFAULT, so behaviour is byte-identical for any sym_side whose board
+                # carries no value; only boards that actually set it change, which is the point.
+                _grde_exit_min_ind = int(_psym_get(symbol, position_side, "GOLDEN_RULE_MIN_IND", getattr(config, "GOLDEN_RULE_MIN_IND", 1)))
+                _grde_exit_min_tfs = int(_psym_get(symbol, position_side, "GOLDEN_RULE_HTF_MIN_TFS", getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 1)))
                 # Score opposite-direction alignment to determine exit signal
                 _grde_exit_pass, _grde_exit_n_tfs, _grde_exit_detail = _gr_htf_exit_fn(
                     _grde_exit_ind,

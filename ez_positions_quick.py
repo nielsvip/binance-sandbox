@@ -30839,13 +30839,19 @@ async def check_entry_candidates_for_account(
                         logger.info(
                             f"[{_reentry_tier}_SIZE] {position_key}: qty={qty:.4f} (SPS floor re_amt={_re_amount:.4f})"
                         )
+                    # 2026-10-20 (USER: "golden rule is psym right ... this can not be global") — was GLOBAL here
+                    # too. Both knobs are pilot-tested per sym_side in GLOBAL_RISK_GATES of every
+                    # TEMPLATE_FINAL_NORM file (HTF_MIN_TFS 0/1/2/3, MIN_IND 1/2/3/4), and ez_manage's entry path
+                    # already resolves them per-sym (:18529, :44689). symbol/position_side come from
+                    # parse_position_key at :29099 in this same function. The global remains the DEFAULT, so a
+                    # sym_side with no board value behaves exactly as before.
                     _gr_min_tfs_entry = int(
-                        getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0)
+                        _psym_get(symbol, position_side, "GOLDEN_RULE_HTF_MIN_TFS", getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
                     )
                     if _gr_min_tfs_entry > 0:
                         try:
                             _gr_min_ind_entry = int(
-                                getattr(config, "GOLDEN_RULE_MIN_IND", 2)
+                                _psym_get(symbol, position_side, "GOLDEN_RULE_MIN_IND", getattr(config, "GOLDEN_RULE_MIN_IND", 2))
                             )
                             _gr_pass_e, _gr_n_tfs_e, _gr_detail_e = _score_gr_htf(
                                 indicators,
