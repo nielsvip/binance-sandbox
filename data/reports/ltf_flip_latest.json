@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-20T06:48:11Z",
+ "generated_utc": "2026-10-20T13:36:42Z",
  "window": "live-ending 7d",
- "start_utc": "2026-10-13T06:45Z",
- "end_utc": "2026-10-20T06:45Z",
+ "start_utc": "2026-10-13T12:49Z",
+ "end_utc": "2026-10-20T12:49Z",
  "keys": 902,
  "syms": 465,
- "elapsed_s": 790.0,
+ "elapsed_s": 3680.8,
  "legs": {
   "LTF_135": {
    "exits": 67,
@@ -15,9 +15,9 @@
    "pos_days": 3
   },
   "NO_TWIN": {
-   "exits": 1399,
-   "total_pct": 58.398,
-   "per_trade": 0.0417,
+   "exits": 1402,
+   "total_pct": 46.919,
+   "per_trade": 0.0335,
    "active_days": 8,
    "pos_days": 5
   },
@@ -412,13 +412,13 @@
    }
   },
   "ang:ARUSDT_LONG": {
-   "exits": 2,
+   "exits": 3,
    "entries": 9,
    "entries_ltf": 3,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -20.3936,
+    "NO_TWIN": -31.3915,
     "VEC15": 0
    }
   },
@@ -1996,13 +1996,13 @@
    }
   },
   "fin:1INCHUSDT_LONG": {
-   "exits": 8,
+   "exits": 9,
    "entries": 37,
    "entries_ltf": 13,
    "reconciled": 0,
    "legs": {
     "LTF_135": 0,
-    "NO_TWIN": -1.4795,
+    "NO_TWIN": -2.4339,
     "VEC15": 0.1141
    }
   },
@@ -4020,13 +4020,13 @@
    }
   },
   "inf:ARUSDT_LONG": {
-   "exits": 4,
+   "exits": 5,
    "entries": 30,
    "entries_ltf": 16,
    "reconciled": 0,
    "legs": {
     "LTF_135": 1.0581,
-    "NO_TWIN": 0.7341,
+    "NO_TWIN": 1.2076,
     "VEC15": -0.6388
    }
   },
@@ -10029,54 +10029,48 @@
    "trades": 22
   },
   "AIAUSDT_LONG": {
-   "gain_pct": 5.734194087341707,
-   "trades": 123
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "ALGOUSDT_LONG": {
    "gain_pct": 0.0,
    "trades": 0
   },
   "ALGOUSDT_SHORT": {
-   "gain_pct": -0.5445994644217413,
-   "trades": 33
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "ALTUSDT_LONG": {
-   "gain_pct": -1.9491350968193155,
-   "trades": 419
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "AMATUSDT_SHORT": {
-   "gain_pct": 12.193155241467482,
-   "trades": 68
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "AMDUSDT_LONG": {
-   "error": "prepare-None npz_flags=[NONE_ANYWHERE]"
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "AMDUSDT_SHORT": {
-   "error": "prepare-None npz_flags=[NONE_ANYWHERE]"
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "APEUSDT_LONG": {
-   "gain_pct": 22.29186303297061,
-   "trades": 295
+   "gain_pct": 0.0,
+   "trades": 0
   },
   "APEUSDT_SHORT": {
-   "gain_pct": -5.87617103572327,
-   "trades": 255
-  },
-  "API3USDT_LONG": {
-   "gain_pct": 43.20051480472822,
-   "trades": 46
-  },
-  "API3USDT_SHORT": {
-   "gain_pct": 12.112610196356968,
-   "trades": 98
+   "gain_pct": 0.0,
+   "trades": 0
   }
  },
  "reconciled_exits": 0,
  "entries_ltf_total": 2947,
  "price_guard": {
-  "checked": 82446,
-  "ok": 33219,
+  "checked": 82454,
+  "ok": 33919,
   "fake": 666,
-  "unchecked": 48561
+  "unchecked": 47869
  }
 }
