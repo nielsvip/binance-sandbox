@@ -218,7 +218,7 @@ def cleanup_data_dir():
     # 2. KEEP one file per 15min bin for backtesting (market_data_*.json, tradier_indicators_*.json, etc.)
     # LIVE STATE DENYLIST (2026-10-08): never thin these — thinning cost us indicators_worker0/1/3.json
     # + s2_365_progress_p1.json on 2026-10-08 (restored from snapshot). Thinning is for snapshots only.
-    STATE_KEEP=("indicators_worker","s2_365_progress","cat_side_defaults","scalper_monitor_","avg2_sources","direct_v8_digest_state","per_sym_bestsync","365d_holdup","latest_market_data")
+    STATE_KEEP=("indicators_worker","s2_365_progress","cat_side_defaults","scalper_monitor_","avg2_sources","direct_v8_digest_state","per_sym_bestsync","365d_holdup","latest_market_data","v15_gate_flags","v15_gate_env","v15_","v17_","v18_")  # 2026-10-20: the gate deploys v15_gate_flags/env into ~/binance/data; names contain "15" and were thinned within 10 min of every deploy
     all_files = []
     now = time.time()
     for f in data_dir.glob("*"):

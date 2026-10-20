@@ -1,24 +1,25 @@
 {
- "generated_utc": "2026-10-20T13:53:44Z",
+ "generated_utc": "2026-10-20T13:58:44Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 152.6,
+  "age_s": 86.2,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 34217,
-  "proc_age_s": 1052.0,
-  "log_age_s": 31.4,
+  "proc_age_s": 1352.0,
+  "log_age_s": 31.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
    "1h",
    "15m",
    "3m",
-   "1h"
+   "1h",
+   "15m"
   ],
-  "last_timeframe": "1h",
-  "last_timeframe_utc": "2026-10-20T13:44:12Z",
+  "last_timeframe": "15m",
+  "last_timeframe_utc": "2026-10-20T13:58:13Z",
   "last_restart_utc": "2026-10-20T13:36:12Z",
   "restarts_last_hour": 1
  },
@@ -44,20 +45,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792451066.3983662,
   "activations": 151,
-  "hb_mtime": 1792504135.6209898,
-  "mac_snapshot_age_s": 24.83214259147644,
-  "mac_stale": false,
-  "lease_holder": "mac",
-  "lease_venues": null,
-  "lease_since": "2026-10-20T13:49:02Z",
-  "lease_reason": "Mac healthy 300s (needed 300s) venues=['crypto', 'stocks']",
-  "now": 1792504186.3651378,
-  "from_cache_age_s": 238.1,
-  "heartbeat_age_s": 50.7,
-  "active_s": 53120.0
+  "hb_mtime": 1792504498.7688866,
+  "mac_snapshot_age_s": 105.32042145729065,
+  "mac_stale": true,
+  "lease_holder": "s1",
+  "lease_venues": "crypto",
+  "lease_since": "2026-10-20T13:52:22Z",
+  "lease_reason": "Mac reachable but NOT TRADING: crypto: positions_stale ang/long_positions.json age 3725s > 600s (position loop wedged) for 49s",
+  "now": 1792504548.0178597,
+  "from_cache_age_s": 177.2,
+  "heartbeat_age_s": 49.2,
+  "active_s": 53481.6,
+  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-20T13:52:22Z, reason 'Mac reachable but NOT TRADING: crypto: positions_stale ang/long_positions.json age 3725s > 600s (position loop wedged) for 49s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 53119s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (50s) AND the Mac snapshot is fresh (152s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-20T13:52:22Z (reason 'Mac reachable but NOT TRADING: crypto: positions_stale ang/long_positions.json age 3725s > 600s (position loop wedged) for 49s'), Mac heartbeat 49s, Mac snapshot 86s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
