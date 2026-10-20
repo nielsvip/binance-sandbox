@@ -696,3 +696,60 @@ def spec_cancel_stale(inflight: dict) -> int:
         except Exception:
             continue
     return n
+
+
+# ── V18_PROFILE_YELLOWS (USER 2026-10-20 "structurally speed up … understand every switch and the filters it might need") ──
+def profile_on() -> bool:
+    return flag_on("V18_PROFILE_YELLOWS")
+
+
+def load_profile(cat_side: str, root=None):
+    """-> (needed_filters map, switch_profile rows, min_n, why) for THIS cat_side; fail-open (None maps = today's behaviour)."""
+    cs = str(cat_side or "").upper()
+    d = digest_dir(root)
+    try:
+        nf = json.loads((d / f"needed_filters_{cs}.json").read_text())
+    except Exception as e:
+        return None, None, None, f"needed_filters absent/unreadable: {e}"[:160]
+    prof, min_n = {}, int(os.environ.get("V18_PROFILE_MIN_N", "10"))
+    try:
+        sp = json.loads((d / f"switch_profile_{cs}.json").read_text())
+        if str((sp.get("_meta") or {}).get("cat_side") or cs).upper() != cs:
+            return None, None, None, "switch_profile CAT_SIDE_MISMATCH — refused (principle 13)"
+        prof = sp.get("rows") or {}
+        min_n = max(min_n, int(((sp.get("_meta") or {}).get("thresholds") or {}).get("min_sym") or 0))
+    except Exception:
+        prof = {}
+    props = {}
+    try:
+        props = json.loads((d / f"linknet_proposals_{cs}.json").read_text())
+    except Exception:
+        props = {}
+    nf = {k: v for k, v in (nf or {}).items() if isinstance(v, dict)}
+    return {"needed": nf, "proposals": props if isinstance(props, dict) else {}}, prof, min_n, f"ok rows={len(nf)} profile={len(prof)} proposals={len(props) if isinstance(props, dict) else 0}"
+
+
+def profile_select(pool: list, entry: dict, prof_row: dict, proposals: list, keep_fn, min_n: int):
+    """Pure: the row's evaluated yellow set under V18_PROFILE_YELLOWS.
+    pool = every discovered header of the row; entry = needed_filters[row]; prof_row = switch_profile[row].
+    INERT / DAMAGING rows with n_syms >= min_n -> naked + floor draw only; else needed U suffocating U evidence_pos U proposals
+    (restricted to the pool) + keep_fn(hdr) over the REST (floor / untried draw: never zero). -> (keep, rest, why)."""
+    pool = list(dict.fromkeys(pool or []))
+    verdict = str((prof_row or {}).get("verdict") or "")
+    dead = verdict in ("INERT", "DAMAGING") and int((prof_row or {}).get("n_syms") or 0) >= int(min_n)
+    must = []
+    if not dead:
+        for k in ("needed", "suffocating", "evidence_pos"):
+            must += [str(h).strip() for h in ((entry or {}).get(k) or [])]
+        must += [str(h).strip() for h in (proposals or [])]
+    must_set = set(must)
+    keep = [h for h in pool if str(h).strip() in must_set]
+    rest = []
+    for h in pool:
+        if h in keep:
+            continue
+        if keep_fn(h):
+            keep.append(h)
+        else:
+            rest.append(h)
+    return keep, rest, (f"PROFILE_{verdict}_NAKED_FLOOR" if dead else "PROFILE")

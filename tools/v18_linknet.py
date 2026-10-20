@@ -279,7 +279,6 @@ def cmd_dataset(a):
         for line in fh:
             n += 1
             ts, _, js = line.partition("\t")
-            e_tag = js[6:14]
             if '"e":"row"' not in js[:12] and '"e":"phase"' not in js[:14] and '"e":"board"' not in js[:14]:
                 cnt["skipped_event_type"] += 1
                 continue
@@ -310,7 +309,6 @@ def cmd_dataset(a):
             last = ts
             if n % 2000000 == 0:
                 print(f"[dataset] {n:,} lines {time.time() - t0:.0f}s", flush=True)
-            del e_tag
     out = {"files": files, "lines": n, "first_ts": first, "last_ts": last, "sort_secs": round(t_sort, 1), "counters": dict(cnt), "per_cat_side": {}}
     for cs, ds in dss.items():
         ds.finish()
@@ -576,12 +574,12 @@ def spearman(a, b):
 class Trainer:
     """One cat_side: tables, splits, count baseline, fit with early stopping, holdout report, final refit."""
 
-    def __init__(self, cs, ds_dir=DS_DIR, k=16, H=64, batch=4096, lr=2e-3, max_epochs=12, patience=2, seed=7, max_train=None, log=print):
+    def __init__(self, cs, ds_dir=DS_DIR, k=16, H=64, batch=4096, lr=2e-3, max_epochs=12, patience=2, seed=7, max_train=None, log=print, fctx=None):
         self.cs, self.k, self.H, self.batch, self.lr, self.max_epochs, self.patience, self.seed = cs, k, H, batch, lr, max_epochs, patience, seed
         self.log = log
         self.max_train = max_train
         self.D, self.K = load_ds(cs, ds_dir)
-        self.fz = Featurizer(cs)
+        self.fz = Featurizer(cs, fctx=fctx)
         for sw, vals in seen_values(self.K["sets"]).items():
             if sw not in self.fz.fctx.cands:
                 self.fz.fctx.add_seen_values(sw, vals)
@@ -1063,10 +1061,12 @@ def _coerce_fn(cs):
 
 
 class Scorer:
-    def __init__(self, cs, ds_dir=DS_DIR):
+    def __init__(self, cs, ds_dir=DS_DIR, fctx=None):
         self.cs = cs
         self.net, self.meta = LinkNet.load(Path(ds_dir) / f"linknet_model_{cs}.npz")
-        self.fz = Featurizer(cs)
+        if self.meta.get("cat_side") != cs:
+            raise ValueError(f"model of {self.meta.get('cat_side')} refused for {cs} (principle 13)")
+        self.fz = Featurizer(cs, fctx=fctx)
         self.fz.vocab = {n: i for i, n in enumerate(self.meta["vocab"])}
         self.fz.names = list(self.meta["vocab"])
         self.frozen_V = len(self.fz.names)

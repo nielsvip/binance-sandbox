@@ -132,7 +132,8 @@ def test_validate_insights_drops_invalid_keys():
     b = cps[1]
     assert b["cat_side"] == "CRYPTO_SHORT" and b["sym_side"] is None and b["overrides_delta"] == {"WT_DIV_ENTRY_GATE_ENABLED": False}
     c = cps[2]
-    assert c["overrides_delta"]["EXIT_VELOCITY_WT_MIN_TFS"] == 2 and c["overrides_delta"]["MAX_AUGMENTS_PER_POSITION"] == 2 and c["regime"] == "RANGE"
+    # MAX_AUGMENTS_PER_POSITION was purged from config/config_tradier/QuickConfig (dead switch removed): even a well-typed "2" is now dropped as "not a field"
+    assert c["overrides_delta"] == {"EXIT_VELOCITY_WT_MIN_TFS": 2} and c["dropped_keys"] == ["MAX_AUGMENTS_PER_POSITION"] and c["regime"] == "RANGE"
     assert [x["insight_id"] for x in cps] == ["20261013-00", "20261013-01", "20261013-02"]
     assert clean["exit_timing_rules"] == ["single"] and clean["entry_timing_rules"][1] == '{"x": 1}'
 

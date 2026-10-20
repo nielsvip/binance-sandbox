@@ -45,4 +45,5 @@ def test_numerical_output_still_written():
     src = PILOT.read_text()
     # must still write yellows and F/G even when delta -1, and publish path
     assert "pending_lbI" in src and "ws_h.cell" in src, "yellows must still be written"
-    assert "final_path" in src and 'fmt(' in src, "final publish must remain"
+    # 2026-10: the final name comes from tools.v15_final_naming.final_matrix_name (the local fmt() helper is gone)
+    assert "final_path" in src and '_final_matrix_name(' in src, "final publish must remain"

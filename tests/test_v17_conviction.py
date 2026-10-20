@@ -102,7 +102,10 @@ def test_combine_entry_respects_demotions_staleness_and_cap(tmp_path):
     assert C.combine_entry(1.0, "BOOK_POS_HOLD", fresh, NOW, 6.0, root=tmp_path) == 1.0
 
 
-def test_apply_to_tiers_idempotent_uses_tier_mult():
+def test_apply_to_tiers_idempotent_uses_tier_mult(tmp_path, monkeypatch):
+    # isolate from the host's real kill switch (data/conviction/DISABLED exists on this host since 2026-10-14): the pure path is pinned on an empty root
+    monkeypatch.setattr(C, "ROOT", tmp_path)
+    monkeypatch.delenv("V17_CONVICTION_DISABLED", raising=False)
     tiers = {"A_LONG": {"mult": 1.0, "tier": "BOOK_POS_HOLD"}, "B_SHORT": {"mult": 0.5, "tier": "RANKED_NO365_SMALL"}, "C_LONG": {"mult": 2.0, "tier": "RANKED"}}
     doc = {"sym_sides": {"A_LONG": {"verdict": "PROVEN", "mult_target": 2.0, "at_epoch": time.time()}, "B_SHORT": {"verdict": "DISPROVEN", "mult_target": 0.5, "at_epoch": time.time()}}}
     C.apply_conviction_to_tiers(tiers, doc, cap=6.0)

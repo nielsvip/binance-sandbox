@@ -94,9 +94,14 @@ def _fake_root(tmp_path, py_body):
     (root / ".venv" / "bin").mkdir(parents=True)
     (root / "backups").mkdir()
     shutil.copy(CHAIN, root / "tools" / CHAIN.name)
+    # USER 2026-10-17: the chain resolves its interpreter via tools/pyinterp.sh (conda; the .venv rung is gone) - the fake root ships a stub
+    # resolver that points at the fake interpreter, so the step-1 child is the test's `sleep`, as before
     py = root / ".venv" / "bin" / "python"
     py.write_text("#!/bin/bash\n" + py_body + "\n")
     py.chmod(0o755)
+    resolver = root / "tools" / "pyinterp.sh"
+    resolver.write_text('#!/bin/bash\necho "' + str(py) + '"\n')
+    resolver.chmod(0o755)
     return root
 
 

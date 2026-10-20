@@ -6,18 +6,18 @@ import v15_pilot as vp
 import zipfile, re
 
 def test_stdev_not_in_switch_sheets_12tab():
-    assert "STDEV_SLOPE_SIZING" not in vp.SWITCH_SHEETS
-    assert len(vp.SWITCH_SHEETS)==12
-    assert vp.SKIP_SHEETS=={"STDEV_SLOPE_SIZING"}
+    # USER 2026-09-28: STDEV_SLOPE_SIZING is a single T/F switch tab filled like the rest - 13 tabs, nothing skipped (the 12-tab/skip era is over)
+    assert vp.SWITCH_SHEETS[0] == "STDEV_SLOPE_SIZING"
+    assert len(vp.SWITCH_SHEETS)==13
+    assert vp.SKIP_SHEETS==set()
 
 def test_template_still_13_but_pilot_uses_12():
-    z=zipfile.ZipFile(str(ROOT/"SPREADSHEETS/TEMPLATE.xlsx"))
+    z=zipfile.ZipFile(str(ROOT/"SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx"))
     wb=z.read('xl/workbook.xml').decode()
     sheets=re.findall(r'name="([^"]+)"', wb)
-    # template has 13
+    # template has 13 and the pilot fills all 13
     assert "STDEV_SLOPE_SIZING" in sheets
-    # pilot uses 12
-    assert len([s for s in sheets if s in vp.SWITCH_SHEETS])==12
+    assert len([s for s in sheets if s in vp.SWITCH_SHEETS])==13
 
 def test_default_seq_mode_cycle_and_worst_first_alias():
     import argparse

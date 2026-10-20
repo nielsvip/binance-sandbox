@@ -31,7 +31,8 @@ def _veto_ns():
 
 
 def _gate_ns():
-    return _exec_slice("ESSENTIAL_GATE_SWITCHES = frozenset({", "_START_STAMP = None")
+    # 2026-10-15: ESSENTIAL_GATE_SWITCHES unpacks WT_CORE_MANDATORY_BASES, defined just above it - slice from the WT core set
+    return _exec_slice("WT_CORE_MANDATORY_BASES = frozenset({", "_START_STAMP = None")
 
 
 def _best365_ns():

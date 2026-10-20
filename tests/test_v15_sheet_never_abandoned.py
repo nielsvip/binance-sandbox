@@ -6,7 +6,8 @@ def test_sheet_never_abandoned_and_lighting_fast():
     # Sheet never abandoned until finished, saved with bh/gain, 365D rerun, backtest done, NPZ stays hot
     assert "SHEET NEVER ABANDONED" in txt
     assert "SHEET-NEVER-ABANDONED" in txt or "SHEET NEVER ABANDONED" in txt
-    assert "saved with bh/gain" in txt or "final_name = f\"{new_symside}_bh" in txt
+    # 2026-10: the finished sheet is published under the bh/gain/trades name built by tools.v15_final_naming.final_matrix_name
+    assert "final_matrix_name(" in txt and "from tools.v15_final_naming import" in txt
     assert "365D rerun" in txt or "365D" in txt
     assert "backtest_v12_engine" in txt or "backtest_v12" in txt
     assert "NPZ stays" in txt or "NPZ stays hot" in txt

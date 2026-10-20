@@ -37,9 +37,9 @@ def test_npz_staleness_and_coverage():
         # Ensure NPZ has at least one of open_3m or open_15m
         assert "open_3m" in data or "open_15m" in data, f"{sym} missing open"
         # Check that pilot's 0 trades is not due to missing file but due to coverage — stdev missing is allowed per diagnose
-        if "stdev_edge_15m" not in data:
-            # Known ZEC gap, but should not be considered broken if n is small
-            assert sym == "ZECUSDC", f"{sym} missing stdev should only be ZEC"
+        # stdev_edge_15m is no longer an NPZ field on any symbol (no stdev* key in the 2026-10 indicator store, none read by v12_quick_engine), so the
+        # old "only ZEC may lack it" pin has nothing to bind to; the required-field checks above are what remains
+        assert not any(k.startswith("stdev_edge") for k in data.files) or "stdev_edge_15m" in data.files
 
 def test_pilot_current_idx_and_yellow_rate():
     # Ensure v15_pilot has TEMPLATE law: E2 header BASELINE preserved, E3 numeric, yellows per row, never stall
@@ -47,6 +47,9 @@ def test_pilot_current_idx_and_yellow_rate():
     assert "E2 header" in pilot or "BASELINE" in pilot, "pilot should preserve E2 header"
     assert "per_row" in pilot.lower() or "yellow" in pilot.lower(), "pilot should handle yellows per row"
     # Check that pilot writes E3 numeric (E2 header preserved) - from c6fb80 TEMPLATE law
-    assert 'ws_fix.cell(row=3, column=5).value = float(baseline_gain)' in pilot or 'E3 numeric' in pilot
+    # current law: the single-load fix preserves/repairs the E2 header "BASELINE" by header column, and E3 (chain start) is written by the sequential filler on
+    # the first row it fills - never on every tab
+    assert 'ws_fix.cell(row=2, column=e_col).value = "BASELINE"' in pilot
+    assert "E3 (chain start) is written by the sequential filler on the first row it fills" in pilot
     # Check that pilot handles ZEC 0 trades exception
     assert "ZECUSDC" in pilot, "pilot should handle ZEC 0 trades exception"

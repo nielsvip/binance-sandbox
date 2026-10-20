@@ -28,8 +28,11 @@ def test_template_law_headers():
     m = _hdr_col_map(ws)
     assert "Switch" in m or "switch" in m, "Switch header not mapped"
     cols = _resolve_cols(ws)
-    assert "A" in cols, "Switch column A not resolved via header"
-    assert cols["A"] == m.get("Switch") or cols["A"] == m.get("switch"), "A should be Switch header col"
+    # _resolve_cols resolves the pilot-written columns by header name (C override, E BASELINE, F HUSTLE_DELTA, G VECTOR_DELTA, H, I, K, L); the Switch
+    # column is the template's fixed column A (1) and must be what the header map says
+    assert (m.get("Switch") or m.get("switch")) == 1, "Switch header must map to column A"
+    for letter, header in (("C", "override"), ("E", "BASELINE"), ("F", "HUSTLE_DELTA"), ("G", "VECTOR_DELTA"), ("H", "LIVE_DELTA"), ("I", "LIVE_SHARPE")):
+        assert cols[letter] == (m.get(header) or m.get(header.lower())), f"{letter} must resolve via header {header}"
 
 def test_orange_below_white():
     if not TEMPLATE_CRYPTO_LONG.exists():
@@ -57,10 +60,13 @@ def test_fixed_pilot_compiles_and_has_fixes():
     assert p.exists()
     text = p.read_text()
     # Check fixes are present
-    assert "FIX 2026-09-27 TEMPLATE LAW" in text, "baseline E fix missing"
-    assert "PROHIBITED-SKIP" in text and "window_days" in text, "window-aware prohibit fix missing"
-    assert "header-aware, orange-skip" in text or "ORANGE can NEVER be above white" in text, "BEST-C-FILL orange fix missing"
-    assert "SKIP_SHEETS: set[str] = set()" in text, "STDEV should not be skipped (13 tabs)"
+    # current anchors (the 2026-09-27 fix tags were rewritten away): E/G/C are resolved by header; E is blank on G<=0 (greedy); a finished board is
+    # never retouched; BEST-C-FILL is header-aware and never touches the bold default (B); STDEV is filled (13 tabs, nothing skipped)
+    assert '"E": pick("BASELINE", fallback=5)' in text, "baseline E fix missing"
+    assert "BLANK when G<=0 (greedy)" in text, "E greedy-blank law missing"
+    assert "ALREADY FINISHED" in text and "MUST NOT RETOUCH" in text and "window_days" in text, "window-aware prohibit fix missing"
+    assert '_c_col = _resolve_cols(ws_c)["C"]' in text and "default (B) bold is never touched" in text, "BEST-C-FILL header-aware fix missing"
+    assert "SKIP_SHEETS: set = set()" in text, "STDEV should not be skipped (13 tabs)"
 
 def test_7d_progress_can_start():
     # Ensure 7d progress file handling is window-specific (dry-run check)

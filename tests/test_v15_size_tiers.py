@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_persym_size_tiers import _ranked_mult, _venue_of
+from v15_persym_size_tiers import _min_mult_for_venue, _ranked_mult, _size_ranked, _venue_of
 
 
 class RankedMultTest(unittest.TestCase):
@@ -49,12 +49,24 @@ class TiersEndToEndTest(unittest.TestCase):
                            capture_output=True, text=True, cwd=str(ROOT))
         self.assertEqual(r.returncode, 0, r.stderr[-500:])
         d = json.loads(out.read_text())["tiers"]
-        self.assertEqual(d["AAA_LONG"]["mult"], 3.0)
-        self.assertEqual(d["AAA_LONG"]["tier"], "RANKED")
-        self.assertEqual(d["BBB_SHORT"]["mult"], 1.2)
-        self.assertEqual(d["CCC_LONG"]["mult"], 1.0)
-        self.assertEqual(d["CCC_LONG"]["tier"], "RANKED_NEG365_CAP1")
-        self.assertEqual(d["DDD_SHORT"]["mult"], 0.25)
+        # current rules (2026-10-11/14, tool docstring): max-mult 6.0 / gain-cap 20, 365D-negative or unconfirmed gainers trade small at 0.5
+        # (RANKED_NEG365_SMALL), stocks MIN = 0.05. The synthetic sym_sides have no per_sym_store row, so USER 2026-10-09 NOSTORE_MIN demotes every
+        # above-min row to the venue minimum and keeps the rule outcome in was_tier - the rule tier is read from there.
+        rule = {s: d[s].get("was_tier", d[s]["tier"]) for s in d}
+        self.assertEqual(rule["AAA_LONG"], "RANKED")
+        self.assertEqual(rule["BBB_SHORT"], "RANKED")
+        self.assertEqual(rule["CCC_LONG"], "RANKED_NEG365_SMALL")
+        self.assertEqual(rule["DDD_SHORT"], "MIN")
+        self.assertEqual(_size_ranked({"g30": 30.0, "g365": 12.0}, 6.0, 20.0, 0.5), (6.0, "RANKED"))
+        self.assertEqual(_size_ranked({"g30": 2.0, "g365": 1.0}, 6.0, 20.0, 0.5), (1.5, "RANKED"))
+        self.assertEqual(_size_ranked({"g30": 25.0, "g365": -4.0}, 6.0, 20.0, 0.5), (0.5, "RANKED_NEG365_SMALL"))
+        self.assertEqual(_size_ranked({"g30": 25.0, "g365": None}, 6.0, 20.0, 0.5), (0.5, "RANKED_NO365_SMALL"))
+        stocks_min = _min_mult_for_venue("stocks", 0.25, 0.05)
+        self.assertEqual(stocks_min, 0.05)
+        for s in ("AAA_LONG", "BBB_SHORT", "CCC_LONG"):
+            self.assertEqual(d[s]["tier"], "NOSTORE_MIN")
+            self.assertEqual(d[s]["mult"], stocks_min)
+        self.assertEqual(d["DDD_SHORT"]["mult"], stocks_min)
         self.assertEqual(d["DDD_SHORT"]["tier"], "MIN")
 
 

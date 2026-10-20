@@ -8,6 +8,8 @@ Covers fixes from 2026-09-23:
 - per sym_side distinct (3000 possibilities, never same set)
 """
 from __future__ import annotations
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import argparse
 import pathlib
 import zipfile
@@ -94,9 +96,10 @@ def test_4801_switch_rows_and_231_yellows_max():
             raw = z.read(f'xl/worksheets/sheet{idx}.xml').decode()
             rows = re.findall(r'<row[^>]*>', raw)
             total += max(0, len(rows)-2)
-    # STDEV skipped per 2026-09-23 — 12 tabs = 3803, vs 4801 with STDEV
-    expected = 3803 if "STDEV_SLOPE_SIZING" not in vp.SWITCH_SHEETS else 4801
-    assert total == expected, f"expected {expected} switch rows, got {total}"
+    # STDEV is filled (13 tabs, 2026-09-28) = 4801 rows at the time this was pinned. The template only GROWS (new switch rows are inserted via
+    # v15_switch_add; 4989 on 2026-10-20), so the exact count is not a law - a template that LOSES rows below the historical mark is
+    assert len(vp.SWITCH_SHEETS) == 13
+    assert total >= 4801, f"template lost switch rows: {total} < 4801"
     # yellows per switch max ~231-265 (O:BI headers contain FILTER_TF) — allow up to 280
     for idx, s in enumerate(sheets, start=1):
         if s == "ENTRY_REVERSAL_BOUNCE":
@@ -126,7 +129,11 @@ def test_mac_has_no_npz():
     if npz_dir.exists():
         npzs = list(npz_dir.glob("*.npz"))
         # allow 0 after purge; if S1 sync repopulates, pilot must still block via NO PREPARED guard
-        assert len(npzs) == 0 or len(npzs) <= 8, f"Mac ideally 0 npz, found {len(npzs)} — pilot must block (see test_default_seq_mode_is_cycle)"
+        if len(npzs) > 8:
+            # 2026-10: the Mac legitimately holds an NPZ copy (live parity lane / stock twin pulled from S2), so the count is host state, not a law.
+            # What must hold is that the pilot itself refuses to run backtests on the Mac unless explicitly allowed (V15_ALLOW_MAC / dry-run)
+            src = (ROOT / "v15_pilot.py").read_text()
+            assert "NO backtests on MacBook" in src and "V15_ALLOW_MAC" in src, f"Mac holds {len(npzs)} npz and the pilot has no Mac block"
 
 def test_default_seq_mode_is_cycle():
     # v15_pilot default must be cycle per WORST_FIRST spec
@@ -138,6 +145,7 @@ def test_default_seq_mode_is_cycle():
     args2 = _parse_args("worst_first")
     assert args2.seq_mode == "cycle"
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_herd_empty_check_uses_entry_reversal_after_stdev_skip():
     # STDEV skipped per 2026-09-23 — herd is_empty must check ENTRY_REVERSAL_BOUNCE, not STDEV
     import tempfile, openpyxl
