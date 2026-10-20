@@ -133,11 +133,14 @@ for KIND in norm; do
   # The budget is now a DEADLINE, not a duration: as much time as there is until STEP2_MARGIN_S before the NYSE open,
   # capped at STEP2_TIMEOUT_S and floored at STEP2_MIN_S so a late catch-up slot still gets a real attempt. Market
   # closed -> the full cap. A `timeout` cannot be allowed to be the thing that decides whether live has fresh defaults.
+  # 2026-10-20 18:3xZ repair: measured writer wall on S1 under herd load ~25 is 25-34 min for 4 cat_sides (10-20 12:57->13:22Z for
+  # three, STOCKS_SHORT still running at 13:27Z; 10-19 21-24 min to the layout failure). A 2400 s floor (what a post-open slot got)
+  # is below that, so the floor is 4800 s (80 min, ~2.4x the measured worst).
   STEP2_BUDGET=$(V15_CHAIN_ROOT="$ROOT" "$PY" - <<'PYEOF'
 import os, sys
 sys.path.insert(0, os.path.join(os.environ["V15_CHAIN_ROOT"], "tools"))
 cap = float(os.environ.get("V15_CHAIN_STEP2_TIMEOUT_S", 5400))
-floor = float(os.environ.get("V15_CHAIN_STEP2_MIN_S", 2400))
+floor = float(os.environ.get("V15_CHAIN_STEP2_MIN_S", 4800))
 margin = float(os.environ.get("V15_CHAIN_STEP2_MARGIN_S", 900))
 try:
     import live_failover_common as C
