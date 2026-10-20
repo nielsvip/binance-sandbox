@@ -128,14 +128,34 @@ def proxy_backed(path: pathlib.Path) -> bool:
     context-coverage question, not a call-site question, and needs runtime instrumentation, not grep.
     """
     try:
-        src = path.read_text(errors="ignore")
+        tree = ast.parse(path.read_text(errors="ignore"), filename=str(path))
     except Exception:
         return False
-    last = None
-    for line in src.splitlines():
-        if re.match(r"^config\s*=", line):
-            last = line
-    return bool(last and "Proxy" in last)
+
+    # Walk MODULE-LEVEL statements, descending into module-level If/Try bodies: a rebind there is still a module
+    # global. The first version of this used `re.match(r"^config\\s*=", line)`, which missed
+    # ez_positions_quick.py's `if os.environ.get("PQ_PER_SYM_PROXY","1") != "0": config = _PQPerSymProxy(config)`
+    # because that line is INDENTED — and so reported a module as unprotected after it had been fixed.
+    # Function bodies are deliberately NOT descended into: a local named `config` is not the module global.
+    found = [False]
+
+    def scan(body):
+        for st in body:
+            if isinstance(st, ast.Assign):
+                for tgt in st.targets:
+                    if isinstance(tgt, ast.Name) and tgt.id == "config":
+                        v = st.value
+                        nm = ""
+                        if isinstance(v, ast.Call):
+                            f = v.func
+                            nm = f.id if isinstance(f, ast.Name) else getattr(f, "attr", "")
+                        found[0] = "Proxy" in nm
+            elif isinstance(st, (ast.If, ast.Try)):
+                scan(st.body)
+                scan(getattr(st, "orelse", []) or [])
+                scan(getattr(st, "finalbody", []) or [])
+    scan(tree.body)
+    return found[0]
 
 
 def _fname(node) -> str:

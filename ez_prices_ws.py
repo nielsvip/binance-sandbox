@@ -31,6 +31,17 @@ TARGET_BARS = 1800
 REDIS_EXPIRY = config.REDIS_EXPIRY_SECONDS * 6  # ~18 min
 WS_CHUNK_SIZE = 150  # symbols per WebSocket connection (Binance max 200)
 HEARTBEAT_INTERVAL = 60
+# USER 2026-10-20 ("klines can NEVER become old ... ALWAYS save the latest kline
+# from the websocket ... absolutely no exceptions"): forming (unclosed) bars are
+# written too, throttled per symbol so ~4 tick/s/symbol does not become ~800
+# full-file rewrites/s. Closed bars always write immediately.
+FORMING_MIN_INTERVAL_S = 5.0
+
+
+def forming_due(last_write: float, now: float,
+                interval: float = FORMING_MIN_INTERVAL_S) -> bool:
+    """Pure throttle decision for forming-bar writes. Closed bars bypass this."""
+    return (now - last_write) >= interval
 
 
 class KlineWSFeed:
@@ -41,6 +52,9 @@ class KlineWSFeed:
         self._locks: Dict[str, asyncio.Lock] = {}
         self._shutdown = asyncio.Event()
         self._write_sem = asyncio.Semaphore(50)
+        self._last_forming_write: Dict[str, float] = {}
+        self._n_closed = 0
+        self._n_forming = 0
 
     async def init(self):
         with open(config.SYMBOLS_FILE) as f:
@@ -174,11 +188,18 @@ class KlineWSFeed:
                             if data.get("e") != "kline":
                                 continue
                             k = data["k"]
-                            if not k.get("x"):
-                                continue
                             original = self.api_to_original.get(k["s"], k["s"])
                             kline_ts = datetime.fromtimestamp(k["t"] / 1000, tz=timezone.utc)
-                            asyncio.create_task(self._on_closed_kline(original, kline_ts, float(k["o"]), float(k["h"]), float(k["l"]), float(k["c"]), float(k["v"])))
+                            bar = (float(k["o"]), float(k["h"]), float(k["l"]), float(k["c"]), float(k["v"]))
+                            if k.get("x"):
+                                self._n_closed += 1
+                                asyncio.create_task(self._on_closed_kline(original, kline_ts, *bar))
+                            else:
+                                now = time.monotonic()
+                                if forming_due(self._last_forming_write.get(original, 0.0), now):
+                                    self._last_forming_write[original] = now
+                                    self._n_forming += 1
+                                    asyncio.create_task(self._on_closed_kline(original, kline_ts, *bar))
                         except Exception as e:
                             logger.debug(f"Msg error: {e}")
             except Exception as e:
@@ -191,7 +212,7 @@ class KlineWSFeed:
     async def _heartbeat(self):
         while not self._shutdown.is_set():
             await asyncio.sleep(HEARTBEAT_INTERVAL)
-            logger.info(f"❤️ ez_prices_ws alive — {len(self.symbols)} symbols, {len(self._locks)} cached")
+            logger.info(f"❤️ ez_prices_ws alive — {len(self.symbols)} symbols, {len(self._locks)} cached, closed={self._n_closed} forming={self._n_forming}")
 
     async def run(self):
         await self.init()

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T19:13:26Z",
+ "ts": "2026-10-20T19:18:39Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 262,
+   "fills_6h": 264,
    "open_positions": 12,
-   "unrealised_usd": 5.71,
+   "unrealised_usd": 19.54,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 164,
    "open_positions": 18,
-   "unrealised_usd": 25.3,
+   "unrealised_usd": 31.68,
    "pos_mismatch": 0
   },
   "fin": {
@@ -138,42 +138,42 @@
     "79919"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 10.0
   },
   "men": {
    "pids": [
     "73953"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "62249"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 56.0
   },
   "inf": {
    "pids": [
     "79171"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "37060"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 25.0
   },
   "trb": {
    "pids": [
     "83844"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [
@@ -185,21 +185,28 @@
  },
  "alerts": [
   {
-   "ts": "2026-10-20T19:13:26Z",
+   "ts": "2026-10-20T19:18:39Z",
    "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $44.97 since 2026-10-20T18:43:24Z (now $+5.71)"
+   "kind": "SIZE_ANOMALY",
+   "key": "trb:EXEL_LONG",
+   "evidence": "entry notional $3521.92 (median $1087.62, MAX_ORDER_VALUE $7000) @ 2026-10-20T19:16:42Z MANDATORY_REENTRY_PRICE_CROSS_exit63.8750_cur63.9000_dist0.0"
   },
   {
-   "ts": "2026-10-20T19:13:27Z",
+   "ts": "2026-10-20T19:18:39Z",
+   "severity": "WARN",
+   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
+   "key": "trb:EXEL_LONG",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $3521.92 (median $1087.62, MAX_ORDER_VALUE $7000) @ 2026-10-20T19:16:42Z MANDATORY_REENTRY_PRICE_CROSS_exit63.8750_cur63.9000_dist0.0"
+  },
+  {
+   "ts": "2026-10-20T19:18:40Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T19:13:27Z",
+   "ts": "2026-10-20T19:18:40Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
@@ -207,7 +214,8 @@
   }
  ],
  "alert_counts": {
-  "ACCOUNT_EQUITY_DROP": 1,
+  "SIZE_ANOMALY": 1,
+  "NO_PER_KEY_BLOCK_AVAILABLE": 1,
   "FILL_WITHOUT_VEC_DECISION": 2
  },
  "active_interventions": {
@@ -242,5 +250,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.48
+ "sweep_s": 1.31
 }

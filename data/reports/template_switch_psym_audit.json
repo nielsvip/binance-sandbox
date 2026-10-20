@@ -7,24 +7,24 @@
  ],
  "n_keys": 1288,
  "verdicts": {
-  "GLOBAL_LEAK": 328,
+  "GLOBAL_LEAK": 88,
+  "OK": 1047,
   "ABSENT": 131,
-  "OK": 807,
   "INERT": 22
  },
- "n_leak_keys": 328,
- "n_global_sites_fixable_in_place": 392,
- "n_global_sites_needing_restructure": 67,
+ "n_leak_keys": 88,
+ "n_global_sites_fixable_in_place": 99,
+ "n_global_sites_needing_restructure": 45,
  "rows": [
   {
    "key": "ABLATION_DISABLE_AGGRESSIVE_HEDGE",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -36,12 +36,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 24400,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6839,
@@ -276,13 +270,13 @@
   },
   {
    "key": "ABLATION_DISABLE_HEDGE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -293,14 +287,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 12749,
-     "func": "monitor_and_manage_hedges",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ABLATION_DISABLE_HIGH_GAIN_AUGMENT",
@@ -358,13 +345,13 @@
   },
   {
    "key": "ABLATION_DISABLE_QUICK_ENTRY",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -375,24 +362,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 28581,
-     "func": "check_entry_candidates_for_account",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ABLATION_DISABLE_QUICK_EXIT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -403,14 +383,7 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 25345,
-     "func": "check_exit_candidates_for_account",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ABLATION_DISABLE_RATIO_REBALANCE",
@@ -472,11 +445,11 @@
    "key": "ABLATION_DISABLE_REENTRY_ENFORCE",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 3,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -488,18 +461,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31231,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 33363,
-     "func": "evaluate_reentry_2_periodic_loop_epq",
-     "symbol_bound_in_func": false
-    },
     {
      "module": "tradier_manage.py",
      "line": 6852,
@@ -559,13 +520,13 @@
   },
   {
    "key": "ADX_RANGING_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -576,24 +537,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4794,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ADX_REGIME_FILTER_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -608,24 +562,17 @@
     "ENTRY_CONFIRMATION_GATES",
     "ENTRY_REVERSAL_BOUNCE"
    ],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4791,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ADX_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -636,14 +583,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4792,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ADX_TRENDING_THRESHOLD",
@@ -1187,13 +1127,13 @@
   },
   {
    "key": "AUGMENT_ONLY_WHEN_PROFITABLE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1204,24 +1144,17 @@
     "AUGMENT_RISK_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 24424,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -1230,14 +1163,7 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 24406,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "AUGMENT_TYPED_MIN_GAIN_ENABLED",
@@ -1323,13 +1249,13 @@
   },
   {
    "key": "BANDAID_OFF_LOSER_RECOVER_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 4,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1340,20 +1266,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 11471,
-     "func": "monitor_hedge_health_loop",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 11159,
-     "func": "monitor_hedge_health_loop",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAND_ARROW_ENABLED",
@@ -1420,13 +1333,13 @@
   },
   {
    "key": "BAND_SLOPE_SIZING_V2_DEPTH_GAIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1437,24 +1350,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2253,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAND_SLOPE_SIZING_V2_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1465,24 +1371,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2210,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAND_SLOPE_SIZING_V2_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1493,30 +1392,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2227,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2223,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAND_SLOPE_SIZING_V2_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1527,30 +1413,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2225,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2228,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1561,24 +1434,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2260,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAND_SLOPE_SIZING_V2_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1589,14 +1455,7 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2214,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BAR_PATTERNS_FILTER_TF",
@@ -1621,13 +1480,13 @@
   },
   {
    "key": "BASIS_CONDITION",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 3,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1638,26 +1497,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 24233,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3540,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21182,
-     "func": "_manage_individual_position",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB4H_BREAKOUT_LADDER_ENABLED",
@@ -1828,13 +1668,13 @@
   },
   {
    "key": "BB_BREAKOUT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1845,14 +1685,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8610,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB_BREAKOUT_ENTRY_TF",
@@ -1884,13 +1717,13 @@
   },
   {
    "key": "BB_BREAKOUT_SCORE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1901,30 +1734,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8617,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8622,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB_BREAKOUT_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -1935,14 +1755,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8611,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB_ENTRY_LONG_THRESHOLD",
@@ -2279,13 +2092,13 @@
   },
   {
    "key": "BB_RSI_STOCH_SCALP_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2296,55 +2109,14 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8549,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB_SQUEEZE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "GLOBAL_RISK_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21634,
-     "func": "detect_bb_squeeze_breakout",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30378,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "BB_SQUEEZE_ENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 1,
-   "n_global": 1,
-   "n_discarded": 4,
    "n_namelist": 3,
    "n_dead": 0,
    "n_proxy_psym": 2,
@@ -2355,27 +2127,41 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
+    "GLOBAL_RISK_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "BB_SQUEEZE_ENTRY_ENABLED",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 4,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30379,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB_SQUEEZE_ENTRY_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -2384,14 +2170,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21637,
-     "func": "detect_bb_squeeze_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BB_SQUEEZE_EXIT_ENABLED",
@@ -2423,37 +2202,9 @@
   },
   {
    "key": "BB_SQUEEZE_MIN_ALIGNMENT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30391,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "BB_SQUEEZE_WIDTH_PERCENTILE",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
@@ -2465,17 +2216,31 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "BB_SQUEEZE_WIDTH_PERCENTILE",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21660,
-     "func": "detect_bb_squeeze_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BEAR_HOLD_EXIT_DELAY_BARS",
@@ -2522,13 +2287,13 @@
   },
   {
    "key": "BEAR_MARKET_MODE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 3,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2539,26 +2304,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6235,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23906,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6210,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BEAR_MARKET_MODE_TRADIER",
@@ -2616,13 +2362,13 @@
   },
   {
    "key": "BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2633,24 +2379,17 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26328,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_AUGMENT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2661,24 +2400,17 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26311,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_AUGMENT_K_D_CROSSING_UP",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2689,24 +2421,17 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26339,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_AUGMENT_K_D_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2717,24 +2442,17 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26325,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_AUGMENT_MIN_LOSS_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2745,24 +2463,17 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26314,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_REENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 4,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 4,
+   "n_proxy_psym": 5,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2773,24 +2484,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5937,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_REENTRY_K_RESET_LONG",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2801,24 +2505,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5948,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BOUNCE_REENTRY_K_RESET_SHORT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2829,24 +2526,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5949,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BREAKEVEN_DC_FIELD_MODE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2857,24 +2547,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26827,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BREAKEVEN_DC_LOW4_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2885,24 +2568,17 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26821,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BREAKEVEN_GAIN_EROSION_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 4,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 4,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -2913,20 +2589,7 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26790,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26799,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BREAKEVEN_GAIN_EROSION_FILTER_TF",
@@ -2995,13 +2658,13 @@
   },
   {
    "key": "BREAKEVEN_GRACE_MINUTES",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -3012,14 +2675,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26804,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "BREAKOUT_LEASH_REENTRY_MULT",
@@ -3407,11 +3063,11 @@
    "key": "CAT_SIDE_DEFAULTS_ENABLED",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 3,
+   "n_global": 2,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -3423,12 +3079,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3189,
-     "func": "_sw_get",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "ez_positions_service.py",
      "line": 13828,
@@ -3666,13 +3316,13 @@
   },
   {
    "key": "COMMISSION_BUFFER_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 3,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 8,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -3683,26 +3333,7 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 13084,
-     "func": "monitor_and_manage_hedges",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27611,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 11366,
-     "func": "monitor_hedge_health_loop",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "CONFLUENCE_MIN_BLOCKS",
@@ -4357,13 +3988,13 @@
   },
   {
    "key": "DC_BREAKOUT_ALLOW_15M",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -4374,24 +4005,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29768,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_BREAKOUT_ALLOW_3M",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -4402,24 +4026,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29774,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_BREAKOUT_ENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -4430,30 +4047,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8710,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29738,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_BREAKOUT_SCORE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -4464,28 +4068,36 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8723,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8728,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_BREAKOUT_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_BREAKOUT_CHANNEL"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "DC_BREAKOUT_TF_EXPANDED",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 0,
    "n_dead": 0,
    "n_proxy_psym": 1,
    "templates": [
@@ -4498,42 +4110,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8715,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "DC_BREAKOUT_TF_EXPANDED",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 1,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 0,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_BREAKOUT_CHANNEL"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8714,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_BREAK_FILTER_TF",
@@ -4929,13 +4506,13 @@
   },
   {
    "key": "DC_HARD_STOP_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 8,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -4945,14 +4522,7 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 25677,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_HOPELESS_EXIT_ENABLED",
@@ -5032,13 +4602,13 @@
   },
   {
    "key": "DC_MOMENT_STRONG_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -5050,14 +4620,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4577,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DC_POSITION_ENTRY_THRESHOLD",
@@ -5346,11 +4909,11 @@
    "key": "DELTA_ENGINE_ENABLED",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 11,
+   "n_global": 6,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 4,
+   "n_proxy_psym": 9,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -5362,36 +4925,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15921,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4377,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8761,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29945,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29504,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "ez_positions_service.py",
      "line": 13958,
@@ -5496,49 +5029,9 @@
    "key": "DELTA_ENTRY_ENABLED",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 3,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29983,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30036,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "tradier_manage.py",
-     "line": 19961,
-     "func": "process_position",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "DELTA_ENTRY_MIN_TF",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 2,
-   "n_discarded": 0,
-   "n_namelist": 2,
    "n_dead": 0,
    "n_proxy_psym": 2,
    "templates": [
@@ -5553,11 +5046,33 @@
    "filter_tabs": [],
    "global_sites": [
     {
-     "module": "ez_positions_quick.py",
-     "line": 15887,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    },
+     "module": "tradier_manage.py",
+     "line": 19961,
+     "func": "process_position",
+     "symbol_bound_in_func": true
+    }
+   ]
+  },
+  {
+   "key": "DELTA_ENTRY_MIN_TF",
+   "verdict": "GLOBAL_LEAK",
+   "n_psym": 0,
+   "n_global": 1,
+   "n_discarded": 0,
+   "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": [
     {
      "module": "tradier_manage.py",
      "line": 42078,
@@ -5673,13 +5188,13 @@
   },
   {
    "key": "DELTA_EXIT_DOM_TF_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -5688,14 +5203,7 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15913,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DELTA_EXIT_ENABLED",
@@ -5750,11 +5258,11 @@
    "key": "DELTA_EXIT_MIN_HOLD",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -5766,12 +5274,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15895,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    },
     {
      "module": "tradier_manage.py",
      "line": 42083,
@@ -5784,11 +5286,11 @@
    "key": "DELTA_EXIT_MIN_TF_LOST",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -5800,12 +5302,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15894,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    },
     {
      "module": "tradier_manage.py",
      "line": 42082,
@@ -5863,13 +5359,13 @@
   },
   {
    "key": "DELTA_EXIT_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -5878,14 +5374,7 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15912,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DELTA_GATE_AUGMENT",
@@ -5973,13 +5462,13 @@
   },
   {
    "key": "DELTA_HTF_GATE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 7,
+   "n_proxy_psym": 8,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -5990,14 +5479,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8773,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "DELTA_MAX_HOLD_BARS",
@@ -6024,11 +5506,11 @@
    "key": "DELTA_PYRAMID_MAX",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -6040,12 +5522,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15898,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    },
     {
      "module": "tradier_manage.py",
      "line": 42088,
@@ -6058,11 +5534,11 @@
    "key": "DELTA_PYRAMID_PRICE_TOL",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 5,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 5,
+   "n_proxy_psym": 6,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -6074,12 +5550,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15896,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    },
     {
      "module": "tradier_manage.py",
      "line": 42086,
@@ -7049,13 +6519,13 @@
   },
   {
    "key": "EMERGENCY_BRAKE_MAX_TRADES_PER_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -7066,14 +6536,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 22253,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ENABLE_FAST_RISER_REDUCE",
@@ -7119,13 +6582,13 @@
   },
   {
    "key": "ENTRY_ATR_PCT_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -7136,14 +6599,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5099,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_DISTANCE",
@@ -7434,13 +6890,13 @@
   },
   {
    "key": "ENTRY_LH_TRIGGER_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -7451,14 +6907,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30482,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ENTRY_LH_TRIGGER_REGRESS_PCT",
@@ -7770,13 +7219,13 @@
   },
   {
    "key": "ENTRY_VOL_MIN_RATIO",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -7787,14 +7236,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4207,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "ENTRY_ZONE_LONG",
@@ -7857,13 +7299,13 @@
   },
   {
    "key": "EXECUTE_NOW_MAX_MARK_AGE_S",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -7874,24 +7316,17 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 22478,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "EXECUTE_NOW_SINGLE_GATE_ENFORCE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -7902,14 +7337,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 17114,
-     "func": "send_webhook",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "EXIT_BLOCKER_REQUIRE_LH_LL_ENABLED",
@@ -9280,13 +8708,13 @@
   },
   {
    "key": "FUNDING_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -9295,14 +8723,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23149,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "FUNDING_GATE_FILTER_TF",
@@ -9327,13 +8748,13 @@
   },
   {
    "key": "FUNDING_GATE_LONG_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -9344,24 +8765,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23156,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "FUNDING_GATE_MTF_REQUIRED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -9372,24 +8786,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23187,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "FUNDING_GATE_SHORT_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -9400,14 +8807,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23159,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "GAP_CLOSE_MOC_EXIT_ENABLED",
@@ -10633,13 +10033,13 @@
   },
   {
    "key": "GUARANTEED_REENTRY_K_FAVORABLE_LOW",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -10650,24 +10050,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31634,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "GUARANTEED_REENTRY_K_HIGH_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -10678,24 +10071,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31628,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "GUARANTEED_REENTRY_K_LOW_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -10706,14 +10092,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31631,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN",
@@ -10738,13 +10117,13 @@
   },
   {
    "key": "GUARANTEED_REENTRY_STRICT_CONFIRMATION",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -10755,14 +10134,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31624,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "GUARANTEED_REENTRY_TIGHT_STOP_ENABLED",
@@ -11183,13 +10555,13 @@
   },
   {
    "key": "HARD_BREAKEVEN_MIN_PEAK_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11200,14 +10572,7 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26810,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HARD_REDUCE_LOCK_SEC",
@@ -11232,13 +10597,13 @@
   },
   {
    "key": "HA_WICK_QUALITY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11249,24 +10614,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8600,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HA_WICK_QUALITY_SCORE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11278,30 +10636,17 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8604,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8607,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HA_WICK_QUALITY_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11312,24 +10657,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8601,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HEDGE_MODE",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 8,
+   "n_global": 5,
    "n_discarded": 1,
    "n_namelist": 4,
-   "n_dead": 3,
-   "n_proxy_psym": 6,
+   "n_dead": 1,
+   "n_proxy_psym": 11,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11341,24 +10679,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 36343,
-     "func": "main",
-     "symbol_bound_in_func": false
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 36400,
-     "func": "main",
-     "symbol_bound_in_func": false
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 25948,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "ez_positions_service.py",
      "line": 10599,
@@ -11427,13 +10747,13 @@
   },
   {
    "key": "HLR_BYPASS_MIN_TF_WEIGHT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11444,24 +10764,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5558,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_RALLY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11472,30 +10785,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5554,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30689,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_RECROSS_BYPASS_BARS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11506,24 +10806,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31409,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_REENTRY_MAX_AGE_S",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11534,24 +10827,17 @@
     "REENTRY_ADAPTIVE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30797,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_REENTRY_MULT_1H",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11562,24 +10848,17 @@
     "REENTRY_ADAPTIVE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6904,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_REENTRY_MULT_4H",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11590,24 +10869,17 @@
     "REENTRY_ADAPTIVE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6920,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_REENTRY_MULT_D",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11618,24 +10890,17 @@
     "REENTRY_ADAPTIVE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6935,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_REENTRY_MULT_W",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11646,24 +10911,17 @@
     "REENTRY_ADAPTIVE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6943,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_SMA_BAND_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11674,30 +10932,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5555,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30690,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_SZ_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 3,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11708,36 +10953,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5640,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30692,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30809,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11748,14 +10974,7 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6875,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_EXIT_LIVE_SANCTIONED",
@@ -11780,13 +10999,13 @@
   },
   {
    "key": "HLR_TOP_MIN_GAIN_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11800,24 +11019,17 @@
     "REDUCE_PROFIT_LOCK",
     "REDUCE_SIGNAL_RATER"
    ],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6873,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_MIN_TFS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11831,24 +11043,17 @@
     "REDUCE_PROFIT_LOCK",
     "REDUCE_SIGNAL_RATER"
    ],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6945,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_RECROSS_BYPASS_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11859,24 +11064,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31405,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_VEL_1H_THRESH",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11887,24 +11085,17 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6896,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_VEL_4H_THRESH",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11918,24 +11109,17 @@
     "REDUCE_PROFIT_LOCK",
     "REDUCE_SIGNAL_RATER"
    ],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6897,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HLR_TOP_VEL_D_THRESH",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -11949,14 +11133,7 @@
     "REDUCE_PROFIT_LOCK",
     "REDUCE_SIGNAL_RATER"
    ],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6898,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF4_CONF",
@@ -12252,13 +11429,13 @@
   },
   {
    "key": "HTF_GATE_APPLY_TO_AUGMENT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -12269,24 +11446,17 @@
     "AUGMENT_TREND"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23024,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF_GATE_APPLY_TO_OPEN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -12297,24 +11467,17 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23022,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF_GATE_BYPASS_RZ",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -12325,24 +11488,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23026,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF_GATE_D_MANDATORY",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -12353,24 +11509,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 22060,
-     "func": "check_htf_direction_gate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF_GATE_MIN_CONFIRMATIONS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -12381,24 +11530,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 22059,
-     "func": "check_htf_direction_gate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF_GATE_SIGNALS_SMA200D",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 3,
    "n_namelist": 7,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -12409,14 +11551,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 22042,
-     "func": "check_htf_direction_gate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "HTF_MIN_ALIGNED",
@@ -13123,13 +12258,13 @@
   },
   {
    "key": "K_ZONE_ENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13140,24 +12275,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5398,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "K_ZONE_ENTRY_ENABLED_TRADIER",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13169,12 +12297,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5423,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 31882,
@@ -13185,13 +12307,13 @@
   },
   {
    "key": "K_ZONE_LONG_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -13200,24 +12322,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5401,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "K_ZONE_LONG_THRESHOLD_TRADIER",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -13226,22 +12341,34 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5426,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "K_ZONE_SHORT_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "K_ZONE_SHORT_THRESHOLD_TRADIER",
+   "verdict": "OK",
+   "n_psym": 3,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
    "n_dead": 0,
    "n_proxy_psym": 1,
    "templates": [
@@ -13252,40 +12379,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5402,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "K_ZONE_SHORT_THRESHOLD_TRADIER",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 3,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5427,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "K_ZONE_VETO_ENABLED_TRADIER",
@@ -13504,13 +12598,13 @@
   },
   {
    "key": "LH_HL_FILTER_DC_THRESHOLD_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13521,24 +12615,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23525,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LH_HL_FILTER_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13549,24 +12636,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23506,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LH_HL_FILTER_MODE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13577,24 +12657,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23519,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LH_HL_FILTER_REQUIRE_BOTH",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13605,24 +12678,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23531,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LH_HL_FILTER_TF_REQ",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13657,14 +12723,7 @@
     "REENTRY_ADAPTIVE",
     "REENTRY_WINDOWED"
    ],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23521,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LH_LL_TOP_EXIT_BOTH_TOL_PCT",
@@ -13829,13 +12888,13 @@
   },
   {
    "key": "LIVE_ENTRY_ENGINE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 11,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13846,14 +12905,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30108,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LIVE_ENTRY_ENGINE_FILTER_TF",
@@ -13942,13 +12994,13 @@
   },
   {
    "key": "LONG_STOCH_CHASE_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -13957,24 +13009,17 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5083,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -13985,14 +13030,7 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27177,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED",
@@ -14059,13 +13097,13 @@
   },
   {
    "key": "LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14076,14 +13114,7 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27192,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "LR_BAND_ENTRY_ENABLED",
@@ -14496,13 +13527,13 @@
   },
   {
    "key": "MACD_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14513,24 +13544,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8734,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MACD_EXIT_MIN_GAIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14541,24 +13565,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8736,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MACD_EXIT_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14569,24 +13586,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8738,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MACD_ZERO_CROSS_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14597,24 +13607,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8564,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MACD_ZERO_CROSS_SCORE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14625,30 +13628,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8577,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8586,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MACD_ZERO_CROSS_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14659,14 +13649,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8565,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MANAGE_REDUCE",
@@ -14719,13 +13702,13 @@
   },
   {
    "key": "MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14736,24 +13719,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5993,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MANDATORY_REENTRY_K_HIGH_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14764,24 +13740,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5989,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MANDATORY_REENTRY_K_LOW_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14792,24 +13761,17 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5991,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14820,14 +13782,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5986,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MANDATORY_REENTRY_WT_FILTER_ENABLED",
@@ -14973,13 +13928,13 @@
   },
   {
    "key": "MARKET_QUALITY_SCORE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -14990,14 +13945,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 8747,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MAX_ORDER_VALUE",
@@ -15272,11 +14220,11 @@
    "key": "MIN_POSITION_SIZE",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 25,
+   "n_global": 13,
    "n_discarded": 2,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 39,
+   "n_proxy_psym": 51,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15289,88 +14237,88 @@
    "filter_tabs": [],
    "global_sites": [
     {
-     "module": "ez_positions_quick.py",
-     "line": 21205,
-     "func": "_manage_individual_position",
+     "module": "ez_positions_service.py",
+     "line": 13592,
+     "func": "evaluate_master_stop_loss",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 24039,
-     "func": "execute_trade_wrapper",
+     "module": "ez_positions_service.py",
+     "line": 13207,
+     "func": "_check_predefined_stop_levels",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 22705,
-     "func": "execute_trade_wrapper",
+     "module": "ez_positions_service.py",
+     "line": 4589,
+     "func": "cancel_empty_stop",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 17361,
-     "func": "sync_universe",
+     "module": "ez_positions_service.py",
+     "line": 7697,
+     "func": "handle_augmentation",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 17466,
-     "func": "sync_position_keys",
+     "module": "ez_positions_service.py",
+     "line": 8147,
+     "func": "handle_reduction",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 19318,
-     "func": "sync_from_ws_event",
+     "module": "ez_positions_service.py",
+     "line": 8163,
+     "func": "handle_reduction",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 19335,
-     "func": "sync_from_ws_event",
+     "module": "ez_positions_service.py",
+     "line": 13859,
+     "func": "check_position_reductions",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 22707,
-     "func": "execute_trade_wrapper",
+     "module": "ez_positions_service.py",
+     "line": 7696,
+     "func": "handle_augmentation",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 25757,
-     "func": "process_single_exit",
+     "module": "ez_positions_service.py",
+     "line": 8125,
+     "func": "handle_reduction",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 25864,
-     "func": "process_single_exit",
+     "module": "ez_positions_service.py",
+     "line": 8126,
+     "func": "handle_reduction",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 25578,
-     "func": "process_single_exit",
+     "module": "ez_positions_service.py",
+     "line": 11832,
+     "func": "_run_reduction_checks_for_account",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 29243,
-     "func": "worker",
+     "module": "ez_positions_service.py",
+     "line": 7726,
+     "func": "handle_augmentation",
      "symbol_bound_in_func": true
     }
    ]
   },
   {
    "key": "MI_DIV_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15381,24 +14329,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6997,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_ENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15409,14 +14350,7 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4958,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_ENTRY_ENABLED_TRADIER",
@@ -15439,13 +14373,13 @@
   },
   {
    "key": "MI_ENTRY_EXHAUST_BONUS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15456,24 +14390,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4961,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_ENTRY_STRUCT_BONUS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15484,24 +14411,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4960,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_EXHAUST_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15512,24 +14432,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6989,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15540,24 +14453,17 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6969,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_MIN_GAIN_EXIT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15568,24 +14474,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6970,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_STRUCT_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15596,24 +14495,17 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6974,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_TF_AGREE_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15624,24 +14516,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 7031,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_VELOCITY_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15652,24 +14537,17 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 7005,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MI_WAVE_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -15680,14 +14558,7 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 7027,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MODE",
@@ -15981,13 +14852,13 @@
   },
   {
    "key": "MOVER_DETECTION_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -15996,24 +14867,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 9353,
-     "func": "scan_movers",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MOVER_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -16025,14 +14889,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 9358,
-     "func": "scan_movers",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MTF_ARMED_ENTRIES_FILTER_TF",
@@ -16616,13 +15473,13 @@
   },
   {
    "key": "MTS_BOTTOM_BONUS_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -16633,24 +15490,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4942,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MTS_BOTTOM_STRONG_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -16661,24 +15511,17 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4941,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MTS_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -16689,14 +15532,7 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4908,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "MULTI_TF_EXIT_ENABLED",
@@ -17365,13 +16201,13 @@
   },
   {
    "key": "NOLOSS_MIN_PROFIT_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 7,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 8,
+   "n_proxy_psym": 15,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -17382,50 +16218,7 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 24575,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 24201,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6763,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21287,
-     "func": "_manage_individual_position",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 25945,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26725,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6721,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "NOLOSS_MIN_PROFIT_PCT_TRADIER",
@@ -17469,13 +16262,13 @@
   },
   {
    "key": "OBLIGATORY_REENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -17486,14 +16279,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31595,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "OBLIGATORY_REENTRY_K15_HIGH_BLOCK",
@@ -17728,13 +16514,13 @@
   },
   {
    "key": "OI_CONFIRM_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -17745,49 +16531,14 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23069,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "OI_CONFIRM_MIN_CHANGE_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_REVERSAL_BOUNCE"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23075,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "OI_CONFIRM_MIN_PRICE_PCT",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 1,
-   "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
    "n_proxy_psym": 2,
@@ -17801,14 +16552,28 @@
     "ENTRY_REVERSAL_BOUNCE"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 23078,
-     "func": "execute_trade_wrapper",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
+  },
+  {
+   "key": "OI_CONFIRM_MIN_PRICE_PCT",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
+   "n_dead": 0,
+   "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_REVERSAL_BOUNCE"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
   },
   {
    "key": "OI_SURGE_ENTRY_ENABLED",
@@ -17986,13 +16751,13 @@
   },
   {
    "key": "PARABOLIC_BB_PCT_B_4H_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18003,24 +16768,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6024,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARABOLIC_BB_PCT_B_4H_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18031,14 +16789,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6016,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARABOLIC_EXIT_ENABLED",
@@ -18061,13 +16812,13 @@
   },
   {
    "key": "PARABOLIC_PROTECTION_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 7,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18078,24 +16829,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6005,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARABOLIC_RSI_1H_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18106,24 +16850,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6022,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARABOLIC_RSI_1H_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18134,24 +16871,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6014,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARABOLIC_RSI_4H_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18162,24 +16892,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6020,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARABOLIC_RSI_4H_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18190,24 +16913,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6012,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARITY_DISABLE_NON_VECTORIZABLE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18218,14 +16934,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 327,
-     "func": "<module>",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PARTIAL_EXIT_FRAC",
@@ -18497,13 +17206,13 @@
   },
   {
    "key": "PEAK_GIVEBACK_DROP_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18514,22 +17223,36 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27002,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "REDUCE_PROFIT_LOCK"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "PEAK_GIVEBACK_HARD_ZERO_ENABLED",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
    "n_dead": 0,
    "n_proxy_psym": 2,
    "templates": [
@@ -18542,52 +17265,17 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27008,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "PEAK_GIVEBACK_HARD_ZERO_ENABLED",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 1,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "REDUCE_PROFIT_LOCK"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26999,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PEAK_GIVEBACK_MIN_PEAK_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18598,24 +17286,17 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26995,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PEAK_GIVEBACK_PROTECTION_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -18626,14 +17307,7 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26990,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "PEAK_GIVEBACK_SCOPE",
@@ -19635,13 +18309,13 @@
   },
   {
    "key": "REENTRY_2_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -19652,20 +18326,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 33225,
-     "func": "evaluate_reentry_2_epq",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 33361,
-     "func": "evaluate_reentry_2_periodic_loop_epq",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_APPLY_ENTRY_GATES_ENABLED",
@@ -20278,13 +18939,13 @@
   },
   {
    "key": "REENTRY_COOLDOWN_S",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -20293,14 +18954,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31220,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_CROSS_FRESHNESS_ENABLED",
@@ -20428,13 +19082,13 @@
   },
   {
    "key": "REENTRY_EXHAUSTED_PARTIAL_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -20445,14 +19099,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29615,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_EXIT_RECLAIM_BUFFER_PCT",
@@ -20664,13 +19311,13 @@
   },
   {
    "key": "REENTRY_MANDATORY",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -20681,14 +19328,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 31233,
-     "func": "reentry_enforcement_loop_epq",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_MAX_PRICE_DIVERGENCE_PCT",
@@ -20713,13 +19353,13 @@
   },
   {
    "key": "REENTRY_MIN_GAP_MINUTES",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -20730,14 +19370,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29494,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_ON_DC4_15M_BREAK_ENABLED",
@@ -21035,13 +19668,13 @@
   },
   {
    "key": "REENTRY_RALLY_K15M_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 8,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -21052,14 +19685,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29539,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED",
@@ -21268,13 +19894,13 @@
   },
   {
    "key": "REENTRY_TIER1_SIZE_MULT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -21285,14 +19911,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30819,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_TIER1_SIZE_MULT_TRADIER",
@@ -21351,13 +19970,13 @@
   },
   {
    "key": "REENTRY_TIER2_MIN_MINUTES",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -21366,20 +19985,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5939,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29567,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_TIER2_MIN_MINUTES_TRADIER",
@@ -21402,13 +20008,13 @@
   },
   {
    "key": "REENTRY_TIER2_PRICE_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -21417,20 +20023,7 @@
     "REENTRY_WINDOWED"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5938,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29565,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REENTRY_WT15M_SIZE_MULT",
@@ -21476,13 +20069,13 @@
   },
   {
    "key": "REGIME_DETECTION_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 3,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -21493,26 +20086,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4778,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6698,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6766,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "REGIME_ENTER_TRENDING_THRESHOLD",
@@ -21894,13 +20468,13 @@
   },
   {
    "key": "RSI_ENTRY_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -21911,14 +20485,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30874,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RSI_ENTRY_LONG_TRADIER",
@@ -21947,13 +20514,13 @@
   },
   {
    "key": "RSI_ENTRY_MAX_LONG",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -21962,24 +20529,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30892,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RSI_ENTRY_MIN_SHORT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -21988,14 +20548,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30900,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RSI_ENTRY_PERIOD_TRADIER",
@@ -22083,13 +20636,13 @@
   },
   {
    "key": "RULE_B_3M_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 8,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22100,24 +20653,17 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27457,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RZ_BOT_BB_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22128,14 +20674,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15902,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RZ_BREAKOUT_BAND",
@@ -22181,37 +20720,9 @@
   },
   {
    "key": "RZ_ENTRY_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 5,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15899,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
-  },
-  {
-   "key": "RZ_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 5,
    "n_dead": 0,
@@ -22223,17 +20734,31 @@
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ],
    "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "RZ_EXIT_ENABLED",
+   "verdict": "OK",
+   "n_psym": 3,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 5,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15900,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RZ_K_ENTRY_BOTTOM",
@@ -22279,13 +20804,13 @@
   },
   {
    "key": "RZ_TOP_BB_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22296,14 +20821,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15901,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "RZ_ZSCORE_ZONE_ENABLED",
@@ -22328,13 +20846,13 @@
   },
   {
    "key": "SATOSHIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 4,
+   "n_proxy_psym": 5,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22345,14 +20863,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5516,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SATOSHIT_ENTRY_ENABLED",
@@ -22756,13 +21267,13 @@
   },
   {
    "key": "SBA_ADX_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22773,14 +21284,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 1609,
-     "func": "_sba_bounce_score",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SBA_BOUNCE_ENABLED",
@@ -22805,13 +21309,13 @@
   },
   {
    "key": "SBA_MIN_SCORE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22822,24 +21326,17 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30212,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_AUG_BE_STOP_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22850,24 +21347,17 @@
     "AUGMENT_RISK_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35305,
-     "func": "_scalp_v3_attempt_be_stops",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_AUG_BE_STOP_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22878,24 +21368,17 @@
     "AUGMENT_RISK_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35307,
-     "func": "_scalp_v3_attempt_be_stops",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_K_OB_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22906,24 +21389,17 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35069,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_K_OB_EXIT_K15M_HI",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22934,24 +21410,17 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35073,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_K_OB_EXIT_K15M_LO",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22962,24 +21431,17 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35076,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_K_OB_EXIT_K3M_HI",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -22990,20 +21452,55 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35070,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_K_OB_EXIT_K3M_LO",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
+   "n_discarded": 2,
+   "n_namelist": 6,
+   "n_dead": 0,
+   "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "SCALP_V3_K_OB_EXIT_WALL_PCT",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 2,
+   "n_namelist": 6,
+   "n_dead": 0,
+   "n_proxy_psym": 6,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_STRUCTURAL"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "SCALP_V3_OB_WALL_TOO_CLOSE_PCT",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
@@ -23018,80 +21515,17 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35071,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "SCALP_V3_K_OB_EXIT_WALL_PCT",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 1,
-   "n_discarded": 2,
-   "n_namelist": 6,
-   "n_dead": 0,
-   "n_proxy_psym": 5,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35079,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "SCALP_V3_OB_WALL_TOO_CLOSE_PCT",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 1,
-   "n_discarded": 2,
-   "n_namelist": 6,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 35014,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SCALP_V3_PROTECTIVE_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 6,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23102,14 +21536,7 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 34962,
-     "func": "_scalp_v3_protective_exits",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SENTIMENT_REBAL_COOLDOWN_MIN",
@@ -23315,13 +21742,13 @@
   },
   {
    "key": "SHORT_RSI_MIN_1H",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -23330,14 +21757,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 5068,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SIMPLE_PRICE_GT0_ENABLED",
@@ -23362,13 +21782,13 @@
   },
   {
    "key": "SIMPLE_TP_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23379,24 +21799,17 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6848,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SIMPLE_TP_PCT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 5,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23407,20 +21820,7 @@
     "REDUCE_PROFIT_LOCK"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6849,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 6854,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "SMA200_DIST_ENTRY_ENABLED",
@@ -23668,11 +22068,11 @@
    "key": "START_POSITION_SIZE",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 45,
-   "n_global": 64,
+   "n_global": 32,
    "n_discarded": 2,
    "n_namelist": 17,
    "n_dead": 0,
-   "n_proxy_psym": 92,
+   "n_proxy_psym": 124,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23685,75 +22085,75 @@
    "filter_tabs": [],
    "global_sites": [
     {
-     "module": "ez_positions_quick.py",
-     "line": 15242,
-     "func": "try_aggressive_pyramid",
+     "module": "ez_positions_service.py",
+     "line": 2457,
+     "func": "get_reentry_data",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 15663,
-     "func": "_execute_entry",
+     "module": "ez_positions_service.py",
+     "line": 7706,
+     "func": "handle_augmentation",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 21240,
-     "func": "_manage_individual_position",
+     "module": "ez_positions_service.py",
+     "line": 11985,
+     "func": "monitor_reductions_for_account",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 24532,
-     "func": "execute_trade_wrapper",
+     "module": "ez_positions_service.py",
+     "line": 13943,
+     "func": "check_position_reductions",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 11893,
-     "func": "_calculate_hedge_candidate_score",
-     "symbol_bound_in_func": false
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 11892,
-     "func": "_calculate_hedge_candidate_score",
-     "symbol_bound_in_func": false
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 20164,
-     "func": "partial_reduce_exit",
+     "module": "ez_positions_service.py",
+     "line": 14000,
+     "func": "check_position_reductions",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 20977,
-     "func": "_force_fresh_entry",
+     "module": "ez_positions_service.py",
+     "line": 7408,
+     "func": "deteriorate_reentry_amounts",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 21269,
-     "func": "_manage_individual_position",
+     "module": "ez_positions_service.py",
+     "line": 7833,
+     "func": "handle_augmentation",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 23691,
-     "func": "execute_trade_wrapper",
+     "module": "ez_positions_service.py",
+     "line": 11967,
+     "func": "monitor_reductions_priority",
      "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 33888,
-     "func": "quick_entry_monitor_loop",
-     "symbol_bound_in_func": false
+     "module": "ez_positions_service.py",
+     "line": 8428,
+     "func": "create_ladder_levels_for_reentry",
+     "symbol_bound_in_func": true
     },
     {
-     "module": "ez_positions_quick.py",
-     "line": 34223,
-     "func": "sla_miss_enforcer_loop",
+     "module": "ez_positions_service.py",
+     "line": 8428,
+     "func": "create_ladder_levels_for_reentry",
+     "symbol_bound_in_func": true
+    },
+    {
+     "module": "ez_positions_service.py",
+     "line": 14397,
+     "func": "check_position_reductions",
+     "symbol_bound_in_func": true
+    },
+    {
+     "module": "tradier_manage.py",
+     "line": 7718,
+     "func": "_trb_start_usd",
      "symbol_bound_in_func": false
     }
    ]
@@ -23783,11 +22183,11 @@
    "key": "STDEV_BOUNCE_ENABLED",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 2,
-   "n_global": 3,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23799,18 +22199,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21893,
-     "func": "detect_stdev_bounce",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30460,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6871,
@@ -23823,11 +22211,11 @@
    "key": "STDEV_BOUNCE_PCTB_LONG",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -23837,12 +22225,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21896,
-     "func": "detect_stdev_bounce",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6872,
@@ -23855,11 +22237,11 @@
    "key": "STDEV_BOUNCE_PCTB_SHORT",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -23869,12 +22251,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21897,
-     "func": "detect_stdev_bounce",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6873,
@@ -23887,11 +22263,11 @@
    "key": "STDEV_BOUNCE_RVOL_MIN",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 2,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23904,12 +22280,6 @@
    "filter_tabs": [],
    "global_sites": [
     {
-     "module": "ez_positions_quick.py",
-     "line": 21898,
-     "func": "detect_stdev_bounce",
-     "symbol_bound_in_func": true
-    },
-    {
      "module": "tradier_manage.py",
      "line": 6874,
      "func": "<module>",
@@ -23919,13 +22289,13 @@
   },
   {
    "key": "STDEV_BREAKOUT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 6,
-   "n_global": 5,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 5,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 7,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23936,48 +22306,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21728,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21859,
-     "func": "check_stdev_breakout_exit",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26964,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30430,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30609,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_EXIT_PCTB_FAIL",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -23988,24 +22327,17 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21866,
-     "func": "check_stdev_breakout_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_EXIT_WT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24016,24 +22348,17 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21877,
-     "func": "check_stdev_breakout_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_MAX_AGE_BARS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24044,24 +22369,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21736,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_MAX_RETESTS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24072,24 +22390,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21735,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_PCTB_LONG",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24100,24 +22411,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21732,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_PCTB_SHORT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24128,22 +22432,36 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21733,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_RETEST_PCTB_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "ENTRY_CONFIRMATION_GATES"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "STDEV_BREAKOUT_RETEST_PCTB_MIN",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 3,
    "n_dead": 0,
    "n_proxy_psym": 1,
    "templates": [
@@ -24156,52 +22474,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21738,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "STDEV_BREAKOUT_RETEST_PCTB_MIN",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 1,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 3,
-   "n_dead": 0,
-   "n_proxy_psym": 0,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "ENTRY_CONFIRMATION_GATES"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21737,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_RETEST_SIZE_MULT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24212,30 +22495,17 @@
     "AUGMENT_RISK_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21824,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21841,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BREAKOUT_RVOL_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 3,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24246,14 +22516,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21734,
-     "func": "detect_stdev_breakout",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_BULL_SLOPE_BOOST_ENABLED",
@@ -24404,11 +22667,11 @@
    "key": "STDEV_REJECT_EXIT_ENABLED",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24420,12 +22683,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21932,
-     "func": "check_stdev_reject_exit",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6875,
@@ -24438,11 +22695,11 @@
    "key": "STDEV_REJECT_EXIT_RETURN",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24454,12 +22711,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21936,
-     "func": "check_stdev_reject_exit",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6878,
@@ -24472,11 +22723,11 @@
    "key": "STDEV_REJECT_EXIT_TF",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24489,12 +22740,6 @@
    "filter_tabs": [],
    "global_sites": [
     {
-     "module": "ez_positions_quick.py",
-     "line": 21934,
-     "func": "check_stdev_reject_exit",
-     "symbol_bound_in_func": true
-    },
-    {
      "module": "tradier_manage.py",
      "line": 6876,
      "func": "<module>",
@@ -24506,11 +22751,11 @@
    "key": "STDEV_REJECT_EXIT_ZONE",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24522,12 +22767,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21935,
-     "func": "check_stdev_reject_exit",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 6877,
@@ -24622,13 +22861,13 @@
   },
   {
    "key": "STDEV_SLOPE_SIZING_15M_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24639,24 +22878,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2220,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_SLOPE_SIZING_1H_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24667,24 +22899,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2219,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_SLOPE_SIZING_4H_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24695,24 +22920,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2218,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_SLOPE_SIZING_D_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24723,24 +22941,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2217,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_SLOPE_SIZING_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 2,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24751,30 +22962,17 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2215,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2211,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_SLOPE_SIZING_MODE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -24785,14 +22983,7 @@
     "STDEV_SLOPE_SIZING"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 2239,
-     "func": "calculate_dynamic_quantity",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STDEV_SUPPRESS_EARLY_EXIT",
@@ -25292,13 +23483,13 @@
   },
   {
    "key": "STRUCTURAL_EXIT_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 11,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -25309,14 +23500,7 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 15917,
-     "func": "__init__",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "STRUCTURAL_RANGE_SHIFT_EXIT",
@@ -25341,13 +23525,13 @@
   },
   {
    "key": "STRUCTURAL_RANGE_SHIFT_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -25358,14 +23542,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26225,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "TECHNICAL_DC_STOP_BUFFER_PCT",
@@ -26462,13 +24639,13 @@
   },
   {
    "key": "TREND_EXIT_SCORE_FLIP",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -26479,24 +24656,17 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26766,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "TREND_MIN_GAIN_EXIT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 2,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 2,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -26507,14 +24677,7 @@
     "EXIT_STRUCTURAL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26765,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "TREND_REGIME_VETO_ENABLED",
@@ -26651,13 +24814,13 @@
   },
   {
    "key": "USE_1M_3M_SIGNALS_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 4,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 7,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -26666,42 +24829,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29585,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 29771,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30308,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30402,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "V12_PARITY_DISABLE_NON_VECTORIZABLE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 3,
+   "n_proxy_psym": 4,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -26712,14 +24850,7 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 328,
-     "func": "<module>",
-     "symbol_bound_in_func": false
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "V8_ENTRY_ENGINE_DC_ENABLED",
@@ -27017,13 +25148,13 @@
   },
   {
    "key": "VOL_SPIKE_BODY_RATIO",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -27034,24 +25165,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21621,
-     "func": "detect_volume_spike",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "VOL_SPIKE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -27060,30 +25184,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21606,
-     "func": "detect_volume_spike",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30501,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "VOL_SPIKE_MIN_ALIGNMENT",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -27094,24 +25205,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30512,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "VOL_SPIKE_RELVOL_THRESHOLD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -27122,14 +25226,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 21609,
-     "func": "detect_volume_spike",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "VWAP_BOUNCE_DIST_PCT",
@@ -27591,13 +25688,13 @@
   },
   {
    "key": "WR_PULLBACK_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -27606,14 +25703,7 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 30289,
-     "func": "worker",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT15_CROSS_DC_BASIS_GATE_ENABLED",
@@ -28324,13 +26414,13 @@
   },
   {
    "key": "WT_COMPOSITE_DELTA_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28341,24 +26431,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3648,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_DELTA_LONG_MIN",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -28367,30 +26450,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3652,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3657,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_DELTA_SHORT_MAX",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 3,
    "templates": [
     "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -28399,30 +26469,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3660,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3665,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_ENTRY_BLOCK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28433,24 +26490,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4456,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_ENTRY_GOOD",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28461,24 +26511,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4486,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_ENTRY_OK",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28489,24 +26532,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4487,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_ENTRY_STRONG",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28517,24 +26553,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4485,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_HTF_GATE",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 5,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28545,24 +26574,17 @@
     "ENTRY_CONFIRMATION_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4440,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_COMPOSITE_SCORING_ENABLED",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 0,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28574,12 +26596,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4437,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 32039,
@@ -28592,11 +26608,11 @@
    "key": "WT_COMPOSITE_SCORING_ENABLED_TRADIER",
    "verdict": "GLOBAL_LEAK",
    "n_psym": 1,
-   "n_global": 2,
+   "n_global": 1,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28608,12 +26624,6 @@
    ],
    "filter_tabs": [],
    "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 4438,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    },
     {
      "module": "tradier_manage.py",
      "line": 32038,
@@ -28702,124 +26712,11 @@
   },
   {
    "key": "WT_CROSS_EXIT_APPLIES_TO_LOSERS",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_VELOCITY"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26892,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "WT_CROSS_EXIT_APPLIES_TO_WINNERS",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 1,
-   "n_discarded": 1,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_VELOCITY"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26895,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "WT_CROSS_EXIT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 1,
-   "n_global": 1,
-   "n_discarded": 0,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_STRUCTURAL",
-    "EXIT_VELOCITY"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26885,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "WT_CROSS_EXIT_MIN_AGE_MINUTES",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 1,
-   "n_discarded": 1,
-   "n_namelist": 2,
-   "n_dead": 0,
-   "n_proxy_psym": 1,
-   "templates": [
-    "TEMPLATE_CRYPTO_LONG.xlsx",
-    "TEMPLATE_CRYPTO_SHORT.xlsx",
-    "TEMPLATE_STOCKS_LONG.xlsx",
-    "TEMPLATE_STOCKS_SHORT.xlsx"
-   ],
-   "switch_tabs": [
-    "EXIT_VELOCITY"
-   ],
-   "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26889,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
-  },
-  {
-   "key": "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM",
-   "verdict": "GLOBAL_LEAK",
-   "n_psym": 0,
-   "n_global": 1,
-   "n_discarded": 1,
-   "n_namelist": 6,
    "n_dead": 0,
    "n_proxy_psym": 2,
    "templates": [
@@ -28832,14 +26729,92 @@
     "EXIT_VELOCITY"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 26925,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
+  },
+  {
+   "key": "WT_CROSS_EXIT_APPLIES_TO_WINNERS",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 1,
+   "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "WT_CROSS_EXIT_ENABLED",
+   "verdict": "OK",
+   "n_psym": 1,
+   "n_global": 0,
+   "n_discarded": 0,
+   "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_STRUCTURAL",
+    "EXIT_VELOCITY"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "WT_CROSS_EXIT_MIN_AGE_MINUTES",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 1,
+   "n_namelist": 2,
+   "n_dead": 0,
+   "n_proxy_psym": 2,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
+  },
+  {
+   "key": "WT_CROSS_EXIT_REQUIRE_15M_CONFIRM",
+   "verdict": "OK",
+   "n_psym": 0,
+   "n_global": 0,
+   "n_discarded": 1,
+   "n_namelist": 6,
+   "n_dead": 0,
+   "n_proxy_psym": 3,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx",
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ],
+   "switch_tabs": [
+    "EXIT_VELOCITY"
+   ],
+   "filter_tabs": [],
+   "global_sites": []
   },
   {
    "key": "WT_CROSS_REQUIRE_HTF_AGREE",
@@ -28926,13 +26901,13 @@
   },
   {
    "key": "WT_DC_DC_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 0,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -28943,14 +26918,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3510,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DC_DETAILED_ENTRY_THRESHOLD",
@@ -29265,13 +27233,13 @@
   },
   {
    "key": "WT_DC_LONG_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_STOCKS_LONG.xlsx"
@@ -29280,24 +27248,17 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3528,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DC_SHORT_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_SHORT.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
@@ -29306,24 +27267,17 @@
     "GLOBAL_RISK_GATES"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3530,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DC_STOCH_TF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 1,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29334,14 +27288,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3511,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DC_STOCH_THRESHOLD_LONG",
@@ -29411,13 +27358,13 @@
   },
   {
    "key": "WT_DC_TF_ENTRY",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 4,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29428,24 +27375,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3509,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DC_TF_HTF",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29456,24 +27396,17 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3512,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DC_TF_HTF2",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 0,
+   "n_proxy_psym": 1,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29484,14 +27417,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3513,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DIVERGENCE_VV_SHORT_EXIT_ENABLED",
@@ -29516,13 +27442,13 @@
   },
   {
    "key": "WT_DIV_ENTRY_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29533,14 +27459,7 @@
     "ENTRY_BREAKOUT_CHANNEL"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3692,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_DIV_EXIT_ENABLED",
@@ -29748,13 +27667,13 @@
   },
   {
    "key": "WT_EXHAUST_ENTRY_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29765,14 +27684,7 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3668,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_EXHAUST_EXIT_MIN_GAIN_PCT",
@@ -29940,13 +27852,13 @@
   },
   {
    "key": "WT_PERCENTILE_ENTRY_GATE_ENABLED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 3,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29957,24 +27869,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3680,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_PERCENTILE_ENTRY_OB_D",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -29985,24 +27890,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3684,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_PERCENTILE_ENTRY_OS_D",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -30013,14 +27911,7 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 3688,
-     "func": "rate",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_PERCENTILE_EXIT_ENABLED",
@@ -30129,13 +28020,13 @@
   },
   {
    "key": "WT_REDUCE_FRAC_HIGH",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 1,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -30146,24 +28037,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27310,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_REDUCE_FRAC_LOW",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -30174,24 +28058,17 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27299,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_REDUCE_FRAC_MED",
-   "verdict": "GLOBAL_LEAK",
+   "verdict": "OK",
    "n_psym": 0,
-   "n_global": 1,
+   "n_global": 0,
    "n_discarded": 0,
    "n_namelist": 2,
    "n_dead": 0,
-   "n_proxy_psym": 1,
+   "n_proxy_psym": 2,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx",
@@ -30202,14 +28079,7 @@
     "REDUCE_SIGNAL_RATER"
    ],
    "filter_tabs": [],
-   "global_sites": [
-    {
-     "module": "ez_positions_quick.py",
-     "line": 27301,
-     "func": "process_single_exit",
-     "symbol_bound_in_func": true
-    }
-   ]
+   "global_sites": []
   },
   {
    "key": "WT_SIMPLE_GUARANTEE_ENABLED",

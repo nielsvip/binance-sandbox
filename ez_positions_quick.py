@@ -3239,6 +3239,110 @@ def _get_effective_cfg(symbol: str, side: str, base_cfg=None):
     return _PerSymOverlay(base_cfg, overrides) if overrides else base_cfg
 
 
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+# PER-SYM CONFIG PROXY (2026-10-20). USER: "make sure EACH switch and filter that is in any TEMPLATE_* file is
+# ALWAYS psym and can never be global ... if not parity is impossible" / "just make sure no switch can have a
+# different setting than its per_sym setting ever".
+#
+# WHY HERE. Audited over the 1288 switch+filter keys of the four TEMPLATE_FINAL_NORM files
+# (tools/template_switch_psym_audit.py): `ez_manage.py` rebinds `config = _PerSymProxy(_ezm_base_config)` at
+# :8874, so every `getattr(config, "KNOB")` in that module already resolves per-sym and it holds ZERO global
+# leaks. This module did `config = Config()` at :304 and never wrapped it, which is the single reason it carried
+# **339 of the 524** remaining global read sites — the largest block in the system, including 118 inside `rate()`
+# alone. It is not 339 call-site bugs; it is one missing wrapper.
+#
+# WHY NOT THE EXISTING _psym_get / _get_effective_cfg. Those resolve through `_get_per_sym_overrides`, which
+# reads the per_sym_active_config.json VIEW. ez_manage's own layer documents why that is not enough: the JSON
+# view "carries 412 of 742 sym_sides and ~835 of ~3546 keys — every key it misses fell through to the cat_side
+# layer". So this proxy reads the FULL frozen board set via per_sym_live_set.full_set (USER 2026-10-15), exactly
+# like `_ezm_per_sym_layer`, and keeps the JSON view only as the fail-soft fallback.
+#
+# FAIL-SAFE BY CONSTRUCTION. The proxy only substitutes a value when (a) a per-sym context is set AND (b) the
+# board actually carries that key. With no context set, or a key the board does not carry, it returns the base
+# object's value — byte-identical to today. So installing the wrapper alone changes nothing; behaviour changes
+# only where a board genuinely has a different value, which is the whole point.
+# PQ_PER_SYM_PROXY=0 restores the unwrapped `Config()`.
+_pq_psym_ctx: ContextVar = ContextVar("_pq_psym_ctx", default=None)
+
+
+def _pq_psym_ctx_set(symbol: str, side: str):
+    return _pq_psym_ctx.set((symbol, side) if symbol and side else None)
+
+
+def _pq_psym_ctx_clear(tok):
+    try:
+        _pq_psym_ctx.reset(tok)
+    except Exception:
+        _pq_psym_ctx.set(None)
+
+
+_PQ_NO_CTX_READS: dict = {}   # knob -> count: template switch read with NO per-sym context (the residual hole)
+
+
+def _pq_per_sym_layer(sym: str, side: str):
+    """The FULL frozen board set for (sym, side), or None. Same source and precedence as
+    ez_manage._ezm_per_sym_layer: per_sym_live_set.full_set first, the legacy JSON view as fail-soft."""
+    try:
+        import per_sym_live_set as _pls
+
+        ov = _pls.full_set(f"{sym}_{side}")
+        if ov:
+            return ov
+    except Exception:
+        pass
+    try:
+        return _get_per_sym_overrides(sym, side) or None
+    except Exception:
+        return None
+
+
+class _PQPerSymProxy:
+    """Transparent wrapper around the module `config`: UPPERCASE reads resolve per-sym when a context is set."""
+
+    __slots__ = ("_inner",)
+
+    def __init__(self, inner):
+        object.__setattr__(self, "_inner", inner)
+
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, "_inner"), name)
+
+    def __setattr__(self, name, value):
+        if name == "_inner":
+            object.__setattr__(self, name, value)
+        else:
+            setattr(object.__getattribute__(self, "_inner"), name, value)
+
+    def __getattribute__(self, name):
+        if name in ("_inner", "__class__", "__dict__", "__slots__", "__weakref__"):
+            return object.__getattribute__(self, name)
+        inner = object.__getattribute__(self, "_inner")
+        if not name.startswith("_") and name.isupper():
+            ctx = _pq_psym_ctx.get()
+            if ctx is not None:
+                try:
+                    sym, side = ctx
+                    if sym and side and os.environ.get("V8_DISABLE_PER_SYM") != "1":
+                        ov = _pq_per_sym_layer(sym, side)
+                        if ov is not None and name in ov:
+                            return ov[name]
+                except Exception:
+                    pass
+            else:
+                # No context: this read CANNOT be per-sym. Counted so the residual hole is measured, never assumed.
+                try:
+                    _PQ_NO_CTX_READS[name] = _PQ_NO_CTX_READS.get(name, 0) + 1
+                except Exception:
+                    pass
+        return getattr(inner, name)
+
+
+if os.environ.get("PQ_PER_SYM_PROXY", "1") != "0":
+    config = _PQPerSymProxy(config)
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
 def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
     """True iff BTC dedicated loop should override rate() for this acct+symbol."""
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
@@ -25356,6 +25460,16 @@ async def check_exit_candidates_for_account(
     sem = asyncio.Semaphore(250)
 
     async def process_single_exit(position_key):
+        # 2026-10-20 PER-SYM CONTEXT for the _PQPerSymProxy on `config` — same reasoning as `worker` above:
+        # scheduled via `asyncio.gather(*(process_single_exit(k) for k in position_keys))`, so the Task's context
+        # copy makes this task-local and no reset is required. Set before any switch is read so the EXIT path
+        # resolves the sym_side's board values, not the globals.
+        try:
+            _pq_ak, _pq_sym, _pq_side = parse_position_key(position_key)
+            if _pq_sym and _pq_side:
+                _pq_psym_ctx_set(_pq_sym, _pq_side)
+        except Exception:
+            pass
         async with sem:
             try:
                 if (
@@ -28620,6 +28734,17 @@ async def check_entry_candidates_for_account(
     sem = asyncio.Semaphore(50)
 
     async def worker(position_key):
+        # 2026-10-20 PER-SYM CONTEXT for the _PQPerSymProxy on `config` (see the proxy block above). Set at the
+        # very top so EVERY switch read in this entry path resolves to the sym_side's board value instead of the
+        # global. No reset is needed and none is used: this coroutine is scheduled via
+        # `asyncio.gather(*(worker(k) for k in position_keys))`, and gather wraps each coroutine in its own Task
+        # with a COPY of the context — so the value cannot leak to a sibling symbol or back to the caller.
+        try:
+            _pq_ak, _pq_sym, _pq_side = parse_position_key(position_key)
+            if _pq_sym and _pq_side:
+                _pq_psym_ctx_set(_pq_sym, _pq_side)
+        except Exception:
+            pass
         success = False
         msg = "NO_TRADE"
         score = 0

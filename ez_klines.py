@@ -39,6 +39,11 @@ except Exception:
     MIN_KLINES_THRESHOLD = 1200
 MAX_DATA_FILE=cfg.BASE_PATH/'klines_maxed_symbols.json'
 INCEPTION_FILE=cfg.BASE_PATH/'data'/'klines_inception.json'
+# USER 2026-10-20 ("we will never trade again" — old klines halt everything):
+# "maxed" means DEEP HISTORY is complete for that file, never a fetch ban.
+# It gates ONLY the LOW BAR COUNT re-report in check_completeness. STALE files
+# are reported and REST-topped every cycle regardless of maxed, and
+# fetch_missing_klines never skips a maxed symbol. Freshness has no exceptions.
 MAX_DATA_RETRY_HOURS=168
 _throttle_state={'per_second':deque(),'per_minute':deque(),'lock':None,'ban_until':0.0,'ban_wall_ms':0.0,'last_pause_log':0.0}
 BAN_STATE_FILE=cfg.BASE_PATH/'data'/'ez_klines_ban_state.json'
@@ -117,7 +122,11 @@ def merge_and_write(symbol, interval, rows):
     before=len(existing_df)
     added=max(len(merged)-before,0)
     if env != 'server':
-        _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (1500, 2000),
+        # USER 2026-10-20: local 3m clips to 1800 (cap 2400), matching the WS
+        # keeper (ez_prices_ws MAX/TARGET 2400/1800). The year-deep history lives
+        # in tools/klines_3m_archive.py on the ext drives. Server (S1) stays
+        # unclipped until the archive holds a full year — then clip there too.
+        _trim = {'1m': (14000, 18000), '3m': (1800, 2400), '15m': (1500, 2000),
                  '1h': (1700, 2500), '4h': (1700, 2500), 'D': (2000, 3000),
                  'W': (300, 500), 'M': (60, 100)}
         keep, cap = _trim.get(interval, (1200, 1800))
@@ -287,7 +296,7 @@ def mark_symbol_maxed(symbol,interval,bar_count):
     key=f'{symbol}_{interval}'
     maxed[key]={'last_check':datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),'bar_count':bar_count,'reason':'max_data_reached'}
     save_maxed_symbols(maxed)
-    log(f"📌 Marked {symbol} {interval} as maxed ({bar_count} bars) - won't retry for {MAX_DATA_RETRY_HOURS}h")
+    log(f"📌 {symbol} {interval} deep-history complete ({bar_count} bars) — freshness top-ups continue every cycle ({MAX_DATA_RETRY_HOURS}h applies to LOW-count re-reports only, never to STALE)")
     
 def _load_inception():
     try:
@@ -649,6 +658,9 @@ def check_completeness():
                     missing_bars.append(f'{symbol} {interval} - STALE: {age_str} old')
                     add_issue(symbol, interval, 'STALE', 'RED', f'Latest bar {age_str} old')
                 if bar_count < min_threshold:
+                    # USER 2026-10-20: maxed dedups ONLY this LOW-count re-report
+                    # (deep history already confirmed). STALE above ignores maxed
+                    # on purpose — a stale file is re-fetched every cycle, no exceptions.
                     if not maxed_info:
                         missing_bars.append(f'{symbol} {interval} - LOW BAR COUNT: {bar_count} bars (need {min_threshold})')
                         add_issue(symbol, interval, 'LOW_BARS', 'RED', f'only {bar_count}/{min_threshold} bars')
