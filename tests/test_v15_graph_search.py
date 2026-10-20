@@ -41,6 +41,7 @@ def fake_eval(ov):
             "bh_pct": 2.0, "behavior_fingerprint": fp, "ledger": [{"type": "CLOSE", "exit_reason": "EXIT_BAD x", "entry_reason": "B12", "bars_held": 30, "pnl_pct": 0.1}] * tr}
 
 
+# the synthetic evaluator is instant; the budget only has to clear the PHASE_PLAN time boxes (ABLATE/CULPRITS/PATHS/REORDER are skipped when the budget is too small, 20 s skipped all of them)
 def _ctx(calls):
     cands = []
     for i, (k, v) in enumerate(EFFECTS):
@@ -50,7 +51,7 @@ def _ctx(calls):
         calls.extend(ov for _l, ov, _c in items)
         return [(fake_eval(ov), "") for _l, ov, _c in items]
     return {"defaults": DEFAULTS, "sanitize": lambda ov: dict(ov), "same_val": lambda a, b: str(a).lower() == str(b).lower(), "candidates": cands,
-            "base_overrides": {}, "base_res": fake_eval({}), "bh": 2.0, "deadline": time.time() + 20.0, "eval_many": eval_many, "eval_ledger": fake_eval,
+            "base_overrides": {}, "base_res": fake_eval({}), "bh": 2.0, "deadline": time.time() + 400.0, "eval_many": eval_many, "eval_ledger": fake_eval,
             "eval_365": lambda ov: (fake_eval(ov), 365.0), "qualifies_365": lambda r, s: (bool(r and r["valid"] and r["gain_pct"] > 0), [] if (r and r["valid"] and r["gain_pct"] > 0) else ["gain"]),
             "graph": GRAPH, "log": lambda m: None, "touch": lambda m: None}
 

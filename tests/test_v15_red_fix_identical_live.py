@@ -9,11 +9,15 @@ PILOT = ROOT / "v15_pilot.py"
 def test_v12_wt_div_identical_to_live():
     src = V12.read_text()
     # find the wiring block, not the switch list header
-    idx = src.find("if bool(getattr(cfg, 'WT_DIV_EXIT_ENABLED'")
+    # 2026-10: the WT_DIV exit twin lives in vec_decisions/mtf_exit_scorer.py (phase A of the MTF exit scorer; the inline block in
+    # v12_quick_engine was replaced). Live reads wt_peak_value_/wt_trough_value_ (absent from the NPZ) -> remapped wt_peak_/wt_trough_.
+    assert "WT_DIV_EXIT_ENABLED" in src and "vec_decisions.mtf_exit_scorer" in src, "engine must route the MTF exit scorer"
+    scorer = (ROOT / "vec_decisions" / "mtf_exit_scorer.py").read_text()
+    idx = scorer.find("if bool(_cfg(cfg, 'WT_DIV_EXIT_ENABLED', False)):")
     assert idx != -1, "WT_DIV wiring missing"
-    snippet = src[idx: idx+1200]
-    assert "wt1_" in snippet and "wt_peak_value" in snippet and "wt_trough_value" in snippet, "WT_DIV must mirror tradier_manage wt divergence (wt1/peak/trough/close)"
-    assert "exit_mask = exit_mask | _any" in snippet or "exit_mask | _any" in snippet
+    snippet = scorer[idx: idx+1200]
+    assert "wt1_" in snippet and "wt_peak_" in snippet and "wt_trough_" in snippet and "close_{tf}_prev" in snippet, "WT_DIV must mirror tradier_manage wt divergence (wt1/peak/trough/close)"
+    assert "wt1 < pk * 0.85" in snippet and "wt1 > tr * 0.85" in snippet
 
 def test_v12_wt_momentum_identical_to_live():
     src = V12.read_text()
@@ -42,7 +46,9 @@ def test_v12_dc_breakout_identical_to_live():
 def test_v15_pilot_parallel_deadline_identical_live():
     src = PILOT.read_text()
     assert "V12_NPZ_CACHE" in src and '"32"' in src
-    assert "per_cell_timeout_sec = 0.5 if" in src and "1.0" in src, "must have 0.5s 7d /1.0s 30d timeout per README_FIX_RED_CELLS"
+    # 2026-10: the 0.5s/1.0s red-cell budgets were retired - "0.07 turned every eval slower than 70ms into a fake 0.0 delta" (NO-LIES); the spec stall guard is
+    # YELLOW_TIMEOUT = 10 s per cell, applied to every cell (naked and yellow), post-hoc (_check_per_cell_timeout), never waited on
+    assert "per_cell_timeout_sec = YELLOW_TIMEOUT" in src and "YELLOW_TIMEOUT = 10.0" in src, "must have the 10 s per-cell stall guard"
     assert "ThreadPoolExecutor(max_workers=16)" in src
     # heavy must NOT be sequential list comp — must be parallel map identical to live
     assert "vecs = [_eval_prep(prepared" not in src, "heavy sequential >1s red — must be parallel 16"
@@ -53,12 +59,17 @@ def test_v15_pilot_parallel_deadline_identical_live():
 def test_bb_squeeze_width_percentile_causal():
     src = V12.read_text()
     assert "BB_SQUEEZE_WIDTH_PERCENTILE" in src
-    idx = src.find("BB_SQUEEZE_WIDTH_PERCENTILE (num) -> bb_width_1h percentile")
-    assert idx != -1, "BB_SQUEEZE_WIDTH must be causal bb_width_1h percentile, not mfi_1h proxy"
-    snippet = src[idx: idx+1200]
-    assert "bb_width_1h" in snippet
-    assert "np.percentile" in snippet or "percentile" in snippet
-    assert "_safe(npz, 'mfi_1h'" not in snippet, "must not use mfi_1h proxy for wiring"
+    # 2026-10: the width gate is the faithful port of the live stateful detector (vec_decisions/check_entry_candidates_crypto__bb_squeeze_gate.py):
+    # a ROLLING 100-bar history of bb_width=(upper-lower)/lower*100 (past bars only = causal), squeeze when width <= the percentile threshold.
+    assert "vec_decisions.check_entry_candidates_crypto__bb_squeeze_gate.bb_squeeze_entry_mask_vec(" in src, "engine must delegate to the live-faithful detector"
+    gate = (ROOT / "vec_decisions" / "check_entry_candidates_crypto__bb_squeeze_gate.py").read_text()
+    idx = gate.find("def detect_bb_squeeze_breakout_vec")
+    assert idx != -1, "BB_SQUEEZE_WIDTH must be the causal rolling-percentile detector, not an mfi_1h proxy"
+    snippet = gate[idx: idx+2500]
+    assert "deque(maxlen=100)" in snippet and "width = (u - l) / l * 100.0" in snippet and "hist.append(width)" in snippet
+    assert "width_percentile" in snippet and "for i in range(int(n))" in snippet
+    assert "BB_SQUEEZE_WIDTH_PERCENTILE" in gate
+    assert "mfi_1h" not in gate, "must not use mfi_1h proxy for wiring"
 
 def test_config_tradier_bb_wt_parity():
     import config_tradier, v12_quick_engine as V, dataclasses
@@ -69,8 +80,13 @@ def test_config_tradier_bb_wt_parity():
     assert int(getattr(config_tradier.TradierConfig, "WT_MOMENTUM_EXIT_THRESHOLD")) == 1
     assert defaults.get("WT_ACCEL_EXIT_ENABLED") is False, "Quick WT_ACCEL must be False to match Tradier False"
     assert V._DEFAULTS_625.get("WT_ACCEL_EXIT_ENABLED") is False
-    assert V._DEFAULTS_625.get("ADX_RANGING_THRESHOLD") == 20.0
-    assert defaults.get("ADX_RANGING_THRESHOLD") == 20.0
+    # USER 2026-09-11 "ADX default 10": the crypto Config default is 10 and the QuickConfig dataclass default follows it; the stocks (Tradier) value 20
+    # lives in _DEFAULTS_625 (the stock-mode defaults) - each side pinned to its own live config
+    import config as _cfgmod
+    assert float(_cfgmod.Config.ADX_RANGING_THRESHOLD) == 10.0
+    assert defaults.get("ADX_RANGING_THRESHOLD") == float(_cfgmod.Config.ADX_RANGING_THRESHOLD)
+    assert float(config_tradier.TradierConfig.ADX_RANGING_THRESHOLD) == 20.0
+    assert V._DEFAULTS_625.get("ADX_RANGING_THRESHOLD") == float(config_tradier.TradierConfig.ADX_RANGING_THRESHOLD)
 
 def test_red_cells_timing_probe():
     # probe that SNDK_LONG 30d vector batch for timeout switches is <1.0s and valid
@@ -83,7 +99,8 @@ def test_red_cells_timing_probe():
         prep = prepare_batch("SNDK_LONG", 30)
         if prep is None or "npz_prepared" not in prep:
             return  # skip if no NPZ (CI without indicators) — still proves wiring above
-        defaults = {f.name: f.default for f in dataclasses.fields(V.QuickConfig)}
+        # default_factory fields (FILTER_EXEMPTIONS, V17) carry dataclasses.MISSING as .default - leave them out, the engine supplies the factory value
+        defaults = {f.name: f.default for f in dataclasses.fields(V.QuickConfig) if f.default is not dataclasses.MISSING}
         # timeout candidates that were red
         cases = [
             {"WT_DIV_EXIT_ENABLED": True},

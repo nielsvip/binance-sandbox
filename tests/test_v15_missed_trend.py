@@ -151,9 +151,13 @@ def test_priors_partial_shape():
     out = MT.priors_partial("AGLDUSDT_SHORT", log)
     assert out["_symsides"]["CRYPTO_SHORT"] == ["AGLDUSDT_SHORT"]
     keys = list(out["CRYPTO_SHORT"])
+    # the tab comes from the CURRENT template (switch_tabs), not from the log row's tab: the template moved WT_15M_BOUNCE_OPEN_ENABLED
+    # to ENTRY_CONFIRMATION_GATES, the log row still says ENTRY_REVERSAL_BOUNCE
+    from tools.v15_autopsy_priors import switch_tabs
+    tpl_tab = switch_tabs("CRYPTO_SHORT", "SPREADSHEETS/TEMPLATE_FINAL_NORM")["WT_15M_BOUNCE_OPEN_ENABLED"]
     assert (
         len(keys) == 1
-        and keys[0].startswith("ENTRY_REVERSAL_BOUNCE\tswitch\t")
+        and keys[0].startswith(f"{tpl_tab}\tswitch\t")
         and out["CRYPTO_SHORT"][keys[0]] == [1.5]
     )
 

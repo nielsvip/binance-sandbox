@@ -39,7 +39,11 @@ def test_atomic_save_and_no_overwrite():
     assert 'clone_template' in src
     # either v15_pilot or sheet_runner must guard overwrite
     sheet_runner = (ROOT / "tools" / "v15_pilot_sheet_runner.py").read_text() if (ROOT / "tools" / "v15_pilot_sheet_runner.py").exists() else ""
-    assert 'refusing to overwrite' in src or 'refusing to overwrite' in sheet_runner
+    # current guards: clone_template reuses a valid filled workbook instead of overwriting it with an empty template, and the final publish is
+    # best-not-newest (_rank_final_gain); the old 'refusing to overwrite' string no longer exists in either file
+    assert 'refusing to overwrite' in src or 'refusing to overwrite' in sheet_runner or (
+        'never overwrite a valid filled workbook with empty template' in src and 'already exists with E3 baseline for all 12 — reuse, not overwrite' in src and 'def _rank_final_gain' in src
+    )
 
 def test_cell_by_cell_LBI_and_results():
     src = V15.read_text()

@@ -66,7 +66,10 @@ class QuarTerminalTest(unittest.TestCase):
         self.assertIn('IMPOSSIBLE', SCH.HOST_PY)
         self.assertIn('NO_TRADES', SCH.HOST_PY)
         self.assertIn('BEST_EFFORT', SCH.HOST_PY)
-        self.assertIn('_VERDICT_TERMINAL_RE.search(_txt)', SCH.HOST_PY)
+        # 2026-10: terminal detection is a JSON parse of the TOP-LEVEL verdict in _progress_marks (the old flat regex over the file text matched
+        # nested stage verdicts); the _VERDICT_TERMINAL_RE constant remains but is no longer the detector
+        self.assertIn('def _progress_marks(path):', SCH.HOST_PY)
+        self.assertIn('_jd.get("verdict") in ("IMPOSSIBLE", "NO_TRADES", "BEST_EFFORT")', SCH.HOST_PY)
         compile(SCH.HOST_PY, "HOST_PY", "exec")
 
 

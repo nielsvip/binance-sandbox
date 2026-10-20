@@ -213,13 +213,37 @@ def summarize(vtrips, ltrips, m, min_match: float) -> dict:
 
 
 def load_overrides(symside: str, path: str | None) -> dict:
+    """The sym_side's PUBLISHED set — never a stale substitute, never a silent {}.
+
+    2026-10-20: this returned the Mac's `data/reports/lifecycle_pilot/{SS}_v14_progress.json` set, or `{}` when that file was
+    absent, with no check that it is the set anything was published with. On the Mac that file is a DIFFERENT, older set
+    (measured: BWXT_SHORT 791 switches md5 2a6c4da3 vs its published 881 switches md5 7ae4203e; TRGP_LONG 4 switches; LNG_LONG
+    53), because the publishing set lives only in the worker's `~/v15_<run>/progress/` dir and that host's per_sym_history
+    publish rows. A parity verdict taken on it is a verdict on a set nothing ever traded: with the stale BWXT set the vector
+    produces 72 trades / +10.91% where the published board and its chart hold 31 trades / +31.91% on the SAME NPZ and the SAME
+    1099-bar window. `{}` was worse still — bare config defaults reported as "the board's set".
+
+    Now the set is resolved by `tools/v15_published_set.resolve_published_set`, which accepts only a set whose md5 equals the
+    board manifest's `overrides_md5` and otherwise raises, naming every source it tried. `V15_PARITY_SET_HOSTS` (default
+    "s1-int,s2") lists the publishing hosts to fetch and cache from; `V15_PARITY_ALLOW_STALE_SET=1` restores the old lenient
+    behaviour and says loudly, every time, that the verdict is not about a published set.
+    """
     if path:
         d = json.loads(pathlib.Path(path).read_text())
         return d.get("cumulative_overrides") or d.get("best_overrides") or d.get("overrides") or d
-    pj = ROOT / "data" / "reports" / "lifecycle_pilot" / f"{symside}_v14_progress.json"
-    if pj.exists():
-        return json.loads(pj.read_text()).get("cumulative_overrides") or {}
-    return {}
+    from tools.v15_published_set import PublishedSetNotFound, resolve_published_set
+    hosts = [h.strip() for h in os.environ.get("V15_PARITY_SET_HOSTS", "s1-int,s2").split(",") if h.strip()]
+    try:
+        resolved = resolve_published_set(symside, hosts=hosts)
+    except PublishedSetNotFound as exc:
+        if os.environ.get("V15_PARITY_ALLOW_STALE_SET") != "1":
+            raise RuntimeError(f"{symside}: refusing to run parity on an unidentified set — {exc}") from exc
+        pj = ROOT / "data" / "reports" / "lifecycle_pilot" / f"{symside}_v14_progress.json"
+        fallback = json.loads(pj.read_text()).get("cumulative_overrides") or {} if pj.exists() else {}
+        print(f"[parity-UNPUBLISHED-SET] {symside}: V15_PARITY_ALLOW_STALE_SET=1 — running on {len(fallback)} local switches that match NO publish manifest; this verdict is NOT about any published board or chart. {exc}", flush=True)
+        return fallback
+    print(f"[parity-set] {symside}: published set md5 {resolved['overrides_md5']} ({resolved['n_overrides']} switches) from {resolved['source']}", flush=True)
+    return resolved["overrides"]
 
 
 def freeze_npz_dir() -> str | None:

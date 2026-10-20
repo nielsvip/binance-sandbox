@@ -14,12 +14,17 @@ os.environ.setdefault("V15_ALLOW_MAC", "1")
 import v15_pilot as P  # noqa: E402
 
 SRC = (ROOT / "v15_pilot.py").read_text()
-KEYS = ("PARITY_VEC_EXACT_MODE", "PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED")
-DIRTY = {"PARITY_VEC_EXACT_MODE": False, "PARITY_VEC_EXACT_FAMILIES": "x", "PARITY_VEC_EXACT_SET_DIR": "/tmp", "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED": True, "WT_EXIT_ENABLED": True}
+# USER 2026-10-15: PARITY_VEC_EXACT_MODE is NO LONGER global-only (a measured per-sym_side row in GLOBAL_RISK_GATES, False survives only if it won on delta);
+# SIM_ACCOUNT / SIM_TRADING_ACCOUNT (settlement-parity lane) joined the set.
+KEYS = ("PARITY_VEC_EXACT_FAMILIES", "PARITY_VEC_EXACT_SET_DIR", "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED", "SIM_ACCOUNT", "SIM_TRADING_ACCOUNT")
+DIRTY = {"PARITY_VEC_EXACT_FAMILIES": "x", "PARITY_VEC_EXACT_SET_DIR": "/tmp", "AUGMENT_INTO_REENTRY_LIVE_SIZING_ENABLED": True, "SIM_ACCOUNT": "tra", "SIM_TRADING_ACCOUNT": "tra", "WT_EXIT_ENABLED": True}
 
 
 def test_set_contains_all_four():
     assert all(k in P.GLOBAL_ONLY_KEYS for k in KEYS)
+    assert set(P.GLOBAL_ONLY_KEYS) == set(KEYS)
+    assert "PARITY_VEC_EXACT_MODE" not in P.GLOBAL_ONLY_KEYS
+    assert P.strip_global_only({"PARITY_VEC_EXACT_MODE": False, "WT_EXIT_ENABLED": True}) == {"PARITY_VEC_EXACT_MODE": False, "WT_EXIT_ENABLED": True}
 
 
 def test_sanitize_and_ingest_strip():

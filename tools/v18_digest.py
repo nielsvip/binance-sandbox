@@ -17,6 +17,16 @@ CONTRACT v18_digest_v1 (the pilot agent codes against it; keys are EXACTLY these
                    a logged eval of that cell in the evidence window; at_floor = n >= 3 and never positive (the brain
                    allocator's floor rate applies; principle 12: never zero, never closed); floor_per_1000 = V18_FLOOR_PER_1000 (5)
   "xpoll"          [{from_cat_side, switch, cand, score}]               <= V18_XPOLL_K (5), score earned in from_cat_side
+ADDED 2026-10-20 (E8b, tools/v18_linknet.py; additive — every v1 key above is unchanged, readers that index by name are
+unaffected; absent proposals file -> both lists empty):
+  "proposals"      [{switch, cand, filter, opt, cat_side, regime, p_pos_pred, e_delta_pred, forward_pred, nearest_evidence: [...],
+                     status, label}]   top V18_PROPOSALS_K (500) by p_pos_pred desc; status PREDICTED_NOT_MEASURED (template cell
+                   never measured) | HAS_TEMPLATE_ROW (template cell with n < 3) | NEEDS_ROW (no template row: never evaluable
+                   until tools/v15_switch_add.py --queue installs it); label is always "PREDICTION" — *_pred values are model
+                   predictions, never measurements; nearest_evidence items are MEASURED counts (kind says which). <= 2 MB.
+  "proposed_rows"  the NEEDS_ROW items grouped per switch in tools/v15_switch_add.py --queue entry shape {switch, tab, venues,
+                   sides, candidates, default, status: PROPOSED_NOT_QUEUED, source, why, needs_wiring, label}; never written
+                   into data/template_row_queue.json by this tool.
 Each file <= 10 MB (refused otherwise). One file per cat_side; nothing is averaged across cat_sides.
 
 usage: python3 tools/v18_digest.py [--apply] [--out-dir data/learn]
@@ -37,7 +47,7 @@ from tools import v18_learn_common as C  # noqa: E402
 
 CONTRACT = "v18_digest_v1"
 MAX_BYTES = 10 * 1024 * 1024
-TOP_KEYS = ("meta", "exit_loss_rank", "repair_menu", "winners", "filter_veto", "coverage", "xpoll")
+TOP_KEYS = ("meta", "exit_loss_rank", "repair_menu", "winners", "filter_veto", "coverage", "xpoll", "proposals", "proposed_rows")
 META_KEYS = ("cat_side", "built_at", "era_cut", "n_boards", "n_sym_sides", "sources")
 RANK_KEYS = ("family", "column", "n", "losers", "loss_sum_pct", "one_bar_share", "mean_bars_held", "giveback_sum", "premature_sum",
              "drift_into_loss_sum")
@@ -46,7 +56,22 @@ WIN_KEYS = ("switch", "cand", "companions", "p_pos", "e_delta_pos", "n_boards", 
 VETO_KEYS = ("switch", "cand", "filter", "opt", "vetoed_in_missed_moves", "vetoed_losers", "support_syms", "remedy")
 COV_KEYS = ("pairs_total", "pairs_n_lt_3", "pairs_at_floor", "floor_per_1000")
 XPOLL_KEYS = ("from_cat_side", "switch", "cand", "score")
+PROP_KEYS = ("switch", "cand", "filter", "opt", "cat_side", "regime", "p_pos_pred", "e_delta_pred", "forward_pred", "nearest_evidence", "status", "label")
+PROP_STATUS = ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW")
+PROPOSALS_MAX_BYTES = 2 * 1024 * 1024
 RANK_TOP = 40
+
+
+def linknet_proposals(cat_side, learn_dir):
+    """(proposals, proposed_rows) from data/learn/linknet_proposals_<CS>.json via tools/v18_linknet.digest_proposals; fail-open."""
+    try:
+        from tools import v18_linknet as LN
+    except Exception:
+        return [], []
+    try:
+        return LN.digest_proposals(cat_side, learn_dir)
+    except Exception:
+        return [], []
 
 
 def _comp(lst):
@@ -123,7 +148,11 @@ def assemble(cat_side, learn_dir=None):
                "template": {"path": tidx["path"], "md5": tidx["md5"]}, "coverage_detail": cov_detail}
     meta = {"cat_side": cat_side, "built_at": C.utc(), "era_cut": C.ERA_CUT_ISO[C.venue_of(cat_side)],
             "n_boards": em.get("n_board_ctx"), "n_sym_sides": em.get("n_sym_sides_evidence"), "sources": sources}
-    return {"meta": meta, "exit_loss_rank": rows, "repair_menu": rmenu, "winners": winners, "filter_veto": fveto, "coverage": cov, "xpoll": xpoll}
+    props, prow = linknet_proposals(cat_side, d)
+    sources["proposals"] = {"file": f"data/learn/linknet_proposals_{cat_side}.json", "n": len(props), "n_proposed_rows": len(prow),
+                            "label": "PREDICTION (tools/v18_linknet.py), never a measurement"}
+    return {"meta": meta, "exit_loss_rank": rows, "repair_menu": rmenu, "winners": winners, "filter_veto": fveto, "coverage": cov, "xpoll": xpoll,
+            "proposals": props, "proposed_rows": prow}
 
 
 def validate(doc):
@@ -175,6 +204,20 @@ def validate(doc):
             break
     if len(doc.get("xpoll") or []) > C.XPOLL_K:
         bad.append("xpoll longer than V18_XPOLL_K")
+    ps = doc.get("proposals")
+    if not isinstance(ps, list) or not isinstance(doc.get("proposed_rows"), list):
+        bad.append("proposals / proposed_rows not lists")
+    for x in ps or []:
+        if set(x) != set(PROP_KEYS):
+            bad.append(f"proposals keys {sorted(x)}")
+            break
+        if x["status"] not in PROP_STATUS or x["label"] != "PREDICTION" or x["cat_side"] != m.get("cat_side"):
+            bad.append(f"proposal status/label/cat_side {x['status']} {x['label']} {x['cat_side']}")
+            break
+    if any((ps[i]["p_pos_pred"] or 0) < (ps[i + 1]["p_pos_pred"] or 0) for i in range(len(ps or []) - 1)):
+        bad.append("proposals not sorted by p_pos_pred desc")
+    if len(json.dumps(ps or [], separators=(",", ":"), default=str)) > PROPOSALS_MAX_BYTES:
+        bad.append("proposals > 2 MB")
     size = len(json.dumps(doc, separators=(",", ":"), default=str))
     if size > MAX_BYTES:
         bad.append(f"size {size} > {MAX_BYTES}")
@@ -193,7 +236,7 @@ def main(argv=None):
         bad = validate(doc)
         cov = doc["coverage"]
         line = (f"[digest] {cs}: rank {len(doc['exit_loss_rank'])} · menu families {len(doc['repair_menu'])} · winners {len(doc['winners'])} · "
-                f"veto {len(doc['filter_veto'])} · xpoll {len(doc['xpoll'])} · coverage pairs {cov['pairs_total']} n<3 {cov['pairs_n_lt_3']} "
+                f"veto {len(doc['filter_veto'])} · xpoll {len(doc['xpoll'])} · proposals {len(doc['proposals'])} rows {len(doc['proposed_rows'])} · coverage pairs {cov['pairs_total']} n<3 {cov['pairs_n_lt_3']} "
                 f"at_floor {cov['pairs_at_floor']} floor {cov['floor_per_1000']}/1000")
         print(line + (f" · INVALID {bad}" if bad else " · contract OK"), flush=True)
         if bad:

@@ -4,7 +4,11 @@ import pathlib
 def test_never_stop_flags_red():
     src = pathlib.Path("v15_pilot.py").read_text()
     # must not kill on NO VALID — every row gets F 0 and continues
-    assert "os._exit(2)" not in src, "must not kill on NO VALID strand"
+    # the single os._exit(2) is the bounded 1h stuck-first-cell abort (r3 F/G blank AND < 5 rows done), not a kill on a NO VALID strand
+    assert src.count("os._exit(2)") == 1, "must not kill on NO VALID strand"
+    i = src.index("os._exit(2)")
+    assert "[STUCK-CELL-ABORT]" in src[i - 300 : i] and "_elapsed > 3600" in src[i - 400 : i]
+    assert "_stuck = (_f3 is None and _g3 is None) and _done < 5" in src[:i]
     # must flag stranded/timeout cell red (FF0000) and continue - MAX TIMEPER CELL, no per-cand timeout
     assert "FF0000" in src, "must flag strand cell red"
     assert "MAX TIMEPER CELL" in src, "must handle MAX TIMEPER CELL"

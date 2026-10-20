@@ -90,6 +90,10 @@ def test_baseline_column_only_when_last_delta_positive():
         prog = ROOT / "data" / "reports" / "lifecycle_pilot" / f"{sym}_v14_progress.json"
         if not prog.exists():
             prog = pathlib.Path(f"/home/niels/binance-sandbox/data/reports/lifecycle_pilot/{sym}_v14_progress.json")
+        if prog.exists() and xls.stat().st_mtime > prog.stat().st_mtime + 1:
+            wb.close()
+            import pytest
+            pytest.skip(f"ARTEFACT_PAIR_MISMATCH: {sym} workbook is from a later run than its v14_progress.json (row keys no longer address the same rows)")
         if prog.exists():
             j = json.loads(prog.read_text())
             done = j.get("done", {})
@@ -98,7 +102,8 @@ def test_baseline_column_only_when_last_delta_positive():
                 sheet, rest = k.split("!", 1)
                 switch_eq = rest.split(":", 1)[1] if ":" in rest else rest
                 key2 = (sheet, switch_eq)
-                if key2 not in best or v.get("delta", 0) > best[key2][1].get("delta", 0):
+                _d = lambda rec: rec.get("delta") if rec.get("delta") is not None else float("-inf")  # settled null cells rank last
+                if key2 not in best or _d(v) > _d(best[key2][1]):
                     best[key2] = (k, v)
             for (sheet, switch_eq), (key, rec) in list(best.items())[:3]:
                 if sheet not in wb.sheetnames:

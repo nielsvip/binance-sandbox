@@ -8,7 +8,8 @@ def test_proves_calc_and_fill():
     assert "filled" in text and "override column C" in text
     # must write baseline E2 numeric and guard
     assert "E2 numeric written" in text
-    assert "BASELINE-GUARD" in text
+    # the baseline guard is the fatal empty/0-baseline abort (SELF-MONITOR thread + the pre-fill check); the old [BASELINE-GUARD] tag no longer exists
+    assert "SELF-MONITOR: empty/0 baseline is fatal — abort and fix, never proceed with lie" in text
     assert "SELF-MONITOR" in text
     # must always write E/F/G for every row
     assert "always write E/F/G" in text or "E always numeric" in text
