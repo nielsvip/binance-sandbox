@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 import time
@@ -359,7 +360,25 @@ def _json_fallback_entry(p: Path, sym_side: str):
         hit = None
         if _absent_known(key, sym_side):
             return None
+    # 2026-10-20 (USER authorized): MAKE THIS PARSE VISIBLE. It is the one synchronous whole-file read left on the
+    # live hot path (_cfg -> get -> here), and when it is slow it blocks the event loop. It has been diagnosed three
+    # times from faulthandler dumps alone (2026-10-06, 10-13, and today's 267-408 dumps/account naming
+    # pathlib.read_text + json/decoder.raw_decode) because nothing ever logged it. Measured today: 569 ms for the
+    # 97.8 MB stocks view with free RAM, and the same parse is what the >20 s loop freezes were under 90 % swap.
+    # Threshold-gated so a normal parse stays silent; PER_SYM_SLOW_PARSE_MS=0 disables.
+    _t_parse = time.time()
     raw = json.loads(p.read_text())
+    _ms = (time.time() - _t_parse) * 1000.0
+    _slow_ms = float(os.environ.get("PER_SYM_SLOW_PARSE_MS", "1000") or 0)
+    if _slow_ms and _ms >= _slow_ms:
+        try:
+            logging.getLogger(__name__).warning(
+                "[PER_SYM_SLOW_PARSE] %.0f ms parsing %s (%.1f MB) for %s — this ran SYNCHRONOUSLY on the caller's "
+                "thread; in ez_manage/tradier_manage that is the event loop. Triggered because %s is absent from "
+                "sqlite (per_sym_active), so it falls through to the JSON view.",
+                _ms, p.name, p.stat().st_size / 1e6, sym_side, sym_side)
+        except Exception:
+            pass
     keys = frozenset(raw.keys()) if isinstance(raw, dict) else frozenset()
     want = set(hit[2].keys()) if hit else set()
     want.add(sym_side)
@@ -431,11 +450,25 @@ def _json_file_order(sym_side: str):
     syms hit stocks/trb/trc first (CRYPTO_JSON last). The old fixed order
     parsed the 96MB crypto view on EVERY stocks miss before reaching the
     109MB stocks view — ~200MB per miss in the live hot path."""
+    # 2026-10-20 (USER authorized): STOP AT THE VENUE BOUNDARY, do not merely reorder.
+    # The 2026-10-06 change above fixed the ORDER but still fell through to the other venue's view, so a MISS still
+    # parsed both: a stocks miss cost 97.8 MB (stocks) + 74.8 MB (crypto) = 172.6 MB of synchronous json.loads on
+    # the live event loop, and a crypto miss the same 172.6 MB the other way round. The cross-venue half can never
+    # hit — a stock sym_side cannot appear in the crypto view and vice versa — so it is pure cost.
+    # Measured 2026-10-20 18:0xZ: of the 164 live sym_sides, 163 resolve from sqlite in ~4.5 ms and exactly ONE
+    # (PWR_SHORT, which has no store row, no published board and is entry-blocked NO_LATEST_BOARD) falls through —
+    # 920 ms for the first miss after each rewrite of these files. Repeat misses are 0.2 ms (_ABSENT_TTL_S cache),
+    # so the real exposure is one parse per file rewrite; this halves even that, and removes a parse that was
+    # guaranteed to find nothing. Under the 90 % swap measured today the same parse is what the faulthandler
+    # dumps caught as a >20 s loop freeze.
+    # PER_SYM_JSON_CROSS_VENUE=1 restores the old fall-through. A cross-venue placement would be a data error, so
+    # it is logged rather than silently relied upon.
     _s = str(sym_side or "").upper()
     _base = _s.rsplit("_", 1)[0] if "_" in _s else _s
+    _cross = os.environ.get("PER_SYM_JSON_CROSS_VENUE", "0") == "1"
     if _base.endswith(CRYPTO_SUFFIXES):
-        return (CRYPTO_JSON, STOCKS_JSON, TRB_JSON, TRC_JSON)
-    return (STOCKS_JSON, TRB_JSON, TRC_JSON, CRYPTO_JSON)
+        return (CRYPTO_JSON, STOCKS_JSON, TRB_JSON, TRC_JSON) if _cross else (CRYPTO_JSON,)
+    return (STOCKS_JSON, TRB_JSON, TRC_JSON, CRYPTO_JSON) if _cross else (STOCKS_JSON, TRB_JSON, TRC_JSON)
 
 
 _ABSENT_TTL_S = 300.0
