@@ -1798,6 +1798,69 @@ class Trainer2(Trainer):
         return out
 
 
+V1_COUNTERPART = {"v2": "v1", "hybrid_v2": "hybrid_v1"}
+GATE_SUBSETS = (("F", "never_tried_pair"), ("F", "never_tried_context"))
+
+
+def v1_gate(rep):
+    """USER RULE (E8d brief): 'if v2 does not beat v1 on never-tried pairs or contexts, say so plainly and keep v1 as the scorer'.
+    The validation-selected scorer stands only if it is v1-free OR its v2 form beats its v1 counterpart (v2 vs v1, hybrid_v2 vs
+    hybrid_v1) on the held-out boards in BOTH F never-tried pairs and F never-tried contexts; otherwise the v1 counterpart is the
+    production scorer. Writes the verdict into rep['selection'] and returns the production scorer. (The gate reads the test
+    numbers: the final choice is therefore not test-blind; stated in the report.)"""
+    sel = rep["selection"]
+    chosen = sel.get("validation_choice") or sel["production_scorer"]
+    sel["validation_choice"] = chosen
+    v1c = V1_COUNTERPART.get(chosen)
+    verdict = {"rule": "v2-based choice kept only if it beats its v1 counterpart on the held-out boards in BOTH " + ", ".join(f"{k}/{n}" for k, n in GATE_SUBSETS)}
+    prod = chosen
+    if v1c is not None:
+        cmp_ = {}
+        for kn, nm in GATE_SUBSETS:
+            b = rep["test"][kn][nm]
+            cmp_[f"{kn}/{nm}"] = {chosen: b.get(f"auc_{chosen}"), v1c: b.get(f"auc_{v1c}"), "n": b.get("n"), "pos": b.get("pos")}
+        beats = all((c[chosen] is not None and c[v1c] is not None and c[chosen] > c[v1c]) for c in cmp_.values())
+        verdict.update({"compare": cmp_, "v2_beats_v1": beats})
+        if not beats:
+            prod = v1c
+            verdict["outcome"] = f"{chosen} does NOT beat {v1c} on both -> production = {v1c} (v1 kept as the network)"
+        else:
+            verdict["outcome"] = f"{chosen} beats {v1c} on both -> production = {chosen}"
+    else:
+        verdict["outcome"] = f"validation choice {chosen} does not use v2 -> kept"
+    sel["v1_gate"] = verdict
+    sel["production_scorer"] = prod
+    return prod
+
+
+def cmd_redecide(a):
+    """apply v1_gate to an existing report_v2_<CS>.json; train the missing final model (v1) when the gate falls back to it."""
+    for cs in a.cat_side or CAT_SIDES:
+        out_dir = Path(a.ds_dir)
+        rp = out_dir / f"report_v2_{cs}.json"
+        rep = json.loads(rp.read_text())
+        prod = v1_gate(rep)
+        files = dict(rep.get("models") or {})
+        if prod in ("v1", "hybrid_v1") and "v1" not in files:
+            tr = Trainer2(cs, ds_dir=out_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs)
+            ep = (rep["epochs"]["v1"], rep["epochs"]["v2"])
+            net, hist, secs = tr.final_v2(ep, which=("v1",))["v1"]
+            meta = {"schema": SCHEMA2, "cat_side": cs, "net": "v1", "trained_at": utc_now(), "epochs": ep[0], "k": tr.k, "H": tr.H, "vocab": tr.fz.names, "xvocab": None,
+                    "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "production_scorer": prod,
+                    "platt": rep["platt_on_test"].get(prod)}
+            mp = out_dir / f"model_v1_{cs}.npz"
+            net.save(mp, meta)
+            files["v1"] = {"file": str(mp), "bytes": mp.stat().st_size, "n_params": int(sum(v.size for v in net.p.values())), "secs_final": secs, "final_history": hist}
+        rep["models"] = files
+        rp.write_text(json.dumps(rep, indent=1, default=str))
+        prod_doc = {"cat_side": cs, "production_scorer": prod, "selection": rep["selection"], "platt": rep["platt_on_test"].get(prod),
+                    "models": {k: v["file"] for k, v in files.items()}, "decided_at": utc_now(), "label": PRED_LABEL}
+        (out_dir / f"production_{cs}.json").write_text(json.dumps(prod_doc, indent=1))
+        write_status(cs, "trained_v2", production_scorer=prod, v1_gate=rep["selection"]["v1_gate"]["outcome"])
+        print(f"[redecide] {cs}: {rep['selection']['v1_gate']['outcome']}", flush=True)
+    return 0
+
+
 def cmd_train2(a):
     for cs in a.cat_side or CAT_SIDES:
         train2_one(cs, a.ds_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs, max_train=a.max_train)
@@ -1815,6 +1878,7 @@ def train2_one(cs, ds_dir, fctx=None, log=_log, status=True, **kw):
         log(f"[linknet2] {cs}: examples {len(D['kind']):,} with context {int(tr.has_ctx.sum()):,} contexts {tr.n_x:,} filter-sets {tr.n_sig:,} "
               f"context vocab {tr.XC.shape[1]:,} vocab {len(tr.fz.names):,}")
         rep, ep, prod = tr.holdout_v2()
+        prod = v1_gate(rep)
         which = ("v2",) if prod in ("v2", "hybrid_v2", "counts") else ("v1", "v2")
         fin = tr.final_v2(ep, which=which)
         xv = [None] * tr.XC.shape[1]
@@ -2999,6 +3063,14 @@ def main(argv=None):
     s.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     s.add_argument("--ds-dir", default=str(DS_DIR))
     s.add_argument("--out-dir", default=str(LEARN_DIR))
+    rd = sub.add_parser("redecide", help="v2: apply the v1 gate to report_v2_<CS>.json (+ train the v1 final model if needed)")
+    rd.add_argument("--cat-side", action="append", choices=CAT_SIDES)
+    rd.add_argument("--ds-dir", default=str(DS_DIR / "v2"))
+    rd.add_argument("--k", type=int, default=16)
+    rd.add_argument("--hidden", type=int, default=64)
+    rd.add_argument("--batch", type=int, default=4096)
+    rd.add_argument("--lr", type=float, default=2e-3)
+    rd.add_argument("--max-epochs", type=int, default=20)
     s2 = sub.add_parser("score2", help="v2: production scorer x (cat_side defaults + top live chains) grid, proposals v2, pair_with_context")
     s2.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     s2.add_argument("--ds-dir", default=str(DS_DIR / "v2"))
@@ -3012,7 +3084,7 @@ def main(argv=None):
     c.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     c.add_argument("--scores", choices=("auto", "v1", "v2"), default="auto", help="auto = linknet_scores_v2_<CS>.npz when present")
     a = ap.parse_args(argv)
-    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train2": cmd_train2, "score2": cmd_score2, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
+    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train2": cmd_train2, "score2": cmd_score2, "redecide": cmd_redecide, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
 
 
 if __name__ == "__main__":
