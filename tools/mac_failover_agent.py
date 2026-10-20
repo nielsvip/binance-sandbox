@@ -52,7 +52,8 @@ HOSTS = tuple(os.environ.get("LF_HOSTS", "s1-pub s1-int").split())
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2", "-o", "ControlMaster=no", "-o", "ControlPath=none"]
 TICK_S = float(os.environ.get("LF_TICK_S", "15"))
 STATE_PUSH_S = float(os.environ.get("LF_STATE_PUSH_S", "30"))
-SNAP_PUSH_S = float(os.environ.get("LF_SNAP_PUSH_S", "120"))  # 2026-10-19 USER ("ez/tradier_indicators rsync to s1
+SNAP_PUSH_S = float(os.environ.get("LF_SNAP_PUSH_S", "120"))
+IND_UNPRODUCIBLE_S = float(os.environ.get("LF_IND_UNPRODUCIBLE_S", "300"))  # 2026-10-20: live snapshot not written this long = the Mac cannot produce indicators (the only kind that may take the lease)  # 2026-10-19 USER ("ez/tradier_indicators rsync to s1
 # so when it has to take over it has all data (incl positions)"): stage the Mac's LIVE indicator snapshots on S1
 # continuously, so a takeover starts from data that is minutes old instead of waiting out S1's own ez_indicators
 # warm-up. Measured 2026-10-19 23:1xZ, with S1's crypto producers ACTIVE: S1's own latest_market_data.json was
@@ -673,6 +674,35 @@ class Agent:
                     stocks["advisory"] = list(stocks.get("advisory") or []) + [
                         f"npz_tails_stale {old}/{n} stock NPZ tails behind the latest RTH close — BACKTEST signal only, "
                         f"live reads tradier_indicators_latest.json (not a not_trading condition since 2026-10-20)"]
+            # ═══ 2026-10-20 THE ONE KIND THAT MAY MOVE THE LEASE ═══════════════════════════════════════════
+            # USER: "the ONLY reason s1 should ever have to kick in is if macbook cant produce indicators for some
+            # reason or if I switch off macbook or it goes offline" and "live trading indicators are NEVER more than
+            # 30s behind or s1 also kicks in to supply indicators to macbook".
+            # This measures the files the LIVE ENGINES READ — data/latest_market_data.json for crypto
+            # (config.LATEST_MARKET_DATA_FILE) and data/tradier/tradier_indicators_latest.json for stocks — NOT NPZ
+            # tails, which gate nothing live (see the npz_tails_stale advisory above).
+            # ON THE 30 s BAR, honestly: the write cadence of latest_market_data.json is dedupe-gated and was MEASURED
+            # at 60-140 s between writes, so a 30 s FILE-AGE bar is unsatisfiable and would fire constantly — the
+            # opposite failure. IND_UNPRODUCIBLE_S is therefore set well beyond the cadence (300 s default), where a
+            # missing write is unambiguously a production failure rather than a quiet tick. If the 30 s figure refers
+            # to the freshness of the VALUES inside the file rather than its write time, that needs a different probe
+            # (per-key bar timestamps), and this one should not be tightened to 30 s until that exists.
+            for _v, _rel in (("crypto", "latest_market_data.json"), ("stocks", "tradier/tradier_indicators_latest.json")):
+                _sec = health.get(_v) if isinstance(health, dict) else None
+                if not isinstance(_sec, dict) or _v in (fenced or ()) or _sec.get("applicable") is False:
+                    continue
+                try:
+                    _age = now - (BASE / "data" / _rel).stat().st_mtime
+                except OSError:
+                    _age = None
+                _sec["live_indicator_age_s"] = None if _age is None else round(_age, 1)
+                if _age is None or _age > IND_UNPRODUCIBLE_S:
+                    _sec["kinds"] = list(_sec.get("kinds") or []) + ["indicators_unproducible"]
+                    _sec["reasons"] = list(_sec.get("reasons") or []) + [
+                        f"indicators_unproducible {_rel} "
+                        + ("MISSING" if _age is None else f"age {int(_age)}s > {int(IND_UNPRODUCIBLE_S)}s")
+                        + " — the Mac is not producing the indicator snapshot its engines read"]
+                    _sec["not_trading"] = True
             for venue, accts, files in (("stocks", C.STOCK_ACCOUNTS, _STOCK_POSITION_FILES),
                                         ("crypto", C.CRYPTO_ACCOUNTS, _CRYPTO_POSITION_FILES)):
                 sec = health.get(venue) if isinstance(health, dict) else None

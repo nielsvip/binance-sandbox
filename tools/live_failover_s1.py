@@ -598,11 +598,24 @@ class Watchdog:
             # host is the problem), which preserves the "Mac down -> S1 takes everything" half of the rule.
             if "positions_stale" in kinds:
                 named = sorted(set(named) | {a for a in (reading.get("positions_stale_accounts") or [])})
-            bad = bool(hb) and bool(reading.get("applicable")) and bool(kinds)
+            # 2026-10-20 ONLY TAKEOVER_KINDS may move the lease (see the block above). Everything else is kept in
+            # `kinds` for the log/alert and handed to LOCAL repair; it must not fence the host that can fix it.
+            _tk = [k for k in kinds if k in TAKEOVER_KINDS]
+            if kinds and not _tk:
+                st["local_repair_kinds"] = kinds
+                if not st.get("lr_alerted"):
+                    st["lr_alerted"] = True
+                    alert("MAC_LOCAL_REPAIR", venue=venue, kinds=kinds,
+                          reason="local fault, local fix — not a takeover reason since 2026-10-20 "
+                                 "(never_untraded_guard + wrappers + keepalives own this)")
+            elif not kinds:
+                st.pop("local_repair_kinds", None)
+                st.pop("lr_alerted", None)
+            bad = bool(hb) and bool(reading.get("applicable")) and bool(_tk)
             if bad:
                 st["since"] = st.get("since") or now
                 st["confirm"] = int(st.get("confirm", 0)) + 1
-                st.update(kinds=kinds, reasons=reading.get("reasons"), accounts=named)
+                st.update(kinds=_tk, all_kinds=kinds, reasons=reading.get("reasons"), accounts=named)
             else:
                 if st.get("alerted"):
                     alert("MAC_TRADING_AGAIN", venue=venue, after_s=int(now - (st.get("since") or now)))

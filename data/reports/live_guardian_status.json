@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T16:43:19Z",
+ "ts": "2026-10-20T16:48:42Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -136,179 +136,193 @@
   "fin": {
    "pids": [],
    "starts_30m": 2,
-   "log_age_s": 248.0
+   "log_age_s": 572.0
   },
   "men": {
    "pids": [],
    "starts_30m": 2,
-   "log_age_s": 240.0
+   "log_age_s": 564.0
   },
   "ang": {
    "pids": [],
    "starts_30m": 2,
-   "log_age_s": 245.0
+   "log_age_s": 569.0
   },
   "inf": {
    "pids": [],
    "starts_30m": 2,
-   "log_age_s": 241.0
+   "log_age_s": 565.0
   },
   "flz": {
    "pids": [],
    "starts_30m": 2,
-   "log_age_s": 242.0
+   "log_age_s": 566.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 4,
-   "log_age_s": 13.0
+   "log_age_s": 337.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 4,
-   "log_age_s": 13.0
+   "log_age_s": 337.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
    "evidence": "unrealised PnL of the same open positions fell $46.02 since 2026-10-20T16:23:14Z (now $+9.06)"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
    "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T12:31:33Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:ARUSDT_LONG",
    "evidence": "REDUCE BB_TAKE_15m_g0.48 @ 2026-10-20T12:24:53Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "inf:ARUSDT_LONG",
    "evidence": "REDUCE VEL_EXIT_v4h-7.05_g1.46 @ 2026-10-20T12:26:38Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "fin",
    "evidence": "no ez_manage.py --account fin process"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 248s"
+   "evidence": "ez_manage_fin.log not written for 572s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "men",
    "evidence": "no ez_manage.py --account men process"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 240s"
+   "evidence": "ez_manage_men.log not written for 564s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "ang",
    "evidence": "no ez_manage.py --account ang process"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 245s"
+   "evidence": "ez_manage_ang.log not written for 569s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "inf",
    "evidence": "no ez_manage.py --account inf process"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 241s"
+   "evidence": "ez_manage_inf.log not written for 565s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "flz",
    "evidence": "no ez_manage.py --account flz process"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 242s"
+   "evidence": "ez_manage_flz.log not written for 566s"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trb",
    "evidence": "4 new process ids in 30 min (['64367', '90777', '10773', '27073'])"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "trb",
    "evidence": "no tradier_manage.py --accounts trb process"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "trb",
+   "evidence": "tradier_manage_trb.log not written for 337s"
+  },
+  {
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trc",
    "evidence": "4 new process ids in 30 min (['64210', '90506', '10518', '28922'])"
   },
   {
-   "ts": "2026-10-20T16:43:19Z",
+   "ts": "2026-10-20T16:48:43Z",
    "severity": "CRITICAL",
    "kind": "PROCESS_DOWN",
    "key": "trc",
    "evidence": "no tradier_manage.py --accounts trc process"
+  },
+  {
+   "ts": "2026-10-20T16:48:43Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "trc",
+   "evidence": "tradier_manage_trc.log not written for 337s"
   }
  ],
  "alert_counts": {
@@ -316,7 +330,7 @@
   "FILL_WITHOUT_VEC_DECISION": 2,
   "NATIVE_FILL_IN_EXACT_MODE": 3,
   "PROCESS_DOWN": 7,
-  "STALE_LOG": 5,
+  "STALE_LOG": 7,
   "RESTART_LOOP": 2
  },
  "active_interventions": {
@@ -351,5 +365,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.86
+ "sweep_s": 0.69
 }
