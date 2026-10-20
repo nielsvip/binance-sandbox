@@ -5953,6 +5953,67 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _bre:
             print(f"[BRAIN-WARN] row {sname} {switch}={cand} {_bre} — row calculated", flush=True)
             return None
+    def _row_disc(info: dict, sname: str, switch, cand):
+        # USER 2026-09-30: grey / DEAD_VEC / LIVE_ONLY rows are calculated like every other row (real engine deltas);
+        # DEAD_VEC / LIVE_ONLY promotion stays blocked by promotion_block_reason
+        # USER 2026-09-30: a cell is YELLOW iff the row's switch name and the column's filter name share >= 2 "_"-tokens
+        # (interim rule until the yellow-map rebuild) — decided from the NAMES, never from a cloned fill.
+        # USER 2026-10-03 hollow-fix: paint is written ONLY together with a calculated value (yellow write
+        # path) or RED with a failure reason — NEVER pre-painted here. Pre-painting changed cell colours
+        # for rows/cells that were then policy-skipped (0 evals): colour without calculation. Previously
+        # calculated values are never cleared here either (that destroyed real deltas without a new calc).
+        # TASK 05.3 (USER 2026-10-15): per-(tab,switch) header-discovery cache — the cand-independent half
+        # (token sets over the ~231 yellow headers, type gates, skip classes) is computed once per (tab, switch);
+        # each row only folds its cand-dependent ever_yellow membership (one hash lookup per header).
+        # V15_HEADER_CACHE=0 disables (recompute per row). Exact outputs: same sets/lists/notes as the loop above.
+        # V18 2026-10-20: moved verbatim out of _row_static (one call site there + the V18 floor path).
+        _sw_key = str(switch).strip()
+        _cache_on = os.environ.get("V15_HEADER_CACHE", "1") == "1"
+        _pre = _header_disc_cache.get((sname, _sw_key)) if _cache_on else None
+        if _pre is None:
+            _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
+            _mand = mandatory_bases_for_tab(sname, switch)
+            _pre = _header_disc_precompute(sname, switch, header_maps[sname], _tab_level, _mand, defaults)
+            if _cache_on:
+                _header_disc_cache[(sname, _sw_key)] = _pre
+        _ever_y = ever_yellow_cells(map_key_for_symside(new_symside))
+        # 🔴 2026-10-15 USER "make sure the latest v15_pilot does not skip any yellow box". ALL filter columns on
+        # the tab are evaluated for a WT-core row — no token rule, no selection, nothing skipped. Measured on
+        # TEMPLATE_STOCKS_LONG: WT_15M_BOUNCE_OPEN_ENABLED 49 -> 129, WT_CROSS_EXIT_ENABLED 14 -> 127,
+        # WT_LOWER_CROSS_EXIT_TF 26 -> 127, WT_CROSS_EXIT_APPLIES_TO_WINNERS 12 -> 127.
+        # SCOPED to WT-core rows, NOT global: flipping V15_ALL_FILTER_COLS=1 for every row costs 5.0x the evals
+        # (101 -> 510 on those 4 rows alone), and at the 2026-10-15 fleet rate of ~2 boards/h that makes a
+        # full-book recalc arithmetically impossible. ~20 WT rows x ~127 is ~12% on a 1200 s board — affordable.
+        # The global env var still wins if set, so V15_ALL_FILTER_COLS=1 remains the everything-everywhere lever.
+        _all_cols = os.environ.get("V15_ALL_FILTER_COLS", "0") == "1"
+        if not _all_cols and _sw_key in WT_CORE_MANDATORY_BASES and os.environ.get("V15_WT_CORE_ALL_COLS", "1") != "0":
+            _all_cols = True
+        _dc = _header_disc_combine(_pre, sname, switch, cand, _ever_y, _all_cols)
+        info["yellow"] = _dc["yellow"]
+        info["hdrs"] = _dc["hdrs"]
+        info["h2f"] = _dc["h2f"]
+        if _dc["excluded_tab_level"]:
+            info["excluded_tab_level"] = _dc["excluded_tab_level"]
+        if _dc["excluded_unwired"]:
+            info["excluded_unwired"] = _dc["excluded_unwired"]
+        if _dc["type_skipped"]:
+            info["type_skipped"] = _dc["type_skipped"]
+        for _mb in _dc["mand_notes"]:
+            _mandatory_note(sname, _mb, False)
+    # V18 PRINCIPLE 12 (USER 2026-10-20 "give every indicator/filter combination a chance"): V18_FLOOR=1 (default OFF; the
+    # gate decides) — every naked row and every (switch=cand, filter=opt) cell of this cat_side keeps an evaluation
+    # probability >= V18_FLOOR_PER_1000/1000 (5) that overrides EVERY policy skip above (carry, brain, autopsy-inert, prior,
+    # possym, zero-formula, low-yield, V17 sampling); deterministic draw sha1(cat_side|sym_side|tab|key|round). Cells the floor
+    # leaves skipped stay settled with their p (row record "v18_floor"). Structural skips are never touched.
+    _v18_floor_on = bool(_V18P is not None and _V18P.floor_on())
+    _v18_floor_p = _V18P.floor_p() if _v18_floor_on else 0.0
+    _v18_floor_tot: dict = {}
+    _v18_floor_cs = map_key_for_symside(new_symside)
+    def _v18_floor_keep_fn(sname: str, switch, cand):
+        _rk = f"{str(switch).strip()}={str(cand).strip()}"
+        def _keep(kind, h):
+            return _V18P.floor_draw(_v18_floor_cs, new_symside, sname, _rk if kind == "row" else f"{_rk}@{str(h).strip()}", _brain_rid) < _v18_floor_p
+        return _keep
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
         k = (sname, rr)
@@ -5993,51 +6054,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         elif _brain_naked and (_bro := _brain_row_out(sname, switch, cand)):
             info.update(kind="skip", reason=_bro, g=None)
         else:
-            # USER 2026-09-30: grey / DEAD_VEC / LIVE_ONLY rows are calculated like every other row (real engine deltas);
-            # DEAD_VEC / LIVE_ONLY promotion stays blocked by promotion_block_reason
-            # USER 2026-09-30: a cell is YELLOW iff the row's switch name and the column's filter name share >= 2 "_"-tokens
-            # (interim rule until the yellow-map rebuild) — decided from the NAMES, never from a cloned fill.
-            # USER 2026-10-03 hollow-fix: paint is written ONLY together with a calculated value (yellow write
-            # path) or RED with a failure reason — NEVER pre-painted here. Pre-painting changed cell colours
-            # for rows/cells that were then policy-skipped (0 evals): colour without calculation. Previously
-            # calculated values are never cleared here either (that destroyed real deltas without a new calc).
-            # TASK 05.3 (USER 2026-10-15): per-(tab,switch) header-discovery cache — the cand-independent half
-            # (token sets over the ~231 yellow headers, type gates, skip classes) is computed once per (tab, switch);
-            # each row only folds its cand-dependent ever_yellow membership (one hash lookup per header).
-            # V15_HEADER_CACHE=0 disables (recompute per row). Exact outputs: same sets/lists/notes as the loop above.
-            _sw_key = str(switch).strip()
-            _cache_on = os.environ.get("V15_HEADER_CACHE", "1") == "1"
-            _pre = _header_disc_cache.get((sname, _sw_key)) if _cache_on else None
-            if _pre is None:
-                _tab_level = tab_level_filters(map_key_for_symside(new_symside), sname)
-                _mand = mandatory_bases_for_tab(sname, switch)
-                _pre = _header_disc_precompute(sname, switch, header_maps[sname], _tab_level, _mand, defaults)
-                if _cache_on:
-                    _header_disc_cache[(sname, _sw_key)] = _pre
-            _ever_y = ever_yellow_cells(map_key_for_symside(new_symside))
-            # 🔴 2026-10-15 USER "make sure the latest v15_pilot does not skip any yellow box". ALL filter columns on
-            # the tab are evaluated for a WT-core row — no token rule, no selection, nothing skipped. Measured on
-            # TEMPLATE_STOCKS_LONG: WT_15M_BOUNCE_OPEN_ENABLED 49 -> 129, WT_CROSS_EXIT_ENABLED 14 -> 127,
-            # WT_LOWER_CROSS_EXIT_TF 26 -> 127, WT_CROSS_EXIT_APPLIES_TO_WINNERS 12 -> 127.
-            # SCOPED to WT-core rows, NOT global: flipping V15_ALL_FILTER_COLS=1 for every row costs 5.0x the evals
-            # (101 -> 510 on those 4 rows alone), and at the 2026-10-15 fleet rate of ~2 boards/h that makes a
-            # full-book recalc arithmetically impossible. ~20 WT rows x ~127 is ~12% on a 1200 s board — affordable.
-            # The global env var still wins if set, so V15_ALL_FILTER_COLS=1 remains the everything-everywhere lever.
-            _all_cols = os.environ.get("V15_ALL_FILTER_COLS", "0") == "1"
-            if not _all_cols and _sw_key in WT_CORE_MANDATORY_BASES and os.environ.get("V15_WT_CORE_ALL_COLS", "1") != "0":
-                _all_cols = True
-            _dc = _header_disc_combine(_pre, sname, switch, cand, _ever_y, _all_cols)
-            info["yellow"] = _dc["yellow"]
-            info["hdrs"] = _dc["hdrs"]
-            info["h2f"] = _dc["h2f"]
-            if _dc["excluded_tab_level"]:
-                info["excluded_tab_level"] = _dc["excluded_tab_level"]
-            if _dc["excluded_unwired"]:
-                info["excluded_unwired"] = _dc["excluded_unwired"]
-            if _dc["type_skipped"]:
-                info["type_skipped"] = _dc["type_skipped"]
-            for _mb in _dc["mand_notes"]:
-                _mandatory_note(sname, _mb, False)
+            _row_disc(info, sname, switch, cand)
+        if _v18_floor_on and info["kind"] == "skip" and str(info.get("reason") or "").startswith(("CARRIED_DEAD", "BRAIN_SAMPLED_OUT")) and not info["hdrs"]:
+            _row_disc(info, sname, switch, cand)  # V18 floor: a row skipped before discovery still gets its cells' own floor draws
         if _inert_effective and info["kind"] == "eval" and info["hdrs"] and str(switch).strip() not in _inert_effective:
             if inert_row_sampled(rr, sname, _inert_seq, _inert_every):
                 info["inert_sampled"] = True
@@ -6268,6 +6287,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["coarse_deferred_filters"] = []
                 info["prior_skipped"] = []
                 info["inert_filters"] = []
+        if _v18_floor_on:
+            try:
+                _V18P.floor_add(_v18_floor_tot, _V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p))
+            except Exception as _v18fe:
+                print(f"[V18-FLOOR-WARN] {sname}!{rr} {_v18fe} — row unchanged", flush=True)
         _static_info[k] = info
         return info
     def _row_plan(sname: str, rr: int, switch, cand) -> dict:
@@ -7070,8 +7094,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 d, ok, _why = _delta_vs(res, cum_before)
                 it.update(res=res, err=err, d=d, ok=bool(ok))
         return items
-    def _v17_promote(it: dict, how: str, prefix: str, ph: dict):
+    def _v17_promote(it: dict, how: str, prefix: str, ph: dict, book=None):
         nonlocal cumulative_gain, cumulative_overrides, e_next, chain_tim, chain_trades
+        _pbook = _v17 if book is None else book  # V18 phases book their promotions in progress["v18"] (V17 path unchanged)
         res, d = it["res"], float(it["d"])
         cb = float(cumulative_gain)
         cumulative_overrides = sanitize_overrides(dict(it["ov"]), defaults)[0]
@@ -7090,7 +7115,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             pass
         parts = list(it.get("parts") or [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in (it.get("delta_ov") or {}).items()])
         _v17_touched.update(k for k in (it.get("delta_ov") or {}) if v17_is_filter_key(k))
-        prom = _v17.setdefault("promotions", [])
+        prom = _pbook.setdefault("promotions", [])
         rec = {"phase": prefix, "how": how, "what": it["label"], "delta": round(d, 4), "before": round(cb, 4), "after": round(cumulative_gain, 4), "trades": (res or {}).get("trades"), "tim": (res or {}).get("tim_pct"), "dd": (res or {}).get("max_dd_pct"), "parts": parts}
         prom.append(rec)
         ph["prom"] = ph.get("prom", 0) + 1
@@ -7105,9 +7130,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _set_override(_ws, _tgt[0], _tgt[1], _resolve_cols(_ws), parts)
             except Exception as _se:
                 print(f"[V17-WARN] {_tgt} C write failed: {_se}", flush=True)
-        print(f"[V17-PROMOTE] {new_symside} {prefix} {how} {it['label']} +{d:.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
+        if book is not None:
+            progress["done"][dkey]["v18_phase"] = prefix
+            rec["dd"], rec["wr"] = (res or {}).get("max_dd_pct"), (res or {}).get("wr_pct")
+        print(f"[{'V18' if book is not None else 'V17'}-PROMOTE] {new_symside} {prefix} {how} {it['label']} +{d:.4f} {cb:.4f}->{cumulative_gain:.4f} trades={rec['trades']} tim={rec['tim']}", flush=True)
         _maybe_write_json(force=True)
-    def _v17_greedy(cands: list, how: str, prefix: str, deadline: float, ph: dict, accept=None, max_prom=None, pick=None) -> list:
+    def _v17_greedy(cands: list, how: str, prefix: str, deadline: float, ph: dict, accept=None, max_prom=None, pick=None, book=None) -> list:
         # round 1: every candidate vs the CURRENT chain (parallel). Promote the best positive (its own eval IS the fresh exact
         # eval of the promoted set); re-evaluate only the remaining positives vs the new chain; repeat (greedy §14.2).
         # Returns round-1 items (honest deltas vs the chain they were measured on) for booking.
@@ -7139,7 +7167,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             choice = pick(pos) if pick is not None else pos[0]
             if choice is None:
                 break
-            _v17_promote(choice, how, prefix, ph)
+            _v17_promote(choice, how, prefix, ph, book=book)
             if max_prom is not None and ph.get("prom", 0) >= int(max_prom):
                 break
             pool_ = [{k: v for k, v in it.items() if k not in ("ov", "res", "err", "d", "ok")} for it in pos if it is not choice]
@@ -8305,6 +8333,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             g.alignment = VISUAL_ALIGN
             _skip_is_policy = str(st["reason"]).startswith("SKIPPED")
             progress.setdefault("done", {})[key] = {"delta": st.get("g"), "promoted": False, "reason": st["reason"], "vec_gain": None, "trades": None, "yellows": {}, "cumulative_before": cumulative_before, "cumulative_after": cumulative_before, "npz": _run_npz_short, "policy": _policy_stamp(sname), "complete": (not _skip_is_policy)}
+            if st.get("v18_floor"):
+                progress["done"][key]["v18_floor"] = dict(st["v18_floor"])
             if _skip_is_policy:
                 print(f"[POLICY-SKIP-PENDING] {sname}!{rr} {switch}={cand} {st['reason'][:60]} — 0 evals, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
             if st["reason"].startswith(("DEAD_VEC", "LIVE_ONLY")):
@@ -8350,13 +8380,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             # the ledger -> this row is alive: run its full yellow pass right now (nothing dead-but-alive can hide).
             # USER 2026-10-10 throughput: a deeply negative naked (<= V15_REVIVE_MIN_DELTA, default -0.5pp) never promotes —
             # skip its ~40 yellow evals (the 1/25 rotation still samples it). Sacred rows always revive (verified, never skipped).
-            st["hdrs"] = list(st["inert_filters"])
+            _rv_new = [h for h in st["inert_filters"] if h not in st["hdrs"]]  # V18 floor: cells it already rescued stay (OFF: hdrs is empty here)
+            st["hdrs"] = list(st["hdrs"]) + _rv_new
             st["inert_filters"] = []
             st["inert_revived"] = True
             _inert_stats["revived"] += 1
-            _rv_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(st["hdrs"]) // max(1, _n_proc))) + 2)
+            _rv_deadline = _t.time() + YELLOW_TIMEOUT * (max(1, -(-len(_rv_new) // max(1, _n_proc))) + 2)
             _rv_ovs = {}
-            for _rv_hdr in st["hdrs"]:
+            for _rv_hdr in _rv_new:
                 _rv_f = st["h2f"][_rv_hdr]
                 _rv_ov = dict(switch_variant)
                 _rv_ov[_rv_f["filter"]] = _parse_opt_value(_rv_f["opt"], defaults.get(_rv_f["filter"]))
@@ -8364,11 +8395,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if _ROW_PRESUBMIT:
                     _submit(_rv_ovs[_rv_hdr])  # whole revived pass to the pool first (was serial: 174 cells one at a time)
             _flush_batch()
-            for _rv_hdr in st["hdrs"]:
+            for _rv_hdr in _rv_new:
                 plan["items"].append((_rv_hdr, _rv_ovs[_rv_hdr]))
                 results[_rv_hdr] = _get(sname, rr, switch, cand, _rv_hdr, _rv_ovs[_rv_hdr], _rv_deadline, cumulative_before)
             n_items = len(plan["items"])
-            print(f"[AUTOPSY-INERT-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> full yellow pass ({len(st['hdrs'])} cells)", flush=True)
+            print(f"[AUTOPSY-INERT-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> full yellow pass ({len(_rv_new)} cells)", flush=True)
         if _brain is not None and not is_running and naked_ok and naked_delta is not None:
             try:
                 _brain.observe_naked(sname, f"{str(switch).strip()}={str(cand).strip()}", float(naked_delta))
@@ -8754,6 +8785,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress.setdefault("done", {})[key] = {"delta": row_delta, "delta_vs_cumulative": row_delta, "delta_vs_initial": hustle_delta, "chain_gain_vs_initial": div, "promoted": promote, "promoted_how": choice[3] if promote else None, "promoted_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in choice[1]] if promote else [], "k_filters": [f"{h2f[h]['filter']}={h2f[h]['opt']}" for h in pos_hdrs], "possym": st.get("possym"), "sampled_out_filters": st.get("sampled_filters") or [], "coarse_deferred_filters": st.get("coarse_deferred_filters") or [], "coarse_revived": st.get("coarse_revived") or [], "zero_skipped_filters": st.get("zero_skipped") or [], "is_running": is_running, "delta_invalid": bool(choice is None and not is_running and not naked_ok), "naked_delta": None if is_running else naked_delta, "joint_delta": joint_delta, "reason": _blk or joint_reason or reasons.get("naked", "") or _uw_tag, "vec_gain": row_gain, "trades": (results.get("naked", (None, ""))[0] or {}).get("trades"), "yellows": yellows, "yellow_reasons": {h: r for h, r in reasons.items() if h != "naked"}, "noop_yellows": noop_yellows, "yellow_dups": yellow_dups, "dep_forced": {"promoted": _dep_choice, "by_eval": _dep_row}, "naked_binding": naked_binding, "ref_fp": (ref_fp or "")[:16], "type_skipped": st.get("type_skipped") or [], "tab_level_excluded": st.get("excluded_tab_level") or [], "excluded_unwired": st.get("excluded_unwired") or [], "inert_filters": st.get("inert_filters") or [], "inert_sampled": bool(st.get("inert_sampled")), "inert_revived": bool(st.get("inert_revived")), "prior_skipped_filters": st.get("prior_skipped") or [], "prior_mode": st.get("prior_mode"), "prior_revived": st.get("prior_revived") or [], "carry_sampled": bool(st.get("carry_sampled")), "cumulative_before": cumulative_before, "cumulative_after": float(cumulative_gain), "missing_yellows": list(missing_yellows), "npz": _run_npz_short, "policy": _policy_stamp(sname), "ramfp": (str(_RUN_RAMFP.get(new_symside)) if os.environ.get("V15_RAMFP", "0") == "1" else None), "complete": (not missing_yellows and (not (st.get("sampled_filters") or []) or (_COARSE_ON and not _redo_heal)) and not (st.get("excluded_tab_level") or []) and naked_settled and not _ramfp_stale)}
         if _row_slow:
             progress["done"][key]["slow_cells"] = dict(_row_slow)
+        if st.get("v18_floor"):
+            progress["done"][key]["v18_floor"] = dict(st["v18_floor"])
         if st.get("v17_deferred"):
             progress["done"][key]["v17_deferred_filters"] = list(st["v17_deferred"])
             _v17_note(sname, rr, f"DEFERRED_V17:{len(st['v17_deferred'])}")
@@ -8773,6 +8806,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v18_ids.row = None
         progress["v18_identity"] = dict(_v18_ids.totals)
         print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
+    if _v18_floor_on:
+        progress.setdefault("v18", {})["floor"] = {**dict(_v18_floor_tot), "p": _v18_floor_p, "per_1000": round(_v18_floor_p * 1000.0, 3), "rid": _brain_rid, "cat_side": _v18_floor_cs}
+        print(f"[V18-FLOOR] {new_symside} {_v18_floor_cs} p={_v18_floor_p * 1000.0:g}/1000 rows_seen={_v18_floor_tot.get('rows_seen', 0)} rows_policy_skipped={_v18_floor_tot.get('rows_policy_skipped', 0)} rows_rescued={_v18_floor_tot.get('rows_rescued', 0)} cells_policy_skipped={_v18_floor_tot.get('cells_policy_skipped', 0)} cells_rescued={_v18_floor_tot.get('cells_rescued', 0)} cells_settled={_v18_floor_tot.get('cells_settled', 0)}", flush=True)
     if _v17_on and pending_queue:
         try:  # carry book: this board's evaluated naked deltas + carried rows -> ~/v15_carry/<sym_side>.json
             for _dk, _dv in (progress.get("done") or {}).items():
