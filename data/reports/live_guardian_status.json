@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T19:23:47Z",
+ "ts": "2026-10-20T19:28:59Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 265,
-   "open_positions": 12,
-   "unrealised_usd": 19.19,
+   "fills_6h": 270,
+   "open_positions": 11,
+   "unrealised_usd": 17.4,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 164,
    "open_positions": 18,
-   "unrealised_usd": 35.54,
+   "unrealised_usd": 34.08,
    "pos_mismatch": 0
   },
   "fin": {
@@ -138,75 +138,75 @@
     "79919"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "73953"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "62249"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 30.0
   },
   "inf": {
    "pids": [
     "79171"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 12.0
   },
   "flz": {
    "pids": [
     "37060"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 9.0
   },
   "trb": {
    "pids": [
     "83844"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [
     "33811"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T19:23:48Z",
+   "ts": "2026-10-20T19:28:59Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:EXEL_LONG",
    "evidence": "entry notional $3521.92 (median $1087.62, MAX_ORDER_VALUE $7000) @ 2026-10-20T19:16:42Z MANDATORY_REENTRY_PRICE_CROSS_exit63.8750_cur63.9000_dist0.0"
   },
   {
-   "ts": "2026-10-20T19:23:48Z",
+   "ts": "2026-10-20T19:28:59Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:EXEL_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $3521.92 (median $1087.62, MAX_ORDER_VALUE $7000) @ 2026-10-20T19:16:42Z MANDATORY_REENTRY_PRICE_CROSS_exit63.8750_cur63.9000_dist0.0"
   },
   {
-   "ts": "2026-10-20T19:23:49Z",
+   "ts": "2026-10-20T19:29:00Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T19:23:49Z",
+   "ts": "2026-10-20T19:29:00Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
@@ -250,5 +250,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.19
+ "sweep_s": 1.69
 }

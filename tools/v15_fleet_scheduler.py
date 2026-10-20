@@ -2704,6 +2704,15 @@ def legacy_rank(cfg, venue):
 
 
 def tick(args, cfg, now):
+    # 2026-10-20 WP1 (coordinator: a 5-min tick is the throughput ceiling): phase timer -> log["phase_s"], "[sched] PHASE" lines
+    _PH = {"t0": time.time(), "last": time.time(), "s": {}}
+
+    def _ph(name):
+        _t = time.time()
+        _PH["s"][name] = round(_PH["s"].get(name, 0.0) + _t - _PH["last"], 2)
+        _PH["last"] = _t
+        print(f"[sched] PHASE {name} {_PH['s'][name]:.1f}s (t+{_t - _PH['t0']:.1f}s)", flush=True)
+
     hosts = cfg["hosts"]
     sim = json.load(open(args.simulate)) if args.simulate else None
     uni, how = U.load_or_build(ROOT, now, write=not (args.dry_run or sim))
@@ -2739,6 +2748,7 @@ def tick(args, cfg, now):
     rank = {v: legacy_rank(cfg, v) for v in ("stocks", "crypto")}
     for v, lst in (("stocks", stocks), ("crypto", crypto)):
         lst.sort(key=lambda s: (rank[v].get(s, 10 ** 6), s))  # worst-first per the previous order file, unknown last
+    _ph("universe")
     st = load_state()
     st = _fresh_daily_state(st, now.strftime("%Y%m%d"))
     st.setdefault("held", {}); st.setdefault("attempts", {}); st.setdefault("slices", {}); st.setdefault("ready", {}); st.setdefault("launched_at", {})
@@ -2748,6 +2758,7 @@ def tick(args, cfg, now):
     except Exception:
         pass
     stats = {h["name"]: (sim["hosts"].get(h["name"]) if sim else probe(h)) for h in hosts}
+    _ph("probe_hosts")
     reaped = {}
     if not (args.dry_run or sim or args.no_reap):
         for h_ in hosts:
@@ -2775,6 +2786,7 @@ def tick(args, cfg, now):
                                 _fq.write(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": h_["name"], "ss": a_["ss"], "why": a_["why"], "pids": a_["pids"], "review": "pending-muse-agent"}) + "\n")
                         except Exception:
                             pass
+    _ph("reap")
     cur_pdir = next((x["pdir"] for x in stats.values() if x and x.get("pdir")), None)
     if cur_pdir and st.get("attempts_pdir") != cur_pdir:
         st["attempts"] = {}
@@ -2842,6 +2854,7 @@ def tick(args, cfg, now):
     stocks, crypto = _deny_untradeable(stocks, "stocks"), _deny_untradeable(crypto, "crypto")  # USER 2026-10-15: outside the tradeable universe = no NPZ build, no board, no CPU
     universe_syms = {"stocks": set(stocks), "crypto": set(crypto)}
     all_syms = stocks + crypto
+    _ph("merge_host_views")
     # ---- readiness (per host, only for symbols that could be placed there)
     ready_skip = {}
     readiness_by_host = {}
@@ -2869,6 +2882,7 @@ def tick(args, cfg, now):
     if _npz_dead:
         print(f"[sched] NPZ-DEAD {len(_npz_dead)} symbol(s) unloadable on every host -> excluded from the venue phase (rebuild them): {sorted(_npz_dead)[:12]}", flush=True)
 
+    _ph("readiness_npz")
     # ---- per-symbol chain status
     def _same_npz_as_last_board(sym, side):
         """USER 2026-10-16: refresh = re-measure on NEW bars. The newest publish manifest's npz_md5 equal to the current S1
@@ -3122,6 +3136,7 @@ def tick(args, cfg, now):
             if f"{sym}_{side}" in _pin_sides and f"{sym}_{side}" not in done and _st[side][0] != "running":
                 _st[side] = ("need30", 1)  # 2026-10-13 operator pin: bypass deferral/fresh-skip/base-wait/allowlist
         chain_state[sym] = _st
+    _ph("chain_status")
     _phase, _phase_pending = _venue_phase(chain_state, launchable=lambda _s, _sd: _s not in _npz_dead and _phase_launchable(f"{_s}_{_sd}", st, started, redo, quar, _pin_sides), now=now)  # USER 2026-10-12: stocks first until every tradeable stock has passed; USER 2026-10-15 (06.3): only really-launchable sides hold the phase (exhausted incl. pin cap + quarantined soft-skips excluded); USER 2026-10-15: clock-aware (stocks in RTH, crypto outside)
     _rth_now = us_market_open(now)
     _phase_log = {"mode": _VENUE_ONLY or "none", "phase": _phase, "stocks_launchable": len(_phase_pending), "sample": sorted(_phase_pending)[:12],
@@ -3182,6 +3197,7 @@ def tick(args, cfg, now):
                 print(f"[autokill] {_h['name']} dead={sorted(_dd['ss'])} res={_res}", flush=True)
         elif _dead_by_host:
             print(f"[autokill] REPORT-ONLY (fresh={_ak_fresh} on={_ak_on} dry={bool(args.dry_run or sim)}): {json.dumps(_ak_report)}", flush=True)
+    _ph("held_autokill")
     log = {"now": now.isoformat(), "market_open": is_open, "venue_order": vorder, "priority_syms": sorted(priority_syms()), "min_to_open": round(mto), "universe_source": how,
            "universe": uni["counts"], "reaped": reaped, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
            "autokilled": _ak_killed, "autokill_report": _ak_report}
@@ -3316,6 +3332,7 @@ def tick(args, cfg, now):
             os.replace(_tmp, _fp)
     except Exception as _e_cov:
         print(f"[sched] coverage FAILED (non-fatal): {_e_cov}", flush=True)
+    _ph("candidates_coverage")
     log["venue_phase"] = _phase_log
     log["npz_dead"] = sorted(_npz_dead)
     _pin_syms = {x.rsplit("_", 1)[0] for x in _pin_sides}
@@ -3343,6 +3360,7 @@ def tick(args, cfg, now):
             log["npz_frozen_syms"] = len(_frz)
     except Exception as _nfe:
         log["npz_freeze_error"] = str(_nfe)[:120]
+    _ph("cont_overage_freeze")
     for h in _host_order(hosts, held):  # USER 2026-10-12: most free capacity first (load divided across s1/s2/s5/s6)
         s = stats[h["name"]]
         if not s:
@@ -3843,6 +3861,7 @@ def tick(args, cfg, now):
             info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "NO PROGRESS DIR on host (~/v15_current_progress_dir.txt missing)" if not (s.get("pdir") or cfg.get("fallback_pdir")) else "no eligible ready symbol for this host"
             info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu), "npz_stale_jit": len(log.get("npz_stale_jit", [])), "npz_stale_held": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_) and str(v_).startswith(h["name"])), "npz_stale_refused_150s": _dispatch_stale_recent()}
         log["hosts"][h["name"]] = info
+    _ph("launch_pass")
     if _pin_sides:  # 2026-10-13: every pinned side names its state each tick (an idle pin must explain itself)
         _ps_log = {}
         for _pss in sorted(_pin_sides):
@@ -3918,6 +3937,7 @@ def tick(args, cfg, now):
                 log["hosts"][h["name"]]["slots"] = f"{len(held[h['name']])}/{B['cap']}"
                 log["hosts"][h["name"]].setdefault("held", []).append(sym)
                 log["hosts"][h["name"]].pop("idle_reason", None)
+    _ph("steal_pass")
     # ---- NPZ PREFETCH (USER 2026-10-13): s1 readies the NEXT symbol's NPZ while the current boards finish, so a
     # freed slot dispatches instantly on a fresh tail. Runs AFTER the launch pass (never delays a launch), bounded per
     # tick, and skipped while s1 is busy so the NPZ job can never eat the compute s1 needs for its own boards
@@ -3950,6 +3970,7 @@ def tick(args, cfg, now):
             log["npz_prefetch"] = {"ready": _pf_done, "held": _pf_hold, "load_x": round(_l1, 2)}
             if _pf_done or _pf_hold:
                 print(f"[sched] npz prefetch ready={len(_pf_done)} held={len(_pf_hold)} {_pf_done[:4]}", flush=True)
+    _ph("prefetch")
     # ---- SETTINGS HISTORY (USER 2026-10-13): "the db written by the fleet orchestrator with each sym_side's historical
     # settings day by day ... updated when the json is written for any sym_side as soon as its new settings have been
     # calculated." The orchestrator owns it: whenever this tick sees a sym_side that PUBLISHED since the last tick, it
@@ -3977,6 +3998,7 @@ def tick(args, cfg, now):
             print(f"[sched] settings-history: {len(_fresh_pub)} new publish(es) -> recording settings to per_sym_history", flush=True)
     except Exception as _he:
         log["settings_history"] = {"error": str(_he)[:160]}
+    _ph("settings_history")
     # ---- summary per cat
     cats = {c: {"sym_sides": 0, "done30": 0, "running": 0, "v365_ok": 0, "v365_bad": 0, "v365_unverifiable": 0, "repair_attempts": 0, "repair_ok": 0, "gs_attempts": 0, "gs_ok": 0, "failing": []} for c in CATS}
     for sym in all_syms:
@@ -4013,6 +4035,7 @@ def tick(args, cfg, now):
     log["fresh_skipped"] = {"sides": len(_fresh_skipped), "sample": _fresh_skipped[:30]}
     log["refresh_skip_same_npz"] = {"sides": len(_same_npz_skips), "sample": _same_npz_skips[:30]}
     log["recent_unmoved_skip"] = {"sides": len(_recent_unmoved_skips), "sample": _recent_unmoved_skips[:30], "recent_sort_last": len(_recent_syms or ())}
+    _ph("cats_tiers")
     try:  # USER 2026-10-11 (every sym gets its turn): read-only audit — why each non-terminal sym did NOT launch this tick. Guarded: a logging bug must never kill the tick.
         _starve = {"running": [], "waiting_base": [], "capped": [], "venue_gated": [], "unready": [], "unowned_ready": [], "owner_ready": [], "owned_busy": []}
         for _ssym in all_syms:
@@ -4039,6 +4062,7 @@ def tick(args, cfg, now):
         log["starve_audit"] = {k: {"n": len(v), "syms": sorted(v)[:12]} for k, v in _starve.items()}
     except Exception as _e_audit:
         log["starve_audit_error"] = f"{type(_e_audit).__name__}: {_e_audit}"
+    _ph("starve_audit")
     log["pending_symbols"] = sum(1 for s in all_syms if not terminal(s))
     log["stocks_chain_left"] = sum(1 for s in stocks if not terminal(s))
     st["pend_same"], _stall_warn = _stall_tick(st.get("pend_last"), st.get("pend_same"), log["pending_symbols"])
@@ -4058,6 +4082,7 @@ def tick(args, cfg, now):
             tmp_.replace(ap_dir / "sched_snapshot.json")
         except Exception as e_:
             print(f"[sched] snapshot write failed: {e_}", flush=True)
+    _ph("state_save")
     log["npz_stale"] = {"jit_dispatched": len(log.get("npz_stale_jit", [])), "held_unready": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_)), "dispatch_refused_last150s": _dispatch_stale_recent()}
     log["ready_summary"] = {}
     for hn, rb in readiness_by_host.items():
@@ -4135,6 +4160,9 @@ def tick(args, cfg, now):
         if not log["pending_symbols"] and not args.dry_run and not sim:
             ext = {"stocks": [s for s in rank["stocks"] if s not in universe_syms["stocks"]], "crypto": [s for s in rank["crypto"] if s not in universe_syms["crypto"]]}
             (ROOT / "data" / "daily_universe" / f"extension_{now.strftime('%Y%m%d')}.json").write_text(json.dumps(ext, indent=1))
+    _ph("ready_summary_order_audit")
+    log["phase_s"] = dict(_PH["s"]); log["tick_s"] = round(time.time() - _PH["t0"], 1)
+    print(f"[sched] TICK {log['tick_s']}s phases {log['phase_s']}", flush=True)
     return log
 
 

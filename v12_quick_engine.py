@@ -5573,6 +5573,10 @@ class QuickConfig:
         # parity-sync 20261015: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
         self.NEWBORN_LOSS_KILL_ENABLED = False
         self.R3_HTF_FLIP_EXIT_ENABLED = False
+        # parity-sync 20261020: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.LEGACY_REENTRY_PSR_QUICK_RECOVERY = True
+        self.WT_15M_BOUNCE_HIGH_1H_GT_PREV = False
+        self.EXIT_R1_R2_FILTER_TF = '1h'
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
@@ -8817,7 +8821,7 @@ class QuickConfig:
     MU_CORRECTION_MIN_GAIN_PCT: float = 0.0
     MU_CORRECTION_REENTRY_DC_TOL_PCT: float = 2.0
     MU_CORRECTION_SYMBOLS: str = "MU"
-    NEWBORN_LOSS_KILL_ENABLED: bool = False
+    NEWBORN_LOSS_KILL_ENABLED: bool = True
     NEWBORN_LOSS_KILL_MIN_AGE_MIN: float = 15.0
     NEWBORN_LOSS_KILL_SURGICAL_ONLY: bool = True
     NEWBORN_LOSS_KILL_VEL_TF: str = ""

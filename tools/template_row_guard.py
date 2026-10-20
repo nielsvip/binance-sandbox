@@ -16,10 +16,11 @@ def _cell_sig(cell):
 
 def fingerprints(ws, skip_cols=frozenset(), hdr=HDR):
     c = collections.Counter()
+    ncol = ws.max_column
     for r in range(hdr + 1, ws.max_row + 1):
         if ws.cell(row=r, column=1).value in (None, ""):
             continue
-        h = hashlib.md5("\x1f".join(_cell_sig(ws.cell(row=r, column=col)) for col in range(1, ws.max_column + 1) if col not in skip_cols).encode()).hexdigest()
+        h = hashlib.md5("\x1f".join(_cell_sig(ws.cell(row=r, column=col)) for col in range(1, ncol + 1) if col not in skip_cols).encode()).hexdigest()
         c[h] += 1
     return c
 
