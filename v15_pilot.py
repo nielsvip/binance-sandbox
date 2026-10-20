@@ -282,7 +282,7 @@ def _load_gate_flags():
         f = Path(os.environ.get("V15_GATE_FLAGS") or (ROOT / "data" / "v15_gate_flags.json"))
         d = json.loads(f.read_text()).get("flags") or {} if f.exists() else {}
         for k, v in d.items():
-            if str(k).startswith("V15_") and k not in os.environ:
+            if str(k).startswith(("V15_", "V18_")) and k not in os.environ:
                 os.environ[str(k)] = str(v)
         return d
     except Exception:
@@ -290,6 +290,10 @@ def _load_gate_flags():
 
 
 GATE_FLAGS = _load_gate_flags()
+try:  # E4 2026-10-20: V18 planner helpers (identity settlement, io throttle, ledger write-back); missing module = all three OFF
+    from tools import v15_v18_planner as _V18P
+except Exception:
+    _V18P = None
 # USER 2026-09-28 "no double compute before mega sweep": only yellows on this allowlist get
 # evaluated; the rest are PENDING_WIRING grey until their family's real vector path lands
 # (see FILTER_WIRING_CENSUS_20260928.md). Missing/unreadable file -> None -> evaluate all
@@ -4741,6 +4745,46 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _delta_log_fh.write(json.dumps(rec, default=str) + "\n")
         except Exception:
             pass
+    # E4 2026-10-20 (doc 17 §4.1/§4.3/§3.4): kill switches V18_IDENTITY_SETTLE / V18_IO_THROTTLE / V18_LEDGER_WRITEBACK, default OFF
+    _v18_ids = _V18P.IdentityBook() if (_V18P is not None and _V18P.identity_settle_on()) else None
+    _v18_io = bool(_V18P is not None and _V18P.io_throttle_on())
+    _v18_wb = {"on": bool(_V18P is not None and _V18P.ledger_writeback_on()), "pending": [], "ver": None, "tag": None, "capture": None}
+    if _v18_ids is not None or _v18_io or _v18_wb["on"]:
+        print(f"[V18] {new_symside} identity_settle={_v18_ids is not None} io_throttle={_v18_io} ledger_writeback={_v18_wb['on']}", flush=True)
+    def _v18_settle_row(sname: str, rr: int, switch, cand, key: str, cum_before: float):
+        summ = _v18_ids.end_row()
+        if not summ:
+            return
+        progress["done"][key]["settled"] = dict(summ["settled"])
+        _delta_log(_V18P.row_settled_record({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "cum_before": cum_before}, summ))
+    def _v18_capture():
+        if _spec_state["ver"] != _v18_wb["ver"]:
+            _v18_wb["ver"] = _spec_state["ver"]
+            _v18_wb["pending"].append(("PROMOTED", _v18_wb["tag"] or f"ver{_spec_state['ver']}", dict(cumulative_overrides)))
+            _v18_wb["tag"] = None
+    def _v18_writeback():
+        if not _v18_wb["on"] or prepared is None:
+            return
+        try:
+            from tools.opt.v12_pilot import evaluate_prepared_sanitized as _eps_w
+            _book = progress.setdefault("v18_trade_log", {"written": []})
+            _done_keys = {(w.get("kind"), w.get("sha")) for w in (_book.get("written") or [])}
+            _pend = [(k, tg, sanitize_overrides(dict(ov), defaults)[0]) for k, tg, ov in _v18_wb["pending"]] + [("FINAL", "final", sanitize_overrides(dict(cumulative_overrides), defaults)[0])]
+            _plan, _capped = _V18P.plan_writeback(_pend, _done_keys, int(os.environ.get("V18_LEDGER_MAX_EVALS", "40")))
+            _npz_path = _run_npz_id.get("path") if isinstance(_run_npz_id, dict) else None
+            _npz_md5 = _V18P.file_md5(_npz_path) if _npz_path else None
+            _out = _V18P.trade_log_path(progress_path.parent, new_symside)
+            _t0w = _t.time()
+            for _sha, _ov, _kinds in _plan:
+                _res = _eps_w(prepared, _ov, args.window_days, include_ledger=True)
+                for _kind, _tag in _kinds:
+                    _V18P.append_jsonl(_out, _V18P.trade_log_record(_kind, _tag, new_symside, map_key_for_symside(new_symside), _ov, _res, args.window_days, _npz_md5, _run_npz_short, utcnow()))
+                    _book["written"].append({"kind": _kind, "tag": _tag, "sha": _sha, "gain_pct": (_res or {}).get("gain_pct"), "trades": (_res or {}).get("trades")})
+            _v18_wb["pending"] = []
+            _book["path"], _book["capped"], _book["secs"] = str(_out), int(_book.get("capped", 0)) + int(_capped), round(float(_book.get("secs", 0.0)) + _t.time() - _t0w, 3)
+            print(f"[V18-LEDGER] {new_symside} {len(_plan)} ledger evals ({sum(len(k) for _, _, k in _plan)} records, capped {_capped}) -> {_out} in {_t.time() - _t0w:.2f}s", flush=True)
+        except Exception as _we:
+            print(f"[V18-LEDGER-WARN] {new_symside} write-back failed: {_we} — board unaffected", flush=True)
     initial_baseline = float(progress.setdefault("initial_baseline_gain", float(baseline_gain)))
     # HUSTLE_DELTA (F) = the row measured on its own against the ORIGINAL set (independent eval), never the chain position
     initial_overrides = dict(progress.setdefault("initial_overrides", dict(cumulative_overrides)))
@@ -4786,9 +4830,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[ZERO-FORMULA] book flushed rows={len(_zb_rows)} cellrows={len(_zb_crows)} cells={sum(len(v) for v in _zb_crows.values())}", flush=True)
         except Exception as _zfe:
             print(f"[ZERO-FORMULA-WARN] flush failed {_zfe}", flush=True)
-    def _maybe_save():
+    def _maybe_save(at_tab_boundary: bool = False):
         # a full openpyxl save of the ~2.5MB workbook costs ~10s — per-row saves made rows 12s instead of ~1s.
         # progress JSON (source of truth, written every row) + refill_from_json cover a crash between saves.
+        if _v18_io and not _V18P.xlsx_save_allowed(_v18_io, at_tab_boundary):
+            return
         if _t.time() - _last_save["t"] >= XLSX_SAVE_EVERY_S:
             try:
                 _zero_flush_book()
@@ -4812,6 +4858,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             except Exception as _se: print(f"[SLICE-save-warn] {_se}", flush=True)
             print(f"[SLICE] {new_symside} fill hit {_slice_s:.0f}s cap — clean exit, scheduler relaunches into holes-only resume", flush=True)
             sys.exit(11)
+        if _v18_wb["capture"] is not None:
+            _v18_wb["capture"]()
         if _flush_due(_last_json["t"], _flush_interval_s("V15_PROGRESS_JSON_EVERY_S", PROGRESS_JSON_EVERY_S), _t.time(), force):
             _atomic_write_json(progress_path, progress)
             _last_json["t"] = _t.time()
@@ -5379,7 +5427,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 if delta.get("autopsy"): progress["diagnose_autopsy"] = delta["autopsy"]
                 if delta.get("gs"): progress["diagnose_gs"] = delta["gs"]
                 progress["diagnose_npz"] = _run_npz_short
-                if _t.time() - _last_diag_ckpt["t"] >= 10.0:
+                if _t.time() - _last_diag_ckpt["t"] >= (_flush_interval_s("V15_PROGRESS_JSON_EVERY_S", PROGRESS_JSON_EVERY_S) if _v18_io else 10.0):
                     _last_diag_ckpt["t"] = _t.time()
                     _atomic_write_json(progress_path, progress)
             except V15Shutdown: raise
@@ -6323,6 +6371,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _v17_evals[0] += 1  # V17 per-phase eval count (serial path; pool evals are counted at submit)
         if ck in _EVAL_CACHE:
             res, cached = _EVAL_CACHE[ck], True
+            if _v18_ids is not None and _v18_ids.settle(hash(ck), cum_before, label) is not None:
+                return res, err
         elif _pool is not None:
             _cp = _get_critical_pool(ck, _prio_pool, _EVAL_CACHE, inflight, _pend_batch)
             if _cp is not None:
@@ -6384,6 +6434,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
         _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
+        if _v18_ids is not None and res is not None and not err:
+            _v18_ids.note(hash(ck), cum_before, f"{sname}!{rr}:{label}")
         return res, err
     _delta_vs = delta_vs_result  # module-level pure twin (test_v15_row_guards covers the verdict/settle composition)
     def _num_cell(ws, rr: int, col: int, value, good: bool, bold: bool = True):
@@ -6432,6 +6484,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _spec_state["ver"] += 1
             else:
                 print(f"[E3-DEFAULT-BASE] {_s0}!{_r0} {_sw0}: default-base eval failed ({_err0}) — keeping override base", flush=True)
+    if _v18_wb["on"]:
+        _v18_wb["pending"].append(("START", "best_start", dict((progress.get("best_seen") or {}).get("start_overrides") or cumulative_overrides)))
+        _v18_wb["ver"] = _spec_state["ver"]
+        _v18_wb["capture"] = _v18_capture
     _red_retry: list = []
     last_E = {"v": None}
     def _chain_E(sname: str, rr: int, value: float):
@@ -8212,10 +8268,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v17_t["p2"] = _v17_phase_start("P2_WORST_FIRST")
         _v17_t["p2"]["rows_pending"] = len(pending_queue)
     _sacred_prev_tab = [None]
+    _v18_tab = [None]
+    def _v18_chain_hash():
+        return hash(_ck(sanitize_overrides(dict(cumulative_overrides), defaults)[0]))
     for qi, (sname, rr, switch, cand) in enumerate(pending_queue):
         loop_guard += 1
         if loop_guard % 200 == 0:
             print(f"[spec-loop] {loop_guard}/{len(pending_queue)} elapsed={_t.time()-_start_t:.0f}s cum={cumulative_gain:.4f}", flush=True)
+        if _v18_io and _v18_tab[0] is not None and sname != _v18_tab[0]:
+            _maybe_save(at_tab_boundary=True)
+        _v18_tab[0] = sname
         _row_t0 = _t.time()
         ws = wb[sname]
         cols = _resolve_cols(ws)
@@ -8258,6 +8320,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _pw_cell = ws.cell(row=rr, column=_pw_col)
             if not isinstance(_pw_cell.value, (int, float)):
                 _pw_cell.font = Font(name="Arial", size=10, italic=True, color="808080")
+        if _v18_ids is not None:
+            _v18_ids.begin_row(key, _v18_chain_hash)
         _prefetch(qi)
         is_running = plan["is_running"]
         switch_variant = plan["switch_variant"]
@@ -8673,6 +8737,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             cumulative_gain = cumulative_before + float(row_delta)
             e_next = cumulative_gain
             _spec_state["ver"] += 1
+            _v18_wb["tag"] = key
             progress["cumulative_overrides"] = dict(cumulative_overrides)
             try:
                 _pt = float((_src_ or {}).get("tim_pct"))
@@ -8696,12 +8761,18 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["done"][key]["sampled_skip_p"] = dict(st["sampled_skip_p"])
         if st.get("sampled_filters") or st.get("excluded_tab_level"):
             print(f"[POLICY-CELLS-PENDING] {sname}!{rr} {switch}={cand} sampled={len(st.get('sampled_filters') or [])} tablevel={len(st.get('excluded_tab_level') or [])} — yellows uncalculated, row stays pending (RULE#3 refuses publish until refilled)", flush=True)
+        if _v18_ids is not None:
+            _v18_settle_row(sname, rr, switch, cand, key, cumulative_before)
         _maybe_write_json(force=promote)
         _row_done(sname, rr, switch, cand, n_items + (1 if pos_hdrs else 0), row_delta, promote)
         _touch(f"cell {sname}!{rr} delta={row_delta}")
         print(f"[spec-row] {sname}!{rr} {switch}={cand}{' (running)' if is_running else ''} yellows={len(st['hdrs'])}{' inert=' + str(len(st['inert_filters'])) if st.get('inert_filters') else ''}{' SAMPLED' if st.get('inert_sampled') else ''}{' prior=' + str(st.get('prior_mode')) + ':' + str(len(st.get('prior_skipped') or [])) if st.get('prior_mode') in ('naked_only', 'trimmed') else ''}{' PRIOR-REVIVED' if st.get('prior_revived') else ''} pos={len(pos_hdrs)} G={row_delta} vs {cumulative_before:.4f} -> {'POS ' + choice[3] + ' E_next=' + format(cumulative_gain, '.4f') if promote else 'no-promote'}", flush=True)
         _maybe_save()
         processed += 1
+    if _v18_ids is not None:
+        _v18_ids.row = None
+        progress["v18_identity"] = dict(_v18_ids.totals)
+        print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
     if _v17_on and pending_queue:
         try:  # carry book: this board's evaluated naked deltas + carried rows -> ~/v15_carry/<sym_side>.json
             for _dk, _dv in (progress.get("done") or {}).items():
@@ -9716,6 +9787,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     progress["verdict_npz_mtime_ns"] = _npz_mtime_ns(new_symside)
                     _maybe_write_json(force=True)
                     print(f"[BEST-EFFORT] {new_symside} 365D valid-but-missing ({'; '.join(_q365_reasons)}) — keeping published {progress.get('final_path')} flagged, no quarantine (USER 2026-10-03)", flush=True)
+                    _v18_writeback()
                     _parity_register_at_done("best-effort")
                     try:
                         wb.close()
@@ -9790,6 +9862,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[V17-SUMMARY] {new_symside} tier={_tier_name} bh={float(bh):.2f} base={float(baseline_gain):.2f} final={float(cumulative_gain):.2f} x_bh={'n/a' if _xbh is None else round(_xbh, 2)} lift_by_phase={ {k: v for k, v in _agg.items() if abs(v) > 1e-6} }", flush=True)
     except Exception:
         pass
+    _v18_writeback()
     _parity_register_at_done("done")
     return cumulative_gain, cumulative_overrides, progress
 
@@ -12822,6 +12895,8 @@ def _main_single():
         rows_filled = len(progress.get("done", {}))
         # Also count actual F column fills in workbook (3971 target) — spec_fill may exit via exception before saving, so check file
         try:
+            if _V18P is not None and _V18P.io_throttle_on():
+                raise RuntimeError("V18_IO_THROTTLE: no full workbook re-load for a log line")
             _wb_check = openpyxl.load_workbook(str(wb_path), data_only=False)
             _f_filled = sum(1 for _ws in _wb_check.worksheets if _ws.title in SWITCH_SHEETS for _r in range(3, _ws.max_row+1) if _ws.cell(_r, 6).value is not None and not isinstance(_ws.cell(_r, 6).value, str))
             _wb_check.close()

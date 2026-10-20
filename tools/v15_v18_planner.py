@@ -63,11 +63,18 @@ class IdentityBook:
         self.row = None
         self.totals = {"rows_settled": 0, "cells_settled": 0, "INERT_IDENTITY": 0, "INERT_IDENTITY_SHARED": 0}
 
+    @staticmethod
+    def _key(key_hash, cum_before):
+        try:
+            return (key_hash, float(cum_before))
+        except Exception:
+            return (key_hash, repr(cum_before))
+
     def note(self, key_hash: int, cum_before: float, tag: str) -> None:
-        self.first.setdefault((key_hash, float(cum_before)), tag)
+        self.first.setdefault(self._key(key_hash, cum_before), tag)
 
     def lookup(self, key_hash: int, cum_before: float):
-        return self.first.get((key_hash, float(cum_before)))
+        return self.first.get(self._key(key_hash, cum_before))
 
     def begin_row(self, row_key: str, chain_hash_fn) -> None:
         self.row = {"key": row_key, "chain_fn": chain_hash_fn, "chain": None, "cells": {}, "INERT_IDENTITY": 0, "INERT_IDENTITY_SHARED": 0}
