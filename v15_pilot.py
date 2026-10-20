@@ -8383,7 +8383,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             r_ = it.get("res") or {}
             out.append({"label": it.get("label"), "delta": None if it.get("d") is None else round(float(it["d"]), 4), "tim": r_.get("tim_pct"), "dd": r_.get("max_dd_pct"), "trades": r_.get("trades"), "wr": r_.get("wr_pct"), "valid": r_.get("valid"), "err": it.get("err") or "", "gate": "" if it.get("d") is None else (_V18P.extra_gate_reason(r_, None, QUAL_DD_MAX) or ""), "adopted": it.get("label") in ad, "score": it.get("score"), "family": it.get("family")})
         return out
+    _v18_tpl_keys = {str(_w).strip() for (_s, _r, _w, _c) in queue} | {str(_h).split("=", 1)[0].strip() for _hm in header_maps.values() for _h in _hm}
     def _v18_cand(label: str, parts: list, refused: dict, **extra):
+        _nt = [str(k).strip() for k, _ in parts if str(k).strip() not in _v18_tpl_keys]
+        if _nt:
+            refused[label] = f"NOT_A_TEMPLATE_KEY:{','.join(_nt)}"  # learning agent 2026-10-20: a digest key must be a row/header of THIS board's template
+            return None
         dov, why = v18_parts_to_overrides(parts, defaults)
         if dov is None:
             refused[label] = why

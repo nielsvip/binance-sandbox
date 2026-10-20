@@ -296,7 +296,7 @@ class Spill:
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.fh = open(str(self.path) + ".part", "w")
+        self.fh = gzip.open(str(self.path) + ".part", "wt", compresslevel=3) if str(self.path).endswith(".gz") else open(str(self.path) + ".part", "w")
         self.n = collections.Counter()
 
     def __call__(self, ev):
@@ -404,9 +404,14 @@ class Assembler:
         self.c["fresh_cells"] += len(ys)
         if nrec is not None and nrec[-1]:
             self.c["fresh_naked"] += 1
+        rk = h64(f"R|{self.sym}|{b['key'][0]}|{b['key'][1]}|{sw}|{cand}|{b['t0']}|{cbk}")
+        if not ys and not syn and not promoted and (nrec is None or not nrec[-1]):
+            self.c["identity_only_rows"] += 1
+            self.emit({"e": "id", "t": b["t0"], "s": self.sym, "k": f"{sw}={cand}", "ni": b["ni"], "rk": rk})
+            return
         self.emit({"e": "row", "t": b["t0"], "s": self.sym, "b": self.board, "sh": b["key"][0], "k": f"{sw}={cand}", "cb": _r(b["cb"]), "n": nrec,
                    "y": ys, "ni": b["ni"], "sy": syn, "p": promoted, "ps": how, "g": regime_of(self.ctx.get("bh")), "ti": self.ctx.get("tier"),
-                   "bh": _r(self.ctx.get("bh"), 3), "rk": h64(f"R|{self.sym}|{b['key'][0]}|{b['key'][1]}|{sw}|{cand}|{b['t0']}|{cbk}")})
+                   "bh": _r(self.ctx.get("bh"), 3), "rk": rk})
 
     def feed(self, r, line):
         label = r.get("label")
@@ -823,7 +828,7 @@ def extract_native(a, emit, counters):
 def cmd_extract(a):
     a.source_from = a.source_from or []
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"_{os.getpid()}_{int(time.time() * 1e6) % 1000000:06d}"
-    sp = Path(a.spill_dir) / f"spill_{a.source}_{a.host}_{stamp}.tsv"
+    sp = Path(a.spill_dir) / f"spill_{a.source}_{a.host}_{stamp}.tsv.gz"
     spill = Spill(sp)
     counters = collections.Counter()
     t0 = time.time()
@@ -1152,6 +1157,12 @@ class CatBrain:
         self.last_ts = ts
         if e == "row":
             self._row(ev, ts)
+        elif e == "id":
+            if ev.get("ni"):
+                self.g.E[self.g.idx(0, "R:" + ev["k"]), C["n_ident"]] += 1
+                self.c["identity_row_visits"] += 1
+                self.c["identity_lines"] += ev["ni"]
+            self.c["rows"] += 1
         elif e == "board":
             self._board(ev)
         elif e == "phase":
@@ -1500,13 +1511,27 @@ def load_buckets(template_cache_dir):
 def sorted_events(spill_dirs, tmp_dir, out_path):
     files = []
     for d in spill_dirs:
-        files.extend(sorted(glob.glob(os.path.join(os.path.expanduser(d), "spill_*.tsv"))))
+        dd = os.path.expanduser(d)
+        files.extend(sorted(glob.glob(os.path.join(dd, "spill_*.tsv")) + glob.glob(os.path.join(dd, "spill_*.tsv.gz"))))
     if not files:
-        raise SystemExit("no spill_*.tsv in " + ", ".join(spill_dirs))
+        raise SystemExit("no spill_*.tsv[.gz] in " + ", ".join(spill_dirs))
     Path(tmp_dir).mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, LC_ALL="C")
-    cmd = ["sort", "-s", "-t", "\t", "-k1,1", "-S", os.environ.get("V18_SORT_MEM", "1G"), "-T", str(tmp_dir), "-o", str(out_path)] + files
+    plain, made = [], []
+    for f in files:
+        if f.endswith(".gz"):
+            u = Path(tmp_dir) / (Path(f).name[:-3] + ".u")
+            with gzip.open(f, "rb") as src, open(u, "wb") as dst:
+                for chunk in iter(lambda: src.read(1 << 22), b""):
+                    dst.write(chunk)
+            plain.append(str(u))
+            made.append(u)
+        else:
+            plain.append(f)
+    cmd = ["sort", "-s", "-t", "\t", "-k1,1", "-S", os.environ.get("V18_SORT_MEM", "1G"), "-T", str(tmp_dir), "-o", str(out_path)] + plain
     subprocess.run(cmd, check=True, env=env)
+    for u in made:
+        os.remove(u)
     return files
 
 

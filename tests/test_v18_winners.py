@@ -98,3 +98,8 @@ def test_pilot_r1_wiring_pins():
     assert '(_v18.get("on") or not _v17_main_done)' in SRC
     # new xlsx tab
     assert 'ws_w = wb.create_sheet("WINNERS")' in SRC
+
+
+def test_candidates_must_be_template_keys_of_this_board():
+    assert 'refused[label] = f"NOT_A_TEMPLATE_KEY:{\',\'.join(_nt)}"' in SRC
+    assert "_v18_tpl_keys = {str(_w).strip() for (_s, _r, _w, _c) in queue}" in SRC
