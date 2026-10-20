@@ -20150,7 +20150,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _fx_px = (min(_fx_lvl, _fx_o) if is_long else max(_fx_lvl, _fx_o)) if _fx_o > 0 else _fx_lvl
                         _fx_fire = "FIXED_STOP"
                 if _fx_tight_on and not _fx_fire:
-                    pos["fixed_stop_eff"] = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, vec_decisions.fixed_stop.tighten_candidate(is_long, _fx_spec, float(pos.get("avg_price", pos.get("entry_price", px))), float(pos.get("peak_pnl_pct", 0.0) or 0.0), _fx_ref_now(i)))
+                    pos["fixed_stop_eff"] = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, vec_decisions.fixed_stop.tighten_candidate(is_long, _fx_spec, float(pos.get("avg_price", pos.get("entry_price", px))), float(pos.get("peak_pnl_pct", 0.0) or 0.0), _fx_ref_now(i), float(px)))
             if _fx_fire:
                 px = _fx_px
                 pos["fees"] += abs(pos["qty"] * px) * half_fee

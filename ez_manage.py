@@ -8504,7 +8504,7 @@ def _fixed_stop_freeze_level_spec(symbol, side, is_long: bool, ind, entry_price:
     return _lvl, _src
 
 
-def _fixed_stop_effective_level(trade_manager, position_key, symbol, side, is_long: bool, frozen: float, entry_price: float, max_gain: float, ind, lifecycle) -> float:
+def _fixed_stop_effective_level(trade_manager, position_key, symbol, side, is_long: bool, frozen: float, entry_price: float, max_gain: float, ind, lifecycle, price_now: float = 0.0) -> float:
     """E7 FIXED_STOP_TIGHTEN_MODE (software leg only): the ratcheted level for THIS check, from state through the previous check;
     then the ratchet advances with the current max_gain / reference. Mode off -> `frozen` untouched. The exchange backstop keeps
     the frozen level (ensure_fixed_stop_backstop is always given the frozen level). Never looser than `frozen`, never raises."""
@@ -8517,7 +8517,7 @@ def _fixed_stop_effective_level(trade_manager, position_key, symbol, side, is_lo
         _eff = _fixed_stop_core.tightened(is_long, frozen, float(_tm.get(_k, 0.0) or 0.0))
         _ind = ind if isinstance(ind, dict) else {}
         _ref = _fixed_stop_core.ref_value(is_long, _spec[0], _spec[1], _ind.get)[0]
-        _nxt = _fixed_stop_core.tightened(is_long, _eff, _fixed_stop_core.tighten_candidate(is_long, _spec, entry_price, max_gain, _ref))
+        _nxt = _fixed_stop_core.tightened(is_long, _eff, _fixed_stop_core.tighten_candidate(is_long, _spec, entry_price, max_gain, _ref, price_now))
         if abs(_nxt - float(_tm.get(_k, 0.0) or 0.0)) > 1e-12 and abs(_nxt - frozen) > 1e-12:
             logger.critical(f"🛡️ [FIXED_STOP_TIGHTEN] {position_key}: {_spec[3]} (trigger {_spec[4]:.2f}% peak {float(max_gain or 0):.2f}%) software stop {_eff:.6f} -> {_nxt:.6f} (frozen {float(frozen):.6f}; exchange backstop stays frozen)")
         _tm[_k] = _nxt
@@ -51740,7 +51740,7 @@ async def process_position(
             if _fx_lvl > 0 and not bool(getattr(position, "fixed_stop_armed", True)) and not _fixed_stop_core.breached(_fx_is_long, current_price, _fx_lvl):
                 position.fixed_stop_armed = True
                 logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl:.6f} — stop is live again")
-            _fx_chk = _fixed_stop_effective_level(trade_manager, position_key, symbol, position_side, _fx_is_long, _fx_lvl, _fx_ep, safe_fetch_float(getattr(position, "max_gain", 0), 0.0), _pp_shared_ind, _fx_oa_ep)  # E7 tighten mode (off -> _fx_lvl)
+            _fx_chk = _fixed_stop_effective_level(trade_manager, position_key, symbol, position_side, _fx_is_long, _fx_lvl, _fx_ep, safe_fetch_float(getattr(position, "max_gain", 0), 0.0), _pp_shared_ind, _fx_oa_ep, current_price)  # E7 tighten mode (off -> _fx_lvl)
             if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)):
                 _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)

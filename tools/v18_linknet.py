@@ -87,6 +87,39 @@ def utc_now():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def _log(*a):
+    print(*a, flush=True)
+
+
+STATUS_PATH = LEARN_DIR / "linknet_status.json"
+
+
+def write_status(cat_side, stage, path=None, **fields):
+    """data/learn/linknet_status.json: one block per cat_side, merged, atomic (progress visible before the handover)."""
+    p = Path(path or STATUS_PATH)
+    try:
+        st = json.loads(p.read_text())
+    except Exception:
+        st = {}
+    st.setdefault("definitions", {
+        "rows_consumed": "real engine evals used as training examples (naked rows R + yellow cells F + single-key phase evals PH; identity rows dropped)",
+        "nodes_embedded": "vocabulary entries with a learned embedding vector (switch/setting/filter/option IDs, their attributes, default-in-force relations, sym_sides, regimes, tiers, kinds)",
+        "links_scored_explicit": "predictions actually computed and stored: every template (switch=cand) row and every template (switch=cand, filter=opt) cell x 6 regime contexts (ALL + 5 bh regimes), 5 heads each, in linknet_scores_<CS>.npz",
+        "links_implied": "combinations that have a predicted value BY CONSTRUCTION of the factorisation (any of them can be computed on demand): settings x (filter options + none) x regimes x (sym_sides + none) x tiers(4); settings = every distinct switch=value the cat_side's corpus, template or beyond-template enumeration knows",
+        "feature_pair_links": "pairwise FM interactions between embedded nodes = V*(V-1)/2",
+        "label": "every number derived from these links is a PREDICTION, never a measurement"})
+    blk = st.setdefault(cat_side, {})
+    if "started" not in blk:
+        blk["started"] = utc_now()
+    blk.update(fields)
+    blk["stage"] = stage
+    blk["cat_side"] = cat_side
+    blk["updated"] = utc_now()
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(st, indent=1, default=str))
+    os.replace(tmp, p)
+
+
 def _tier(t):
     s = str(t or "").strip().upper()
     return {"W": "W", "WINNER": "W", "M": "M", "MEDIOCRE": "M", "L": "L", "LOSER": "L", "LOST_CAUSE": "L"}.get(s, "U")
@@ -652,7 +685,7 @@ def spearman(a, b):
 class Trainer:
     """One cat_side: tables, splits, count baseline, fit with early stopping, holdout report, final refit."""
 
-    def __init__(self, cs, ds_dir=DS_DIR, k=16, H=64, batch=4096, lr=2e-3, max_epochs=12, patience=2, seed=7, max_train=None, log=print, fctx=None):
+    def __init__(self, cs, ds_dir=DS_DIR, k=16, H=64, batch=4096, lr=2e-3, max_epochs=12, patience=2, seed=7, max_train=None, log=_log, fctx=None):
         self.cs, self.k, self.H, self.batch, self.lr, self.max_epochs, self.patience, self.seed = cs, k, H, batch, lr, max_epochs, patience, seed
         self.log = log
         self.max_train = max_train
@@ -1045,6 +1078,7 @@ def cmd_train(a):
     for cs in a.cat_side or CAT_SIDES:
         t0 = time.time()
         tr = Trainer(cs, ds_dir=a.ds_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs, max_train=a.max_train)
+        write_status(cs, "training", rows_consumed=int(len(tr.D["kind"])), nodes_embedded=len(tr.fz.names))
         print(f"[linknet] {cs}: examples {len(tr.D['kind']):,} sets {len(tr.K['sets']):,} filters {len(tr.K['filts']):,} ctxs {len(tr.K['ctxs']):,} vocab {len(tr.fz.names):,} "
               f"fwd labels {len(tr.D.get('fwd_y', [])):,} ({time.time() - t0:.1f}s)", flush=True)
         rep, best_ep = tr.holdout_report()
@@ -1065,6 +1099,13 @@ def cmd_train(a):
                     "unknown_tokens_in_corpus_keys": dict(tr.fz.unknown_tokens.most_common(40))})
         rep["inherent_vs_genuine_negatives"] = inherent_report(tr.D, tr.K)
         reports[cs] = rep
+        write_status(cs, "trained", rows_consumed=int(len(tr.D["kind"])), nodes_embedded=len(tr.fz.names), n_params=n_params,
+                     holdout_auc_seen={"R": r["R"]["held_out_boards"].get("auc_linknet"), "F": r["F"]["held_out_boards"].get("auc_linknet")},
+                     holdout_auc_unseen={"R": r["R"]["never_seen_before_cut"].get("auc_linknet"), "F": r["F"]["never_seen_before_cut"].get("auc_linknet"),
+                                         "F_cold_start_all_ids_masked": r["F"]["held_out_boards"].get("auc_linknet_cold_start")},
+                     holdout_auc_count_baseline={"R": r["R"]["held_out_boards"].get("auc_count"), "F": r["F"]["held_out_boards"].get("auc_count"),
+                                                 "F_unseen": r["F"]["never_seen_before_cut"].get("auc_count")},
+                     model_trained_at=meta["trained_at"])
         (out_dir / f"linknet_report_{cs}.json").write_text(json.dumps(rep, indent=1, default=str))
         r = rep["results"]
         print(f"[linknet] {cs} DONE {rep['secs_total']}s  R auc ln/count {r['R']['held_out_boards'].get('auc_linknet')}/{r['R']['held_out_boards'].get('auc_count')}  "
@@ -1481,6 +1522,16 @@ def cmd_score(a):
         tmp = p_out.with_suffix(".tmp")
         tmp.write_text(json.dumps(doc, default=str))
         os.replace(tmp, p_out)
+        n_set_all = len({Featurizer.split_combo(k)[0] for k in sc.K["sets"]} | set(res["row_keys"]) | {f"{b['tab']}|{b['switch']}={b['cand']}" for b in beyond})
+        n_opt_all = len(set(sc.K["filts"]) | set(res["yellows"]))
+        n_sym = len({c[2] for c in sc.K["ctxs"] if c[2]})
+        implied = n_set_all * (n_opt_all + 1) * len(REGIMES) * (n_sym + 1) * 4
+        V = len(sc.fz.names)
+        write_status(cs, "scored", nodes_embedded=V, links_scored_explicit=int((len(res["cell_row"]) + len(res["row_keys"])) * len(REGIMES)),
+                     predictions_stored=res["n_predictions"], links_implied=int(implied),
+                     links_implied_factors={"settings": n_set_all, "filter_options": n_opt_all, "regimes": len(REGIMES), "sym_sides": n_sym, "tiers": 4},
+                     feature_pair_links=int(V * (V - 1) // 2), proposals_file=str(p_out), scores_file=str(out_dir / f"linknet_scores_{cs}.npz"),
+                     model_trained_at=sc.meta["trained_at"])
         print(f"[score] {cs}: {res['n_predictions']:,} predictions (cells {len(res['cell_row']):,} x {len(REGIMES)} regimes) in {res['secs_cells']}s; "
               f"untried cells {int((nm < 3).sum()):,}; beyond-template {len(nr)} (fixed-stop {len(fixed)}); {p_out} {p_out.stat().st_size} B; {time.time() - t0:.0f}s", flush=True)
     return 0

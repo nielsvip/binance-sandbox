@@ -7937,7 +7937,7 @@ def _tr_fixed_stop_freeze(account_key, symbol, side, is_long, ind, entry_price) 
     return _lvl
 
 
-def _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, side, is_long, frozen, entry_price, max_gain, ind, lifecycle) -> float:
+def _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, side, is_long, frozen, entry_price, max_gain, ind, lifecycle, price_now=0.0) -> float:
     """E7 FIXED_STOP_TIGHTEN_MODE, software leg only (crypto twin: ez_manage._fixed_stop_effective_level). Mode off -> frozen."""
     try:
         _spec = _tr_fixed_stop_spec(account_key, symbol, side)
@@ -7948,7 +7948,7 @@ def _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, s
         _eff = _fixed_stop_core.tightened(is_long, frozen, float(_tm.get(_k, 0.0) or 0.0))
         _ind = ind if isinstance(ind, dict) else {}
         _ref = _fixed_stop_core.ref_value(is_long, _spec[0], _spec[1], _ind.get)[0]
-        _nxt = _fixed_stop_core.tightened(is_long, _eff, _fixed_stop_core.tighten_candidate(is_long, _spec, entry_price, max_gain, _ref))
+        _nxt = _fixed_stop_core.tightened(is_long, _eff, _fixed_stop_core.tighten_candidate(is_long, _spec, entry_price, max_gain, _ref, price_now))
         if abs(_nxt - float(_tm.get(_k, 0.0) or 0.0)) > 1e-12 and abs(_nxt - float(frozen)) > 1e-12:
             logger.critical(f"🛡️ [FIXED_STOP_TIGHTEN_TR] {position_key}: {_spec[3]} (trigger {_spec[4]:.2f}% peak {float(max_gain or 0):.2f}%) software stop {_eff:.4f} -> {_nxt:.4f} (frozen {float(frozen):.4f}; broker stop stays frozen)")
         _tm[_k] = _nxt
@@ -15276,7 +15276,7 @@ async def process_position(
                                 trade_manager._fixed_stop_registry_save()
                 except Exception as _fx_se:
                     logger.warning(f"[SESSION_OPEN_STOP_REFREEZE] {position_key}: {_fx_se}")
-                _fx_chk = _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, position_side, is_long, _fx_lvl, safe_float(getattr(position, "entry_price", 0)), safe_fetch_float(getattr(position, "max_gain", 0), 0.0), i, _fx_sig)  # E7 tighten mode (off -> _fx_lvl)
+                _fx_chk = _tr_fixed_stop_effective(trade_manager, position_key, account_key, symbol, position_side, is_long, _fx_lvl, safe_float(getattr(position, "entry_price", 0)), safe_fetch_float(getattr(position, "max_gain", 0), 0.0), i, _fx_sig, current_price)  # E7 tighten mode (off -> _fx_lvl)
                 if _fixed_stop_core.breached(is_long, current_price, _fx_chk):
                     _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     logger.critical(

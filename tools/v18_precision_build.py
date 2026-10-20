@@ -881,7 +881,8 @@ def build_cs(cs, a):
                 "forward": {"n": f["next_board"], "pos": f["held"], "promoted": f["n"], "survived_start": f["survived"], "held": f["held"], "beaten": f["beaten"],
                             "remeasure_n": f["remeasure_n"], "remeasure_pos": f["remeasure_pos"], "remeasure_sum": r4(f["remeasure_sum"], 3)},
                 "live": live.get(k, {"n": 0, "pos": 0, "pnl_pp": 0.0, "basis": "co-occurrence (brain live layer)"}),
-                "regime": regime_block(i), "regimes": regime_block(i),
+                "regime": regime_block(i),
+                "regimes": {g: {"wn": d["n"], "wpos": d["pos"], "p_pos_shrunk": d["p_pos"]} for g, d in regime_block(i).items()},
                 "needed": [{"filter_opt": x["f"], "n": x["n"], "pos": x["pos"], "pos_syms": None, "n_syms": x["n_syms"], "lift": x["lift"], "interval": x["lift_ci"],
                             "class": x["class"], "fdr": x["fdr"]} for x in need[:8]],
                 "suffocating": suff[:8],
@@ -1233,7 +1234,7 @@ def render_cards_md(cs, res):
         s = S[r["switch"]]
         reg = max(r["regime"].items(), key=lambda kv: (kv[1]["p_pos_ci"][0] or 0), default=None)
         regs = f"{reg[0]} {fnum(reg[1]['p_pos'], 2)} n={reg[1]['n']}" if reg else "-"
-        fe = r["needed"][:2] or r.get("filters_evidence", [])[:2]
+        fe = r["needed"][:2] or [x for x in r.get("filters_evidence", []) if (x.get("lift") or 0) > 0][:2]
         nd = "; ".join(f"{x['filter_opt']} {fnum(x['lift'], 2)} {ci(x['interval'], 2)} {str(x.get('class', ''))[:7]}{'*' if x.get('fdr') else ''}" for x in fe) or "-"
         L.append(f"| {r['switch']}={r['cand']} ({s['default']}) | {r['cand_verdict']} | {fnum(r['p_pos'], 3)} {ci(r['interval'])} | {r['pos_syms']}/{r['n_syms']} | {r['n_evals']} | "
                  f"{fnum(r['mean_delta'], 2)} {ci(r['interval_mean_delta'], 2)} | {fnum(r['e_delta_pos'], 2)} | {regs} | {nd} |")
@@ -1360,7 +1361,7 @@ def build(a):
                 "switches": S, "rows": Rw}
         ptxt2 = json.dumps(prof, separators=(",", ":"))
         trimmed = 0
-        while len(ptxt2) > 10 * 1024 * 1024 and trimmed < 3:
+        while len(ptxt2) > 10 * 1000 * 1000 and trimmed < 3:
             for r in Rw.values():
                 r["suffocating"] = r["suffocating"][: 4 >> trimmed]
                 r["needed"] = r["needed"][: 4 >> trimmed]

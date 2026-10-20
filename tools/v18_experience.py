@@ -510,6 +510,11 @@ class Store:
         self.flush()
         for c in self.cons.values():
             if c is not None:
+                if self.apply:
+                    try:
+                        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                    except sqlite3.OperationalError:
+                        pass
                 c.close()
         if self._idx is not None:
             self._idx.close()

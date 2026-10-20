@@ -330,11 +330,12 @@ def freeze_level_spec(is_long: bool, spec, get, entry_price: float) -> tuple:
     return lvl, f"REF:{key}"
 
 
-def tighten_candidate(is_long: bool, spec, entry_price: float, peak_gain_pct: float, ref_now: float) -> float:
+def tighten_candidate(is_long: bool, spec, entry_price: float, peak_gain_pct: float, ref_now: float, price_now: float = 0.0) -> float:
     """The level the tighten mode asks for on this bar, 0.0 = nothing to do. Never decides direction — see tightened().
     breakeven_after_pct: once the peak favourable move (unleveraged %, vec peak_pnl_pct / live max_gain) reached the
     trigger, the stop moves to the entry price. trail_ref: once the trigger is reached, the stop follows the configured
-    reference recomputed on the current bar (∓buffer)."""
+    reference recomputed on the current bar (∓buffer). A stop is a cross, not a state (armed_at_freeze): with price_now
+    given, a candidate already on the wrong side of price is not adopted on this bar (it would be an instant retro exit)."""
     spec = normalize_spec(*spec) if spec is not None else DEFAULT_SPEC
     mode, trig = spec[3], spec[4]
     if mode == "off":
@@ -346,10 +347,15 @@ def tighten_candidate(is_long: bool, spec, entry_price: float, peak_gain_pct: fl
     if not math.isfinite(pk) or pk < trig:
         return 0.0
     if mode == "breakeven_after_pct":
-        return _pos(entry_price)
-    if mode == "trail_ref":
-        return level_from_ref(is_long, ref_now, spec[2])
-    return 0.0
+        cand = _pos(entry_price)
+    elif mode == "trail_ref":
+        cand = level_from_ref(is_long, ref_now, spec[2])
+    else:
+        return 0.0
+    px = _pos(price_now)
+    if cand > 0 and px > 0 and breached(is_long, px, cand):
+        return 0.0
+    return cand
 
 
 def tightened(is_long: bool, current_level: float, candidate: float) -> float:

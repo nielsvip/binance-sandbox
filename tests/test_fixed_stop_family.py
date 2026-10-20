@@ -137,13 +137,17 @@ def test_vec_level_equals_core_level_for_each_reference():
     close = np.linspace(101.0, 90.0, n)
     ex = {"dc_low_15m": np.full(n, 95.0), "dc_high_15m": np.full(n, 150.0), "dc_basis_15m": np.full(n, 99.0),
           "bb_lower_15m": np.full(n, 97.0), "bb_upper_15m": np.full(n, 140.0), "bb_middle_15m": np.full(n, 98.0)}
-    ex["dc_low_15m"][0] = 100.0
     npz = _mk(n, close, ex)
     seen = {}
     for field in ("dc_low", "dc_basis", "bb_low", "bb_basis"):
         cfg = _cfg(FIXED_STOP_REF_FIELD=field)
         want = fx.freeze_level_spec(True, fx.spec_from(lambda k, d: getattr(cfg, k, d)), lambda k: float(npz[k][0]) if k in npz else None, float(close[0]))[0]
-        t = _first_stop(vq.simulate_one(npz, "FX_FAM", True, cfg, force_initial_seed=True))
+        r = vq.simulate_one(npz, "FX_FAM", True, cfg, force_initial_seed=True)
+        t = _first_stop(r)
+        if field == "dc_low":  # today's 94.76 level: another exit (REDUCE_TO_FLAT) closes the trade before the stop is reached
+            seen[field] = next(x for x in r["ledger"] if x.get("exit_reason"))["bar_exit"]
+            assert seen[field] < int(np.where(close <= want)[0][0]) or (t is not None and t["bar_exit"] == int(np.where(close <= want)[0][0]))
+            continue
         assert t is not None, field
         assert t["bar_exit"] == int(np.where(close <= want)[0][0]), (field, t["bar_exit"], want)
         seen[field] = t["bar_exit"]
@@ -163,16 +167,20 @@ def test_vec_short_mirror():
     assert t1["bar_exit"] == int(np.where(close >= 101.0 * 1.0025)[0][0])
 
 
-def test_vec_breakeven_ratchet():
+def test_vec_breakeven_and_trail_ratchet():
     import v12_quick_engine as vq
     n = 150
-    close = np.r_[np.linspace(100.0, 103.0, 40), np.linspace(103.0, 95.0, 110)]
-    ex = {"dc_low_15m": np.full(n, 96.0), "dc_high_15m": np.full(n, 150.0)}
+    close = np.r_[np.linspace(100.0, 101.2, 20), np.linspace(101.2, 95.0, 130)]
+    ex = {"dc_low_15m": np.full(n, 96.0), "dc_high_15m": np.full(n, 150.0), "dc_basis_15m": np.r_[np.full(20, 99.0), np.full(130, 100.5)]}
     npz = _mk(n, close, ex)
-    t0 = _first_stop(vq.simulate_one(npz, "FX_BE", True, _cfg(), force_initial_seed=True))
-    t1 = _first_stop(vq.simulate_one(npz, "FX_BE", True, _cfg(FIXED_STOP_TIGHTEN_MODE="breakeven_after_pct", FIXED_STOP_TIGHTEN_TRIGGER_PCT=2.0), force_initial_seed=True))
-    assert t1 is not None and t0 is not None and t1["bar_exit"] < t0["bar_exit"]
-    assert t1["exit_price"] >= t1["entry_price"] - 1e-6 or t1["exit_price"] >= close[t1["bar_exit"]] - 1e-6
+    r0 = vq.simulate_one(npz, "FX_BE", True, _cfg(), force_initial_seed=True)
+    t0 = next(t for t in r0["ledger"] if t.get("exit_reason"))
+    t1 = _first_stop(vq.simulate_one(npz, "FX_BE", True, _cfg(FIXED_STOP_TIGHTEN_MODE="breakeven_after_pct", FIXED_STOP_TIGHTEN_TRIGGER_PCT=0.5), force_initial_seed=True))
+    assert t1 is not None and t1["bar_exit"] < t0["bar_exit"]
+    assert t1["bar_exit"] == int(np.where(close <= 100.0)[0][1])  # first close back at/below the 100.0 entry after the peak
+    t2 = _first_stop(vq.simulate_one(npz, "FX_TR", True, _cfg(FIXED_STOP_TIGHTEN_MODE="trail_ref", FIXED_STOP_TIGHTEN_TRIGGER_PCT=0.5, FIXED_STOP_REF_FIELD="dc_basis"), force_initial_seed=True))
+    assert t2 is not None and t2["bar_exit"] < t1["bar_exit"]  # trails dc_basis_15m 100.5 * 0.9975 = 100.249 once in profit
+    assert t2["exit_price"] <= 100.5 * 0.9975 + 1e-9
 
 
 def _live_cfg_proxy(values):
