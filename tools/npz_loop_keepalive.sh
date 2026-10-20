@@ -14,6 +14,12 @@ MAX_LOG_AGE=${NPZ_LOOP_MAX_LOG_AGE:-900}   # a healthy cycle logs a line per ins
 export NPZ_LOOP_SETTLE_S=${NPZ_LOOP_SETTLE_S:-300}
 export NPZ_LOOP_MAX_WORKERS=${NPZ_LOOP_MAX_WORKERS:-8}
 WORKERS=${NPZ_LOOP_WORKERS:-6}
+# 2026-10-20 MODE OVERRIDE (USER "every 15min ALL npz get a bar appended - NO EXCEPTIONS"). Default stays "both",
+# so S1 behaviour is byte-identical. S2 needs "stocks": measured 2026-10-20, stocks are refreshed on NEITHER host —
+# S1 refuses them by design (25,064 EXCHANGE_BAR_NOT_READY in one log) and S2 ran no loop and had no npz cron at
+# all, so 314 of its 704 NPZs were over a day stale (CTRA 17,122 bars = 178 days). S2 is also the only host that
+# may build stock NPZs. Crypto stays on S1 so S2 never adds a second Binance REST IP to the 418/429 problem.
+MODE=${NPZ_LOOP_MODE:-both}
 
 klog() { echo "$(date -u +%FT%TZ) $*"; }
 
@@ -50,4 +56,4 @@ PY_CONDA=/home/niels/.conda/envs/binance_env_mac/bin/python
 if [ ! -x "$PY_CONDA" ] && [ -x "$ROOT/tools/pyinterp.sh" ]; then
     PY_CONDA=$("$ROOT/tools/pyinterp.sh" 2>/dev/null || echo "$PY_CONDA")
 fi
-exec setsid nice -n 15 "$PY_CONDA" -u tools/npz_bar_refresh.py --mode both --workers "$WORKERS" --w15 2500 --loop >> "$LOG" 2>&1 < /dev/null
+exec setsid nice -n 15 "$PY_CONDA" -u tools/npz_bar_refresh.py --mode "$MODE" --workers "$WORKERS" --w15 2500 --loop >> "$LOG" 2>&1 < /dev/null

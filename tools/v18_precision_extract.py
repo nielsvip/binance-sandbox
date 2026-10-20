@@ -294,41 +294,56 @@ def run_store(a):
                    "rk": B.h64("NATB|" + board), "src": a.host})
             cnt[f"{cs}:contexts"] += 1
             children = collections.defaultdict(list)
+            parents = collections.defaultdict(list)
             for fs in g:
                 for it in fs:
-                    children[fs - {it}].append((it, fs))
-            for parent, lst in children.items():
-                P = g.get(parent)
-                if P is None:
+                    par = fs - {it}
+                    if par in g:
+                        children[par].append((it, fs))
+                        parents[fs].append((it, par))
+
+            def keyof(it):
+                sw_, val_ = it
+                return sw_, f"{sw_}={template_cand(sw_, val_, tidx) or val_}"
+
+            # each one-key pair is used ONCE: as a cell of row S (P = Q + {S}, the added key a yellow of S) or else as a naked
+            cells_of = collections.defaultdict(list)
+            nakeds = []
+            for P_fs, lst in children.items():
+                for it, X_fs in lst:
+                    fo = keyof(it)[1]
+                    host = None
+                    for pit, Q_fs in parents.get(P_fs, []):
+                        if fo in ytab.get(keyof(pit)[1], ()):
+                            host = (Q_fs, P_fs, pit)
+                            break
+                    if host is not None:
+                        cells_of[host].append((fo, X_fs))
+                    else:
+                        nakeds.append((P_fs, X_fs, it))
+            for P_fs, X_fs, it in nakeds:
+                P, X = g[P_fs], g[X_fs]
+                sw, k = keyof(it)
+                if not P[2]:
+                    cnt[f"{cs}:parent_invalid"] += 1
                     continue
-                for (sw, val), X_fs in lst:
-                    X = g[X_fs]
-                    if not P[2]:
-                        cnt[f"{cs}:parent_invalid"] += 1
-                        continue
-                    cand = template_cand(sw, val, tidx) or val
-                    k = f"{sw}={cand}"
-                    dv = base.get(sw)
-                    cv = template_cand(sw, _vstr(dv), tidx) or (None if dv is None else _vstr(dv))
-                    d = X[1] - P[1]
-                    m = [None if (X[3 + i] is None or P[3 + i] is None) else B._r(float(X[3 + i]) - float(P[3 + i])) for i in range(5)]
-                    m = [m[1], m[0], m[2], m[3], m[4]]  # tim, trades, dd, sharpe, wr
-                    ys = []
-                    yl = ytab.get(k, set())
-                    for (fk, fv), D_fs in children.get(X_fs, []):
-                        D = g[D_fs]
-                        fo = f"{fk}={template_cand(fk, fv, tidx) or fv}"
-                        if fo not in yl:
-                            cnt[f"{cs}:child_not_a_yellow_of_row"] += 1
-                            continue
-                        mm = [None if (D[3 + i] is None or X[3 + i] is None) else B._r(float(D[3 + i]) - float(X[3 + i])) for i in range(5)]
-                        mm = [mm[1], mm[0], mm[2], mm[3], mm[4]]
-                        ys.append([fo, B._r(D[1] - X[1]), D[2], 0.0] + mm + [1.0, B._r(D[1] - P[1])])
-                    cnt[f"{cs}:naked"] += 1
-                    cnt[f"{cs}:cells"] += len(ys)
-                    spill({"e": "row", "t": B.iso_of(X[8]), "s": ss, "b": board, "sh": key_tab.get(k, "NATIVE"), "k": k, "cb": B._r(P[1]),
-                           "n": [B._r(d), X[2], 0.0] + m + [1.0, 1], "y": ys, "ni": 0, "sy": [], "p": False, "ps": None, "g": B.regime_of(bh),
-                           "ti": None, "bh": B._r(bh, 3), "rk": B.h64(f"NATR|{X[0]}|{P[0]}|{sw}"), "cv": cv, "ck": "NAT", "seq": 0, "src": a.host})
+                dv = base.get(sw)
+                cv = template_cand(sw, _vstr(dv), tidx) or (None if dv is None else _vstr(dv))
+                m = [None if (X[3 + i] is None or P[3 + i] is None) else B._r(float(X[3 + i]) - float(P[3 + i])) for i in range(5)]
+                m = [m[1], m[0], m[2], m[3], m[4]]  # tim, trades, dd, sharpe, wr
+                ys = []
+                for fo, D_fs in cells_of.get((P_fs, X_fs, it), []):
+                    D = g[D_fs]
+                    mm = [None if (D[3 + i] is None or X[3 + i] is None) else B._r(float(D[3 + i]) - float(X[3 + i])) for i in range(5)]
+                    mm = [mm[1], mm[0], mm[2], mm[3], mm[4]]
+                    ys.append([fo, B._r(D[1] - X[1]), D[2], 0.0] + mm + [1.0, B._r(D[1] - P[1])])
+                cnt[f"{cs}:naked"] += 1
+                cnt[f"{cs}:cells"] += len(ys)
+                spill({"e": "row", "t": B.iso_of(X[8]), "s": ss, "b": board, "sh": key_tab.get(k, "NATIVE"), "k": k, "cb": B._r(P[1]),
+                       "n": [B._r(X[1] - P[1]), X[2], 0.0] + m + [1.0, 1], "y": ys, "ni": 0, "sy": [], "p": False, "ps": None, "g": B.regime_of(bh),
+                       "ti": None, "bh": B._r(bh, 3), "rk": B.h64(f"NATR|{X[0]}|{P[0]}|{sw}"), "cv": cv, "ck": "NAT", "seq": 0, "src": a.host})
+            cnt[f"{cs}:pairs_one_key"] += sum(len(v) for v in children.values())
+            cnt[f"{cs}:pairs_used_as_cells"] += sum(len(v) for v in cells_of.values())
         print(f"[store] {os.path.basename(shard)} {dict((k, v) for k, v in cnt.items() if k.startswith(cs))} {time.time() - t0:.0f}s", flush=True)
         del groups
     spill.close()
