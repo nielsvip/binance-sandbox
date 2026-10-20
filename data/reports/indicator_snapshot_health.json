@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-20T11:10:45Z",
+ "generated_utc": "2026-10-20T11:15:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 2799.7,
+  "age_s": 3099.9,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 94843,
-  "proc_age_s": 2644.0,
-  "log_age_s": 3.3,
+  "proc_age_s": 2944.0,
+  "log_age_s": 8.4,
   "warmup_done": false,
   "timeframes_since_restart": [
    "1h",
@@ -20,17 +20,15 @@
   "restarts_last_hour": 1
  },
  "heartbeat": {
-  "written": 1,
-  "lines": [
-   "[2026-10-20 11:10:40,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=94843 warm-up in progress \u2014 alive and progressing (cpu +0.46s in 10.0s, last progress 1356s ago) (tools/ez_indicators_warmup_guard.py)"
-  ],
+  "written": 0,
+  "lines": [],
   "decisions": [
-   "log fresh (25s < 45s)",
+   "log fresh (14s < 45s)",
+   "log fresh (19s < 45s)",
+   "log fresh (24s < 45s)",
    "log fresh (30s < 45s)",
-   "log fresh (36s < 45s)",
-   "log fresh (41s < 45s)",
-   "alive and progressing (cpu +0.46s in 10.0s, last progress 1356s ago)",
-   "log fresh (3s < 45s)"
+   "log fresh (2s < 45s)",
+   "log fresh (8s < 45s)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -43,21 +41,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792451066.3983662,
   "activations": 151,
-  "hb_mtime": 1792494460.756576,
-  "mac_snapshot_age_s": 2610.3137855529785,
+  "hb_mtime": 1792494764.0353475,
+  "mac_snapshot_age_s": 2913.6488745212555,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-20T03:50:05Z",
   "lease_reason": "all scoped accounts yielded back to a live Mac",
-  "now": 1792494466.3378613,
-  "from_cache_age_s": 179.3,
-  "heartbeat_age_s": 5.6,
-  "active_s": 43399.9,
+  "now": 1792494771.3565767,
+  "from_cache_age_s": 174.5,
+  "heartbeat_age_s": 7.3,
+  "active_s": 43705.0,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 2799s old (> 600s). ez_indicators pid=94843 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 3099s old (> 600s). ez_indicators pid=94843 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
