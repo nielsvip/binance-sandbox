@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-20 17:32:36 UTC
+# Copilot Status — 2026-10-20 17:37:38 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:27:56
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:28:28
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:28:58
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:29:30
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:30:00
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:30:32
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:31:02
-- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:31:34
 - **STALE_INDICATORS** [tradier]  — 2026-10-20T17:32:04
 - **STALE_INDICATORS** [tradier]  — 2026-10-20T17:32:36
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:33:39
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:34:09
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:34:42
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:35:12
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:35:44
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:36:14
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:36:46
+- **STALE_INDICATORS** [tradier]  — 2026-10-20T17:37:16
 
 ## Missed Trades (trader comparison)
 
@@ -27,17 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 7 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 7 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **CRWD** SHORT (tradier) peak +9.5%, now +-0.3%
-- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.3%
+- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
 - HELD: **U** SHORT (tradier) peak +4.8%, now +0.7%
-- HELD: **BHVN** SHORT (tradier) peak +4.8%, now +-0.5%
+- HELD: **BHVN** SHORT (tradier) peak +4.8%, now +-0.6%
 - HELD: **PR** LONG (tradier) peak +4.7%, now +0.4%
-- HELD: **TMO** LONG (tradier) peak +3.7%, now +-0.1%
-- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.3%
+- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.3%
+- HELD: **TMO** LONG (tradier) peak +3.7%, now +-0.0%
+- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.5%
 
-- WATCHING: **A** LONG (tradier) peaked +11.8%, exited 2m ago
+- WATCHING: **A** LONG (tradier) peaked +11.8%, exited 1m ago
+- WATCHING: **CRWD** SHORT (tradier) peaked +9.5%, exited 1m ago
 
 ## Supervisor
 

@@ -29,18 +29,26 @@ def test_select_keeps_evidence_and_draws_the_rest():
 
 
 def test_only_default_relative_state_reduces_a_row():
-    pool = ["A=1", "B=1"]
+    pool = ["A=1", "B=1", "C=1"]
     # the coarse verdict alone never reduces a row (USER LAW: most switches are negative because their default already won)
     keep, rest, why = V.profile_select(pool, {"needed": ["A=1", "B=1"]}, {"verdict": "INERT", "n_syms": 50}, [], lambda h: False, 10)
-    assert keep == pool and why == "PROFILE"
-    keep, rest, why = V.profile_select(pool, {"needed": ["A=1", "B=1"]}, {"state": "SETTLED_OFF", "n_syms": 12}, [], lambda h: False, 10)
-    assert keep == [] and rest == pool and why == "PROFILE_SETTLED_OFF_NAKED_FLOOR"
-    keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"state": "SETTLED_OFF", "n_syms": 4}, [], lambda h: False, 10)
-    assert keep == ["A=1"] and why == "PROFILE"
-    keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"state": "DAMAGING", "n_syms": 4, "interval": [-3.0, -1.0]}, [], lambda h: h == "B=1", 10)
-    assert keep == ["B=1"] and why == "PROFILE_DAMAGING_NAKED_FLOOR"  # the floor draw stays
+    assert keep == ["A=1", "B=1"] and why == "PROFILE"
+    # a settled-off / damaging state drops only the UNDOCUMENTED cells; evidence-backed cells always stay (CDE_SHORT forensics)
+    keep, rest, why = V.profile_select(pool, {"needed": ["A=1"], "evidence_pos": ["B=1"]}, {"state": "SETTLED_OFF", "n_syms": 12}, [], lambda h: False, 10)
+    assert keep == ["A=1", "B=1"] and rest == ["C=1"] and why == "PROFILE_SETTLED_OFF_NAKED_FLOOR"
+    keep, _, why = V.profile_select(pool, {}, {"state": "DAMAGING", "n_syms": 30, "interval": [0.0046, 0.0974]}, [], lambda h: h == "C=1", 10, sibling_pos=["B=1"])
+    assert keep == ["B=1", "C=1"] and why == "PROFILE_DAMAGING_NAKED_FLOOR"  # sibling-positive pair kept + the floor draw stays
     keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"state": "DAMAGING", "n_syms": 40}, [], lambda h: False, 10)
     assert keep == ["A=1"] and why == "PROFILE"  # DAMAGING without an interval is not trusted
+
+
+def test_cde_short_forensics_case():
+    # EXIT_VELOCITY!18 LH_LL_TOP_EXIT_STRUCT_TF=4h,D: state DAMAGING (n_syms 30, interval) — its evidence_pos cell
+    # LH_LL_TOP_EXIT_STRUCT_MODE=LL (+1.0343 joint in the champion) must be evaluated
+    pool = ["LH_LL_TOP_EXIT_STRUCT_MODE=LL", "OTHER_F=1"]
+    entry = {"needed": ["LH_LL_TOP_EXIT_STRUCT_MODE=LH_AND_LL"], "evidence_pos": ["LH_LL_TOP_EXIT_STRUCT_MODE=LL"]}
+    keep, rest, _ = V.profile_select(pool, entry, {"state": "DAMAGING", "n_syms": 30, "interval": [0.0046, 0.0974]}, [], lambda h: False, 10)
+    assert keep == ["LH_LL_TOP_EXIT_STRUCT_MODE=LL"] and rest == ["OTHER_F=1"]
 
 
 def test_floor_never_zero_over_the_rest():
@@ -64,7 +72,7 @@ def test_load_profile_fail_open_and_cat_side(tmp_path, monkeypatch):
 
 def test_pilot_wiring_pins():
     assert "_v18_prof_on = bool(_V18P is not None and _V18P.profile_on())" in SRC
-    assert "_V18P.profile_select(pool, _ent, _prow," in SRC
+    assert "_V18P.profile_select(pool, _ent, _prow," in SRC and "_v18_prof_sib.get(_rk))" in SRC
     assert '_pe = _v18_untried_p if (_untried_sw or (_n is not None and _n < 3)) else max(_V18P.floor_p(), 0.001)' in SRC
     i_p = SRC.index("_v18_profile_cells(info, sname, switch, cand)\n")
     i_f = SRC.index("_V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p)")

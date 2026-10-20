@@ -62061,7 +62061,15 @@ def _shutdown_watchdog_force_exit(timeout_s=35.0):
     logging.getLogger(__name__).critical(
         f"[SHUTDOWN_WATCHDOG] graceful shutdown did not complete within {timeout_s:.0f}s of SIGTERM -- force exiting"
     )
-    os._exit(1)
+    # 2026-10-20 (USER authorized): exit 143, NOT 1. This path is only ever reached after an EXTERNAL SIGTERM, so
+    # the exit code must say "terminated by signal" (128+15), which is what every supervisor already treats as a
+    # clean stop. As exit 1 it was indistinguishable from a crash: run_with_watchdog.sh charged it to the crash-loop
+    # backoff (5/10/20/.../300 s), compounding someone else's kill into minutes of not trading.
+    # Measured over the 24 h to 2026-10-20 17:07Z: 51 of 91 crypto child exits came through here (graceful shutdown
+    # never completes within 35 s on any account), 10 of them landing in [RESTART_BACKOFF]. The SIGTERM itself was
+    # the fence sweep in tools/mac_failover_agent.py; nothing here crashed.
+    # The 35 s budget and the loop-freeze that exhausts it are separate, still-open issues.
+    os._exit(143)
 
 
 def signal_handler(signum, frame):

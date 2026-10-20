@@ -6157,8 +6157,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_prof_on = bool(_V18P is not None and _V18P.profile_on())
     _v18_prof, _v18_prof_rows, _v18_prof_min_n, _v18_prof_why = (_V18P.load_profile(_v18_floor_cs, ROOT) if _v18_prof_on else (None, None, None, "off"))
     _v18_prof_tot = {"rows": 0, "rows_dead": 0, "cells_pool": 0, "cells_must": 0, "cells_drawn": 0, "cells_settled": 0}
+    _v18_prof_sib: dict = {}  # row "SW=c" -> [filter cells positive on >= 1 sibling sym_side] (positives_all pairs)
     if _v18_prof_on:
-        print(f"[V18-PROFILE] {new_symside} {_v18_floor_cs}: {_v18_prof_why}", flush=True)
+        try:
+            _ps_idx, _ps_tried, _ps_why = _V18P.load_positives_all(_v18_floor_cs, new_symside, ROOT)
+            for _pk in _ps_idx:
+                if "@" in _pk:
+                    _r0, _c0 = _pk.split("@", 1)
+                    _v18_prof_sib.setdefault(_r0, []).append(_c0)
+        except Exception as _pse:
+            _ps_why = f"positives_all unreadable: {_pse}"
+        print(f"[V18-PROFILE] {new_symside} {_v18_floor_cs}: {_v18_prof_why}; sibling-positive rows {len(_v18_prof_sib)} ({_ps_why})", flush=True)
     if _v18_brain_on or _v18_floor_on or _v18_prof_on:
         try:
             from tools import v18_brain as _V18B
@@ -6208,7 +6217,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _pe = _v18_untried_p if (_untried_sw or (_n is not None and _n < 3)) else max(_V18P.floor_p(), 0.001)
             ps[h] = _pe
             return _V18P.floor_draw(_v18_floor_cs, new_symside, sname, f"{_rk}@{str(h).strip()}", _v18_round) < _pe
-        keep, rest, why = _V18P.profile_select(pool, _ent, _prow, ((_v18_prof or {}).get("proposals") or {}).get(_rk) or [], _kf, _v18_prof_min_n)
+        keep, rest, why = _V18P.profile_select(pool, _ent, _prow, ((_v18_prof or {}).get("proposals") or {}).get(_rk) or [], _kf, _v18_prof_min_n, _v18_prof_sib.get(_rk))
         for _l in _V18P.FLOOR_CELL_LISTS:
             if _l in info:
                 info[_l] = []

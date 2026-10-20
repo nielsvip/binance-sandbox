@@ -14511,8 +14511,7 @@ async def _augment_core_try(trade_manager, order_queue, position_key, position, 
         if _pl is not None:
             if str(_res or "").startswith("QUEUE_ADD_REFUSED"):
                 _pl.broken(position_key, f"AUGMENT {_reason[:80]}", "LIVE_REFUSED_VEC_AUGMENT", str(_res)[:120])
-            else:
-                _pl.delivery(position_key, f"AUGMENT {_reason[:80]}", "QUEUED", f"qty={_q}", bar_ts=_bar_ts)
+            # else: the queue worker writes DELIVERY (SUCCESS) or BROKEN (refused) once execute_trade_action returns
         return f"AUGMENT_CORE:{_src}"
     except Exception as _ac_e:
         logger.warning(f"[AUGMENT_CORE] {position_key}: skipped ({type(_ac_e).__name__}: {_ac_e})")
@@ -23584,6 +23583,17 @@ class OrderQueue:
                 except Exception:
                     pass
                 result = "TIMEOUT_STALL_SKIP"
+            try:  # 2026-10-20 USER ruling: a vector augment live did not place is a missed act -> BROKEN promise (tools/promise_audit.py)
+                _pvk = order.get("vec_provenance") or {}
+                if str(_pvk.get("kind", "")) == "AUGMENT_CORE":
+                    import promise_ledger as _pl_q
+
+                    if str(result) == "SUCCESS":
+                        _pl_q.delivery(position_key, f"AUGMENT {(reason or '')[:80]}", "SUCCESS", f"qty={quantity}", bar_ts=_pvk.get("bar_ts"))
+                    else:
+                        _pl_q.broken(position_key, f"AUGMENT {(reason or '')[:80]}", "LIVE_REFUSED_VEC_AUGMENT", str(result)[:120])
+            except Exception:
+                pass
             if "MTF_ARROW" in (reason or "") or "LR_BAND" in (reason or ""):
                 _arrow_dbg(
                     f"HANDLE_ORDER {symbol} {action} result={result} qty={quantity} price={price}"
@@ -60900,6 +60910,25 @@ async def main():
     import argparse
 
     logger.critical(f"tradier_manage boot CODE_REV={TRADIER_MANAGE_CODE_REV} pid={os.getpid()}")
+
+    def signal_handler(signum, frame):
+        """Handle shutdown signals"""
+        logger.info(f"Received signal {signum}, shutting down...")
+        threading.Thread(target=_shutdown_watchdog_force_exit, daemon=True).start()
+        raise KeyboardInterrupt
+
+    # 2026-10-20 (USER authorized): REGISTER THE HANDLER FIRST, before the broker-snapshot thread, argparse,
+    # account validation and setup_logger_per_account. It used to be registered after all of those, so a SIGTERM
+    # arriving during startup was handled by Python's default disposition: the process died at 143 having logged
+    # NOTHING about why. Measured over the 24 h to 2026-10-20 17:07Z: of 89 stock launches only 67 ever reached the
+    # `boot CODE_REV` line, and the 22-launch shortfall is exactly the 22 exit-143 runs, each lasting 2-16 s. Those
+    # were fence sweeps landing on a starting process, and they were invisible.
+    # 143 was already exempt from the crash-loop backoff, so this is about diagnosability and a clean shutdown from
+    # the earliest possible moment, not about churn. Still NOT covered: a signal during module IMPORT, before main()
+    # is entered at all — that needs a module-level registration and is deliberately left alone here.
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # 2026-10-16 USER "positions must keep TOTAL AND COMPLETE SYNCHRONICITY with what is on the exchange": broker
     # positions + the full order book are refreshed on a dedicated thread, so a parked main loop can no longer turn
     # broker truth into "unverified" (193 LOOP_LAG freezes up to 81.5 s on 2026-10-16 did exactly that).
@@ -60907,12 +60936,6 @@ async def main():
         _bsnap.start(_own_accounts)
     except Exception as _se:
         logger.critical(f"⛔ [SNAPSHOT] broker truth thread failed to start ({_se}) — stop placement will refuse rather than guess")
-
-    def signal_handler(signum, frame):
-        """Handle shutdown signals"""
-        logger.info(f"Received signal {signum}, shutting down...")
-        threading.Thread(target=_shutdown_watchdog_force_exit, daemon=True).start()
-        raise KeyboardInterrupt
 
     parser = argparse.ArgumentParser(description="Tradier Trade Manager")
     parser.add_argument(
@@ -60935,8 +60958,7 @@ async def main():
     )
     logger.info(f"📁 General Logs -> tradier_manage_general_{valid_accounts[0]}.log")
 
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # (handler already registered at the top of main() — see the note there)
 
     print(f"[STARTUP] Creating TradierTradeManager...", flush=True)
     manager = TradierTradeManager(account_list=valid_accounts)

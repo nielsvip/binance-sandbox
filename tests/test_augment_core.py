@@ -179,7 +179,7 @@ def test_no_cap_refusal_and_broken_promise_on_zero_size():
     try:
         tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1000.0})  # vector add is never refused by a cap in the core
         assert tag == "AUGMENT_CORE:LADDER" and queued[0]["qty"] == 5.0
-        assert [r[0] for r in rows] == ["PROMISE", "DELIVERY"]
+        assert [r[0] for r in rows] == ["PROMISE"]  # DELIVERY/BROKEN come from the queue worker after execute_trade_action
         rows.clear()
         orig = T.queue_trade_action
 

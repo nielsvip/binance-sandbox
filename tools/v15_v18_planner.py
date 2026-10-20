@@ -743,7 +743,7 @@ def load_profile(cat_side: str, root=None):
     return {"needed": nf, "proposals": props if isinstance(props, dict) else {}}, prof, min_n, f"ok rows={len(nf)} profile={len(prof)} proposals={len(props) if isinstance(props, dict) else 0}"
 
 
-def profile_select(pool: list, entry: dict, prof_row: dict, proposals: list, keep_fn, min_n: int):
+def profile_select(pool: list, entry: dict, prof_row: dict, proposals: list, keep_fn, min_n: int, sibling_pos=None):
     """Pure: the row's evaluated yellow set under V18_PROFILE_YELLOWS.
     pool = every discovered header of the row; entry = needed_filters[row]; prof_row = switch_profile[row].
     INERT / DAMAGING rows with n_syms >= min_n -> naked + floor draw only; else needed U suffocating U evidence_pos U proposals
@@ -756,11 +756,17 @@ def profile_select(pool: list, entry: dict, prof_row: dict, proposals: list, kee
     _n = int((prof_row or {}).get("n_syms") or 0)
     _iv = (prof_row or {}).get("interval")
     dead = (verdict == "SETTLED_OFF" and _n >= int(min_n)) or (verdict == "DAMAGING" and isinstance(_iv, (list, tuple, dict)) and bool(_iv))
+    # B forensics 2026-10-20 (CDE_SHORT, gate 134446Z): a DAMAGING row state reduced EXIT_VELOCITY!18
+    # LH_LL_TOP_EXIT_STRUCT_TF=4h,D to naked + floor and dropped LH_LL_TOP_EXIT_STRUCT_MODE=LL — listed in that row's own
+    # evidence_pos — whose joint was +1.0343 in the champion arm (first chain divergence, final -4.6 pp). The switch alone
+    # may be damaging; WITH its proven filters it is not. So evidence-backed cells (needed / suffocating / evidence_pos /
+    # proposals) and every pair positive on >= 1 sibling sym_side (positives_all) are ALWAYS evaluated; the state only
+    # removes the undocumented cells (which the floor / untried draw still samples).
     must = []
-    if not dead:
-        for k in ("needed", "suffocating", "evidence_pos"):
-            must += [str(h).strip() for h in ((entry or {}).get(k) or [])]
-        must += [str(h).strip() for h in (proposals or [])]
+    for k in ("needed", "suffocating", "evidence_pos"):
+        must += [str(h).strip() for h in ((entry or {}).get(k) or [])]
+    must += [str(h).strip() for h in (proposals or [])]
+    must += [str(h).strip() for h in (sibling_pos or [])]
     must_set = set(must)
     keep = [h for h in pool if str(h).strip() in must_set]
     rest = []
