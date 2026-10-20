@@ -1,0 +1,31 @@
+{
+ "apply": true,
+ "counters": {
+  "boards:CRYPTO_SHORT:inserted": 0,
+  "boards:CRYPTO_SHORT:offered": 0,
+  "evals:CRYPTO_SHORT:inserted": 4844811,
+  "evals:CRYPTO_SHORT:offered": 4844811,
+  "inserted": {},
+  "live_events:CRYPTO_SHORT:inserted": 0,
+  "live_events:CRYPTO_SHORT:offered": 0,
+  "log_other:CRYPTO_SHORT:inserted": 0,
+  "log_other:CRYPTO_SHORT:offered": 0,
+  "offered": {},
+  "row_done:CRYPTO_SHORT:inserted": 0,
+  "row_done:CRYPTO_SHORT:offered": 0,
+  "secs": 522.2,
+  "sets:CRYPTO_SHORT:inserted": 2272,
+  "sets:CRYPTO_SHORT:offered": 2314,
+  "settlements:CRYPTO_SHORT:inserted": 0,
+  "settlements:CRYPTO_SHORT:offered": 0,
+  "shards_merged": 1,
+  "trades:CRYPTO_SHORT:inserted": 0,
+  "trades:CRYPTO_SHORT:offered": 0
+ },
+ "finished": "2026-10-20T03:08:17Z",
+ "host": "MacBook-Pro.local",
+ "kind": "shard",
+ "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_CRYPTO_SHORT_202610.db",
+ "started": "2026-10-20T02:59:35Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

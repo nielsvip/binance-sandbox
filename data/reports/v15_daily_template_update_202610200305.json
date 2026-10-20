@@ -1,0 +1,5273 @@
+{
+ "round_id": "bf43f71e4639a581da2443b58b477ec4",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "refused": {
+  "STOCKS_SHORT": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "BAND_ARROW_ENABLED=True",
+    0.0847,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "BB_SQUEEZE_ENTRY_ENABLED=False",
+    2.2589,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "BB_SQUEEZE_WIDTH_PERCENTILE=0.2",
+    3.3504,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "EMA_9_21_FILTER_FILTER_TF=OFF",
+    1.1484,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=OFF",
+    1.1484,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.0243,
+    1,
+    17,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.0243,
+    1,
+    17,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=4h",
+    0.0243,
+    1,
+    17,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.0243,
+    1,
+    17,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.046,
+    1,
+    9,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=OFF",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=D",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=4h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=1h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=15m",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=OFF",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=D",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=4h",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=1h",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=15m",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=15m",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=D",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=15m",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.0414,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.2069,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "DC_BREAKOUT_TF=1h",
+    1.0759,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "STDEV_BREAKOUT_PCTB_SHORT=0",
+    0.1628,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WT_COMPOSITE_ENTRY_GOOD=22.5",
+    3.401,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "FAST_RISER_FILTER_TF=1h",
+    0.0969,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WRONG_SIDE_WT_TFS_REQUIRED=5",
+    0.9145,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "f",
+    "FAST_RISER_FILTER_TF=1h",
+    0.0969,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_COMPOSITE_HTF_GATE=False",
+    0.9093,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "PARABOLIC_PROTECTION_ENABLED=True",
+    0.0355,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_DEEP_K4H=25",
+    0.3155,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_BOUNCE_TIMEFRAME=1h",
+    0.7381,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_15M_BOUNCE_FILTER_HH_ENABLED=False",
+    0.0466,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "LH_HL_FILTER_DC_THRESHOLD_PCT=0.75",
+    0.0741,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "VEC_VEL_EXIT_AS_TRIGGER=False",
+    0.6301,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FAST_RISER_FILTER_TF=D",
+    0.1393,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FAST_RISER_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FAST_RISER_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FAST_RISER_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "FAST_RISER_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=OFF",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=D",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=4h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=1h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=OFF",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=D",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=4h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=1h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FAST_RISER_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FAST_RISER_FILTER_TF=D",
+    0.1393,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FAST_RISER_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FAST_RISER_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FAST_RISER_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GR_V5_STATE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "GR_V5_STATE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "BB_SQUEEZE_EXIT_ENABLED=True",
+    0.7618,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "MU_CORRECTION_REENTRY_ENABLED=False",
+    0.7816,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_B16_SMA200_PROX_PCT=2",
+    0.0346,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "GUARANTEED_REENTRY_K_FAVORABLE_LOW=15",
+    0.1608,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "OBLIGATORY_REENTRY_SCORE_TIER2=2",
+    0.2497,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "STOP_RECLAIM_WINDOW_BARS=8",
+    0.4587,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_DC_BREAK_FILTER_TF=4h",
+    0.3186,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_BOUNCE_BAR_GR_MIN_TFS=1",
+    0.8709,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FROZEN_STOP_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FROZEN_STOP_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FROZEN_STOP_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FROZEN_STOP_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "FROZEN_STOP_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GR_V5_STATE_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "GR_V5_STATE_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "REENTRY_SIZE_BREAKOUT_MULT=1",
+    0.9759,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "REENTRY_SIZE_BREAKOUT_MULT=1.5",
+    0.4077,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+    0.0692,
+    1,
+    11,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=OFF",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=D",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=4h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=1h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.0762,
+    1,
+    10,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=OFF",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=D",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=4h",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=1h",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=OFF",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=1h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=OFF",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=D",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=4h",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=1h",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=4h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "FROZEN_STOP_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=OFF",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=D",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=4h",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=1h",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=15m",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=15m",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GR_FILTER_VEC_FILTER_TF=15m",
+    0.2033,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "GR_V5_STATE_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "LIVE_ENTRY_ENGINE_FILTER_TF=4h",
+    0.0123,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=15m_only",
+    0.1904,
+    1,
+    4,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.2539,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+    0.0692,
+    1,
+    11,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "MAX_AUGMENTS_PER_POSITION=0",
+    0.1772,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "FAST_RISER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "FAST_RISER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "FAST_RISER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "FAST_RISER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "HIGH_GAIN_AUGMENTATION_MIN_SIZE=0",
+    0.0205,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FAST_RISER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FAST_RISER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FAST_RISER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FAST_RISER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FROZEN_STOP_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FROZEN_STOP_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FROZEN_STOP_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FROZEN_STOP_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "FROZEN_STOP_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GR_V5_STATE_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "GR_V5_STATE_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.8272,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=OFF",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=1h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=OFF",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=D",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=4h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=1h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=4h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=15m",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.5877,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+    0.0846,
+    1,
+    9,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "FAST_RISER_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "FAST_RISER_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "FAST_RISER_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "FAST_RISER_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "FAST_RISER_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=OFF",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=D",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=4h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=1h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FAST_RISER_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FAST_RISER_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FAST_RISER_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FAST_RISER_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FAST_RISER_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FIRST_OPEN_THROTTLE_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FROZEN_STOP_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FROZEN_STOP_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FROZEN_STOP_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FROZEN_STOP_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "FROZEN_STOP_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GR_FILTER_VEC_FILTER_TF=15m",
+    0.2033,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GR_V5_STATE_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "GR_V5_STATE_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "LIVE_ENTRY_ENGINE_FILTER_TF=4h",
+    0.0123,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=15m_only",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "NEWBORN_LOSS_KILL_FILTER_TF=4h",
+    0.0846,
+    1,
+    9,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF=OFF",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF=D",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF=4h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF=1h",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "NOLOSS_BYPASS_WT5OF5_FILTER_TF=15m",
+    0.3809,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "OPEN_INTENT_SIZE_GATES_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.7617,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+    0.0952,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    0.3189,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HLR_TOP_MIN_GAIN_PCT=5",
+    0.6378,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HLR_TOP_MIN_GAIN_PCT=8",
+    0.6378,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "f",
+    "HLR_TOP_MIN_GAIN_PCT=1.5",
+    0.6378,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "MIN_HOLD_MINUTES_TRADIER=45",
+    0.0474,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=4h",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=1h",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_R1_R2_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "EXIT_TO_REDUCE_ADAPTER_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FAST_RISER_FILTER_TF=D",
+    0.0663,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FAST_RISER_FILTER_TF=4h",
+    0.0663,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FAST_RISER_FILTER_TF=1h",
+    0.0663,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FAST_RISER_FILTER_TF=15m",
+    0.0663,
+    1,
+    3,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FH_MOMENTUM_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FROZEN_STOP_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FROZEN_STOP_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FROZEN_STOP_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "FROZEN_STOP_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=OFF",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=4h",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=1h",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_ENFORCE_FILTER_TF=15m",
+    0.2706,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GOLDEN_RULE_HTF_VOTE_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GR_FILTER_VEC_FILTER_TF=15m",
+    0.0931,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GR_V5_STATE_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GR_V5_STATE_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "GR_V5_STATE_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "HAIKU_WINNER_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MANDATORY_REENTRY_WT_FILTER_TF_MODE=5m_or_15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MTF_ARMED_ENTRIES_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=OFF",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=D",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=4h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=1h",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "PARTIAL_PROFIT_LOCK_V2_FILTER_TF=15m",
+    0.5413,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ]
+ },
+ "STOCKS_SHORT": {
+  "rows_with_stats": 1487,
+  "cleared": {},
+  "promoted_switch": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "EXIT_VELOCITY",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "REENTRY_EXIT_RECLAIM_ENABLED",
+    [
+     true
+    ],
+    false,
+    0.462
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "WT_D_BOUNCE_DD_STOP_ENABLED",
+    [
+     true
+    ],
+    false,
+    0.3061
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "FAST_RISER_FILTER_TF",
+    [
+     "OFF"
+    ],
+    "D",
+    0.7075
+   ]
+  ],
+  "promoted_filter": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "KINDERGARTEN_EMA_GATE_ENABLED",
+    [
+     "KINDERGARTEN_EMA_GATE_ENABLED=False"
+    ],
+    "KINDERGARTEN_EMA_GATE_ENABLED=True",
+    0.1222
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "GR_FILTER_ALL_ENTRIES",
+    [
+     "GR_FILTER_ALL_ENTRIES=True"
+    ],
+    "GR_FILTER_ALL_ENTRIES=False",
+    1.4468
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "KINDERGARTEN_EMA_GATE_ENABLED",
+    [
+     "KINDERGARTEN_EMA_GATE_ENABLED=False"
+    ],
+    "KINDERGARTEN_EMA_GATE_ENABLED=True",
+    0.1222
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "GR_FILTER_ALL_ENTRIES",
+    [
+     "GR_FILTER_ALL_ENTRIES=True"
+    ],
+    "GR_FILTER_ALL_ENTRIES=False",
+    1.4468
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "KINDERGARTEN_EMA_GATE_ENABLED",
+    [
+     "KINDERGARTEN_EMA_GATE_ENABLED=False"
+    ],
+    "KINDERGARTEN_EMA_GATE_ENABLED=True",
+    0.1222
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "GR_FILTER_ALL_ENTRIES",
+    [
+     "GR_FILTER_ALL_ENTRIES=True"
+    ],
+    "GR_FILTER_ALL_ENTRIES=False",
+    1.4468
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "EXIT_VELOCITY",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "EXIT_VELOCITY",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "AUGMENT_TREND",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "AUGMENT_TREND",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "EMERGENCY_BRAKE_FILTER_TF",
+    [
+     "EMERGENCY_BRAKE_FILTER_TF=OFF"
+    ],
+    "EMERGENCY_BRAKE_FILTER_TF=15m",
+    0.5515
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "WT_15M_BOUNCE_BB_MIN",
+    [
+     "WT_15M_BOUNCE_BB_MIN=0.05"
+    ],
+    "WT_15M_BOUNCE_BB_MIN=0.2",
+    0.7327
+   ]
+  ],
+  "repaired_defaults": [],
+  "violations": [
+   "ENTRY_REVERSAL_BOUNCE: first data row 3 is not a default row"
+  ],
+  "floor_guard": {
+   "ok": false,
+   "refuse_all": true,
+   "refused_keys": [],
+   "reason": "only 1 sample sym_sides prepared (need >= 3) \u2014 refusing (fail-closed)",
+   "samples": [
+    "BKR_SHORT"
+   ],
+   "candidate_fail": null,
+   "eliminated": null,
+   "single_key": null,
+   "baseline_median": {
+    "med_trades": null,
+    "med_tim": null
+   },
+   "candidate_median": {
+    "med_trades": null,
+    "med_tim": null
+   },
+   "final_median": {
+    "med_trades": null,
+    "med_tim": null
+   }
+  }
+ }
+}

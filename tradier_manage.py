@@ -34669,7 +34669,23 @@ class StockStrategy:
             _pgp_drop = float(_cfg_auto("PEAK_GIVEBACK_DROP_PCT", 2.0))
             _pgp_hard_zero = bool(_cfg_auto("PEAK_GIVEBACK_HARD_ZERO_ENABLED", True)) and _peak_giveback_scope_ok(_cfg_auto("PEAK_GIVEBACK_SCOPE", "all"), position_key, "stocks")  # 2026-10-17 vector twin scope
             _pgp_ind = indicators if indicators else i
-            if _pgp_max_g >= _pgp_min_peak and hold_time_min >= _be_grace:
+            # 2026-10-20 wire-vectoronly: vec erosion_confirm (v12:21629-21631 WIN_TRAIL_EROSION gate) — PEAK_GIVEBACK_BE_EROSION_FILTER_TF
+            # + BREAKEVEN_GAIN_EROSION_FILTER_TF 'wt_against' must confirm before an erosion close. config_tradier default OFF on both = inert.
+            _pgp_ero_veto = None
+            try:
+                _pgp_ero_side = "LONG" if is_long else "SHORT"
+                _pgp_ero_veto = _ftf_twins.erosion_confirm_block(
+                    lambda _k: (_pgp_ind or {}).get(_k),
+                    is_long,
+                    _ftf_twins.resolve_tf(_cfg_ps("PEAK_GIVEBACK_BE_EROSION_FILTER_TF", "OFF", _exit_acct_top, symbol, _pgp_ero_side)),
+                    _ftf_twins.resolve_tf(_cfg_ps("BREAKEVEN_GAIN_EROSION_FILTER_TF", "OFF", _exit_acct_top, symbol, _pgp_ero_side)),
+                    _cfg_auto("PEAK_GIVEBACK_PROTECTION_ENABLED", True),
+                )
+            except Exception as _pgp_ero_e:
+                logger.debug(f"[EROSION_CONFIRM] {symbol}: fail-open {_pgp_ero_e}")
+            if _pgp_ero_veto:
+                logger.info(f"[EROSION_CONFIRM] {symbol} {'L' if is_long else 'S'}: peak giveback held by {_pgp_ero_veto}")
+            if _pgp_max_g >= _pgp_min_peak and hold_time_min >= _be_grace and not _pgp_ero_veto:
                 # 2026-04-29 USER RULE: PEAK_GIVEBACK must NOT close manually-bought positions that
                 # peaked then pulled back to flat. Today closed user's GOOGL (peak 12.37% → cur 0.00%)
                 # and MSFT (peak 8.69% → 0.00%) for "no apparent reason". A 5pp drawdown from a 12% peak

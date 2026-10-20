@@ -51951,6 +51951,20 @@ async def process_position(
                     _mtfx_fire, _mtfx_reason, _mtfx_score = evaluate_multi_tf_exit(_pp_shared_ind or {}, _gx_is_long, safe_fetch_float(getattr(position, "gain", 0), 0.0), 0.0, safe_fetch_float(current_price, 0.0))
                     if _mtfx_fire:
                         _gx_fire, _gx_reason = True, (_mtfx_reason or f"MULTI_TF_EXIT(s={_mtfx_score:.0f})")
+            # 2026-10-20 wire-vectoronly: vec exit_confirm (v12:22145-22148 `_xc_ok`) — EXIT_TOP_FADE_FILTER_TF /
+            # CANDLE_PATTERN_STOPS_FILTER_TF must confirm an exit_sig-block close (TECHNICAL_ / WT_*_FINAL reasons);
+            # loss exits bypass. Crypto twin of tradier_manage:15581. config.py default OFF on both = inert.
+            if _gx_fire:
+                import tradier_filter_tf_twins as _xcf_mod
+                _xcf_top_tf = _xcf_mod.resolve_tf(_psym_get(symbol, position_side, "EXIT_TOP_FADE_FILTER_TF", getattr(config, "EXIT_TOP_FADE_FILTER_TF", "OFF")))
+                _xcf_cdl_tf = _xcf_mod.resolve_tf(_psym_get(symbol, position_side, "CANDLE_PATTERN_STOPS_FILTER_TF", getattr(config, "CANDLE_PATTERN_STOPS_FILTER_TF", "OFF")))
+                if _xcf_top_tf or _xcf_cdl_tf:
+                    if _pp_shared_ind is None:
+                        _pp_shared_ind = await ii(trade_manager, symbol) or {}
+                    _xcf_veto = _xcf_mod.exit_confirm_block(lambda _k: (_pp_shared_ind or {}).get(_k), _gx_is_long, _gx_reason, _xcf_top_tf, _xcf_cdl_tf, safe_fetch_float(getattr(position, "gain", 0), 0.0))
+                    if _xcf_veto:
+                        logger.info(f"[EXIT_CONFIRM_FILTER_TF] {position_key}: hold {_gx_reason} — {_xcf_veto}")
+                        _gx_fire, _gx_reason = False, ""
             if _gx_fire:
                 _gx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _gx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)

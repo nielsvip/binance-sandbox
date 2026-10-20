@@ -1,0 +1,31 @@
+{
+ "apply": true,
+ "counters": {
+  "boards:STOCKS_LONG:inserted": 0,
+  "boards:STOCKS_LONG:offered": 0,
+  "evals:STOCKS_LONG:inserted": 81085,
+  "evals:STOCKS_LONG:offered": 81085,
+  "inserted": {},
+  "live_events:STOCKS_LONG:inserted": 0,
+  "live_events:STOCKS_LONG:offered": 0,
+  "log_other:STOCKS_LONG:inserted": 0,
+  "log_other:STOCKS_LONG:offered": 0,
+  "offered": {},
+  "row_done:STOCKS_LONG:inserted": 0,
+  "row_done:STOCKS_LONG:offered": 0,
+  "secs": 0.5,
+  "sets:STOCKS_LONG:inserted": 35,
+  "sets:STOCKS_LONG:offered": 35,
+  "settlements:STOCKS_LONG:inserted": 0,
+  "settlements:STOCKS_LONG:offered": 0,
+  "shards_merged": 1,
+  "trades:STOCKS_LONG:inserted": 0,
+  "trades:STOCKS_LONG:offered": 0
+ },
+ "finished": "2026-10-20T03:08:18Z",
+ "host": "MacBook-Pro.local",
+ "kind": "shard",
+ "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_LONG_202609.db",
+ "started": "2026-10-20T03:08:18Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

@@ -416,6 +416,49 @@ def features(name, value, ctx, tab=None, is_filter=False, attrs=None, bucket=Non
     return out
 
 
+def relation_features(name, value, inforce, src, ctx, is_filter=False):
+    """USER LAW 2026-10-20: a candidate is measured against the DEFAULT IN FORCE (the chain's value of that key at eval time:
+    the sym_side's last promotion, else the template bold). -> features of the candidate RELATIVE to it: source of the default
+    (P = promoted on this sym_side, T = template bold, U = unknown), its value ID (slot 2) and the direction of the change."""
+    P = "F." if is_filter else "S."
+    inf = None if inforce in (None, "", "None") else str(inforce)
+    out = [((P + "inf:" + f"{name}={inf}") if inf is not None else "<pad>", 1.0 if inf is not None else 0.0), (P + "infsrc:" + str(src or "U"), 1.0)]
+    if inf is None:
+        return out
+    v = "" if value is None else str(value).strip()
+    kv, ki = value_kind(v), value_kind(inf)
+    if v == inf:
+        out.append((P + "rinf:same", 1.0))
+        return out
+    if kv == ki == "bool":
+        out.append((P + "rinf:" + ("flip_on" if v == "True" else "flip_off"), 1.0))
+    elif kv == ki == "num":
+        a, b = float(v), float(inf)
+        out.append((P + "rinf:" + ("above" if a > b else "below"), 1.0))
+        span = ctx.span(name, is_filter)
+        if len(span) >= 2 and span[-1] > span[0]:
+            dq = (a - b) / (span[-1] - span[0])
+            out.append((P + "rinfx", max(-1.5, min(1.5, dq))))
+        if b != 0 and (a / b) < 0:
+            out.append((P + "rinf:sign_flip", 1.0))
+    elif kv == ki == "tf":
+        ra = max([TF_RANK.get(norm_tf(x) or x, -1) for x in re.split(r"[,+]", v) if x] or [-1])
+        rb = max([TF_RANK.get(norm_tf(x) or x, -1) for x in re.split(r"[,+]", inf) if x] or [-1])
+        if inf == "OFF":
+            out.append((P + "rinf:tf_from_off", 1.0))
+        elif v == "OFF":
+            out.append((P + "rinf:tf_to_off", 1.0))
+        else:
+            out.append((P + "rinf:" + ("tf_higher" if ra > rb else ("tf_lower" if ra < rb else "tf_same_rank")), 1.0))
+    else:
+        la = sorted({LEVEL_TOK[t] for t in re.split(r"[_\s,\-]+", v.upper()) if t in LEVEL_TOK})
+        lb = sorted({LEVEL_TOK[t] for t in re.split(r"[_\s,\-]+", inf.upper()) if t in LEVEL_TOK})
+        out.append((P + "rinf:other_" + kv, 1.0))
+        if la != lb and la and lb:
+            out.append((P + f"rinflvl:{lb[0]}->{la[0]}", 1.0))
+    return out
+
+
 def load_filter_dict(template_path):
     """{filter: {type, sheets}} from the TEMPLATE's FILTERS_EXPLAINED (Type) and FILTER_DICTIONARY_V2 (Sheets applicable)."""
     out = {}

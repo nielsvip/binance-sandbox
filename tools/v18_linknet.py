@@ -97,8 +97,8 @@ def _tier(t):
 class _Cols:
     """Compact column store (array.array) of one cat_side's examples."""
 
-    F_COLS = ("kind", "set_i", "filt_i", "ctx_i", "ts", "b_t0", "board_i", "y", "d", "valid", "m_tim", "m_dd", "m_wr", "w")
-    TYPES = {"kind": "b", "set_i": "i", "filt_i": "i", "ctx_i": "i", "ts": "d", "b_t0": "d", "board_i": "i", "y": "b", "d": "f", "valid": "b",
+    F_COLS = ("kind", "set_i", "filt_i", "sc_i", "fc_i", "inf_src", "ctx_i", "ts", "b_t0", "board_i", "y", "d", "valid", "m_tim", "m_dd", "m_wr", "w")
+    TYPES = {"kind": "b", "set_i": "i", "filt_i": "i", "sc_i": "i", "fc_i": "i", "inf_src": "b", "ctx_i": "i", "ts": "d", "b_t0": "d", "board_i": "i", "y": "b", "d": "f", "valid": "b",
              "m_tim": "f", "m_dd": "f", "m_wr": "f", "w": "f"}
 
     def __init__(self):
@@ -128,10 +128,15 @@ class Interner:
 class CatDS:
     """Examples of ONE cat_side, built in time order from the brain's events."""
 
-    def __init__(self, cs):
+    INF_SRC = {"T": 0, "P": 1, "U": 2}
+
+    def __init__(self, cs, defaults=None):
         self.cs = cs
         self.ex = _Cols()
         self.sets, self.filts, self.ctxs, self.boards = Interner(), Interner(), Interner(), Interner()
+        self.scombo, self.fcombo = Interner(), Interner()
+        self.defaults = dict(defaults or {})
+        self.inforce = collections.defaultdict(dict)
         self.fwd = collections.defaultdict(list)
         self.board_of = {}
         self.cur_promos = collections.defaultdict(dict)
@@ -178,6 +183,16 @@ class CatDS:
     def board_event(self, ev):
         self._new_board(ev["s"], ev.get("b"))
 
+    def in_force(self, sym, key):
+        """DEFAULT IN FORCE of a key on this sym_side at this moment: its last promotion on the sym_side (P), else the
+        template bold (T), else unknown (U). USER LAW 2026-10-20: targets are relative to it (the delta-log delta already is:
+        it is measured against the chain), and candidate == in-force is identity (no label)."""
+        v = self.inforce[sym].get(key)
+        if v is not None:
+            return v, "P"
+        v = self.defaults.get(key)
+        return (v, "T") if v is not None else (None, "U")
+
     def row(self, ev, ts):
         sym = ev["s"]
         b = ev.get("b")
@@ -198,17 +213,23 @@ class CatDS:
         b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
         bi = self.boards(b)
         si = self.sets(f"{sheet}|{sw}={cand}")
+        inf, src = self.in_force(sym, sw)
+        sci = self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}")
         reg, tier = ev.get("g"), ev.get("ti")
         naked = ev.get("n")
-        nd = naked[0] if (naked and naked[1] and naked[0] is not None) else None
         if naked is not None and naked[-1]:
             d = naked[0] if naked[1] else None
             y = 1 if (d is not None and d > EPS) else 0
-            self.ex.add(kind=0, set_i=si, filt_i=-1, ctx_i=self._ctx("R", reg, sym, tier), ts=t, b_t0=b_t0, board_i=bi, y=y,
-                        d=self._f(d if d is not None else 0.0), valid=int(bool(naked[1])), m_tim=self._f(naked[3]), m_dd=self._f(naked[5]),
-                        m_wr=self._f(naked[7]), w=float(naked[8] or 1.0))
-            self.c["R"] += 1
-            self.c["R_pos"] += y
+            if inf is not None and str(cand) == str(inf):
+                self.c["R_identity_cand_eq_inforce"] += 1
+                self.c["R_identity_nonzero_delta"] += int(d is not None and abs(d) > 1e-6)
+            else:
+                self.ex.add(kind=0, set_i=si, filt_i=-1, sc_i=sci, fc_i=-1, inf_src=self.INF_SRC[src], ctx_i=self._ctx("R", reg, sym, tier), ts=t, b_t0=b_t0,
+                            board_i=bi, y=y, d=self._f(d if d is not None else 0.0), valid=int(bool(naked[1])), m_tim=self._f(naked[3]),
+                            m_dd=self._f(naked[5]), m_wr=self._f(naked[7]), w=float(naked[8] or 1.0))
+                self.c["R"] += 1
+                self.c["R_pos"] += y
+                self.c[f"R_inf_{src}"] += 1
         ci = None
         for c in ev.get("y") or []:
             hdr, md, valid = str(c[0]).strip(), c[1], c[2]
@@ -217,8 +238,14 @@ class CatDS:
                 continue
             if ci is None:
                 ci = self._ctx("F", reg, sym, tier)
+            fopt = hdr.partition("=")[2]
+            finf, fsrc = self.in_force(sym, fk)
+            if finf is not None and str(fopt) == str(finf):
+                self.c["F_identity_opt_eq_inforce"] += 1
+                continue
             y = 1 if (valid and md is not None and md > EPS) else 0
-            self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md if md is not None else 0.0),
+            self.c[f"F_inf_{src}"] += 1
+            self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), sc_i=sci, fc_i=self.fcombo(f"{hdr}|INF={finf}|{fsrc}"), inf_src=self.INF_SRC[src], ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md if md is not None else 0.0),
                         valid=int(bool(valid)), m_tim=self._f(c[4]), m_dd=self._f(c[6]), m_wr=self._f(c[8]), w=float(c[9] or 1.0))
             self.c["F"] += 1
             self.c["F_pos"] += y
@@ -226,7 +253,8 @@ class CatDS:
         if pend is not None and naked is not None and naked[-1] and naked[1] and naked[0] is not None:
             (pend["own"] if cand == pend["cand"] else pend["alt"]).append(naked[0])
         if ev.get("p") and not foreign:
-            self.cur_promos[sym][sw] = {"cand": cand, "set_i": si, "ctx_i": self._ctx("R", reg, sym, tier), "ts": t}
+            self.cur_promos[sym][sw] = {"cand": cand, "set_i": sci, "ctx_i": self._ctx("R", reg, sym, tier), "ts": t}
+            self.inforce[sym][sw] = cand
             self.c["promotions"] += 1
 
     def phase(self, ev, ts):
@@ -238,10 +266,15 @@ class CatDS:
         d = ev.get("d")
         v = bool(ev.get("v"))
         y = 1 if (v and d is not None and d > EPS) else 0
+        inf, src = self.in_force(ev["s"], sw)
+        if inf is not None and str(cand) == str(inf):
+            self.c["PH_identity_cand_eq_inforce"] += 1
+            return
         m = ev.get("m") or [None] * 5
         b = self.board_of.get(ev["s"]) or f"{ev['s']}|{ts}"
         b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
-        self.ex.add(kind=2, set_i=self.sets(f"{sheet}|{sw}={cand}"), filt_i=-1, ctx_i=self._ctx("PH", None, ev["s"], None, ev.get("ph")), ts=t,
+        self.ex.add(kind=2, set_i=self.sets(f"{sheet}|{sw}={cand}"), filt_i=-1, sc_i=self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}"), fc_i=-1,
+                    inf_src=self.INF_SRC[src], ctx_i=self._ctx("PH", None, ev["s"], None, ev.get("ph")), ts=t,
                     b_t0=b_t0, board_i=self.boards(b), y=y, d=self._f(d if d is not None else 0.0), valid=int(v), m_tim=self._f(m[0]),
                     m_dd=self._f(m[2]), m_wr=self._f(m[4]), w=float(ev.get("w") or 1.0))
         self.c["PH"] += 1
@@ -256,11 +289,23 @@ class CatDS:
         tmp = out_dir / f".ds_{self.cs}.tmp.npz"
         np.savez_compressed(tmp, **cols, **fw)
         os.replace(tmp, p)
-        keys = {"cat_side": self.cs, "sets": self.sets.keys, "filts": self.filts.keys, "ctxs": [list(c) for c in self.ctxs.keys], "boards": self.boards.keys,
+        keys = {"cat_side": self.cs, "sets": self.sets.keys, "filts": self.filts.keys, "set_combos": self.scombo.keys, "filt_combos": self.fcombo.keys, "ctxs": [list(c) for c in self.ctxs.keys], "boards": self.boards.keys,
                 "counters": dict(self.c), "built_at": utc_now()}
         with gzip.open(out_dir / f"ds_{self.cs}_keys.json.gz", "wt") as fh:
             json.dump(keys, fh)
         return p
+
+
+def _template_defaults(cs, a=None):
+    """Template bold defaults of the cat_side (the in-force value of a key no promotion has changed). Tests inject them."""
+    inj = getattr(a, "defaults", None) if a is not None else None
+    if inj is not None:
+        return inj.get(cs, {})
+    try:
+        from tools import v18_learn_common as C
+        return dict(C.template_index(cs).get("defaults") or {})
+    except Exception:
+        return {}
 
 
 def cmd_dataset(a):
@@ -270,7 +315,7 @@ def cmd_dataset(a):
     srt = tmp / "events_sorted.tsv"
     files = VB.sorted_events(a.spill_dir, tmp, srt)
     t_sort = time.time() - t0
-    dss = {cs: CatDS(cs) for cs in CAT_SIDES}
+    dss = {cs: CatDS(cs, defaults=_template_defaults(cs, a)) for cs in CAT_SIDES}
     seen = set()
     cnt = collections.Counter()
     n = 0
@@ -353,18 +398,37 @@ class Featurizer:
             self.names.append(f)
         return i
 
+    @staticmethod
+    def split_combo(key):
+        """'TAB|SW=cand|INF=v|P' -> (base 'TAB|SW=cand', inf, src); a bare key -> (key, None, None) (scored vs the template bold)."""
+        if "|INF=" in key:
+            base, _, rest = key.partition("|INF=")
+            inf, _, src = rest.rpartition("|")
+            return base, (None if inf == "None" else inf), src
+        return key, None, None
+
     def set_feats(self, key):
-        tab, _, kv = key.partition("|")
+        base, inf, src = self.split_combo(key)
+        tab, _, kv = base.partition("|")
         sw, _, cand = kv.partition("=")
+        if src is None:
+            inf = self.fctx.default(sw)
+            src = "T" if inf is not None else "U"
         a = FT.name_attrs(sw, self.fctx, tab=None if tab == "NA" else tab)
         self.unknown_tokens.update(a["unknown_tokens"])
-        return FT.features(sw, cand, self.fctx, tab=None if tab == "NA" else tab, attrs=a)
+        f = FT.features(sw, cand, self.fctx, tab=None if tab == "NA" else tab, attrs=a)
+        return f[:2] + FT.relation_features(sw, cand, inf, src, self.fctx) + f[2:]
 
     def filt_feats(self, hdr):
-        f, _, o = hdr.partition("=")
-        a = FT.name_attrs(f, self.fctx, is_filter=True)
+        base, inf, src = self.split_combo(hdr)
+        f_, _, o = base.partition("=")
+        if src is None:
+            inf = self.fctx.default(f_, is_filter=True)
+            src = "T" if inf is not None else "U"
+        a = FT.name_attrs(f_, self.fctx, is_filter=True)
         self.unknown_tokens.update(a["unknown_tokens"])
-        return FT.features(f, o, self.fctx, is_filter=True, attrs=a)
+        f = FT.features(f_, o, self.fctx, is_filter=True, attrs=a)
+        return f[:2] + FT.relation_features(f_, o, inf, src, self.fctx, is_filter=True) + f[2:]
 
     @staticmethod
     def ctx_feats(ctx):
@@ -389,6 +453,7 @@ class Featurizer:
 def seen_values(keys_sets):
     out = collections.defaultdict(list)
     for k in keys_sets:
+        k = Featurizer.split_combo(k)[0]
         _tab, _, kv = k.partition("|")
         sw, _, cand = kv.partition("=")
         if cand not in out[sw]:
@@ -583,8 +648,8 @@ class Trainer:
         for sw, vals in seen_values(self.K["sets"]).items():
             if sw not in self.fz.fctx.cands:
                 self.fz.fctx.add_seen_values(sw, vals)
-        self.TS = self.fz.table([self.fz.set_feats(k) for k in self.K["sets"]], LS)
-        filt_lists = [[]] + [self.fz.filt_feats(h) for h in self.K["filts"]]
+        self.TS = self.fz.table([self.fz.set_feats(k) for k in self.K["set_combos"]], LS)
+        filt_lists = [[]] + [self.fz.filt_feats(h) for h in self.K["filt_combos"]]
         self.TF = self.fz.table(filt_lists, LF)
         self.TC = self.fz.table([Featurizer.ctx_feats(tuple(c)) for c in self.K["ctxs"]], LC)
         self.reg_slot_vals = None
@@ -639,7 +704,7 @@ class Trainer:
     # -- batches
     def _gather(self, rows, fwd_rows=None, drop=True, rng=None):
         D = self.D
-        si, fi, ci = D["set_i"][rows], D["filt_i"][rows] + 1, D["ctx_i"][rows]
+        si, fi, ci = D["sc_i"][rows], D["fc_i"][rows] + 1, D["ctx_i"][rows]
         Si, Sx = self.TS[0][si], self.TS[1][si].copy()
         Fi, Fx = self.TF[0][fi], self.TF[1][fi].copy()
         Ci, Cx = self.TC[0][ci], self.TC[1][ci].copy()
@@ -656,7 +721,7 @@ class Trainer:
             M = np.concatenate([M, self.FM[fwd_rows]])
         if drop and rng is not None:
             B = len(Sx)
-            for X, slot, p in ((Sx, 0, 0.15), (Sx, 1, 0.30), (Fx, 0, 0.15), (Fx, 1, 0.30), (Cx, 0, 0.35), (Cx, 1, 0.25), (Cx, 2, 0.35)):
+            for X, slot, p in ((Sx, 0, 0.15), (Sx, 1, 0.30), (Sx, 2, 0.30), (Fx, 0, 0.15), (Fx, 1, 0.30), (Fx, 2, 0.30), (Cx, 0, 0.35), (Cx, 1, 0.25), (Cx, 2, 0.35)):
                 X[rng.random(B) < p, slot] = 0.0
         idx = np.concatenate([Si, Fi, Ci], 1)
         x = np.concatenate([Sx, Fx, Cx], 1)
@@ -667,13 +732,13 @@ class Trainer:
         out = np.zeros((len(rows), len(HEADS)), np.float32)
         for a in range(0, len(rows), chunk):
             r = rows[a:a + chunk]
-            si, fi, ci = D["set_i"][r], D["filt_i"][r] + 1, D["ctx_i"][r]
+            si, fi, ci = D["sc_i"][r], D["fc_i"][r] + 1, D["ctx_i"][r]
             S = (self.TS[0][si], self.TS[1][si].copy())
             F = (self.TF[0][fi], self.TF[1][fi].copy())
             Cc = (self.TC[0][ci], self.TC[1][ci].copy())
             if cold:
-                S[1][:, :2] = 0.0
-                F[1][:, :2] = 0.0
+                S[1][:, :3] = 0.0
+                F[1][:, :3] = 0.0
                 Cc[1][:, 0] = 0.0
             out[a:a + len(r)] = net.predict_tables(S, F, Cc)
         return out
@@ -688,7 +753,7 @@ class Trainer:
         """Vocabulary entries that occur in the fit rows (ID features never seen are masked at predict time)."""
         D = self.D
         used = np.zeros(net.V, bool)
-        for tab, col, off in ((self.TS, "set_i", 0), (self.TF, "filt_i", 1), (self.TC, "ctx_i", 0)):
+        for tab, col, off in ((self.TS, "sc_i", 0), (self.TF, "fc_i", 1), (self.TC, "ctx_i", 0)):
             u = np.unique(D[col][rows] + off)
             ii = tab[0][u]
             xx = tab[1][u]
@@ -908,6 +973,43 @@ class Trainer:
         return net, hist, round(time.time() - t0, 1)
 
 
+def inherent_report(D, K):
+    """USER LAW 2026-10-20: 'almost every switch has to be negative as we turn the positives into defaults'. Splits the
+    negative mass (valid evals with delta < 0, delta measured vs the default in force) into
+      by_inforce_source: the in-force default was promoted on this sym_side (P) / the template bold (T) / unknown (U)
+      inherent: the candidate (R) or pair (F) beats the in-force default in at least one other measured context of this
+                cat_side -> the negative here is its loss to a promoted default, not 'the switch is bad'
+      genuine:  never positive in any measured context of this cat_side (n >= 3 evals)
+      thin:     never positive, n < 3 (unknown)
+    plus the identity rows dropped (candidate == default in force)."""
+    out = {}
+    for kn, kv in (("R", 0), ("F", 1), ("PH", 2)):
+        m = D["kind"] == kv
+        if not m.any():
+            continue
+        key = D["set_i"][m].astype(np.int64) * (1000003 if kv == 1 else 1) + (D["filt_i"][m] if kv == 1 else 0)
+        u, inv = np.unique(key, return_inverse=True)
+        npos = np.bincount(inv, weights=D["y"][m].astype(np.float64))
+        nn = np.bincount(inv)
+        d = D["d"][m].astype(np.float64)
+        neg = (D["valid"][m] > 0) & (d < -EPS)
+        cls = np.where(npos[inv] > 0, "inherent", np.where(nn[inv] >= 3, "genuine", "thin"))
+        blk = {"evals": int(m.sum()), "negatives": int(neg.sum()), "neg_mass_sum_delta": round(float(d[neg].sum()), 2), "zero_delta": int(((np.abs(d) <= EPS) & (D["valid"][m] > 0)).sum()),
+               "invalid": int((D["valid"][m] == 0).sum())}
+        for c in ("inherent", "genuine", "thin"):
+            s_ = neg & (cls == c)
+            blk[c] = {"n": int(s_.sum()), "share_n": round(float(s_.sum()) / max(1, int(neg.sum())), 4), "sum_delta": round(float(d[s_].sum()), 2),
+                      "share_mass": round(float(d[s_].sum()) / min(-1e-9, float(d[neg].sum())), 4)}
+        src = D["inf_src"][m]
+        blk["by_inforce_source"] = {nm_: {"n": int((neg & (src == code)).sum()), "sum_delta": round(float(d[neg & (src == code)].sum()), 2)}
+                                    for nm_, code in (("promoted_on_sym_side", 1), ("template_bold", 0), ("unknown", 2))}
+        out[kn] = blk
+    c = K.get("counters") or {}
+    out["identity_dropped"] = {"R_cand_eq_inforce": c.get("R_identity_cand_eq_inforce", 0), "R_identity_with_nonzero_delta": c.get("R_identity_nonzero_delta", 0),
+                               "F_opt_eq_inforce": c.get("F_identity_opt_eq_inforce", 0), "PH_cand_eq_inforce": c.get("PH_identity_cand_eq_inforce", 0)}
+    return out
+
+
 def cmd_train(a):
     out_dir = Path(a.ds_dir)
     reports = {}
@@ -932,6 +1034,7 @@ def cmd_train(a):
                                "sets": len(tr.K["sets"]), "filters": len(tr.K["filts"]), "boards": len(tr.K["boards"]), "first_ts": meta["corpus_first_ts"],
                                "last_ts": meta["corpus_last_ts"]},
                     "unknown_tokens_in_corpus_keys": dict(tr.fz.unknown_tokens.most_common(40))})
+        rep["inherent_vs_genuine_negatives"] = inherent_report(tr.D, tr.K)
         reports[cs] = rep
         (out_dir / f"linknet_report_{cs}.json").write_text(json.dumps(rep, indent=1, default=str))
         r = rep["results"]
@@ -1212,23 +1315,27 @@ class Scorer:
             n, p, _s = self.pair_ev(row_keys[cell_r[i]], yel[cell_y[i]])
             if n:
                 n_meas[i], pos_meas[i] = n, p
+        fc = self.fz.fctx
+        row_ident = np.array([str(k.partition("|")[2].partition("=")[2]) == str(fc.default(k.partition("|")[2].partition("=")[0])) for k in row_keys], bool)
+        y_ident = np.array([str(y.partition("=")[2]) == str(fc.default(y.partition("=")[0], is_filter=True)) for y in yel], bool)
+        cell_ident = row_ident[cell_r] | y_ident[cell_y]
         row_n = np.array([self.set_ev(k)[0] for k in row_keys], np.int32)
         row_pos = np.array([self.set_ev(k)[1] for k in row_keys], np.int32)
         np.savez_compressed(out_npz, label=np.frombuffer(PRED_LABEL.encode(), np.uint8), regimes=np.array(REGIMES), row_keys=np.array(row_keys),
                             yellows=np.array(yel), cell_row=cell_r, cell_yellow=cell_y, **{f"cell_{h}": v for h, v in cells.items()},
                             cell_n_measured=n_meas, cell_pos_measured=pos_meas, **{f"row_{h}": v.astype(np.float16) for h, v in rows_out.items()},
-                            row_n_measured=row_n, row_pos_measured=row_pos,
+                            row_n_measured=row_n, row_pos_measured=row_pos, row_identity=row_ident, cell_identity=cell_ident,
                             meta=np.frombuffer(json.dumps({"cat_side": self.cs, "model_trained_at": self.meta["trained_at"], "scored_at": utc_now(),
                                                            "label": PRED_LABEL, "heads": ["p_pos", "e_delta(E[delta|pos], pp)", "d_tim", "d_dd", "d_wr", "fwd (rows only)"],
                                                            "regimes": REGIMES, "n_cells": int(N), "n_rows": int(nR), "predictions": int(N * G * 5 + nR * G * 6)}).encode(), np.uint8))
         return {"row_keys": row_keys, "yellows": yel, "cell_row": cell_r, "cell_yellow": cell_y, "cells": cells, "rows": rows_out, "n_meas": n_meas,
-                "pos_meas": pos_meas, "row_n": row_n, "row_pos": row_pos, "secs_cells": round(secs, 1), "n_predictions": int(N * G * 5 + nR * G * 6),
+                "pos_meas": pos_meas, "row_n": row_n, "row_pos": row_pos, "row_ident": row_ident, "cell_ident": cell_ident, "secs_cells": round(secs, 1), "n_predictions": int(N * G * 5 + nR * G * 6),
                 "s_all": s_all, "f_all": f_all, "ST": ST, "FTb": FTb}
 
     # -- nearest tested evidence by ID-free embedding (cosine)
     def token_vec(self, idx, x):
         x = x.copy()
-        x[:, :2] = 0.0
+        x[:, :3] = 0.0
         return self.net.pool(idx, x)[0]
 
     def prep_neighbours(self, min_n=3):
@@ -1285,7 +1392,7 @@ def cmd_score(a):
         cells = res["cells"]
         p = cells["p_pos"][:, G0].astype(np.float32)
         nm = res["n_meas"]
-        cand = np.nonzero(nm < 3)[0]
+        cand = np.nonzero((nm < 3) & ~res["cell_ident"])[0]
         order = cand[np.argsort(-p[cand])][: max(PROPOSALS_K * 4, 2000)]
         props = []
         for i in order:

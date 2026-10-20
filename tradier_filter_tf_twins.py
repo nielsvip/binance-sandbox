@@ -306,6 +306,30 @@ def candle_against_confirm(get_ind, is_long, tf):
     return (code in _BEAR_CODES) if is_long else (code in _BULL_CODES)
 
 
+def wt_against_confirm(get_ind, is_long, tf):
+    """vec generic_filter_tf 'wt_against' erosion_confirm: True = the erosion close may proceed. Both-zero/missing -> allow (fail-open, same as vec np.where(both0, True, c))."""
+    if tf is None:
+        return True
+    w1 = _num(get_ind, f"wt1_{tf}")
+    w2 = _num(get_ind, f"wt2_{tf}")
+    if w1 is None or w2 is None or (w1 == 0 and w2 == 0):
+        return True
+    return (w1 < w2) if is_long else (w1 > w2)
+
+
+def erosion_confirm_block(get_ind, is_long, peak_giveback_tf, breakeven_tf, peak_giveback_master=True):
+    """vec simulate_one WIN_TRAIL_EROSION gate `_gftf['erosion_confirm']` (v12:21629-21631): the AND of every active
+    erosion_confirm FILTER_TF (PEAK_GIVEBACK_BE_EROSION_FILTER_TF + BREAKEVEN_GAIN_EROSION_FILTER_TF, both 'wt_against').
+    Returns a veto string when the erosion close must be held, else None. vec [JSN2] (v12:16513-16527) forces
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF to OFF when PEAK_GIVEBACK_PROTECTION_ENABLED is off; BREAKEVEN is not master-gated."""
+    pg_tf = peak_giveback_tf if truthy(peak_giveback_master) else None
+    if not wt_against_confirm(get_ind, is_long, pg_tf):
+        return f"PEAK_GIVEBACK_BE_EROSION_FILTER_TF_{pg_tf}_NO_CONFIRM"
+    if not wt_against_confirm(get_ind, is_long, breakeven_tf):
+        return f"BREAKEVEN_GAIN_EROSION_FILTER_TF_{breakeven_tf}_NO_CONFIRM"
+    return None
+
+
 EXIT_CONFIRM_PREFIXES = ("TECHNICAL_", "WT_CROSSUNDER_FINAL", "WT_CROSSOVER_FINAL")
 
 

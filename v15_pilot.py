@@ -6066,7 +6066,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_brain_p: dict = {}
     _v18_untried_p = _V18P.untried_p() if _V18P is not None else 0.05
     _v18_untried_tot = {"untried_seen": 0, "untried_kept": 0, "brain_cells_seen": 0, "brain_cells_out": 0, "brain_rows_seen": 0, "brain_rows_out": 0}
-    if _v18_brain_on or _v18_floor_on:
+    _v18_prof_on = bool(_V18P is not None and _V18P.profile_on())
+    _v18_prof, _v18_prof_rows, _v18_prof_min_n, _v18_prof_why = (_V18P.load_profile(_v18_floor_cs, ROOT) if _v18_prof_on else (None, None, None, "off"))
+    _v18_prof_tot = {"rows": 0, "rows_dead": 0, "cells_pool": 0, "cells_must": 0, "cells_drawn": 0, "cells_settled": 0}
+    if _v18_prof_on:
+        print(f"[V18-PROFILE] {new_symside} {_v18_floor_cs}: {_v18_prof_why}", flush=True)
+    if _v18_brain_on or _v18_floor_on or _v18_prof_on:
         try:
             from tools import v18_brain as _V18B
             _v18_bp = Path(os.environ.get("V18_BRAIN_DIR") or (ROOT / "data" / "brain")) / f"v18_brain_{_v18_floor_cs}.json"
@@ -6098,6 +6103,36 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     return _kp
             return _u < _v18_floor_p
         return _keep
+    def _v18_profile_cells(info: dict, sname: str, switch, cand):
+        # V18_PROFILE_YELLOWS: the row's yellow set = needed U suffocating U evidence_pos (+ linknet proposals) of THIS
+        # cat_side's profile, plus a floor / untried draw over every other discovered column (never zero); INERT / DAMAGING
+        # switches (n_syms >= threshold) keep naked + floor only; the rest is settled with its p (row record v18_profile)
+        _rk = f"{str(switch).strip()}={str(cand).strip()}"
+        _ent = (_v18_prof or {}).get("needed", {}).get(_rk)
+        if _ent is None:
+            return
+        _prow = (_v18_prof_rows or {}).get(_rk) or {}
+        _untried_sw = str(_prow.get("verdict") or "") == "UNTRIED"
+        pool = list(dict.fromkeys(list(info["hdrs"]) + [h for _l in _V18P.FLOOR_CELL_LISTS for h in (info.get(_l) or [])]))
+        ps = {}
+        def _kf(h):
+            _n = _v18_pair_n(sname, _rk, h)
+            _pe = _v18_untried_p if (_untried_sw or (_n is not None and _n < 3)) else max(_V18P.floor_p(), 0.001)
+            ps[h] = _pe
+            return _V18P.floor_draw(_v18_floor_cs, new_symside, sname, f"{_rk}@{str(h).strip()}", _v18_round) < _pe
+        keep, rest, why = _V18P.profile_select(pool, _ent, _prow, ((_v18_prof or {}).get("proposals") or {}).get(_rk) or [], _kf, _v18_prof_min_n)
+        for _l in _V18P.FLOOR_CELL_LISTS:
+            if _l in info:
+                info[_l] = []
+        info["hdrs"] = keep
+        info["coarse_deferred_filters"] = rest
+        info["v18_profile"] = {"mode": why, "pool": len(pool), "kept": len(keep), "settled": len(rest), "p": {h: round(ps.get(h, 0.0), 5) for h in rest[:24]}}
+        _v18_prof_tot["rows"] += 1
+        _v18_prof_tot["rows_dead"] += 1 if why != "PROFILE" else 0
+        _v18_prof_tot["cells_pool"] += len(pool)
+        _v18_prof_tot["cells_must"] += len(keep) - sum(1 for h in keep if h in ps)
+        _v18_prof_tot["cells_drawn"] += sum(1 for h in keep if h in ps)
+        _v18_prof_tot["cells_settled"] += len(rest)
     def _v18_brain_cells(info: dict, sname: str, switch, cand):
         # V18 brain allocator on this row's cells: evidenced pair -> brain p; untried pair -> V18_UNTRIED_PER_1000; skipped
         # cells ride prior_skipped (PRIOR-REVIVED on a positive naked) and get their p in _v18_brain_p (SETTLE lines below)
@@ -6393,6 +6428,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["coarse_deferred_filters"] = []
                 info["prior_skipped"] = []
                 info["inert_filters"] = []
+        if _v18_prof_on and _v18_prof is not None and info["kind"] == "eval":
+            try:
+                _v18_profile_cells(info, sname, switch, cand)
+            except Exception as _v18pce:
+                print(f"[V18-PROFILE-WARN] {sname}!{rr} {_v18pce} — row unchanged", flush=True)
         if _v18_brain_on and _v18_brain is not None and not _brain_exempt(sname, switch, cand):
             try:
                 _v18_rk = f"{str(switch).strip()}={str(cand).strip()}"
@@ -6403,7 +6443,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         _v18_untried_tot["brain_rows_out"] += 1
                         info.update(kind="skip", reason=f"BRAIN_SAMPLED_OUT: V18 p_pos={_v18_rd['p_pos']:.4f} p_eval={_v18_rd['p']:.4f} n={_v18_rd['n']:g} (settled; floor-rotated, never a fake 0)", g=None)
                         info["v18_brain_row_p"] = round(float(_v18_rd["p"]), 6)
-                if info["kind"] == "eval" and info["hdrs"]:
+                if info["kind"] == "eval" and info["hdrs"] and info.get("v18_profile") is None:  # a profiled row's set is final
                     _v18_brain_cells(info, sname, switch, cand)
             except Exception as _v18bce:
                 print(f"[V18-BRAIN-WARN] {sname}!{rr} {_v18bce} — row calculated", flush=True)
@@ -9386,6 +9426,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["done"][key]["slow_cells"] = dict(_row_slow)
         if st.get("v18_floor"):
             progress["done"][key]["v18_floor"] = dict(st["v18_floor"])
+        if st.get("v18_profile"):
+            progress["done"][key]["v18_profile"] = dict(st["v18_profile"])
         if st.get("v17_deferred"):
             progress["done"][key]["v17_deferred_filters"] = list(st["v17_deferred"])
             _v17_note(sname, rr, f"DEFERRED_V17:{len(st['v17_deferred'])}")
@@ -9405,6 +9447,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v18_ids.row = None
         progress["v18_identity"] = dict(_v18_ids.totals)
         print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
+    if _v18_prof_on:
+        progress.setdefault("v18", {})["profile"] = {**dict(_v18_prof_tot), "why": _v18_prof_why, "min_n": _v18_prof_min_n}
+        print(f"[V18-PROFILE] {new_symside} rows={_v18_prof_tot['rows']} naked+floor={_v18_prof_tot['rows_dead']} cells pool={_v18_prof_tot['cells_pool']} must={_v18_prof_tot['cells_must']} drawn={_v18_prof_tot['cells_drawn']} settled={_v18_prof_tot['cells_settled']}", flush=True)
     if _v18_spec:
         progress.setdefault("v18", {})["spec_batch"] = dict(_v18_spec_stats)
         print(f"[V18-SPEC] {new_symside} speculative tab batching: resubmits={_v18_spec_stats['resubmits']} stale cks cancelled={_v18_spec_stats['discarded']}", flush=True)

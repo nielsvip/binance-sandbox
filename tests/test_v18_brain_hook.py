@@ -55,7 +55,7 @@ def test_pilot_brain_wiring_pins():
     # the floor's pair evidence: untried -> max(floor, untried p)
     assert "_kp = _u < max(_v18_floor_p, _v18_untried_p)" in SRC
     # brain runs before the floor (the floor is still the last rule) and skips go to the PRIOR-REVIVED list
-    i_b = SRC.index("_v18_brain_cells(info, sname, switch, cand)\n")
+    i_b = SRC.index("                    _v18_brain_cells(info, sname, switch, cand)")
     i_f = SRC.index("_V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p)")
     assert i_b < i_f
     assert 'info["prior_skipped"] = list(info.get("prior_skipped") or []) + skip_' in SRC
