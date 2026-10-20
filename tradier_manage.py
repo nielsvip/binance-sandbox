@@ -17348,7 +17348,20 @@ async def process_position(
                         )
                 except Exception:
                     pass
-                if bool(
+                # 2026-10-20 (USER "unlock fix and relock"): `_tgsa_trail_ok` is now ACTUALLY READ.
+                # It was assigned at :17341 and :17344 from `twin_gates_sizing_a.mtf_atr_trail_on(...)` with a
+                # per-sym getter and then NEVER read by anything — a probe, not a gate. So
+                # MTF_ATR_TRAIL_ENABLED_TRADIER was template-tested per sym_side, honoured by the vector
+                # (v12_quick_engine.py:17525 ANDs it into `_mtfat_on`), and silently ignored by live.
+                # The shared core requires MTF_EXIT_USE_COMPOUND *and* MTF_ATR_TRAIL_ENABLED *and* the _TRADIER
+                # flag (vec_decisions/twin_gates_sizing_a.py:313-317); live required only the middle one.
+                # MEASURED over the 436 stock boards before wiring this: 0 boards have ENABLED=True with
+                # TRADIER=False, so nothing loses the trail because of the _TRADIER flag itself. TWO boards —
+                # ARM_LONG and JPM_SHORT — have ENABLED+TRADIER but COMPOUND=False, so the VECTOR already has
+                # their trail OFF while live has been running it ON. For those two this turns the ATR trail off,
+                # which is the point: their published gain was measured without it, so live was trading an exit
+                # the board never modelled. Protective stops and every other exit path are untouched.
+                if _tgsa_trail_ok and bool(
                     _cfg(
                         "MTF_ATR_TRAIL_ENABLED",
                         False,

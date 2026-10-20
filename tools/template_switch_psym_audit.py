@@ -44,7 +44,12 @@ import sys
 
 ROOT = pathlib.Path(os.environ.get("BASE_PATH") or pathlib.Path(__file__).resolve().parents[1])
 
-PSYM_FUNCS = {"_psym_get", "_sw_get", "_psym_cs_get", "_cfg", "_cfg_auto", "_psym_cs", "get_knob", "_ezm_per_sym_layer"}
+PSYM_FUNCS = {"_psym_get", "_sw_get", "_psym_cs_get", "_cfg", "_cfg_auto", "_psym_cs", "get_knob", "_ezm_per_sym_layer",
+               # tradier_manage.py:7970 `_cfg_ps(param, default, account_key, symbol, side)` =
+               # `_cfg(..., _promotions_only=True)` — the lane-C per-sym read. Omitting it reported
+               # MULTI_TF_EXIT_ENABLED_TRADIER (tradier_manage.py:36892) and
+               # STOCKS_WTDC_SCORER_EXIT_ENABLED (:36790) as INERT although both resolve per-sym.
+               "_cfg_ps"}
 # ONLY the module-level GLOBAL config objects. `cfg` is deliberately NOT here: in the vector path and in
 # vec_decisions/* `cfg` is the ALREADY-RESOLVED per-sym set handed to the engine, so `getattr(cfg, KEY)` is a
 # per-sym read and counting it as global produced a false positive on vec_paths/gr_filter_vec.py:136 in the first
@@ -188,6 +193,115 @@ def proxy_backed(path: pathlib.Path) -> bool:
                 scan(getattr(st, "finalbody", []) or [])
     scan(tree.body)
     return found[0]
+
+
+ROUTED_PKGS = ("vec_decisions", "live_twins")
+
+
+def _is_psym_lambda(node) -> bool:
+    """`lambda _k, _d: _psym_get(symbol, position_side, _k, _d)` — a PER-SYM getter passed by value."""
+    if not isinstance(node, ast.Lambda):
+        return False
+    for s in ast.walk(node.body):
+        if isinstance(s, ast.Call):
+            f = s.func
+            nm = f.id if isinstance(f, ast.Name) else getattr(f, "attr", "")
+            if nm in PSYM_FUNCS:
+                return True
+    return False
+
+
+def routed_targets(path: pathlib.Path) -> list:
+    """[(line, target_module, target_func)] for every call in a LIVE module that hands a per-sym
+    getter into a shared vec_decisions/live_twins module.
+
+    THIS IS THE AUDIT'S BLIND SPOT, measured 2026-10-20. ez_manage.py's GREY-SWITCH REWIRE block
+    reads ~45 EXIT_*/AUGMENT_* template switches with NO key literal anywhere in ez_manage.py:
+      ez_manage.py:51931  _dc_channel_exits.resolve_daytrade_dc(lambda _k,_d: _psym_get(symbol, position_side, _k, _d))
+    The key names live in vec_decisions/dc_channel_exits.py, which the AST pass never opens, so
+    DAYTRADE_DC_STOP_TF / TECHNICAL_DC_STOP_TF / BB_EXIT_AT_LOSS_TF / LH_LL_TOP_EXIT_* / the
+    FUNDING/OI/RSI2/STOCH/SMFI/VWAP/BBKC/WICK exit family all scored ABSENT or INERT while live
+    reads every one of them per-sym and closes real positions on them.
+    """
+    try:
+        tree = ast.parse(path.read_text(errors="ignore"), filename=str(path))
+    except SyntaxError:
+        return []
+    mods, fns = {}, {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            for a in n.names:
+                if a.name.split(".")[0] in ROUTED_PKGS and "." in a.name:
+                    mods[a.asname or a.name.split(".")[-1]] = a.name
+        elif isinstance(n, ast.ImportFrom) and n.module and n.module.split(".")[0] in ROUTED_PKGS:
+            for a in n.names:
+                if n.module in ROUTED_PKGS:
+                    # `from vec_decisions import live_unw_gates as _unw` binds a MODULE, not a
+                    # function. Mapping it to the PACKAGE made the key scan glob every file in
+                    # vec_decisions/ and falsely credit modules live never calls (measured:
+                    # DC_DAYTRADE_STOP_PCT -> twin_p0_crypto_b, whose only callers are tests).
+                    mods[a.asname or a.name] = f"{n.module}.{a.name}"
+                else:
+                    fns[a.asname or a.name] = (n.module, a.name)
+                    mods.setdefault(a.asname or a.name, n.module)
+    named = {t.id for n in ast.walk(tree) if isinstance(n, ast.Assign) and _is_psym_lambda(n.value)
+             for t in n.targets if isinstance(t, ast.Name)}
+    out = []
+    for n in ast.walk(tree):
+        if not isinstance(n, ast.Call):
+            continue
+        args = list(n.args) + [k.value for k in n.keywords]
+        if not any(_is_psym_lambda(a) or (isinstance(a, ast.Name) and a.id in named) for a in args):
+            continue
+        f = n.func
+        if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and mods.get(f.value.id):
+            out.append((n.lineno, mods[f.value.id], f.attr))
+        elif isinstance(f, ast.Name) and f.id in fns:
+            out.append((n.lineno, fns[f.id][0], fns[f.id][1]))
+    return out
+
+
+def routed_key_reads(mod_dotted: str, keys: set) -> dict:
+    """{KEY: [(file, line, func)]} for `get("KEY", d)` / `getattr(cfg, "KEY", d)` / `_g(get, "KEY", d)`
+    reads inside a routed module. `get` IS the per-sym getter the live site handed in, so these are
+    per-sym reads — the same reason `cfg` is not in GLOBAL_OBJS."""
+    p = ROOT / (mod_dotted.replace(".", "/") + ".py")
+    if not p.exists():
+        return {}
+    try:
+        tree = ast.parse(p.read_text(errors="ignore"), filename=str(p))
+    except SyntaxError:
+        return {}
+    fnof, stack = {}, []
+
+    class W(ast.NodeVisitor):
+        def visit_FunctionDef(self, n):
+            stack.append(n.name)
+            self.generic_visit(n)
+            stack.pop()
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def generic_visit(self, n):
+            for c in ast.iter_child_nodes(n):
+                if stack:
+                    fnof[c] = stack[-1]
+            super().generic_visit(n)
+    W().visit(tree)
+    hits = {}
+    for n in ast.walk(tree):
+        if not isinstance(n, ast.Call) or not n.args:
+            continue
+        f = n.func
+        nm = f.id if isinstance(f, ast.Name) else getattr(f, "attr", "")
+        if nm not in ("getattr", "get", "_g", "_f", "_b", "_num", "_cfg_get"):
+            continue
+        # key is args[0] for get("K",d) but args[1] for getattr(cfg,"K",d) / _g(get,"K",d)
+        for a in n.args[:3]:
+            if isinstance(a, ast.Constant) and isinstance(a.value, str) and a.value.strip().upper() in keys:
+                hits.setdefault(a.value.strip().upper(), []).append(
+                    (f"{mod_dotted}.py", n.lineno, fnof.get(n, "<module>")))
+                break
+    return hits
 
 
 def _fname(node) -> str:
@@ -342,6 +456,31 @@ def main() -> int:
             per_key[h["key"]].append(h)
     print(f"live modules scanned: {len(mods)}")
 
+    # ROUTED-GETTER PASS (advisory). A key read inside a shared vec_decisions/live_twins module that
+    # a live module calls with a per-sym getter IS per-sym wired, but carries no literal in the live
+    # file, so the AST pass above cannot see it. Collected per key as `routed_sites`; it downgrades
+    # ABSENT/INERT to ROUTED_PSYM and NEVER touches a GLOBAL_LEAK or the exit code. Module-granular:
+    # it proves the module receives a per-sym getter from live, not that THAT function is called and
+    # its result used. ROUTED_PSYM is therefore a "stop reporting this as unwired, go read it" flag,
+    # never proof of wiring. Two measured counter-examples, both EXIT keys:
+    #   DC_DAYTRADE_STOP_PCT        -> twin_p0_crypto_b.daytrade_pct_resolve, whose only callers are
+    #                                  tests; the vector itself assigns v12:17336 to a local that
+    #                                  nothing reads, so the knob is VECTOR_DEAD.
+    #   MTF_ATR_TRAIL_ENABLED_TRADIER -> twin_gates_sizing_a.mtf_atr_trail_on IS called at
+    #                                  tradier_manage.py:17344, but into `_tgsa_trail_ok`, which is
+    #                                  assigned at :17341/:17344 and never read — a probe, not a gate.
+    # Confirm both a live caller AND a consumed result before treating a row as wired.
+    routed = collections.defaultdict(list)
+    for m in mods:
+        for line, tmod, tfunc in routed_targets(m):
+            routed[tmod].append((m.name, line, tfunc))
+    routed_by_key = collections.defaultdict(list)
+    for tmod, sites in sorted(routed.items()):
+        for k, where in routed_key_reads(tmod, keys).items():
+            routed_by_key[k].append({"read": f"{where[0][0]}:{where[0][1]} in {where[0][2]}()",
+                                     "live_callers": sorted({f"{mn}:{ln}" for mn, ln, _ in sites})[:4]})
+    print(f"routed shared modules: {len(routed)}   keys read through a per-sym getter: {len(routed_by_key)}")
+
     rows, verdicts = [], collections.Counter()
     for k in sorted(keys):
         hs = per_key.get(k, [])
@@ -355,6 +494,8 @@ def main() -> int:
             v = "INERT"   # only probe-farm / dead-code / namelist references: live reads it nowhere that acts
         else:
             v = "ABSENT"
+        if v in ("INERT", "ABSENT") and routed_by_key.get(k):
+            v = "ROUTED_PSYM"   # per-sym, but read inside a shared module via a getter live passed in
         verdicts[v] += 1
         rows.append({"key": k, "verdict": v, "n_psym": kinds.get("PSYM", 0), "n_global": len(globals_),
                      "n_discarded": kinds.get("DISCARDED", 0), "n_namelist": kinds.get("NAMELIST", 0),
@@ -362,7 +503,8 @@ def main() -> int:
                      "templates": sorted(tkeys[k]["templates"]), "switch_tabs": sorted(tkeys[k]["switch_tabs"]),
                      "filter_tabs": sorted(tkeys[k]["filter_tabs"]),
                      "global_sites": [{"module": g["module"], "line": g["line"], "func": g["func"],
-                                       "symbol_bound_in_func": g["symbol_bound_in_func"]} for g in globals_[:12]]})
+                                       "symbol_bound_in_func": g["symbol_bound_in_func"]} for g in globals_[:12]],
+                     "routed_sites": routed_by_key.get(k, [])})
     leaks = [r for r in rows if r["verdict"] == "GLOBAL_LEAK"]
     fixable = sum(1 for r in leaks for g in r["global_sites"] if g["symbol_bound_in_func"])
     nofix = sum(1 for r in leaks for g in r["global_sites"] if not g["symbol_bound_in_func"])
