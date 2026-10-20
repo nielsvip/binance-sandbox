@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T18:41:09Z",
+ "ts": "2026-10-20T18:45:20Z",
  "n": 162,
  "classes": {
   "OK": 145,
@@ -90,7 +90,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_5a0d5c8c_age7h_vintage_from_published_at",
+   "why": "OK_BOARD_5a0d5c8c_age8h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "5a0d5c8c",
@@ -435,17 +435,6 @@
    "n_board_overrides": 794
   },
   {
-   "sym_side": "BHP_SHORT",
-   "venue": "stocks",
-   "entry_allowed": false,
-   "class": "NO_LATEST_BOARD",
-   "why": "NO_LATEST_BOARD",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "",
-   "n_board_overrides": null
-  },
-  {
    "sym_side": "BHVN_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
@@ -506,6 +495,17 @@
    "n_diff": 0,
    "board_md5": "9abf7c50",
    "n_board_overrides": 843
+  },
+  {
+   "sym_side": "BWXT_SHORT",
+   "venue": "stocks",
+   "entry_allowed": true,
+   "class": "OK",
+   "why": "OK_BOARD_7ae4203e_age16h_vintage_from_published_at",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "7ae4203e",
+   "n_board_overrides": 881
   },
   {
    "sym_side": "CAT_SHORT",
@@ -621,7 +621,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_22feb40b_age95h_vintage_from_published_at",
+   "why": "OK_BOARD_22feb40b_age96h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "22feb40b",
@@ -882,7 +882,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_2c3b66d9_age61h_vintage_from_published_at",
+   "why": "OK_BOARD_2c3b66d9_age62h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "2c3b66d9",
@@ -988,6 +988,17 @@
    "n_board_overrides": 857
   },
   {
+   "sym_side": "IBM_LONG",
+   "venue": "stocks",
+   "entry_allowed": false,
+   "class": "NO_LATEST_BOARD",
+   "why": "NO_LATEST_BOARD",
+   "diff_keys": [],
+   "n_diff": 0,
+   "board_md5": "",
+   "n_board_overrides": null
+  },
+  {
    "sym_side": "INTC_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
@@ -1025,7 +1036,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_03db74d6_age40h_vintage_from_published_at",
+   "why": "OK_BOARD_03db74d6_age41h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "03db74d6",
@@ -1216,17 +1227,6 @@
    "n_board_overrides": 837
   },
   {
-   "sym_side": "MSTR_LONG",
-   "venue": "stocks",
-   "entry_allowed": true,
-   "class": "OK",
-   "why": "OK_BOARD_36d03591_age6h_vintage_from_published_at",
-   "diff_keys": [],
-   "n_diff": 0,
-   "board_md5": "36d03591",
-   "n_board_overrides": 877
-  },
-  {
    "sym_side": "MSTR_SHORT",
    "venue": "stocks",
    "entry_allowed": true,
@@ -1275,7 +1275,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_9b8bcebb_age177h_vintage_from_published_at",
+   "why": "OK_BOARD_9b8bcebb_age178h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "9b8bcebb",
@@ -1450,7 +1450,7 @@
    "venue": "stocks",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_5d92db50_age63h_vintage_from_published_at",
+   "why": "OK_BOARD_5d92db50_age64h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "5d92db50",
@@ -1735,7 +1735,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_41434fc2_age175h_vintage_from_published_at",
+   "why": "OK_BOARD_41434fc2_age176h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "41434fc2",
@@ -1957,7 +1957,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_c91a55bf_age172h_vintage_from_published_at",
+   "why": "OK_BOARD_c91a55bf_age173h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "c91a55bf",
@@ -1990,7 +1990,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_f135b859_age180h_vintage_from_published_at",
+   "why": "OK_BOARD_f135b859_age181h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "f135b859",
@@ -2034,7 +2034,7 @@
    "venue": "crypto",
    "entry_allowed": true,
    "class": "OK",
-   "why": "OK_BOARD_d07ea04a_age92h_vintage_from_published_at",
+   "why": "OK_BOARD_d07ea04a_age93h_vintage_from_published_at",
    "diff_keys": [],
    "n_diff": 0,
    "board_md5": "d07ea04a",
