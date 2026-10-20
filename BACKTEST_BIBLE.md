@@ -3763,3 +3763,192 @@ and reported every remote host as `?` — it is base64-encoded now, and a failed
 * The Mac's `klines_cache_backtest` holds **8 files / 12.6 MB** — effectively empty, so any sweep pointed at the
   Mac's backtest store is reading nothing.
 * S1's live NPZ store is **497-501 stores / 7.0 GB** (it was 332 at the start of the night).
+
+## 115. BAR-IDENTITY MEASUREMENT — WHAT THE REPLAY CAN AND CANNOT PROVE (USER 2026-10-20)
+
+Operator mandate this session: "THEY HAVE TO MEAN IDENTICAL BARS", "live can not have even a 0.1% discrepancy",
+"make sure all new sym_sides are applied live immediately and trading identically to their charts". Everything below
+is measured; where a number was later refuted, both the claim and the refutation are kept, because the retraction is
+the useful part.
+
+### 115.1 The numbers, with their scope
+
+| run | scope | entry bars identical | exit bars identical |
+|---|---|---|---|
+| crypto, S1+S2, 28 sym_sides scored | uncapped store sets, Oct 1-10 window | **2,074 / 2,293 = 90.4%** | **1,997 / 2,074 entry-exact pairs = 96.3%** |
+| stocks, S2, 30 sym_sides, TWIN mode | `PARITY_VEC_EXACT_MODE=True` | 475 / 516 = 92.05% | 406 / 488 = 83.2% |
+| stocks, S2, 59 sym_sides, NATIVE | today's live config | **68 / 755 = 9.0%** | 81 / 743 = 10.9% |
+| crypto, Mac, 4 sym_sides | Mac at load 356 | 160 / 163 = 98.2% | **61 / 161 = 37.9%** |
+
+11 of 28 crypto sym_sides were bit-exact on EVERY entry and exit in the window. Entry agreement is binary: +-1 bar and
++-4 bars add 3 matches in 2,293 — either live takes the same bar or it takes nothing.
+
+**The twin-mode number is near-tautological and must never be quoted as switch-set parity.** In twin mode live executes
+the vector's own decisions. Same sym_side, same window: `AAPL_LONG` 12/12 exact in twin -> 1/12 native. What twin mode
+does prove is a floor: live is handed the answer and still dropped 41 entries and 82 exits.
+
+**The 37.9% Mac exit figure is an environment artefact, not an engine property.** It was taken while that host sat at
+load average 356 with 76 MB free RAM. S1 and S2 reproduce 95.6% and 96.5% independently across two different engine
+md5 sets. `VEC_EXIT_OWED` appeared in 5 of 77 exit mismatches on the servers, not 98 of 100. A parity number measured
+on a thrashing host is not a measurement.
+
+### 115.2 The engine CANNOT fire HARDCODED_RALLY_REENTRY — this biases every stocks parity number
+
+`HARDCODED_RALLY_REENTRY` is the highest-volume entry family in the corpus (159,841 rows) and 195 of the 561 VEC_ONLY
+entries in the 60-sym_side stocks run. It is gated on `last_reduction_price > 0` and fires when price crosses back
+through that stored exit (`ez_manage.py:42381`, `tradier_manage.py:40307`).
+
+* LIVE keeps that field on the key across the flat period (CLAUDE.md forbids deleting position dict entries, and
+  `ez_positions_service.py:9518` `[REENTRY_GUARDIAN]` restores it). Live /history/ holds **86 NATIVE (untagged)**
+  `HARDCODED_RALLY_REENTRY` OPENs — 46 on `trb`, 40 on `trc`, 2026-09-21..10-15. The family is wired and firing live.
+* THE ENGINE's live leg fired it **ZERO** times. Measured with a probe: `last_reduction_price > 0` on **0 of 1,255**
+  flat-key `process_position` calls, `was_reduced=True` 0 times, `evaluate_reentry` called **0** times (its
+  precondition `if was_reduced and last_red_time and not has_position` never held).
+* ROOT CAUSE, and it is on the CLOSE side: the engine replaces `manager.execute_now` with its own seam
+  (`backtest_v12_engine.py:10857`), so `_execute_now_inner` — the only live writer of those fields
+  (`tradier_manage.py:50704-50707`) — never runs, and the seam's reduce branch (`:10712-10723`) does not set
+  `last_reduction_price` / `last_reduction_time` / `was_reduced`.
+* A 2026-10-20 patch carrying the field onto a REOPENED position at the three OPEN-side construction sites was
+  **measured a no-op** (`obj_replaced=0`, those sites never reached). The fix belongs in the seam's REDUCE branch,
+  mirroring `tradier_manage.py:50704-50707`, and per gate discipline must ship through `v15_version_gate submit`.
+* CONSEQUENCE FOR READING §115.1: the stocks NATIVE 9.0% is measured in a harness where the vector's #1 entry family
+  cannot fire on the live leg. It understates live parity by an unknown amount. Do not quote it as live's parity.
+
+### 115.3 The replay runs exits with their safety mechanism OFF
+
+`backtest_v12_engine` sets `EXIT_GUARANTEE_REPLAY=1`, and `exit_guarantee.py` then goes **pass-through** — no FORCE
+leg, no stuck watcher (`exit_guarantee.py:27, :352`). Live has `EXIT_GUARANTEE_ENABLED` / `_FORCE_ENABLED` True with
+retry `15,30,60,120,240` and stuck checks `20,60,180`. So a replay's exit timing is NOT live's exit timing, and the
+replay is structurally unfit to measure "did live exit late". Any exit-side parity claim must say which arm it came
+from.
+
+### 115.4 The harness set is `per_sym_store.get_overrides` (UNCAPPED), never `full_set`
+
+`full_set` applies the sizing caps, so it differs from the store on sizing knobs only — `START_POSITION_SIZE`,
+`MAX_POSITION_SIZE`, `MAX_ORDER_VALUE_FIN/MEN` (60/60 sym_sides), `MAX_ORDER_VALUE` (11/60). `live_twins/vec_exact.py:357`
+then reports `LIVE_SET_NE_BOARD_1keys:START_POSITION_SIZE` and refuses EVERY OPEN/AUGMENT — measured on **25 of 60**
+crypto sym_sides, one logging 1,897 refusals and 0 OPENs. Live's own gate reads the uncapped store
+(`vec_exact.overrides_for`, lines 61-70), and `_run_one_set_precedence_on` (`backtest_v12_engine.py:18065`) patches the
+store so `full_set` still applies caps at read time inside the engine — caps modelled as live, gate passing as live.
+With the store set, 0 refusals. Key counts are 3,459-3,556 (median ~3,526); a set of ~800 or ~11 keys is the wrong layer.
+For STOCKS the two are byte-identical on 60/60 (`_apply_caps` touches only crypto sizing), so this trap is crypto-only.
+
+### 115.5 A board's age must be judged at the SIMULATED moment, and by the CELL date
+
+Two defects, both fixed 2026-10-20, both of which silently zeroed live legs:
+
+1. **Wall clock inside a replay.** `latest_board_ok` aged the board against `time.time()` even under replay, so a long
+   run crossed the staleness bar MID-FLIGHT: `BTCUSDC_LONG` had live trades in its 04:11Z run and 0 entries with
+   `BOARD_TOO_OLD_225h>216h` at 08:50Z on identical inputs. `_gate_now()` now returns the engine's `_sim_ts[0]` when
+   `EXIT_GUARANTEE_REPLAY=1` and wall clock otherwise (live byte-unchanged). Verified on all five paths.
+2. **Run label instead of cell date.** The gate took the older of `published_at` and the date parsed from
+   `run\d+_(\d{8})` in the progress path. That label is the day the RUN STARTED, and a long-lived run keeps producing
+   fresh cells under it: **332 of 474** published sym_sides were refused `BOARD_TOO_OLD` at 230 h while their cells were
+   **0.4-179.2 h** old. `tools/v15_published_selection.py` now carries `cell_ts` (from `meta.result_done_utc` for the
+   new pilot, `campaign_ts` for the older publisher, `recorded_at` as fallback) and the gate prefers it. Result:
+   `BOARD_TOO_OLD` 332 -> 0, OK 130 -> 443 of 474. NOTE: a first version reading only `campaign_ts` was INERT —
+   that key exists in 0 of 1,496 `fleet_orchestrator_publish` rows.
+
+Also measured: `LIVE_BOARD_MAX_AGE_H` must be identical on every host. S1 read 216 h while S2 read 168 h for a while,
+so the same sym_side got a different verdict depending on which box evaluated it. One value, pushed everywhere.
+
+### 115.6 The replay is NOT hermetic — it writes live trading state
+
+Confirmed on two hosts, two different files:
+
+* `data/vec_exact_exit_owed.json` — the Mac runs added **9 keys** under the `ang` account key, on exactly the
+  sym_sides being replayed, between 03:35 and 03:47Z while every `ang` process was down. S1's sandbox copy went 7 -> 16
+  keys the same way. An owed entry closes the NEXT position opened on that key one sweep after entry, so this is not
+  cosmetic.
+* `data/fixed_stop_registry_tradier.json` — rewritten by the stocks replay with a simulated FIXED_STOP level keyed
+  like a live record (`trb:ULTA_LONG`, `trb:GOOGL_LONG`).
+
+Containment that held: the live-path copies under `~/binance/data/` were byte- and mtime-unchanged, because the runs
+had `BASE_PATH=~/binance-sandbox`. RULE: a replay must run with a sandbox `BASE_PATH`, never on the Mac, and its
+state writes must be diffed before and after. 20 obligations on flat keys were cleared on 2026-10-20 (backup
+`backups/vec_exact_exit_owed_before_flat_clear_202610200353.json`).
+
+### 115.7 Engine era, and S2 does not keep a hand-placed engine
+
+All five decisive files differed between S2 and the Mac during this session (`tradier_manage`, `config_tradier`,
+`config`, `backtest_v12_engine`, `live_twins/vec_exact`). Numbers from one host are internally comparable (one engine
+stamp per run set) but are a verdict on THAT code era. Always report per-host aggregates beside any combined number.
+A `backtest_v12_engine.py` rsynced to S2 by hand was reverted to the fleet copy within ~3 minutes, with the original
+mtime preserved; the writer was not identified. Engine changes reach the fleet through `v15_version_gate submit`, not
+rsync.
+
+### 115.8 NPZ freshness for a backtest
+
+`tools/opt/v12_pilot.npz_freshness()` skips a test when the NPZ is more than **3 bars** behind the last closed bar
+(crypto) or last RTH close (stocks), emitting `STALE_NPZ_SKIPPED` rather than a misleading number — grace was 1 bar
+until 2026-10-17. `V12_ALLOW_STALE_NPZ=1` bypasses it and is for fixtures only; after a market open it becomes
+necessary for any window that ends at yesterday's close, and both arms of an A/B must then set it identically.
+Measured 2026-10-20 14:16Z on S1's 196 crypto stores: **0 within 1 bar**, 7 within 2, 172 within 3, 16 beyond 4. So a
+1-bar (15 min) requirement would currently skip essentially every calculation.
+
+**The ingest live-lock (fixed).** `npz_bar_ingest` took the per-symbol flock in order to REFUSE a non-contiguous bar as
+`HOLE_LEFT_TO_REFRESHER`, while `npz_bar_refresh` — the only thing that can close a hole — needs that same lock. 748
+bars across 15 symbols were re-read and re-refused every 2 minutes, and a targeted refresh returned `LOCKED_SYMBOL` on
+8 of 19 stuck stores, the holder being the ingest process refusing their bars. Hole-blocked bars are now filed to
+`data/npz_bar_inbox/deferred/` when the hole exceeds `--hole-defer-bars` (default 2); inbox drained 777 -> 507 in two
+cycles. Of the 19 stuck stores: `LOCKED_SYMBOL` 8, `FROZEN_BOARD` 3 (their S1 KLINES stop ~10-13 — an NPZ cannot pass
+its source), `REFUSE_LEGACY_HTF_ALIGN` 6 (pre-`causal_v3` store: needs a REBUILD, a bar cannot be appended), 1 delisted.
+
+### 115.9 Re-stamping: no evidence, and the one path that remains
+
+`docs/v15_pending/19_RESTAMP_FORENSICS_20261020.md` is the authority. Verdict: **no re-stamp is evidenced.** 259 of 259
+verifiable publish stamps land within 1 h of that run's newest delta-log eval, and `updated_at - result_done_utc` is
+-0.78..+0.01 min. The "gap median 93 h / max 191 h" that triggered the investigation was an arithmetic artefact —
+the gate's run-label date (230 h) minus publish age — not a stamp-vs-cells gap. `v15_fleet_scheduler` invokes
+`v15_settings_history.py`, which **records, it does not re-date**.
+
+The one residual path, pre-existing since BOARD_DATE_TRUTH 10-19: a pilot that resumes (`returning early`) publishes a
+new stamp over old cells. `tools/v15_settings_history.py` now refuses any row whose `published_utc` is more than
+`RESTAMP_MAX_LAG_H` (2 h) after its own `result_done_utc`, counted as `refused_restamp` in the summary. The rule is
+deliberately asymmetric: contradicting evidence REFUSES, **absent** evidence RECORDS and says so, because 156 of 474
+boards have no delta log on the publishing host. Dry run over today's 139 real boards refused 0.
+
+### 115.10 Measurement traps that produced false findings this session
+
+Every one of these generated a wrong conclusion that had to be retracted. Treat them as mandatory checks.
+
+* **Grepping a log for a bare number.** `grep -E "418|429"` matched digits inside JSON (`"rows_before": 21189`) and
+  produced a phantom "S1 is Binance-banned" story. Every record actually showed `"t_fetch": 0.0`. Grep the HTTP
+  context, never the number.
+* **An env var the code does not read.** `LIVE_BOARD_MAX_AGE_H=216` was set in the environment to measure the impact of
+  a 9-day bar; `_knob` does not read the environment, so the run measured the old 264 h default and reported "445 OK,
+  zero too old". The real figure at 216 h was 360 of 469 refused.
+* **`pgrep -f` with a pattern containing its own search terms** self-matches the shell running it. This produced both a
+  phantom trader count AND, separately, a real double-trade discovery; exclude `bash -c`/`pgrep` from any count.
+* **macOS `pgrep -f` does not match `python.*foo` the way Linux does** — the existing `TRADER_PATTERN` returns 0 on the
+  Mac while the processes are running. Test process-matching logic on the host where it runs.
+* **An empty staging directory is not a dead producer.** `npz_bar_push_s1.sh` uses `rsync --remove-source-files`, so a
+  healthy push EMPTIES `data/npz_bar_outbox`.
+* **Stock NPZ tails at <=1 day outside RTH are correct, not stale** — no 15m stock bar exists overnight.
+* **The chart entry formula `ts - (bar_exit - bar_entry) * 900` is WRONG for stocks.** RTH-only bars make that
+  arithmetic walk through overnight gaps (10 of 31 `BWXT_SHORT` rows disagreed with the row's own `entry_time`). Use
+  the row's own entry timestamp, or compare vector<->live event timestamps and never chart arithmetic.
+* **Tokenising a reason by its longest UPPER_SNAKE prefix misses the family.** Live writes `FIXED_STOP_LONG` /
+  `CYCLE_TP_TIERED_T0` while the vector emits `FIXED_STOP` / `CYCLE_TP`; testing only the full prefix reported 313
+  vector-backed exits as "no emitter". Try progressively shorter prefixes, and allow numeric segments
+  (`E_1_WT_DELTA_EXIT` truncates to `E` otherwise).
+* **A `getattr`/`_cfg` reference is NOT proof a switch is wired.** Live contains deliberate probe farms
+  (`ez_manage.py:1637` "wire 1613 missing config.py switches", `_wire_trb_stocks_hemisphere_tradier`, and a per-switch
+  `if bool(getattr(config,"X",False)): _ = 1` block). 1,210 switches exist in live ONLY as a throwaway probe, and 67 of
+  those are set by the boards to a NON-DEFAULT value on 433-560 sym_sides each. `WT_DC_ENTRY_ENABLED` was one: False on
+  764 of 765 sets and honoured by the vector, stubbed in live, so stocks fired `WT_DC_ENTRY` **201 times against the
+  vector's 0** (144 native events in live history). Check that the reference is a real clause, not `_ = ...`.
+
+### 115.11 Still open
+
+* **Determinism is unmeasured.** Identical tree + identical NPZ has been measured to differ by <=0.48 in GAIN because
+  phase budgets are wall-clock bounded; whether the BARS move across repeated runs of the same sym_side was still being
+  measured (6 sym_sides x 4 runs on S2) when this section was written. If the bars move, no parity percentage above
+  means anything.
+* **Kline-vs-NPZ fidelity is unmeasured.** Whether the NPZ a backtest reads equals what the real scripts compute from
+  the same klines (`npz_live_generator._compute_row_for_15m_close`, the shared `ez_indicators`/`tradier_indicators`
+  entry point) had not been verified key-by-key. Until it is, a bar-identity number only proves the two engines agree
+  with each other, not that either agrees with live market data.
+* The 66 remaining board-set stub-only switches (§115.10) are a ranked worklist, not yet wired:
+  `/private/tmp/.../scratchpad/stub_only_board_set.json` — top entries `MTF_WT_CROSS_EXIT_TF` 560,
+  `MTF_BB_REJECT_EXIT_TF` 512, `MTF_DC_REJECT_EXIT_TF` 475, `MIN_HOLD_BARS`, `R1_TF`, `K_LOWER_HIGH_EXIT_ENABLED`.
