@@ -1,16 +1,16 @@
 {
- "at": "2026-10-20T07:26:01Z",
+ "at": "2026-10-20T08:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 3,
-   "per_hour": 1.5,
-   "improved_vs_best_start": 3,
-   "mean_uplift_vs_best_start": 17.6938,
-   "median_uplift": 22.2128,
-   "chained_from_previous_published": 3,
+   "published_n": 1,
+   "per_hour": 0.5,
+   "improved_vs_best_start": 1,
+   "mean_uplift_vs_best_start": 0.5559,
+   "median_uplift": 0.5559,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
@@ -20,39 +20,10 @@
     }
    ],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)",
+    "1/1 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
    ],
    "rows": [
-    {
-     "symside": "DUSKUSDT_LONG",
-     "published_at": 1792475613.2102308,
-     "final_gain": 111.78166376901208,
-     "best_start_gain": 89.56885279568156,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 7,
-     "baseline_gain": 89.56885279568156,
-     "npz_ts_last": 1792470600.0,
-     "npz_md5": "e42d672f157497f548866ee94cab8bec",
-     "npz_bars": 40813,
-     "bh": 61.948229426322534,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 1.39
-    },
-    {
-     "symside": "IOTAUSDT_SHORT",
-     "published_at": 1792476512.1572175,
-     "final_gain": 40.485171412932694,
-     "best_start_gain": 10.172361408423951,
-     "best_start_chosen": "history_3",
-     "best_start_candidates": 7,
-     "baseline_gain": 10.172361408423951,
-     "npz_ts_last": 1792471500.0,
-     "npz_md5": "60e5db1c7e0457e93b348d2943b1219c",
-     "npz_bars": 40417,
-     "bh": 3.7707989817801364,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 1.39
-    },
     {
      "symside": "PSX_LONG",
      "published_at": 1792478048.2966113,
@@ -72,53 +43,33 @@
    "error": null
   },
   "s2": {
-   "published_n": 2,
-   "per_hour": 1.0,
-   "improved_vs_best_start": 2,
-   "mean_uplift_vs_best_start": 28.8693,
-   "median_uplift": 30.1824,
-   "chained_from_previous_published": 2,
+   "published_n": 1,
+   "per_hour": 0.5,
+   "improved_vs_best_start": 1,
+   "mean_uplift_vs_best_start": 9.0944,
+   "median_uplift": 9.0944,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
-   "stale_npz": [
-    {
-     "symside": "ENJUSDT_LONG",
-     "npz_age_h": 29.98
-    }
-   ],
+   "stale_npz": [],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)"
+    "throughput 0.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
-     "symside": "DOTUSDT_SHORT",
-     "published_at": 1792476100.378561,
-     "final_gain": 43.99593526107142,
-     "best_start_gain": 16.43985003434673,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 6,
-     "baseline_gain": 16.43985003434673,
-     "npz_ts_last": 1792470600.0,
-     "npz_md5": "754da7371da62895fd1a680f9d143a2c",
-     "npz_bars": 40417,
-     "bh": -5.946790934914451,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 1.53
-    },
-    {
-     "symside": "ENJUSDT_LONG",
-     "published_at": 1792475022.6433904,
-     "final_gain": 56.49722527204049,
-     "best_start_gain": 26.314826988546635,
-     "best_start_chosen": "history_3",
+     "symside": "SNXUSDT_SHORT",
+     "published_at": 1792483563.650258,
+     "final_gain": 34.37840752344846,
+     "best_start_gain": 25.284026081674433,
+     "best_start_chosen": "history_0",
      "best_start_candidates": 7,
-     "baseline_gain": 29.1840478016339,
-     "npz_ts_last": 1792367100.0,
-     "npz_md5": "037af45a4dac944cb5ef9fb69e634676",
-     "npz_bars": 40306,
-     "bh": -0.6179567250189396,
+     "baseline_gain": 25.284026081674433,
+     "npz_ts_last": 1792480500.0,
+     "npz_md5": "327fc6751d8e26f96bb4d7fe80c73a4e",
+     "npz_bars": 40426,
+     "bh": 3.9233170157976227,
      "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 29.98
+     "npz_age_h_at_publish": 0.85
     }
    ],
    "error": null
