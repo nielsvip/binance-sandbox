@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T21:17:03Z",
+ "ts": "2026-10-20T21:22:24Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,12 +111,12 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 235,
+  "total": 234,
   "per_acct": {
    "fin": 62,
    "ang": 58,
    "men": 96,
-   "flz": 18,
+   "flz": 17,
    "inf": 1
   }
  },
@@ -127,7 +127,7 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
@@ -141,121 +141,128 @@
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 4.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 9.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4560.0
+   "log_age_s": 4880.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4562.0
+   "log_age_s": 4883.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
    "evidence": "20 21:09:56 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $1071 on bounce (prior max 3.0000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:UNIUSDC_LONG",
    "evidence": "order notional $1070.82 > MAX_ORDER_VALUE $300: 20 21:09:56 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:UNIUSDC_LONG @ 7.452000 qty=143.695614 ($1070.82) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px7.456579_exit7.060810"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:ARUSDT_LONG",
    "evidence": "20 21:10:12 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $59 on bounce (prior max 18.4000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:COMPUSDT_LONG",
    "evidence": "20 21:11:43 - WARNING - [men] [REENTRY_GRANDFATHERED] men:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $54 on bounce (prior max 1.5330)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:ENSUSDT_LONG",
    "evidence": "20 21:11:51 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ENSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $211 on bounce (prior max 4.6000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "20 21:05:30 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $148 on bounce (prior max 0.0000)"
-  },
-  {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
    "evidence": "20 21:11:13 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $1585 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:TIAUSDC_LONG",
    "evidence": "order notional $1584.50 > MAX_ORDER_VALUE $300: 20 21:11:13 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:TIAUSDC_LONG @ 0.634200 qty=2498.426656 ($1584.50) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.633715_exit0.44440"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:ZROUSDT_LONG",
    "evidence": "20 21:11:19 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ZROUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $138 on bounce (prior max 310.8000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:SKLUSDT_SHORT",
    "evidence": "20 21:11:39 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $81 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:ZROUSDT_LONG",
    "evidence": "20 21:14:15 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ZROUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $79 on bounce (prior max 310.8000)"
   },
   {
-   "ts": "2026-10-20T21:17:04Z",
+   "ts": "2026-10-20T21:22:25Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:COMPUSDT_LONG",
    "evidence": "20 21:16:41 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $73 on bounce (prior max 1.9300)"
+  },
+  {
+   "ts": "2026-10-20T21:22:25Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ZROUSDT_LONG",
+   "evidence": "20 21:19:07 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ZROUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $27 on bounce (prior max 310.8000)"
+  },
+  {
+   "ts": "2026-10-20T21:22:25Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ZROUSDT_LONG",
+   "evidence": "20 21:19:44 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ZROUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $24 on bounce (prior max 310.8000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 10,
+  "CAP_BYPASS": 11,
   "SIZE_ANOMALY": 2
  },
  "active_interventions": {
@@ -318,5 +325,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.42
+ "sweep_s": 0.95
 }
