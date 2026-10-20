@@ -4122,3 +4122,92 @@ What IS real on crypto: the same rule was SPLIT — entry read `_psym_get` (`ez_
 exit read the global (`:53672/53673`, and `ez_positions_quick.py:30843/30848`). A board that tuned the threshold
 changed when a position OPENED and was ignored when it CLOSED, and those rows' sweep deltas were earned against
 a value live never applied on exit. Fixed across 8 sites with the global preserved as the default.
+
+## 118. THE PARITY HOST WAS NEVER MEASURING LIVE — THREE INDEPENDENT CAUSES (USER 2026-10-20)
+
+**USER 2026-10-20:** *"pls verify we enter augment reduce and exit at the exact bar the per_sym 3600 settings
+dictate and in sync with what the html chart would have traded looking forward — on all crypto and stocks trb trc
+accounts."* Answering that exposed three reasons the S1/S2 parity lane was measuring something other than live.
+Each was measured, not inferred, and each invalidates results from runs that did not control for it.
+
+### 118.1 `data/per_sym_full_sets.json` DID NOT EXIST ON EITHER WORKER
+`ls` on both: `No such file or directory` (S1 and S2), while the Mac holds 96,535,297 bytes / 767 rows. That file
+is the full-set layer live resolves. Pushed to S2 md5-verified (`d701ae3b…`). This alone does NOT fix the gate —
+see 118.2 — but any claim that a worker's live leg "read the live per-sym layer" before this is false on its face.
+
+### 118.2 THE WORKER RESOLVES ITS OWN `per_sym_store.db`, NOT THE MAC'S
+`per_sym_store.DB_PATH` = `data/hourly_reconfig/per_sym_store.db`, overridable ONLY by env `PER_SYM_STORE_DB`
+(`per_sym_store.py:56`). Measured 2026-10-20 20:16Z: **Mac 1,308,164,096 bytes md5 `27e1c392…`; S2 471,445,504
+bytes md5 `fd462ddd…`, with a live `-wal`/`-shm` because S2's own herd writes it.** Different store, different
+rows. Consequence, measured on the real gate (`live_twins.vec_exact.latest_board_ok`, the one live calls before
+every OPEN/AUGMENT) over 92 live stock sym_sides:
+
+| store the worker resolved | gate OK | refused |
+|---|---|---|
+| S2's own `per_sym_store.db` | **1** | **91**, all `LIVE_SET_NE_BOARD_{34…958}keys` |
+| Mac's live store via `PER_SYM_STORE_DB` | **92** | **0** |
+
+92/92 matches what the live Mac measures for itself (`tools/per_sym_disparity_guard.py`: 111 stock sym_sides →
+**92 OK, 15 DRIFT, 4 NO_LATEST_BOARD, 0 BOARD_TOO_OLD**; crypto 50/50 OK). **LAW: a parity run on S1/S2 must pin
+`PER_SYM_STORE_DB` at a snapshot of the Mac's store, or it is scoring the worker's incumbent rows** — the same
+class of error as `worker_db_is_not_live`. Build the snapshot with `sqlite3 .backup` from the live file (never a
+plain `cp` of a WAL database); `per_sym_active` + `kv_json` alone is 224 MB vs 1.3 GB with `per_sym_history`.
+This also explains §116's `BOARD_TOO_OLD_221h..225h>216h`: S2's `published_selection.json` was the **02:50Z**
+copy, not the Mac's 19:51Z one carrying the `cell_ts` fix.
+
+### 118.3 THE STOCK LIVE PATH IN VEC-EXACT MODE IS WALL-CLOCK BOUND — 0 LIVE TRIPS, ALWAYS
+`tools/v15_trade_parity.py:429` defaults `TRADE_PARITY_VEC_EXACT=1`, which injects
+`PARITY_VEC_EXACT_MODE: True` into the **live leg only** (`:432`). That routes
+`tradier_manage.process_position` into `_vec_exact_process_twin` (`:14159`), which asks the twin
+`_vx.actions_at(symbol, side, _now)` with **`_now = time.time()`** (`:14183`) at every simulated step, and judges
+staleness as `_now - _bar_ts > VEC_EXACT_STALE_FALLBACK_BARS * 900`. In a replay of September–October bars that
+asks "what should I do right now", so it returns the bare string `VEC_EXACT` with no action and the live leg
+opens nothing. **Measured across all 92 stock sym_sides: `live_trips=0` against `vec_trips` 10–71**, with
+`[V8_CANDIDATE_DIAG] … results=['VEC_EXACT'] queue_size=0` at every step. Forcing the stale fallback
+(`VEC_EXACT_STALE_FALLBACK_BARS=0.0001` in the set) does NOT rescue it: AG_SHORT still `live_trips=0` against 67.
+Worse, the verdict is wall-clock dependent — whether the twin reads "fresh" depends on how close the NPZ's last
+bar is to the moment the run happens, so the same sym_side can answer differently hours apart (the §116
+BTCUSDC_LONG shape).
+
+**AND PRODUCTION DOES NOT RUN THAT MODE.** `PARITY_VEC_EXACT_MODE` is **absent on all 92 live stock sym_sides**
+(so it resolves `config_tradier.TradierConfig` default **False**), and today's live logs agree: `trb` and `trc`
+logged **0** `[VEC_EXACT]` dispatches, 0 `VEC_EXACT_STALE_FALLBACK`, 0 `VEC_EXACT_SKIP`; only `tra` (paper) shows
+any (12 dispatches, 64 fallbacks). **Live stocks on trb/trc DECIDE NATIVELY from the per-sym set — they do not
+replay the board.** So the tool's default measures a configuration live never uses, and the right stock run is the
+tool's own documented native diagnostic, `TRADE_PARITY_VEC_EXACT=0` (`:429` calls it the "labelled seam/native
+diagnostic"). Every earlier stock parity verdict taken at the default is void, in both directions.
+
+### 118.4 WHAT THE CRYPTO NUMBER IS, AND WHAT REFUTES THE MAC'S
+Run on S1+S2 over the 60 uncapped store sets (key counts 3,492–3,554; combined digest
+`59e214cfd9bf46a0feddda9c3940da0a` identical on Mac/S1/S2), NPZ frozen by hardlink, scored only inside
+`[2026-10-01, 2026-10-10]`: **entries 2,074 of 2,293 identical (90.4%); of those entry-exact pairs, exits
+1,997 of 2,074 on the identical bar (96.3%)**. 11 of 28 scored sym_sides are bit-exact on every entry and exit.
+±1 and ±4 bar tolerance add 1 and 3 — **entry agreement is binary: the same bar, or no live trade at all.**
+This **refutes** the Mac's two earlier runs (160/163 entries but 61/161 exits = 37.9%, 98 of 100 mismatches
+labelled `VEC_EXIT_OWED paper-flat-live-holds-retry`): on S1+S2 `VEC_EXIT_OWED` appears in **5** of 77 exit
+mismatches, and both hosts agree independently (S1 95.6%, S2 96.5%) across two different engine md5 sets
+(`8bfbc1e6419e` / `0d9d9d824367`). The Mac was at load 356 with 76 MB free RAM — see
+`mac_overload_starves_producers`. Asymmetry is concentrated in re-entry cadence, both directions:
+VEC_ONLY 216 (`REENTRY_HIGHER_LOW` 54, `B` 50, `B_KZONE` 36), LIVE_ONLY 62 (`REENTRY_HIGHER_LOW` 17, `B` 14).
+Coverage shortfall is honest: 20 of 60 wrote no report at `timeout 14400` under a concurrent herd; needs ≤3
+concurrent or a herd-free host.
+
+### 118.5 A GUARD OF MY OWN MAKING — MARKET HOURS ARE PART OF "NOBODY TRADES"
+`tools/never_untraded_guard.py` (118.5 cadence 30 s, 90 s grace) asks "is this account traded by ANYBODY". It had
+no market-hours awareness, so the **correct** post-close exit of `trb`/`trc`/`tra` read as an untraded account:
+at 90 s it would start the wrapper, the wrapper's own market gate would exit 0, and it would restart it every
+30 s — a churn loop created by the guard that exists to prevent outages. Fixed with `stocks_in_session()`
+(13:25–20:00Z weekdays, ET offset derived not hardcoded; US holidays deliberately NOT modelled — on a holiday it
+logs a false alarm it cannot fix, never a start loop, because the wrapper gate still refuses). 6 boundary cases
+tested; post-close verdict is now `OK` with `note: "market closed"` and an empty `actions` list. Crypto is never
+gated: 5/5 accounts traded by the Mac, S1 at zero, `data/latest_market_data.json` 20 s old.
+
+### 118.6 THE RULE THIS SECTION LEAVES BEHIND
+Before any parity verdict is quoted, four things must be stated or it is not a verdict:
+1. **which store the live leg resolved** (`PER_SYM_STORE_DB`, with the Mac store's md5),
+2. **which decision mode the live leg ran** (`TRADE_PARITY_VEC_EXACT` / `PARITY_VEC_EXACT_MODE`), and that it is
+   the mode production runs for that venue,
+3. **the gate census on that host** (`latest_board_ok` OK/refused over the tested set, not assumed),
+4. **the NPZ freeze and the scoring window**, measured from each NPZ's own last bar.
+A run missing any of them measures the harness, not the system. All three causes above were silent: every leg
+exited 0, wrote a report, and printed a number.
