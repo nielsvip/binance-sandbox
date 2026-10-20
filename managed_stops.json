@@ -1,4 +1,11 @@
 {
+  "fin:THETAUSDT_LONG": {
+    "orderId": "3000002260246842",
+    "stopPrice": 0.1828,
+    "entry_sig": "2026-10-19 22:53:54.925000+00:00",
+    "symbol": "THETAUSDT",
+    "side": "LONG"
+  },
   "fin:QTUMUSDT_LONG": {
     "orderId": "3000002260243443",
     "stopPrice": 0.8421,
@@ -40,12 +47,5 @@
     "entry_sig": "2026-10-20 00:05:01.355000+00:00",
     "symbol": "1INCHUSDT",
     "side": "SHORT"
-  },
-  "fin:THETAUSDT_LONG": {
-    "orderId": "3000002260246842",
-    "stopPrice": 0.1828,
-    "entry_sig": "2026-10-19 22:53:54.925000+00:00",
-    "symbol": "THETAUSDT",
-    "side": "LONG"
   }
 }

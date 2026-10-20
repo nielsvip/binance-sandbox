@@ -1013,6 +1013,14 @@ class ResamplingAndGapFillEngine:
         #     intervals.insert(0, "3m")
         # if self.fetch_1m_from_api:
         #     intervals.insert(0, "1m")
+        # USER 2026-10-20: one batched local+S1 prefill for every file before any REST top-up (never a REST gap fill)
+        try:
+            import klines_tail_fill
+            pre = await asyncio.to_thread(klines_tail_fill.prefill, config.BASE_PATH, config.KLINES_CACHE_DIR, [(s, i) for s in self.symbols_to_run for i in intervals], env == "macbook", self.logger.info)
+            for (_symbol, _interval), rows in pre.items():
+                await self.merge_and_write_df(self._normalize_raw_klines(rows), _symbol, _interval)
+        except Exception as e:
+            self.logger.warning(f"tail prefill failed: {e}")
         for symbol in self.symbols_to_run:
             for interval in intervals:
                 tasks.append(self._topup_symbol_interval(symbol, interval))
@@ -1561,8 +1569,14 @@ class ResamplingAndGapFillEngine:
         if getattr(self, "_api_disabled_until", 0) and time.time() < self._api_disabled_until:
             self.logger.warning(f"{log_prefix} ⛔ API disabled until {self._api_disabled_until}, skipping request")
             return pd.DataFrame(columns=config.KLINE_COLUMNS)
-        self.logger.info(f"{log_prefix} 🔄 No 3m data located, fetching 1500 bars from API")
-        df_api = await self._fetch_klines_from_api_with_semaphore(symbol, '3m', limit=1500)
+        # USER 2026-10-20: seed from local stores / S1 first; REST only if nobody has the file (1000 = weight 5, not 10)
+        await self._tail_bars_only(symbol, '3m', 1000)
+        df_seed = await self.get_klines_df(symbol, interval)
+        if not df_seed.empty:
+            self.logger.info(f"{log_prefix} ✅ Seeded {len(df_seed)} 3m bars from local/S1 stores (no API)")
+            return df_seed
+        self.logger.info(f"{log_prefix} 🔄 No 3m data located, fetching 1000 bars from API")
+        df_api = await self._fetch_klines_from_api_with_semaphore(symbol, '3m', limit=1000)
         if df_api.empty:
             self.logger.warning(f"{log_prefix} 🚨 API fetch returned no data")
             return pd.DataFrame(columns=config.KLINE_COLUMNS)
@@ -1995,11 +2009,38 @@ class ResamplingAndGapFillEngine:
             self.logger.warning(f"{source}: failed to merge klines for {symbol}:{interval}: {e}")
             return False
 
+    async def _tail_bars_only(self, symbol: str, interval: str, requested: int) -> int:
+        """USER 2026-10-20 "just get the bars you need … NEVER EVER need to get > 5 bars again as we are STAYING UP TO DATE".
+        A tail fetch asks only for the file's own last bar (re-finalised) .. the forming bar. A gap >5 is filled from local
+        stores + S1 first (klines_tail_fill); only bars nobody else has go to REST. Cold file: 1000 (weight 5, not 10)."""
+        try:
+            import klines_tail_fill
+            own = config.KLINES_CACHE_DIR / f"{symbol}_{interval}.json"
+            need = klines_tail_fill.bars_needed(own, interval)
+            if need is None or need > klines_tail_fill.MAX_REST_BARS:
+                pre = await asyncio.to_thread(klines_tail_fill.prefill, config.BASE_PATH, config.KLINES_CACHE_DIR, [(symbol, interval)], env == "macbook", self.logger.info)
+                for (_symbol, _interval), rows in pre.items():
+                    await self.merge_and_write_df(self._normalize_raw_klines(rows), _symbol, _interval)
+                need = klines_tail_fill.bars_needed(own, interval)
+            if need is None:
+                return min(requested, 1000)
+            if need > klines_tail_fill.MAX_REST_BARS:
+                self.logger.warning(f"⚠️ REST GAP {symbol}_{interval}: {need} bars missing after local+S1 prefill — fetching exactly those")
+            return int(min(requested, need, 1000))
+        except Exception as e:
+            self.logger.warning(f"tail sizing failed for {symbol}_{interval}: {e}")
+            return min(requested, 1000)
+
     async def fetch_klines_in_chunks(self, symbol: str, interval: str, total_bars_needed: int, end_time_ms: Optional[int] = None) -> pd.DataFrame:
         """Fetches klines from Binance in chunks using the proper /klines endpoint; returns clean ascending DataFrame."""
         if getattr(self, "_api_disabled_until", 0) and time.time() < self._api_disabled_until:
             self.logger.debug(f"⛔ API disabled (rate-limit ban), skipping chunked fetch for {symbol}:{interval}")
             return pd.DataFrame(columns=config.KLINE_COLUMNS)
+        if end_time_ms is None:
+            total_bars_needed = await self._tail_bars_only(symbol, interval, total_bars_needed)
+        if not hasattr(self, "_confirmed_no_older"):
+            self._confirmed_no_older = set()
+        self._confirmed_no_older.discard((symbol, interval))
         all_dfs = []
         remaining_bars = total_bars_needed
         current_end_time = end_time_ms
@@ -2039,6 +2080,8 @@ class ResamplingAndGapFillEngine:
                             if resp.status == 200:
                                 data = await resp.json()
                                 if not data or not isinstance(data, list):
+                                    if isinstance(data, list) and current_end_time:
+                                        self._confirmed_no_older.add((symbol, interval))
                                     break
                                 df = self._normalize_raw_klines(data)
                                 if df.empty:
@@ -2198,6 +2241,11 @@ class ResamplingAndGapFillEngine:
                 continue
 
             gap_queue = asyncio.Queue()
+            try:
+                import klines_tail_fill
+                inception = klines_tail_fill.load_inception(config.BASE_PATH)
+            except Exception:
+                klines_tail_fill, inception = None, {}
 
             # Scan all symbols and timeframes to identify potential backfill opportunities
             for symbol in symbols_to_check:
@@ -2213,10 +2261,14 @@ class ResamplingAndGapFillEngine:
                         # Always fetch full 1500 klines for incomplete files
                         if len(existing_df) < target_bars:
                             oldest_ts = existing_df['timestamp'].min() if not existing_df.empty else None
-                            bars_to_fetch = 1500  # Always fetch full 1500 klines for incomplete symbols
+                            # USER 2026-10-20: a young listing never reaches target_bars — it was re-asked for 1500 bars of
+                            # history that does not exist every cycle. Skip while the file starts at its recorded listing bar.
+                            if klines_tail_fill and oldest_ts is not None and klines_tail_fill.at_inception(inception, symbol, interval, pd.Timestamp(oldest_ts).strftime('%Y-%m-%dT%H:%M:%S')):
+                                continue
+                            bars_to_fetch = int(min(1000, max(1, target_bars - len(existing_df))))  # just the bars needed (was 1500 = top weight tier)
                             end_ts_ms = int(oldest_ts.timestamp() * 1000) if oldest_ts else None
                             await gap_queue.put((symbol, interval, bars_to_fetch, end_ts_ms))
-                            self.logger.info(f" BACKFILL queued for {symbol}_{interval}: has {len(existing_df)}/{target_bars}, will fetch 1500 bars.")
+                            self.logger.info(f" BACKFILL queued for {symbol}_{interval}: has {len(existing_df)}/{target_bars}, will fetch {bars_to_fetch} bars.")
                     except Exception as e:
                         self.logger.error(f"Error scanning {symbol}_{interval} for gaps: {e}")
             
@@ -2250,10 +2302,17 @@ class ResamplingAndGapFillEngine:
                                 # If we tried to fetch but added 0 bars, we've hit the start of history.
                                 self.logger.info(f" Worker-{worker_id}: {symbol}_{interval} hit start of history. No new bars added.")
                                 history_fully_fetched.add(symbol)
+                                # endTime is inclusive: Binance answering with nothing OLDER than our first bar = listing bar
+                                if end_ts is not None and klines_tail_fill and int(pd.to_datetime(fetched_df['timestamp'], utc=True).min().timestamp() * 1000) >= end_ts:
+                                    klines_tail_fill.mark_inception(config.BASE_PATH, symbol, interval, pd.to_datetime(end_ts, unit='ms', utc=True).strftime('%Y-%m-%dT%H:%M:%S'))
                         else:
                             # If the fetch function returned nothing, we are definitely done.
                             self.logger.info(f" Worker-{worker_id}: {symbol}_{interval} confirmed start of history. No more data available.")
                             history_fully_fetched.add(symbol)
+                            # USER 2026-10-20: record the listing bar ONLY on Binance's own HTTP 200 "[]" for an older page
+                            # (an error also returns empty) so the next cycles stop re-asking for history that does not exist
+                            if end_ts is not None and (symbol, interval) in getattr(self, "_confirmed_no_older", set()) and klines_tail_fill:
+                                klines_tail_fill.mark_inception(config.BASE_PATH, symbol, interval, pd.to_datetime(end_ts, unit='ms', utc=True).strftime('%Y-%m-%dT%H:%M:%S'))
 
                         gap_queue.task_done()
                     except Exception as e:

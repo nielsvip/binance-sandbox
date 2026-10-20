@@ -6114,7 +6114,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if _ent is None:
             return
         _prow = (_v18_prof_rows or {}).get(_rk) or {}
-        _untried_sw = str(_prow.get("verdict") or "") == "UNTRIED"
+        _untried_sw = str(_prow.get("state") or _prow.get("verdict") or "") in ("UNTRIED", "UNTESTED")
         pool = list(dict.fromkeys(list(info["hdrs"]) + [h for _l in _V18P.FLOOR_CELL_LISTS for h in (info.get(_l) or [])]))
         ps = {}
         def _kf(h):
@@ -8568,6 +8568,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return
         ph = _v17_phase_start(tag)
         idx, why = _V18P.load_must_index(_v18_floor_cs, ROOT)
+        _pa_idx, _pa_tried, _pa_why = _V18P.load_positives_all(_v18_floor_cs, new_symside, ROOT)
+        for _pk, _pe in _pa_idx.items():
+            _e0 = idx.setdefault(_pk, {"syms": [], "best": None})
+            _e0["syms"] = sorted(set(_e0.get("syms") or []) | set(_pe.get("syms") or []))
+            _e0["best"] = max(float(_e0.get("best") or 0.0), float(_pe.get("best") or 0.0))
+        why = f"{why}; {_pa_why}"
         led_p = progress_path.parent / "v18_must" / f"{new_symside}.json"
         try:
             ledger = json.loads(led_p.read_text())
@@ -8576,7 +8582,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         import glob as _gm
         own = sorted(set(_gm.glob(str(progress_path.parent / "v15_delta_log" / f"{new_symside}_*.jsonl")) + _gm.glob(os.path.expanduser(f"~/v15_run*/progress/v15_delta_log/{new_symside}_*.jsonl")) + [p_ for g_ in (os.environ.get("V18_MUST_TRIED_GLOB") or "").split(",") if g_ for p_ in _gm.glob(os.path.expanduser(g_.replace("{SS}", new_symside)))]))
         from tools.v15_v18_must_index import tried_items as _tried_items
-        tried = _tried_items(own, new_symside)
+        tried = _tried_items(own, new_symside) | set(_pa_tried)
         for _dk in (progress.get("done") or {}):
             if "!" in str(_dk) and ":" in str(_dk) and str(_dk).split("!", 1)[0] in SWITCH_SHEETS:
                 tried.add(str(_dk).split(":", 1)[1])

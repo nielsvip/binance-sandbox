@@ -50888,6 +50888,30 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                     logger.critical(f"[VEC_EXACT_EXIT_PRIOR_LIFECYCLE] {position_key}: {len(_prior)} expired vec exit(s) decided BEFORE this live entry ({_oa_raw!r}) bars={[int(e[0]) for e in _prior]} — belong to an earlier vec position live never held")
         except Exception as _exp_e:
             logger.warning(f"[VEC_EXACT_EXIT_OWED] {position_key} expired-exit probe err: {_exp_e}")
+        # 2026-10-20 CATCH-UP ACTS BELONG TO A LIFECYCLE TOO. take_catchup() (live_twins/vec_exact.py:996)
+        # replays un-emitted CLOSE/REDUCE from the last 4 decided bars with NO knowledge of the live
+        # position, so an exit decided for the position the vector held 1-4 bars ago was executed against
+        # a position that opened THIS bar. MEASURED: 38 of 100 ATOMUSDT_LONG live exits carried the PREVIOUS
+        # trip's exit reason AND its price token, fired one bar after the new entry (e.g. vec entry 09-17
+        # 00:15 -> exit 03:45 MTF_DC_REJECT_1h_px1.5120; live took the same entry and exited 00:30 with that
+        # same reason string). This is the rule the expired-exit probe above already applies -- "Only an exit
+        # decided BEFORE this live position existed is not this position's exit" -- so it is the same policy,
+        # not a new one, and it drops nothing that belongs to the position now open.
+        # FAIL-SAFE: unknown opened_at keeps every act (pre-2026-10-20 behaviour); the +1 bar tolerance
+        # matches the expired probe's `float(e[0]) + 900.0 >= _oa_ep`.
+        if _acts_catch:
+            try:
+                _lc_now = _vx_lc_of(trade_manager.positions.get(position_key))
+                if _lc_now is not None:
+                    _keep, _stale = [], []
+                    for _ca in _acts_catch:
+                        _cb = safe_fetch_float(_ca.get("bar_ts"), 0) or 0.0
+                        (_keep if (_cb <= 0 or _cb + 900.0 >= _lc_now) else _stale).append(_ca)
+                    if _stale:
+                        _acts_catch = _keep
+                        logger.critical(f"[VEC_EXACT_CATCHUP_PRIOR_LIFECYCLE] {position_key}: dropped {len(_stale)} catch-up exit(s) decided before this live entry (opened_at_epoch={_lc_now:.0f}) bars={[int(safe_fetch_float(x.get('bar_ts'), 0) or 0) for x in _stale]} reasons={[str(x.get('reason'))[:40] for x in _stale]} — they belong to an earlier vec position")
+            except Exception as _cl_e:
+                logger.warning(f"[VEC_EXACT_CATCHUP_PRIOR_LIFECYCLE] {position_key}: lifecycle filter error (keeping all catch-up acts): {_cl_e}")
         _vx_exit_attempted = False
         for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))

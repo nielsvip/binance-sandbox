@@ -79,3 +79,24 @@ def test_pilot_must_wiring_pins():
     i_f = SRC.index("_V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p)")
     i_m = SRC.index('_V18P.floor_apply(info, lambda kind, h, _m=_v18_mk:')
     assert i_f < i_m
+
+
+def test_positives_all_gz_index_form(tmp_path, monkeypatch):
+    import gzip
+    monkeypatch.setenv("V18_DIGEST_DIR", str(tmp_path))
+    d = {"_meta": {"cat_side": "CRYPTO_LONG"}, "sym_sides": ["A_LONG", "ME_LONG", "B_LONG"], "rows": [{"key": "S=1", "pos_syms": ["A_LONG"], "tried_on": [0, 1], "n_pos": 1}, {"key": "T=2", "pos_syms": ["B_LONG", "ME_LONG"], "tried_on": [2], "n_pos": 2}], "pairs": [{"key": "S=1", "filter": "F=o", "pos_syms": ["A_LONG"], "tried_on": [0], "n_pos": 1}]}
+    with gzip.open(tmp_path / "positives_all_CRYPTO_LONG.json.gz", "wt") as fh:
+        json.dump(d, fh)
+    idx, tried, why = V.load_positives_all("CRYPTO_LONG", "ME_LONG")
+    assert why.startswith("ok positives_all_CRYPTO_LONG.json.gz")
+    assert tried == {"S=1"} and set(idx) == {"S=1", "T=2", "S=1@F=o"} and idx["T=2"]["syms"] == ["B_LONG"]
+    assert V.must_items(idx, None, "ME_LONG", tried, {}, "x") == ["S=1@F=o", "T=2"] or V.must_items(idx, None, "ME_LONG", tried, {}, "x") == ["T=2", "S=1@F=o"]
+    d["_meta"]["cat_side"] = "STOCKS_LONG"
+    with gzip.open(tmp_path / "positives_all_CRYPTO_LONG.json.gz", "wt") as fh:
+        json.dump(d, fh)
+    assert "MISMATCH" in V.load_positives_all("CRYPTO_LONG", "ME_LONG")[2]
+
+
+def test_pilot_reads_positives_all():
+    assert "_V18P.load_positives_all(_v18_floor_cs, new_symside, ROOT)" in SRC
+    assert "tried = _tried_items(own, new_symside) | set(_pa_tried)" in SRC

@@ -827,3 +827,43 @@ def must_parts(item: str) -> list:
         f, _, o = cell.partition("=")
         parts.append((f.strip(), o.strip()))
     return parts
+
+
+def load_positives_all(cat_side: str, symside: str, root=None):
+    """data/learn/positives_all_<CS>.json(.gz) (precision builder: rows [{key, pos_syms, tried_on, untried_on, n_pos}], pairs
+    [{key, filter, ...}], tried_on/untried_on = indices into `sym_sides`) -> ({item: {syms, best}}, items THIS sym_side
+    tried, why). Item keys as the MUST index: 'SW=c' / 'SW=c@F=o'. Strict cat_side; fail-open."""
+    import gzip
+    cs = str(cat_side or "").upper()
+    d, why = None, ""
+    for name in (f"positives_all_{cs}.json.gz", f"positives_all_{cs}.json"):
+        p = learn_file(name, root)
+        if not p.exists():
+            continue
+        try:
+            with (gzip.open(p, "rt") if name.endswith(".gz") else open(p)) as fh:
+                d = json.load(fh)
+            why = f"ok {name}"
+            break
+        except Exception as e:
+            why = f"unreadable {name}: {e}"[:160]
+    if not isinstance(d, dict):
+        return {}, set(), why or "positives_all absent"
+    if str((d.get("_meta") or d.get("meta") or {}).get("cat_side") or cs).upper() != cs:
+        return {}, set(), "positives_all CAT_SIDE_MISMATCH — refused (principle 13)"
+    syms = list(d.get("sym_sides") or [])
+    me = syms.index(symside) if symside in syms else None
+    idx, tried = {}, set()
+    for kind in ("rows", "pairs"):
+        for e in d.get(kind) or []:
+            if not isinstance(e, dict) or not e.get("key"):
+                continue
+            k = str(e["key"]).strip() + (f"@{str(e['filter']).strip()}" if kind == "pairs" and e.get("filter") else "")
+            if kind == "pairs" and not e.get("filter"):
+                continue
+            if me is not None and me in set(e.get("tried_on") or []):
+                tried.add(k)
+            ps = [s_ for s_ in (e.get("pos_syms") or []) if s_ != symside]
+            if ps:
+                idx[k] = {"syms": ps, "best": float(e.get("n_pos") or len(ps))}
+    return idx, tried, f"{why} rows={len(d.get('rows') or [])} pairs={len(d.get('pairs') or [])} items={len(idx)} tried_here={len(tried)}"
