@@ -264,3 +264,31 @@ def test_readiness_report_older_than_the_window_is_not_trusted(tmp_path, monkeyp
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+def test_capability_requires_proof_not_just_a_fresh_snapshot_file(monkeypatch):
+    """2026-10-20 14:20:08Z: the file said 49% stale (inside the bar) and the lever pinned the lease to S1,
+    whose own ez_manage was still refusing every entry as STALE_INDICATORS (282m old) at 14:26Z."""
+    monkeypatch.setattr(pin, "_ssh", lambda host, cmd, timeout=40: type("R", (), {"stdout": '{"symbols": 199, "stale": 0, "stale_pct": 0.0}', "stderr": "", "returncode": 0})())
+    monkeypatch.setattr(pin, "s1_refusals", lambda: (12416, 1, "s1-pub 12416 refusals in the last 10 min, 1 ez_manage running"))
+    capable, detail = pin.s1_capable()
+    assert capable is False and "refused" in detail
+
+
+def test_capability_requires_a_trader_to_be_running(monkeypatch):
+    monkeypatch.setattr(pin, "_ssh", lambda host, cmd, timeout=40: type("R", (), {"stdout": '{"symbols": 199, "stale": 0, "stale_pct": 0.0}', "stderr": "", "returncode": 0})())
+    monkeypatch.setattr(pin, "s1_refusals", lambda: (0, 0, "s1-pub 0 refusals, 0 ez_manage running"))
+    capable, detail = pin.s1_capable()
+    assert capable is False and "no trader" in detail
+
+
+def test_capability_granted_only_on_positive_evidence(monkeypatch):
+    monkeypatch.setattr(pin, "_ssh", lambda host, cmd, timeout=40: type("R", (), {"stdout": '{"symbols": 199, "stale": 2, "stale_pct": 1.0}', "stderr": "", "returncode": 0})())
+    monkeypatch.setattr(pin, "s1_refusals", lambda: (0, 5, "s1-pub 0 refusals, 5 ez_manage running"))
+    assert pin.s1_capable()[0] is True
+
+
+def test_an_unreadable_probe_is_never_capable(monkeypatch):
+    monkeypatch.setattr(pin, "_ssh", lambda host, cmd, timeout=40: type("R", (), {"stdout": '{"symbols": 199, "stale": 0, "stale_pct": 0.0}', "stderr": "", "returncode": 0})())
+    monkeypatch.setattr(pin, "s1_refusals", lambda: (None, 0, "s1-pub log probe failed"))
+    assert pin.s1_capable()[0] is False
