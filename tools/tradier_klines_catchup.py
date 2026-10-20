@@ -57,9 +57,56 @@ def last_bar(p):
         return None
 
 
+def last_final_bar(p):
+    """last NON-PROVISIONAL bar timestamp. tradier_price_tracker writes tick-built bars with
+    `"provisional": true` for the forming bar, and klines_append._final_rows (correctly) drops those — a
+    provisional bar appended into S1's long store would freeze a half-formed bar into backtest truth. So a
+    file full of provisional rows has NO usable coverage for today, and last_bar() counting them was the
+    second half of why this tool did nothing. Tail-read, newest final row wins."""
+    try:
+        sz = p.stat().st_size
+        with open(p, "rb") as f:
+            f.seek(max(0, sz - 262144))
+            blobs = re.findall(r'\{[^{}]*\}', f.read().decode("utf-8", "ignore"))
+    except OSError:
+        return None
+    newest = None
+    for blob in blobs:
+        if '"provisional"' in blob and re.search(r'"provisional":\s*true', blob):
+            continue
+        m = re.search(r'"timestamp":\s*"([0-9T:\-\.]+)Z?"', blob)
+        if not m:
+            continue
+        try:
+            ts = dt.datetime.strptime(m.group(1)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc)
+        except ValueError:
+            continue
+        if newest is None or ts > newest:
+            newest = ts
+    return newest
+
+
 def last_rth_close(now=None):
-    """most recent weekday 20:00Z (16:00 ET) that has passed."""
+    """The newest 15m RTH bar that has CLOSED — today's while the session is open, else the previous close.
+
+    USER 2026-10-20 ("npz's still stale in most cases"). This returned "the most recent weekday 20:00Z that
+    has passed", so during RTH — the only time catch-up matters — `now < today 20:00Z` sent it back to
+    YESTERDAY's close. Measured live, every 20 minutes, with 12 allowed symbols holding nothing but
+    provisional bars for today:
+        [tradier_catchup 15:00:18Z] 0 of 223 stock symbols are missing bars up to 2026-10-19T20:00:00+00:00
+    The tool was a guaranteed no-op for the whole session it exists to repair. tools/npz_cutoffs is the single
+    cutoff authority the dispatch gate and tail_currency already use, so defer to it and keep the old
+    end-of-session rule only as the fallback when it cannot be imported."""
     now = now or dt.datetime.now(dt.timezone.utc)
+    try:
+        sys.path.insert(0, str(ROOT))
+        from tools.npz_cutoffs import last_rth_close_bar
+
+        bar = last_rth_close_bar(now)  # takes a tz-aware datetime, NOT an epoch: passing now.timestamp()
+        if bar:                        # raised AttributeError('float' has no 'tzinfo') straight into the
+            return dt.datetime.fromtimestamp(float(bar), dt.timezone.utc)  # except below, silently keeping
+    except Exception as exc:           # yesterday's close — the very bug this function was being fixed for.
+        print(f"[tradier_catchup] npz_cutoffs unavailable ({type(exc).__name__}: {exc}) — falling back to the previous session close", flush=True)
     d = now.replace(hour=20, minute=0, second=0, microsecond=0)
     if now < d:
         d -= dt.timedelta(days=1)
@@ -68,12 +115,41 @@ def last_rth_close(now=None):
     return d
 
 
-def behind(cache_dir, symbols, cutoff):
+def allowed_stock_symbols():
+    """USER 2026-10-20: "stocks can only have npz's for the symbols_trb_long/short of that moment plus
+    [TRADIER_MANDATORY_LONG_TRB / TRADIER_MANDATORY_SHORT_TRB]". Same law as
+    v15_fleet_scheduler._reachable_sym_sides, so this tool never repairs a symbol the fleet may not compute:
+    114 symbols instead of 223. None = unavailable, and then nothing is narrowed (fail-open)."""
+    syms = set()
+    try:
+        sys.path.insert(0, str(ROOT))
+        for side in ("long", "short"):
+            with open(ROOT / f"symbols_trb_{side}.json") as fh:
+                v = json.load(fh)
+            syms |= {str(x).strip().upper() for x in (v if isinstance(v, list) else v.get("symbols") or [])}
+        from config_tradier import TradierConfig
+
+        cfg = TradierConfig()
+        for attr in ("TRADIER_MANDATORY_LONG_TRB", "TRADIER_MANDATORY_SHORT_TRB"):
+            syms |= {str(x).strip().upper() for x in (getattr(cfg, attr, None) or [])}
+    except Exception as exc:
+        print(f"[tradier_catchup] allowed universe unavailable ({type(exc).__name__}: {exc}) — not narrowing", flush=True)
+        return None
+    return syms or None
+
+
+def behind(cache_dir, symbols, cutoff, min_bars=None):
+    """Symbols whose newest FINAL 15m bar is more than min_bars behind `cutoff`.
+
+    min_bars exists because every symbol is 1 bar behind for the minute after a bar closes — reporting 211 of
+    223 "missing" and then re-fetching 110 of them every 20 minutes is how this tool would hammer Tradier for
+    nothing. Default 2 bars (30 min): below that the main tradier_klines pass gets there on its own."""
+    tol = dt.timedelta(minutes=15 * (int(os.environ.get("TRADIER_CATCHUP_MIN_BARS", "2")) if min_bars is None else min_bars))
     out = []
     for s in symbols:
         p = cache_dir / f"{s}_15m.json"
-        lb = last_bar(p) if p.exists() else None
-        if lb is None or lb < cutoff:
+        lb = last_final_bar(p) if p.exists() else None
+        if lb is None or lb < cutoff - tol:
             out.append((s, lb))
     return out
 
@@ -110,6 +186,11 @@ def main():
         syms = [s.strip().upper() for s in a.symbols.split(",") if s.strip()]
     else:
         syms = [str(s).upper() for s in json.loads(Path(tk.config.SYMBOLS_FILE).read_text())]
+        allowed = allowed_stock_symbols()
+        if allowed:
+            dropped = [s for s in syms if s not in allowed]
+            syms = [s for s in syms if s in allowed]
+            log(f"allowed universe {len(allowed)} (trb_long/short + TRADIER_MANDATORY_*_TRB): {len(syms)} kept, {len(dropped)} outside the law and never repaired")
     cutoff = last_rth_close()
     late = behind(cache, syms, cutoff)
     log(f"{len(late)} of {len(syms)} stock symbols are missing bars up to {cutoff.isoformat()} (cache {cache})")
