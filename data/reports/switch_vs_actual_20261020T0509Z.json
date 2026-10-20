@@ -1,0 +1,128 @@
+{
+ "window_from": "10-20 04:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 9
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1INCHUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:12",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p0.092490>dc40.092080_g-0.29%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ADAUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:12",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p0.218700>dc40.217500_g-0.97%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BNBUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:21",
+   "actual": "REDUCE",
+   "actual_reason": "VEL_EXIT_v4h-4.75_g0.19",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SANDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:07",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_SHORT_L56_S44_tgt75/25_gain2.1%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SNXUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:23",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_STRONG_REDUCE_k_1m:17/d_1m:25/k_3m:90/d_3m:87_SIMPLE_TP_0.90%_wt=declining_bc",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SNXUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:57",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px0.2169_k72",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "THETAUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:26",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_STRONG_REDUCE_k_1m:41/d_1m:49/k_3m:78/d_3m:83_SIMPLE_TP_0.91%_wt=declining_bc",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:12",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_REDUCE_LONG_L100_S0_tgt75/25_breadth88%_gain5.2%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:42",
+   "actual": "REDUCE",
+   "actual_reason": "HEDGE_CLOSE_WT3M1H_PRE_GATE_3m=40.7/45.2_1h=41.6/53.9_gain=5.69%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

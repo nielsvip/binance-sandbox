@@ -1,120 +1,100 @@
 {
- "at": "2026-10-20T04:11:01Z",
+ "at": "2026-10-20T05:11:01Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 2,
+   "improved_per_hour": 2.0,
+   "published_n": 2,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BBUSDT_LONG",
-    "BBUSDT_SHORT"
+    "DOGEUSDC_SHORT",
+    "DUSKUSDT_LONG"
    ],
-   "mem_avail_mb": 13094,
-   "load1": 27.89,
+   "mem_avail_mb": 13227,
+   "load1": 25.48,
    "nproc": 16,
-   "slots": "1/6",
-   "binding_reason": "scheduler mem guard (disk 43277 MB, mem 12906 MB, est_pair 12000 MB) \u2014 slots 1/6",
+   "slots": "2/8",
+   "binding_reason": "scheduler mem guard (disk 42933 MB, mem 13450 MB, est_pair 6000 MB) \u2014 slots 2/8",
    "error": null,
    "published": [
     {
-     "symside": "PR_LONG",
-     "at": "2026-10-20T03:45:30Z",
-     "baseline": 7.8820966168864945,
-     "final": 17.04930226558739,
+     "symside": "BBUSDT_SHORT",
+     "at": "2026-10-20T04:30:25Z",
+     "baseline": 22.70507761700145,
+     "final": 52.554458935655916,
+     "state": "improved"
+    },
+    {
+     "symside": "UEC_SHORT",
+     "at": "2026-10-20T04:57:16Z",
+     "baseline": 27.184437340765573,
+     "final": 61.36241403086734,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 21.3,
-   "last_improved_symside": "ACN_LONG",
-   "cadence_ok": false,
+   "minutes_since_last_improved": 2.5,
+   "last_improved_symside": "CLF_LONG",
+   "cadence_ok": true,
    "improved_gap_min_median_24h": 12.5,
    "improved_gap_min_max_24h": 434.1,
-   "improved_finishes_24h": 38,
-   "board_cpu_s_median_24h": 1141.1,
-   "board_wall_s_median_24h": 604.1145820617676,
-   "board_cores": 2.91,
-   "nonboard_cores_competing": 4.92,
-   "nonboard_cores_niced": 7.59,
+   "improved_finishes_24h": 39,
+   "board_cpu_s_median_24h": 1153.5,
+   "board_wall_s_median_24h": 624.0031070709229,
+   "board_cores": 2.12,
+   "nonboard_cores_competing": 3.65,
+   "nonboard_cores_niced": 9.83,
    "cores_by_bucket": {
-    "other": 2.2,
-    "boards": 2.91,
-    "klines_append": 0.92,
-    "live_helpers": 1.8
+    "other": 1.1,
+    "live_helpers": 1.64,
+    "boards": 2.12,
+    "klines_append": 0.91
    },
    "cores_by_bucket_niced": {
-    "other": 6.5,
-    "klines_vault": 1.09
+    "other": 9.03,
+    "klines_vault": 0.8
    }
   },
   "s2": {
-   "improved": 4,
-   "improved_per_hour": 4.0,
-   "published_n": 4,
+   "improved": 0,
+   "improved_per_hour": 0.0,
+   "published_n": 0,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "DOTUSDT_LONG",
-    "ULTA_SHORT",
-    "VT_SHORT"
+    "CHRUSDT_LONG",
+    "ENJUSDT_LONG",
+    "XOM_SHORT",
+    "XOP_SHORT"
    ],
-   "mem_avail_mb": 9267,
-   "load1": 4.76,
+   "mem_avail_mb": 2444,
+   "load1": 18.76,
    "nproc": 16,
-   "slots": "0/8",
-   "binding_reason": "scheduler mem guard (disk 34641 MB, mem 6704 MB, est_pair 22579 MB) \u2014 slots 0/8",
+   "slots": "3/12",
+   "binding_reason": "scheduler mem guard (disk 31115 MB, mem 3718 MB, est_pair 8284 MB) \u2014 slots 3/12",
    "error": null,
-   "published": [
-    {
-     "symside": "QCOM_SHORT",
-     "at": "2026-10-20T03:27:48Z",
-     "baseline": 1.6076815603475014,
-     "final": 12.823960966778683,
-     "state": "improved"
-    },
-    {
-     "symside": "U_LONG",
-     "at": "2026-10-20T03:38:59Z",
-     "baseline": -5.051846089925008,
-     "final": 19.194711171737108,
-     "state": "improved"
-    },
-    {
-     "symside": "WPM_LONG",
-     "at": "2026-10-20T03:38:55Z",
-     "baseline": -5.686017104305389,
-     "final": 3.198179318714604,
-     "state": "improved"
-    },
-    {
-     "symside": "WPM_SHORT",
-     "at": "2026-10-20T03:55:17Z",
-     "baseline": 8.603987251942545,
-     "final": 20.897651102177132,
-     "state": "improved"
-    }
-   ],
+   "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 15.5,
-   "last_improved_symside": "WPM_SHORT",
+   "minutes_since_last_improved": 5.3,
+   "last_improved_symside": "XOM_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 8.5,
-   "improved_gap_min_max_24h": 257.0,
-   "improved_finishes_24h": 40,
-   "board_cpu_s_median_24h": 1030.7,
-   "board_wall_s_median_24h": 526.3902189731598,
-   "board_cores": 3.63,
-   "nonboard_cores_competing": 0,
-   "nonboard_cores_niced": 1.0,
+   "improved_gap_min_max_24h": 317.0,
+   "improved_finishes_24h": 39,
+   "board_cpu_s_median_24h": 1082.9,
+   "board_wall_s_median_24h": 527.2794919013977,
+   "board_cores": 9.89,
+   "nonboard_cores_competing": 0.01,
+   "nonboard_cores_niced": 4.88,
    "cores_by_bucket": {
-    "boards": 3.63
+    "other": 0.01,
+    "boards": 9.89
    },
    "cores_by_bucket_niced": {
-    "other": 1.0
+    "other": 4.88
    }
   }
  },
@@ -123,7 +103,6 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1",
   "s2"
  ]
 }

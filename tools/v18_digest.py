@@ -17,6 +17,10 @@ CONTRACT v18_digest_v1 (the pilot agent codes against it; keys are EXACTLY these
                    a logged eval of that cell in the evidence window; at_floor = n >= 3 and never positive (the brain
                    allocator's floor rate applies; principle 12: never zero, never closed); floor_per_1000 = V18_FLOOR_PER_1000 (5)
   "xpoll"          [{from_cat_side, switch, cand, score}]               <= V18_XPOLL_K (5), score earned in from_cat_side
+CHANGED 2026-10-20 (E8d, v2): every proposals item also carries "context" {name, hash, n_features, n_active_filter_options} = the
+chain context it was scored under (v2: CAT_SIDE_DEFAULTS = data/per_sym_settings.json[CS] vs the template bold, production scorer of
+tools/v18_linknet.py train2; v1 fallback: "TEMPLATE_BOLD (v1 model, context-free)"); source file linknet_proposals_v2_<CS>.json
+when present, else linknet_proposals_<CS>.json. Template cells are capped at 5 per template row (diversity). Other keys unchanged.
 ADDED 2026-10-20 (E8b, tools/v18_linknet.py; additive — every v1 key above is unchanged, readers that index by name are
 unaffected; absent proposals file -> both lists empty):
   "proposals"      [{switch, cand, filter, opt, cat_side, regime, p_pos_pred, e_delta_pred, forward_pred, nearest_evidence: [...],
@@ -56,7 +60,8 @@ WIN_KEYS = ("switch", "cand", "companions", "p_pos", "e_delta_pos", "n_boards", 
 VETO_KEYS = ("switch", "cand", "filter", "opt", "vetoed_in_missed_moves", "vetoed_losers", "support_syms", "remedy")
 COV_KEYS = ("pairs_total", "pairs_n_lt_3", "pairs_at_floor", "floor_per_1000")
 XPOLL_KEYS = ("from_cat_side", "switch", "cand", "score")
-PROP_KEYS = ("switch", "cand", "filter", "opt", "cat_side", "regime", "p_pos_pred", "e_delta_pred", "forward_pred", "nearest_evidence", "status", "label")
+PROP_KEYS = ("switch", "cand", "filter", "opt", "cat_side", "regime", "p_pos_pred", "e_delta_pred", "forward_pred", "nearest_evidence", "status", "label", "context")
+PROP_CONTEXT_KEYS = ("name", "hash", "n_features", "n_active_filter_options")
 PROP_STATUS = ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW")
 PROPOSALS_MAX_BYTES = 2 * 1024 * 1024
 RANK_TOP = 40
@@ -149,7 +154,8 @@ def assemble(cat_side, learn_dir=None):
     meta = {"cat_side": cat_side, "built_at": C.utc(), "era_cut": C.ERA_CUT_ISO[C.venue_of(cat_side)],
             "n_boards": em.get("n_board_ctx"), "n_sym_sides": em.get("n_sym_sides_evidence"), "sources": sources}
     props, prow = linknet_proposals(cat_side, d)
-    sources["proposals"] = {"file": f"data/learn/linknet_proposals_{cat_side}.json", "n": len(props), "n_proposed_rows": len(prow),
+    pf = f"data/learn/linknet_proposals_v2_{cat_side}.json" if (d / f"linknet_proposals_v2_{cat_side}.json").exists() else f"data/learn/linknet_proposals_{cat_side}.json"
+    sources["proposals"] = {"file": pf, "n": len(props), "n_proposed_rows": len(prow),
                             "label": "PREDICTION (tools/v18_linknet.py), never a measurement"}
     return {"meta": meta, "exit_loss_rank": rows, "repair_menu": rmenu, "winners": winners, "filter_veto": fveto, "coverage": cov, "xpoll": xpoll,
             "proposals": props, "proposed_rows": prow}
@@ -213,6 +219,9 @@ def validate(doc):
             break
         if x["status"] not in PROP_STATUS or x["label"] != "PREDICTION" or x["cat_side"] != m.get("cat_side"):
             bad.append(f"proposal status/label/cat_side {x['status']} {x['label']} {x['cat_side']}")
+            break
+        if not isinstance(x["context"], dict) or set(x["context"]) != set(PROP_CONTEXT_KEYS):
+            bad.append(f"proposal context {x['context']}")
             break
     if any((ps[i]["p_pos_pred"] or 0) < (ps[i + 1]["p_pos_pred"] or 0) for i in range(len(ps or []) - 1)):
         bad.append("proposals not sorted by p_pos_pred desc")

@@ -176,6 +176,7 @@ class CatDS:
         self.bpromo = collections.defaultdict(dict)
         self.last_base = {}
         self.xcache = {}
+        self.board_t0 = {}
         self.ex = _Cols()
         self.sets, self.filts, self.ctxs, self.boards = Interner(), Interner(), Interner(), Interner()
         self.scombo, self.fcombo = Interner(), Interner()
@@ -266,7 +267,14 @@ class CatDS:
             self._resolve(sym, None)
 
     def board_event(self, ev):
+        t0 = VB.epoch_of(ev.get("t"))
+        if t0 is not None and ev.get("b") is not None:
+            self.board_t0.setdefault(ev["b"], t0)
         self._new_board(ev["s"], ev.get("b"))
+
+    def _b_t0(self, b, t):
+        """board start: the board key's own timestamp, else its board event's time (native contexts 'NAT|<hash>'), else the row ts."""
+        return VB.epoch_of(str(b).rsplit("|", 1)[-1]) or self.board_t0.get(b) or t
 
     def in_force(self, sym, key):
         """DEFAULT IN FORCE of a key on this sym_side at this moment: its last promotion on the sym_side (P), else the
@@ -302,7 +310,7 @@ class CatDS:
         if sw in EXCLUDE_KEYS:
             return
         t = VB.epoch_of(ts) or 0.0
-        b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
+        b_t0 = self._b_t0(b, t)
         bi = self.boards(b)
         si = self.sets(f"{sheet}|{sw}={cand}")
         base = self._base_of(ev, t)
@@ -394,7 +402,7 @@ class CatDS:
                 return
         m = ev.get("m") or [None] * 5
         b = self.board_of.get(ev["s"]) or f"{ev['s']}|{ts}"
-        b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
+        b_t0 = self._b_t0(b, t)
         xi = self._xctx(ev["s"], self.last_base.get(ev["s"]))
         self.ex.add(kind=2, set_i=self.sets(f"{sheet}|{sw}={cand}"), filt_i=-1, sc_i=self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}"), fc_i=-1,
                     inf_src=self.INF_SRC[src], ctx_i=self._ctx("PH", None, ev["s"], None, ev.get("ph")), ts=t,
@@ -1791,14 +1799,21 @@ class Trainer2(Trainer):
 
 
 def cmd_train2(a):
-    out_dir = Path(a.ds_dir)
     for cs in a.cat_side or CAT_SIDES:
+        train2_one(cs, a.ds_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs, max_train=a.max_train)
+    return 0
+
+
+def train2_one(cs, ds_dir, fctx=None, log=_log, status=True, **kw):
+    """v1 vs v2 holdout + selection + final model(s) of ONE cat_side -> report dict (files under ds_dir)."""
+    out_dir = Path(ds_dir)
+    if True:
         t0 = time.time()
-        tr = Trainer2(cs, ds_dir=a.ds_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs, max_train=a.max_train)
+        tr = Trainer2(cs, ds_dir=ds_dir, fctx=fctx, log=log, **kw)
         D = tr.D
-        write_status(cs, "training_v2", rows_consumed_v2=int(len(D["kind"])), rows_with_context=int(tr.has_ctx.sum()), context_vocab=int(tr.XC.shape[1]))
-        print(f"[linknet2] {cs}: examples {len(D['kind']):,} with context {int(tr.has_ctx.sum()):,} contexts {tr.n_x:,} filter-sets {tr.n_sig:,} "
-              f"context vocab {tr.XC.shape[1]:,} vocab {len(tr.fz.names):,}", flush=True)
+        (write_status if status else (lambda *a_, **k_: None))(cs, "training_v2", rows_consumed_v2=int(len(D["kind"])), rows_with_context=int(tr.has_ctx.sum()), context_vocab=int(tr.XC.shape[1]))
+        log(f"[linknet2] {cs}: examples {len(D['kind']):,} with context {int(tr.has_ctx.sum()):,} contexts {tr.n_x:,} filter-sets {tr.n_sig:,} "
+              f"context vocab {tr.XC.shape[1]:,} vocab {len(tr.fz.names):,}")
         rep, ep, prod = tr.holdout_v2()
         which = ("v2",) if prod in ("v2", "hybrid_v2", "counts") else ("v1", "v2")
         fin = tr.final_v2(ep, which=which)
@@ -1825,16 +1840,16 @@ def cmd_train2(a):
                     "models": {k: v["file"] for k, v in files.items()}, "decided_at": utc_now(), "label": PRED_LABEL}
         (out_dir / f"production_{cs}.json").write_text(json.dumps(prod_doc, indent=1))
         T = rep["test"]
-        write_status(cs, "trained_v2", production_scorer=prod, selection_mean_val_auc=rep["selection"]["mean_val_auc"],
+        (write_status if status else (lambda *a_, **k_: None))(cs, "trained_v2", production_scorer=prod, selection_mean_val_auc=rep["selection"]["mean_val_auc"],
                      holdout_auc_v2={f"{kn}/{nm}": {s_: T[kn][nm].get(f"auc_{s_}") for s_ in SCORERS} for kn, nm in
                                      (("R", "held_out"), ("F", "held_out"), ("F", "never_tried_pair"), ("F", "never_tried_context"), ("R", "never_tried_context"))},
                      model_v2_trained_at=utc_now())
-        print(f"[linknet2] {cs} DONE {rep['secs_total']}s production={prod} sel={rep['selection']['mean_val_auc']}", flush=True)
+        log(f"[linknet2] {cs} DONE {rep['secs_total']}s production={prod} sel={rep['selection']['mean_val_auc']}")
         for kn in ("R", "F"):
             for nm in ("held_out", "never_tried_pair", "never_tried_context"):
                 b = T[kn][nm]
-                print(f"   {kn} {nm:22s} n {b['n']:>8,} pos {b['pos']:>6,} " + " ".join(f"{s_} {b.get('auc_' + s_)}" for s_ in SCORERS), flush=True)
-    return 0
+                log(f"   {kn} {nm:22s} n {b['n']:>8,} pos {b['pos']:>6,} " + " ".join(f"{s_} {b.get('auc_' + s_)}" for s_ in SCORERS))
+    return rep
 
 
 # ------------------------------------------------------------------------------------------------ scoring + proposals
@@ -2293,23 +2308,33 @@ def digest_proposals(cat_side, learn_dir=LEARN_DIR, k=None, k_needs=None):
     """-> (proposals, proposed_rows) in the v18_digest contract shape. Fail-open: no proposals file -> ([], [])."""
     k = PROPOSALS_K if k is None else k
     k_needs = PROPOSALS_NEEDS_ROW_K if k_needs is None else k_needs
-    p = Path(learn_dir) / f"linknet_proposals_{cat_side}.json"
-    if not p.exists():
+    doc = None
+    # v2 (E8d) first: conditional on the cat_side's current defaults, production scorer, diversity cap; else v1
+    for name in (f"linknet_proposals_v2_{cat_side}.json", f"linknet_proposals_{cat_side}.json"):
+        p = Path(learn_dir) / name
+        if not p.exists():
+            continue
+        try:
+            d_ = json.loads(p.read_text())
+        except Exception:
+            continue
+        if (d_.get("meta") or {}).get("cat_side") == cat_side:
+            doc = d_
+            break
+    if doc is None:
         return [], []
-    try:
-        doc = json.loads(p.read_text())
-    except Exception:
-        return [], []
-    if (doc.get("meta") or {}).get("cat_side") != cat_side:
-        return [], []
+    v1_ctx = {"name": "TEMPLATE_BOLD (v1 model, context-free)", "hash": None, "n_features": 0, "n_active_filter_options": 0}
+    ne_keys = ("key", "tab", "cos", "n", "pos", "pos_rate", "mean_delta_pos", "kind", "board", "delta", "jaccard", "shared_active_filters", "n_context_features",
+               "n_measured_contexts", "of")
 
     def ent(x):
         return {"switch": x["switch"], "cand": str(x["cand"]), "filter": x.get("filter"), "opt": None if x.get("opt") is None else str(x["opt"]), "cat_side": cat_side,
                 "regime": x.get("regime") or "ALL", "p_pos_pred": x.get("p_pos_pred"), "e_delta_pred": x.get("e_delta_pred"), "forward_pred": x.get("forward_pred"),
                 "nearest_evidence": ([{"key": f"{x['switch']}={x['cand']}" + (f"|{x.get('filter')}={x.get('opt')}" if x.get("filter") else ""), "n": int(x.get("n_measured_pair", x.get("n_measured_row", 0)) or 0),
                                        "pos": int(x.get("pos_measured_pair", x.get("pos_measured_row", 0)) or 0), "kind": "MEASURED this exact link"}] if x.get("status") != "NEEDS_ROW" else [])
-                                     + [{kk: v for kk, v in ne.items() if kk in ("key", "tab", "cos", "n", "pos", "pos_rate", "mean_delta_pos", "kind")} for ne in (x.get("nearest_evidence") or [])][:3],
-                "status": x["status"] if x["status"] in ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW") else "PREDICTED_NOT_MEASURED", "label": "PREDICTION"}
+                                     + [{kk: v for kk, v in ne.items() if kk in ne_keys} for ne in (x.get("nearest_evidence") or [])][:3],
+                "status": x["status"] if x["status"] in ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW") else "PREDICTED_NOT_MEASURED", "label": "PREDICTION",
+                "context": {kk: v for kk, v in (x.get("context") or v1_ctx).items() if kk in ("name", "hash", "n_features", "n_active_filter_options")}}
     needs = sorted(doc.get("needs_row") or [], key=lambda x: -(x.get("p_pos_pred") or 0))
     fixed = [x for x in needs if str(x.get("rule", "")).startswith("fixed_stop")]
     fixed_rows = [x for x in (doc.get("fixed_stop_family") or []) if x.get("rule") == "fixed_stop_family_template_row" and x.get("status") != "IDENTITY_DEFAULT"]
@@ -2365,8 +2390,11 @@ def cmd_calibrate(a):
     os.remove(srt)
     rows_written = []
     for cs in a.cat_side or CAT_SIDES:
-        npz_p = Path(a.out_dir) / f"linknet_scores_{cs}.npz"
-        prop_p = Path(a.out_dir) / f"linknet_proposals_{cs}.json"
+        which = getattr(a, "scores", "auto") or "auto"
+        v2_ok = (Path(a.out_dir) / f"linknet_scores_v2_{cs}.npz").exists()
+        tag = "_v2" if (which == "v2" or (which == "auto" and v2_ok)) else ""
+        npz_p = Path(a.out_dir) / f"linknet_scores{tag}_{cs}.npz"
+        prop_p = Path(a.out_dir) / f"linknet_proposals{tag}_{cs}.json"
         if not npz_p.exists():
             continue
         zf = np.load(npz_p)
@@ -2417,7 +2445,8 @@ def cmd_calibrate(a):
             if not n:
                 return {"n": 0}
             return {"n": n, "pos": int(Y[sel].sum()), "mean_pred": _r(P[sel].mean()), "realised": _r(Y[sel].mean()), "auc": auc(P[sel], Y[sel])}
-        row = {"at": utc_now(), "cat_side": cs, "model_trained_at": meta.get("model_trained_at"), "scored_at": meta.get("scored_at"), "evals_since": since,
+        row = {"at": utc_now(), "cat_side": cs, "model": "v2:" + str(meta.get("production_scorer")) + " under CAT_SIDE_DEFAULTS" if tag else "v1", "scores_file": str(npz_p),
+               "model_trained_at": meta.get("model_trained_at"), "scored_at": meta.get("scored_at"), "evals_since": since,
                "window_first_ts": min(used_ts) if used_ts else None, "window_last_ts": max(used_ts) if used_ts else None, "row_events_in_window": len(used_ts),
                "source": [str(p) for d in a.spill_dir for p in sorted(Path(d).glob("spill_*.tsv*"))],
                "cells_all": blk(np.ones(len(P), bool)), "cells_untried_n_lt_3": blk(untried), "cells_in_top_proposals": blk(isprop),
@@ -2427,6 +2456,509 @@ def cmd_calibrate(a):
         with open(out_p, "a") as fh:
             fh.write(json.dumps(row, default=str) + "\n")
         print(json.dumps(row, default=str))
+    return 0
+
+
+# ------------------------------------------------------------------------------------------------ v2: production scorer + proposals v2
+
+DIVERSITY_CAP = int(os.environ.get("V18_PROPOSALS_ROW_CAP", "5"))
+TOP_CHAINS = int(os.environ.get("V18_TOP_LIVE_CHAINS", "20"))
+CHAIN_K = int(os.environ.get("V18_PROPOSALS_CHAIN_K", "50"))
+PWC_TOP = int(os.environ.get("V18_PAIR_CTX_TOP", "10"))
+
+
+def diversity_cap(order, row_of, cap=DIVERSITY_CAP, k=None):
+    """indices in rank order, at most `cap` per template row (switch=cand row key) -> list (the v1 proposals clustered on few rows)."""
+    used = collections.Counter()
+    out = []
+    for i in order:
+        r = row_of(i)
+        if used[r] >= cap:
+            continue
+        used[r] += 1
+        out.append(i)
+        if k is not None and len(out) >= k:
+            break
+    return out
+
+
+def jaccard(a, b):
+    if not a and not b:
+        return 1.0
+    u = len(a | b)
+    return len(a & b) / u if u else 0.0
+
+
+def ctx_hash(feats):
+    return f"{VB.h64('|'.join(feats)):016x}"
+
+
+def live_chains(cs, enc, full_sets=None, excluded=None):
+    """per sym_side live set (data/per_sym_full_sets.json, the sets in force live) -> {sym_side: feats}, tokenized stocks excluded."""
+    if full_sets is None:
+        try:
+            full_sets = json.loads((ROOT / "data" / "per_sym_full_sets.json").read_text())
+        except Exception:
+            full_sets = {}
+    if excluded is None:
+        try:
+            ex = json.loads((ROOT / "data" / "excluded_tokenized_stocks.json").read_text())
+            excluded = {str(s).upper() for s in (ex.get("symbols") or ex.get("excluded") or [])}
+        except Exception:
+            excluded = set()
+    out = {}
+    for sym, st in full_sets.items():
+        if VB.cat_side_of(sym) != cs or not isinstance(st, dict):
+            continue
+        if sym.rsplit("_", 1)[0].upper() in excluded:
+            continue
+        out[sym] = enc.feats(enc.diff(st))
+    return out
+
+
+def top_chains(chains, k=TOP_CHAINS):
+    """the k most common live chains: distinct chain contexts ranked by sym_sides sharing them; ties (most chains are unique per
+    sym_side) broken by mean Jaccard similarity to every other live chain of the cat_side (the most typical chain first)."""
+    groups = collections.defaultdict(list)
+    for sym, f in chains.items():
+        groups[f].append(sym)
+    keys = list(groups)
+    sets_ = [set(f) for f in keys]
+    w = [len(groups[f]) for f in keys]
+    tw = float(sum(w)) or 1.0
+    typ = []
+    for i, a in enumerate(sets_):
+        typ.append(sum(w[j] * jaccard(a, b) for j, b in enumerate(sets_) if j != i) / max(1.0, tw - w[i]))
+    order = sorted(range(len(keys)), key=lambda i: (-w[i], -typ[i], keys[i]))
+    return [{"chain_id": f"LIVE_{n + 1:02d}", "feats": keys[i], "sym_sides": sorted(groups[keys[i]]), "n_sym_sides": w[i], "typicality": round(typ[i], 4),
+             "hash": ctx_hash(keys[i])} for n, i in enumerate(order[:k])]
+
+
+def ctx_descr(name, feats, **kw):
+    return {"name": name, "hash": ctx_hash(feats), "n_features": len(feats), "n_active_filter_options": sum(1 for f in feats if f.startswith("X.f:")), **kw}
+
+
+class Scorer2(Scorer):
+    """The PRODUCTION scorer of a cat_side (production_<CS>.json: v1 | v2 | counts | hybrid_v1 | hybrid_v2, chosen on validation
+    AUC), every prediction CONDITIONAL on a chain context (feature tuple). Calibrated with the chosen scorer's Platt (R / F)."""
+
+    def __init__(self, cs, ds_dir=V2_DIR, fctx=None):
+        self.cs = cs
+        pd = json.loads((Path(ds_dir) / f"production_{cs}.json").read_text())
+        if pd.get("cat_side") != cs:
+            raise ValueError(f"production file of {pd.get('cat_side')} refused for {cs} (principle 13)")
+        self.prod = pd["production_scorer"]
+        self.platt = pd.get("platt") or {}
+        self.net2, self.meta2 = LinkNet2.load(Path(ds_dir) / f"model_v2_{cs}.npz")
+        if self.meta2.get("cat_side") != cs:
+            raise ValueError(f"model of {self.meta2.get('cat_side')} refused for {cs} (principle 13)")
+        self.net1 = None
+        if self.prod in ("v1", "hybrid_v1"):
+            self.net1, _m1 = LinkNet.load(Path(ds_dir) / f"model_v1_{cs}.npz")
+        self.meta = dict(self.meta2, trained_at=self.meta2["trained_at"], platt=self.platt)
+        self.net = self.net1 if self.net1 is not None else self.net2
+        self.fz = Featurizer(cs, fctx=fctx)
+        self.fz.vocab = {n: i for i, n in enumerate(self.meta2["vocab"])}
+        self.fz.names = list(self.meta2["vocab"])
+        self.xvocab = {f: j for j, f in enumerate(self.meta2["xvocab"] or []) if f is not None}
+        self.enc = FT.ContextEncoder(self.fz.fctx)
+        self.D, self.K = load_ds(cs, ds_dir)
+        for sw, vals in seen_values(self.K["sets"]).items():
+            if sw not in self.fz.fctx.cands:
+                self.fz.fctx.add_seen_values(sw, vals)
+        self.unknown_feature_hits = collections.Counter()
+        self.unknown_context_features = collections.Counter()
+
+    def evidence(self):
+        super().evidence()
+        D = self.D
+        R = D["kind"] == 0
+        nS = len(self.K["sets"])
+        self.ev["n_setR"] = np.bincount(D["set_i"][R], minlength=nS)
+        self.ev["p_setR"] = np.bincount(D["set_i"][R], weights=D["y"][R].astype(np.float64), minlength=nS)
+        Fm = D["kind"] == 1
+        self.p0 = {"R": (float(D["y"][R].sum()) + 1.0) / (float(R.sum()) + 2.0), "F": (float(D["y"][Fm].sum()) + 1.0) / (float(Fm.sum()) + 2.0)}
+        m = VB.M_SHRINK
+        self.fo_rate = (self.ev["pfo"] + m * self.p0["F"]) / (self.ev["nfo"] + m)
+        # measured contexts per candidate (for 'closest measured context')
+        xr = D["x_i"]
+        self.xsets = [frozenset(c) for c in (self.K.get("xctxs") or [])]
+        okR = R & (xr >= 0)
+        self.ctx_by_set = collections.defaultdict(list)
+        for i in np.nonzero(okR)[0]:
+            self.ctx_by_set[int(D["set_i"][i])].append(int(i))
+        okF = Fm & (xr >= 0)
+        self.ctx_by_pair = collections.defaultdict(list)
+        for i in np.nonzero(okF)[0]:
+            self.ctx_by_pair[(int(D["set_i"][i]), int(D["filt_i"][i]))].append(int(i))
+        self.board_names = self.K["boards"]
+
+    def xpool(self, feats):
+        """context feature tuple -> pooled (x, sq, lin) of the v2 net (unknown features dropped + counted)."""
+        import scipy.sparse as sp
+        cols = []
+        for f in feats:
+            j = self.xvocab.get(f)
+            if j is None:
+                self.unknown_context_features[f.split("=", 1)[0]] += 1
+                continue
+            cols.append(j)
+        Xb = sp.csr_matrix((np.ones(len(cols), np.float32), (np.zeros(len(cols), np.int64), np.asarray(cols, np.int64))), shape=(1, self.net2.VX))
+        return self.net2.xpool(Xb)
+
+    def raw(self, s, f, c, xp):
+        """pooled S/F/C (+ context pool xp) -> raw head outputs of the network the production scorer uses."""
+        if self.net1 is not None:
+            return self.net1.heads(s[0], f[0], c[0], s[1] + f[1] + c[1], s[2] + f[2] + c[2])
+        B = len(s[0])
+        xs = np.broadcast_to(xp[0], (B, xp[0].shape[1]))
+        return self.net2.heads2(s[0], f[0], c[0], xs, s[1] + f[1] + c[1] + xp[1], s[2] + f[2] + c[2] + xp[2])
+
+    def final_p(self, p_net, n, pos, prior, kind):
+        if self.prod in ("v1", "v2"):
+            p = p_net
+        elif self.prod == "counts":
+            p = (np.asarray(pos, np.float64) + VB.M_SHRINK * np.asarray(prior, np.float64)) / (np.asarray(n, np.float64) + VB.M_SHRINK)
+        else:
+            p = hybrid_p(p_net, n, pos, prior)
+        ab = self.platt.get(kind)
+        return apply_platt(p, ab) if ab else p
+
+    def heads_out(self, out, n, pos, prior, kind):
+        p_net = sigmoid(out[:, 0])
+        return {"p_pos": self.final_p(p_net, n, pos, prior, kind), "p_net": p_net, "e_delta": np.expm1(np.clip(out[:, 1], 0, 6)),
+                "d_tim": out[:, 2] * MSCALE, "d_dd": out[:, 3] * MSCALE, "d_wr": out[:, 4] * MSCALE, "fwd": sigmoid(out[:, 5])}
+
+    def closest_context(self, ex_rows, feats, k=1):
+        """measured examples (row indices) -> the one(s) whose chain context is closest (Jaccard) to `feats` -> MEASURED dicts."""
+        if not ex_rows:
+            return []
+        q = set(feats)
+        D = self.D
+        best = sorted(ex_rows, key=lambda i: -jaccard(self.xsets[int(D["x_i"][i])], q))[:k]
+        out = []
+        for i in best:
+            xs = self.xsets[int(D["x_i"][i])]
+            out.append({"kind": "MEASURED closest context", "board": self.board_names[int(D["board_i"][i])], "delta": _r(D["d"][i], 4), "pos": int(D["y"][i]),
+                        "valid": int(D["valid"][i]), "jaccard": round(jaccard(xs, q), 4), "n_context_features": len(xs),
+                        "shared_active_filters": sum(1 for f in (xs & q) if f.startswith("X.f:")), "n_measured_contexts": len(ex_rows)})
+        return out
+
+    def grid(self, ctx_list, regimes_for_first=True):
+        """every template row / cell x contexts. ctx_list = [(name, feats)]; regimes (6) only for ctx_list[0]; ALL for the rest."""
+        tidx = self.fz.fctx.tidx
+        row_keys = []
+        for tab, blk in tidx["tabs"].items():
+            for _r0, sw, cand, _d in blk["rows"]:
+                if sw.startswith(EXCLUDE_PREFIX) or sw in EXCLUDE_KEYS:
+                    continue
+                k_ = f"{tab}|{sw}={cand}"
+                if k_ not in row_keys:
+                    row_keys.append(k_)
+        row_ix = {k_: i for i, k_ in enumerate(row_keys)}
+        yel = sorted({y for blk in tidx["tabs"].values() for y in blk["yellows"]})
+        yel_ix = {y: i for i, y in enumerate(yel)}
+        ST, FTb, FT0 = self.set_table(row_keys), self.filt_table(yel), self.filt_table([""])
+        net = self.net
+        s_all, f_all, f0 = net.pool(*ST), net.pool(*FTb), net.pool(*FT0)
+        CR, CF = self.ctx_table("R"), self.ctx_table("F")
+        cR, cF = net.pool(*CR), net.pool(*CF)
+        cell_r, cell_y = [], []
+        for tab, blk in tidx["tabs"].items():
+            ys = [yel_ix[y] for y in blk["yellows"]]
+            seen_r = set()
+            for _r0, sw, cand, _d in blk["rows"]:
+                ri = row_ix.get(f"{tab}|{sw}={cand}")
+                if ri is None or ri in seen_r or not ys:
+                    continue
+                seen_r.add(ri)
+                cell_r.extend([ri] * len(ys))
+                cell_y.extend(ys)
+        cell_r, cell_y = np.asarray(cell_r, np.int32), np.asarray(cell_y, np.int32)
+        N, nR = len(cell_r), len(row_keys)
+        n_meas, pos_meas = np.zeros(N, np.int32), np.zeros(N, np.int32)
+        for i in range(N):
+            n_, p_, _s = self.pair_ev(row_keys[cell_r[i]], yel[cell_y[i]])
+            n_meas[i], pos_meas[i] = n_, p_
+        r_si = np.array([self.set_ix.get(k_, -1) for k_ in row_keys])
+        row_n = np.where(r_si >= 0, self.ev["n_setR"][np.maximum(r_si, 0)], 0)
+        row_pos = np.where(r_si >= 0, self.ev["p_setR"][np.maximum(r_si, 0)], 0)
+        y_fi = np.array([self.filt_ix.get(y, -1) for y in yel])
+        y_prior = np.where(y_fi >= 0, self.fo_rate[np.maximum(y_fi, 0)], self.p0["F"])
+        cell_prior = y_prior[cell_y]
+        fc = self.fz.fctx
+        row_ident = np.array([str(k_.partition("|")[2].partition("=")[2]) == str(fc.default(k_.partition("|")[2].partition("=")[0])) for k_ in row_keys], bool)
+        y_ident = np.array([str(y.partition("=")[2]) == str(fc.default(y.partition("=")[0], is_filter=True)) for y in yel], bool)
+        G = len(REGIMES)
+        res = {"row_keys": row_keys, "yellows": yel, "cell_row": cell_r, "cell_yellow": cell_y, "n_meas": n_meas, "pos_meas": pos_meas, "row_n": row_n, "row_pos": row_pos,
+               "row_ident": row_ident, "cell_ident": row_ident[cell_r] | y_ident[cell_y], "ctx": []}
+        t0 = time.time()
+        CH = 200000
+        for ci, (name, feats) in enumerate(ctx_list):
+            xp = self.xpool(feats)
+            gl = range(G) if (ci == 0 and regimes_for_first) else range(1)
+            rows = {h: np.zeros((nR, len(gl)), np.float32) for h in ("p_pos", "p_net", "e_delta", "d_tim", "d_dd", "d_wr", "fwd")}
+            cells = {h: np.zeros((N, len(gl)), np.float16) for h in (("p_pos", "p_net", "e_delta", "d_tim", "d_dd", "d_wr") if ci == 0 else ("p_pos", "e_delta"))}
+            for gi, g in enumerate(gl):
+                c1 = (np.repeat(cR[0][g:g + 1], nR, 0), np.repeat(cR[1][g:g + 1], nR, 0), np.repeat(cR[2][g:g + 1], nR, 0))
+                f1 = (np.repeat(f0[0], nR, 0), np.repeat(f0[1], nR, 0), np.repeat(f0[2], nR, 0))
+                o = self.heads_out(self.raw(s_all, f1, c1, xp), row_n, row_pos, np.full(nR, self.p0["R"]), "R")
+                for h in rows:
+                    rows[h][:, gi] = o[h]
+                for a in range(0, N, CH):
+                    r, y = cell_r[a:a + CH], cell_y[a:a + CH]
+                    B = len(r)
+                    s = (s_all[0][r], s_all[1][r], s_all[2][r])
+                    f = (f_all[0][y], f_all[1][y], f_all[2][y])
+                    c = (np.broadcast_to(cF[0][g], (B, cF[0].shape[1])), np.broadcast_to(cF[1][g], (B, cF[1].shape[1])), np.full(B, cF[2][g]))
+                    o = self.heads_out(self.raw(s, f, c, xp), n_meas[a:a + CH], pos_meas[a:a + CH], cell_prior[a:a + CH], "F")
+                    for h in cells:
+                        cells[h][a:a + B, gi] = o[h]
+            res["ctx"].append({"name": name, "feats": feats, "rows": rows, "cells": cells})
+        res["secs"] = round(time.time() - t0, 1)
+        res["n_predictions"] = int(sum((N * len(c_["cells"]) + nR * len(c_["rows"])) * c_["cells"]["p_pos"].shape[1] for c_ in res["ctx"]))
+        res["pools"] = (s_all, f_all, f0, cR, cF)
+        return res
+
+    def predict_items(self, items, feats, kind):
+        """[(set_key, hdr|None)] under one context, regime ALL -> heads dict (production p_pos calibrated)."""
+        keys = [k_ for k_, _h in items]
+        hdrs = [h or "" for _k, h in items]
+        ST = self.set_table(keys)
+        FTb = self.filt_table(hdrs)
+        C = self.ctx_table(kind)
+        Cg = (np.repeat(C[0][:1], len(keys), 0), np.repeat(C[1][:1], len(keys), 0))
+        net = self.net
+        s, f, c = net.pool(*ST), net.pool(*FTb), net.pool(*Cg)
+        n_, p_, pr = [], [], []
+        for k_, h in items:
+            if h:
+                a, b, _s = self.pair_ev(k_, h)
+                fi = self.filt_ix.get(h)
+                pr.append(self.fo_rate[fi] if fi is not None else self.p0["F"])
+            else:
+                si = self.set_ix.get(k_)
+                a, b = (int(self.ev["n_setR"][si]), int(self.ev["p_setR"][si])) if si is not None else (0, 0)
+                pr.append(self.p0["R"])
+            n_.append(a)
+            p_.append(b)
+        return self.heads_out(self.raw(s, f, c, self.xpool(feats)), np.array(n_), np.array(p_), np.array(pr), kind)
+
+
+def _tab_for(fctx, sw, flt=None):
+    tabs = fctx.tabs_of.get(sw) or []
+    if flt:
+        for t in tabs:
+            if flt in set(fctx.tidx["tabs"].get(t, {}).get("yellows", [])):
+                return t
+    return tabs[0] if tabs else "NA"
+
+
+def pair_with_context(sc, chains, dflt_feats, positives, out_path, log=_log):
+    """USER LAW 2026-10-20 (positives mandatory across the cat_side): every positives_all row and pair, predicted under the LIVE
+    chain of each sym_side that has not tried it (PREDICTION; the pilot uses it only to ORDER the must-set, never to skip one)."""
+    t0 = time.time()
+    fctx = sc.fz.fctx
+    syms = positives.get("sym_sides") or []
+    items = []
+    for x in positives.get("rows") or []:
+        sw = str(x["key"]).partition("=")[0]
+        items.append({"key": x["key"], "filter": None, "tab": _tab_for(fctx, sw), "n": x.get("n"), "n_pos": x.get("n_pos"), "untried_on": x.get("untried_on") or []})
+    for x in positives.get("pairs") or []:
+        sw = str(x["key"]).partition("=")[0]
+        items.append({"key": x["key"], "filter": x.get("filter"), "tab": _tab_for(fctx, sw, x.get("filter")), "n": x.get("n"), "n_pos": x.get("n_pos"),
+                      "untried_on": x.get("untried_on") or []})
+    by_sym = collections.defaultdict(list)
+    for ii, it in enumerate(items):
+        for s_ in it["untried_on"]:
+            if 0 <= s_ < len(syms):
+                by_sym[syms[s_]].append(ii)
+    per_sym, n_pred, ctx_src = {}, 0, collections.Counter()
+    for sym, iis in by_sym.items():
+        feats = chains.get(sym)
+        src = "LIVE_CHAIN" if feats is not None else "CAT_SIDE_DEFAULTS (no live set for this sym_side)"
+        ctx_src[src.split(" ")[0]] += 1
+        feats = feats if feats is not None else dflt_feats
+        out = []
+        for kind in ("R", "F"):
+            sel = [ii for ii in iis if (items[ii]["filter"] is None) == (kind == "R")]
+            if not sel:
+                continue
+            hd = sc.predict_items([(f"{items[ii]['tab']}|{items[ii]['key']}", items[ii]["filter"]) for ii in sel], feats, kind)
+            for j, ii in enumerate(sel):
+                out.append([ii, round(float(hd["p_pos"][j]), 5), round(float(hd["e_delta"][j]), 4)])
+            n_pred += len(sel)
+        out.sort(key=lambda r: -r[1])
+        per_sym[sym] = {"context": ctx_descr(src.split(" ")[0] + ":" + sym, feats), "ranked": out}
+    doc = {"meta": {"cat_side": sc.cs, "built_at": utc_now(), "production_scorer": sc.prod, "label": "PREDICTION: p_pos_pred / e_delta_pred of each MUST item under the "
+                    "sym_side's own live chain; the must-set stays mandatory (p = 1), the prediction only ORDERS it", "positives_built_at": (positives.get("_meta") or {}).get("built_at"),
+                    "n_items": len(items), "n_predictions": n_pred, "context_sources": dict(ctx_src), "secs": round(time.time() - t0, 1),
+                    "ranked_row": ["item_index", "p_pos_pred", "e_delta_pred"]},
+           "items": [{k_: v for k_, v in it.items() if k_ != "untried_on"} for it in items], "per_sym": per_sym}
+    tmp = Path(str(out_path) + ".tmp")
+    with gzip.open(tmp, "wt") as fh:
+        json.dump(doc, fh, separators=(",", ":"))
+    os.replace(tmp, out_path)
+    log(f"[pair_ctx] {sc.cs}: {len(items):,} must items x untried sym_sides -> {n_pred:,} predictions over {len(per_sym)} sym_sides {time.time() - t0:.0f}s")
+    return doc
+
+
+def cmd_score2(a):
+    out_dir = Path(a.out_dir)
+    ds_dir = Path(a.ds_dir)
+    try:
+        current = json.loads((ROOT / "data" / "per_sym_settings.json").read_text())
+    except Exception:
+        current = {}
+    full_sets = None
+    for cs in a.cat_side or CAT_SIDES:
+        t0 = time.time()
+        sc = Scorer2(cs, ds_dir=ds_dir)
+        sc.evidence()
+        enc = sc.enc
+        dflt = enc.feats(enc.diff(current.get(cs) or {}))
+        if full_sets is None:
+            try:
+                full_sets = json.loads((ROOT / "data" / "per_sym_full_sets.json").read_text())
+            except Exception:
+                full_sets = {}
+        chains = live_chains(cs, enc, full_sets)
+        tops = top_chains(chains)
+        ctx_list = [("CAT_SIDE_DEFAULTS", dflt)] + [(t["chain_id"], t["feats"]) for t in tops]
+        res = sc.grid(ctx_list)
+        c0 = res["ctx"][0]
+        npz = out_dir / f"linknet_scores_v2_{cs}.npz"
+        meta = {"cat_side": cs, "schema": SCHEMA2, "model_trained_at": sc.meta2["trained_at"], "scored_at": utc_now(), "label": PRED_LABEL, "production_scorer": sc.prod,
+                "platt": sc.platt, "regimes": REGIMES, "contexts": [{"name": n, "hash": ctx_hash(f), "n_features": len(f)} for n, f in ctx_list],
+                "heads": ["p_pos (production, calibrated)", "p_net (network alone, uncalibrated)", "e_delta", "d_tim", "d_dd", "d_wr", "fwd (rows only)"],
+                "n_cells": int(len(res["cell_row"])), "n_rows": len(res["row_keys"]), "predictions": res["n_predictions"]}
+        np.savez_compressed(npz, label=np.frombuffer(PRED_LABEL.encode(), np.uint8), regimes=np.array(REGIMES), row_keys=np.array(res["row_keys"]), yellows=np.array(res["yellows"]),
+                            cell_row=res["cell_row"], cell_yellow=res["cell_yellow"], cell_n_measured=res["n_meas"], cell_pos_measured=res["pos_meas"],
+                            row_n_measured=res["row_n"], row_pos_measured=res["row_pos"], row_identity=res["row_ident"], cell_identity=res["cell_ident"],
+                            **{f"cell_{h}": v for h, v in c0["cells"].items()}, **{f"row_{h}": v.astype(np.float16) for h, v in c0["rows"].items()},
+                            chain_cell_p_pos=np.stack([c_["cells"]["p_pos"][:, 0] for c_ in res["ctx"][1:]], 1) if len(res["ctx"]) > 1 else np.zeros((len(res["cell_row"]), 0), np.float16),
+                            chain_cell_e_delta=np.stack([c_["cells"]["e_delta"][:, 0] for c_ in res["ctx"][1:]], 1) if len(res["ctx"]) > 1 else np.zeros((len(res["cell_row"]), 0), np.float16),
+                            chain_row_p_pos=np.stack([c_["rows"]["p_pos"][:, 0] for c_ in res["ctx"][1:]], 1).astype(np.float16) if len(res["ctx"]) > 1 else np.zeros((len(res["row_keys"]), 0), np.float16),
+                            meta=np.frombuffer(json.dumps(meta).encode(), np.uint8))
+        nm = res["n_meas"]
+        row_of = lambda i: int(res["cell_row"][i])
+
+        def cell_item(i, ctx_name, feats, ci, full=True):
+            rk = res["row_keys"][res["cell_row"][i]]
+            hdr = res["yellows"][res["cell_yellow"][i]]
+            tab, _, kv = rk.partition("|")
+            sw, _, cnd = kv.partition("=")
+            fk, _, fo = hdr.partition("=")
+            C_ = res["ctx"][ci]["cells"]
+            it = {"switch": sw, "cand": cnd, "filter": fk, "opt": fo, "tab": tab, "cat_side": cs, "regime": "ALL", "label": "PREDICTION", "scorer": sc.prod,
+                  "context": ctx_descr(ctx_name, feats), "p_pos_pred": _r(C_["p_pos"][i, 0]), "e_delta_pred": _r(C_["e_delta"][i, 0], 4),
+                  "status": PRED_LABEL if nm[i] == 0 else "HAS_TEMPLATE_ROW", "n_measured_pair": int(nm[i]), "pos_measured_pair": int(res["pos_meas"][i])}
+            if not full:
+                return it
+            G0 = C_["p_pos"].shape[1]
+            it.update({"p_net_pred": _r(C_["p_net"][i, 0]), "forward_pred": _r(c0["rows"]["fwd"][res["cell_row"][i], 0], 4), "d_tim_pred": _r(C_["d_tim"][i, 0], 3),
+                       "d_dd_pred": _r(C_["d_dd"][i, 0], 3), "d_wr_pred": _r(C_["d_wr"][i, 0], 3)})
+            if G0 > 1:
+                gb = int(np.argmax(C_["p_pos"][i].astype(np.float32)))
+                it["best_regime"], it["p_pos_pred_best_regime"] = REGIMES[gb], _r(C_["p_pos"][i, gb])
+            n_r, p_r, _s = sc.set_ev(rk)
+            nf = sc.filt_ix.get(hdr)
+            si = sc.set_ix.get(rk)
+            ex = sc.ctx_by_pair.get((si, nf), []) if (si is not None and nf is not None) else []
+            closest = sc.closest_context(ex, feats) if ex else sc.closest_context(sc.ctx_by_set.get(si, []) if si is not None else [], feats)
+            for cc in closest:
+                cc["of"] = "this exact pair" if ex else "the naked row of this switch=cand (the pair itself has no measured context)"
+            it["nearest_evidence"] = ([{"key": kv, "filter": None, "n": n_r, "pos": p_r, "pos_rate": _r(p_r / n_r, 4) if n_r else None, "kind": "MEASURED naked row of this switch=cand"},
+                                       {"key": hdr, "n": int(sc.ev["nfo"][nf]) if nf is not None else 0, "pos": int(sc.ev["pfo"][nf]) if nf is not None else 0,
+                                        "kind": "MEASURED marginal of this filter=opt across switches"}] + closest)
+            return it
+
+        p0 = c0["cells"]["p_pos"][:, 0].astype(np.float32)
+        cand = np.nonzero((nm < 3) & ~res["cell_ident"])[0]
+        order = cand[np.argsort(-p0[cand], kind="stable")]
+        top = diversity_cap(order, row_of, k=PROPOSALS_K * 2)
+        props = [cell_item(i, "CAT_SIDE_DEFAULTS", dflt, 0) for i in top]
+        by_chain = []
+        for ci, t in enumerate(tops, start=1):
+            pc = res["ctx"][ci]["cells"]["p_pos"][:, 0].astype(np.float32)
+            oc = cand[np.argsort(-pc[cand], kind="stable")]
+            tc = diversity_cap(oc, row_of, k=CHAIN_K)
+            by_chain.append({"chain_id": t["chain_id"], "sym_sides": t["sym_sides"], "n_sym_sides": t["n_sym_sides"], "typicality": t["typicality"],
+                             "context": ctx_descr(t["chain_id"], t["feats"], sym_sides=t["sym_sides"][:10]), "active_filter_options": [f[4:] for f in t["feats"] if f.startswith("X.f:")],
+                             "items": [cell_item(i, t["chain_id"], t["feats"], ci, full=False) for i in tc]})
+        rows_untried = []
+        rp = c0["rows"]["p_pos"][:, 0]
+        rc = np.nonzero((res["row_n"] < 3) & ~res["row_ident"])[0]
+        for ri in rc[np.argsort(-rp[rc], kind="stable")][:200]:
+            rk = res["row_keys"][ri]
+            tab, _, kv = rk.partition("|")
+            sw, _, cnd = kv.partition("=")
+            si = sc.set_ix.get(rk)
+            rows_untried.append({"switch": sw, "cand": cnd, "filter": None, "opt": None, "tab": tab, "cat_side": cs, "regime": "ALL", "label": "PREDICTION", "scorer": sc.prod,
+                                 "context": ctx_descr("CAT_SIDE_DEFAULTS", dflt), "p_pos_pred": _r(rp[ri]), "e_delta_pred": _r(c0["rows"]["e_delta"][ri, 0], 4),
+                                 "status": PRED_LABEL if res["row_n"][ri] == 0 else "HAS_TEMPLATE_ROW", "n_measured_row": int(res["row_n"][ri]), "pos_measured_row": int(res["row_pos"][ri]),
+                                 "nearest_evidence": sc.closest_context(sc.ctx_by_set.get(si, []) if si is not None else [], dflt)})
+        # MUST items under each sym_side's live chain
+        pwc_path = out_dir / f"linknet_pair_with_context_{cs}.json.gz"
+        pwc_top = {}
+        try:
+            positives = json.loads(gzip.open(ROOT / "data" / "learn" / f"positives_all_{cs}.json.gz", "rt").read())
+        except Exception:
+            positives = None
+        pwc_meta = None
+        if positives and (positives.get("_meta") or {}).get("cat_side") in (None, cs):
+            pw = pair_with_context(sc, chains, dflt, positives, pwc_path)
+            pwc_meta = pw["meta"]
+            for sym, blk in pw["per_sym"].items():
+                lst = []
+                for ii, p_, e_ in blk["ranked"][:PWC_TOP]:
+                    it = pw["items"][ii]
+                    sw, _, cnd = str(it["key"]).partition("=")
+                    fk, _, fo = str(it["filter"] or "").partition("=")
+                    lst.append({"switch": sw, "cand": cnd, "filter": fk or None, "opt": fo or None, "tab": it["tab"], "p_pos_pred": p_, "e_delta_pred": e_,
+                                "measured_elsewhere_n": it["n"], "measured_elsewhere_pos": it["n_pos"], "label": "PREDICTION"})
+                pwc_top[sym] = {"context": blk["context"], "top": lst}
+        v1p = LEARN_DIR / f"linknet_proposals_{cs}.json"
+        v1doc = {}
+        try:
+            v1doc = json.loads(v1p.read_text())
+        except Exception:
+            pass
+        doc = {"meta": {"schema": SCHEMA2, "cat_side": cs, "built_at": utc_now(), "model_trained_at": sc.meta2["trained_at"], "corpus_last_ts": sc.meta2.get("corpus_last_ts"),
+                        "production_scorer": sc.prod, "platt": sc.platt, "diversity_cap_per_row": DIVERSITY_CAP,
+                        "label": "every *_pred value here is a PREDICTION of tools/v18_linknet.py (v2, conditional on the chain context named in each item), never a measurement; "
+                                 "nearest_evidence items are MEASURED; nothing is adopted except by the real engine",
+                        "scores_npz": str(npz), "n_predictions_scored": res["n_predictions"], "secs_grid": res["secs"],
+                        "contexts": [ctx_descr("CAT_SIDE_DEFAULTS", dflt, source="data/per_sym_settings.json[" + cs + "] vs template bold")] +
+                                    [ctx_descr(t["chain_id"], t["feats"], source="data/per_sym_full_sets.json", sym_sides=t["sym_sides"][:10], n_sym_sides=t["n_sym_sides"]) for t in tops],
+                        "live_chains": len(chains), "distinct_live_chains": len(set(chains.values())),
+                        "template_cells": int(len(res["cell_row"])), "template_cells_n_lt_3": int((nm < 3).sum()), "template_cells_never_measured": int((nm == 0).sum()),
+                        "unknown_feature_hits_at_scoring": dict(sc.unknown_feature_hits), "unknown_context_features_at_scoring": dict(sc.unknown_context_features.most_common(30)),
+                        "pair_with_context_file": str(pwc_path) if pwc_meta else None, "needs_row_source": "v1 proposals file (unchanged): " + str(v1p)},
+               "template_untried": props, "template_untried_by_chain": by_chain, "rows_untried": rows_untried,
+               "pair_with_context": {"meta": pwc_meta, "per_sym_top": pwc_top},
+               "needs_row": v1doc.get("needs_row") or [], "fixed_stop_family": v1doc.get("fixed_stop_family") or []}
+        p_out = out_dir / f"linknet_proposals_v2_{cs}.json"
+        tmp = p_out.with_suffix(".tmp")
+        tmp.write_text(json.dumps(doc, default=str))
+        os.replace(tmp, p_out)
+        # implied links of the conditional model (definitions in linknet_status.json)
+        n_set_all = len({Featurizer.split_combo(k_)[0] for k_ in sc.K["sets"]} | set(res["row_keys"]))
+        n_opt_all = len(set(sc.K["filts"]) | set(res["yellows"]))
+        n_sym = len({c_[2] for c_ in sc.K["ctxs"] if c_[2]})
+        n_ctx_known = len(sc.K.get("xctxs") or []) + len(set(chains.values())) + 1
+        VX = int(sc.net2.VX)
+        base = n_set_all * (n_opt_all + 1) * len(REGIMES) * 4
+        write_status(cs, "scored_v2", production_scorer=sc.prod, links_scored_explicit_v2=int((len(res["cell_row"]) + len(res["row_keys"])) * (len(REGIMES) + len(tops))),
+                     predictions_stored_v2=res["n_predictions"], links_implied_v2_in_distribution=int(base * n_ctx_known),
+                     links_implied_v2_factors={"settings": n_set_all, "filter_options_plus_none": n_opt_all + 1, "regimes": len(REGIMES), "tiers": 4,
+                                               "chain_contexts_known (measured + live + defaults; each carries its own sym_side)": n_ctx_known},
+                     links_implied_v2_one_context_node=int(base * (n_sym + 1) * (VX + 1)),
+                     links_implied_v2_one_context_node_factors={"v1 implied (settings x opts+1 x regimes x sym_sides+1 x tiers)": int(base * (n_sym + 1)), "context_vocab_plus_none": VX + 1},
+                     context_vocab=VX, feature_pair_links_v2=int((len(sc.fz.names) + VX) * (len(sc.fz.names) + VX - 1) // 2),
+                     proposals_v2_file=str(p_out), scores_v2_file=str(npz), pair_with_context_file=str(pwc_path) if pwc_meta else None)
+        print(f"[score2] {cs}: prod={sc.prod} {res['n_predictions']:,} predictions over {len(ctx_list)} contexts in {res['secs']}s; untried {len(props)} (cap {DIVERSITY_CAP}/row); "
+              f"chains {len(tops)}; pair_with_context {pwc_meta and pwc_meta['n_predictions']}; {p_out} {p_out.stat().st_size:,} B; {time.time() - t0:.0f}s", flush=True)
     return 0
 
 
@@ -2467,6 +2999,10 @@ def main(argv=None):
     s.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     s.add_argument("--ds-dir", default=str(DS_DIR))
     s.add_argument("--out-dir", default=str(LEARN_DIR))
+    s2 = sub.add_parser("score2", help="v2: production scorer x (cat_side defaults + top live chains) grid, proposals v2, pair_with_context")
+    s2.add_argument("--cat-side", action="append", choices=CAT_SIDES)
+    s2.add_argument("--ds-dir", default=str(DS_DIR / "v2"))
+    s2.add_argument("--out-dir", default=str(LEARN_DIR))
     c = sub.add_parser("calibrate")
     c.add_argument("--spill-dir", action="append", required=True)
     c.add_argument("--tmp-dir", required=True)
@@ -2474,8 +3010,9 @@ def main(argv=None):
     c.add_argument("--since", default=None)
     c.add_argument("--note", default=None)
     c.add_argument("--cat-side", action="append", choices=CAT_SIDES)
+    c.add_argument("--scores", choices=("auto", "v1", "v2"), default="auto", help="auto = linknet_scores_v2_<CS>.npz when present")
     a = ap.parse_args(argv)
-    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train2": cmd_train2, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
+    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train2": cmd_train2, "score2": cmd_score2, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
 
 
 if __name__ == "__main__":
