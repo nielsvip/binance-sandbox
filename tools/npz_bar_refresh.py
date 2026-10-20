@@ -1500,6 +1500,16 @@ def universe():
         except Exception:
             return d
     pri, rest = [], []
+    # USER LAW 2026-10-20 (NPZ <= 15 min): the symbols the scheduler dispatches (symbols_trb_long/short + tradeable_keys, the same set as
+    # v15_fleet_scheduler._tradeable_universe) install FIRST, so a cycle reaches them in ~2 min instead of after ~350 other symbols (~10 min).
+    # NPZ_TRADEABLE_FIRST=0 restores the old order. Order only - no symbol is added or dropped here.
+    if os.environ.get("NPZ_TRADEABLE_FIRST", "1") == "1":
+        for f in ("symbols_trb_long.json", "symbols_trb_short.json"):
+            v = jl(ROOT / f, []) or []
+            pri += [str(x) for x in v] if isinstance(v, list) else []
+        tk = jl(ROOT / "tradeable_keys.json", []) or []
+        if isinstance(tk, list):
+            pri += [str(k).split(":", 1)[-1].rsplit("_", 1)[0] for k in tk]
     vd = jl(ROOT / "data" / "vec_live" / "vec_driven.json", {}) or {}
     for k, v in (vd.items() if isinstance(vd, dict) else []):
         if isinstance(v, dict) and v.get("account", "ez") != "ez":
