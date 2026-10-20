@@ -317,11 +317,18 @@ def wt_against_confirm(get_ind, is_long, tf):
     return (w1 < w2) if is_long else (w1 > w2)
 
 
-def erosion_confirm_block(get_ind, is_long, peak_giveback_tf, breakeven_tf, peak_giveback_master=True):
+def erosion_confirm_block(get_ind, is_long, peak_giveback_tf, breakeven_tf, peak_giveback_master=True, gain_pct=None):
     """vec simulate_one WIN_TRAIL_EROSION gate `_gftf['erosion_confirm']` (v12:21629-21631): the AND of every active
     erosion_confirm FILTER_TF (PEAK_GIVEBACK_BE_EROSION_FILTER_TF + BREAKEVEN_GAIN_EROSION_FILTER_TF, both 'wt_against').
     Returns a veto string when the erosion close must be held, else None. vec [JSN2] (v12:16513-16527) forces
-    PEAK_GIVEBACK_BE_EROSION_FILTER_TF to OFF when PEAK_GIVEBACK_PROTECTION_ENABLED is off; BREAKEVEN is not master-gated."""
+    PEAK_GIVEBACK_BE_EROSION_FILTER_TF to OFF when PEAK_GIVEBACK_PROTECTION_ENABLED is off; BREAKEVEN is not master-gated.
+    The vec leg only ever gates a PROFIT giveback (`peak_pnl_pct > 0`), so a loss close bypasses every confirm exactly as in
+    exit_confirm_block (USER 2026-10-06) — a confirm may never hold a losing position open."""
+    try:
+        if gain_pct is not None and float(gain_pct) < 0:
+            return None
+    except (TypeError, ValueError):
+        pass
     pg_tf = peak_giveback_tf if truthy(peak_giveback_master) else None
     if not wt_against_confirm(get_ind, is_long, pg_tf):
         return f"PEAK_GIVEBACK_BE_EROSION_FILTER_TF_{pg_tf}_NO_CONFIRM"

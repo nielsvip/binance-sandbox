@@ -34680,6 +34680,7 @@ class StockStrategy:
                     _ftf_twins.resolve_tf(_cfg_ps("PEAK_GIVEBACK_BE_EROSION_FILTER_TF", "OFF", _exit_acct_top, symbol, _pgp_ero_side)),
                     _ftf_twins.resolve_tf(_cfg_ps("BREAKEVEN_GAIN_EROSION_FILTER_TF", "OFF", _exit_acct_top, symbol, _pgp_ero_side)),
                     _cfg_auto("PEAK_GIVEBACK_PROTECTION_ENABLED", True),
+                    gain,
                 )
             except Exception as _pgp_ero_e:
                 logger.debug(f"[EROSION_CONFIRM] {symbol}: fail-open {_pgp_ero_e}")

@@ -4794,7 +4794,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_ids = _V18P.IdentityBook() if (_V18P is not None and _V18P.identity_settle_on()) else None
     _v18_io = bool(_V18P is not None and _V18P.io_throttle_on())
     _v18_wb = {"on": bool(_V18P is not None and _V18P.ledger_writeback_on()), "pending": [], "ver": None, "tag": None, "capture": None}
-    _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
+    _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_MUST", "V18_PROFILE_YELLOWS")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
     _v18_lx: dict = {}  # label -> extra delta-log fields of a V18 phase eval (companions / family / remedy_class / from_cat_side)
     if _v18_ids is not None or _v18_io or _v18_wb["on"]:
         print(f"[V18] {new_symside} identity_settle={_v18_ids is not None} io_throttle={_v18_io} ledger_writeback={_v18_wb['on']}", flush=True)
@@ -6056,6 +6056,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_floor_p = _V18P.floor_p() if _v18_floor_on else 0.0
     _v18_floor_tot: dict = {}
     _v18_floor_cs = map_key_for_symside(new_symside)
+    _v18_must_rows: set = set()  # V18_MUST: "SW=c" rows / ("SW=c", "F=o") cells that must be evaluated at p = 1 in the main pass
+    _v18_must_cells: set = set()
     # V18 BRAIN (docs/v15_pending/19_E8_BRAIN_PILOT_HOOK_20261020.md): V18_BRAIN=1 (default OFF) = the learned per-cat_side
     # allocator decides rows/cells (tools/v18_brain.PilotBrainV18.decide, p booked as brain_p, skipped cells SETTLE lines);
     # the model is also the pair-evidence source of the UNTRIED rule (USER law "every combination keeps its chance"): a
@@ -6452,6 +6454,19 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _V18P.floor_add(_v18_floor_tot, _V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p))
             except Exception as _v18fe:
                 print(f"[V18-FLOOR-WARN] {sname}!{rr} {_v18fe} — row unchanged", flush=True)
+        if _v18_must_rows or _v18_must_cells:
+            _v18_mk = f"{str(switch).strip()}={str(cand).strip()}"
+            if _v18_mk in _v18_must_rows or any(_c0 == _v18_mk for _c0, _ in _v18_must_cells):
+                try:  # USER LAW: a MUST item is evaluated at p = 1 — no floor / brain / profile / prior skip may remove it
+                    if info["kind"] == "skip" and not info["hdrs"] and str(info.get("reason") or "").startswith(("CARRIED_DEAD", "BRAIN_SAMPLED_OUT")):
+                        _row_disc(info, sname, switch, cand)
+                    _fl_keep = info.get("v18_floor")
+                    _V18P.floor_apply(info, lambda kind, h, _m=_v18_mk: (_m in _v18_must_rows) if kind == "row" else ((_m, str(h).strip()) in _v18_must_cells), 1.0)
+                    info["v18_must"] = True
+                    if _fl_keep is not None:
+                        info["v18_floor"] = _fl_keep
+                except Exception as _v18me:
+                    print(f"[V18-MUST-WARN] {sname}!{rr} {_v18me}", flush=True)
         if _v18_brain_on and _v18_brain is not None:
             _v18_rk2 = f"{str(switch).strip()}={str(cand).strip()}"
             if info["kind"] == "skip" and info.get("v18_brain_row_p") is not None:
@@ -8490,7 +8505,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_r1_on = bool(_V18P is not None and _V18P.flag_on("V18_WINNERS"))
     _v18_r2_on = bool(_V18P is not None and _V18P.flag_on("V18_EXIT_REPAIR"))
     _v18_r3_on = bool(_V18P is not None and _V18P.flag_on("V18_ABLATION"))
-    _v18_any = _v18_r1_on or _v18_r2_on or _v18_r3_on
+    _v18_must_on = bool(_V18P is not None and _V18P.must_on())
+    _v18_any = _v18_r1_on or _v18_r2_on or _v18_r3_on or _v18_must_on
     _v18 = progress.setdefault("v18", {}) if _v18_any else {}
     _v18_phases_on = bool(_v18_any and prepared is not None and fast_switches is None and not is_hustle and (_v18.get("on") or not _v17_main_done))
     if _v18_any and not _v18_phases_on:
@@ -8541,6 +8557,61 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         sw, c = str(parts[0][0]).strip(), parts[0][1]
         row = _v17_find_row(sw, c)
         return {"label": label, "delta_ov": dov, "sw": sw, "cand": c, "sheet": row[0] if row else "V18", "row": row[1] if row else None, "parts": [f"{k}={json.dumps(v, sort_keys=True) if isinstance(v, (dict, list)) else v}" for k, v in dov.items()], **extra}
+    def _v18_must(deadline: float):
+        # MUST (USER LAW 2026-10-20 "if a certain switch/filter combination worked on another sym_side for the same cat_side
+        # it HAS to be tried on any other sym_side that has not tried it yet"): every item positive on >= 1 other sym_side of
+        # THIS cat_side (host index data/learn/must_pos_<CS>.json + digest positives_all) and never evaluated here, at p = 1,
+        # vs the start set first, greedy adoption under the gates; each settled in <progress_dir>/v18_must/<SS>.json with its
+        # result and the start-set sha (re-tried only when the chain changed); also forced into the main pass at p = 1
+        tag = "R0_MUST"
+        if _v18_phase_done(tag):
+            return
+        ph = _v17_phase_start(tag)
+        idx, why = _V18P.load_must_index(_v18_floor_cs, ROOT)
+        led_p = progress_path.parent / "v18_must" / f"{new_symside}.json"
+        try:
+            ledger = json.loads(led_p.read_text())
+        except Exception:
+            ledger = {}
+        import glob as _gm
+        own = sorted(set(_gm.glob(str(progress_path.parent / "v15_delta_log" / f"{new_symside}_*.jsonl")) + _gm.glob(os.path.expanduser(f"~/v15_run*/progress/v15_delta_log/{new_symside}_*.jsonl")) + [p_ for g_ in (os.environ.get("V18_MUST_TRIED_GLOB") or "").split(",") if g_ for p_ in _gm.glob(os.path.expanduser(g_.replace("{SS}", new_symside)))]))
+        from tools.v15_v18_must_index import tried_items as _tried_items
+        tried = _tried_items(own, new_symside)
+        for _dk in (progress.get("done") or {}):
+            if "!" in str(_dk) and ":" in str(_dk) and str(_dk).split("!", 1)[0] in SWITCH_SHEETS:
+                tried.add(str(_dk).split(":", 1)[1])
+        start_sha = _V18P.set_sha256(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
+        items = _V18P.must_items(idx, _v18_dg, new_symside, tried, ledger, start_sha)
+        cands, refused = [], {}
+        for it_k in items:
+            parts = _V18P.must_parts(it_k)
+            _lab = f"MUST:{parts[0][0]}={parts[0][1]}" + (f"+{parts[1][0]}={parts[1][1]}" if len(parts) > 1 else "")
+            x = _v18_cand(_lab, parts, refused, must_key=it_k)
+            if x:
+                _v18_lx[_lab] = {"must": True, "positive_on": len((idx.get(it_k) or {}).get("syms") or [])}
+                cands.append(x)
+                if len(parts) == 1:
+                    _v18_must_rows.add(it_k)
+                else:
+                    _v18_must_cells.add((f"{parts[0][0]}={parts[0][1]}", f"{parts[1][0]}={parts[1][1]}"))
+        first = _v17_greedy(cands, "v18_must", "MUST", deadline, ph, accept=_v18_accept, book=_v18) if cands else []
+        ad = _v18_adopted("MUST")
+        n_pos = 0
+        for x in first:
+            if x.get("d") is None:
+                continue
+            n_pos += 1 if (x.get("ok") and float(x["d"]) > 1e-9) else 0
+            ledger[x["must_key"]] = {"start_sha": start_sha, "delta": round(float(x["d"]), 6), "valid": (x.get("res") or {}).get("valid"), "adopted": x.get("label") in ad, "ts": utcnow()}
+        try:
+            led_p.parent.mkdir(parents=True, exist_ok=True)
+            led_p.with_suffix(".tmp").write_text(json.dumps(ledger))
+            os.replace(led_p.with_suffix(".tmp"), led_p)
+        except Exception as _le:
+            print(f"[V18-MUST-WARN] ledger write {_le}", flush=True)
+        rec = {"source": why, "n_items": len(items), "n_offered": len(cands), "n_refused": len(refused), "n_evaluated": sum(1 for x in first if x.get("d") is not None), "n_positive_here": n_pos, "n_adopted": len(ad), "n_tried_before": len(tried), "main_pass_rows": len(_v18_must_rows), "main_pass_cells": len(_v18_must_cells)}
+        _v18["must"] = {**rec, "refused_sample": dict(list(refused.items())[:40])}
+        print(f"[V18-MUST] {new_symside} {_v18_floor_cs} items={rec['n_items']} offered={rec['n_offered']} refused={rec['n_refused']} evaluated={rec['n_evaluated']} positive_here={n_pos} adopted={rec['n_adopted']} ({why})", flush=True)
+        _v18_phase_end(ph, **rec)
     def _v18_winners(deadline: float):
         # R1 WINNERS (doc 17 §3.5): the cat_side digest's top-K winners, each as switch+cand WITH its companion filters (one
         # candidate) and naked, one batch vs the start set; greedy joint on positives <= V18_WINNERS_MAX_ADOPT
@@ -8919,6 +8990,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             print(f"[V18-WARN] sheet write failed: {_vse}", flush=True)
     if _v18_phases_on:
         try:
+            if _v18_must_on:
+                _v18_must(_t.time() + float(os.environ.get("V18_MUST_S", "7200")))
             if _v18_r1_on:
                 _v18_winners(_t.time() + float(os.environ.get("V18_WINNERS_S", "240")))
                 _v18_xpoll(_t.time() + float(os.environ.get("V18_XPOLL_S", "90")))
@@ -12031,6 +12104,12 @@ def _main_single():
                         if "=" in _part:
                             _k, _v = _part.split("=", 1)
                             _parts.append((_k.strip(), _pv(_v)))
+                        elif _V18P is not None and _V18P.flag_on("V18_C_BARE_VALUES") and str(_part).strip() and str(_a).strip() in known_config_fields():
+                            # CLAUDE.md regression #3: a single-value C (e.g. C3=False) is the row switch's baseline override;
+                            # accepted only when it is a type-compatible value of that switch (template junk stays out)
+                            _bv = _pv(_part)
+                            if not _switch_type_violation(str(_a).strip(), _bv, overrides) and _cand_compatible(str(_a).strip(), _bv, {})[0]:
+                                _parts.append((str(_a).strip(), _bv))
                     (_promo_parts if isinstance(_g, (int, float)) and _g > 1e-9 else _best_parts).extend(_parts)
             for _k, _v in _best_parts + _promo_parts:
                 if "_" in _k and len(_k) > 5 and "=" not in str(_v) and overrides.get(_k) != _v:

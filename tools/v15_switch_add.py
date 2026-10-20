@@ -373,7 +373,7 @@ def apply_queue(queue_path, templates_dirs, apply=False, root=ROOT, lock_wait_s=
                         before[tab] = fingerprints(ws)
                     if any(ws.cell(r, 1).value == sw for r in range(3, ws.max_row + 1)):
                         continue
-                    insert_switch_rows(ws, sw, opts, pdflt, ts)
+                    insert_switch_rows(ws, sw, opts, dflt, ts)
                     done.append((sw, tab, len(opts)))
                 for tab, fp in before.items():
                     lost = sum((fp - fingerprints(wb[tab])).values())

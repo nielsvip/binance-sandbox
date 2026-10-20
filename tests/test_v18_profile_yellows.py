@@ -28,12 +28,19 @@ def test_select_keeps_evidence_and_draws_the_rest():
     assert why == "PROFILE" and keep == ["B=1", "D=1", "C=1"] and rest == ["A=1"]
 
 
-def test_inert_or_damaging_row_is_naked_plus_floor_only():
+def test_only_default_relative_state_reduces_a_row():
     pool = ["A=1", "B=1"]
-    keep, rest, why = V.profile_select(pool, {"needed": ["A=1", "B=1"]}, {"verdict": "INERT", "n_syms": 12}, [], lambda h: False, 10)
-    assert keep == [] and rest == pool and why == "PROFILE_INERT_NAKED_FLOOR"
-    keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"verdict": "DAMAGING", "n_syms": 4}, [], lambda h: False, 10)
-    assert keep == ["A=1"] and why == "PROFILE"  # below the threshold the verdict is not trusted
+    # the coarse verdict alone never reduces a row (USER LAW: most switches are negative because their default already won)
+    keep, rest, why = V.profile_select(pool, {"needed": ["A=1", "B=1"]}, {"verdict": "INERT", "n_syms": 50}, [], lambda h: False, 10)
+    assert keep == pool and why == "PROFILE"
+    keep, rest, why = V.profile_select(pool, {"needed": ["A=1", "B=1"]}, {"state": "SETTLED_OFF", "n_syms": 12}, [], lambda h: False, 10)
+    assert keep == [] and rest == pool and why == "PROFILE_SETTLED_OFF_NAKED_FLOOR"
+    keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"state": "SETTLED_OFF", "n_syms": 4}, [], lambda h: False, 10)
+    assert keep == ["A=1"] and why == "PROFILE"
+    keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"state": "DAMAGING", "n_syms": 4, "interval": [-3.0, -1.0]}, [], lambda h: h == "B=1", 10)
+    assert keep == ["B=1"] and why == "PROFILE_DAMAGING_NAKED_FLOOR"  # the floor draw stays
+    keep, _, why = V.profile_select(pool, {"needed": ["A=1"]}, {"state": "DAMAGING", "n_syms": 40}, [], lambda h: False, 10)
+    assert keep == ["A=1"] and why == "PROFILE"  # DAMAGING without an interval is not trusted
 
 
 def test_floor_never_zero_over_the_rest():
@@ -63,3 +70,13 @@ def test_pilot_wiring_pins():
     i_f = SRC.index("_V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p)")
     assert i_p < i_f
     assert "[V18-PROFILE]" in SRC and 'progress["done"][key]["v18_profile"] = dict(st["v18_profile"])' in SRC
+
+
+def test_prev_xls_single_value_c_is_a_baseline_override_when_switched_on():
+    # CLAUDE.md regression #3: "XLS prev parser ... missed single-value C (False) baseline overrides" — V18_C_BARE_VALUES=1
+    # reads a bare C value as the row switch's override (type-checked); default OFF until the gate decides
+    i = SRC.index("def _do_xls_prev():")
+    body = SRC[i:SRC.index("_ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)")]
+    assert '_V18P.flag_on("V18_C_BARE_VALUES")' in body
+    assert "_parts.append((str(_a).strip(), _bv))" in body
+    assert "_cand_compatible(str(_a).strip(), _bv, {})[0]" in body

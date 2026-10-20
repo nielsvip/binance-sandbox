@@ -642,7 +642,7 @@ def untried_p() -> float:
         return 0.05
 
 
-PHASE_PREFIXES = (("WINNERS", "WINNERS"), ("XPOLL", "XPOLL"), ("EXITREP", "EXITREP"), ("ABL", "ABL"), ("FOCUS", "FOCUS"), ("SURGEON", "SURGEON"), ("V17_", "V17"), ("COMBO", "COMBO"), ("RED_RETRY", "RED_RETRY"), ("RECALC", "MAIN"), ("JOINT", "MAIN"))
+PHASE_PREFIXES = (("MUST", "MUST"), ("WINNERS", "WINNERS"), ("XPOLL", "XPOLL"), ("EXITREP", "EXITREP"), ("ABL", "ABL"), ("FOCUS", "FOCUS"), ("SURGEON", "SURGEON"), ("V17_", "V17"), ("COMBO", "COMBO"), ("RED_RETRY", "RED_RETRY"), ("RECALC", "MAIN"), ("JOINT", "MAIN"))
 
 
 def phase_of(sheet, label, switch_sheets=()) -> str:
@@ -735,8 +735,13 @@ def profile_select(pool: list, entry: dict, prof_row: dict, proposals: list, kee
     INERT / DAMAGING rows with n_syms >= min_n -> naked + floor draw only; else needed U suffocating U evidence_pos U proposals
     (restricted to the pool) + keep_fn(hdr) over the REST (floor / untried draw: never zero). -> (keep, rest, why)."""
     pool = list(dict.fromkeys(pool or []))
-    verdict = str((prof_row or {}).get("verdict") or "")
-    dead = verdict in ("INERT", "DAMAGING") and int((prof_row or {}).get("n_syms") or 0) >= int(min_n)
+    # USER LAW 2026-10-20: "ALMOST EVERY SWITCH has to be negative as we turn the positives into defaults" -> a row is never
+    # reduced to naked + floor on negative / zero deltas or on the coarse INERT/DAMAGING verdict; only the precision cards'
+    # default-relative `state` may do it: SETTLED_OFF with n_syms >= min_n, or DAMAGING with a measured interval
+    verdict = str((prof_row or {}).get("state") or "")
+    _n = int((prof_row or {}).get("n_syms") or 0)
+    _iv = (prof_row or {}).get("interval")
+    dead = (verdict == "SETTLED_OFF" and _n >= int(min_n)) or (verdict == "DAMAGING" and isinstance(_iv, (list, tuple, dict)) and bool(_iv))
     must = []
     if not dead:
         for k in ("needed", "suffocating", "evidence_pos"):
@@ -753,3 +758,61 @@ def profile_select(pool: list, entry: dict, prof_row: dict, proposals: list, kee
         else:
             rest.append(h)
     return keep, rest, (f"PROFILE_{verdict}_NAKED_FLOOR" if dead else "PROFILE")
+
+
+# ── MUST set (USER LAW 2026-10-20: a combination that worked on another sym_side of the cat_side HAS to be tried here) ──
+def must_on() -> bool:
+    return flag_on("V18_MUST")
+
+
+def load_must_index(cat_side: str, root=None):
+    """-> ({item: {syms, best}}, why) from data/learn/must_pos_<CS>.json (tools/v15_v18_must_index.py); fail-open."""
+    cs = str(cat_side or "").upper()
+    p = digest_dir(root) / f"must_pos_{cs}.json"
+    try:
+        d = json.loads(p.read_text())
+    except Exception as e:
+        return {}, f"absent/unreadable {p.name}: {e}"[:160]
+    if str((d.get("meta") or {}).get("cat_side") or "").upper() != cs:
+        return {}, "CAT_SIDE_MISMATCH — refused (principle 13)"
+    return d.get("items") or {}, f"ok {p.name} items={len(d.get('items') or {})} built_at={(d.get('meta') or {}).get('built_at')}"
+
+
+def must_items(index: dict, digest, symside: str, tried_here: set, ledger: dict, start_sha: str) -> list:
+    """Every item positive on >= 1 OTHER sym_side of the cat_side and never evaluated on this one (its own logs + its MUST
+    ledger on the same start set). Sources: the host index and the digest's positives_all ({switch, cand, filter?, opt?,
+    tried_on}). Ordered best-first; no cap (batching is the caller's)."""
+    ss = str(symside or "")
+    cand = {}
+    for k, e in (index or {}).items():
+        syms = set((e or {}).get("syms") or [])
+        if syms - {ss}:
+            cand[k] = max(cand.get(k, -1e9), _f((e or {}).get("best"), 0.0))
+    for e in ((digest or {}).get("positives_all") or []):
+        if not isinstance(e, dict) or not e.get("switch") or "cand" not in e:
+            continue
+        k = f"{str(e['switch']).strip()}={str(e['cand']).strip()}" + (f"@{str(e['filter']).strip()}={str(e.get('opt')).strip()}" if e.get("filter") else "")
+        if ss in set(e.get("tried_on") or []):
+            tried_here = set(tried_here) | {k}
+            continue
+        cand[k] = max(cand.get(k, -1e9), _f(e.get("best") or e.get("delta"), 0.0))
+    out = []
+    for k, b in sorted(cand.items(), key=lambda t: -t[1]):
+        if k in tried_here:
+            continue
+        led = (ledger or {}).get(k)
+        if isinstance(led, dict) and led.get("start_sha") == start_sha:
+            continue
+        out.append(k)
+    return out
+
+
+def must_parts(item: str) -> list:
+    """'SW=c' -> [(SW, c)]; 'SW=c@F=o' -> [(SW, c), (F, o)]."""
+    row, _, cell = str(item).partition("@")
+    sw, _, c = row.partition("=")
+    parts = [(sw.strip(), c.strip())]
+    if cell:
+        f, _, o = cell.partition("=")
+        parts.append((f.strip(), o.strip()))
+    return parts

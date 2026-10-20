@@ -121,6 +121,12 @@ def test_erosion_confirm_tf_value_is_honoured():
     assert T.erosion_confirm_block(ind(d), True, "4h", None) is not None
 
 
+def test_erosion_confirm_never_holds_a_losing_position():
+    d = {"wt1_15m": 50.0, "wt2_15m": 10.0}
+    assert T.erosion_confirm_block(ind(d), True, "15m", "15m", True, -0.9) is None
+    assert T.erosion_confirm_block(ind(d), True, "15m", "15m", True, 1.2) is not None
+
+
 def test_erosion_confirm_master_gate_mirrors_vec_jsn2():
     d = {"wt1_15m": 50.0, "wt2_15m": 10.0}
     assert T.erosion_confirm_block(ind(d), True, "15m", None, True) is not None

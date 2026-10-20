@@ -458,8 +458,26 @@ def apply_tab(ws, stats, win, ledger_cs, round_changed, rep, ledger_out, cleared
     white = sorted([k for k in grp if not k[1]], key=gkey)
     orange = sorted([k for k in grp if k[1]], key=gkey)
     if white:  # USER 2026-10-01: a tab ALWAYS starts with a DEFAULT row (baseline of tab 1 and the port to the next tab are built from defaults+overrides)
+        _is_yes = lambda x: str(x[c_isd - 1][0] or "").strip().upper() == "YES"
+        # 2026-10-20: hoist the first white group that HAS a default. worst_first (the gkey sort above) is correct and
+        # untouched — the defect was that its winner can be a group with NO YES row at all, and then the reorder below
+        # cannot fire (`if _yes` is false) so the tab opens on a non-default row and verify() rejects the whole
+        # cat_side. MEASURED on STOCKS_SHORT/ENTRY_REVERSAL_BOUNCE: white[0] was HTF_GATE_D_MANDATORY (avg -10.79,
+        # genuinely the worst) whose white group holds a single is_default=NO row — its YES row is not in that group —
+        # so row 3 wrote is_default=NO and the run died with "first data row 3 is not a default row". That one row
+        # failed the cat_side on 5 consecutive days (10-15..10-19), and because v15_daily_chain_s1.sh greps the
+        # COMBINED output and calls `fail 2`, the whole chain stopped at step 2 every day: the three healthy
+        # cat_sides never got their defaults rewritten either, and avg_delta_pos_sym.json / avg_delta_selection.json /
+        # avg_delta_round_ledger.json froze at 10-15 12:3x. Promotion is NOT involved — reproduced identically with
+        # --no-promote (promoted switches=0 filters=0 violations=1).
+        # Only position 0 moves; every other group keeps its worst_first rank, and nothing about which row is the
+        # default changes (that is promotion's job alone).
+        if not any(_is_yes(x) for x in grp[white[0]]):
+            _i = next((i for i, k in enumerate(white) if any(_is_yes(x) for x in grp[k])), None)
+            if _i is not None:
+                white.insert(0, white.pop(_i))
         _rows = grp[white[0]]
-        _yes = [x for x in _rows if str(x[c_isd - 1][0] or "").strip().upper() == "YES"]
+        _yes = [x for x in _rows if _is_yes(x)]
         if _yes and _rows[0] is not _yes[0]:
             _rows.remove(_yes[0])
             _rows.insert(0, _yes[0])
