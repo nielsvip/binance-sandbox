@@ -39,7 +39,7 @@ if [ -n "$_DENY" ]; then
   for _s in $_DENY; do echo "${_s}.npz"; echo "${_s}_*"; done >> "$EXCL"
   echo "$(date -u +%FT%TZ) DENY $(echo $_DENY | wc -w) TradFi symbols excluded" >> /tmp/sync_indicators.log
 fi
-for ip in 10.0.0.4; do  # 2026-10-13 s5/s6 destroyed
+for ip in 10.0.0.4 10.0.0.5 10.0.0.6; do  # 2026-10-20 s5/s6 revived (USER); 10-13 note: were destroyed
   _excl_arg=""
   [ -f "$EXCL" ] && _excl_arg="--exclude-from=$EXCL"
   # shellcheck disable=SC2086
@@ -49,6 +49,6 @@ for ip in 10.0.0.4; do  # 2026-10-13 s5/s6 destroyed
   # freshly rebuilt stock NPZs on s2 with S1's 20:21Z copies, mtime preserved, and every board then refused
   # STALE_NPZ_SKIPPED. --update keeps S1 the source for everything it is newer on and lets the worker's own
   # fresher build stand.
-  rsync -azu --timeout=60 $_excl_arg ~/binance-sandbox/backtest_v8/indicators/ niels@$ip:~/binance-sandbox/backtest_v8/indicators/ > /tmp/sync_ind_${ip##*.}.log 2>&1 || echo "$(date) fail $ip" >> /tmp/sync_indicators.log
+  nice -n 15 ionice -c3 rsync -azu --timeout=60 $_excl_arg ~/binance-sandbox/backtest_v8/indicators/ niels@$ip:~/binance-sandbox/backtest_v8/indicators/ > /tmp/sync_ind_${ip##*.}.log 2>&1 || echo "$(date) fail $ip" >> /tmp/sync_indicators.log
   echo "$(date -u +%FT%TZ) $ip OK $(ls ~/binance-sandbox/backtest_v8/indicators 2>&1 | wc -l) files" >> /tmp/sync_indicators.log
 done

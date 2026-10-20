@@ -4014,7 +4014,8 @@ def tick(args, cfg, now):
                 _hist_seen.pop(_k, None)
         if _fresh_pub and not (args.dry_run or sim):
             subprocess.Popen(["setsid", "flock", "-n", "/tmp/v15_settings_history.lock",
-                              sys.executable, str(ROOT / "tools" / "v15_settings_history.py"), "--window-h", "6"],
+                              sys.executable, str(ROOT / "tools" / "v15_settings_history.py"), "--window-h", "6",
+                              "--hosts", ",".join(str(h_["ssh"][0]) for h_ in hosts if h_.get("ssh"))],  # 2026-10-20 WP1: the tool's default (127.0.0.1,10.0.0.4) never read s5/s6 boards
                              cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
             log["settings_history"] = {"new_publishes": sorted(_fresh_pub)[:12], "n": len(_fresh_pub), "spawned": True}
             print(f"[sched] settings-history: {len(_fresh_pub)} new publish(es) -> recording settings to per_sym_history", flush=True)
