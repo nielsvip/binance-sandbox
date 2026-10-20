@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T21:52:54Z",
+ "ts": "2026-10-20T21:58:13Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,28 +127,28 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 41.0
   },
   "flz": {
    "pids": [
@@ -160,16 +160,34 @@
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6710.0
+   "log_age_s": 7029.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6713.0
+   "log_age_s": 7032.0
   }
  },
- "alerts": [],
- "alert_counts": {},
+ "alerts": [
+  {
+   "ts": "2026-10-20T21:58:13Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "20 21:54:33 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $596 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-20T21:58:13Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "order notional $596.00 > MAX_ORDER_VALUE $300: 20 21:54:33 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:ARUSDT_LONG @ 3.893487 qty=153.074948 ($596.00) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px3.890184_exit1.651684_a"
+  }
+ ],
+ "alert_counts": {
+  "CAP_BYPASS": 1,
+  "SIZE_ANOMALY": 1
+ },
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -228,7 +246,14 @@
    "why": "SIZE_ANOMALY order $1584.50 > 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:TIAUSDC_LONG",
    "dry_run": false
+  },
+  "key:ang:ARUSDT_LONG": {
+   "ts": 1792533282.545493,
+   "until": 1792540482.545523,
+   "why": "SIZE_ANOMALY order $596.00 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:ang:ARUSDT_LONG",
+   "dry_run": false
   }
  },
- "sweep_s": 1.05
+ "sweep_s": 1.3
 }
