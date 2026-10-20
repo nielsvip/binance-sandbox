@@ -28,6 +28,8 @@ fi
 RSYNC_BIN=/opt/homebrew/bin/rsync
 [ -x "$RSYNC_BIN" ] || RSYNC_BIN=rsync
 mirror_host() { # <ssh-name> <dest-base>
+    timeout 30 ssh -o ConnectTimeout=15 -o BatchMode=yes "$1" "mkdir -p $2/selflearning $2/eval_cache" 2>>"$LOG" \
+    || { say "MIRROR $1 FAILED mkdir (retries in 6h)"; return 1; }
     "$RSYNC_BIN" -az --timeout=300 \
         -e "ssh -o ConnectTimeout=15 -o BatchMode=yes" \
         "$TOSH/binance_archive/selflearning/" "$1:$2/selflearning/" 2>>"$LOG" \
@@ -37,9 +39,9 @@ mirror_host() { # <ssh-name> <dest-base>
     && say "MIRROR $1 ok" || say "MIRROR $1 FAILED (retries in 6h)"
 }
 [ -f "$MASTER" ] && say "master $(du -sm "$MASTER" 2>/dev/null | cut -f1)M present"
-mirror_host s5 "~/mirror_toshiba"
+mirror_host s5 "/home/niels/mirror_toshiba"
 timeout 10 ssh -o ConnectTimeout=6 -o BatchMode=yes s6 hostname >/dev/null 2>&1 \
-    && mirror_host s6 "~/mirror_toshiba" || say "MIRROR s6 unreachable (retries in 6h)"
+    && mirror_host s6 "/home/niels/mirror_toshiba" || say "MIRROR s6 unreachable (retries in 6h)"
 if [ -d /Volumes/E3T ]; then
     EXCLUDE_MASTER=1 "$RSYNC_BIN" -az --timeout=300 --exclude='eval_cache/' \
         "$TOSH/binance_archive/selflearning/" /Volumes/E3T/mirror_toshiba/ 2>>"$LOG" \
