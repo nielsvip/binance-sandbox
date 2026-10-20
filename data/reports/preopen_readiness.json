@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T14:20:02Z",
+ "generated_utc": "2026-10-20T14:40:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -15,22 +15,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 200,
+    "filled_today": 201,
     "filled_before_open": 185
    },
-   "detail": "185 boards filled before the open (200 today)"
+   "detail": "185 boards filled before the open (201 today)"
   },
   {
    "name": "defaults_chain_completed",
    "ok": false,
    "critical": true,
    "measured": {
-    "cat_side_defaults_4_at": "2026-10-14T00:03:51Z",
-    "cat_side_is_today": false,
     "mac_done_stamp": false,
-    "s1_stamp": "{\"date\":\"20261020\",\"status\":\"FAILED\",\"failed_step\":\"2\",\"why\":\"template writer norm rc=124\",\"steps_ok\":\"1\",\"started\":\"2026-10-20T12:55:01Z\",\"ended\":\"2026-10-20T13:27:27Z\"}"
+    "s1_stamp": "{\"date\":\"20261020\",\"status\":\"FAILED\",\"failed_step\":\"2\",\"why\":\"template writer norm rc=124\",\"steps_ok\":\"1\",\"started\":\"2026-10-20T12:55:01Z\",\"ended\":\"2026-10-20T13:27:27Z\"}",
+    "cat_side_defaults_4_at": "2026-10-14T00:03:51Z",
+    "cat_side_age_days": 6.6,
+    "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "cat_side defaults 2026-10-14T00:03:51Z (today=False), mac stamp 20261020=False, s1 stamp {\"date\":\"20261020\",\"status\":\"FAILED\",\"failed_step\":\"2\",\"why\":\"template writer norm rc=124\",\"steps_ok\":\"1\",\"started\":\"2026-10-20T12:55:01Z\",\"ended\":\"2026-10-20T1 \u2014 the defaults chain did NOT land today: live is trading an older default layer"
+   "detail": "mac stamp 20261020=False, s1 stamp {\"date\":\"20261020\",\"status\":\"FAILED\",\"failed_step\":\"2\",\"why\":\"template writer norm rc=124\",\"steps_ok\":\"1\",\"started\":\"2026-10-20T12:55:01Z\",\"ended\":\"20, cat_side layer 6.6d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -48,12 +49,12 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 2,
-    "newest_report": "persym_golive_20261020_cellts_1415.json",
-    "newest_report_at": "2026-10-20T14:19:59Z",
-    "tiers_at": "2026-10-19T22:34:52Z"
+    "reports_today": 3,
+    "newest_report": "persym_golive_20261020_refresh_1252.json",
+    "newest_report_at": "2026-10-20T14:31:01Z",
+    "tiers_at": "2026-10-20T14:31:23Z"
    },
-   "detail": "persym_golive_20261020_cellts_1415.json at 2026-10-20T14:19:59Z, tiers 2026-10-19T22:34:52Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261020_refresh_1252.json at 2026-10-20T14:31:01Z, tiers 2026-10-20T14:31:23Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -208,21 +209,12 @@
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 14,
-    "stale_pct": 7.0,
-    "median_age_min": 65.0,
-    "sample": [
-     "ACHUSDT",
-     "ACTUSDT",
-     "BOMEUSDC",
-     "BRETTUSDT",
-     "C98USDT",
-     "CAKEUSDT",
-     "CELOUSDT",
-     "CELRUSDT"
-    ]
+    "stale_over_90min": 0,
+    "stale_pct": 0.0,
+    "median_age_min": 25.0,
+    "sample": []
    },
-   "detail": "14/199 symbols past the live 90-min entry gate (7.0%)"
+   "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
   },
   {
    "name": "s1_sets_synced",

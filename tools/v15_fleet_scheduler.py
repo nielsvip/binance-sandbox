@@ -385,7 +385,11 @@ elif mode == "ready":
                             gd = np.diff(rec) / k
                             gap_h = float(gd.max() / 3600.0) if len(gd) else 0.0
                             r["max_gap_30d_h"] = round(gap_h, 2)
-                        max_age = 1.0 if arg.get("venue") == "crypto" else 120.0  # USER LAW 2026-10-20 crypto backstop 336 h -> 1.0 h (a bar one behind peaks at 0.75 h; tail_currency above is the exact rule). AUTOPILOT 2026-10-02: crypto NPZ tail refresh is not automatic (NPZB loop only); 48h would stop every crypto launch while the user is away
+                        # USER LAW 2026-10-20 crypto backstop 336 h -> 1.0 h (a bar one behind peaks at 0.75 h; tail_currency above is the exact rule). AUTOPILOT 2026-10-02: crypto NPZ tail refresh is not automatic (NPZB loop only); 48h would stop every crypto launch while the user is away.
+                        # Stocks 120 h -> 26 h (USER 2026-10-20 "no more backtests can run on old npz's"): this backstop is the ONLY bar left
+                        # when the tail_currency import below fails, and five days of staleness is not a backstop — one session plus a weekend
+                        # margin is. 26 h still clears a normal overnight and a post-close rebuild; a longer gap is a rebuild, not a tail append.
+                        max_age = 1.0 if arg.get("venue") == "crypto" else float(os.environ.get("V15_SCHED_STOCK_AGE_BACKSTOP_H", "26"))
                         par = t15[(t15 > 0) & np.isfinite(t15)]
                         ev = int((np.r_[True, par[1:] != par[:-1]]).sum()) if len(par) else 0
                         lag_min = float(np.nanmin(t - t15))
@@ -1751,6 +1755,133 @@ def _workers_for(sym, workers):
     return workers
 
 
+_CATCHUP_MODE = [False]  # 2026-10-20 USER LAW: set per tick by the coverage hysteresis; side_cmd adds V18_CATCHUP=1 to 30D launches while True
+
+_REMOTE_MANIFEST_PY = (
+    "import json,glob,os,sys\n"
+    "d=os.path.expanduser(sys.argv[1]);o=[]\n"
+    "for f in glob.glob(d+'/*_30d_matrix_manifest.json'):\n"
+    "    try:\n"
+    "        j=json.load(open(f));w=(j.get('provenance') or {}).get('npz_window') or {}\n"
+    "        o.append([j.get('symside'),j.get('published_utc'),j.get('host'),w.get('ts_last'),w.get('mtime_ns'),j.get('npz_age_min')])\n"
+    "    except Exception: pass\n"
+    "print(json.dumps(o))\n")
+
+
+def _manifest_rows(matrix_dir):
+    """[[symside, published_utc, host, npz_ts_last, npz_mtime_ns, npz_age_min|None]] from the publish manifests in matrix_dir. Never raises."""
+    import glob as _glob
+
+    out = []
+    try:
+        for p in _glob.glob(os.path.join(str(matrix_dir), "*_30d_matrix_manifest.json")):
+            try:
+                j = json.loads(pathlib.Path(p).read_text()) or {}
+                w = (j.get("provenance") or {}).get("npz_window") or {}
+                out.append([j.get("symside"), j.get("published_utc"), j.get("host"), w.get("ts_last"), w.get("mtime_ns"), j.get("npz_age_min")])
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
+def _stock_session_final_bar(ts_last):
+    """True when an NPZ's last bar is the final bar of a US regular session (NY 15:30-16:00 weekday): after the close no newer bar
+    exists, so such an NPZ is current by construction (same rule as the stock tail gate). Never raises."""
+    try:
+        t = datetime.datetime.fromtimestamp(float(ts_last), datetime.timezone.utc).astimezone(NY)
+        return t.weekday() < 5 and datetime.time(15, 30) <= t.time() <= datetime.time(16, 0)
+    except Exception:
+        return False
+
+
+def _board_npz_age_min(row, venue):
+    """Minutes the NPZ's last bar lagged the NPZ file's build time (the best 'NPZ age at prepare' the manifest carries): the manifest's own
+    npz_age_min when present, else (npz file mtime - last bar)/60. Stocks whose last bar is a session final bar count as 0. None = unknown."""
+    try:
+        if row[5] is not None:
+            return float(row[5])
+        if venue == "stocks" and row[3] is not None and _stock_session_final_bar(row[3]):
+            return 0.0
+        if row[3] is None or row[4] is None:
+            return None
+        return (float(row[4]) / 1e9 - float(row[3])) / 60.0
+    except Exception:
+        return None
+
+
+def _coverage(allowed, rows, now_ts, max_age_h=24.0, npz_min=20.0):
+    """COVERAGE = share of tradeable sym_sides whose newest PUBLISHED board is < max_age_h old AND was built on an NPZ <= npz_min old.
+    Pure (tested). rows = _manifest_rows output (any hosts merged); the newest manifest per sym_side wins."""
+    newest = {}
+    for r in rows or []:
+        try:
+            ts = datetime.datetime.fromisoformat(str(r[1]).replace("Z", "+00:00")).timestamp()
+        except Exception:
+            continue
+        if r[0] and ts > (newest.get(r[0]) or (0.0, None))[0]:
+            newest[r[0]] = (ts, r)
+    cats, ages_all = {}, []
+    for ss in sorted(allowed or []):
+        sym = ss.rsplit("_", 1)[0]
+        venue = venue_of(sym)
+        c = cats.setdefault(cat_of_ss(ss), {"n": 0, "published_24h": 0, "covered": 0, "ages_h": [], "npz_stale": 0, "never": 0})
+        c["n"] += 1
+        rec = newest.get(ss)
+        if not rec:
+            c["never"] += 1
+            continue
+        age_h = (now_ts - rec[0]) / 3600.0
+        c["ages_h"].append(age_h)
+        ages_all.append(age_h)
+        if age_h < max_age_h:
+            c["published_24h"] += 1
+            lag = _board_npz_age_min(rec[1], venue)
+            if lag is not None and lag <= npz_min:
+                c["covered"] += 1
+            else:
+                c["npz_stale"] += 1
+
+    def _med(v):
+        v = sorted(v)
+        return round(v[len(v) // 2], 2) if v else None
+
+    n = sum(c["n"] for c in cats.values())
+    cov = sum(c["covered"] for c in cats.values())
+    out = {"n": n, "covered": cov, "coverage": round(cov / n, 4) if n else 1.0, "published_24h": sum(c["published_24h"] for c in cats.values()),
+           "median_board_age_h": _med(ages_all), "per_cat": {}}
+    for k, c in cats.items():
+        out["per_cat"][k] = {"n": c["n"], "covered": c["covered"], "coverage": round(c["covered"] / c["n"], 4) if c["n"] else 1.0, "published_24h": c["published_24h"],
+                             "published_but_npz_stale": c["npz_stale"], "never_or_old": c["n"] - c["published_24h"], "median_board_age_h": _med(c["ages_h"])}
+    return out
+
+
+def _select_catchup_mode(prev_catchup, coverage, below=0.80, exit_=0.95):
+    """Hysteresis: enter catch-up when coverage < below, leave it only when coverage >= exit_. Pure (tested)."""
+    if prev_catchup:
+        return not (coverage >= exit_)
+    return coverage < below
+
+
+def _throughput(rows, now_ts, window_h=1.0, target=12):
+    """Published boards per host over the trailing window + distinct symbols with BOTH sides published in it. Pure (tested)."""
+    per_host, sides = {}, {}
+    for r in rows or []:
+        try:
+            ts = datetime.datetime.fromisoformat(str(r[1]).replace("Z", "+00:00")).timestamp()
+        except Exception:
+            continue
+        if now_ts - ts > window_h * 3600.0 or not r[0]:
+            continue
+        hn = {"niels": "s1"}.get(str(r[2]), str(r[2]))
+        per_host.setdefault(hn, set()).add(r[0])
+        sym, side = r[0].rsplit("_", 1)
+        sides.setdefault(sym, set()).add(side)
+    return {"window_h": window_h, "target_per_host": target, "published_per_host": {h: len(v) for h, v in sorted(per_host.items())},
+            "symbols_both_sides": sum(1 for v in sides.values() if len(v) == 2), "sym_sides": sum(len(v) for v in per_host.values())}
+
+
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
     """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd. USER 2026-10-11: spawn-guarded (see _spawn_guard)."""
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
@@ -1759,6 +1890,8 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=150 V15_ENDGAME_S=120 V15_FOCUS_S_WINNER=600 V15_FOCUS_S_MEDIOCRE=150 V15_FOCUS_S_LOSER=60 V15_TIER_BIG_MOVER=8 V15_FOCUS_S_BHCHASE=600 V15_FOCUS_TOP_K_BHCHASE=48 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=4 MALLOC_ARENA_MAX=2 V15_PROGRESS_DIR={pdir} V12_ALLOW_STALE_NPZ=$(test -s {pdir}/{ss}_v14_progress.json && echo 1 || echo 0) V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         if os.environ.get("V15_SCHED_V17", "1") == "1":
             env += " V15_V17_ROUNDS=1"  # USER 2026-10-13: >=12 finalized V17 boards per hour per server (V15_SCHED_V17=0 = old pilot)
+        if _CATCHUP_MODE[0]:
+            env += " V18_CATCHUP=1"  # USER LAW 2026-10-20: coverage below V15_SCHED_CATCHUP_BELOW -> every new launch is a catch-up board (unknown env = harmless to an older pilot)
         env += gate_env_inline()  # USER 2026-10-16: the gate-benched launch env is authoritative (appended last = it wins)
         env += round_env_inline(_round_id_of(pdir))  # USER 2026-10-19: self-expiring, round-scoped override (see round_env_inline)
         body = f"{env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
@@ -2892,6 +3025,44 @@ def tick(args, cfg, now):
     mapped_unready = {}
     HB, launched_keys = {}, set()
     npz_prefetch = []  # USER 2026-10-13: (host, [next candidate syms]) — s1 pre-generates their NPZ after the launch pass
+    try:
+        # 2026-10-20 USER LAW: COVERAGE metric + catch-up mode with hysteresis + throughput line (see _coverage/_select_catchup_mode/_throughput)
+        _mrows = _manifest_rows(os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL"))
+        _rc = st.setdefault("cov_remote", {})
+        for _hh in hosts:
+            _tg = (_hh.get("_via") or (_hh.get("ssh") or [""])[0])
+            if not _tg or _tg in ("127.0.0.1", "localhost") or args.dry_run or sim:
+                continue
+            _ent = _rc.get(_hh["name"]) or [0.0, []]
+            if _now_ts - float(_ent[0]) > 300.0:
+                try:
+                    _rr = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", _tg if "@" in _tg else f"niels@{_tg}", "python3", "-c", shlex.quote(_REMOTE_MANIFEST_PY), "binance-sandbox/SPREADSHEETS/V15_V16_CELL_BY_CELL"],
+                                         capture_output=True, text=True, timeout=25)
+                    if _rr.returncode == 0:
+                        _ent = [_now_ts, json.loads(_rr.stdout.strip().splitlines()[-1])]
+                except Exception:
+                    pass
+                _rc[_hh["name"]] = _ent
+            _mrows += _ent[1]
+        _cov = _coverage(uni.get("allowed_sym_sides") or [], _mrows, _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")))
+        _below, _exit = float(os.environ.get("V15_SCHED_CATCHUP_BELOW", "0.80")), float(os.environ.get("V15_SCHED_CATCHUP_EXIT", "0.95"))
+        _prev = bool(st.get("catchup_mode"))
+        _now_mode = _select_catchup_mode(_prev, _cov["coverage"], _below, _exit)
+        st["catchup_mode"] = _now_mode
+        _CATCHUP_MODE[0] = _now_mode
+        _thr = _throughput(_mrows, _now_ts)
+        log["coverage"] = {"coverage": _cov["coverage"], "covered": _cov["covered"], "n": _cov["n"], "published_24h": _cov["published_24h"], "median_board_age_h": _cov["median_board_age_h"],
+                           "mode": "catchup" if _now_mode else "slow", "below": _below, "exit": _exit, "per_cat": _cov["per_cat"], "throughput": _thr}
+        print(f"[sched] coverage={_cov['coverage']:.3f} ({_cov['covered']}/{_cov['n']}; published<24h {_cov['published_24h']}; median board age {_cov['median_board_age_h']} h) mode={'CATCHUP' if _now_mode else 'slow'} (below {_below}, exit {_exit}); "
+              f"published/h per host {_thr['published_per_host']} target {_thr['target_per_host']}/h/host; symbols with both sides published (1h) {_thr['symbols_both_sides']}", flush=True)
+        if not (args.dry_run or sim):
+            _fp = ROOT / "data" / "reports" / "fleet_coverage.json"
+            _fp.parent.mkdir(parents=True, exist_ok=True)
+            _tmp = _fp.with_suffix(".json.tmp")
+            _tmp.write_text(json.dumps({"now": now.isoformat(), **log["coverage"]}, indent=1))
+            os.replace(_tmp, _fp)
+    except Exception as _e_cov:
+        print(f"[sched] coverage FAILED (non-fatal): {_e_cov}", flush=True)
     log["venue_phase"] = _phase_log
     log["npz_dead"] = sorted(_npz_dead)
     _pin_syms = {x.rsplit("_", 1)[0] for x in _pin_sides}

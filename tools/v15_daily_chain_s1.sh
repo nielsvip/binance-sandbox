@@ -123,9 +123,37 @@ for KIND in norm; do
   TD=SPREADSHEETS
   [ "$KIND" = norm ] && TD=SPREADSHEETS/TEMPLATE_FINAL_NORM
   OUT=$WORK/template_$KIND.out
-  log "step2 template writer $KIND ($TD) ${APPLY_FLAG:-REPORT-ONLY} V15_TEMPLATE_SYNC_SURFACES=$V15_TEMPLATE_SYNC_SURFACES"
-  timeout 1800 "$PY" -u tools/v15_daily_template_update.py --agg "$AGG" --template-dir "$TD" $APPLY_FLAG 2>&1 | tee "$OUT"
+  # USER 2026-10-20 "always recalculate TEMPLATE_* and all defaults before market open". The writer had OUTGROWN
+  # its fixed `timeout 1800` and this step had been killing the whole chain every day since at least 10-18:
+  #   20261020.FAILED.json {"failed_step":"2","why":"template writer norm rc=124"}  written 13:27Z, 3 min before the bell
+  #   (12:57:27 -> 13:27:27 = exactly 1800 s), while the 12:15Z attempt finished in 29m24s and failed layout
+  #   verification instead. 29m24s against a 30m budget is not a margin.
+  # Any failed step STOPS the chain, so nothing after step 2 ran and no new defaults landed for days: the Mac's last
+  # done-stamp was 20261015 and data/cat_side_defaults_4.json was still stamped 10-14.
+  # The budget is now a DEADLINE, not a duration: as much time as there is until STEP2_MARGIN_S before the NYSE open,
+  # capped at STEP2_TIMEOUT_S and floored at STEP2_MIN_S so a late catch-up slot still gets a real attempt. Market
+  # closed -> the full cap. A `timeout` cannot be allowed to be the thing that decides whether live has fresh defaults.
+  STEP2_BUDGET=$(V15_CHAIN_ROOT="$ROOT" "$PY" - <<'PYEOF'
+import os, sys
+sys.path.insert(0, os.path.join(os.environ["V15_CHAIN_ROOT"], "tools"))
+cap = float(os.environ.get("V15_CHAIN_STEP2_TIMEOUT_S", 5400))
+floor = float(os.environ.get("V15_CHAIN_STEP2_MIN_S", 2400))
+margin = float(os.environ.get("V15_CHAIN_STEP2_MARGIN_S", 900))
+try:
+    import live_failover_common as C
+    session = C.nyse_session()
+    left = None if not session else session[0] - margin - C.now_s()
+except Exception:
+    left = None
+print(int(cap if left is None else max(floor, min(cap, left)) if left > 0 else floor))
+PYEOF
+)
+  log "step2 template writer $KIND ($TD) ${APPLY_FLAG:-REPORT-ONLY} V15_TEMPLATE_SYNC_SURFACES=$V15_TEMPLATE_SYNC_SURFACES budget=${STEP2_BUDGET}s"
+  STEP2_T0=$(date +%s)
+  timeout "$STEP2_BUDGET" "$PY" -u tools/v15_daily_template_update.py --agg "$AGG" --template-dir "$TD" $APPLY_FLAG 2>&1 | tee "$OUT"
   RC=$?
+  log "step2 $KIND rc=$RC elapsed=$(( $(date +%s) - STEP2_T0 ))s of ${STEP2_BUDGET}s"
+  [ $RC -eq 124 ] && fail 2 "template writer $KIND TIMED OUT after ${STEP2_BUDGET}s (rc=124) — raise V15_CHAIN_STEP2_TIMEOUT_S or start the chain earlier; the writer needed 29m24s on 2026-10-20"
   [ $RC -eq 0 ] || fail 2 "template writer $KIND rc=$RC"
   grep -q "NOT saved" "$OUT" && fail 2 "template writer $KIND: a cat_side failed layout verification (NOT saved)"
   grep -Eq "violations=[1-9]" "$OUT" && fail 2 "template writer $KIND: layout violations reported"

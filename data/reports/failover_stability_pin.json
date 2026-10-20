@@ -1,13 +1,13 @@
 {
- "generated_utc": "2026-10-20T14:40:02Z",
+ "generated_utc": "2026-10-20T14:44:01Z",
  "apply": true,
  "lease": {
   "holder": "s1",
-  "pin": null,
+  "pin": "mac",
   "pin_source": "s1:lease.json",
-  "gen": 72,
+  "gen": 74,
   "venues": "crypto,stocks",
-  "reason": "manual force-s1"
+  "reason": "Mac reachable but NOT TRADING: crypto: positions_stale fin/long_positions.json age 2956s > 600s (position loop wedged) \u2014 stale accounts: ang,fin,flz,inf,men of 5 for 51s; stocks: indicators_stale 146/219 stock NPZ tails behind the latest RTH close (twin falls back to native -> entries die) for 51s"
  },
  "mac_ready": false,
  "ready_since": null,
@@ -15,35 +15,26 @@
  "stable_needed_s": 900.0,
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 0s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 8.37/core > 4.0 (warning only)",
-  "and s1-pub snapshot 0/199 stale (0.0%); s1-pub 12947 STALE_INDICATORS refusals in the last 10 min, 2 ez_manage running \u2014 entries are being refused \u2014 pin NOT moved"
+  "manager restart churn (newest marker 29s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 9.35/core > 4.0 (warning only)",
+  "and s1-pub snapshot 0/199 stale (0.0%); s1-pub 13121 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running \u2014 entries are being refused \u2014 pin NOT moved"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 1203,
+  "readiness_age_s": 242,
   "mac_ind": {
    "symbols": 199,
-   "stale_over_90min": 14,
-   "stale_pct": 7.0,
-   "median_age_min": 65.0,
-   "sample": [
-    "ACHUSDT",
-    "ACTUSDT",
-    "BOMEUSDC",
-    "BRETTUSDT",
-    "C98USDT",
-    "CAKEUSDT",
-    "CELOUSDT",
-    "CELRUSDT"
-   ]
+   "stale_over_90min": 0,
+   "stale_pct": 0.0,
+   "median_age_min": 25.0,
+   "sample": []
   },
-  "churn": "newest marker 0s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 8.37,
+  "churn": "newest marker 29s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 9.35,
   "warnings": [
-   "load 8.37/core > 4.0 (warning only)"
+   "load 9.35/core > 4.0 (warning only)"
   ],
-  "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 12947 STALE_INDICATORS refusals in the last 10 min, 2 ez_manage running \u2014 entries are being refused"
+  "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 13121 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running \u2014 entries are being refused"
  },
  "action": "NEITHER_HOST_CAPABLE",
  "action_result": null,

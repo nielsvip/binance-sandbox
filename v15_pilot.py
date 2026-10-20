@@ -290,6 +290,17 @@ def _load_gate_flags():
 
 
 GATE_FLAGS = _load_gate_flags()
+# V18_CATCHUP (USER LAW 2026-10-20 "we need to publish 12 per hour per server … a catch-up mode for moments like this; when
+# the entire spectrum is up to date we run the slow version again"): selected per LAUNCH by the scheduler (env). A catch-up
+# board = best-start + winners top-20 + the MUST set capped at V18_MUST_CATCHUP_MAX (linknet-ordered, the rest carried to the
+# next board of the sym_side, never dropped) + a NAKED-only main pass with the floor / untried draw (no yellows except MUST
+# cells) + exit repair only on a large family loss; no V17 pinpoint (surgeon / focus / combo / 365D step), no ablation, no
+# endgame / diagnose / final filter recheck, no 365D-at-done, no holdout. Forced here (before every module-level read) so it
+# overrides the launch env; publish gates unchanged; manifest `mode: catchup`.
+_V18_CATCHUP = os.environ.get("V18_CATCHUP", "0") == "1"
+if _V18_CATCHUP:
+    for _ck_k, _ck_v in (("V15_V17_ROUNDS", "0"), ("V15_FOCUS", "0"), ("V15_ENDGAME_S", "0"), ("V15_DIAG_REPAIR_S", "0"), ("V15_SKIP_365D_AT_DONE", "1"), ("V15_HOLDOUT_DAYS", "0"), ("V18_ABLATION", "0"), ("V18_WINNERS_K", os.environ.get("V18_CATCHUP_WINNERS_K", "20")), ("V15_RED_RETRY_S", "0")):
+        os.environ[_ck_k] = _ck_v
 try:  # E4 2026-10-20: V18 planner helpers (identity settlement, io throttle, ledger write-back); missing module = all three OFF
     from tools import v15_v18_planner as _V18P
 except Exception:
@@ -6129,6 +6140,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_ln_tot = {"proposals": len(_v18_ln), "cells_forced": 0}
     if _v18_ln_on:
         print(f"[V18-LINKNET] {new_symside}: {_v18_ln_why}", flush=True)
+    _v18_cu_tot = {"rows": 0, "cells_skipped": 0}
     _v18_must_rows: set = set()  # V18_MUST: "SW=c" rows / ("SW=c", "F=o") cells that must be evaluated at p = 1 in the main pass
     _v18_must_cells: set = set()
     # V18 BRAIN (docs/v15_pending/19_E8_BRAIN_PILOT_HOOK_20261020.md): V18_BRAIN=1 (default OFF) = the learned per-cat_side
@@ -6503,6 +6515,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["coarse_deferred_filters"] = []
                 info["prior_skipped"] = []
                 info["inert_filters"] = []
+        if _V18_CATCHUP and info["kind"] == "eval" and info["hdrs"] and str(switch).strip() not in ESSENTIAL_GATE_SWITCHES:  # protection rows keep their cells: the ESSENTIAL-ROWS publish gate needs their measurement
+            # catch-up main pass: the row's naked eval only; its yellow cells are settled CATCHUP_SKIPPED (counted, noted on
+            # the sheet) — the floor / untried draw below and the MUST guarantee still bring individual cells back
+            _cu_rk = f"{str(switch).strip()}={str(cand).strip()}"
+            _cu_keep = [h for h in info["hdrs"] if (_cu_rk, str(h).strip()) in _v18_must_cells]
+            _cu_skip = [h for h in info["hdrs"] if h not in _cu_keep]
+            info["hdrs"] = _cu_keep
+            info["coarse_deferred_filters"] = list(info.get("coarse_deferred_filters") or []) + _cu_skip
+            info["catchup_skipped"] = len(_cu_skip)
+            _v18_cu_tot["rows"] += 1
+            _v18_cu_tot["cells_skipped"] += len(_cu_skip)
         if _v18_prof_on and _v18_prof is not None and info["kind"] == "eval":
             try:
                 _v18_profile_cells(info, sname, switch, cand)
@@ -8688,12 +8711,17 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 tried.add(str(_dk).split(":", 1)[1])
         start_sha = _V18P.set_sha256(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
         items = _V18P.must_items(idx, _v18_dg, new_symside, tried, ledger, start_sha)
-        if _V18P.flag_on("V18_MUST_ORDER"):
+        if _V18P.flag_on("V18_MUST_ORDER") or _V18_CATCHUP:
             # ordering only (nothing becomes optional): the linknet's p_pos_pred of each MUST item under this sym_side's own
             # live chain (data/learn/linknet_pair_with_context_<CS>.json.gz) first, the rest in the evidence order after it
             _mo, _mo_why = _V18P.load_must_order(_v18_floor_cs, new_symside, ROOT)
             items = _V18P.order_must(items, _mo)
             why = f"{why}; order: {_mo_why}"
+        _must_carried = 0
+        if _V18_CATCHUP:
+            _cap = int(os.environ.get("V18_MUST_CATCHUP_MAX", "3000"))
+            _must_carried = max(0, len(items) - _cap)
+            items = items[:_cap]  # the rest is NOT settled -> the next board of this sym_side takes it (carried over, never dropped)
         cands, refused = [], {}
         for it_k in items:
             parts = _V18P.must_parts(it_k)
@@ -8720,9 +8748,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             os.replace(led_p.with_suffix(".tmp"), led_p)
         except Exception as _le:
             print(f"[V18-MUST-WARN] ledger write {_le}", flush=True)
-        rec = {"source": why, "n_items": len(items), "n_offered": len(cands), "n_refused": len(refused), "n_evaluated": sum(1 for x in first if x.get("d") is not None), "n_positive_here": n_pos, "n_adopted": len(ad), "n_tried_before": len(tried), "main_pass_rows": len(_v18_must_rows), "main_pass_cells": len(_v18_must_cells)}
+        rec = {"source": why, "n_carried_over": _must_carried, "n_items": len(items), "n_offered": len(cands), "n_refused": len(refused), "n_evaluated": sum(1 for x in first if x.get("d") is not None), "n_positive_here": n_pos, "n_adopted": len(ad), "n_tried_before": len(tried), "main_pass_rows": len(_v18_must_rows), "main_pass_cells": len(_v18_must_cells)}
         _v18["must"] = {**rec, "refused_sample": dict(list(refused.items())[:40])}
-        print(f"[V18-MUST] {new_symside} {_v18_floor_cs} items={rec['n_items']} offered={rec['n_offered']} refused={rec['n_refused']} evaluated={rec['n_evaluated']} positive_here={n_pos} adopted={rec['n_adopted']} ({why})", flush=True)
+        print(f"[V18-MUST] {new_symside} {_v18_floor_cs} carried_over={rec['n_carried_over']} items={rec['n_items']} offered={rec['n_offered']} refused={rec['n_refused']} evaluated={rec['n_evaluated']} positive_here={n_pos} adopted={rec['n_adopted']} ({why})", flush=True)
         _v18_phase_end(ph, **rec)
     def _v18_winners(deadline: float):
         # R1 WINNERS (doc 17 §3.5): the cat_side digest's top-K winners, each as switch+cand WITH its companion filters (one
@@ -8809,6 +8837,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[V18-WARN] exit repair ledger {_le}", flush=True)
                 break
             table = _V18P.board_family_table(base, _fam, drift)
+            if _V18_CATCHUP and it_n == 1 and max([float((e or {}).get("loss_sum_pct") or 0.0) for e in table.values()] or [0.0]) <= float(os.environ.get("V18_CATCHUP_EXITREP_MIN_PP", "5")):
+                book["catchup_skip"] = f"largest family loss <= {os.environ.get('V18_CATCHUP_EXITREP_MIN_PP', '5')} pp"
+                break
             ranked = _V18P.merge_family_rank(table, (_v18_dg or {}).get("exit_loss_rank"), 1.0, 0.5)
             top = ranked[:nfam]
             cands, refused, seen = [], {}, set()
@@ -9253,7 +9284,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 results[_pv_hdr] = _get(sname, rr, switch, cand, _pv_hdr, _pv_ov, _pv_deadline, cumulative_before)
             n_items = len(plan["items"])
             print(f"[PRIOR-REVIVED] {sname}!{rr} {switch}={cand} naked G={naked_delta} -> {len(_pv_hdrs)} prior-skipped yellows evaluated", flush=True)
-        if _COARSE_INLINE and st.get("coarse_deferred_filters"):
+        if _COARSE_INLINE and st.get("coarse_deferred_filters") and not _V18_CATCHUP:
             # USER 2026-10-13 V16 COARSE-INLINE: a row that MOVES (positive naked or any positive kept yellow) evaluates
             # its coarse-deferred yellows NOW, vs the same cumulative_before, before G/promotion is decided. The row is
             # then complete in round 1 (never a "promoted hole" that forces a full-board REDO wipe) and its joint set is
@@ -9613,6 +9644,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             progress["done"][key]["v18_floor"] = dict(st["v18_floor"])
         if st.get("v18_profile"):
             progress["done"][key]["v18_profile"] = dict(st["v18_profile"])
+        if st.get("catchup_skipped"):
+            progress["done"][key]["catchup_skipped"] = int(st["catchup_skipped"])
+            _v17_note(sname, rr, f"CATCHUP_SKIPPED:{int(st['catchup_skipped'])}")
         if st.get("v17_deferred"):
             progress["done"][key]["v17_deferred_filters"] = list(st["v17_deferred"])
             _v17_note(sname, rr, f"DEFERRED_V17:{len(st['v17_deferred'])}")
@@ -9632,6 +9666,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v18_ids.row = None
         progress["v18_identity"] = dict(_v18_ids.totals)
         print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
+    if _V18_CATCHUP:
+        progress.setdefault("v18", {})["catchup"] = dict(_v18_cu_tot)
+        print(f"[V18-CATCHUP] {new_symside} naked-only main pass: rows {_v18_cu_tot['rows']} cells settled CATCHUP_SKIPPED {_v18_cu_tot['cells_skipped']}", flush=True)
     if _v18_ln_on:
         progress.setdefault("v18", {})["linknet_first"] = {**dict(_v18_ln_tot), "booked_cells": len(_v18_ln_book), "why": _v18_ln_why}
         print(f"[V18-LINKNET] {new_symside} proposals={_v18_ln_tot['proposals']} cells evaluated with a linknet rank={len(_v18_ln_book)} forced={_v18_ln_tot['cells_forced']}", flush=True)
@@ -9785,7 +9822,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _e_drain:
         print(f"[red-fixer-drain-warn] {_e_drain}", flush=True)
     # Now fill LIVE_DELTA and LIVE_SHARPE when entire sheet complete via backtest_v12_engine parity
-    _ffr_cut = bool(_v17_on and _v17_phase_cut("P4_FFR"))
+    _ffr_cut = bool(_v17_on and _v17_phase_cut("P4_FFR")) or _V18_CATCHUP
     _post_cut = bool(_v17_on and _v17_phase_cut("P4_POST_ENDGAME_DIAG"))
     if _v17_on and not _ffr_cut:
         _v17_t["ffr"] = _v17_phase_start("P4_FFR")
@@ -10426,6 +10463,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _npp = _npz_path(new_symside)
                     _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
+                    _man["mode"] = "catchup" if _V18_CATCHUP else "slow"
                     _man["npz_last_bar_ts"], _man["npz_age_min"] = _NPZ_STAMP.get("npz_last_bar_ts"), _NPZ_STAMP.get("npz_age_min")  # USER LAW 2026-10-20: what the numbers are computed up to
                     _man["cells_vintage"] = _v18_vint.get("last_eval_ts")  # CLAUDE.md board date = newest eval ts of its cells
                     _man["publish_reason"] = f"{_cand_class}:{'new_best' if locals().get('_won') else 'publish'}"
