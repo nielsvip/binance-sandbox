@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T17:55:49Z",
+ "ts": "2026-10-20T18:01:06Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 164,
-   "open_positions": 22,
-   "unrealised_usd": 14.39,
+   "fills_6h": 171,
+   "open_positions": 20,
+   "unrealised_usd": 11.33,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 117,
-   "open_positions": 18,
-   "unrealised_usd": 13.1,
+   "fills_6h": 123,
+   "open_positions": 16,
+   "unrealised_usd": 4.15,
    "pos_mismatch": 0
   },
   "fin": {
@@ -138,28 +138,28 @@
     "2294"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "2919"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 12.0
   },
   "ang": {
    "pids": [
     "46913"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 11.0
   },
   "inf": {
    "pids": [
     "2484"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 7.0
   },
   "flz": {
    "pids": [
@@ -173,82 +173,96 @@
     "99643"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
     "247"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": -0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T17:55:49Z",
+   "ts": "2026-10-20T18:01:06Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:CDW_LONG",
-   "evidence": "5 open->flat round trips in 60 min"
+   "evidence": "6 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T17:55:49Z",
+   "ts": "2026-10-20T18:01:06Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:CDW_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 5 round trips/60min"
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 6 round trips/60min"
   },
   {
-   "ts": "2026-10-20T17:55:49Z",
+   "ts": "2026-10-20T18:01:06Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:ABBV_LONG",
-   "evidence": "4 open->flat round trips in 60 min"
+   "evidence": "3 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T17:55:49Z",
+   "ts": "2026-10-20T18:01:06Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:ABBV_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 4 round trips/60min"
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
   },
   {
-   "ts": "2026-10-20T17:55:49Z",
+   "ts": "2026-10-20T18:01:06Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $28.15 since 2026-10-20T17:25:07Z (now $+14.39)"
+   "evidence": "unrealised PnL of the same open positions fell $32.79 since 2026-10-20T17:44:35Z (now $+11.33)"
   },
   {
-   "ts": "2026-10-20T17:55:50Z",
+   "ts": "2026-10-20T18:01:06Z",
+   "severity": "CRITICAL",
+   "kind": "CHURN_KEY",
+   "key": "trc:EXEL_LONG",
+   "evidence": "3 open->flat round trips in 60 min"
+  },
+  {
+   "ts": "2026-10-20T18:01:06Z",
+   "severity": "WARN",
+   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
+   "key": "trc:EXEL_LONG",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
+  },
+  {
+   "ts": "2026-10-20T18:01:07Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T17:55:50Z",
+   "ts": "2026-10-20T18:01:07Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
    "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T17:55:50Z",
+   "ts": "2026-10-20T18:01:07Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T12:31:33Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T17:55:50Z",
+   "ts": "2026-10-20T18:01:07Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:ARUSDT_LONG",
    "evidence": "REDUCE BB_TAKE_15m_g0.48 @ 2026-10-20T12:24:53Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T17:55:50Z",
+   "ts": "2026-10-20T18:01:07Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "inf:ARUSDT_LONG",
@@ -256,8 +270,8 @@
   }
  ],
  "alert_counts": {
-  "CHURN_KEY": 2,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 2,
+  "CHURN_KEY": 3,
+  "NO_PER_KEY_BLOCK_AVAILABLE": 3,
   "ACCOUNT_EQUITY_DROP": 1,
   "FILL_WITHOUT_VEC_DECISION": 2,
   "NATIVE_FILL_IN_EXACT_MODE": 3
@@ -294,5 +308,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.54
+ "sweep_s": 1.71
 }
