@@ -100,3 +100,13 @@ def test_positives_all_gz_index_form(tmp_path, monkeypatch):
 def test_pilot_reads_positives_all():
     assert "_V18P.load_positives_all(_v18_floor_cs, new_symside, ROOT)" in SRC
     assert "tried = _tried_items(own, new_symside) | set(_pa_tried)" in SRC
+
+
+def test_positives_all_ignores_native_unconfirmed(tmp_path, monkeypatch):
+    import gzip
+    monkeypatch.setenv("V18_DIGEST_DIR", str(tmp_path))
+    d = {"_meta": {"cat_side": "STOCKS_LONG"}, "sym_sides": ["A_LONG", "ME_LONG"], "rows": [], "pairs": [], "native_unconfirmed": {"rows": [{"key": "N=1", "pos_syms": ["A_LONG"], "tried_on": [0]}], "pairs": [{"key": "N=1", "filter": "F=o", "pos_syms": ["A_LONG"]}]}}
+    with gzip.open(tmp_path / "positives_all_STOCKS_LONG.json.gz", "wt") as fh:
+        json.dump(d, fh)
+    idx, tried, _ = V.load_positives_all("STOCKS_LONG", "ME_LONG")
+    assert idx == {} and tried == set()  # native_unconfirmed is never a MUST source
