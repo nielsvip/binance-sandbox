@@ -900,3 +900,52 @@ def load_linknet_first(cat_side: str, root=None, top=None):
         k = (f"{str(x['switch']).strip()}={str(x['cand']).strip()}", f"{str(x['filter']).strip()}={str(x['opt']).strip()}")
         out.setdefault(k, {"rank": r, "p_pos_pred": x.get("p_pos_pred"), "e_delta_pred": x.get("e_delta_pred")})
     return out, f"ok {p.name} template_untried={len(items)} built_at={(d.get('meta') or {}).get('built_at')}"
+
+
+# ── memory + MUST ordering (2026-10-20) ─────────────────────────────────────────────────────────────────────────────────
+def compact_digest(t) -> bytes:
+    """16-byte blake2b of repr(t) — the compact eval-cache key of one canonical (key, str(value)) tuple."""
+    return hashlib.blake2b(repr(t).encode(), digest_size=16).digest()
+
+
+def load_must_order(cat_side: str, symside: str, root=None):
+    """data/learn/linknet_pair_with_context_<CS>.json(.gz) -> ({item: rank}, why) for THIS sym_side only (the per_sym ranked
+    list of item indices into `items`, by p_pos_pred). A PREDICTION used for ordering only. Strict cat_side; fail-open."""
+    import gzip
+    cs = str(cat_side or "").upper()
+    d, why = None, ""
+    for name in (f"linknet_pair_with_context_{cs}.json.gz", f"linknet_pair_with_context_{cs}.json"):
+        p = learn_file(name, root)
+        if not p.exists():
+            continue
+        try:
+            with (gzip.open(p, "rt") if name.endswith(".gz") else open(p)) as fh:
+                d = json.load(fh)
+            why = f"ok {name}"
+            break
+        except Exception as e:
+            why = f"unreadable {name}: {e}"[:160]
+    if not isinstance(d, dict):
+        return {}, why or "pair_with_context absent"
+    if str((d.get("meta") or {}).get("cat_side") or "").upper() != cs:
+        return {}, "pair_with_context CAT_SIDE_MISMATCH — refused (principle 13)"
+    items = d.get("items") or []
+    ranked = ((d.get("per_sym") or {}).get(symside) or {}).get("ranked") or []
+    out = {}
+    for r, row in enumerate(ranked):
+        try:
+            it = items[int(row[0])]
+        except Exception:
+            continue
+        k = f"{str(it.get('key')).strip()}" + (f"@{str(it['filter']).strip()}" if it.get("filter") else "")
+        out.setdefault(k, r)
+    d = None
+    return out, f"{why} ranked={len(out)}"
+
+
+def order_must(items: list, rank: dict) -> list:
+    """Stable: ranked items first (by rank), the others after them in their given order. Same set, nothing dropped."""
+    if not rank:
+        return list(items)
+    big = len(rank) + 1
+    return [k for _, _, k in sorted(((rank.get(k, big), i, k) for i, k in enumerate(items)))]

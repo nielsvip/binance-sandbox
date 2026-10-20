@@ -5881,8 +5881,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             return fa == fb or abs(fa - fb) < 1e-12
         except Exception:
             return str(a).strip() == str(b).strip()
+    _v18_compact_ck = bool(_V18P is not None and _V18P.flag_on("V18_COMPACT_KEYS"))
     def _ck(ov: dict):
-        return (tuple(sorted((k, str(v)) for k, v in ov.items())), args.window_days, id(prepared))
+        # V18_COMPACT_KEYS (memory, 2026-10-20): the full key is an 851-pair tuple (~82 KB measured per key, held by the eval
+        # cache, inflight, the pending batch and pickled to/from every worker); the compact key is the 16-byte blake2b digest
+        # of that SAME canonical tuple's repr — one key per distinct set exactly as before (128-bit; a collision is never seen)
+        _t = tuple(sorted((k, str(v)) for k, v in ov.items()))
+        if _v18_compact_ck:
+            return (_V18P.compact_digest(_t), args.window_days, id(prepared))
+        return (_t, args.window_days, id(prepared))
     # POS_SYM sampling context (see _possym_* above): read once per workbook
     _ps_round = _possym_round_id(progress_path)
     _ps_on = _possym_enabled(_ps_round)
@@ -8535,6 +8542,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 print(f"[V17-WARN] essential proof after pinpoint error: {_epe}", flush=True)
         finally:
             _hb_stop.set()
+            if _V18P is not None and _V18P.flag_on("V18_MEM_FREE"):
+                # memory (2026-10-20 profile: +1.8 GB once the post-pass phases ran): the 7D / 365D slices prepared for the
+                # surgeon / combo / regime365 steps are only used inside this round; a later caller re-prepares the same bytes
+                _v17_rg["prep"] = None
+                _v17_rg["prep365"] = None
+                import gc as _gc_v18
+                _gc_v18.collect()
             _v17["p3_wall_s"] = round(_t.time() - t0, 1)
             _v17_sheet()
             _maybe_write_json(force=True)
@@ -8651,6 +8665,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 tried.add(str(_dk).split(":", 1)[1])
         start_sha = _V18P.set_sha256(sanitize_overrides(dict(cumulative_overrides), defaults)[0])
         items = _V18P.must_items(idx, _v18_dg, new_symside, tried, ledger, start_sha)
+        if _V18P.flag_on("V18_MUST_ORDER"):
+            # ordering only (nothing becomes optional): the linknet's p_pos_pred of each MUST item under this sym_side's own
+            # live chain (data/learn/linknet_pair_with_context_<CS>.json.gz) first, the rest in the evidence order after it
+            _mo, _mo_why = _V18P.load_must_order(_v18_floor_cs, new_symside, ROOT)
+            items = _V18P.order_must(items, _mo)
+            why = f"{why}; order: {_mo_why}"
         cands, refused = [], {}
         for it_k in items:
             parts = _V18P.must_parts(it_k)

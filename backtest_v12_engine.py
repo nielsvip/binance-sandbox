@@ -3598,6 +3598,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             s.was_reduced=False; s.augmented_count=0; s.max_quantity=q; s.mark_price_last_updated=None
                             s.was_reentered=False; s.augment_reason=""
                     _np = _DP(sym, ps, abs(qty), px)
+                    # 2026-10-20 carry the prior exit price onto a reopened key (see the HARDCODED_RALLY_REENTRY note above):
+                    # live keeps last_reduction_price on the key across the flat period, so the rally-reentry comparison stays available.
+                    try:
+                        _pr = trade_manager.positions.get(pk)
+                        if _pr is not None and float(getattr(_pr, "last_reduction_price", 0) or 0) > 0:
+                            _np.last_reduction_price = float(_pr.last_reduction_price)
+                            _np.last_reduction_time = getattr(_pr, "last_reduction_time", None)
+                    except Exception:
+                        pass
                     _np.augment_reason = (reason or "")
                     if _bt_act_do == 'REENTRY':
                         _np.was_reentered = True
@@ -4131,6 +4140,27 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         s.gain=0; s.prev_gain=0; s.max_gain=0; s.opened_at=_sim_datetime_now(timezone.utc); s.last_updated=_sim_datetime_now(timezone.utc)
                         s.last_augmentation_time=None; s.last_reduction_time=None; s.last_reduction_price=0; s.was_reduced=False; s.augmented_count=0; s.max_quantity=q; s.mark_price_last_updated=None
                 np2 = _P(sym, ps, abs(qty), px)
+                # 2026-10-20 CARRY THE PRIOR EXIT PRICE ONTO A REOPENED KEY — live does, this engine did not.
+                # HARDCODED_RALLY_REENTRY (the system's highest-volume entry family: 159,841 rows across the board
+                # corpus, 195 of the 561 VEC_ONLY entries in the 60-sym_side stocks run) is gated on
+                # `last_reduction_price > 0` and fires when price crosses back through that exit
+                # (ez_manage.py:42381, tradier_manage.py:40307). Live KEEPS that field on the key across the flat
+                # period — CLAUDE.md forbids deleting position dict entries, and ez_positions_service's
+                # [REENTRY_GUARDIAN] (:9518) restores it if it is ever lost — so the comparison is always available.
+                # This engine instead built a FRESH object on every open with last_reduction_price=0, erasing exactly
+                # the number the family needs. Measured consequence: the vector fired HARDCODED_RALLY_REENTRY 195
+                # times in the window while the engine's live leg fired it ZERO times, which read as "the two engines
+                # run different strategies". It is not a wiring gap: live /history/ holds 87 NATIVE (untagged)
+                # HARDCODED_RALLY_REENTRY OPENs on the trc account, 2026-09-21..09-30, so live demonstrably produces
+                # the family. Carrying the field over removes a harness artifact from the parity number; it adds no
+                # decision of its own, and when there is no prior record the behaviour is unchanged.
+                try:
+                    _prior = trade_manager.positions.get(pk)
+                    if _prior is not None and float(getattr(_prior, "last_reduction_price", 0) or 0) > 0:
+                        np2.last_reduction_price = float(_prior.last_reduction_price)
+                        np2.last_reduction_time = getattr(_prior, "last_reduction_time", None)
+                except Exception:
+                    pass
                 trade_manager.positions[pk] = np2
                 trade_manager.positions_by_account.setdefault(acct, {})[pk] = np2
         return "SUCCESS"
@@ -9720,6 +9750,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         s2.was_reduced=False; s2.augmented_count=0; s2.max_quantity=q
                         s2.mark_price_last_updated=None; s2.last_reentry_time=None; s2.r1_stop_price=0.0
                 new_pos = _SP(symbol, position_side, abs(qty), px)
+                # 2026-10-20 carry the prior exit price onto a reopened key (see the HARDCODED_RALLY_REENTRY note above):
+                # live keeps last_reduction_price on the key across the flat period, so the rally-reentry comparison stays available.
+                try:
+                    _pr = manager.positions.get(position_key)
+                    if _pr is not None and float(getattr(_pr, "last_reduction_price", 0) or 0) > 0:
+                        new_pos.last_reduction_price = float(_pr.last_reduction_price)
+                        new_pos.last_reduction_time = getattr(_pr, "last_reduction_time", None)
+                except Exception:
+                    pass
                 # 2026-06-22: tag last_reentry_time if this new open follows a MANDATORY_REENTRY close
                 try:
                     if manager.__dict__.get('_bt_reentry_unblock', {}).get(str(position_key)):
