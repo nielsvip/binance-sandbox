@@ -4996,6 +4996,9 @@ class QuickConfig:
     STOCK_AUGMENT_VENUE_GUARD_ENABLED: bool = (
         True  # 2026-10-20 augment revival: True = venue law (stocks augment only from live sources, forced as before); False = STOCK_LIVE_AUGMENT_ONLY decides and tradier_manage runs the vec sources live via vec_decisions.augment_core
     )
+    WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED: bool = (
+        False  # 2026-10-20 parity: False = today (vector cuts EVERY augment leg on a dip below the add price); True = live scope (only WT_D_BOUNCE / AUGMENT_AT_LOSS legs, crypto DD_BOUNCE: tradier_manage dd_qty, ez_manage _dd_bounce_state)
+    )
     PPL_WHOLE_SHARE_RULE_ENABLED: bool = (
         False  # [N4 2b] stocks PPL: whole-share floor + skip-if-would-close (tradier_manage.py:19320-19340)
     )
@@ -16308,6 +16311,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             and bool(getattr(cfg, "STOCK_AUGMENT_VENUE_GUARD_ENABLED", True))
         )
     )
+    _dd_live_scope = bool(
+        getattr(cfg, "WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED", False)
+    )  # 2026-10-20 augment revival: False = today (every augment arms the DD leg cut)
     _typed_aug_on = bool(
         getattr(cfg, "AUGMENT_TYPED_MIN_GAIN_ENABLED", False)
     )  # [UNWV/002]
@@ -21224,8 +21230,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     ):  # [w2-haiku] commit only on execution (live: state set after a successful order)
                         pos["haiku"] = _hq_st
                     pos["dd_armed"] = (
-                        True  # WT_D_BOUNCE_DD_STOP leg re-armed by every augment
-                    )
+                        (
+                            True  # WT_D_BOUNCE_DD_STOP leg re-armed by every augment
+                        )
+                        if not _dd_live_scope
+                        else bool(
+                            _aal_reason
+                            or _dd_fire
+                            or (_n4_fire and str(_n4_reason).startswith("WT_D_BOUNCE_AUG"))
+                        )
+                    )  # 2026-10-20 WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED: live arms the leg cut only for WT_D_BOUNCE/AUGMENT_AT_LOSS legs (tradier_manage dd_qty) and crypto DD_BOUNCE
                     live_pnl_pct = (
                         ((px - pos["avg_price"]) / pos["avg_price"] * 100)
                         if is_long

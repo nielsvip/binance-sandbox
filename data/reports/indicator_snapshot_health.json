@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-20T16:48:42Z",
+ "generated_utc": "2026-10-20T16:53:42Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 28.6,
+  "age_s": 69.2,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 80101,
-  "proc_age_s": 1292.0,
-  "log_age_s": 4.1,
+  "proc_age_s": 1592.0,
+  "log_age_s": 10.5,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h",
@@ -16,10 +16,12 @@
    "15m",
    "3m",
    "1h",
+   "15m",
+   "3m",
    "15m"
   ],
   "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-20T16:48:32Z",
+  "last_timeframe_utc": "2026-10-20T16:53:12Z",
   "last_restart_utc": "2026-10-20T16:27:10Z",
   "restarts_last_hour": 2
  },
@@ -45,21 +47,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792451066.3983662,
   "activations": 151,
-  "hb_mtime": 1792514676.9464939,
-  "mac_snapshot_age_s": 66.06017756462097,
+  "hb_mtime": 1792515012.4251015,
+  "mac_snapshot_age_s": 27.62944531440735,
   "mac_stale": false,
   "lease_holder": "s1",
   "lease_venues": "crypto,stocks",
   "lease_since": "2026-10-20T16:42:56Z",
   "lease_reason": "Mac down while S1 held ['crypto']: grow to all venues",
-  "now": 1792514685.865444,
-  "from_cache_age_s": 237.0,
-  "heartbeat_age_s": 8.9,
-  "active_s": 63619.5,
+  "now": 1792515044.365394,
+  "from_cache_age_s": 178.8,
+  "heartbeat_age_s": 31.9,
+  "active_s": 63978.0,
   "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto,stocks', since 2026-10-20T16:42:56Z, reason \"Mac down while S1 held ['crypto']: grow to all venues\"), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto,stocks' since 2026-10-20T16:42:56Z (reason \"Mac down while S1 held ['crypto']: grow to all venues\"), Mac heartbeat 8s, Mac snapshot 28s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto,stocks' since 2026-10-20T16:42:56Z (reason \"Mac down while S1 held ['crypto']: grow to all venues\"), Mac heartbeat 31s, Mac snapshot 69s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
