@@ -3025,6 +3025,23 @@ def cmd_score2(a):
             v1doc = json.loads(v1p.read_text())
         except Exception:
             pass
+        # NEEDS_ROW / FIXED_STOP items: enumeration and evidence from the v1 file, p re-predicted by THIS production scorer under the
+        # cat_side defaults so every p in the digest is on one scale (the v1 value is kept as p_pos_pred_v1)
+        carried = {}
+        for sec in ("needs_row", "fixed_stop_family"):
+            lst = [dict(x) for x in (v1doc.get(sec) or [])]
+            if lst:
+                hd = sc.predict_items([(f"{x.get('tab') or _tab_for(sc.fz.fctx, x['switch'])}|{x['switch']}={x['cand']}", None) for x in lst], dflt, "R")
+                for j, x in enumerate(lst):
+                    x["p_pos_pred_v1"] = x.get("p_pos_pred")
+                    x["p_pos_pred"] = _r(hd["p_pos"][j])
+                    x["e_delta_pred"] = _r(hd["e_delta"][j], 4)
+                    if "p_v2ctx" in hd:
+                        x["p_v2ctx_pred"] = _r(hd["p_v2ctx"][j])
+                    x["scorer"] = sc.prod
+                    x["context"] = ctx_descr("CAT_SIDE_DEFAULTS", dflt)
+                lst.sort(key=lambda x: -(x["p_pos_pred"] or 0))
+            carried[sec] = lst
         doc = {"meta": {"schema": SCHEMA2, "cat_side": cs, "built_at": utc_now(), "model_trained_at": sc.meta2["trained_at"], "corpus_last_ts": sc.meta2.get("corpus_last_ts"),
                         "production_scorer": sc.prod, "platt": sc.platt, "diversity_cap_per_row": DIVERSITY_CAP,
                         "production_is_context_free": bool(sc.prod in ("v1", "hybrid_v1", "counts")),
@@ -3038,10 +3055,11 @@ def cmd_score2(a):
                         "live_chains": len(chains), "distinct_live_chains": len(set(chains.values())),
                         "template_cells": int(len(res["cell_row"])), "template_cells_n_lt_3": int((nm < 3).sum()), "template_cells_never_measured": int((nm == 0).sum()),
                         "unknown_feature_hits_at_scoring": dict(sc.unknown_feature_hits), "unknown_context_features_at_scoring": dict(sc.unknown_context_features.most_common(30)),
-                        "pair_with_context_file": str(pwc_path) if pwc_meta else None, "needs_row_source": "v1 proposals file (unchanged): " + str(v1p)},
+                        "pair_with_context_file": str(pwc_path) if pwc_meta else None,
+                        "needs_row_source": "enumeration + nearest evidence from the v1 proposals file " + str(v1p) + "; p re-predicted by the production scorer (p_pos_pred_v1 kept)"},
                "template_untried": props, "template_untried_by_chain": by_chain, "rows_untried": rows_untried,
                "pair_with_context": {"meta": pwc_meta, "per_sym_top": pwc_top},
-               "needs_row": v1doc.get("needs_row") or [], "fixed_stop_family": v1doc.get("fixed_stop_family") or []}
+               "needs_row": carried.get("needs_row") or [], "fixed_stop_family": carried.get("fixed_stop_family") or []}
         p_out = out_dir / f"linknet_proposals_v2_{cs}.json"
         tmp = p_out.with_suffix(".tmp")
         tmp.write_text(json.dumps(doc, default=str))
