@@ -612,6 +612,7 @@ def build_ctx_join(cs, store, fctx=None, native=None, log=_log):
         log(f"[ctxjoin] {cs} {shard.name}: {dict(cnt)} ctxs {len(ctxs.keys):,} {time.time() - t0:.0f}s")
     sizes = np.array([len(c) for c in ctxs.keys]) if ctxs.keys else np.zeros(1)
     rep = {"cat_side": cs, "store": str(store), "contexts": len(ctxs.keys), "cb_keys": len(cbmap), "native_children": len(natmap),
+           "ignored_description_values": {"keys": len(enc.ignored_values), "values": int(sum(enc.ignored_values.values())), "top": dict(enc.ignored_values.most_common(10))},
            "context_size_mean": round(float(sizes.mean()), 1), "context_size_p50": float(np.median(sizes)), "context_size_max": int(sizes.max()),
            "counters": dict(cnt), "secs": round(time.time() - t0, 1), "built_at": utc_now()}
     return {"ctxs": ctxs.keys, "cbmap": dict(cbmap), "natmap": natmap, "report": rep}
@@ -1386,6 +1387,456 @@ def cmd_train(a):
     return 0
 
 
+# ------------------------------------------------------------------------------------------------ v2: conditional network (E8d)
+#
+# USER LAW 2026-10-20: "a switch is only as good as the filters it is paired with; what filter and setting has ever had a good
+# result and how good, in all of the data -- THAT is what needs to be applied." Every eval runs under a chain = the full set in
+# force. v2 adds that chain as a fourth embedding group X (sparse multi-hot, tools/v18_features.ContextEncoder: the active filter
+# options X.f: and the switch settings X.s: that differ from the cat_side's template bold) to the v1 factorisation:
+#   logit P(pos) = w0 + sum w_i x_i + FM over ALL embedded nodes (S, F, C and X: candidate . each active-context node, filter .
+#                  each active-context node) + MLP([s, f, c, x, s*f, s*c, f*c, s*x, f*x, s*f*x])
+# so switch x filter x (filter / setting in force) effects are learned where the chains vary. X is pooled with a scipy sparse
+# product (exact gradients, finite-difference checked in tests/test_v18_linknet.py). Context features are dropped at train time
+# (each with X_DROP, the whole context with X_DROP_ALL) so that unseen contexts and context-free scoring stay in distribution;
+# context features never seen in the fit are masked at predict time.
+
+SCHEMA2 = "v18_linknet/2"
+V2_DIR = DS_DIR / "v2"
+X_DROP = 0.2
+X_DROP_ALL = 0.1
+NB2 = 10
+SCORERS = ("v1", "v2", "counts", "hybrid_v1", "hybrid_v2")
+SEL_SUBSETS = (("R", "held_out"), ("F", "held_out"), ("F", "never_tried_pair"), ("F", "never_tried_context"))
+
+
+def ctx_csr(rows_feats, vocab, add=True):
+    """feature tuples -> scipy CSR (n x |vocab|), binary. Unknown features are added to `vocab` (add=True) or dropped."""
+    import scipy.sparse as sp
+    indptr, ind = [0], []
+    for fl in rows_feats:
+        for f in fl:
+            j = vocab.get(f)
+            if j is None:
+                if not add:
+                    continue
+                j = vocab[f] = len(vocab)
+            ind.append(j)
+        indptr.append(len(ind))
+    return sp.csr_matrix((np.ones(len(ind), np.float32), np.asarray(ind, np.int64), np.asarray(indptr, np.int64)), shape=(len(rows_feats), max(1, len(vocab))))
+
+
+class LinkNet2(LinkNet):
+    """v1 network + the chain-context group X (separate embedding table EX / linear wx over the context vocabulary)."""
+
+    def __init__(self, V, VX, k=16, H=64, T=len(HEADS), seed=0):
+        rng = np.random.default_rng(seed)
+        self.k, self.H, self.T, self.V, self.VX = k, H, T, V, VX
+        self.p = {"E": (rng.normal(0, 0.01, (V, k))).astype(np.float32), "w": np.zeros(V, np.float32),
+                  "EX": (rng.normal(0, 0.01, (VX, k))).astype(np.float32), "wx": np.zeros(VX, np.float32),
+                  "W1": (rng.normal(0, math.sqrt(2.0 / (NB2 * k)), (NB2 * k, H))).astype(np.float32), "b1": np.zeros(H, np.float32),
+                  "W2": (rng.normal(0, 0.05, (H, T))).astype(np.float32), "b2": np.zeros(T, np.float32)}
+        self.p["E"][0] = 0.0
+        self.m = {n: np.zeros_like(v) for n, v in self.p.items()}
+        self.v = {n: np.zeros_like(v) for n, v in self.p.items()}
+        self.t = 0
+        self.seen = np.ones(V, dtype=np.float32)
+        self.seen_x = np.ones(VX, dtype=np.float32)
+
+    def xpool(self, Xb):
+        """sparse context rows (B x VX) -> (x (B,k), sq (B,k), lin (B,)) with never-seen context features masked."""
+        EX = self.p["EX"] * self.seen_x[:, None]
+        return np.asarray(Xb @ EX, np.float32), np.asarray(Xb @ (EX * EX), np.float32), np.asarray(Xb @ (self.p["wx"] * self.seen_x), np.float32).ravel()
+
+    def heads2(self, s, f, c, xs, sq, lin):
+        tot = s + f + c + xs
+        fm = 0.5 * (tot * tot - sq).sum(1)
+        h0 = np.concatenate([s, f, c, xs, s * f, s * c, f * c, s * xs, f * xs, s * f * xs], 1)
+        a1 = np.maximum(h0 @ self.p["W1"] + self.p["b1"], 0.0)
+        out = a1 @ self.p["W2"] + self.p["b2"]
+        out[:, 0] += fm + lin
+        return out
+
+    def predict_tables2(self, S, F, C, XP):
+        s, sqs, ls = self.pool(*S)
+        f, sqf, lf = self.pool(*F)
+        c, sqc, lc = self.pool(*C)
+        xs, sqx, lx = XP
+        return self.heads2(s, f, c, xs, sqs + sqf + sqc + sqx, ls + lf + lc + lx)
+
+    def forward_train2(self, idx, x, gs, gf, Xb):
+        E, EX = self.p["E"], self.p["EX"]
+        e = E[idx] * x[..., None]
+        s, f, c = e[:, :gs].sum(1), e[:, gs:gf].sum(1), e[:, gf:].sum(1)
+        dt = EX.dtype
+        xs = np.asarray(Xb @ EX, dt)
+        xsq = np.asarray(Xb @ (EX * EX), dt)
+        xl = np.asarray(Xb @ self.p["wx"], dt).ravel()
+        tot = s + f + c + xs
+        sq = (e * e).sum(1) + xsq
+        fm = 0.5 * (tot * tot - sq).sum(1)
+        lin = (self.p["w"][idx] * x).sum(1) + xl
+        h0 = np.concatenate([s, f, c, xs, s * f, s * c, f * c, s * xs, f * xs, s * f * xs], 1)
+        z1 = h0 @ self.p["W1"] + self.p["b1"]
+        a1 = np.maximum(z1, 0.0)
+        out = a1 @ self.p["W2"] + self.p["b2"]
+        out[:, 0] += fm + lin
+        return out, (idx, x, e, s, f, c, xs, tot, h0, z1, a1, gs, gf, Xb)
+
+    def backward2(self, g, cache, l2=1e-6):
+        idx, x, e, s, f, c, xs, tot, h0, z1, a1, gs, gf, Xb = cache
+        k = self.k
+        P = self.p
+        G = {"W2": a1.T @ g, "b2": g.sum(0)}
+        dz1 = (g @ P["W2"].T) * (z1 > 0)
+        G["W1"] = h0.T @ dz1
+        G["b1"] = dz1.sum(0)
+        dh0 = dz1 @ P["W1"].T
+        B = [dh0[:, i * k:(i + 1) * k] for i in range(NB2)]
+        ds = B[0] + B[4] * f + B[5] * c + B[7] * xs + B[9] * (f * xs)
+        df = B[1] + B[4] * s + B[6] * c + B[8] * xs + B[9] * (s * xs)
+        dc = B[2] + B[5] * s + B[6] * f
+        dxs = B[3] + B[7] * s + B[8] * f + B[9] * (s * f)
+        g0 = g[:, 0]
+        de = g0[:, None, None] * (tot[:, None, :] - e)
+        de[:, :gs] += ds[:, None, :]
+        de[:, gs:gf] += df[:, None, :]
+        de[:, gf:] += dc[:, None, :]
+        dE = de * x[..., None]
+        fi = idx.ravel()
+        gE = np.empty((self.V, k), P["E"].dtype)
+        flat = dE.reshape(-1, k)
+        for j in range(k):
+            gE[:, j] = np.bincount(fi, weights=flat[:, j], minlength=self.V)
+        G["E"] = gE + l2 * P["E"]
+        G["w"] = np.bincount(fi, weights=(g0[:, None] * x).ravel(), minlength=self.V).astype(P["w"].dtype)
+        XT = Xb.T.tocsr()
+        # FM part for a binary context node j: sum_i v_ij g0_i (tot_i - v_ij EX_j) (v^2 = v); MLP part: X^T dxs
+        dt = P["EX"].dtype
+        G["EX"] = np.asarray(XT @ (g0[:, None] * tot + dxs), dt) - np.asarray(XT @ g0, dt).reshape(-1, 1) * P["EX"] + l2 * P["EX"]
+        G["wx"] = np.asarray(XT @ g0, dt).ravel()
+        for n in ("W1", "W2"):
+            G[n] = G[n] + l2 * P[n]
+        return G
+
+    def save(self, path, meta):
+        np.savez_compressed(path, **{f"p_{n}": v for n, v in self.p.items()}, seen=self.seen, seen_x=self.seen_x,
+                            meta=np.frombuffer(json.dumps(meta).encode(), dtype=np.uint8))
+
+    @classmethod
+    def load(cls, path):
+        z = np.load(path)
+        E, EX = z["p_E"], z["p_EX"]
+        net = cls(E.shape[0], EX.shape[0], k=E.shape[1], H=z["p_b1"].shape[0], T=z["p_b2"].shape[0])
+        for n in net.p:
+            net.p[n] = z[f"p_{n}"]
+        net.seen = z["seen"]
+        net.seen_x = z["seen_x"]
+        return net, json.loads(bytes(z["meta"]).decode())
+
+
+def hybrid_p(p_net, n, pos, prior, m=None):
+    """counts shrunk toward (network x the brain's backoff prior): (pos + m * sigmoid(.5 logit p_net + .5 logit prior)) / (n + m)."""
+    m = VB.M_SHRINK if m is None else m
+    q = lambda v: np.clip(np.asarray(v, np.float64), 1e-6, 1 - 1e-6)
+    lg = lambda v: np.log(q(v) / (1 - q(v)))
+    hp = sigmoid(0.5 * lg(p_net) + 0.5 * lg(prior))
+    return (np.asarray(pos, np.float64) + m * hp) / (np.asarray(n, np.float64) + m)
+
+
+class Trainer2(Trainer):
+    """v1 vs v2 on the SAME conditional dataset, the same chronological splits and the same count baseline."""
+
+    def __init__(self, cs, ds_dir=V2_DIR, **kw):
+        super().__init__(cs, ds_dir=ds_dir, **kw)
+        xc = [tuple(c) for c in (self.K.get("xctxs") or [])]
+        self.xvocab = {"X:unknown": 0}
+        self.XC = ctx_csr(xc + [("X:unknown",)], self.xvocab)
+        self.n_x = len(xc)
+        xi = self.D["x_i"] if "x_i" in self.D else np.full(len(self.D["kind"]), -1, np.int32)
+        self.has_ctx = xi >= 0
+        self.x_rows = np.where(self.has_ctx, xi, self.n_x).astype(np.int64)
+        sig_in = Interner()
+        sig = np.array([sig_in(FT.ContextEncoder.filter_signature(c)) for c in xc] + [-1], np.int64)
+        self.x_sig = sig[self.x_rows]
+        self.n_sig = len(sig_in.keys)
+        self.use_ctx = True
+
+    def _xb(self, rows, n_fwd=0, drop=False, rng=None):
+        import scipy.sparse as sp
+        Xb = self.XC[self.x_rows[rows]]
+        if n_fwd:
+            Xb = sp.vstack([Xb, self.XC[np.full(n_fwd, self.n_x)]], format="csr")
+        if drop and rng is not None:
+            Xb = Xb.copy()
+            Xb.data = Xb.data * (rng.random(len(Xb.data)) >= X_DROP).astype(np.float32)
+            keep = (rng.random(Xb.shape[0]) >= X_DROP_ALL).astype(np.float32)
+            Xb = sp.diags(keep) @ Xb
+        return Xb
+
+    def predict(self, net, rows, cold=False, chunk=65536):
+        if not isinstance(net, LinkNet2):
+            return super().predict(net, rows, cold=cold, chunk=chunk)
+        D = self.D
+        out = np.zeros((len(rows), len(HEADS)), np.float32)
+        for a in range(0, len(rows), chunk):
+            r = rows[a:a + chunk]
+            si, fi, ci = D["sc_i"][r], D["fc_i"][r] + 1, D["ctx_i"][r]
+            S = (self.TS[0][si], self.TS[1][si].copy())
+            F = (self.TF[0][fi], self.TF[1][fi].copy())
+            Cc = (self.TC[0][ci], self.TC[1][ci].copy())
+            out[a:a + len(r)] = net.predict_tables2(S, F, Cc, net.xpool(self._xb(r)))
+        return out
+
+    def predict_fwd(self, net, frows):
+        if not isinstance(net, LinkNet2):
+            return super().predict_fwd(net, frows)
+        D = self.D
+        fs, fc = D["fwd_set_i"][frows], D["fwd_ctx_i"][frows]
+        z = np.zeros(len(fs), np.int64)
+        return net.predict_tables2((self.TS[0][fs], self.TS[1][fs]), (self.TF[0][z], self.TF[1][z]), (self.TC[0][fc], self.TC[1][fc]),
+                                   net.xpool(self.XC[np.full(len(fs), self.n_x)]))
+
+    def _seen_mask(self, net, rows):
+        super()._seen_mask(net, rows)
+        if isinstance(net, LinkNet2):
+            u = np.unique(self.x_rows[rows])
+            used = np.zeros(net.VX, bool)
+            used[np.unique(self.XC[u].indices)] = True
+            net.seen_x = used.astype(np.float32)
+
+    def fit(self, rows, epochs=None, val_rows=None, fwd_rows=None, tag="fit"):
+        if not self.use_ctx:
+            return super().fit(rows, epochs=epochs, val_rows=val_rows, fwd_rows=fwd_rows, tag=tag + "/v1")
+        rng = np.random.default_rng(self.seed)
+        V, VX = len(self.fz.names), self.XC.shape[1]
+        net = LinkNet2(V, VX, k=self.k, H=self.H, seed=self.seed)
+        rows = np.asarray(rows)
+        if self.max_train and len(rows) > self.max_train:
+            rows = np.sort(rng.choice(rows, self.max_train, replace=False))
+        fwd_rows = np.asarray(fwd_rows if fwd_rows is not None else [], dtype=np.int64)
+        gs, gf = LS, LS + LF
+        best, best_ep, bad, hist = None, 0, 0, []
+        n_ep = epochs or self.max_epochs
+        t0 = time.time()
+        for ep in range(1, n_ep + 1):
+            perm = rng.permutation(len(rows))
+            tot_l, nb = 0.0, 0
+            net.seen = np.ones(V, np.float32)
+            net.seen_x = np.ones(VX, np.float32)
+            for a in range(0, len(perm), self.batch):
+                r = rows[perm[a:a + self.batch]]
+                fr = rng.choice(fwd_rows, min(len(fwd_rows), 128), replace=True) if len(fwd_rows) else None
+                idx, x, Y, M = self._gather(r, fr, drop=True, rng=rng)
+                Xb = self._xb(r, n_fwd=0 if fr is None else len(fr), drop=True, rng=rng)
+                out, cache = net.forward_train2(idx, x, gs, gf, Xb)
+                l, g = loss_grad(out, Y, M)
+                net.adam(net.backward2(g, cache), lr=self.lr)
+                tot_l += l
+                nb += 1
+            self._seen_mask(net, rows)
+            rec = {"epoch": ep, "loss": round(tot_l / max(1, nb), 5), "secs": round(time.time() - t0, 1)}
+            if val_rows is not None and len(val_rows):
+                pv = self.predict(net, val_rows)[:, 0]
+                rec["val_auc"] = auc(pv, self.D["y"][val_rows])
+                score = rec["val_auc"] or 0.0
+                if best is None or score > best[0] + 1e-4:
+                    best, best_ep, bad = (score, net.copy_params(), net.seen.copy(), net.seen_x.copy()), ep, 0
+                else:
+                    bad += 1
+            hist.append(rec)
+            self.log(f"[linknet2] {self.cs} {tag}/v2 {rec}")
+            if val_rows is not None and len(val_rows) and bad >= self.patience:
+                break
+        if best is not None:
+            net.p, net.seen, net.seen_x = best[1], best[2], best[3]
+        return net, (best_ep or n_ep), hist
+
+    def fit_both(self, rows, epochs=(None, None), val_rows=None, fwd_rows=None, tag="fit"):
+        out = {}
+        for name, use, ep in (("v1", False, epochs[0]), ("v2", True, epochs[1])):
+            self.use_ctx = use
+            out[name] = self.fit(rows, epochs=ep, val_rows=val_rows, fwd_rows=fwd_rows, tag=tag)
+        self.use_ctx = True
+        return out
+
+    # -- subsets: seen / never-tried pairs / never-tried contexts (relative to the reference rows the model saw)
+    def subsets(self, ref_rows, ev_rows):
+        D = self.D
+        kind_r, kind_e = D["kind"][ref_rows], D["kind"][ev_rows]
+
+        def cand_key(rows, kind):
+            return np.where(kind == 1, D["set_i"][rows].astype(np.int64) * 1000003 + D["filt_i"][rows] + 1, D["set_i"][rows].astype(np.int64))
+
+        ck_r, ck_e = cand_key(ref_rows, kind_r), cand_key(ev_rows, kind_e)
+        mult = np.int64(self.n_sig + 2)
+        sk_r = ck_r * mult + (self.x_sig[ref_rows] + 1)
+        sk_e = ck_e * mult + (self.x_sig[ev_rows] + 1)
+        seen_c = np.isin(ck_e, np.unique(ck_r))
+        seen_cs = np.isin(sk_e, np.unique(sk_r))
+        seen_sig = np.isin(self.x_sig[ev_rows], np.unique(self.x_sig[ref_rows][self.has_ctx[ref_rows]]))
+        hc = self.has_ctx[ev_rows]
+        out = {}
+        for kn, kv in (("R", 0), ("F", 1)):
+            k = kind_e == kv
+            out[(kn, "held_out")] = k
+            out[(kn, "never_tried_pair")] = k & ~seen_c
+            out[(kn, "seen_pair")] = k & seen_c
+            out[(kn, "never_tried_context")] = k & seen_c & hc & ~seen_cs
+            out[(kn, "never_seen_filter_set")] = k & seen_c & hc & ~seen_sig
+            out[(kn, "with_context")] = k & hc
+            out[(kn, "without_context")] = k & ~hc
+        return out
+
+    def scores(self, nets, ref_rows, ev_rows):
+        """-> {scorer: P(pos)}, raw outputs of both nets on ev_rows; counts / hybrids from ref_rows (the data the nets saw)."""
+        o1 = self.predict(nets["v1"], ev_rows)
+        o2 = self.predict(nets["v2"], ev_rows)
+        cb, _cb_e = self.count_baseline(ref_rows, ev_rows)
+        n_k, pos_k, prior_k = self._last_counts
+        p1, p2 = sigmoid(o1[:, 0]), sigmoid(o2[:, 0])
+        return {"v1": p1, "v2": p2, "counts": cb, "hybrid_v1": hybrid_p(p1, n_k, pos_k, prior_k), "hybrid_v2": hybrid_p(p2, n_k, pos_k, prior_k)}, o1, o2
+
+    def auc_table(self, sc, sub, ev_rows):
+        y = self.D["y"][ev_rows].astype(np.float64)
+        tab = {}
+        for (kn, nm), m in sub.items():
+            blk = {"n": int(m.sum()), "pos": int(y[m].sum())}
+            for s_, p in sc.items():
+                blk[f"auc_{s_}"] = auc(p[m], y[m]) if m.any() else None
+            tab.setdefault(kn, {})[nm] = blk
+        return tab
+
+    @staticmethod
+    def select(val_tab):
+        """production scorer = best mean validation AUC over SEL_SUBSETS (subsets where every scorer has an AUC)."""
+        per = {}
+        for s_ in SCORERS:
+            v = [val_tab.get(kn, {}).get(nm, {}).get(f"auc_{s_}") for kn, nm in SEL_SUBSETS]
+            per[s_] = v
+        ok = [i for i in range(len(SEL_SUBSETS)) if all(per[s_][i] is not None for s_ in SCORERS)]
+        mean = {s_: (round(float(np.mean([per[s_][i] for i in ok])), 4) if ok else None) for s_ in SCORERS}
+        best = max(SCORERS, key=lambda s_: (mean[s_] if mean[s_] is not None else -1, -SCORERS.index(s_)))
+        return best, mean, [f"{SEL_SUBSETS[i][0]}/{SEL_SUBSETS[i][1]}" for i in ok]
+
+    def holdout_v2(self):
+        sp, fsp = self.splits()
+        D = self.D
+        idx_all = np.arange(len(D["kind"]))
+        fit_rows, val_rows = idx_all[sp["fit"]], idx_all[sp["val"]]
+        pre_rows, test_rows = idx_all[sp["pre_test"]], idx_all[sp["test"]]
+        fw_idx = np.arange(len(D.get("fwd_y", [])))
+        t0 = time.time()
+        es = self.fit_both(fit_rows, val_rows=val_rows, fwd_rows=fw_idx[fsp["fit"]] if len(fw_idx) else None, tag="early-stop")
+        ep = (es["v1"][1], es["v2"][1])
+        t_es = time.time() - t0
+        sc_v, _o1v, _o2v = self.scores({"v1": es["v1"][0], "v2": es["v2"][0]}, fit_rows, val_rows)
+        val_tab = self.auc_table(sc_v, self.subsets(fit_rows, val_rows), val_rows)
+        prod, sel_mean, sel_used = self.select(val_tab)
+        t1 = time.time()
+        rf = self.fit_both(pre_rows, epochs=ep, fwd_rows=fw_idx[fsp["pre_test"]] if len(fw_idx) else None, tag="refit<q80")
+        t_rf = time.time() - t1
+        nets = {"v1": rf["v1"][0], "v2": rf["v2"][0]}
+        sc_t, o1, o2 = self.scores(nets, pre_rows, test_rows)
+        sub_t = self.subsets(pre_rows, test_rows)
+        test_tab = self.auc_table(sc_t, sub_t, test_rows)
+        kind = D["kind"][test_rows]
+        y = D["y"][test_rows].astype(np.float64)
+        d = D["d"][test_rows].astype(np.float64)
+        platt = {s_: {kn: fit_platt(sc_t[s_][kind == kv], y[kind == kv]) for kn, kv in (("R", 0), ("F", 1))} for s_ in SCORERS}
+        heads = {}
+        for nm, o in (("v1", o1), ("v2", o2)):
+            hb = {}
+            ps = y > 0
+            hb["spearman_e_delta_pos"] = spearman(np.expm1(o[ps, 1]), d[ps]) if ps.sum() >= 10 else None
+            for h, col in ((2, "m_tim"), (3, "m_dd"), (4, "m_wr")):
+                v = D[col][test_rows]
+                ok = (D["valid"][test_rows] > 0) & np.isfinite(v)
+                hb[HEADS[h]] = spearman(o[ok, h], v[ok]) if ok.sum() >= 10 else None
+            heads[nm] = hb
+        ph_rows = idx_all[sp["test_ph"]]
+        ph = None
+        if len(ph_rows):
+            sp_, _a, _b = self.scores(nets, pre_rows, ph_rows)
+            yph = D["y"][ph_rows]
+            ph = {"n": int(len(ph_rows)), "pos": int(yph.sum()), **{f"auc_{s_}": auc(sp_[s_], yph) for s_ in SCORERS}}
+        fwd = None
+        if len(fw_idx):
+            ft = fw_idx[fsp["test"]]
+            if len(ft):
+                yf = D["fwd_y"][ft]
+                fwd = {"labels_test": int(len(ft)), "pos_test": int(yf.sum()), "auc_forward_head_v1": auc(sigmoid(self.predict_fwd(nets["v1"], ft)[:, 5]), yf),
+                       "auc_forward_head_v2": auc(sigmoid(self.predict_fwd(nets["v2"], ft)[:, 5]), yf)}
+        mean_pred = {s_: {"mean_pred": _r(float(np.mean(sc_t[s_]))), "realised": _r(float(y.mean()))} for s_ in SCORERS}
+        rep = {"cut_val": VB.iso_of(self.cut_val), "cut_test": VB.iso_of(self.cut_test), "epochs": {"v1": ep[0], "v2": ep[1]},
+               "history": {"early_stop_v1": es["v1"][2], "early_stop_v2": es["v2"][2], "refit_v1": rf["v1"][2], "refit_v2": rf["v2"][2]},
+               "secs_early_stop": round(t_es, 1), "secs_refit": round(t_rf, 1), "n_fit": int(len(fit_rows)), "n_val": int(len(val_rows)),
+               "n_pre_test": int(len(pre_rows)), "n_test": int(len(test_rows)), "boards_test": int(len(np.unique(D["board_i"][test_rows]))),
+               "validation": val_tab, "selection": {"rule": "best mean VALIDATION AUC (models early-stopped on fit < q70, counts from fit) over " + ", ".join(sel_used),
+                                                    "mean_val_auc": sel_mean, "production_scorer": prod},
+               "test": test_tab, "platt_on_test": platt, "heads": heads, "PH_by_time": ph, "forward": fwd, "mean_pred_vs_realised_test": mean_pred}
+        return rep, ep, prod
+
+    def final_v2(self, ep, which=("v1", "v2")):
+        D = self.D
+        rows = np.arange(len(D["kind"]))
+        fw = np.arange(len(D.get("fwd_y", [])))
+        out = {}
+        for nm in which:
+            self.use_ctx = nm == "v2"
+            t0 = time.time()
+            net, _, hist = self.fit(rows, epochs=ep[0 if nm == "v1" else 1], fwd_rows=fw if len(fw) else None, tag="final")
+            out[nm] = (net, hist, round(time.time() - t0, 1))
+        self.use_ctx = True
+        return out
+
+
+def cmd_train2(a):
+    out_dir = Path(a.ds_dir)
+    for cs in a.cat_side or CAT_SIDES:
+        t0 = time.time()
+        tr = Trainer2(cs, ds_dir=a.ds_dir, k=a.k, H=a.hidden, batch=a.batch, lr=a.lr, max_epochs=a.max_epochs, max_train=a.max_train)
+        D = tr.D
+        write_status(cs, "training_v2", rows_consumed_v2=int(len(D["kind"])), rows_with_context=int(tr.has_ctx.sum()), context_vocab=int(tr.XC.shape[1]))
+        print(f"[linknet2] {cs}: examples {len(D['kind']):,} with context {int(tr.has_ctx.sum()):,} contexts {tr.n_x:,} filter-sets {tr.n_sig:,} "
+              f"context vocab {tr.XC.shape[1]:,} vocab {len(tr.fz.names):,}", flush=True)
+        rep, ep, prod = tr.holdout_v2()
+        which = ("v2",) if prod in ("v2", "hybrid_v2", "counts") else ("v1", "v2")
+        fin = tr.final_v2(ep, which=which)
+        xv = [None] * tr.XC.shape[1]
+        for f_, j in tr.xvocab.items():
+            xv[j] = f_
+        files = {}
+        for nm, (net, hist, secs) in fin.items():
+            meta = {"schema": SCHEMA2, "cat_side": cs, "net": nm, "trained_at": utc_now(), "epochs": ep[0 if nm == "v1" else 1], "k": tr.k, "H": tr.H,
+                    "vocab": tr.fz.names, "xvocab": xv if nm == "v2" else None, "corpus_last_ts": VB.iso_of(float(D["ts"].max())),
+                    "n_examples": int(len(D["kind"])), "label": PRED_LABEL, "production_scorer": prod, "platt": rep["platt_on_test"].get(prod)}
+            mp = out_dir / f"model_{nm}_{cs}.npz"
+            net.save(mp, meta)
+            files[nm] = {"file": str(mp), "bytes": mp.stat().st_size, "n_params": int(sum(v.size for v in net.p.values())), "secs_final": secs, "final_history": hist}
+        rep.update({"cat_side": cs, "models": files, "secs_total": round(time.time() - t0, 1), "vocab": len(tr.fz.names), "context_vocab": int(tr.XC.shape[1]),
+                    "corpus": {"examples": int(len(D["kind"])), "R": int((D["kind"] == 0).sum()), "F": int((D["kind"] == 1).sum()), "PH": int((D["kind"] == 2).sum()),
+                               "with_context": {kn: int(((D["kind"] == kv) & tr.has_ctx).sum()) for kn, kv in (("R", 0), ("F", 1), ("PH", 2))},
+                               "without_context": {kn: int(((D["kind"] == kv) & ~tr.has_ctx).sum()) for kn, kv in (("R", 0), ("F", 1), ("PH", 2))},
+                               "native_rows": int((D["prov"] == 1).sum()) if "prov" in D else 0, "contexts": tr.n_x, "filter_sets": tr.n_sig,
+                               "pos": {kn: int(D["y"][D["kind"] == kv].sum()) for kn, kv in (("R", 0), ("F", 1), ("PH", 2))}}})
+        rep["inherent_vs_genuine_negatives"] = inherent_report(tr.D, tr.K)
+        (out_dir / f"report_v2_{cs}.json").write_text(json.dumps(rep, indent=1, default=str))
+        prod_doc = {"cat_side": cs, "production_scorer": prod, "selection": rep["selection"], "platt": rep["platt_on_test"].get(prod),
+                    "models": {k: v["file"] for k, v in files.items()}, "decided_at": utc_now(), "label": PRED_LABEL}
+        (out_dir / f"production_{cs}.json").write_text(json.dumps(prod_doc, indent=1))
+        T = rep["test"]
+        write_status(cs, "trained_v2", production_scorer=prod, selection_mean_val_auc=rep["selection"]["mean_val_auc"],
+                     holdout_auc_v2={f"{kn}/{nm}": {s_: T[kn][nm].get(f"auc_{s_}") for s_ in SCORERS} for kn, nm in
+                                     (("R", "held_out"), ("F", "held_out"), ("F", "never_tried_pair"), ("F", "never_tried_context"), ("R", "never_tried_context"))},
+                     model_v2_trained_at=utc_now())
+        print(f"[linknet2] {cs} DONE {rep['secs_total']}s production={prod} sel={rep['selection']['mean_val_auc']}", flush=True)
+        for kn in ("R", "F"):
+            for nm in ("held_out", "never_tried_pair", "never_tried_context"):
+                b = T[kn][nm]
+                print(f"   {kn} {nm:22s} n {b['n']:>8,} pos {b['pos']:>6,} " + " ".join(f"{s_} {b.get('auc_' + s_)}" for s_ in SCORERS), flush=True)
+    return 0
+
+
 # ------------------------------------------------------------------------------------------------ scoring + proposals
 
 def template_status(fctx, switch, cand):
@@ -2003,6 +2454,15 @@ def main(argv=None):
     t.add_argument("--lr", type=float, default=2e-3)
     t.add_argument("--max-epochs", type=int, default=20)
     t.add_argument("--max-train", type=int, default=None)
+    t2 = sub.add_parser("train2", help="v2: v1 vs v2 (chain context) on the conditional dataset, production scorer per cat_side")
+    t2.add_argument("--cat-side", action="append", choices=CAT_SIDES)
+    t2.add_argument("--ds-dir", default=str(DS_DIR / "v2"))
+    t2.add_argument("--k", type=int, default=16)
+    t2.add_argument("--hidden", type=int, default=64)
+    t2.add_argument("--batch", type=int, default=4096)
+    t2.add_argument("--lr", type=float, default=2e-3)
+    t2.add_argument("--max-epochs", type=int, default=20)
+    t2.add_argument("--max-train", type=int, default=None)
     s = sub.add_parser("score")
     s.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     s.add_argument("--ds-dir", default=str(DS_DIR))
@@ -2015,7 +2475,7 @@ def main(argv=None):
     c.add_argument("--note", default=None)
     c.add_argument("--cat-side", action="append", choices=CAT_SIDES)
     a = ap.parse_args(argv)
-    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
+    return {"dataset": cmd_dataset, "ctxjoin": cmd_ctxjoin, "train2": cmd_train2, "train": cmd_train, "score": cmd_score, "calibrate": cmd_calibrate}[a.cmd](a)
 
 
 if __name__ == "__main__":

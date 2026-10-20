@@ -595,6 +595,15 @@ def canon_value(v):
     return f"{f:.10g}"
 
 
+VALUE_RE = re.compile(r"^[A-Za-z0-9_.,+:\-]{1,40}$")
+
+
+def plausible_value(cv):
+    """a setting value, not a description: board xlsx column C sometimes carries the row's explanation text (seen on stocks
+    board_col_c sets) -> such values are ignored (counted), never turned into context features."""
+    return bool(VALUE_RE.match(cv))
+
+
 class ContextEncoder:
     """CHAIN CONTEXT of an eval (E8d): the full set in force, reduced to what differs from the cat_side's TEMPLATE bold,
     over the template's own vocabulary (switch rows + yellow filter keys). Sparse multi-hot features:
@@ -607,6 +616,7 @@ class ContextEncoder:
     def __init__(self, fctx):
         self.fctx = fctx
         self.filter_keys = frozenset(fctx.fopts)
+        self.ignored_values = Counter()
         self.keys = frozenset(k for k in set(fctx.cands) | set(fctx.fopts) if not k.startswith(CTX_SKIP_PREFIX) and k not in CTX_SKIP_KEYS)
         self.bold = {}
         for k in self.keys:
@@ -628,6 +638,9 @@ class ContextEncoder:
             cv = canon_value(v)
             if cv == "<absent>":
                 continue
+            if not plausible_value(cv):
+                self.ignored_values[k] += 1
+                continue
             if self.differs(k, cv):
                 out[k] = cv
         return out
@@ -641,6 +654,9 @@ class ContextEncoder:
             if k not in self.keys:
                 continue
             cv = canon_value(v)
+            if cv != "<absent>" and not plausible_value(cv):
+                self.ignored_values[k] += 1
+                continue
             if cv == "<absent>" or not self.differs(k, cv):
                 out.pop(k, None)
             else:
