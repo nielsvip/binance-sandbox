@@ -8344,6 +8344,7 @@ def _lane_b_vec_only_parity_ok(symbol: str, side: str, reason: str) -> bool:
     vec-only behind a per-sym switch (per-sym > cat_side > global via _psym_cs_get). False unless the switch is on.
       CRYPTO_REENTRY_PATHWAY_*                              <- CRYPTO_REENTRY_PATHWAYS_ENABLED (live_twins/vec_reentry.py)
       HAIKU_WINNER_AUG_ / HAIKU_REENTER_ / HAIKU_REDUCE_ <- HAIKU_WINNER_AUGMENT_ENABLED and HAIKU_WINNER_ENABLED (vec haiku_augment)
+      STOP_RECLAIM_REENTRY_*                                <- STOP_RECLAIM_REENTRY_ENABLED (live_twins/stop_reclaim_live.py)
       KEY_LEVEL_CRASH_ / KEY_LEVEL_BREAKOUT_          <- KEY_LEVEL_CRASH_EXIT_ENABLED (live_twins/key_level.py)"""
     try:
         if not symbol or not side:
@@ -8355,6 +8356,8 @@ def _lane_b_vec_only_parity_ok(symbol: str, side: str, reason: str) -> bool:
             return (v.strip().lower() in ("true", "1", "yes")) if isinstance(v, str) else bool(v)
         if r.startswith("CRYPTO_REENTRY_PATHWAY_"):
             return _on("CRYPTO_REENTRY_PATHWAYS_ENABLED")
+        if r.startswith("STOP_RECLAIM_REENTRY_"):
+            return _on("STOP_RECLAIM_REENTRY_ENABLED")
         if r.startswith(("HAIKU_WINNER_AUG_", "HAIKU_REENTER_", "HAIKU_REDUCE_")):
             return _on("HAIKU_WINNER_AUGMENT_ENABLED") and _on("HAIKU_WINNER_ENABLED", True)
         if r.startswith(("KEY_LEVEL_CRASH_", "KEY_LEVEL_BREAKOUT_")):
@@ -48056,10 +48059,18 @@ def _parity_flat_open_switches(position_key: str):
     return _sym_p, _side_p, _get_p, _w15, _bbt, _vr, _wtt
 
 
+def _parity_stop_reclaim_on(symbol: str, side: str) -> bool:
+    """STOP_RECLAIM_REENTRY_ENABLED for this sym_side (per-sym > cat_side > global). Kept out of
+    _parity_flat_open_switches so that function's 7-tuple arity — unpacked in two places — does not change.
+    Default False (config.py STOP_RECLAIM_REENTRY_ENABLED) -> the flat-open lane behaves exactly as before."""
+    _v = _psym_cs_get(symbol, side, "STOP_RECLAIM_REENTRY_ENABLED", False)
+    return (_v.strip().lower() in ("true", "1", "yes")) if isinstance(_v, str) else bool(_v)
+
+
 def _parity_flat_open_enabled(position_key: str) -> bool:
     try:
         _s, _sd, _g, _w15, _bbt, _vr, _wtt = _parity_flat_open_switches(position_key)
-        return bool(_s) and _sd in ("LONG", "SHORT") and (_w15 or _bbt or _vr or _wtt)
+        return bool(_s) and _sd in ("LONG", "SHORT") and (_w15 or _bbt or _vr or _wtt or _parity_stop_reclaim_on(_s, _sd))
     except Exception:
         return False
 
@@ -48090,7 +48101,8 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
         return None
     try:
         _sym_p, _side_p, _get_p, _w15, _bbt, _vr, _wtt = _parity_flat_open_switches(position_key)
-        if not (_w15 or _bbt or _vr or _wtt):
+        _sr = _parity_stop_reclaim_on(_sym_p, _side_p)
+        if not (_w15 or _bbt or _vr or _wtt or _sr):
             return
         _ind_p = await ii(trade_manager, _sym_p)
         if not isinstance(_ind_p, dict):
@@ -48114,7 +48126,22 @@ async def _parity_flat_open_check(trade_manager, position_key: str, position, or
                     _why_p = f"WT_TOP_ENTRY_{_side_p}_{_wt_why}"
             except Exception:
                 pass
-        if not _ok_p and _vr:
+        # STOP_RECLAIM_REENTRY 2026-10-17 (vec_decisions/stop_reclaim.py; vec call sites v12_quick_engine.py:17627
+        # enabled / :18556 fire / :19104 exclusive_blocks). Live called ONLY _srm.size_mult (:28987), so the detector
+        # had no live caller and the 41 boards carrying STOP_RECLAIM_REENTRY_ENABLED=True measured a delta live could
+        # not reproduce. ONE predicate, reached through live_twins/stop_reclaim_live.py with the per-sym getter.
+        # Fresh openers above keep priority (the vector does not hold fresh entries either); EXCLUSIVE holds only the
+        # _vr RE-entry branch, exactly as vec_decisions/stop_reclaim.py:99-111 specifies.
+        _sr_hold = False
+        if not _ok_p and _sr:
+            from live_twins import stop_reclaim_live as _srl
+            _sr_px, _sr_rs, _sr_age = _parity_last_exit(trade_manager, position_key)
+            _sr_hold = _srl.exclusive_blocks(_get_p, _sr_rs, _sr_age)
+            _sr_ok, _sr_tail = _srl.fires(_get_p, _ind_p, _long_p, _px_p, _sr_px, _sr_rs, _sr_age, position_key)
+            if _sr_ok:
+                _ok_p, _act_p = True, "REENTRY"
+                _why_p = f"STOP_RECLAIM_REENTRY_{_side_p}_{_sr_tail}"
+        if not _ok_p and _vr and not _sr_hold:
             from live_twins import vec_reentry as _lbvr
             _ex_px, _ex_rs, _ex_age = _parity_last_exit(trade_manager, position_key)
             _vr_ok, _vr_path = _lbvr.fires(_get_p, _ind_p, _long_p, _px_p, _ex_px, _ex_rs, _ex_age, rally_ok=_rally_ok)

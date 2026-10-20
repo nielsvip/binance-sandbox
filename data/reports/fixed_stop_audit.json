@@ -1,7 +1,13 @@
 {
- "findings": [],
- "n_findings": 0,
+ "findings": [
+  {
+   "account": "fin",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [400]>, 400, '{\"code\":-1021,\"msg\":\"Timestamp for this request is outside of the recvWindow.\"}')"
+  }
+ ],
+ "n_findings": 1,
  "n_positions": 0,
  "positions": [],
- "ts": "2026-10-20T19:41:02.739710+00:00"
+ "ts": "2026-10-20T19:51:59.891090+00:00"
 }

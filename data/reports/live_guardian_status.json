@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T19:49:18Z",
+ "ts": "2026-10-20T19:54:49Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,13 +29,13 @@
   "trb": {
    "fills_6h": 270,
    "open_positions": 11,
-   "unrealised_usd": 79.52,
+   "unrealised_usd": 60.83,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 164,
    "open_positions": 18,
-   "unrealised_usd": 60.58,
+   "unrealised_usd": 61.01,
    "pos_mismatch": 0
   },
   "fin": {
@@ -55,7 +55,7 @@
    }
   },
   "men": {
-   "fills_6h": 2,
+   "fills_6h": 0,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -66,7 +66,7 @@
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
-    "vec_exact_fills_without_decision": 2,
+    "vec_exact_fills_without_decision": 0,
     "matched_by_reason": 0
    }
   },
@@ -144,8 +144,8 @@
    "pids": [
     "64770"
    ],
-   "starts_30m": 3,
-   "log_age_s": 11.0
+   "starts_30m": 2,
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
@@ -159,61 +159,47 @@
     "64834"
    ],
    "starts_30m": 3,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": 8.0
   },
   "trb": {
    "pids": [
     "66599"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   },
   "trc": {
    "pids": [
     "33811"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T19:49:19Z",
+   "ts": "2026-10-20T19:54:49Z",
    "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "men:UNIUSDC_SHORT",
-   "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trb",
+   "evidence": "unrealised PnL of the same open positions fell $29.12 since 2026-10-20T19:50:47Z (now $+60.83)"
   },
   {
-   "ts": "2026-10-20T19:49:19Z",
-   "severity": "CRITICAL",
-   "kind": "FILL_WITHOUT_VEC_DECISION",
-   "key": "men:BTCDOMUSDT_LONG",
-   "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
-  },
-  {
-   "ts": "2026-10-20T19:49:20Z",
+   "ts": "2026-10-20T19:54:51Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['79919', '62164', '65053'])"
   },
   {
-   "ts": "2026-10-20T19:49:20Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "men",
-   "evidence": "3 new process ids in 30 min (['73953', '61464', '64770'])"
-  },
-  {
-   "ts": "2026-10-20T19:49:20Z",
+   "ts": "2026-10-20T19:54:51Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
@@ -221,8 +207,8 @@
   }
  ],
  "alert_counts": {
-  "FILL_WITHOUT_VEC_DECISION": 2,
-  "RESTART_LOOP": 3
+  "ACCOUNT_EQUITY_DROP": 1,
+  "RESTART_LOOP": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -256,5 +242,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.98
+ "sweep_s": 1.88
 }

@@ -6,6 +6,11 @@ universe_exclude) PLUS every open-position sym_side (data/open_position_sym_side
 round (data/avg_delta_selection.json = the rebuild's one-latest-file-per-sym_side map) is re-evaluated FRESH at 30D on the host that
 holds its NPZ (tools/v15_persym_golive.py collect --eval-all: cumulative_overrides > initial_overrides > defaults). A row is a
 SYSTEM_ERROR (for the repair phase) when: no sheet this round, the evaluation failed, trades < 10 or TIM < 20%.
+2026-10-20: the collect runs with V12_ALLOW_STALE_NPZ=1 exactly like tools/v15_persym_golive.py (same kill switch
+V15_GOLIVE_ALLOW_STALE=0): this is a re-measurement of a finished board on that board's own NPZ, never a new board, and the
+20-min NPZ law is a START law. Without it the 2026-10-20 chain refused 121 of 257 sheets as STALE_NPZ_SKIPPED (S2's mirror was
+two bars behind) and reported them as "zero trades". A stale refusal that still occurs is its own kind ("stale npz"), never
+"zero trades", and every evaluated row records npz_id.
 Writes data/daily_chain/<date>_tradeable_check.json. Runs in tools/v15_daily_chain_s1.sh (non-fatal step) or by hand:
   V15_FLEET_HOSTS=tools/fleet_hosts_final.json python tools/v15_tradeable_check.py [--selection F] [--out F]
 """
@@ -63,7 +68,8 @@ def main():
             via, _ = G._ssh(h["ssh"], "true", 30)
             G._scp(str(ROOT / "tools" / "v15_persym_golive.py"), f"{via}:binance-sandbox/tools/v15_persym_golive.py")
             G._scp(str(lf), f"{via}:/tmp/v15_tradeable_check_files.txt")
-            _, out = G._ssh([via], f"cd ~/binance-sandbox && timeout {a.timeout} /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_persym_golive.py collect --eval-all --files /tmp/v15_tradeable_check_files.txt --out /tmp/v15_tradeable_check_out.json --workers {a.workers} 2>&1 | grep -v Warning | tail -2", a.timeout + 60)
+            allow_stale = "V12_ALLOW_STALE_NPZ=1 " if os.environ.get("V15_GOLIVE_ALLOW_STALE", "1") == "1" else ""
+            _, out = G._ssh([via], f"cd ~/binance-sandbox && {allow_stale}timeout {a.timeout} /home/niels/.conda/envs/binance_env_mac/bin/python -u tools/v15_persym_golive.py collect --eval-all --files /tmp/v15_tradeable_check_files.txt --out /tmp/v15_tradeable_check_out.json --workers {a.workers} 2>&1 | grep -v Warning | tail -2", a.timeout + 60)
             print(f"[tradeable-check] {hn} via {via}: {out.strip()}", flush=True)
             dst = tmpd / f"{hn}.json"
             G._scp(f"{via}:/tmp/v15_tradeable_check_out.json", str(dst))
@@ -87,7 +93,7 @@ def main():
             rows[ss] = dict(base, result="SYSTEM_ERROR", reason=f"not evaluated (host error: {host_err.get(sel[ss]['host'], 'missing from collect output')})")
             continue
         ev = rec.get("evidence")
-        base.update(set_source=rec.get("set_source"), verdict=rec.get("verdict"))
+        base.update(set_source=rec.get("set_source"), verdict=rec.get("verdict"), npz_id=rec.get("npz_id"))
         if not ev:
             rows[ss] = dict(base, result="SYSTEM_ERROR", reason=f"evaluation failed: {rec.get('skip')}")
             continue
@@ -105,7 +111,7 @@ def main():
             continue
         r, ir = v["reason"], str(v.get("invalid_reason") or "")
         v["kind"] = ("no sheet" if "no sheet" in r else "eval failed" if r.startswith(("evaluation failed", "not evaluated")) else "set incompatible with engine" if ir.startswith("override") else
-                     "zero trades" if v.get("trades") == 0 else "trades<10+TIM<20" if "trades" in r and "TIM" in r else "trades<10" if "trades" in r else "TIM<20")
+                     "stale npz" if ir.startswith("STALE_NPZ_SKIPPED") else "zero trades" if v.get("trades") == 0 else "trades<10+TIM<20" if "trades" in r and "TIM" in r else "trades<10" if "trades" in r else "TIM<20")
     errs = {k: v for k, v in rows.items() if v["result"] == "SYSTEM_ERROR"}
     summary = {"tradeable": len(tradeable), "open_positions": len(openpos), "universe": how, "ok": sum(1 for v in rows.values() if v["result"] == "OK"), "system_error": len(errs),
                "error_kinds": Counter(v["kind"] for v in errs.values()), "open_position_errors": sorted(k for k, v in errs.items() if v.get("open_position")),
