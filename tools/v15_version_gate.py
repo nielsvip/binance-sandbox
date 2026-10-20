@@ -61,6 +61,29 @@ RUN_TIMEOUT_MIN = float(os.environ.get("V15_GATE_RUN_TIMEOUT_MIN", "720"))  # 8 
 MIN_FREE_MB = float(os.environ.get("V15_GATE_MIN_FREE_MB", "20000"))
 SRC = HOME / "binance-sandbox"
 DEPLOY = [("local", HOME / "binance-sandbox"), ("local", HOME / "binance"), ("10.0.0.3", "/home/niels/binance-sandbox"), ("10.0.0.3", "/home/niels/binance")]
+# 2026-10-20 WP1 (V19 full-course round): S5/S6 are EPHEMERAL images of S1 (deleted when the round ends). A PASS deploys to
+# them too, best-effort: an unreachable ephemeral host is recorded (ok=None, optional) and never blocks champion promotion,
+# so deleting the hosts later cannot wedge the gate in PASS_DEPLOY_INCOMPLETE. V15_GATE_EPHEMERAL_HOSTS="" turns it off.
+EPHEMERAL_DEPLOY = [(h.strip(), "/home/niels/binance-sandbox") for h in os.environ.get("V15_GATE_EPHEMERAL_HOSTS", "10.0.0.5,10.0.0.6").split(",") if h.strip()]
+
+
+def _reachable(host):
+    try:
+        return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", host, "true"], capture_output=True, timeout=20).returncode == 0
+    except Exception:
+        return False
+
+
+def deploy_targets():
+    """[(host, root, optional)] — the four production roots (mandatory) + reachable ephemeral workers (optional)."""
+    out = [(h, r, False) for h, r in DEPLOY]
+    out += [(h, r, True) for h, r in EPHEMERAL_DEPLOY if _reachable(h)]
+    return out
+
+
+def deploy_complete(records):
+    """PASS deploy is complete when every MANDATORY record is ok; optional (ephemeral) misses are reported, never blocking."""
+    return bool(records) and all(x["ok"] for x in records if not x.get("optional"))
 # USER 2026-10-17 ("all of it should be fed into the next v15_pilot calculations then it gets into live trading if
 # proven successful"): switch_types.py and switch_parity.py were NOT gated, yet v15_pilot imports both and
 # tools/switch_types.coerce IS the pilot's type law (_types_coerce_reason, v15_pilot:2193) — "a candidate the engine
@@ -382,7 +405,7 @@ def deploy(cd, meta):
     _env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(json.loads((CHAMP / "meta.json").read_text()) if (CHAMP / "meta.json").exists() else {})
     (GATE / "env.json").write_text(json.dumps({"at": now(), "candidate": meta["id"], "env": _env}, indent=1))
     extra = {"data/v15_gate_flags.json": GATE / "flags.json", "data/v15_gate_env.json": GATE / "env.json"}
-    for host, root in DEPLOY:
+    for host, root, optional in deploy_targets():
         for rel in list(meta.get("files") or {}) + list(extra):
             src = extra[rel] if rel in extra else (cd / "tree" / rel)
             want = md5(src)
@@ -401,7 +424,7 @@ def deploy(cd, meta):
                     continue
                 r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"test -d {root}/{Path(rel).parent} && mv {tmpr} {root}/{rel} && md5sum {root}/{rel} || rm -f {tmpr}"], capture_output=True, text=True)
                 got = (r.stdout.split() or [""])[0]
-            out.append({"host": host, "root": str(root), "file": rel, "ok": got == want})
+            out.append({"host": host, "root": str(root), "file": rel, "ok": got == want, **({"optional": True} if optional else {})})
     return out
 
 
@@ -413,7 +436,7 @@ def cmd_publish_env(a):
     (GATE / "env.json").write_text(json.dumps({"at": now(), "candidate": f"champion {champ.get('pilot_md5')}", "env": env}, indent=1))
     want = md5(GATE / "env.json")
     out = []
-    for host, root in DEPLOY:
+    for host, root, optional in deploy_targets():
         rel = "data/v15_gate_env.json"
         if host == "local":
             dst = Path(root) / rel
@@ -428,11 +451,11 @@ def cmd_publish_env(a):
             subprocess.run(["rsync", "-a", "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10", str(GATE / "env.json"), f"{host}:{tmpr}"], check=False)
             r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, f"test -d {root}/data && mv {tmpr} {root}/{rel} && md5sum {root}/{rel} || rm -f {tmpr}"], capture_output=True, text=True)
             got = (r.stdout.split() or [""])[0]
-        out.append({"host": host, "root": str(root), "ok": got == want})
+        out.append({"host": host, "root": str(root), "ok": got == want, **({"optional": True} if optional else {})})
     with open(DECISIONS, "a") as fh:
         fh.write(json.dumps({"id": f"publish-env-{now()}", "state": "ENV_PUBLISHED", "env": env, "deploy": out}) + "\n")
     print(json.dumps({"env_keys": len(env), "deploy": out}, indent=1))
-    return 0 if out and all(x["ok"] for x in out) else 1
+    return 0 if deploy_complete(out) else 1
 
 
 def read_meta(cd):
@@ -521,7 +544,7 @@ def finalize(cd, meta, d):
         meta["decision"]["PASS"] = False
     if d["PASS"]:
         meta["deploy"] = deploy(cd, meta)
-        if all(x["ok"] for x in meta["deploy"]):
+        if deploy_complete(meta["deploy"]):
             rsync_tree(cd / "tree", CHAMP / "tree")
             _prev = json.loads((CHAMP / "meta.json").read_text()) if (CHAMP / "meta.json").exists() else {}
             _env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(_prev)
@@ -606,7 +629,7 @@ def cmd_watch(a):
     champ = ensure_champion()
     want = champ.get("pilot_md5")
     alerts = []
-    for host, root in DEPLOY:
+    for host, root, _opt in deploy_targets():
         if host == "local":
             p = Path(root) / "v15_pilot.py"
             got = md5(p) if p.exists() else None
@@ -624,7 +647,7 @@ def cmd_watch(a):
     # and the daily V17 autotune changed what every board computes without ever being benched.
     want_env = champ_env(champ)
     drift = []
-    for host in sorted({h for h, _r in DEPLOY}):
+    for host in sorted({h for h, _r, _o in deploy_targets()}):
         for e in running_pilot_envs(host):
             d = env_diff(want_env, e["env"])
             if d:

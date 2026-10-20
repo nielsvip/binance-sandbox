@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T18:57:56Z",
+ "ts": "2026-10-20T19:03:08Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,13 +29,13 @@
   "trb": {
    "fills_6h": 254,
    "open_positions": 11,
-   "unrealised_usd": 11.17,
+   "unrealised_usd": 4.74,
    "pos_mismatch": 0
   },
   "trc": {
    "fills_6h": 164,
    "open_positions": 18,
-   "unrealised_usd": 29.72,
+   "unrealised_usd": 28.99,
    "pos_mismatch": 0
   },
   "fin": {
@@ -138,82 +138,68 @@
     "79919"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "73953"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
     "62249"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 6.0
   },
   "inf": {
    "pids": [
     "79171"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "37060"
    ],
    "starts_30m": 2,
-   "log_age_s": 10.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [
     "83844"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   },
   "trc": {
    "pids": [
     "33811"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 1.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T18:57:56Z",
-   "severity": "CRITICAL",
-   "kind": "CHURN_KEY",
-   "key": "trb:OLED_LONG",
-   "evidence": "3 open->flat round trips in 60 min"
-  },
-  {
-   "ts": "2026-10-20T18:57:56Z",
-   "severity": "WARN",
-   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trb:OLED_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
-  },
-  {
-   "ts": "2026-10-20T18:57:57Z",
+   "ts": "2026-10-20T19:03:08Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $38.86 since 2026-10-20T18:43:24Z (now $+11.17)"
+   "evidence": "unrealised PnL of the same open positions fell $44.11 since 2026-10-20T18:43:24Z (now $+4.74)"
   },
   {
-   "ts": "2026-10-20T18:57:57Z",
+   "ts": "2026-10-20T19:03:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T18:57:57Z",
+   "ts": "2026-10-20T19:03:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
@@ -221,8 +207,6 @@
   }
  ],
  "alert_counts": {
-  "CHURN_KEY": 1,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 1,
   "ACCOUNT_EQUITY_DROP": 1,
   "FILL_WITHOUT_VEC_DECISION": 2
  },
@@ -258,5 +242,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.96
+ "sweep_s": 1.99
 }

@@ -160,3 +160,19 @@ def test_candidate_fails_only_on_sides_both_arms_finished():
     ch["D_SHORT"] = {}
     d = gate.decide(ch, ca, SIDES)
     assert d["harness_fail"] and d["scored"] == ["A_LONG", "B_SHORT", "C_LONG"]
+
+
+def test_ephemeral_deploy_never_blocks_promotion():
+    # 2026-10-20 WP1: s5/s6 are ephemeral; a missed optional record must not make a PASS incomplete, a missed mandatory one must.
+    ok_m = {"host": "10.0.0.3", "ok": True}
+    assert gate.deploy_complete([ok_m, {"host": "10.0.0.5", "ok": False, "optional": True}])
+    assert not gate.deploy_complete([{"host": "10.0.0.3", "ok": False}, {"host": "10.0.0.5", "ok": True, "optional": True}])
+    assert not gate.deploy_complete([])
+
+
+def test_ephemeral_targets_are_optional_and_mandatory_kept(monkeypatch):
+    monkeypatch.setattr(gate, "_reachable", lambda h: h == "10.0.0.5")
+    monkeypatch.setattr(gate, "EPHEMERAL_DEPLOY", [("10.0.0.5", "/home/niels/binance-sandbox"), ("10.0.0.6", "/home/niels/binance-sandbox")])
+    t = gate.deploy_targets()
+    assert [x for x in t if not x[2]] == [(h, r, False) for h, r in gate.DEPLOY]
+    assert [x[0] for x in t if x[2]] == ["10.0.0.5"]
