@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v15_augment_probe — measured counterfactuals for the AUGMENT / partial-REDUCE / REENTRY families of one board.
+"""augment_family_probe — measured counterfactuals for the AUGMENT / partial-REDUCE / REENTRY families of one board.
 
 USER 2026-10-20: "SHOP_LONG is completely skipping all augment functions — if it wasn't it would multiply its gains,
 please revise". This tool answers that with numbers from the REAL engine only (lifecycle_pilot.evaluate_month ->
@@ -18,7 +18,7 @@ this process. Nothing is written to any config, set, template or engine.
 Nothing is promoted. Output: JSON (per variant gain/trades/TIM/DD/WR + augment/reduce/reentry counts by source).
 
 USAGE (S1 crypto / S2 stocks, from ~/binance-sandbox):
-    python -u tools/v15_augment_probe.py --progress ~/v15_run33_20261019/progress/SHOP_LONG_v14_progress.json \
+    python -u tools/augment_family_probe.py --progress ~/v15_run33_20261019/progress/SHOP_LONG_v14_progress.json \
         --frozen-dir ~/aug_probe_20261020/npz --out ~/aug_probe_20261020/SHOP_LONG.json
 """
 import argparse
@@ -101,7 +101,7 @@ def _install_frozen_npz(frozen_dir: Path, symbol: str, published_md5: str = ""):
 
 def _src_of(reason: str) -> str:
     r = str(reason or "").upper()
-    for tok in ("UAG_LADDER", "PULLBACK_AUG", "DC_TIER", "TRAILING_AUG", "LR_BAND_LADDER", "WT_D_BOUNCE", "AUGMENT_AT_LOSS", "HAIKU", "DD_BOUNCE", "FAST_RISER", "AIR_CARRY", "VEC_AUGMENT_SIG", "PPL", "PARTIAL_PROFIT", "REGIME", "HLR", "QUICK_REDUCE", "DC_BREACH", "AUGMENT_FALLBACK"):
+    for tok in ("DD_BOUNCE_STOP", "WT_D_BOUNCE_DD", "UAG_LADDER", "PULLBACK_AUG", "DC_TIER", "TRAILING_AUG", "LR_BAND_LADDER", "WT_D_BOUNCE", "AUGMENT_AT_LOSS", "HAIKU", "DD_BOUNCE", "FAST_RISER", "AIR_CARRY", "VEC_AUGMENT_SIG", "PPL", "PARTIAL_PROFIT", "REGIME", "HLR", "QUICK_REDUCE", "DC_BREACH", "AUGMENT_FALLBACK"):
         if tok in r:
             return tok
     return r.split(" ")[0][:28] or "?"
@@ -132,6 +132,8 @@ def ev(symside, ov, window_days):
         "max_dd_pct": round(float(r.get("max_dd_pct") or 0.0), 2),
         "bh_pct": round(float(r.get("bh_pct") or 0.0), 2),
         "wr_pct": round(float(r.get("wr_pct") or 0.0), 1),
+        "pnl_dollars": round(sum(float(x.get("pnl_dollars") or 0.0) for x in closes), 2),
+        "peak_capital": round(float(r.get("peak_capital") or 0.0), 2),
         "n_augments": len(aug),
         "n_partial_reduces": len(red),
         "n_reentries": len(reent),
@@ -163,6 +165,8 @@ def variants(base, is_stock):
             V.append((A, f"vec-only: UAG ladder+pullback trigger {mg}", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=mg, AUGMENT_MIN_GAIN_PCT=0.0), env, None))
         for c in (1, 2, 3):
             V.append((A, f"vec-only: UAG 2.5, cap {c}/position", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=2.5, AUGMENT_MIN_GAIN_PCT=0.0), env, c))
+        V.append((A, "vec-only: UAG 2.5, WT_D_BOUNCE_DD_STOP off", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=2.5, AUGMENT_MIN_GAIN_PCT=0.0, WT_D_BOUNCE_DD_STOP_ENABLED=False), env, None))
+        V.append((A, "live: DC_TIER+TRAILING, WT_D_BOUNCE_DD_STOP off", dict(live, TRAILING_AUG_ENABLED_TRADIER=True, WT_D_BOUNCE_DD_STOP_ENABLED=False), {}, None))
         V.append((A, "vec-only: + PYRAMID", dict(vo, PYRAMID_ENABLED=True), env, None))
         V.append((A, "vec-only: + BOUNCE_AUGMENT", dict(vo, BOUNCE_AUGMENT_ENABLED=True), env, None))
         V.append((A, "vec-only + live: UAG 2.5 + DC_TIER + TRAILING", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=2.5, AUGMENT_MIN_GAIN_PCT=0.0, STOCK_LIVE_AUGMENT_ENABLED=True, TRAILING_AUG_ENABLED_TRADIER=True), env, None))
@@ -171,6 +175,7 @@ def variants(base, is_stock):
             V.append((A, f"UAG ladder+pullback trigger {mg}", {"MIN_GAIN_TO_BUY_AGGRESSIVELY": mg, "AUGMENT_MIN_GAIN_PCT": 0.0}, {}, None))
         for c in (1, 2, 3):
             V.append((A, f"UAG 2.5, cap {c}/position", {"MIN_GAIN_TO_BUY_AGGRESSIVELY": 2.5, "AUGMENT_MIN_GAIN_PCT": 0.0}, {}, c))
+        V.append((A, "UAG 2.5, WT_D_BOUNCE_DD_STOP off", {"MIN_GAIN_TO_BUY_AGGRESSIVELY": 2.5, "AUGMENT_MIN_GAIN_PCT": 0.0, "WT_D_BOUNCE_DD_STOP_ENABLED": False}, {}, None))
         V.append((A, "UAG gate OFF (UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED=False)", {"UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": False}, {}, None))
         V.append((A, "+ PYRAMID", {"PYRAMID_ENABLED": True}, {}, None))
         V.append((A, "+ BOUNCE_AUGMENT", {"BOUNCE_AUGMENT_ENABLED": True}, {}, None))
@@ -229,7 +234,7 @@ def main():
                     os.environ[k] = v
         row = {"family": fam, "label": label, "overrides": ov, "env": env, "cap": cap, **m}
         rows.append(row)
-        print(f"{fam:8s} {label:58s} gain {m['gain_pct']:+8.2f}  tr {m['trades']:4d}  TIM {m['tim_pct']:5.1f}  DD {m['max_dd_pct']:5.2f}  WR {m['wr_pct']:5.1f}  aug {m['n_augments']:3d}  red {m['n_partial_reduces']:3d}  reent {m['n_reentries']:3d}  {m['secs']}s", flush=True)
+        print(f"{fam:8s} {label:58s} gain {m['gain_pct']:+8.2f}  pnl$ {m['pnl_dollars']:+9.2f}  peak$ {m['peak_capital']:9.0f}  tr {m['trades']:4d}  TIM {m['tim_pct']:5.1f}  DD {m['max_dd_pct']:5.2f}  WR {m['wr_pct']:5.1f}  aug {m['n_augments']:3d}  red {m['n_partial_reduces']:3d}  reent {m['n_reentries']:3d}  {m['secs']}s", flush=True)
         return row
 
     base = run("BASE", "published set, frozen NPZ", {}, {}, None)
@@ -246,7 +251,7 @@ def main():
 
     eng = hashlib.md5((ROOT / "v12_quick_engine.py").read_bytes()).hexdigest()
     out.write_text(json.dumps({"sym_side": ss, "published_final_gain": prog.get("final_gain"), "published_trades": prog.get("final_trades"), "published_bh": prog.get("bh"), "published_npz_md5": (prog.get("npz_id") or {}).get("md5"), "frozen_npz_md5": npz_md5, "engine_md5": eng, "window_days": a.window_days, "measured_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "base_set_values": {k: base_ov.get(k, "<absent>") for k in ("MAX_AUGMENTS_PER_POSITION", "STOCK_LIVE_AUGMENT_ONLY", "STOCK_LIVE_AUGMENT_ENABLED", "BB4H_BREAKOUT_LADDER_ENABLED", "DC_TIER_AUG_ENABLED", "MIN_GAIN_TO_BUY_AGGRESSIVELY", "AUGMENT_MIN_GAIN_PCT", "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED", "PYRAMID_ENABLED", "TRAILING_AUG_ENABLED_TRADIER", "PARTIAL_PROFIT_LOCK_ENABLED", "REENTRY_MANDATORY")}, "rows": rows}, indent=1, default=str))
-    print(f"[augment_probe] {ss} base {base['gain_pct']:+.2f} (published {prog.get('final_gain')}) npz {npz_md5[:8]} (published {(prog.get('npz_id') or {}).get('md5','')[:8]}) -> {out}")
+    print(f"[augment_family_probe] {ss} base {base['gain_pct']:+.2f} (published {prog.get('final_gain')}) npz {npz_md5[:8]} (published {(prog.get('npz_id') or {}).get('md5','')[:8]}) -> {out}")
     return 0
 
 
