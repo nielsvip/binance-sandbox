@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-10-20 02:21 UTC",
- "total_capital_usd": 20.2,
+ "generated_at": "2026-10-20 02:32 UTC",
+ "total_capital_usd": 5.68,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.92,
-  "C": 7.28
+  "B": 0.0,
+  "C": 5.68
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "flz:BNBUSDC_LONG"
+  "inf:ARUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "flz:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 12.92,
-   "gain_pct": 3.67,
-   "tier": "B",
-   "perf_mult": 4.13,
-   "amt": 24.2,
-   "mark": 0.5339
-  },
-  {
-   "pk": "flz:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 7.28,
-   "gain_pct": 0.169,
+   "pk": "inf:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "inf",
+   "value_usd": 5.68,
+   "gain_pct": 0.252,
    "tier": "C",
-   "perf_mult": 0.24,
-   "amt": 0.01,
-   "mark": 727.95149566
+   "perf_mult": 0.57,
+   "amt": 1.5,
+   "mark": 3.78452309
   }
  ]
 }
