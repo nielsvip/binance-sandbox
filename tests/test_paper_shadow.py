@@ -54,6 +54,26 @@ def test_glitch_guard_filters_decimal_shifts():
     assert ps.is_glitch(None, 1.0) is True
 
 
+def test_sql_store_per_sym_avg_and_pos(tmp_path):
+    db = tmp_path / "shadow.db"
+    rows = [{"ts": 1000.0 + i, "kind": "shadow_entry", "leg": "shadow_3m", "sym_side": "A_LONG",
+             "action": "OPEN", "reason": "r", "ref": "15m_bar_close", "p_vec": 100.0,
+             "p_shadow": 99.0, "lead_s": 10.0, "edge_bps": e, "pending": False}
+            for i, e in enumerate([10.0, -4.0, 6.0])]
+    rows.append({"ts": 2000.0, "kind": "shadow_entry", "leg": "shadow_3m", "sym_side": "B_LONG",
+                 "action": "OPEN", "reason": "r", "ref": "15m_bar_close", "p_vec": 100.0,
+                 "p_shadow": 99.0, "lead_s": 10.0, "edge_bps": None, "pending": True})
+    ps.write_db(rows, db, since=0.0, horizon=16, days=14)
+    stats = ps.leg_sym_stats(db, "shadow_3m")
+    assert len(stats) == 1  # pending row never votes
+    leg, sym, n, avg, pos, tot = stats[0]
+    assert (leg, sym, n) == ("shadow_3m", "A_LONG", 3)
+    assert avg == round((10.0 - 4.0 + 6.0) / 3, 2) and pos == 2 and tot == 12.0
+    ps.write_db(rows, db, since=0.0, horizon=16, days=14)  # rerun: idempotent, no doubles
+    assert ps.leg_sym_stats(db, "shadow_3m")[0][2] == 3
+    assert ps.venue_of("AAPL_SHORT") == "stocks"
+
+
 def test_verdict_thresholds_mirror_eval():
     def row(leg, sym, edge, ts):
         return {"leg": leg, "sym_side": sym, "edge_bps": edge, "ts": ts, "pending": False}

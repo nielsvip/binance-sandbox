@@ -22,7 +22,11 @@ needs a 3m vec", live_twins/vec_exact.py). Reference price = the 15m bar close o
 never implied fills. Same-bar timing costs nothing extra (cost 0); nonvec entries keep eval's round-trip costs.
 
 Read-only. No live impact. Promotion is a decision, never automatic.
+Every run also refreshes data/paper_shadow/shadow.db (SQLite, window-idempotent): the decisions table holds every
+trade in each scenario with its edge vs the vec reference, and v_leg_sym / v_leg views give per_sym avg delta and
+pos counts — the inputs for switching a function on/off blanket or per_sym per function.
 Usage: python3 tools/paper_shadow.py [--days 14] [--horizon-bars 16] [--min-days 7] [--min-syms 5]
+       python3 tools/paper_shadow.py --report [LEG]
 Suggested cron (6-hourly, next to PAPER_NONVEC_EVAL):
   35 1,7,13,19 * * * cd /Users/niels/Documents/binance && /opt/anaconda3/envs/binance_env/bin/python tools/paper_shadow.py >> /tmp/paper_shadow.log 2>&1 # PAPER_SHADOW
 """
@@ -32,6 +36,7 @@ import argparse
 import bisect
 import glob
 import json
+import sqlite3
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -263,18 +268,91 @@ def verdict(rows, min_days, min_syms, days):
     return out
 
 
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS decisions(
+  ts REAL, kind TEXT, leg TEXT, sym_side TEXT, venue TEXT, action TEXT,
+  reason TEXT, ref TEXT, p_vec REAL, p_shadow REAL, lead_s REAL,
+  edge_bps REAL, pending INTEGER, horizon_bars INTEGER, window_days INTEGER);
+CREATE INDEX IF NOT EXISTS idx_dec_leg_sym ON decisions(leg, sym_side);
+CREATE INDEX IF NOT EXISTS idx_dec_sym ON decisions(sym_side);
+CREATE INDEX IF NOT EXISTS idx_dec_ts ON decisions(ts);
+CREATE VIEW IF NOT EXISTS v_leg_sym AS
+  SELECT leg, sym_side, COUNT(*) n, AVG(edge_bps) avg_edge,
+    SUM(CASE WHEN edge_bps > 0 THEN 1 ELSE 0 END) pos_n,
+    SUM(edge_bps) tot_edge
+  FROM decisions WHERE pending = 0 GROUP BY leg, sym_side;
+CREATE VIEW IF NOT EXISTS v_leg AS
+  SELECT leg, COUNT(*) n, COUNT(DISTINCT sym_side) syms, AVG(edge_bps) avg_edge,
+    SUM(CASE WHEN edge_bps > 0 THEN 1 ELSE 0 END) pos_n, SUM(edge_bps) tot_edge
+  FROM decisions WHERE pending = 0 GROUP BY leg;
+"""
+
+
+def venue_of(sym_side):
+    return split_sym_side(sym_side)[0]
+
+
+def write_db(rows, db_path, since, horizon, days):
+    """Idempotent window refresh: rows recomputed each run replace everything with ts >= since."""
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(db_path)
+    try:
+        con.executescript(SCHEMA)
+        con.execute("DELETE FROM decisions WHERE ts >= ?", (since,))
+        con.executemany(
+            "INSERT INTO decisions(ts,kind,leg,sym_side,venue,action,reason,ref,p_vec,p_shadow,"
+            "lead_s,edge_bps,pending,horizon_bars,window_days) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [(r.get("ts"), r.get("kind"), r.get("leg"), r.get("sym_side"), venue_of(r.get("sym_side")),
+              r.get("action"), r.get("reason"), r.get("ref"), r.get("p_vec"), r.get("p_shadow"),
+              r.get("lead_s"), r.get("edge_bps"), 1 if r.get("pending") else 0, horizon, days)
+             for r in rows])
+        con.commit()
+    finally:
+        con.close()
+    return db_path
+
+
+def leg_sym_stats(db_path, leg=None):
+    """Per-sym comparison rows driving blanket/per_sym/per-function switching: avg delta + pos counts."""
+    con = sqlite3.connect(db_path)
+    try:
+        q = "SELECT leg, sym_side, n, ROUND(avg_edge,2), pos_n, ROUND(tot_edge,2) FROM v_leg_sym"
+        args: tuple = ()
+        if leg:
+            q += " WHERE leg = ?"
+            args = (leg,)
+        q += " ORDER BY leg, avg_edge DESC"
+        return con.execute(q, args).fetchall()
+    finally:
+        con.close()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="unified per-decision paper ledger: vec vs faster-TF timing vs nonvec")
     ap.add_argument("--days", type=int, default=14)
     ap.add_argument("--horizon-bars", type=int, default=16)
     ap.add_argument("--min-days", type=int, default=7)
     ap.add_argument("--min-syms", type=int, default=5)
+    ap.add_argument("--report", nargs="?", const="", default=None,
+                    help="print per_sym avg-delta table from SQLite (optional LEG filter) and exit")
     a = ap.parse_args(argv)
+    if a.report is not None:
+        db = OUT / "shadow.db"
+        if not db.exists():
+            print("no db yet; run without --report first")
+            return 1
+        print(f"{'leg':28} {'sym_side':22} {'n':>5} {'avg_bps':>9} {'pos':>5} {'tot_bps':>10}")
+        for leg, sym, n, avg, pos, tot in leg_sym_stats(db, a.report or None):
+            print(f"{leg:28} {sym:22} {n:>5} {avg:>9} {pos:>5} {tot:>10}")
+        return 0
     rows, stats = build_ledger(a.days, a.horizon_bars)
     vd = verdict(rows, a.min_days, a.min_syms, a.days)
     OUT.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
     (OUT / f"ledger_{stamp}.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + ("\n" if rows else ""))
+    since = datetime.now(timezone.utc).timestamp() - a.days * 86400
+    write_db(rows, OUT / "shadow.db", since, a.horizon_bars, a.days)
     (OUT / "verdict.json").write_text(json.dumps(vd, indent=1, sort_keys=True))
     md = ["# paper_shadow verdict", "", f"decisions={len(rows)} window={a.days}d horizon={a.horizon_bars} bars", "",
           "| leg | n | syms | span_d | mean_edge_bps | pos_syms | verdict |",
