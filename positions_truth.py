@@ -273,7 +273,7 @@ def note_order_reason(position_key, qty, reason, now=None, window_s=600.0):
         pass
     try:  # HISTORY_PROV (E1 2026-10-20): metadata only — pairs the vec provenance block with this order for the fill recorder
         from live_twins import vec_provenance as _vp
-        _pv = _vp.history_prov_for(reason)
+        _pv = _vp.history_prov_for(reason, position_key)
         if _pv is not None:
             _pl = _RECENT_ORDER_PROV.setdefault(position_key, [])
             _pt = time.time() if now is None else now

@@ -227,6 +227,19 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
                 ("{ext}/binance_archive/eval_cache/eval_cache_rebuilt_v1.db", "archive", "artefact rebuild by tools/eval_cache_rebuild.py: metrics verbatim from the delta logs, overrides replayed; keys prefixed rebuilt1: so they can NEVER mis-hit the live cache", None),
                 ("/Volumes/E3T/mac_backup_20261014/data/eval_cache_v1.db", "legacy", "657 rows, the pre-2026-10-18 'existing one on ext drive'; merged into the master", None)],
     },
+    # ---------------------------------------------------------------- V18 experience store (work item E2, 2026-10-20)
+    # tools/v18_experience.py: append-only shards per cat_side per month (experience_<CAT_SIDE>_<YYYYMM>.db) + experience_index.db.
+    # Location rule in the tool: sticky existing store, else first real ext mount with >= 50 GB free, else the Mac boot disk.
+    "experience_store": {
+        "mac": [("{base}/data/experience", "canonical", "experience_<CAT_SIDE>_<YYYYMM>.db x4 cat_sides + experience_index.db (watermarks, proofs, colds); read via tools/v18_experience.py", "V18_EXPERIENCE_ROOT")],
+        "s2": [("/home/niels/v18_scratch/shards", "mirror", "shards built ON S2 from rebuilt_v1.db (and S2 delta logs), rsynced to the Mac store; staging only", None)],
+        "ext": [("{ext}/binance_archive/experience", "archive", "the tool's preferred home once an ext mount has >= 50 GB free; not created while TOSHIBA_EXT has 7.5 GB", "V18_EXPERIENCE_ROOT")],
+    },
+    # Cold zstd copies (+ <zst>.manifest.json with sha256) of eval caches whose rows are proven in the experience store.
+    "eval_cache_cold": {
+        "mac": [("{base}/data/eval_cache_cold", "canonical", "zstd -19 --long=27 + manifest of the staged bench caches and the S2 live-cache snapshot; reclaim needs the zst on a REAL ext mount", None)],
+        "ext": [("{ext}/binance_archive/eval_cache_cold", "archive", "target for the reclaim step (copy the Mac zst + manifest here, re-verify sha256)", None)],
+    },
     "priors_causal": {
         "s1": [("{sandbox}/data/causal/v17_priors.json", "canonical", "read by tools/v17_priors.load() inside v15_pilot", "V17_PRIORS_PATH")],
         "s2": [("{sandbox}/data/causal/v17_priors.json", "canonical", "", "V17_PRIORS_PATH")],

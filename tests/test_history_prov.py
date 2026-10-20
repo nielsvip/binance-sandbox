@@ -304,6 +304,9 @@ def test_tagged_reason_is_byte_identical_with_flag_on_or_off(monkeypatch):
 def test_note_order_reason_ring_unchanged_by_prov(monkeypatch):
     import positions_truth as pt
 
+    from live_twins import vec_provenance as vp
+
+    vp._HIST_PROV.set(None)
     pt._RECENT_ORDER_REASONS.clear()
     pt._RECENT_ORDER_PROV.clear()
     pt.note_order_reason("men:Q_LONG", 4.0, "B12 |VEC_EXACT")
@@ -315,3 +318,21 @@ def test_attribute_never_raises_on_garbage():
     for bad in (None, 5, "", object()):
         p = H.attribute(bad, None, None, None, None, "")
         assert isinstance(p, dict) and "switch" in p
+
+
+def test_leaked_block_never_crosses_position_keys():
+    import positions_truth as pt
+    from live_twins import vec_provenance as vp
+
+    pt._RECENT_ORDER_REASONS.clear()
+    pt._RECENT_ORDER_PROV.clear()
+    vp.set_history_prov("B12 |VEC_EXACT", {"switch": "REENTRY_B12_WT_MOM_ENABLED"})
+    tok = vp.mark("men:A_LONG", 1.0, "OPEN")
+    try:
+        pt.note_order_reason("men:B_LONG", 4.0, "B12 |VEC_EXACT")
+        assert pt.match_recent_order_prov("men:B_LONG", 4.0) is None
+        pt.note_order_reason("men:A_LONG", 4.0, "B12 |VEC_EXACT")
+        assert pt.match_recent_order_prov("men:A_LONG", 4.0)["switch"] == "REENTRY_B12_WT_MOM_ENABLED"
+    finally:
+        vp.reset(tok)
+        vp._HIST_PROV.set(None)
