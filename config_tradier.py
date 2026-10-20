@@ -634,7 +634,22 @@ class TradierConfig:
         False  # 2026-10-04 cut5: promotes twin fallback (twin_p0_crypto_a:277, v12:9899/12835) to field; = QuickConfig False; neutral
     )
     PARITY_VEC_EXACT_MODE: bool = (
-        True  # USER 2026-10-13 (A): NO live trade the vector did not authorize — stocks trade only on the v12 decision via tradier_vec_exact (every live-only path suppressed; stale-twin fallback = native EXITS only). Was False (native live).
+        False  # USER 2026-10-20: "NOTHING can live trade an npz" / "The npz path in live trading is only for the
+        # backtest_v12_engine NOTHING ELSE CAN USE IT LIVE IS LIVE" / "read the dict not calculate anything from any kline".
+        # True routed every stocks decision through a v12 SIMULATION REPLAY (TRADIER_VEC_EXACT_ENGINE=npz_twin ->
+        # live_twins/vec_exact.py -> np.load of backtest_v8/indicators/{SYM}.npz). MEASURED 2026-10-20: the freshest of 219
+        # stock NPZs was 320 min behind (21 closed 15m bars), median 5.6 h, 68 over 24 h — so the replay decided today's
+        # trades on last week's bars, and when it could not it logged VEC_EXACT_STALE_FALLBACK (1,600-2,400 per account
+        # against 2-7 vec orders) and stocks traded natively anyway. The other engine (oracle, tradier_vec_exact) is the same
+        # replay off an in-process row buffer and was abandoned for being empty after restarts.
+        # The replay was always the wrong shape for live: a BACKTEST simulates the switch set across history (that is
+        # backtest_v12_engine's job, and it keeps the NPZ); LIVE applies that same switch set to the CURRENT row. False puts
+        # the native producers back in charge, and they already resolve the full per_sym set through _cfg /
+        # per_sym_live_set.full_set — audited 2026-10-20: 0 of 753 live rows differ from their newest board, 0 of 329 crypto
+        # rows resolve off-board. The current row is data/tradier/tradier_indicators_latest.json, measured 0.4 bars behind
+        # across 114/114 symbols. Non-board entries stay shut via PARITY_COMPARISON_MODE=True above — the two are ONE change.
+        # ORIGINAL NOTE: USER 2026-10-13 (A): NO live trade the vector did not authorize — stocks trade only on the v12
+        # decision via tradier_vec_exact (every live-only path suppressed; stale-twin fallback = native EXITS only).
     )
     HISTORY_PROV_ENABLED: bool = True  # 2026-10-20 USER E1 (flipped False->True after tests/test_history_prov.py + neutrality proof; kill switch = set False) "/history/ reasons need the switch + approving filters": structured prov block + |SW=..|F=.. tail on every history event (vec_decisions/history_prov.py). METADATA ONLY, no decision reads it; flip to True only after tests/test_history_prov.py + neutrality proof.
     # USER 2026-10-17 "fix the stock vector-decided path first, then enforce it": npz_twin = live_twins/vec_exact.py on the stock NPZ
@@ -4560,7 +4575,20 @@ class TradierConfig:
     ENABLE_FAST_RISER_REDUCE: bool = False
     # === ROTATION STRATEGY (5yr backtest: +71.2%, Sharpe 0.60, 3,669 trades, 10d lookback) ===
     PARITY_COMPARISON_MODE: bool = (
-        False  # 2026-06-02 USER MASTER SWITCH. Default False = NORMAL LIVE (all gain-augmenting entry strategies ON: Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum). Set True ONLY during a live↔backtest parity A/B — it suppresses ALL those augmenting strategies AT ONCE in live (gate: tradier_manage.py _rotation_rsi2_loop ~15360) so live == backtest is apples-to-apples. AFTER confirming parity, set back to False to resume gains. These strategies augment live gains but are NOT fully in the vec/Tier-2 sweep, so they must be flipped off only for the comparison window, never left off.
+        True  # USER 2026-10-20: "it can trade the complete set of switches for every calculated sym_side NOTHING MORE NOTHING
+        # LESS" / "SAME FOR TRADIER". Flipped False -> True, and this is now the PRODUCTION value, not a measurement window.
+        # The 10 strategies this suppresses (Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum, gate
+        # tradier_manage.py:58108) are by their own documentation "NOT fully in the vec/Tier-2 sweep" — i.e. they are not in
+        # any per_sym board set, so every trade they produce is a NOTHING-MORE violation by definition. It is set together
+        # with PARITY_VEC_EXACT_MODE=False below and must not be flipped back alone: False here re-opens non-board entries,
+        # False there removes the NPZ replay. The original note said "never left off" — that was written when parity was a
+        # measurement exercise; the operator's standing instruction is now that the switch set alone decides.
+        # ORIGINAL NOTE (2026-06-02 USER MASTER SWITCH): Default False = NORMAL LIVE (all gain-augmenting entry strategies ON:
+        # Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum). Set True ONLY during a live<->backtest
+        # parity A/B — it suppresses ALL those augmenting strategies AT ONCE in live (gate: tradier_manage.py
+        # _rotation_rsi2_loop ~15360) so live == backtest is apples-to-apples. AFTER confirming parity, set back to False to
+        # resume gains. These strategies augment live gains but are NOT fully in the vec/Tier-2 sweep, so they must be
+        # flipped off only for the comparison window, never left off.
     )
     ROTATION_ENABLED: bool = True
     ROTATION_TOP_N: int = 3  # URGENT_FIX: fewer long positions in bear market (was 5)

@@ -764,6 +764,9 @@ def extract_ledgers(a, emit, counters):
                     continue
                 if d.get("kind") == "meta":
                     meta = d
+                    ss = meta.get("sym_side")
+                    if sets.get(ss):
+                        emit({"e": "ledgerset", "t": "0000-00-00T00:00:00Z", "s": ss, "set": sets[ss], "rk": h64(f"TS|{ss}|{meta.get('set_sha256')}")})
                     continue
                 if d.get("kind") != "trade" or meta is None:
                     continue
@@ -771,7 +774,7 @@ def extract_ledgers(a, emit, counters):
                 ts = iso_of(d.get("ts_exit")) or iso_of(meta.get("replayed_at"))
                 counters["ledger_trades"] += 1
                 emit({"e": "ledger", "t": ts, "s": ss, "fam": d.get("exit_family"), "efam": d.get("entry_family"), "pnl": _r(_f(d.get("pnl_pp")), 4),
-                      "set": sets.get(ss), "rk": h64(f"T|{ss}|{d.get('eval_id')}|{d.get('trade_no')}")})
+                      "rk": h64(f"T|{ss}|{d.get('eval_id')}|{d.get('trade_no')}")})
 
 
 def extract_native(a, emit, counters):
@@ -812,10 +815,13 @@ def extract_native(a, emit, counters):
             for dset, (gz, tsz) in g.items():
                 if len(dset) < 2:
                     continue
-                items = sorted(dset)
-                for i in range(len(items)):
-                    for j in range(i + 1, len(items)):
-                        x, y = items[i], items[j]
+                parents = [x for x in dset if (dset - {x}) in g]  # Z - {x} measured: one-key edges into Z
+                if len(parents) < 2:
+                    continue
+                parents.sort()
+                for i in range(len(parents)):
+                    for j in range(i + 1, len(parents)):
+                        x, y = parents[i], parents[j]
                         base = dset - {x, y}
                         bx, by, b0 = g.get(base | {x}), g.get(base | {y}), g.get(base)
                         if bx is None or by is None or b0 is None:
@@ -1101,6 +1107,7 @@ class CatBrain:
         self.pending = {}
         self.inforce = {}
         self.ledger = collections.defaultdict(lambda: [0, 0, 0.0, 0.0])
+        self.ledger_sets = {}
         self.ledger_key = collections.defaultdict(lambda: collections.defaultdict(lambda: [0, 0.0]))
         self.live_fam = collections.defaultdict(lambda: [0, 0, 0.0, 0.0])
         self.remedy = collections.defaultdict(lambda: [0, 0, 0.0])
@@ -1152,7 +1159,7 @@ class CatBrain:
     # -- events
     def handle(self, ev, ts):
         e = ev.get("e")
-        if not self.first_ts:
+        if not self.first_ts and not ts.startswith("0000"):
             self.first_ts = ts
         self.last_ts = ts
         if e == "row":
@@ -1176,6 +1183,8 @@ class CatBrain:
             r[2] += ev.get("d") or 0.0
         elif e == "live":
             self._live(ev)
+        elif e == "ledgerset":
+            self._ledgerset(ev)
         elif e == "ledger":
             self._ledger(ev)
         elif e == "quartet":
@@ -1263,6 +1272,9 @@ class CatBrain:
         self.c["live_lifecycles"] += 1
         self.c["live_attributed_keys"] += len(keys)
 
+    def _ledgerset(self, ev):
+        self.ledger_sets[ev["s"]] = ev.get("set") or []
+
     def _ledger(self, ev):
         fam = ev.get("fam") or "UNKNOWN"
         pnl = ev.get("pnl") or 0.0
@@ -1271,7 +1283,7 @@ class CatBrain:
         lf[1] += int(pnl > 0)
         lf[2] += pnl
         lf[3] += min(0.0, pnl)
-        for k in ev.get("set") or []:
+        for k in self.ledger_sets.get(ev["s"]) or []:
             t = self.ledger_key[k][fam]
             t[0] += 1
             t[1] += pnl
@@ -2254,7 +2266,7 @@ def main(argv=None):
     x.add_argument("--ctx-map", help="ctxmap_<host>.json written by --source rebuilt (bh/tier for logs without BOARD_CTX)")
     x.add_argument("--sets", help="ledgers: replay_sets.jsonl.gz (sym_side -> replayed set)")
     x.add_argument("--full", action="store_true", help="logs: ignore watermarks and re-read every file")
-    x.add_argument("--max-delta-keys", type=int, default=8)
+    x.add_argument("--max-delta-keys", type=int, default=64)
     t = sub.add_parser("train")
     t.add_argument("--spill-dir", action="append", required=True)
     t.add_argument("--tmp-dir")

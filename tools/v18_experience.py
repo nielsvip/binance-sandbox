@@ -1287,6 +1287,68 @@ def ingest_boards(a, store):
     return counters
 
 
+# ------------------------------------------------------------------------------------------------ trades (ledger replay)
+
+TRADE_COLS = ("trade_no", "bar_entry", "bar_exit", "bars_held", "entry_family", "exit_family", "entry_reason", "exit_reason",
+              "pnl_pct", "pnl_dollars", "deployed", "mfe_pct", "mae_pct", "post_exit_32b_pct", "unrealised_mark")
+
+
+def ingest_trades(a, store):
+    """data/learn/trade_ledgers/<CAT_SIDE>/<SYM_SIDE>.jsonl from tools/v18_ledger_replay.py: one `meta` line (-> one
+    evals row, provenance `ledger_replay`, eval_id `t:<replay eval_id>`) + `trade` lines (-> trades table). Idempotent."""
+    counters = Counter()
+    for f in sorted(set(glob.glob(os.path.expanduser(a.source)))):
+        source_id = f"{a.host}:{os.path.abspath(f)}"
+        meta, trades = None, []
+        with open(f, "rb") as fh:
+            for raw in fh:
+                if not raw.endswith(b"\n"):
+                    counters["partial_tail_line_skipped"] += 1
+                    break
+                try:
+                    d = json.loads(raw)
+                except Exception:
+                    counters["bad_json"] += 1
+                    continue
+                if d.get("kind") == "meta":
+                    meta = d
+                elif d.get("kind") == "trade":
+                    trades.append(d)
+        counters["files"] += 1
+        if not meta:
+            counters["no_meta"] += 1
+            continue
+        cs = cat_side_of(meta.get("sym_side"))
+        if cs is None or (meta.get("cat_side") and meta["cat_side"] != cs):
+            counters["cat_side_unreadable_or_disagrees"] += 1
+            continue
+        if meta.get("skip") or not meta.get("eval_id"):
+            counters["skipped_replay:" + str(meta.get("skip") or "no_eval_id")] += 1
+            continue
+        ts = _iso_epoch(meta.get("replayed_at"))
+        month = month_of(ts)
+        eid = "t:" + str(meta["eval_id"])
+        extra = {k: v for k, v in meta.items() if k not in ("kind", "sym_side")}
+        store.put(cs, month, "evals",
+                  (eid, "ledger_replay", meta["sym_side"], cs, era_of(cs, ts), ts, None, None, None, None, "none", None, None,
+                   None, None, None, "ledger_replay", meta.get("window_days"), None, None, meta.get("bars"), meta.get("npz_md5"),
+                   meta.get("gain_pct"), meta.get("trades"), meta.get("tim_pct"), meta.get("max_dd_pct"), meta.get("pool_sharpe"),
+                   meta.get("wr_pct"), None if meta.get("valid") is None else int(bool(meta.get("valid"))),
+                   meta.get("invalid_reason"), None, None, None, None, None, None, source_id, _dumps(extra)))
+        counters[f"evals:{cs}"] += 1
+        for t in trades:
+            if t.get("eval_id") != meta["eval_id"]:
+                counters["trade_eval_id_disagrees_with_meta"] += 1
+                continue
+            store.put(cs, month, "trades", (eid, t.get("trade_no"), t.get("bar_entry"), t.get("bar_exit"), t.get("bars_held"),
+                                           t.get("entry_family"), t.get("exit_family"), t.get("entry_reason"),
+                                           t.get("exit_reason"), t.get("pnl_pct"), t.get("pnl_dollars"), t.get("deployed"),
+                                           t.get("mfe_pct"), t.get("mae_pct"), t.get("post_exit_32b_pct"),
+                                           None if t.get("unrealised_mark") is None else int(bool(t["unrealised_mark"]))))
+            counters[f"trades:{cs}"] += 1
+    return counters
+
+
 # ------------------------------------------------------------------------------------------------ prove
 
 class StoreReader:
@@ -1641,7 +1703,7 @@ def reclaim(a):
 
 def digest(a):
     root = choose_store(a.store)[0]
-    out_dir = Path(a.out_dir or (ROOT / "data" / "learn"))
+    out_dir = Path(a.out_dir or (ROOT / "data" / "learn" / "store"))
     written = {}
     for cs in CAT_SIDES:
         pairs = {}
@@ -1680,9 +1742,9 @@ def digest(a):
         written[cs] = {"pairs": len(pairs), "bytes": len(blob)}
         if a.apply:
             out_dir.mkdir(parents=True, exist_ok=True)
-            tmp = out_dir / f".digest_{cs}.json.tmp"
+            tmp = out_dir / f".store_digest_{cs}.json.tmp"
             tmp.write_text(blob)
-            os.replace(tmp, out_dir / f"digest_{cs}.json")
+            os.replace(tmp, out_dir / f"store_digest_{cs}.json")
     print(json.dumps({"store": str(root), "apply": bool(a.apply), "digests": written}, indent=1))
     return 0
 
@@ -1774,7 +1836,7 @@ def do_ingest(a):
     started = _utc()
     print(f"[ingest] kind={a.kind} source={a.source} store={root} ({why}) apply={bool(a.apply)}", flush=True)
     fn = {"native": ingest_native, "rebuilt": ingest_rebuilt, "shard": ingest_shard, "log": ingest_log,
-          "history": ingest_history, "boards": ingest_boards}[a.kind]
+          "history": ingest_history, "boards": ingest_boards, "trades": ingest_trades}[a.kind]
     t0 = time.time()
     counters = fn(a, store)
     store.finalize(build_indexes=a.build_indexes)
@@ -1804,7 +1866,7 @@ def main(argv=None):
 
     p = sub.add_parser("ingest")
     common(p)
-    p.add_argument("--kind", required=True, choices=("native", "rebuilt", "shard", "log", "history", "boards"))
+    p.add_argument("--kind", required=True, choices=("native", "rebuilt", "shard", "log", "history", "boards", "trades"))
     p.add_argument("--from", dest="source", default="")
     p.add_argument("--apply", action="store_true")
     p.add_argument("--limit", type=int, default=0)
@@ -1844,7 +1906,7 @@ def main(argv=None):
     p.add_argument("--store")
     a = ap.parse_args(argv)
     if a.cmd == "ingest":
-        if a.kind in ("native", "rebuilt", "shard", "log") and not a.source:
+        if a.kind in ("native", "rebuilt", "shard", "log", "trades") and not a.source:
             ap.error("--from is required for this kind")
         return do_ingest(a)
     return {"prove": prove, "cold": cold, "reclaim": reclaim, "digest": digest, "audit": audit, "where": where}[a.cmd](a)

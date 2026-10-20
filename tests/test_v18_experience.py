@@ -216,3 +216,29 @@ def test_audit_clean(tmp_path, native_db):
     assert run("audit", "--store", store, "--out", tmp_path / "a.json") == 0
     j = json.loads((tmp_path / "a.json").read_text())
     assert j["totals_by_cat_side"]["CRYPTO_LONG"]["evals"] == 1
+
+
+def test_trades_ingest(tmp_path):
+    d = tmp_path / "tl"
+    d.mkdir()
+    meta = {"kind": "meta", "sym_side": "SOLUSDC_LONG", "cat_side": "CRYPTO_LONG", "eval_id": "ee1", "replayed_at": "2026-10-19T00:00:00Z",
+            "gain_pct": 1.5, "trades": 1, "window_days": 30}
+    tr = {"kind": "trade", "eval_id": "ee1", "trade_no": 0, "bar_entry": 1, "bar_exit": 3, "bars_held": 2, "entry_reason": "a",
+          "exit_reason": "b", "entry_family": "A", "exit_family": "B", "pnl_pct": 1.0, "pnl_dollars": 2.0, "deployed": 10.0,
+          "mfe_pct": 2.0, "mae_pct": -1.0, "post_exit_32b_pct": 0.5, "unrealised_mark": False}
+    (d / "SOLUSDC_LONG.jsonl").write_text(json.dumps(meta) + "\n" + json.dumps(tr) + "\n")
+    store = tmp_path / "store"
+    for _ in range(2):
+        assert run("ingest", "--kind", "trades", "--from", d / "*.jsonl", "--store", store, "--apply") == 0
+    assert count(store, "CRYPTO_LONG", "trades") == 1
+    assert count(store, "CRYPTO_LONG", "evals", "provenance='ledger_replay'") == 1
+    assert count(store, "CRYPTO_SHORT", "trades") == 0
+
+
+def test_digest_never_writes_pilot_digest_names(tmp_path, native_db):
+    store = tmp_path / "store"
+    run("ingest", "--kind", "native", "--from", native_db, "--store", store, "--apply")
+    out = tmp_path / "learn"
+    run("digest", "--store", store, "--out-dir", out, "--apply")
+    names = sorted(p.name for p in out.iterdir())
+    assert names and all(n.startswith("store_digest_") for n in names)
