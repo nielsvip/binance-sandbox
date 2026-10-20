@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T22:54:24Z",
+ "ts": "2026-10-20T22:59:22Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,7 +127,7 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 29.0
   },
   "men": {
    "pids": [
@@ -141,36 +141,36 @@
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 4.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 16.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 34.0
+   "log_age_s": 10.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 10401.0
+   "log_age_s": 10698.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 10403.0
+   "log_age_s": 10700.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T22:54:25Z",
+   "ts": "2026-10-20T22:59:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
@@ -254,5 +254,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.1
+ "sweep_s": 0.92
 }
