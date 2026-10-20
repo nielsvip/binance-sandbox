@@ -1,7 +1,13 @@
 {
- "findings": [],
- "n_findings": 0,
+ "findings": [
+  {
+   "account": "ang",
+   "code": "BROKER_UNREACHABLE",
+   "error": "ReadTimeout(ReadTimeoutError(\"HTTPSConnectionPool(host='fapi.binance.com', port=443): Read timed out. (read timeout=15)\"))"
+  }
+ ],
+ "n_findings": 1,
  "n_positions": 0,
  "positions": [],
- "ts": "2026-10-20T17:21:05.258913+00:00"
+ "ts": "2026-10-20T17:32:16.245147+00:00"
 }
