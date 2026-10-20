@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T22:23:38Z",
+ "ts": "2026-10-20T22:28:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,10 +111,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 233,
+  "total": 227,
   "per_acct": {
    "fin": 62,
-   "ang": 56,
+   "ang": 50,
    "men": 96,
    "flz": 18,
    "inf": 1
@@ -134,38 +134,38 @@
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 5.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8554.0
+   "log_age_s": 8872.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8556.0
+   "log_age_s": 8874.0
   }
  },
  "alerts": [],
@@ -237,5 +237,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.08
+ "sweep_s": 1.19
 }
