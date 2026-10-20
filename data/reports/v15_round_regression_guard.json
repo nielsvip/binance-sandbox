@@ -1,47 +1,28 @@
 {
- "at": "2026-10-20T06:26:00Z",
+ "at": "2026-10-20T07:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 4,
-   "per_hour": 2.0,
-   "improved_vs_best_start": 4,
-   "mean_uplift_vs_best_start": 29.1382,
-   "median_uplift": 30.3128,
-   "chained_from_previous_published": 4,
+   "published_n": 3,
+   "per_hour": 1.5,
+   "improved_vs_best_start": 3,
+   "mean_uplift_vs_best_start": 17.6938,
+   "median_uplift": 22.2128,
+   "chained_from_previous_published": 3,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
     {
-     "symside": "BBUSDT_SHORT",
-     "npz_age_h": 28.51
-    },
-    {
-     "symside": "UEC_SHORT",
-     "npz_age_h": 9.2
+     "symside": "PSX_LONG",
+     "npz_age_h": 10.57
     }
    ],
    "fails": [
-    "throughput 2.0/h < 12.0/h (one per 5 min)"
+    "throughput 1.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
-    {
-     "symside": "BBUSDT_SHORT",
-     "published_at": 1792470625.0101874,
-     "final_gain": 52.554458935655916,
-     "best_start_gain": 22.70507761700145,
-     "best_start_chosen": "history_2",
-     "best_start_candidates": 7,
-     "baseline_gain": 22.70507761700145,
-     "npz_ts_last": 1792368000.0,
-     "npz_md5": "cd7d9ab9d4f92b76065e45439dd1e12e",
-     "npz_bars": 40396,
-     "bh": 8.007375791414683,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 28.51
-    },
     {
      "symside": "DUSKUSDT_LONG",
      "published_at": 1792475613.2102308,
@@ -73,19 +54,19 @@
      "npz_age_h_at_publish": 1.39
     },
     {
-     "symside": "UEC_SHORT",
-     "published_at": 1792472236.964596,
-     "final_gain": 61.36241403086734,
-     "best_start_gain": 27.184437340765573,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 6,
-     "baseline_gain": 27.184437340765573,
-     "npz_ts_last": 1792439100.0,
-     "npz_md5": "b21c5c2d0b558ef8849baf7a3c8e2a8f",
-     "npz_bars": 34852,
-     "bh": 32.34536282022133,
+     "symside": "PSX_LONG",
+     "published_at": 1792478048.2966113,
+     "final_gain": 22.44458491823117,
+     "best_start_gain": 21.888703610956522,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 8,
+     "baseline_gain": 15.153109600395121,
+     "npz_ts_last": 1792440000.0,
+     "npz_md5": "3aa051447e8e2be3fd1d8846bf120812",
+     "npz_bars": 16075,
+     "bh": 12.289850354770532,
      "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 9.2
+     "npz_age_h_at_publish": 10.57
     }
    ],
    "error": null
