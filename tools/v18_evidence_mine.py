@@ -80,7 +80,7 @@ def _f(x):
 
 
 DDL = (
-    "CREATE TABLE IF NOT EXISTS obs (cs TEXT, key TEXT, sym TEXT, ts TEXT, d REAL, m REAL, valid INT, prom INT, n INT, nf INT,"
+    "CREATE TABLE IF NOT EXISTS obs (cs TEXT, key TEXT, sym TEXT, ts TEXT, d REAL, m REAL, valid INT, prom INT, n INT, nf INT, nb INT,"
     " PRIMARY KEY (cs, key, sym)) WITHOUT ROWID",
     "CREATE TABLE IF NOT EXISTS abl (cs TEXT, sw TEXT, f TEXT, sym TEXT, ts TEXT, grp TEXT, disc_d REAL, eff REAL, killer INT,"
     " restore_d REAL, exempt_d REAL, proxy_d REAL, proxy_has_f INT, n INT, PRIMARY KEY (cs, sw, f, sym)) WITHOUT ROWID",
@@ -92,8 +92,9 @@ DDL = (
     "CREATE TABLE IF NOT EXISTS files (path TEXT PRIMARY KEY, host TEXT, sym TEXT, cs TEXT, bytes INT, lines INT, used INT,"
     " first_ts TEXT, last_ts TEXT, counters TEXT)",
 )
-UPSERT_OBS = ("INSERT INTO obs (cs, key, sym, ts, d, m, valid, prom, n, nf) VALUES (?,?,?,?,?,?,?,?,?,?) "
-              "ON CONFLICT (cs, key, sym) DO UPDATE SET n = n + excluded.n, nf = nf + excluded.nf, prom = MAX(prom, excluded.prom), "
+UPSERT_OBS = ("INSERT INTO obs (cs, key, sym, ts, d, m, valid, prom, n, nf, nb) VALUES (?,?,?,?,?,?,?,?,?,?,?) "
+              "ON CONFLICT (cs, key, sym) DO UPDATE SET n = n + excluded.n, nf = nf + excluded.nf, nb = nb + excluded.nb, "
+              "prom = MAX(prom, excluded.prom), "
               "d = CASE WHEN excluded.ts >= ts THEN excluded.d ELSE d END, m = CASE WHEN excluded.ts >= ts THEN excluded.m ELSE m END, "
               "valid = CASE WHEN excluded.ts >= ts THEN excluded.valid ELSE valid END, ts = MAX(ts, excluded.ts)")
 UPSERT_ABL = ("INSERT INTO abl (cs, sw, f, sym, ts, grp, disc_d, eff, killer, restore_d, exempt_d, proxy_d, proxy_has_f, n) "
@@ -282,11 +283,29 @@ def mine_file(path, host, since, counters):
     return obs, abl_rows, disc_rows, fwd_rows, board_rows, meta
 
 
+def denied_symbols():
+    """data/excluded_tokenized_stocks.json (tools/excluded_tokenized_stocks.py's file): tokenized stocks never enter evidence."""
+    for base in (os.environ.get("V18_ROOT"), os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
+        if not base:
+            continue
+        p = os.path.join(base, "data", "excluded_tokenized_stocks.json")
+        if os.path.exists(p):
+            try:
+                return frozenset(str(x).strip().upper() for x in json.load(open(p)).get("symbols", []))
+            except (OSError, ValueError):
+                pass
+    return frozenset()
+
+
 def worker(args):
     wid, files, db_path, since = args
     c = connect(db_path)
     counters = Counter()
+    deny = denied_symbols()
     for host, path, size in files:
+        if sym_side_of_path(path).rsplit("_", 1)[0].upper() in deny:
+            counters["tokenized_file_skipped"] += 1
+            continue
         t0 = time.time()
         fc = Counter()
         try:
@@ -298,7 +317,7 @@ def worker(args):
         cs, sym = meta["cs"], meta["sym"]
         c.execute("BEGIN")
         if cs:
-            c.executemany(UPSERT_OBS, ((cs, k, sym, v[0], v[1], v[2], v[3], v[4], v[5], v[6]) for k, v in obs.items()))
+            c.executemany(UPSERT_OBS, ((cs, k, sym, v[0], v[1], v[2], v[3], v[4], v[5], v[6], 1) for k, v in obs.items()))
             c.executemany(UPSERT_ABL, abl)
             c.executemany(UPSERT_DISC, disc)
             c.executemany("INSERT OR IGNORE INTO fwd VALUES (?,?,?,?,?,?)", fwd)
@@ -349,7 +368,7 @@ def merge(main, parts):
     for p in parts:
         main.execute(f"ATTACH DATABASE '{p}' AS w")
         main.execute("BEGIN")
-        main.execute("INSERT INTO obs SELECT cs, key, sym, ts, d, m, valid, prom, n, nf FROM w.obs WHERE 1 " + UPSERT_OBS.split(") VALUES (?,?,?,?,?,?,?,?,?,?) ", 1)[1])
+        main.execute("INSERT INTO obs SELECT cs, key, sym, ts, d, m, valid, prom, n, nf, nb FROM w.obs WHERE 1 " + UPSERT_OBS.split(") VALUES (?,?,?,?,?,?,?,?,?,?,?) ", 1)[1])
         main.execute("INSERT INTO abl SELECT * FROM w.abl WHERE 1 " + UPSERT_ABL.split("VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ", 1)[1])
         main.execute("INSERT INTO disc SELECT * FROM w.disc WHERE 1 " + UPSERT_DISC.split("VALUES (?,?,?,?,?,?,?,?,?,?,?) ", 1)[1])
         main.execute("INSERT OR IGNORE INTO fwd SELECT * FROM w.fwd")
@@ -396,16 +415,16 @@ def export(main, out_dir, meta):
         for key, syms, valid, pos, neg, sum_pos, prom, n, nf, last in main.execute(
                 "SELECT key, count(*), sum(valid), sum(CASE WHEN valid=1 AND d > ? THEN 1 ELSE 0 END), "
                 "sum(CASE WHEN valid=1 AND d < ? THEN 1 ELSE 0 END), sum(CASE WHEN valid=1 AND d > ? THEN d ELSE 0 END), "
-                "sum(prom), sum(n), sum(nf), max(ts) FROM obs WHERE cs=? AND key LIKE 'N|%' GROUP BY key", (EPS, -EPS, EPS, cs)):
-            naked[key[2:]] = [syms, valid or 0, pos or 0, neg or 0, round(sum_pos or 0.0, 6), prom or 0, n, nf, last]
+                "sum(prom), sum(n), sum(nf), max(ts), sum(nb) FROM obs WHERE cs=? AND key LIKE 'N|%' GROUP BY key", (EPS, -EPS, EPS, cs)):
+            naked[key[2:]] = [syms, valid or 0, pos or 0, neg or 0, round(sum_pos or 0.0, 6), prom or 0, n, nf, last, nb]
         pairs = {}
-        for key, syms, valid, pos, sum_pos, comp, comp_m, n, nf in main.execute(
+        for key, syms, valid, pos, sum_pos, comp, comp_m, n, nf, nb in main.execute(
                 "SELECT key, count(*), sum(valid), sum(CASE WHEN valid=1 AND d > ? THEN 1 ELSE 0 END), "
                 "sum(CASE WHEN valid=1 AND d > ? THEN d ELSE 0 END), "
                 "sum(CASE WHEN valid=1 AND d > ? AND m > ? THEN 1 ELSE 0 END), "
-                "sum(CASE WHEN valid=1 AND d > ? AND m > ? THEN m ELSE 0 END), sum(n), sum(nf) "
+                "sum(CASE WHEN valid=1 AND d > ? AND m > ? THEN m ELSE 0 END), sum(n), sum(nf), sum(nb) "
                 "FROM obs WHERE cs=? AND key LIKE 'P|%' GROUP BY key", (EPS, EPS, EPS, EPS, EPS, EPS, cs)):
-            pairs[key[2:]] = [syms, valid or 0, pos or 0, round(sum_pos or 0.0, 6), comp or 0, round(comp_m or 0.0, 6), n, nf]
+            pairs[key[2:]] = [syms, valid or 0, pos or 0, round(sum_pos or 0.0, 6), comp or 0, round(comp_m or 0.0, 6), n, nf, nb]
         pos_syms = defaultdict(set)
         for key, sym in main.execute("SELECT key, sym FROM obs WHERE cs=? AND key LIKE 'P|%' AND valid=1 AND d > ?", (cs, EPS)):
             pos_syms[key[2:]].add(sym)
@@ -434,8 +453,9 @@ def export(main, out_dir, meta):
         doc = {"meta": dict(meta, cat_side=cs, n_board_ctx=boards[0], n_sym_sides_board_ctx=boards[1], first_board_ts=boards[2],
                             last_board_ts=boards[3], n_sym_sides_evidence=syms_obs,
                             engine_rounds=dict(Counter((r or "").rsplit("-eng", 1)[-1] if r else "none" for r in rounds.elements())),
-                            columns={"naked": ["n_syms", "valid_syms", "pos_syms", "neg_syms", "sum_pos_d", "promoted_syms", "n_evals", "n_fresh", "last_ts"],
-                                     "pairs": ["n_syms", "valid_syms", "pos_syms", "sum_pos_d", "companion_syms", "companion_sum_m", "n_evals", "n_fresh"]}),
+                            columns={"naked": ["n_syms", "valid_syms", "pos_syms", "neg_syms", "sum_pos_d", "promoted_syms", "n_evals", "n_fresh", "last_ts", "n_boards"],
+                                     "pairs": ["n_syms", "valid_syms", "pos_syms", "sum_pos_d", "companion_syms", "companion_sum_m", "n_evals", "n_fresh", "n_boards"]},
+                            tokenized_files_skipped=meta.get("counters", {}).get("tokenized_file_skipped", 0)),
                "naked": naked, "pairs": pairs, "pair_pos_syms": {k: sorted(v) for k, v in pos_syms.items()}, "abl": abl, "abl_discoveries": disc,
                "forward": fwd}
         p = os.path.join(out_dir, f"evidence_{cs}.json.gz")

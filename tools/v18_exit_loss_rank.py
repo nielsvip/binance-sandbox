@@ -85,6 +85,8 @@ CURATED = [
     ("STATEFUL_PORTED_EXIT / REDUCE_TO_FLAT churn", lambda fam, st: fam.startswith(("STATEFUL_PORTED_EXIT", "REDUCE_TO_FLAT")),
      [("STRUCTURAL_EXIT_GATE_ENABLED", None), ("VEC_GENERIC_EXIT_MIN_GAIN_PCT", None)]),
 ]
+LEARNED_FIELDS = ("n_syms_measured", "n_syms_loss_reduced", "n_syms_loss_reduced_gain_ok", "sum_family_loss_delta_pp", "sum_d_gain",
+                  "n_d_gain_pos", "syms")
 NOT_WIRED = {"MIN_HOLD_BARS_BEFORE_EXIT": "dead on the churn paths (measured 2026-10-16); listed only once wired (doc 17 §9 open item 2)"}
 
 
@@ -423,6 +425,32 @@ def index_pairs(ev):
     return ev
 
 
+def aggregate_measured(measured):
+    """(c) evidence from the raw paired evals of `measure`: per (family, switch, cand) how many sym_sides had the family's
+    losing pnl reduced, and how many of those did it WITHOUT lowering the board gain (the support that counts)."""
+    fams = defaultdict(dict)
+    for ss, res in ((measured or {}).get("raw") or {}).items():
+        for r in res:
+            if r.get("skip") or r.get("inert_already_in_set") or "n_base_losers" not in r:
+                continue
+            e = fams[r["family"]].setdefault((r["switch"], r["cand"]), {"switch": r["switch"], "cand": r["cand"], "n_syms_measured": 0,
+                                                                     "n_syms_loss_reduced": 0, "n_syms_loss_reduced_gain_ok": 0,
+                                                                     "sum_family_loss_delta_pp": 0.0, "sum_d_gain": 0.0, "n_d_gain_pos": 0,
+                                                                     "syms": []})
+            delta = r["family_loss_after_total_pp"] - r["loss_before_pp"]
+            e["n_syms_measured"] += 1
+            e["sum_family_loss_delta_pp"] = round(e["sum_family_loss_delta_pp"] + delta, 6)
+            e["sum_d_gain"] = round(e["sum_d_gain"] + r["d_gain"], 6)
+            if r["valid"] and delta > C.EPS:
+                e["n_syms_loss_reduced"] += 1
+                if r["d_gain"] >= -C.EPS:
+                    e["n_syms_loss_reduced_gain_ok"] += 1
+            if r["valid"] and r["d_gain"] > C.EPS:
+                e["n_d_gain_pos"] += 1
+            e["syms"].append(ss)
+    return {f: sorted(v.values(), key=lambda e: -e["n_syms_loss_reduced_gain_ok"]) for f, v in fams.items()}
+
+
 def build_menu(cat_side, ranked_board, ranked_live, tidx, ev, measured, fwd):
     """family -> [paths]. Families = union of the top board + live_hermetic families by loss."""
     ev = index_pairs(ev)
@@ -488,27 +516,23 @@ def build_menu(cat_side, ranked_board, ranked_live, tidx, ev, measured, fwd):
             keep, _miss = _cands_for(tidx, sw, None)
             for c in keep[:3]:
                 add(sw, c, "token")
-        for m in (measured or {}).get(fam, []):
-            if m.get("n_syms_measured", 0) >= LEARNED_MIN_SYMS and m.get("n_syms_loss_reduced", 0) >= LEARNED_MIN_SYMS:
-                key = (m["switch"], m["cand"])
-                for p in paths:
-                    if (p["switch"], p["cand"]) == key:
-                        p["learned"] = {k: m[k] for k in ("n_syms_measured", "n_syms_loss_reduced", "sum_family_loss_delta_pp", "sum_d_gain", "n_d_gain_pos")}
-                if key not in seen:
-                    add(m["switch"], m["cand"], "learned")
-                for p in paths:
-                    if (p["switch"], p["cand"]) == key and p["source"] == "learned":
-                        p["support_n"], p["support_syms"] = m["n_syms_measured"], m["n_syms_loss_reduced"]
-        measured_keys = {(m["switch"], m["cand"]) for m in (measured or {}).get(fam, [])}
+        meas = {(m["switch"], m["cand"]): m for m in (measured or {}).get(fam, [])}
+        for key, m in meas.items():
+            if m["n_syms_loss_reduced_gain_ok"] >= LEARNED_MIN_SYMS and key not in seen:
+                add(key[0], key[1], "learned")
         for p in paths:
-            if p["source"] != "learned" and (p["switch"], p["cand"]) not in measured_keys:
+            m = meas.get((p["switch"], p["cand"]))
+            if m is None:
                 p["learned_status"] = "pending_evidence"
-            elif p["source"] != "learned":
-                m = next(x for x in measured[fam] if (x["switch"], x["cand"]) == (p["switch"], p["cand"]))
-                p["learned_status"] = "measured_supported" if m["n_syms_loss_reduced"] >= LEARNED_MIN_SYMS else "measured_not_supported"
-                p["learned"] = {k: m[k] for k in ("n_syms_measured", "n_syms_loss_reduced", "sum_family_loss_delta_pp", "sum_d_gain", "n_d_gain_pos")}
+                continue
+            p["learned"] = {k: m[k] for k in LEARNED_FIELDS}
+            ok = m["n_syms_loss_reduced_gain_ok"] >= LEARNED_MIN_SYMS
+            p["learned_status"] = "measured_supported" if ok else "measured_not_supported"
+            if p["source"] == "learned":
+                p["support_n"], p["support_syms"] = m["n_syms_measured"], m["n_syms_loss_reduced_gain_ok"]
         rank = {"learned": 0, "curated": 1, "token": 2}
-        paths.sort(key=lambda p: (rank[p["source"]], -(p.get("learned", {}).get("n_syms_loss_reduced") or 0), -(p["support_syms"] or 0)))
+        paths.sort(key=lambda p: (rank[p["source"]], p.get("learned_status") == "measured_not_supported",
+                                  -(p.get("learned", {}).get("n_syms_loss_reduced_gain_ok") or 0), -(p["support_syms"] or 0)))
         menu[fam] = paths
     return menu, dropped
 
@@ -538,7 +562,7 @@ def build(a):
             if kind == "FORWARD":
                 fwd[key] = (fwd.get(key, (0, 0))[0] + n, fwd.get(key, (0, 0))[1] + ok)
         measured = C.read_json(Path(a.measured) / f"menu_measure_{cs}.json", {}) if a.measured else {}
-        menu, dropped = build_menu(cs, ranked["board"], ranked["live_hermetic"], tidx, ev, (measured or {}).get("families", {}), fwd)
+        menu, dropped = build_menu(cs, ranked["board"], ranked["live_hermetic"], tidx, ev, aggregate_measured(measured), fwd)
         meta = {"cat_side": cs, "built_at": C.utc(), "era_cut": C.ERA_CUT_ISO[C.venue_of(cs)], "tool": "tools/v18_exit_loss_rank.py",
                 "board_ledgers": len(metas), "board_trades": len(brows), "board_sym_sides": len({m["sym_side"] for m in metas}),
                 "board_npz_windows": sorted({(m.get("window_start"), m.get("window_end")) for m in metas})[-3:],
