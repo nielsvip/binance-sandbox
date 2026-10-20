@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T22:13:24Z",
+ "ts": "2026-10-20T22:18:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -134,64 +134,43 @@
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 19.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 7940.0
+   "log_age_s": 8259.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 7942.0
+   "log_age_s": 8261.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T22:13:24Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "20 22:00:39 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $75 on bounce (prior max 0.0000)"
-  },
-  {
-   "ts": "2026-10-20T22:13:24Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:COMPUSDT_LONG",
-   "evidence": "20 22:03:02 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $1380 on bounce (prior max 1.9300)"
-  },
-  {
-   "ts": "2026-10-20T22:13:24Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:COMPUSDT_LONG",
-   "evidence": "order notional $1380.28 > MAX_ORDER_VALUE $300: 20 22:03:02 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:COMPUSDT_LONG @ 26.665300 qty=51.763287 ($1380.28) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px26.750000_exit22.700"
-  },
-  {
-   "ts": "2026-10-20T22:13:24Z",
+   "ts": "2026-10-20T22:18:43Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
@@ -199,8 +178,7 @@
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 3,
-  "SIZE_ANOMALY": 1
+  "CAP_BYPASS": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -269,5 +247,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.88
+ "sweep_s": 1.17
 }
