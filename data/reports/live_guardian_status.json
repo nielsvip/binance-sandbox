@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T12:48:46Z",
+ "ts": "2026-10-20T12:51:59Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 0.27,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -62,7 +62,7 @@
    "fills_6h": 1,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 0,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -124,131 +124,153 @@
  "process": {
   "fin": {
    "pids": [
-    "4593"
+    "29138"
    ],
-   "starts_30m": 1,
-   "log_age_s": 425.0
+   "starts_30m": 3,
+   "log_age_s": 617.0
   },
   "men": {
-   "pids": [
-    "31949"
-   ],
+   "pids": [],
    "starts_30m": 1,
-   "log_age_s": 394.0
+   "log_age_s": 159.0
   },
   "ang": {
    "pids": [
-    "19401"
+    "26074"
    ],
-   "starts_30m": 3,
-   "log_age_s": 860.0
+   "starts_30m": 4,
+   "log_age_s": 1052.0
   },
   "inf": {
-   "pids": [],
-   "starts_30m": 1,
-   "log_age_s": 427.0
+   "pids": [
+    "28865"
+   ],
+   "starts_30m": 3,
+   "log_age_s": 619.0
   },
   "flz": {
    "pids": [
-    "9318"
+    "23272"
    ],
    "starts_30m": 2,
-   "log_age_s": 371.0
+   "log_age_s": 563.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 32347.0
+   "log_age_s": 32539.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 32348.0
+   "log_age_s": 32540.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:00Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 11.3"
+  },
+  {
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T09:07:23Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T12:31:33Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:ARUSDT_LONG",
    "evidence": "REDUCE BB_TAKE_15m_g0.48 @ 2026-10-20T12:24:53Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "inf:ARUSDT_LONG",
    "evidence": "REDUCE VEL_EXIT_v4h-7.05_g1.46 @ 2026-10-20T12:26:38Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "fin",
+   "evidence": "3 new process ids in 30 min (['4593', '22745', '29138'])"
+  },
+  {
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 425s"
+   "evidence": "ez_manage_fin.log not written for 617s"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
+   "severity": "CRITICAL",
+   "kind": "PROCESS_DOWN",
+   "key": "men",
+   "evidence": "no ez_manage.py --account men process"
+  },
+  {
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 394s"
+   "evidence": "ez_manage_men.log not written for 159s"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "3 new process ids in 30 min (['82106', '8790', '19401'])"
+   "evidence": "4 new process ids in 30 min (['82106', '8790', '19401', '26074'])"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "ang",
-   "evidence": "ez_manage_ang.log not written for 860s"
+   "evidence": "ez_manage_ang.log not written for 1052s"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
+   "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "no ez_manage.py --account inf process"
+   "evidence": "3 new process ids in 30 min (['78861', '21363', '28865'])"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 427s"
+   "evidence": "ez_manage_inf.log not written for 619s"
   },
   {
-   "ts": "2026-10-20T12:48:50Z",
+   "ts": "2026-10-20T12:52:02Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 371s"
+   "evidence": "ez_manage_flz.log not written for 563s"
   }
  ],
  "alert_counts": {
+  "POSITION_STATE_MISMATCH": 1,
   "NATIVE_FILL_IN_EXACT_MODE": 4,
+  "RESTART_LOOP": 3,
   "STALE_LOG": 5,
-  "RESTART_LOOP": 1,
   "PROCESS_DOWN": 1
  },
  "active_interventions": {
@@ -283,5 +305,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 4.18
+ "sweep_s": 2.73
 }

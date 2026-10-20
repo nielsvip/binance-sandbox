@@ -1,0 +1,50 @@
+{
+ "window_from": "10-20 11:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 3
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1INCHUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 12:31",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 12:24",
+   "actual": "REDUCE",
+   "actual_reason": "BB_TAKE_15m_g0.48",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 12:26",
+   "actual": "REDUCE",
+   "actual_reason": "VEL_EXIT_v4h-7.05_g1.46",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
