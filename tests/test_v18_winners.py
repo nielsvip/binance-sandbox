@@ -79,7 +79,7 @@ def test_pilot_r1_wiring_pins():
     assert '_v18_r1_on = bool(_V18P is not None and _V18P.flag_on("V18_WINNERS"))' in SRC
     assert 'max_prom=int(os.environ.get("V18_WINNERS_MAX_ADOPT", "8")), book=_v18' in SRC
     assert 'k = int(os.environ.get("V18_WINNERS_K", "60"))' in SRC
-    assert 'f"WINNERS:PACK:{sw}={c}+"' in SRC and 'f"WINNERS:NAKED:{sw}={c}"' in SRC
+    assert 'f"WINNERS:{_wr}:{sw}={c}+"' in SRC and 'f"WINNERS:{_wr}:{sw}={c}"' in SRC
     # R1/R2/R3 run before the main pass, after BEST-START (which runs in _main_single before _spec_fill_workbook)
     i_pre = SRC.index('_v18_winners(_t.time() + float(os.environ.get("V18_WINNERS_S", "240")))')
     i_loop = SRC.index("    for qi, (sname, rr, switch, cand) in enumerate(pending_queue):")

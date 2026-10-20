@@ -632,3 +632,25 @@ def extend_deadline(rate_pm: float, now: float, deadline: float, window_s: float
     if rate_pm < min_lift_pm() or deadline - now >= 60.0 or now >= hard - 30.0:
         return deadline
     return min(hard, now + max(float(chunk_s), float(window_s)))
+
+
+def untried_p() -> float:
+    """USER law 'every combination keeps its chance': a pair with n < 3 across the cat_side gets V18_UNTRIED_PER_1000 (50)."""
+    try:
+        return min(1.0, max(0.0, float(os.environ.get("V18_UNTRIED_PER_1000", "50")) / 1000.0))
+    except Exception:
+        return 0.05
+
+
+PHASE_PREFIXES = (("WINNERS", "WINNERS"), ("XPOLL", "XPOLL"), ("EXITREP", "EXITREP"), ("ABL", "ABL"), ("FOCUS", "FOCUS"), ("SURGEON", "SURGEON"), ("V17_", "V17"), ("COMBO", "COMBO"), ("RED_RETRY", "RED_RETRY"), ("RECALC", "MAIN"), ("JOINT", "MAIN"))
+
+
+def phase_of(sheet, label, switch_sheets=()) -> str:
+    """Delta-log `phase` field: MAIN for template-row evals, else the phase prefix of the label (E8 hook spec §4)."""
+    lab = str(label or "")
+    for pre, ph in PHASE_PREFIXES:
+        if lab.startswith(pre):
+            return ph
+    if sheet in set(switch_sheets or ()):
+        return "MAIN"
+    return str(sheet or "OTHER").split(":", 1)[0]

@@ -17,7 +17,9 @@ import re
 
 PILOT = pathlib.Path("v15_pilot.py")
 # the sequential + cycle fill loop of _main_single, where a per-row write costs the whole board
-FILL_LO, FILL_HI = 13000, 14300
+# 2026-10-20 V18: anchored on the loop's own marker (was the fixed line window 13000-14300, which every insertion above shifts)
+FILL_MARKER = "    # 0914 branching: if cycle mode use dedicated round-robin handler else legacy sequential"
+FILL_SPAN = 1300
 
 
 def _text():
@@ -25,7 +27,9 @@ def _text():
 
 
 def _fill_lines():
-    return [(i + 1, l) for i, l in enumerate(_text().splitlines()) if FILL_LO < i + 1 < FILL_HI]
+    lines = _text().splitlines()
+    lo = lines.index(FILL_MARKER)
+    return [(i + 1, l) for i, l in enumerate(lines) if lo <= i < lo + FILL_SPAN]
 
 
 def test_flush_helpers_exist_and_are_throttled():

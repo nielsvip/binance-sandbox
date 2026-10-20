@@ -105,7 +105,7 @@ def test_wiring_pins():
     for tok in ("ABL_STRIP:", "ABL_DISCOVER:", "ABL_RESTORE1:", "ABL_ATTR:", "ABL_RESTORE:", "ABL_EXEMPT:", "ABL_PROXY:", "[ABLATION-NO-EXEMPT]", 'f"ABL!{cat}:', "[V17-PHASE]", '"V17_ROUNDS"'):
         assert tok in SRC, tok
     # every promotion re-uses the exact promoted set's own eval (greedy re-eval vs the latest chain)
-    assert "_v17_promote(choice, how, prefix, ph)" in SRC
+    assert "_v17_promote(choice, how, prefix, ph, book=book)" in SRC
 
 
 def test_yellow_frequency_rule():

@@ -4794,6 +4794,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_ids = _V18P.IdentityBook() if (_V18P is not None and _V18P.identity_settle_on()) else None
     _v18_io = bool(_V18P is not None and _V18P.io_throttle_on())
     _v18_wb = {"on": bool(_V18P is not None and _V18P.ledger_writeback_on()), "pending": [], "ver": None, "tag": None, "capture": None}
+    _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
+    _v18_lx: dict = {}  # label -> extra delta-log fields of a V18 phase eval (companions / family / remedy_class / from_cat_side)
     if _v18_ids is not None or _v18_io or _v18_wb["on"]:
         print(f"[V18] {new_symside} identity_settle={_v18_ids is not None} io_throttle={_v18_io} ledger_writeback={_v18_wb['on']}", flush=True)
     def _v18_settle_row(sname: str, rr: int, switch, cand, key: str, cum_before: float):
@@ -6054,11 +6056,70 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_floor_p = _V18P.floor_p() if _v18_floor_on else 0.0
     _v18_floor_tot: dict = {}
     _v18_floor_cs = map_key_for_symside(new_symside)
+    # V18 BRAIN (docs/v15_pending/19_E8_BRAIN_PILOT_HOOK_20261020.md): V18_BRAIN=1 (default OFF) = the learned per-cat_side
+    # allocator decides rows/cells (tools/v18_brain.PilotBrainV18.decide, p booked as brain_p, skipped cells SETTLE lines);
+    # the model is also the pair-evidence source of the UNTRIED rule (USER law "every combination keeps its chance"): a
+    # (switch=cand, filter=opt) pair with n < 3 across the cat_side gets p = V18_UNTRIED_PER_1000/1000 (50), never the 5/1000
+    # floor and never the brain's p, deterministic draw so the fleet spreads first trials across sym_sides.
+    _v18_brain_on = bool(_V18P is not None and _V18P.flag_on("V18_BRAIN"))
+    _v18_brain = None
+    _v18_brain_p: dict = {}
+    _v18_untried_p = _V18P.untried_p() if _V18P is not None else 0.05
+    _v18_untried_tot = {"untried_seen": 0, "untried_kept": 0, "brain_cells_seen": 0, "brain_cells_out": 0, "brain_rows_seen": 0, "brain_rows_out": 0}
+    if _v18_brain_on or _v18_floor_on:
+        try:
+            from tools import v18_brain as _V18B
+            _v18_bp = Path(os.environ.get("V18_BRAIN_DIR") or (ROOT / "data" / "brain")) / f"v18_brain_{_v18_floor_cs}.json"
+            _v18_brain = _V18B.PilotBrainV18(_v18_bp, new_symside) if _v18_bp.exists() else None
+            if _v18_brain is not None:
+                _v18_brain.observe_ctx(tier=_tier_name, bh=bh)
+            print(f"[V18-BRAIN] {new_symside} model={_v18_bp.name if _v18_brain is not None else None} at={(_v18_brain.meta.get('at') if _v18_brain is not None else None)} allocator={'ON' if (_v18_brain_on and _v18_brain is not None) else 'OFF'} untried_p={_v18_untried_p}", flush=True)
+        except Exception as _v18be:
+            print(f"[V18-BRAIN-WARN] {new_symside} load {_v18be} — full board, floor without pair evidence", flush=True)
+            _v18_brain = None
+    _v18_round = os.environ.get("V15_DEFAULTS_ROUND", "")
+    def _v18_pair_n(sname: str, rk: str, h):
+        if _v18_brain is None:
+            return None
+        try:
+            return float(_v18_brain.decide(sname, rk, str(h).strip(), _v18_round)["n"])
+        except Exception:
+            return None
     def _v18_floor_keep_fn(sname: str, switch, cand):
         _rk = f"{str(switch).strip()}={str(cand).strip()}"
         def _keep(kind, h):
-            return _V18P.floor_draw(_v18_floor_cs, new_symside, sname, _rk if kind == "row" else f"{_rk}@{str(h).strip()}", _brain_rid) < _v18_floor_p
+            _u = _V18P.floor_draw(_v18_floor_cs, new_symside, sname, _rk if kind == "row" else f"{_rk}@{str(h).strip()}", _brain_rid)
+            if kind != "row":
+                _n = _v18_pair_n(sname, _rk, h)
+                if _n is not None and _n < 3:
+                    _v18_untried_tot["untried_seen"] += 1
+                    _kp = _u < max(_v18_floor_p, _v18_untried_p)
+                    _v18_untried_tot["untried_kept"] += 1 if _kp else 0
+                    return _kp
+            return _u < _v18_floor_p
         return _keep
+    def _v18_brain_cells(info: dict, sname: str, switch, cand):
+        # V18 brain allocator on this row's cells: evidenced pair -> brain p; untried pair -> V18_UNTRIED_PER_1000; skipped
+        # cells ride prior_skipped (PRIOR-REVIVED on a positive naked) and get their p in _v18_brain_p (SETTLE lines below)
+        _rk = f"{str(switch).strip()}={str(cand).strip()}"
+        keep_, skip_ = [], []
+        for _h in info["hdrs"]:
+            d = _v18_brain.decide(sname, _rk, str(_h).strip(), _v18_round)
+            _v18_untried_tot["brain_cells_seen"] += 1
+            if float(d.get("n") or 0.0) < 3:
+                _v18_untried_tot["untried_seen"] += 1
+                _pe = _v18_untried_p
+                _kp = _V18P.floor_draw(_v18_floor_cs, new_symside, sname, f"{_rk}@{str(_h).strip()}", _v18_round) < _pe
+                _v18_untried_tot["untried_kept"] += 1 if _kp else 0
+            else:
+                _pe, _kp = float(d["p"]), bool(d["keep"])
+            _v18_brain_p[(sname, str(_h))] = round(_pe, 6)
+            (keep_ if _kp else skip_).append(_h)
+        if skip_:
+            _v18_untried_tot["brain_cells_out"] += len(skip_)
+            info["hdrs"] = keep_
+            info["prior_skipped"] = list(info.get("prior_skipped") or []) + skip_
+            info["v18_brain_skipped"] = list(skip_)
     def _row_static(sname: str, rr: int, switch, cand) -> dict:
         # structural class + this row's yellow cells (read once; the running set is applied at eval time)
         k = (sname, rr)
@@ -6332,11 +6393,32 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 info["coarse_deferred_filters"] = []
                 info["prior_skipped"] = []
                 info["inert_filters"] = []
+        if _v18_brain_on and _v18_brain is not None and not _brain_exempt(sname, switch, cand):
+            try:
+                _v18_rk = f"{str(switch).strip()}={str(cand).strip()}"
+                if info["kind"] == "eval" and _tier_name != "WINNER":
+                    _v18_rd = _v18_brain.decide(sname, _v18_rk, None, _v18_round)
+                    _v18_untried_tot["brain_rows_seen"] += 1
+                    if not _v18_rd["keep"]:
+                        _v18_untried_tot["brain_rows_out"] += 1
+                        info.update(kind="skip", reason=f"BRAIN_SAMPLED_OUT: V18 p_pos={_v18_rd['p_pos']:.4f} p_eval={_v18_rd['p']:.4f} n={_v18_rd['n']:g} (settled; floor-rotated, never a fake 0)", g=None)
+                        info["v18_brain_row_p"] = round(float(_v18_rd["p"]), 6)
+                if info["kind"] == "eval" and info["hdrs"]:
+                    _v18_brain_cells(info, sname, switch, cand)
+            except Exception as _v18bce:
+                print(f"[V18-BRAIN-WARN] {sname}!{rr} {_v18bce} — row calculated", flush=True)
         if _v18_floor_on:
             try:
                 _V18P.floor_add(_v18_floor_tot, _V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p))
             except Exception as _v18fe:
                 print(f"[V18-FLOOR-WARN] {sname}!{rr} {_v18fe} — row unchanged", flush=True)
+        if _v18_brain_on and _v18_brain is not None:
+            _v18_rk2 = f"{str(switch).strip()}={str(cand).strip()}"
+            if info["kind"] == "skip" and info.get("v18_brain_row_p") is not None:
+                _delta_log({"ts": utcnow(), "sym_side": new_symside, "label": "SETTLE", "code": "BRAIN_SKIP", "sheet": sname, "row": rr, "key": _v18_rk2, "filter": None, "p": info["v18_brain_row_p"], "round": _v18_round})
+            for _h in info.get("v18_brain_skipped") or []:
+                if _h not in info["hdrs"]:
+                    _delta_log({"ts": utcnow(), "sym_side": new_symside, "label": "SETTLE", "code": "BRAIN_SKIP", "sheet": sname, "row": rr, "key": _v18_rk2, "filter": str(_h), "p": _v18_brain_p.get((sname, str(_h))), "round": _v18_round})
         _static_info[k] = info
         return info
     def _row_plan(sname: str, rr: int, switch, cand) -> dict:
@@ -6431,6 +6513,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _spec_state["ptr"] += 1
         if _taskcap:
             _flush_batch()
+    def _v18_logfields(sname, rr, label):
+        _bp = _v18_brain_p.get((sname, str(label)))
+        out = {"phase": _V18P.phase_of(sname, label, SWITCH_SHEETS), "brain_p": 1.0 if _bp is None else _bp, "brain_model": (_v18_brain.meta.get("at") if _v18_brain is not None else None)}
+        out.update(_v18_lx.get(str(label)) or {})
+        return out
     def _get(sname: str, rr: int, switch, cand, label: str, ov: dict, deadline: float, cum_before: float):
         # one real evaluate_prepared_sanitized result (pool / cache / serial thread), hard deadline, one DELTA-LOG line
         ck = _ck(ov)
@@ -6502,7 +6589,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             finally:
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
-        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
+        _delta_log({**(_v18_logfields(sname, rr, label) if _v18_logx[0] else {}), "ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
         if _v18_ids is not None and res is not None and not err:
             _v18_ids.note(hash(ck), cum_before, f"{sname}!{rr}:{label}")
         return res, err
@@ -8409,13 +8496,15 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         ph = _v17_phase_start(tag)
         k = int(os.environ.get("V18_WINNERS_K", "60"))
         cands, refused = [], {}
-        for w in _V18P.winners_take(_v18_dg, k) if _v18_dg else []:
+        for _wr, w in enumerate(_V18P.winners_take(_v18_dg, k) if _v18_dg else [], 1):
             sw, c, comps = str(w["switch"]).strip(), w["cand"], _V18P.companions_of(w)
             if comps:
-                x = _v18_cand(f"WINNERS:PACK:{sw}={c}+" + "+".join(f"{f}={o}" for f, o in comps), [(sw, c)] + comps, refused, score=w.get("score"))
+                _lab = f"WINNERS:{_wr}:{sw}={c}+" + "+".join(f"{f}={o}" for f, o in comps)
+                _v18_lx[_lab] = {"companions": [f"{f}={o}" for f, o in comps], "pack": True}
+                x = _v18_cand(_lab, [(sw, c)] + comps, refused, score=w.get("score"))
                 if x:
                     cands.append(x)
-            x = _v18_cand(f"WINNERS:NAKED:{sw}={c}", [(sw, c)], refused, score=w.get("score"))
+            x = _v18_cand(f"WINNERS:{_wr}:{sw}={c}", [(sw, c)], refused, score=w.get("score"))
             if x:
                 cands.append(x)
         first = _v17_greedy(cands, "v18_winners", "WINNERS", deadline, ph, accept=_v18_accept, max_prom=int(os.environ.get("V18_WINNERS_MAX_ADOPT", "8")), book=_v18) if cands else []
@@ -8432,6 +8521,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         cands, refused = [], {}
         for x in _V18P.xpoll_take(_v18_dg, _v18_floor_cs, kx):
             sw, c, frm = str(x["switch"]).strip(), x["cand"], str(x.get("from_cat_side")).upper()
+            _v18_lx[f"XPOLL:{frm}:{sw}={c}"] = {"from_cat_side": frm}
             it = _v18_cand(f"XPOLL:{frm}:{sw}={c}", [(sw, c)] + _V18P.companions_of(x), refused, score=x.get("score"))
             if it:
                 cands.append(it)
@@ -8486,6 +8576,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             top = ranked[:nfam]
             cands, refused, seen = [], {}, set()
             def _add(x, fam):
+                if x:
+                    _v18_lx[x["label"]] = {"family": fam, "family_loss_before": (table.get(fam) or {}).get("loss_sum_pct"), "src": x.get("src")}
                 if not x:
                     return
                 sig = json.dumps(x["delta_ov"], sort_keys=True, default=str)
@@ -8504,7 +8596,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _add(_v18_cand(f"EXITREP:{fam}:{e['switch']}={e['cand']}" + ("+" + "+".join(f"{f}={o}" for f, o in comps) if comps else ""), [(str(e["switch"]).strip(), e["cand"])] + comps, refused, src=e.get("source") or "digest"), fam)
                 for sw in _V18P.curated_switches_for(fam, det):
                     for v, _pv in _v17_value_cands(sw, opts.get(sw, []), include_off=False)[:6]:
-                        _add(_v18_cand(f"EXITREP:{fam}:curated:{sw}={v}", [(sw, v)], refused, src="curated"), fam)
+                        _add(_v18_cand(f"EXITREP:{fam}:{sw}={v}", [(sw, v)], refused, src="curated"), fam)
                 ftok = {t for t in str(fam).upper().split("_") if len(t) > 2}
                 per = 0
                 for (_s, _r, _w, _c) in queue:
@@ -8519,7 +8611,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     except Exception:
                         continue
                     n0 = len(cands)
-                    _add(_v18_cand(f"EXITREP:{fam}:token:{_w}={_c}", [(_w, _c)], refused, src="token"), fam)
+                    _add(_v18_cand(f"EXITREP:{fam}:{_w}={_c}", [(_w, _c)], refused, src="token"), fam)
                     per += len(cands) - n0
             for e in _V18P.fixed_stop_entries(_v18_dg):
                 comps = _V18P.companions_of(e)
@@ -8589,7 +8681,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 kind = str((v.get("remedy") or {}).get("kind"))
                 lab = _V18P.REMEDY_LABEL.get(kind, kind)
                 parts = [(str(v["switch"]).strip(), v["cand"])] + [(k2, v2) for k2, v2 in (v["remedy"]["override"] or {}).items()]
-                x = _v18_cand(f"ABL_VETO:{lab}:{v['switch']}={v['cand']}~{v.get('filter')}", parts, vrefused, done_key=f"ABL!VETO:{v['switch']}={v['cand']}+{lab}")
+                _v18_lx[f"ABL_VETO:{lab}:{v['switch']}={v['cand']}+{v.get('filter')}"] = {"remedy_class": lab, "group": "VETO"}
+                x = _v18_cand(f"ABL_VETO:{lab}:{v['switch']}={v['cand']}+{v.get('filter')}", parts, vrefused, done_key=f"ABL!VETO:{v['switch']}={v['cand']}+{lab}")
                 if x and isinstance(x["delta_ov"].get("FILTER_EXEMPTIONS"), dict):
                     x["delta_ov"]["FILTER_EXEMPTIONS"] = v17_merge_exemptions(None, x["delta_ov"]["FILTER_EXEMPTIONS"])
                 if x:
@@ -8692,9 +8785,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     for v, pv in _v17_value_cands(f, fopts.get(f, []), include_off=False)[: int(os.environ.get("V18_ABL_RESET_MAX", "6"))]:
                         if _same_val(pv, strip.get(f)):
                             continue
-                        tier_b.append({**base_it, "label": f"ABL_GLOBAL_RESET:{g}:{x['sw']}={x['cand']}~{f}={v}", "delta_ov": {**x["delta_ov"], f: pv}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+GLOBAL_RESET:{f}={v}", "remedy": "GLOBAL_RESET", "parts": [f"{x['sw']}={x['cand']}", f"{f}={v}"]})
+                        tier_b.append({**base_it, "label": f"ABL_RESET:{g}:{x['sw']}={x['cand']}+{f}={v}", "delta_ov": {**x["delta_ov"], f: pv}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+GLOBAL_RESET:{f}={v}", "remedy": "GLOBAL_RESET", "parts": [f"{x['sw']}={x['cand']}", f"{f}={v}"]})
                     if f in strip:
-                        tier_c.append({**base_it, "label": f"ABL_GLOBAL_OFF:{g}:{x['sw']}={x['cand']}~{f}", "delta_ov": {**x["delta_ov"], f: strip[f]}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+GLOBAL_OFF:{f}", "remedy": "GLOBAL_OFF", "parts": [f"{x['sw']}={x['cand']}", f"{f}={strip[f]}"]})
+                        tier_c.append({**base_it, "label": f"ABL_GLOBAL_OFF:{g}:{f}+{x['sw']}={x['cand']}", "delta_ov": {**x["delta_ov"], f: strip[f]}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+GLOBAL_OFF:{f}", "remedy": "GLOBAL_OFF", "parts": [f"{x['sw']}={x['cand']}", f"{f}={strip[f]}"]})
                 if ex_all:
                     if isinstance(ex_all.get("FILTER_EXEMPTIONS"), dict):
                         try:
@@ -8702,7 +8795,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         except Exception:
                             ex_all = {}
                 if ex_all:
-                    tier_a.append({**base_it, "label": f"ABL_EXEMPT:{g}:{x['sw']}={x['cand']}~" + ",".join(ex_lab), "delta_ov": {**x["delta_ov"], **ex_all}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+EXEMPT", "remedy": "EXEMPT", "parts": [f"{x['sw']}={x['cand']}"] + [f"{k2}={json.dumps(v2, sort_keys=True) if isinstance(v2, (dict, list)) else v2}" for k2, v2 in ex_all.items()]})
+                    tier_a.append({**base_it, "label": f"ABL_EXEMPT:{g}:{x['sw']}={x['cand']}+" + ",".join(ex_lab), "delta_ov": {**x["delta_ov"], **ex_all}, "done_key": f"ABL!{g}:{x['sw']}={x['cand']}+EXEMPT", "remedy": "EXEMPT", "parts": [f"{x['sw']}={x['cand']}"] + [f"{k2}={json.dumps(v2, sort_keys=True) if isinstance(v2, (dict, list)) else v2}" for k2, v2 in ex_all.items()]})
+            for _tc in tier_a + tier_b + tier_c:
+                _v18_lx[_tc["label"]] = {"remedy_class": _tc["remedy"], "group": g}
             done_rec = set()
             for tier in (tier_a, tier_b, tier_c):
                 tier = [c for c in tier if c["rec_i"] not in done_rec and not _V18P.deny_reason(c["delta_ov"]) and not _v17_blocked(c["delta_ov"])]
@@ -9297,8 +9392,11 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         progress["v18_identity"] = dict(_v18_ids.totals)
         print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
     if _v18_floor_on:
-        progress.setdefault("v18", {})["floor"] = {**dict(_v18_floor_tot), "p": _v18_floor_p, "per_1000": round(_v18_floor_p * 1000.0, 3), "rid": _brain_rid, "cat_side": _v18_floor_cs}
-        print(f"[V18-FLOOR] {new_symside} {_v18_floor_cs} p={_v18_floor_p * 1000.0:g}/1000 rows_seen={_v18_floor_tot.get('rows_seen', 0)} rows_policy_skipped={_v18_floor_tot.get('rows_policy_skipped', 0)} rows_rescued={_v18_floor_tot.get('rows_rescued', 0)} cells_policy_skipped={_v18_floor_tot.get('cells_policy_skipped', 0)} cells_rescued={_v18_floor_tot.get('cells_rescued', 0)} cells_settled={_v18_floor_tot.get('cells_settled', 0)}", flush=True)
+        progress.setdefault("v18", {})["floor"] = {**dict(_v18_floor_tot), **dict(_v18_untried_tot), "untried_p": _v18_untried_p, "p": _v18_floor_p, "per_1000": round(_v18_floor_p * 1000.0, 3), "rid": _brain_rid, "cat_side": _v18_floor_cs}
+        print(f"[V18-FLOOR] {new_symside} {_v18_floor_cs} p={_v18_floor_p * 1000.0:g}/1000 rows_seen={_v18_floor_tot.get('rows_seen', 0)} rows_policy_skipped={_v18_floor_tot.get('rows_policy_skipped', 0)} rows_rescued={_v18_floor_tot.get('rows_rescued', 0)} cells_policy_skipped={_v18_floor_tot.get('cells_policy_skipped', 0)} cells_rescued={_v18_floor_tot.get('cells_rescued', 0)} cells_settled={_v18_floor_tot.get('cells_settled', 0)} untried_p={_v18_untried_p * 1000.0:g}/1000 untried_seen={_v18_untried_tot['untried_seen']} untried_kept={_v18_untried_tot['untried_kept']}", flush=True)
+    if _v18_brain_on and _v18_brain is not None:
+        progress.setdefault("v18", {})["brain"] = {**dict(_v18_untried_tot), "model_at": _v18_brain.meta.get("at"), "booked": dict(_v18_brain.booked)}
+        print(f"[V18-BRAIN] {new_symside} rows out {_v18_untried_tot['brain_rows_out']}/{_v18_untried_tot['brain_rows_seen']} cells out {_v18_untried_tot['brain_cells_out']}/{_v18_untried_tot['brain_cells_seen']} untried kept {_v18_untried_tot['untried_kept']}/{_v18_untried_tot['untried_seen']}", flush=True)
     if _v17_on and pending_queue:
         try:  # carry book: this board's evaluated naked deltas + carried rows -> ~/v15_carry/<sym_side>.json
             for _dk, _dv in (progress.get("done") or {}).items():
