@@ -38,6 +38,7 @@ try:
 except Exception:
     MIN_KLINES_THRESHOLD = 1200
 MAX_DATA_FILE=cfg.BASE_PATH/'klines_maxed_symbols.json'
+INCEPTION_FILE=cfg.BASE_PATH/'data'/'klines_inception.json'
 MAX_DATA_RETRY_HOURS=168
 _throttle_state={'per_second':deque(),'per_minute':deque(),'lock':None,'ban_until':0.0,'ban_wall_ms':0.0,'last_pause_log':0.0}
 BAN_STATE_FILE=cfg.BASE_PATH/'data'/'ez_klines_ban_state.json'
@@ -288,6 +289,33 @@ def mark_symbol_maxed(symbol,interval,bar_count):
     save_maxed_symbols(maxed)
     log(f"📌 Marked {symbol} {interval} as maxed ({bar_count} bars) - won't retry for {MAX_DATA_RETRY_HOURS}h")
     
+def _load_inception():
+    try:
+        with open(INCEPTION_FILE, 'r') as f: return json.load(f)
+    except Exception: return {}
+def _file_earliest(symbol, interval):
+    try:
+        best_file, _, _ = get_best_klines_file(symbol, interval)
+        with open(best_file, 'r') as f: data = json.load(f)
+        return min(bar['timestamp'] for bar in data if 'timestamp' in bar)
+    except Exception: return None
+def mark_inception(symbol, interval, earliest_iso):
+    """USER 2026-10-20: a backwards page that returns nothing older = the listing bar. Recorded so restarts stop re-asking
+    Binance for bars that do not exist (104 young-listing D files x every restart; limit=1500 = top weight tier)."""
+    inc = _load_inception()
+    inc[f'{symbol}_{interval}'] = {'earliest': earliest_iso, 'checked': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+    try:
+        INCEPTION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = f'{INCEPTION_FILE}.tmp'
+        with open(tmp_path, 'w') as f: json.dump(inc, f, indent=1, sort_keys=True)
+        os.replace(tmp_path, INCEPTION_FILE)
+    except Exception as e: log(f'Error saving inception: {e}')
+def at_inception(symbol, interval, inc=None):
+    """True while the file still starts at (or before) the bar Binance confirmed has nothing older."""
+    rec = (inc if inc is not None else _load_inception()).get(f'{symbol}_{interval}')
+    if not rec: return False
+    earliest = _file_earliest(symbol, interval)
+    return earliest is not None and earliest[:19] <= str(rec.get('earliest', ''))[:19]
 async def fetch_klines_api(symbol, interval, semaphore, session):
     """Fetch up to 1500 bars for a symbol/interval from Binance API"""
     try:
@@ -723,7 +751,9 @@ async def fetch_historical_paginated(symbol, interval, session, semaphore):
                     if response.status != 200: break
                     data = await response.json()
         except Exception: break
-        if not data: break
+        if not data:
+            if earliest_ts and isinstance(data, list): mark_inception(symbol, interval, earliest_ts.strftime('%Y-%m-%dT%H:%M:%S'))
+            break
         rows = []
         for kline in data:
             try: rows.append({'timestamp': datetime.fromtimestamp(kline[0] / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'open': float(kline[1]), 'high': float(kline[2]), 'low': float(kline[3]), 'close': float(kline[4]), 'volume': float(kline[5])})
@@ -732,7 +762,9 @@ async def fetch_historical_paginated(symbol, interval, session, semaphore):
         added = merge_and_write(symbol, interval, rows)
         total_added += added
         new_earliest = min(isoparse(r['timestamp']) for r in rows)
-        if earliest_ts and new_earliest >= earliest_ts: break
+        if earliest_ts and new_earliest >= earliest_ts:
+            mark_inception(symbol, interval, earliest_ts.strftime('%Y-%m-%dT%H:%M:%S'))
+            break
         earliest_ts = new_earliest
         if added == 0: break
     return total_added
@@ -753,6 +785,8 @@ async def fetch_all_max_historical(intervals=None):
     symbols = sorted(get_active_symbols())
     if not symbols: log('fetch_all_max_historical: no active symbols'); return
     plan = []
+    _inc = _load_inception()
+    _at_listing = 0
     for interval in intervals:
         _need = MIN_KLINES_PER_INTERVAL.get(interval, MIN_KLINES_THRESHOLD)
         for symbol in symbols:
@@ -761,10 +795,14 @@ async def fetch_all_max_historical(intervals=None):
             except Exception:
                 _count = 0
             if (_count or 0) < _need:
+                if at_inception(symbol, interval, _inc):
+                    _at_listing += 1
+                    continue
                 plan.append((symbol, interval))
     if not plan:
-        log(f'fetch_all_max_historical: all {len(symbols)} symbols already at MIN depth — nothing to backfill, skipping')
+        log(f'fetch_all_max_historical: all {len(symbols)} symbols at MIN depth or at listing ({_at_listing}) — nothing to backfill, skipping')
         return
+    log(f'fetch_all_max_historical: {_at_listing} shallow symbol/TF already start at their listing bar — skipped (no API)')
     log(f'fetch_all_max_historical: backfilling {len(plan)} shallow symbol/TF (rest at depth, skipped)...')
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
     bind_kwargs = _resolve_local_bind_kwargs()

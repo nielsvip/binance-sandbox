@@ -14346,15 +14346,28 @@ async def _vec_exact_process(
             _hp_t.register_dispatch(position_key, _tve.vec_reason(_ev), _ev.get("prov"), _act[0], config)
         except Exception:
             pass
-        _res = await queue_trade_action(
-            order_queue,
-            trade_manager,
-            position_key,
-            _act[0],
-            _tve.vec_reason(_ev),
-            100.0,
-            override_qty=_act[1],
-        )
+        # 2026-10-20: THIS STAMP WAS MISSING. The npz_twin dispatch site (~14197) marks structural vec provenance before
+        # queue_trade_action and resets it in a finally; this ORACLE site did not, so every exposure-increasing order it
+        # produced was refused by the hermetic gate (tradier_manage.py:47901, config_tradier.TRADIER_HERMETIC_ENFORCE=True)
+        # with "BLOCKED_HERMETIC_NOT_VEC". Measured on AMD_LONG: the oracle engine produced 172 vec events from 559 evals
+        # and executed ZERO — every one refused for want of this stamp. That is why the only stock engine that can decide
+        # in a replay could never produce a live leg, and therefore why no stock trade-level parity verdict has ever been
+        # obtainable. Same call, same reset discipline as the npz_twin site; _last_ts is the twin buffer's decision bar.
+        from live_twins import vec_provenance as _vprov_o
+
+        _pv_or = _vprov_o.mark(position_key, _last_ts, _act[0], "VEC_EXACT_TWIN")
+        try:
+            _res = await queue_trade_action(
+                order_queue,
+                trade_manager,
+                position_key,
+                _act[0],
+                _tve.vec_reason(_ev),
+                100.0,
+                override_qty=_act[1],
+            )
+        finally:
+            _vprov_o.reset(_pv_or)
         _tve.record_dispatch(config.BASE_PATH, position_key, _ev, _act, _res)
         logger.warning(
             f"[VEC_EXACT] {position_key}: {_act[0]} qty={_act[1]:.4f} reason={_tve.vec_reason(_ev)[:80]} -> {_res}"

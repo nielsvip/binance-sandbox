@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-20 02:05 UTC",
- "total_capital_usd": 12.82,
+ "generated_at": "2026-10-20 02:21 UTC",
+ "total_capital_usd": 20.2,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.23,
-  "C": 5.59
+  "B": 12.92,
+  "C": 7.28
  },
  "tier_count": {
   "A": 0,
@@ -13,31 +13,31 @@
  },
  "winners": [],
  "losers": [
-  "men:BTCDOMUSDT_LONG"
+  "flz:BNBUSDC_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "men",
-   "value_usd": 7.23,
-   "gain_pct": 2.915,
+   "pk": "flz:WLDUSDC_LONG",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 12.92,
+   "gain_pct": 3.67,
    "tier": "B",
-   "perf_mult": 2.99,
-   "amt": 1.0,
-   "mark": 7.226
+   "perf_mult": 4.13,
+   "amt": 24.2,
+   "mark": 0.5339
   },
   {
-   "pk": "men:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "men",
-   "value_usd": 5.59,
-   "gain_pct": 0.168,
+   "pk": "flz:BNBUSDC_LONG",
+   "symbol": "BNBUSDC",
+   "account": "flz",
+   "value_usd": 7.28,
+   "gain_pct": 0.169,
    "tier": "C",
-   "perf_mult": 0.28,
-   "amt": 0.001,
-   "mark": 5589.4
+   "perf_mult": 0.24,
+   "amt": 0.01,
+   "mark": 727.95149566
   }
  ]
 }
