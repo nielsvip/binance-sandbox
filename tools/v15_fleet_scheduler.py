@@ -144,6 +144,9 @@ def procs():
     return out
 
 
+_PSS_FALLBACKS = [0]  # 2026-10-20: counts RSS fallbacks (smaps_rollup unreadable) so the tick log can say which measure was used
+
+
 def pss_mb(pid):
     try:
         for l in open("/proc/%d/smaps_rollup" % pid):
@@ -152,6 +155,7 @@ def pss_mb(pid):
     except Exception:
         pass
     try:
+        _PSS_FALLBACKS[0] += 1
         return int(open("/proc/%d/statm" % pid).read().split()[1]) * 4096 / 1048576.0
     except Exception:
         return 0.0
@@ -237,7 +241,10 @@ def pilots():
             continue
         ss = a[a.index("--sym-side") + 1]
         e = r.setdefault(ss, {"pss_mb": 0.0, "pids": [], "prod_pids": [], "kind": kind, "pdir": None})
+        _fb0 = _PSS_FALLBACKS[0]
         e["pss_mb"] += pss_mb(pid)
+        if _PSS_FALLBACKS[0] != _fb0:
+            e["mem_source"] = "rss-fallback"
         e["pids"].append(pid)
         env = environ(pid)
         pd = env.get("V15_PROGRESS_DIR")
@@ -1732,6 +1739,18 @@ def round_env_inline(round_id, path=None):
     return "".join(f" {k}={shlex.quote(str(v))}" for k, v in sorted(env.items()) if GATE_ENV_KEY_RE.match(str(k)))
 
 
+def _workers_for(sym, workers):
+    """2026-10-20 USER: crypto sides are 5-10 GB PSS at 3 workers; V15_SCHED_WORKERS_PER_SIDE_CRYPTO overrides the worker count for
+    crypto symbols only (stocks and anything unset keep the global value). Never raises."""
+    try:
+        _w = os.environ.get("V15_SCHED_WORKERS_PER_SIDE_CRYPTO")
+        if _w and venue_of(sym) == "crypto":
+            return max(1, int(_w))
+    except Exception:
+        pass
+    return workers
+
+
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
     """shell body for ONE side job (30D pilot | 365D verify | REPAIR loop). Detached by pair_launch_cmd. USER 2026-10-11: spawn-guarded (see _spawn_guard)."""
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
@@ -2837,7 +2856,7 @@ def tick(args, cfg, now):
             for _vn, _vfloor in (("crypto", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB", "0") or 0) or cfg.get("pair_floor_mb", 12000)), ("stocks", float(os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", "2500") or 2500))):
                 _vm = {k: v for k, v in _units.items() if k.rsplit("_", 1)[0] in universe_syms[_vn] and v > 0} if _per_side else {k: v for k, v in pairs.items() if k in universe_syms[_vn] and v > 0}
                 _bk = f"{h['name']}|{_vn}|side" if _per_side else f"{h['name']}|{_vn}"
-                peak_v[_vn] = max(_host_peak_pair_mb(st, _bk, _vm, _now_ts, workers=workers), float(_vfloor) / 1.25)
+                peak_v[_vn] = max(_host_peak_pair_mb(st, _bk, _vm, _now_ts, workers=(_workers_for("XUSDT", workers) if _vn == "crypto" else workers)), float(_vfloor) / 1.25)
                 est_v[_vn] = max(_est_pair_mb(list(_vm.values()), _vfloor), 1.1 * peak_v[_vn])
             est_pair = max(est_v.values())
         _est_sym = lambda _s: est_v.get(venue_of(_s), est_pair) if _peak_on else est_pair
@@ -2908,6 +2927,7 @@ def tick(args, cfg, now):
         est_gate = max([est_v[_gv] for _gv in _gate_venues] or [est_pair]) if _peak_on else est_pair
         HB[h["name"]]["est_pair"] = est_gate
         info["est_gate_mb"] = round(est_gate)
+        info["mem_source"] = "rss-fallback" if any(isinstance(_r_m, dict) and _r_m.get("mem_source") == "rss-fallback" for _r_m in s["running"].values()) else "pss(smaps_rollup)"
         info["gate_venues"] = _gate_venues
         info["gate_inputs"] = {"mem_avail_mb": s["mem_avail_mb"], "reserve_mb": round(reserve), "proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "floor_crypto_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB", ""), "floor_stocks_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", ""), "phase": _host_phase}
         for sym, needs_slot in order:
@@ -3095,7 +3115,7 @@ def tick(args, cfg, now):
                     # the key launched, set the dispatch grace and reported it in `launched` — the fleet then idled
                     # while the log claimed 2-4 launches every tick. VICR_LONG's sweep log was 4 DAYS old while being
                     # "launched" every 2 minutes. A skipped dispatch is now visible and retried, not booked.
-                    if not _dispatch_async(h, sym, acts, pd, workers, tag):
+                    if not _dispatch_async(h, sym, acts, pd, _workers_for(sym, workers), tag):
                         log.setdefault("dispatch_skipped", []).append(tag)
                         continue
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
@@ -3113,7 +3133,7 @@ def tick(args, cfg, now):
                     _rc, _err = 0, ""
                     for _t_i, _target in enumerate([h.get("_via") or h["ssh"][0]] + [x for x in h["ssh"] if x != (h.get("_via") or h["ssh"][0])]):
                         try:
-                            _r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", _target, pair_launch_cmd(h, acts, pd, workers)],
+                            _r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", _target, pair_launch_cmd(h, acts, pd, _workers_for(sym, workers))],
                                                 timeout=40, capture_output=True, text=True)
                             _rc, _err = _r.returncode, (_r.stderr or "").strip()
                             if _rc == 0:
@@ -3237,11 +3257,11 @@ def tick(args, cfg, now):
                     launched_keys.add(key2)
                 else:
                     if _ALL_LAUNCH_NPZ:
-                        _dispatch_async(h, sym2, acts, pd, workers, f"{h['name']}:{sym2}:{sd2[0]}30D")
+                        _dispatch_async(h, sym2, acts, pd, _workers_for(sym2, workers), f"{h['name']}:{sym2}:{sd2[0]}30D")
                         _dispatch_q_mark(st, [key2], _now_ts)
                     else:
                         try:
-                            subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, workers)], timeout=40)
+                            subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, _workers_for(sym2, workers))], timeout=40)
                         except subprocess.TimeoutExpired:
                             print(f"[sched] backfill launch ssh timeout {h['name']} {sym2} (job may still have started; pgrep dedups)", flush=True)
                     _burn_launch(key2, "30D", ss, st, started)
@@ -3314,11 +3334,11 @@ def tick(args, cfg, now):
                 if specs and not _steal_fetch(hosts, h, sym, specs, log):
                     continue
                 if _ALL_LAUNCH_NPZ:
-                    _dispatch_async(h, sym, acts, pd, B["workers"], tag.replace("[steal]", ""))
+                    _dispatch_async(h, sym, acts, pd, _workers_for(sym, B["workers"]), tag.replace("[steal]", ""))
                     _dispatch_q_mark(st, [a["key"] for a in acts], _now_ts)
                 else:
                     try:
-                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, B["workers"])], timeout=40)
+                        subprocess.run(["ssh", "-o", "BatchMode=yes", h.get("_via", h["ssh"][0]), pair_launch_cmd(h, acts, pd, _workers_for(sym, B["workers"]))], timeout=40)
                     except subprocess.TimeoutExpired:
                         print(f"[sched] steal launch ssh timeout {h['name']} {sym} (job may still have started; pgrep dedups)", flush=True)
                 for a in acts:
