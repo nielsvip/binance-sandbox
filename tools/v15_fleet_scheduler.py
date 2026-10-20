@@ -2236,7 +2236,29 @@ def npz_prep(host, symbol):
         return None
 
 
-_NPZ_PREFLIGHT_ON = os.environ.get("V15_SCHED_NPZ_PREFLIGHT", "1") == "1"
+def npz_prep_request(host, symbol):
+    """2026-10-20 WP1 tick profile: the three fire-and-forget callers (stale source / preflight rebuild / gap rebuild) ignore the
+    result, yet called the BLOCKING npz_prep: `flock -w 600` waited behind an orphaned `v15_npz_prep.py --symbol KO` that held
+    /tmp/v15_npz_prep.lock for 4 h 43 min (its flock parent had been killed by the 900 s subprocess timeout), so every tick sat
+    600 s in one call -> 5-10 min ticks, or no tick JSON at all under the old 110 s cron timeout (17:32-18:48Z gap).
+    Now: detached (own session), non-blocking lock (`flock -n`: a rebuild already in flight = skip, next tick re-requests),
+    and bounded (`timeout -k 30`, V15_NPZ_PREP_MAX_S default 2400 s) with the whole process group killed on expiry.
+    Same tool, same S1-side build + md5 push; nothing runs on the worker. V15_SCHED_NPZ_PREP_ASYNC=0 restores the blocking call."""
+    if os.environ.get("V15_SCHED_NPZ_PREP_ASYNC", "1") != "1":
+        return npz_prep(host, symbol)
+    cmd = ["setsid", "timeout", "-k", "30", os.environ.get("V15_NPZ_PREP_MAX_S", "2400"), "flock", "-n", "/tmp/v15_npz_prep.lock",
+           sys.executable, str(ROOT / "tools" / "v15_npz_prep.py"), "--symbol", str(symbol)]
+    tgt = (host.get("ssh") or [None])[0]
+    if tgt and str(tgt) not in ("127.0.0.1", "localhost", "::1"):
+        cmd += ["--push", str(tgt)]
+    try:
+        subprocess.Popen(cmd, cwd=str(ROOT), stdin=subprocess.DEVNULL, stdout=open("/tmp/v15_npz_prep_async.log", "a"), stderr=subprocess.STDOUT, start_new_session=True)
+    except Exception:
+        pass
+    return None
+
+
+_NPZ_PREFLIGHT_ON =os.environ.get("V15_SCHED_NPZ_PREFLIGHT", "1") == "1"
 _RUN_STALE_ACK = "i-accept-old-npz"
 
 
@@ -3534,7 +3556,7 @@ def tick(args, cfg, now):
                 if not _src_ok:
                     log.setdefault("npz_source_stale_skipped", []).append(f"{h['name']}:{sym}:{_src_why}")
                     if os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
-                        npz_prep(h, sym)
+                        npz_prep_request(h, sym)
                     continue
                 log.setdefault("npz_stale_jit", []).append(f"{h['name']}:{sym}:{rd.get('age_h')}h")
                 rd = dict(rd, ok=True)
@@ -3605,7 +3627,7 @@ def tick(args, cfg, now):
                     # the sanctioned rebuild path (single-flight flock + v15_npz_prep.py), requested ONCE per
                     # cooldown — never a direct precompute spawn, never under a frozen symbol.
                     log.setdefault("npz_preflight_rebuild", []).append(f"{h['name']}:{sym}")
-                    npz_prep(h, sym)
+                    npz_prep_request(h, sym)
                 continue  # the next GOOD symbol takes this slot; this one is requeued when it passes again
             # STOCKS second screen: session census / intra-window holes. Same machinery, one path.
             _gp_ok, _gp_why, _gp_info = _npz_gap_screen(sym)
@@ -3622,7 +3644,7 @@ def tick(args, cfg, now):
                     log.setdefault("npz_gap_alert", []).append(f"{h['name']}:{sym}:n{_dn}:sessions{_gp_info.get('sessions')}:{_gp_why}"[:300])
                 if _want_rb and not (args.dry_run or sim) and os.environ.get("V15_SCHED_NPZ_REFRESH", "1") == "1":
                     log.setdefault("npz_gap_rebuild", []).append(f"{h['name']}:{sym}")
-                    npz_prep(h, sym)
+                    npz_prep_request(h, sym)
                 continue
             _pf_back = _npz_defer_clear(st, sym)
             if _pf_back:
