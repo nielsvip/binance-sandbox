@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T22:20:01Z",
+ "generated_utc": "2026-10-20T22:40:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 279,
-    "filled_before_open": 157
+    "filled_today": 284,
+    "filled_before_open": 156
    },
-   "detail": "157 boards filled before the open (279 today)"
+   "detail": "156 boards filled before the open (284 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -61,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 475,
-    "exact": 30,
-    "benign_divergence_only": 414,
-    "material_divergence": 30,
+    "exact": 29,
+    "benign_divergence_only": 410,
+    "material_divergence": 35,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -121,6 +121,19 @@
       ]
      },
      {
+      "sym_side": "BTCDOMUSDT_SHORT",
+      "published_at": "2026-10-13T08:15:58Z",
+      "material": 62,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "BB_PROFIT_TAKE_TF",
+       "BB_PULLBACK_GATE_TF",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "BB_SQUEEZE_WIDTH_PERCENTILE"
+      ]
+     },
+     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -131,6 +144,19 @@
        "DC_EDGE_SIZING_MAX_MULT",
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
+      ]
+     },
+     {
+      "sym_side": "KMNOUSDT_SHORT",
+      "published_at": "2026-10-16T21:33:17Z",
+      "material": 50,
+      "sample": [
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_INTO_REENTRY_ENABLED"
       ]
      },
      {
@@ -171,36 +197,10 @@
        "DAYTRADE_DC_TARGET_TF",
        "DC_EDGE_SIZING_MIN_MULT"
       ]
-     },
-     {
-      "sym_side": "CRWD_SHORT",
-      "published_at": "2026-10-18T21:33:31Z",
-      "material": 34,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "DC_EDGE_SIZING_ENABLED",
-       "DC_EDGE_SIZING_MAX_MULT"
-      ]
-     },
-     {
-      "sym_side": "BMNRUSDT_SHORT",
-      "published_at": "2026-10-13T20:03:17Z",
-      "material": 30,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "COOLDOWN_BARS",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DELTA_ENGINE_FILTER_TF",
-       "EMA_DIST_SIZING_ENABLED"
-      ]
      }
     ]
    },
-   "detail": "30 exact, 414 benign-only, 30 with material divergence, 1 with no live row"
+   "detail": "29 exact, 410 benign-only, 35 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 20.0,
+    "median_age_min": 25.0,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
