@@ -342,12 +342,17 @@ def check_defaults_chain(open_epoch, now, host):
     Any failed step STOPS the chain, so nothing after step 2 ran: data/cat_side_defaults_4.json was still
     stamped 10-14 and the Mac's last done-stamp was 20261015. tools/v15_tandem_guard.py had been printing
     exactly this ("S1 chain stamp is MISSING — no defaults landed") into /tmp/v15_tandem_guard.log daily,
-    with --notify only and no reader."""
+    with --notify only and no reader.
+
+    SCOPE, deliberately narrow: the CRITICAL signal is the chain's own done-stamp, nothing else. The
+    cat_side layer (data/cat_side_defaults_4.json) is reported but never fails this gate, because
+    rebuilding it is a MANUAL step by design — v15_daily_template_update's `--sync-defaults` ("pushes the
+    new bold defaults to LIVE + sweep engine; OFF by default, run deliberately") is not passed by the
+    chain, so its age is an operator decision, not a malfunction. Failing on it would make this gate FAIL
+    forever and pin live trading to S1 for good."""
     day = datetime.datetime.fromtimestamp(open_epoch or now, datetime.timezone.utc).strftime("%Y%m%d")
-    day_start = (open_epoch - 13.5 * 3600) if open_epoch else now - 86400
-    catside = ROOT / "data" / "cat_side_defaults_4.json"
-    catside_mtime = _mtime(catside)
-    catside_today = catside_mtime is not None and catside_mtime >= day_start
+    catside_mtime = _mtime(ROOT / "data" / "cat_side_defaults_4.json")
+    catside_age_days = None if catside_mtime is None else round((now - catside_mtime) / 86400.0, 1)
     local_stamp = (CHAIN_DIR / f"{day}.json").exists()
     remote = "no host given"
     remote_ok = None
@@ -360,19 +365,20 @@ def check_defaults_chain(open_epoch, now, host):
             out = f"unreachable: {exc}"
         remote = out[:400] or "NO_STAMP"
         remote_ok = '"status":"OK"' in out.replace(" ", "") or ('"date"' in out and "FAILED" not in out)
-    ok = bool(catside_today) and (remote_ok is not False) and (local_stamp or remote_ok is True)
+    ok = (remote_ok is not False) and (local_stamp or remote_ok is True)
     return {
         "name": "defaults_chain_completed",
         "ok": ok,
         "critical": True,
         "measured": {
-            "cat_side_defaults_4_at": _iso(catside_mtime),
-            "cat_side_is_today": catside_today,
             "mac_done_stamp": local_stamp,
             "s1_stamp": remote,
+            "cat_side_defaults_4_at": _iso(catside_mtime),
+            "cat_side_age_days": catside_age_days,
+            "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step — reported, never fails this gate",
         },
-        "detail": f"cat_side defaults {_iso(catside_mtime)} (today={catside_today}), mac stamp {day}={local_stamp}, s1 stamp {remote[:160]}"
-        + ("" if ok else " — the defaults chain did NOT land today: live is trading an older default layer"),
+        "detail": f"mac stamp {day}={local_stamp}, s1 stamp {remote[:150]}, cat_side layer {catside_age_days}d old"
+        + ("" if ok else " — step 2 never finished, so no new TEMPLATE defaults landed today"),
     }
 
 

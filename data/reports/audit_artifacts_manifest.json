@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-10-20T14:24:35.057924+00:00",
+  "artifacts": {
+    "template_all_keys.json": {
+      "source": "/tmp/template_all_keys.json",
+      "destinations": [
+        "data/reports/template_all_keys.json",
+        "artifacts/audit/template_all_keys.json"
+      ],
+      "sha256": "eeaf425281d3996f8098c8a28f38cf8c31955f607a49095eb75544792aec413d",
+      "bytes": 254954
+    },
+    "live_wiring_audit.json": {
+      "source": "/tmp/live_wiring_audit.json",
+      "destinations": [
+        "data/reports/live_wiring_audit.json",
+        "artifacts/audit/live_wiring_audit.json"
+      ],
+      "sha256": "0a4504b6d9c68952b3559dccc9eadf6ed852e249933f9e86f0a32d8fa0f5b139",
+      "bytes": 38341
+    }
+  },
+  "ephemeral_risk": "/tmp is ephemeral (macOS periodic cleanup, reboot loss); this guard prevents loss"
+}

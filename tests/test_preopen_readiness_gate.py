@@ -72,15 +72,27 @@ def test_apply_report_fails_on_a_report_without_fresh_tiers(tmp_path, monkeypatc
     assert gate.check_apply_report(OPEN_EPOCH, NOW)["ok"]
 
 
-def test_defaults_chain_fails_on_a_six_day_old_cat_side_layer(tmp_path, monkeypatch):
+def test_defaults_chain_fails_when_no_done_stamp_exists(tmp_path, monkeypatch):
     monkeypatch.setattr(gate, "ROOT", tmp_path)
     monkeypatch.setattr(gate, "CHAIN_DIR", tmp_path / "data" / "daily_chain")
     (tmp_path / "data" / "daily_chain").mkdir(parents=True)
+    check = gate.check_defaults_chain(OPEN_EPOCH, NOW, host=None)
+    assert not check["ok"] and "step 2 never finished" in check["detail"]
+
+
+def test_defaults_chain_passes_on_a_done_stamp_despite_an_old_cat_side_layer(tmp_path, monkeypatch):
+    """--sync-defaults is a deliberate manual step, so an aged cat_side layer must NOT fail the gate:
+    a permanent FAIL here would pin live trading to S1 for good through the stability pin."""
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    chain = tmp_path / "data" / "daily_chain"
+    chain.mkdir(parents=True)
+    monkeypatch.setattr(gate, "CHAIN_DIR", chain)
+    (chain / "20261020.json").write_text('{"date":"20261020","status":"OK"}')
     catside = tmp_path / "data" / "cat_side_defaults_4.json"
     catside.write_text("{}")
     os.utime(catside, (OPEN_EPOCH - 6 * 86400, OPEN_EPOCH - 6 * 86400))
     check = gate.check_defaults_chain(OPEN_EPOCH, NOW, host=None)
-    assert not check["ok"] and "older default layer" in check["detail"]
+    assert check["ok"] and check["measured"]["cat_side_age_days"] >= 6.0
 
 
 def test_indicators_check_uses_the_live_90_minute_entry_gate(tmp_path, monkeypatch):
