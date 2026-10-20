@@ -1783,7 +1783,30 @@ class Config:
         False  # 2026-10-06 phase 4: key-level crash exit outside the ablated EPQ quick chain (live_twins/key_level.py); False = today live
     )
     PARITY_VEC_EXACT_MODE: bool = (
-        True  # 2026-10-06 parity-loop-crypto (USER ruling via director): True = live decides with the SAME v12 code at each closed 15m bar (live_twins/vec_exact.py) and suppresses the native paths of the twinned families (EPQ candidate scoring for ENTRY); False = byte-identical live
+        False  # USER 2026-10-20: "ez_ AND tradier_ trade SWITCHES not npz's" / "NOTHING can live trade an npz" /
+        # "read the dict not calculate anything from any kline". Matches config_tradier (flipped the same night).
+        # True routed every crypto decision through a v12 SIMULATION REPLAY in live_twins/vec_exact.py. That twin is
+        # WALL-CLOCK ANCHORED, measured 2026-10-20: vec_exact.py:844 picks its bar with
+        # `searchsorted(ts, float(now_ts))` and the caller passes `_now = time.time()`, caching the answer in
+        # _DECIDED[(symside, bar_ts)] — so it evaluates the indicator store's LAST BAR and nothing else. With
+        # PARITY_VEC_EXACT_SOURCE=live_klines that bar came from a 604 s/symbol in-memory rebuild of the kline cache;
+        # with the npz source it came from an NPZ whose floor across all 127 crypto files was 65 min / 4+ closed bars
+        # behind (median 95 min, 5 of 75 tradeable keys over a day). Either way the decision bar is never the current
+        # one, which is the whole objection: a backtest simulates the switch set across history (backtest_v12_engine's
+        # job, and it keeps the NPZ); LIVE applies that same set to the CURRENT row.
+        # False puts the native producers back in charge (_vx_native_off, ez_manage.py:8517, stops suppressing them).
+        # They resolve the FULL per_sym set through _PerSymProxy / per_sym_live_set.full_set — audited the same day:
+        # 0 of 753 live rows differ from their newest published board, 0 of 329 crypto rows resolve off-board — and
+        # they evaluate it against data/latest_market_data.json, the dict ez_indicators publishes.
+        # NOTHING-MORE holds without a companion switch here, unlike stocks: the ten gain-augmenting strategies
+        # PARITY_COMPARISON_MODE suppresses (Rotation/RSI2/GapFill/ORB/EP/Clenow/SMFI/Minervini/Connors/FH_Momentum)
+        # are equity-only — verified 2026-10-20, ez_manage.py defines NONE of them (0 function definitions; only
+        # getattr key-touches for the per-sym proxy), they live in tradier_manage. So crypto has no non-board
+        # producer for False to re-open; the native crypto families ARE board families (B_KZONE, B_SRS_ENTRY, B12,
+        # REENTRY_*), and they already fire today with the twin on.
+        # ORIGINAL NOTE: 2026-10-06 parity-loop-crypto (USER ruling via director): True = live decides with the SAME
+        # v12 code at each closed 15m bar (live_twins/vec_exact.py) and suppresses the native paths of the twinned
+        # families (EPQ candidate scoring for ENTRY); False = byte-identical live
     )
     HISTORY_PROV_ENABLED: bool = True  # 2026-10-20 USER E1 (flipped False->True after tests/test_history_prov.py + neutrality proof; kill switch = set False) "/history/ reasons need the switch + approving filters": structured prov block + |SW=..|F=.. tail on every history event (vec_decisions/history_prov.py). METADATA ONLY, no decision reads it; flip to True only after tests/test_history_prov.py + neutrality proof.
     EXIT_GUARANTEE_ENABLED: bool = True  # 2026-10-14 USER "make sure at least EXITS will never be compromised again": exit_guarantee wrapper on execute_now (refused/unconfirmed FULL close -> FORCE_CLOSE_MARKET from exchange truth; partial REDUCE retried; ledger once per confirmed fill). Live-only operational guard (no vec twin by design: vec has no broker).

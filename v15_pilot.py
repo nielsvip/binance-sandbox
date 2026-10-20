@@ -6488,12 +6488,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _flush_batch()
         return ck
     _spec_state = {"ptr": 0, "ver": 0, "ptr_ver": 0}
+    _v18_spec = bool(_V18P is not None and _V18P.spec_batch_on() and _pool is not None)
+    _v18_spec_stats = {"discarded": 0, "resubmits": 0}
     _ROW_PRESUBMIT = os.environ.get("V15_ROW_PRESUBMIT", "0") == "1"  # 2026-10-14 throughput lane: default OFF (A/B: +33% CPU, same wall on saturated hosts)
     def _prefetch(qi: int):
         # speculative: rows ahead are submitted vs the CURRENT running set. A promotion changes the running set, so a
         # speculated result can never be used for a different baseline (cache key = the full override set).
         if _pool is None:
             return
+        if _v18_spec and _spec_state["ptr_ver"] != _spec_state["ver"]:
+            # E5 V18_SPEC_BATCH: the chain moved -> every pending speculative result was computed against the OLD running set;
+            # cancel what has not started and resubmit from this row (results are always applied in row order, keyed by
+            # the exact full set, so the chain is byte-identical by construction)
+            _v18_spec_stats["discarded"] += _V18P.spec_cancel_stale(inflight)
+            _v18_spec_stats["resubmits"] += 1
+            del _pend_batch[:]
         if _spec_state["ptr_ver"] != _spec_state["ver"] or _spec_state["ptr"] <= qi:
             _spec_state["ptr"], _spec_state["ptr_ver"] = qi, _spec_state["ver"]
         # 2026-10-13 THROUGHPUT (USER ">12 boards/server/hour"): the cap counts distinct pool TASKS — with V15_POOL_BATCH_N=8
@@ -6502,11 +6511,16 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         # A/B S1 2026-10-14 UNIUSDC_SHORT (same file, frozen inputs, concurrent): identical result 26.3989 and wall 25:05 vs 25:04,
         # but +33% CPU (2558 vs 1928 user-s) — the hosts are CPU-saturated (0% idle), so deeper speculation only burns cores.
         # Default OFF; V15_PREFETCH_TASKCAP=1 / V15_ROW_PRESUBMIT=1 for an idle host.
-        _taskcap = os.environ.get("V15_PREFETCH_TASKCAP", "0") == "1"
+        _taskcap = os.environ.get("V15_PREFETCH_TASKCAP", "0") == "1" or _v18_spec
         _ahead = int(os.environ.get("V15_PREFETCH_ROWS", "200")) if _taskcap else 60
+        _cap_busy = 2 * _n_proc
+        _end = qi + _ahead
+        if _v18_spec:
+            _end = _V18P.tab_span(pending_queue, qi, int(os.environ.get("V18_SPEC_ROWS", "400")))  # the whole rest of THIS tab
+            _cap_busy = int(os.environ.get("V18_SPEC_TASKS", str(4 * _n_proc)))
         def _busy():
             return len({id(f) for f, _ in inflight.values() if not f.done()}) if _taskcap else sum(1 for f, _ in inflight.values() if not f.done())
-        while _spec_state["ptr"] < len(pending_queue) and _spec_state["ptr"] < qi + _ahead and _busy() < 2 * _n_proc:
+        while _spec_state["ptr"] < len(pending_queue) and _spec_state["ptr"] < _end and _busy() < _cap_busy:
             plan = _row_plan(*pending_queue[_spec_state["ptr"]])
             for _lab, _ov in plan.get("items", []):
                 _submit(_ov)
@@ -9391,6 +9405,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v18_ids.row = None
         progress["v18_identity"] = dict(_v18_ids.totals)
         print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
+    if _v18_spec:
+        progress.setdefault("v18", {})["spec_batch"] = dict(_v18_spec_stats)
+        print(f"[V18-SPEC] {new_symside} speculative tab batching: resubmits={_v18_spec_stats['resubmits']} stale cks cancelled={_v18_spec_stats['discarded']}", flush=True)
     if _v18_floor_on:
         progress.setdefault("v18", {})["floor"] = {**dict(_v18_floor_tot), **dict(_v18_untried_tot), "untried_p": _v18_untried_p, "p": _v18_floor_p, "per_1000": round(_v18_floor_p * 1000.0, 3), "rid": _brain_rid, "cat_side": _v18_floor_cs}
         print(f"[V18-FLOOR] {new_symside} {_v18_floor_cs} p={_v18_floor_p * 1000.0:g}/1000 rows_seen={_v18_floor_tot.get('rows_seen', 0)} rows_policy_skipped={_v18_floor_tot.get('rows_policy_skipped', 0)} rows_rescued={_v18_floor_tot.get('rows_rescued', 0)} cells_policy_skipped={_v18_floor_tot.get('cells_policy_skipped', 0)} cells_rescued={_v18_floor_tot.get('cells_rescued', 0)} cells_settled={_v18_floor_tot.get('cells_settled', 0)} untried_p={_v18_untried_p * 1000.0:g}/1000 untried_seen={_v18_untried_tot['untried_seen']} untried_kept={_v18_untried_tot['untried_kept']}", flush=True)

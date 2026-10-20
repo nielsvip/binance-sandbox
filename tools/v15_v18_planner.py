@@ -654,3 +654,45 @@ def phase_of(sheet, label, switch_sheets=()) -> str:
     if sheet in set(switch_sheets or ()):
         return "MAIN"
     return str(sheet or "OTHER").split(":", 1)[0]
+
+
+# ── E5 (doc 17 §4.2 / §4.4): speculative tab batching + both pair sides concurrent ─────────────────────────────────────
+def spec_batch_on() -> bool:
+    return flag_on("V18_SPEC_BATCH")
+
+
+def pair_concurrent_on() -> bool:
+    return flag_on("V18_PAIR_CONCURRENT")
+
+
+def tab_span(queue: list, qi: int, cap: int) -> int:
+    """Index one past the last row of the tab that queue[qi] belongs to (queue = [(sheet, row, switch, cand)]), at most cap
+    rows ahead. The speculative window never crosses a tab boundary (the sacred repass / tab-start E3 run there)."""
+    if qi >= len(queue):
+        return qi
+    tab = queue[qi][0]
+    j = qi
+    while j < len(queue) and queue[j][0] == tab and j - qi < int(cap):
+        j += 1
+    return j
+
+
+def spec_cancel_stale(inflight: dict) -> int:
+    """After the chain moved, every in-flight speculative result was submitted against the OLD running set: cancel the ones
+    not started yet and drop their entries (a started one finishes into the cache under its own exact key, harmless).
+    inflight = {ck: (future, t0)}; one future can carry several cks (batched task). Returns the number of cks dropped."""
+    n = 0
+    dead = set()
+    for ck, (f, _t0) in list(inflight.items()):
+        if id(f) in dead:
+            inflight.pop(ck, None)
+            n += 1
+            continue
+        try:
+            if not f.done() and f.cancel():
+                dead.add(id(f))
+                inflight.pop(ck, None)
+                n += 1
+        except Exception:
+            continue
+    return n
