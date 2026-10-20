@@ -68,6 +68,7 @@ import numpy as np
 import vec_decisions.breakout_opener
 import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
+import vec_decisions.augment_core  # 2026-10-20 augment revival: shared vec/live augment decision core (symbol-cap clamp)
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
@@ -21211,6 +21212,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _mvf_on and add_qty > 0:
                     add_qty = max(float(add_qty), _qq.min_viable_qty(sym, px, cfg))  # live floors every vec AUGMENT (VEC_EXACT_SIZE_FLOOR_FINAL)
                 add_qty = _qq.cap_add_qty(cfg, pos["qty"], add_qty, px, is_tradier)  # QTY_LIVE_POSITION_CAP_MULT: live MAX_POSITION_SIZE/START cap
+                if is_tradier and not _n4_live_only and not (_n4_fire or _dd_fire or _hq_fire or _aal_fire) and add_qty > 0:
+                    add_qty = vec_decisions.augment_core.cap_add(add_qty, pos["qty"], px, vec_decisions.augment_core.stock_symbol_cap(lambda _k, _d=None: getattr(cfg, _k, _d)), True)  # 2026-10-20 augment revival: the vector-only sources on stocks respect the live symbol cap (same helper as tradier_manage._augment_core_try); unreachable while STOCK_AUGMENT_VENUE_GUARD_ENABLED is True
                 if _mvf_on and 0 < add_qty < _qq.min_viable_qty(sym, px, cfg):
                     add_qty = 0.0  # the cap left less than the exchange minimum — the order could not be placed
                 if add_qty > 0:

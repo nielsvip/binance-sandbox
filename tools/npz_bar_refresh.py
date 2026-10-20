@@ -1144,6 +1144,11 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
             res["heal_scan_error"] = f"{type(e).__name__}: {e}"[:160]
     if ts_last >= cutoff and not force and not heal_n:
         return {**res, "status": "FRESH", "secs": round(time.time() - t0, 2)}
+    if heal_n and ts_last > cutoff:
+        # the NPZ already holds a bar newer than this cycle's cutoff (the 2-minute ingest is faster than a 16 min cycle): the rewound span must be
+        # re-appended UP TO that bar, otherwise the rebuilt file would end before the original = a shrink.
+        cutoff = ts_last
+        res["cutoff"] = cutoff
     if len(_ts_raw) < MIN_APPENDABLE_ROWS:
         return {**res, "status": "TOO_SHORT_TO_APPEND", "error": f"{len(_ts_raw)} rows — a live stub cannot be tailed, adopt a deeper copy (tools/npz_repair.py)"}
     if mode == "crypto" and ("htf_align" not in z.files or str(np.asarray(z["htf_align"]).ravel()[0]) not in ("causal_v3",)):

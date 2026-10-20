@@ -169,6 +169,9 @@ def variants(base, is_stock):
             V.append((A, f"vec-only: UAG 2.5, cap {c}/position", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=2.5, AUGMENT_MIN_GAIN_PCT=0.0), env, c))
         V.append((A, "vec-only: UAG 2.5, WT_D_BOUNCE_DD_STOP off", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=2.5, AUGMENT_MIN_GAIN_PCT=0.0, WT_D_BOUNCE_DD_STOP_ENABLED=False), env, None))
         V.append((A, "live: DC_TIER+TRAILING, WT_D_BOUNCE_DD_STOP off", dict(live, TRAILING_AUG_ENABLED_TRADIER=True, WT_D_BOUNCE_DD_STOP_ENABLED=False), {}, None))
+        V.append((A, "vec-only: UAG 3.0, DD stop LIVE SCOPE", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0, AUGMENT_MIN_GAIN_PCT=0.0, WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED=True), env, None))
+        V.append((A, "vec-only: UAG 4.5, DD stop LIVE SCOPE", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=4.5, AUGMENT_MIN_GAIN_PCT=0.0, WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED=True), env, None))
+        V.append((A, "live: DC_TIER+TRAILING, DD stop LIVE SCOPE", dict(live, TRAILING_AUG_ENABLED_TRADIER=True, WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED=True), {}, None))
         V.append((A, "vec-only: + PYRAMID", dict(vo, PYRAMID_ENABLED=True), env, None))
         V.append((A, "vec-only: + BOUNCE_AUGMENT", dict(vo, BOUNCE_AUGMENT_ENABLED=True), env, None))
         V.append((A, "vec-only + live: UAG 2.5 + DC_TIER + TRAILING", dict(vo, MIN_GAIN_TO_BUY_AGGRESSIVELY=2.5, AUGMENT_MIN_GAIN_PCT=0.0, STOCK_LIVE_AUGMENT_ENABLED=True, TRAILING_AUG_ENABLED_TRADIER=True), env, None))
@@ -178,6 +181,8 @@ def variants(base, is_stock):
         for c in (1, 2, 3):
             V.append((A, f"UAG 2.5, cap {c}/position", {"MIN_GAIN_TO_BUY_AGGRESSIVELY": 2.5, "AUGMENT_MIN_GAIN_PCT": 0.0}, {}, c))
         V.append((A, "UAG 2.5, WT_D_BOUNCE_DD_STOP off", {"MIN_GAIN_TO_BUY_AGGRESSIVELY": 2.5, "AUGMENT_MIN_GAIN_PCT": 0.0, "WT_D_BOUNCE_DD_STOP_ENABLED": False}, {}, None))
+        V.append((A, "base set, DD stop LIVE SCOPE", {"WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED": True}, {}, None))
+        V.append((A, "UAG 2.5, DD stop LIVE SCOPE", {"MIN_GAIN_TO_BUY_AGGRESSIVELY": 2.5, "AUGMENT_MIN_GAIN_PCT": 0.0, "WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED": True}, {}, None))
         V.append((A, "UAG gate OFF (UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED=False)", {"UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED": False}, {}, None))
         V.append((A, "+ PYRAMID", {"PYRAMID_ENABLED": True}, {}, None))
         V.append((A, "+ BOUNCE_AUGMENT", {"BOUNCE_AUGMENT_ENABLED": True}, {}, None))

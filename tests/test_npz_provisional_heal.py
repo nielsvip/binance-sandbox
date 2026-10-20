@@ -156,3 +156,13 @@ def test_not_canonical_symbol_is_never_healed(env, monkeypatch):
 def test_ingest_marks_applied_crypto_rows_provisional():
     src = (pathlib.Path(__file__).resolve().parent.parent / "tools" / "npz_bar_ingest.py").read_text()
     assert 'prov_mark(sym, [ts], "ingest")' in src and 'if mode == "crypto"' in src
+
+
+def test_cycle_cutoff_older_than_an_ingested_bar_still_heals_without_shrinking(env):
+    ind, canon = env
+    write_npz(ind / f"{SYM}.npz", range(N), wrong=(N - 1, N - 2))
+    r = R.refresh_symbol(SYM, str(ind), w15=0, cutoff=T0 + (N - 3) * 900, fresh={"15m": None}, mode="crypto", builder=FakeBuilder(canon))
+    assert r["status"] == "INSTALLED", r
+    z = load(ind)
+    assert len(z["timestamps"]) == N and int(z["timestamps"][-1]) == T0 + (N - 1) * 900
+    assert z["close_15m"][N - 1] == np.float32(truth(N - 1)[3])

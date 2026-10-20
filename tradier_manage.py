@@ -14478,6 +14478,13 @@ async def _augment_core_try(trade_manager, order_queue, position_key, position, 
         if not _fire or _add <= 0:
             return None
         _base_q = float(max(1, int(_add)))  # whole shares, = v12 _size_qty(cfg, qty*px*mult, px) floor >= 1
+        _cap_v = _acore.stock_symbol_cap(_get)
+        _acct_cap = safe_fetch_float(getattr(config, f"{str(account_key).upper()}_MAX_SYMBOL_VALUE", 0.0), 0.0)
+        if _acct_cap > 0:
+            _cap_v = min(_cap_v, _acct_cap) if _cap_v > 0 else _acct_cap
+        _base_q = _acore.cap_add(_base_q, _qty, _px, _cap_v, True)  # never above the symbol cap (= v12 clamp on the same sources)
+        if _base_q <= 0:
+            return None
         _q = await trade_manager.strategy.calculate_quantity_complex(symbol, "AUGMENT", position_side, _base_q, _ind, position, market_context)
         if not _q or _q <= 0:
             return None

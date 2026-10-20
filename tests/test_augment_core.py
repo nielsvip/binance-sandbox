@@ -72,6 +72,7 @@ def test_engine_and_config_fields():
     f = {x.name: x.default for x in dataclasses.fields(V.QuickConfig)}
     assert f["STOCK_AUGMENT_VENUE_GUARD_ENABLED"] is True
     assert f["STOCK_LIVE_AUGMENT_ONLY"] is False
+    assert f["WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED"] is False  # today's vector: every augment arms the DD leg cut
     import config_tradier as CT
 
     t = CT.TradierConfig()
@@ -90,7 +91,7 @@ def test_pilot_guard_switch():
     assert VP._venue_augment_guard({"mode": "crypto"}, {}) == {}
 
 
-def _tradier_stub(guard, gain=3.5, last=100.0):
+def _tradier_stub(guard, gain=3.5, last=100.0, extra=None):
     import tradier_manage as T
 
     queued = []
@@ -104,7 +105,7 @@ def _tradier_stub(guard, gain=3.5, last=100.0):
     async def cqc(symbol, action, side, qty, ind, pos, mc):
         return qty
 
-    vals = {"STOCK_AUGMENT_VENUE_GUARD_ENABLED": guard, "STOCK_LIVE_AUGMENT_ONLY": False, "MIN_GAIN_TO_BUY_AGGRESSIVELY": 3.0, "AUGMENT_MIN_GAIN_PCT": 0.0}
+    vals = {"STOCK_AUGMENT_VENUE_GUARD_ENABLED": guard, "STOCK_LIVE_AUGMENT_ONLY": False, "MIN_GAIN_TO_BUY_AGGRESSIVELY": 3.0, "AUGMENT_MIN_GAIN_PCT": 0.0, **(extra or {})}
     orig_cfg, orig_q = T._cfg, T.queue_trade_action
     T._cfg = lambda k, d=None, *a, **kw: vals.get(k, d)
     T.queue_trade_action = fake_queue
@@ -163,3 +164,19 @@ def test_ez_hook_inert_by_default():
 def test_ez_hook_fires_when_enabled():
     sig = _ez_stub(True)
     assert sig is not None and sig.action == "AUGMENT" and str(sig.reason).startswith("AUGMENT_CORE_LADDER UAG_LADDER") and abs(sig.quantity - 5.0) < 1e-9
+
+
+def test_symbol_cap_clamp():
+    g = _get({"HARD_MAX_SYMBOL_VALUE_TRADIER": 2500.0, "MAX_SYMBOL_VALUE_TRADIER": 3750.0})
+    assert AC.stock_symbol_cap(g) == 2500.0
+    assert AC.cap_add(5.0, 10.0, 100.0, 2500.0, True) == 5.0  # 1000 + 500 <= 2500
+    assert AC.cap_add(20.0, 20.0, 100.0, 2500.0, True) == 5.0  # headroom 500 -> 5 shares
+    assert AC.cap_add(5.0, 25.0, 100.0, 2500.0, True) == 0.0  # at the cap: no add
+    assert AC.cap_add(5.0, 10.0, 100.0, 0.0, True) == 5.0  # no cap configured
+
+
+def test_tradier_hook_respects_symbol_cap():
+    tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1000.0})  # 10 sh @ 103.5 = 1035 >= cap -> no add
+    assert tag is None and queued == []
+    tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1350.0})  # headroom 315 -> 3 shares, not 5
+    assert tag == "AUGMENT_CORE:LADDER" and queued[0]["qty"] == 3.0
