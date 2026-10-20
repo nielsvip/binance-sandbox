@@ -1,103 +1,43 @@
 {
- "generated_at": "2026-10-20 02:35 UTC",
- "total_capital_usd": 66.36,
+ "generated_at": "2026-10-20 02:39 UTC",
+ "total_capital_usd": 12.82,
  "tier_capital": {
-  "A": 12.01,
-  "B": 12.23,
-  "C": 42.13
+  "A": 0.0,
+  "B": 7.24,
+  "C": 5.58
  },
  "tier_count": {
-  "A": 1,
+  "A": 0,
   "B": 1,
-  "C": 5
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:BATUSDT_LONG",
-  "ang:RENDERUSDT_LONG",
-  "ang:BNBUSDC_LONG",
-  "ang:LTCUSDC_LONG",
-  "ang:ARUSDT_LONG",
-  "ang:TRBUSDT_LONG"
+  "men:BTCDOMUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:LTCUSDC_LONG",
-   "symbol": "LTCUSDC",
-   "account": "ang",
-   "value_usd": 12.47,
-   "gain_pct": 0.084,
-   "tier": "C",
-   "perf_mult": 0.33,
-   "amt": 0.21,
-   "mark": 59.36
-  },
-  {
-   "pk": "ang:BATUSDT_LONG",
-   "symbol": "BATUSDT",
-   "account": "ang",
-   "value_usd": 12.23,
-   "gain_pct": -1.519,
+   "pk": "men:UNIUSDC_SHORT",
+   "symbol": "UNIUSDC",
+   "account": "men",
+   "value_usd": 7.24,
+   "gain_pct": 2.747,
    "tier": "B",
-   "perf_mult": 6.58,
-   "amt": 63.9,
-   "mark": 0.19132
+   "perf_mult": 2.99,
+   "amt": 1.0,
+   "mark": 7.23853449
   },
   {
-   "pk": "ang:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
-   "account": "ang",
-   "value_usd": 12.01,
-   "gain_pct": -0.118,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 0.02,
-   "mark": 600.67255556
-  },
-  {
-   "pk": "ang:TRBUSDT_LONG",
-   "symbol": "TRBUSDT",
-   "account": "ang",
-   "value_usd": 10.76,
-   "gain_pct": 0.6,
+   "pk": "men:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "men",
+   "value_usd": 5.58,
+   "gain_pct": 0.022,
    "tier": "C",
-   "perf_mult": 0.69,
-   "amt": 0.6,
-   "mark": 17.93264286
-  },
-  {
-   "pk": "ang:BNBUSDC_LONG",
-   "symbol": "BNBUSDC",
-   "account": "ang",
-   "value_usd": 7.29,
-   "gain_pct": 0.014,
-   "tier": "C",
-   "perf_mult": 0.24,
-   "amt": 0.01,
-   "mark": 728.52942417
-  },
-  {
-   "pk": "ang:RENDERUSDT_LONG",
-   "symbol": "RENDERUSDT",
-   "account": "ang",
-   "value_usd": 5.94,
-   "gain_pct": -0.919,
-   "tier": "C",
-   "perf_mult": 0.38,
-   "amt": 3.3,
-   "mark": 1.80029031
-  },
-  {
-   "pk": "ang:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "ang",
-   "value_usd": 5.67,
-   "gain_pct": 0.425,
-   "tier": "C",
-   "perf_mult": 0.57,
-   "amt": 1.5,
-   "mark": 3.781
+   "perf_mult": 0.28,
+   "amt": 0.001,
+   "mark": 5581.2
   }
  ]
 }

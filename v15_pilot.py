@@ -11512,11 +11512,14 @@ def main():
             _win30 = False
     _t0 = _pt.time()
     _exit = None
+    _v18_child = _v18_pair_fork(_sym) if (_pair_on and _sym and _win30 and _V18P is not None and _V18P.pair_concurrent_on()) else None
     try:
         _main_single()
     except SystemExit as _se:
         _exit = _se
-    if _pair_on and _sym and _win30:
+    if _v18_child is not None:
+        _v18_pair_join(_sym, *_v18_child)
+    elif _pair_on and _sym and _win30:
         try:
             _prog = PROGRESS_DIR / f"{_sym}_v14_progress.json"
             _fresh = _prog.exists() and _prog.stat().st_mtime >= _t0 - 5.0
@@ -11528,6 +11531,69 @@ def main():
             print(f"[PAIR-IN-RAM] {_sym}: primary wrote no fresh progress (early exit) — partner not triggered", flush=True)
     if _exit is not None:
         raise _exit
+
+
+def _v18_pair_fork(new_symside):
+    """E5 V18_PAIR_CONCURRENT=1 (doc 17 §4.4, default OFF): the partner side runs in a FORKED child at the same time as the
+    primary instead of after it (one pair slot, two boards, idle cores used). Same partner rule as _run_pair_partner, decided
+    up front on the NPZ the primary will use (refreshed ONCE here, before the fork, so the two sides never rebuild one file
+    concurrently). Forked while the process is still single-threaded (no pools/threads yet). -> (pid, partner) or None."""
+    try:
+        try:
+            ensure_npz_for_symside(new_symside, 30)
+        except Exception as _ne:
+            print(f"[V18-PAIR] {new_symside} npz ensure {_ne}", flush=True)
+        from tools.v15_row_guards import npz_identity_for_symside as _npz_id_p
+        _cur_md5 = (_npz_id_p(new_symside) or {}).get("md5")
+        _opp0 = f"{new_symside.rsplit('_', 1)[0]}_{'SHORT' if new_symside.endswith('_LONG') else 'LONG'}"
+        try:
+            _tpl_ok = bool(get_template_for_symside(_opp0))
+        except Exception:
+            _tpl_ok = False
+        _partner = _pair_partner_decision(new_symside, _progress_npz_md5(_opp0), _cur_md5, template_ok=_tpl_ok, blocked=_pair_blocked(_opp0))
+        if _partner is None or ensure_npz_for_symside(_partner, 30) is None:
+            print(f"[V18-PAIR] {new_symside}: partner {_opp0} not due / no NPZ — primary only", flush=True)
+            return None
+        sys.stdout.flush()
+        sys.stderr.flush()
+        pid = os.fork()
+        if pid == 0:
+            _code = 0
+            try:
+                os.environ["V15_PAIR_CHILD"] = "1"
+                sys.argv = [sys.argv[0], "--sym-side", _partner, "--template", str(get_template_for_symside(_partner)), "--window-days", "30", "--seq-mode", "worst2best", "--workers", str(_pair_child_workers())] + (["--vector-only"] if "--vector-only" in sys.argv else [])
+                print(f"[V18-PAIR] child {os.getpid()} calculating partner {_partner} concurrently with {new_symside} (NPZ {_cur_md5})", flush=True)
+                _main_single()
+            except SystemExit as _se:
+                _code = _se.code if isinstance(_se.code, int) else 0
+            except BaseException as _ce:
+                print(f"[V18-PAIR] partner {_partner} child error {_ce}", flush=True)
+                _code = 1
+            finally:
+                sys.stdout.flush()
+                sys.stderr.flush()
+                os._exit(int(_code or 0))
+        print(f"[V18-PAIR] {new_symside}: partner {_partner} forked as pid {pid} (concurrent)", flush=True)
+        return (pid, _partner)
+    except Exception as _pfe:
+        print(f"[V18-PAIR-warn] {new_symside} fork {_pfe} — sequential partner after the primary", flush=True)
+        return None
+
+
+def _pair_child_workers():
+    try:
+        i = sys.argv.index("--workers")
+        return int(sys.argv[i + 1])
+    except Exception:
+        return 8
+
+
+def _v18_pair_join(new_symside, pid, partner):
+    try:
+        _, st = os.waitpid(pid, 0)
+        print(f"[V18-PAIR] pair {new_symside} + {partner} calculated concurrently (child exit status {st})", flush=True)
+    except Exception as _je:
+        print(f"[V18-PAIR-warn] join {partner}: {_je}", flush=True)
 
 
 def _run_pair_partner(new_symside):
