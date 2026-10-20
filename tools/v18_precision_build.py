@@ -258,7 +258,10 @@ def load_cat_side(cs, bolds):
                 k = ev.get("k")
                 ids[(k, s)] += 1
                 cnt["id_rows"] += 1
-                b = ev.get("b")
+                bname = ev.get("b")
+                if bname and ev.get("ck") != "P":
+                    bi_ = boards(bname)
+                    first_cv.setdefault((bi_, str(k).partition("=")[0]), (ev.get("cv"), ev.get("ck") or "U"))
                 continue
             if e == "abl":
                 a = abl[(ev.get("k"), ev.get("f"))]
@@ -740,7 +743,7 @@ def build_cs(cs, a):
     sw_of_key = np.array([k.partition("=")[0] for k in keys.names], dtype=object)
     for i in range(len(R["key"])):
         row_by_board_sw[(int(R["board"][i]), sw_of_key[R["key"][i]])].append(i)
-    fwd = collections.defaultdict(lambda: {"n": 0, "next_board": 0, "survived": 0, "held": 0, "beaten": 0, "remeasure_n": 0, "remeasure_pos": 0, "remeasure_sum": 0.0})
+    fwd = collections.defaultdict(lambda: {"n": 0, "next_board": 0, "observable": 0, "survived": 0, "survived_nb_rule": 0, "held": 0, "beaten": 0, "remeasure_n": 0, "remeasure_pos": 0, "remeasure_sum": 0.0})
     for bi, sw, cand, _t in L["promos"]:
         k = f"{sw}={cand}"
         f = fwd[k]
@@ -750,9 +753,15 @@ def build_cs(cs, a):
             continue
         f["next_board"] += 1
         st = L["first_cv"].get((nb, sw))
+        idx = row_by_board_sw.get((nb, sw), [])
+        own_naked = any(keys.names[R["key"][i]] == k for i in idx)
+        if st is not None:
+            f["observable"] += 1
         if st is not None and st[0] is not None and (st[0] == cand or cand in str(st[0]).split("|")):
             f["survived"] += 1
-        idx = row_by_board_sw.get((nb, sw), [])
+        elif st is not None and st[1] == "NB" and idx and not own_naked:
+            f["survived"] += 1          # the pilot writes no naked for the chain's current value: the promoted cand is that value
+            f["survived_nb_rule"] += 1
         alts = [R["d"][i] for i in idx if keys.names[R["key"][i]] != k and R["valid"][i] == 1]
         if alts:
             if max(alts) > EPS:
@@ -968,7 +977,7 @@ def build_cs(cs, a):
                              "interval": [r4(EB["p_lo"][i]), r4(EB["p_hi"][i])], "interval_mean_delta": [r4(EB["mean_lo"][i]), r4(EB["mean_hi"][i])]}
                             if EB is not None and EB["n"][i] else None),
                 "paired_ledger": {"n": len(pe), "pos": pe_pos, "sum_d_gain": r4(pe_sum, 3)} if pe else None,
-                "forward": {"n": f["next_board"], "pos": f["held"], "promoted": f["n"], "survived_start": f["survived"], "held": f["held"], "beaten": f["beaten"],
+                "forward": {"n": f["next_board"], "pos": f["held"], "promoted": f["n"], "observable": f.get("observable", 0), "survived_start": f["survived"], "held": f["held"], "beaten": f["beaten"],
                             "remeasure_n": f["remeasure_n"], "remeasure_pos": f["remeasure_pos"], "remeasure_sum": r4(f["remeasure_sum"], 3)},
                 "live": live.get(k, {"n": 0, "pos": 0, "pnl_pp": 0.0, "basis": "co-occurrence (brain live layer)"}),
                 "regime": regime_block(i),

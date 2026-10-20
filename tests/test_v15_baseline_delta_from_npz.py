@@ -15,12 +15,17 @@ def test_overrides_copy_uses_best_wins():
     # BEST must win over recipes — no `if k not in overrides` guard
     assert "BEST must WIN" in text or "overwrite recipes" in text
     assert "if overrides.get(k) != v:" in text
-    # must handle both history string and single value C
-    # current xls_prev parser (2026-10): C = " + "-joined SWITCH=value parts; best-fill rows first, promoted rows (VECTOR_DELTA > 0) after so the latest promotion wins.
-    # Bare single values in C are template leftovers by design (pilot writes only SWITCH=value) - see the comment at the xls_prev parser.
+    # must handle both history string and single value C (CLAUDE.md regression #3: "XLS prev parser only handled
+    # C='K=V + …' with F>0, missed single-value C (False) baseline overrides") — the LAW, re-anchored 2026-10-20:
+    # " + "-joined SWITCH=value parts AND a bare single value (e.g. C3=False) as the row switch's baseline override
+    # (type-checked, behind V18_C_BARE_VALUES until the version gate PASSes it)
     assert 'joined SWITCH=value parts (BEST-C-FILL and promotions)' in text
     assert '"=" in _part' in text
     assert "_best_parts + _promo_parts" in text
+    i = text.index("def _do_xls_prev():")
+    body = text[i:text.index("_ex_xls = _cf_xls.ThreadPoolExecutor(max_workers=1)")]
+    assert 'elif _V18P is not None and _V18P.flag_on("V18_C_BARE_VALUES") and str(_part).strip()' in body
+    assert "_parts.append((str(_a).strip(), _bv))" in body
 
 
 def test_baseline_still_creates_xls_for_zero_trades():

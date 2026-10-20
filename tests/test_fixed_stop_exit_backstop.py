@@ -73,9 +73,12 @@ def test_absurd_detector():
 
 
 def test_no_fixed_stop_config_fields_still_holds():
+    """RE-BASED 2026-10-20 (E7): the only FIXED_STOP_* Config fields are the reference family, and its defaults are today's stop."""
     import dataclasses as dc
-    names = [f.name for f in dc.fields(C.Config())]
-    assert not [x for x in names if "FIXED_STOP" in x], names
+    import vec_decisions.fixed_stop as fx
+    names = {f.name for f in dc.fields(C.Config())}
+    assert {x for x in names if "FIXED_STOP" in x} == set(fx.SPEC_FIELDS), sorted(x for x in names if "FIXED_STOP" in x)
+    assert tuple(getattr(C.Config(), k) for k in fx.SPEC_FIELDS) == fx.DEFAULT_SPEC
 
 
 def test_newborn_block_bypasses_fixed_stop_source():

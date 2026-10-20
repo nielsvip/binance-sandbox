@@ -313,12 +313,28 @@ check_rapid_restarts() {
 # while mac_failover_agent SIGTERMed it on every 15 s tick ("FENCE: SIGTERM 6 gated trader pids" at 20:19, 20:20,
 # 20:25, 20:32...). Besides being a pointless fight, each respawn gave ez_manage a live window to place an order on an
 # account S1 was already trading. A fenced host simply waits.
+# 2026-10-20 ACCOUNT SCOPE REACHES THIS GATE TOO. There were TWO fence checks: this one (venue-only) and the
+# account-aware lf_lease_fenced() at ~line 584. The 2026-10-19 account-scope change ("if any account fails it should
+# be taken over by s1 ... the Mac keeps trading their siblings") updated only lf_lease_fenced; this copy kept reading
+# the "venues" field alone. run_script() calls THIS one first, so the blind copy decided everything.
+# MEASURED 2026-10-20 03:39-03:47Z: S1 took the lease for ONE dead account — lease.json
+# accounts={"crypto":["flz"]}, reason "account_dead 1/5 (flz) ... local repair failed for 48s" — and all FIVE Mac
+# wrappers then logged "[FENCED] S1 holds the lease for ez_manage.py" every 15 s. S1 ran flz, the Mac ran nothing, so
+# fin/men/inf/ang traded on NEITHER host. A one-account takeover silently became a five-account outage.
+# Delegating to lf_lease_fenced (tools/live_failover_lease_gate.sh) keeps ONE implementation of the lease semantics —
+# scope, ghost-lease staleness and the LF_FAKE_NOW test clock included — instead of a second copy that drifts.
+# Fail-safe preserved: if the gate cannot be sourced, fall back to the venue-only read (never spawn into doubt).
 _lease_fenced() {
     case "$SCRIPT" in
         ez_manage.py|tradier_manage.py|ez_positions_watchdog.py|ez_positions.py|ez_copilot.py|ez_reentry_daemon.py|tradier_positions.py) ;;
         *) return 1 ;;
     esac
-    local lease="/Users/niels/Documents/binance/data/live_failover/lease_local.json"
+    if [[ -f "$WORKDIR/tools/live_failover_lease_gate.sh" ]]; then
+        source "$WORKDIR/tools/live_failover_lease_gate.sh"
+        lf_lease_fenced "$SCRIPT" "$WORKDIR" "${ACCT_SUFFIX#_}"
+        return $?
+    fi
+    local lease="$WORKDIR/data/live_failover/lease_local.json"
     [ -f "$lease" ] || return 1
     case "$SCRIPT" in
         tradier_*) local venue="stocks" ;;
