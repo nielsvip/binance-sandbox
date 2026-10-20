@@ -1183,9 +1183,12 @@ def _fmt_num(x, ints):
 FIXED_STOP_FAMILY = {
     "LONG": {"FIXED_STOP_REF_FIELD": (["dc_low", "dc_basis", "bb_low", "bb_basis"], "dc_low"), "FIXED_STOP_REF_TF": (["15m", "1h", "4h"], "15m"),
              "FIXED_STOP_BUFFER_PCT": (["0.15", "0.25", "0.35", "0.5"], "0.25"), "FIXED_STOP_TIGHTEN_MODE": (["off", "breakeven_after_pct", "trail_ref"], "off")},
-    "SHORT": {"FIXED_STOP_REF_FIELD": (["dc_high", "dc_basis", "bb_high", "bb_basis"], "dc_high"), "FIXED_STOP_REF_TF": (["15m", "1h", "4h"], "15m"),
+    # canonical names stay dc_low/... on shorts too (the engine mirrors them); 2026-10-20 the family became template rows
+    "SHORT": {"FIXED_STOP_REF_FIELD": (["dc_low", "dc_basis", "bb_low", "bb_basis"], "dc_low"), "FIXED_STOP_REF_TF": (["15m", "1h", "4h"], "15m"),
               "FIXED_STOP_BUFFER_PCT": (["0.15", "0.25", "0.35", "0.5"], "0.25"), "FIXED_STOP_TIGHTEN_MODE": (["off", "breakeven_after_pct", "trail_ref"], "off")},
 }
+for _side in ("LONG", "SHORT"):
+    FIXED_STOP_FAMILY[_side]["FIXED_STOP_TIGHTEN_TRIGGER_PCT"] = (["0.5", "1", "2", "3"], None)
 LEVEL_SIBLINGS = {"LONG": ["dc_low", "dc_basis", "bb_lower", "bb_basis"], "SHORT": ["dc_high", "dc_basis", "bb_upper", "bb_basis"]}
 BARE_LEVELS = ["lower", "basis", "upper"]
 PROPOSE_ROLES = frozenset({"stop", "target", "reference", "threshold"})
@@ -1571,6 +1574,22 @@ def cmd_score(a):
                     x["best_companion_pred"] = {"filter": ys[j].partition("=")[0], "opt": ys[j].partition("=")[2], "p_pos_pred": _r(h2["p_pos"][j]),
                                                 "e_delta_pred": _r(h2["e_delta"][j], 4), "label": "PREDICTION"}
         fixed = [x for x in nr if x["rule"].startswith("fixed_stop")]
+        # the family's TEMPLATE rows (installed 2026-10-20): naked-row predictions vs the bold default, every regime
+        fam = FIXED_STOP_FAMILY[fctx.side]
+        for ri, rk in enumerate(res["row_keys"]):
+            tab, _, kv = rk.partition("|")
+            sw, _, cnd = kv.partition("=")
+            if sw not in fam:
+                continue
+            ident = bool(res["row_ident"][ri])
+            fixed.append({"switch": sw, "cand": cnd, "filter": None, "opt": None, "tab": tab, "cat_side": cs, "regime": "ALL", "label": "PREDICTION",
+                          "p_pos_pred": _r(res["rows"]["p_pos"][ri, G0]), "e_delta_pred": _r(res["rows"]["e_delta"][ri, G0], 4), "forward_pred": _r(res["rows"]["fwd"][ri, G0], 4),
+                          "d_tim_pred": _r(res["rows"]["d_tim"][ri, G0], 3), "d_dd_pred": _r(res["rows"]["d_dd"][ri, G0], 3), "d_wr_pred": _r(res["rows"]["d_wr"][ri, G0], 3),
+                          "p_pos_pred_by_regime": {g: _r(res["rows"]["p_pos"][ri, j]) for j, g in enumerate(REGIMES)},
+                          "status": "IDENTITY_DEFAULT" if ident else ("HAS_TEMPLATE_ROW" if res["row_n"][ri] else PRED_LABEL), "rule": "fixed_stop_family_template_row",
+                          "default": fctx.default(sw), "n_measured_row": int(res["row_n"][ri]), "pos_measured_row": int(res["row_pos"][ri]),
+                          "pct_rank_vs_template_rows": _r(float(np.searchsorted(np.sort(res["rows"]["p_pos"][:, G0]), res["rows"]["p_pos"][ri, G0])) / max(1, len(res["row_keys"])), 4),
+                          "nearest_evidence": sc.nearest(rk, k=5)})
         doc = {"meta": {"schema": SCHEMA, "cat_side": cs, "built_at": utc_now(), "model_trained_at": sc.meta["trained_at"], "corpus_last_ts": sc.meta["corpus_last_ts"],
                         "label": "every p_pos_pred / e_delta_pred / forward_pred / d_*_pred here is a PREDICTION of tools/v18_linknet.py, never a measurement; nothing is adopted except by the real engine",
                         "scores_npz": str(out_dir / f"linknet_scores_{cs}.npz"), "n_predictions_scored": res["n_predictions"], "secs_cells": res["secs_cells"],
@@ -1621,12 +1640,13 @@ def digest_proposals(cat_side, learn_dir=LEARN_DIR, k=None, k_needs=None):
                 "status": x["status"] if x["status"] in ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW") else "PREDICTED_NOT_MEASURED", "label": "PREDICTION"}
     needs = sorted(doc.get("needs_row") or [], key=lambda x: -(x.get("p_pos_pred") or 0))
     fixed = [x for x in needs if str(x.get("rule", "")).startswith("fixed_stop")]
+    fixed_rows = [x for x in (doc.get("fixed_stop_family") or []) if x.get("rule") == "fixed_stop_family_template_row" and x.get("status") != "IDENTITY_DEFAULT"]
     needs_top = needs[:k_needs]
     for x in fixed:
         if x not in needs_top:
             needs_top.append(x)
-    cells = (doc.get("template_untried") or [])[: max(0, k - len(needs_top))]
-    props = [ent(x) for x in cells] + [ent(x) for x in needs_top]
+    cells = (doc.get("template_untried") or [])[: max(0, k - len(needs_top) - len(fixed_rows))]
+    props = [ent(x) for x in cells] + [ent(x) for x in needs_top] + [ent(x) for x in fixed_rows]
     props.sort(key=lambda e: -(e["p_pos_pred"] or 0))
     venue = "STOCKS" if cat_side.startswith("STOCKS") else "CRYPTO"
     side = cat_side.split("_", 1)[1]
@@ -1640,7 +1660,7 @@ def digest_proposals(cat_side, learn_dir=LEARN_DIR, k=None, k_needs=None):
     rows = []
     for sw, e in by_sw.items():
         fam = FIXED_STOP_FAMILY[side].get(sw)
-        if fam:
+        if fam and fam[1] is not None:
             e["default"] = fam[1]
             e["candidates"] = [fam[1]] + [c for c in e["candidates"] if c != fam[1]]
         e["why"] = "; ".join(e["why"])[:600]

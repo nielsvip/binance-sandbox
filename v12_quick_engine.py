@@ -8310,7 +8310,8 @@ class QuickConfig:
         True  # USER 2026-10-12 tandem: mirror of config.py (vec-exact backstop; kill switch False). Added for verify-live-switches (was missing_in_quickconfig_and_template).
     )
     VEC_STALE_FLATTEN_BARS: float = (
-        8.0  # USER 2026-10-12 tandem: mirror of config.py (bars of continuous flat+holds before the backstop fires).
+        2.0  # USER 2026-10-12 tandem: mirror of config.py (bars of continuous flat+holds before the backstop fires).
+        # 2026-10-20: 8.0 -> 2.0 with config.py (USER "NO POSITION CAN EVER BE OPEN IF IT IS NOT OPEN IN VECTORIZED").
     )
     UNTESTED_FLAT_SPS_MULT: float = (
         0.25  # USER 2026-10-12 tandem: mirror of config.py (untested-flat sizing; template row = template-lane follow-up).

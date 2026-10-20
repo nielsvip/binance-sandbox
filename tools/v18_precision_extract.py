@@ -22,6 +22,7 @@ Output: one gz TSV `<ts>\\t<json>` per run (events board / row / id / abl / reme
 cv, ck, seq) + a counters JSON. Read-only on its inputs; nothing else is written.
 
     python3 tools/v18_precision_extract.py --from 'GLOB' [--from GLOB2] --host s2 --out-dir DIR [--ctx-map ctxmap_s2.json]
+    python3 tools/v18_precision_extract.py --store data/experience --ts-from EPOCH --ts-to EPOCH --host store_native --out-dir DIR
 """
 import argparse
 import collections
@@ -210,14 +211,149 @@ def run(a):
     return 0
 
 
+# ------------------------------------------------------------------------------------------------ store source (native cache rows)
+
+def _vstr(v):
+    if isinstance(v, bool):
+        return "True" if v else "False"
+    return str(v)
+
+
+def run_store(a):
+    """Experience-store native rows (provenance='native', delta_rule='explicit': set = sets[base_set_id] + delta) -> the same row
+    events as the logs. Context = (sym_side, base_set_id, window, offset, bh, bars). v17_priors_mine rule: two rows of one context
+    whose sets differ in exactly ONE key: X = P + {S: b} is a naked eval of S=b with the default in force = P's value of S (the base
+    set's value, P does not override S); D = X + {F: o} with F=o a yellow of S's tab is that row's cell, marginal = g(D) - g(X).
+    Read-only; grouped in memory per shard; only rows with ts in [--ts-from, --ts-to] (the rows whose source logs no longer exist)."""
+    import sqlite3
+    sys.path.insert(0, str(HERE))
+    from v18_learn_common import template_index, template_cand
+    out_dir = Path(os.path.expanduser(a.out_dir))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"_{os.getpid()}"
+    sp = out_dir / f"prec_{a.host}_{stamp}.tsv.gz"
+    spill = B.Spill(sp)
+    cnt = collections.Counter()
+    t0 = time.time()
+    shards = sorted(glob.glob(os.path.join(os.path.expanduser(a.store), "experience_*_*.db")))
+    for shard in shards:
+        cs = next((c for c in B.CAT_SIDES if f"experience_{c}_" in os.path.basename(shard)), None)
+        if cs is None:
+            continue
+        tidx = template_index(cs)
+        ytab = {}
+        key_tab = {}
+        for tab, blk in tidx["tabs"].items():
+            for _r, sw, cand, _d in blk["rows"]:
+                ytab.setdefault(f"{sw}={cand}", set()).update(blk["yellows"])
+                key_tab.setdefault(f"{sw}={cand}", tab)
+        con = sqlite3.connect(f"file:{shard}?mode=ro", uri=True)
+        groups = collections.defaultdict(dict)
+        bases = set()
+        q = ("SELECT eval_id, sym_side, base_set_id, window_days, offset_days, bh_pct, bars, delta, gain, valid, trades, tim, dd, sharpe, wr, ts "
+             "FROM evals WHERE provenance='native' AND delta_rule='explicit' AND ts >= ? AND ts <= ?")
+        for eid, ss, bid, wd, od, bh, bars, delta, gain, valid, tr, tim, dd, sh, wr, ts in con.execute(q, (a.ts_from, a.ts_to)):
+            cnt[f"{cs}:rows"] += 1
+            if gain is None:
+                cnt[f"{cs}:no_gain"] += 1
+                continue
+            try:
+                dj = json.loads(delta) if delta else {}
+            except ValueError:
+                cnt[f"{cs}:bad_delta"] += 1
+                continue
+            items = [(k, _vstr(v)) for k, v in (dj.get("set") or {}).items() if k not in B.DENY]
+            items += [(k, "<absent>") for k in (dj.get("del") or [])]
+            fs = frozenset(items)
+            ctx = (ss, bid, wd, od, None if bh is None else round(float(bh), 6), bars)
+            g = groups[ctx]
+            if fs in g:
+                cnt[f"{cs}:dup_set_in_ctx"] += 1
+                continue
+            g[fs] = (eid, float(gain), int(valid or 0), tr, tim, dd, sh, wr, float(ts))
+            bases.add(bid)
+        base_sets = {}
+        for bid in bases:
+            row = con.execute("SELECT gz FROM sets WHERE set_id = ?", (bid,)).fetchone()
+            if row is None:
+                continue
+            try:
+                base_sets[bid] = json.loads(gzip.decompress(row[0]))
+            except Exception:
+                try:
+                    base_sets[bid] = json.loads(row[0])
+                except Exception:
+                    cnt[f"{cs}:base_unreadable"] += 1
+        con.close()
+        for ctx, g in groups.items():
+            ss, bid, wd, od, bh, bars = ctx
+            base = base_sets.get(bid) or {}
+            board = "NAT|" + str(B.h64("|".join(map(str, ctx))))
+            t_first = min(v[8] for v in g.values())
+            spill({"e": "board", "t": B.iso_of(t_first), "s": ss, "b": board, "bh": B._r(bh, 3), "ti": None, "rd": "store_native", "nat": True,
+                   "rk": B.h64("NATB|" + board), "src": a.host})
+            cnt[f"{cs}:contexts"] += 1
+            children = collections.defaultdict(list)
+            for fs in g:
+                for it in fs:
+                    children[fs - {it}].append((it, fs))
+            for parent, lst in children.items():
+                P = g.get(parent)
+                if P is None:
+                    continue
+                for (sw, val), X_fs in lst:
+                    X = g[X_fs]
+                    if not P[2]:
+                        cnt[f"{cs}:parent_invalid"] += 1
+                        continue
+                    cand = template_cand(sw, val, tidx) or val
+                    k = f"{sw}={cand}"
+                    dv = base.get(sw)
+                    cv = template_cand(sw, _vstr(dv), tidx) or (None if dv is None else _vstr(dv))
+                    d = X[1] - P[1]
+                    m = [None if (X[3 + i] is None or P[3 + i] is None) else B._r(float(X[3 + i]) - float(P[3 + i])) for i in range(5)]
+                    m = [m[1], m[0], m[2], m[3], m[4]]  # tim, trades, dd, sharpe, wr
+                    ys = []
+                    yl = ytab.get(k, set())
+                    for (fk, fv), D_fs in children.get(X_fs, []):
+                        D = g[D_fs]
+                        fo = f"{fk}={template_cand(fk, fv, tidx) or fv}"
+                        if fo not in yl:
+                            cnt[f"{cs}:child_not_a_yellow_of_row"] += 1
+                            continue
+                        mm = [None if (D[3 + i] is None or X[3 + i] is None) else B._r(float(D[3 + i]) - float(X[3 + i])) for i in range(5)]
+                        mm = [mm[1], mm[0], mm[2], mm[3], mm[4]]
+                        ys.append([fo, B._r(D[1] - X[1]), D[2], 0.0] + mm + [1.0, B._r(D[1] - P[1])])
+                    cnt[f"{cs}:naked"] += 1
+                    cnt[f"{cs}:cells"] += len(ys)
+                    spill({"e": "row", "t": B.iso_of(X[8]), "s": ss, "b": board, "sh": key_tab.get(k, "NATIVE"), "k": k, "cb": B._r(P[1]),
+                           "n": [B._r(d), X[2], 0.0] + m + [1.0, 1], "y": ys, "ni": 0, "sy": [], "p": False, "ps": None, "g": B.regime_of(bh),
+                           "ti": None, "bh": B._r(bh, 3), "rk": B.h64(f"NATR|{X[0]}|{P[0]}|{sw}"), "cv": cv, "ck": "NAT", "seq": 0, "src": a.host})
+        print(f"[store] {os.path.basename(shard)} {dict((k, v) for k, v in cnt.items() if k.startswith(cs))} {time.time() - t0:.0f}s", flush=True)
+        del groups
+    spill.close()
+    rep = {"host": a.host, "store": a.store, "ts_from": a.ts_from, "ts_to": a.ts_to, "spill": str(sp), "secs": round(time.time() - t0, 1), "counters": dict(cnt), "events": dict(spill.n)}
+    (out_dir / f"prec_{a.host}_{stamp}.json").write_text(json.dumps(rep, indent=1, sort_keys=True))
+    print(json.dumps(rep, indent=1, sort_keys=True))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--from", dest="source_from", action="append", required=True)
+    ap.add_argument("--from", dest="source_from", action="append", help="delta-log glob(s)")
+    ap.add_argument("--store", help="experience store dir: read native rows instead of delta logs (run_store)")
+    ap.add_argument("--ts-from", type=float, default=0.0)
+    ap.add_argument("--ts-to", type=float, default=9e12)
     ap.add_argument("--host", required=True)
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--ctx-map")
     ap.add_argument("--bolds", help="json {cat_side: {switch: bold cand}} (tools/v18_precision_build.py bolds)")
-    return run(ap.parse_args(argv))
+    a = ap.parse_args(argv)
+    if a.store:
+        return run_store(a)
+    if not a.source_from:
+        ap.error("--from or --store required")
+    return run(a)
 
 
 if __name__ == "__main__":

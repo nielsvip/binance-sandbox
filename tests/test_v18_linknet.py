@@ -175,7 +175,13 @@ def test_enumeration_dc_low_stop_gives_basis_and_bb_siblings():
     assert ("FIXED_STOP_REF_FIELD", "dc_basis") in fs and ("FIXED_STOP_REF_FIELD", "bb_basis") in fs and ("FIXED_STOP_REF_FIELD", "dc_low") not in fs
     assert all(x["status"] == "NEEDS_ROW" for x in out)
     short = {(x["switch"], x["cand"]) for x in LN.enumerate_beyond(fctx("CRYPTO_SHORT"))[0] if x["rule"].startswith("fixed_stop")}
-    assert ("FIXED_STOP_REF_FIELD", "bb_high") in short and ("FIXED_STOP_REF_FIELD", "dc_low") not in short
+    assert ("FIXED_STOP_REF_FIELD", "bb_low") in short and ("FIXED_STOP_REF_FIELD", "dc_low") not in short  # canonical names, engine mirrors
+    assert ("FIXED_STOP_TIGHTEN_TRIGGER_PCT", "0.5") in fs
+    tf = dict(TIDX)
+    tf = dict(tf, switches=dict(tf["switches"], FIXED_STOP_REF_FIELD=["dc_low", "dc_basis", "bb_low", "bb_basis"]))
+    ctx2 = FT.Context("CRYPTO_LONG", tidx=tf, bible={}, deps={}, tfsem={}, fdict={})
+    fs2 = {(x["switch"], x["cand"]) for x in LN.enumerate_beyond(ctx2)[0] if x["rule"].startswith("fixed_stop")}
+    assert not any(sw == "FIXED_STOP_REF_FIELD" for sw, _c in fs2)  # once the template has the rows they are not NEEDS_ROW
 
 
 def test_template_row_status():

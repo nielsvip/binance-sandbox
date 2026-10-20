@@ -4106,6 +4106,18 @@ class TradierConfig:
     )
     STRENGTH_FILTER_ENABLED: bool = True
     STRENGTH_MIN_SCORE: float = 5.0
+    # 2026-10-20 EXIT GUARANTEE MADE VISIBLE ON THE STOCKS SURFACE. The hooks and the decorator were already live here
+    # (_XG_TR_HOOKS, @_xg.wrap_execute_now("tradier", ...) at tradier_manage.py:47840), but NONE of these four switches
+    # existed in TradierConfig, so exit_guarantee._cfg() silently fell back to exit_guarantee.DEFAULTS. The behaviour was
+    # therefore correct but UNAUDITABLE and UNTUNABLE on this venue: nothing could read the stocks kill switch, and a
+    # surface audit could not see it. Values below are exactly exit_guarantee.DEFAULTS, so this changes NO behaviour —
+    # verified by comparing against that dict. USER 2026-10-20 "NO POSITION CAN EVER BE OPEN IF IT IS NOT OPEN IN
+    # VECTORIZED": with every non-vector exit path now off, live can only hold what the vector does not if a
+    # switch-decided exit fails to EXECUTE — which is precisely what this guarantee prevents, so it must be visible.
+    EXIT_GUARANTEE_ENABLED: bool = True
+    EXIT_GUARANTEE_FORCE_ENABLED: bool = True  # FORCE market reduce-only close after the normal path refused / did not confirm
+    EXIT_GUARANTEE_REDUCE_RETRY_SEC: str = "15,30,60,120,240"
+    EXIT_GUARANTEE_STUCK_CHECK_SEC: str = "20,60,180"  # FULL close still open -> FORCE re-check schedule, then ALERT
     STRICT_VEC_PARITY_GATE_ENTRIES: bool = True
     STRICT_VEC_PARITY_GATE_EXITS: bool = True  # USER 2026-10-17 total parity: closes only on vector exit families (vec_paths/vec_parity_gate.py, incl. FIXED_STOP/DAYTRADE_*/TECHNICAL_TARGET/ULTIMATE_DC/VIGILANCE_DC4/UNCOND_DC, |VEC_EXACT); live-only PRE_CLOSE / E3_STRUCT_EXIT / Market_Against_Position_Bias are refused in queue_trade_action
     STRICT_VEC_PARITY_SHADOW: bool = True  # 2026-10-20: log every would-block, block nothing (mirrors config.py).

@@ -1824,7 +1824,15 @@ class Config:
         True  # 2026-10-10 USER TOTAL PARITY (forest-bellatrix): backstop for OWNED keys paper-flat + live-holds with NO vec act (missed transitions). Due only after VEC_STALE_FLATTEN_BARS of continuous flat+holds — never churns actives. Kill switch: False.
     )
     VEC_STALE_FLATTEN_BARS: float = (
-        8.0  # 2026-10-10 (forest-bellatrix): stale-flatten persistence — 8x15m bars (2h), far beyond pipeline p99 (~20min), far below churn timescales.
+        2.0  # USER 2026-10-20: "NO FUCKING WAY IN HELL CAN A POSITION EVER BE OPEN IF IT IS NOT OPEN IN VECTORIZED".
+        # 8.0 meant live could hold a position the vector had already closed for 8x15m = 2 HOURS before the backstop
+        # converged it. That is the "exiting too late" direction, and it is the costlier one: the position keeps running
+        # against a thesis the board has abandoned, and no board can ever show the trade.
+        # 2.0 keeps the anti-churn property the 8.0 comment was built on and states as its own requirement — "far beyond
+        # pipeline p99 (~20min)". 20 min is ~1.3 bars, so 2 bars (30 min) is still beyond p99 while cutting the exposure
+        # window by 4x. Fresh transitions still flow the normal act path first (stale_flat_due resets on paper-holds,
+        # live-flat, or ANY act emitted within the window), so this cannot churn an active key.
+        # MIRRORED in v12_quick_engine.QuickConfig (tandem 4-surface rule). ROLLBACK: 8.0.
     )
     VEC_CONVERGE_OPEN_ENABLED: bool = (
         True  # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … REENTER FAST": live follows the vec POSITION — vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> OPEN now (latest-board sym_sides only, once per bar). False = event-only.

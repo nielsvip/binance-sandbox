@@ -1,37 +1,61 @@
 {
- "now": "2026-10-20T03:23:10.704698+00:00",
+ "now": "2026-10-20T04:23:14.358883+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 2143,
- "last_exit_ts": "2026-10-20T02:25:08.186885+00:00",
+ "n_exit_rows": 2161,
+ "last_exit_ts": "2026-10-20T04:22:05.909175+00:00",
  "n_leaks": 0,
- "n_gate_on": 37,
+ "n_gate_on": 69,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 303,
- "n_unverified": 0,
- "since": "2026-10-18T03:23:10.704698+00:00",
+ "n_unmapped": 307,
+ "n_unverified": 33,
+ "since": "2026-10-18T04:23:14.358883+00:00",
  "vec_exact_by_action": {
-  "OPEN": 1340,
-  "REDUCE": 241,
-  "CLOSE": 222
+  "OPEN": 1310,
+  "CLOSE": 214,
+  "REDUCE": 228
  },
- "native_rows": 340,
- "unverified_by_family": {},
+ "native_rows": 409,
+ "unverified_by_family": {
+  "QUICK_REDUCE_SCALP (ABLATION_DISABLE_SCALP_GUARD=False)": 12,
+  "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 8,
+  "GAIN_EROSION_STOP (None=None)": 13
+ },
  "leaks_by_family": {},
  "leak_keys": {},
  "gate_on_by_family": {
-  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 37
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 37,
+  "QUICK_REDUCE_STRONG (ABLATION_DISABLE_QUICK_EXIT)": 21,
+  "BB_RECOVERY_EXIT (BB_RECOVERY_EXIT_ENABLED_TRADIER)": 6,
+  "QUICK_REDUCE_OTHER (ABLATION_DISABLE_QUICK_EXIT)": 2,
+  "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 2,
+  "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 1
  },
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
   "FIXED_STOP_LONG": 194,
-  "FIXED_STOP_SHORT": 108,
-  "BB_TAKE_1h_g5.70": 1
+  "FIXED_STOP_SHORT": 96,
+  "VEL_EXIT_v4h-4.75": 3,
+  "QUICK_WT_CROSS_EXIT_1h_bear_wt1=8.7_wt": 2,
+  "QUICK_REALLOC_FOR_WLDUSDC_6pct_REDUCE": 2,
+  "BB_TAKE_1h_g5.70": 1,
+  "VEL_EXIT_v4h-2.91": 1,
+  "VEL_EXIT_v4h-7.05_g1.14": 1,
+  "VEL_EXIT_v4h-7.05_g1.19": 1,
+  "QUICK_REALLOC_FOR_WLDUSDC_6pct": 1,
+  "VEL_EXIT_v4h-7.05_g1.46": 1,
+  "WT_EXHAUST_mom4h=EXHAUST_UP_1h=IMPULSE": 1,
+  "VEL_EXIT_v4h-9.20": 1,
+  "VEL_EXIT_v4h-7.05_g1.45": 1,
+  "BB_TAKE_15m": 1
  },
  "actions": {
-  "OPEN": 1340,
-  "REDUCE": 241,
-  "CLOSE": 562
+  "OPEN": 1310,
+  "CLOSE": 570,
+  "REDUCE": 246,
+  "SCALP_REDUCE": 12,
+  "STRONG_REDUCE": 21,
+  "QUICK_CLOSE": 2
  }
 }

@@ -370,8 +370,22 @@ class Agent:
         venues = C.lease_venues(lease)
         scope = {k: sorted(v) for k, v in (lease.get("accounts") or {}).items() if v}
         prev_scope = {k: sorted(v) for k, v in (local.get("accounts") or {}).items() if v}
-        if (local.get("holder") != "s1" or local.get("gen") != lease.get("gen")
-                or C.lease_venues(local) != venues or prev_scope != scope):
+        # 2026-10-20 fetched_epoch MUST BE A HEARTBEAT, NOT A CHANGE STAMP. This block previously wrote
+        # lease_local.json only when holder/gen/venues/scope CHANGED, so fetched_epoch recorded the last CHANGE.
+        # tools/live_failover_lease_gate.sh then refuses to fence when that stamp is older than LF_LEASE_MAX_AGE_S
+        # (default 600 s) — the 2026-10-16 ghost-lease guard, added so a DEAD agent could not fence forever. Together
+        # they mean a perfectly healthy S1 lease that lasts longer than 10 minutes stops fencing the Mac, the Mac's
+        # watchdogs respawn their traders, and BOTH HOSTS TRADE THE SAME ACCOUNTS — the one outcome the lease exists to
+        # prevent ("Mac and S1 must never both trade", USER 2026-10-13). Observed 2026-10-20 04:20Z: lease_local.json
+        # stamped 03:50Z, i.e. 30 min old, while the agent was alive and writing its other state files every tick.
+        # Re-stamping every tick keeps the ghost-lease protection intact — a dead agent still stops refreshing, the age
+        # still grows, and the gate still unfences — while a live lease can no longer expire under a running agent.
+        # The ALERT stays on CHANGE only, so this adds no alert noise.
+        _changed = (local.get("holder") != "s1" or local.get("gen") != lease.get("gen")
+                    or C.lease_venues(local) != venues or prev_scope != scope)
+        if not _changed and local.get("holder") == "s1":
+            C.atomic_write_json(LF / "lease_local.json", dict(local, fetched_epoch=C.now_s(), fetched_at=C.iso()))
+        if _changed:
             C.atomic_write_json(LF / "lease_local.json", {"holder": "s1", "gen": lease.get("gen"), "venues": C.venues_str(venues), "accounts": scope, "fetched_epoch": C.now_s(), "fetched_at": C.iso(), "reason": lease.get("reason")})
             alert("MAC_FENCED", gen=lease.get("gen"), venues=venues, accounts=scope or "all", reason=lease.get("reason"))
         yielded = sorted({a for v in venues for a in (prev_scope.get(v) or []) if a not in (scope.get(v) or [])})
