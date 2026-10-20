@@ -331,6 +331,51 @@ def check_indicators(now):
     }
 
 
+def check_defaults_chain(open_epoch, now, host):
+    """Today's defaults actually landed: S1's daily chain wrote its done-stamp, and the cat_side layer is today's.
+
+    USER 2026-10-20: "always recalculate TEMPLATE_* and all defaults before market open". Measured that day:
+    tools/v15_daily_chain_s1.sh had failed at STEP 2 (the one TEMPLATE writer) every day since at least
+    10-18 — `data/daily_chain/20261020.FAILED.json {"failed_step":"2","why":"template writer norm rc=124"}`
+    written 13:27Z, three minutes before the bell. rc=124 is the step's own `timeout 1800` (12:57:27 ->
+    13:27:27); the 12:15Z attempt instead finished in 29m24s and failed layout verification ("NOT saved").
+    Any failed step STOPS the chain, so nothing after step 2 ran: data/cat_side_defaults_4.json was still
+    stamped 10-14 and the Mac's last done-stamp was 20261015. tools/v15_tandem_guard.py had been printing
+    exactly this ("S1 chain stamp is MISSING — no defaults landed") into /tmp/v15_tandem_guard.log daily,
+    with --notify only and no reader."""
+    day = datetime.datetime.fromtimestamp(open_epoch or now, datetime.timezone.utc).strftime("%Y%m%d")
+    day_start = (open_epoch - 13.5 * 3600) if open_epoch else now - 86400
+    catside = ROOT / "data" / "cat_side_defaults_4.json"
+    catside_mtime = _mtime(catside)
+    catside_today = catside_mtime is not None and catside_mtime >= day_start
+    local_stamp = (CHAIN_DIR / f"{day}.json").exists()
+    remote = "no host given"
+    remote_ok = None
+    if host:
+        cmd = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "ControlPath=none", host,
+               f"d=~/binance-sandbox/data/daily_chain; if [ -s $d/{day}.json ]; then head -c 400 $d/{day}.json; elif [ -s $d/{day}.FAILED.json ]; then head -c 400 $d/{day}.FAILED.json; else echo NO_STAMP; fi"]
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=60).stdout.strip()
+        except Exception as exc:
+            out = f"unreachable: {exc}"
+        remote = out[:400] or "NO_STAMP"
+        remote_ok = '"status":"OK"' in out.replace(" ", "") or ('"date"' in out and "FAILED" not in out)
+    ok = bool(catside_today) and (remote_ok is not False) and (local_stamp or remote_ok is True)
+    return {
+        "name": "defaults_chain_completed",
+        "ok": ok,
+        "critical": True,
+        "measured": {
+            "cat_side_defaults_4_at": _iso(catside_mtime),
+            "cat_side_is_today": catside_today,
+            "mac_done_stamp": local_stamp,
+            "s1_stamp": remote,
+        },
+        "detail": f"cat_side defaults {_iso(catside_mtime)} (today={catside_today}), mac stamp {day}={local_stamp}, s1 stamp {remote[:160]}"
+        + ("" if ok else " — the defaults chain did NOT land today: live is trading an older default layer"),
+    }
+
+
 def check_s1_synced(host):
     """S1 carries the same per_sym store it would copytrade with (md5 of the store file)."""
     if not host:
@@ -365,6 +410,7 @@ def run(host=None, limit=None, as_of=None):
     open_epoch = session_open(now)
     checks = [
         check_boards(open_epoch, now),
+        check_defaults_chain(open_epoch, now, host),
         check_selection(open_epoch, now),
         check_apply_report(open_epoch, now),
         check_live_matches_selection(open_epoch, now, limit=limit),

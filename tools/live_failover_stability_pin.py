@@ -159,8 +159,13 @@ def load_per_core():
 
 
 def mac_readiness():
-    """(ready, reasons, measured) — CAPABLE and SYNCED, never 'currently trading' (see module docstring)."""
-    reasons, measured = [], {}
+    """(ready, reasons, measured) — CAPABLE and SYNCED, never 'currently trading' (see module docstring).
+
+    Load is a WARNING, not a blocker. The Mac runs chronically hot (measured 2026-10-19: load 82, swap
+    5.5/7 GB, 63 python processes) and a hard load gate would pin live trading to S1 for good — on a host
+    that reaches its stocks accounts one per ~6 min lap. Overload is only harmful here through effects the
+    hard checks already measure directly: stale indicators and manager restart churn."""
+    reasons, measured, warnings = [], {}, []
     report = _read_json(READINESS)
     if not report:
         reasons.append("no preopen_readiness.json")
@@ -184,8 +189,9 @@ def mac_readiness():
     load = load_per_core()
     measured["load_per_core"] = None if load is None else round(load, 2)
     if load is not None and load > LOAD_MAX:
-        reasons.append(f"load {load:.2f}/core > {LOAD_MAX}")
-    return not reasons, reasons, measured
+        warnings.append(f"load {load:.2f}/core > {LOAD_MAX} (warning only)")
+    measured["warnings"] = warnings
+    return not reasons, reasons + warnings, measured
 
 
 def s1_capable():

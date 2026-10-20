@@ -46,7 +46,8 @@ CORE_COLS = ("timestamps", "close", "open_15m", "high_15m", "low_15m", "close_15
 # klines on disk (0.17 h old) while 54 of 60 sampled crypto NPZs were 4-12 h behind (median 7.69 h, one 374 h), because
 # tools/v15_dispatch_job.py treats a prep slot/lock-wait timeout as ok=None and launches "with what the host has".
 # A board fitted on bars that old is optimising last night's market, so staleness BLOCKS here.
-MAX_TAIL_AGE_H = {"crypto": float(os.environ.get("V15_PREFLIGHT_MAX_TAIL_H_CRYPTO", "1.5")), "stocks": float(os.environ.get("V15_PREFLIGHT_MAX_TAIL_H_STOCKS", "20"))}
+# USER LAW 2026-10-20 (was 1.5 h): wall-clock age of the last bar's OPEN; one bar behind the latest closed bar peaks at 15+15+15 = 45 min, so 0.8 h (48 min) = the 20-min npz_age_min rule (tools/npz_cutoffs.MAX_NPZ_AGE_MIN)
+MAX_TAIL_AGE_H = {"crypto": float(os.environ.get("V15_PREFLIGHT_MAX_TAIL_H_CRYPTO", "0.8")), "stocks": float(os.environ.get("V15_PREFLIGHT_MAX_TAIL_H_STOCKS", "20"))}
 QUOTES = ("USDT", "USDC", "USD1", "BUSD", "FDUSD", "TUSD", "DAI")
 
 

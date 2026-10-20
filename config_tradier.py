@@ -3033,7 +3033,26 @@ class TradierConfig:
     # Enforcing it would have driven stocks toward 0 trades (USER 2026-10-17: "0 trades means something went
     # terribly wrong"). Do NOT flip without the reconciliation; the no-board gate below is the narrow,
     # sanctioned half of the same intent.
-    TRADIER_HERMETIC_ENFORCE: bool = True  # USER 2026-10-17 "live needs to 100% reflect vector decisions right now no discrepancies tolerated": native stock entries refused + paper-traded (paper_nonvec); 3d before: 270 native vs 28 vec entries
+    TRADIER_HERMETIC_ENFORCE: bool = (
+        False  # 2026-10-20 BACK TO LOG MODE — REQUIRED BY THE NATIVE FLIP, AND THE BOOK WAS HALTED.
+        # MEASURED 2026-10-20 14:17Z, 47 min after the open: 199 orders refused BLOCKED_HERMETIC_NOT_VEC
+        # (trb 115, trc 84) against 190 "OPEN EXECUTE" attempts, and ZERO positions opened. Example:
+        # "[HERMETIC_TR] REFUSED trb:AXON_SHORT OPEN SELL/SHORT reason=HARDCODED_RALLY_REENTRY_SHORT_... — no
+        # vec provenance". The gate requires structural vec provenance for the position_key, which ONLY the vec
+        # dispatch sites set. It was enforced 2026-10-17 while PARITY_VEC_EXACT_MODE=True made every order come
+        # from the twin, so it always passed. Flipping PARITY_VEC_EXACT_MODE=False (USER 2026-10-20 "NOTHING can
+        # live trade an npz") means native producers decide, and a native order has no vec provenance BY
+        # CONSTRUCTION — so the gate refuses 100% of entries. Same failure shape as STRICT_VEC_PARITY_MODE the
+        # same night: a gate that can only be satisfied while the twin is driving.
+        # This file's own comment at the gate (tradier_manage.py:~48015) prescribes exactly this value: "STARTS IN
+        # LOG MODE FOR STOCKS, deliberately ... enforcing on day one would refuse most legitimate opens and halt
+        # the book ... FLIP TO ENFORCE (one line, after that reconciliation)". That reconciliation has not happened.
+        # Authorisation under native mode is the per_sym set plus the board gate
+        # (live_twins.vec_exact.latest_board_ok — measured today 443 of 474 published sym_sides OK), not a
+        # provenance token the native path never mints. Every would-be refusal is still logged as
+        # WOULD_REFUSE(log mode) so the tally can be reconciled. Exits were never gated here either way.
+        # ROLLBACK: True — only once native orders carry provenance or the twin drives again.
+    )
     TRADIER_NO_BOARD_ENTRY_BLOCK: bool = True  # 2026-10-16: refuse a stock ENTRY (never an exit/reduction/stop) when the sym_side has no published board within the age ceiling (live_twins.vec_exact.latest_board_ok -> NO_LATEST_BOARD). Stocks twin of the crypto gate at ez_positions_quick ~28512. LIVE_SET_NE_BOARD deliberately NOT gated (forward parity 1 PASS of 35). ON since 2026-10-17 per USER.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = False
     HEDGE_HTF_VETO_ENABLED: bool = True

@@ -1,31 +1,30 @@
 {
- "generated_utc": "2026-10-20T14:14:39Z",
+ "generated_utc": "2026-10-20T14:18:53Z",
  "apply": false,
  "lease": {
-  "holder": "mac",
+  "holder": "s1",
   "pin": null,
-  "gen": 68,
-  "venues": null,
-  "reason": "Mac healthy 600s (needed 600s) venues=['crypto', 'stocks']"
+  "gen": 69,
+  "venues": "crypto",
+  "reason": "Mac reachable but NOT TRADING: crypto: positions_stale inf/long_positions.json age 1323s > 600s (position loop wedged) for 49s"
  },
  "mac_ready": false,
  "ready_since": null,
  "stable_for_s": null,
  "stable_needed_s": 900.0,
  "reasons": [
-  "defaults not synced: readiness apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 117s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 14.49/core > 4.0",
-  "and s1-pub indicators 101/199 stale (50.8%) \u2014 pin NOT moved"
+  "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
+  "manager restart churn (newest marker 26s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 13.50/core > 4.0 (warning only)"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 182,
+  "readiness_age_s": 108,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 14,
    "stale_pct": 7.0,
-   "median_age_min": 56.6,
+   "median_age_min": 62.1,
    "sample": [
     "ACHUSDT",
     "ACTUSDT",
@@ -37,12 +36,18 @@
     "CELRUSDT"
    ]
   },
-  "churn": "newest marker 117s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 14.49,
-  "s1": "s1-pub indicators 101/199 stale (50.8%)"
+  "churn": "newest marker 26s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 13.5,
+  "warnings": [
+   "load 13.50/core > 4.0 (warning only)"
+  ],
+  "s1": "s1-pub indicators 14/199 stale (7.0%)"
  },
- "action": "NEITHER_HOST_CAPABLE",
- "action_result": null,
+ "action": "pin_s1",
+ "action_result": {
+  "applied": false,
+  "would": "force-s1"
+ },
  "last_action_at": 0,
  "ready_since_epoch": null
 }

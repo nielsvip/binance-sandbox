@@ -385,7 +385,7 @@ elif mode == "ready":
                             gd = np.diff(rec) / k
                             gap_h = float(gd.max() / 3600.0) if len(gd) else 0.0
                             r["max_gap_30d_h"] = round(gap_h, 2)
-                        max_age = 336.0 if arg.get("venue") == "crypto" else 120.0  # AUTOPILOT 2026-10-02: crypto NPZ tail refresh is not automatic (NPZB loop only); 48h would stop every crypto launch while the user is away
+                        max_age = 1.0 if arg.get("venue") == "crypto" else 120.0  # USER LAW 2026-10-20 crypto backstop 336 h -> 1.0 h (a bar one behind peaks at 0.75 h; tail_currency above is the exact rule). AUTOPILOT 2026-10-02: crypto NPZ tail refresh is not automatic (NPZB loop only); 48h would stop every crypto launch while the user is away
                         par = t15[(t15 > 0) & np.isfinite(t15)]
                         ev = int((np.r_[True, par[1:] != par[:-1]]).sum()) if len(par) else 0
                         lag_min = float(np.nanmin(t - t15))
@@ -1756,7 +1756,7 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
     r, ss, venue = host["root"], f"{sym}_{side}", venue_of(sym)
     chain, t = f"{pdir}/../chain", tmpl_path(host, venue, side)
     if window == "30D":
-        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=150 V15_ENDGAME_S=120 V15_FOCUS_S_WINNER=600 V15_FOCUS_S_MEDIOCRE=150 V15_FOCUS_S_LOSER=60 V15_TIER_BIG_MOVER=8 V15_FOCUS_S_BHCHASE=600 V15_FOCUS_TOP_K_BHCHASE=48 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=4 MALLOC_ARENA_MAX=2 V15_PROGRESS_DIR={pdir} V12_ALLOW_STALE_NPZ=1 V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
+        env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=1 V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=150 V15_ENDGAME_S=120 V15_FOCUS_S_WINNER=600 V15_FOCUS_S_MEDIOCRE=150 V15_FOCUS_S_LOSER=60 V15_TIER_BIG_MOVER=8 V15_FOCUS_S_BHCHASE=600 V15_FOCUS_TOP_K_BHCHASE=48 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=4 MALLOC_ARENA_MAX=2 V15_PROGRESS_DIR={pdir} V12_ALLOW_STALE_NPZ=$(test -s {pdir}/{ss}_v14_progress.json && echo 1 || echo 0) V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         if os.environ.get("V15_SCHED_V17", "1") == "1":
             env += " V15_V17_ROUNDS=1"  # USER 2026-10-13: >=12 finalized V17 boards per hour per server (V15_SCHED_V17=0 = old pilot)
         env += gate_env_inline()  # USER 2026-10-16: the gate-benched launch env is authoritative (appended last = it wins)
@@ -1795,6 +1795,34 @@ def pair_launch_cmd(host, actions, pdir, workers):
         body = side_cmd(host, a["sym"], a["side"], a["window"], pdir, a.get("attempt", 1), workers)
         parts.append(f"(cd {host['root']} && mkdir -p logs && setsid nohup bash -c {shlex.quote(body)} >> /tmp/sweep_{a['sym']}_{a['side']}_{a['window']}.log 2>&1 < /dev/null &) > /dev/null 2>&1")
     return "; ".join(parts)
+
+
+def _dispatch_stale_recent(window_s=150.0, path="/tmp/v15_dispatch.log"):
+    """USER LAW 2026-10-20: sides the dispatch job REFUSED on a stale NPZ (tail-verified ok=false) in the last window, with their tail age
+    in minutes behind the latest closed bar, and the launches whose last bar was verified. Read-only, never raises."""
+    out = {"refused": 0, "ages_min": {}, "verified_launch_ok": 0}
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 600000))
+            lines = f.read().decode("utf8", "ignore").splitlines()[1:]
+        cut = time.time() - window_s
+        for ln in lines:
+            try:
+                r = json.loads(ln)
+                t = time.mktime(time.strptime(r.get("ts", ""), "%Y-%m-%dT%H:%M:%SZ")) - time.timezone
+            except Exception:
+                continue
+            if t < cut or r.get("event") != "tail-verified":
+                continue
+            if r.get("ok") is False:
+                out["refused"] += 1
+                out["ages_min"][r.get("symbol")] = r.get("npz_age_min")
+            elif r.get("ok") is True:
+                out["verified_launch_ok"] += 1
+    except Exception:
+        pass
+    return out
 
 
 def _npz_hold_triage(sym):
@@ -1906,7 +1934,7 @@ def _npz_preflight(symbol, window_days=30, ind_dir=None, check_freshness=True):
     # Same rule as v15_dispatch_job.npz_preflight: older bars are a FLEET policy (V15_SCHED_RUN_STALE, and the
     # tail-stale branch of the is_ready gate above), not this gate's call — blocking on them stopped every
     # crypto dispatch on 2026-10-15. A structural/thin/holed build always blocks: that is the 0-trades producer.
-    if not res.get("ok") and reasons and all(r.startswith("stale tail:") for r in reasons) and os.environ.get("V15_SCHED_RUN_STALE", "1") == "1":
+    if not res.get("ok") and reasons and all(r.startswith("stale tail:") for r in reasons) and os.environ.get("V15_SCHED_RUN_STALE", "0") == "1":
         return True, "DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1): " + "; ".join(reasons)[:220], res
     return bool(res.get("ok")), "; ".join(reasons)[:300], res
 
@@ -2964,10 +2992,17 @@ def tick(args, cfg, now):
                 continue
             rd = is_ready(h["name"], sym)
             _cont_ss = _cont_sides(sym)
-            if not rd.get("ok") and str(rd.get("reason") or "").startswith(("tail-stale:", "stale:")) and (os.environ.get("V15_SCHED_RUN_STALE", "1") == "1" or (_cont_ss and _CONT_FREEZE_ON and _cont_age_ok(rd))):
+            if not rd.get("ok") and str(rd.get("reason") or "").startswith(("tail-stale:", "stale:")) and (os.environ.get("V15_SCHED_RUN_STALE", "0") == "1" or (_cont_ss and _CONT_FREEZE_ON and _cont_age_ok(rd))):
                 # USER 2026-10-13 V16: an unfinished board resumes on the NPZ it was measured on (RULE#4) — a tail-stale
                 # gate would hold it forever, a rebuild would wipe it. Frozen resume is consistent by construction.
                 log.setdefault("cont_npz_frozen", []).append(f"{h['name']}:{sym}:{','.join(_cont_ss)}:{rd.get('reason')}")
+                rd = dict(rd, ok=True)
+            if (not rd.get("ok") and str(rd.get("reason") or "").startswith(("tail-stale:", "stale:")) and not _cont_ss and needs_slot and _ASYNC_DISPATCH
+                    and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and not (args.dry_run or sim)):
+                # USER LAW 2026-10-20: with V15_SCHED_RUN_STALE=0 a stale WORKER copy must not strand the side here - the dispatch job is
+                # the gate: it tail-refreshes S1's NPZ, pushes it md5-verified and REFUSES the launch (kind stale-npz, counted) when the
+                # NPZ's own last bar is still > V15_NPZ_MAX_AGE_MIN behind. Counted per tick below with the worker tail age.
+                log.setdefault("npz_stale_jit", []).append(f"{h['name']}:{sym}:{rd.get('age_h')}h")
                 rd = dict(rd, ok=True)
             if not rd.get("ok") and rd.get("reason") == "npz missing" and needs_slot and not _cont_ss and _ASYNC_DISPATCH and os.environ.get("V15_SCHED_DISPATCH_NPZ", "1") == "1" and not (args.dry_run or sim):
                 # 2026-10-13: a worker without the NPZ is not unready — the async dispatch job builds/pushes it (md5-verified)
@@ -3281,7 +3316,7 @@ def tick(args, cfg, now):
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
             info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "no eligible ready symbol for this host"
-            info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu)}
+            info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu), "npz_stale_jit": len(log.get("npz_stale_jit", [])), "npz_stale_held": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_) and str(v_).startswith(h["name"])), "npz_stale_refused_150s": _dispatch_stale_recent()}
         log["hosts"][h["name"]] = info
     if _pin_sides:  # 2026-10-13: every pinned side names its state each tick (an idle pin must explain itself)
         _ps_log = {}
@@ -3498,6 +3533,7 @@ def tick(args, cfg, now):
             tmp_.replace(ap_dir / "sched_snapshot.json")
         except Exception as e_:
             print(f"[sched] snapshot write failed: {e_}", flush=True)
+    log["npz_stale"] = {"jit_dispatched": len(log.get("npz_stale_jit", [])), "held_unready": sum(1 for v_ in (log.get("skipped_unready") or {}).values() if "stale" in str(v_)), "dispatch_refused_last150s": _dispatch_stale_recent()}
     log["ready_summary"] = {}
     for hn, rb in readiness_by_host.items():
         hist = {}

@@ -127,7 +127,7 @@ def prep(symbol, push):
     return res
 
 
-PREP_NO_REBUILD_ACTIONS = ("frozen", "regen_failed", "regen_blocked")
+PREP_NO_REBUILD_ACTIONS = ("frozen", "regen_failed", "regen_blocked", "stale-npz")  # stale-npz (USER LAW 2026-10-20): the source has no newer bar yet; a rebuild cannot make one, next tick retries
 PREP_ALERT_ACTIONS = ("regen_failed", "regen_blocked")
 
 
@@ -246,12 +246,12 @@ def npz_preflight(symbol, window_days=30, check_freshness=True):
     # Measured 2026-10-15 04:3x-05:0xZ: enforcing freshness here blocked EVERY crypto dispatch (ENAUSDC,
     # FILUSDC, SNXUSDT, SOLUSDC, COTIUSDT, DUSKUSDT, JASMYUSDT — tails 7.1-8.7 h after the job's own refresh)
     # and 0 crypto boards launched. The scheduler's own gate already decides this question:
-    # V15_SCHED_RUN_STALE=1 (the default) means "run on older bars rather than idle the fleet", and that is a
+    # V15_SCHED_RUN_STALE=1 (was the default; USER LAW 2026-10-20 made 0 the default: stale never launches) means "run on older bars rather than idle the fleet", and that is a
     # fleet policy, not this gate's call. So: older bars -> record the deferral (the rebuild still gets asked
     # for) and launch; a STRUCTURAL defect or a thin/holed build -> always block, because that is the silent
     # 0-trades producer the user asked to stop. V15_SCHED_RUN_STALE=0 restores a hard freshness veto.
     if not ok and reasons and all(r.startswith("stale tail:") for r in reasons):
-        if os.environ.get("V15_SCHED_RUN_STALE", "1") == "1":
+        if os.environ.get("V15_SCHED_RUN_STALE", "0") == "1":
             return True, "DEGRADED-STALE-TAIL(allowed by V15_SCHED_RUN_STALE=1): " + "; ".join(reasons)[:220], res
     return ok, "; ".join(reasons)[:300], res
 
@@ -310,6 +310,29 @@ def tail_refresh(symbol):
     return out
 
 
+def verify_launch_tail(symbol, tr):
+    """USER LAW 2026-10-20 "all new calculations calculate up to the latest kline bar, max 15m old in the npz": the JIT tail refresh is
+    mandatory and its RESULT is verified by the NPZ itself (not rc, not mtime). Returns (ok, info) with npz_last_bar_utc / npz_age_min
+    (minutes behind the latest closed bar, same definition as v15_pilot.npz_age_stamp). Not ok -> the caller skips the launch and counts it
+    with this tail age. V15_SCHED_RUN_STALE=1 or a frozen symbol (an unfinished board keeps its own NPZ) is the only way past a stale verdict."""
+    info = {}
+    try:
+        sys.path.insert(0, str(ROOT))
+        from tools.npz_bar_refresh import npz_last_ts
+        from tools.npz_cutoffs import MAX_NPZ_AGE_MIN, npz_age_min
+        mode = "crypto" if symbol.endswith(("USDT", "USDC")) else "stocks"
+        last = npz_last_ts(str(ROOT / "backtest_v8" / "indicators"), symbol)
+        if last is None:
+            return True, {"npz_last_bar_utc": None, "npz_age_min": None, "verify": "no-npz-ts"}
+        age = npz_age_min(last, mode)
+        info = {"npz_last_bar_ts": int(last), "npz_last_bar_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(int(last))), "npz_age_min": age, "limit_min": MAX_NPZ_AGE_MIN}
+        if age is not None and age > MAX_NPZ_AGE_MIN and os.environ.get("V15_SCHED_RUN_STALE", "0") != "1":
+            return False, info
+    except Exception as e:
+        return True, {"verify": f"err {type(e).__name__}: {e}"[:120]}
+    return True, info
+
+
 def fast_push(symbol, push):
     """S1 NPZ exists -> tail-refresh it to the latest closed bar, push it (rsync, md5 verify) and launch; None -> fall back to the builder (no NPZ on S1)."""
     live = ROOT / "backtest_v8" / "indicators" / f"{symbol}.npz"
@@ -328,10 +351,17 @@ def fast_push(symbol, push):
                 seed.unlink(missing_ok=True)
     if not live.exists():
         return None
-    tr = tail_refresh(symbol) if os.environ.get("V15_DISPATCH_TAIL_REFRESH", "1") == "1" else {"tail": "off"}
+    tr = tail_refresh(symbol)  # USER LAW 2026-10-20: mandatory (V15_DISPATCH_TAIL_REFRESH=0 no longer skips it)
+    from tools.npz_cutoffs import last_closed_bar as _lcb_w
+    _wait_end = min(time.time() + float(os.environ.get("V15_TAIL_WAIT_S", "240")), _lcb_w() + 900 + 600)  # wait only while the newest bar can still be propagating (<= 10 min after its close)
+    while tr.get("tail") != "frozen" and not verify_launch_tail(symbol, tr)[0] and time.time() < _wait_end:
+        time.sleep(30)  # the newest closed bar is still propagating Mac -> S1; re-ask the source, re-install, re-verify
+        tr = tail_refresh(symbol)
     if tr.get("tail") == "frozen":
         # a board on this symbol is unfinished/running: its host keeps the NPZ it started on (never push a different one)
-        return {"ok": True, "action": "frozen-keep", "reason": "frozen symbol: target keeps its board's NPZ", "prep_s": 0.0}
+        _fv = verify_launch_tail(symbol, tr)[1]
+        log({"event": "tail-verified", "symbol": symbol, "ok": None, "tail": "frozen", **_fv})
+        return {"ok": True, "action": "frozen-keep", "reason": "frozen symbol: target keeps its board's NPZ", "prep_s": 0.0, "npz_last_bar_utc": _fv.get("npz_last_bar_utc"), "npz_age_min": _fv.get("npz_age_min")}
     if not symbol.endswith(("USDT", "USDC")):
         # 2026-10-14 (BIBLE §109): never ship a short/holed stock NPZ to a 30D board (alert data/alerts/stock_npz_gap_<SYM>.json)
         try:
@@ -344,10 +374,15 @@ def fast_push(symbol, push):
             log({"event": "stock-npz-gap-refused", "symbol": symbol, "gap": gap_info})
             _ledger_npz({"event": "gap-refused", **_npz_identity(symbol), "reason": str(gap_info.get("reason"))[:160]})
             return {"ok": False, "action": "gap-refused", "reason": f"STOCK_NPZ_GAP {gap_info.get('reason')}", "prep_s": 0.0}
+    _tv_ok, _tv = verify_launch_tail(symbol, tr)
+    log({"event": "tail-verified", "symbol": symbol, "ok": _tv_ok, "tail": tr.get("tail"), "tail_s": tr.get("tail_s"), **_tv})
+    if not _tv_ok:
+        _ledger_npz({"event": "stale-refused", **_npz_identity(symbol), "npz_age_min": _tv.get("npz_age_min")})
+        return {"ok": False, "action": "stale-npz", "reason": f"STALE_NPZ {symbol} last bar {_tv.get('npz_last_bar_utc')} is {_tv.get('npz_age_min')} min behind the latest closed bar (> {_tv.get('limit_min')} min) after the JIT tail refresh ({tr.get('tail')})", "prep_s": tr.get("tail_s", 0.0), **{k: _tv.get(k) for k in ("npz_last_bar_utc", "npz_age_min")}}
     t0 = time.time()
     if not push:
         _ledger_npz({"event": "push", "action": "fast30d-local", **_npz_identity(symbol), "tail": tr.get("tail")})
-        return {"ok": True, "action": "fast30d-local", "reason": f"S1 NPZ tail {tr.get('tail')}", "prep_s": tr.get("tail_s", 0.0)}
+        return {"ok": True, "action": "fast30d-local", "reason": f"S1 NPZ tail {tr.get('tail')}", "prep_s": tr.get("tail_s", 0.0), "npz_last_bar_utc": _tv.get("npz_last_bar_utc"), "npz_age_min": _tv.get("npz_age_min")}
     h = hashlib.md5(live.read_bytes()).hexdigest()
     dst = f"{push}:binance-sandbox/backtest_v8/indicators/{symbol}.npz"
     try:
@@ -357,7 +392,7 @@ def fast_push(symbol, push):
     except (subprocess.SubprocessError, OSError, IndexError):
         ok = False
     _ledger_npz({"event": "push", "action": "fast30d-push", **_npz_identity(symbol), "verified": bool(ok)})
-    return {"ok": True if ok else None, "action": "fast30d-push", "reason": f"tail {tr.get('tail')} ({tr.get('tail_s')}s); pushed S1 NPZ md5 {h[:8]} verified={ok}", "prep_s": round(time.time() - t0, 1)}
+    return {"ok": True if ok else None, "action": "fast30d-push", "reason": f"tail {tr.get('tail')} ({tr.get('tail_s')}s); pushed S1 NPZ md5 {h[:8]} verified={ok}", "prep_s": round(time.time() - t0, 1), "npz_last_bar_utc": _tv.get("npz_last_bar_utc"), "npz_age_min": _tv.get("npz_age_min")}
 
 
 def ship_prev_best(symbol, tag, push):

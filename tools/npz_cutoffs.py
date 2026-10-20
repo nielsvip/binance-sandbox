@@ -58,8 +58,28 @@ def last_session_final_bar(now=None):
     return 0
 
 
-TAIL_GRACE_BARS_CRYPTO = 2  # daemon cycle + 60s worker sync lag (same standard as npz_freshness_gate)
-TAIL_GRACE_BARS_STOCKS = 1  # same 1-bar grace as the v12_pilot.npz_freshness eval gate
+# USER LAW 2026-10-20 "all new calculations calculate up to the latest kline bar, max 15m old in the npz": ONE number for every layer.
+# npz_age_min = minutes between the latest CLOSED bar's open and the NPZ's own last bar open (0 = current, 15 = one bar behind).
+# Hard limit 20 min = one bar behind is tolerated (the closing bar needs minutes to be fetched, pushed and installed), two bars is not.
+# Same definition as v15_pilot.npz_age_stamp and its V15_NPZ_MAX_AGE_MIN. Was 2 bars crypto (30 min) / 3 bars in v12_pilot.npz_freshness.
+import os as _os
+try:
+    MAX_NPZ_AGE_MIN = float(_os.environ.get("V15_NPZ_MAX_AGE_MIN", "20") or 20)
+except ValueError:
+    MAX_NPZ_AGE_MIN = 20.0
+if MAX_NPZ_AGE_MIN <= 0:
+    MAX_NPZ_AGE_MIN = 20.0
+TAIL_GRACE_BARS_CRYPTO = int(MAX_NPZ_AGE_MIN * 60 // BAR)  # 20 min -> 1 bar
+TAIL_GRACE_BARS_STOCKS = int(MAX_NPZ_AGE_MIN * 60 // BAR)  # 20 min -> 1 bar
+
+
+def npz_age_min(last_ts, venue, now=None):
+    """minutes the NPZ's last bar (epoch s) is behind the latest closed bar (crypto) / last RTH close (stocks); None when no cutoff."""
+    now_ts, now_dt = _now_split(now)
+    cut = last_closed_bar(now_ts) if str(venue).lower() == "crypto" else last_rth_close_bar(now_dt)
+    if not cut:
+        return None
+    return round(max(0.0, (float(cut) - float(last_ts)) / 60.0), 1)
 
 
 def _now_split(now):

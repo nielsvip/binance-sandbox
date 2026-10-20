@@ -2608,6 +2608,26 @@ _HOLDOUT = {"days": float(os.environ.get("V15_HOLDOUT_DAYS", "0") or 0), "cut": 
 _MIN_PROMOTE_DELTA = float(os.environ.get("V15_MIN_PROMOTE_DELTA", "0") or 0)
 
 
+_NPZ_STAMP: dict = {}
+
+
+def npz_age_stamp(symside: str, now=None) -> dict:
+    """{npz_last_bar_ts, npz_last_bar_utc, cut_utc, npz_age_min} of THIS sym_side's NPZ: its own last timestamp vs the
+    latest closed 15m bar (crypto) or the last RTH close (stocks) — the cut tools/opt/v12_pilot.npz_freshness uses."""
+    import numpy as _np_a
+    from tools.npz_cutoffs import last_closed_bar as _lcb_a, last_rth_close_bar as _lrth_a
+    p = _npz_path(symside)
+    if p is None:
+        return {"npz_last_bar_ts": None, "npz_age_min": None, "npz_path": None}
+    with _np_a.load(str(p), mmap_mode="r", allow_pickle=True) as z:
+        last = int(_np_a.asarray(z["timestamps"]).astype("int64")[-1])
+    last = last // 1000 if last > 10 ** 11 else last
+    base = str(symside).rsplit("_", 1)[0].upper()
+    cut = int(_lcb_a(now)) if base.endswith(("USDT", "USDC")) else int(_lrth_a(now))
+    fmt = lambda t: datetime.datetime.utcfromtimestamp(t).strftime("%Y-%m-%dT%H:%M:%SZ") if t else None
+    return {"npz_last_bar_ts": last, "npz_last_bar_utc": fmt(last), "cut_utc": fmt(cut), "npz_age_min": round(max(0.0, (cut - last) / 60.0), 1) if cut else None, "npz_path": str(p)}
+
+
 def holdout_cut(last_s: float, days: float) -> float:
     """Pure: fit-window end = last bar - days."""
     return float(last_s) - float(days) * 86400.0
@@ -4761,7 +4781,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _sse:
             print(f"[V18-SETSHA-WARN] {_sse}", flush=True)
     try:  # BRAIN 2026-10-14: one board-context line per run (tier/bh/baseline/start-set) — the context the graph conditions on
-        _delta_log_fh.write(json.dumps({**({"set_sha256": _v18_start_sha} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
+        _delta_log_fh.write(json.dumps({**({"set_sha256": _v18_start_sha} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "npz_last_bar_ts": _NPZ_STAMP.get("npz_last_bar_ts"), "npz_age_min": _NPZ_STAMP.get("npz_age_min"), "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
     except Exception as _bce:
         print(f"[BRAIN-WARN] board ctx {_bce}", flush=True)
     # BRAIN (USER 2026-10-14 "like a neural network … lower the number of times per 1000 tests low scorers are calculated"):
@@ -4833,6 +4853,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_io = bool(_V18P is not None and _V18P.io_throttle_on())
     _v18_wb = {"on": bool(_V18P is not None and _V18P.ledger_writeback_on()), "pending": [], "ver": None, "tag": None, "capture": None}
     _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_MUST", "V18_PROFILE_YELLOWS", "V18_LINKNET_FIRST")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
+    _v18_vint = {"last_eval_ts": None}  # newest fresh engine eval of this launch (manifest cells_vintage)
     _v18_lx: dict = {}  # label -> extra delta-log fields of a V18 phase eval (companions / family / remedy_class / from_cat_side)
     if _v18_ids is not None or _v18_io or _v18_wb["on"]:
         print(f"[V18] {new_symside} identity_settle={_v18_ids is not None} io_throttle={_v18_io} ledger_writeback={_v18_wb['on']}", flush=True)
@@ -6729,6 +6750,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
         _delta_log({**(_v18_logfields(sname, rr, label) if _v18_logx[0] else {}), "ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
+        if res is not None and not err and not cached:
+            _v18_vint["last_eval_ts"] = utcnow()
         if _v18_ids is not None and res is not None and not err:
             _v18_ids.note(hash(ck), cum_before, f"{sname}!{rr}:{label}")
         return res, err
@@ -10403,6 +10426,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _npp = _npz_path(new_symside)
                     _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
+                    _man["npz_last_bar_ts"], _man["npz_age_min"] = _NPZ_STAMP.get("npz_last_bar_ts"), _NPZ_STAMP.get("npz_age_min")  # USER LAW 2026-10-20: what the numbers are computed up to
+                    _man["cells_vintage"] = _v18_vint.get("last_eval_ts")  # CLAUDE.md board date = newest eval ts of its cells
+                    _man["publish_reason"] = f"{_cand_class}:{'new_best' if locals().get('_won') else 'publish'}"
                     try:  # TASK 07.1: the same provenance record ships in the manifest sidecar (drift watch source)
                         _man["provenance"] = progress.get("provenance") or board_provenance(new_symside, cumulative_overrides, final_gain, getattr(args, "template", None), progress.get("npz_id"))
                     except Exception as _prove2:
@@ -12406,6 +12432,28 @@ def _main_single():
             print(f"[NPZ-HOT] {new_symside} NPZ {p} {p.stat().st_size/1e6:.1f}M keep in RAM never erase", flush=True)
     except Exception as _e2:
         print(f"[NPZ-WARN] {_e2}", flush=True)
+    # USER LAW 2026-10-20 "all new calculations calculate up to the latest kline bar, max 15m old in the npz": the NPZ's own
+    # last bar vs the latest closed bar (crypto) / RTH close (stocks), same cut as v12_pilot.npz_freshness. Older than
+    # V15_NPZ_MAX_AGE_MIN (20 = one bar + propagation; 0 disables) -> STALE_NPZ_SKIPPED before ANY eval or write: no workbook,
+    # no progress, no publish; the reason goes to <progress_dir>/v18_skips/<SS>.json for the scheduler. V12_ALLOW_STALE_NPZ=1
+    # (frozen bench snapshots only) bypasses. BOARD_CTX + manifest carry npz_last_bar_ts / npz_age_min.
+    try:
+        _NPZ_STAMP.clear()
+        _NPZ_STAMP.update(npz_age_stamp(new_symside))
+        _maxage = float(os.environ.get("V15_NPZ_MAX_AGE_MIN", "20") or 0)
+        if os.environ.get("V12_ALLOW_STALE_NPZ") != "1" and _maxage > 0 and _NPZ_STAMP.get("npz_age_min") is not None and float(_NPZ_STAMP["npz_age_min"]) > _maxage:
+            _why_st = f"STALE_NPZ_SKIPPED: NPZ last bar {_NPZ_STAMP.get('npz_last_bar_utc')} is {float(_NPZ_STAMP['npz_age_min']):.0f} min behind the latest closed bar {_NPZ_STAMP.get('cut_utc')} (> V15_NPZ_MAX_AGE_MIN {_maxage:g})"
+            print(f"[{_why_st.split(':', 1)[0]}] {new_symside} {_why_st} — no eval, nothing written, renamed or published", flush=True)
+            try:
+                _skp = PROGRESS_DIR / "v18_skips" / f"{new_symside}.json"
+                _skp.parent.mkdir(parents=True, exist_ok=True)
+                _skp.with_suffix(".tmp").write_text(json.dumps({"sym_side": new_symside, "at": utcnow(), "reason": _why_st, **_NPZ_STAMP}, default=str))
+                os.replace(_skp.with_suffix(".tmp"), _skp)
+            except Exception:
+                pass
+            return
+    except Exception as _nae:
+        print(f"[NPZ-AGE-WARN] {new_symside} {_nae} — age check skipped", flush=True)
     try:
         _install_holdout(new_symside)
     except Exception as _hoe:
