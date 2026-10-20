@@ -1,21 +1,21 @@
 {
- "now": "2026-10-20T12:23:32.807016+00:00",
+ "now": "2026-10-20T14:02:38.304524+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 1759,
+ "n_exit_rows": 1669,
  "last_exit_ts": "2026-10-20T12:05:55.388962+00:00",
  "n_leaks": 1,
- "n_gate_on": 164,
+ "n_gate_on": 161,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 343,
+ "n_unmapped": 291,
  "n_unverified": 79,
- "since": "2026-10-18T12:23:32.807016+00:00",
+ "since": "2026-10-18T14:02:38.304524+00:00",
  "vec_exact_by_action": {
-  "OPEN": 999,
-  "CLOSE": 107,
+  "OPEN": 990,
+  "CLOSE": 81,
   "REDUCE": 66
  },
- "native_rows": 587,
+ "native_rows": 532,
  "unverified_by_family": {
   "QUICK_REDUCE_SCALP (ABLATION_DISABLE_SCALP_GUARD=False)": 17,
   "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 31,
@@ -28,7 +28,7 @@
   "WRONG_SIDE_ABS_KILL ang:BATUSDT_LONG": 1
  },
  "gate_on_by_family": {
-  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 4,
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 1,
   "QUICK_REDUCE_STRONG (ABLATION_DISABLE_QUICK_EXIT)": 27,
   "BB_RECOVERY_EXIT (BB_RECOVERY_EXIT_ENABLED_TRADIER)": 78,
   "QUICK_REDUCE_OTHER (ABLATION_DISABLE_QUICK_EXIT)": 28,
@@ -41,7 +41,7 @@
  "ungated_by_family": {},
  "safety_by_family": {},
  "unmapped": {
-  "FIXED_STOP_LONG": 169,
+  "FIXED_STOP_LONG": 117,
   "FIXED_STOP_SHORT": 91,
   "QUICK_WT_CROSS_EXIT_1h_bull_wt1=4.9_wt": 28,
   "QUICK_WT_CROSS_EXIT_1h_bull_wt1=22.0_w": 10,
@@ -77,8 +77,8 @@
   "QUICK_WT_CROSS_EXIT_1h_bear_wt1=34.1_w": 1
  },
  "actions": {
-  "OPEN": 999,
-  "CLOSE": 462,
+  "CLOSE": 381,
+  "OPEN": 990,
   "REDUCE": 245,
   "SCALP_REDUCE": 17,
   "STRONG_REDUCE": 27,
