@@ -105,3 +105,30 @@ def test_a_missing_cutoff_fails_open(monkeypatch):
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+def test_side_universe_is_per_account_and_per_side(monkeypatch):
+    """A symbol tradeable LONG must not drag its SHORT board along: _tradeable_universe was symbol-level and
+    trb-only, so AAPL_SHORT and AU_SHORT were computed and published although no account can open them."""
+    uni = {"AAPL_LONG", "BTCUSDC_LONG", "BTCUSDC_SHORT"}
+    monkeypatch.setattr(sched, "_reachable_sym_sides", lambda: (uni, ["test"]))
+    monkeypatch.setattr(sched, "_SIDE_UNI_ON", True)
+    acts = [{"sym": "AAPL", "side": "LONG"}, {"sym": "AAPL", "side": "SHORT"}]
+    keep, cut = sched._deny_unreachable_sides(acts, "AAPL", "h")
+    assert [a["side"] for a in keep] == ["LONG"] and cut == ["AAPL_SHORT"]
+    acts = [{"sym": "AU", "side": "LONG"}, {"sym": "AU", "side": "SHORT"}]
+    keep, cut = sched._deny_unreachable_sides(acts, "AU", "h")
+    assert keep == [] and cut == ["AU_LONG", "AU_SHORT"]
+
+
+def test_side_universe_fails_open_when_empty(monkeypatch):
+    monkeypatch.setattr(sched, "_reachable_sym_sides", lambda: (None, []))
+    monkeypatch.setattr(sched, "_SIDE_UNI_ON", True)
+    acts = [{"sym": "AU", "side": "SHORT"}]
+    assert sched._deny_unreachable_sides(acts, "AU", "h") == (acts, [])
+
+
+def test_side_universe_can_be_switched_off(monkeypatch):
+    monkeypatch.setattr(sched, "_SIDE_UNI_ON", False)
+    acts = [{"sym": "AU", "side": "SHORT"}]
+    assert sched._deny_unreachable_sides(acts, "AU", "h") == (acts, [])

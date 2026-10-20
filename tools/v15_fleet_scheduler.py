@@ -661,6 +661,81 @@ def _tradeable_universe():
     return uni, src
 
 
+_SIDE_UNI = {"at": 0.0, "uni": None, "src": []}
+_SIDE_UNI_ON = os.environ.get("V15_SCHED_SIDE_UNIVERSE", "1") == "1"
+
+
+def _reachable_sym_sides():
+    """({SYM_SIDE}, src) — THE law for what may be computed at all. USER 2026-10-20, verbatim:
+
+        "the crypto system can only ever calculate npz files and do backtests on tradeable_keys.json
+         sym/sides, stocks can only have npz's for the symbols_trb_long/short of that moment plus
+         [TRADIER_MANDATORY_LONG_TRB / TRADIER_MANDATORY_SHORT_TRB]"
+
+    So, per SIDE and never per symbol:
+        crypto  {SYM}_{SIDE} present in tradeable_keys.json (keys are "acct:SYM_SIDE")
+        stocks  LONG  in symbols_trb_long.json  | TRADIER_MANDATORY_LONG_TRB
+                SHORT in symbols_trb_short.json | TRADIER_MANDATORY_SHORT_TRB
+
+    Measured 2026-10-20 when this replaced the old symbol-level, trb-only _tradeable_universe() (which let a
+    symbol tradeable LONG drag its SHORT board along — AAPL_SHORT and AU_SHORT were computed and published
+    although no account can open them):
+
+        ALLOWED sym_sides      262   (crypto 132, stocks 130 = 71 long + 59 short)
+        scheduler work list    346 -> 171 allowed, 175 dropped (51%)
+        published_selection    474 -> 252 allowed, 222 dropped (47%)
+
+    "of that moment" is why this re-reads every 120 s instead of caching for the process: trb is edited while
+    the fleet runs, and a symbol promoted into it must become computable without a restart.
+
+    Fail-open by design: an unreadable or empty set returns None and nothing is filtered, because idling the
+    fleet is worse than computing a few boards too many. V15_SCHED_SIDE_UNIVERSE=0 turns it off."""
+    if _SIDE_UNI["uni"] is not None and time.time() - _SIDE_UNI["at"] < 120:
+        return _SIDE_UNI["uni"], _SIDE_UNI["src"]
+    uni, src = set(), []
+    keys = _jload(ROOT / "tradeable_keys.json", None)
+    if isinstance(keys, list):
+        crypto = {str(k).split(":", 1)[-1].strip().upper() for k in keys}
+        crypto = {ss for ss in crypto if ss.endswith(("_LONG", "_SHORT"))}
+        uni |= crypto
+        src.append(f"tradeable_keys:{len(crypto)}")
+    for side, mand in (("long", "TRADIER_MANDATORY_LONG_TRB"), ("short", "TRADIER_MANDATORY_SHORT_TRB")):
+        syms = set()
+        v = _jload(ROOT / f"symbols_trb_{side}.json", None)
+        if isinstance(v, dict):
+            v = v.get("symbols") or v.get("pairs")
+        if isinstance(v, list):
+            syms |= {str(x).strip().upper() for x in v}
+            src.append(f"trb_{side}:{len(v)}")
+        try:
+            sys.path.insert(0, str(ROOT))
+            from config_tradier import TradierConfig as _TC
+
+            m = getattr(_TC(), mand, None) or []
+            syms |= {str(x).strip().upper() for x in m}
+            src.append(f"mandatory_{side}:{len(m)}")
+        except Exception as exc:
+            print(f"[sched] {mand} unavailable: {exc}", flush=True)
+        uni |= {f"{s}_{side.upper()}" for s in syms}
+    if not uni:
+        print("[sched] side universe EMPTY — filter skipped (fail-open), check tradeable_keys.json / symbols_trb_*", flush=True)
+        return None, []
+    _SIDE_UNI.update(at=time.time(), uni=uni, src=src)
+    return uni, src
+
+
+def _deny_unreachable_sides(acts, sym, label):
+    """Drop the sym_sides no account can open. Returns the kept actions; logs what it cut, every tick."""
+    if not _SIDE_UNI_ON or not acts:
+        return acts, []
+    uni, _src = _reachable_sym_sides()
+    if not uni:
+        return acts, []
+    keep = [a for a in acts if f"{sym}_{a['side']}".upper() in uni]
+    cut = [f"{sym}_{a['side']}" for a in acts if f"{sym}_{a['side']}".upper() not in uni]
+    return keep, cut
+
+
 def _deny_untradeable(syms, label):
     """Drop symbols outside the tradeable universe BEFORE dispatch, so an untradeable symbol gets no NPZ build and no
     board. _deny_tokenized only ever covered TOKENIZED stocks (AAPLUSDT…); 65 of the 266 live sym_sides in the
@@ -668,7 +743,17 @@ def _deny_untradeable(syms, label):
     restores the old behaviour."""
     if os.environ.get("V15_SCHED_TRADEABLE_FILTER", "1") == "0":
         return list(syms)
-    uni, src = _tradeable_universe()
+    # USER 2026-10-20: "can only ever calculate NPZ FILES and do backtests on ..." — so the symbol-level gate
+    # that guards NPZ builds must be the SAME law as the sym_side gate, not a second opinion. A symbol with no
+    # allowed side gets no NPZ and no board. Projection of _reachable_sym_sides; the legacy
+    # _tradeable_universe() stays as the fallback when that set is unavailable (fail-open).
+    uni, src = None, []
+    sides, ssrc = _reachable_sym_sides()
+    if sides:
+        uni = {ss.rsplit("_", 1)[0] for ss in sides}
+        src = ssrc
+    if not uni:
+        uni, src = _tradeable_universe()
     if not uni:
         return list(syms)
     keep = [s for s in syms if str(s).upper() in uni]
@@ -3353,6 +3438,9 @@ def tick(args, cfg, now):
             acts = [a for a in acts if _repair_sticky_ok(a, rep_host, h["name"])]
             acts = [a for a in acts if a["key"] not in launched_keys and not _launched_recently(a["key"], st.get("launched_at"), _now_ts) and not _launched_recently(a["key"], st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S)]
             acts = [a for a in acts if f"{a['sym']}_{a['side']}" not in running]  # USER 2026-10-11: never launch a side with a live pilot anywhere (kills 5x dup stacks; backfill had this, steal gained it same turn)
+            acts, _unreach = _deny_unreachable_sides(acts, sym, h["name"])  # USER 2026-10-20: no account can open these, so a board for them buys nothing
+            if _unreach:
+                log.setdefault("skipped_side_unreachable", []).extend(_unreach)
             if not acts:
                 # USER 2026-10-13: never drop a candidate silently — an idling fleet must name its own blocker.
                 log.setdefault("skipped_no_actions", []).append(f"{h['name']}:{sym}")
