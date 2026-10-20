@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T20:10:11Z",
+ "ts": "2026-10-20T20:15:06Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,45 +127,45 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 11.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 26.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 20.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 548.0
+   "log_age_s": 845.0
   },
   "trc": {
    "pids": [],
-   "starts_30m": 1,
-   "log_age_s": 550.0
+   "starts_30m": 0,
+   "log_age_s": 848.0
   }
  },
  "alerts": [],
@@ -202,5 +202,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.17
+ "sweep_s": 3.44
 }

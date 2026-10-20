@@ -1712,6 +1712,20 @@ def universe():
         if s and s not in seen and (s.endswith("USDT") or s.endswith("USDC")):
             seen.add(s)
             out.append(s)
+    # USER LAW 2026-10-20: "NO crypto not in tradeable_keys can have an npz updated or be backtested in any way". symbols_active /
+    # daily_universe / lifecycle progress / vec_driven / golive candidates used to add ~114 non-tradeable symbols (ANKRUSDT, KNCUSDT,
+    # GTCUSDT ...) to every cycle. Crypto is now tradeable_keys.json ONLY; NPZ_TRADEABLE_ONLY=0 restores the old union.
+    if os.environ.get("NPZ_TRADEABLE_ONLY", "1") == "1":
+        tk = jl(ROOT / "tradeable_keys.json", []) or []
+        allowed = {str(k).split(":", 1)[-1].rsplit("_", 1)[0].upper() for k in tk} if isinstance(tk, list) else set()
+        if allowed:
+            dropped = [s for s in out if s not in allowed]
+            out = [s for s in out if s in allowed]
+            if dropped:
+                log(f"universe: NPZ_TRADEABLE_ONLY dropped {len(dropped)} non-tradeable crypto symbols (USER LAW 2026-10-20): {','.join(dropped[:12])}{'...' if len(dropped) > 12 else ''}")
+        else:
+            log("universe: tradeable_keys.json empty/unreadable — NPZ_TRADEABLE_ONLY cannot gate, refreshing NOTHING (fail-closed)")
+            out = []
     return out
 
 
