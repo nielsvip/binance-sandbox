@@ -1,37 +1,58 @@
 {
-  "ang:LTCUSDC_LONG": {
-    "orderId": "4000001977865164",
-    "stopPrice": 58.3,
-    "entry_sig": "2026-10-19 03:43:25.595000+00:00",
-    "symbol": "LTCUSDC",
+  "fin:THETAUSDT_LONG": {
+    "orderId": "3000002260246842",
+    "stopPrice": 0.1828,
+    "entry_sig": "2026-10-19 22:53:54.925000+00:00",
+    "symbol": "THETAUSDT",
     "side": "LONG"
   },
-  "ang:XMRUSDT_LONG": {
-    "orderId": "4000001979945488",
-    "stopPrice": 581.19,
-    "entry_sig": "2026-10-19 21:59:40.396000+00:00",
-    "symbol": "XMRUSDT",
+  "fin:1INCHUSDT_LONG": {
+    "orderId": "3000002260162685",
+    "stopPrice": 0.091,
+    "entry_sig": "2026-10-19 21:27:47.944000+00:00",
+    "symbol": "1INCHUSDT",
     "side": "LONG"
   },
-  "ang:RENDERUSDT_LONG": {
-    "orderId": "4000001977813685",
-    "stopPrice": 1.765,
-    "entry_sig": "2026-10-19 03:14:02.291000+00:00",
-    "symbol": "RENDERUSDT",
+  "fin:QTUMUSDT_LONG": {
+    "orderId": "3000002260243443",
+    "stopPrice": 0.8421,
+    "entry_sig": "2026-10-19 22:50:54.452000+00:00",
+    "symbol": "QTUMUSDT",
     "side": "LONG"
   },
-  "ang:BATUSDT_LONG": {
-    "orderId": "4000001980015803",
-    "stopPrice": 0.17921,
-    "entry_sig": "2026-10-19 22:52:17.260000+00:00",
-    "symbol": "BATUSDT",
+  "fin:SNXUSDT_LONG": {
+    "orderId": "3000002259477196",
+    "stopPrice": 0.2106,
+    "entry_sig": "2026-10-19 13:59:13.739000+00:00",
+    "symbol": "SNXUSDT",
     "side": "LONG"
   },
-  "ang:ARUSDT_LONG": {
-    "orderId": "4000001980224991",
-    "stopPrice": 3.691,
-    "entry_sig": "2026-10-20 00:59:33.951000+00:00",
-    "symbol": "ARUSDT",
-    "side": "LONG"
+  "fin:DOTUSDT_SHORT": {
+    "orderId": "3000002260178945",
+    "stopPrice": 1.1821,
+    "entry_sig": "2026-10-19 21:42:58.182000+00:00",
+    "symbol": "DOTUSDT",
+    "side": "SHORT"
+  },
+  "fin:ADAUSDC_SHORT": {
+    "orderId": "3000002260339021",
+    "stopPrice": 0.2204,
+    "entry_sig": "2026-10-20 00:13:00.507000+00:00",
+    "symbol": "ADAUSDC",
+    "side": "SHORT"
+  },
+  "fin:SANDUSDT_SHORT": {
+    "orderId": "3000002260294430",
+    "stopPrice": 0.0602,
+    "entry_sig": "2026-10-19 23:41:55.196000+00:00",
+    "symbol": "SANDUSDT",
+    "side": "SHORT"
+  },
+  "fin:1INCHUSDT_SHORT": {
+    "orderId": "3000002260324653",
+    "stopPrice": 0.09315,
+    "entry_sig": "2026-10-20 00:05:01.355000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "SHORT"
   }
 }
