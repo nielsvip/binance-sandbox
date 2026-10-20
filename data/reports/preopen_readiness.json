@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T22:40:01Z",
+ "generated_utc": "2026-10-20T23:00:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 284,
-    "filled_before_open": 156
+    "filled_today": 293,
+    "filled_before_open": 152
    },
-   "detail": "156 boards filled before the open (284 today)"
+   "detail": "152 boards filled before the open (293 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -37,23 +37,23 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-20T21:50:30.748168+00:00",
+    "built_at": "2026-10-20T22:50:22.315609+00:00",
     "n": 475,
-    "age_at_open_s": -30031
+    "age_at_open_s": -33622
    },
-   "detail": "built 2026-10-20T21:50:30.748168+00:00 n=475"
+   "detail": "built 2026-10-20T22:50:22.315609+00:00 n=475"
   },
   {
    "name": "apply_report_written",
    "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 8,
-    "newest_report": "persym_golive_20261020_refresh_2151.json",
-    "newest_report_at": "2026-10-20T21:54:59Z",
-    "tiers_at": "2026-10-20T21:55:24Z"
+    "reports_today": 9,
+    "newest_report": "persym_golive_20261020_refresh_2251.json",
+    "newest_report_at": "2026-10-20T22:59:23Z",
+    "tiers_at": "2026-10-20T22:59:38Z"
    },
-   "detail": "persym_golive_20261020_refresh_2151.json at 2026-10-20T21:54:59Z, tiers 2026-10-20T21:55:24Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261020_refresh_2251.json at 2026-10-20T22:59:23Z, tiers 2026-10-20T22:59:38Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -61,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 475,
-    "exact": 29,
-    "benign_divergence_only": 410,
-    "material_divergence": 35,
+    "exact": 30,
+    "benign_divergence_only": 415,
+    "material_divergence": 29,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -121,19 +121,6 @@
       ]
      },
      {
-      "sym_side": "BTCDOMUSDT_SHORT",
-      "published_at": "2026-10-13T08:15:58Z",
-      "material": 62,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "BB_PROFIT_TAKE_TF",
-       "BB_PULLBACK_GATE_TF",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "BB_SQUEEZE_WIDTH_PERCENTILE"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -144,19 +131,6 @@
        "DC_EDGE_SIZING_MAX_MULT",
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
-      ]
-     },
-     {
-      "sym_side": "KMNOUSDT_SHORT",
-      "published_at": "2026-10-16T21:33:17Z",
-      "material": 50,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED"
       ]
      },
      {
@@ -197,10 +171,36 @@
        "DAYTRADE_DC_TARGET_TF",
        "DC_EDGE_SIZING_MIN_MULT"
       ]
+     },
+     {
+      "sym_side": "BMNRUSDT_SHORT",
+      "published_at": "2026-10-13T20:03:17Z",
+      "material": 30,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_TF",
+       "COOLDOWN_BARS",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "DELTA_ENGINE_FILTER_TF",
+       "EMA_DIST_SIZING_ENABLED"
+      ]
+     },
+     {
+      "sym_side": "SCCO_LONG",
+      "published_at": "2026-10-12T05:33:28Z",
+      "material": 29,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "BB_PULLBACK_GATE_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DISASTER_GUARD_ENABLED",
+       "EMA_DIST_SIZING_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "29 exact, 410 benign-only, 35 with material divergence, 1 with no live row"
+   "detail": "30 exact, 415 benign-only, 29 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 25.0,
+    "median_age_min": 15.0,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
