@@ -1,0 +1,27 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:STOCKS_LONG": 71061,
+  "evals:STOCKS_SHORT": 32398,
+  "inserted": {
+   "evals:STOCKS_LONG": 71061,
+   "evals:STOCKS_SHORT": 32398,
+   "sets:STOCKS_LONG": 7,
+   "sets:STOCKS_SHORT": 4
+  },
+  "offered": {
+   "evals:STOCKS_LONG": 71061,
+   "evals:STOCKS_SHORT": 32398,
+   "sets:STOCKS_LONG": 7,
+   "sets:STOCKS_SHORT": 4
+  },
+  "secs": 75.7,
+  "source_rows": 103459
+ },
+ "finished": "2026-10-20T00:34:55Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/experience_scratch/s2_live_cache/live_cache_snapshot_20261020.db",
+ "started": "2026-10-20T00:33:39Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

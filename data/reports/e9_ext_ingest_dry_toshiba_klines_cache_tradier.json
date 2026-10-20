@@ -1,0 +1,71 @@
+{
+ "ts": "2026-10-20T00:30:08Z",
+ "end": "2026-10-20T00:36:02Z",
+ "mode": "dry_run",
+ "drive": "E3T",
+ "archive": "/Volumes/E3T/binance_archive/klines_archive",
+ "floor_gb": 10.0,
+ "free_gb_start": 13.63,
+ "free_gb_end": 13.63,
+ "stopped": null,
+ "totals": {
+  "names": 4044,
+  "names_grown": 0,
+  "names_created": 0,
+  "bars_added": 0,
+  "bytes_written_delta": 0,
+  "refused": 0,
+  "deferred_names": 0,
+  "projected_bytes_delta": 3342688447,
+  "projected_bars_added": 27753699
+ },
+ "copies": {
+  "toshiba_klines_cache_tradier": {
+   "root": "/Volumes/TOSHIBA_EXT/binance_archive/klines_cache_tradier",
+   "files": 4905,
+   "kline_files": 4566,
+   "non_kline_files": 339,
+   "salvaged_files": 0,
+   "unreadable_files": 0,
+   "bytes": 6085495522,
+   "series": 4566,
+   "bars": 38991127,
+   "present_same": 10438272,
+   "present_archive_dominates": 118242,
+   "copy_dominates": 20723,
+   "conflicts": 271910,
+   "new": 28312762,
+   "new_added": 27753699,
+   "new_via_other_copy": 388281,
+   "new_deferred": 0,
+   "gateway_new_held": 0,
+   "names_with_new": 4094,
+   "blockers": {
+    "new": 28312762,
+    "conflicts": 271910,
+    "copy_dominates": 20723,
+    "non_kline_files": 339
+   },
+   "verdict": "HOLD",
+   "gb": 6.085,
+   "non_kline_examples": [
+    ".ABT_1m.json.57183.tmp",
+    ".ACN_1m.json.6770.tmp",
+    ".ADBE_1m.json.57183.tmp",
+    ".AGI_D.json.31864.tmp",
+    ".AG_15m.json.56508.tmp",
+    ".ALB_15m.json.86906.tmp",
+    ".ARM_1m.json.57183.tmp",
+    ".ASML_1m.json.57183.tmp",
+    ".AU_1m.json.57183.tmp",
+    ".AVGO_1m.json.52419.tmp",
+    ".BABA_D.json.33901.tmp",
+    ".BG_1m.json.57183.tmp",
+    ".BHP_1m.json.57183.tmp",
+    ".BHP_1m.json.86906.tmp",
+    ".BHP_5m.json.6770.tmp"
+   ]
+  }
+ },
+ "deferred_names": []
+}

@@ -332,6 +332,13 @@ class VecExactOracle:
             if _hs is not None:
                 _hs["ts"] = ex_last
                 out.append(_hs)
+        try:  # HISTORY_PROV (E1 2026-10-20): metadata only — provenance block on each event; read by the dispatch site, never by a decision
+            from vec_decisions import history_prov as _hp
+            if out and _hp.enabled():
+                for _hp_e in out:
+                    _hp_e["prov"] = _hp.attribute(_hp_e.get("reason"), _hp_e.get("type"), side, "stocks", dict(overrides or {}), f"{sym}_{side}")
+        except Exception:
+            pass
         self.telemetry["events"] += len(out)
         return out
 

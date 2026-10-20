@@ -14196,6 +14196,12 @@ async def _vec_exact_process_twin(
 
         _pv_t = _vprov_t.mark(position_key, _bar_ts, _ev["type"], "VEC_EXACT_TWIN")
         try:
+            from vec_decisions import history_prov as _hp_t  # HISTORY_PROV (E1 2026-10-20): metadata only, kill switch HISTORY_PROV_ENABLED
+
+            _hp_t.register_dispatch(position_key, _tve.vec_reason(_ev), _a.get("prov"), _ev["type"], config)
+        except Exception:
+            pass
+        try:
             _res = await queue_trade_action(order_queue, trade_manager, position_key, _ev["type"], _tve.vec_reason(_ev), 100.0, override_qty=_q)
         finally:
             _vprov_t.reset(_pv_t)
@@ -14334,6 +14340,12 @@ async def _vec_exact_process(
             )
             _out.append(f"SKIP:{_ev['type']}")
             continue
+        try:
+            from vec_decisions import history_prov as _hp_t  # HISTORY_PROV (E1 2026-10-20): metadata only, kill switch HISTORY_PROV_ENABLED
+
+            _hp_t.register_dispatch(position_key, _tve.vec_reason(_ev), _ev.get("prov"), _act[0], config)
+        except Exception:
+            pass
         _res = await queue_trade_action(
             order_queue,
             trade_manager,
@@ -50920,6 +50932,16 @@ class TradierTradeManager:
                         filename.rename(backup)
                 except Exception:
                     pass
+            _hp_block = None
+            try:  # HISTORY_PROV (E1 2026-10-20): metadata only — structured provenance beside the free-text reason; kill switch HISTORY_PROV_ENABLED (default False)
+                from vec_decisions import history_prov as _hp
+
+                if _hp.enabled(config):
+                    _hp_block = _hp.resolve_dispatch(position_key, reason) or _hp.classify_event(reason, trade_type)
+                    if str(reason or "").startswith("VEC_EXACT_") or " |VEC_EXACT" in str(reason or ""):
+                        reason = _hp.with_tail(reason, _hp_block)
+            except Exception as _hp_e:
+                logger.debug(f"[HISTORY_PROV] {position_key}: {_hp_e}")
             entry = {
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "type": trade_type,
@@ -50929,6 +50951,8 @@ class TradierTradeManager:
                 "reason": reason or "Manual/System Detection",
                 "indicators": {},
             }
+            if _hp_block is not None:
+                entry["prov"] = _hp_block
             async with aiofiles.open(filename, "a") as f:
                 await f.write(orjson.dumps(entry).decode("utf-8") + "\n")
         except Exception as e:

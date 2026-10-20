@@ -636,6 +636,7 @@ class TradierConfig:
     PARITY_VEC_EXACT_MODE: bool = (
         True  # USER 2026-10-13 (A): NO live trade the vector did not authorize — stocks trade only on the v12 decision via tradier_vec_exact (every live-only path suppressed; stale-twin fallback = native EXITS only). Was False (native live).
     )
+    HISTORY_PROV_ENABLED: bool = False  # 2026-10-20 USER E1 "/history/ reasons need the switch + approving filters": structured prov block + |SW=..|F=.. tail on every history event (vec_decisions/history_prov.py). METADATA ONLY, no decision reads it; flip to True only after tests/test_history_prov.py + neutrality proof.
     # USER 2026-10-17 "fix the stock vector-decided path first, then enforce it": npz_twin = live_twins/vec_exact.py on the stock NPZ
     # (board path, causal-proven 2789/2789 bars on 3 sym_sides); oracle = the 10-06 in-memory row buffer (empty after restarts).
     TRADIER_VEC_EXACT_ENGINE: str = "npz_twin"

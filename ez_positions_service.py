@@ -8022,7 +8022,22 @@ class PositionService:
                 snapshot = _pg.sanitize_snapshot(price, snapshot)[0]
             except Exception:
                 pass
+            _hp_block = None
+            try:  # HISTORY_PROV (E1 2026-10-20): metadata only — structured provenance beside the free-text reason; kill switch HISTORY_PROV_ENABLED (default False)
+                from vec_decisions import history_prov as _hp
+                if _hp.enabled(self.config):
+                    import positions_truth as _ptruth_hp
+                    if explicit_reason is not None:
+                        _hp_block = _ptruth_hp.match_recent_order_prov(position_key, qty, time.time(), reason=explicit_reason)
+                    if _hp_block is None:
+                        _hp_block = _hp.classify_event(reason, trade_type)
+                    if " |VEC_EXACT" in str(reason):
+                        reason = _hp.with_tail(reason, _hp_block)
+            except Exception as _hp_e:
+                logger.debug(f"[HISTORY_PROV] {position_key}: {_hp_e}")
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
+            if _hp_block is not None:
+                entry["prov"] = _hp_block
             async with aiofiles.open(filename, "a") as f:
                 await f.write(orjson.dumps(entry).decode('utf-8') + "\n")
             if self.redis_manager:

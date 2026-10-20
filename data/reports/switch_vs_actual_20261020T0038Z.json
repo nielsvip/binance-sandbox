@@ -1,0 +1,130 @@
+{
+ "window_from": "10-19 23:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 8,
+  "FILLED_ON_BAR": 1,
+  "dictated_but_no_account_traded_it": 5
+ },
+ "rows": [
+  {
+   "acct": "fin",
+   "sym_side": "1INCHUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 00:05",
+   "actual": "AUGMENT",
+   "actual_reason": "REENTRY_LOWER_HIGH |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "ADAUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 00:13",
+   "actual": "AUGMENT",
+   "actual_reason": "REENTRY_LOWER_HIGH |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "10-19 23:45",
+   "dictated": "OPEN",
+   "dictated_reason": "REENTRY_MANDATORY",
+   "actual_at": "10-20 00:06",
+   "actual": "AUGMENT",
+   "actual_reason": "REENTRY_MANDATORY |VEC_EXACT",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": true
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 23:44",
+   "actual": "AUGMENT",
+   "actual_reason": "HARDCODED_RALLY_REENTRY |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 23:52",
+   "actual": "REDUCE",
+   "actual_reason": "DAYTRADE_TARGET dc_15m_high -0.10% TARGET_BUF |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "MANAUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 00:24",
+   "actual": "REDUCE",
+   "actual_reason": "FIXED_STOP_LONG_px0.081716_lvl0.081725_g-0.78",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SANDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 23:41",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SANDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 23:42",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SANDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-19 23:43",
+   "actual": "AUGMENT",
+   "actual_reason": "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  }
+ ]
+}

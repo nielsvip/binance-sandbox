@@ -1361,9 +1361,11 @@ def prove(a):
             if r is None:
                 miss("missing", {"key": key, "shard": Store.shard_name(cs, month)})
                 continue
-            if not (r[0] == row[2] and r[1] == row[8] and _same(r[2], row[5]) and _same(r[3], row[22]) and _same(r[4], row[23])):
+            if not (r[0] == row[2] and r[1] == row[8] and _same(r[3], row[22]) and _same(r[4], row[23])):
                 miss("mismatched", {"key": key, "store": list(r), "source": [row[2], row[8], row[5], row[22], row[23]]})
                 continue
+            if not _same(r[2], row[5]):
+                res["same_eval_other_created_ts_first_wins"] += 1
             if r[5] and not rd.has_set(cs, month, r[5]):
                 miss("missing_base_set", {"key": key, "base_set_id": r[5]})
         src.close()

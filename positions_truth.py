@@ -259,6 +259,7 @@ def normalize_tradier(rows: List[Dict[str, Any]]) -> Tuple[Dict[Tuple[str, str],
 
 
 _RECENT_ORDER_REASONS = {}
+_RECENT_ORDER_PROV = {}
 
 
 def note_order_reason(position_key, qty, reason, now=None, window_s=600.0):
@@ -268,6 +269,16 @@ def note_order_reason(position_key, qty, reason, now=None, window_s=600.0):
         _t = time.time() if now is None else now
         _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
         _l.append((_t, float(qty), str(reason or "")))
+    except Exception:
+        pass
+    try:  # HISTORY_PROV (E1 2026-10-20): metadata only — pairs the vec provenance block with this order for the fill recorder
+        from live_twins import vec_provenance as _vp
+        _pv = _vp.history_prov_for(reason)
+        if _pv is not None:
+            _pl = _RECENT_ORDER_PROV.setdefault(position_key, [])
+            _pt = time.time() if now is None else now
+            _pl[:] = [_r for _r in _pl if _pt - _r[0] <= window_s]
+            _pl.append((_pt, float(qty), str(reason or ""), _pv))
     except Exception:
         pass
 
@@ -284,6 +295,21 @@ def match_recent_order_reason(position_key, qty, now=None, window_s=300.0):
                 break
             if _amt > 0 and _q > 0 and abs(_amt - _q) / max(_amt, 1e-9) < 0.01:
                 return _rs
+    except Exception:
+        pass
+    return None
+
+
+def match_recent_order_prov(position_key, qty, now=None, window_s=300.0, reason=None):
+    """Same qty match (+-1%) and window as match_recent_order_reason, returning the vec provenance block noted with that order (None if none)."""
+    try:
+        _l = _RECENT_ORDER_PROV.get(position_key, [])
+        _t = time.time() if now is None else now
+        _l[:] = [_r for _r in _l if _t - _r[0] <= window_s]
+        _q = float(qty or 0.0)
+        for _ts, _amt, _rs, _pv in reversed(_l):
+            if _amt > 0 and _q > 0 and abs(_amt - _q) / max(_amt, 1e-9) < 0.01 and (reason is None or _rs == reason):
+                return _pv
     except Exception:
         pass
     return None
