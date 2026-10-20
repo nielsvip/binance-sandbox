@@ -4033,3 +4033,92 @@ counterpart to compare.
   `backtest_v12_engine._run_one_apply_overrides` setattrs onto config and `_PerSymProxy` falls through to — and
   then VERIFY by counting `BOARD_TOO_OLD` / `VEC_EXACT_ENTRY_REFUSED` lines in the run log (0 each here).
   §115.10's "an env var the code does not read" trap, hit again by a different tool.
+
+## 117. THE SECOND PARITY BLOCKER — 60% OF PILOT-TESTED KNOBS ARE NOT READ PER-SYM IN LIVE (USER 2026-10-20)
+
+§116 showed the boards are computed on indicator values live never produces. This is the independent second
+layer: the boards also TUNE values live reads GLOBALLY. Either one alone makes bar parity unreachable, so
+fixing one without the other changes nothing measurable.
+
+### 117.1 The census — AST audit of 1,288 switch+filter keys from all four TEMPLATE_FINAL_NORM files
+
+| verdict | keys | meaning |
+|---|---|---|
+| **OK** | **807** | per-sym everywhere live reads them |
+| **GLOBAL_LEAK** | **328** | at least one live read takes the bare global — **524 real global read sites** |
+| **ABSENT** | 131 | no reference in any live module at all |
+| **INERT** | 22 | referenced only in probe farms / dead code / name lists |
+
+**THE LEAKS ARE NOT SPREAD ACROSS CALL SITES — THEY ARE THREE MODULES THAT NEVER WRAPPED `config`:**
+
+| module | binding | per-sym proxy? | leaks |
+|---|---|---|---|
+| `ez_manage.py:8874` | `config = _PerSymProxy(_ezm_base_config)` | **yes** | **0** |
+| `ez_positions_quick.py:304` | `config = Config()` | no | **339** |
+| `tradier_manage.py:6764` | `config = TradierConfig()` | no | **101** |
+| `ez_positions_service.py:435` | `config = Config()` | no | **19** |
+
+`_PerSymProxy.__getattribute__` (`ez_manage.py:8848`) intercepts every UPPERCASE name, reads `_psym_ctx_var`
+(set per position at `:7842`) and returns `_ezm_per_sym_layer(sym, side)[name]` when the layer carries it — so
+`getattr(config, "KNOB")` in ez_manage ALREADY resolves per-sym. (`:7879 config = _ezm_base_config` is a
+placeholder that `:8874` replaces; reading only the first binding is what produced the wrong census below.)
+
+So "no switch may ever differ from its per_sym value" is **not 524 call-site edits — it is wrapping `config` in
+the same proxy in three modules**, which ez_manage already proves in production. One structural change and no
+site can read the global by construction. Caveats: `tradier_manage` needs the STOCKS resolver (`_cfg`, already
+per-sym > cat_side > global), not ez_manage's crypto layer; and a read taken where `_psym_ctx_var` is **None**
+still falls through to the base even inside ez_manage — a context-coverage hole grep cannot measure, which needs
+a counter in the proxy logging "template switch read with no per-sym context". That counter is the honest
+version of "can never be global".
+
+**A SUPERSEDED CENSUS, KEPT AS A WARNING.** The first run of this audit reported
+`OK 518 / GLOBAL_LEAK 521 / INERT 118`, 1,052 global sites, "ez_manage 420" — wrong, because it was not
+proxy-aware. It was then "verified independently" by re-running the same tool, which reproduced the same
+numbers. **Re-running a tool proves reproducibility, not correctness.** Verification has to hit the claim at
+its source — here, `grep -n '^config = ' <module>` and reading `__getattribute__` — not the instrument that
+made it. The corrected never-applied count is **153**, not 249.
+
+Tools: `tools/template_switch_psym_audit.py` (AST-based, exits non-zero on any leak, cron 6-hourly — this is
+the "can never be global" enforcement), `data/reports/template_psym_worklist.csv` (844 rows: module, function,
+line, key — sorted so a fix batch is one function), `data/reports/template_psym_not_applied.csv` (the 249).
+
+### 117.2 THREE ARTIFACT CLASSES THAT MUST BE EXCLUDED, or the number is garbage
+Each was excluded on evidence, and each would have inflated the leak count badly:
+* **1,313 probe-farm sites.** `_ensure_ez_all` / `_ensure_tradier_all` are reference-only — the
+  `if bool(getattr(config,"X",False)): … _=_a` pattern, one of them reading `locals().get("position",{})` in a
+  function whose only parameter is `config`. See §115.10: a `getattr` is not proof of wiring.
+* **63 dead-code sites.** `_batch1_template_live_gate` begins `return True, ''`; the 59 switch reads below it
+  can never execute.
+* **`cfg` is NOT the global.** In the vector and `vec_paths/*`, `cfg` IS the resolved per-sym set, so counting
+  `getattr(cfg, …)` as a leak is simply wrong.
+VALIDATE AGAINST KNOWN CASES before trusting any such audit: the two 2026-10-20 GOLDEN_RULE fixes read OK
+afterwards, and `GOLDEN_RULE_ENABLED` is correctly still flagged. A line that looks like a false positive may
+not be — this ternary genuinely leaks on its `else` branch:
+`int(_psym_get(sym, side, "MIN_HOLD_BARS_BEFORE_EXIT", getattr(config,…,10)) if position else getattr(config,…,10))`
+
+### 117.3 THE NAIVE FIX IS A PERFORMANCE TRAP — resolve the set ONCE, then read the dict
+MEASURED: `per_sym_live_set.full_set` warm = **0.208 ms**. Converting `process_position`'s 118 global getattrs
+into 118 resolver calls costs **24.5 ms per call — ~2.45 s per bar across 100 positions**, straight into the
+event loop (§116 era: that loop already froze >20 s every ~3 min). Resolving the set ONCE per position per bar
+and reading from that dict costs **0.0036 ms for all 118 — ~7,000x cheaper**. This is the operator's own rule
+("read the dict not calculate anything from any kline") applied to settings. NOTE: with the proxy approach of
+§117.1 this objection largely dissolves — ez_manage already pays the proxy's cost in production today — but the
+measurement stands for any design that calls a resolver per key instead of per position.
+
+### 117.4 How this ships
+Per CLAUDE.md gate discipline this is a change to live decision RESOLUTION, so it goes through
+`v15_version_gate submit` on S2, never a hand-push. Order: one MODULE at a time, `ez_positions_quick` first
+(339 of the 524), the global kept as the fallback so any sym_side whose board lacks a key behaves
+byte-identically, plus the no-context counter so the residual hole of §117.1 is visible rather than assumed.
+
+### 117.5 A GOLDEN_RULE correction worth keeping (how not to read an audit)
+A same-day claim that "GOLDEN_RULE is entirely inert on stocks — all 106 mentions are discarded probes" is
+**FALSE**: measured, `tradier_manage.py` has **26 real `_cfg_auto` reads vs 3 discarded probes**, at entry
+(`:22141`, `:22164`), exit (`:34515`, `:34995`) and re-entry (`:41396`, `:47189`). The 3 probes at `:8476-8478`
+are a DIFFERENT switch (`GOLDEN_RULE_REQUIRE_HEDGE_OPEN`). Consequence: stock boards' GOLDEN_RULE deltas are
+VALID, and `GOLDEN_RULE_HTF_MIN_TFS` in the drift list is ordinary settings drift, not a dead switch. Generalising
+from a handful of stub lines to every mention of a name is the §115.10 trap in another costume.
+What IS real on crypto: the same rule was SPLIT — entry read `_psym_get` (`ez_manage.py:18529`, `:44689`) while
+exit read the global (`:53672/53673`, and `ez_positions_quick.py:30843/30848`). A board that tuned the threshold
+changed when a position OPENED and was ignored when it CLOSED, and those rows' sweep deltas were earned against
+a value live never applied on exit. Fixed across 8 sites with the global preserved as the default.
