@@ -96,3 +96,15 @@ def test_prepare_sentinel_flows_to_invalid(fresh_root):
     assert r["valid"] is False and "STALE_NPZ_SKIPPED" in r["invalid_reason"]
     rs = P.evaluate_many_sanitized("TSTUSDC_LONG", [{}, {}], 30)
     assert len(rs) == 2 and all("STALE_NPZ_SKIPPED" in x["invalid_reason"] for x in rs)
+
+
+def test_verdict_is_taken_once_per_npz(fresh_root, monkeypatch):
+    """USER LAW 2026-10-20 is a START law: a board that began on a current NPZ must not be aborted 20 min later by the moving clock."""
+    import tools.npz_cutoffs as C
+    root, cutoff = fresh_root
+    _mk_npz(root, "TSTUSDC", cutoff)
+    assert P.npz_freshness("TSTUSDC_LONG")[0] is True
+    monkeypatch.setattr(C, "last_closed_bar", lambda now=None: cutoff + 10 * 900)
+    assert P.npz_freshness("TSTUSDC_LONG")[0] is True
+    monkeypatch.setenv("V12_NPZ_FRESH_ONCE", "0")
+    assert P.npz_freshness("TSTUSDC_LONG")[0] is False

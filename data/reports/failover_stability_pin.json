@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-20T14:30:02Z",
- "apply": false,
+ "generated_utc": "2026-10-20T14:34:01Z",
+ "apply": true,
  "lease": {
   "holder": "s1",
   "pin": null,
@@ -15,13 +15,13 @@
  "stable_needed_s": 900.0,
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 5s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 10.30/core > 4.0 (warning only)",
-  "and s1-pub snapshot 0/199 stale (0.0%); s1-pub 12419 STALE_INDICATORS refusals in the recent log tail, 1 ez_manage running \u2014 entries are being refused \u2014 pin NOT moved"
+  "manager restart churn (newest marker 2s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 9.91/core > 4.0 (warning only)",
+  "and s1-pub snapshot 0/199 stale (0.0%); s1-pub 11713 STALE_INDICATORS refusals in the last 10 min, 6 ez_manage running \u2014 entries are being refused \u2014 pin NOT moved"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 603,
+  "readiness_age_s": 842,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 14,
@@ -38,12 +38,12 @@
     "CELRUSDT"
    ]
   },
-  "churn": "newest marker 5s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 10.3,
+  "churn": "newest marker 2s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 9.91,
   "warnings": [
-   "load 10.30/core > 4.0 (warning only)"
+   "load 9.91/core > 4.0 (warning only)"
   ],
-  "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 12419 STALE_INDICATORS refusals in the recent log tail, 1 ez_manage running \u2014 entries are being refused"
+  "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 11713 STALE_INDICATORS refusals in the last 10 min, 6 ez_manage running \u2014 entries are being refused"
  },
  "action": "NEITHER_HOST_CAPABLE",
  "action_result": null,
