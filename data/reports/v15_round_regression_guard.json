@@ -1,38 +1,23 @@
 {
- "at": "2026-10-19T23:26:00Z",
+ "at": "2026-10-20T00:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 5,
-   "per_hour": 2.5,
-   "improved_vs_best_start": 5,
-   "mean_uplift_vs_best_start": 8.7601,
+   "published_n": 4,
+   "per_hour": 2.0,
+   "improved_vs_best_start": 4,
+   "mean_uplift_vs_best_start": 9.8134,
    "median_uplift": 9.8673,
-   "chained_from_previous_published": 0,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 2.5/h < 12.0/h (one per 5 min)"
+    "throughput 2.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
-    {
-     "symside": "AR_LONG",
-     "published_at": 1792446505.196954,
-     "final_gain": 13.266636091774316,
-     "best_start_gain": 11.156097179303902,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 4,
-     "baseline_gain": 11.156097179303902,
-     "npz_ts_last": 1792440000.0,
-     "npz_md5": "21c85576277175ae260a09657af90d66",
-     "npz_bars": 4991,
-     "bh": -2.461691807159346,
-     "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 1.81
-    },
     {
      "symside": "LNG_LONG",
      "published_at": 1792450769.579629,
@@ -64,19 +49,19 @@
      "npz_age_h_at_publish": 3.05
     },
     {
-     "symside": "TECK_SHORT",
-     "published_at": 1792448646.7535543,
-     "final_gain": 15.62160562186747,
-     "best_start_gain": 5.261534526294224,
-     "best_start_chosen": "incumbent",
-     "best_start_candidates": 3,
-     "baseline_gain": 5.261534526294224,
+     "symside": "RIO_SHORT",
+     "published_at": 1792453783.36523,
+     "final_gain": 25.800032391157153,
+     "best_start_gain": 17.876403297237726,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 5,
+     "baseline_gain": 17.876403297237726,
      "npz_ts_last": 1792439100.0,
-     "npz_md5": "aa1e97647e4675baaf2e01a32b340246",
-     "npz_bars": 5415,
-     "bh": 11.308109429998039,
+     "npz_md5": "1d1d9ea61a55252d65d6a4d366a6f9c4",
+     "npz_bars": 2649,
+     "bh": 12.691369090530072,
      "verdict": "BEST_EFFORT",
-     "npz_age_h_at_publish": 2.65
+     "npz_age_h_at_publish": 4.08
     },
     {
      "symside": "TRGP_LONG",

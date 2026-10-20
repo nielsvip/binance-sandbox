@@ -1,0 +1,22 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:STOCKS_LONG": 18950,
+  "inserted": {
+   "evals:STOCKS_LONG": 18950,
+   "sets:STOCKS_LONG": 6
+  },
+  "offered": {
+   "evals:STOCKS_LONG": 18950,
+   "sets:STOCKS_LONG": 6
+  },
+  "secs": 17.4,
+  "source_rows": 18950
+ },
+ "finished": "2026-10-20T00:28:40Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/AMD_LONG/eval_cache.db",
+ "started": "2026-10-20T00:28:23Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

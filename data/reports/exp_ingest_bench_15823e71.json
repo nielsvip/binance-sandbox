@@ -1,0 +1,22 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:STOCKS_SHORT": 1863,
+  "inserted": {
+   "evals:STOCKS_SHORT": 1863,
+   "sets:STOCKS_SHORT": 1
+  },
+  "offered": {
+   "evals:STOCKS_SHORT": 1863,
+   "sets:STOCKS_SHORT": 1
+  },
+  "secs": 1.2,
+  "source_rows": 1863
+ },
+ "finished": "2026-10-20T00:28:41Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CDE_SHORT/eval_cache.db",
+ "started": "2026-10-20T00:28:40Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}
