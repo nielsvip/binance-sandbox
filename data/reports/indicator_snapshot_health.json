@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-20T09:33:43Z",
+ "generated_utc": "2026-10-20T09:38:44Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 924.4,
+  "age_s": 1224.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 99235,
-  "proc_age_s": 624.0,
-  "log_age_s": 1.4,
+  "proc_age_s": 925.0,
+  "log_age_s": 6.3,
   "warmup_done": false,
   "timeframes_since_restart": [
    "1h",
@@ -23,12 +23,12 @@
   "written": 0,
   "lines": [],
   "decisions": [
-   "log fresh (1s < 45s)",
-   "log fresh (6s < 45s)",
-   "log fresh (0s < 45s)",
    "log fresh (5s < 45s)",
-   "log fresh (11s < 45s)",
-   "log fresh (1s < 45s)"
+   "log fresh (0s < 45s)",
+   "log fresh (1s < 45s)",
+   "log fresh (4s < 45s)",
+   "log fresh (0s < 45s)",
+   "log fresh (6s < 45s)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -41,21 +41,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792451066.3983662,
   "activations": 151,
-  "hb_mtime": 1792488520.8740447,
-  "mac_snapshot_age_s": 617.2713735103607,
+  "hb_mtime": 1792488870.8859053,
+  "mac_snapshot_age_s": 967.2414515018463,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-20T03:50:05Z",
   "lease_reason": "all scoped accounts yielded back to a live Mac",
-  "now": 1792488524.4152665,
-  "from_cache_age_s": 299.5,
-  "heartbeat_age_s": 3.5,
-  "active_s": 37458.0,
+  "now": 1792488885.1026068,
+  "from_cache_age_s": 239.2,
+  "heartbeat_age_s": 14.2,
+  "active_s": 37818.7,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 924s old (> 600s). ez_indicators pid=99235 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1224s old (> 600s). ez_indicators pid=99235 warmup_done=False tfs_since_restart=['1h', '15m'] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
