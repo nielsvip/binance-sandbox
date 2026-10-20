@@ -96,9 +96,40 @@ def _evaluate(ss: str, r, sheet_dir: Path, strict: bool) -> dict:
     om = overrides_md5(ov)
     mans = manifest_md5s(ss, sheet_dir)
     hit = mans.get(om)
+    # 2026-10-20 CARRY THE CELL DATE, not just the publish stamp. The gate (live_twins/vec_exact.latest_board_ok)
+    # had only `published_at` (write-recency) and the run label in `progress`, so it took the OLDER of the two and
+    # dated every board under v15_run32_20261011 to Oct 11 — the day that RUN STARTED. The new pilot keeps producing
+    # fresh cells inside that same run directory, so 332 of 474 published sym_sides were refused BOARD_TOO_OLD at
+    # 230 h while their cells were computed Oct 16-19 (distinct gain/trades per publish, campaign_ts == updated_at).
+    # campaign_ts/epoch is stamped when the cells are COMPUTED and cannot move without recomputing, so it is the
+    # honest vintage: it still catches a republish of old cells (the thing the correction exists for) without
+    # punishing a long-lived run. CLAUDE.md: the board's date is the date its CELLS were computed.
+    # Two publishers record the cell date under different names, measured 2026-10-20 on S1's per_sym_history:
+    #   fleet_orchestrator_publish (the NEW pilot)  -> "result_done_utc": "2026-10-20T13:52:33.796017+00:00"
+    #   the older publisher                          -> "campaign_ts": 1792425485.477219 (epoch)
+    # Accept either; fall back to "recorded_at". NOT updated_at/epoch — those are write-recency and move on a
+    # republish, which is the whole thing the vintage correction exists to catch.
+    _cell_ts = None
+    for _k in ("result_done_utc", "campaign_ts", "recorded_at"):
+        _v = meta.get(_k)
+        if _v in (None, ""):
+            continue
+        try:
+            if isinstance(_v, (int, float)):
+                _cell_ts = float(_v)
+            else:
+                import datetime as _dt
+                _t = _dt.datetime.fromisoformat(str(_v).replace("Z", "+00:00"))
+                _cell_ts = (_t if _t.tzinfo else _t.replace(tzinfo=_dt.timezone.utc)).timestamp()
+            if _cell_ts and _cell_ts > 0:
+                break
+            _cell_ts = None
+        except Exception:
+            _cell_ts = None
     rec = {
         "history_id": hid,
         "published_at": upd,
+        "cell_ts": _cell_ts,
         "cat_side": cat,
         "host": meta.get("host"),
         "progress": meta.get("progress"),

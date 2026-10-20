@@ -12451,6 +12451,18 @@ def _main_single():
     if 'prepared' not in locals() or prepared is None:
         prepared = None
     if prepared is None:
+        # CLAUDE.md "NEVER give an old test a newer date" (vintage audit 2026-10-20: APA_LONG / APA_SHORT were re-stamped by
+        # this path — stale NPZ -> no prepared -> 0-trade baseline -> "[baseline-fix] 0.00 lie -> using previous" -> the
+        # workbook saved with OLD cells and a NEW mtime). No prepared NPZ = no measurement this launch: nothing is written,
+        # renamed, touched or published (workbook, progress, manifest); the reason is printed and the launch ends here.
+        try:
+            from tools.opt.v12_pilot import npz_freshness as _npz_fresh_nw
+            _nw_fresh, _nw_why = _npz_fresh_nw(new_symside)
+        except Exception as _nwe:
+            _nw_fresh, _nw_why = True, f"freshness check failed: {_nwe}"
+        print(f"[NO-WRITE] {new_symside} no prepared NPZ ({_nw_why or 'prepare failed'}) — nothing written, renamed or published this launch (cells keep their own vintage)", flush=True)
+        return
+    if prepared is None:
         print(f"[STEP] baseline evaluate start", flush=True)
         _ex_base = None
         try:

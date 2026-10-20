@@ -1,0 +1,48 @@
+{
+ "generated_utc": "2026-10-20T14:14:39Z",
+ "apply": false,
+ "lease": {
+  "holder": "mac",
+  "pin": null,
+  "gen": 68,
+  "venues": null,
+  "reason": "Mac healthy 600s (needed 600s) venues=['crypto', 'stocks']"
+ },
+ "mac_ready": false,
+ "ready_since": null,
+ "stable_for_s": null,
+ "stable_needed_s": 900.0,
+ "reasons": [
+  "defaults not synced: readiness apply_report_written,live_set_matches_selection",
+  "manager restart churn (newest marker 117s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 14.49/core > 4.0",
+  "and s1-pub indicators 101/199 stale (50.8%) \u2014 pin NOT moved"
+ ],
+ "measured": {
+  "readiness_verdict": "FAIL",
+  "readiness_age_s": 182,
+  "mac_ind": {
+   "symbols": 199,
+   "stale_over_90min": 14,
+   "stale_pct": 7.0,
+   "median_age_min": 56.6,
+   "sample": [
+    "ACHUSDT",
+    "ACTUSDT",
+    "BOMEUSDC",
+    "BRETTUSDT",
+    "C98USDT",
+    "CAKEUSDT",
+    "CELOUSDT",
+    "CELRUSDT"
+   ]
+  },
+  "churn": "newest marker 117s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 14.49,
+  "s1": "s1-pub indicators 101/199 stale (50.8%)"
+ },
+ "action": "NEITHER_HOST_CAPABLE",
+ "action_result": null,
+ "last_action_at": 0,
+ "ready_since_epoch": null
+}
