@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T18:31:54Z",
+ "ts": "2026-10-20T18:37:21Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 206,
-   "open_positions": 20,
-   "unrealised_usd": 27.15,
+   "fills_6h": 214,
+   "open_positions": 23,
+   "unrealised_usd": 40.95,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 151,
-   "open_positions": 15,
-   "unrealised_usd": 30.28,
+   "fills_6h": 163,
+   "open_positions": 18,
+   "unrealised_usd": 41.44,
    "pos_mismatch": 0
   },
   "fin": {
@@ -137,151 +137,173 @@
    "pids": [
     "79919"
    ],
-   "starts_30m": 4,
-   "log_age_s": 11.0
+   "starts_30m": 3,
+   "log_age_s": 6.0
   },
   "men": {
    "pids": [
     "79851"
    ],
-   "starts_30m": 5,
-   "log_age_s": 8.0
+   "starts_30m": 4,
+   "log_age_s": 10.0
   },
   "ang": {
    "pids": [
     "79302"
    ],
    "starts_30m": 5,
-   "log_age_s": 8.0
+   "log_age_s": 30.0
   },
   "inf": {
    "pids": [
     "79171"
    ],
-   "starts_30m": 6,
-   "log_age_s": 13.0
+   "starts_30m": 5,
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "80430"
    ],
-   "starts_30m": 5,
-   "log_age_s": 5.0
+   "starts_30m": 4,
+   "log_age_s": 204.0
   },
   "trb": {
    "pids": [
     "83844"
    ],
-   "starts_30m": 4,
-   "log_age_s": 1.0
+   "starts_30m": 3,
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [
     "84125"
    ],
-   "starts_30m": 4,
-   "log_age_s": 1.0
+   "starts_30m": 3,
+   "log_age_s": 3.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T18:31:54Z",
+   "ts": "2026-10-20T18:37:21Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:EXEL_LONG",
    "evidence": "entry notional $3594.64 (median $1005.04, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:26:05Z BROKER_SYNC_ADOPTED_EXACT_VALUE_CAP_3595>2000"
   },
   {
-   "ts": "2026-10-20T18:31:54Z",
+   "ts": "2026-10-20T18:37:21Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:EXEL_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $3594.64 (median $1005.04, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:26:05Z BROKER_SYNC_ADOPTED_EXACT_VALUE_CAP_3595>2000"
   },
   {
-   "ts": "2026-10-20T18:31:54Z",
+   "ts": "2026-10-20T18:37:21Z",
+   "severity": "CRITICAL",
+   "kind": "CHURN_KEY",
+   "key": "trb:OLED_LONG",
+   "evidence": "3 open->flat round trips in 60 min"
+  },
+  {
+   "ts": "2026-10-20T18:37:21Z",
+   "severity": "WARN",
+   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
+   "key": "trb:OLED_LONG",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
+  },
+  {
+   "ts": "2026-10-20T18:37:21Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:CDW_LONG",
-   "evidence": "6 open->flat round trips in 60 min"
+   "evidence": "5 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T18:31:54Z",
+   "ts": "2026-10-20T18:37:21Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:CDW_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 6 round trips/60min"
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 5 round trips/60min"
   },
   {
-   "ts": "2026-10-20T18:31:55Z",
+   "ts": "2026-10-20T18:37:22Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T18:31:55Z",
+   "ts": "2026-10-20T18:37:22Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
    "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "4 new process ids in 30 min (['2294', '51368', '54699', '79919'])"
+   "evidence": "3 new process ids in 30 min (['51368', '54699', '79919'])"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "5 new process ids in 30 min (['2919', '51687', '53719', '60656', '79851'])"
+   "evidence": "4 new process ids in 30 min (['51687', '53719', '60656', '79851'])"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
    "evidence": "5 new process ids in 30 min (['46913', '51922', '54540', '76845', '79302'])"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "6 new process ids in 30 min (['2484', '51689', '54216', '60293', '77258', '79171'])"
+   "evidence": "5 new process ids in 30 min (['51689', '54216', '60293', '77258', '79171'])"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "5 new process ids in 30 min (['2737', '51691', '53718', '60396', '80430'])"
+   "evidence": "4 new process ids in 30 min (['51691', '53718', '60396', '80430'])"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 204s"
+  },
+  {
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trb",
-   "evidence": "4 new process ids in 30 min (['99643', '51323', '58853', '83844'])"
+   "evidence": "3 new process ids in 30 min (['51323', '58853', '83844'])"
   },
   {
-   "ts": "2026-10-20T18:31:57Z",
+   "ts": "2026-10-20T18:37:23Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trc",
-   "evidence": "4 new process ids in 30 min (['247', '51448', '59025', '84125'])"
+   "evidence": "3 new process ids in 30 min (['51448', '59025', '84125'])"
   }
  ],
  "alert_counts": {
   "SIZE_ANOMALY": 1,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 2,
-  "CHURN_KEY": 1,
+  "NO_PER_KEY_BLOCK_AVAILABLE": 3,
+  "CHURN_KEY": 2,
   "FILL_WITHOUT_VEC_DECISION": 2,
-  "RESTART_LOOP": 7
+  "RESTART_LOOP": 7,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -315,5 +337,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.38
+ "sweep_s": 1.65
 }
