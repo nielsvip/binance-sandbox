@@ -127,6 +127,8 @@ def fenced(script: str, acct: str) -> bool | None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", help="write the full report here")
+    ap.add_argument("--jsonl", help="APPEND one compact line per tick here, so an interruption-free streak is "
+                                    "measurable instead of asserted (tools/live_uptime_streak.py reads it)")
     ap.add_argument("--quiet", action="store_true", help="print only faults")
     ap.add_argument("--traders-only", action="store_true")
     a = ap.parse_args()
@@ -207,6 +209,14 @@ def main() -> int:
            "n_trader_faults": len(trader_faults), "components": out}
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(rep, indent=1))
+    if a.jsonl:
+        line = {"ts": rep["ts"], "epoch": int(now), "n_ok": rep["n_ok"], "n_fenced": rep["n_fenced"],
+                "n_faults": rep["n_faults"], "n_trader_faults": rep["n_trader_faults"],
+                "faults": sorted(f"{r['script']}{':' + r['account'] if r['account'] else ''}={r['verdict']}" for r in faults),
+                # child_up_s of the youngest trader: a restart anywhere in the live tier breaks the streak
+                "min_trader_child_up_s": min([r["child_up_s"] for r in out if r["is_trader"] and r["child_up_s"] is not None] or [None]) if any(r["is_trader"] for r in out) else None}
+        with open(a.jsonl, "a") as fh:
+            fh.write(json.dumps(line) + "\n")
     show = faults if a.quiet else out
     print(f"{'script':26s} {'acct':6s} {'venue':7s} {'verdict':12s} {'wrap_up':>8s} {'child_up':>8s} {'log_age':>8s} {'limit':>6s}")
     print("-" * 94)

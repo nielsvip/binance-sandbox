@@ -9932,6 +9932,21 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         raise
     except Exception as _bsge:
         print(f"[BEST-SEEN-warn] {new_symside} publish gate: {_bsge}", flush=True)
+    try:
+        _dr_prev = progress.get("diagnose_repair") or {}
+        if _dr_prev.get("skipped") and _dr_prev.get("after") is None and fast_switches is None and prepared is not None and os.environ.get("V15_DIAG_REPAIR", "1") == "1":
+            from tools import v15_diagnose_repair as _DR_fb
+            _fb_ov = sanitize_overrides(dict(cumulative_overrides), defaults)[0]
+            _fb_res, _fb_err = _get("DIAGNOSE_REPAIR", None, "BASE", "", "DIAG_BASE_FALLBACK", _fb_ov, _t.time() + 60.0, float(cumulative_gain))
+            if _fb_res is not None:
+                _fb_m = _DR_fb.metrics(_fb_res, bh)
+                _fb_m["fallback"] = str(_dr_prev.get("skipped"))
+                progress["diagnose_repair"] = {**_dr_prev, "after": _fb_m, "accept_reason": "SKIP_FALLBACK_METRICS_ONLY"}
+                print(f"[DIAG] {new_symside} fallback metrics recorded ({_dr_prev.get('skipped')}) gain={_fb_m['gain']} tr={_fb_m['trades']}", flush=True)
+    except V15Shutdown:
+        raise
+    except Exception as _fbe:
+        print(f"[DIAG-warn] {new_symside} fallback metrics: {_fbe}", flush=True)
     if _v17_on and _v17_t.get("post"):
         _v17_phase_end(_v17_t["post"])
         _v17["board_wall_s_at_post"] = round(_t.time() - _PILOT_T0, 1)

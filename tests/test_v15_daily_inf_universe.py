@@ -123,6 +123,33 @@ def test_metrics_must_describe_final_set():
     assert not ok and any("no fresh full-set metrics" in x for x in reasons)
 
 
+def _fallback_rec(sym_side, skipped, gain=12.0, **kw):
+    r = rec(sym_side, gain=gain, **kw)
+    after = {"gain": gain, "trades": 100, "tim": 30.0, "dd": 5.0, "wr": 50.0, "valid": True, "reason": "", "bh": 1.0, "fallback": skipped}
+    r["diagnose_repair"] = {"skipped": skipped, "after": after, "accept_reason": "SKIP_FALLBACK_METRICS_ONLY"}
+    return r
+
+
+def test_skip_fallback_after_restores_eligibility():
+    for skipped in ("v17 phase cut", "budget 60s", "budget 0s", "tier lightning"):
+        ok, reasons, m, _f = ev(_fallback_rec("COTIUSDT_LONG", skipped))
+        assert ok, (skipped, reasons)
+        assert m["gain_pct"] == 12.0
+
+
+def test_skip_fallback_catchup_without_365d():
+    ok, reasons, _m, flags = ev(_fallback_rec("DUSKUSDT_SHORT", "budget 0s", gain=42.0))
+    assert ok, reasons
+    assert "365D: no verdict" in flags
+
+
+def test_skip_fallback_gain_mismatch_still_refused():
+    r = _fallback_rec("COTIUSDT_LONG", "v17 phase cut", gain=12.0)
+    r["diagnose_repair"]["after"]["gain"] = 13.0
+    ok, reasons, m, _f = ev(r)
+    assert not ok and m is None and any("another set" in x for x in reasons)
+
+
 def test_365d_verdict_gate():
     good = {"gain_pct": 3.4, "trades": 1505, "valid": True, "span_days": 407}
     ok, reasons, _m, flags = ev(rec("ALGOUSDT_LONG", final_365d=good))
