@@ -1,4 +1,11 @@
 {
+  "fin:QTUMUSDT_LONG": {
+    "orderId": "3000002260243443",
+    "stopPrice": 0.8421,
+    "entry_sig": "2026-10-19 22:50:54.452000+00:00",
+    "symbol": "QTUMUSDT",
+    "side": "LONG"
+  },
   "fin:1INCHUSDT_LONG": {
     "orderId": "3000002260162685",
     "stopPrice": 0.091,
@@ -13,34 +20,6 @@
     "symbol": "SNXUSDT",
     "side": "LONG"
   },
-  "fin:DOTUSDT_SHORT": {
-    "orderId": "3000002260178945",
-    "stopPrice": 1.1821,
-    "entry_sig": "2026-10-19 21:42:58.182000+00:00",
-    "symbol": "DOTUSDT",
-    "side": "SHORT"
-  },
-  "fin:QTUMUSDT_LONG": {
-    "orderId": "3000002260243443",
-    "stopPrice": 0.8421,
-    "entry_sig": "2026-10-19 22:50:54.452000+00:00",
-    "symbol": "QTUMUSDT",
-    "side": "LONG"
-  },
-  "fin:THETAUSDT_LONG": {
-    "orderId": "3000002260246842",
-    "stopPrice": 0.1828,
-    "entry_sig": "2026-10-19 22:53:54.925000+00:00",
-    "symbol": "THETAUSDT",
-    "side": "LONG"
-  },
-  "fin:1INCHUSDT_SHORT": {
-    "orderId": "3000002260324653",
-    "stopPrice": 0.09315,
-    "entry_sig": "2026-10-20 00:05:01.355000+00:00",
-    "symbol": "1INCHUSDT",
-    "side": "SHORT"
-  },
   "fin:ADAUSDC_SHORT": {
     "orderId": "3000002260339021",
     "stopPrice": 0.2204,
@@ -54,5 +33,19 @@
     "entry_sig": "2026-10-19 23:41:55.196000+00:00",
     "symbol": "SANDUSDT",
     "side": "SHORT"
+  },
+  "fin:1INCHUSDT_SHORT": {
+    "orderId": "3000002260324653",
+    "stopPrice": 0.09315,
+    "entry_sig": "2026-10-20 00:05:01.355000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "SHORT"
+  },
+  "fin:THETAUSDT_LONG": {
+    "orderId": "3000002260246842",
+    "stopPrice": 0.1828,
+    "entry_sig": "2026-10-19 22:53:54.925000+00:00",
+    "symbol": "THETAUSDT",
+    "side": "LONG"
   }
 }

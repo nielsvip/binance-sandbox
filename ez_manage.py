@@ -50852,6 +50852,19 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         _now_vx = time.time()
         _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
+        def _vx_lc_of(_p):
+            """opened_at epoch of a live position = the lifecycle identity an owed exit belongs to (2026-10-20).
+            None when unknown, which keeps the owed obligation standing (fail-safe: never strand)."""
+            _r = getattr(_p, "opened_at", None)
+            if isinstance(_r, datetime):
+                return (_r if _r.tzinfo else _r.replace(tzinfo=timezone.utc)).timestamp()
+            if _r:
+                try:
+                    _d = datetime.fromisoformat(str(_r).replace("Z", "+00:00"))
+                    return (_d if _d.tzinfo else _d.replace(tzinfo=timezone.utc)).timestamp()
+                except Exception:
+                    return None
+            return None
         try:  # 2026-10-13: a vec full exit that EXPIRED unconsumed is owed when it belongs to THIS live position and the vec paper is flat now
             _exp_exits = _vx.pop_expired_exits(_sym, _side)
             if _exp_exits:  # USER 2026-10-13: "NO exit can EVER be skipped AT ALL for ANY REASON" — no switch, no vec_holds condition
@@ -50869,7 +50882,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 _mine = [e for e in _exp_exits if _oa_ep is None or float(e[0]) + 900.0 >= _oa_ep]
                 _prior = [e for e in _exp_exits if e not in _mine]
                 if _mine:
-                    _vx.exit_owed_add(position_key, f"EXPIRED {_mine[-1][1]} bar={int(_mine[-1][0])}")
+                    _vx.exit_owed_add(position_key, f"EXPIRED {_mine[-1][1]} bar={int(_mine[-1][0])}", _oa_ep)
                     logger.critical(f"[VEC_EXACT_EXIT_OWED] {position_key}: {len(_mine)} vec exit(s) expired unconsumed (opened_at={_oa_raw!r}) -> owed CLOSE now ({_mine[-1][1]})")
                 if _prior:
                     logger.critical(f"[VEC_EXACT_EXIT_PRIOR_LIFECYCLE] {position_key}: {len(_prior)} expired vec exit(s) decided BEFORE this live entry ({_oa_raw!r}) bars={[int(e[0]) for e in _prior]} — belong to an earlier vec position live never held")
@@ -50880,7 +50893,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _amt <= 0 and (_a.get("type") == "CLOSE" or (_a.get("type") == "REDUCE" and _a.get("to_flat"))):
                 try:  # 2026-10-13: local flat is not proof — owe the full close; the broker-verified branch clears or re-sends it next sweep
-                    _vx.exit_owed_add(position_key, f"{_a.get('type')} {_a['reason'][:60]} (local-flat at hand-out)")
+                    _vx.exit_owed_add(position_key, f"{_a.get('type')} {_a['reason'][:60]} (local-flat at hand-out)", _vx_lc_of(trade_manager.positions.get(position_key)))
                 except Exception:
                     pass
             if _amt <= 0:
@@ -50903,7 +50916,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             _lq, _lov = _vx.live_sizing_args(_act, _qty, _px, config)
             if _full:
                 try:
-                    _vx.exit_owed_add(position_key, f"{_act} {_a['reason'][:60]}")
+                    _vx.exit_owed_add(position_key, f"{_act} {_a['reason'][:60]}", _vx_lc_of(trade_manager.positions.get(position_key)))
                 except Exception:
                     pass
             _vx_exit_attempted = True
@@ -50936,7 +50949,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         if _owed_on:
             try:
                 _amt_owed = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
-                if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed):
+                if not _vx_exit_attempted and _vx.exit_owed_due(position_key, _amt_owed, _vx_lc_of(trade_manager.positions.get(position_key))):
                     _ow_snap = await _ptruth.ez_broker(trade_manager, _acct or account_key, config, logger).snapshot(force=True, reason=f"exit_owed_retry {position_key}")
                     if _ow_snap is not None and abs(float(_ow_snap.amount(_sym, _side))) <= 0:
                         _vx.exit_owed_drop(position_key)  # broker confirms FLAT (inf WUSDT 22:03: filled while local stayed stale 150s+)
@@ -50983,7 +50996,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 _px_c = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)
                 _oside_c = "SELL" if _side == "LONG" else "BUY"
                 try:
-                    _vx.exit_owed_add(position_key, "CLOSE VEC_CONVERGE_TO_FLAT paper-flat-live-holds")
+                    _vx.exit_owed_add(position_key, "CLOSE VEC_CONVERGE_TO_FLAT paper-flat-live-holds", _vx_lc_of(trade_manager.positions.get(position_key)))
                 except Exception:
                     pass
                 _cvg_reason = _vx.tagged_reason({"reason": "VEC_CONVERGE_TO_FLAT paper-flat-live-holds"})
@@ -51024,7 +51037,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 except Exception:
                     _stf_tmo = 600.0
                 try:
-                    _vx.exit_owed_add(position_key, "CLOSE VEC_STALE_FLATTEN paper-flat-live-holds-no-act")
+                    _vx.exit_owed_add(position_key, "CLOSE VEC_STALE_FLATTEN paper-flat-live-holds-no-act", _vx_lc_of(trade_manager.positions.get(position_key)))
                 except Exception:
                     pass
                 _stf_px = safe_fetch_float(getattr(_pos, "mark_price", 0), 0.0)

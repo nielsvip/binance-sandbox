@@ -335,16 +335,21 @@ async def fetch_klines_api(symbol, interval, semaphore, session):
 
         # USER 2026-10-19 (never-stop-trading weight triage): TOP-UP ONLY. A full limit=1500 pull (top weight tier)
         # for a 1-bar gap banned the shared egress IP repeatedly (escalating -1003s); cold files still bootstrap 1500 once.
-        _start, _lim = None, 1500
+        # USER 2026-10-20 "just get the bars you need … NEVER EVER need to get > 5 bars again as we are STAYING UP TO DATE":
+        # gaps are pre-filled from local stores + S1 (klines_tail_fill.prefill in fetch_missing_klines), so REST asks only
+        # for the file's OWN last bar (re-finalised) .. the forming bar. Measured from the file this process writes —
+        # the freshest file across dirs left a hole when another dir was ahead. Cold files: 1000 (weight 5, not 10).
+        _start, _lim = None, 1000
         try:
-            _, _, _latest_dt = get_best_klines_file(symbol, interval)
-            if _latest_dt is not None:
-                _last_ms = int(_latest_dt.astimezone(timezone.utc).timestamp() * 1000)
-                _step_ms = int(interval_minutes.get(interval, 60) * 60 * 1000)
-                _miss = max(0, int((int(datetime.now(timezone.utc).timestamp() * 1000) - _last_ms) // max(1, _step_ms)))
-                _start, _lim = _last_ms + 1, int(min(1500, max(10, _miss + 5)))
+            import klines_tail_fill
+            _own = f'{cfg.KLINES_CACHE_DIR}/{symbol}_{interval}.json'
+            _need = klines_tail_fill.bars_needed(_own, interval)
+            if _need is not None:
+                _start, _lim = klines_tail_fill.last_ms(_own), int(min(1000, _need))
+                if _need > klines_tail_fill.MAX_REST_BARS:
+                    log(f"⚠️ REST GAP {symbol} {interval}: {_need} bars missing after local+S1 prefill — fetching exactly those")
         except Exception:
-            _start, _lim = None, 1500
+            _start, _lim = None, 1000
         params = {
             'symbol': symbol,
             'interval': binance_interval,
@@ -453,6 +458,14 @@ async def fetch_missing_klines(missing_bars, auto_confirm=AUTO_CONFIRM):
 
         if not fetch_plan:
             return
+        # USER 2026-10-20: klines are backed up on S1 — a gap is filled from local stores, then S1, never from the API
+        try:
+            import klines_tail_fill
+            _pre = await asyncio.to_thread(klines_tail_fill.prefill, cfg.BASE_PATH, cfg.KLINES_CACHE_DIR, fetch_plan, env == 'macbook', log)
+            for (_s, _i), _rows in _pre.items():
+                log(f"Prefilled {_s} {_i} from local/S1 stores: {len(_rows)} rows (+{merge_and_write(_s, _i, _rows)})")
+        except Exception as e:
+            log(f"⚠️ tail prefill failed: {e}")
 
         log(f"Fetching data for {len(fetch_plan)} symbol/timeframe combinations (parallel, sem={MAX_CONCURRENT_REQUESTS})...")
         saved_count = 0

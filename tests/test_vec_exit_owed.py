@@ -67,6 +67,39 @@ def test_per_key_isolation():
     assert vx.exit_owed_due("ang:OTHERUSDT_LONG", 5.0) is False
 
 
+def test_same_lifecycle_stays_owed():
+    """The obligation must still be served for the position it was recorded against."""
+    opened = 1_800_000_000.0
+    vx.exit_owed_add(PK, "CLOSE DAYTRADE_TARGET", opened)
+    assert vx._exit_owed_load()[PK]["lc"] == opened
+    assert vx.exit_owed_due(PK, 682.7, opened) is True
+    assert vx.exit_owed_due(PK, 682.7, opened + vx.EXIT_OWED_LC_TOL_S - 1.0) is True
+
+
+def test_later_lifecycle_retires_the_obligation():
+    """THE 2026-10-20 DEFECT. Keyed by position_key alone, one stale obligation closed 112 of 131
+    DOTUSDT_SHORT positions ONE BAR AFTER ENTRY (TIM 31.7% -> 4.8%, board +15.66% -> live -10.06%).
+    A close owed by a finished lifecycle must never be served against the next position on that key."""
+    opened = 1_800_000_000.0
+    vx.exit_owed_add(PK, "CLOSE FIXED_STOP", opened)
+    reopened = opened + 3600.0
+    assert vx.exit_owed_due(PK, 682.7, reopened) is False
+    assert vx.exit_owed_has(PK) is False  # retired, not left to fire later
+    vx._EXIT_OWED = None
+    assert vx.exit_owed_has(PK) is False  # and the retirement persisted
+
+
+def test_unknown_lifecycle_keeps_pre_fix_behaviour():
+    """FAIL-SAFE: anything unknown on either side must behave exactly as before the fix, so the
+    anti-stranding guarantee (ALGOUSDT_LONG, -0.65% -> -8.72%) is never weakened."""
+    vx.exit_owed_add(PK, "CLOSE X")  # no lifecycle recorded
+    assert "lc" not in vx._exit_owed_load()[PK]
+    assert vx.exit_owed_due(PK, 682.7, 1_800_000_000.0) is True
+    vx.exit_owed_drop(PK)
+    vx.exit_owed_add(PK, "CLOSE Y", 1_800_000_000.0)  # recorded, but caller cannot resolve it now
+    assert vx.exit_owed_due(PK, 682.7, None) is True
+
+
 def test_expired_full_exits_are_collected_not_lost(monkeypatch):
     """2026-10-13: 24 ULTIMATE_DC_4h hard stops + WT exits expired unconsumed (BLOCKED_SKIPPED_STALE) and were simply gone.
     expire_old now hands full exits to pop_expired_exits; partial reduces and opens are not owed."""

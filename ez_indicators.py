@@ -3519,6 +3519,16 @@ class IndicatorOrchestrator:
         base_interval = float(getattr(config, "INDICATORS_SAVE_INTERVAL_SECONDS", 60.0))
         save_interval = 90.0 if self.env == "macbook" else base_interval
         last_periodic_save = time.time()
+        # USER 2026-10-20 ("unlock and fix"): STEADY-STATE half of the warm-up trap. The [WARMUP] heartbeat fixed the
+        # silent warm-up, but this loop then `continue`s every 1 s writing NOTHING until a save is due, and on the
+        # macbook a save is due every 90 s against run_with_watchdog.sh:186 NO_OUTPUT_TIMEOUT=120 — a 30 s margin that
+        # any jitter, or a save that logs nothing, erases. MEASURED: 2026-10-20 03:55:30 "No output for 123s" killed a
+        # process that had been healthy for 5,249 s, and because every kill restarts the 25-47 min warm-up, that one
+        # 3-second overrun cost another snapshot blackout (the snapshot was 695 s stale right after it). A heartbeat on
+        # a cadence well under the limit means the watchdog's 120 s can only fire on a genuinely wedged process, which
+        # is exactly what it is for. Log line only — no trading logic, no save behaviour changed.
+        hb_interval = float(os.environ.get("EZIND_SAVE_HB_S", "45"))
+        last_hb = time.time()
         while not self._shutdown.is_set():
             try:
                 await asyncio.wait_for(self._shutdown.wait(), timeout=1.0)
@@ -3531,6 +3541,9 @@ class IndicatorOrchestrator:
                 self._save_due = True
                 self._dirty = True
                 last_periodic_save = now
+            if hb_interval > 0 and now - last_hb >= hb_interval:
+                last_hb = now
+                logger.info("[SAVE_HB] due=%s dirty=%s since_save=%.0fs interval=%.0fs", bool(self._save_due), bool(self._dirty), time_since_last_save, save_interval)
             if not (self._save_due and self._dirty):
                 continue
             await self._save_data()

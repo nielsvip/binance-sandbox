@@ -42,6 +42,9 @@ EXCLUDES=(--include 'data/' --include 'data/livecode_sync.json' --exclude 'data/
   # rank plot the Mac ever wrote accumulated on S1 — 589 PNGs of which 569 were superseded slots — and
   # wallpaper_daemon.py pulled the whole lot back every ~5 min, undoing ez_rankings.prune_rank_plots(). Excluded
   # for the same reason SPREADSHEETS/, *.npz and klines_*/ already are: bulk output, not code.
+  # USER 2026-10-20 (VERSION GATE, CLAUDE.md): the pilot and its subscripts reach production ONLY through tools/v15_version_gate.py on S2.
+  # This push carried an ungated v15_pilot.py (md5 2995dd8f, then fd2c447d) into S1 ~/binance. Excluded so it can never again.
+  --exclude '/v15_pilot.py' --exclude '/tools/v15_brain.py' --exclude '/tools/v17_combo_engine.py' --exclude '/tools/v17_priors.py' --exclude '/tools/v18_must_index.py' --exclude '/tools/v15_365_repair.py' --exclude '/tools/v15_endgame_knowledge_merge.py' --exclude '/tools/v15_row_guards.py' --exclude '/tools/v15_diagnose_repair.py' --exclude '/tools/v15_graph_search.py' --exclude '/tools/v15_v18_planner.py'
   --exclude 'plots/' --exclude 'plots_tradier/')
 try_push() { # try_push <shell-or-EMPTY> <destination>
     local shell="$1" dest="$2" rc

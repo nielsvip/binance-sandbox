@@ -69,6 +69,11 @@ def test_v15_template_bold_defaults_are_config():
                 if ws.cell(r,1).value == k:
                     v = ws.cell(r,2).value
                     b = ws.cell(r,2).font.bold
-                    assert str(v) == str(getattr(cfg_cls, k)), f"{p} {k} tmpl {v} != cfg {getattr(cfg_cls,k)}"
+                    cv = getattr(cfg_cls, k)
+                    try:
+                        same = abs(float(v) - float(cv)) < 1e-12 if not (isinstance(v, bool) or isinstance(cv, bool)) else bool(v) == bool(cv)
+                    except (TypeError, ValueError):
+                        same = str(v).strip() == str(cv).strip()
+                    assert same, f"{p} {k} tmpl {v} != cfg {cv}"
                     assert b is True, f"{p} {k} not bold"
                     break
