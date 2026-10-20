@@ -1374,10 +1374,19 @@ def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto
         if targets and ts_set:
             actives = sorted({s for s in crypto_syms + stock_syms})
             scores, n_files = breadth_scores(ind_dir, actives, ts_set)
-            patched, failed = 0, 0
+            patched, failed, deferred = 0, 0, 0
+            # USER LAW 2026-10-20 (NPZ <= 15 min): measured 15:05-15:39Z a loop cycle was wave1 905 s + wave2 1137 s = 34 min, i.e. every symbol got
+            # a new bar only every ~2 bars. Sentiment patching is a correction pass whose backlog already heals next cycle (stamp_sent_through /
+            # backlog_window), so in --loop mode it gets a time budget (NPZ_LOOP_WAVE2_MAX_S, default 240; 0 = unbounded) after which the
+            # not-yet-started patches are deferred to the next cycle instead of delaying every symbol's next bar.
+            _w2_budget = float(os.environ.get("NPZ_LOOP_WAVE2_MAX_S", "240") or 0) if getattr(a, "loop", False) else 0.0
             with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(8, a.workers))) as ex:
                 futs = {ex.submit(patch_sentiment_file, str(Path(ind_dir) / f"{s}.npz"), sorted(ts), scores): (s, sorted(ts)) for s, ts in targets.items()}
                 for f in concurrent.futures.as_completed(futs):
+                    if _w2_budget and time.time() - t2 > _w2_budget and not f.cancelled():
+                        deferred += sum(1 for g in futs if g.cancel())
+                    if f.cancelled():
+                        continue
                     s, ts = futs[f]
                     try:
                         pr = f.result()
@@ -1389,7 +1398,7 @@ def run_cycle(a, ind_dir, crypto_syms, stock_syms, stock_prefetch, cutoff_crypto
                     else:
                         failed += 1
                         log(json.dumps({"symbol": s, "sentiment": pr}, default=str))
-            wave2 = {"status": "DONE", "ts": len(ts_set), "breadth_files": n_files, "patched": patched, "failed": failed,
+            wave2 = {"status": "DONE", "ts": len(ts_set), "breadth_files": n_files, "patched": patched, "failed": failed, "deferred_to_next_cycle": deferred,
                      "backlog_files": n_backlog, "secs": round(time.time() - t2, 1)}
         else:
             wave2 = {"status": "NOTHING_NEW", "secs": round(time.time() - t2, 1)}
