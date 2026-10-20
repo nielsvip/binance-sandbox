@@ -230,6 +230,108 @@ def _merge_exchange(path, klines, now_ms):
     return added, corrected, out
 
 
+import re as _re
+
+_ROW_RE = _re.compile(rb"\{[^{}]*\}")
+
+
+def tail_rows(path, n=8, block=12288):
+    """USER LAW 2026-10-20 (15-min NPZ): last n rows of a store file WITHOUT parsing the file (a 27 MB json.loads under the global write
+    lock was the Mac daemon's cycle: 905 s median vs 121 s). Reads the final `block` bytes, regex-splits the flat row objects. None when
+    the file is missing/unreadable/has no complete row in the block (caller falls back to the full parse)."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, 2)
+            size = fh.tell()
+            fh.seek(max(0, size - block))
+            buf = fh.read()
+        if not buf.rstrip().endswith(b"]"):
+            return None
+        out = []
+        for m in _ROW_RE.finditer(buf):
+            try:
+                d = json.loads(m.group(0))
+            except ValueError:
+                continue
+            if isinstance(d, dict) and "timestamp" in d:
+                out.append(d)
+        return out[-n:] if out else None
+    except OSError:
+        return None
+
+
+def append_rows_atomic(path, new_rows):
+    """grow-only append of rows (strictly newer than the stored last row, caller-checked) WITHOUT re-serialising the file: copy -> splice
+    ', {row}...' before the closing ']' of the copy -> os.replace. Readers never see a half-written file. Caller holds WLOCK."""
+    import shutil
+    p = Path(path)
+    tmp = p.with_name(f".{p.name}.tmp{os.getpid()}")
+    shutil.copyfile(p, tmp)
+    try:
+        with open(tmp, "r+b") as fh:
+            fh.seek(0, 2)
+            end = fh.tell()
+            fh.seek(max(0, end - 64))
+            tailb = fh.read()
+            cut = tailb.rstrip().rfind(b"]")
+            if cut < 0:
+                raise ValueError("no closing bracket")
+            pos = end - len(tailb) + cut
+            fh.seek(pos)
+            fh.write((", " + ", ".join(json.dumps(r) for r in new_rows) + "]").encode())
+            fh.truncate()
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, p)
+    except Exception:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
+def merge_exchange_tail(path, klines, now_ms):
+    """merge_exchange for the incremental tail path: when every fetched bar is either identical to a stored tail row or strictly newer than the
+    stored last row, append only the new bars (no full parse). Anything else (a correction, a bar older than the tail window, an unreadable
+    tail) takes the full merge_exchange path unchanged. Returns (added, corrected)."""
+    tr = tail_rows(path)
+    if tr:
+        try:
+            by = {ts_ms(r["timestamp"]): r for r in tr}
+            last = max(by)
+            new, ok = [], True
+            for k in klines:
+                if int(k[6]) >= now_ms - SETTLE_MS:
+                    continue
+                t = int(k[0])
+                nr = row_of(k)
+                if t > last:
+                    new.append(nr)
+                elif t in by:
+                    if any(float(by[t].get(c, 0) or 0) != nr[c] for c in KEYS):
+                        ok = False
+                        break
+                else:
+                    ok = False
+                    break
+            if ok:
+                new = sorted({ts_ms(r["timestamp"]): r for r in new}.items())
+                if not new:
+                    return 0, 0
+                WLOCK.parent.mkdir(parents=True, exist_ok=True)
+                with open(WLOCK, "a+") as lk:
+                    fcntl.flock(lk.fileno(), fcntl.LOCK_EX)
+                    cur = tail_rows(path, n=1)
+                    if cur and ts_ms(cur[-1]["timestamp"]) == last:
+                        append_rows_atomic(path, [r for _, r in new])
+                        return len(new), 0
+        except Exception as e:
+            log(f"{Path(path).name}: fast tail merge failed ({type(e).__name__} {e}) - full merge")
+    a, c, _ = merge_exchange(path, klines, now_ms)
+    return a, c
+
+
 COMPLETE = "_complete.json"
 
 
@@ -296,7 +398,7 @@ def fill_symbol_tf(api, symbol, tf, since_ms, store=STORE):
 def tail_symbol_tf(api, symbol, tf, recheck=3, store=STORE):
     """incremental: bars after the stored last bar + re-check the last `recheck` stored bars."""
     path = store / f"{symbol}_{tf}.json"
-    rows = load_rows(path)
+    rows = tail_rows(path, n=1) or load_rows(path)
     if not rows:
         return None
     sec_ms = TFS[tf][1] * 1000
@@ -313,7 +415,7 @@ def tail_symbol_tf(api, symbol, tf, recheck=3, store=STORE):
         d = api.klines(symbol, tf, lim, start=start)
         if not d:
             break
-        a, c, _ = merge_exchange(path, d, api.fetched_ms())
+        a, c = merge_exchange_tail(path, d, api.fetched_ms())
         total_a += a
         total_c += c
         if len(d) < lim:
@@ -391,7 +493,7 @@ def _push():
         return
     try:
         import subprocess
-        subprocess.Popen(["/bin/bash", str(PUSH)], stdout=open(ROOT / "data" / "klines_canonical_push.log", "a"), stderr=subprocess.STDOUT, start_new_session=True)
+        subprocess.Popen(["/bin/bash", str(PUSH)], stdout=open(ROOT / "data" / "klines_canonical_push.log", "a"), stderr=subprocess.STDOUT, start_new_session=True, env=dict(os.environ, KLINES_PUSH_PY=os.environ.get("KLINES_PUSH_PY", sys.executable)))
     except Exception as e:
         log(f"push spawn failed: {e}")
 

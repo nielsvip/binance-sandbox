@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T14:17:06Z",
+ "generated_utc": "2026-10-20T14:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -48,12 +48,12 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "reports_today": 1,
-    "newest_report": "persym_golive_20261020.json",
-    "newest_report_at": "2026-10-20T14:11:24Z",
+    "reports_today": 2,
+    "newest_report": "persym_golive_20261020_cellts_1415.json",
+    "newest_report_at": "2026-10-20T14:19:59Z",
     "tiers_at": "2026-10-19T22:34:52Z"
    },
-   "detail": "persym_golive_20261020.json at 2026-10-20T14:11:24Z, tiers 2026-10-19T22:34:52Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261020_cellts_1415.json at 2026-10-20T14:19:59Z, tiers 2026-10-19T22:34:52Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,12 +62,10 @@
    "measured": {
     "selection_n": 474,
     "exact": 41,
-    "benign_divergence_only": 270,
+    "benign_divergence_only": 272,
     "material_divergence": 160,
     "no_live_row": [
-     "LEXX_SHORT",
-     "U_LONG",
-     "ULTA_SHORT"
+     "LEXX_SHORT"
     ],
     "worst": [
      {
@@ -81,19 +79,6 @@
        "BB_BREAKOUT_TF",
        "BB_PULLBACK_GATE_TF",
        "BB_RECOVERY_EXIT_ENABLED_TRADIER"
-      ]
-     },
-     {
-      "sym_side": "WPM_SHORT",
-      "published_at": "2026-10-20T03:55:18Z",
-      "material": 81,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ADX_TRENDING_THRESHOLD",
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED"
       ]
      },
      {
@@ -133,19 +118,6 @@
        "BB_PROFIT_TAKE_TF",
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
-      ]
-     },
-     {
-      "sym_side": "WPM_LONG",
-      "published_at": "2026-10-20T03:38:56Z",
-      "material": 65,
-      "sample": [
-       "AUGMENT_AT_LOSS_ENABLED",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BB_BOUNCE_ENTRY_FILTER_ENABLED",
-       "BB_PULLBACK_GATE_TF",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "BREAKOUT_RETEST_FILTER_TF"
       ]
      },
      {
@@ -199,10 +171,36 @@
        "DAYTRADE_DC_TARGET_TF",
        "DC_EDGE_SIZING_MIN_MULT"
       ]
+     },
+     {
+      "sym_side": "CRWD_SHORT",
+      "published_at": "2026-10-18T21:33:31Z",
+      "material": 34,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "DC_EDGE_SIZING_ENABLED",
+       "DC_EDGE_SIZING_MAX_MULT"
+      ]
+     },
+     {
+      "sym_side": "SCCO_LONG",
+      "published_at": "2026-10-12T05:33:28Z",
+      "material": 30,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "BB_PULLBACK_GATE_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DISASTER_GUARD_ENABLED",
+       "EMA_DIST_SIZING_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "41 exact, 270 benign-only, 160 with material divergence, 3 with no live row"
+   "detail": "41 exact, 272 benign-only, 160 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -212,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 14,
     "stale_pct": 7.0,
-    "median_age_min": 62.1,
+    "median_age_min": 65.0,
     "sample": [
      "ACHUSDT",
      "ACTUSDT",
@@ -228,14 +226,10 @@
   },
   {
    "name": "s1_sets_synced",
-   "ok": true,
+   "ok": false,
    "critical": false,
-   "measured": {
-    "file": "data/per_sym_full_sets.json",
-    "mac_md5": "645b7147a66d",
-    "s1_md5": "645b7147a66d"
-   },
-   "detail": "data/per_sym_full_sets.json identical on s1-pub"
+   "measured": {},
+   "detail": "local md5 failed: [Errno 2] No such file or directory: 'md5'"
   }
  ]
 }

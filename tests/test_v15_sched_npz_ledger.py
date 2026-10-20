@@ -55,9 +55,29 @@ def test_fast_push_local_ledgers_push(tmp_path, monkeypatch):
     ind.mkdir(parents=True)
     _mk_npz(ind / "AAA.npz")
     monkeypatch.setattr(D, "ROOT", tmp_path)
-    monkeypatch.setenv("V15_DISPATCH_TAIL_REFRESH", "0")
+    monkeypatch.setenv("V15_SCHED_RUN_STALE", "1")  # USER LAW 2026-10-20: the 2024 fixture NPZ is stale; this test is about the ledger, not the verdict
+    monkeypatch.setattr(D, "tail_refresh", lambda symbol: {"tail": "current", "tail_s": 0.0})
     monkeypatch.setenv("V15_NPZ_FAIL_LEDGER", str(tmp_path / "fails.jsonl"))
     res = D.fast_push("AAA", "")
     assert res["ok"] is True and res["action"] == "fast30d-local"
     row = json.loads((tmp_path / "fails.jsonl").read_text().strip())
     assert row["event"] == "push" and row["sessions"] == 30 and len(row["sha"]) == 32
+
+
+def test_stale_npz_refused_after_refresh(tmp_path, monkeypatch):
+    """USER LAW 2026-10-20: a launch whose NPZ is still > V15_NPZ_MAX_AGE_MIN behind after the JIT refresh is REFUSED (kind retry, never a rebuild)."""
+    ind = tmp_path / "backtest_v8" / "indicators"
+    ind.mkdir(parents=True)
+    _mk_npz(ind / "AAAUSDC.npz")
+    monkeypatch.setattr(D, "ROOT", tmp_path)
+    monkeypatch.delenv("V15_SCHED_RUN_STALE", raising=False)
+    monkeypatch.setenv("V15_TAIL_WAIT_S", "0")
+    monkeypatch.setenv("V15_DISPATCH_LOG", str(tmp_path / "d.log"))
+    monkeypatch.setattr(D, "LOG", tmp_path / "d.log")
+    monkeypatch.setattr(D, "tail_refresh", lambda symbol: {"tail": "current", "tail_s": 0.0})
+    monkeypatch.setenv("V15_NPZ_FAIL_LEDGER", str(tmp_path / "fails.jsonl"))
+    res = D.fast_push("AAAUSDC", "")
+    assert res["ok"] is False and res["action"] == "stale-npz" and res["npz_age_min"] > 20
+    ok, kind, _why, may_rebuild = D.prep_disposition(res)
+    assert ok is False and kind == "retry" and may_rebuild is False
+    assert '"event": "tail-verified"' in (tmp_path / "d.log").read_text()

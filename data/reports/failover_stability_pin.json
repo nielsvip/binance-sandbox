@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-10-20T14:18:53Z",
- "apply": false,
+ "generated_utc": "2026-10-20T14:24:00Z",
+ "apply": true,
  "lease": {
   "holder": "s1",
   "pin": null,
-  "gen": 69,
-  "venues": "crypto",
-  "reason": "Mac reachable but NOT TRADING: crypto: positions_stale inf/long_positions.json age 1323s > 600s (position loop wedged) for 49s"
+  "gen": 70,
+  "venues": "crypto,stocks",
+  "reason": "Mac reachable but NOT TRADING: stocks: positions_stale tra/state.json age 666s > 600s (position loop wedged) for 46s"
  },
  "mac_ready": false,
  "ready_since": null,
@@ -14,17 +14,17 @@
  "stable_needed_s": 900.0,
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 26s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 13.50/core > 4.0 (warning only)"
+  "manager restart churn (newest marker 5s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 9.96/core > 4.0 (warning only)"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 108,
+  "readiness_age_s": 239,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 14,
    "stale_pct": 7.0,
-   "median_age_min": 62.1,
+   "median_age_min": 65.0,
    "sample": [
     "ACHUSDT",
     "ACTUSDT",
@@ -36,18 +36,15 @@
     "CELRUSDT"
    ]
   },
-  "churn": "newest marker 26s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 13.5,
+  "churn": "newest marker 5s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 9.96,
   "warnings": [
-   "load 13.50/core > 4.0 (warning only)"
+   "load 9.96/core > 4.0 (warning only)"
   ],
   "s1": "s1-pub indicators 14/199 stale (7.0%)"
  },
- "action": "pin_s1",
- "action_result": {
-  "applied": false,
-  "would": "force-s1"
- },
- "last_action_at": 0,
+ "action": "cooling",
+ "action_result": null,
+ "last_action_at": 1792506001.953075,
  "ready_since_epoch": null
 }

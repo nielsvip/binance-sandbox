@@ -24,8 +24,8 @@ SUN = dt.datetime(2026, 10, 11, 12, 0, tzinfo=dt.timezone.utc)  # Sunday noon UT
 def test_crypto_tail_currency():
     cutoff = last_closed_bar(int(TUE_RTH.timestamp()))
     assert tail_currency(cutoff, "crypto", TUE_RTH)[0] is True
-    assert tail_currency(cutoff - 2 * 900, "crypto", TUE_RTH)[0] is True  # grace: 2 bars
-    ok, why = tail_currency(cutoff - 3 * 900, "crypto", TUE_RTH)
+    assert tail_currency(cutoff - 900, "crypto", TUE_RTH)[0] is True  # USER LAW 2026-10-20: grace = 1 bar (20 min)
+    ok, why = tail_currency(cutoff - 2 * 900, "crypto", TUE_RTH)
     assert ok is False and "bars behind" in why
 
 
