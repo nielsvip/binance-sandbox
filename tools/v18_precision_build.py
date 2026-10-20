@@ -60,6 +60,7 @@ LAW_POSITIVES = ("USER LAW 2026-10-20: \"if a certain switch/filter combination 
 T = {
     "ci": 0.90,            # credible / confidence level of every interval
     "m0": 8.0,             # Beta prior strength at cat_side level (the brain's M_SHRINK)
+    "alpha_floor": 0.5,    # Jeffreys floor on both prior shape parameters: a zero-positive key is never declared impossible by the prior
     "p_w": 0.10,           # WORKS: lower bound of P(pos) > p_w  (and shrunk mean delta > 0)
     "p_c": 0.03,           # CONTESTED: an alternative with >= 2 positive sym_sides and P(pos) lower bound > p_c, or a regime LB > p_w
     "p_d": 0.10,           # DAMAGING: upper bound of P(pos) < p_d AND mean-delta upper bound < 0 AND Σdelta < 0 with n >= n_min
@@ -343,6 +344,36 @@ def load_cat_side(cs, bolds):
             "promos": promos, "ids": ids, "syn": syn, "abl": abl, "remedies": remedies, "phase": phase, "cnt": cnt}
 
 
+def load_quartets(cs):
+    """Native in-context quartets (brain native spill: B, B+x, B+y, B+x+y in one sym_side/base/window/npz context) of this cat_side."""
+    out = collections.defaultdict(list)
+    n = 0
+    for f in sorted(glob.glob(str(ROOT / "data" / "brain_scratch" / "spill_mac" / "spill_native_*.tsv.gz"))):
+        with gzip.open(f, "rt") as fh:
+            for line in fh:
+                ev = json.loads(line.partition("\t")[2])
+                if ev.get("e") != "quartet" or cat_side_of(ev.get("s")) != cs or ev.get("syn") is None:
+                    continue
+                n += 1
+                out[(ev["x"], ev["y"])].append((ev["s"], float(ev["syn"])))
+    return out, n
+
+
+def syn_stats(lst):
+    """[(sym, syn)] -> n, n_syms, mean of sym means, 90% CI (k >= 3), pos/neg counts."""
+    by = collections.defaultdict(list)
+    for sm, v in lst:
+        by[sm].append(v)
+    means = np.array([np.mean(v) for v in by.values()])
+    k = len(means)
+    m = float(means.mean()) if k else None
+    lo = hi = None
+    if k >= T["s_min"]:
+        se = max(float(means.std(ddof=1)), T["sd_floor"]) / math.sqrt(k)
+        lo, hi = m - Z90 * se, m + Z90 * se
+    return {"n": len(lst), "n_syms": k, "mean": r4(m), "ci": [r4(lo), r4(hi)], "pos": sum(1 for _s, v in lst if v > EPS), "neg": sum(1 for _s, v in lst if v < -EPS)}
+
+
 def regime_cuts(board_meta):
     bh = np.array([m["bh"] for m in board_meta.values() if m.get("bh") is not None], float)
     if len(bh) < 10:
@@ -446,8 +477,8 @@ def key_estimates(key, sym, d, valid, nkeys, secs, p0=None, rho=None):
     f_g = 1.0 / (1.0 + (n_g - 1.0) * rho)
     A = np.bincount(gk, weights=f_g * pos_g, minlength=nkeys)
     Nf = np.bincount(gk, weights=f_g * n_g, minlength=nkeys)
-    a_post = T["m0"] * p0 + A
-    b_post = T["m0"] * (1 - p0) + Nf - A
+    a_post = max(T["alpha_floor"], T["m0"] * p0) + A
+    b_post = max(T["alpha_floor"], T["m0"] * (1 - p0)) + Nf - A
     lo, hi = beta_ci(a_post, b_post, T["ci"])
     pm = a_post / (a_post + b_post)
     vd = np.where(valid == 1, d, 0.0)
@@ -487,6 +518,35 @@ def key_estimates(key, sym, d, valid, nkeys, secs, p0=None, rho=None):
             med[kk[s0]] = dd[(s0 + e0 - 1) // 2] if (e0 - s0) % 2 else 0.5 * (dd[(s0 + e0) // 2 - 1] + dd[(s0 + e0) // 2])
     out["median"] = med
     return out
+
+
+def _ff_for(tabs, ff_by_tab, k=2):
+    lst = [x for t in tabs for x in ff_by_tab.get(t, [])]
+    if not lst:
+        return None
+    lst.sort(key=lambda x: -(x[1]["mean"] or 0))
+    seen, pos, neg = set(), [], []
+    for pr, st_ in lst:
+        if pr in seen:
+            continue
+        seen.add(pr)
+        if (st_["mean"] or 0) > 0 and len(pos) < k:
+            pos.append(dict(st_, pair=list(pr)))
+    for pr, st_ in lst[::-1]:
+        if (st_["mean"] or 0) < 0 and len(neg) < k:
+            neg.append(dict(st_, pair=list(pr)))
+    return {"synergy": pos, "anti": neg, "basis": "native in-context quartets, filter x filter of the same tab (not conditional on this switch's row)"}
+
+
+def _syn_top(d, k=3):
+    """switch x filter quartet synergy (in-board + native): the k most positive and k most negative by mean, n_syms >= 2."""
+    rows = []
+    for f, lst in d.items():
+        st_ = syn_stats(lst)
+        if st_["n_syms"] >= 2 and st_["mean"] is not None and abs(st_["mean"]) > EPS:
+            rows.append(dict(st_, f=f))
+    rows.sort(key=lambda x: -x["mean"])
+    return {"pos": rows[:k], "neg": [x for x in rows[::-1][:k] if x["mean"] < 0]} if rows else None
 
 
 def mean_nan(key, x, nkeys):
@@ -762,6 +822,36 @@ def build_cs(cs, a):
     pairs_of_key = collections.defaultdict(list)
     for j in range(npairs):
         pairs_of_key[int(pk_u[j, 0])].append(j)
+    quart, n_quart = load_quartets(cs)
+    syn_row = collections.defaultdict(lambda: collections.defaultdict(list))
+    for (ki, hdr), lst in L["syn"].items():
+        for si, sv in lst:
+            syn_row[keys.names[ki]][hdr].append((syms.names[si], sv))
+    tab_of_yellow = collections.defaultdict(set)
+    for tab, ys in yellows_of_tab.items():
+        for y in ys:
+            tab_of_yellow[y].add(tab)
+    ff_pairs = collections.defaultdict(list)
+    n_q_sf = n_q_ff = 0
+    for (x, y), lst in quart.items():
+        if x in key_tabs and y in set(row_yellows.get(x, [])):
+            syn_row[x][y].extend(lst)
+            n_q_sf += len(lst)
+        elif y in key_tabs and x in set(row_yellows.get(y, [])):
+            syn_row[y][x].extend(lst)
+            n_q_sf += len(lst)
+        elif tab_of_yellow.get(x) and tab_of_yellow.get(y) and (tab_of_yellow[x] & tab_of_yellow[y]):
+            ff_pairs[tuple(sorted((x, y)))].extend(lst)
+            n_q_ff += len(lst)
+    ff_stats = {}
+    for pr, lst in ff_pairs.items():
+        st_ = syn_stats(lst)
+        if st_["n_syms"] >= 2:
+            ff_stats[pr] = st_
+    ff_by_tab = collections.defaultdict(list)
+    for pr, st_ in ff_stats.items():
+        for tab in tab_of_yellow[pr[0]] & tab_of_yellow[pr[1]]:
+            ff_by_tab[tab].append((pr, st_))
     # suffocation: per (row, filter name): strict options with UB < 0 while a loose option >= 0, or loose option LB > 0
     abl, rem = L["abl"], L["remedies"]
     keyev, vev = paired_evidence(cs)
@@ -887,6 +977,7 @@ def build_cs(cs, a):
                             "class": x["class"], "fdr": x["fdr"]} for x in need[:8]],
                 "suffocating": suff[:8],
                 "default_companions": [x["f"] for x in views if x["class"] == "DEFAULT_COMPANION"][:12],
+                "synergy": _syn_top(syn_row.get(k, {})),
                 "_filters_pos": pos_views[:10],
                 "exits_cooccurrence": o.get("exits_cooccurrence"),
                 "coverage": {"pairs_total": len(ylist), "pairs_n_ge3": sum(1 for x in views if x["n"] >= 3 and x["f"] in ylist),
@@ -981,6 +1072,7 @@ def build_cs(cs, a):
             "best_by_regime": bbr, "regime": bbr,
             "filters_evidence": [{"filter_opt": f, "cand": x["row"], "class": x["class"], "lift": x["lift"], "interval": x["lift_ci"], "n": x["n"], "n_syms": x["n_syms"], "pos": x["pos"], "fdr": x["fdr"]}
                                  for f, x in sorted(best_f.items(), key=lambda kv: -(kv[1]["lift_ci"][0] if kv[1]["lift_ci"][0] is not None else -9))[:10]],
+            "filter_pairs": _ff_for(sorted({t for r in rr for t in r["tabs"]}), ff_by_tab),
             "damaging_cands": [r["cand"] for r in dmg], "inert_cands": [r["cand"] for r in inert],
             "needed_filters": [{"filter_opt": f, "rows": e[0], "lb": r4(e[1]), "lift": e[2]["lift"], "interval": e[2]["interval"], "fdr": e[2]["fdr"]} for f, e in sorted(agg_need.items(), key=lambda x: -x[1][1])[:10]],
             "suffocating_filters": [{"filter_opt": f, "rows": e[0], "remedy": e[2].get("remedy"), "remedy_delta": e[2].get("remedy_delta"), "basis": e[2].get("basis"), "ctx": e[2].get("ctx", "board")} for f, e in sorted(agg_suff.items(), key=agg_suff_key)[:10]],
@@ -1065,7 +1157,11 @@ def build_cs(cs, a):
                   "negative_mass": {"valid_negative_by_default_provenance": {k: {"n": neg_n[k], "sum_d": r4(v, 2)} for k, v in neg_split.items()},
                                     "invalid_evals": {"n": int(invmask.sum()), "sum_d": r4(inv_mass, 2), "note": "gate-invalid (e.g. < 10 trades): never adoptable, kept apart from both"},
                                     "positive_mass": {"n": int(E["pos"].sum()), "sum_d": r4(float(E["sum_pos"].sum()), 2)}},
-                  "eval_time_fact_doc14_2_2": fact, "chain_kind_counts": dict(collections.Counter(R["ck"].tolist())),
+                  "eval_time_fact_doc14_2_2": fact,
+                  "quartets": {"native_in_cat_side": n_quart, "native_switch_x_filter": n_q_sf, "native_filter_x_filter_same_tab": n_q_ff,
+                               "in_board_switch_x_filter": sum(len(v) for v in L["syn"].values()),
+                               "ff_pairs_n_syms_ge2": len(ff_stats), "ff_pairs_ci_excludes_0": sum(1 for v in ff_stats.values() if v["ci"][0] is not None and (v["ci"][0] > 0 or v["ci"][1] < 0)),
+                               "sf_pairs_ci_excludes_0": sum(1 for kk, d in syn_row.items() for f, lst in d.items() if (lambda st_: st_["ci"][0] is not None and (st_["ci"][0] > 0 or st_["ci"][1] < 0))(syn_stats(lst)))}, "chain_kind_counts": dict(collections.Counter(R["ck"].tolist())),
                   "loader": dict(L["cnt"]), "n_boards": len(L["board_meta"]), "n_sym_sides": len(syms.names), "universe": len(uni),
                   "exit_shift_file": xs_file, "build_secs": round(time.time() - t0, 1)})
     return {"rows": rows_out, "switches": switches, "pilot": pilot, "positives": pos_doc, "stats": stats, "tidx": tidx, "L": L, "E": E, "EP": EP}
@@ -1081,6 +1177,14 @@ def precision_stats(cs, E, EP, npairs, old_rows, old_sw, rows_out, switches, tmp
         old_pairs_n.append((tot, c.get("pairs_n_ge3") or 0, (c.get("pairs_n_1_2") or 0)))
     tot_b = sum(x[0] for x in old_pairs_n)
     ge3_b = sum(x[1] for x in old_pairs_n)
+    med_n_before = None
+    bj = load_json(ROOT / "data" / "brain" / f"v18_brain_{cs}.json")
+    if bj:
+        pc = bj["_meta"]["pair_cols"]
+        ni = pc.index("n") if "n" in pc else None
+        if ni is not None:
+            ns = [r[ni] for r in bj.get("pair", []) if r[ni]]
+            med_n_before = float(np.median(ns)) if ns else None
     # coarse interval widths: Beta(1 + pos, 1 + n - pos) on the coarse counts (no clustering) - what that evidence can support
     wb_rows = []
     for k, r in old_rows.items():
@@ -1126,7 +1230,7 @@ def precision_stats(cs, E, EP, npairs, old_rows, old_sw, rows_out, switches, tmp
     pcls = collections.Counter(pair_class.tolist()) if npairs else {}
     return {
         "before": {"pairs_template": tot_b, "pairs_n_ge3": ge3_b, "share_pairs_n_ge3": r4(ge3_b / tot_b) if tot_b else None,
-                   "median_n_per_seen_pair": "not in the coarse profile (only n>=3 / 1-2 / 0 coverage counters)",
+                   "median_n_per_seen_pair": med_n_before, "median_n_basis": "brain export pair table (pairs it kept; coarse profile itself has only n>=3 / 1-2 / 0 counters)",
                    "median_ci_width_p_pos_rows": r4(float(np.median(wb_rows))) if wb_rows else None,
                    "median_ci_width_p_pos_switch": r4(float(np.median(wb_sw))) if wb_sw else None,
                    "median_ci_width_p_pos_pairs_listed": r4(float(np.median(wb_pairs))) if wb_pairs else None,
@@ -1167,6 +1271,8 @@ def make_card(sw, s, rows):
             "suffocators": [[x["filter_opt"], x["remedy"], x["remedy_delta"], x.get("ctx", "board")] for x in s["suffocating_filters"][:3]],
             "exit_shift": None, "fwd": [s["forward"]["promoted"], s["forward"]["survived_start"], s["forward"]["beaten"]], "live": [s["live"]["n"], s["live"]["pos"], s["live"]["pnl_pp"]],
             "untried_cands": len(s["untried_cands"]), "untried_pair_share": r4(s["coverage"]["pairs_untried_n0"] / s["coverage"]["pairs_total"], 3) if s["coverage"]["pairs_total"] else None,
+            "filter_pairs": ([[p["pair"][0], p["pair"][1], p["mean"], p["n_syms"]] for p in (s.get("filter_pairs") or {}).get("synergy", [])[:1]] +
+                             [[p["pair"][0], p["pair"][1], p["mean"], p["n_syms"]] for p in (s.get("filter_pairs") or {}).get("anti", [])[:1]]) or None,
             "damaging": s["damaging_cands"][:6], "secs": s["eval_secs"]}
     xs = s.get("exit_shift")
     if xs:

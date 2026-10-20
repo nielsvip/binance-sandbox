@@ -648,6 +648,33 @@ def loss_grad(out, Y, M, lam=(1.0, 0.5, 0.2, 0.2, 0.2, 1.0)):
 
 # ------------------------------------------------------------------------------------------------ metrics
 
+def fit_platt(p, y, iters=50):
+    """Platt scaling on logit(p): -> (a, b) with P = sigmoid(a * logit(p) + b), Newton steps on the log-loss. Fitted on the
+    HELD-OUT boards of the refit model (never on its own training rows)."""
+    p = np.clip(np.asarray(p, np.float64), 1e-7, 1 - 1e-7)
+    y = np.asarray(y, np.float64)
+    if len(p) < 50 or y.sum() < 5 or y.sum() > len(y) - 5:
+        return 1.0, 0.0
+    z = np.log(p / (1 - p))
+    a, b = 1.0, 0.0
+    for _ in range(iters):
+        q = sigmoid(a * z + b)
+        g = np.array([((q - y) * z).sum(), (q - y).sum()])
+        w = q * (1 - q) + 1e-12
+        H = np.array([[(w * z * z).sum(), (w * z).sum()], [(w * z).sum(), w.sum()]]) + 1e-9 * np.eye(2)
+        step = np.linalg.solve(H, g)
+        a, b = a - step[0], b - step[1]
+        if np.abs(step).max() < 1e-8:
+            break
+    return float(a), float(b)
+
+
+def apply_platt(p, ab):
+    a, b = ab
+    p = np.clip(np.asarray(p, np.float64), 1e-7, 1 - 1e-7)
+    return sigmoid(a * np.log(p / (1 - p)) + b)
+
+
 def rankdata(a):
     a = np.asarray(a, dtype=np.float64)
     sorter = np.argsort(a, kind="mergesort")
@@ -1003,6 +1030,19 @@ class Trainer:
             if sel.sum():
                 cal.append({"decile": i + 1, "n": int(sel.sum()), "mean_pred": round(float(p_ln[sel].mean()), 5), "realised": round(float(y[sel].mean()), 5)})
         res["calibration_deciles"] = cal
+        platt = {}
+        for kn, kv in (("R", 0), ("F", 1)):
+            sel = kind == kv
+            platt[kn] = fit_platt(p_ln[sel], y[sel])
+        rep["platt"] = platt
+        pc = np.where(kind == 0, apply_platt(p_ln, platt["R"]), apply_platt(p_ln, platt["F"]))
+        cal2 = []
+        qs2 = np.quantile(pc, np.linspace(0, 1, 11))
+        for i in range(10):
+            sel = (pc >= qs2[i]) & ((pc < qs2[i + 1]) if i < 9 else (pc <= qs2[i + 1]))
+            if sel.sum():
+                cal2.append({"decile": i + 1, "n": int(sel.sum()), "mean_pred": round(float(pc[sel].mean()), 5), "realised": round(float(y[sel].mean()), 5)})
+        res["calibration_deciles_after_platt_fitted_on_this_holdout"] = cal2
         res["mean_pred_vs_realised"] = {"mean_pred": round(float(p_ln.mean()), 5), "realised": round(float(y.mean()), 5)}
         # phase evals held out by time
         ph_rows = idx_all[sp["test_ph"]]
@@ -1085,7 +1125,7 @@ def cmd_train(a):
         net, hist, secs = tr.final(best_ep)
         meta = {"schema": SCHEMA, "cat_side": cs, "trained_at": utc_now(), "epochs": best_ep, "k": tr.k, "H": tr.H, "vocab": tr.fz.names,
                 "corpus_last_ts": VB.iso_of(float(tr.D["ts"].max())), "corpus_first_ts": VB.iso_of(float(tr.D["ts"][tr.D["ts"] > 0].min())),
-                "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL}
+                "n_examples": int(len(tr.D["kind"])), "label": PRED_LABEL, "platt": rep.get("platt")}
         mp = out_dir / f"linknet_model_{cs}.npz"
         net.save(mp, meta)
         n_params = int(sum(v.size for v in net.p.values()))
@@ -1204,6 +1244,10 @@ def enumerate_beyond(fctx, coerce=None):
             lo, hi = nums[0] - step, nums[-1] + step
             if nums[0] > 0 and lo <= 0:
                 lo = nums[0] / 2.0 if not ints else None
+            elif nums[0] == 0 and lo < 0:
+                lo = None  # never cross from a non-negative span into negative values (sentinels, counts)
+            if sw.startswith("MAX_AUGMENTS") or "MAXAUG" in sw:
+                continue  # MAXAUG sentinels are never settings (doc 17 principle 6)
             if lo is not None and not (ints and lo == nums[0]):
                 push(sw, _fmt_num(lo, ints), tab, "threshold_neighbour_below", f"one grid step ({_fmt_num(step, ints)}) below the template span")
             push(sw, _fmt_num(hi, ints), tab, "threshold_neighbour_above", f"one grid step ({_fmt_num(step, ints)}) above the template span")
@@ -1311,9 +1355,13 @@ class Scorer:
             return 0, 0, 0.0
         return int(self.ev["n_set"][si]), int(self.ev["p_set"][si]), float(self.ev["s_set"][si])
 
-    def heads(self, S, F, C):
+    def cal(self, p, kind):
+        ab = (self.meta.get("platt") or {}).get(kind)
+        return apply_platt(p, ab) if ab else p
+
+    def heads(self, S, F, C, kind="F"):
         out = self.net.predict_tables(S, F, C)
-        return {"p_pos": sigmoid(out[:, 0]), "e_delta": np.expm1(np.clip(out[:, 1], 0, 6)), "d_tim": out[:, 2] * MSCALE, "d_dd": out[:, 3] * MSCALE,
+        return {"p_pos": self.cal(sigmoid(out[:, 0]), kind), "p_pos_raw": sigmoid(out[:, 0]), "e_delta": np.expm1(np.clip(out[:, 1], 0, 6)), "d_tim": out[:, 2] * MSCALE, "d_dd": out[:, 3] * MSCALE,
                 "d_wr": out[:, 4] * MSCALE, "fwd": sigmoid(out[:, 5])}
 
     def score_template(self, out_npz, chunk_rows=64):
@@ -1343,7 +1391,7 @@ class Scorer:
         rows_out = {h: np.zeros((nR, G), np.float32) for h in ("p_pos", "e_delta", "d_tim", "d_dd", "d_wr", "fwd")}
         for g in range(G):
             hd = self.net.heads(s_all[0], np.repeat(f0[0], nR, 0), np.repeat(cR[0][g:g + 1], nR, 0), s_all[1] + f0[1] + cR[1][g], s_all[2] + f0[2] + cR[2][g])
-            for h, v in zip(("p_pos", "e_delta", "d_tim", "d_dd", "d_wr", "fwd"), (sigmoid(hd[:, 0]), np.expm1(np.clip(hd[:, 1], 0, 6)), hd[:, 2] * MSCALE,
+            for h, v in zip(("p_pos", "e_delta", "d_tim", "d_dd", "d_wr", "fwd"), (self.cal(sigmoid(hd[:, 0]), "R"), np.expm1(np.clip(hd[:, 1], 0, 6)), hd[:, 2] * MSCALE,
                                                                                 hd[:, 3] * MSCALE, hd[:, 4] * MSCALE, sigmoid(hd[:, 5]))):
                 rows_out[h][:, g] = v
         cell_r, cell_y = [], []
@@ -1373,7 +1421,7 @@ class Scorer:
             for g in range(G):
                 c = np.broadcast_to(cF[0][g], s.shape)
                 hd = self.net.heads(s, f, c, sqs + sqf + cF[1][g], ls + lf + cF[2][g])
-                cells["p_pos"][a:a + CH, g] = sigmoid(hd[:, 0])
+                cells["p_pos"][a:a + CH, g] = self.cal(sigmoid(hd[:, 0]), "F")
                 cells["e_delta"][a:a + CH, g] = np.expm1(np.clip(hd[:, 1], 0, 6))
                 cells["d_tim"][a:a + CH, g] = hd[:, 2] * MSCALE
                 cells["d_dd"][a:a + CH, g] = hd[:, 3] * MSCALE
@@ -1396,7 +1444,7 @@ class Scorer:
                             cell_n_measured=n_meas, cell_pos_measured=pos_meas, **{f"row_{h}": v.astype(np.float16) for h, v in rows_out.items()},
                             row_n_measured=row_n, row_pos_measured=row_pos, row_identity=row_ident, cell_identity=cell_ident,
                             meta=np.frombuffer(json.dumps({"cat_side": self.cs, "model_trained_at": self.meta["trained_at"], "scored_at": utc_now(),
-                                                           "label": PRED_LABEL, "heads": ["p_pos", "e_delta(E[delta|pos], pp)", "d_tim", "d_dd", "d_wr", "fwd (rows only)"],
+                                                           "label": PRED_LABEL, "platt": self.meta.get("platt"), "heads": ["p_pos", "e_delta(E[delta|pos], pp)", "d_tim", "d_dd", "d_wr", "fwd (rows only)"],
                                                            "regimes": REGIMES, "n_cells": int(N), "n_rows": int(nR), "predictions": int(N * G * 5 + nR * G * 6)}).encode(), np.uint8))
         return {"row_keys": row_keys, "yellows": yel, "cell_row": cell_r, "cell_yellow": cell_y, "cells": cells, "rows": rows_out, "n_meas": n_meas,
                 "pos_meas": pos_meas, "row_n": row_n, "row_pos": row_pos, "row_ident": row_ident, "cell_ident": cell_ident, "secs_cells": round(secs, 1), "n_predictions": int(N * G * 5 + nR * G * 6),
@@ -1410,7 +1458,7 @@ class Scorer:
 
     def prep_neighbours(self, min_n=3):
         K = self.K
-        keys = [k for i, k in enumerate(K["sets"]) if self.ev["n_set"][i] >= min_n]
+        keys = [k for i, k in enumerate(K["sets"]) if self.ev["n_set"][i] >= min_n and not k.partition("|")[2].startswith(EXCLUDE_PREFIX)]
         T = self.set_table(keys)
         V = self.token_vec(*T)
         self.nb_keys = keys
@@ -1441,7 +1489,7 @@ class Scorer:
         kind = "F" if hdrs is not None else "R"
         C = self.ctx_table(kind)
         Cg = (np.repeat(C[0][regime_g:regime_g + 1], len(set_keys), 0), np.repeat(C[1][regime_g:regime_g + 1], len(set_keys), 0))
-        return self.heads(ST, FTb, Cg)
+        return self.heads(ST, FTb, Cg, kind=kind)
 
 
 def _r(x, nd=5):

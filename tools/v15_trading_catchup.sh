@@ -55,6 +55,10 @@ for H in 127.0.0.1 10.0.0.4; do
         CPU=$(ssh -o BatchMode=yes -o ConnectTimeout=8 "niels@$H" 'awk -v c=$(nproc) "{print int(\$1*100/c)}" /proc/loadavg' 2>/dev/null || echo 99)
     fi
     [ "${CPU:-99}" -ge "$MAXCPU" ] && { echo "$(date -u +%FT%TZ) $H cpu=${CPU}% hold" >> "$LOG"; continue; }
+    if [ "${CATCHUP_LOOP_GUARD:-1}" = "1" ]; then
+        if [ "$H" = "127.0.0.1" ]; then MEMA=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo); else MEMA=$(ssh -o BatchMode=yes -o ConnectTimeout=8 "niels@$H" "awk '/MemAvailable/ {print int(\$2/1024)}' /proc/meminfo" 2>/dev/null || echo 0); fi
+        [ "${MEMA:-0}" -lt "${CATCHUP_MIN_MEM_MB:-9000}" ] && { echo "$(date -u +%FT%TZ) $H mem_avail=${MEMA}MB hold" >> "$LOG"; continue; }
+    fi
     N=0
     for SS in $WANT; do
         [ "$N" -ge "$MAXPER" ] && break
