@@ -1,0 +1,17 @@
+{
+ "round_id": "bf43f71e4639a581da2443b58b477ec4",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "refused": {
+  "STOCKS_SHORT": []
+ },
+ "STOCKS_SHORT": {
+  "rows_with_stats": 1487,
+  "cleared": {},
+  "promoted_switch": [],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": [
+   "ENTRY_REVERSAL_BOUNCE: first data row 3 is not a default row"
+  ]
+ }
+}

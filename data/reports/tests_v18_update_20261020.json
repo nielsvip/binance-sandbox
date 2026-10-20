@@ -1,0 +1,3346 @@
+{
+ "date": "2026-10-20",
+ "interpreter": "/opt/anaconda3/envs/binance_env/bin/python",
+ "method": "pytest -q per file (tests/test_v15_*, test_v17_*, test_v18_*)",
+ "totals": {
+  "before": {
+   "files": 181,
+   "passed": 1229,
+   "failed": 81,
+   "skipped": 1,
+   "files_failing": 46
+  },
+  "champion_pre_v18_on_failing_files": {
+   "failed": 81,
+   "files_failing": 46,
+   "failing_ids_identical_to_before": true
+  },
+  "after": {
+   "files": 188,
+   "passed": 1329,
+   "failed": 3,
+   "skipped": 29,
+   "files_failing": 3
+  }
+ },
+ "real_regressions_vs_champion": [],
+ "open_red_cases": [
+  "tests/test_v15_all_tradable_live_gate.py::test_ema50_15m_entry_filter_is_template_switch_and_controls_filter",
+  "tests/test_v15_baseline_overrides_bold.py::test_v15_template_bold_defaults_are_config",
+  "tests/test_v15_template_row_queue.py::test_queue_installs_then_idempotent"
+ ],
+ "per_file": {
+  "tests/test_v15_0914_sequencing.py": {
+   "before": {
+    "passed": 3,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "test_0914_prototype_files_exist, test_0914_category_templates_worst_first",
+     "class": "ARTEFACT_ABSENT_OR_STALE",
+     "reason": "retired 0914 prototype files (TEMPLATE_0914*.xlsx, TEMPLATE_0914.py) are not in the repo; skipif absent"
+    },
+    {
+     "case": "test_sequential_baseline_monotonic",
+     "class": "STALE_PIN",
+     "reason": "progress schema has no top-level cumulative_gain; E-chain loop on done[*].cumulative_after kept"
+    }
+   ]
+  },
+  "tests/test_v15_all_tradable_live_gate.py": {
+   "before": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_ema50_15m_entry_filter_is_template_switch_and_controls_filter",
+     "class": "OUT_OF_PILOT_DEFECT",
+     "reason": "LAW (template default == config): TEMPLATE_STOCKS_SHORT.xlsx (both SPREADSHEETS/ and TEMPLATE_FINAL_NORM/) carries EMA50_15M_ENTRY_FILTER_ENABLED TWICE (False at row 502/483, True at 503/484); config + config_tradier default True. Left RED, not edited."
+    }
+   ]
+  },
+  "tests/test_v15_avg_xlsx_pos_column.py": {
+   "before": {
+    "passed": 8,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_workbook_has_pos_column_in_per_category_tabs",
+     "class": "ARTEFACT_ABSENT_OR_STALE",
+     "reason": "SPREADSHEETS/V15_AVG_DELTAS.xlsx (Sep 20) older than its writer, which does write pos_syms; skip when artefact older than writer"
+    }
+   ]
+  },
+  "tests/test_v15_baseline_delta_from_npz.py": {
+   "before": {
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_overrides_copy_uses_best_wins",
+     "class": "STALE_PIN",
+     "reason": "xls_prev parser re-anchored on current text; NOTE bare single-value C is now deliberately ignored (template leftovers) - pilot owner to confirm vs CLAUDE.md regression #3"
+    }
+   ]
+  },
+  "tests/test_v15_baseline_dual.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_baseline_never_zero.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_baseline_none_never.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_baseline_overrides_bold.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_v15_template_bold_defaults_are_config",
+     "class": "OUT_OF_PILOT_DEFECT",
+     "reason": "LAW (BIBLE s14 bold==config): TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG GLOBAL_RISK_GATES START_POSITION_SIZE bold default 28 != config.Config 45.0. Left RED, not edited."
+    }
+   ]
+  },
+  "tests/test_v15_batch2_twins.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_batch3_r2.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_best_baseline_always.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_best_baseline_before_calc.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_best_start_floor.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_besteffort.py": {
+   "before": {
+    "passed": 28,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "NearMissTest::test_tim_miss_is_nearmiss, test_bh_miss_is_nearmiss",
+     "class": "STALE_PIN",
+     "reason": "_nearmiss_30d now requires max_dd_pct<=QUAL_DD_MAX and BH is never gating (USER 2026-10-03); +1 new test for unknown/over-limit DD"
+    },
+    {
+     "case": "SamplingDefaultTest::test_default_off_without_env_or_flag",
+     "class": "STALE_PIN",
+     "reason": "host flag data/possym_sampling.flag='1' outranks the code default; flag mocked absent. FINDING: that flag is 1 on this host"
+    }
+   ]
+  },
+  "tests/test_v15_blank_and_yellows.py": {
+   "before": {
+    "passed": 2,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_yellows_per_row_not_blanket_same",
+     "class": "STALE_PIN",
+     "reason": "FILTER_DICTIONARY lists no filter gating BB_SQUEEZE_ENTRY_ENABLED; pinned on WT_15M_BOUNCE_OPEN_ENABLED (12) and differs-per-switch"
+    }
+   ]
+  },
+  "tests/test_v15_brain.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_brain_forward.py": {
+   "before": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_brute_pos_filters_and_results_deltas.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_causal_rescue.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_causal_worker.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_cell_performance.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_census_evidence.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_collect_dedupe.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_daily_inf_universe.py": {
+   "before": {
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_daily_template_update_repair.py": {
+   "before": {
+    "passed": 7,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_repair_real_template_rows_with_real_config",
+     "class": "STALE_PIN",
+     "reason": "shipped template is healed so the writer repairs nothing; invariant (one YES == one bold per group) kept"
+    }
+   ]
+  },
+  "tests/test_v15_delta_parity.py": {
+   "before": {
+    "passed": 3,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_xlsx_yellow_sync_and_header_identity, test_shuffle_no_preprinted_deltas",
+     "class": "ARTEFACT_ABSENT_OR_STALE",
+     "reason": "SPREADSHEETS/TEMPLATE.xlsx and TEMPLATE_0914*.xlsx retired; skipif absent"
+    }
+   ]
+  },
+  "tests/test_v15_diagnose_repair.py": {
+   "before": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_dispatch_npz_gate.py": {
+   "before": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_e_bland.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_e_chain_bland_for_neg_delta",
+     "class": "STALE_PIN",
+     "reason": "progress done[] has settled null delta/vec_gain; skipped (never promotes)"
+    }
+   ]
+  },
+  "tests/test_v15_e_blank_and_c_on_pos.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_e_column_always_numeric.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_ema921_union.py": {
+   "before": {
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_empty_guard.py": {
+   "before": {
+    "passed": 3,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_good_matrix_has_baseline_and_delta, test_good_matrix_row2_no_switches_orange",
+     "class": "ARTEFACT_ABSENT_OR_STALE",
+     "reason": "reference matrix COMPUSDT_LONG_bh22p53_gain17p71 no longer present (renamed bh10_gain13_t87); skipif absent"
+    }
+   ]
+  },
+  "tests/test_v15_empty_xlsx_fix.py": {
+   "before": {
+    "passed": 1,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_v15_live_xlsx_not_empty_and_valid_zip",
+     "class": "ARTEFACT_ABSENT_OR_STALE",
+     "reason": "Mac AAPL_LONG workbook is from a later run than AAPL_LONG_v14_progress.json (rows shifted); zip/sheet asserts still run, row cross-check skipped when workbook newer than progress"
+    },
+    {
+     "case": "test_v15_baseline_never_sums_neg_and_never_reverts",
+     "class": "STALE_PIN",
+     "reason": "re-anchored on the single advance site 'cumulative_gain = cumulative_before + float(row_delta)' inside 'if promote:' + 'if row_delta <= 1e-9: promote = False' (count==1)"
+    }
+   ]
+  },
+  "tests/test_v15_endgame.py": {
+   "before": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_endgame_knowledge_merge.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_ensure_lbi_headers_zipfile.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_entry_reversal_always_numeric.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_f_g_float.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_fill_1822.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_filter_tf_batch1.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_final_naming.py": {
+   "before": {
+    "passed": 5,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "TestBuild::test_truncation_edges, test_user_example, TestParse::test_round_trip_new",
+     "class": "STALE_PIN",
+     "reason": "naming contract changed 2026-10-17: rounded whole percent, no 'p'"
+    }
+   ]
+  },
+  "tests/test_v15_final_orch_pin.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_final_phase_qualify.py": {
+   "before": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_final_phase_timeout.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_final_sync_guard.py": {
+   "before": {
+    "passed": 9,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "TestHerdGuard::test_push_to_s1_finals_once",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "TestHerdGuard::test_periodic_sync_finals_once",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_finalize_dd_gate.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_finished_broken.py": {
+   "before": {
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_hao_finished_broken",
+     "class": "STALE_PIN",
+     "reason": "null deltas skipped"
+    }
+   ]
+  },
+  "tests/test_v15_flush_revert.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_forward_score.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_full_sheet_deltas.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_g_never_zero.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_g_never_zero_for_neg",
+     "class": "STALE_PIN",
+     "reason": "sentinel count 2->1; added: the only literal G=0.0 is the running-identity row"
+    }
+   ]
+  },
+  "tests/test_v15_g_vector_yellow.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_hustle_blank_and_baseline_blank_until_pos",
+     "class": "STALE_PIN",
+     "reason": "'BLANK when G<=0 (greedy)' + spec docstring"
+    }
+   ]
+  },
+  "tests/test_v15_gain_tiers.py": {
+   "before": {
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_gate_side_by_side.py": {
+   "before": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_global_only_keys.py": {
+   "before": {
+    "passed": 1,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "test_set_contains_all_four, test_sanitize_and_ingest_strip, test_progress_write_strips",
+     "class": "STALE_PIN",
+     "reason": "USER 2026-10-15: PARITY_VEC_EXACT_MODE no longer global-only; SIM_ACCOUNT/SIM_TRADING_ACCOUNT added; test now asserts the exact set and that MODE survives"
+    }
+   ]
+  },
+  "tests/test_v15_graph_search.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_graph_search_removes_culprits...",
+     "class": "STALE_PIN",
+     "reason": "20s budget skipped every PHASE_PLAN box; 400s (synthetic evaluator is instant)"
+    }
+   ]
+  },
+  "tests/test_v15_greedy_hustle_macguard.py": {
+   "before": {
+    "passed": 4,
+    "failed": 4,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 4,
+   "classification": [
+    {
+     "case": "test_template_greedy_cumulative_uses_G_not_F, test_stdev_not_all_baseline",
+     "class": "STALE_PIN",
+     "reason": "current law: template data rows E/F/G/H blank (no formulas); chain advance from G asserted on the pilot"
+    },
+    {
+     "case": "test_never_stop_marks_red_and_continues, test_filter_full_evaluation",
+     "class": "STALE_PIN",
+     "reason": "single os._exit(2) is the bounded 1h stuck-first-cell abort (pinned in place); yellow policy anchor re-pointed"
+    }
+   ]
+  },
+  "tests/test_v15_h2h_complete_set.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_header_cache.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_herd_host_specific.py": {
+   "before": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 1
+   },
+   "after": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "module (3 cases)",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_herd_no_crash.py": {
+   "before": {
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 3,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "test_herd_defines_me_before_use",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_herd_max_parallel_sane",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_herd_compiles",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_herd_no_empty.py": {
+   "before": {
+    "passed": 0,
+    "failed": 6,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 6,
+    "errors": 0
+   },
+   "champion_failed": 6,
+   "classification": [
+    {
+     "case": "test_is_xlsx_empty_helper_exists",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_local_done_skips_empty",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_push_skips_empty",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_herd_symbol_side_and_workers.py": {
+   "before": {
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_herd_s5_dedicated_workers_and_parallel",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_inert_rows.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_invalid_delta_guard.py": {
+   "before": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_invention_loop.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_ledger_tier.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_live_guards.py": {
+   "before": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_loss_streak.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_low_yield_sampling.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_ltf_flip_collateral.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_missed_trend.py": {
+   "before": {
+    "passed": 10,
+    "failed": 1,
+    "skipped": 1,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_priors_partial_shape",
+     "class": "STALE_PIN",
+     "reason": "tab comes from the CURRENT template (switch_tabs): WT_15M_BOUNCE_OPEN_ENABLED moved to ENTRY_CONFIRMATION_GATES"
+    }
+   ]
+  },
+  "tests/test_v15_never_stop.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_never_stop_flags_red",
+     "class": "STALE_PIN",
+     "reason": "same os._exit(2) re-anchor"
+    }
+   ]
+  },
+  "tests/test_v15_new_only_sync.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_no_k_gate.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_none_priority.py": {
+   "before": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_npz_preflight.py": {
+   "before": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_obligate.py": {
+   "before": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_once_per_sym.py": {
+   "before": {
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "test_flz_first_then_stocks",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_no_local_unfinished_bypass",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_override_bold_and_baseline_seq.py": {
+   "before": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_overrides_baseline_no_skip.py": {
+   "before": {
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_baseline_column_only_when_last_delta_positive",
+     "class": "STALE_PIN",
+     "reason": "null delta ranks last; workbook/progress pair mismatch skip"
+    }
+   ]
+  },
+  "tests/test_v15_pair_in_ram.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_parity_check_window.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_parity_repair.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_per_row_flush.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_pilot.py": {
+   "before": {
+    "passed": 10,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_atomic_save_and_no_overwrite",
+     "class": "STALE_PIN",
+     "reason": "overwrite guards now: clone reuse of a filled workbook + _rank_final_gain best-not-newest"
+    }
+   ]
+  },
+  "tests/test_v15_pilot_mac_guard.py": {
+   "before": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_pool_signals.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_possym_sampling.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_prior_policy.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_priority_lane.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_provenance.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_proves_calc_and_fill.py": {
+   "before": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_proves_calc_and_fill",
+     "class": "STALE_PIN",
+     "reason": "[BASELINE-GUARD] tag gone; anchored on the fatal empty/0-baseline SELF-MONITOR abort"
+    }
+   ]
+  },
+  "tests/test_v15_publish_coherence.py": {
+   "before": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_published_selection.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_published_set.py": {
+   "before": null,
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_pusher_fleet.py": {
+   "before": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_pushsup.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_quar_terminal.py": {
+   "before": {
+    "passed": 10,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_shipped_probe_has_detection",
+     "class": "STALE_PIN",
+     "reason": "terminal detection is the JSON parse in _progress_marks, regex constant is dead code"
+    }
+   ]
+  },
+  "tests/test_v15_ranking_priority.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_red_fix_identical_live.py": {
+   "before": {
+    "passed": 3,
+    "failed": 5,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 5,
+   "classification": [
+    {
+     "case": "5 cases (wt_div, parallel deadline, bb_squeeze, config parity, timing probe)",
+     "class": "STALE_PIN",
+     "reason": "WT_DIV twin in vec_decisions/mtf_exit_scorer.py; per-cell 0.5/1.0s retired for YELLOW_TIMEOUT=10 s (NO-LIES fake-0.0); BB_SQUEEZE is the live-faithful rolling-100 detector; ADX default 10 crypto / 20 stocks each pinned to its own live config; FILTER_EXEMPTIONS default_factory field filtered"
+    }
+   ]
+  },
+  "tests/test_v15_redo_precedence.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_refill_complete.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_rerun_repairs.py": {
+   "before": {
+    "passed": 11,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_essential_gate_drops_unwired_tf_switches, test_essential_gate_check_passes_proven_set",
+     "class": "STALE_PIN",
+     "reason": "exec slice must start at WT_CORE_MANDATORY_BASES"
+    }
+   ]
+  },
+  "tests/test_v15_row_guards.py": {
+   "before": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sanitize_and_skip.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_admit.py": {
+   "before": {
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_cadence.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_freshskip.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_gate_env.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_hard24.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_npz_dead_phase.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_npz_ledger.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_npz_preflight_venue.py": {
+   "before": {
+    "passed": 40,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 40,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_pair_npz.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_phase_launchable.py": {
+   "before": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_reap_foreign.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_refresh_all.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_repairtiers.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_resume.py": {
+   "before": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_round_watchdog.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_sliceresume.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_spawnguard.py": {
+   "before": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_steal.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_venue_first.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sched_venue_phase.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_selfimprove_loop.py": {
+   "before": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_chain_writes_failed_stamp_on_sigterm...",
+     "class": "STALE_PIN",
+     "reason": "chain resolves python via tools/pyinterp.sh (conda, .venv retired 2026-10-17); fake root now ships a stub resolver"
+    }
+   ]
+  },
+  "tests/test_v15_sheet_full_fill.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sheet_never_abandoned.py": {
+   "before": {
+    "passed": 5,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_sheet_never_abandoned_and_lighting_fast",
+     "class": "STALE_PIN",
+     "reason": "publish name via final_matrix_name"
+    }
+   ]
+  },
+  "tests/test_v15_shuffle_baseline.py": {
+   "before": {
+    "passed": 4,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_herd_shuffle_logic_present",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_sim_account_hook.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_size_tiers.py": {
+   "before": {
+    "passed": 4,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "TiersEndToEndTest::test_rules_on_synthetic_report",
+     "class": "STALE_PIN",
+     "reason": "rules changed (max 6, unconfirmed 0.5, stocks MIN 0.05, NOSTORE_MIN); rule tier read from was_tier + pure _size_ranked values"
+    }
+   ]
+  },
+  "tests/test_v15_stalled_prune.py": {
+   "before": {
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_start_overrides_exempt.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_stdev_12tab_blank.py": {
+   "before": {
+    "passed": 1,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_stdev_not_in_switch_sheets_12tab, test_template_still_13_but_pilot_uses_12",
+     "class": "STALE_PIN",
+     "reason": "13 tabs, SKIP_SHEETS empty since 2026-09-28; template path TEMPLATE_FINAL_NORM"
+    }
+   ]
+  },
+  "tests/test_v15_switch_add.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_switch_healer.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_sym_halt.py": {
+   "before": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_template4.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_template_law.py": {
+   "before": {
+    "passed": 3,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_template_law_headers, test_fixed_pilot_compiles_and_has_fixes",
+     "class": "STALE_PIN",
+     "reason": "_resolve_cols has no 'A'; fix tags rewritten away; anchored on live code"
+    }
+   ]
+  },
+  "tests/test_v15_template_npz.py": {
+   "before": {
+    "passed": 1,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_npz_staleness_and_coverage, test_pilot_current_idx_and_yellow_rate",
+     "class": "STALE_PIN",
+     "reason": "no NPZ carries stdev_edge_15m any more (346/346) and the engine does not read it; E3 now written by the sequential filler"
+    }
+   ]
+  },
+  "tests/test_v15_template_row_queue.py": {
+   "before": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_queue_installs_then_idempotent",
+     "class": "OUT_OF_PILOT_DEFECT",
+     "reason": "REAL TOOL BUG: tools/v15_switch_add.py:376 apply_queue calls insert_switch_rows(ws, sw, opts, pdflt, ts) but the loop variable is 'dflt' (NameError). Queue install path crashes. Left RED, not edited."
+    }
+   ]
+  },
+  "tests/test_v15_throughput_pipeline.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_throughput_proof.py": {
+   "before": {
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_timeout_law.py": {
+   "before": {
+    "passed": 3,
+    "failed": 2,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0
+   },
+   "champion_failed": 2,
+   "classification": [
+    {
+     "case": "test_herd_60m",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_pilot_compiles(herd half)",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    }
+   ]
+  },
+  "tests/test_v15_trade_autopsy.py": {
+   "before": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_trade_parity.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_type_gate.py": {
+   "before": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_universe_robust.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_v17_rounds.py": {
+   "before": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_veto_final.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_virus0_15s.py": {
+   "before": {
+    "passed": 5,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_numerical_output_still_written",
+     "class": "STALE_PIN",
+     "reason": "fmt( helper gone -> _final_matrix_name("
+    }
+   ]
+  },
+  "tests/test_v15_worst_first_cycle_and_cumulative_set.py": {
+   "before": {
+    "passed": 5,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 1,
+    "errors": 0
+   },
+   "champion_failed": 3,
+   "classification": [
+    {
+     "case": "test_herd_empty_check_uses_entry_reversal_after_stdev_skip",
+     "class": "HOST_SPECIFIC",
+     "reason": "imports/reads tools/v15_local_herd.py which exists only on S1/S2/S4; now skipif/importorskip so it still runs on the hosts"
+    },
+    {
+     "case": "test_4801_switch_rows_and_231_yellows_max, test_mac_has_no_npz",
+     "class": "STALE_PIN",
+     "reason": "template only grows (4989); Mac legitimately holds NPZ (346) - pilot Mac block asserted instead"
+    }
+   ]
+  },
+  "tests/test_v15_xlsx_truth.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_yellow_delta.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_yellow_only.py": {
+   "before": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_yellow_only_red_tab.py": {
+   "before": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_zero_canon.py": {
+   "before": {
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_zero_formula.py": {
+   "before": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v15_zero_trades_no_xls.py": {
+   "before": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v17_carry_and_cut.py": {
+   "before": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v17_combo_engine.py": {
+   "before": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v17_conviction.py": {
+   "before": {
+    "passed": 10,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_apply_to_tiers_idempotent_uses_tier_mult",
+     "class": "STALE_PIN",
+     "reason": "host kill switch data/conviction/DISABLED (since 2026-10-14) leaked into the pure test; ROOT monkeypatched"
+    }
+   ]
+  },
+  "tests/test_v17_daily_learn.py": {
+   "before": {
+    "passed": 7,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": 1,
+   "classification": [
+    {
+     "case": "test_validate_insights_drops_invalid_keys",
+     "class": "STALE_PIN",
+     "reason": "MAX_AUGMENTS_PER_POSITION purged from all configs -> dropped as 'not a field'"
+    }
+   ]
+  },
+  "tests/test_v17_filter_exemptions_and_carry.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v17_key_carry.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v17_kpi.py": {
+   "before": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v17_priors.py": {
+   "before": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_ablation.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_brain.py": {
+   "before": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_brain_hook.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_digest.py": {
+   "before": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_digest_strict.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_exit_loss_rank.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_exit_repair.py": {
+   "before": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_experience.py": {
+   "before": {
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_features.py": {
+   "before": null,
+   "after": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_floor.py": {
+   "before": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_identity_settle.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_io_throttle.py": {
+   "before": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_linknet.py": {
+   "before": null,
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_profile_yellows.py": {
+   "before": null,
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_spec_pair.py": {
+   "before": null,
+   "after": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_switch_inertness.py": {
+   "before": null,
+   "after": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_switch_profile.py": {
+   "before": null,
+   "after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_winners.py": {
+   "before": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  },
+  "tests/test_v18_winners_pack.py": {
+   "before": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "after": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0
+   },
+   "champion_failed": null,
+   "classification": []
+  }
+ },
+ "new_files": [
+  "tests/test_v18_switch_inertness.py"
+ ]
+}

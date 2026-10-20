@@ -55,6 +55,10 @@ def synth_events():
                 ts = f"2026-10-{day:02d}T01:{10 + j:02d}:00Z"
                 good = k.startswith("STOP_LOSS_PCT=3")
                 nd = float(rng.normal(0.4 if good else -0.2, 0.3))
+                if (k == "STOP_LOSS_PCT=2" and day <= 12) or (k == "STOP_LOSS_PCT=3" and day >= 13):
+                    nd = 0.0  # candidate == default in force: the engine returns the chain (identity)
+                if sym == "AAAUSDT_LONG" and k == "STOP_LOSS_PCT=2" and day == 10:
+                    nd = 0.7  # ... unless the chain differs from the inferred default: contradicted -> kept, in-force unknown
                 cells = [(h, float(rng.normal(0.3 if "OFF" in h else -0.1, 0.2))) for h in hdrs]
                 ev.append(row_ev(sym, bts, ts, k, nd, cells, promoted=(good and day == 12)))
     return ev
@@ -70,6 +74,7 @@ def ds_dir(tmp_path, monkeypatch):
         pass
     a = A()
     a.spill_dir, a.tmp_dir, a.out_dir, a.keep_sorted = [str(spill)], str(tmp_path / "tmp"), str(out), False
+    a.defaults = {cs: dict(TIDX["defaults"]) for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
     assert LN.cmd_dataset(a) == 0
     return out
 
@@ -108,9 +113,35 @@ def test_dataset_cat_sides_strictly_apart(ds_dir):
     assert syms == {"AAAUSDT_LONG", "BBBUSDT_LONG", "CCCUSDT_LONG"}
     d2, k2 = LN.load_ds("STOCKS_LONG", ds_dir)
     assert {c[2] for c in k2["ctxs"]} == {"ZZZ_LONG"}
-    assert len(d["kind"]) == 3 * 10 * 5 * 5 and (d["kind"] == 0).sum() == 150 and (d["kind"] == 1).sum() == 600
+    # USER LAW: candidate == default in force is identity (no label). STOP_LOSS_PCT=2 is the template bold (10 days x 3 syms),
+    # until its day-12 promotion makes STOP_LOSS_PCT=3 the in-force default (days 13-19); from then on =2 is a real alternative
+    # -> identity = (3 + 7) days x 3 syms = 30 naked rows dropped, 40 kept per sym_side
+    assert (d["kind"] == 0).sum() == 3 * 40 + 1 and (d["kind"] == 1).sum() == 600
+    assert k["counters"]["R_identity_cand_eq_inforce"] == 29 and k["counters"]["inforce_contradicted_by_nonzero_delta"] == 1
+    assert any(c.endswith("STOP_LOSS_PCT=2|INF=None|U") for c in k["set_combos"])
+    combos = k["set_combos"]
+    assert any(c.endswith("|INF=2|T") for c in combos) and any("STOP_LOSS_PCT=1|INF=3|P" in c for c in combos)  # in-force is an input
     # identity / phase events never appear; marginals are cell - naked (the brain's unit)
     assert set(np.unique(d["kind"]).tolist()) == {0, 1}
+
+
+def test_inherent_vs_genuine_split(ds_dir):
+    d, k = LN.load_ds("CRYPTO_LONG", ds_dir)
+    rep = LN.inherent_report(d, k)
+    r = rep["R"]
+    assert r["inherent"]["n"] + r["genuine"]["n"] + r["thin"]["n"] == r["negatives"]
+    assert sum(v["n"] for v in r["by_inforce_source"].values()) == r["negatives"]
+    assert rep["identity_dropped"]["R_cand_eq_inforce"] == 29 and rep["identity_dropped"]["kept_as_inforce_unknown_R"] == 1
+
+
+def test_relation_to_inforce_features():
+    c = fctx()
+    f = LN.Featurizer("CRYPTO_LONG", fctx=c)
+    a = dict(f.set_feats("EXIT_STRUCTURAL|STOP_LOSS_PCT=3|INF=2|P"))
+    assert a.get("S.inf:STOP_LOSS_PCT=2") == 1.0 and "S.infsrc:P" in a and "S.rinf:above" in a
+    b = dict(f.set_feats("EXIT_STRUCTURAL|STOP_LOSS_PCT=1"))  # bare key = scored vs the template bold
+    assert "S.infsrc:T" in b and "S.rinf:below" in b
+    assert f.set_feats("EXIT_STRUCTURAL|STOP_LOSS_PCT=1")[2][0].startswith("S.inf:")  # slot 2 = in-force ID (dropped / masked like IDs)
 
 
 def test_forward_label_rule(ds_dir):
@@ -169,6 +200,7 @@ def test_scoring_and_proposals_labelled(ds_dir, tmp_path, monkeypatch):
     assert bytes(z["label"]).decode() == LN.PRED_LABEL
     assert z["cell_p_pos"].shape == (len(z["cell_row"]), len(LN.REGIMES))
     assert len(z["cell_row"]) == 9 * 4  # every template cell scored
+    assert z["row_identity"].sum() == 5 and z["cell_identity"].sum() >= 5 * 4  # template bold rows are identity, never proposals
     assert int(res["n_meas"].max()) > 0  # measured pairs carry their counts
     sc.prep_neighbours(min_n=1)
     near = sc.nearest("EXIT_STRUCTURAL|FIXED_STOP_REF_FIELD=dc_basis", k=3)

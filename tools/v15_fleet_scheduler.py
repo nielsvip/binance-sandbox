@@ -2899,6 +2899,15 @@ def tick(args, cfg, now):
                     _host_phase = "any"
             if _host_phase != _phase:
                 log.setdefault("venue_fallthrough", []).append(h["name"])
+        # 2026-10-20 USER (fleet concurrency 9.3 -> 1.0): the host-wide guard compared proj_mem against the MAX floor over both venues
+        # (crypto 12000) even when only stocks (floor 4000) can launch this tick, so "mem guard" overstated scarcity. The admission
+        # estimate is now the max over the venues this tick's phase allows. V15_SCHED_GATE_VENUE_FLOOR=0 restores the old max.
+        _gate_venues = sorted(est_v) if (not _peak_on or os.environ.get("V15_SCHED_GATE_VENUE_FLOOR", "1") != "1" or _host_phase not in est_v) else [_host_phase]
+        est_gate = max([est_v[_gv] for _gv in _gate_venues] or [est_pair]) if _peak_on else est_pair
+        HB[h["name"]]["est_pair"] = est_gate
+        info["est_gate_mb"] = round(est_gate)
+        info["gate_venues"] = _gate_venues
+        info["gate_inputs"] = {"mem_avail_mb": s["mem_avail_mb"], "reserve_mb": round(reserve), "proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "floor_crypto_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB", ""), "floor_stocks_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", ""), "phase": _host_phase}
         for sym, needs_slot in order:
             _pinned_sym = sym in _pin_syms
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:
@@ -3181,7 +3190,7 @@ def tick(args, cfg, now):
                     break
             if _pf:
                 npz_prefetch.append((h, _pf))
-        if launched == 0 and used < cap and proj_mem >= est_pair and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
+        if launched == 0 and used < cap and proj_mem >= est_gate and cpu < cfg.get("cpu_target_pct", 90) and swap_ok and disk_ok and new_launched < args.max_launch:  # USER 2026-10-10: backfill must respect the disk guard — it fires exactly when the guarded main loop correctly launches 0
             _bf_ts = st.setdefault("backfill_ts", {})
             blo = []
             for ss in _deferred_sides:
@@ -3211,7 +3220,7 @@ def tick(args, cfg, now):
                 blo.append((0 if t2 == "M" else 1, -g2, ss, sym2, sd2, key2))
             blo.sort()
             for _, _, ss, sym2, sd2, key2 in blo:
-                if used >= cap or proj_mem < est_pair or new_launched >= args.max_launch:
+                if used >= cap or proj_mem < est_gate or new_launched >= args.max_launch:
                     break
                 rd = is_ready(h["name"], sym2)
                 if not rd.get("ok"):
@@ -3239,7 +3248,7 @@ def tick(args, cfg, now):
                     launched_keys.add(key2)
                     log["launched"].append(tag)
                 used += 1
-                proj_mem -= est_pair + float(rd.get("size_mb") or 0)
+                proj_mem -= est_gate + float(rd.get("size_mb") or 0)
                 held[h["name"]][sym2] = "new"
                 st["held"].setdefault(h["name"], {})[sym2] = now.isoformat()
                 owner[sym2] = h["name"]
@@ -3249,7 +3258,8 @@ def tick(args, cfg, now):
         info["slots"] = f"{len(held[h['name']])}/{cap}"
         HB[h["name"]].update(used=len(held[h["name"]]), proj_mem=proj_mem, launched=launched, new_launched=new_launched, held_syms=sorted(held[h["name"]]))
         if cpu < cfg.get("cpu_target_pct", 90) and launched == 0:
-            info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_pair else "no eligible ready symbol for this host"
+            info["idle_reason"] = "disk guard" if not disk_ok else "slots full" if used >= cap else "mem guard" if proj_mem < est_gate else "no eligible ready symbol for this host"
+            info["idle_detail"] = {"proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "mem_avail_mb": s["mem_avail_mb"], "venues": _gate_venues, "used": used, "cap": cap, "cpu": round(cpu)}
         log["hosts"][h["name"]] = info
     if _pin_sides:  # 2026-10-13: every pinned side names its state each tick (an idle pin must explain itself)
         _ps_log = {}

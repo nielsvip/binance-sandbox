@@ -214,15 +214,20 @@ class CatDS:
         bi = self.boards(b)
         si = self.sets(f"{sheet}|{sw}={cand}")
         inf, src = self.in_force(sym, sw)
-        sci = self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}")
         reg, tier = ev.get("g"), ev.get("ti")
         naked = ev.get("n")
+        nd0 = naked[0] if (naked is not None and naked[1]) else None
+        if inf is not None and str(cand) == str(inf) and nd0 is not None and abs(nd0) > 1e-6:
+            # the engine says the chain differs from the inferred default (the board's best-start set is not in the log):
+            # the inference is contradicted -> in-force UNKNOWN, the eval is kept
+            self.c["inforce_contradicted_by_nonzero_delta"] += 1
+            inf, src = None, "U"
+        sci = self.scombo(f"{sheet}|{sw}={cand}|INF={inf}|{src}")
         if naked is not None and naked[-1]:
             d = naked[0] if naked[1] else None
             y = 1 if (d is not None and d > EPS) else 0
             if inf is not None and str(cand) == str(inf):
                 self.c["R_identity_cand_eq_inforce"] += 1
-                self.c["R_identity_nonzero_delta"] += int(d is not None and abs(d) > 1e-6)
             else:
                 self.ex.add(kind=0, set_i=si, filt_i=-1, sc_i=sci, fc_i=-1, inf_src=self.INF_SRC[src], ctx_i=self._ctx("R", reg, sym, tier), ts=t, b_t0=b_t0,
                             board_i=bi, y=y, d=self._f(d if d is not None else 0.0), valid=int(bool(naked[1])), m_tim=self._f(naked[3]),
@@ -241,8 +246,12 @@ class CatDS:
             fopt = hdr.partition("=")[2]
             finf, fsrc = self.in_force(sym, fk)
             if finf is not None and str(fopt) == str(finf):
-                self.c["F_identity_opt_eq_inforce"] += 1
-                continue
+                if md is not None and abs(md) > 1e-6:
+                    self.c["F_inforce_contradicted_by_nonzero_marginal"] += 1
+                    finf, fsrc = None, "U"
+                else:
+                    self.c["F_identity_opt_eq_inforce"] += 1
+                    continue
             y = 1 if (valid and md is not None and md > EPS) else 0
             self.c[f"F_inf_{src}"] += 1
             self.ex.add(kind=1, set_i=si, filt_i=self.filts(hdr), sc_i=sci, fc_i=self.fcombo(f"{hdr}|INF={finf}|{fsrc}"), inf_src=self.INF_SRC[src], ctx_i=ci, ts=t, b_t0=b_t0, board_i=bi, y=y, d=self._f(md if md is not None else 0.0),
@@ -268,8 +277,12 @@ class CatDS:
         y = 1 if (v and d is not None and d > EPS) else 0
         inf, src = self.in_force(ev["s"], sw)
         if inf is not None and str(cand) == str(inf):
-            self.c["PH_identity_cand_eq_inforce"] += 1
-            return
+            if d is not None and abs(d) > 1e-6:
+                self.c["PH_inforce_contradicted_by_nonzero_delta"] += 1
+                inf, src = None, "U"
+            else:
+                self.c["PH_identity_cand_eq_inforce"] += 1
+                return
         m = ev.get("m") or [None] * 5
         b = self.board_of.get(ev["s"]) or f"{ev['s']}|{ts}"
         b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
@@ -811,6 +824,8 @@ class Trainer:
         m = VB.M_SHRINK
         out = np.zeros(len(eval_rows), np.float64)
         e_pos = np.zeros(len(eval_rows), np.float64)
+        n_out = np.zeros(len(eval_rows), np.float64)
+        p_out = np.zeros(len(eval_rows), np.float64)
         kind_f = D["kind"][fit_rows]
         y_f = D["y"][fit_rows].astype(np.float64)
         d_f = D["d"][fit_rows].astype(np.float64)
@@ -841,6 +856,7 @@ class Trainer:
                 n_e = np.where(hit, nP[pos_ix], 0)
                 p_e = np.where(hit, pP[pos_ix], 0)
                 out[sel_e] = (p_e + m * prior) / (n_e + m)
+                n_out[sel_e], p_out[sel_e] = n_e, p_e
                 e_pos[sel_e] = np.where(hit & (p_e > 0), sP[pos_ix] / np.maximum(p_e, 1), mpos0)
             else:
                 sk = D["set_i"][fk]
@@ -849,7 +865,9 @@ class Trainer:
                 pS = np.bincount(sk, weights=yk, minlength=len(nS))
                 sS = np.bincount(sk, weights=np.where(yk > 0, dk, 0.0), minlength=len(nS))
                 out[sel_e] = (pS[es] + m * p0) / (nS[es] + m)
+                n_out[sel_e], p_out[sel_e] = nS[es], pS[es]
                 e_pos[sel_e] = np.where(pS[es] > 0, sS[es] / np.maximum(pS[es], 1), mpos0)
+        self._last_counts = (n_out, p_out)
         return out, e_pos
 
     def holdout_report(self):
@@ -872,7 +890,9 @@ class Trainer:
         out = self.predict(net, test_rows)
         cold = self.predict(net, test_rows, cold=True)
         cb, cb_e = self.count_baseline(pre_rows, test_rows)
+        n_k, pos_k = self._last_counts
         p_ln = sigmoid(out[:, 0])
+        p_hy = (pos_k + VB.M_SHRINK * p_ln) / (n_k + VB.M_SHRINK)
         p_cold = sigmoid(cold[:, 0])
         y = D["y"][test_rows].astype(np.float64)
         d = D["d"][test_rows].astype(np.float64)
@@ -898,6 +918,7 @@ class Trainer:
             r["auc_linknet"] = auc(p_ln[sel], y[sel])
             r["auc_count"] = auc(cb[sel], y[sel])
             r["auc_linknet_cold_start"] = auc(p_cold[sel], y[sel])
+            r["auc_hybrid_linknet_prior_counts"] = auc(p_hy[sel], y[sel])
             r["spearman_p_vs_delta_linknet"] = spearman(p_ln[sel], d[sel])
             r["spearman_p_vs_delta_count"] = spearman(cb[sel], d[sel])
             sc_ln = p_ln * np.expm1(np.clip(out[:, 1], 0, 6))
@@ -920,6 +941,7 @@ class Trainer:
                     r["keys_ge3"] = int(ok.sum())
                     r["key_spearman_linknet"] = spearman(mp[ok], rate[ok])
                     r["key_spearman_count"] = spearman(mc[ok], rate[ok])
+                    r["key_spearman_hybrid"] = spearman((np.bincount(inv, weights=p_hy[sel]) / cnt)[ok], rate[ok])
             return r
 
         keys = np.where(kind == 1, pk, D["set_i"][test_rows].astype(np.int64))
@@ -1005,8 +1027,12 @@ def inherent_report(D, K):
                                     for nm_, code in (("promoted_on_sym_side", 1), ("template_bold", 0), ("unknown", 2))}
         out[kn] = blk
     c = K.get("counters") or {}
-    out["identity_dropped"] = {"R_cand_eq_inforce": c.get("R_identity_cand_eq_inforce", 0), "R_identity_with_nonzero_delta": c.get("R_identity_nonzero_delta", 0),
-                               "F_opt_eq_inforce": c.get("F_identity_opt_eq_inforce", 0), "PH_cand_eq_inforce": c.get("PH_identity_cand_eq_inforce", 0)}
+    out["identity_dropped"] = {"R_cand_eq_inforce": c.get("R_identity_cand_eq_inforce", 0), "F_opt_eq_inforce": c.get("F_identity_opt_eq_inforce", 0),
+                               "PH_cand_eq_inforce": c.get("PH_identity_cand_eq_inforce", 0),
+                               "kept_as_inforce_unknown_R": c.get("inforce_contradicted_by_nonzero_delta", 0),
+                               "kept_as_inforce_unknown_F": c.get("F_inforce_contradicted_by_nonzero_marginal", 0),
+                               "kept_as_inforce_unknown_PH": c.get("PH_inforce_contradicted_by_nonzero_delta", 0),
+                               "rule": "candidate == inferred in-force AND |delta| <= 1e-6 -> identity (dropped); a non-zero delta contradicts the inference -> kept, in-force UNKNOWN"}
     return out
 
 

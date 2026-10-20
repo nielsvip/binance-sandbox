@@ -33,11 +33,12 @@ SWITCH_SHEETS = ["STDEV_SLOPE_SIZING", "ENTRY_REVERSAL_BOUNCE", "ENTRY_BREAKOUT_
 CONFIG_CLASSES = {"config.py": "Config", "config_tradier.py": "TradierConfig", "v12_quick_engine.py": "QuickConfig"}
 LIVE_ROOTS = {"crypto": "ez_manage.py", "stocks": "tradier_manage.py"}
 VEC_FILES_FIXED = ["v12_quick_engine.py", "tools/opt/evaluate_v12.py"]
-CALL_READ_FUNCS = {"getattr", "hasattr", "_cfg", "_psym_get", "_ezm_default", "get", "_get", "getenv", "_cfg_get", "cfg_get", "_tcfg", "_tradier_cfg", "_live_cfg", "_b", "_f", "_i", "_s", "_cfg_auto", "_cget", "_c", "_g", "_gv", "_val", "_flag", "_opt", "_knob", "_cfgv", "_cfg_bool", "_cfg_float", "_cfg_str", "_cfg_int", "_et_cfg", "_gx_c", "_mu_enabled_for", "_cf", "_la_get", "_sw_get", "_thr_cfg", "_tf", "_ftf_tf", "_cfg_ps", "_psym_cs_get", "_ftf_ps", "get_cfg"}
+CALL_READ_FUNCS = {"getattr", "hasattr", "_cfg", "_psym_get", "_ezm_default", "get", "_get", "getenv", "_cfg_get", "cfg_get", "_tcfg", "_tradier_cfg", "_live_cfg", "_b", "_f", "_i", "_s", "_cfg_auto", "_cget", "_c", "_g", "_gv", "_val", "_flag", "_opt", "_knob", "_cfgv", "_cfg_bool", "_cfg_float", "_cfg_str", "_cfg_int", "_et_cfg", "_gx_c", "_mu_enabled_for", "_cf", "_la_get", "_sw_get", "_thr_cfg", "_tf", "_ftf_tf", "_cfg_ps", "_psym_cs_get", "_ftf_ps", "get_cfg", "_on", "_get_p"}
 # 2026-10-20 wire-vectoronly: `_cfg_ps` (tradier_manage:7918 -> _cfg with _promotions_only) and `_psym_cs_get` (ez_manage:8552 -> _psym_get)
 # are thin aliases of getters ALREADY whitelisted above, and `_ftf_ps` (tradier_manage:22243) wraps _cfg_ps; `get_cfg` is the injected
 # per-sym getter parameter of tradier_filter_tf_twins.kg_stocks_block. Omitting them made every lane-C read a weak `ref`, which published
 # 17 switch/venue pairs as VECTOR_ONLY although process_position genuinely reads and honours them (verified site by site 2026-10-20).
+# `_on` (ez_manage:8353, the only definition repo-wide) and `_get_p` (ez_manage:47940 lambda) likewise wrap _psym_cs_get.
 # 2026-10-04: `_et_cfg` (wt_dc_delta.py, unique name) is a genuine cfg.get/getattr getter; `_gx_c` (tradier grey-rewire, unique name) is a _cfg lambda alias.
 # 2026-10-04: `_research_only` REMOVED from the farm regex — the single such function (tradier _apply_research_only_live_gates, called from 3 live
 # sites) holds REAL gates; its `_ = _cfg(...)` admitted-coverage stubs stay excluded via _is_stub and its `and False` guards via _const_false.
@@ -215,6 +216,36 @@ def import_closure(root_file, universe_dir=ROOT, block=()):
                 if m in mods and m not in block and not any(m.startswith(x) for x in EXCLUDED_LIVE_IMPORTS) and m + ".py" not in seen:
                     todo.append(m + ".py")
     return sorted(seen)
+
+
+def live_pkg_modules(files, pkg="live_twins", universe_dir=ROOT):
+    """<pkg>/<m>.py that the given LIVE files import. 2026-10-20 wire-vectoronly: import_closure only globs ROOT/*.py, so the whole
+    live_twins/ package (12 modules, 19 `from live_twins import ...` sites in ez_manage alone) was invisible and every switch whose ONLY
+    live consumer lives there published as VECTOR_ONLY (proven: BB_BOUNCE_ENTRY_FILTER_ENABLED, live_twins/parity_open_gates.py:103,
+    reached from ez_manage.py:32714 entry_filter_tf_veto)."""
+    out = set()
+    for f in files:
+        p = universe_dir / f
+        if not p.exists():
+            continue
+        try:
+            tree = ast.parse(p.read_text(errors="replace"))
+        except SyntaxError:
+            continue
+        for n in ast.walk(tree):
+            if isinstance(n, ast.ImportFrom) and n.level == 0 and n.module:
+                parts = n.module.split(".")
+                if parts[0] == pkg:
+                    if len(parts) > 1:
+                        out.add(f"{pkg}/{parts[1]}.py")
+                    else:
+                        out |= {f"{pkg}/{a.name}.py" for a in n.names if (universe_dir / pkg / f"{a.name}.py").exists()}
+            elif isinstance(n, ast.Import):
+                for a in n.names:
+                    parts = a.name.split(".")
+                    if parts[0] == pkg and len(parts) > 1:
+                        out.add(f"{pkg}/{parts[1]}.py")
+    return sorted(x for x in out if (universe_dir / x).exists())
 
 
 def shared_vec_modules(files, universe_dir=ROOT):
@@ -398,8 +429,9 @@ def build():
     # live closures
     closures = {v: import_closure(ROOT / r, block=tuple(Path(o).stem for k, o in LIVE_ROOTS.items() if k != v)) for v, r in LIVE_ROOTS.items()}
     shared = {v: shared_vec_modules(closures[v]) for v in closures}
+    pkgs = {v: live_pkg_modules(closures[v]) for v in closures}
     for v in closures:
-        closures[v] = sorted(set(closures[v]) | set(shared[v]))
+        closures[v] = sorted(set(closures[v]) | set(shared[v]) | set(pkgs[v]))
     live_files = sorted(set(closures["crypto"]) | set(closures["stocks"]))
     for f in live_files:
         if f not in scans:
