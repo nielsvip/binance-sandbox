@@ -2970,7 +2970,11 @@ def cmd_score2(a):
             return it
 
         p0 = c0["cells"]["p_pos"][:, 0].astype(np.float32)
-        cand = np.nonzero((nm < 3) & ~res["cell_ident"])[0]
+        # a cell whose yellow filter is the row's own switch (template quirk, e.g. MOMENTUM_BREAKOUT_FILTER_TF=4h x MOMENTUM_BREAKOUT_FILTER_TF=D) is no pair
+        r_sw = np.array([k_.partition("|")[2].partition("=")[0] for k_ in res["row_keys"]])
+        y_fk = np.array([y.partition("=")[0] for y in res["yellows"]])
+        self_pair = r_sw[res["cell_row"]] == y_fk[res["cell_yellow"]]
+        cand = np.nonzero((nm < 3) & ~res["cell_ident"] & ~self_pair)[0]
         order = cand[np.argsort(-p0[cand], kind="stable")]
         top = diversity_cap(order, row_of, k=PROPOSALS_K * 2)
         props = [cell_item(i, "CAT_SIDE_DEFAULTS", dflt, 0) for i in top]
@@ -3054,6 +3058,7 @@ def cmd_score2(a):
                                     [ctx_descr(t["chain_id"], t["feats"], source="data/per_sym_full_sets.json", sym_sides=t["sym_sides"][:10], n_sym_sides=t["n_sym_sides"]) for t in tops],
                         "live_chains": len(chains), "distinct_live_chains": len(set(chains.values())),
                         "template_cells": int(len(res["cell_row"])), "template_cells_n_lt_3": int((nm < 3).sum()), "template_cells_never_measured": int((nm == 0).sum()),
+                        "template_cells_self_pair_excluded": int(self_pair.sum()),
                         "unknown_feature_hits_at_scoring": dict(sc.unknown_feature_hits), "unknown_context_features_at_scoring": dict(sc.unknown_context_features.most_common(30)),
                         "pair_with_context_file": str(pwc_path) if pwc_meta else None,
                         "needs_row_source": "enumeration + nearest evidence from the v1 proposals file " + str(v1p) + "; p re-predicted by the production scorer (p_pos_pred_v1 kept)"},
