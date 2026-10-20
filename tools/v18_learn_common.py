@@ -371,3 +371,60 @@ def md_table(headers, rows):
     for r in rows:
         out.append("| " + " | ".join("" if v is None else (f"{v:.2f}" if isinstance(v, float) else str(v)) for v in r) + " |")
     return "\n".join(out)
+
+
+def _num(s):
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def template_cand(sw, cand, tidx):
+    """The template's own spelling of `cand` for switch `sw` ('1.0' -> '1' when the row reads 1), else None. Bools/strings
+    must match exactly; numbers match by value (older templates wrote 1.0 where the current one writes 1)."""
+    opts = (tidx.get("switches") or {}).get(sw)
+    if not opts:
+        return None
+    c = str(cand)
+    if c in opts:
+        return c
+    if c in ("True", "False"):
+        return None
+    v = _num(c)
+    if v is None:
+        return None
+    for o in opts:
+        if o in ("True", "False"):
+            continue
+        ov = _num(o)
+        if ov is not None and abs(ov - v) <= 1e-12 * max(1.0, abs(v)):
+            return o
+    return None
+
+
+def canonicalize_evidence(ev, tidx):
+    """Re-key the miner's naked / pairs / abl / quartet entries to the TEMPLATE spelling of each switch=cand. Two log
+    spellings of one template candidate ('X=1' and 'X=1.0') keep the entry with more valid sym_sides (never summed: the
+    same sym_side may sit under both spellings). Keys whose cand is not a template candidate are left as they are."""
+    if not ev or ev.get("_canon_md5") == tidx.get("md5"):
+        return ev
+    out = dict(ev)
+
+    def ck(swc):
+        sw, _, cand = swc.partition("=")
+        t = template_cand(sw, cand, tidx)
+        return f"{sw}={t}" if t is not None else swc
+
+    for name, size_of in (("naked", lambda v: v[1]), ("pairs", lambda v: v[1]), ("abl", lambda v: v.get("n_syms", 0)),
+                          ("quartets", lambda v: v.get("n_syms", 0)), ("pair_pos_syms", len)):
+        src = ev.get(name) or {}
+        dst = {}
+        for k, v in src.items():
+            swc, sep, rest = k.partition("|")
+            nk = ck(swc) + (sep + rest if sep else "")
+            if nk not in dst or size_of(v) > size_of(dst[nk]):
+                dst[nk] = v
+        out[name] = dst
+    out["_canon_md5"] = tidx.get("md5")
+    return out

@@ -117,9 +117,10 @@ def build(a):
     measured_all = {}
     docs = {}
     for cs in C.CAT_SIDES:
-        ev = C.read_json(Path(a.evidence) / f"evidence_{cs}.json.gz", {}) or {}
         tidx = C.template_index(cs)
-        meas = (C.read_json(Path(a.measured) / f"veto_measure_{cs}.json", {}) or {}).get("pairs", {}) if a.measured else {}
+        ev = C.canonicalize_evidence(C.read_json(Path(a.evidence) / f"evidence_{cs}.json.gz", {}) or {}, tidx)
+        meas_raw = (C.read_json(Path(a.measured) / f"veto_measure_{cs}.json", {}) or {}).get("pairs", {}) if a.measured else {}
+        meas = (C.canonicalize_evidence({"abl": meas_raw}, tidx) or {}).get("abl", {}) if meas_raw else {}
         measured_all[cs] = meas
         rows, refused = [], defaultdict(int)
         for (swc, f), r in candidate_pairs(ev).items():

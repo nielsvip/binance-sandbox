@@ -245,6 +245,7 @@ def main(argv=None):
     for cs in C.CAT_SIDES:
         tidxs[cs] = C.template_index(cs)
         ev = evidence_from_store(cs, a.store, since_epoch) if a.store else load_evidence(cs, a.evidence)
+        ev = C.canonicalize_evidence(ev, tidxs[cs]) if ev else ev
         if not ev:
             print(f"[winners] {cs}: no evidence", flush=True)
             packs[cs] = []

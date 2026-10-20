@@ -557,7 +557,7 @@ def build(a):
         other = [r for r in lrows if r["column"] == "live_other"]
         ranked = {c: family_stats(rs) for c, rs in cols.items()}
         tidx = C.template_index(cs)
-        ev = C.read_json(ev_dir / f"evidence_{cs}.json.gz", {}) or {}
+        ev = C.canonicalize_evidence(C.read_json(ev_dir / f"evidence_{cs}.json.gz", {}) or {}, tidx)
         fwd = {}
         for k, (n, ok) in (ev.get("forward") or {}).items():
             kind, _, key = k.partition("|")
