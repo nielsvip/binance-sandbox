@@ -208,6 +208,22 @@ def s1_capable():
     return ok, f"{S1_HOST} indicators {payload.get('stale')}/{payload.get('symbols')} stale ({pct}%)"
 
 
+def current_pin():
+    """(pin, source) read from S1's AUTHORITATIVE data/live_failover/lease.json.
+
+    The Mac's mirror data/live_failover/lease_local.json carries accounts/fetched_at/gen/holder/reason/
+    venues and NO `pin` key, so reading the pin from it always returned None: this tool would have
+    re-issued force-s1 every cooldown and, worse, its `pin == "s1"` un-pin branch could never fire — the
+    Mac would never have got its venues back. Verified 2026-10-20 14:2xZ: S1 lease.json pin='s1' while the
+    mirror reported None."""
+    try:
+        res = _ssh(S1_HOST, "cat /home/niels/binance/data/live_failover/lease.json", timeout=40)
+        lease = json.loads(res.stdout)
+        return lease.get("pin"), "s1:lease.json"
+    except Exception as exc:
+        return None, f"unreadable ({str(exc)[:60]}) — treated as no pin"
+
+
 def _read_json_str(text):
     for line in reversed((text or "").strip().splitlines()):
         try:
@@ -230,7 +246,7 @@ def tick(apply_change=False):
     now = _now()
     state = _read_json(STATE, {}) or {}
     lease = _read_json(LEASE, {}) or {}
-    pin = lease.get("pin")
+    pin, pin_source = current_pin()
     holder = lease.get("holder")
     ready, reasons, measured = mac_readiness()
     ready_since = state.get("ready_since")
@@ -261,7 +277,7 @@ def tick(apply_change=False):
     payload = {
         "generated_utc": _iso(now),
         "apply": bool(apply_change),
-        "lease": {"holder": holder, "pin": pin, "gen": lease.get("gen"), "venues": lease.get("venues"), "reason": lease.get("reason")},
+        "lease": {"holder": holder, "pin": pin, "pin_source": pin_source, "gen": lease.get("gen"), "venues": lease.get("venues"), "reason": lease.get("reason")},
         "mac_ready": ready,
         "ready_since": _iso(ready_since),
         "stable_for_s": None if stable_for is None else round(stable_for),

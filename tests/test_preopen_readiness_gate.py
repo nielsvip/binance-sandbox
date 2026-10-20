@@ -180,11 +180,28 @@ def _write_readiness(tmp_path, monkeypatch, verdict, ind_ok=True):
     return path
 
 
+def test_the_pin_is_read_from_s1_not_from_the_mac_mirror(tmp_path, monkeypatch):
+    """The Mac mirror has no `pin` key at all, so reading it there made the un-pin branch unreachable."""
+    lease = tmp_path / "lease_local.json"
+    lease.write_text(json.dumps({"holder": "s1", "gen": 70, "venues": "crypto,stocks"}))
+    monkeypatch.setattr(pin, "LEASE", lease)
+    monkeypatch.setattr(pin, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(pin, "LOGDIR", tmp_path / "logs")
+    (tmp_path / "logs").mkdir()
+    _write_readiness(tmp_path, monkeypatch, "PASS")
+    monkeypatch.setattr(pin, "LOAD_MAX", 10000.0)
+    monkeypatch.setattr(pin, "current_pin", lambda: ("s1", "s1:lease.json"))
+    monkeypatch.setattr(pin, "STABLE_S", 0.0)
+    payload = pin.tick(apply_change=False)
+    assert payload["lease"]["pin"] == "s1" and payload["action"] == "unpin_auto"
+
+
 def test_pin_is_not_moved_to_a_blind_s1(tmp_path, monkeypatch):
     _write_readiness(tmp_path, monkeypatch, "FAIL")
     lease = tmp_path / "lease_local.json"
-    lease.write_text(json.dumps({"holder": "mac", "pin": None, "gen": 65}))
+    lease.write_text(json.dumps({"holder": "mac", "gen": 65}))
     monkeypatch.setattr(pin, "LEASE", lease)
+    monkeypatch.setattr(pin, "current_pin", lambda: (None, "test"))
     monkeypatch.setattr(pin, "STATE", tmp_path / "state.json")
     monkeypatch.setattr(pin, "LOGDIR", tmp_path / "logs")
     (tmp_path / "logs").mkdir()
@@ -199,8 +216,9 @@ def test_pin_is_not_moved_to_a_blind_s1(tmp_path, monkeypatch):
 def test_unready_mac_pins_a_capable_s1(tmp_path, monkeypatch):
     _write_readiness(tmp_path, monkeypatch, "FAIL")
     lease = tmp_path / "lease_local.json"
-    lease.write_text(json.dumps({"holder": "mac", "pin": None, "gen": 65}))
+    lease.write_text(json.dumps({"holder": "mac", "gen": 65}))
     monkeypatch.setattr(pin, "LEASE", lease)
+    monkeypatch.setattr(pin, "current_pin", lambda: (None, "test"))
     monkeypatch.setattr(pin, "STATE", tmp_path / "state.json")
     monkeypatch.setattr(pin, "LOGDIR", tmp_path / "logs")
     (tmp_path / "logs").mkdir()
@@ -213,9 +231,10 @@ def test_unready_mac_pins_a_capable_s1(tmp_path, monkeypatch):
 def test_a_ready_mac_is_unpinned_only_after_the_stable_dwell(tmp_path, monkeypatch):
     _write_readiness(tmp_path, monkeypatch, "PASS")
     lease = tmp_path / "lease_local.json"
-    lease.write_text(json.dumps({"holder": "s1", "pin": "s1", "gen": 66}))
+    lease.write_text(json.dumps({"holder": "s1", "gen": 66}))
     state = tmp_path / "state.json"
     monkeypatch.setattr(pin, "LEASE", lease)
+    monkeypatch.setattr(pin, "current_pin", lambda: ("s1", "test"))
     monkeypatch.setattr(pin, "STATE", state)
     monkeypatch.setattr(pin, "LOGDIR", tmp_path / "logs")
     (tmp_path / "logs").mkdir()
