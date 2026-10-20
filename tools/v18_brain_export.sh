@@ -43,9 +43,9 @@ fi
 
 # 2. S1 (read-only pull, retried: the gateway drops long transfers)
 for i in 1 2 3 4 5; do
-    timeout 600 rsync -a --partial -m --include='*/' --include='*.jsonl' --exclude='*' "$S1":"$S1_GLOB" "$SCR"/s1_logs/ >>"$LOG" 2>&1 && break
+    timeout 600 rsync -aR --partial "$S1":"$S1_GLOB/" "$SCR"/s1_logs/ >>"$LOG" 2>&1 && break
 done
-nice -n 10 $PY tools/v18_brain.py extract --source logs --from "$SCR/s1_logs/*/*.jsonl" --from "$SCR/s1_logs/*.jsonl" --host s1 --spill-dir "$SCR"/spill_mac >>"$LOG" 2>&1 || log "WARN S1 extract failed"
+nice -n 10 $PY tools/v18_brain.py extract --source logs --from "$SCR/s1_logs/*/progress/v15_delta_log/*.jsonl" --host s1 --spill-dir "$SCR"/spill_mac >>"$LOG" 2>&1 || log "WARN S1 extract failed"
 
 # 3. Mac sources
 if [ -d /Volumes/SSD2T/s1_offload ]; then

@@ -1942,11 +1942,14 @@ def _family_switches(sb, fam):
                 continue
     except Exception:
         pass
+    stop = {"EXIT", "ENTRY", "ENABLED", "TF", "MIN", "MAX", "PCT", "15M", "1H", "4H", "D", "W", "M", "FILTER", "ON", "OFF", "THE", "UNCOND"}
+    ftok = {t for t in fam.upper().split("_") if t and t not in stop and not t[0].isdigit()}
     for sw, sheet in sb["sheet_of"].items():
         core = re.sub(r"_(ENABLED|TF|FILTER_TF|ON)$", "", sw)
         by_name = sw.startswith(fam) or (len(core) >= 8 and fam.startswith(core))
         by_cur = any((c == sw) if isinstance(c, str) else bool(c.search(sw)) for c in curated)
-        if by_name or by_cur:
+        by_tok = sheet in EXIT_SHEETS and len(ftok) >= 2 and ftok <= set(sw.upper().split("_"))
+        if by_name or by_cur or by_tok:
             out.append((sw, sheet))
     return out
 
@@ -1960,7 +1963,8 @@ def explain_family(sb, fam, top=20):
             st = edge_stats(E, p0)
             rows.append(dict(key=V.nodes[na][2:], sheet=sheet, **st))
     rows.sort(key=lambda r: -r["value"])
-    out = {"family": fam, "switches_by_name": sorted({r["key"].split("=", 1)[0] for r in rows}), "rows": rows[:top]}
+    out = {"family": fam, "mapping": "switch name prefix / doc-17 curated table (v18_exit_loss_rank.CURATED) / all family tokens in an exit-tab switch name",
+           "switches_by_name": sorted({r["key"].split("=", 1)[0] for r in rows}), "rows": rows[:top]}
     xi, XE = V.row(0, "X:" + fam)
     if XE is not None:
         out["live_family"] = {"n": int(XE[C["live_n"]]), "pos": int(XE[C["live_pos"]]), "pnl_pp": round(float(XE[C["live_pnl"]]), 3)}

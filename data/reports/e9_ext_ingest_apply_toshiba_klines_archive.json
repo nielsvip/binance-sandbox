@@ -1,0 +1,53 @@
+{
+ "ts": "2026-10-20T01:51:57Z",
+ "end": "2026-10-20T01:53:49Z",
+ "mode": "apply",
+ "drive": "E3T",
+ "archive": "/Volumes/E3T/binance_archive/klines_archive",
+ "floor_gb": 10.0,
+ "free_gb_start": 13.62,
+ "free_gb_end": 13.61,
+ "stopped": null,
+ "totals": {
+  "names": 471,
+  "names_grown": 0,
+  "names_created": 0,
+  "bars_added": 0,
+  "bytes_written_delta": 0,
+  "refused": 0,
+  "deferred_names": 0
+ },
+ "copies": {
+  "toshiba_klines_archive": {
+   "root": "/Volumes/TOSHIBA_EXT/binance_archive/klines_archive",
+   "files": 472,
+   "kline_files": 471,
+   "non_kline_files": 1,
+   "salvaged_files": 0,
+   "unreadable_files": 0,
+   "bytes": 1267493694,
+   "series": 471,
+   "bars": 10567772,
+   "present_same": 10567527,
+   "present_archive_dominates": 229,
+   "copy_dominates": 16,
+   "conflicts": 0,
+   "new": 0,
+   "new_added": 0,
+   "new_via_other_copy": 0,
+   "new_deferred": 0,
+   "gateway_new_held": 0,
+   "names_with_new": 0,
+   "blockers": {
+    "copy_dominates": 16,
+    "non_kline_files": 1
+   },
+   "verdict": "HOLD",
+   "gb": 1.267,
+   "non_kline_examples": [
+    "_manifest.json"
+   ]
+  }
+ },
+ "deferred_names": []
+}
