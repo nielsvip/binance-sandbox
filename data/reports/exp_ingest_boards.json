@@ -1,0 +1,42 @@
+{
+ "apply": true,
+ "counters": {
+  "boards_progress:CRYPTO_LONG": 83,
+  "boards_progress:CRYPTO_SHORT": 105,
+  "boards_progress:STOCKS_LONG": 148,
+  "boards_progress:STOCKS_SHORT": 117,
+  "boards_xlsx:CRYPTO_LONG": 775,
+  "boards_xlsx:CRYPTO_SHORT": 725,
+  "boards_xlsx:STOCKS_LONG": 928,
+  "boards_xlsx:STOCKS_SHORT": 898,
+  "inserted": {
+   "boards:CRYPTO_LONG": 858,
+   "boards:CRYPTO_SHORT": 830,
+   "boards:STOCKS_LONG": 1076,
+   "boards:STOCKS_SHORT": 1015,
+   "sets:CRYPTO_LONG": 575,
+   "sets:CRYPTO_SHORT": 587,
+   "sets:STOCKS_LONG": 809,
+   "sets:STOCKS_SHORT": 728
+  },
+  "manifests_without_xlsx": 1304,
+  "offered": {
+   "boards:CRYPTO_LONG": 858,
+   "boards:CRYPTO_SHORT": 830,
+   "boards:STOCKS_LONG": 1076,
+   "boards:STOCKS_SHORT": 1015,
+   "sets:CRYPTO_LONG": 581,
+   "sets:CRYPTO_SHORT": 594,
+   "sets:STOCKS_LONG": 809,
+   "sets:STOCKS_SHORT": 728
+  },
+  "promoted_steps": 4436,
+  "secs": 3074.6
+ },
+ "finished": "2026-10-20T01:25:06Z",
+ "host": "MacBook-Pro.local",
+ "kind": "boards",
+ "source": "",
+ "started": "2026-10-20T00:33:51Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

@@ -26,6 +26,8 @@ for a in "$@"; do
 done
 echo "[daily-learn] $(date -u +%FT%TZ) apply=${APPLY:-dry-run} mine=$MINE pull=$PULL"
 if [ "$MINE" = 1 ]; then
+    # fresh read-only copy of S1's hot delta logs onto S2 (S1: nice 15 / ionice idle; internal network)
+    ssh -o ConnectTimeout=15 s1-int 'mkdir -p ~/logs; for d in ~/v15_run*/progress/v15_delta_log; do [ -d "$d" ] && nice -n 15 ionice -c3 rsync -a --bwlimit=60000 "$d/" s2:v18_scratch/s1_run33_delta_log/; done' || echo "[daily-learn] WARN S1 log copy failed"
     ssh -o ConnectTimeout=15 s2 'cd ~/binance-sandbox && nice -n 10 python3 tools/v18_evidence_mine.py --src s2="~/v15_run*/progress/v15_delta_log/*.jsonl" --src s1="~/v18_scratch/s1_run33_delta_log/*.jsonl" --workers 2 --scratch ~/v18_scratch/mine --out-dir ~/v18_learn/evidence > ~/logs/v18_evidence_mine.log 2>&1 < /dev/null; tail -1 ~/logs/v18_evidence_mine.log' || echo "[daily-learn] WARN miner on s2 failed — using the last pulled evidence"
 fi
 if [ "$PULL" = 1 ]; then

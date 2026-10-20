@@ -822,7 +822,7 @@ def extract_native(a, emit, counters):
 
 def cmd_extract(a):
     a.source_from = a.source_from or []
-    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"_{os.getpid()}_{int(time.time() * 1e6) % 1000000:06d}"
     sp = Path(a.spill_dir) / f"spill_{a.source}_{a.host}_{stamp}.tsv"
     spill = Spill(sp)
     counters = collections.Counter()
@@ -1667,7 +1667,7 @@ def pair_stats(E):
 
 # ------------------------------------------------------------------------------------------------ export
 
-def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES):
+def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES, min_keep=1000):
     V = get_view(sb)
     nodes = V.nodes
     cs_rows, reg_rows, pair_rows, sym = [], [], [], collections.defaultdict(list)
@@ -1724,20 +1724,20 @@ def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES):
     # size law: trim the lowest-evidence pair rows, then the lowest-evidence sym rows, until <= max_bytes
     while len(txt) > max_bytes:
         over = len(txt) - max_bytes
-        if len(blob["pair"]) > 1000:
-            k = max(1000, int(len(blob["pair"]) * min(0.5, over / len(txt) + 0.05)))
-            cut = len(blob["pair"]) - k if len(blob["pair"]) - k > 1000 else 1000
+        if len(blob["pair"]) > min_keep:
+            k = max(1, int(len(blob["pair"]) * min(0.5, over / len(txt) + 0.05)))
+            cut = max(min_keep, len(blob["pair"]) - k)
             blob["_meta"]["trimmed"]["pair"] = blob["_meta"]["trimmed"].get("pair", 0) + len(blob["pair"]) - cut
             blob["pair"] = blob["pair"][:cut]
         else:
             tot = sum(len(v) for v in blob["sym"].values())
-            if tot < 1000:
+            if tot <= min_keep:
                 break
             frac = min(0.5, over / len(txt) + 0.05)
             dropped = 0
             for ss in list(blob["sym"]):
                 L = blob["sym"][ss]
-                keep = max(10, int(len(L) * (1 - frac)))
+                keep = max(min(10, min_keep), int(len(L) * (1 - frac)))
                 dropped += len(L) - keep
                 blob["sym"][ss] = L[:keep]
             blob["_meta"]["trimmed"]["sym"] = blob["_meta"]["trimmed"].get("sym", 0) + dropped

@@ -416,11 +416,22 @@ def cache_bar_final(symbol, cutoff):
                 # that klines_append feeds (canonical keeps authority inside its own range there).
                 break
             time.sleep(5)
-    df = bvp.load_klines(bvp.CRYPTO_KLINES / f"{symbol}_15m.json")
-    if df is None or not len(df):
-        return False
-    ts = _epoch_s(df.index)
-    return bool((ts == cutoff).any() and (ts > cutoff).any())
+    # USER 2026-10-20: S1's klines_cache_backtest/klines_cache froze at 17:45Z (S1 REST banned) and the Mac canonical cycle ran
+    # 13-21 min under load, so every crypto NPZ sat ~1h behind (scheduler: 75/75 crypto tail-stale) while klines_cache_gateway
+    # held the closed bars. Prove finality from every store the builder appends from (_pick_best_source fresh tail), same rule.
+    for d in _crypto_final_dirs(bvp):
+        df = bvp.load_klines(d / f"{symbol}_15m.json")
+        if df is None or not len(df):
+            continue
+        ts = _epoch_s(df.index)
+        if bool((ts == cutoff).any() and (ts > cutoff).any()):
+            return True
+    return False
+
+
+def _crypto_final_dirs(bvp):
+    """crypto 15m stores in builder source order (backtest_v8_precompute.compute_symbol sources): primary, then gateway, then macbook."""
+    return (bvp.CRYPTO_KLINES, ROOT / "klines_cache_gateway", ROOT / "klines_cache_macbook")
 
 
 def cache_bar_final_stocks(symbol, cutoff):
@@ -450,7 +461,7 @@ def cache_last_final(symbol, mode):
     is the opposite of "just topups, appended"."""
     import backtest_v8_precompute as bvp
     dirs = ((ROOT / "klines_cache_backtest" / "tradier", ROOT / "klines_cache" / "tradier", ROOT / "klines_cache_gateway" / "tradier", ROOT / "klines_cache_macbook" / "tradier")
-            if mode == "tradier" else (bvp.CRYPTO_KLINES,))
+            if mode == "tradier" else _crypto_final_dirs(bvp))
     best = None
     for d in dirs:
         try:

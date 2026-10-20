@@ -571,7 +571,11 @@ def main(argv=None):
             os.remove(main_p + ext)
     main = connect(main_p)
     merge(main, parts)
-    print(f"[mine] merged {len(parts)} parts {time.time()-t0:.0f}s", flush=True)
+    for p in parts:
+        for ext in ("", "-wal", "-shm"):
+            if os.path.exists(p + ext):
+                os.remove(p + ext)
+    print(f"[mine] merged {len(parts)} parts (part dbs removed) {time.time()-t0:.0f}s", flush=True)
     extra = {}
     if a.rebuilt and os.path.exists(os.path.expanduser(a.rebuilt)):
         rebuilt_pass(os.path.expanduser(a.rebuilt), main, since_epoch, extra)
