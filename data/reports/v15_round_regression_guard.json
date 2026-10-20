@@ -1,29 +1,52 @@
 {
- "at": "2026-10-20T04:26:00Z",
+ "at": "2026-10-20T05:26:01Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
-   "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 9.1672,
-   "median_uplift": 9.1672,
-   "chained_from_previous_published": 0,
+   "published_n": 3,
+   "per_hour": 1.5,
+   "improved_vs_best_start": 3,
+   "mean_uplift_vs_best_start": 24.3982,
+   "median_uplift": 29.8494,
+   "chained_from_previous_published": 2,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
     {
+     "symside": "BBUSDT_SHORT",
+     "npz_age_h": 28.51
+    },
+    {
      "symside": "PR_LONG",
      "npz_age_h": 7.76
+    },
+    {
+     "symside": "UEC_SHORT",
+     "npz_age_h": 9.2
     }
    ],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)",
-    "1/1 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+    "throughput 1.5/h < 12.0/h (one per 5 min)",
+    "3/3 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
    ],
    "rows": [
+    {
+     "symside": "BBUSDT_SHORT",
+     "published_at": 1792470625.0101874,
+     "final_gain": 52.554458935655916,
+     "best_start_gain": 22.70507761700145,
+     "best_start_chosen": "history_2",
+     "best_start_candidates": 7,
+     "baseline_gain": 22.70507761700145,
+     "npz_ts_last": 1792368000.0,
+     "npz_md5": "cd7d9ab9d4f92b76065e45439dd1e12e",
+     "npz_bars": 40396,
+     "bh": 8.007375791414683,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 28.51
+    },
     {
      "symside": "PR_LONG",
      "published_at": 1792467930.7727084,
@@ -38,6 +61,21 @@
      "bh": 4.862577746636513,
      "verdict": "BEST_EFFORT",
      "npz_age_h_at_publish": 7.76
+    },
+    {
+     "symside": "UEC_SHORT",
+     "published_at": 1792472236.964596,
+     "final_gain": 61.36241403086734,
+     "best_start_gain": 27.184437340765573,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 6,
+     "baseline_gain": 27.184437340765573,
+     "npz_ts_last": 1792439100.0,
+     "npz_md5": "b21c5c2d0b558ef8849baf7a3c8e2a8f",
+     "npz_bars": 34852,
+     "bh": 32.34536282022133,
+     "verdict": "BEST_EFFORT",
+     "npz_age_h_at_publish": 9.2
     }
    ],
    "error": null
