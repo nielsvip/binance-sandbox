@@ -80,6 +80,30 @@ WATCHDOG_MANAGED=(
 )
 
 MISSING=""
+# ═══ 2026-10-20 RE-WRAP A LIVE CHILD WHOSE SUPERVISOR IS GONE ═══════════════════════════════════════════════
+# USER: "MAKE SURE ALL WATCHDOGS ARE RECREATED IF DESTROYED AND FUNCTIONING PERFECTLY".
+# The loop below only acts when the PROCESS is dead. For a WATCHDOG_MANAGED script it then skips when a wrapper
+# is alive ("will self-heal"). Neither branch covers the third state: CHILD ALIVE, WRAPPER DEAD — which is
+# permanently unsupervised, because the process check passes and nothing ever looks at the wrapper.
+# MEASURED 2026-10-20 20:0xZ: ez_share_ind, ez_indicators, ez_klines, ez_market_data and ez_orderbook were all
+# running with MISSING wrappers after their supervisors were SIGKILLed at 18:20Z; ez_share_ind had been
+# unsupervised for 5,484 s — the same process that sat DEAF for 21 h 20 m the day before with nothing to notice
+# it, because its only liveness check watched a log file that did not exist.
+# Re-wrapping recycles the child once under a fresh wrapper, which also picks up any run_with_watchdog.sh change
+# (bash parses once at startup, so an edited wrapper file does nothing until the wrapper itself restarts).
+# Per-account scripts are excluded: ez_manage's wrapper is matched per account elsewhere and a bare re-wrap here
+# could start a second trader on one account.
+for wm in "${WATCHDOG_MANAGED[@]}"; do
+    case "$wm" in ez_manage.py) continue ;; esac
+    if pgrep -f "python.*$wm" >/dev/null 2>&1 && ! pgrep -f "run_with_watchdog.sh $wm" >/dev/null 2>&1; then
+        log "REWRAP: $wm running WITHOUT a run_with_watchdog wrapper — recycling it under a fresh supervisor"
+        cd "$WORKDIR"
+        LOG_NAME=$(echo "$wm" | sed 's/\.py//')
+        nohup /bin/bash "$WORKDIR/run_with_watchdog.sh" "$wm" >> "$HOME/logs/${LOG_NAME}_watchdog.log" 2>&1 </dev/null &
+        sleep 2
+    fi
+done
+
 for proc in "${CRITICAL_PROCESSES[@]}"; do
     if ! pgrep -f "$proc" >/dev/null 2>&1; then
         script_name="${proc%% *}"

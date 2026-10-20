@@ -62,6 +62,24 @@ S1 = os.environ.get("NEVER_UNTRADED_S1", "s1-int")
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 
 
+def stocks_in_session(now_ts: float | None = None) -> bool:
+    """True while a stock account is EXPECTED to be trading. 2026-10-20: without this the guard treated the
+    normal post-close exit of trb/trc/tra as "nobody trades this account", would start their wrappers, the
+    wrapper's own market gate would exit 0, and it would restart them every 30 s — a churn loop of the guard's
+    own making. Crypto is 24/7 and is never gated here.
+    RTH is 13:30-20:00Z (09:30-16:00 ET); the window opens 35 min early to match the Mac's 13:00Z start_stocks.sh
+    and the supervisor's own stocks_window, and closes on the bell. Weekdays only; US holidays are NOT modelled,
+    so on a holiday this returns True and the guard may log an untraded stock account it cannot fix — that is a
+    false alarm in the log, never a start loop, because the wrapper gate still refuses. ET offset is derived from
+    the local/UTC delta rather than hardcoded, so it follows DST."""
+    import datetime as _d
+    t = _d.datetime.fromtimestamp(now_ts or dt.datetime.now(dt.timezone.utc).timestamp(), dt.timezone.utc)
+    if t.weekday() >= 5:
+        return False
+    mins = t.hour * 60 + t.minute
+    return (13 * 60 - 5) <= mins < (20 * 60)
+
+
 def log(msg: str) -> None:
     line = f"[{dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}] {msg}"
     print(line)
@@ -163,6 +181,11 @@ def main() -> int:
         for a in accts:
             h, t = here.get(a, 0), (None if there is None else there.get(a, 0))
             nobody = h == 0 and (t == 0 if t is not None else False)
+            if nobody and venue == "stocks" and not stocks_in_session():
+                # closed market: an absent stock engine is correct, not a fault
+                st.pop(f"down_{a}", None)
+                rep["accounts"][a] = {"venue": venue, "mac": h, "s1": t, "untraded_s": 0, "note": "market closed"}
+                continue
             both = h > 0 and bool(t)
             key = f"down_{a}"
             if nobody:
