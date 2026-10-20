@@ -55,6 +55,38 @@ GLOBAL_OBJS = {"config", "config_tradier", "_ezm_base_config", "_lc"}
 LIVE_MODULES = ("ez_manage.py", "ez_positions_quick.py", "ez_positions_service.py", "tradier_manage.py",
                 "tradier_vec_exact.py", "positions_truth.py", "ez_positions_service_main.py")
 LIVE_GLOBS = ("live_twins/*.py",)
+# SHARED CORES. `vec_decisions/*.py` is not simply "the vector": the live modules IMPORT 38 of them and call into
+# them with a PER-SYM cfg — fixed_stop, bb_stoch_exits, dc_channel_exits, breakeven_gain_erosion, qty_quantizers,
+# stop_reclaim ... — which is this repo's twin pattern (one core, read by both the engine and live). Excluding
+# them made the audit report 94 keys as ABSENT that live really does resolve, and it also meant a correct fix
+# routed through a shared core (the STDEV_TWIN_SIZING patch applied 2026-10-20 19:4xZ) still read as ABSENT, so
+# the acceptance test could never pass. Only cores a live module actually imports are scanned; reads there are
+# PROXY_PSYM because the cfg handed in is the resolved per-sym set.
+# CAVEAT, stated because the tool cannot prove it: IMPORTED IS NOT CALLED. Modules named *_dead
+# (twin_entries_dead_a/_b, twin_exits_dead) are imported while their reading functions may have no live caller, so
+# a key credited here can still be inert. Proving the call path is a human/agent read, not a grep.
+def live_imported_cores(root: pathlib.Path) -> list:
+    """Every shared core a live module imports: vec_decisions/* AND root-level modules.
+
+    2026-10-20: the first version scanned only `vec_decisions/`, which missed ROOT-LEVEL cores that live imports
+    and that do read template switches — `loss_prone.py` (LOSS_PRONE_ENTRY_FILTER_ENABLED /
+    LOSS_PRONE_ENTRY_MIN_FILTERS, reached from ez_manage.py:32339) and `golden_rule_htf.py`. Both were therefore
+    reported ABSENT while live genuinely resolves them. Discovering them from the imports means a core added
+    later is covered without editing this list."""
+    out, names = [], set()
+    for m in LIVE_MODULES:
+        f = root / m
+        if not f.exists():
+            continue
+        src = f.read_text(errors="ignore")
+        names |= set(re.findall(r"vec_decisions[._]([a-z_0-9]+)", src))
+        for n in set(re.findall(r"^\s*(?:import|from)\s+([a-z_][a-z_0-9]*)", src, re.M)):
+            cand = root / f"{n}.py"
+            if cand.exists() and cand.name not in LIVE_MODULES and cand not in out:
+                out.append(cand)
+    out += [root / "vec_decisions" / f"{n}.py" for n in sorted(names) if (root / "vec_decisions" / f"{n}.py").exists()]
+    return out
+
 # DECLARED PROBE FARMS: functions whose entire purpose is to REFERENCE switches so they count as "wired".
 # Read and verified 2026-10-20 — every body is reference-only, e.g. ez_manage.py:64448
 #   if bool(getattr(config, "AUGMENT_BOUNCE_MIN_GAIN_PCT", False)):
@@ -299,9 +331,13 @@ def main() -> int:
     mods = [ROOT / m for m in LIVE_MODULES if (ROOT / m).exists()]
     for g in LIVE_GLOBS:
         mods += [pathlib.Path(p) for p in sorted(glob.glob(str(ROOT / g))) if not pathlib.Path(p).name.startswith("test_")]
+    cores = live_imported_cores(ROOT)
+    mods += cores
+    print(f"shared cores imported by live: {len(cores)}")
     per_key = collections.defaultdict(list)
     for m in mods:
-        for h in scan_module(m, keys, proxy=proxy_backed(m)):
+        _is_core = m.parent.name == "vec_decisions" or (m.parent == ROOT and m.name not in LIVE_MODULES)
+        for h in scan_module(m, keys, proxy=(proxy_backed(m) or _is_core)):
             h["module"] = m.name if m.parent == ROOT else f"{m.parent.name}/{m.name}"
             per_key[h["key"]].append(h)
     print(f"live modules scanned: {len(mods)}")

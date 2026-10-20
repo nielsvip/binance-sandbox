@@ -28970,6 +28970,18 @@ class MultiAccountTradeManager:
                 _qq_lm = _qq.ladder_from_indicators(i, is_long, _qq_cfg)
                 quantity = quantity * _qq_lm
                 logger.info(f"{position_key} [STDEV_LADDER] lrL_pct_b_{_qq.ladder_tf(_qq_cfg)}={i.get('lrL_pct_b_' + _qq.ladder_tf(_qq_cfg))} x{_qq_lm:.2f} (1-{_qq.ladder_max(_qq_cfg):g}x) -> ${quantity * current_price:.2f}")
+                # twin_stdev parametrization of the SAME ladder (STDEV_BAND_MULTIPLIER, STDEV_BULL_SLOPE_BOOST_ENABLED/_MULT,
+                # STDEV_SLOPE_LOOKBACK_15M/_1H/_4H/_D). v12_quick_engine.py:14011-14019 multiplies it in AFTER whichever
+                # sizing branch ran, but live only reached it from the BAND_SLOPE_SIZING_V2 branch below, so the vector's
+                # STDEV branch had no live twin. get_scalar is exactly 1.0 at the defaults (2.5 / False / 1.5 / 96 / 168 / 180 / 180).
+                try:
+                    import vec_decisions.twin_stdev as _twin_stdev_s
+                    _twin_sm = _twin_stdev_s.get_scalar(i, is_long, _qq_cfg)
+                    quantity = quantity * _twin_sm
+                    if abs(_twin_sm - 1.0) > 1e-12:
+                        logger.info(f"{position_key} [STDEV_TWIN] x{_twin_sm:.4f} -> ${quantity * current_price:.2f}")
+                except Exception:
+                    pass
             if "STOP_RECLAIM_REENTRY" in str(reason or "").upper():
                 import vec_decisions.stop_reclaim as _srm
                 _sr_m = _srm.size_mult(_qq_cfg, reason)

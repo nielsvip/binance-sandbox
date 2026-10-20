@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T19:20:03Z",
+ "generated_utc": "2026-10-20T19:40:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -14,34 +14,34 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 244,
-    "filled_before_open": 174
+    "filled_today": 246,
+    "filled_before_open": 173
    },
-   "detail": "174 boards filled before the open (244 today)"
+   "detail": "173 boards filled before the open (246 today)"
   },
   {
    "name": "defaults_chain_completed",
    "ok": true,
    "critical": true,
    "measured": {
-    "mac_done_stamp": false,
+    "mac_done_stamp": true,
     "s1_stamp": "{\n \"date\": \"20261020\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-20T18:27:11Z\",\n \"ended\": \"2026-10-20T19:05:22.965947Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,4b,4d,4e,4e,5,6,6b\",\n \"agg\": \"SPREADSHEETS/v15_avg_delta/v15_avg_delta_20261020.xlsx\",\n \"promoted_keys\": [\n  \"ADX_REGIME_FILTER_ENABLED\",\n  \"BB_SQUEEZE_ENTRY_ENABLED\",\n  \"BREAKEVEN_GAIN_EROSION_FILTER_TF\",\n  \"BREAKOUT_RETEST_FILTER_TF\",\n  \"BTC_BREAKO",
     "cat_side_defaults_4_at": "2026-10-20T17:25:56Z",
     "cat_side_age_days": 0.1,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261020=False, s1 stamp {\n \"date\": \"20261020\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-20T18:27:11Z\",\n \"ended\": \"2026-10-20T19:05:22.965947Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 0.1d old"
+   "detail": "mac stamp 20261020=True, s1 stamp {\n \"date\": \"20261020\",\n \"status\": \"DONE\",\n \"started\": \"2026-10-20T18:27:11Z\",\n \"ended\": \"2026-10-20T19:05:22.965947Z\",\n \"steps_ok\": \"1,2,2a,2b,3,4,4c,, cat_side layer 0.1d old"
   },
   {
    "name": "selection_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-20T18:50:58.701504+00:00",
+    "built_at": "2026-10-20T19:31:00.159911+00:00",
     "n": 474,
-    "age_at_open_s": -19259
+    "age_at_open_s": -21660
    },
-   "detail": "built 2026-10-20T18:50:58.701504+00:00 n=474"
+   "detail": "built 2026-10-20T19:31:00.159911+00:00 n=474"
   },
   {
    "name": "apply_report_written",
@@ -49,11 +49,11 @@
    "critical": true,
    "measured": {
     "reports_today": 6,
-    "newest_report": "persym_golive_20261020_refresh_1650.json",
-    "newest_report_at": "2026-10-20T17:01:43Z",
-    "tiers_at": "2026-10-20T17:02:12Z"
+    "newest_report": "persym_golive_20261020.json",
+    "newest_report_at": "2026-10-20T19:35:39Z",
+    "tiers_at": "2026-10-20T19:35:40Z"
    },
-   "detail": "persym_golive_20261020_refresh_1650.json at 2026-10-20T17:01:43Z, tiers 2026-10-20T17:02:12Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
+   "detail": "persym_golive_20261020.json at 2026-10-20T19:35:39Z, tiers 2026-10-20T19:35:40Z \u2014 the apply never finished (no report / stale tiers): the live set is PARTIAL"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 474,
     "exact": 31,
-    "benign_divergence_only": 279,
-    "material_divergence": 163,
+    "benign_divergence_only": 281,
+    "material_divergence": 161,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -121,19 +121,6 @@
       ]
      },
      {
-      "sym_side": "OLED_LONG",
-      "published_at": "2026-10-20T18:03:55Z",
-      "material": 69,
-      "sample": [
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF",
-       "DC_EDGE_SIZING_MAX_MULT"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -173,19 +160,6 @@
       ]
      },
      {
-      "sym_side": "SLB_SHORT",
-      "published_at": "2026-10-20T18:36:34Z",
-      "material": 37,
-      "sample": [
-       "ENTRY_DC_TF",
-       "EXIT_R1_R2_FILTER_TF",
-       "FILTER_EXEMPTIONS",
-       "FIXED_STOP_BUFFER_PCT",
-       "FIXED_STOP_REF_FIELD",
-       "FIXED_STOP_REF_TF"
-      ]
-     },
-     {
       "sym_side": "ACN_LONG",
       "published_at": "2026-10-18T00:05:33Z",
       "material": 36,
@@ -197,10 +171,36 @@
        "DAYTRADE_DC_TARGET_TF",
        "DC_EDGE_SIZING_MIN_MULT"
       ]
+     },
+     {
+      "sym_side": "CRWD_SHORT",
+      "published_at": "2026-10-18T21:33:31Z",
+      "material": 34,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "DC_EDGE_SIZING_ENABLED",
+       "DC_EDGE_SIZING_MAX_MULT"
+      ]
+     },
+     {
+      "sym_side": "SCCO_LONG",
+      "published_at": "2026-10-12T05:33:28Z",
+      "material": 30,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "BB_PULLBACK_GATE_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DISASTER_GUARD_ENABLED",
+       "EMA_DIST_SIZING_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "31 exact, 279 benign-only, 163 with material divergence, 1 with no live row"
+   "detail": "31 exact, 281 benign-only, 161 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 1,
     "stale_pct": 0.5,
-    "median_age_min": 50.1,
+    "median_age_min": 70.0,
     "sample": [
      "ONEUSDT"
     ]
