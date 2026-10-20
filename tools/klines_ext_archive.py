@@ -446,6 +446,324 @@ def verify(name: str) -> int:
     return 0
 
 
+INGEST_TFS = set(BINANCE_INTERVAL) | {"W", "M"}
+REL_TOL = 1e-6
+
+
+def _ingest_rows(p: Path):
+    """(rows, how) for any kline-bearing file of an older copy: .json/.json.gz/.tmp/.bak*; a truncated file is
+    salvaged object by object (every complete {...} that parses), never dropped as 'unreadable'."""
+    import gzip
+    import re
+    raw = p.read_bytes()
+    if p.name.endswith(".gz"):
+        raw = gzip.decompress(raw)
+    try:
+        d = json.loads(raw)
+        return d, "ok"
+    except Exception:
+        out = []
+        for m in re.finditer(rb"\{[^{}]*\}", raw):
+            try:
+                r = json.loads(m.group(0))
+            except Exception:
+                continue
+            if isinstance(r, dict) and r.get("timestamp"):
+                out.append(r)
+        return out, "salvaged" if out else "unreadable"
+
+
+def _ingest_units(p: Path):
+    """[(SYMBOL_TF, rows)] or None when the file carries no kline series; klines_master = {tf: rows} per symbol."""
+    if p.name.endswith(".klines.json.gz"):
+        d, how = _ingest_rows(p)
+        sym = p.name[: -len(".klines.json.gz")]
+        return ([(f"{sym}_{tf}", rows) for tf, rows in d.items() if isinstance(rows, list)] if isinstance(d, dict) else []), how
+    stem = p.name.split(".")[0]
+    if p.name.startswith(("_", ".")) or "_" not in stem or stem.rsplit("_", 1)[-1] not in INGEST_TFS or ".json" not in p.name:
+        return None, "non_kline"
+    d, how = _ingest_rows(p)
+    return [(stem, d if isinstance(d, list) else [])], how
+
+
+def _tsk(t) -> str:
+    return str(t)[:19].replace(" ", "T")
+
+
+def _v(b):
+    try:
+        return tuple(float(b[k]) for k in ("open", "high", "low", "close", "volume"))
+    except Exception:
+        return None
+
+
+def _cls(have, offered) -> str:
+    """same | archive_dominates | copy_dominates | conflict (float32 round-trips, rel <= 1e-6, are the same bar)."""
+    a, b = _v(have), _v(offered)
+    if a is None or b is None:
+        return "same" if a == b else "conflict"
+    if all(abs(x - y) <= REL_TOL * max(abs(x), abs(y), 1e-12) for x, y in zip(a, b)):
+        return "same"
+    if abs(a[0] - b[0]) > REL_TOL * max(abs(a[0]), abs(b[0]), 1e-12):
+        return "conflict"
+    if a[4] >= b[4] and a[1] >= b[1] and a[2] <= b[2]:
+        return "archive_dominates"
+    if b[4] >= a[4] and b[1] >= a[1] and b[2] <= a[2]:
+        return "copy_dominates"
+    return "conflict"
+
+
+def ingest(copies: list[tuple[str, Path]], drive_name: str, apply: bool, floor_gb: float, report: Path | None,
+           conflicts_path: Path | None, only: str | None = None) -> int:
+    """E9 2026-10-20: union older ext-drive kline copies into ONE drive's archive, with a per-copy proof.
+
+    Strictly append-only: a timestamp the archive already holds is NEVER re-valued here (not even by the
+    forming-bar rule of merge_one) — every disagreement is classified and logged for a human. Bars under a
+    gateway/ subdir (USDT-perp bars under USDC names) are never added, only counted. Peers are not read: each
+    copy is named explicitly so its proof is its own. A copy is reclaimable only when, re-run after the apply,
+    new == conflicts == copy_dominates == gateway_new == unreadable == non_kline == 0.
+    Writes stop as soon as the drive would fall below floor_gb; the names left are listed as deferred."""
+    drive = Path("/Volumes") / drive_name
+    if not (os.path.ismount(drive) and os.stat(drive).st_dev != os.stat("/").st_dev):
+        log(f"{drive} is not a real mount — refusing")
+        return 2
+    arch_dir = drive / ARCH_SUBDIR
+    if not arch_dir.is_dir():
+        log(f"{arch_dir} missing — refusing (this mode only grows an existing archive)")
+        return 2
+    t0 = datetime.now(timezone.utc)
+    idx: dict[str, list] = {}
+    per: dict[str, dict] = {}
+    aux: dict[str, list] = {}
+    for cname, root in copies:
+        st = per.setdefault(cname, {"root": str(root), "files": 0, "kline_files": 0, "non_kline_files": 0, "salvaged_files": 0,
+                                    "unreadable_files": 0, "bytes": 0, "series": 0, "bars": 0, "present_same": 0,
+                                    "present_archive_dominates": 0, "copy_dominates": 0, "conflicts": 0, "new": 0,
+                                    "new_added": 0, "new_via_other_copy": 0, "new_deferred": 0, "gateway_new_held": 0,
+                                    "names_with_new": 0})
+        if not (root.is_dir() and os.path.ismount(Path("/Volumes") / root.parts[2]) and os.stat(root).st_dev != os.stat("/").st_dev):
+            st["verdict"] = "absent_or_phantom"
+            continue
+        for p in sorted(root.rglob("*")):
+            if not p.is_file():
+                continue
+            st["files"] += 1
+            st["bytes"] += p.stat().st_size
+            stem = p.name.split(".")[0]
+            if p.name.endswith("._pinned.json"):
+                try:
+                    mine = {str(x) for x in json.loads(p.read_text())}
+                    tp = arch_dir / p.name
+                    theirs = {str(x) for x in json.loads(tp.read_text())} if tp.exists() else set()
+                    left = len(mine - theirs)
+                except Exception:
+                    left = -1
+                st["pinned_files"] = st.get("pinned_files", 0) + 1
+                if left:
+                    st["pinned_not_in_archive"] = st.get("pinned_not_in_archive", 0) + (left if left > 0 else 1)
+                    aux.setdefault(cname, []).append(str(p.relative_to(root)))
+                continue
+            if p.name.endswith(".klines.json.gz") or (".json" in p.name and "_" in stem and stem.rsplit("_", 1)[-1] in INGEST_TFS and not p.name.startswith(("_", "."))):
+                st["kline_files"] += 1
+                if p.name.endswith(".klines.json.gz"):
+                    idx.setdefault(f"__master__{p.name}", []).append((cname, p))
+                else:
+                    idx.setdefault(stem, []).append((cname, p))
+            else:
+                st["non_kline_files"] += 1
+                aux.setdefault(cname, []).append(str(p.relative_to(root)))
+    # expand klines_master files into per-name entries
+    # (tf list from the copy's own manifest.jsonl when present, so 2.3 GB of gz is not decoded twice nor held in RAM)
+    mtfs: dict = {}
+    for key in [k for k in idx if k.startswith("__master__")]:
+        for cname, p in idx.pop(key):
+            if str(p.parent) not in mtfs:
+                mtfs[str(p.parent)] = {}
+                try:
+                    for line in (p.parent / "manifest.jsonl").read_text().splitlines():
+                        r = json.loads(line)
+                        mtfs[str(p.parent)][r["sym"]] = list((r.get("tfs") or {}).keys())
+                except Exception:
+                    pass
+            sym = p.name[: -len(".klines.json.gz")]
+            tfs = mtfs[str(p.parent)].get(sym)
+            if tfs is None:
+                try:
+                    units, how = _ingest_units(p)
+                    tfs = [n.rsplit("_", 1)[-1] for n, _ in (units or [])]
+                except Exception:
+                    per[cname]["unreadable_files"] += 1
+                    continue
+            for tf in tfs:
+                idx.setdefault(f"{sym}_{tf}", []).append((cname, p, tf))
+    mcache: dict = {}
+    order = {c: i for i, (c, _) in enumerate(copies)}
+    man_path = arch_dir / "_manifest.json"
+    try:
+        manifest = json.loads(man_path.read_text())
+    except Exception:
+        manifest = {}
+    cfh = open(conflicts_path, "a") if conflicts_path else None
+    stopped = None
+    totals = {"names": 0, "names_grown": 0, "names_created": 0, "bars_added": 0, "bytes_written_delta": 0, "refused": 0, "deferred_names": 0}
+    deferred: list = []
+    free_start = free_gb(drive)
+    names = sorted(idx)
+    if only:
+        names = [n for n in names if n == only]
+    for name in names:
+        totals["names"] += 1
+        target = arch_dir / f"{name}.json"
+        existing = load_bars(target) if target.exists() else []
+        have = {_tsk(b["timestamp"]): b for b in existing}
+        suf = str(existing[0]["timestamp"])[19:] if existing else ".000000Z"
+        pending: dict = {}
+        pending_src: dict = {}
+        bad: list = []
+        ents = sorted(idx[name], key=lambda e: order[e[0]])
+        for ent in ents:
+            cname, p = ent[0], ent[1]
+            st = per[cname]
+            if len(ent) == 3:
+                if str(p) not in mcache:
+                    if len(mcache) >= 3:
+                        mcache.pop(next(iter(mcache)))
+                    try:
+                        d, _how = _ingest_rows(p)
+                    except Exception:
+                        d = None
+                    mcache[str(p)] = d if isinstance(d, dict) else {}
+                    if not mcache[str(p)]:
+                        st["unreadable_files"] += 1
+                rows, how = mcache[str(p)].get(ent[2]) or [], "ok"
+            else:
+                try:
+                    units, how = _ingest_units(p)
+                    rows = units[0][1] if units else []
+                except Exception:
+                    st["unreadable_files"] += 1
+                    continue
+                if how == "salvaged":
+                    st["salvaged_files"] += 1
+                elif how == "unreadable" and p.stat().st_size > 2:
+                    st["unreadable_files"] += 1
+            st["series"] += 1
+            gw = "gateway" in p.relative_to(Path(st["root"])).parts
+            seen_here = set()
+            had_new = False
+            for b in rows:
+                if not isinstance(b, dict) or not b.get("timestamp"):
+                    continue
+                k = _tsk(b["timestamp"])
+                if k in seen_here:
+                    continue
+                seen_here.add(k)
+                st["bars"] += 1
+                if k in have:
+                    c = _cls(have[k], b)
+                    st[{"same": "present_same", "archive_dominates": "present_archive_dominates"}.get(c, "copy_dominates" if c == "copy_dominates" else "conflicts")] += 1
+                    if c in ("copy_dominates", "conflict"):
+                        bad.append({"ts": k, "kind": c, "copy": cname, "file": str(p), "kept": _v(have[k]), "offered": _v(b)})
+                    continue
+                st["new"] += 1
+                had_new = True
+                if gw:
+                    st["gateway_new_held"] += 1
+                    continue
+                if k in pending:
+                    c = _cls(pending[k], b)
+                    if c == "same" or c == "archive_dominates":
+                        st["new_via_other_copy"] += 1
+                    else:
+                        st["copy_dominates" if c == "copy_dominates" else "conflicts"] += 1
+                        bad.append({"ts": k, "kind": "inter_copy_" + c, "copy": cname, "file": str(p), "kept": _v(pending[k]), "offered": _v(b), "kept_from": pending_src[k]})
+                    continue
+                pending[k] = dict(b, timestamp=k + suf)
+                pending_src[k] = cname
+            st["names_with_new"] += int(had_new)
+        if bad and cfh:
+            cfh.write(json.dumps({"name": name, "archive": str(target), "n": len(bad), "examples": bad[:20]}) + "\n")
+        if not pending:
+            continue
+        # report attribution: first copy to offer a new bar is the one it is added from
+        add_by = {}
+        for k, c in pending_src.items():
+            add_by[c] = add_by.get(c, 0) + 1
+        merged = dict(have)
+        merged.update(pending)
+        out = [merged[k] for k in sorted(merged)]
+        blob = json.dumps(out, separators=(",", ":"))
+        old_sz = target.stat().st_size if target.exists() else 0
+        totals["projected_bytes_delta"] = totals.get("projected_bytes_delta", 0) + len(blob) - old_sz
+        totals["projected_bars_added"] = totals.get("projected_bars_added", 0) + len(pending)
+        if stopped or not apply:
+            for c, n in add_by.items():
+                per[c]["new_added" if not apply else "new_deferred"] += n
+            if apply:
+                deferred.append(name)
+            continue
+        if free_gb(drive) - (len(blob) - old_sz) / 1e9 < floor_gb:
+            stopped = f"{name}: free {free_gb(drive):.2f} GB - {len(blob) - old_sz} B would cross the {floor_gb} GB floor"
+            log(f"  STOP writes — {stopped}")
+            for c, n in add_by.items():
+                per[c]["new_deferred"] += n
+            deferred.append(name)
+            continue
+        if existing and (len(out) < len(existing) or _tsk(out[0]["timestamp"]) > _tsk(existing[0]["timestamp"]) or _tsk(out[-1]["timestamp"]) < _tsk(existing[-1]["timestamp"])):
+            totals["refused"] += 1
+            continue
+        tmp = target.with_suffix(".json.tmp")
+        try:
+            tmp.write_text(blob)
+            if len(load_bars(tmp)) != len(out):
+                tmp.unlink(missing_ok=True)
+                totals["refused"] += 1
+                log(f"  REFUSED {name}: short temp write")
+                continue
+            os.replace(tmp, target)
+        except Exception as e:
+            tmp.unlink(missing_ok=True)
+            totals["refused"] += 1
+            log(f"  REFUSED {name}: {e}")
+            continue
+        for c, n in add_by.items():
+            per[c]["new_added"] += n
+        totals["bars_added"] += len(pending)
+        totals["bytes_written_delta"] += len(blob) - old_sz
+        totals["names_created" if not existing else "names_grown"] += 1
+        mrec = manifest.get(name) or {}
+        mrec.update({"bars": len(out), "first": out[0]["timestamp"], "last": out[-1]["timestamp"]})
+        mrec.setdefault("srcs", {})
+        manifest[name] = mrec
+        if (totals["names_grown"] + totals["names_created"]) % 200 == 0:
+            man_path.write_text(json.dumps(manifest))
+    if apply and (totals["names_grown"] or totals["names_created"]):
+        man_path.write_text(json.dumps(manifest))
+    if cfh:
+        cfh.close()
+    totals["deferred_names"] = len(deferred)
+    for c, st in per.items():
+        blockers = {k: st[k] for k in ("new", "conflicts", "copy_dominates", "gateway_new_held", "unreadable_files", "non_kline_files", "pinned_not_in_archive") if st.get(k)}
+        if apply:
+            blockers.pop("new", None)
+            left = st["new"] - st["new_added"] - st["new_via_other_copy"] - st["gateway_new_held"]
+            if left:
+                blockers["new_not_added"] = left
+        st["blockers"] = blockers
+        st.setdefault("verdict", "PROVEN — archive holds every bar, no disagreement" if not blockers else "HOLD")
+        st["gb"] = round(st["bytes"] / 1e9, 3)
+        st["non_kline_examples"] = aux.get(c, [])[:15]
+    doc = {"ts": t0.strftime("%Y-%m-%dT%H:%M:%SZ"), "end": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "mode": "apply" if apply else "dry_run",
+           "drive": drive_name, "archive": str(arch_dir), "floor_gb": floor_gb, "free_gb_start": round(free_start, 2), "free_gb_end": round(free_gb(drive), 2),
+           "stopped": stopped, "totals": totals, "copies": per, "deferred_names": deferred}
+    log(json.dumps({k: v for k, v in doc.items() if k not in ("copies", "deferred_names")}))
+    for c, st in per.items():
+        log(f"  {c}: " + json.dumps({k: v for k, v in st.items() if k != "non_kline_examples"}))
+    if report:
+        report.write_text(json.dumps(doc, indent=1))
+    return 0
+
+
 _LOCK_FH = None
 
 
@@ -477,7 +795,20 @@ def main() -> int:
     ap.add_argument("--pause", type=float, default=0.25, help="--deepen: seconds between requests")
     ap.add_argument("--budget", type=float, default=0, help="--deepen: stop after N seconds (resumable)")
     ap.add_argument("--force", action="store_true", help="re-merge even when the manifest says sources are unchanged (use after a merge-rule change)")
+    ap.add_argument("--ingest-from", action="append", default=[], help="NAME=PATH older copy to union into --drive's archive (repeatable, priority order)")
+    ap.add_argument("--drive", default="E3T", help="--ingest-from: the ONE drive whose archive grows")
+    ap.add_argument("--floor-gb", type=float, default=10.0, help="--ingest-from: never let the drive fall below this")
+    ap.add_argument("--dry-run", action="store_true", help="--ingest-from: count only, write nothing")
+    ap.add_argument("--report", default=None, help="--ingest-from: per-copy proof JSON")
+    ap.add_argument("--conflicts-out", default=None, help="--ingest-from: per-name disagreement jsonl (never the drive)")
     a = ap.parse_args()
+    if a.ingest_from:
+        copies = [(s.split("=", 1)[0], Path(s.split("=", 1)[1])) for s in a.ingest_from]
+        if not a.dry_run and not take_lock():
+            log("another klines archive writer holds the lock — exiting")
+            return 3
+        return ingest(copies, a.drive, not a.dry_run, a.floor_gb, Path(a.report) if a.report else None,
+                      Path(a.conflicts_out) if a.conflicts_out else None, a.symbol)
     _ro = bool(getattr(a, 'coverage', False) or getattr(a, 'verify', False) or getattr(a, 'dry_run', False))
     if not _ro and not take_lock():
         log("another klines archive writer holds the lock — exiting; the next tick picks this up")
