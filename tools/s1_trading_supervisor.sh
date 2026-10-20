@@ -83,7 +83,13 @@ stop_account_traders() {
 #     never needed was for the starts to be serial. Children stay in this unit's cgroup, so `systemctl stop` and
 #     the _shutdown trap are unaffected.
 #   * inside the stocks window stocks are started FIRST. Crypto loses nothing by waiting one lap; stocks lose the open.
-START_INFLIGHT=${S1_SUP_MAX_START_INFLIGHT:-3}
+# 2026-10-20 ALL EIGHT AT ONCE (USER: "even macbook can start all 8 accounts simultaneously so s1 can do it twice
+# as fast in <30 seconds ... if it kicks in after 2 min it has to be trading before the 3rd min passes" and
+# "NEVER EVER EVER AGAIN CAN WE HAVE 3 MINUTES OR MORE WITHOUT TRADING ON ANY ACCOUNT").
+# 3 in flight meant the 8 accounts needed 3 laps; with the 20 s retry and the positions gate that put the last
+# account minutes past the takeover. The Mac starts all 8 concurrently, so S1 has no reason not to. The single-flight
+# pgrep guard per account still prevents a duplicate start — serialisation was never what protected anything.
+START_INFLIGHT=${S1_SUP_MAX_START_INFLIGHT:-8}
 # `pgrep -fc` prints 0 AND exits 1 on no match, so `pgrep -fc ... || echo 0` yields TWO lines and the
 # arithmetic test below dies on "0\n0". Piping through wc -l always prints exactly one integer and always exits 0.
 _starts_in_flight() { pgrep -f "s1_failover_start\.sh" 2>/dev/null | wc -l | tr -d ' '; }

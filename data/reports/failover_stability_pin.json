@@ -1,11 +1,11 @@
 {
- "generated_utc": "2026-10-20T16:32:02Z",
+ "generated_utc": "2026-10-20T16:38:02Z",
  "apply": true,
  "lease": {
   "holder": "mac",
   "pin": "mac",
   "pin_source": "s1:lease.json",
-  "gen": 79,
+  "gen": 81,
   "venues": null,
   "reason": "manual force-mac"
  },
@@ -15,12 +15,12 @@
  "stable_needed_s": 900.0,
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 106s ago (ez_positions_watchdog, tradier_manage_tra, tradier_manage_trb, tradier_manage_trc))",
-  "load 14.21/core > 4.0 (warning only)"
+  "manager restart churn (newest marker 206s ago (tradier_manage_tra, tradier_manage_trb, tradier_manage_trc))",
+  "load 12.59/core > 4.0 (warning only)"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 724,
+  "readiness_age_s": 1084,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 0,
@@ -28,10 +28,10 @@
    "median_age_min": 20.0,
    "sample": []
   },
-  "churn": "newest marker 106s ago (ez_positions_watchdog, tradier_manage_tra, tradier_manage_trb, tradier_manage_trc)",
-  "load_per_core": 14.21,
+  "churn": "newest marker 206s ago (tradier_manage_tra, tradier_manage_trb, tradier_manage_trc)",
+  "load_per_core": 12.59,
   "warnings": [
-   "load 14.21/core > 4.0 (warning only)"
+   "load 12.59/core > 4.0 (warning only)"
   ],
   "s1": "s1-pub snapshot 0/199 stale (0.0%); s1-pub 0 STALE_INDICATORS refusals in the last 10 min, 1 ez_manage running"
  },
@@ -40,8 +40,8 @@
   "applied": true,
   "command": "force-s1",
   "rc": 0,
-  "out": "[2026-10-20T16:32:17Z] ALERT LEASE_PIN {\"pin\": \"s1\", \"holder\": \"mac\", \"gen\": 79}\n{\n \"by\": \"niels\",\n \"gen\": 79,\n \"holder\": \"mac\",\n \"pin\": \"s1\",\n \"reason\": \"manual force-mac\",\n \"since\": \"2026-10-20T16:2"
+  "out": "[2026-10-20T16:38:17Z] ALERT LEASE_PIN {\"pin\": \"s1\", \"holder\": \"mac\", \"gen\": 81}\n{\n \"by\": \"niels\",\n \"gen\": 81,\n \"holder\": \"mac\",\n \"pin\": \"s1\",\n \"reason\": \"manual force-mac\",\n \"since\": \"2026-10-20T16:3"
  },
- "last_action_at": 1792513922.588896,
+ "last_action_at": 1792514282.667236,
  "ready_since_epoch": null
 }

@@ -39,16 +39,33 @@ fi
 # S1's OWN position writer has written this account since the takeover AND its held rows match a fresh broker read
 # (tools/live_failover_state_check.py --gate: no phantom, no missing row, qty equal, opened_at present). Up to
 # LF_POSITIONS_READY_S (240 s); otherwise REFUSED (exit 4) and the supervisor retries in 20 s.
+# 2026-10-20 THE GATE MAY DELAY A TAKEOVER, IT MAY NEVER CANCEL ONE.
+# USER: "NEVER EVER EVER AGAIN CAN WE HAVE 3 MINUTES OR MORE WITHOUT TRADING ON ANY ACCOUNT" / "it already has the
+# latest indicators and positions from macbook just before it went down so if it kicks in after 2 min it has to be
+# trading before the 3rd min passes".
+# MEASURED 2026-10-20 16:20:44/46Z: this gate REFUSED stocks:trb and trc after 240 s ("S1 positions not broker-true
+# ... NOT_READY trb broker_held=8"), the supervisor retried every 20 s, and stocks traded on NEITHER host for 94
+# minutes during market hours. A refusal does not make the system safe — it makes it dead.
+# TWO CHANGES: (1) the budget is 25 s, not 240 s, with a 5 s poll, so the gate fits inside the 3-minute rule even
+# when the takeover itself starts at the 2-minute mark; (2) on timeout it PROCEEDS and logs
+# POSITIONS_UNVERIFIED_PROCEEDING instead of returning failure, because S1 already holds the Mac's pushed positions
+# and indicators from just before it went down. The state check still runs and its verdict is still recorded, so a
+# phantom/missing row is visible in the log and to the audit — it simply no longer stops trading.
+# LF_POSITIONS_READY_STRICT=1 restores the old refuse-on-timeout behaviour for a deliberate test.
 positions_ready(){
-    local waited=0 limit="${LF_POSITIONS_READY_S:-240}" out
+    local waited=0 limit="${LF_POSITIONS_READY_S:-25}" out
     while [ "$waited" -le "$limit" ]; do
         out=$($PY tools/live_failover_state_check.py --gate --account "$ACCT" 2>&1 | tail -1)
         if [[ "$out" == READY* ]]; then echo "[$(ts)] [FAILOVER_START] POSITIONS_READY $MODE:$ACCT after ${waited}s: $out" >> "$LOG/s1_failover.log"; return 0; fi
-        sleep 10
-        waited=$((waited + 10))
+        sleep 5
+        waited=$((waited + 5))
     done
-    echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 positions not broker-true after ${limit}s: $out" >> "$LOG/s1_failover.log"
-    return 1
+    if [ "${LF_POSITIONS_READY_STRICT:-0}" = "1" ]; then
+        echo "[$(ts)] [FAILOVER_START] REFUSED $MODE:$ACCT — S1 positions not broker-true after ${limit}s (STRICT): $out" >> "$LOG/s1_failover.log"
+        return 1
+    fi
+    echo "[$(ts)] [FAILOVER_START] POSITIONS_UNVERIFIED_PROCEEDING $MODE:$ACCT after ${limit}s — starting anyway so the account is not left untraded: $out" >> "$LOG/s1_failover.log"
+    return 0
 }
 SKIP=" ${FAILOVER_SKIP_FEEDS:-} "
 echo "[$(ts)] [FAILOVER_START] takeover $MODE:$ACCT with live code age ${SYNC_AGE} (Mac push every 15min)" >> "$LOG/s1_failover.log"

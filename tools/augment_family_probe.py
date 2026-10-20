@@ -73,13 +73,15 @@ def _install_frozen_npz(frozen_dir: Path, symbol: str, published_md5: str = ""):
     dst = frozen_dir / f"{symbol}.npz"
     if not dst.exists():
         shutil.copy2(src, dst)
-    orig_load = V.load_npz
+    orig_load = getattr(V, "_afp_orig_load_npz", None) or V.load_npz  # re-install safe: always wrap the TRUE original
+    V._afp_orig_load_npz = orig_load
 
     def load_npz(mode, symbols, start_date, npz_dir=""):
         return orig_load(mode, symbols, start_date, npz_dir=str(frozen_dir))
 
     V.load_npz = load_npz
-    orig_start = E._frozen_npz_start_date
+    orig_start = getattr(E, "_afp_orig_start", None) or E._frozen_npz_start_date
+    E._afp_orig_start = orig_start
 
     def start_date(sym, window_days, offset_days=0):
         from datetime import datetime, timezone

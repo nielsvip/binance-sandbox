@@ -64,9 +64,12 @@ def main():
         Vold = importlib.util.module_from_spec(spec)
         sys.modules["v12_quick_engine"] = Vold
         spec.loader.exec_module(Vold)
-        Vold.load_npz = Vnew.load_npz  # same frozen-NPZ loader hook
+        from tools.opt import evaluate_v12 as _E
+
+        _E._STORES.clear()
         for ss in sss:
             prog, ov = _load_set(a.progress_dir, ss)
+            P._install_frozen_npz(Path(a.frozen_root).expanduser() / ss, ss.rsplit("_", 1)[0], str((prog.get("npz_id") or {}).get("md5") or ""))
             r = evaluate_month(ss, ov, include_ledger=True, window_days=30)
             old = (_ledger_digest(r.get("execution_ledger") or []), round(float(r.get("gain_pct") or 0), 6), len(r.get("execution_ledger") or []))
             out["neutrality"][ss] = {"current": cur[ss], "old": old, "identical": cur[ss] == old}
