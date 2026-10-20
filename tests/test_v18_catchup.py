@@ -12,9 +12,9 @@ SRC = (ROOT / "v15_pilot.py").read_text()
 
 
 def test_profile_forced_at_import_in_a_fresh_process():
-    code = "import os; os.environ['V15_ALLOW_MAC']='1'; os.environ['V18_CATCHUP']='1'; os.environ['V15_V17_ROUNDS']='1'; os.environ['V15_FOCUS']='1'; import sys; sys.path.insert(0, %r); import v15_pilot as P; print(P._V18_CATCHUP, P.V17_ON, os.environ['V15_FOCUS'], os.environ['V15_ENDGAME_S'], os.environ['V15_DIAG_REPAIR_S'], os.environ['V15_SKIP_365D_AT_DONE'], os.environ['V18_ABLATION'], os.environ['V18_WINNERS_K'], P._HOLDOUT['days'])" % str(ROOT)
+    code = "import os; os.environ['V15_ALLOW_MAC']='1'; os.environ['V18_CATCHUP']='1'; os.environ['V15_V17_ROUNDS']='1'; os.environ['V15_FOCUS']='1'; os.environ['V15_HOLDOUT_DAYS']='7'; import sys; sys.path.insert(0, %r); import v15_pilot as P; print(P._V18_CATCHUP, P.V17_ON, os.environ['V15_FOCUS'], os.environ['V15_ENDGAME_S'], os.environ['V15_DIAG_REPAIR_S'], os.environ['V15_SKIP_365D_AT_DONE'], os.environ['V18_ABLATION'], os.environ['V18_WINNERS_K'], P._HOLDOUT['days'])" % str(ROOT)
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300, cwd=str(ROOT)).stdout.strip().splitlines()[-1]
-    assert out == "True False 0 0 0 1 0 20 0.0", out
+    assert out == "True False 0 0 0 1 0 20 7.0", out  # holdout kept: catch-up cuts search, never measurement
 
 
 def test_off_by_default_in_a_fresh_process():

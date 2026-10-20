@@ -295,11 +295,12 @@ GATE_FLAGS = _load_gate_flags()
 # board = best-start + winners top-20 + the MUST set capped at V18_MUST_CATCHUP_MAX (linknet-ordered, the rest carried to the
 # next board of the sym_side, never dropped) + a NAKED-only main pass with the floor / untried draw (no yellows except MUST
 # cells) + exit repair only on a large family loss; no V17 pinpoint (surgeon / focus / combo / 365D step), no ablation, no
-# endgame / diagnose / final filter recheck, no 365D-at-done, no holdout. Forced here (before every module-level read) so it
-# overrides the launch env; publish gates unchanged; manifest `mode: catchup`.
+# endgame / diagnose / final filter recheck, no 365D-at-done. Forced here (before every module-level read) so it overrides the
+# launch env; publish gates unchanged; manifest `mode: catchup`. Holdout is NOT touched (coordinator 2026-10-20: catch-up may
+# cut search, never measurement): V15_HOLDOUT_DAYS keeps its launch value so fit/OOS stay comparable with the slow arm.
 _V18_CATCHUP = os.environ.get("V18_CATCHUP", "0") == "1"
 if _V18_CATCHUP:
-    for _ck_k, _ck_v in (("V15_V17_ROUNDS", "0"), ("V15_FOCUS", "0"), ("V15_ENDGAME_S", "0"), ("V15_DIAG_REPAIR_S", "0"), ("V15_SKIP_365D_AT_DONE", "1"), ("V15_HOLDOUT_DAYS", "0"), ("V18_ABLATION", "0"), ("V18_WINNERS_K", os.environ.get("V18_CATCHUP_WINNERS_K", "20")), ("V15_RED_RETRY_S", "0")):
+    for _ck_k, _ck_v in (("V15_V17_ROUNDS", "0"), ("V15_FOCUS", "0"), ("V15_ENDGAME_S", "0"), ("V15_DIAG_REPAIR_S", "0"), ("V15_SKIP_365D_AT_DONE", "1"), ("V18_ABLATION", "0"), ("V18_WINNERS_K", os.environ.get("V18_CATCHUP_WINNERS_K", "20")), ("V15_RED_RETRY_S", "0")):
         os.environ[_ck_k] = _ck_v
 try:  # E4 2026-10-20: V18 planner helpers (identity settlement, io throttle, ledger write-back); missing module = all three OFF
     from tools import v15_v18_planner as _V18P

@@ -1,21 +1,21 @@
 {
- "now": "2026-10-20T17:02:42.876367+00:00",
+ "now": "2026-10-20T18:02:44.341803+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 1558,
+ "n_exit_rows": 1556,
  "last_exit_ts": "2026-10-20T12:05:55.388962+00:00",
  "n_leaks": 1,
  "n_gate_on": 160,
  "n_ungated": 0,
  "n_safety": 0,
- "n_unmapped": 233,
+ "n_unmapped": 232,
  "n_unverified": 79,
- "since": "2026-10-18T17:02:42.876367+00:00",
+ "since": "2026-10-18T18:02:44.341803+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 52,
+  "CLOSE": 51,
   "REDUCE": 66,
   "OPEN": 967
  },
- "native_rows": 473,
+ "native_rows": 472,
  "unverified_by_family": {
   "QUICK_REDUCE_SCALP (ABLATION_DISABLE_SCALP_GUARD=False)": 17,
   "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 31,
@@ -52,7 +52,6 @@
   "WT_EXHAUST_mom4h=EXHAUST_UP_1h=IMPULSE": 2,
   "VEL_EXIT_v4h-9.20": 2,
   "BB_TAKE_1h_g4.33": 2,
-  "BB_TAKE_1h_g5.70": 1,
   "VEL_EXIT_v4h-2.91": 1,
   "VEL_EXIT_v4h-7.05_g1.14": 1,
   "VEL_EXIT_v4h-7.05_g1.19": 1,
@@ -76,7 +75,7 @@
   "QUICK_WT_CROSS_EXIT_1h_bear_wt1=34.1_w": 1
  },
  "actions": {
-  "CLOSE": 293,
+  "CLOSE": 291,
   "REDUCE": 245,
   "OPEN": 967,
   "SCALP_REDUCE": 17,
