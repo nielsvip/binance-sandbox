@@ -43,6 +43,8 @@ IND = ROOT / "backtest_v8" / "indicators"
 INBOX = Path(os.environ.get("NPZ_BAR_INBOX", str(ROOT / "data" / "npz_bar_inbox")))
 DONE = INBOX / "applied"
 REJECTED = INBOX / "rejected"
+# 2026-10-20: hole-blocked bars are filed here instead of being re-read every cycle (see HOLE_LEFT_TO_REFRESHER).
+DEFERRED = INBOX / "deferred"
 REPORT = ROOT / "data" / "reports" / "npz_bar_ingest.json"
 BAR = 900
 
@@ -254,6 +256,8 @@ def self_lock():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--hole-defer-bars", type=int, default=int(os.environ.get("NPZ_BAR_HOLE_DEFER_BARS", "2")),
+                    help="file a hole-blocked staged bar into deferred/ when more than this many of its own bars are missing (0 = never defer)")
     ap.add_argument("--max-age-h", type=float, default=float(os.environ.get("NPZ_BAR_MAX_AGE_H", "72")),
                     help="sanity bound only. A STOCK's latest bar is legitimately hours old (the 20:00Z session "
                          "close) and over a weekend ~65 h, so this must not be tight: correctness comes from the "
@@ -362,6 +366,19 @@ def main():
         if hole:
             bump("HOLE_LEFT_TO_REFRESHER")
             skipped.append({"symbol": sym, "ts": ts, "why": f"{len(hole)} of its own bars sit between {last} and {ts}"})
+            # 2026-10-20 A HOLE-BLOCKED BAR MUST BE FILED ASIDE, exactly as NO_NPZ already is above and for the same
+            # reason that comment gives ("leaving them would re-read and re-report the same files every cycle").
+            # MEASURED 2026-10-20: 748 hole-blocked bars across 15 symbols had accumulated and every 2-minute cycle
+            # re-read all of them, refused all of them, and re-took those symbols' locks to do it — while the only
+            # thing that CAN close a hole, tools/npz_bar_refresh.py, needs those same locks. A targeted refresh of the
+            # 19 stuck NPZs returned LOCKED_SYMBOL on 8 of them, held by the ingest run that was busy refusing their
+            # bars. That is a live-lock: the ingest locks the symbol in order to say "not mine", and the repair can
+            # never get in. 12 of the 19 are live-traded, stuck 115-2,023 bars behind.
+            # Filing to deferred/ loses nothing: a bar the refresher has since passed becomes ALREADY_HAVE, and the
+            # file is still on disk for inspection. Only bars whose hole is WIDER than --hole-defer-bars are filed, so
+            # a one-bar pipeline hiccup still gets its normal retry next cycle.
+            if a.apply and len(hole) > a.hole_defer_bars:
+                claim(f, DEFERRED)
             return
         if not a.apply:
             bump("WOULD_APPLY")

@@ -224,6 +224,8 @@ def run_store(a):
     events as the logs. Context = (sym_side, base_set_id, window, offset, bh, bars). v17_priors_mine rule: two rows of one context
     whose sets differ in exactly ONE key: X = P + {S: b} is a naked eval of S=b with the default in force = P's value of S (the base
     set's value, P does not override S); D = X + {F: o} with F=o a yellow of S's tab is that row's cell, marginal = g(D) - g(X).
+    P counts as the default in force only when it is a CHAIN state (>= --chain-min-children one-key children measured on it, the
+    pilot's sweep pattern); pairs over probe parents are repairs, not default-relative, and are dropped and counted.
     Read-only; grouped in memory per shard; only rows with ts in [--ts-from, --ts-to] (the rows whose source logs no longer exist)."""
     import sqlite3
     sys.path.insert(0, str(HERE))
@@ -322,6 +324,9 @@ def run_store(a):
                     else:
                         nakeds.append((P_fs, X_fs, it))
             for P_fs, X_fs, it in nakeds:
+                if len(children[P_fs]) < a.chain_min_children:
+                    cnt[f"{cs}:pairs_dropped_probe_parent"] += 1
+                    continue
                 P, X = g[P_fs], g[X_fs]
                 sw, k = keyof(it)
                 if not P[2]:
@@ -359,6 +364,10 @@ def main(argv=None):
     ap.add_argument("--store", help="experience store dir: read native rows instead of delta logs (run_store)")
     ap.add_argument("--ts-from", type=float, default=0.0)
     ap.add_argument("--ts-to", type=float, default=9e12)
+    ap.add_argument("--chain-min-children", type=int, default=100,
+                    help="store: a parent set is a CHAIN state (the default in force) only when >= this many one-key children were measured on it; "
+                         "calibrated 2026-10-20: CRYPTO_LONG pairs over parents with 100+ children are positive 1.93%% (logs, chain-relative: 1.84%%), "
+                         "over parents with 1 / 2-4 / 5-19 / 20-99 children 63% / 27% / 15% / 12% (repairs of probes, not default-relative)")
     ap.add_argument("--host", required=True)
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--ctx-map")

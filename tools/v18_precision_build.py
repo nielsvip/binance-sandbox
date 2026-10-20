@@ -252,7 +252,7 @@ def load_cat_side(cs, bolds):
             s = ev.get("s")
             if e == "board":
                 bi = boards(ev["b"])
-                board_meta[bi] = {"s": s, "t": ev.get("t"), "bh": ev.get("bh"), "ti": ev.get("ti"), "rd": ev.get("rd")}
+                board_meta[bi] = {"s": s, "t": ev.get("t"), "bh": ev.get("bh"), "ti": ev.get("ti"), "rd": ev.get("rd"), "nat": bool(ev.get("nat"))}
                 continue
             if e == "id":
                 k = ev.get("k")
@@ -378,7 +378,7 @@ def syn_stats(lst):
 
 
 def regime_cuts(board_meta):
-    bh = np.array([m["bh"] for m in board_meta.values() if m.get("bh") is not None], float)
+    bh = np.array([m["bh"] for m in board_meta.values() if m.get("bh") is not None and not m.get("nat")], float)
     if len(bh) < 10:
         return None
     return [float(x) for x in np.quantile(bh, [0.2, 0.4, 0.6, 0.8])]
@@ -433,6 +433,8 @@ def bh_from_klines(sym_side, t, cs):
 def fill_bh(cs, board_meta):
     err = []
     for m in board_meta.values():
+        if m.get("nat"):
+            continue
         if m.get("bh") is not None:
             v = bh_from_klines(m["s"], m.get("t"), cs)
             if v is not None:
@@ -440,6 +442,8 @@ def fill_bh(cs, board_meta):
             m["bh_src"] = "BOARD_CTX"
     filled = 0
     for m in board_meta.values():
+        if m.get("nat"):
+            continue
         if m.get("bh") is None:
             v = bh_from_klines(m["s"], m.get("t"), cs)
             if v is not None:
@@ -717,6 +721,8 @@ def build_cs(cs, a):
     for i in np.nonzero(negmask)[0]:
         ck = R["ck"][i]
         sw = keys.names[R["key"][i]].partition("=")[0]
+        if ck == "NAT":
+            ck = "B" if R["cv_bold"][i] == 1 else "Z"
         if ck == "P":
             cls = "inherent:promoted_on_board"
         elif ck in ("Z", "NB", "A"):
@@ -733,7 +739,8 @@ def build_cs(cs, a):
     # ---------------- forward persistence
     boards_by_sym = collections.defaultdict(list)
     for bi, m in L["board_meta"].items():
-        boards_by_sym[m["s"]].append((m.get("t") or "", bi))
+        if not m.get("nat"):
+            boards_by_sym[m["s"]].append((m.get("t") or "", bi))
     nxt = {}
     for s, lst in boards_by_sym.items():
         lst.sort()
@@ -1171,7 +1178,7 @@ def build_cs(cs, a):
                                "in_board_switch_x_filter": sum(len(v) for v in L["syn"].values()),
                                "ff_pairs_n_syms_ge2": len(ff_stats), "ff_pairs_ci_excludes_0": sum(1 for v in ff_stats.values() if v["ci"][0] is not None and (v["ci"][0] > 0 or v["ci"][1] < 0)),
                                "sf_pairs_ci_excludes_0": sum(1 for kk, d in syn_row.items() for f, lst in d.items() if (lambda st_: st_["ci"][0] is not None and (st_["ci"][0] > 0 or st_["ci"][1] < 0))(syn_stats(lst)))}, "chain_kind_counts": dict(collections.Counter(R["ck"].tolist())),
-                  "loader": dict(L["cnt"]), "n_boards": len(L["board_meta"]), "n_sym_sides": len(syms.names), "universe": len(uni),
+                  "loader": dict(L["cnt"]), "n_boards": sum(1 for m in L["board_meta"].values() if not m.get("nat")), "n_native_contexts": sum(1 for m in L["board_meta"].values() if m.get("nat")), "n_sym_sides": len(syms.names), "universe": len(uni),
                   "exit_shift_file": xs_file, "build_secs": round(time.time() - t0, 1)})
     return {"rows": rows_out, "switches": switches, "pilot": pilot, "positives": pos_doc, "stats": stats, "tidx": tidx, "L": L, "E": E, "EP": EP}
 
