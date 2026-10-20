@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T16:12:00Z",
+ "generated_utc": "2026-10-20T16:16:02Z",
  "apply": true,
  "lease": {
   "holder": "s1",
@@ -15,12 +15,12 @@
  "stable_needed_s": 900.0,
  "reasons": [
   "defaults not synced: readiness defaults_chain_completed,apply_report_written,live_set_matches_selection",
-  "manager restart churn (newest marker 10s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
-  "load 14.30/core > 4.0 (warning only)"
+  "manager restart churn (newest marker 0s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog))",
+  "load 13.60/core > 4.0 (warning only)"
  ],
  "measured": {
   "readiness_verdict": "FAIL",
-  "readiness_age_s": 721,
+  "readiness_age_s": 963,
   "mac_ind": {
    "symbols": 199,
    "stale_over_90min": 0,
@@ -28,10 +28,10 @@
    "median_age_min": 15.1,
    "sample": []
   },
-  "churn": "newest marker 10s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
-  "load_per_core": 14.3,
+  "churn": "newest marker 0s ago (ez_manage_ang, ez_manage_fin, ez_manage_flz, ez_manage_inf, ez_manage_men, ez_positions_watchdog)",
+  "load_per_core": 13.6,
   "warnings": [
-   "load 14.30/core > 4.0 (warning only)"
+   "load 13.60/core > 4.0 (warning only)"
   ]
  },
  "action": null,

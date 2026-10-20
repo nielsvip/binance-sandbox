@@ -2029,6 +2029,20 @@ def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_ga
     return out, table, cad
 
 
+def _cont_overage(cont_sides, running, end_of, now_ts, cap_h):
+    """USER 2026-10-20 (15-minute law): {sym: npz_age_h} for symbols with an UNFINISHED board, nothing running, whose NPZ last bar is older than
+    cap_h. A running board finishes on its frozen NPZ (RULE#4); a RESUME past the cap must restart on a fresh NPZ instead. Pure (tested)."""
+    out = {}
+    for ss in sorted(cont_sides or ()):
+        sy = ss.rsplit("_", 1)[0]
+        if sy in out or f"{sy}_LONG" in running or f"{sy}_SHORT" in running:
+            continue
+        e = end_of(sy)
+        if e and (now_ts - float(e)) / 3600.0 > cap_h:
+            out[sy] = round((now_ts - float(e)) / 3600.0, 1)
+    return out
+
+
 def _rule_label(prio, cad_h=None):
     """Human rule name for a _refresh_priority tuple (the rule that placed it in the launch order). Pure (tested)."""
     c = prio[0]
@@ -3192,9 +3206,12 @@ def tick(args, cfg, now):
         return acts
 
     _CONT_FREEZE_ON = os.environ.get("V15_SCHED_CONT_NPZ_FREEZE", "1") == "1"
+    _overage = {}  # sym -> NPZ age h: unfinished, not running, NPZ older than V15_CONT_NPZ_MAX_AGE_H -> freeze released, restarts on a fresh NPZ
 
     def _cont_sides(sym_):
         """USER 2026-10-13 V16: sides of sym_ with an UNFINISHED board in the round (sliced / crashed resume / needs_redo)."""
+        if sym_ in _overage:
+            return []
         return [ss_ for ss_ in (f"{sym_}_LONG", f"{sym_}_SHORT") if (ss_ in started and ss_ not in done) or ss_ in redo]
 
     def _cont_age_ok(rd_):
@@ -3303,11 +3320,25 @@ def tick(args, cfg, now):
     log["npz_dead"] = sorted(_npz_dead)
     _pin_syms = {x.rsplit("_", 1)[0] for x in _pin_sides}
     _cont_all = (started - done) | redo
+    if os.environ.get("V15_SCHED_CONT_OVERAGE_RESTART", "1") == "1" and not (args.dry_run or sim):
+        _cap_c = float(os.environ.get("V15_CONT_NPZ_MAX_AGE_H", "24"))
+
+        def _end_of(_sy):
+            if _sy not in _npz_end_cache:
+                _npz_end_cache[_sy] = _npz_end_ts(ROOT / "backtest_v8" / "indicators" / f"{_sy}.npz")
+            return _npz_end_cache[_sy]
+
+        _overage.update(_cont_overage(_cont_all, running, _end_of, _now_ts, _cap_c))
+        if _overage:
+            log["cont_overage_restart"] = dict(_overage)
+            for _sy, _ag in sorted(_overage.items()):
+                print(f"[sched] CONT-OVERAGE {_sy}: unfinished board, NPZ {_ag} h old > V15_CONT_NPZ_MAX_AGE_H {_cap_c:g} h -> freeze released, treated as a fresh launch (JIT NPZ refresh)", flush=True)
     _frz = set()  # 2026-10-15: always defined — the preflight's rebuild gate reads it, and dry-run/sim never builds it
     try:  # 2026-10-13 RULE#4 resume guard registry (tools/v15_npz_freeze.py): every NPZ writer on S1 skips these symbols
         if not (args.dry_run or sim):
             import v15_npz_freeze as _nf
-            _frz = _nf.build(started, done, redo, running)
+            _ov_sides = {f"{_s}_{_d}" for _s in _overage for _d in ("LONG", "SHORT")}
+            _frz = _nf.build(started - _ov_sides, done, redo - _ov_sides, running)
             _nf.write(_frz, FREEZE_FILE)
             log["npz_frozen_syms"] = len(_frz)
     except Exception as _nfe:

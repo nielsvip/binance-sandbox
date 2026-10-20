@@ -162,3 +162,10 @@ def test_trading_file_sides(tmp_path):
     (tmp_path / "v15_priority_front.txt").write_text("MA,QQQ\n")
     got = S._trading_file_sides(str(tmp_path))
     assert got == {"AAPL_LONG", "AAPL_SHORT", "MA_LONG", "MA_SHORT", "QQQ_LONG", "QQQ_SHORT"}
+
+
+def test_cont_overage_only_unfinished_not_running_over_cap():
+    now = 1_000_000.0
+    ends = {"OLD": now - 30 * 3600, "NEW": now - 1 * 3600, "RUN": now - 50 * 3600}
+    got = S._cont_overage({"OLD_LONG", "OLD_SHORT", "NEW_LONG", "RUN_LONG"}, {"RUN_SHORT": {}}, lambda s: ends.get(s), now, 4.0)
+    assert got == {"OLD": 30.0}

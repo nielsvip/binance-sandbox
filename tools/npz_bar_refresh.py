@@ -972,6 +972,137 @@ def repair_queue_update(results, path=None):
     return cur
 
 
+# ---- 2026-10-20 PROVISIONAL-BAR HEAL (USER "boards must compute on exchange-closed bars"; real_prices_canonical_20261014) ----------------------------
+# MEASURED 2026-10-20 16:12Z, 40 crypto symbols, S1 and S2 identical: NPZ OHLC vs klines_canonical (== fapi, 0 mismatches over 300 bars) differs in
+# 61% (last bar) / 46% / 59% / 72% / 31% ... of symbols over the last 8 bars and 10-65% of bars deeper. Writers: tools/npz_bar_ingest.py (Mac-computed
+# snapshot row appended the moment it is staged) and this tool's own `klines_cache(final-by-successor)` / `canonical+fresh_tail` bars (a snapshot, not
+# the exchange close). The refresh used to skip a symbol whose last bar was current ("FRESH") and its 8-row overlap only MEASURED a difference.
+# Now: every cycle, for crypto, the last HEAL_BARS NPZ rows (and any row the sidecar marks provisional) are compared with the canonical store's CLOSED
+# bars of the same timestamps; from the earliest differing / missing / provisional row the NPZ is rewound to that point IN MEMORY and the normal tail
+# path re-appends it from the builder (canonical-primary), so every indicator, HTF as-of key, augment and sentiment of those rows is recomputed, not
+# just OHLCV. Never shrinks: the rewound bars are re-appended in the same write and a result shorter than / ending before the original is refused.
+HEAL_BARS = int(os.environ.get("NPZ_HEAL_BARS", "24"))
+HEAL_MAX_REWIND = int(os.environ.get("NPZ_HEAL_MAX_REWIND", "1300"))
+HEAL_ENABLED = os.environ.get("NPZ_HEAL_CANONICAL", "1") == "1"
+PROV_DIR = ROOT / "data" / "vec_live" / "npz_provisional"
+HEAL_FIELDS = (("open_15m", "open"), ("high_15m", "high"), ("low_15m", "low"), ("close_15m", "close"), ("volume_15m", "volume"))
+
+
+def prov_read(symbol):
+    """{ts: source} of NPZ rows that are provisional (a snapshot of the bar, not the exchange-closed bar) until the canonical bar replaces them."""
+    try:
+        d = json.loads((PROV_DIR / f"{symbol}.json").read_text())
+        return {int(k): str(v) for k, v in (d.get("rows") or {}).items()}
+    except Exception:
+        return {}
+
+
+def prov_write(symbol, rows):
+    p = PROV_DIR / f"{symbol}.json"
+    try:
+        if not rows:
+            p.unlink(missing_ok=True)
+            return
+        PROV_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(f".{symbol}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps({"symbol": symbol, "updated_at": time.time(), "rows": {str(k): v for k, v in sorted(rows.items())}}))
+        os.replace(tmp, p)
+    except OSError:
+        pass
+
+
+def prov_mark(symbol, ts_list, source):
+    """mark NPZ rows provisional (caller holds the symbol lock). Entries are cleared by the heal once the canonical closed bar replaced them."""
+    cur = prov_read(symbol)
+    for t in ts_list:
+        cur[int(t)] = source
+    prov_write(symbol, cur)
+
+
+def canonical_window(symbol, n):
+    """({ts: (o, h, l, c, v)}, last_ts) of the newest n bars of klines_canonical/<symbol>_15m.json, or (None, None) when the symbol is not served by the store."""
+    import backtest_v8_precompute as bvp
+    if os.environ.get("NPZ_CANONICAL_SOURCE", "1") == "0" or not bvp._canonical_complete(symbol):
+        return None, None
+    path = bvp.CANONICAL_KLINES / f"{symbol}_15m.json"
+    if not path.exists():
+        return None, None
+    import klines_canonical as KC
+    rows = KC.tail_rows(path, n, block=max(12288, 130 * (n + 8)))
+    if not rows or len(rows) < min(n, 8):
+        rows = KC.load_rows(path)[-n:]
+    out = {}
+    for r in rows:
+        try:
+            out[KC.ts_ms(r["timestamp"]) // 1000] = tuple(float(r[c]) for c in ("open", "high", "low", "close", "volume"))
+        except (KeyError, ValueError, TypeError):
+            continue
+    return (out, max(out)) if out else (None, None)
+
+
+def heal_scan(symbol, z, ts, n_scan):
+    """how many trailing NPZ rows must be rewound so every row from the earliest differing one on is rebuilt from canonical. (0, info) = nothing to heal.
+
+    Differs = OHLCV of the row != the canonical closed bar with the same timestamp (float32-aware), or a canonical closed bar the NPZ lacks inside the
+    scanned span, or a row the provisional sidecar names whose canonical bar now exists. A bar the NPZ holds that canonical never had (phantom) is never
+    dropped: the rewind stops after the newest phantom."""
+    import numpy as np
+    n = len(ts)
+    m = max(2, min(int(n_scan), n - 1))
+    canon, clast = canonical_window(symbol, m + 12)
+    if canon is None:
+        return 0, {"heal": "NOT_CANONICAL"}
+    t0 = int(ts[n - m])
+    first_bad = None
+    bad = 0
+    window_ts = ts[n - m:]
+    cols = {}
+    for nk, _ in HEAL_FIELDS:
+        if nk not in z.files:
+            return 0, {"heal": "NO_" + nk}
+        cols[nk] = np.asarray(z[nk])[n - m:]
+    phantom = []
+    for i, t in enumerate(window_ts.tolist()):
+        if t > clast:
+            continue
+        c = canon.get(int(t))
+        if c is None:
+            phantom.append(n - m + i)
+            continue
+        mism = False
+        for (nk, _), cv in zip(HEAL_FIELDS, c):
+            a = cols[nk][i]
+            cv_a = np.asarray(cv, dtype=cols[nk].dtype)
+            if not np.isclose(a, cv_a, rtol=1e-6, atol=0.0):
+                mism = True
+                break
+        if mism:
+            bad += 1
+            if first_bad is None:
+                first_bad = n - m + i
+    have = set(int(t) for t in window_ts.tolist())
+    gaps = sorted(t for t in canon if t0 <= t <= clast and t not in have and t > int(ts[0]))
+    if gaps:
+        gi = int(np.searchsorted(ts, gaps[0]))
+        first_bad = gi if first_bad is None else min(first_bad, gi)
+    prov = {t: s for t, s in prov_read(symbol).items() if t <= clast}
+    if prov:
+        pi = int(np.searchsorted(ts, min(prov)))
+        if pi < n:
+            first_bad = pi if first_bad is None else min(first_bad, pi)
+    info = {"heal_bad_rows": bad, "heal_gap_bars": len(gaps), "heal_prov_rows": len(prov), "canon_last": int(clast)}
+    if first_bad is None:
+        return 0, info
+    if phantom and phantom[-1] >= first_bad:
+        first_bad = phantom[-1] + 1
+        info["heal_phantom_rows"] = len(phantom)
+        if first_bad >= n:
+            return 0, info
+    rewind = min(n - first_bad, HEAL_MAX_REWIND)
+    return int(rewind), info
+
+
+
 def refresh_symbol(symbol, ind_dir, w15=0, dry_run=False, force=False, cutoff=None, fresh=None, mode="crypto", overlap=8, builder=None):
     import numpy as np
     t0 = time.time()
@@ -1004,13 +1135,30 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
     ts_last = int(_ts_raw[-1])
     res["ts_before"] = ts_last
     res["rows_before"] = int(len(_ts_raw))
-    if ts_last >= cutoff and not force:
+    heal_n = 0
+    if mode == "crypto" and HEAL_ENABLED and HEAL_BARS > 0 and len(_ts_raw) >= MIN_APPENDABLE_ROWS and "htf_align" in z.files:
+        try:
+            heal_n, _hinfo = heal_scan(symbol, z, _ts_raw, HEAL_BARS)
+            res.update(_hinfo)
+        except Exception as e:
+            res["heal_scan_error"] = f"{type(e).__name__}: {e}"[:160]
+    if ts_last >= cutoff and not force and not heal_n:
         return {**res, "status": "FRESH", "secs": round(time.time() - t0, 2)}
     if len(_ts_raw) < MIN_APPENDABLE_ROWS:
         return {**res, "status": "TOO_SHORT_TO_APPEND", "error": f"{len(_ts_raw)} rows — a live stub cannot be tailed, adopt a deeper copy (tools/npz_repair.py)"}
     if mode == "crypto" and ("htf_align" not in z.files or str(np.asarray(z["htf_align"]).ravel()[0]) not in ("causal_v3",)):
         return {**res, "status": "REFUSE_LEGACY_HTF_ALIGN"}
     L = {k: z[k] for k in z.files}
+    n_orig = len(L["timestamps"])
+    orig_ts, orig_close = np.asarray(L["timestamps"]).astype(np.int64), None
+    if heal_n:
+        orig_close = np.asarray(L["close_15m"]).astype(np.float64)[n_orig - heal_n:]
+        for _k in list(L):
+            if np.ndim(L[_k]) >= 1 and len(L[_k]) == n_orig and _k != "htf_align":
+                L[_k] = L[_k][:n_orig - heal_n]
+        ts_last = int(np.asarray(L["timestamps"]).astype(np.int64)[-1])
+        res["healed_rows"] = int(heal_n)
+        res["heal_from_ts"] = ts_last + BAR
     n_old = len(L["timestamps"])
     t1 = time.time()
     if fresh is None:
@@ -1084,6 +1232,15 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
     if not ok:
         return {**res, "status": "GUARD_REFUSED"}
     res["ts_after"] = int(np.asarray(D["timestamps"])[-1])
+    if heal_n:
+        _dts = np.asarray(D["timestamps"]).astype(np.int64)
+        if len(_dts) < n_orig or res["ts_after"] < int(orig_ts[-1]) or not np.isin(orig_ts[n_orig - heal_n:], _dts).all():
+            return {**res, "status": "HEAL_DEFERRED_NO_SHRINK", "orig_rows": int(n_orig), "new_rows": int(len(_dts)),
+                    "reason": "rewound span not fully re-covered by the closed-bar source yet; NPZ left untouched"}
+        _nc = np.asarray(D["close_15m"]).astype(np.float64)
+        _pos = np.searchsorted(_dts, orig_ts[n_orig - heal_n:])
+        res["heal_close_changed"] = int((~np.isclose(orig_close, _nc[_pos], rtol=1e-6, atol=0.0)).sum())
+        res["heal_close_max_rel"] = float(np.max(np.abs(orig_close - _nc[_pos]) / np.maximum(1e-12, np.abs(orig_close)))) if len(_pos) else 0.0
     if dry_run:
         return {**res, "status": "DRY_RUN_OK", "secs": round(time.time() - t0, 2)}
     t5 = time.time()
@@ -1097,6 +1254,12 @@ def _refresh_symbol_locked(res, symbol, path, ind_dir, w15, dry_run, force, cuto
     except Exception:
         pass
     os.replace(tmp, path)
+    if mode == "crypto" and res.get("canon_last") is not None:
+        _cl = int(res["canon_last"])
+        _newset = set(res.get("new_ts") or [])
+        _prov = {t: v for t, v in prov_read(symbol).items() if t > _cl and t not in _newset}
+        _prov.update({int(t): "fresh_tail" for t in _newset if int(t) > _cl})
+        prov_write(symbol, _prov)
     res["t_save"] = round(time.time() - t5, 2)
     res["md5"] = md5(path)
     res["installed_at"] = time.time()
