@@ -1,6 +1,6 @@
 {
  "tool": "tools/v18_experience.py audit",
- "at": "2026-10-20T04:36:48Z",
+ "at": "2026-10-20T07:21:26Z",
  "host": "MacBook-Pro.local",
  "store": "/Users/niels/Documents/binance/data/experience",
  "shards": {
@@ -47,20 +47,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_CRYPTO_LONG_202610.db": {
-   "bytes": 6397562880,
+   "bytes": 6443028480,
    "tables": {
-    "sets": 3331,
-    "evals": 4792335,
-    "settlements": 938,
-    "row_done": 5223,
-    "boards": 753,
+    "sets": 3357,
+    "evals": 4827482,
+    "settlements": 4933,
+    "row_done": 12142,
+    "boards": 756,
     "live_events": 3277,
     "trades": 18621,
     "log_other": 0
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 120,
-    "log|hermetic": 46891,
+    "log|hermetic": 82038,
     "native|hermetic": 120860,
     "native|pre_hermetic": 468582,
     "rebuilt|hermetic": 2937629,
@@ -68,8 +68,8 @@
    },
    "evals_by_delta_rule": {
     "explicit": 589442,
-    "log_replay_v1": 10840,
-    "none": 36171,
+    "log_replay_v1": 41169,
+    "none": 40989,
     "rebuild_v1": 4155882
    },
    "live_by_era": {
@@ -123,20 +123,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_CRYPTO_SHORT_202610.db": {
-   "bytes": 6211731456,
+   "bytes": 6292279296,
    "tables": {
-    "sets": 2871,
-    "evals": 5225849,
-    "settlements": 3704,
-    "row_done": 6689,
-    "boards": 696,
+    "sets": 2889,
+    "evals": 5295403,
+    "settlements": 10374,
+    "row_done": 15088,
+    "boards": 699,
     "live_events": 2698,
     "trades": 16816,
     "log_other": 0
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 141,
-    "log|hermetic": 51231,
+    "log|hermetic": 120785,
     "native|hermetic": 78928,
     "native|pre_hermetic": 250738,
     "rebuilt|hermetic": 3866327,
@@ -144,8 +144,8 @@
    },
    "evals_by_delta_rule": {
     "explicit": 329666,
-    "log_replay_v1": 45740,
-    "none": 5632,
+    "log_replay_v1": 101275,
+    "none": 19651,
     "rebuild_v1": 4844811
    },
    "live_by_era": {
@@ -308,20 +308,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_STOCKS_LONG_202610.db": {
-   "bytes": 10258763776,
+   "bytes": 14967447552,
    "tables": {
-    "sets": 3452,
-    "evals": 9035512,
-    "settlements": 209846,
-    "row_done": 497769,
-    "boards": 1048,
+    "sets": 3789,
+    "evals": 13704281,
+    "settlements": 445592,
+    "row_done": 1175990,
+    "boards": 1236,
     "live_events": 1736,
     "trades": 3999,
-    "log_other": 255
+    "log_other": 496
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 135,
-    "log|hermetic": 4450249,
+    "log|hermetic": 9119018,
     "native|hermetic": 134287,
     "native|pre_hermetic": 354798,
     "rebuilt|hermetic": 1272484,
@@ -329,8 +329,8 @@
    },
    "evals_by_delta_rule": {
     "explicit": 489085,
-    "log_replay_v1": 1076074,
-    "none": 3374310,
+    "log_replay_v1": 2082747,
+    "none": 7036406,
     "rebuild_v1": 4096043
    },
    "live_by_era": {
@@ -493,20 +493,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_STOCKS_SHORT_202610.db": {
-   "bytes": 8018870272,
+   "bytes": 16578170880,
    "tables": {
-    "sets": 2974,
-    "evals": 6899846,
-    "settlements": 146943,
-    "row_done": 899385,
-    "boards": 1137,
+    "sets": 3424,
+    "evals": 15653330,
+    "settlements": 395617,
+    "row_done": 2249749,
+    "boards": 1522,
     "live_events": 1303,
     "trades": 4379,
-    "log_other": 0
+    "log_other": 33
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 135,
-    "log|hermetic": 2652870,
+    "log|hermetic": 11406354,
     "native|hermetic": 77195,
     "native|pre_hermetic": 323188,
     "rebuilt|hermetic": 1151493,
@@ -514,8 +514,8 @@
    },
    "evals_by_delta_rule": {
     "explicit": 400383,
-    "log_replay_v1": 631309,
-    "none": 2021696,
+    "log_replay_v1": 1713814,
+    "none": 9692675,
     "rebuild_v1": 3846458
    },
    "live_by_era": {
@@ -529,45 +529,45 @@
  },
  "totals_by_cat_side": {
   "CRYPTO_LONG": {
-   "sets": 3422,
-   "evals": 4792335,
-   "settlements": 938,
-   "row_done": 5223,
-   "boards": 860,
+   "sets": 3448,
+   "evals": 4827482,
+   "settlements": 4933,
+   "row_done": 12142,
+   "boards": 863,
    "live_events": 7664,
    "trades": 18621,
    "log_other": 0
   },
   "CRYPTO_SHORT": {
-   "sets": 2986,
-   "evals": 5225849,
-   "settlements": 3704,
-   "row_done": 6689,
-   "boards": 832,
+   "sets": 3004,
+   "evals": 5295403,
+   "settlements": 10374,
+   "row_done": 15088,
+   "boards": 835,
    "live_events": 6025,
    "trades": 16816,
    "log_other": 0
   },
   "STOCKS_LONG": {
-   "sets": 3641,
-   "evals": 9116597,
-   "settlements": 209846,
-   "row_done": 497769,
-   "boards": 1215,
+   "sets": 3978,
+   "evals": 13785366,
+   "settlements": 445592,
+   "row_done": 1175990,
+   "boards": 1403,
    "live_events": 15874,
    "trades": 3999,
-   "log_other": 255,
+   "log_other": 496,
    "orphan_evals_without_base_set": 44450
   },
   "STOCKS_SHORT": {
-   "sets": 3113,
-   "evals": 7004072,
-   "settlements": 146943,
-   "row_done": 899385,
-   "boards": 1270,
+   "sets": 3563,
+   "evals": 15757556,
+   "settlements": 395617,
+   "row_done": 2249749,
+   "boards": 1655,
    "live_events": 7828,
    "trades": 4379,
-   "log_other": 0,
+   "log_other": 33,
    "orphan_evals_without_base_set": 20745
   }
  },
@@ -576,15 +576,15 @@
   "experience_STOCKS_SHORT_202610.db: orphan_evals_without_base_set=20745"
  ],
  "watermarks": {
-  "n": 1031,
+  "n": 1124,
   "by_kind": {
    "history": 920,
-   "log": 94,
+   "log": 187,
    "native": 17
   },
   "rows_by_kind": {
    "history": 41305,
-   "log": 6452210,
+   "log": 27176625,
    "native": 2174554
   }
  },
@@ -820,6 +820,798 @@
    "started": "2026-10-20T04:25:52Z",
    "finished": "2026-10-20T04:29:50Z",
    "counters": "{\"progress_bases_loaded\": 81, \"lines\": 3168306, \"board_base_unknown\": 22, \"boards:STOCKS_LONG\": 75, \"evals:STOCKS_LONG\": 1246942, \"row_done:STOCKS_LONG\": 271771, \"identity_lines:STOCKS_LONG\": 446922, \"promotions\": 538, \"board_base_from_progress\": 102, \"files\": 88, \"boards:STOCKS_SHORT\": 45, \"evals:STOCKS_SHORT\": 660113, \"row_done:STOCKS_SHORT\": 158715, \"identity_lines:STOCKS_SHORT\": 248648, \"boards:CRYPTO_LONG\": 2, \"evals:CRYPTO_LONG\": 46891, \"identity_lines:CRYPTO_LONG\": 4975, \"row_done:CRYPTO_LONG\": 5223, \"boards:CRYPTO_SHORT\": 2, \"evals:CRYPTO_SHORT\": 51231, \"row_done:CRYPTO_SHORT\": 6689, \"identity_lines:CRYPTO_SHORT\": 20062, \"inserted\": {\"boards:STOCKS_LONG\": 13, \"evals:STOCKS_LONG\": 255530, \"row_done:STOCKS_LONG\": 44169, \"settlements:STOCKS_LONG\": 12979, \"sets:STOCKS_LONG\": 265, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 74486, \"row_done:STOCKS_SHORT\": 16134, \"settlements:STOCKS_SHORT\": 7549, \"sets:STOCKS_SHORT\": 117, \"sets:CRYPTO_LONG\": 7, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 36043, \"settlements:CRYPTO_LONG\": 0, \"row_done:CRYPTO_LONG\": 3405, \"sets:CRYPTO_SHORT\": 29, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 22844, \"row_done:CRYPTO_SHORT\": 3356, \"settlements:CRYPTO_SHORT\": 983}, \"offered\": {\"boards:STOCKS_LONG\": 75, \"evals:STOCKS_LONG\": 1246942, \"row_done:STOCKS_LONG\": 271771, \"settlements:STOCKS_LONG\": 139626, \"sets:STOCKS_LONG\": 302, \"boards:STOCKS_SHORT\": 45, \"evals:STOCKS_SHORT\": 660113, \"row_done:STOCKS_SHORT\": 158715, \"settlements:STOCKS_SHORT\": 82823, \"sets:STOCKS_SHORT\": 146, \"sets:CRYPTO_LONG\": 8, \"boards:CRYPTO_LONG\": 2, \"evals:CRYPTO_LONG\": 46891, \"settlements:CRYPTO_LONG\": 938, \"row_done:CRYPTO_LONG\": 5223, \"sets:CRYPTO_SHORT\": 30, \"boards:CRYPTO_SHORT\": 2, \"evals:CRYPTO_SHORT\": 51231, \"row_done:CRYPTO_SHORT\": 6689, \"settlements:CRYPTO_SHORT\": 3704}, \"secs\": 238.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AAPL_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:24Z",
+   "finished": "2026-10-20T06:33:32Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 7.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AAPL_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:24Z",
+   "finished": "2026-10-20T06:33:32Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 7.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ENJUSDT_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:24Z",
+   "finished": "2026-10-20T06:33:33Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 2562, \"board_base_from_progress\": 1, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 2008, \"identity_lines:CRYPTO_LONG\": 444, \"row_done:CRYPTO_LONG\": 109, \"promotions\": 6, \"files\": 1, \"inserted\": {\"sets:CRYPTO_LONG\": 6, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 2008, \"settlements:CRYPTO_LONG\": 58, \"row_done:CRYPTO_LONG\": 109}, \"offered\": {\"sets:CRYPTO_LONG\": 6, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 2008, \"settlements:CRYPTO_LONG\": 58, \"row_done:CRYPTO_LONG\": 109}, \"secs\": 8.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ABBV_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:38Z",
+   "finished": "2026-10-20T06:33:44Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 6.0}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ADP_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:38Z",
+   "finished": "2026-10-20T06:33:44Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/KMNOUSDT_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:34Z",
+   "finished": "2026-10-20T06:33:44Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 28065, \"board_base_from_progress\": 1, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 16265, \"identity_lines:CRYPTO_LONG\": 8394, \"row_done:CRYPTO_LONG\": 3405, \"promotions\": 5, \"files\": 1, \"inserted\": {\"sets:CRYPTO_LONG\": 6, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 16265, \"settlements:CRYPTO_LONG\": 2468, \"row_done:CRYPTO_LONG\": 3405}, \"offered\": {\"sets:CRYPTO_LONG\": 6, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 16265, \"settlements:CRYPTO_LONG\": 2468, \"row_done:CRYPTO_LONG\": 3405}, \"secs\": 10.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/KMNOUSDT_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:45Z",
+   "finished": "2026-10-20T06:33:53Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 17449, \"board_base_from_progress\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 11641, \"row_done:CRYPTO_SHORT\": 1733, \"identity_lines:CRYPTO_SHORT\": 4074, \"promotions\": 16, \"files\": 1, \"inserted\": {\"sets:CRYPTO_SHORT\": 15, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 11641, \"row_done:CRYPTO_SHORT\": 1733, \"settlements:CRYPTO_SHORT\": 920}, \"offered\": {\"sets:CRYPTO_SHORT\": 15, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 11641, \"row_done:CRYPTO_SHORT\": 1733, \"settlements:CRYPTO_SHORT\": 920}, \"secs\": 8.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ADP_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:58Z",
+   "finished": "2026-10-20T06:34:04Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SKYUSDT_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:33:55Z",
+   "finished": "2026-10-20T06:34:08Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 59483, \"board_base_from_progress\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 33690, \"row_done:CRYPTO_SHORT\": 3333, \"identity_lines:CRYPTO_SHORT\": 22459, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:CRYPTO_SHORT\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 33690, \"row_done:CRYPTO_SHORT\": 3333, \"settlements:CRYPTO_SHORT\": 2971}, \"offered\": {\"sets:CRYPTO_SHORT\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 33690, \"row_done:CRYPTO_SHORT\": 3333, \"settlements:CRYPTO_SHORT\": 2971}, \"secs\": 13.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZROUSDT_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:34:10Z",
+   "finished": "2026-10-20T06:34:20Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 26780, \"board_base_from_progress\": 1, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 16874, \"identity_lines:CRYPTO_LONG\": 6500, \"promotions\": 14, \"row_done:CRYPTO_LONG\": 3405, \"files\": 1, \"inserted\": {\"sets:CRYPTO_LONG\": 14, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 16874, \"settlements:CRYPTO_LONG\": 1469, \"row_done:CRYPTO_LONG\": 3405}, \"offered\": {\"sets:CRYPTO_LONG\": 14, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 16874, \"settlements:CRYPTO_LONG\": 1469, \"row_done:CRYPTO_LONG\": 3405}, \"secs\": 9.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZROUSDT_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:34:22Z",
+   "finished": "2026-10-20T06:34:33Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 38156, \"board_base_from_progress\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 24223, \"row_done:CRYPTO_SHORT\": 3333, \"identity_lines:CRYPTO_SHORT\": 10599, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:CRYPTO_SHORT\": 2, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 24223, \"row_done:CRYPTO_SHORT\": 3333, \"settlements:CRYPTO_SHORT\": 2779}, \"offered\": {\"sets:CRYPTO_SHORT\": 2, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 24223, \"row_done:CRYPTO_SHORT\": 3333, \"settlements:CRYPTO_SHORT\": 2779}, \"secs\": 11.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ALKT_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:34:38Z",
+   "finished": "2026-10-20T06:34:44Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AG_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:39:18Z",
+   "finished": "2026-10-20T06:39:23Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ALKT_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:39:28Z",
+   "finished": "2026-10-20T06:39:34Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AMZN_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:41:45Z",
+   "finished": "2026-10-20T06:41:51Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/APA_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:42:43Z",
+   "finished": "2026-10-20T06:42:48Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ASML_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:42:57Z",
+   "finished": "2026-10-20T06:43:02Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AU_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:43:05Z",
+   "finished": "2026-10-20T06:43:10Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BHVN_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:43:18Z",
+   "finished": "2026-10-20T06:43:23Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BKR_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:46:23Z",
+   "finished": "2026-10-20T06:46:29Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BMNR_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:46:42Z",
+   "finished": "2026-10-20T06:46:48Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BNO_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:46:53Z",
+   "finished": "2026-10-20T06:46:59Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CDE_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:47:02Z",
+   "finished": "2026-10-20T06:47:08Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AMZN_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:48:09Z",
+   "finished": "2026-10-20T06:48:14Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CLF_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:48:13Z",
+   "finished": "2026-10-20T06:48:18Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COHR_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:48:20Z",
+   "finished": "2026-10-20T06:48:26Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COPX_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:48:52Z",
+   "finished": "2026-10-20T06:48:58Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COP_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:49:01Z",
+   "finished": "2026-10-20T06:49:06Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRK_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:49:09Z",
+   "finished": "2026-10-20T06:49:15Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/APA_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:49:14Z",
+   "finished": "2026-10-20T06:49:19Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRWD_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:49:37Z",
+   "finished": "2026-10-20T06:49:43Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/DHR_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:49:48Z",
+   "finished": "2026-10-20T06:50:04Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 28001, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 20353, \"identity_lines:STOCKS_LONG\": 3976, \"row_done:STOCKS_LONG\": 3671, \"promotions\": 27, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 27, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 20353, \"settlements:STOCKS_LONG\": 1897, \"row_done:STOCKS_LONG\": 3671}, \"offered\": {\"sets:STOCKS_LONG\": 27, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 20353, \"settlements:STOCKS_LONG\": 1897, \"row_done:STOCKS_LONG\": 3671}, \"secs\": 16.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/EOG_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:50:07Z",
+   "finished": "2026-10-20T06:50:31Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 57788, \"board_base_from_progress\": 2, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 40339, \"identity_lines:STOCKS_LONG\": 10987, \"promotions\": 36, \"row_done:STOCKS_LONG\": 6460, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 28, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 40339, \"settlements:STOCKS_LONG\": 4016, \"row_done:STOCKS_LONG\": 6460}, \"offered\": {\"sets:STOCKS_LONG\": 29, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 40339, \"settlements:STOCKS_LONG\": 4016, \"row_done:STOCKS_LONG\": 6460}, \"secs\": 24.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/HOOD_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:50:38Z",
+   "finished": "2026-10-20T06:51:32Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 165977, \"board_base_from_progress\": 4, \"boards:STOCKS_LONG\": 4, \"evals:STOCKS_LONG\": 97505, \"row_done:STOCKS_LONG\": 14684, \"identity_lines:STOCKS_LONG\": 53784, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 4, \"evals:STOCKS_LONG\": 97505, \"row_done:STOCKS_LONG\": 14684, \"settlements:STOCKS_LONG\": 9572}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 4, \"evals:STOCKS_LONG\": 97505, \"row_done:STOCKS_LONG\": 14684, \"settlements:STOCKS_LONG\": 9572}, \"secs\": 54.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LEXX_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:51:46Z",
+   "finished": "2026-10-20T06:52:03Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 38170, \"board_base_from_progress\": 2, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 24039, \"row_done:STOCKS_LONG\": 3877, \"identity_lines:STOCKS_LONG\": 10252, \"promotions\": 3, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 3, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 24039, \"row_done:STOCKS_LONG\": 3877, \"settlements:STOCKS_LONG\": 917}, \"offered\": {\"sets:STOCKS_LONG\": 3, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 24039, \"row_done:STOCKS_LONG\": 3877, \"settlements:STOCKS_LONG\": 917}, \"secs\": 17.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NVDA_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:52:08Z",
+   "finished": "2026-10-20T06:52:35Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 63900, \"board_base_from_progress\": 3, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 46206, \"row_done:STOCKS_LONG\": 11013, \"identity_lines:STOCKS_LONG\": 6678, \"promotions\": 10, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 7, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 46206, \"row_done:STOCKS_LONG\": 11013, \"settlements:STOCKS_LONG\": 1584}, \"offered\": {\"sets:STOCKS_LONG\": 7, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 46206, \"row_done:STOCKS_LONG\": 11013, \"settlements:STOCKS_LONG\": 1584}, \"secs\": 27.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NXE_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:52:43Z",
+   "finished": "2026-10-20T06:53:04Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 44670, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 33445, \"identity_lines:STOCKS_LONG\": 7553, \"row_done:STOCKS_LONG\": 3671, \"promotions\": 7, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 7, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 33445, \"settlements:STOCKS_LONG\": 2506, \"row_done:STOCKS_LONG\": 3671}, \"offered\": {\"sets:STOCKS_LONG\": 7, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 33445, \"settlements:STOCKS_LONG\": 2506, \"row_done:STOCKS_LONG\": 3671}, \"secs\": 21.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PLTR_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:53:10Z",
+   "finished": "2026-10-20T06:53:29Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 36109, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 26830, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 5607, \"promotions\": 3, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 2, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 26830, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2910}, \"offered\": {\"sets:STOCKS_LONG\": 2, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 26830, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2910}, \"secs\": 18.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PRI_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:53:34Z",
+   "finished": "2026-10-20T06:53:49Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 27773, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 18256, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 5845, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 18256, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2151}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 18256, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2151}, \"secs\": 15.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PR_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:53:54Z",
+   "finished": "2026-10-20T06:54:04Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 15548, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 4890, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 6986, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 4890, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 3282}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 4890, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 3282}, \"secs\": 10.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PSX_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:54:06Z",
+   "finished": "2026-10-20T06:54:19Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 24604, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 14789, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 6143, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 14789, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1648}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 14789, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1648}, \"secs\": 13.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/QLYS_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:54:21Z",
+   "finished": "2026-10-20T06:54:34Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 26911, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 11488, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 11751, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 11488, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 3233}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 11488, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 3233}, \"secs\": 13.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RBLX_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:54:36Z",
+   "finished": "2026-10-20T06:55:05Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 71156, \"board_base_from_progress\": 3, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 48914, \"row_done:STOCKS_LONG\": 11013, \"identity_lines:STOCKS_LONG\": 11226, \"promotions\": 26, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 22, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 48914, \"row_done:STOCKS_LONG\": 11013, \"settlements:STOCKS_LONG\": 4850}, \"offered\": {\"sets:STOCKS_LONG\": 22, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 48914, \"row_done:STOCKS_LONG\": 11013, \"settlements:STOCKS_LONG\": 4850}, \"secs\": 29.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RRC_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:55:14Z",
+   "finished": "2026-10-20T06:55:28Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 29339, \"board_base_unknown\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 14089, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 11578, \"files\": 1, \"inserted\": {\"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 14089, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1960}, \"offered\": {\"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 14089, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1960}, \"secs\": 13.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RS_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:55:29Z",
+   "finished": "2026-10-20T06:56:01Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 72576, \"board_base_from_progress\": 2, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 52726, \"identity_lines:STOCKS_LONG\": 12506, \"row_done:STOCKS_LONG\": 7342, \"promotions\": 33, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 17, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 52726, \"settlements:STOCKS_LONG\": 3364, \"row_done:STOCKS_LONG\": 7342}, \"offered\": {\"sets:STOCKS_LONG\": 17, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 52726, \"settlements:STOCKS_LONG\": 3364, \"row_done:STOCKS_LONG\": 7342}, \"secs\": 31.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SAP_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:56:09Z",
+   "finished": "2026-10-20T06:56:25Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 27586, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 17523, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 6391, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 17523, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1966}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 17523, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1966}, \"secs\": 15.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SHOP_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:56:28Z",
+   "finished": "2026-10-20T06:56:44Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 51904, \"board_base_unknown\": 1, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 14686, \"row_done:STOCKS_LONG\": 7342, \"identity_lines:STOCKS_LONG\": 29874, \"board_base_from_progress\": 1, \"promotions\": 2, \"files\": 1, \"inserted\": {\"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 14686, \"row_done:STOCKS_LONG\": 7342, \"settlements:STOCKS_LONG\": 3652, \"sets:STOCKS_LONG\": 2}, \"offered\": {\"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 14686, \"row_done:STOCKS_LONG\": 7342, \"settlements:STOCKS_LONG\": 3652, \"sets:STOCKS_LONG\": 2}, \"secs\": 15.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SNDK_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:56:48Z",
+   "finished": "2026-10-20T06:57:01Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 22412, \"board_base_unknown\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 16907, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 1833, \"promotions\": 6, \"files\": 1, \"inserted\": {\"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 16907, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 533}, \"offered\": {\"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 16907, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 533}, \"secs\": 12.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SPY_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:57:04Z",
+   "finished": "2026-10-20T06:57:14Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 12742, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 6579, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 2491, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 6579, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1614}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 6579, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1614}, \"secs\": 10.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/TMO_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:57:16Z",
+   "finished": "2026-10-20T06:57:32Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 33002, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 22171, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 7159, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 22171, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2530}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 22171, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2530}, \"secs\": 16.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/V_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:57:35Z",
+   "finished": "2026-10-20T06:57:52Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 35717, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 20922, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 11123, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 2, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 20922, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1455}, \"offered\": {\"sets:STOCKS_LONG\": 2, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 20922, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1455}, \"secs\": 16.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/APO_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:57:54Z",
+   "finished": "2026-10-20T06:58:00Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ARM_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:05Z",
+   "finished": "2026-10-20T06:58:10Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/WMT_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:57:59Z",
+   "finished": "2026-10-20T06:58:16Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 30309, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 21370, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 5267, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 21370, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1852}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 21370, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 1852}, \"secs\": 16.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ASTS_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:18Z",
+   "finished": "2026-10-20T06:58:23Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AU_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:28Z",
+   "finished": "2026-10-20T06:58:33Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/XLE_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:19Z",
+   "finished": "2026-10-20T06:58:42Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 58113, \"board_base_unknown\": 2, \"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 36285, \"row_done:STOCKS_LONG\": 7342, \"identity_lines:STOCKS_LONG\": 14484, \"promotions\": 8, \"files\": 1, \"inserted\": {\"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 36285, \"row_done:STOCKS_LONG\": 7342, \"settlements:STOCKS_LONG\": 3227}, \"offered\": {\"boards:STOCKS_LONG\": 2, \"evals:STOCKS_LONG\": 36285, \"row_done:STOCKS_LONG\": 7342, \"settlements:STOCKS_LONG\": 3227}, \"secs\": 23.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BA_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:39Z",
+   "finished": "2026-10-20T06:58:45Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BHVN_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:47Z",
+   "finished": "2026-10-20T06:58:52Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/XOM_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:58:50Z",
+   "finished": "2026-10-20T06:59:07Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 39110, \"board_base_unknown\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 23115, \"row_done:STOCKS_LONG\": 3671, \"identity_lines:STOCKS_LONG\": 12323, \"promotions\": 10, \"files\": 1, \"inserted\": {\"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 23115, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2900}, \"offered\": {\"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 23115, \"row_done:STOCKS_LONG\": 3671, \"settlements:STOCKS_LONG\": 2900}, \"secs\": 17.0}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/XOP_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:59:10Z",
+   "finished": "2026-10-20T06:59:26Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 30959, \"board_base_from_progress\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 21913, \"identity_lines:STOCKS_LONG\": 5374, \"row_done:STOCKS_LONG\": 3671, \"files\": 1, \"inserted\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 21913, \"settlements:STOCKS_LONG\": 1807, \"row_done:STOCKS_LONG\": 3671}, \"offered\": {\"sets:STOCKS_LONG\": 1, \"boards:STOCKS_LONG\": 1, \"evals:STOCKS_LONG\": 21913, \"settlements:STOCKS_LONG\": 1807, \"row_done:STOCKS_LONG\": 3671}, \"secs\": 16.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BKR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:59:24Z",
+   "finished": "2026-10-20T06:59:30Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BMNR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:59:39Z",
+   "finished": "2026-10-20T06:59:44Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BWXT_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:59:48Z",
+   "finished": "2026-10-20T06:59:53Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CAT_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:00:03Z",
+   "finished": "2026-10-20T07:00:10Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 6.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CDE_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:00:14Z",
+   "finished": "2026-10-20T07:00:20Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZCSH_LONG_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T06:59:31Z",
+   "finished": "2026-10-20T07:00:38Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 215705, \"board_base_unknown\": 2, \"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 113697, \"row_done:STOCKS_LONG\": 11013, \"identity_lines:STOCKS_LONG\": 90992, \"promotions\": 8, \"board_base_from_progress\": 1, \"files\": 1, \"inserted\": {\"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 113697, \"row_done:STOCKS_LONG\": 11013, \"settlements:STOCKS_LONG\": 11705, \"sets:STOCKS_LONG\": 1}, \"offered\": {\"boards:STOCKS_LONG\": 3, \"evals:STOCKS_LONG\": 113697, \"row_done:STOCKS_LONG\": 11013, \"settlements:STOCKS_LONG\": 11705, \"sets:STOCKS_LONG\": 1}, \"secs\": 67.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CIEN_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:00:40Z",
+   "finished": "2026-10-20T07:00:46Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COHR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:00:50Z",
+   "finished": "2026-10-20T07:00:56Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRK_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:01:27Z",
+   "finished": "2026-10-20T07:01:33Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"files\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 5.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRWD_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:02:26Z",
+   "finished": "2026-10-20T07:02:50Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 46241, \"board_base_from_progress\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 26370, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 12815, \"promotions\": 9, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 8, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 26370, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 6568}, \"offered\": {\"sets:STOCKS_SHORT\": 8, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 26370, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 6568}, \"secs\": 23.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/DHR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:02:56Z",
+   "finished": "2026-10-20T07:03:22Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 50911, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 35368, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 8487, \"promotions\": 11, \"board_base_unknown\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 35368, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 5032}, \"offered\": {\"sets:STOCKS_SHORT\": 3, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 35368, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 5032}, \"secs\": 25.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/EOG_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:03:29Z",
+   "finished": "2026-10-20T07:03:46Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 32636, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 18898, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 6682, \"promotions\": 11, \"board_base_unknown\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 9, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 18898, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 4704}, \"offered\": {\"sets:STOCKS_SHORT\": 9, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 18898, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 4704}, \"secs\": 17.0}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ETN_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:03:51Z",
+   "finished": "2026-10-20T07:04:02Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 15204, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 7377, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4299, \"promotions\": 14, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 13, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 7377, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 2405}, \"offered\": {\"sets:STOCKS_SHORT\": 14, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 7377, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 2405}, \"secs\": 10.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/HOOD_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:04:04Z",
+   "finished": "2026-10-20T07:04:31Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 73570, \"board_base_from_progress\": 3, \"boards:STOCKS_SHORT\": 3, \"evals:STOCKS_SHORT\": 43040, \"row_done:STOCKS_SHORT\": 10581, \"identity_lines:STOCKS_SHORT\": 19946, \"promotions\": 38, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 32, \"boards:STOCKS_SHORT\": 3, \"evals:STOCKS_SHORT\": 43040, \"row_done:STOCKS_SHORT\": 10581, \"settlements:STOCKS_SHORT\": 3249}, \"offered\": {\"sets:STOCKS_SHORT\": 32, \"boards:STOCKS_SHORT\": 3, \"evals:STOCKS_SHORT\": 43040, \"row_done:STOCKS_SHORT\": 10581, \"settlements:STOCKS_SHORT\": 3249}, \"secs\": 27.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/JNJ_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:04:37Z",
+   "finished": "2026-10-20T07:04:52Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 27143, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 18787, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4828, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 18787, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1666}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 18787, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1666}, \"secs\": 15.0}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LEXX_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:04:56Z",
+   "finished": "2026-10-20T07:05:19Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 66186, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 28370, \"identity_lines:STOCKS_SHORT\": 35031, \"row_done:STOCKS_SHORT\": 2784, \"promotions\": 35, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 33, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 28370, \"settlements:STOCKS_SHORT\": 2213, \"row_done:STOCKS_SHORT\": 2784}, \"offered\": {\"sets:STOCKS_SHORT\": 33, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 28370, \"settlements:STOCKS_SHORT\": 2213, \"row_done:STOCKS_SHORT\": 2784}, \"secs\": 23.0}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LITE_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:05:24Z",
+   "finished": "2026-10-20T07:05:54Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 72274, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 59634, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 5584, \"promotions\": 7, \"board_base_unknown\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 5, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 59634, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 3524}, \"offered\": {\"sets:STOCKS_SHORT\": 5, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 59634, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 3524}, \"secs\": 29.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LSCC_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:06:01Z",
+   "finished": "2026-10-20T07:06:16Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 27578, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 14880, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 9170, \"promotions\": 2, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 3, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 14880, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1167}, \"offered\": {\"sets:STOCKS_SHORT\": 3, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 14880, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1167}, \"secs\": 15.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/MA_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:06:20Z",
+   "finished": "2026-10-20T07:06:32Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 19939, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 13303, \"row_done:STOCKS_SHORT\": 2696, \"identity_lines:STOCKS_SHORT\": 3912, \"promotions\": 23, \"log_other:STOCKS_SHORT\": 27, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 23, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 13303, \"row_done:STOCKS_SHORT\": 2696, \"settlements:STOCKS_SHORT\": 1516, \"log_other:STOCKS_SHORT\": 27}, \"offered\": {\"sets:STOCKS_SHORT\": 24, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 13303, \"row_done:STOCKS_SHORT\": 2696, \"settlements:STOCKS_SHORT\": 1516, \"log_other:STOCKS_SHORT\": 27}, \"secs\": 12.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NLR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:06:34Z",
+   "finished": "2026-10-20T07:06:45Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 20302, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10900, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 5874, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10900, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1660}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10900, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1660}, \"secs\": 11.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NVDA_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:06:47Z",
+   "finished": "2026-10-20T07:07:28Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 104637, \"board_base_from_progress\": 4, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 75724, \"row_done:STOCKS_SHORT\": 14108, \"identity_lines:STOCKS_SHORT\": 14801, \"promotions\": 22, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 10, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 75724, \"row_done:STOCKS_SHORT\": 14108, \"settlements:STOCKS_SHORT\": 5307}, \"offered\": {\"sets:STOCKS_SHORT\": 10, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 75724, \"row_done:STOCKS_SHORT\": 14108, \"settlements:STOCKS_SHORT\": 5307}, \"secs\": 40.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NXE_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:07:37Z",
+   "finished": "2026-10-20T07:07:54Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 32138, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 22417, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 6193, \"promotions\": 30, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 25, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 22417, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1185}, \"offered\": {\"sets:STOCKS_SHORT\": 25, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 22417, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1185}, \"secs\": 16.8}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ORCL_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:07:59Z",
+   "finished": "2026-10-20T07:08:11Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 20381, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 12565, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4288, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 12565, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1878}, \"offered\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 12565, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1878}, \"secs\": 12.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PLTR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:08:15Z",
+   "finished": "2026-10-20T07:08:33Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 34243, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 25632, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 5083, \"promotions\": 4, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 4, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 25632, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 2539}, \"offered\": {\"sets:STOCKS_SHORT\": 4, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 25632, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 2539}, \"secs\": 17.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/QBTS_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:08:37Z",
+   "finished": "2026-10-20T07:08:56Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 38536, \"board_base_from_progress\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 16904, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 14576, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 16904, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 4793}, \"offered\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 16904, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 4793}, \"secs\": 19.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RBLX_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:09:00Z",
+   "finished": "2026-10-20T07:09:33Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 81537, \"board_base_from_progress\": 4, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 47589, \"row_done:STOCKS_SHORT\": 14108, \"identity_lines:STOCKS_SHORT\": 19836, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 47589, \"row_done:STOCKS_SHORT\": 14108, \"settlements:STOCKS_SHORT\": 7390}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 47589, \"row_done:STOCKS_SHORT\": 14108, \"settlements:STOCKS_SHORT\": 7390}, \"secs\": 33.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RGLD_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:09:44Z",
+   "finished": "2026-10-20T07:09:55Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 21771, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10257, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 7986, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10257, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 3527}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10257, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 3527}, \"secs\": 11.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RIO_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:09:57Z",
+   "finished": "2026-10-20T07:10:12Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 33465, \"board_base_unknown\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 20704, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 9233, \"promotions\": 19, \"files\": 1, \"inserted\": {\"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 20704, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1978}, \"offered\": {\"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 20704, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1978}, \"secs\": 14.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RKLB_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:10:16Z",
+   "finished": "2026-10-20T07:10:31Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 31747, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 17465, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 10754, \"promotions\": 5, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 5, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 17465, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1222}, \"offered\": {\"sets:STOCKS_SHORT\": 5, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 17465, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1222}, \"secs\": 14.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RTX_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:10:33Z",
+   "finished": "2026-10-20T07:10:45Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 24986, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 11066, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 10392, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 11066, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1781}, \"offered\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 11066, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1781}, \"secs\": 12.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SLB_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:10:47Z",
+   "finished": "2026-10-20T07:11:07Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 42937, \"board_base_from_progress\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 28259, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 7622, \"promotions\": 12, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 3, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 28259, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 3426}, \"offered\": {\"sets:STOCKS_SHORT\": 3, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 28259, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 3426}, \"secs\": 19.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SNDK_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:11:11Z",
+   "finished": "2026-10-20T07:11:22Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 18662, \"board_base_unknown\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10359, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4775, \"files\": 1, \"inserted\": {\"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10359, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1829}, \"offered\": {\"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10359, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1829}, \"secs\": 10.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/UEC_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:11:24Z",
+   "finished": "2026-10-20T07:11:38Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 26905, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 18733, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4644, \"promotions\": 31, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 29, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 18733, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 2033}, \"offered\": {\"sets:STOCKS_SHORT\": 29, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 18733, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 2033}, \"secs\": 14.1}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/U_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:11:41Z",
+   "finished": "2026-10-20T07:11:52Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 19529, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10204, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 5797, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10204, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1721}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 10204, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1721}, \"secs\": 11.3}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/VALE_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:11:54Z",
+   "finished": "2026-10-20T07:12:08Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 25193, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 17092, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4573, \"promotions\": 1, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 17092, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1726}, \"offered\": {\"sets:STOCKS_SHORT\": 2, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 17092, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1726}, \"secs\": 14.0}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/VICR_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:12:10Z",
+   "finished": "2026-10-20T07:12:50Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 139178, \"board_base_from_progress\": 2, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 79620, \"row_done:STOCKS_SHORT\": 7054, \"identity_lines:STOCKS_SHORT\": 52502, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 79620, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 5578}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 2, \"evals:STOCKS_SHORT\": 79620, \"row_done:STOCKS_SHORT\": 7054, \"settlements:STOCKS_SHORT\": 5578}, \"secs\": 39.4}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/WDAY_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:12:59Z",
+   "finished": "2026-10-20T07:13:09Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 15417, \"board_base_from_progress\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 7237, \"row_done:STOCKS_SHORT\": 3527, \"identity_lines:STOCKS_SHORT\": 4652, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 7237, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1705}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 7237, \"row_done:STOCKS_SHORT\": 3527, \"settlements:STOCKS_SHORT\": 1705}, \"secs\": 9.9}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZCSH_SHORT_jump.jsonl",
+   "kind": "log",
+   "host": "s2",
+   "started": "2026-10-20T07:13:10Z",
+   "finished": "2026-10-20T07:13:35Z",
+   "counters": "{\"progress_bases_loaded\": 92, \"lines\": 60254, \"board_base_from_progress\": 3, \"boards:STOCKS_SHORT\": 3, \"evals:STOCKS_SHORT\": 42226, \"row_done:STOCKS_SHORT\": 10581, \"identity_lines:STOCKS_SHORT\": 7444, \"files\": 1, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 3, \"evals:STOCKS_SHORT\": 42226, \"row_done:STOCKS_SHORT\": 10581, \"settlements:STOCKS_SHORT\": 1751}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"boards:STOCKS_SHORT\": 3, \"evals:STOCKS_SHORT\": 42226, \"row_done:STOCKS_SHORT\": 10581, \"settlements:STOCKS_SHORT\": 1751}, \"secs\": 24.4}"
   }
  ],
  "proofs": [
@@ -1056,6 +1848,897 @@
    "missing": 0,
    "mismatched": 0,
    "report": "data/reports/experience_proofs/prove_log_s1.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ENJUSDT_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:33:34Z",
+   "checked": 2562,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ENJUSDT_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AAPL_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:33:38Z",
+   "checked": 32521,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AAPL_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AAPL_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:33:38Z",
+   "checked": 31846,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AAPL_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/KMNOUSDT_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:33:45Z",
+   "checked": 28065,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_KMNOUSDT_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/KMNOUSDT_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:33:54Z",
+   "checked": 17449,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_KMNOUSDT_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ABBV_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:33:58Z",
+   "checked": 132484,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ABBV_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SKYUSDT_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:34:10Z",
+   "checked": 59483,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SKYUSDT_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZROUSDT_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:34:22Z",
+   "checked": 26780,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ZROUSDT_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZROUSDT_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:34:36Z",
+   "checked": 38156,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ZROUSDT_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ADP_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:34:38Z",
+   "checked": 297672,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ADP_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ADP_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:39:17Z",
+   "checked": 2769348,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ADP_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AG_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:39:28Z",
+   "checked": 20033,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AG_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ALKT_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:41:44Z",
+   "checked": 4166464,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ALKT_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AMZN_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:42:43Z",
+   "checked": 545413,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AMZN_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/APA_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:42:56Z",
+   "checked": 84638,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_APA_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ASML_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:43:05Z",
+   "checked": 19124,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ASML_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AU_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:43:18Z",
+   "checked": 86965,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AU_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BHVN_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:46:22Z",
+   "checked": 1857124,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BHVN_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BKR_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:46:42Z",
+   "checked": 114163,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BKR_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BMNR_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:46:53Z",
+   "checked": 36586,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BMNR_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BNO_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:47:02Z",
+   "checked": 18984,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BNO_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ALKT_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:48:08Z",
+   "checked": 4232848,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ALKT_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CDE_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:48:12Z",
+   "checked": 654300,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CDE_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CLF_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:48:20Z",
+   "checked": 23601,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CLF_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COHR_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:48:52Z",
+   "checked": 271145,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_COHR_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COPX_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:49:01Z",
+   "checked": 16143,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_COPX_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COP_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:49:09Z",
+   "checked": 20390,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_COP_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AMZN_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:49:14Z",
+   "checked": 448642,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AMZN_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRK_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:49:37Z",
+   "checked": 219325,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CRK_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRWD_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:49:48Z",
+   "checked": 35058,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CRWD_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/DHR_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:50:07Z",
+   "checked": 28001,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_DHR_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/EOG_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:50:37Z",
+   "checked": 57788,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_EOG_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/HOOD_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:51:46Z",
+   "checked": 165977,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_HOOD_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LEXX_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:52:08Z",
+   "checked": 38170,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_LEXX_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NVDA_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:52:43Z",
+   "checked": 63900,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_NVDA_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NXE_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:53:10Z",
+   "checked": 44670,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_NXE_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PLTR_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:53:34Z",
+   "checked": 36109,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_PLTR_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PRI_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:53:53Z",
+   "checked": 27773,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_PRI_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PR_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:54:05Z",
+   "checked": 15548,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_PR_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PSX_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:54:21Z",
+   "checked": 24604,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_PSX_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/QLYS_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:54:36Z",
+   "checked": 26911,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_QLYS_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RBLX_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:55:14Z",
+   "checked": 71156,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RBLX_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RRC_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:55:29Z",
+   "checked": 29339,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RRC_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RS_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:56:09Z",
+   "checked": 72576,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RS_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SAP_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:56:28Z",
+   "checked": 27586,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SAP_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SHOP_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:56:48Z",
+   "checked": 51904,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SHOP_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SNDK_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:57:04Z",
+   "checked": 22412,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SNDK_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SPY_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:57:16Z",
+   "checked": 12742,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SPY_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/TMO_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:57:35Z",
+   "checked": 33002,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_TMO_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/APA_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:57:51Z",
+   "checked": 3805978,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_APA_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/V_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:57:59Z",
+   "checked": 35717,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_V_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/APO_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:05Z",
+   "checked": 22121,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_APO_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ARM_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:17Z",
+   "checked": 39012,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ARM_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/WMT_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:19Z",
+   "checked": 30309,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_WMT_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ASTS_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:28Z",
+   "checked": 24248,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ASTS_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/AU_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:39Z",
+   "checked": 24389,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_AU_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BA_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:47Z",
+   "checked": 18069,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BA_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/XLE_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:58:50Z",
+   "checked": 58113,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_XLE_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/XOM_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:59:10Z",
+   "checked": 39110,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_XOM_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BHVN_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:59:24Z",
+   "checked": 249533,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BHVN_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/XOP_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:59:31Z",
+   "checked": 30959,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_XOP_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BKR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:59:39Z",
+   "checked": 71369,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BKR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BMNR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T06:59:48Z",
+   "checked": 20457,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BMNR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/BWXT_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:00:03Z",
+   "checked": 65889,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_BWXT_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CAT_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:00:14Z",
+   "checked": 17460,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CAT_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CDE_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:00:40Z",
+   "checked": 168752,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CDE_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CIEN_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:00:50Z",
+   "checked": 22939,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CIEN_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZCSH_LONG_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:00:59Z",
+   "checked": 215705,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ZCSH_LONG_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/COHR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:01:27Z",
+   "checked": 224989,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_COHR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRK_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:02:26Z",
+   "checked": 442221,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CRK_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/CRWD_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:02:56Z",
+   "checked": 46241,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_CRWD_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/DHR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:03:29Z",
+   "checked": 50911,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_DHR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/EOG_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:03:51Z",
+   "checked": 32636,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_EOG_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ETN_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:04:03Z",
+   "checked": 15204,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ETN_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/HOOD_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:04:37Z",
+   "checked": 73570,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_HOOD_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/JNJ_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:04:56Z",
+   "checked": 27143,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_JNJ_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LEXX_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:05:24Z",
+   "checked": 66186,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_LEXX_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LITE_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:06:01Z",
+   "checked": 72274,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_LITE_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/LSCC_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:06:19Z",
+   "checked": 27578,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_LSCC_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/MA_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:06:34Z",
+   "checked": 19939,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_MA_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NLR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:06:47Z",
+   "checked": 20302,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_NLR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NVDA_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:07:37Z",
+   "checked": 104637,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_NVDA_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/NXE_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:07:59Z",
+   "checked": 32138,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_NXE_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ORCL_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:08:15Z",
+   "checked": 20381,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ORCL_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/PLTR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:08:37Z",
+   "checked": 34243,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_PLTR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/QBTS_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:09:00Z",
+   "checked": 38536,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_QBTS_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RBLX_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:09:44Z",
+   "checked": 81537,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RBLX_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RGLD_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:09:57Z",
+   "checked": 21771,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RGLD_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RIO_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:10:16Z",
+   "checked": 33465,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RIO_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RKLB_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:10:33Z",
+   "checked": 31747,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RKLB_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/RTX_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:10:47Z",
+   "checked": 24986,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_RTX_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SLB_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:11:11Z",
+   "checked": 42937,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SLB_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/SNDK_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:11:24Z",
+   "checked": 18662,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_SNDK_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/UEC_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:11:41Z",
+   "checked": 26905,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_UEC_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/U_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:11:54Z",
+   "checked": 19529,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_U_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/VALE_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:12:10Z",
+   "checked": 25193,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_VALE_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/VICR_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:12:59Z",
+   "checked": 139178,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_VICR_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/WDAY_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:13:10Z",
+   "checked": 15417,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_WDAY_SHORT_jump.jsonl.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_run33/v15_delta_log/ZCSH_SHORT_jump.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T07:13:42Z",
+   "checked": 60254,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s2_ZCSH_SHORT_jump.jsonl.json"
   }
  ],
  "colds": [

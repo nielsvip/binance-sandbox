@@ -20,7 +20,7 @@ PILOT_SRC = (ROOT / "v15_pilot.py").read_text()
 PLAN_SRC = (ROOT / "tools" / "v15_v18_planner.py").read_text()
 
 # phase / feature master switches the pilot reads through _V18P.flag_on("...")
-PILOT_MASTERS = ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_C_BARE_VALUES")  # 2026-10-20: C_BARE (regression #3 fix) declared by the pilot owner
+PILOT_MASTERS = ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_C_BARE_VALUES", "V18_SET_SHA")  # 2026-10-20: C_BARE (regression #3 fix) declared by the pilot owner
 # planner accessors that wrap one master switch each: accessor -> switch
 PLANNER_ACCESSORS = {
     "identity_settle_on": "V18_IDENTITY_SETTLE",

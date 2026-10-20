@@ -4731,8 +4731,37 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _delta_log_path.parent.mkdir(parents=True, exist_ok=True)
     _delta_log_fh = open(_delta_log_path, "a", buffering=1)
     print(f"[delta-log] {_delta_log_path}", flush=True)
+    # V18_SET_SHA (store join, 2026-10-20): boards restart dozens of times per run and BOARD_CTX carried only a behaviour
+    # fingerprint -> sha256 of the canonical full sanitized set in force on BOARD_CTX / ROW_DONE / ROW_SETTLED, and every
+    # restart's start set once in progress["start_sets"][ts] (sha) + progress["sets_by_sha"][sha] (dict, stored once)
+    _v18_setsha_on = bool(_V18P is not None and _V18P.flag_on("V18_SET_SHA"))
+    _v18_sha_cache = {"key": None, "sha": None}
+    def _v18_set_sha(ov=None):
+        try:
+            _so = sanitize_overrides(dict(cumulative_overrides if ov is None else ov), defaults)[0]
+            return _V18P.set_sha256(_so), _so
+        except Exception:
+            return None, None
+    def _v18_chain_sha():
+        # cached per chain version (every promotion bumps _spec_state["ver"]); the set in force AFTER the row (as cum_after)
+        try:
+            _k = (id(cumulative_overrides), _spec_state["ver"])
+        except Exception:
+            _k = (id(cumulative_overrides), len(cumulative_overrides or {}))
+        if _v18_sha_cache["key"] != _k:
+            _v18_sha_cache["key"], _v18_sha_cache["sha"] = _k, _v18_set_sha()[0]
+        return _v18_sha_cache["sha"]
+    _v18_start_sha = None
+    if _v18_setsha_on:
+        try:
+            _v18_start_sha, _v18_start_set = _v18_set_sha()
+            if _v18_start_sha:
+                progress.setdefault("start_sets", {})[utcnow()] = {"sha": _v18_start_sha, "n_keys": len(_v18_start_set or {})}
+                progress.setdefault("sets_by_sha", {}).setdefault(_v18_start_sha, _v18_start_set)
+        except Exception as _sse:
+            print(f"[V18-SETSHA-WARN] {_sse}", flush=True)
     try:  # BRAIN 2026-10-14: one board-context line per run (tier/bh/baseline/start-set) — the context the graph conditions on
-        _delta_log_fh.write(json.dumps({"ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
+        _delta_log_fh.write(json.dumps({**({"set_sha256": _v18_start_sha} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
     except Exception as _bce:
         print(f"[BRAIN-WARN] board ctx {_bce}", flush=True)
     # BRAIN (USER 2026-10-14 "like a neural network … lower the number of times per 1000 tests low scorers are calculated"):
@@ -4812,7 +4841,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         if not summ:
             return
         progress["done"][key]["settled"] = dict(summ["settled"])
-        _delta_log(_V18P.row_settled_record({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "cum_before": cum_before}, summ))
+        _delta_log(_V18P.row_settled_record({**({"set_sha256": _v18_chain_sha()} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "cum_before": cum_before}, summ))
     def _v18_capture():
         if _spec_state["ver"] != _v18_wb["ver"]:
             _v18_wb["ver"] = _spec_state["ver"]
@@ -4941,7 +4970,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     except Exception as _fwe:
         print(f"[FORWARD-WARN] {new_symside} {_fwe} — main pass unaffected", flush=True)
     def _row_done(sname: str, rr: int, switch: str, cand, n_evals: int, delta, promoted: bool):
-        _delta_log({"ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": "ROW_DONE", "row_secs": round(_t.time() - _row_t0, 4), "n_evals": n_evals, "delta": delta, "promoted": promoted, "cum_after": cumulative_gain})
+        _delta_log({**({"set_sha256": _v18_chain_sha()} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "nav": nav_mode, "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": "ROW_DONE", "row_secs": round(_t.time() - _row_t0, 4), "n_evals": n_evals, "delta": delta, "promoted": promoted, "cum_after": cumulative_gain})
     def _final_filter_recheck():
         # Before closing: re-run EVERY distinct orange filter=opt against the FINAL cumulative "just in case" (earlier
         # tabs tested them vs an older cumulative). All deltas (pos/neg) -> FINAL_FILTER_RECHECK sheet + progress + log;
