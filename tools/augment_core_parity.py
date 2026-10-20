@@ -42,6 +42,7 @@ def main():
     ap.add_argument("--sym-sides", required=True)
     ap.add_argument("--old-engine", default="")
     ap.add_argument("--flip-sym-side", default="SHOP_LONG")
+    ap.add_argument("--flip-extra", default="{}", help="JSON overrides added to the flip run (e.g. symbol caps raised, MEASUREMENT ONLY)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     import tools.augment_family_probe as P
@@ -96,10 +97,11 @@ def main():
         return res
 
     GLA.gain_ladder_fire = rec
-    flip_ov = dict(ov, STOCK_AUGMENT_VENUE_GUARD_ENABLED=False, STOCK_LIVE_AUGMENT_ONLY=False, MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0)
+    flip_ov = dict(ov, STOCK_AUGMENT_VENUE_GUARD_ENABLED=False, STOCK_LIVE_AUGMENT_ONLY=False, MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0, **json.loads(a.flip_extra))
+    out["flip"]["flip_extra"] = json.loads(a.flip_extra)
     r_flip = evaluate_month(ss, flip_ov, include_ledger=True, window_days=30)
     GLA.gain_ladder_fire = orig
-    r_def = evaluate_month(ss, dict(ov, MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0), include_ledger=True, window_days=30)
+    r_def = evaluate_month(ss, dict(ov, MIN_GAIN_TO_BUY_AGGRESSIVELY=3.0, **json.loads(a.flip_extra)), include_ledger=True, window_days=30)
     led = r_flip.get("execution_ledger") or []
     augs = [e for e in led if e.get("type") == "AUGMENT"]
     out["flip"].update({"sym_side": ss, "default_gain": r_def.get("gain_pct"), "default_augments": sum(1 for e in (r_def.get("execution_ledger") or []) if e.get("type") == "AUGMENT"), "flip_gain": r_flip.get("gain_pct"), "flip_augments": len(augs), "flip_sources": sorted(set(str(e.get("reason", "")).split(" ")[0] for e in augs))})

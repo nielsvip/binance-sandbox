@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-20 16:56:33 UTC
+# Copilot Status — 2026-10-20 17:03:11 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -18,15 +18,25 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 6 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **CRWD** SHORT (tradier) peak +9.5%, now +-0.0%
-- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.7%
-- HELD: **U** SHORT (tradier) peak +4.8%, now +-0.0%
-- HELD: **PR** LONG (tradier) peak +4.7%, now +0.7%
+- HELD: **CRWD** SHORT (tradier) peak +9.5%, now +0.1%
+- HELD: **ACN** LONG (tradier) peak +6.1%, now +0.1%
+- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.8%
+- HELD: **U** SHORT (tradier) peak +4.8%, now +0.7%
+- HELD: **BHVN** SHORT (tradier) peak +4.8%, now +0.1%
+- HELD: **PR** LONG (tradier) peak +4.7%, now +0.6%
+- HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.1%
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +-0.2%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.5%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
+
+**Issues (last 1h):** 7
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
+- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
