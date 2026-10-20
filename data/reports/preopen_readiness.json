@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T18:20:05Z",
+ "generated_utc": "2026-10-20T18:40:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -27,12 +27,12 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "{\"date\":\"20261020\",\"status\":\"FAILED\",\"failed_step\":\"2\",\"why\":\"template writer norm rc=124\",\"steps_ok\":\"1\",\"started\":\"2026-10-20T12:55:01Z\",\"ended\":\"2026-10-20T13:27:27Z\"}",
+    "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-20T17:25:56Z",
-    "cat_side_age_days": 0.0,
+    "cat_side_age_days": 0.1,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261020=False, s1 stamp {\"date\":\"20261020\",\"status\":\"FAILED\",\"failed_step\":\"2\",\"why\":\"template writer norm rc=124\",\"steps_ok\":\"1\",\"started\":\"2026-10-20T12:55:01Z\",\"ended\":\"20, cat_side layer 0.0d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261020=False, s1 stamp NO_STAMP, cat_side layer 0.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -210,21 +210,21 @@
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 93,
-    "stale_pct": 46.7,
-    "median_age_min": 80.1,
+    "stale_over_90min": 199,
+    "stale_pct": 100.0,
+    "median_age_min": 100.1,
     "sample": [
-     "AAVEUSDC",
-     "ACTUSDT",
-     "AGLDUSDT",
-     "AIAUSDT",
-     "ARBUSDC",
-     "ARPAUSDT",
-     "ARUSDT",
-     "AWEUSDT"
+     "1000000MOGUSDT",
+     "1000BONKUSDC",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC"
     ]
    },
-   "detail": "93/199 symbols past the live 90-min entry gate (46.7%)"
+   "detail": "199/199 symbols past the live 90-min entry gate (100.0%)"
   },
   {
    "name": "s1_sets_synced",

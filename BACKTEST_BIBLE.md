@@ -4019,10 +4019,12 @@ counterpart to compare.
   dir the 60 s sync rewrites — NOT the frozen dir pinned via `TRADE_PARITY_NPZ_DIR`/`V12_NPZ_DIR`, with a 20-min
   bar. Same sym_side, same frozen NPZ md5 `c15ce821...`, same 3,555-key set, bit-identical live legs: 339 trades
   at 14:07Z, `STALE_NPZ_SKIPPED` at 15:40Z. Whether a board gets a vector leg depends on a file it never reads.
-* **8 of 24 attempts (33%) hung silently**, each stopping after step 2880 of 2888-2893 (the last ~10 bars) then
+* **9 of 24 attempts (37.5%) hung silently** (4 timed out at the cap with rc=124, 5 were killed), each stopping
+  after step 2880 of 2888-2893 (the last ~10 bars) then
   burning 100-106% CPU with ZERO bytes written for 14-40 min. Not sym_side-bound — every affected sym_side
-  completed in 14-18 min on another attempt with identical inputs. Budget runs accordingly; a 4-run arm needs
-  retries.
+  completed in 14-18 min on another attempt with identical inputs — COMPUSDT_LONG completed three times at
+  ~16 min each and then hung a full hour on the fourth with byte-identical inputs. Budget runs accordingly;
+  a 4-run arm needs retries, and only 1 of 6 sym_sides reached 4 completed runs.
 * **`--window-days 10` is refused**: `"unsupported window_days=10 (need 1/7/30/365+)"` at
   `tools/opt/lifecycle_pilot.py:220`, which `generic_window_slice` does not patch. Run 30 and score the last 10
   days from each NPZ's own last bar.
