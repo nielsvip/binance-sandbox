@@ -1,0 +1,115 @@
+{
+ "window_from": "10-20 05:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 8
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 05:38",
+   "actual": "REDUCE",
+   "actual_reason": "BB_TAKE_15m_g0.48",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BATUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 05:42",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_DC4_LOW_3M_GAIN_EROSION_STOP_p0.194387<dc40.194960_g0.07%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "RENDERUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 05:59",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_REDUCE_k_1m:21/d_1m:17/k_3m:0/d_3m:3_EXIT_FALLTHROUGH_NO_SIGNALSTAGNATION_RED",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SNXUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 06:03",
+   "actual": "REDUCE",
+   "actual_reason": "WT_EXHAUST_mom4h=EXHAUST_UP_1h=IMPULSE_UP_g=1.20%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "TRBUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 05:48",
+   "actual": "REDUCE",
+   "actual_reason": "WT_LOWER_CROSS_EXIT_wt_4h_lower_wt+price_g-0.48",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "TRBUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 06:22",
+   "actual": "REDUCE",
+   "actual_reason": "WT_LOWER_CROSS_EXIT_wt_4h_lower_wt+price_g-0.48",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "XMRUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 05:43",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px605.7900_k75",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "XMRUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 05:49",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px605.7900_k75",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
