@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T22:33:49Z",
+ "ts": "2026-10-20T22:38:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,122 +127,185 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 11.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": -0.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 24.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9165.0
+   "log_age_s": 9471.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9168.0
+   "log_age_s": 9474.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T22:33:49Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:COMPUSDT_LONG",
    "evidence": "20 22:31:47 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $613 on bounce (prior max 1.9210)"
   },
   {
-   "ts": "2026-10-20T22:33:49Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:COMPUSDT_LONG",
    "evidence": "order notional $612.90 > MAX_ORDER_VALUE $300: 20 22:31:47 - INFO - [fin] [execute_trade_action][fin] \u2705 \u2705 \u2705 \u2705 OPEN fin:COMPUSDT_LONG @ 26.232970 qty=23.363894 ($612.90) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px26.247008_exit22.3500"
   },
   {
-   "ts": "2026-10-20T22:33:49Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:UNIUSDC_LONG",
    "evidence": "20 22:32:07 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $354 on bounce (prior max 1.0000)"
   },
   {
-   "ts": "2026-10-20T22:33:49Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:UNIUSDC_LONG",
    "evidence": "order notional $353.87 > MAX_ORDER_VALUE $300: 20 22:32:07 - INFO - [fin] [execute_trade_action][fin] \u2705 \u2705 \u2705 \u2705 OPEN fin:UNIUSDC_LONG @ 7.522000 qty=47.044586 ($353.87) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px7.521000_exit7.257000_a"
   },
   {
-   "ts": "2026-10-20T22:33:50Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:ARUSDT_LONG",
    "evidence": "20 22:33:03 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $194 on bounce (prior max 18.4000)"
   },
   {
-   "ts": "2026-10-20T22:33:50Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:COMPUSDT_LONG",
    "evidence": "20 22:33:22 - WARNING - [men] [REENTRY_GRANDFATHERED] men:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $1185 on bounce (prior max 1.5330)"
   },
   {
-   "ts": "2026-10-20T22:33:50Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:COMPUSDT_LONG",
    "evidence": "order notional $1184.63 > MAX_ORDER_VALUE $300: 20 22:33:22 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:COMPUSDT_LONG @ 26.153775 qty=45.294889 ($1184.63) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px26.266719_exit16.763"
   },
   {
-   "ts": "2026-10-20T22:33:50Z",
+   "ts": "2026-10-20T22:38:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "20 22:33:45 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $84 on bounce (prior max 13416.0000)"
   },
   {
-   "ts": "2026-10-20T22:33:50Z",
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:ENSUSDT_LONG",
+   "evidence": "20 22:33:56 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ENSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $220 on bounce (prior max 4.6000)"
+  },
+  {
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:ARUSDT_LONG",
+   "evidence": "20 22:34:19 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $200 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:COMPUSDT_LONG",
+   "evidence": "20 22:35:13 - WARNING - [men] [REENTRY_GRANDFATHERED] men:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $1273 on bounce (prior max 1.5330)"
+  },
+  {
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:COMPUSDT_LONG",
+   "evidence": "order notional $1273.42 > MAX_ORDER_VALUE $300: 20 22:35:13 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:COMPUSDT_LONG @ 26.180000 qty=48.640799 ($1273.42) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px26.210000_exit16.763"
+  },
+  {
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:GALAUSDT_SHORT",
+   "evidence": "20 22:35:26 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $36 on bounce (prior max 13416.0000)"
+  },
+  {
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:ENSUSDT_LONG",
+   "evidence": "20 22:38:26 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ENSUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $2306 on bounce (prior max 4.6000)"
+  },
+  {
+   "ts": "2026-10-20T22:38:55Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:ENSUSDT_LONG",
+   "evidence": "order notional $2306.21 > MAX_ORDER_VALUE $300: 20 22:38:26 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:ENSUSDT_LONG @ 5.606000 qty=411.381872 ($2306.21) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px5.602000_exit5.486733"
+  },
+  {
+   "ts": "2026-10-20T22:38:56Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 22:30:26 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $60 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-20T22:33:50Z",
+   "ts": "2026-10-20T22:38:56Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 22:32:48 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $60 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T22:38:56Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 22:37:51 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $60 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T22:38:56Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 22:38:13 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $41 on bounce (prior max 7095.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 7,
-  "SIZE_ANOMALY": 3
+  "CAP_BYPASS": 14,
+  "SIZE_ANOMALY": 5
  },
  "active_interventions": {
   "acct:trc": {
@@ -274,6 +337,13 @@
    "until": 1792542725.422587,
    "why": "SIZE_ANOMALY order $612.90 > 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:COMPUSDT_LONG",
+   "dry_run": false
+  },
+  "key:men:ENSUSDT_LONG": {
+   "ts": 1792535914.776433,
+   "until": 1792543114.776435,
+   "why": "SIZE_ANOMALY order $2306.21 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:ENSUSDT_LONG",
    "dry_run": false
   },
   "key:men:UNIUSDC_LONG": {
@@ -325,5 +395,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.73
+ "sweep_s": 0.8
 }
