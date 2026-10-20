@@ -75,14 +75,6 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
-    "MAX_AUGMENTS_PER_POSITION": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_CRYPTO_LONG.xlsx!AUGMENT_RISK_SIZING",
-      "TEMPLATE_CRYPTO_SHORT.xlsx!AUGMENT_RISK_SIZING"
-     ]
-    },
     "REENTRY_TIER2_MAX_MINUTES": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -164,8 +156,8 @@
      ]
     }
    },
-   "missing_count": 20,
-   "switch_keys_checked": 1110,
+   "missing_count": 19,
+   "switch_keys_checked": 1109,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
     "TEMPLATE_CRYPTO_SHORT.xlsx"
@@ -266,14 +258,6 @@
       "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
-    "MAX_AUGMENTS_PER_POSITION": {
-     "class": "UNDEFINED_SWITCH",
-     "other_config_has_it": false,
-     "sheets": [
-      "TEMPLATE_STOCKS_LONG.xlsx!AUGMENT_RISK_SIZING",
-      "TEMPLATE_STOCKS_SHORT.xlsx!AUGMENT_RISK_SIZING"
-     ]
-    },
     "REENTRY_TIER2_MAX_MINUTES": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -323,13 +307,13 @@
      ]
     }
    },
-   "missing_count": 18,
-   "switch_keys_checked": 1224,
+   "missing_count": 17,
+   "switch_keys_checked": 1223,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
     "TEMPLATE_STOCKS_SHORT.xlsx"
    ]
   }
  },
- "generated": "2026-10-20T17:05:56.393480+00:00"
+ "generated": "2026-10-20T17:41:14.977335+00:00"
 }

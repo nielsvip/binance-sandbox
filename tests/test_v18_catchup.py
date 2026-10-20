@@ -41,3 +41,20 @@ def test_stuck_first_cell_guard_counts_engine_activity():
     assert '_V18_ACTIVITY: dict = {"evals": 0}' in SRC
     assert '_V18_ACTIVITY["evals"] = _V18_ACTIVITY.get("evals", 0) + 1' in SRC
     assert "_stuck = _stuck and _ev_seen[0] < 0 and _ev_now == 0" in SRC
+
+
+def test_floor_law_audit_fields_and_floor_not_skipped_in_catchup():
+    import importlib
+    sys.path.insert(0, str(ROOT))
+    os.environ.setdefault("V15_ALLOW_MAC", "1")
+    P = importlib.import_module("v15_pilot")
+    assert P.v18_start_source("template_cat_side_defaults_today") == "cat_side_defaults"
+    assert P.v18_start_source("template_defaults_plus_winners_pack") == "defaults+winners"
+    assert P.v18_start_source("incumbent") == "per_sym" and P.v18_start_source("history_0") == "per_sym"
+    assert '"start_source": v18_start_source((progress.get("best_start") or {}).get("chosen"))' in SRC
+    assert '_man["start_source"] = v18_start_source(' in SRC
+    # BEST-START-FLOOR is gated only by prepared / fast_switches / the fresh final / V15_BEST_START_FLOOR — no catch-up-forced key
+    i = SRC.index('if prepared is not None and fast_switches is None and _fresh_final and os.environ.get("V15_BEST_START_FLOOR", "1") == "1":')
+    assert "_V18_CATCHUP" not in SRC[i - 2000:i]
+    for k in ("V15_BEST_START_FLOOR", "V15_PREV_BEST_START"):
+        assert f'("{k}"' not in SRC[SRC.index("_V18_CATCHUP = os.environ.get"):SRC.index("_V18_CATCHUP = os.environ.get") + 1500]

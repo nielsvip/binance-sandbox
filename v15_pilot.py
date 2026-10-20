@@ -2620,6 +2620,17 @@ _MIN_PROMOTE_DELTA = float(os.environ.get("V15_MIN_PROMOTE_DELTA", "0") or 0)
 
 
 _NPZ_STAMP: dict = {}
+
+
+def v18_start_source(chosen) -> str:
+    """BEST-START label -> the floor-law source: per_sym (incumbent / per_sym history / earlier finals) | cat_side_defaults |
+    defaults+winners (USER 2026-10-20: the start is max(latest per_sym set, latest cat_side defaults [+ winners pack]))."""
+    c = str(chosen or "")
+    if c == "template_cat_side_defaults_today":
+        return "cat_side_defaults"
+    if c == "template_defaults_plus_winners_pack":
+        return "defaults+winners"
+    return "per_sym" if c else "unknown"
 _V18_ACTIVITY: dict = {"evals": 0}  # engine results received by this process (the stuck-first-cell guard reads it)
 
 
@@ -4793,7 +4804,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _sse:
             print(f"[V18-SETSHA-WARN] {_sse}", flush=True)
     try:  # BRAIN 2026-10-14: one board-context line per run (tier/bh/baseline/start-set) — the context the graph conditions on
-        _delta_log_fh.write(json.dumps({**({"set_sha256": _v18_start_sha} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "npz_last_bar_ts": _NPZ_STAMP.get("npz_last_bar_ts"), "npz_age_min": _NPZ_STAMP.get("npz_age_min"), "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
+        _delta_log_fh.write(json.dumps({**({"set_sha256": _v18_start_sha} if _v18_setsha_on else {}), "ts": utcnow(), "sym_side": new_symside, "label": "BOARD_CTX", "start_source": v18_start_source((progress.get("best_start") or {}).get("chosen")), "start_chosen": (progress.get("best_start") or {}).get("chosen"), "start_gain": (progress.get("best_start") or {}).get("gain"), "npz_last_bar_ts": _NPZ_STAMP.get("npz_last_bar_ts"), "npz_age_min": _NPZ_STAMP.get("npz_age_min"), "cat_side": map_key_for_symside(new_symside), "tier": _tier_name, "bh": bh, "baseline_gain": baseline_gain, "baseline_trades": _tier_trades, "n_overrides": len(cumulative_overrides or {}), "start_fp": _carry_fp, "window_days": args.window_days, "round": os.environ.get("V15_DEFAULTS_ROUND", "")}, default=str) + "\n")
     except Exception as _bce:
         print(f"[BRAIN-WARN] board ctx {_bce}", flush=True)
     # BRAIN (USER 2026-10-14 "like a neural network … lower the number of times per 1000 tests low scorers are calculated"):
@@ -10491,6 +10502,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _man = _build_publish_manifest(new_symside, _final_name, {**(_fresh_final or {}), "bh": _bh_raw}, (_mf, _mc, _me, len(progress.get("done", {}))), _ovm, _md5_file(_final_path), _npp.name if _npp else None, _md5_file(_npp) if _npp else None, _npz_span_days(new_symside), _md5_file(Path(__file__)), Path(args.template).name if args.template else None, _sock_m.gethostname())
                     _man["publish_class"] = _cand_class
                     _man["mode"] = "catchup" if _V18_CATCHUP else "slow"
+                    _man["start_source"] = v18_start_source((progress.get("best_start") or {}).get("chosen"))  # floor law audit
+                    _man["start_chosen"], _man["start_gain"] = (progress.get("best_start") or {}).get("chosen"), (progress.get("best_start") or {}).get("gain")
+                    _man["best_start_floor"] = progress.get("best_start_floor")
                     _man["npz_last_bar_ts"], _man["npz_age_min"] = _NPZ_STAMP.get("npz_last_bar_ts"), _NPZ_STAMP.get("npz_age_min")  # USER LAW 2026-10-20: what the numbers are computed up to
                     _man["cells_vintage"] = _v18_vint.get("last_eval_ts")  # CLAUDE.md board date = newest eval ts of its cells
                     _man["publish_reason"] = f"{_cand_class}:{'new_best' if locals().get('_won') else 'publish'}"

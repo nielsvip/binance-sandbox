@@ -3693,7 +3693,7 @@ class TradierConfig:
     REENTRY_EXHAUSTED_PARTIAL_ENABLED: bool = True
     REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.2
     REENTRY_EXIT_RECLAIM_ENABLED: bool = True
-    REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED: bool = True  # 2026-10-20 USER LAW: a REENTRY after an exit only once price passed the exit price (+/- REENTRY_EXIT_RECLAIM_BUFFER_PCT) favourably (vec_decisions.reentry_crossback)
+    REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED: bool = False  # 2026-10-20 USER LAW (switch; default False = previous behaviour): a REENTRY after an exit only once price passed the exit price (+/- REENTRY_EXIT_RECLAIM_BUFFER_PCT) favourably (vec_decisions.reentry_crossback)
     REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on) — vec_decisions/reentry_triggers.py
     REENTRY_ON_DC4_15M_BREAK_ENABLED: bool = True  # USER 2026-10-14 re-entry trigger 2/3: prior-bar dc_high4_15m break (vv short)
     REENTRY_ON_HIGHER_LOW_ENABLED: bool = True  # USER 2026-10-14 re-entry trigger 3/3: 15m higher low since the exit + up close (vv short)

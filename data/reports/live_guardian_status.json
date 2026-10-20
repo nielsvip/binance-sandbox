@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T17:45:23Z",
+ "ts": "2026-10-20T17:50:52Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 152,
-   "open_positions": 24,
-   "unrealised_usd": 59.65,
+   "fills_6h": 156,
+   "open_positions": 22,
+   "unrealised_usd": 23.26,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 113,
+   "fills_6h": 115,
    "open_positions": 19,
-   "unrealised_usd": 24.79,
+   "unrealised_usd": 19.84,
    "pos_mismatch": 0
   },
   "fin": {
@@ -138,42 +138,42 @@
     "2294"
    ],
    "starts_30m": 1,
-   "log_age_s": 23.0
+   "log_age_s": 24.0
   },
   "men": {
    "pids": [
     "2919"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 26.0
   },
   "ang": {
    "pids": [
     "46913"
    ],
    "starts_30m": 1,
-   "log_age_s": 22.0
+   "log_age_s": 4.0
   },
   "inf": {
    "pids": [
     "2484"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": -0.0
   },
   "flz": {
    "pids": [
     "2737"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 12.0
   },
   "trb": {
    "pids": [
     "99643"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 3.0
   },
   "trc": {
    "pids": [
@@ -185,91 +185,98 @@
  },
  "alerts": [
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:CDW_LONG",
-   "evidence": "3 open->flat round trips in 60 min"
+   "evidence": "4 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:CDW_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 4 round trips/60min"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:ARM_SHORT",
    "evidence": "entry notional $1338.51 (median $239.88, MAX_ORDER_VALUE $7000) @ 2026-10-20T17:38:21Z WT_SIMPLE_GUARANTEE_S_wt1=-38.2_wt2=-36.2_qty_2"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:ARM_SHORT",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $1338.51 (median $239.88, MAX_ORDER_VALUE $7000) @ 2026-10-20T17:38:21Z WT_SIMPLE_GUARANTEE_S_wt1=-38.2_wt2=-36.2_qty_2"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:ARM_SHORT",
    "evidence": "entry notional $1115.03 (median $239.88, MAX_ORDER_VALUE $7000) @ 2026-10-20T17:38:21Z BROKER_SYNC_OPEN_FROM_FLAT_STUB"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:ARM_SHORT",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $1115.03 (median $239.88, MAX_ORDER_VALUE $7000) @ 2026-10-20T17:38:21Z BROKER_SYNC_OPEN_FROM_FLAT_STUB"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:ABBV_LONG",
-   "evidence": "3 open->flat round trips in 60 min"
+   "evidence": "4 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T17:45:23Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:ABBV_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 4 round trips/60min"
   },
   {
-   "ts": "2026-10-20T17:45:24Z",
+   "ts": "2026-10-20T17:50:52Z",
+   "severity": "CRITICAL",
+   "kind": "ACCOUNT_EQUITY_DROP",
+   "key": "trb",
+   "evidence": "unrealised PnL of the same open positions fell $29.57 since 2026-10-20T17:25:07Z (now $+23.26)"
+  },
+  {
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T17:45:24Z",
+   "ts": "2026-10-20T17:50:52Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
    "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T17:45:26Z",
+   "ts": "2026-10-20T17:50:53Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T12:31:33Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T17:45:26Z",
+   "ts": "2026-10-20T17:50:53Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:ARUSDT_LONG",
    "evidence": "REDUCE BB_TAKE_15m_g0.48 @ 2026-10-20T12:24:53Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T17:45:26Z",
+   "ts": "2026-10-20T17:50:53Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "inf:ARUSDT_LONG",
@@ -280,6 +287,7 @@
   "CHURN_KEY": 2,
   "NO_PER_KEY_BLOCK_AVAILABLE": 4,
   "SIZE_ANOMALY": 2,
+  "ACCOUNT_EQUITY_DROP": 1,
   "FILL_WITHOUT_VEC_DECISION": 2,
   "NATIVE_FILL_IN_EXACT_MODE": 3
  },
@@ -315,5 +323,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.68
+ "sweep_s": 1.82
 }

@@ -7494,7 +7494,7 @@ class QuickConfig:
     REENTRY_EXHAUSTED_PARTIAL_ENABLED: bool = True  # auto-added TEMPLATE
     REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.2  # auto-added TEMPLATE
     REENTRY_EXIT_RECLAIM_ENABLED: bool = True  # auto-added TEMPLATE
-    REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED: bool = True  # 2026-10-20 USER LAW: every reentry pathway after an exit needs price past the exit price (+/- REENTRY_EXIT_RECLAIM_BUFFER_PCT) in the favourable direction; vec_decisions.reentry_crossback
+    REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED: bool = False  # 2026-10-20 USER LAW (switch, default False = previous engine behaviour; "a result can never get worse on the same NPZ"): every reentry pathway after an exit needs price past the exit price (+/- REENTRY_EXIT_RECLAIM_BUFFER_PCT) in the favourable direction; vec_decisions.reentry_crossback
     REENTRY_POST_CONSOL_ATR_THRESHOLD: float = 0.15  # auto-added TEMPLATE
     REENTRY_POST_CONSOL_ENABLED: bool = True  # auto-added TEMPLATE
     REENTRY_POST_CONSOL_MULT: float = 1.5  # auto-added TEMPLATE
@@ -19043,22 +19043,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # recross of the exit price within HLR_RECROSS_BYPASS_BARS skips the unconditional
             # 09-27 hard blocks (DC4H/STOP/KG/GR) below. Sweepable gates are never bypassed.
             _selltop_recross_bypass = False
-            # 2026-10-20 USER LAW (vec_decisions.reentry_crossback): after an exit every reentry pathway is armed ONLY on a bar where price has
-            # passed the exit price again in the favourable direction (REENTRY_EXIT_RECLAIM_BUFFER_PCT). A pathway fire without it is not a
-            # reentry: only a fresh entry (entry_sig, with every entry gate) may open on that bar.
-            if (
-                fire
-                and has_closed_before
-                and trades
-                and not bool(entry_sig[i])
-                and not vec_decisions.reentry_crossback.allows_reentry(
-                    lambda _k, _d=None: getattr(cfg, _k, _d),
-                    is_long,
-                    float(px),
-                    float(trades[-1].get("exit_price", 0) or 0),
+            # 2026-10-20 USER LAW (vec_decisions.reentry_crossback): a pathway fire after an exit is a TRUE reentry only on a bar where price has
+            # passed the exit price again in the favourable direction (REENTRY_EXIT_RECLAIM_BUFFER_PCT). Only true reentries skip the BOTTOM/TOP
+            # REQUIRE veto (stocks, below). REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED (default False = previous engine behaviour, USER "a result can
+            # never get worse on the same NPZ"): True = a fire without the cross-back is a FRESH entry and must pass every entry filter (fresh
+            # rule: all) and the final entry-gate stack when computed.
+            _xb_true = False
+            if fire and has_closed_before and trades and not bool(entry_sig[i]):
+                _xb_get = lambda _k, _d=None: getattr(cfg, _k, _d)
+                _xb_true = vec_decisions.reentry_crossback.crossed_back(
+                    _xb_get, is_long, float(px), float(trades[-1].get("exit_price", 0) or 0)
                 )
-            ):
-                fire = False
+                if not _xb_true and vec_decisions.reentry_crossback.law_enabled(_xb_get):
+                    if _entry_filter_masks and not all(bool(_xm[i]) for _xm in _entry_filter_masks):
+                        fire = False
+                    elif _fx_G["_rag_pass"] is not None and not bool(_fx_G["_rag_pass"][i]):
+                        fire = False
             if (
                 fire
                 and has_closed_before
@@ -19554,7 +19554,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if (
                         _fx_G["_bt_veto"] is not None
                         and bool(_fx_G["_bt_veto"][i])
-                        and not (_bt_reentry_exempt and has_closed_before and not bool(entry_sig[i]))
+                        and not (_bt_reentry_exempt and has_closed_before and not bool(entry_sig[i]) and _xb_true)
                     ):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed); 2026-10-20 stock REENTRY fires exempt unless REENTRY_APPLY_ENTRY_GATES_ENABLED
                     if _lp_on and _lpm.fn_family(entry_reason) in _lp_flags and not _belm.entry_filters_pass(cfg, is_long, float(px), float(_lp_w11[i]), float(_lp_w21[i]), float(_lp_w14[i]), float(_lp_w24[i]), float(_lp_e50[i])):

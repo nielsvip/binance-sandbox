@@ -6,9 +6,12 @@ the exit price again in the trade's favourable direction by the configured buffe
     LONG  : px >= exit_px * (1 + REENTRY_EXIT_RECLAIM_BUFFER_PCT / 100)
     SHORT : px <= exit_px * (1 - REENTRY_EXIT_RECLAIM_BUFFER_PCT / 100)
 (buffer default 0.2 %, the existing B00 EXIT_RECLAIM semantics: vec_decisions/lane_vec_reentry2.reclaim_buffer_mask, ez_manage B00).
+DEFAULTS (USER 2026-10-20 "a result can never get worse on the same NPZ"): `crossed_back` is always evaluated and decides which fires are
+TRUE reentries (only those skip the stock BOTTOM/TOP REQUIRE veto — a live-parity fix, live tradier has no BT gate). The strict law (a
+non-cross-back fire must pass the fresh-entry gates) is the switch REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED, default False = previous
+behaviour, so the pilot measures it per board instead of an engine change lowering published numbers.
 A pathway that fires without the cross-back is NOT a reentry: it is a fresh entry and must come from the fresh-entry signal with
-every entry gate (in the vector: entry_sig + the order guards incl. BOTTOM/TOP). Kill switch REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED
-(default True). Shared by v12_quick_engine (bar loop), tradier_manage and ez_manage (live REENTRY dispatch).
+every entry gate (in the vector: entry filters + gate stack + the order guards incl. BOTTOM/TOP). Shared by v12_quick_engine (bar loop), tradier_manage and ez_manage (live REENTRY dispatch).
 """
 from __future__ import annotations
 
@@ -26,7 +29,7 @@ def _f(v: Any, d: float) -> float:
 
 
 def law_enabled(get: Get) -> bool:
-    v = get("REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED", True)
+    v = get("REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED", False)
     if isinstance(v, str):
         return v.strip().lower() in ("1", "true", "yes", "on")
     return bool(v)
