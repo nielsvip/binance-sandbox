@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T23:04:39Z",
+ "ts": "2026-10-20T23:09:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,65 +127,143 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 19.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 24.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11015.0
+   "log_age_s": 11313.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11018.0
+   "log_age_s": 11315.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T23:04:39Z",
+   "ts": "2026-10-20T23:09:37Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "20 22:59:50 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $51 on bounce (prior max 13416.0000)"
   },
   {
-   "ts": "2026-10-20T23:04:39Z",
+   "ts": "2026-10-20T23:09:37Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:ARUSDT_LONG",
    "evidence": "20 23:00:21 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $78 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:ARUSDT_LONG",
+   "evidence": "20 23:04:41 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $68 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:GALAUSDT_SHORT",
+   "evidence": "20 23:07:04 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $223 on bounce (prior max 13416.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:GALAUSDT_SHORT",
+   "evidence": "20 23:07:49 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $633 on bounce (prior max 13416.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:GALAUSDT_SHORT",
+   "evidence": "order notional $632.55 > MAX_ORDER_VALUE $300: 20 23:07:49 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:GALAUSDT_SHORT @ 0.001973 qty=320660.498124 ($632.55) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.001978_exit0."
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:COMPUSDT_LONG",
+   "evidence": "20 23:08:07 - WARNING - [men] [REENTRY_GRANDFATHERED] men:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $4 on bounce (prior max 1.5330)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 23:04:42 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $185 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 23:05:30 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $42 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:COMPUSDT_LONG",
+   "evidence": "20 23:05:56 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $32 on bounce (prior max 1.9300)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:COMPUSDT_LONG",
+   "evidence": "20 23:08:47 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $7 on bounce (prior max 1.9300)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 23:09:15 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $110 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:09:37Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 23:09:35 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $175 on bounce (prior max 7095.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 2
+  "CAP_BYPASS": 12,
+  "SIZE_ANOMALY": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -210,6 +288,13 @@
    "ts": 1791405204.913714,
    "why": "ORDER_STORM_ACCOUNT 26 fills/10min",
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_men",
+   "dry_run": false
+  },
+  "key:men:GALAUSDT_SHORT": {
+   "ts": 1792537671.8022668,
+   "until": 1792544871.80227,
+   "why": "SIZE_ANOMALY order $632.55 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:GALAUSDT_SHORT",
    "dry_run": false
   },
   "key:fin:COMPUSDT_LONG": {
@@ -261,5 +346,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.84
+ "sweep_s": 0.74
 }
