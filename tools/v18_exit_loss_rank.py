@@ -288,6 +288,8 @@ def relabel_unlabelled_exits(lrows, brows, counters):
             r["exit_family_raw"] = r["exit_family"]
             r["exit_family"] = fam
             counters["live_family_mapped_to_board_vocab"] = counters.get("live_family_mapped_to_board_vocab", 0) + 1
+        if C.is_stop_execution(fam):
+            continue
         if fam == r.get("entry_family") or (fam in entries and fam not in exits):
             r.setdefault("exit_family_raw", fam)
             r["exit_family"] = "UNLABELLED_EXIT"
@@ -595,7 +597,7 @@ def render_md(doc, mdoc):
     L = [f"# Exit-loss rank — {m['cat_side']} — {m['built_at']}", "",
          f"Board: {m['board_ledgers']} replayed ledgers / {m['board_trades']} trades (one real `include_ledger=True` eval of each latest "
          f"published final set, today's 30-day NPZ window). Live: {m['live_hermetic_lifecycles']} hermetic lifecycles + "
-         f"{m['stop_execution_lifecycles']} stop/execution (opened on/after {m['era_cut']}); live_other {m['live_other_lifecycles']}.",
+         f"{m['stop_execution_lifecycles']} stop/execution (closed on/after {m['era_cut']}; broker-echo fills dropped); live_other {m['live_other_lifecycles']}.",
          f"Units: {m['normalisation']}. Columns are never summed.", ""]
     hdr = ["family", "n", "losers", "loss_sum_pct", "one_bar_share", "mean_bars", "giveback", "premature", "drift_into_loss", "drift_n", "syms"]
     for c in COLUMNS:

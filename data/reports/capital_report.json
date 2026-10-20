@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-10-20 01:05 UTC",
- "total_capital_usd": 12.84,
+ "generated_at": "2026-10-20 01:10 UTC",
+ "total_capital_usd": 5.63,
  "tier_capital": {
   "A": 0.0,
-  "B": 7.25,
-  "C": 5.58
+  "B": 0.0,
+  "C": 5.63
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "men:BTCDOMUSDT_LONG"
+  "inf:ARUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "men",
-   "value_usd": 7.25,
-   "gain_pct": 2.568,
-   "tier": "B",
-   "perf_mult": 2.99,
-   "amt": 1.0,
-   "mark": 7.25187314
-  },
-  {
-   "pk": "men:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "men",
-   "value_usd": 5.58,
-   "gain_pct": 0.072,
+   "pk": "inf:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "inf",
+   "value_usd": 5.63,
+   "gain_pct": -0.597,
    "tier": "C",
-   "perf_mult": 0.28,
-   "amt": 0.001,
-   "mark": 5584.0
+   "perf_mult": 0.58,
+   "amt": 1.5,
+   "mark": 3.75245
   }
  ]
 }

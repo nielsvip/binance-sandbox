@@ -1,0 +1,37 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:CRYPTO_LONG": 555204,
+  "evals:CRYPTO_SHORT": 305817,
+  "evals:STOCKS_LONG": 354798,
+  "evals:STOCKS_SHORT": 323188,
+  "inserted": {
+   "evals:CRYPTO_LONG": 555204,
+   "evals:CRYPTO_SHORT": 305817,
+   "evals:STOCKS_LONG": 354798,
+   "evals:STOCKS_SHORT": 323188,
+   "sets:CRYPTO_LONG": 163,
+   "sets:CRYPTO_SHORT": 89,
+   "sets:STOCKS_LONG": 218,
+   "sets:STOCKS_SHORT": 180
+  },
+  "offered": {
+   "evals:CRYPTO_LONG": 555204,
+   "evals:CRYPTO_SHORT": 305817,
+   "evals:STOCKS_LONG": 354798,
+   "evals:STOCKS_SHORT": 323188,
+   "sets:CRYPTO_LONG": 164,
+   "sets:CRYPTO_SHORT": 89,
+   "sets:STOCKS_LONG": 219,
+   "sets:STOCKS_SHORT": 181
+  },
+  "secs": 1925.5,
+  "source_rows": 1539007
+ },
+ "finished": "2026-10-20T01:11:18Z",
+ "host": "MacBook-Pro.local",
+ "kind": "native",
+ "source": "data/experience_scratch/zst_expanded/eval_cache_v1_20261014.db",
+ "started": "2026-10-20T00:39:12Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}
