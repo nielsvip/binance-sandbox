@@ -1586,7 +1586,7 @@ def cmd_score(a):
                           "p_pos_pred": _r(res["rows"]["p_pos"][ri, G0]), "e_delta_pred": _r(res["rows"]["e_delta"][ri, G0], 4), "forward_pred": _r(res["rows"]["fwd"][ri, G0], 4),
                           "d_tim_pred": _r(res["rows"]["d_tim"][ri, G0], 3), "d_dd_pred": _r(res["rows"]["d_dd"][ri, G0], 3), "d_wr_pred": _r(res["rows"]["d_wr"][ri, G0], 3),
                           "p_pos_pred_by_regime": {g: _r(res["rows"]["p_pos"][ri, j]) for j, g in enumerate(REGIMES)},
-                          "status": "IDENTITY_DEFAULT" if ident else ("HAS_TEMPLATE_ROW" if res["row_n"][ri] else PRED_LABEL), "rule": "fixed_stop_family_template_row",
+                          "status": "IDENTITY_DEFAULT" if ident else "HAS_TEMPLATE_ROW", "rule": "fixed_stop_family_template_row",
                           "default": fctx.default(sw), "n_measured_row": int(res["row_n"][ri]), "pos_measured_row": int(res["row_pos"][ri]),
                           "pct_rank_vs_template_rows": _r(float(np.searchsorted(np.sort(res["rows"]["p_pos"][:, G0]), res["rows"]["p_pos"][ri, G0])) / max(1, len(res["row_keys"])), 4),
                           "nearest_evidence": sc.nearest(rk, k=5)})
@@ -1636,7 +1636,9 @@ def digest_proposals(cat_side, learn_dir=LEARN_DIR, k=None, k_needs=None):
     def ent(x):
         return {"switch": x["switch"], "cand": str(x["cand"]), "filter": x.get("filter"), "opt": None if x.get("opt") is None else str(x["opt"]), "cat_side": cat_side,
                 "regime": x.get("regime") or "ALL", "p_pos_pred": x.get("p_pos_pred"), "e_delta_pred": x.get("e_delta_pred"), "forward_pred": x.get("forward_pred"),
-                "nearest_evidence": [{kk: v for kk, v in ne.items() if kk in ("key", "tab", "cos", "n", "pos", "pos_rate", "mean_delta_pos", "kind")} for ne in (x.get("nearest_evidence") or [])][:3],
+                "nearest_evidence": ([{"key": f"{x['switch']}={x['cand']}" + (f"|{x.get('filter')}={x.get('opt')}" if x.get("filter") else ""), "n": int(x.get("n_measured_pair", x.get("n_measured_row", 0)) or 0),
+                                       "pos": int(x.get("pos_measured_pair", x.get("pos_measured_row", 0)) or 0), "kind": "MEASURED this exact link"}] if x.get("status") != "NEEDS_ROW" else [])
+                                     + [{kk: v for kk, v in ne.items() if kk in ("key", "tab", "cos", "n", "pos", "pos_rate", "mean_delta_pos", "kind")} for ne in (x.get("nearest_evidence") or [])][:3],
                 "status": x["status"] if x["status"] in ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW") else "PREDICTED_NOT_MEASURED", "label": "PREDICTION"}
     needs = sorted(doc.get("needs_row") or [], key=lambda x: -(x.get("p_pos_pred") or 0))
     fixed = [x for x in needs if str(x.get("rule", "")).startswith("fixed_stop")]
@@ -1697,7 +1699,8 @@ def cmd_calibrate(a):
         prop_p = Path(a.out_dir) / f"linknet_proposals_{cs}.json"
         if not npz_p.exists():
             continue
-        z = np.load(npz_p)
+        zf = np.load(npz_p)
+        z = {k: zf[k] for k in ("meta", "row_keys", "yellows", "cell_row", "cell_yellow", "row_p_pos", "cell_p_pos", "cell_n_measured")}
         meta = json.loads(bytes(z["meta"]).decode())
         row_keys = [str(x) for x in z["row_keys"]]
         yel = [str(x) for x in z["yellows"]]
@@ -1712,9 +1715,11 @@ def cmd_calibrate(a):
         since = a.since or meta.get("scored_at")
         P, Y, isprop, untried = [], [], [], []
         PR, YR = [], []
+        used_ts = []
         for ts, ev in by_cs.get(cs, []):
             if since and ts < since:
                 continue
+            used_ts.append(ts)
             rk = f"{ev['sh']}|{ev['k']}"
             ri = r_ix.get(rk)
             if ri is None:
@@ -1743,7 +1748,8 @@ def cmd_calibrate(a):
                 return {"n": 0}
             return {"n": n, "pos": int(Y[sel].sum()), "mean_pred": _r(P[sel].mean()), "realised": _r(Y[sel].mean()), "auc": auc(P[sel], Y[sel])}
         row = {"at": utc_now(), "cat_side": cs, "model_trained_at": meta.get("model_trained_at"), "scored_at": meta.get("scored_at"), "evals_since": since,
-               "window_first_ts": by_cs[cs][0][0] if by_cs.get(cs) else None, "window_last_ts": by_cs[cs][-1][0] if by_cs.get(cs) else None,
+               "window_first_ts": min(used_ts) if used_ts else None, "window_last_ts": max(used_ts) if used_ts else None, "row_events_in_window": len(used_ts),
+               "source": [str(p) for d in a.spill_dir for p in sorted(Path(d).glob("spill_*.tsv*"))],
                "cells_all": blk(np.ones(len(P), bool)), "cells_untried_n_lt_3": blk(untried), "cells_in_top_proposals": blk(isprop),
                "rows": ({"n": int(len(PR)), "pos": int(YR.sum()), "mean_pred": _r(PR.mean()), "realised": _r(YR.mean()), "auc": auc(PR, YR)} if len(PR) else {"n": 0}),
                "note": a.note or "", "label": "realised = measured engine evals; mean_pred = PREDICTION made before those evals"}

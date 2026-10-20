@@ -323,8 +323,14 @@ def run_store(a):
                         cells_of[host].append((fo, X_fs))
                     else:
                         nakeds.append((P_fs, X_fs, it))
+            chain_deg = {}
+            for P_fs, lst in children.items():
+                yl_p = set()
+                for pit, _Q in parents.get(P_fs, []):
+                    yl_p |= ytab.get(keyof(pit)[1], set())
+                chain_deg[P_fs] = sum(1 for it, _X in lst if keyof(it)[1] not in yl_p)
             for P_fs, X_fs, it in nakeds:
-                if len(children[P_fs]) < a.chain_min_children:
+                if chain_deg.get(P_fs, 0) < a.chain_min_children:
                     cnt[f"{cs}:pairs_dropped_probe_parent"] += 1
                     continue
                 P, X = g[P_fs], g[X_fs]
@@ -365,7 +371,7 @@ def main(argv=None):
     ap.add_argument("--ts-from", type=float, default=0.0)
     ap.add_argument("--ts-to", type=float, default=9e12)
     ap.add_argument("--chain-min-children", type=int, default=100,
-                    help="store: a parent set is a CHAIN state (the default in force) only when >= this many one-key children were measured on it; "
+                    help="store: a parent set is a CHAIN state (the default in force) only when >= this many one-key children that are NOT yellow cells of its own last key were measured on it; "
                          "calibrated 2026-10-20: CRYPTO_LONG pairs over parents with 100+ children are positive 1.93%% (logs, chain-relative: 1.84%%), "
                          "over parents with 1 / 2-4 / 5-19 / 20-99 children 63% / 27% / 15% / 12% (repairs of probes, not default-relative)")
     ap.add_argument("--host", required=True)

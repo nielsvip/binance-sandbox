@@ -230,6 +230,9 @@ def group(keys_tuple):
 
 # ------------------------------------------------------------------------------------------------ evidence loading
 
+NATIVE_ESTIMATOR_CS = tuple(x for x in os.environ.get("V18_PRECISION_NATIVE_CS", "CRYPTO_LONG,CRYPTO_SHORT").split(",") if x)
+
+
 def load_cat_side(cs, bolds):
     """Stream events_<CS>.tsv.gz -> numpy evidence tables + board context + promotions + chain starts."""
     keys, filts, syms, boards = Idx(), Idx(), Idx(), Idx()
@@ -244,6 +247,7 @@ def load_cat_side(cs, bolds):
     remedies = collections.defaultdict(lambda: [0, 0, 0.0])
     phase = collections.defaultdict(lambda: [0, 0, 0.0])
     cnt = collections.Counter()
+    nat_unconf = {"rows": {}, "pairs": {}}
     p = PREC / f"events_{cs}.tsv.gz"
     with gzip.open(p, "rt") as fh:
         for line in fh:
@@ -283,6 +287,22 @@ def load_cat_side(cs, bolds):
                 ph[2] += float(ev.get("d") or 0.0)
                 continue
             if e != "row":
+                continue
+            if ev.get("ck") == "NAT" and cs not in NATIVE_ESTIMATOR_CS:
+                n_ = ev.get("n")
+                cnt["native_rows_held_out"] += 1
+                if n_ and n_[1] == 1 and n_[0] is not None and n_[0] > EPS:
+                    u = nat_unconf["rows"].setdefault(ev["k"], {"n_pos": 0, "pos_syms": set(), "best": -1e9})
+                    u["n_pos"] += 1
+                    u["pos_syms"].add(s)
+                    u["best"] = max(u["best"], n_[0])
+                for y in ev.get("y") or []:
+                    cnt["native_cells_held_out"] += 1
+                    if y[2] == 1 and y[10] is not None and y[10] > EPS:
+                        u = nat_unconf["pairs"].setdefault((ev["k"], y[0]), {"n_pos": 0, "pos_syms": set(), "best": -1e9})
+                        u["n_pos"] += 1
+                        u["pos_syms"].add(s)
+                        u["best"] = max(u["best"], y[10])
                 continue
             cnt["rows"] += 1
             k = ev["k"]
@@ -344,7 +364,7 @@ def load_cat_side(cs, bolds):
         if k in Ca:
             Ca[k] = Ca[k].astype(np.int64)
     return {"keys": keys, "filts": filts, "syms": syms, "boards": boards, "R": Ra, "C": Ca, "board_meta": board_meta, "first_cv": first_cv,
-            "promos": promos, "ids": ids, "syn": syn, "abl": abl, "remedies": remedies, "phase": phase, "cnt": cnt}
+            "promos": promos, "ids": ids, "syn": syn, "nat_unconf": nat_unconf, "abl": abl, "remedies": remedies, "phase": phase, "cnt": cnt}
 
 
 def load_quartets(cs):
@@ -1147,7 +1167,14 @@ def build_cs(cs, a):
                              "n_pos_marginal": int(EP["pos"][j]), "pos_syms": sorted(syms.names[x] for x in psp[j]), "tried_on": sorted(uidx[s] for s in ts_ if s in uidx),
                              "untried_on": [uidx[s] for s in uni if s not in ts_], "best_delta": r4(cell_best[j]), "lift": r4(EP["mean_c"][j]),
                              "lift_ci": [r4(EP["mean_lo"][j]), r4(EP["mean_hi"][j])]})
-    pos_doc = {"_meta": {"cat_side": cs, "built_at": utc(), "law": LAW_POSITIVES, "universe_rule": "every sym_side of this cat_side with >= 1 board in the corpus or a published replay set, tokenized stocks excluded",
+    nu = L["nat_unconf"]
+    native_unconfirmed = {
+        "why": ("native snapshot rows (S1 eval cache 2026-10-13T02:42Z..10-14T19:05Z, logs lost) held out of the estimators for this cat_side: "
+                "their chain-relative positive rate is 3.8-6.5x the delta logs' rate on the same days, so they are not comparable evidence; listed so "
+                "they can be re-measured, never counted"),
+        "rows": [{"key": k, "n_pos": v["n_pos"], "pos_syms": sorted(v["pos_syms"]), "best_delta": r4(v["best"])} for k, v in sorted(nu["rows"].items())],
+        "pairs": [{"key": k, "filter": f, "n_pos": v["n_pos"], "pos_syms": sorted(v["pos_syms"]), "best_delta": r4(v["best"])} for (k, f), v in sorted(nu["pairs"].items())]} if (nu["rows"] or nu["pairs"]) else None
+    pos_doc = {"native_unconfirmed": native_unconfirmed, "_meta": {"cat_side": cs, "built_at": utc(), "law": LAW_POSITIVES, "universe_rule": "every sym_side of this cat_side with >= 1 board in the corpus or a published replay set, tokenized stocks excluded",
                          "encoding": "tried_on / untried_on are indices into `sym_sides`; positive = valid eval with delta > 1e-9 vs the default in force (rows: naked delta; pairs: cell delta)",
                          "n_rows": len(pa_rows), "n_pairs": len(pa_pairs)}, "sym_sides": uni, "rows": pa_rows, "pairs": pa_pairs}
     # ---------------- doc 14 §2.2 fact: eval time of keys positive on <= 3 % of their sym_sides

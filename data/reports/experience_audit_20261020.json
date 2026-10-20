@@ -1,6 +1,6 @@
 {
  "tool": "tools/v18_experience.py audit",
- "at": "2026-10-20T04:11:52Z",
+ "at": "2026-10-20T04:36:48Z",
  "host": "MacBook-Pro.local",
  "store": "/Users/niels/Documents/binance/data/experience",
  "shards": {
@@ -47,20 +47,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_CRYPTO_LONG_202610.db": {
-   "bytes": 6365872128,
+   "bytes": 6397562880,
    "tables": {
-    "sets": 3324,
-    "evals": 4756292,
+    "sets": 3331,
+    "evals": 4792335,
     "settlements": 938,
-    "row_done": 1818,
-    "boards": 752,
+    "row_done": 5223,
+    "boards": 753,
     "live_events": 3277,
     "trades": 18621,
     "log_other": 0
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 120,
-    "log|hermetic": 10848,
+    "log|hermetic": 46891,
     "native|hermetic": 120860,
     "native|pre_hermetic": 468582,
     "rebuilt|hermetic": 2937629,
@@ -69,14 +69,14 @@
    "evals_by_delta_rule": {
     "explicit": 589442,
     "log_replay_v1": 10840,
-    "none": 128,
+    "none": 36171,
     "rebuild_v1": 4155882
    },
    "live_by_era": {
     "hermetic": 1366,
     "pre_hermetic": 1911
    },
-   "orphan_evals_without_base_set": 10459,
+   "orphan_evals_without_base_set": 0,
    "orphan_boards_without_set": 0,
    "orphan_trades_without_eval": 0
   },
@@ -123,20 +123,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_CRYPTO_SHORT_202610.db": {
-   "bytes": 6166958080,
+   "bytes": 6211731456,
    "tables": {
-    "sets": 2842,
-    "evals": 5203005,
-    "settlements": 2721,
-    "row_done": 3333,
-    "boards": 695,
+    "sets": 2871,
+    "evals": 5225849,
+    "settlements": 3704,
+    "row_done": 6689,
+    "boards": 696,
     "live_events": 2698,
     "trades": 16816,
     "log_other": 0
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 141,
-    "log|hermetic": 28387,
+    "log|hermetic": 51231,
     "native|hermetic": 78928,
     "native|pre_hermetic": 250738,
     "rebuilt|hermetic": 3866327,
@@ -144,15 +144,15 @@
    },
    "evals_by_delta_rule": {
     "explicit": 329666,
-    "log_replay_v1": 23479,
-    "none": 5049,
+    "log_replay_v1": 45740,
+    "none": 5632,
     "rebuild_v1": 4844811
    },
    "live_by_era": {
     "hermetic": 1594,
     "pre_hermetic": 1104
    },
-   "orphan_evals_without_base_set": 10828,
+   "orphan_evals_without_base_set": 0,
    "orphan_boards_without_set": 0,
    "orphan_trades_without_eval": 0
   },
@@ -308,20 +308,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_STOCKS_LONG_202610.db": {
-   "bytes": 9936924672,
+   "bytes": 10258763776,
    "tables": {
-    "sets": 3135,
-    "evals": 8779982,
-    "settlements": 196867,
-    "row_done": 453600,
-    "boards": 1035,
+    "sets": 3452,
+    "evals": 9035512,
+    "settlements": 209846,
+    "row_done": 497769,
+    "boards": 1048,
     "live_events": 1736,
     "trades": 3999,
     "log_other": 255
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 135,
-    "log|hermetic": 4194719,
+    "log|hermetic": 4450249,
     "native|hermetic": 134287,
     "native|pre_hermetic": 354798,
     "rebuilt|hermetic": 1272484,
@@ -329,15 +329,15 @@
    },
    "evals_by_delta_rule": {
     "explicit": 489085,
-    "log_replay_v1": 885395,
-    "none": 3309459,
+    "log_replay_v1": 1076074,
+    "none": 3374310,
     "rebuild_v1": 4096043
    },
    "live_by_era": {
     "hermetic": 23,
     "pre_hermetic": 1713
    },
-   "orphan_evals_without_base_set": 479015,
+   "orphan_evals_without_base_set": 44450,
    "orphan_boards_without_set": 0,
    "orphan_trades_without_eval": 0
   },
@@ -493,20 +493,20 @@
    "orphan_trades_without_eval": 0
   },
   "experience_STOCKS_SHORT_202610.db": {
-   "bytes": 7925649408,
+   "bytes": 8018870272,
    "tables": {
-    "sets": 2812,
-    "evals": 6825360,
-    "settlements": 139394,
-    "row_done": 883251,
-    "boards": 1133,
+    "sets": 2974,
+    "evals": 6899846,
+    "settlements": 146943,
+    "row_done": 899385,
+    "boards": 1137,
     "live_events": 1303,
     "trades": 4379,
     "log_other": 0
    },
    "evals_by_provenance_era": {
     "ledger_replay|hermetic": 135,
-    "log|hermetic": 2578384,
+    "log|hermetic": 2652870,
     "native|hermetic": 77195,
     "native|pre_hermetic": 323188,
     "rebuilt|hermetic": 1151493,
@@ -514,81 +514,77 @@
    },
    "evals_by_delta_rule": {
     "explicit": 400383,
-    "log_replay_v1": 567056,
-    "none": 2011463,
+    "log_replay_v1": 631309,
+    "none": 2021696,
     "rebuild_v1": 3846458
    },
    "live_by_era": {
     "hermetic": 14,
     "pre_hermetic": 1289
    },
-   "orphan_evals_without_base_set": 325994,
+   "orphan_evals_without_base_set": 20745,
    "orphan_boards_without_set": 0,
    "orphan_trades_without_eval": 0
   }
  },
  "totals_by_cat_side": {
   "CRYPTO_LONG": {
-   "sets": 3415,
-   "evals": 4756292,
+   "sets": 3422,
+   "evals": 4792335,
    "settlements": 938,
-   "row_done": 1818,
-   "boards": 859,
+   "row_done": 5223,
+   "boards": 860,
    "live_events": 7664,
    "trades": 18621,
-   "log_other": 0,
-   "orphan_evals_without_base_set": 10459
+   "log_other": 0
   },
   "CRYPTO_SHORT": {
-   "sets": 2957,
-   "evals": 5203005,
-   "settlements": 2721,
-   "row_done": 3333,
-   "boards": 831,
+   "sets": 2986,
+   "evals": 5225849,
+   "settlements": 3704,
+   "row_done": 6689,
+   "boards": 832,
    "live_events": 6025,
    "trades": 16816,
-   "log_other": 0,
-   "orphan_evals_without_base_set": 10828
+   "log_other": 0
   },
   "STOCKS_LONG": {
-   "sets": 3324,
-   "evals": 8861067,
-   "settlements": 196867,
-   "row_done": 453600,
-   "boards": 1202,
+   "sets": 3641,
+   "evals": 9116597,
+   "settlements": 209846,
+   "row_done": 497769,
+   "boards": 1215,
    "live_events": 15874,
    "trades": 3999,
    "log_other": 255,
-   "orphan_evals_without_base_set": 479015
+   "orphan_evals_without_base_set": 44450
   },
   "STOCKS_SHORT": {
-   "sets": 2951,
-   "evals": 6929586,
-   "settlements": 139394,
-   "row_done": 883251,
-   "boards": 1266,
+   "sets": 3113,
+   "evals": 7004072,
+   "settlements": 146943,
+   "row_done": 899385,
+   "boards": 1270,
    "live_events": 7828,
    "trades": 4379,
    "log_other": 0,
-   "orphan_evals_without_base_set": 325994
+   "orphan_evals_without_base_set": 20745
   }
  },
  "problems": [
-  "experience_CRYPTO_LONG_202610.db: orphan_evals_without_base_set=10459",
-  "experience_CRYPTO_SHORT_202610.db: orphan_evals_without_base_set=10828",
-  "experience_STOCKS_LONG_202610.db: orphan_evals_without_base_set=479015",
-  "experience_STOCKS_SHORT_202610.db: orphan_evals_without_base_set=325994"
+  "experience_STOCKS_LONG_202610.db: orphan_evals_without_base_set=44450",
+  "experience_STOCKS_SHORT_202610.db: orphan_evals_without_base_set=20745"
  ],
  "watermarks": {
-  "n": 1027,
+  "n": 1031,
   "by_kind": {
    "history": 920,
-   "log": 90,
+   "log": 94,
    "native": 17
   },
   "rows_by_kind": {
    "history": 41305,
-   "log": 5919454,
+   "log": 6452210,
    "native": 2174554
   }
  },
@@ -816,6 +812,14 @@
    "started": "2026-10-20T04:11:47Z",
    "finished": "2026-10-20T04:11:48Z",
    "counters": "{\"files\": 531, \"evals:CRYPTO_LONG\": 120, \"trades:CRYPTO_LONG\": 18621, \"evals:CRYPTO_SHORT\": 141, \"trades:CRYPTO_SHORT\": 16816, \"evals:STOCKS_LONG\": 135, \"trades:STOCKS_LONG\": 3999, \"evals:STOCKS_SHORT\": 135, \"trades:STOCKS_SHORT\": 4379, \"inserted\": {\"evals:CRYPTO_LONG\": 120, \"trades:CRYPTO_LONG\": 18621, \"evals:CRYPTO_SHORT\": 141, \"trades:CRYPTO_SHORT\": 16816, \"evals:STOCKS_LONG\": 135, \"trades:STOCKS_LONG\": 3999, \"evals:STOCKS_SHORT\": 135, \"trades:STOCKS_SHORT\": 4379}, \"offered\": {\"evals:CRYPTO_LONG\": 120, \"trades:CRYPTO_LONG\": 18621, \"evals:CRYPTO_SHORT\": 141, \"trades:CRYPTO_SHORT\": 16816, \"evals:STOCKS_LONG\": 135, \"trades:STOCKS_LONG\": 3999, \"evals:STOCKS_SHORT\": 135, \"trades:STOCKS_SHORT\": 4379}, \"secs\": 0.7}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s1_run33/v15_delta_log/*.jsonl",
+   "kind": "log",
+   "host": "s1",
+   "started": "2026-10-20T04:25:52Z",
+   "finished": "2026-10-20T04:29:50Z",
+   "counters": "{\"progress_bases_loaded\": 81, \"lines\": 3168306, \"board_base_unknown\": 22, \"boards:STOCKS_LONG\": 75, \"evals:STOCKS_LONG\": 1246942, \"row_done:STOCKS_LONG\": 271771, \"identity_lines:STOCKS_LONG\": 446922, \"promotions\": 538, \"board_base_from_progress\": 102, \"files\": 88, \"boards:STOCKS_SHORT\": 45, \"evals:STOCKS_SHORT\": 660113, \"row_done:STOCKS_SHORT\": 158715, \"identity_lines:STOCKS_SHORT\": 248648, \"boards:CRYPTO_LONG\": 2, \"evals:CRYPTO_LONG\": 46891, \"identity_lines:CRYPTO_LONG\": 4975, \"row_done:CRYPTO_LONG\": 5223, \"boards:CRYPTO_SHORT\": 2, \"evals:CRYPTO_SHORT\": 51231, \"row_done:CRYPTO_SHORT\": 6689, \"identity_lines:CRYPTO_SHORT\": 20062, \"inserted\": {\"boards:STOCKS_LONG\": 13, \"evals:STOCKS_LONG\": 255530, \"row_done:STOCKS_LONG\": 44169, \"settlements:STOCKS_LONG\": 12979, \"sets:STOCKS_LONG\": 265, \"boards:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 74486, \"row_done:STOCKS_SHORT\": 16134, \"settlements:STOCKS_SHORT\": 7549, \"sets:STOCKS_SHORT\": 117, \"sets:CRYPTO_LONG\": 7, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 36043, \"settlements:CRYPTO_LONG\": 0, \"row_done:CRYPTO_LONG\": 3405, \"sets:CRYPTO_SHORT\": 29, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 22844, \"row_done:CRYPTO_SHORT\": 3356, \"settlements:CRYPTO_SHORT\": 983}, \"offered\": {\"boards:STOCKS_LONG\": 75, \"evals:STOCKS_LONG\": 1246942, \"row_done:STOCKS_LONG\": 271771, \"settlements:STOCKS_LONG\": 139626, \"sets:STOCKS_LONG\": 302, \"boards:STOCKS_SHORT\": 45, \"evals:STOCKS_SHORT\": 660113, \"row_done:STOCKS_SHORT\": 158715, \"settlements:STOCKS_SHORT\": 82823, \"sets:STOCKS_SHORT\": 146, \"sets:CRYPTO_LONG\": 8, \"boards:CRYPTO_LONG\": 2, \"evals:CRYPTO_LONG\": 46891, \"settlements:CRYPTO_LONG\": 938, \"row_done:CRYPTO_LONG\": 5223, \"sets:CRYPTO_SHORT\": 30, \"boards:CRYPTO_SHORT\": 2, \"evals:CRYPTO_SHORT\": 51231, \"row_done:CRYPTO_SHORT\": 6689, \"settlements:CRYPTO_SHORT\": 3704}, \"secs\": 238.1}"
   }
  ],
  "proofs": [
@@ -1043,6 +1047,15 @@
    "missing": 0,
    "mismatched": 0,
    "report": "../reports/experience_proofs/prove_shard_experience_STOCKS_SHORT_202610.db.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s1_run33/v15_delta_log/*.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T04:33:46Z",
+   "checked": 3168306,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s1.json"
   }
  ],
  "colds": [
