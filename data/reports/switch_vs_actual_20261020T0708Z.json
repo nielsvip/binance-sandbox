@@ -1,0 +1,24 @@
+{
+ "window_from": "10-20 06:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "TRBUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 06:22",
+   "actual": "REDUCE",
+   "actual_reason": "WT_LOWER_CROSS_EXIT_wt_4h_lower_wt+price_g-0.48",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
