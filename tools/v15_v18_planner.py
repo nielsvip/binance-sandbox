@@ -867,3 +867,33 @@ def load_positives_all(cat_side: str, symside: str, root=None):
             if ps:
                 idx[k] = {"syms": ps, "best": float(e.get("n_pos") or len(ps))}
     return idx, tried, f"{why} rows={len(d.get('rows') or [])} pairs={len(d.get('pairs') or [])} items={len(idx)} tried_here={len(tried)}"
+
+
+# ── V18_LINKNET_FIRST: first trials of untried pairs come from the linknet's ranked template_untried list ───────────────
+def linknet_first_on() -> bool:
+    return flag_on("V18_LINKNET_FIRST")
+
+
+def load_linknet_first(cat_side: str, root=None, top=None):
+    """data/learn/linknet_proposals_<CS>.json -> ({("SW=c", "F=o"): {"rank", "p_pos_pred", "e_delta_pred"}}, why).
+    Only `template_untried` items of THIS cat_side (status HAS_TEMPLATE_ROW or PREDICTED_NOT_MEASURED; the pilot still checks
+    the board's own template columns); `needs_row` items are never candidates.
+    Ranked by p_pos_pred (desc); `top` (V18_LINKNET_TOP, default all) caps the list. Everything here is a PREDICTION."""
+    cs = str(cat_side or "").upper()
+    p = learn_file(f"linknet_proposals_{cs}.json", root)
+    try:
+        d = json.loads(p.read_text())
+    except Exception as e:
+        return {}, f"absent/unreadable {p.name}: {e}"[:160]
+    if str((d.get("meta") or {}).get("cat_side") or "").upper() != cs:
+        return {}, "linknet CAT_SIDE_MISMATCH — refused (principle 13)"
+    items = [x for x in (d.get("template_untried") or []) if isinstance(x, dict) and x.get("switch") and x.get("filter") and "NEEDS_ROW" not in str(x.get("status") or "").upper() and str(x.get("cat_side") or cs).upper() == cs]
+    items.sort(key=lambda x: -_f(x.get("p_pos_pred")))
+    n = int(os.environ.get("V18_LINKNET_TOP", "0") or 0) if top is None else int(top)
+    if n > 0:
+        items = items[:n]
+    out = {}
+    for r, x in enumerate(items, 1):
+        k = (f"{str(x['switch']).strip()}={str(x['cand']).strip()}", f"{str(x['filter']).strip()}={str(x['opt']).strip()}")
+        out.setdefault(k, {"rank": r, "p_pos_pred": x.get("p_pos_pred"), "e_delta_pred": x.get("e_delta_pred")})
+    return out, f"ok {p.name} template_untried={len(items)} built_at={(d.get('meta') or {}).get('built_at')}"

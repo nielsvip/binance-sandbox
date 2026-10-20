@@ -4794,7 +4794,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_ids = _V18P.IdentityBook() if (_V18P is not None and _V18P.identity_settle_on()) else None
     _v18_io = bool(_V18P is not None and _V18P.io_throttle_on())
     _v18_wb = {"on": bool(_V18P is not None and _V18P.ledger_writeback_on()), "pending": [], "ver": None, "tag": None, "capture": None}
-    _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_MUST", "V18_PROFILE_YELLOWS")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
+    _v18_logx = [bool(_V18P is not None and any(_V18P.flag_on(_k) for _k in ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_MUST", "V18_PROFILE_YELLOWS", "V18_LINKNET_FIRST")))]  # E8 hook §4: brain_p / brain_model / phase on every eval line
     _v18_lx: dict = {}  # label -> extra delta-log fields of a V18 phase eval (companions / family / remedy_class / from_cat_side)
     if _v18_ids is not None or _v18_io or _v18_wb["on"]:
         print(f"[V18] {new_symside} identity_settle={_v18_ids is not None} io_throttle={_v18_io} ledger_writeback={_v18_wb['on']}", flush=True)
@@ -6056,6 +6056,13 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     _v18_floor_p = _V18P.floor_p() if _v18_floor_on else 0.0
     _v18_floor_tot: dict = {}
     _v18_floor_cs = map_key_for_symside(new_symside)
+    _v18_ln_on = bool(_V18P is not None and _V18P.linknet_first_on())
+    _v18_ln, _v18_ln_why = (_V18P.load_linknet_first(map_key_for_symside(new_symside), ROOT) if _v18_ln_on else ({}, "off"))
+    _v18_ln_rows = {k[0] for k in _v18_ln}
+    _v18_ln_book: dict = {}  # (sheet, row, header) -> {linknet_rank, p_pos_pred} booked on that eval's delta-log line
+    _v18_ln_tot = {"proposals": len(_v18_ln), "cells_forced": 0}
+    if _v18_ln_on:
+        print(f"[V18-LINKNET] {new_symside}: {_v18_ln_why}", flush=True)
     _v18_must_rows: set = set()  # V18_MUST: "SW=c" rows / ("SW=c", "F=o") cells that must be evaluated at p = 1 in the main pass
     _v18_must_cells: set = set()
     # V18 BRAIN (docs/v15_pending/19_E8_BRAIN_PILOT_HOOK_20261020.md): V18_BRAIN=1 (default OFF) = the learned per-cat_side
@@ -6467,6 +6474,23 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                         info["v18_floor"] = _fl_keep
                 except Exception as _v18me:
                     print(f"[V18-MUST-WARN] {sname}!{rr} {_v18me}", flush=True)
+        if _v18_ln and f"{str(switch).strip()}={str(cand).strip()}" in _v18_ln_rows:
+            _v18_lk = f"{str(switch).strip()}={str(cand).strip()}"
+            try:  # V18_LINKNET_FIRST: the linknet's ranked untried pairs of this row are the first trials (p = 1); a PREDICTION, judged by the engine
+                if info["kind"] == "skip" and not info["hdrs"] and str(info.get("reason") or "").startswith(("CARRIED_DEAD", "BRAIN_SAMPLED_OUT")):
+                    _row_disc(info, sname, switch, cand)
+                _fl_keep2 = info.get("v18_floor")
+                _h0 = set(info["hdrs"])
+                _V18P.floor_apply(info, lambda kind, h, _m=_v18_lk: False if kind == "row" else ((_m, str(h).strip()) in _v18_ln), 1.0)
+                if _fl_keep2 is not None:
+                    info["v18_floor"] = _fl_keep2
+                for _h in info["hdrs"]:
+                    _e = _v18_ln.get((_v18_lk, str(_h).strip()))
+                    if _e is not None:
+                        _v18_ln_book[(sname, rr, str(_h))] = {"linknet_rank": _e["rank"], "p_pos_pred": _e["p_pos_pred"]}
+                        _v18_ln_tot["cells_forced"] += 0 if _h in _h0 else 1
+            except Exception as _v18le:
+                print(f"[V18-LINKNET-WARN] {sname}!{rr} {_v18le}", flush=True)
         if _v18_brain_on and _v18_brain is not None:
             _v18_rk2 = f"{str(switch).strip()}={str(cand).strip()}"
             if info["kind"] == "skip" and info.get("v18_brain_row_p") is not None:
@@ -6586,6 +6610,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _bp = _v18_brain_p.get((sname, str(label)))
         out = {"phase": _V18P.phase_of(sname, label, SWITCH_SHEETS), "brain_p": 1.0 if _bp is None else _bp, "brain_model": (_v18_brain.meta.get("at") if _v18_brain is not None else None)}
         out.update(_v18_lx.get(str(label)) or {})
+        out.update(_v18_ln_book.get((sname, rr, str(label))) or {})
         return out
     def _get(sname: str, rr: int, switch, cand, label: str, ov: dict, deadline: float, cum_before: float):
         # one real evaluate_prepared_sanitized result (pool / cache / serial thread), hard deadline, one DELTA-LOG line
@@ -9526,6 +9551,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         _v18_ids.row = None
         progress["v18_identity"] = dict(_v18_ids.totals)
         print(f"[V18-IDENTITY] {new_symside} main pass settled {_v18_ids.totals}", flush=True)
+    if _v18_ln_on:
+        progress.setdefault("v18", {})["linknet_first"] = {**dict(_v18_ln_tot), "booked_cells": len(_v18_ln_book), "why": _v18_ln_why}
+        print(f"[V18-LINKNET] {new_symside} proposals={_v18_ln_tot['proposals']} cells evaluated with a linknet rank={len(_v18_ln_book)} forced={_v18_ln_tot['cells_forced']}", flush=True)
     if _v18_prof_on:
         progress.setdefault("v18", {})["profile"] = {**dict(_v18_prof_tot), "why": _v18_prof_why, "min_n": _v18_prof_min_n}
         print(f"[V18-PROFILE] {new_symside} rows={_v18_prof_tot['rows']} naked+floor={_v18_prof_tot['rows_dead']} cells pool={_v18_prof_tot['cells_pool']} must={_v18_prof_tot['cells_must']} drawn={_v18_prof_tot['cells_drawn']} settled={_v18_prof_tot['cells_settled']}", flush=True)

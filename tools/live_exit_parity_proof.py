@@ -82,11 +82,33 @@ def family(reason: str) -> str:
     segs = [p for p in re.split(r"[^A-Za-z0-9]+", s) if p]
     up = []
     for p in segs:
-        if re.match(r"^[A-Z][A-Z0-9]*$", p):
+        # numeric segments are PART of a family name, not a terminator: live writes E_1_WT_DELTA_EXIT, and
+        # stopping at "1" yielded the family "E", hiding 3 vector-backed exits in the unclassified bucket.
+        if re.match(r"^[A-Z][A-Z0-9]*$", p) or p.isdigit():
             up.append(p)
         else:
             break
     return "_".join(up) if up else s[:40]
+
+
+def resolve_family(reason: str):
+    """(family, emitting_path). Tries the longest UPPER_SNAKE prefix, then progressively SHORTER ones.
+    A single fixed-length token is not enough and that mistake has been made twice: live writes
+    FIXED_STOP_LONG / FIXED_STOP_SHORT while the vector emits FIXED_STOP, and CYCLE_TP_TIERED_T0 while the
+    vector emits CYCLE_TP. Testing only the full prefix reported 313 vector-backed exits as 'no emitter'."""
+    full = family(reason)
+    up = full.split("_")
+    while len(up) >= 2:
+        tok = "_".join(up)
+        hit = vec_emits(tok)
+        if hit:
+            return tok, hit
+        up.pop()
+    if up and len(up[0]) >= 5:
+        hit = vec_emits(up[0])
+        if hit:
+            return up[0], hit
+    return full, ""
 
 
 def load_exits(days: int):
@@ -115,21 +137,32 @@ def load_exits(days: int):
     return out, cut
 
 
-def switch_state(name, venue):
+def switch_values(name, venue):
+    """[(venue, value)] for each venue this path runs on; [] when the path has no switch (legacy)."""
     if name is None:
-        return "no emitter in live either (legacy)"
+        return []
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
-    vals = []
+    out = []
     for mod, cls, v in (("config", "Config", "crypto"), ("config_tradier", "TradierConfig", "stocks")):
         if venue not in (v, "both"):
             continue
         try:
             cfg = getattr(__import__(mod), cls)()
-            vals.append(f"{v}:{name}={getattr(cfg, name, '<absent>')}")
+            out.append((v, getattr(cfg, name, "<absent>")))
         except Exception as exc:
-            vals.append(f"{v}:{name}=<unreadable {type(exc).__name__}>")
-    return " ".join(vals)
+            out.append((v, f"<unreadable {type(exc).__name__}>"))
+    return out
+
+
+def switch_state(key):
+    name, off, venue = LIVE_ONLY[key]
+    vals = switch_values(name, venue)
+    if not vals:
+        return "no emitter in live either (legacy history only)", True
+    txt = " ".join(f"{v}:{name}={val}" for v, val in vals)
+    disabled = all(val == off or val == "<absent>" for _, val in vals)
+    return txt, disabled
 
 
 def main() -> int:
@@ -153,8 +186,8 @@ def main() -> int:
             buckets["NOT_vec_producible"] += 1
             live_only_hits[lo] += 1
             continue
-        fam = family(r)
-        if vec_emits(fam):
+        fam, hit = resolve_family(r)
+        if hit:
             buckets["vec_producible_family"] += 1
         else:
             buckets["unclassified"] += 1
@@ -162,15 +195,9 @@ def main() -> int:
     rep = {"window_start_utc": cut.strftime("%Y-%m-%dT%H:%M:%SZ"), "days": args.days,
            "exits": len(reasons), "buckets": dict(buckets),
            "live_only_fired": dict(live_only_hits),
-           "live_only_switch_state": {k: switch_state(*LIVE_ONLY[k]) for k in live_only_hits},
+           "live_only_switch_state": {k: switch_state(k)[0] for k in live_only_hits},
            "unclassified_families": dict(unknown)}
-    still_on = []
-    for k in live_only_hits:
-        name, off, venue = LIVE_ONLY[k]
-        st = switch_state(name, venue)
-        if name is not None and f"={off}" not in st.replace(" ", "").replace("=False", "=False"):
-            if not all(f"={off}" in part for part in st.split()):
-                still_on.append(f"{k} -> {st}")
+    still_on = [f"{k} -> {switch_state(k)[0]}" for k in live_only_hits if not switch_state(k)[1]]
     rep["still_enabled_non_vector_paths"] = still_on
     rep["verdict"] = "PASS" if not still_on else "FAIL"
     if args.json:

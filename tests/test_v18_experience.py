@@ -159,6 +159,7 @@ def test_log_identity_settlement_one_row_per_board_row(tmp_path, log_dir):
     c = sqlite3.connect(next(store.glob("experience_CRYPTO_LONG_*.db")))
     rows = c.execute("SELECT row, n_lines, switch FROM settlements WHERE row=4").fetchall()
     assert rows == [(4, 2, "B")]
+    assert run("audit", "--store", store, "--out", tmp_path / "audit.json") == 0, "no orphan base sets"
     assert c.execute("SELECT count(*) FROM row_done").fetchone()[0] == 1
     assert c.execute("SELECT count(*) FROM boards").fetchone()[0] == 1
     rep = tmp_path / "pl.json"
@@ -254,3 +255,15 @@ def test_shard_merge_roundtrip(tmp_path, native_db):
     assert count(b, "CRYPTO_LONG", "evals") == 1
     rep = tmp_path / "ps.json"
     assert run("prove", "--kind", "shard", "--from", str(a / "experience_*_*.db"), "--against", b, "--report", rep) == 0
+
+
+def test_export_materialises_full_overrides(tmp_path, native_db, capsys):
+    store = tmp_path / "store"
+    run("ingest", "--kind", "native", "--from", native_db, "--store", store, "--apply")
+    capsys.readouterr()
+    run("export", "--store", store, "--provenance", "native")
+    rows = [json.loads(x) for x in capsys.readouterr().out.splitlines()]
+    by = {r["symside"]: r for r in rows}
+    assert by["BTCUSDC_SHORT"]["overrides"] == {"A": 2, "B": True, "C": "x"}
+    assert by["BTCUSDC_LONG"]["metrics"]["gain_pct"] == 3.5
+    assert by["AAPL_LONG"]["cat_side"] == "STOCKS_LONG"

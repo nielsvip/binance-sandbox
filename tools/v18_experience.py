@@ -46,6 +46,7 @@ usage
   v18_experience.py reclaim --source X --cold X.zst [--proof R.json ...] [--remote-host s2] [--apply]
   v18_experience.py digest [--apply]
   v18_experience.py audit  [--out data/reports/experience_audit.json]
+  v18_experience.py export [--cat-side CS] [--provenance native|rebuilt|log|ledger_replay] [--since E] [--until E] [--limit N] [--out F.jsonl]
 """
 from __future__ import annotations
 
@@ -986,6 +987,7 @@ def ingest_log_file(path, host, prefixes, prog_bases, store, counters, limit=0):
             cn = _chain_canon(st, store, canon_cache)
             regular = label in REPLAY_LABELS_ROW or fk is not None
             if cn is not None and regular:
+                store.put_set(cs, month, cn.set_id, "log_chain_set", cn.n, cn.text, ts, source_id)
                 set_id, rule = sha256_text(cn.overlay(replay_mods(d.get("switch"), d.get("cand"), fk, fv))), "log_replay_v1"
             extra = {"line": ln, "nav": d.get("nav"), "cached": d.get("cached"), "err": d.get("err"), "delta": delta,
                      "fn": d.get("fn"), "tier": st.ctx.get("tier"), "chain_fp": st.chain_fp,
@@ -1827,6 +1829,57 @@ def audit(a):
     return 1 if rep["problems"] else 0
 
 
+def export(a):
+    """Stream evals as JSONL on stdout (or --out): symside, created, native_key, overrides (the FULL set, materialised as
+    sets[base_set_id] (+) explicit delta), metrics, fp and context. Filters: --cat-side, --provenance, --since/--until (epoch)."""
+    root = choose_store(a.store)[0]
+    out = open(a.out, "w") if a.out else sys.stdout
+    n = 0
+    for cs in ([a.cat_side] if a.cat_side else CAT_SIDES):
+        for p in sorted(root.glob(f"experience_{cs}_*.db")):
+            c = _connect(p, readonly=True)
+            sets = {}
+            q = ("SELECT eval_id, provenance, sym_side, era, ts, native_key, set_id, base_set_id, delta_rule, delta, switch, cand,"
+                 " filter_key, filter_val, label, window_days, offset_days, bh_pct, bars, npz_md5, gain, trades, tim, dd, sharpe,"
+                 " wr, valid, invalid_reason, fp, run, extra FROM evals WHERE 1=1")
+            args = []
+            if a.provenance:
+                q += " AND provenance=?"
+                args.append(a.provenance)
+            if a.since is not None:
+                q += " AND ts>=?"
+                args.append(a.since)
+            if a.until is not None:
+                q += " AND ts<?"
+                args.append(a.until)
+            for r in c.execute(q, args):
+                (eid, prov, sym, era, ts, nk, sid, bid, rule, delta, sw, cand, fk, fv, label, wd, od, bh, bars, npz, gain, trades,
+                 tim, dd, sh, wr, valid, inv, fp, run, extra) = r
+                ov = None
+                if bid and rule == "explicit":
+                    if bid not in sets:
+                        row = c.execute("SELECT gz FROM sets WHERE set_id=?", (bid,)).fetchone()
+                        sets[bid] = json.loads(gzip.decompress(row[0])) if row else None
+                    if sets[bid] is not None:
+                        ov = apply_delta(sets[bid], json.loads(delta) if delta else None)
+                rec = {"eval_id": eid, "provenance": prov, "cat_side": cs, "symside": sym, "created": ts, "era": era,
+                       "native_key": nk, "set_id": sid, "base_set_id": bid, "delta_rule": rule, "overrides": ov,
+                       "switch": sw, "cand": cand, "filter_key": fk, "filter_val": fv, "label": label,
+                       "window_days": wd, "offset_days": od, "bh_pct": bh, "bars": bars, "npz_md5": npz,
+                       "metrics": {"gain_pct": gain, "trades": trades, "tim_pct": tim, "max_dd_pct": dd, "pool_sharpe": sh,
+                                   "wr_pct": wr, "valid": None if valid is None else bool(valid), "invalid_reason": inv,
+                                   "behavior_fingerprint": fp}, "run": run, "extra": json.loads(extra) if extra else None}
+                out.write(json.dumps(rec, default=str) + "\n")
+                n += 1
+                if a.limit and n >= a.limit:
+                    return 0
+            c.close()
+    if a.out:
+        out.close()
+    print(f"[export] {n} rows", file=sys.stderr)
+    return 0
+
+
 def where(a):
     root, why = choose_store(a.store)
     print(json.dumps({"store": str(root), "why": why, "candidates": store_candidates(), "min_free_gb": MIN_FREE_GB}, indent=1))
@@ -1907,6 +1960,14 @@ def main(argv=None):
     p.add_argument("--store")
     p.add_argument("--out")
     p.add_argument("--quick-check", action="store_true")
+    p = sub.add_parser("export")
+    p.add_argument("--store")
+    p.add_argument("--cat-side", choices=CAT_SIDES)
+    p.add_argument("--provenance", choices=("native", "rebuilt", "log", "ledger_replay"))
+    p.add_argument("--since", type=float)
+    p.add_argument("--until", type=float)
+    p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--out")
     p = sub.add_parser("where")
     p.add_argument("--store")
     a = ap.parse_args(argv)
@@ -1914,7 +1975,7 @@ def main(argv=None):
         if a.kind in ("native", "rebuilt", "shard", "log", "trades") and not a.source:
             ap.error("--from is required for this kind")
         return do_ingest(a)
-    return {"prove": prove, "cold": cold, "reclaim": reclaim, "digest": digest, "audit": audit, "where": where}[a.cmd](a)
+    return {"prove": prove, "cold": cold, "reclaim": reclaim, "digest": digest, "audit": audit, "where": where, "export": export}[a.cmd](a)
 
 
 if __name__ == "__main__":

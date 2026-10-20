@@ -1,0 +1,1140 @@
+{
+ "tool": "tools/v18_experience.py audit",
+ "at": "2026-10-20T04:11:52Z",
+ "host": "MacBook-Pro.local",
+ "store": "/Users/niels/Documents/binance/data/experience",
+ "shards": {
+  "experience_CRYPTO_LONG_202608.db": {
+   "bytes": 233472,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 229,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 229
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_CRYPTO_LONG_202609.db": {
+   "bytes": 3842048,
+   "tables": {
+    "sets": 91,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 107,
+    "live_events": 4158,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 4158
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_CRYPTO_LONG_202610.db": {
+   "bytes": 6365872128,
+   "tables": {
+    "sets": 3324,
+    "evals": 4756292,
+    "settlements": 938,
+    "row_done": 1818,
+    "boards": 752,
+    "live_events": 3277,
+    "trades": 18621,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "ledger_replay|hermetic": 120,
+    "log|hermetic": 10848,
+    "native|hermetic": 120860,
+    "native|pre_hermetic": 468582,
+    "rebuilt|hermetic": 2937629,
+    "rebuilt|pre_hermetic": 1218253
+   },
+   "evals_by_delta_rule": {
+    "explicit": 589442,
+    "log_replay_v1": 10840,
+    "none": 128,
+    "rebuild_v1": 4155882
+   },
+   "live_by_era": {
+    "hermetic": 1366,
+    "pre_hermetic": 1911
+   },
+   "orphan_evals_without_base_set": 10459,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_CRYPTO_SHORT_202608.db": {
+   "bytes": 630784,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 684,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 684
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_CRYPTO_SHORT_202609.db": {
+   "bytes": 2793472,
+   "tables": {
+    "sets": 115,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 136,
+    "live_events": 2643,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 2643
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_CRYPTO_SHORT_202610.db": {
+   "bytes": 6166958080,
+   "tables": {
+    "sets": 2842,
+    "evals": 5203005,
+    "settlements": 2721,
+    "row_done": 3333,
+    "boards": 695,
+    "live_events": 2698,
+    "trades": 16816,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "ledger_replay|hermetic": 141,
+    "log|hermetic": 28387,
+    "native|hermetic": 78928,
+    "native|pre_hermetic": 250738,
+    "rebuilt|hermetic": 3866327,
+    "rebuilt|pre_hermetic": 978484
+   },
+   "evals_by_delta_rule": {
+    "explicit": 329666,
+    "log_replay_v1": 23479,
+    "none": 5049,
+    "rebuild_v1": 4844811
+   },
+   "live_by_era": {
+    "hermetic": 1594,
+    "pre_hermetic": 1104
+   },
+   "orphan_evals_without_base_set": 10828,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202603.db": {
+   "bytes": 86016,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 16,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 16
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202604.db": {
+   "bytes": 94208,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 36,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 36
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202605.db": {
+   "bytes": 126976,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 98,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 98
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202606.db": {
+   "bytes": 524288,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 1046,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 1046
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202607.db": {
+   "bytes": 491520,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 997,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 997
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202608.db": {
+   "bytes": 389120,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 685,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 685
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202609.db": {
+   "bytes": 80162816,
+   "tables": {
+    "sets": 189,
+    "evals": 81085,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 167,
+    "live_events": 11260,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "rebuilt|pre_hermetic": 81085
+   },
+   "evals_by_delta_rule": {
+    "rebuild_v1": 81085
+   },
+   "live_by_era": {
+    "pre_hermetic": 11260
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_LONG_202610.db": {
+   "bytes": 9936924672,
+   "tables": {
+    "sets": 3135,
+    "evals": 8779982,
+    "settlements": 196867,
+    "row_done": 453600,
+    "boards": 1035,
+    "live_events": 1736,
+    "trades": 3999,
+    "log_other": 255
+   },
+   "evals_by_provenance_era": {
+    "ledger_replay|hermetic": 135,
+    "log|hermetic": 4194719,
+    "native|hermetic": 134287,
+    "native|pre_hermetic": 354798,
+    "rebuilt|hermetic": 1272484,
+    "rebuilt|pre_hermetic": 2823559
+   },
+   "evals_by_delta_rule": {
+    "explicit": 489085,
+    "log_replay_v1": 885395,
+    "none": 3309459,
+    "rebuild_v1": 4096043
+   },
+   "live_by_era": {
+    "hermetic": 23,
+    "pre_hermetic": 1713
+   },
+   "orphan_evals_without_base_set": 479015,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202603.db": {
+   "bytes": 204800,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 263,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 263
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202604.db": {
+   "bytes": 102400,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 56,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 56
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202605.db": {
+   "bytes": 94208,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 34,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 34
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202606.db": {
+   "bytes": 77824,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 1,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 1
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202607.db": {
+   "bytes": 274432,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 391,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 391
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202608.db": {
+   "bytes": 446464,
+   "tables": {
+    "sets": 0,
+    "evals": 0,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 0,
+    "live_events": 820,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {},
+   "evals_by_delta_rule": {},
+   "live_by_era": {
+    "pre_hermetic": 820
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202609.db": {
+   "bytes": 99905536,
+   "tables": {
+    "sets": 139,
+    "evals": 104226,
+    "settlements": 0,
+    "row_done": 0,
+    "boards": 133,
+    "live_events": 4960,
+    "trades": 0,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "rebuilt|pre_hermetic": 104226
+   },
+   "evals_by_delta_rule": {
+    "rebuild_v1": 104226
+   },
+   "live_by_era": {
+    "pre_hermetic": 4960
+   },
+   "orphan_evals_without_base_set": 0,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  },
+  "experience_STOCKS_SHORT_202610.db": {
+   "bytes": 7925649408,
+   "tables": {
+    "sets": 2812,
+    "evals": 6825360,
+    "settlements": 139394,
+    "row_done": 883251,
+    "boards": 1133,
+    "live_events": 1303,
+    "trades": 4379,
+    "log_other": 0
+   },
+   "evals_by_provenance_era": {
+    "ledger_replay|hermetic": 135,
+    "log|hermetic": 2578384,
+    "native|hermetic": 77195,
+    "native|pre_hermetic": 323188,
+    "rebuilt|hermetic": 1151493,
+    "rebuilt|pre_hermetic": 2694965
+   },
+   "evals_by_delta_rule": {
+    "explicit": 400383,
+    "log_replay_v1": 567056,
+    "none": 2011463,
+    "rebuild_v1": 3846458
+   },
+   "live_by_era": {
+    "hermetic": 14,
+    "pre_hermetic": 1289
+   },
+   "orphan_evals_without_base_set": 325994,
+   "orphan_boards_without_set": 0,
+   "orphan_trades_without_eval": 0
+  }
+ },
+ "totals_by_cat_side": {
+  "CRYPTO_LONG": {
+   "sets": 3415,
+   "evals": 4756292,
+   "settlements": 938,
+   "row_done": 1818,
+   "boards": 859,
+   "live_events": 7664,
+   "trades": 18621,
+   "log_other": 0,
+   "orphan_evals_without_base_set": 10459
+  },
+  "CRYPTO_SHORT": {
+   "sets": 2957,
+   "evals": 5203005,
+   "settlements": 2721,
+   "row_done": 3333,
+   "boards": 831,
+   "live_events": 6025,
+   "trades": 16816,
+   "log_other": 0,
+   "orphan_evals_without_base_set": 10828
+  },
+  "STOCKS_LONG": {
+   "sets": 3324,
+   "evals": 8861067,
+   "settlements": 196867,
+   "row_done": 453600,
+   "boards": 1202,
+   "live_events": 15874,
+   "trades": 3999,
+   "log_other": 255,
+   "orphan_evals_without_base_set": 479015
+  },
+  "STOCKS_SHORT": {
+   "sets": 2951,
+   "evals": 6929586,
+   "settlements": 139394,
+   "row_done": 883251,
+   "boards": 1266,
+   "live_events": 7828,
+   "trades": 4379,
+   "log_other": 0,
+   "orphan_evals_without_base_set": 325994
+  }
+ },
+ "problems": [
+  "experience_CRYPTO_LONG_202610.db: orphan_evals_without_base_set=10459",
+  "experience_CRYPTO_SHORT_202610.db: orphan_evals_without_base_set=10828",
+  "experience_STOCKS_LONG_202610.db: orphan_evals_without_base_set=479015",
+  "experience_STOCKS_SHORT_202610.db: orphan_evals_without_base_set=325994"
+ ],
+ "watermarks": {
+  "n": 1027,
+  "by_kind": {
+   "history": 920,
+   "log": 90,
+   "native": 17
+  },
+  "rows_by_kind": {
+   "history": 41305,
+   "log": 5919454,
+   "native": 2174554
+  }
+ },
+ "ingests": [
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T054554Z_champ/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:10Z",
+   "finished": "2026-10-20T00:28:15Z",
+   "counters": "{\"source_rows\": 5979, \"evals:CRYPTO_LONG\": 5979, \"inserted\": {\"sets:CRYPTO_LONG\": 7, \"evals:CRYPTO_LONG\": 5979}, \"offered\": {\"sets:CRYPTO_LONG\": 7, \"evals:CRYPTO_LONG\": 5979}, \"secs\": 4.7}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/ALGOUSDT_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:15Z",
+   "finished": "2026-10-20T00:28:23Z",
+   "counters": "{\"source_rows\": 10231, \"evals:CRYPTO_SHORT\": 10231, \"inserted\": {\"sets:CRYPTO_SHORT\": 5, \"evals:CRYPTO_SHORT\": 10231}, \"offered\": {\"sets:CRYPTO_SHORT\": 5, \"evals:CRYPTO_SHORT\": 10231}, \"secs\": 8.1}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/AMD_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:23Z",
+   "finished": "2026-10-20T00:28:40Z",
+   "counters": "{\"source_rows\": 18950, \"evals:STOCKS_LONG\": 18950, \"inserted\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 18950}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 18950}, \"secs\": 17.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CDE_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:40Z",
+   "finished": "2026-10-20T00:28:41Z",
+   "counters": "{\"source_rows\": 1863, \"evals:STOCKS_SHORT\": 1863, \"inserted\": {\"sets:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 1863}, \"offered\": {\"sets:STOCKS_SHORT\": 1, \"evals:STOCKS_SHORT\": 1863}, \"secs\": 1.2}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:41Z",
+   "finished": "2026-10-20T00:28:52Z",
+   "counters": "{\"source_rows\": 13086, \"evals:CRYPTO_LONG\": 13086, \"inserted\": {\"sets:CRYPTO_LONG\": 3, \"evals:CRYPTO_LONG\": 7108}, \"offered\": {\"sets:CRYPTO_LONG\": 9, \"evals:CRYPTO_LONG\": 13086}, \"secs\": 10.9}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/COIN_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:28:52Z",
+   "finished": "2026-10-20T00:29:05Z",
+   "counters": "{\"source_rows\": 13439, \"evals:STOCKS_SHORT\": 13439, \"inserted\": {\"sets:STOCKS_SHORT\": 7, \"evals:STOCKS_SHORT\": 13439}, \"offered\": {\"sets:STOCKS_SHORT\": 7, \"evals:STOCKS_SHORT\": 13439}, \"secs\": 13.0}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/DOTUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:06Z",
+   "finished": "2026-10-20T00:29:14Z",
+   "counters": "{\"source_rows\": 8388, \"evals:CRYPTO_LONG\": 8388, \"inserted\": {\"sets:CRYPTO_LONG\": 5, \"evals:CRYPTO_LONG\": 8388}, \"offered\": {\"sets:CRYPTO_LONG\": 6, \"evals:CRYPTO_LONG\": 8388}, \"secs\": 8.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/MINAUSDT_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:14Z",
+   "finished": "2026-10-20T00:29:24Z",
+   "counters": "{\"source_rows\": 13618, \"evals:CRYPTO_SHORT\": 13618, \"inserted\": {\"sets:CRYPTO_SHORT\": 3, \"evals:CRYPTO_SHORT\": 13618}, \"offered\": {\"sets:CRYPTO_SHORT\": 4, \"evals:CRYPTO_SHORT\": 13618}, \"secs\": 10.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/QBTS_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:25Z",
+   "finished": "2026-10-20T00:29:31Z",
+   "counters": "{\"source_rows\": 7965, \"evals:STOCKS_LONG\": 7965, \"inserted\": {\"sets:STOCKS_LONG\": 5, \"evals:STOCKS_LONG\": 7965}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 7965}, \"secs\": 6.7}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/AMD_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:31Z",
+   "finished": "2026-10-20T00:29:54Z",
+   "counters": "{\"source_rows\": 25649, \"evals:STOCKS_LONG\": 25649, \"inserted\": {\"sets:STOCKS_LONG\": 5, \"evals:STOCKS_LONG\": 25649}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 25649}, \"secs\": 22.4}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/CDE_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:29:54Z",
+   "finished": "2026-10-20T00:30:03Z",
+   "counters": "{\"source_rows\": 12228, \"evals:STOCKS_SHORT\": 12228, \"inserted\": {\"sets:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 12228}, \"offered\": {\"sets:STOCKS_SHORT\": 5, \"evals:STOCKS_SHORT\": 12228}, \"secs\": 9.5}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/COIN_SHORT/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:30:03Z",
+   "finished": "2026-10-20T00:30:23Z",
+   "counters": "{\"source_rows\": 17267, \"evals:STOCKS_SHORT\": 17267, \"inserted\": {\"sets:STOCKS_SHORT\": 6, \"evals:STOCKS_SHORT\": 17267}, \"offered\": {\"sets:STOCKS_SHORT\": 7, \"evals:STOCKS_SHORT\": 17267}, \"secs\": 20.0}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/DOTUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:30:24Z",
+   "finished": "2026-10-20T00:30:35Z",
+   "counters": "{\"source_rows\": 12763, \"evals:CRYPTO_LONG\": 12763, \"inserted\": {\"sets:CRYPTO_LONG\": 5, \"evals:CRYPTO_LONG\": 12763}, \"offered\": {\"sets:CRYPTO_LONG\": 6, \"evals:CRYPTO_LONG\": 12763}, \"secs\": 11.8}"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/QBTS_LONG/eval_cache.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:30:35Z",
+   "finished": "2026-10-20T00:30:46Z",
+   "counters": "{\"source_rows\": 10662, \"evals:STOCKS_LONG\": 10662, \"inserted\": {\"sets:STOCKS_LONG\": 5, \"evals:STOCKS_LONG\": 10662}, \"offered\": {\"sets:STOCKS_LONG\": 6, \"evals:STOCKS_LONG\": 10662}, \"secs\": 10.2}"
+  },
+  {
+   "source": "history",
+   "kind": "history",
+   "host": "mac",
+   "started": "2026-10-20T00:33:44Z",
+   "finished": "2026-10-20T00:33:46Z",
+   "counters": "{\"lines\": 41305, \"live_events:CRYPTO_SHORT:pre_hermetic\": 4431, \"dropped_broker_echo:CRYPTO_SHORT\": 830, \"live_events:CRYPTO_SHORT:hermetic\": 1594, \"files\": 920, \"live_events:CRYPTO_LONG:pre_hermetic\": 6298, \"dropped_broker_echo:CRYPTO_LONG\": 957, \"live_events:CRYPTO_LONG:hermetic\": 1366, \"live_events:STOCKS_LONG:pre_hermetic\": 15851, \"dropped_broker_echo:STOCKS_LONG\": 1132, \"live_events:STOCKS_LONG:hermetic\": 23, \"live_events:STOCKS_SHORT:pre_hermetic\": 7814, \"dropped_broker_echo:STOCKS_SHORT\": 995, \"live_events:STOCKS_SHORT:hermetic\": 14, \"inserted\": {\"live_events:CRYPTO_SHORT\": 6025, \"live_events:CRYPTO_LONG\": 7664, \"live_events:STOCKS_LONG\": 15874, \"live_events:STOCKS_SHORT\": 7828}, \"offered\": {\"live_events:CRYPTO_SHORT\": 6025, \"live_events:CRYPTO_LONG\": 7664, \"live_events:STOCKS_LONG\": 15874, \"live_events:STOCKS_SHORT\": 7828}, \"secs\": 1.6}"
+  },
+  {
+   "source": "data/experience_scratch/s2_live_cache/live_cache_snapshot_20261020.db",
+   "kind": "native",
+   "host": "s2",
+   "started": "2026-10-20T00:33:39Z",
+   "finished": "2026-10-20T00:34:55Z",
+   "counters": "{\"source_rows\": 103459, \"evals:STOCKS_SHORT\": 32398, \"evals:STOCKS_LONG\": 71061, \"inserted\": {\"sets:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 32398, \"sets:STOCKS_LONG\": 7, \"evals:STOCKS_LONG\": 71061}, \"offered\": {\"sets:STOCKS_SHORT\": 4, \"evals:STOCKS_SHORT\": 32398, \"sets:STOCKS_LONG\": 7, \"evals:STOCKS_LONG\": 71061}, \"secs\": 75.7}"
+  },
+  {
+   "source": "data/experience_scratch/zst_expanded/eval_cache_v1_20261014.db",
+   "kind": "native",
+   "host": "mac",
+   "started": "2026-10-20T00:39:12Z",
+   "finished": "2026-10-20T01:11:17Z",
+   "counters": "{\"source_rows\": 1539007, \"evals:CRYPTO_LONG\": 555204, \"evals:CRYPTO_SHORT\": 305817, \"evals:STOCKS_LONG\": 354798, \"evals:STOCKS_SHORT\": 323188, \"inserted\": {\"sets:CRYPTO_LONG\": 163, \"evals:CRYPTO_LONG\": 555204, \"sets:CRYPTO_SHORT\": 89, \"evals:CRYPTO_SHORT\": 305817, \"sets:STOCKS_LONG\": 218, \"evals:STOCKS_LONG\": 354798, \"sets:STOCKS_SHORT\": 180, \"evals:STOCKS_SHORT\": 323188}, \"offered\": {\"sets:CRYPTO_LONG\": 164, \"evals:CRYPTO_LONG\": 555204, \"sets:CRYPTO_SHORT\": 89, \"evals:CRYPTO_SHORT\": 305817, \"sets:STOCKS_LONG\": 219, \"evals:STOCKS_LONG\": 354798, \"sets:STOCKS_SHORT\": 181, \"evals:STOCKS_SHORT\": 323188}, \"secs\": 1925.5}"
+  },
+  {
+   "source": "boards",
+   "kind": "boards",
+   "host": "mac",
+   "started": "2026-10-20T00:33:51Z",
+   "finished": "2026-10-20T01:25:06Z",
+   "counters": "{\"boards_progress:CRYPTO_SHORT\": 105, \"promoted_steps\": 4436, \"boards_progress:CRYPTO_LONG\": 83, \"boards_progress:STOCKS_LONG\": 148, \"boards_progress:STOCKS_SHORT\": 117, \"boards_xlsx:CRYPTO_LONG\": 775, \"boards_xlsx:CRYPTO_SHORT\": 725, \"boards_xlsx:STOCKS_LONG\": 928, \"boards_xlsx:STOCKS_SHORT\": 898, \"manifests_without_xlsx\": 1304, \"inserted\": {\"sets:CRYPTO_SHORT\": 587, \"boards:CRYPTO_SHORT\": 830, \"boards:CRYPTO_LONG\": 858, \"sets:CRYPTO_LONG\": 575, \"sets:STOCKS_LONG\": 809, \"boards:STOCKS_LONG\": 1076, \"sets:STOCKS_SHORT\": 728, \"boards:STOCKS_SHORT\": 1015}, \"offered\": {\"sets:CRYPTO_SHORT\": 594, \"boards:CRYPTO_SHORT\": 830, \"boards:CRYPTO_LONG\": 858, \"sets:CRYPTO_LONG\": 581, \"sets:STOCKS_LONG\": 809, \"boards:STOCKS_LONG\": 1076, \"sets:STOCKS_SHORT\": 728, \"boards:STOCKS_SHORT\": 1015}, \"secs\": 3074.6}"
+  },
+  {
+   "source": "s2_shards/experience_STOCKS_SHORT_202609.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T02:53:18Z",
+   "finished": "2026-10-20T02:53:20Z",
+   "counters": "{\"sets:STOCKS_SHORT:offered\": 33, \"sets:STOCKS_SHORT:inserted\": 33, \"evals:STOCKS_SHORT:offered\": 104226, \"evals:STOCKS_SHORT:inserted\": 104226, \"settlements:STOCKS_SHORT:offered\": 0, \"settlements:STOCKS_SHORT:inserted\": 0, \"row_done:STOCKS_SHORT:offered\": 0, \"row_done:STOCKS_SHORT:inserted\": 0, \"boards:STOCKS_SHORT:offered\": 0, \"boards:STOCKS_SHORT:inserted\": 0, \"live_events:STOCKS_SHORT:offered\": 0, \"live_events:STOCKS_SHORT:inserted\": 0, \"trades:STOCKS_SHORT:offered\": 0, \"trades:STOCKS_SHORT:inserted\": 0, \"log_other:STOCKS_SHORT:offered\": 0, \"log_other:STOCKS_SHORT:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 1.5}"
+  },
+  {
+   "source": "s2_shards/experience_STOCKS_SHORT_202610.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T02:53:29Z",
+   "finished": "2026-10-20T02:57:23Z",
+   "counters": "{\"sets:STOCKS_SHORT:offered\": 2022, \"sets:STOCKS_SHORT:inserted\": 1953, \"evals:STOCKS_SHORT:offered\": 3846458, \"evals:STOCKS_SHORT:inserted\": 3846458, \"settlements:STOCKS_SHORT:offered\": 0, \"settlements:STOCKS_SHORT:inserted\": 0, \"row_done:STOCKS_SHORT:offered\": 0, \"row_done:STOCKS_SHORT:inserted\": 0, \"boards:STOCKS_SHORT:offered\": 0, \"boards:STOCKS_SHORT:inserted\": 0, \"live_events:STOCKS_SHORT:offered\": 0, \"live_events:STOCKS_SHORT:inserted\": 0, \"trades:STOCKS_SHORT:offered\": 0, \"trades:STOCKS_SHORT:inserted\": 0, \"log_other:STOCKS_SHORT:offered\": 0, \"log_other:STOCKS_SHORT:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 233.6}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_CRYPTO_LONG_202610.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T02:53:18Z",
+   "finished": "2026-10-20T02:59:23Z",
+   "counters": "{\"sets:CRYPTO_LONG:offered\": 2699, \"sets:CRYPTO_LONG:inserted\": 2656, \"evals:CRYPTO_LONG:offered\": 4155882, \"evals:CRYPTO_LONG:inserted\": 4155882, \"settlements:CRYPTO_LONG:offered\": 0, \"settlements:CRYPTO_LONG:inserted\": 0, \"row_done:CRYPTO_LONG:offered\": 0, \"row_done:CRYPTO_LONG:inserted\": 0, \"boards:CRYPTO_LONG:offered\": 0, \"boards:CRYPTO_LONG:inserted\": 0, \"live_events:CRYPTO_LONG:offered\": 0, \"live_events:CRYPTO_LONG:inserted\": 0, \"trades:CRYPTO_LONG:offered\": 0, \"trades:CRYPTO_LONG:inserted\": 0, \"log_other:CRYPTO_LONG:offered\": 0, \"log_other:CRYPTO_LONG:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 365.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_CRYPTO_SHORT_202610.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T02:59:35Z",
+   "finished": "2026-10-20T03:08:17Z",
+   "counters": "{\"sets:CRYPTO_SHORT:offered\": 2314, \"sets:CRYPTO_SHORT:inserted\": 2272, \"evals:CRYPTO_SHORT:offered\": 4844811, \"evals:CRYPTO_SHORT:inserted\": 4844811, \"settlements:CRYPTO_SHORT:offered\": 0, \"settlements:CRYPTO_SHORT:inserted\": 0, \"row_done:CRYPTO_SHORT:offered\": 0, \"row_done:CRYPTO_SHORT:inserted\": 0, \"boards:CRYPTO_SHORT:offered\": 0, \"boards:CRYPTO_SHORT:inserted\": 0, \"live_events:CRYPTO_SHORT:offered\": 0, \"live_events:CRYPTO_SHORT:inserted\": 0, \"trades:CRYPTO_SHORT:offered\": 0, \"trades:CRYPTO_SHORT:inserted\": 0, \"log_other:CRYPTO_SHORT:offered\": 0, \"log_other:CRYPTO_SHORT:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 522.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_LONG_202609.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T03:08:18Z",
+   "finished": "2026-10-20T03:08:18Z",
+   "counters": "{\"sets:STOCKS_LONG:offered\": 35, \"sets:STOCKS_LONG:inserted\": 35, \"evals:STOCKS_LONG:offered\": 81085, \"evals:STOCKS_LONG:inserted\": 81085, \"settlements:STOCKS_LONG:offered\": 0, \"settlements:STOCKS_LONG:inserted\": 0, \"row_done:STOCKS_LONG:offered\": 0, \"row_done:STOCKS_LONG:inserted\": 0, \"boards:STOCKS_LONG:offered\": 0, \"boards:STOCKS_LONG:inserted\": 0, \"live_events:STOCKS_LONG:offered\": 0, \"live_events:STOCKS_LONG:inserted\": 0, \"trades:STOCKS_LONG:offered\": 0, \"trades:STOCKS_LONG:inserted\": 0, \"log_other:STOCKS_LONG:offered\": 0, \"log_other:STOCKS_LONG:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 0.5}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s1_run33/v15_delta_log/*.jsonl",
+   "kind": "log",
+   "host": "s1",
+   "started": "2026-10-20T03:01:47Z",
+   "finished": "2026-10-20T03:13:18Z",
+   "counters": "{\"progress_bases_loaded\": 82, \"lines\": 2635550, \"board_base_from_progress\": 96, \"boards:STOCKS_LONG\": 62, \"evals:STOCKS_LONG\": 991412, \"row_done:STOCKS_LONG\": 227602, \"identity_lines:STOCKS_LONG\": 397321, \"promotions\": 425, \"files\": 84, \"boards:STOCKS_SHORT\": 41, \"evals:STOCKS_SHORT\": 585627, \"row_done:STOCKS_SHORT\": 142581, \"identity_lines:STOCKS_SHORT\": 227764, \"board_base_unknown\": 9, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 10848, \"identity_lines:CRYPTO_LONG\": 4975, \"row_done:CRYPTO_LONG\": 1818, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 28387, \"row_done:CRYPTO_SHORT\": 3333, \"identity_lines:CRYPTO_SHORT\": 13777, \"inserted\": {\"sets:STOCKS_LONG\": 44, \"boards:STOCKS_LONG\": 62, \"evals:STOCKS_LONG\": 991412, \"row_done:STOCKS_LONG\": 227602, \"settlements:STOCKS_LONG\": 126647, \"sets:STOCKS_SHORT\": 32, \"boards:STOCKS_SHORT\": 41, \"evals:STOCKS_SHORT\": 585627, \"row_done:STOCKS_SHORT\": 142581, \"settlements:STOCKS_SHORT\": 75274, \"sets:CRYPTO_LONG\": 1, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 10848, \"settlements:CRYPTO_LONG\": 938, \"row_done:CRYPTO_LONG\": 1818, \"sets:CRYPTO_SHORT\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 28387, \"row_done:CRYPTO_SHORT\": 3333, \"settlements:CRYPTO_SHORT\": 2721}, \"offered\": {\"sets:STOCKS_LONG\": 44, \"boards:STOCKS_LONG\": 62, \"evals:STOCKS_LONG\": 991412, \"row_done:STOCKS_LONG\": 227602, \"settlements:STOCKS_LONG\": 126647, \"sets:STOCKS_SHORT\": 32, \"boards:STOCKS_SHORT\": 41, \"evals:STOCKS_SHORT\": 585627, \"row_done:STOCKS_SHORT\": 142581, \"settlements:STOCKS_SHORT\": 75274, \"sets:CRYPTO_LONG\": 1, \"boards:CRYPTO_LONG\": 1, \"evals:CRYPTO_LONG\": 10848, \"settlements:CRYPTO_LONG\": 938, \"row_done:CRYPTO_LONG\": 1818, \"sets:CRYPTO_SHORT\": 1, \"boards:CRYPTO_SHORT\": 1, \"evals:CRYPTO_SHORT\": 28387, \"row_done:CRYPTO_SHORT\": 3333, \"settlements:CRYPTO_SHORT\": 2721}, \"secs\": 691.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_LONG_202610.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T03:08:24Z",
+   "finished": "2026-10-20T03:13:20Z",
+   "counters": "{\"sets:STOCKS_LONG:offered\": 2265, \"sets:STOCKS_LONG:inserted\": 2187, \"evals:STOCKS_LONG:offered\": 4096043, \"evals:STOCKS_LONG:inserted\": 4096043, \"settlements:STOCKS_LONG:offered\": 0, \"settlements:STOCKS_LONG:inserted\": 0, \"row_done:STOCKS_LONG:offered\": 0, \"row_done:STOCKS_LONG:inserted\": 0, \"boards:STOCKS_LONG:offered\": 0, \"boards:STOCKS_LONG:inserted\": 0, \"live_events:STOCKS_LONG:offered\": 0, \"live_events:STOCKS_LONG:inserted\": 0, \"trades:STOCKS_LONG:offered\": 0, \"trades:STOCKS_LONG:inserted\": 0, \"log_other:STOCKS_LONG:offered\": 0, \"log_other:STOCKS_LONG:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 296.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_SHORT_202609.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T03:13:21Z",
+   "finished": "2026-10-20T03:13:21Z",
+   "counters": "{\"sets:STOCKS_SHORT:offered\": 33, \"sets:STOCKS_SHORT:inserted\": 0, \"evals:STOCKS_SHORT:offered\": 104226, \"evals:STOCKS_SHORT:inserted\": 0, \"settlements:STOCKS_SHORT:offered\": 0, \"settlements:STOCKS_SHORT:inserted\": 0, \"row_done:STOCKS_SHORT:offered\": 0, \"row_done:STOCKS_SHORT:inserted\": 0, \"boards:STOCKS_SHORT:offered\": 0, \"boards:STOCKS_SHORT:inserted\": 0, \"live_events:STOCKS_SHORT:offered\": 0, \"live_events:STOCKS_SHORT:inserted\": 0, \"trades:STOCKS_SHORT:offered\": 0, \"trades:STOCKS_SHORT:inserted\": 0, \"log_other:STOCKS_SHORT:offered\": 0, \"log_other:STOCKS_SHORT:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 0.2}"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_SHORT_202610.db",
+   "kind": "shard",
+   "host": "s2",
+   "started": "2026-10-20T03:13:26Z",
+   "finished": "2026-10-20T03:14:56Z",
+   "counters": "{\"sets:STOCKS_SHORT:offered\": 2022, \"sets:STOCKS_SHORT:inserted\": 0, \"evals:STOCKS_SHORT:offered\": 3846458, \"evals:STOCKS_SHORT:inserted\": 0, \"settlements:STOCKS_SHORT:offered\": 0, \"settlements:STOCKS_SHORT:inserted\": 0, \"row_done:STOCKS_SHORT:offered\": 0, \"row_done:STOCKS_SHORT:inserted\": 0, \"boards:STOCKS_SHORT:offered\": 0, \"boards:STOCKS_SHORT:inserted\": 0, \"live_events:STOCKS_SHORT:offered\": 0, \"live_events:STOCKS_SHORT:inserted\": 0, \"trades:STOCKS_SHORT:offered\": 0, \"trades:STOCKS_SHORT:inserted\": 0, \"log_other:STOCKS_SHORT:offered\": 0, \"log_other:STOCKS_SHORT:inserted\": 0, \"shards_merged\": 1, \"inserted\": {}, \"offered\": {}, \"secs\": 89.7}"
+  },
+  {
+   "source": "data/learn/trade_ledgers/*/*.jsonl",
+   "kind": "trades",
+   "host": "mac",
+   "started": "2026-10-20T04:11:47Z",
+   "finished": "2026-10-20T04:11:48Z",
+   "counters": "{\"files\": 531, \"evals:CRYPTO_LONG\": 120, \"trades:CRYPTO_LONG\": 18621, \"evals:CRYPTO_SHORT\": 141, \"trades:CRYPTO_SHORT\": 16816, \"evals:STOCKS_LONG\": 135, \"trades:STOCKS_LONG\": 3999, \"evals:STOCKS_SHORT\": 135, \"trades:STOCKS_SHORT\": 4379, \"inserted\": {\"evals:CRYPTO_LONG\": 120, \"trades:CRYPTO_LONG\": 18621, \"evals:CRYPTO_SHORT\": 141, \"trades:CRYPTO_SHORT\": 16816, \"evals:STOCKS_LONG\": 135, \"trades:STOCKS_LONG\": 3999, \"evals:STOCKS_SHORT\": 135, \"trades:STOCKS_SHORT\": 4379}, \"offered\": {\"evals:CRYPTO_LONG\": 120, \"trades:CRYPTO_LONG\": 18621, \"evals:CRYPTO_SHORT\": 141, \"trades:CRYPTO_SHORT\": 16816, \"evals:STOCKS_LONG\": 135, \"trades:STOCKS_LONG\": 3999, \"evals:STOCKS_SHORT\": 135, \"trades:STOCKS_SHORT\": 4379}, \"secs\": 0.7}"
+  }
+ ],
+ "proofs": [
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T054554Z_champ/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:31:10Z",
+   "checked": 5979,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_b94ca2c3.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/ALGOUSDT_SHORT/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:31:21Z",
+   "checked": 10231,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_e7d75332.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/AMD_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:31:40Z",
+   "checked": 18950,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_b73ad71b.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CDE_SHORT/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:31:42Z",
+   "checked": 1863,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_15823e71.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:31:54Z",
+   "checked": 13086,
+   "missing": 0,
+   "mismatched": 5978,
+   "report": "data/reports/experience_proofs/prove_bench_6c3469e5.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/COIN_SHORT/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:32:08Z",
+   "checked": 13439,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_5dbdfdd9.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/DOTUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:32:15Z",
+   "checked": 8388,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_8087fb59.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/MINAUSDT_SHORT/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:32:27Z",
+   "checked": 13618,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_66c5b503.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/QBTS_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:32:35Z",
+   "checked": 7965,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_738dcd3c.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/AMD_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:33:01Z",
+   "checked": 25649,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_4795687d.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/CDE_SHORT/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:33:12Z",
+   "checked": 12228,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_37877c27.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/COIN_SHORT/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:33:33Z",
+   "checked": 17267,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_4608cd49.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/DOTUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:33:48Z",
+   "checked": 12763,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_ca17a84c.json"
+  },
+  {
+   "source": "data",
+   "kind": "history",
+   "at": "2026-10-20T00:33:51Z",
+   "checked": 41305,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_history.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/QBTS_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:34:01Z",
+   "checked": 10662,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_2b386109.json"
+  },
+  {
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CHRUSDT_LONG/eval_cache.db",
+   "kind": "native",
+   "at": "2026-10-20T00:35:52Z",
+   "checked": 13086,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_bench_6c3469e5.json"
+  },
+  {
+   "source": "data/experience_scratch/s2_live_cache/live_cache_snapshot_20261020.db",
+   "kind": "native",
+   "at": "2026-10-20T00:37:23Z",
+   "checked": 103459,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_s2_live_cache.json"
+  },
+  {
+   "source": "data/experience_scratch/zst_expanded/eval_cache_v1_20261014.db",
+   "kind": "native",
+   "at": "2026-10-20T01:45:28Z",
+   "checked": 1539007,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_zst_master_20261014.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s1_run33/v15_delta_log/*.jsonl",
+   "kind": "log",
+   "at": "2026-10-20T03:15:11Z",
+   "checked": 2635550,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "data/reports/experience_proofs/prove_log_s1.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_CRYPTO_LONG_202610.db",
+   "kind": "shard",
+   "at": "2026-10-20T04:08:09Z",
+   "checked": 4158581,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "../reports/experience_proofs/prove_shard_experience_CRYPTO_LONG_202610.db.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_CRYPTO_SHORT_202610.db",
+   "kind": "shard",
+   "at": "2026-10-20T04:08:52Z",
+   "checked": 4847125,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "../reports/experience_proofs/prove_shard_experience_CRYPTO_SHORT_202610.db.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_LONG_202609.db",
+   "kind": "shard",
+   "at": "2026-10-20T04:08:53Z",
+   "checked": 81120,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "../reports/experience_proofs/prove_shard_experience_STOCKS_LONG_202609.db.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_LONG_202610.db",
+   "kind": "shard",
+   "at": "2026-10-20T04:09:55Z",
+   "checked": 4098308,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "../reports/experience_proofs/prove_shard_experience_STOCKS_LONG_202610.db.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_SHORT_202609.db",
+   "kind": "shard",
+   "at": "2026-10-20T04:09:57Z",
+   "checked": 104259,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "../reports/experience_proofs/prove_shard_experience_STOCKS_SHORT_202609.db.json"
+  },
+  {
+   "source": "/Users/niels/Documents/binance/data/experience_scratch/s2_shards/experience_STOCKS_SHORT_202610.db",
+   "kind": "shard",
+   "at": "2026-10-20T04:10:46Z",
+   "checked": 3848480,
+   "missing": 0,
+   "mismatched": 0,
+   "report": "../reports/experience_proofs/prove_shard_experience_STOCKS_SHORT_202610.db.json"
+  }
+ ],
+ "colds": [
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T054554Z_champ__CHRUSDT_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T054554Z_champ/CHRUSDT_LONG/eval_cache.db",
+   "sha256": "8cf74c3a24b5e67ccc8b0c80e5b1cb546f254ab23e9312b00b4da8952f07af52",
+   "bytes": 789634
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__ALGOUSDT_SHORT.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/ALGOUSDT_SHORT/eval_cache.db",
+   "sha256": "5877837b9fae32be9c51dd490786330119d32ff3a1f933c2be353d38fc54c683",
+   "bytes": 1355405
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__AMD_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/AMD_LONG/eval_cache.db",
+   "sha256": "f16aa03fd36cb6044223691e67494f6197130866538cc5a1515e5d27447e36dc",
+   "bytes": 2417676
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__CDE_SHORT.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CDE_SHORT/eval_cache.db",
+   "sha256": "5a158fad909a2c59ba8978e53fff6a12f418a981525423c1850b19de9fcc26bb",
+   "bytes": 204700
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__CHRUSDT_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/CHRUSDT_LONG/eval_cache.db",
+   "sha256": "19dadbd85f9611335de12a7d4ee628cd2cfe41a09c86b93acbe475242375a73a",
+   "bytes": 1792660
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__COIN_SHORT.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/COIN_SHORT/eval_cache.db",
+   "sha256": "58841a5fa3a6befd3f7b3a2e104838d70c46221b3e82f3af01b1a0fca6763383",
+   "bytes": 1737867
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__DOTUSDT_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/DOTUSDT_LONG/eval_cache.db",
+   "sha256": "5776ccbb5ee2069f27accb0e71c9e401fb1303039f4abe61040d2c3ac262bfbf",
+   "bytes": 1081807
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__MINAUSDT_SHORT.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/MINAUSDT_SHORT/eval_cache.db",
+   "sha256": "a46f574ad54dbb16721389ce9d83387547d85d57fe7f1910fa768c524c672a1b",
+   "bytes": 1783699
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__gate_20261017T061057Z_cand__QBTS_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__gate_20261017T061057Z_cand/QBTS_LONG/eval_cache.db",
+   "sha256": "564ff353054b6decb049462a0413e04f29fd84b7083796d4f5d7b6167bb8ac4d",
+   "bytes": 970728
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__rebench_honest_cee6b6d9__AMD_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/AMD_LONG/eval_cache.db",
+   "sha256": "4024d2606fd2d0a0338e8a31ad98fd4d60d5c220a010b1e1c9b962e61d47aa59",
+   "bytes": 3282500
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__rebench_honest_cee6b6d9__CDE_SHORT.db.zst",
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/CDE_SHORT/eval_cache.db",
+   "sha256": "0b9baa7572f910ba1e463ffb2e493811666d36aceb6d22b9872fbd1594e38962",
+   "bytes": 1530066
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__rebench_honest_cee6b6d9__COIN_SHORT.db.zst",
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/COIN_SHORT/eval_cache.db",
+   "sha256": "72f54570ca0a13780ebec4c05f6798126bec8acc69f3264d2165cd22674e1e81",
+   "bytes": 2347877
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__rebench_honest_cee6b6d9__DOTUSDT_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/DOTUSDT_LONG/eval_cache.db",
+   "sha256": "f2fd53c6669e464143148c89fd1883b47bb24617b19d801bb2efba0573db5880",
+   "bytes": 1648487
+  },
+  {
+   "zst": "data/eval_cache_cold/bench/20261014__rebench_honest_cee6b6d9__QBTS_LONG.db.zst",
+   "source": "data/eval_cache_incoming/20261014__rebench_honest_cee6b6d9/QBTS_LONG/eval_cache.db",
+   "sha256": "c13d0eeb7d6840a115c893f89e8251b4c16e908c234b25a75f2c8947afe883d6",
+   "bytes": 1328255
+  },
+  {
+   "zst": "data/eval_cache_cold/live/s2_live_cache_snapshot_20261020.db.zst",
+   "source": "data/experience_scratch/s2_live_cache/live_cache_snapshot_20261020.db",
+   "sha256": "aa95f759b685a04e3378519b4da304537781722272782c05269879f562964558",
+   "bytes": 12009231
+  }
+ ]
+}
