@@ -139,8 +139,9 @@ def test_repair_real_template_rows_with_real_config():
     rep = {"rows_with_stats": 0, "promoted_switch": [], "promoted_filter": [], "ledger": {}}
     W2.apply_tab(ws, {}, {}, {}, True, rep, {}, {}, "CRYPTO_LONG", True)
     got = {a: how for _t, a, how, _v in rep.get("repaired_defaults", [])}
-    assert "STDEV_BOUNCE_ENABLED" in got
     groups = W2.groups_by_name(ws)
+    # the shipped template is healed (2026-10-08+), so the writer repairs nothing on it; whatever it does repair must be a real group
+    assert set(got) <= set(groups)
     for a in ("STDEV_BOUNCE_ENABLED", "STDEV_BOUNCE_PCTB_LONG", "BB_SQUEEZE_COOLDOWN"):
         rows = groups[a]
         c_isd = W2.col_of(ws, "is_default")

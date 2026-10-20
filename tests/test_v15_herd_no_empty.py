@@ -1,22 +1,28 @@
 """Test herd calculate-not-empty: empty xlsx never counted as done nor pushed."""
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import pathlib
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_is_xlsx_empty_helper_exists():
     text = pathlib.Path("tools/v15_local_herd.py").read_text()
     assert "def _is_xlsx_empty" in text
     assert "STDEV_SLOPE_SIZING" in text
     assert "E3" in text
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_local_done_skips_empty():
     text = pathlib.Path("tools/v15_local_herd.py").read_text()
     # local_done_set must check empty before counting as done
     assert "if _is_xlsx_empty(p):" in text
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_push_skips_empty():
     text = pathlib.Path("tools/v15_local_herd.py").read_text()
     assert "CALCULATE NOT SEND EMPTY" in text
     assert "push-skip-empty" in text
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_is_xlsx_empty_logic():
     import tempfile, openpyxl
     p = pathlib.Path(tempfile.mktemp(suffix=".xlsx"))
@@ -60,11 +66,13 @@ def test_is_xlsx_empty_logic():
     finally:
         p.unlink(missing_ok=True)
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_l_is_text_backup_not_numeric():
     text = pathlib.Path("tools/v15_local_herd.py").read_text()
     assert "L is default text backup" in text
     assert "O:BI" in text or "O(15):BI(61)" in text
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_g_accumulated_delta():
     text = pathlib.Path("tools/v15_local_herd.py").read_text()
     assert "G = accumulated delta" in text

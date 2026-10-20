@@ -1,4 +1,6 @@
 """Test shuffle second round uses found settings as baseline — durable"""
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import json
 import pathlib
 import subprocess
@@ -14,6 +16,7 @@ def test_baseline_json_flag_exists():
     out = subprocess.check_output([sys.executable, "v15_pilot_0914.py", "--help"], text=True)
     assert "--baseline-json" in out
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_herd_shuffle_logic_present():
     txt = pathlib.Path("tools/v15_local_herd.py").read_text()
     assert "SHUFFLE-ROUND" in txt

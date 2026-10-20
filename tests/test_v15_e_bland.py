@@ -18,6 +18,8 @@ def test_e_chain_bland_for_neg_delta():
     cum = float(j.get("baseline_gain", 0))
     for k in sorted(j.get("done", {}).keys(), key=row_key):
         v = j["done"][k]
+        if v.get("delta") is None or v.get("vec_gain") is None:
+            continue  # settled null cell (ZERO_TRADES / missing yellow): never promotes, never moves E
         delta = float(v.get("delta", 0))
         vg = float(v.get("vec_gain", 0))
         # delta == vg - cum is ideal for promoted rows, but blocked rows (NEG/parity/E-bland) store delta vs current cum while vg is variant gain — allow mismatch, just warn

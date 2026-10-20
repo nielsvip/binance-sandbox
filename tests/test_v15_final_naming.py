@@ -1,4 +1,4 @@
-"""Final matrix filename contract: int-percent gain + trade count (USER 2026-10-03)."""
+"""Final matrix filename contract: whole-percent bh and gain + trade count (USER 2026-10-03; USER 2026-10-17: ROUNDED whole percent, no decimals in titles)."""
 
 import sys
 import unittest
@@ -13,14 +13,16 @@ from tools.v15_final_naming import chart_name_for, final_matrix_name, fmt_gain_i
 
 class TestBuild(unittest.TestCase):
     def test_user_example(self):
-        self.assertEqual(final_matrix_name("FANG_LONG", 1.58, 6.67, 66), "FANG_LONG_bh1p58_gain6p_t66_30d_matrix.xlsx")
+        self.assertEqual(final_matrix_name("FANG_LONG", 1.58, 6.67, 66), "FANG_LONG_bh2_gain7_t66_30d_matrix.xlsx")
 
     def test_truncation_edges(self):
-        self.assertEqual(fmt_gain_int(6.67), "6p")
-        self.assertEqual(fmt_gain_int(0.0), "0p")
-        self.assertEqual(fmt_gain_int(0.99), "0p")
-        self.assertEqual(fmt_gain_int(-11.29), "m11p")
-        self.assertEqual(fmt_gain_int(-0.36), "m0p")
+        # 2026-10-17: rounded half away from zero, no "p"; a negative that rounds to 0 is plain "0"
+        self.assertEqual(fmt_gain_int(6.67), "7")
+        self.assertEqual(fmt_gain_int(0.0), "0")
+        self.assertEqual(fmt_gain_int(0.99), "1")
+        self.assertEqual(fmt_gain_int(-11.29), "m11")
+        self.assertEqual(fmt_gain_int(-0.36), "0")
+        self.assertEqual(fmt_gain_int(-0.5), "m1")
 
     def test_refuses_garbage(self):
         with self.assertRaises(ValueError):
@@ -29,7 +31,7 @@ class TestBuild(unittest.TestCase):
             final_matrix_name("X_LONG", 1.0, 2.0, -1)
 
     def test_chart_name(self):
-        self.assertEqual(chart_name_for("FANG_LONG_bh1p58_gain6p_t66_30d_matrix.xlsx"), "FANG_LONG_bh1p58_gain6p_t66_30d_matrix.html")
+        self.assertEqual(chart_name_for("FANG_LONG_bh2_gain7_t66_30d_matrix.xlsx"), "FANG_LONG_bh2_gain7_t66_30d_matrix.html")
 
 
 class TestParse(unittest.TestCase):
@@ -37,7 +39,7 @@ class TestParse(unittest.TestCase):
         n = final_matrix_name("ENSUSDT_SHORT", -23.74, 12.10, 66)
         p = parse_final_matrix_name(n)
         self.assertEqual(p["symside"], "ENSUSDT_SHORT")
-        self.assertAlmostEqual(p["bh"], -23.74)
+        self.assertAlmostEqual(p["bh"], -24.0)  # whole percent in the name; the exact value lives in the manifest
         self.assertAlmostEqual(p["gain"], 12.0)
         self.assertEqual(p["trades"], 66)
         self.assertEqual(p["fmt"], "new")

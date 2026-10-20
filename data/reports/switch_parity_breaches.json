@@ -1,0 +1,335 @@
+{
+ "families": {
+  "CRYPTO": {
+   "config_file": "config.py",
+   "missing": {
+    "ABSOLUTE_OPEN_LOCK_SEC": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "BALANCE_FLOOR_USD": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "BEAR_MARKET_MODE_TRADIER": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "DC_BREAKOUT_OVERBOUGHT_K15M_CAP": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    },
+    "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "GOLDEN_RULE_COOLDOWN_S": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "GOLDEN_RULE_MAX_FIRES_PER_TICK": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "HARD_AUGMENT_LOCK_SEC": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "HARD_REDUCE_LOCK_SEC": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "MAX_AUGMENTS_PER_POSITION": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!AUGMENT_RISK_SIZING",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!AUGMENT_RISK_SIZING"
+     ]
+    },
+    "REENTRY_TIER2_MAX_MINUTES": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!REENTRY_WINDOWED",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!REENTRY_WINDOWED"
+     ]
+    },
+    "SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!REDUCE_SIGNAL_RATER",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!REDUCE_SIGNAL_RATER"
+     ]
+    },
+    "STALE_HOLD_ENABLED": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "STDEV_BOUNCE_SCORE": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!ENTRY_REVERSAL_BOUNCE",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE"
+     ]
+    },
+    "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
+    "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
+    "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
+    "TRADIER_DC_DAYTRADE_TARGET_USE_DC_15M": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
+    "WT_DC_DETAILED_TF": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    }
+   },
+   "missing_count": 20,
+   "switch_keys_checked": 1110,
+   "templates": [
+    "TEMPLATE_CRYPTO_LONG.xlsx",
+    "TEMPLATE_CRYPTO_SHORT.xlsx"
+   ]
+  },
+  "STOCKS": {
+   "config_file": "config_tradier.py",
+   "missing": {
+    "ABSOLUTE_OPEN_LOCK_SEC": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "BALANCE_FLOOR_USD": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "DC_BREAKOUT_OVERBOUGHT_K15M_CAP": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    },
+    "FUNDING_GATE_LONG_MAX": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_REVERSAL_BOUNCE",
+      "TEMPLATE_STOCKS_LONG.xlsx!FILTERS_EXPLAINED",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE",
+      "TEMPLATE_STOCKS_SHORT.xlsx!FILTERS_EXPLAINED"
+     ]
+    },
+    "FUNDING_GATE_SHORT_MIN": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_REVERSAL_BOUNCE",
+      "TEMPLATE_STOCKS_LONG.xlsx!FILTERS_EXPLAINED",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE",
+      "TEMPLATE_STOCKS_SHORT.xlsx!FILTERS_EXPLAINED"
+     ]
+    },
+    "GOLDEN_RULE_COOLDOWN_S": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "GOLDEN_RULE_MAX_FIRES_PER_TICK": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "GOLDEN_RULE_MULT_BREAKOUT": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    },
+    "GOLDEN_RULE_RETEST_WINDOW_S": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    },
+    "HARD_AUGMENT_LOCK_SEC": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "HARD_REDUCE_LOCK_SEC": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "MAX_AUGMENTS_PER_POSITION": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!AUGMENT_RISK_SIZING",
+      "TEMPLATE_STOCKS_SHORT.xlsx!AUGMENT_RISK_SIZING"
+     ]
+    },
+    "REENTRY_TIER2_MAX_MINUTES": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!REENTRY_WINDOWED",
+      "TEMPLATE_STOCKS_SHORT.xlsx!REENTRY_WINDOWED"
+     ]
+    },
+    "REENTRY_TIER2_MAX_MINUTES_TRADIER": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!REENTRY_ADAPTIVE",
+      "TEMPLATE_STOCKS_SHORT.xlsx!REENTRY_ADAPTIVE"
+     ]
+    },
+    "REENTRY_TIER_MODEL_ENABLED": {
+     "class": "WRONG_TEMPLATE_LEAK",
+     "other_config_has_it": true,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!REENTRY_WINDOWED",
+      "TEMPLATE_STOCKS_SHORT.xlsx!REENTRY_WINDOWED"
+     ]
+    },
+    "STALE_HOLD_ENABLED": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
+    "STDEV_BOUNCE_SCORE": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_REVERSAL_BOUNCE",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE"
+     ]
+    },
+    "WT_DC_DETAILED_TF": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    }
+   },
+   "missing_count": 18,
+   "switch_keys_checked": 1224,
+   "templates": [
+    "TEMPLATE_STOCKS_LONG.xlsx",
+    "TEMPLATE_STOCKS_SHORT.xlsx"
+   ]
+  }
+ },
+ "generated": "2026-10-20T02:51:45.399296+00:00"
+}

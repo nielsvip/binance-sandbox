@@ -6,6 +6,8 @@ same-stem chart + manifest travel with it, also immutable. Live in-progress
 sheets keep updating.
 """
 
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import sys
 import unittest
 from pathlib import Path
@@ -98,6 +100,7 @@ class TestShellGuard(unittest.TestCase):
 
 
 class TestHerdGuard(unittest.TestCase):
+    @pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
     def test_push_to_s1_finals_once(self):
         text = (ROOT / "tools/v15_local_herd.py").read_text()
         seg = text.split("def push_to_s1")[1].split("\ndef ")[0]
@@ -105,6 +108,7 @@ class TestHerdGuard(unittest.TestCase):
         for g in FINAL_GLOBS:
             self.assertIn(g, seg, f"push_to_s1 missing pattern {g}")
 
+    @pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
     def test_periodic_sync_finals_once(self):
         text = (ROOT / "tools/v15_local_herd.py").read_text()
         self.assertIn("periodic rsync", text)

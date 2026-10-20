@@ -16,8 +16,11 @@ def test_overrides_copy_uses_best_wins():
     assert "BEST must WIN" in text or "overwrite recipes" in text
     assert "if overrides.get(k) != v:" in text
     # must handle both history string and single value C
-    assert "Promoted rows" in text or "Baseline override" in text
-    assert '"=" in str(_c)' in text
+    # current xls_prev parser (2026-10): C = " + "-joined SWITCH=value parts; best-fill rows first, promoted rows (VECTOR_DELTA > 0) after so the latest promotion wins.
+    # Bare single values in C are template leftovers by design (pilot writes only SWITCH=value) - see the comment at the xls_prev parser.
+    assert 'joined SWITCH=value parts (BEST-C-FILL and promotions)' in text
+    assert '"=" in _part' in text
+    assert "_best_parts + _promo_parts" in text
 
 
 def test_baseline_still_creates_xls_for_zero_trades():

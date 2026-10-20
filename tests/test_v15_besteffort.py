@@ -27,14 +27,21 @@ def _mkfile(d: Path, name: str, cls: str | None = None, trades: int = 66):
 
 class NearMissTest(unittest.TestCase):
     def test_tim_miss_is_nearmiss(self):
-        ok, r = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 12.0, "gain_pct": 8.0}, 5.0)
+        ok, r = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 12.0, "gain_pct": 8.0, "max_dd_pct": 10.0}, 5.0)
         self.assertTrue(ok)
         self.assertTrue(any("TIM" in x for x in r))
 
+    def test_unknown_or_over_limit_dd_is_never_nearmiss(self):
+        ok, _ = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 12.0, "gain_pct": 8.0}, 5.0)
+        self.assertFalse(ok)
+        ok, _ = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 12.0, "gain_pct": 8.0, "max_dd_pct": PILOT.QUAL_DD_MAX + 1.0}, 5.0)
+        self.assertFalse(ok)
+
     def test_bh_miss_is_nearmiss(self):
-        ok, r = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 30.0, "gain_pct": 8.0}, 26.0)
-        self.assertTrue(ok)
-        self.assertTrue(any("BH" in x for x in r))
+        # USER 2026-10-03: BH is never gating - a BH miss with TIM in band and DD ok is not a near-miss and carries no BH reason
+        ok, r = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 30.0, "gain_pct": 8.0, "max_dd_pct": 10.0}, 26.0)
+        self.assertFalse(ok)
+        self.assertFalse(any("BH" in x for x in r))
 
     def test_qualified_is_not_nearmiss(self):
         ok, _ = PILOT._nearmiss_30d({"valid": True, "trades": 40, "tim_pct": 30.0, "gain_pct": 8.0}, 5.0)
@@ -192,7 +199,10 @@ class SamplingDefaultTest(unittest.TestCase):
         old = os.environ.get("V15_POSSYM_SAMPLING")
         try:
             os.environ.pop("V15_POSSYM_SAMPLING", None)
-            self.assertFalse(PILOT._possym_enabled("run25"))
+            from unittest import mock
+            # the host's data/possym_sampling.flag (host state, "1" on the Mac) outranks the default; pin the code default with the flag absent
+            with mock.patch.object(Path, "exists", return_value=False):
+                self.assertFalse(PILOT._possym_enabled("run25"))
         finally:
             if old is not None:
                 os.environ["V15_POSSYM_SAMPLING"] = old

@@ -31,9 +31,13 @@ def test_yellows_per_row_not_blanket_same():
     import sys
     sys.path.insert(0, str(ROOT))
     import v15_pilot
-    filt = v15_pilot.get_opportune_filters("BB_SQUEEZE_ENTRY_ENABLED", "ENTRY_REVERSAL_BOUNCE")
-    assert len(filt) >= 5, f"BB_SQUEEZE should have >=5 opportune filters, got {len(filt)}"
-    print(f"BB_SQUEEZE opportune {len(filt)} PASSED")
+    # The FILTER_DICTIONARY (2026-10) lists no filter that gates BB_SQUEEZE_ENTRY_ENABLED, so that switch is a bare switch (0 yellows);
+    # the switch-specific property is pinned on a switch the dictionary does gate, and against a different switch (never a blanket same set).
+    filt = v15_pilot.get_opportune_filters("WT_15M_BOUNCE_OPEN_ENABLED", "ENTRY_REVERSAL_BOUNCE")
+    assert len(filt) >= 5, f"WT_15M_BOUNCE_OPEN_ENABLED should have >=5 opportune filters, got {len(filt)}"
+    other = v15_pilot.get_opportune_filters("BB_SQUEEZE_ENTRY_ENABLED", "ENTRY_REVERSAL_BOUNCE")
+    assert {(e["filter"], e["opt"]) for e in filt} != {(e["filter"], e["opt"]) for e in other}, "yellows must differ per switch (not blanket)"
+    print(f"WT_15M_BOUNCE_OPEN opportune {len(filt)} PASSED")
 
 def test_flat_entry_15m_not_flat():
     import sys

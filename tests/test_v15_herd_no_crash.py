@@ -6,10 +6,13 @@ appeared to "not run >3s" because herd kept restarting and NPZ-missing symbols
 exit fast by design (skip-empty-baseline). This test ensures the module
 imports, the tune-per-host block defines `me`, and max_parallel is sane."""
 
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import ast
 import pathlib
 
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_herd_defines_me_before_use():
     p = pathlib.Path("tools/v15_local_herd.py")
     src = p.read_text()
@@ -30,6 +33,7 @@ def test_herd_defines_me_before_use():
     assert assign_before < first_use
 
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_herd_max_parallel_sane():
     p = pathlib.Path("tools/v15_local_herd.py")
     src = p.read_text()
@@ -41,6 +45,7 @@ def test_herd_max_parallel_sane():
     assert "workers = 8" in src
 
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_herd_compiles():
     import py_compile
     py_compile.compile("tools/v15_local_herd.py", doraise=True)

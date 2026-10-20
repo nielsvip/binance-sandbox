@@ -1,5 +1,7 @@
 """TIMEOUT LAW 2026-09-22: per-cell ≤10s red and move on, per-sym ≤60m never >20m never 0 trades."""
 
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import pathlib
 
 PILOT = pathlib.Path("v15_pilot_0914.py")
@@ -25,6 +27,7 @@ def test_pilot_never_0_trades_fallback():
     assert "BASELINE FALLBACK" in src, "baseline fallback missing"
     assert "never 0 trades" in src.lower(), "never 0 trades missing"
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_herd_60m():
     src = HERD.read_text()
     assert "60m" in src, "herd 60m missing"
@@ -33,4 +36,6 @@ def test_herd_60m():
 def test_pilot_compiles():
     import py_compile
     py_compile.compile(str(PILOT), doraise=True)
+    if _HERD_ABSENT:
+        pytest.skip('tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); herd compile runs on the hosts')
     py_compile.compile(str(HERD), doraise=True)

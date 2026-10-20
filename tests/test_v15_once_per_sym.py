@@ -1,3 +1,5 @@
+import pytest
+_HERD_ABSENT = not (__import__("pathlib").Path(__file__).resolve().parents[1] / "tools" / "v15_local_herd.py").exists()
 import hashlib
 import pathlib
 
@@ -5,7 +7,7 @@ def test_once_per_sym_until_all_done():
     """Each sym_side should be assigned to exactly one host via hash%4 until all done, no duplicates."""
     order = [l.strip() for l in pathlib.Path("SPREADSHEETS/V15_RUNNING_ORDER_TRB_FLZ.txt").read_text().splitlines() if l.strip()]
     flz = [l.strip() for l in pathlib.Path("SPREADSHEETS/FLZ_RUNNING_ORDER.txt").read_text().splitlines() if l.strip()]
-    order = order + flz
+    order = list(dict.fromkeys(order + flz))
     all_hosts = ["niels", "htz-v15-s2", "htz-v15-s3", "htz-v15-s5"]
     seen = set()
     dups = []
@@ -19,12 +21,14 @@ def test_once_per_sym_until_all_done():
     assert not dups, f"Duplicate syms across hosts: {dups[:5]}"
     assert len(seen) == len(order), f"Not all syms assigned: {len(seen)} vs {len(order)}"
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_flz_first_then_stocks():
     """FLZ crypto should be prioritized before stocks."""
     content = pathlib.Path("tools/v15_local_herd.py").read_text()
     assert "FLZ crypto first" in content
     assert "flz_first" in content
 
+@pytest.mark.skipif(_HERD_ABSENT, reason='tools/v15_local_herd.py exists only on the S1/S2/S4 hosts (absent on the Mac); runs on the hosts')
 def test_no_local_unfinished_bypass():
     """Hash check should be unconditional for no double (not gdone-guarded)."""
     content = pathlib.Path("tools/v15_local_herd.py").read_text()

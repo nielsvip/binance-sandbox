@@ -242,3 +242,15 @@ def test_digest_never_writes_pilot_digest_names(tmp_path, native_db):
     run("digest", "--store", store, "--out-dir", out, "--apply")
     names = sorted(p.name for p in out.iterdir())
     assert names and all(n.startswith("store_digest_") for n in names)
+
+
+def test_shard_merge_roundtrip(tmp_path, native_db):
+    a, b = tmp_path / "a", tmp_path / "b"
+    run("ingest", "--kind", "native", "--from", native_db, "--store", a, "--apply")
+    for p in a.glob("experience_*_*.db"):
+        run("ingest", "--kind", "shard", "--from", p, "--store", b, "--apply")
+    assert count(b, "CRYPTO_LONG", "evals") == 1 and count(b, "STOCKS_LONG", "evals") == 1
+    run("ingest", "--kind", "shard", "--from", str(a / "experience_*_*.db"), "--store", b, "--apply")
+    assert count(b, "CRYPTO_LONG", "evals") == 1
+    rep = tmp_path / "ps.json"
+    assert run("prove", "--kind", "shard", "--from", str(a / "experience_*_*.db"), "--against", b, "--report", rep) == 0

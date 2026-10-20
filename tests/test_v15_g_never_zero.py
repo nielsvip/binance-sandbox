@@ -5,7 +5,12 @@ def test_g_never_zero_for_neg():
         text = pathlib.Path(name).read_text()
         bad = [i+1 for i,l in enumerate(text.splitlines()) if 'column=7' in l and '.value = 0.0' in l and 'G never' not in l and 'F hustle' not in l]
         assert bad == [], f"{name} still has G=0.0 without never comment at lines {bad}"
-        assert text.count("G never 0.0") >= 2, f"{name} missing G never sentinel"
+        assert text.count("G never 0.0") >= (1 if name == "v15_pilot.py" else 2), f"{name} missing G never sentinel"
+        if name == "v15_pilot.py":
+            # the spec-fill writes a literal 0.0 into G in exactly one place: the definitional RUNNING_IDENTITY row (USER 2026-10-03)
+            assert text.count('_num_cell(ws, rr, cols["G"], 0.0, False)') == 1
+            i = text.index('_num_cell(ws, rr, cols["G"], 0.0, False)')
+            assert "running-identity" in text[i - 300 : i], "the only literal G=0.0 must be the running-identity row"
 
 def test_templates_sheet_order_worst_first():
     import openpyxl, pathlib

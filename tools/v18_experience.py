@@ -299,7 +299,7 @@ def _connect(path, readonly=False):
     if readonly:
         c = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=600.0, isolation_level=None)
     else:
-        c = sqlite3.connect(str(path), timeout=600.0, isolation_level=None)
+        c = sqlite3.connect(str(path), timeout=600.0, isolation_level=None, uri=True)
         for p in ("PRAGMA journal_mode=WAL", "PRAGMA synchronous=NORMAL", "PRAGMA cache_size=-200000",
                   "PRAGMA temp_store=MEMORY"):
             try:
@@ -753,7 +753,7 @@ def ingest_shard(a, store):
             s.close()
             continue
         c = store.shard(cs, month)
-        c.execute("ATTACH DATABASE ? AS s", (f"file:{p}?mode=ro",))
+        c.execute("ATTACH DATABASE ? AS s", (f"file:{os.path.abspath(p)}?mode=ro",))
         try:
             for t in TABLES:
                 n_src = c.execute(f"SELECT count(*) FROM s.{t}").fetchone()[0]

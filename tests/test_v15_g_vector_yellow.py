@@ -160,6 +160,7 @@ def test_hustle_blank_and_baseline_blank_until_pos():
     assert p.exists()
     t = p.read_text()
     assert "HUSTLE" in t and "blank" in t.lower()
-    assert "blank until POS" in t or "E.*blank" in t.lower()
+    # current wording (spec-fill): E is BLANK when G<=0 (greedy), advancing only on a positive row; a non-positive row moves to the next tab
+    assert "BLANK when G<=0 (greedy)" in t
     assert "cumulative_before" in t
-    assert "next TAB" in t
+    assert "next tab" in t.lower() and "VECTOR_DELTA>0 move down 1 row" in t

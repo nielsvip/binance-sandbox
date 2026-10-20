@@ -6,7 +6,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
-import tools.v15_local_herd as herd
+import pytest
+
+herd = pytest.importorskip("tools.v15_local_herd", reason="tools/v15_local_herd.py exists only on the S1/S2/S4 hosts")
 
 
 def test_sym_match_exact_prefix():

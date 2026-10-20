@@ -50,10 +50,44 @@ SRC = {
 }
 
 
+def src_path(key):
+    """The readable path for an input: the plain file, else its .gz sibling. None when neither exists.
+
+    2026-10-20: three of the six inputs live in the repo ONLY as .gz (`unwired_report_20261001.csv.gz`, and the
+    DEAD_TRIAGE / L_STATUS pair), so `SRC[k].exists()` was False and the loaders below fell back to `{}` WITH NO
+    ERROR. A classification run on this machine therefore produced a silently DEGRADED answer — VECTOR_ONLY /
+    GHOST / DEAD_BOTH derived from empty triage and status inputs — and nothing said so. Measured by re-running the
+    unmodified classifier with the three decompressed: it reclassified every venue. Fail-open on an input that
+    decides which switches are wired is the same class of defect as a dead guard: the output looks authoritative
+    and is not. `missing_inputs()` below turns that into a loud, machine-readable refusal."""
+    p = SRC[key]
+    if p.exists():
+        return p
+    gz = p.with_name(p.name + ".gz")
+    return gz if gz.exists() else None
+
+
+def open_src(key):
+    """Text handle for an input, transparently decompressing a .gz sibling. Raises when the input is absent."""
+    p = src_path(key)
+    if p is None:
+        raise FileNotFoundError(f"wiring input {key!r} absent as both {SRC[key].name} and {SRC[key].name}.gz")
+    if p.suffix == ".gz":
+        import gzip
+
+        return gzip.open(str(p), "rt", errors="ignore")
+    return open(str(p), errors="ignore")
+
+
+def missing_inputs():
+    """Inputs absent in BOTH plain and .gz form — a classification built on these is degraded, never authoritative."""
+    return sorted(k for k in SRC if src_path(k) is None)
+
+
 def input_stamp():
     h = hashlib.md5()
     for k in sorted(SRC):
-        p = SRC[k]
+        p = src_path(k) or SRC[k]
         h.update(f"{k}:{p.stat().st_size if p.exists() else 0}:{int(p.stat().st_mtime) if p.exists() else 0}".encode())
     return h.hexdigest()[:12]
 
@@ -69,9 +103,10 @@ def expand_braces(tok):
 def parse_lstatus():
     """name -> 'WIRED' | 'BLOCKED' | 'ALREADY_LIVE' from the FINAL TABLE of UNW-L (tags only; free text kept short)."""
     out = {}
-    if not SRC["lstatus"].exists():
+    if src_path("lstatus") is None:
         return out
-    txt = SRC["lstatus"].read_text(errors="ignore")
+    with open_src("lstatus") as _fh:
+        txt = _fh.read()
     i = txt.find("FINAL TABLE")
     if i < 0:
         return out
@@ -99,8 +134,12 @@ def parse_lstatus():
 def load_sources():
     d = {}
     d["bible"] = json.loads(SRC["bible"].read_text())["switches"]
-    d["unwired"] = {r["name"]: r for r in csv.DictReader(open(SRC["unwired"]))} if SRC["unwired"].exists() else {}
-    d["triage"] = {r["name"]: r for r in csv.DictReader(open(SRC["triage"]))} if SRC["triage"].exists() else {}
+    # 2026-10-20: read through open_src so a .gz-only input is USED rather than silently treated as empty.
+    d["unwired"] = {r["name"]: r for r in csv.DictReader(open_src("unwired"))} if src_path("unwired") else {}
+    d["triage"] = {r["name"]: r for r in csv.DictReader(open_src("triage"))} if src_path("triage") else {}
+    _absent = missing_inputs()
+    if _absent:
+        print(f"[wiring] DEGRADED: inputs absent in both plain and .gz form: {_absent} — classification is NOT authoritative", flush=True)
     d["lstatus"] = parse_lstatus()
     d["cover"] = collections.defaultdict(list)
     for r in csv.DictReader(open(SRC["cover"])):
