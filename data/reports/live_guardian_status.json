@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T12:02:24Z",
+ "ts": "2026-10-20T12:07:35Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,10 +27,10 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 2,
+   "fills_6h": 1,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 1,
+   "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -127,71 +127,57 @@
     "4593"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 12.0
   },
   "men": {
    "pids": [
     "31949"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "82106"
    ],
    "starts_30m": 2,
-   "log_age_s": 11.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "78861"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "93787"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 15.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 29562.0
+   "log_age_s": 29873.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 29563.0
+   "log_age_s": 29874.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T12:02:24Z",
-   "severity": "WARN",
-   "kind": "POSITION_STATE_MISMATCH",
-   "key": "fin:SNXUSDT_LONG",
-   "evidence": "positions file amt 0 vs fill-ledger amt 49.2"
-  },
-  {
-   "ts": "2026-10-20T12:02:25Z",
+   "ts": "2026-10-20T12:07:36Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T09:07:23Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T12:02:25Z",
-   "severity": "CRITICAL",
-   "kind": "NATIVE_FILL_IN_EXACT_MODE",
-   "key": "fin:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_EXHAUST_mom4h=EXHAUST_UP_1h=IMPULSE_UP_g=1.20% @ 2026-10-20T06:03:33Z: non-vec fill in exact mode"
-  },
-  {
-   "ts": "2026-10-20T12:02:25Z",
+   "ts": "2026-10-20T12:07:36Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:TRBUSDT_LONG",
@@ -199,8 +185,7 @@
   }
  ],
  "alert_counts": {
-  "POSITION_STATE_MISMATCH": 1,
-  "NATIVE_FILL_IN_EXACT_MODE": 3
+  "NATIVE_FILL_IN_EXACT_MODE": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -262,5 +247,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.8
+ "sweep_s": 0.63
 }
