@@ -2620,6 +2620,7 @@ _MIN_PROMOTE_DELTA = float(os.environ.get("V15_MIN_PROMOTE_DELTA", "0") or 0)
 
 
 _NPZ_STAMP: dict = {}
+_V18_ACTIVITY: dict = {"evals": 0}  # engine results received by this process (the stuck-first-cell guard reads it)
 
 
 def npz_age_stamp(symside: str, now=None) -> dict:
@@ -6773,6 +6774,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 ex.shutdown(wait=False)
         g = (res or {}).get("gain_pct")
         _delta_log({**(_v18_logfields(sname, rr, label) if _v18_logx[0] else {}), "ts": utcnow(), "sym_side": new_symside, "nav": "sequential", "sheet": sname, "row": rr, "switch": switch, "cand": str(cand), "label": label, "fn": "tools.opt.v12_pilot.evaluate_prepared_sanitized", "window_days": args.window_days, "gain_pct": g, "trades": (res or {}).get("trades"), "fp": ((res or {}).get("behavior_fingerprint") or "")[:16], "tim": (res or {}).get("tim_pct"), "max_dd_pct": (res or {}).get("max_dd_pct"), "pool_sharpe": (res or {}).get("pool_sharpe"), "wr_pct": (res or {}).get("wr_pct"), "valid": (res or {}).get("valid"), "invalid_reason": (res or {}).get("invalid_reason"), "cum_before": cum_before, "delta": (float(g) - cum_before) if g is not None else None, "secs": round(_t.time() - t0, 4), "cached": cached, "err": err})  # BRAIN 2026-10-14: dd/sharpe/wr logged (already in the result, zero extra compute) so the graph learns every metric
+        if res is not None and not err:
+            _V18_ACTIVITY["evals"] = _V18_ACTIVITY.get("evals", 0) + 1
         if res is not None and not err and not cached:
             _v18_vint["last_eval_ts"] = utcnow()
         if _v18_ids is not None and res is not None and not err:
@@ -13317,6 +13320,7 @@ def _main_single():
         import threading, time as _t2
         def _check2():
             _start2 = _t2.time()
+            _ev_seen = [-1]
             while True:
                 _t2.sleep(float(__import__("os").environ.get("V15_STUCK_GUARD_S", "120")))
                 _elapsed = _t2.time() - _start2
@@ -13332,6 +13336,13 @@ def _main_single():
                     # dead-vec) whose F/G stay blank forever — with rows completing, the pilot
                     # is NOT stuck; the old test aborted healthy runs at 1h (XRP demo, 483 done).
                     _stuck = (_f3 is None and _g3 is None) and _done < 5
+                    # 2026-10-20: the V18 pre-pass phases (R0 MUST: 10k+ evals, 5+ min) run before row 3 and V18_IO_THROTTLE
+                    # saves the workbook only at tab boundaries -> r3 on DISK stays blank while the board evaluates; a board
+                    # whose engine evals still advance is not stuck (false "STUCK FIRST CELL" alarms / a 1-h false abort)
+                    _ev_now = int(_V18_ACTIVITY.get("evals", 0))
+                    if _ev_now != _ev_seen[0]:
+                        _stuck = _stuck and _ev_seen[0] < 0 and _ev_now == 0
+                    _ev_seen[0] = _ev_now
                     if _stuck and _elapsed > 60:
                         print(f"[STUCK-CELL-GUARD] {new_symside} STUCK AT FIRST CELL r3 F=None G=None after {_elapsed:.0f}s done {_done} — WARNING IMMEDIATE, not 6h! NPZ/workers/template check. Will abort at 1h.", flush=True)
                         try:

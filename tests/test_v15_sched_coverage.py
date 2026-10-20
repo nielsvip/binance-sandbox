@@ -94,7 +94,7 @@ def test_refresh_priority_classes_and_cadence():
     h = 24.0
     ages = {"V_LONG": 10 * h, "T_LONG": 5 * h, "G1_LONG": 7.0, "G2_LONG": 13.0, "G3_LONG": 2.0, "L_LONG": 3 * h, "N_LONG": None}
     live = {"G1_LONG": {"pnl_usd": 100.0}, "G2_LONG": {"pnl_usd": 50.0}, "G3_LONG": {"pnl_usd": 10.0}, "L_LONG": {"pnl_usd": -5.0}}
-    pr, table = S._refresh_priority(ages, live, {"T_LONG"})
+    pr, table, cad = S._refresh_priority(ages, live, {"T_LONG"})
     order = sorted(pr, key=lambda k: pr[k])
     assert order[0] == "N_LONG" or pr["N_LONG"][0] == 0
     assert pr["T_LONG"][0] == 0 and pr["V_LONG"][0] == 0 and pr["T_LONG"] < pr["V_LONG"]
@@ -109,3 +109,56 @@ def test_place_order_age_key_orders_violators_first():
     key = lambda b: {"OLD": (0, 0.0, -300.0), "MID": (1, 0.0, 0.0)}.get(b, (2, 0.0, 0.0))
     seq = S._place_order([], [], ["ZZZ", "MID", "OLD"], {}, age_key=key)
     assert [s for s, _ in seq][:2] == ["OLD", "MID"]
+
+
+def _fixture20():
+    h = 24.0
+    ages = {}
+    live = {}
+    trading = set()
+    for i in range(20):
+        ss = f"S{i:02d}_LONG"
+        ages[ss] = [None, 12 * h, 2.0, 5 * h, 30.0, 8.0, 3 * h, 11 * h, 100.0, 7.0][i % 10] if i < 10 else [1.0, 5.0, 26.0, 50.0, 6 * h, 10 * h, 7.0, 13.0, None, 40.0][i - 10]
+    live.update({"S02_LONG": {"pnl_usd": 90.0}, "S05_LONG": {"pnl_usd": 40.0}, "S10_LONG": {"pnl_usd": 20.0}, "S13_LONG": {"pnl_usd": 5.0}, "S04_LONG": {"pnl_usd": -3.0}})
+    trading.update({"S03_LONG", "S04_LONG", "S14_LONG"})
+    return ages, live, trading
+
+
+def test_order_fixture_20_sym_sides():
+    ages, live, trading = _fixture20()
+    pr, table, cad = S._refresh_priority(ages, live, trading)
+    syms = [k.rsplit("_", 1)[0] for k in ages]
+    key = lambda b: pr[b + "_LONG"]
+    seq = [s for s, _ in S._place_order([], [], syms, {}, age_key=key)]
+    classes = [pr[s + "_LONG"][0] for s in seq]
+    assert classes == sorted(classes)
+    viol = [s for s in seq if pr[s + "_LONG"][0] == 0]
+    assert viol[:2] == ["S14", "S03"] and viol.index("S00") > 1  # trading 4d+ violators first (oldest first), then 9d-only violators incl. never-boarded
+    assert pr["S03_LONG"][0] == 0 and pr["S03_LONG"][1] == 0.0  # trading, 5 d
+    assert pr["S15_LONG"][0] == 0 and pr["S15_LONG"][1] == 1.0  # 10 d, not trading
+    assert S._rule_label(pr["S03_LONG"]) == "violator-trading-4d" and S._rule_label(pr["S15_LONG"]) == "violator-9d"
+    assert S._rule_label(pr["S02_LONG"], cad.get("S02_LONG")).startswith("gainer-due-6h") or pr["S02_LONG"][0] == 2
+    assert all(c in (0, 1, 2) for c in classes)
+    due = [s for s in seq if pr[s + "_LONG"][0] == 1]
+    gains = [live[s + "_LONG"]["pnl_usd"] for s in due]
+    assert gains == sorted(gains, reverse=True)
+    rest = [s for s in seq if pr[s + "_LONG"][0] == 2]
+    ra = [ages[s + "_LONG"] for s in rest]
+    assert ra == sorted(ra, reverse=True)
+
+
+def test_order_audit_flags_unexplained_skip_only():
+    order = {"s1": ["A", "B", "C", "D"]}
+    explain = lambda hn, sy: {"B": "host-skip: mem guard"}.get(sy)
+    ok = S._order_audit(order, [("s1", "C")], explain, lambda s: "oldest", lambda s: 1.0)
+    assert [v["unlaunched_ahead"] for v in ok["violations"]] == [["A"]]
+    ok2 = S._order_audit(order, [("s1", "A"), ("s1", "C")], explain, lambda s: "oldest", lambda s: 1.0)
+    assert ok2["violations"] == [] and ok2["checks"][1]["skipped_ahead"] == {"B": "host-skip: mem guard"}
+    assert ok2["top"]["s1"][0]["sym"] == "A"
+
+
+def test_trading_file_sides(tmp_path):
+    (tmp_path / "v15_trading_symsides.txt").write_text("AAPL_LONG\nAAPL_SHORT\n")
+    (tmp_path / "v15_priority_front.txt").write_text("MA,QQQ\n")
+    got = S._trading_file_sides(str(tmp_path))
+    assert got == {"AAPL_LONG", "AAPL_SHORT", "MA_LONG", "MA_SHORT", "QQQ_LONG", "QQQ_SHORT"}

@@ -10,12 +10,12 @@ Thresholds (user request):
   - CPU < 95%  → WARN  (under-utilized, should be saturated)
   - RAM used < 80% → WARN  (under-utilized, should be >80% per herd spec)
   - RAM avail < 1200M or OOM in dmesg → CRITICAL (near OOM)
-  - herd daemon down or pilots == 0 → CRITICAL
+  - pilots == 0 → CRITICAL (herd retired 2026-10-06; scheduler admits work)
   - any server unreachable → CRITICAL
 
 Desktop warning: osascript display notification + `say` + `afplay` sound + terminal-notifier if present.
 AI warning: appends JSONL to /tmp/v15_ai_alert.jsonl and /Users/niels/Documents/binance/logs/v15_warn.log,
-            and auto-heals by re-launching herd via ssh.
+            (no herd restart: herd retired 2026-10-06).
 
 LaunchAgent: ~/Library/LaunchAgents/com.binance.v15-warn.plist
   KeepAlive true, RunAtLoad true, poll 30s inside daemon (not StartInterval).
@@ -27,6 +27,8 @@ Usage:
 """
 from __future__ import annotations
 import json
+import os
+import re
 import time
 import pathlib
 import subprocess
@@ -136,7 +138,7 @@ def pick_host(server: str) -> str | None:
 def server_stats(host: str) -> dict:
     # one ssh does all: load, free, pilots, herd, oom (recent only — ignore stale dmesg)
     cmd = (
-        "cat /proc/loadavg; echo __FREE__; free -m; echo __PILOTS__; pgrep -a -f v15_pilot 2>&1 | head -n 20; echo __HERD__; pgrep -a -f v15_local_herd 2>&1 | head -n 5; "
+        "cat /proc/loadavg; echo __FREE__; free -m; echo __PILOTS__; pgrep -a -f v15_pilot 2>&1 | head -n 20; "
         "echo __OOM__; dmesg --time-format iso 2>&1 | tail -n 30 | grep -i -E 'out of memory|oom-killer' | tail -n 3; echo __END__; "
         "echo __AVAIL_RAW__; cat /proc/meminfo | grep -E 'MemAvailable|MemTotal' | head -n 2"
     )
@@ -156,10 +158,6 @@ def server_stats(host: str) -> dict:
             total, avail, used_pct = 0, 0, 0
         # pilots = count lines containing v15_pilot and --sym-side
         pilots = len(re.findall(r"v15_pilot\.py[^\n]*--sym-side", out))
-        herd_ok = "v15_local_herd" in out and "python" in out.split("__HERD__")[1].split("__OOM__")[0] if "__HERD__" in out else False
-        # crude herd check: after __HERD__ section contains python.*v15_local_herd
-        herd_section = out.split("__HERD__")[1].split("__OOM__")[0] if "__HERD__" in out and "__OOM__" in out else ""
-        herd_ok = "v15_local_herd" in herd_section
         # only treat OOM as current if dmesg iso timestamp is today (not stale boot history)
         oom_section = out.split("__OOM__")[1].split("__END__")[0] if "__OOM__" in out and "__END__" in out else ""
         # iso line contains current date like 2026-09-15; ignore old dates and empty
@@ -172,18 +170,9 @@ def server_stats(host: str) -> dict:
         # nproc
         nproc = SERVERS.get(host.split("-")[0], {}).get("nproc", 16)  # fallback, will override per server
         # actual nproc via ssh would be better but we use server config
-        return {"ok": True, "load1": load1, "total_m": total, "avail_m": avail, "used_pct": used_pct, "pilots": pilots, "herd_ok": herd_ok, "oom": oom, "raw": out}
+        return {"ok": True, "load1": load1, "total_m": total, "avail_m": avail, "used_pct": used_pct, "pilots": pilots, "oom": oom, "raw": out}
     except Exception as e:
         return {"ok": False, "err": str(e), "raw": out}
-
-
-def auto_heal(server: str, host: str, reason: str):
-    log(f"AUTO-HEAL {server} ({host}) reason={reason} → restarting herd + launching")
-    # 1) ensure herd daemon running
-    log("herd retired 2026-10-06: v15_fleet_scheduler admits work (s1 cron */2); nothing to restart here")
-    # 2) also run --cron-check
-    # 3) if pilots low and cpu/ram low, the herd will auto-launch in next 12s loop — no need to manually launch
-    ai_alert(server, f"auto_heal_{reason}", {"host": host})
 
 
 def _is_deleted(server: str) -> bool:
@@ -211,6 +200,74 @@ def _is_deleted(server: str) -> bool:
     except: pass
     # if hcloud unavailable, fall back to consecutive-unreachable heuristic
     return False
+
+
+STUCK_TITLE = "STUCK FIRST CELL"
+STUCK_GUARD_S = int(float(os.environ.get("V15_STUCK_GUARD_S", "120")))
+ACTIVITY_HOSTS = ["s1-int", "s2"]
+
+
+def activity_cmd(symside: str) -> str:
+    return (
+        f'SS={symside}; now=$(date +%s); '
+        'f=$(ls -t ~/v15_run*/progress/v15_delta_log/${SS}_*.jsonl 2>/dev/null | head -n 1); '
+        'if [ -n "$f" ]; then echo "DELTA|$((now-$(stat -c %Y "$f")))|$f"; tail -n 1 "$f" | cut -c1-1500; fi; '
+        'g=$(ls -t ~/v15_run*/progress/${SS}_v14_progress.json 2>/dev/null | head -n 1); '
+        'if [ -n "$g" ]; then echo "PROG|$((now-$(stat -c %Y "$g")))|$g"; fi'
+    )
+
+
+def parse_activity(out: str) -> dict | None:
+    """Freshest activity (delta-log line or progress JSON write) from activity_cmd output."""
+    lines = out.splitlines()
+    best = None
+    for i, ln in enumerate(lines):
+        m = re.match(r"(DELTA|PROG)\|(\d+)\|(.+)$", ln.strip())
+        if not m:
+            continue
+        age = int(m.group(2))
+        rec = {"kind": m.group(1), "age_s": age, "path": m.group(3), "phase": "", "label": ""}
+        if m.group(1) == "DELTA" and i + 1 < len(lines):
+            try:
+                d = json.loads(lines[i + 1])
+                rec["phase"] = str(d.get("phase") or "")
+                rec["label"] = str(d.get("label") or d.get("switch") or "")
+                rec["sheet"] = str(d.get("sheet") or "")
+            except Exception:
+                pass
+        if best is None or age < best["age_s"]:
+            best = rec
+        elif m.group(1) == "DELTA" and age == best["age_s"]:
+            best = rec
+    return best
+
+
+def board_activity(symside: str) -> dict | None:
+    if not re.fullmatch(r"[A-Z0-9_.\-]+", symside):
+        return None
+    best = None
+    for h in ACTIVITY_HOSTS:
+        rc, out = ssh(h, activity_cmd(symside), timeout=10)
+        if rc != 0:
+            continue
+        act = parse_activity(out)
+        if act:
+            act["host"] = h
+            if best is None or act["age_s"] < best["age_s"]:
+                best = act
+    return best
+
+
+def describe_activity(act: dict | None) -> str:
+    if not act:
+        return "no delta log / progress file found"
+    what = " ".join(x for x in (act.get("phase"), act.get("label")) if x) or act["kind"]
+    return f"last activity {act['age_s']} s ago on {act.get('host','?')}: {what}"
+
+
+def stuck_verdict(act: dict | None, threshold: int = STUCK_GUARD_S) -> bool:
+    """True = really stuck (no delta-log line / progress write within threshold seconds)."""
+    return act is None or act["age_s"] >= threshold
 
 
 def check_once() -> list[dict]:
@@ -253,7 +310,6 @@ def check_once() -> list[dict]:
         ram_pct = st["used_pct"]
         avail = st["avail_m"]
         pilots = st["pilots"]
-        herd_ok = st["herd_ok"]
         oom = st["oom"]
 
         # global progress (occasionally)
@@ -270,9 +326,6 @@ def check_once() -> list[dict]:
         if oom:
             issues.append("OOM killer seen in dmesg")
             critical = True
-        if not herd_ok:
-            issues.append("herd daemon DOWN")
-            critical = True
         if pilots == 0:
             issues.append("0 pilots — idle")
             critical = True
@@ -280,9 +333,9 @@ def check_once() -> list[dict]:
             issues.append(f"pilots {pilots} < {cfg['expect_pilots']} expected")
 
         if issues:
-            msg = f"{server} ({host}) " + " | ".join(issues) + f" — pilots={pilots} heal in 12s"
+            msg = f"{server} ({host}) " + " | ".join(issues) + f" — pilots={pilots}"
             warnings.append({"server": server, "host": host, "reason": "|".join(issues), "msg": msg, "critical": critical,
-                             "cpu": cpu_pct, "ram": ram_pct, "avail": avail, "pilots": pilots, "herd_ok": herd_ok})
+                             "cpu": cpu_pct, "ram": ram_pct, "avail": avail, "pilots": pilots})
             # cooldown key generic per server/type to avoid spam on every CPU wiggle
             kind = "critical" if critical else "below80"
             key = f"{server}:{kind}"
@@ -290,12 +343,8 @@ def check_once() -> list[dict]:
                 title = f"{'🚨' if critical else '⚠️'} {server} below 80%" if ram_pct < RAM_WARN else f"{'🚨' if critical else '⚠️'} {server} WARNING"
                 desktop_notify(title, msg, critical=critical)
                 ai_alert(server, "below_threshold" if not critical else "critical", {"host": host, "cpu": round(cpu_pct,1), "ram": round(ram_pct,1), "avail": avail, "pilots": pilots, "issues": issues})
-                # only auto-heal for critical or severe under-utilization (pilots low / cpu <50 / herd down), not pure RAM <80% at max pilots
-                need_heal = critical or (pilots < cfg["expect_pilots"] * 0.6) or (cpu_pct < 50)
-                if need_heal:
-                    auto_heal(server, host, "below_threshold")
         else:
-            log(f"OK {server} ({host}) cpu {cpu_pct:.0f}% ram {ram_pct:.0f}% avail {avail}M pilots {pilots} herd={'up' if herd_ok else 'down'}")
+            log(f"OK {server} ({host}) cpu {cpu_pct:.0f}% ram {ram_pct:.0f}% avail {avail}M pilots {pilots}")
 
     # poll S1 desktop notify from v15_pilot (baseline + first POS per sym_side) and show on Mac
     try:
@@ -316,6 +365,12 @@ def check_once() -> list[dict]:
                         ttl = rec.get("title") or "v15 pilot"
                         msg = rec.get("msg") or rec.get("message") or l[:120]
                         crit = bool(rec.get("critical"))
+                        if str(ttl).startswith(STUCK_TITLE):
+                            act = board_activity(str(ttl).split()[-1])
+                            if not stuck_verdict(act):
+                                log(f"STUCK-SUPPRESSED {ttl}: {describe_activity(act)} (< {STUCK_GUARD_S} s) — board active, not stuck")
+                                continue
+                            msg = f"{msg} — {describe_activity(act)}"
                         desktop_notify(ttl, msg, critical=crit)
                         log(f"DESKTOP-FWD {ttl}: {msg[:80]}")
                     except: 

@@ -1841,6 +1841,7 @@ def _workers_for(sym, workers):
     return workers
 
 
+_PLABEL, _PAGE = {}, {}  # per tick: sym -> rule label / board age h of its best side
 _AGE_KEY = [None]  # per-tick sym -> (class, sub, key) closure built from the age rules / live gain cadence
 _CATCHUP_MODE = [False]  # 2026-10-20 USER LAW: set per tick by the coverage hysteresis; side_cmd adds V18_CATCHUP=1 to 30D launches while True
 
@@ -2002,7 +2003,7 @@ def _catchup_rules(ages, trading, any_h=216.0, trading_h=96.0):
 
 
 def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_gain=None):
-    """{sym_side: (class, sub, key)} sort key (lower = launch first). class 0 = catch-up violators (trading > trading_h first, then the
+    """-> ({sym_side: (class, sub, key)}, top-10 gainer table, {gainer: cadence_h}). Sort key (lower = launch first). class 0 = catch-up violators (trading > trading_h first, then the
     oldest), class 1 = LIVE-realised gainers whose cadence is DUE (top decile of gainers 6 h, next quartile 12 h, rest 24 h; ordered by 7-day
     realised P&L, the board gain only breaks ties), class 2 = everyone else, oldest first (never-boarded oldest). Losers/flat sit in class 2
     so they are never deferred behind a gainer beyond the 24 h cadence. Also returns the per-gainer cadence table. Pure (tested)."""
@@ -2025,7 +2026,64 @@ def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_ga
             out[ss] = (2, 0.0, -a)
     table = [{"sym_side": ss, "pnl_usd_7d": live[ss]["pnl_usd"], "board_age_h": (None if ages[ss] is None else round(ages[ss], 1)), "cadence_h": cad[ss],
               "next_due_in_h": (0.0 if ages[ss] is None else round(max(0.0, cad[ss] - ages[ss]), 1))} for ss in gainers[:10]]
-    return out, table
+    return out, table, cad
+
+
+def _rule_label(prio, cad_h=None):
+    """Human rule name for a _refresh_priority tuple (the rule that placed it in the launch order). Pure (tested)."""
+    c = prio[0]
+    if c == 0:
+        return "violator-trading-4d" if prio[1] == 0.0 else "violator-9d"
+    if c == 1:
+        return f"gainer-due-{int(cad_h) if cad_h else '?'}h"
+    return "oldest"
+
+
+def _trading_file_sides(home=None):
+    """The 2026-10-18 V15_TRADING_CATCHUP cron's definition of 'trading', folded into the scheduler: every sym_side in ~/v15_trading_symsides.txt
+    (all tra+trb+trc long/short) plus both sides of every symbol in ~/v15_priority_front.txt. Never raises."""
+    out = set()
+    home = home or os.path.expanduser("~")
+    try:
+        for ln in open(os.path.join(home, "v15_trading_symsides.txt")):
+            ln = ln.strip()
+            if ln:
+                out.add(ln)
+    except Exception:
+        pass
+    try:
+        for sym in open(os.path.join(home, "v15_priority_front.txt")).read().replace(",", "\n").split():
+            out.add(f"{sym}_LONG")
+            out.add(f"{sym}_SHORT")
+    except Exception:
+        pass
+    return out
+
+
+def _order_audit(order_by_host, launched, explain, rule_of, age_of, top_n=10):
+    """ORDER AUDIT (USER 2026-10-20 'pushes the correct ones in the right order always'). order_by_host {host: [sym, ...]} = the computed new-launch
+    order; launched [(host, sym)] in launch sequence; explain(host, sym) -> reason string or None for a higher-ranked sym that was not launched.
+    Returns {top, checks, violations}: a launch with an UNEXPLAINED higher-ranked, unlaunched sym ahead of it is an ORDER_VIOLATION. Pure (tested)."""
+    top, checks, viol = {}, [], []
+    by_host = {}
+    for hn, sym in launched:
+        by_host.setdefault(hn, []).append(sym)
+    for hn, order in order_by_host.items():
+        top[hn] = [{"sym": sy, "rule": rule_of(sy), "board_age_h": age_of(sy)} for sy in order[:top_n]]
+        got = set(by_host.get(hn, []))
+        for sym in by_host.get(hn, []):
+            if sym not in order:
+                continue
+            ahead = [x for x in order[:order.index(sym)] if x not in got]
+            named = {x: explain(hn, x) for x in ahead}
+            bad = [x for x, r in named.items() if not r]
+            checks.append({"host": hn, "launched": sym, "rank": order.index(sym) + 1, "skipped_ahead": {x: r for x, r in named.items() if r}})
+            if bad:
+                viol.append({"host": hn, "launched": sym, "rank": order.index(sym) + 1, "unlaunched_ahead": bad[:10], "cause": "higher-ranked sym skipped with no logged reason"})
+    return {"top": top, "checks": checks, "violations": viol}
+
+
+_ORDER_BY_HOST = {}  # per tick: host -> [sym] of the NEW-launch order (needs_slot entries only)
 
 
 def side_cmd(host, sym, side, window, pdir, attempt, workers):
@@ -3204,18 +3262,25 @@ def tick(args, cfg, now):
                 _trading = set(uni.get("open_position_sym_sides") or [])
         except Exception:
             _trading = set(uni.get("open_position_sym_sides") or [])
+        if os.environ.get("V15_SCHED_TRADING_FILES", "1") == "1":
+            _trading |= _trading_file_sides()  # folded in from the retired V15_TRADING_CATCHUP cron
         _any_h, _tr_h = float(os.environ.get("V15_SCHED_CATCHUP_ANY_D", "9")) * 24.0, float(os.environ.get("V15_SCHED_CATCHUP_TRADING_D", "4")) * 24.0
         _rules = _catchup_rules(_ages, _trading, _any_h, _tr_h)
         _now_mode = bool(_rules["mode"])
         st["catchup_mode"] = _now_mode
         _CATCHUP_MODE[0] = _now_mode
         _bgain = {k: v.get("final_gain") for k, v in (_ledger or {}).items() if isinstance(v, dict)} if isinstance(_ledger, dict) else {}
-        _prio, _gtable = _refresh_priority(_ages, _live, _trading, _any_h, _tr_h, _bgain)
+        _prio, _gtable, _cad = _refresh_priority(_ages, _live, _trading, _any_h, _tr_h, _bgain)
+        _ORDER_BY_HOST.clear()
+        _PLABEL.clear()
+        _PAGE.clear()
         _psym = {}
         for _k, _v in _prio.items():
             _sy = _k.rsplit("_", 1)[0]
             if _sy not in _psym or _v < _psym[_sy]:
                 _psym[_sy] = _v
+                _PLABEL[_sy] = _rule_label(_v, _cad.get(_k))
+                _PAGE[_sy] = None if _ages.get(_k) is None else round(_ages[_k], 1)
         _AGE_KEY[0] = (lambda b, _m=_psym: _m.get(b, (2, 0.0, 0.0)))
         _thr = _throughput(_mrows, _now_ts)
         log["coverage"] = {"coverage": _cov["coverage"], "covered": _cov["covered"], "n": _cov["n"], "published_24h": _cov["published_24h"], "median_board_age_h": _cov["median_board_age_h"],
@@ -3328,6 +3393,7 @@ def tick(args, cfg, now):
             _recent_syms = _recent_board_syms(all_syms, _mindex, _allowed, _now_ts)
         order = _place_order(held_ordered, [sym for sym in adopted if owner.get(sym) == h["name"] and sym not in held[h["name"]]],
                              [sym for sym in new_syms if venue_of(sym) in h["venues"]], _gtiers, redo, st["attempts"], st.get("launched_at"), pri, cont=_cont_all, pinned=_pin_sides, recent=_recent_syms, age_key=_AGE_KEY[0])
+        _ORDER_BY_HOST[h["name"]] = [_o[0] for _o in order if _o[1]]
         # 2026-10-13 USER LAW: a server never takes a new symbol while one of its own boards is unfinished — enforced by
         # _place_order (pinned=0, unfinished/redo=1, fresh=2): every unfinished board this host owns is evaluated and
         # admitted before any fresh pair in the same tick; slots/mem/cpu/budget that stop it stop the fresh pairs too.
@@ -3963,6 +4029,60 @@ def tick(args, cfg, now):
             k = "ok" if r_.get("ok") else re.sub(r"[\d.]+", "#", str(r_.get("reason")))
             hist[k] = hist.get(k, 0) + 1
         log["ready_summary"][hn] = hist
+    try:
+        _lh = []
+        for _t in list(log["launched"]) + list(log.get("dispatch_async", [])):
+            _t = _t.replace(" (dry)", "")
+            _pp = _t.split(":")
+            if len(_pp) >= 2:
+                _lh.append((_pp[0], _pp[1]))
+        _seen_l, _lh2 = set(), []
+        for _x in _lh:
+            if _x not in _seen_l:
+                _seen_l.add(_x)
+                _lh2.append(_x)
+
+        def _explain(hn, sy):
+            hi = log["hosts"].get(hn) if isinstance(log.get("hosts"), dict) else None
+            if sy in (log.get("skipped_unready") or {}):
+                return "npz-unready: " + str(log["skipped_unready"][sy])[:80]
+            if any(t.split(":")[1] == sy for t in (log.get("dispatch_skipped") or []) if t.count(":") >= 1):
+                return "dispatch-skipped (not tradeable anymore)"
+            if f"{hn}:{sy}" in (log.get("skipped_venue_only") or []):
+                return "venue-pin"
+            if any(f"{hn}:{sy}_" in x for x in (log.get("pair_sibling_skipped_done") or [])):
+                return "sibling-terminal"
+            if sy in {x.rsplit("_", 1)[0] for x in (log.get("own_unfinished", {}).get(hn) or [])}:
+                return "own-unfinished-resume"
+            if isinstance(hi, dict):
+                try:
+                    used, cap = [int(z) for z in str(hi.get("slots", "0/0")).split("/")]
+                    est = (hi.get("est_venue_mb") or {}).get(venue_of(sy))
+                    if used >= cap:
+                        return "host-skip: slots full"
+                    if est is not None and hi.get("proj_mem_mb", 0) < est:
+                        return "host-skip: mem guard (approx, end-of-tick state)"
+                    if hi.get("idle_reason") in ("mem guard", "disk guard"):
+                        return "host-skip: " + hi["idle_reason"]
+                except Exception:
+                    pass
+            return None
+
+        _aud = _order_audit(_ORDER_BY_HOST, _lh2, _explain, lambda sy: _PLABEL.get(sy, "oldest"), lambda sy: _PAGE.get(sy))
+        log["order_audit"] = {"top": _aud["top"], "violations": _aud["violations"], "launches_checked": len(_aud["checks"])}
+        for _hn, _tp in _aud["top"].items():
+            print(f"[sched] ORDER-AUDIT {_hn}: " + " | ".join(f"{i + 1}.{e['sym']}({e['rule']}, age {e['board_age_h']}h)" for i, e in enumerate(_tp)), flush=True)
+        for _c in _aud["checks"]:
+            print(f"[sched] ORDER-CHECK {_c['host']}: launched {_c['launched']} at rank {_c['rank']}; skipped ahead {_c['skipped_ahead']}", flush=True)
+        for _v in _aud["violations"]:
+            print(f"[sched] ORDER_VIOLATION {_v['host']}: launched {_v['launched']} (rank {_v['rank']}) ahead of unlaunched {_v['unlaunched_ahead']}: {_v['cause']}", flush=True)
+        if not (args.dry_run or sim):
+            _fo = ROOT / "data" / "reports" / "fleet_launch_order.json"
+            _ft = _fo.with_suffix(".json.tmp")
+            _ft.write_text(json.dumps({"now": now.isoformat(), "mode": "catchup" if _CATCHUP_MODE[0] else "slow", **log["order_audit"], "checks": _aud["checks"]}, indent=1))
+            os.replace(_ft, _fo)
+    except Exception as _e_aud:
+        print(f"[sched] order audit FAILED (non-fatal): {_e_aud}", flush=True)
     if log["stocks_chain_left"] and not is_open and mto < 60:
         log["WARN"] = f"{log['stocks_chain_left']} stock symbols unfinished {mto:.0f} min before open (partial apply must be flagged)"
     if not sim:

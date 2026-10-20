@@ -34,3 +34,10 @@ def test_wiring_pins():
     assert '_ffr_cut = bool(_v17_on and _v17_phase_cut("P4_FFR")) or _V18_CATCHUP' in SRC
     # the catch-up step runs BEFORE the floor (the floor / untried draw still rescues cells)
     assert SRC.index("if _V18_CATCHUP and info[\"kind\"] == \"eval\"") < SRC.index("_V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p)")
+
+
+def test_stuck_first_cell_guard_counts_engine_activity():
+    # a board evaluating its V18 pre-pass (R0 MUST before row 3; workbook saved only at tab boundaries) is not stuck
+    assert '_V18_ACTIVITY: dict = {"evals": 0}' in SRC
+    assert '_V18_ACTIVITY["evals"] = _V18_ACTIVITY.get("evals", 0) + 1' in SRC
+    assert "_stuck = _stuck and _ev_seen[0] < 0 and _ev_now == 0" in SRC

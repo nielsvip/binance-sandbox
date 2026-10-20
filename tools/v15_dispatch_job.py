@@ -551,7 +551,16 @@ def main():
         return 3
     # ...and verify the bytes that will actually travel, freshness INCLUDED. Exit 3 = do not launch, the same
     # convention tools/v15_npz_prep.py and tools/v15_npz_preflight.py use.
-    _pf_ok, _pf_why, _pf_res = npz_preflight(a.symbol, 30, check_freshness=True)
+    # USER LAW 2026-10-20: a CONTINUATION of a frozen unfinished board (action frozen-keep) resumes on the NPZ it was measured on (RULE#4), so the
+    # 20-min start law cannot apply to it - it would strand the board forever (its NPZ is frozen and cannot be refreshed). It is bounded by
+    # V15_CONT_NPZ_MAX_AGE_H (24, the scheduler's own continuation cap) instead, and its age is logged on the launch record.
+    _cont = res.get("action") == "frozen-keep"
+    _pf_ok, _pf_why, _pf_res = npz_preflight(a.symbol, 30, check_freshness=not _cont)
+    if _cont and _pf_ok:
+        _cap_h = float(os.environ.get("V15_CONT_NPZ_MAX_AGE_H", "24"))
+        _age_h = _pf_res.get("tail_age_h")
+        if _age_h is not None and float(_age_h) > _cap_h:
+            _pf_ok, _pf_why = False, f"continuation NPZ is {_age_h} h old > V15_CONT_NPZ_MAX_AGE_H {_cap_h:g} h - release the freeze and restart the board on a current NPZ"
     if _pf_ok and _pf_why.startswith("DEGRADED"):
         log({"event": "npz-degraded", "symbol": a.symbol, "tag": a.tag, "why": _pf_why,
              "tail_age_h": _pf_res.get("tail_age_h"), "max_tail_age_h": _pf_res.get("max_tail_age_h")})
