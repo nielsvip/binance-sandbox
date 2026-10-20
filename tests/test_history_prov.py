@@ -149,12 +149,17 @@ def test_tail_format_and_vec_tag_still_matches():
     assert H.human_tail({"switch": "NONE", "filters": []}) == "|SW=NONE|F=-"
 
 
-def test_kill_switch_default_off_in_both_configs():
+def test_kill_switch_exists_in_both_configs_and_env_overrides(monkeypatch):
     import config
     import config_tradier
 
-    assert config.Config.HISTORY_PROV_ENABLED is False or config.Config.HISTORY_PROV_ENABLED is True
-    assert hasattr(config_tradier.TradierConfig, "HISTORY_PROV_ENABLED")
+    assert config.Config.HISTORY_PROV_ENABLED is True and config_tradier.TradierConfig.HISTORY_PROV_ENABLED is True
+    monkeypatch.setenv("HISTORY_PROV_ENABLED", "0")
+    assert H.enabled(config.Config) is False
+    monkeypatch.setenv("HISTORY_PROV_ENABLED", "1")
+    assert H.enabled(SimpleNamespace(HISTORY_PROV_ENABLED=False)) is True
+    monkeypatch.delenv("HISTORY_PROV_ENABLED")
+    assert H.enabled(SimpleNamespace(HISTORY_PROV_ENABLED=False)) is False
 
 
 # ───────────────────────────── crypto history writer ─────────────────────────────
@@ -341,3 +346,18 @@ def test_leaked_block_never_crosses_position_keys():
 def test_venue_is_decided_by_symbol_not_by_set_mode():
     assert H.venue_of("BONKUSDC", {}) == "crypto" and H.venue_of("1000PEPEUSDT", {}) == "crypto"
     assert H.venue_of("CRWD", {"MODE": "crypto"}) == "stocks" and H.venue_of("AMD", {}) == "stocks"
+
+
+def test_unserialisable_prov_never_loses_the_history_line(tmp_path, monkeypatch):
+    import positions_truth as pt
+
+    monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
+    fn, stub = _crypto_service(tmp_path, True)
+    pt._RECENT_ORDER_REASONS.clear()
+    pt._RECENT_ORDER_PROV.clear()
+    bad = {"switch": "S", "filters": [], "cand": object()}
+    pt.note_order_reason("men:W_LONG", 2.0, "B12 |VEC_EXACT")
+    pt._RECENT_ORDER_PROV["men:W_LONG"] = [(__import__("time").time(), 2.0, "B12 |VEC_EXACT", bad)]
+    asyncio.run(fn(stub, "men:W_LONG", "OPEN", 2.0, 1.0, {}))
+    ev = _last(tmp_path, "men", "W_LONG")[0]
+    assert "prov" not in ev and ev["qty"] == 2.0 and ev["reason"].startswith("B12 |VEC_EXACT")

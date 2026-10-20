@@ -8036,10 +8036,15 @@ class PositionService:
             except Exception as _hp_e:
                 logger.debug(f"[HISTORY_PROV] {position_key}: {_hp_e}")
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
+            _hp_line = None
             if _hp_block is not None:
                 entry["prov"] = _hp_block
+                try:
+                    _hp_line = orjson.dumps(entry).decode('utf-8')
+                except Exception:
+                    entry.pop("prov", None)
             async with aiofiles.open(filename, "a") as f:
-                await f.write(orjson.dumps(entry).decode('utf-8') + "\n")
+                await f.write((_hp_line or orjson.dumps(entry).decode('utf-8')) + "\n")
             if self.redis_manager:
                 try: await asyncio.wait_for(self.redis_manager.delete(redis_key), timeout=0.5)
                 except Exception: pass

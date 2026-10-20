@@ -50951,10 +50951,15 @@ class TradierTradeManager:
                 "reason": reason or "Manual/System Detection",
                 "indicators": {},
             }
+            _hp_line = None
             if _hp_block is not None:
                 entry["prov"] = _hp_block
+                try:
+                    _hp_line = orjson.dumps(entry).decode("utf-8")
+                except Exception:
+                    entry.pop("prov", None)
             async with aiofiles.open(filename, "a") as f:
-                await f.write(orjson.dumps(entry).decode("utf-8") + "\n")
+                await f.write((_hp_line or orjson.dumps(entry).decode("utf-8")) + "\n")
         except Exception as e:
             logger.error(f"[HISTORY] Write error {position_key}: {e}")
 

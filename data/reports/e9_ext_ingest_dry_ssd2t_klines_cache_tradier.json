@@ -1,0 +1,71 @@
+{
+ "ts": "2026-10-20T00:54:55Z",
+ "end": "2026-10-20T01:03:38Z",
+ "mode": "dry_run",
+ "drive": "E3T",
+ "archive": "/Volumes/E3T/binance_archive/klines_archive",
+ "floor_gb": 10.0,
+ "free_gb_start": 13.63,
+ "free_gb_end": 13.63,
+ "stopped": null,
+ "totals": {
+  "names": 4516,
+  "names_grown": 0,
+  "names_created": 0,
+  "bars_added": 0,
+  "bytes_written_delta": 0,
+  "refused": 0,
+  "deferred_names": 0,
+  "projected_bytes_delta": 3514461439,
+  "projected_bars_added": 28653405
+ },
+ "copies": {
+  "ssd2t_klines_cache_tradier": {
+   "root": "/Volumes/SSD2T/binance_archive/klines_cache_tradier",
+   "files": 9417,
+   "kline_files": 5037,
+   "non_kline_files": 4380,
+   "salvaged_files": 0,
+   "unreadable_files": 0,
+   "bytes": 6612778487,
+   "series": 5037,
+   "bars": 39900237,
+   "present_same": 10446906,
+   "present_archive_dominates": 118282,
+   "copy_dominates": 20642,
+   "conflicts": 272409,
+   "new": 29212714,
+   "new_added": 28653405,
+   "new_via_other_copy": 388593,
+   "new_deferred": 0,
+   "gateway_new_held": 0,
+   "names_with_new": 4541,
+   "blockers": {
+    "new": 29212714,
+    "conflicts": 272409,
+    "copy_dominates": 20642,
+    "non_kline_files": 4380
+   },
+   "verdict": "HOLD",
+   "gb": 6.613,
+   "non_kline_examples": [
+    ".AAPL_1m.json.30644.tmp",
+    ".AAPL_1m.json.65075.tmp",
+    ".AAPL_5m.json.40033.tmp",
+    ".ABBV_1m.json.30644.tmp",
+    ".ABT_15m.json.0955e6e9480b4204b839c2a6a845a750.tmp",
+    ".ABT_15m.json.271c88033f624342aa0835bc291b5250.tmp",
+    ".ABT_15m.json.2aaaa91123eb4ccc937762eff140c500.tmp",
+    ".ABT_15m.json.2bbfb4b3acfe41559e46bdbd1b429c08.tmp",
+    ".ABT_15m.json.3befe79293af4e61ab432e4a605d8934.tmp",
+    ".ABT_15m.json.4c8b71909c3d41088570e69935e70f48.tmp",
+    ".ABT_15m.json.7de0e143ca0d4c1081c71071e21f4f07.tmp",
+    ".ABT_15m.json.8255dc7740f44440b02c2e4a01c89a39.tmp",
+    ".ABT_15m.json.97a62ec516184b45ba24ea61093966d9.tmp",
+    ".ABT_15m.json.ab64fad84c4340588bd88b59c60120d2.tmp",
+    ".ABT_15m.json.c8152bbc40f5455d90540f54d7f6cae9.tmp"
+   ]
+  }
+ },
+ "deferred_names": []
+}

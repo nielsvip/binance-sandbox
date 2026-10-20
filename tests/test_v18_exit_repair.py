@@ -75,7 +75,8 @@ def test_extend_deadline_rule(monkeypatch):
     assert V.extend_deadline(0.1, 100.0, 120.0, 50.0, 1000.0) == 120.0  # not lifting enough
     assert V.extend_deadline(1.0, 100.0, 200.0, 50.0, 1000.0) == 200.0  # deadline not near
     assert V.extend_deadline(1.0, 100.0, 140.0, 50.0, 1000.0) == 220.0  # +max(120, window)
-    assert V.extend_deadline(1.0, 100.0, 140.0, 50.0, 150.0) == 140.0  # hard cap reached
+    assert V.extend_deadline(1.0, 100.0, 140.0, 50.0, 150.0) == 150.0  # clipped by the hard cap
+    assert V.extend_deadline(1.0, 100.0, 140.0, 50.0, 125.0) == 140.0  # hard cap reached: no more chunks
     assert V.lift_pm(0.6, 120.0) == 0.3
 
 

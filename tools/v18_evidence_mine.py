@@ -13,6 +13,9 @@ WHAT IS COUNTED (NO-LIES: every count is a logged engine answer; nothing is esti
                                           of strip+F, ABL_ATTR gain of strip+F+switch -> eff = ATTR - RESTORE1; killer when
                                           eff < 0.5 * d (the pilot's own v17_killers rule); ABL_RESTORE / ABL_EXEMPT / ABL_PROXY
                                           deltas vs the full chain are the measured remedy outcomes
+  quartet (SWITCH=cand, FILTER) v17_priors_mine's filter-blocks-switch quartet on one chain state of a board: d_on = naked
+                                          delta of S, d_off = (chain+S+F=off) - (chain+F=off), Y taken from a row whose naked
+                                          reproduces the chain; the filter blocks S where d_off > 0 and d_off > d_on
   forward FORWARD / HOLDOUT records (none exist in the 2026-10-19 logs: holdout is OFF in production; counted when present)
 Unit of evidence = (cat_side, key, sym_side), LAST measurement wins (tools/v15_switch_causal_profile convention), so a
 sym_side re-tested by several boards counts once; `n` keeps the raw number of evals (fresh + cached) and `nf` the fresh ones.
@@ -86,6 +89,8 @@ DDL = (
     " restore_d REAL, exempt_d REAL, proxy_d REAL, proxy_has_f INT, n INT, PRIMARY KEY (cs, sw, f, sym)) WITHOUT ROWID",
     "CREATE TABLE IF NOT EXISTS disc (cs TEXT, sw TEXT, sym TEXT, ts TEXT, grp TEXT, disc_d REAL, n_attr INT, restore_d REAL,"
     " exempt_d REAL, proxy_d REAL, n INT, PRIMARY KEY (cs, sw, sym)) WITHOUT ROWID",
+    "CREATE TABLE IF NOT EXISTS quart (cs TEXT, sw TEXT, f TEXT, sym TEXT, ts TEXT, d_on REAL, d_off REAL, n INT,"
+    " PRIMARY KEY (cs, sw, f, sym)) WITHOUT ROWID",
     "CREATE TABLE IF NOT EXISTS fwd (cs TEXT, key TEXT, sym TEXT, ts TEXT, d REAL, kind TEXT, PRIMARY KEY (cs, key, sym, ts, kind)) WITHOUT ROWID",
     "CREATE TABLE IF NOT EXISTS boards (path TEXT, board_no INT, cs TEXT, sym TEXT, ts TEXT, tier TEXT, bh REAL, baseline REAL,"
     " round TEXT, PRIMARY KEY (path, board_no))",
@@ -115,6 +120,38 @@ UPSERT_DISC = ("INSERT INTO disc (cs, sw, sym, ts, grp, disc_d, n_attr, restore_
                "restore_d = CASE WHEN excluded.ts >= ts THEN excluded.restore_d ELSE restore_d END, "
                "exempt_d = CASE WHEN excluded.ts >= ts THEN excluded.exempt_d ELSE exempt_d END, "
                "proxy_d = CASE WHEN excluded.ts >= ts THEN excluded.proxy_d ELSE proxy_d END, ts = MAX(ts, excluded.ts)")
+
+
+UPSERT_QUART = ("INSERT INTO quart (cs, sw, f, sym, ts, d_on, d_off, n) VALUES (?,?,?,?,?,?,?,?) "
+                "ON CONFLICT (cs, sw, f, sym) DO UPDATE SET n = n + excluded.n, "
+                "d_on = CASE WHEN excluded.ts >= ts THEN excluded.d_on ELSE d_on END, "
+                "d_off = CASE WHEN excluded.ts >= ts THEN excluded.d_off ELSE d_off END, ts = MAX(ts, excluded.ts)")
+OFF_VALUES = frozenset({"OFF", "off", "Off", "False", "false", "0", "0.0", "None", "none", "NONE", ""})
+
+
+def quartets(rows, cs, sym, ts):
+    """v17_priors_mine's filter-blocks-switch quartet on delta-log rows of ONE board: at one chain state (same cum_before),
+    B = chain, X = B+S (the row's naked), Y = B+F (the yellow F=off on a row whose naked reproduces the chain), Z = B+S+F (the
+    yellow F=off on S's row). d_on = X-B (S with F as in the chain), d_off = Z-Y (S with F switched off)."""
+    ychain = {}
+    for cb, nd, nvalid, ys, _swc in rows:
+        if nvalid and nd is not None and abs(nd) <= EPS:
+            for lab, (yd, yv) in ys.items():
+                if yv and yd is not None:
+                    ychain.setdefault((cb, lab), yd)
+    out = []
+    for cb, nd, nvalid, ys, swc in rows:
+        if not nvalid or nd is None or abs(nd) <= EPS:
+            continue
+        for lab, (yd, yv) in ys.items():
+            f, _, opt = lab.partition("=")
+            if opt not in OFF_VALUES or not yv or yd is None:
+                continue
+            yb = ychain.get((cb, lab))
+            if yb is None:
+                continue
+            out.append((cs, swc, f, sym, ts, nd, yd - yb, 1))
+    return out
 
 
 def connect(path):
@@ -166,7 +203,8 @@ def mine_file(path, host, since, counters):
     sym = sym_side_of_path(path)
     cs = cat_side_of(sym)
     obs = {}
-    abl_rows, disc_rows, fwd_rows, board_rows = [], [], [], []
+    abl_rows, disc_rows, fwd_rows, board_rows, quart_rows = [], [], [], [], []
+    qrows = []
     buf = {}
     board = Board()
     board_no = 0
@@ -188,6 +226,8 @@ def mine_file(path, host, since, counters):
         a, d = board.rows(cs, sym, ts or "")
         abl_rows.extend(a)
         disc_rows.extend(d)
+        quart_rows.extend(quartets(qrows, cs, sym, ts or ""))
+        qrows.clear()
 
     with open(path, "r", errors="replace") as fh:
         for line in fh:
@@ -263,6 +303,8 @@ def mine_file(path, host, since, counters):
                     m = (y[1] - nk[1]) if (nk is not None and nk[1] is not None and y[1] is not None) else None
                     put("P|" + swc + "|" + hdr, y[0], y[1], m, y[2], 0, y[3])
                     counters["pair"] += 1
+                if nk is not None and b.get("cb") is not None:
+                    qrows.append((b["cb"], nk[1], nk[2], {h: (y[1], y[2]) for h, y in b["y"].items()}, swc))
                 continue
             if label == "hustle" or label.startswith(SKIP_PREFIX):
                 counters["other_labels"] += 1
@@ -274,12 +316,14 @@ def mine_file(path, host, since, counters):
                 continue
             rec = (ts, _f(r.get("delta")), 1 if r.get("valid") else 0, bool(r.get("cached")))
             b = buf.setdefault(key, {"y": {}})
+            if b.get("cb") is None and r.get("cum_before") is not None:
+                b["cb"] = round(float(r["cum_before"]), 9)
             if label == "naked":
                 b["naked"] = rec
             else:
                 b["y"][label.strip()] = rec
     close_board(last_ts)
-    meta = {"lines": lines, "first_ts": first_ts, "last_ts": last_ts, "boards": board_no, "sym": sym, "cs": cs}
+    meta = {"lines": lines, "first_ts": first_ts, "last_ts": last_ts, "boards": board_no, "sym": sym, "cs": cs, "quart": quart_rows}
     return obs, abl_rows, disc_rows, fwd_rows, board_rows, meta
 
 
@@ -320,6 +364,7 @@ def worker(args):
             c.executemany(UPSERT_OBS, ((cs, k, sym, v[0], v[1], v[2], v[3], v[4], v[5], v[6], 1) for k, v in obs.items()))
             c.executemany(UPSERT_ABL, abl)
             c.executemany(UPSERT_DISC, disc)
+            c.executemany(UPSERT_QUART, meta["quart"])
             c.executemany("INSERT OR IGNORE INTO fwd VALUES (?,?,?,?,?,?)", fwd)
         else:
             fc["no_cat_side_file"] += 1
@@ -371,6 +416,7 @@ def merge(main, parts):
         main.execute("INSERT INTO obs SELECT cs, key, sym, ts, d, m, valid, prom, n, nf, nb FROM w.obs WHERE 1 " + UPSERT_OBS.split(") VALUES (?,?,?,?,?,?,?,?,?,?,?) ", 1)[1])
         main.execute("INSERT INTO abl SELECT * FROM w.abl WHERE 1 " + UPSERT_ABL.split("VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ", 1)[1])
         main.execute("INSERT INTO disc SELECT * FROM w.disc WHERE 1 " + UPSERT_DISC.split("VALUES (?,?,?,?,?,?,?,?,?,?,?) ", 1)[1])
+        main.execute("INSERT INTO quart SELECT * FROM w.quart WHERE 1 " + UPSERT_QUART.split("VALUES (?,?,?,?,?,?,?,?) ", 1)[1])
         main.execute("INSERT OR IGNORE INTO fwd SELECT * FROM w.fwd")
         main.execute("INSERT OR REPLACE INTO boards SELECT * FROM w.boards")
         main.execute("INSERT OR REPLACE INTO files SELECT * FROM w.files")
@@ -412,7 +458,7 @@ def export(main, out_dir, meta):
     written = {}
     for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT"):
         naked = {}
-        for key, syms, valid, pos, neg, sum_pos, prom, n, nf, last in main.execute(
+        for key, syms, valid, pos, neg, sum_pos, prom, n, nf, last, nb in main.execute(
                 "SELECT key, count(*), sum(valid), sum(CASE WHEN valid=1 AND d > ? THEN 1 ELSE 0 END), "
                 "sum(CASE WHEN valid=1 AND d < ? THEN 1 ELSE 0 END), sum(CASE WHEN valid=1 AND d > ? THEN d ELSE 0 END), "
                 "sum(prom), sum(n), sum(nf), max(ts), sum(nb) FROM obs WHERE cs=? AND key LIKE 'N|%' GROUP BY key", (EPS, -EPS, EPS, cs)):
@@ -444,6 +490,14 @@ def export(main, out_dir, meta):
                 "SELECT sw, count(*), sum(disc_d), sum(n_attr), sum(CASE WHEN restore_d > ? THEN 1 ELSE 0 END), "
                 "sum(CASE WHEN restore_d IS NOT NULL THEN 1 ELSE 0 END) FROM disc WHERE cs=? GROUP BY sw", (EPS, cs)):
             disc[sw] = {"n_syms": syms, "sum_disc_d": round(sum_d or 0.0, 6), "n_attr": n_attr or 0, "restore_pos": rd_pos or 0, "restore_n": rd_n or 0}
+        quart = {}
+        for sw, f, syms, blocks, sum_gap, sum_on, sum_off, block_list in main.execute(
+                "SELECT sw, f, count(*), sum(CASE WHEN d_off > ? AND d_off > d_on + ? THEN 1 ELSE 0 END), sum(d_off - d_on), sum(d_on), "
+                "sum(d_off), group_concat(CASE WHEN d_off > ? AND d_off > d_on + ? THEN sym END) FROM quart WHERE cs=? GROUP BY sw, f",
+                (EPS, EPS, EPS, EPS, cs)):
+            quart[f"{sw}|{f}"] = {"n_syms": syms, "block_syms": blocks or 0, "sum_off_minus_on": round(sum_gap or 0.0, 6),
+                                  "sum_d_on": round(sum_on or 0.0, 6), "sum_d_off": round(sum_off or 0.0, 6),
+                                  "block_sym_list": sorted(set((block_list or "").split(",")) - {""})}
         fwd = {}
         for key, kind, n, ok in main.execute("SELECT key, kind, count(*), sum(CASE WHEN d >= 0 THEN 1 ELSE 0 END) FROM fwd WHERE cs=? GROUP BY key, kind", (cs,)):
             fwd[f"{kind}|{key}"] = [n, ok or 0]
@@ -457,13 +511,14 @@ def export(main, out_dir, meta):
                                      "pairs": ["n_syms", "valid_syms", "pos_syms", "sum_pos_d", "companion_syms", "companion_sum_m", "n_evals", "n_fresh", "n_boards"]},
                             tokenized_files_skipped=meta.get("counters", {}).get("tokenized_file_skipped", 0)),
                "naked": naked, "pairs": pairs, "pair_pos_syms": {k: sorted(v) for k, v in pos_syms.items()}, "abl": abl, "abl_discoveries": disc,
-               "forward": fwd}
+               "quartets": quart, "forward": fwd}
         p = os.path.join(out_dir, f"evidence_{cs}.json.gz")
         tmp = p + ".tmp"
         with gzip.open(tmp, "wt") as fh:
             json.dump(doc, fh, separators=(",", ":"), default=str)
         os.replace(tmp, p)
-        written[cs] = {"naked": len(naked), "pairs": len(pairs), "abl_pairs": len(abl), "discoveries": len(disc), "bytes": os.path.getsize(p)}
+        written[cs] = {"naked": len(naked), "pairs": len(pairs), "abl_pairs": len(abl), "discoveries": len(disc), "quartet_pairs": len(quart),
+                       "bytes": os.path.getsize(p)}
     return written
 
 
