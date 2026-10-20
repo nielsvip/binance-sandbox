@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-20 04:02 UTC",
- "total_capital_usd": 50.33,
+ "generated_at": "2026-10-20 04:06 UTC",
+ "total_capital_usd": 50.29,
  "tier_capital": {
-  "A": 9.09,
-  "B": 15.16,
-  "C": 26.08
+  "A": 9.08,
+  "B": 15.12,
+  "C": 26.09
  },
  "tier_count": {
   "A": 1,
@@ -16,8 +16,8 @@
  ],
  "losers": [
   "ang:BNBUSDC_LONG",
-  "ang:RENDERUSDT_LONG",
   "ang:TRBUSDT_LONG",
+  "ang:RENDERUSDT_LONG",
   "ang:LTCUSDC_LONG"
  ],
  "mediocre": [],
@@ -26,78 +26,78 @@
    "pk": "ang:TRBUSDT_LONG",
    "symbol": "TRBUSDT",
    "account": "ang",
-   "value_usd": 10.74,
-   "gain_pct": 0.325,
+   "value_usd": 10.73,
+   "gain_pct": 0.271,
    "tier": "C",
    "perf_mult": 0.69,
    "amt": 0.6,
-   "mark": 17.896
+   "mark": 17.88627263
   },
   {
    "pk": "ang:BATUSDT_LONG",
    "symbol": "BATUSDT",
    "account": "ang",
-   "value_usd": 9.41,
-   "gain_pct": 0.927,
+   "value_usd": 9.38,
+   "gain_pct": 0.571,
    "tier": "B",
    "perf_mult": 6.7,
    "amt": 48.0,
-   "mark": 0.19606995
+   "mark": 0.19537929
   },
   {
    "pk": "ang:XMRUSDT_LONG",
    "symbol": "XMRUSDT",
    "account": "ang",
-   "value_usd": 9.09,
-   "gain_pct": 0.927,
+   "value_usd": 9.08,
+   "gain_pct": 0.868,
    "tier": "A",
    "perf_mult": 10.0,
    "amt": 0.015,
-   "mark": 605.96677778
+   "mark": 605.61
   },
   {
    "pk": "ang:BNBUSDC_LONG",
    "symbol": "BNBUSDC",
    "account": "ang",
    "value_usd": 7.3,
-   "gain_pct": 0.238,
+   "gain_pct": 0.23,
    "tier": "C",
    "perf_mult": 0.25,
    "amt": 0.01,
-   "mark": 730.16132789
+   "mark": 730.10246009
   },
   {
    "pk": "ang:RENDERUSDT_LONG",
    "symbol": "RENDERUSDT",
    "account": "ang",
-   "value_usd": 6.01,
-   "gain_pct": 0.301,
+   "value_usd": 6.03,
+   "gain_pct": 0.512,
    "tier": "C",
    "perf_mult": 0.38,
    "amt": 3.3,
-   "mark": 1.82246875
+   "mark": 1.82630417
   },
   {
    "pk": "ang:ARUSDT_LONG",
    "symbol": "ARUSDT",
    "account": "ang",
-   "value_usd": 5.75,
-   "gain_pct": 1.753,
+   "value_usd": 5.74,
+   "gain_pct": 1.574,
    "tier": "B",
    "perf_mult": 1.07,
    "amt": 1.5,
-   "mark": 3.831
+   "mark": 3.82425
   },
   {
    "pk": "ang:LTCUSDC_LONG",
    "symbol": "LTCUSDC",
    "account": "ang",
    "value_usd": 2.03,
-   "gain_pct": 0.733,
+   "gain_pct": 0.74,
    "tier": "C",
    "perf_mult": 0.29,
    "amt": 0.034,
-   "mark": 59.74474188
+   "mark": 59.74888634
   }
  ]
 }

@@ -1,0 +1,141 @@
+{
+ "window_from": "10-20 03:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 10
+ },
+ "rows": [
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:55",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_STRONG_REDUCE_k_1m:59/d_1m:55/k_3m:96/d_3m:97_SIMPLE_TP_0.03%_wt=k_dec_bc112_",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:02",
+   "actual": "REDUCE",
+   "actual_reason": "VEL_EXIT_v4h-7.05_g1.46",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "BATUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:56",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px0.1951_k73",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "BNBUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:59",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REALLOC_FOR_WLDUSDC_6pct",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "DOTUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:57",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_REDUCE_k_1m:96/d_1m:72/k_3m:90/d_3m:90_Get OutSTAGNATION_REDUCE",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "LTCUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:57",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_STRONG_REDUCE_k_1m:96/d_1m:97/k_3m:72/d_3m:48_SIMPLE_TP_0.24%_wt=declining_bc",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SANDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:58",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_SHORT_L56_S44_tgt75/25_gain2.1%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "SANDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 04:00",
+   "actual": "REDUCE",
+   "actual_reason": "RATIO_CLOSE_SHORT_L56_S44_tgt75/25_gain2.1%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "THETAUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:57",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_REDUCE_STRONG_REDUCE_k_1m:93/d_1m:97/k_3m:85/d_3m:91_SIMPLE_TP_0.59%_wt=declining_bc",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "XMRUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-20 03:56",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_WT_CROSS_EXIT_1h_bear_wt1=8.7_wt2=25.0_15m-10.8/-10.5_g0.91%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

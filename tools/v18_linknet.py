@@ -161,7 +161,9 @@ class Interner:
 class CatDS:
     """Examples of ONE cat_side, built in time order from the brain's events."""
 
-    INF_SRC = {"T": 0, "P": 1, "U": 2}
+    INF_SRC = {"T": 0, "P": 1, "U": 2, "Z": 3, "A": 4, "N": 5}
+    # precision-extract chain codes (tools/v18_precision_extract.py, per-board two-pass resolution) -> our in-force source
+    CK_MAP = {"P": "P", "B": "T", "BI": "T", "Z": "Z", "A": "A", "NB": "N", "U": "U"}
 
     def __init__(self, cs, defaults=None):
         self.cs = cs
@@ -246,10 +248,18 @@ class CatDS:
         b_t0 = VB.epoch_of(str(b).rsplit("|", 1)[-1]) or t
         bi = self.boards(b)
         si = self.sets(f"{sheet}|{sw}={cand}")
-        inf, src = self.in_force(sym, sw)
+        if "ck" in ev:
+            src = self.CK_MAP.get(ev.get("ck"), "U")
+            inf = ev.get("cv") if src not in ("N", "U") else None
+            self.c[f"inforce_pinned_{ev.get('ck')}"] += 1
+        else:
+            inf, src = self.in_force(sym, sw)
+            self.c["inforce_inferred_causal"] += 1
         reg, tier = ev.get("g"), ev.get("ti")
         naked = ev.get("n")
         nd0 = naked[0] if (naked is not None and naked[1]) else None
+        if src == "A" and inf is not None and str(cand) in str(inf).split("|"):
+            inf = cand  # one of several zero-delta (inert) cands: identity with the chain
         if inf is not None and str(cand) == str(inf) and nd0 is not None and abs(nd0) > 1e-6:
             # the engine says the chain differs from the inferred default (the board's best-start set is not in the log):
             # the inference is contradicted -> in-force UNKNOWN, the eval is kept
@@ -1100,7 +1110,8 @@ def inherent_report(D, K):
                       "share_mass": round(float(d[s_].sum()) / min(-1e-9, float(d[neg].sum())), 4)}
         src = D["inf_src"][m]
         blk["by_inforce_source"] = {nm_: {"n": int((neg & (src == code)).sum()), "sum_delta": round(float(d[neg & (src == code)].sum()), 2)}
-                                    for nm_, code in (("promoted_on_sym_side", 1), ("template_bold", 0), ("unknown", 2))}
+                                    for nm_, code in (("promoted_P", 1), ("template_bold_T", 0), ("unknown_U", 2), ("start_set_override_Z", 3),
+                                                      ("ambiguous_inert_set_A", 4), ("non_template_NB", 5))}
         out[kn] = blk
     c = K.get("counters") or {}
     out["identity_dropped"] = {"R_cand_eq_inforce": c.get("R_identity_cand_eq_inforce", 0), "F_opt_eq_inforce": c.get("F_identity_opt_eq_inforce", 0),
@@ -1139,6 +1150,8 @@ def cmd_train(a):
                     "unknown_tokens_in_corpus_keys": dict(tr.fz.unknown_tokens.most_common(40))})
         rep["inherent_vs_genuine_negatives"] = inherent_report(tr.D, tr.K)
         reports[cs] = rep
+        r = rep["results"]
+        (out_dir / f"linknet_report_{cs}.json").write_text(json.dumps(rep, indent=1, default=str))
         write_status(cs, "trained", rows_consumed=int(len(tr.D["kind"])), nodes_embedded=len(tr.fz.names), n_params=n_params,
                      holdout_auc_seen={"R": r["R"]["held_out_boards"].get("auc_linknet"), "F": r["F"]["held_out_boards"].get("auc_linknet")},
                      holdout_auc_unseen={"R": r["R"]["never_seen_before_cut"].get("auc_linknet"), "F": r["F"]["never_seen_before_cut"].get("auc_linknet"),
