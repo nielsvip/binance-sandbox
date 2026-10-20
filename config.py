@@ -3141,6 +3141,7 @@ class Config:
     REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = (
         0.2  # B00: price must be this % above exit price (SMA200 + k3m momentum also required)
     )
+    REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED: bool = True  # 2026-10-20 USER LAW: a REENTRY after an exit only once price passed the exit price (+/- REENTRY_EXIT_RECLAIM_BUFFER_PCT) favourably (vec_decisions.reentry_crossback)
     # === AUGMENT BLOCKS (2026-04-16) — 4 blocks switch-gated for sweep ===
     # 2026-04-25 rapid-grid finding: AUGMENT_WT_4H_BOUNCE (v8_quick_engine) → +0.029 pool_sharpe on crypto 50-sym. No live equivalent yet — wire as AUGMENT_WT_4H_BOUNCE_ENABLED when sweep validates on full 50-sym.
     AUGMENT_BLOWPAST_ENABLED: bool = (

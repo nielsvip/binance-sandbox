@@ -640,6 +640,19 @@ class TradierPositionManager:
             "augmentation_cooldown_map": {},
             "position_reasons": {}
         })
+        # 2026-10-20 (USER authorized): SEED THIS ACCOUNT SO A FLAT ACCOUNT STILL HEARTBEATS.
+        # acc_states is a defaultdict filled only from LIVE POSITION KEYS, and the write loop below iterates it.
+        # A flat account therefore produced no buckets, the loop body never ran, and state.json was never rewritten
+        # — so its mtime froze. tools/mac_failover_agent.py (_STOCK_POSITION_FILES, LF_POSITIONS_STALE_S=600) takes
+        # the MAX age over state.json/long_positions.json per account and raises `positions_stale`, which fences the
+        # WHOLE STOCK VENUE. Measured 2026-10-20 17:40Z: tra flat (0 of 224 positions), state.json 2799 s stale
+        # (4.6x the threshold), while trb (13 positions) and trc (9) were fresh at 1.9 s and 5.2 s. So being FLAT
+        # read as "position loop wedged" and took down the 22 real positions on trb/trc. It fired at 14:23:45Z and
+        # again at 17:04:25Z, and is the `positions_stale tra/state.json` half of the 85 % un-traded RTH.
+        # The probe is a LIVENESS probe, so an unconditional once-per-cycle write is also the honest thing: an empty
+        # state is a real state. Each instance owns exactly one account (self.account_key / self.account_dir), so
+        # seeding that one key is all that is needed and it writes the same shape as before.
+        _ = acc_states[self.account_key]
 
         # Helper to route data to the right bucket
         def bucket_simple(source_dict, target_field, is_date=True):

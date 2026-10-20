@@ -68,6 +68,7 @@ import numpy as np
 import vec_decisions.breakout_opener
 import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
+import vec_decisions.reentry_crossback  # 2026-10-20 USER LAW: reentry only after the exit price is crossed back
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
@@ -7493,6 +7494,7 @@ class QuickConfig:
     REENTRY_EXHAUSTED_PARTIAL_ENABLED: bool = True  # auto-added TEMPLATE
     REENTRY_EXIT_RECLAIM_BUFFER_PCT: float = 0.2  # auto-added TEMPLATE
     REENTRY_EXIT_RECLAIM_ENABLED: bool = True  # auto-added TEMPLATE
+    REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED: bool = True  # 2026-10-20 USER LAW: every reentry pathway after an exit needs price past the exit price (+/- REENTRY_EXIT_RECLAIM_BUFFER_PCT) in the favourable direction; vec_decisions.reentry_crossback
     REENTRY_POST_CONSOL_ATR_THRESHOLD: float = 0.15  # auto-added TEMPLATE
     REENTRY_POST_CONSOL_ENABLED: bool = True  # auto-added TEMPLATE
     REENTRY_POST_CONSOL_MULT: float = 1.5  # auto-added TEMPLATE
@@ -19041,6 +19043,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # recross of the exit price within HLR_RECROSS_BYPASS_BARS skips the unconditional
             # 09-27 hard blocks (DC4H/STOP/KG/GR) below. Sweepable gates are never bypassed.
             _selltop_recross_bypass = False
+            # 2026-10-20 USER LAW (vec_decisions.reentry_crossback): after an exit every reentry pathway is armed ONLY on a bar where price has
+            # passed the exit price again in the favourable direction (REENTRY_EXIT_RECLAIM_BUFFER_PCT). A pathway fire without it is not a
+            # reentry: only a fresh entry (entry_sig, with every entry gate) may open on that bar.
+            if (
+                fire
+                and has_closed_before
+                and trades
+                and not bool(entry_sig[i])
+                and not vec_decisions.reentry_crossback.allows_reentry(
+                    lambda _k, _d=None: getattr(cfg, _k, _d),
+                    is_long,
+                    float(px),
+                    float(trades[-1].get("exit_price", 0) or 0),
+                )
+            ):
+                fire = False
             if (
                 fire
                 and has_closed_before
@@ -19213,7 +19231,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 pass
                 except Exception:
                     pass
-            if _gm_rebuy and _gap_pending is not None:
+            if (
+                _gm_rebuy
+                and _gap_pending is not None
+                and (
+                    not (has_closed_before and trades)
+                    or vec_decisions.reentry_crossback.allows_reentry(
+                        lambda _k, _d=None: getattr(cfg, _k, _d),
+                        is_long,
+                        float(px),
+                        float(trades[-1].get("exit_price", 0) or 0),
+                    )
+                )
+            ):  # 2026-10-20 USER LAW: the GAP morning rebuy is a reentry pathway too (cross-back required)
                 fire = True  # WIRING LANE E: morning rebuy bypasses signal vetoes above (live: queued OPEN, not a signal; order guards below still apply)
             if fire:
                 mult = (

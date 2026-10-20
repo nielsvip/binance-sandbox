@@ -820,8 +820,25 @@ class Watchdog:
         grow = []
         if pin != "mac" and set(scope) != set(C.VENUES):
             if cond:
-                grow = [v for v in C.VENUES if v not in scope]
-                why = f"Mac down while S1 held {scope}: grow to all venues"
+                # 2026-10-20 (USER authorized): DO NOT GROW INTO A VENUE S1 CANNOT ACTUALLY TRADE.
+                # This branch grew the lease to EVERY venue on a Mac-down verdict, with no check that S1 could serve
+                # the extra venue. The nt_candidates() path next door has always gated on s1_broker_ok(); only this
+                # one did not. Consequence: a CRYPTO-only fault took STOCKS too, and because S1 then ran no
+                # tradier_manage at all, stocks traded on NEITHER host. Measured 2026-10-19 15:10:57Z —
+                # "Mac down while S1 held ['crypto']: grow to all venues" — stocks were fenced on the Mac from
+                # 17:07Z to the 20:00Z close and never unfenced until 21:20:01Z: 173 un-traded RTH minutes, with S1
+                # running stocks for 9.6 minutes all day. It recurred at 16:43:06Z.
+                # The reactive LEASE_YIELD_UNRUN below (VENUE_UNRUN_S=180 s) hands such a venue back, but only after
+                # the damage; this refuses to take it in the first place. Same probe, same semantics as the NT path,
+                # so a venue S1 genuinely can serve is still taken on a real Mac failure.
+                grow = [v for v in C.VENUES if v not in scope and self.s1_broker_ok(v, now)]
+                _skipped = [v for v in C.VENUES if v not in scope and v not in grow]
+                if _skipped:
+                    alert("LEASE_GROW_REFUSED_UNSERVABLE", venues=_skipped, keeping=scope,
+                          reason="Mac is down but S1 cannot reach the broker for these venues — taking them would "
+                                 "fence the Mac out of a venue NOBODY then trades")
+                    log(f"LEASE_GROW_REFUSED_UNSERVABLE {_skipped}: s1_broker_ok false — not growing into them (keeping {scope})")
+                why = f"Mac down while S1 held {scope}: grow to {grow}"
             else:
                 grow = self.nt_candidates(nt, pin, scope, now)
                 why = self._nt_reason(nt, grow) if grow else ""
