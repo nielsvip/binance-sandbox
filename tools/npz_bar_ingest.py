@@ -280,6 +280,7 @@ def main():
     import npz_live_generator as gen
     counts, applied, skipped = {}, [], []
     no_npz_syms = set()
+    canon_syms = set()
     now = time.time()
     # oldest bar first per symbol so a two-bar backlog applies in order
     staged = []
@@ -362,6 +363,30 @@ def main():
             bump("TOO_OLD")
             skipped.append({"symbol": sym, "ts": ts, "why": f"staged bar {age_h:.1f}h old (> {a.max_age_h}h)"})
             return
+        if mode == "crypto" and os.environ.get("NPZ_INGEST_CRYPTO_CANONICAL_ONLY", "1") == "1":
+            # 2026-10-20 REAL PRICES (coordinator follow-up): the Mac's snapshot row (OHLCV + indicators from its live cache) measured 59-72% different
+            # from the exchange-closed bar. It is NEVER written to a crypto NPZ any more. The staged file only says "bar ts closed": once klines_canonical
+            # holds that bar (~50 s after close on S1) the symbol is handed to tools/npz_bar_refresh.py (builder, canonical-primary) after the batch, so the
+            # NPZ's newest bar is the exchange-closed bar and no provisional row is ever created here.
+            try:
+                from tools.npz_bar_refresh import canonical_window
+                _cw, _cl = canonical_window(sym, 4)
+            except Exception:
+                _cw, _cl = None, None
+            if _cl is not None and _cl < ts:
+                if (now - ts) > 1800:
+                    bump("CANONICAL_NEVER_ARRIVED")
+                    if a.apply:
+                        claim(f, DEFERRED)
+                else:
+                    bump("WAIT_CANONICAL_BAR")
+                return
+            bump("TO_CANONICAL_REFRESH" if a.apply else "WOULD_REFRESH")
+            with lock:
+                canon_syms.add(sym)
+            if a.apply:
+                claim(f, DONE)
+            return
         hole = klines_between(sym, mode, last, ts)
         if hole:
             bump("HOLE_LEFT_TO_REFRESHER")
@@ -432,6 +457,16 @@ def main():
         for items in by_sym.values():
             handle(items)
 
+    if a.apply and canon_syms:
+        import subprocess
+        cmd = ["nice", "-n", "15", sys.executable, "-u", str(ROOT / "tools" / "npz_bar_refresh.py"), "--symbols", ",".join(sorted(canon_syms)), "--mode", "crypto",
+               "--workers", os.environ.get("NPZ_INGEST_REFRESH_WORKERS", "4"), "--w15", "2500", "--no-sentiment", "--no-stamp"]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=int(os.environ.get("NPZ_INGEST_REFRESH_TIMEOUT_S", "480")))
+            tail = [l for l in r.stdout.splitlines() if "cycle done" in l]
+            log(f"canonical refresh of {len(canon_syms)} symbols rc={r.returncode} {tail[-1][-220:] if tail else r.stderr[-200:]}")
+        except Exception as e:
+            log(f"canonical refresh failed {type(e).__name__}: {e}"[:200])
     log(f"{'APPLIED' if a.apply else 'DRY-RUN'} inbox={len(files)} {counts}")
     if no_npz_syms:
         log(f"NO_NPZ: {len(no_npz_syms)} symbols this host holds no NPZ for (filed under rejected/, never created): "

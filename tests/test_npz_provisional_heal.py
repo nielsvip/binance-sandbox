@@ -153,9 +153,13 @@ def test_not_canonical_symbol_is_never_healed(env, monkeypatch):
     assert r["status"] == "FRESH"
 
 
-def test_ingest_marks_applied_crypto_rows_provisional():
+def test_ingest_never_writes_a_crypto_snapshot_row_to_the_npz():
     src = (pathlib.Path(__file__).resolve().parent.parent / "tools" / "npz_bar_ingest.py").read_text()
-    assert 'prov_mark(sym, [ts], "ingest")' in src and 'if mode == "crypto"' in src
+    a = src.index('if mode == "crypto" and os.environ.get("NPZ_INGEST_CRYPTO_CANONICAL_ONLY"')
+    b = src.index("gen._append_row_to_npz")
+    assert a < b and "canon_syms.add(sym)" in src[a:b] and "return" in src[a:b]
+    assert "WAIT_CANONICAL_BAR" in src[a:b]
+
 
 
 def test_cycle_cutoff_older_than_an_ingested_bar_still_heals_without_shrinking(env):
