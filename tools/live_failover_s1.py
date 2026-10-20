@@ -124,6 +124,25 @@ NT_IND_S = float(os.environ.get("LF_NT_INDICATORS_S", "0"))  # 2026-10-19 USER (
 NT_POS_S = float(os.environ.get("LF_NT_POSITIONS_S", "0"))  # 2026-10-19 USER ("positions information"): the
 # positions_stale kind (oldest per-loop position file per venue older than LF_POSITIONS_STALE_S=600 s — a wedged
 # writer loop no engine/broker kind can see) carries its own bar; TAKEOVER_CONFIRM still gates the move.
+# ═══ 2026-10-20 ONLY TWO THINGS MAY MOVE THE LEASE ═══════════════════════════════════════════════════════════
+# USER, verbatim: "the ONLY reason s1 should ever have to kick in is if macbook cant produce indicators for some
+# reason or if I switch off macbook or it goes offline. Other than that watchdogs need to FIX EVERYTHING BEFORE s1
+# is ever even alerted."
+# Until today SEVEN kinds could take the lease: broker_unreachable, order_path_dead, traders_dead, account_dead,
+# indicators_stale, positions_stale, stock_account_dead. Each of those is a LOCAL fault with a LOCAL repair, and
+# moving the lease for them is strictly worse than fixing them, because the fence then stops the Mac's own repair:
+#   mac_pos_writer_keepalive.sh:96  "crypto lease held by S1 — Mac writers stay DOWN (fenced); not starting anything"
+#   run_with_watchdog.sh            "[LEASE_FENCED] ... NOT spawning, and NOT killing any running instance"
+# MEASURED COST 2026-10-20: `positions_stale fin/long_positions.json age 3171s` and `indicators_stale 122/219 stock
+# NPZ tails` each took the lease, S1 then refused to start ("positions not broker-true after 240s"), and NOBODY
+# traded — 13:30-14:28 on stocks during market hours, then again 16:20-16:34. Every watchdog logged that it was
+# deliberately standing down.
+# A kind NOT in this set is still measured, still logged, still alerted, and now drives LOCAL repair
+# (tools/never_untraded_guard.py every 30 s + the per-account wrappers + the keepalives). It no longer fences the
+# host that is able to fix it. LF_TAKEOVER_KINDS overrides the set for a deliberate test.
+TAKEOVER_KINDS = set(filter(None, (os.environ.get("LF_TAKEOVER_KINDS") or "indicators_unproducible").split(",")))
+# The Mac being off/offline is NOT a kind: it is the absent-heartbeat path (hb_absent / unreachable / pushes_stopped),
+# which is evaluated separately and deliberately left untouched — that is the other half of the operator's rule.
 NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S,
            "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S, "stock_account_dead": 0.0}
 STOCK_ACCT_MISSING_S = float(os.environ.get("LF_STOCK_ACCT_MISSING_S", "240"))  # S1-side dwell for a
