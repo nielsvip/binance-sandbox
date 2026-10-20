@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T22:18:43Z",
+ "ts": "2026-10-20T22:23:38Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,28 +127,28 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 9.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 7.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 9.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 4.0
   },
   "flz": {
    "pids": [
@@ -160,26 +160,16 @@
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8259.0
+   "log_age_s": 8554.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8261.0
+   "log_age_s": 8556.0
   }
  },
- "alerts": [
-  {
-   "ts": "2026-10-20T22:18:43Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "20 22:06:51 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $55 on bounce (prior max 0.0000)"
-  }
- ],
- "alert_counts": {
-  "CAP_BYPASS": 1
- },
+ "alerts": [],
+ "alert_counts": {},
  "active_interventions": {
   "acct:trc": {
    "ts": 1791314517.218395,
@@ -247,5 +237,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.17
+ "sweep_s": 1.08
 }
