@@ -3952,3 +3952,82 @@ Every one of these generated a wrong conclusion that had to be retracted. Treat 
 * The 66 remaining board-set stub-only switches (§115.10) are a ranked worklist, not yet wired:
   `/private/tmp/.../scratchpad/stub_only_board_set.json` — top entries `MTF_WT_CROSS_EXIT_TF` 560,
   `MTF_BB_REJECT_EXIT_TF` 512, `MTF_DC_REJECT_EXIT_TF` 475, `MIN_HOLD_BARS`, `R1_TF`, `K_LOWER_HIGH_EXIT_ENABLED`.
+
+## 116. DETERMINISM PASSES, FIDELITY FAILS — THE BOARDS ARE COMPUTED ON DIFFERENT INDICATORS THAN LIVE (USER 2026-10-20)
+
+This supersedes §115.11, which recorded both questions as unmeasured. Both are now measured, on S2, 6 crypto
+sym_sides x 4 runs, harness `tools/v15_trade_parity.py` md5 `05b2e40130b77e56ca58283e911cf118` unmodified, NPZs
+frozen by hardlink and verified byte-identical before and after. **VERDICT: NO-GO.**
+
+### 116.1 Determinism — the bars do NOT move (the apparatus is sound)
+Every completed run of a sym_side is bit-identical on all four bar sets (vec entry, vec exit, live entry, live
+exit), symmetric difference ZERO — `KSMUSDT_LONG` across all 4 runs, and including sym_sides that were not
+bit-exact in the previous session's run. **The known <=0.48 GAIN drift is not bar movement.** So a bar-identity
+percentage is a meaningful number; what it is measured AGAINST is the problem.
+
+### 116.2 Fidelity — 26.4% of 65,096 decision-key comparisons disagree beyond 1e-3
+Reference = the frozen NPZ. Real-script = `npz_live_generator._compute_row_for_15m_close(...)` with
+`ez_indicators.IndicatorCalculator()`, called unmodified — the shared entry point `ez_indicators` /
+`tradier_indicators` use. 166 bars, 65,096 comparisons: 32.8% bitwise exact, 33.9% within float32 (2e-7),
+0.3% <=1e-6, 6.6% <=1e-3, **26.4% mismatched**. By timeframe: 15m 12.2%, 1h 37.7%, 4h 39.9%, D 42.5%.
+
+**THREE CAUSES, AT THE SOURCE LINE:**
+1. **`adx_1h` is not a 1-hour ADX.** `backtest_v8_precompute.py:2515-2533` computes it from
+   `merged["high_1h"]/["low_1h"]/["close_1h"]` — HTF arrays ALREADY BROADCAST onto the 15m grid — so
+   `ewm(alpha=1/14)` runs over a 4x-repeated series. Measured on all six: `adx_1h` changes **863-960 times** in a
+   954-961 bar window while `close_1h`/`wt1_1h`/`stoch_k_1h`/`ema_20_1h` change 218-241 (240 expected) and
+   `close_4h`/`adx_4h` change 59-64 (60 expected). It disagrees with the real live value on **138 of 138**
+   compared bars (npz 78.08 vs live 17.00; median |diff| 9.5-23.4 ADX points, max 67.9).
+2. **`bb_mult_1h` is hardcoded.** `backtest_v8_precompute.py:2362`: `np.full(n, 2.0, dtype=np.float32)` —
+   measured uniq=1, min=max=2 across the whole window. Live `ez_indicators.py:2524` auto-tunes per call and
+   returned 1.5.
+3. **`bb_width` is a DIFFERENT PHYSICAL QUANTITY on 1h/4h.** `backtest_v8_precompute.py:1466-1470` stores
+   `bb_upper - bb_lower` (absolute price), `:2364` re-writes `bb_width_1h`/`bb_width_4h` at mult=2.0; live
+   `ez_indicators.py:2536` returns `(u-l)/mid*100` (percent). Inside ONE NPZ: `bb_width_15m` 0.406-9.426
+   (percent) vs `bb_width_1h` 5.74e-4-6.21e-3 on a ~0.05 price (absolute). `vec_decisions/sba_bounce.py:186`
+   compares it to `>14` — **the absolute series can never reach that, so the gate is dead.**
+
+**WHY THIS FORBIDS TRADING, not merely annoys.** `SBA_BOUNCE_ENABLED` is True on all six sym_sides and
+`vec_decisions/sba_bounce.py:182,276` kills the entry when `adx_1h > adx_max`. NPZ and live fall on OPPOSITE
+sides of `SBA_ADX_MAX = 25` on **19.6% (RVN), 29.1% (COMP), 56.2% (KSM), 60.6% (IOTA), 61.0% (UNI)** of bars.
+For a live entry family, the board and live disagree about whether the gate is even open on up to three fifths
+of bars. No lease, gate, owed-exit or sizing work can close that: the two engines read different numbers.
+
+Worst keys (mismatch rate): `adx_1h` 100%, `bb_width_1h` 100%, `bb_width_4h` 100%, `bb_mult_1h` 93.5%,
+`adx_4h` 71.7%, `wt1_4h`/`wt2_4h` 68.8%, `wt1_D`/`wt2_D`/`stoch_k_D`/`stoch_d_D`/`relative_volume_D` 68.1%,
+`ema_20_D` 55.8%, `wt1_1h` 47.1%, `stoch_k_1h` 43.5%, `wt1_15m` 19.3%, `dc_high_1h` 10.1%. 23 keys agree on
+every bar (dc crossover flags, `dc_low_15m`, `dc_high_D`); 6 never agree on any. **`wt1_15m_prev` is not an NPZ
+key at all** — only `wt1_<tf>`/`wt2_<tf>` exist — so the `_prev` the live rally/bounce gates read has no NPZ
+counterpart to compare.
+
+### 116.3 Two methodology rules this run established
+* **Trim each frame to bars CLOSED at the decision instant before comparing.** Kline timestamps are the bucket
+  START (a 1h bar labelled 13:00 == the 15m bars 13:00..13:45, verified START=True on every sample), and the
+  NPZ's HTF columns hold the last COMPLETED HTF bar (8-11 of 12 probes per TF; PARTIAL 0/12 always). Since
+  `_compute_row_for_15m_close` reads `df.loc[:close_ts]`, a naive replay over a complete historical kline file
+  hands it the bucket CONTAINING close_ts — already filled with the future. Naive = 45.5% mismatch, trimmed =
+  26.4%. Reporting the naive figure overstates the gap by 19 points.
+* **Say how much of the window could not be checked.** S2 has ONE crypto kline store (`klines_cache`;
+  `klines_cache_backtest` is a symlink) ending 2026-10-14T05:30Z while the NPZs end 2026-10-20T03:00-03:45Z, so
+  **561-566 of 954-961 bars (59%) have no klines on that host**; 3m ends 2026-08-26, W 2026-09-21, M 2026-09-01
+  and W/M computation fails on every bar; `ONEUSDT` has only a 15m file (it is the control: 15m-only keys, 5.7%
+  mismatch). The three causes above are code-level and host-independent, so they hold wherever they run.
+
+### 116.4 Harness defects found while measuring (both bias any parity number)
+* **The vec leg is voided at random by a gate reading a directory neither leg uses.**
+  `tools/opt/v12_pilot.npz_freshness()` (:103-128) builds `ROOT/backtest_v8/indicators/<SYM>.npz` — the project
+  dir the 60 s sync rewrites — NOT the frozen dir pinned via `TRADE_PARITY_NPZ_DIR`/`V12_NPZ_DIR`, with a 20-min
+  bar. Same sym_side, same frozen NPZ md5 `c15ce821...`, same 3,555-key set, bit-identical live legs: 339 trades
+  at 14:07Z, `STALE_NPZ_SKIPPED` at 15:40Z. Whether a board gets a vector leg depends on a file it never reads.
+* **8 of 24 attempts (33%) hung silently**, each stopping after step 2880 of 2888-2893 (the last ~10 bars) then
+  burning 100-106% CPU with ZERO bytes written for 14-40 min. Not sym_side-bound — every affected sym_side
+  completed in 14-18 min on another attempt with identical inputs. Budget runs accordingly; a 4-run arm needs
+  retries.
+* **`--window-days 10` is refused**: `"unsupported window_days=10 (need 1/7/30/365+)"` at
+  `tools/opt/lifecycle_pilot.py:220`, which `generic_window_slice` does not patch. Run 30 and score the last 10
+  days from each NPZ's own last bar.
+* **`LIVE_BOARD_VINTAGE_ENFORCE` is not readable from the environment.** `vec_exact._knob()` (:416-427) reads
+  `_CFG[0]` then `config.Config`, never `os.environ`. Pass it as a key in the run's override set, which
+  `backtest_v12_engine._run_one_apply_overrides` setattrs onto config and `_PerSymProxy` falls through to — and
+  then VERIFY by counting `BOARD_TOO_OLD` / `VEC_EXACT_ENTRY_REFUSED` lines in the run log (0 each here).
+  §115.10's "an env var the code does not read" trap, hit again by a different tool.

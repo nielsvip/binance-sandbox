@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T18:16:30Z",
+ "ts": "2026-10-20T18:21:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 194,
-   "open_positions": 21,
-   "unrealised_usd": 12.07,
+   "fills_6h": 195,
+   "open_positions": 20,
+   "unrealised_usd": 9.8,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 131,
-   "open_positions": 18,
-   "unrealised_usd": 14.44,
+   "fills_6h": 140,
+   "open_positions": 15,
+   "unrealised_usd": 31.95,
    "pos_mismatch": 0
   },
   "fin": {
@@ -122,10 +122,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 227,
+  "total": 235,
   "per_acct": {
    "fin": 62,
-   "ang": 50,
+   "ang": 58,
    "men": 96,
    "flz": 18,
    "inf": 1
@@ -135,203 +135,239 @@
  "process": {
   "fin": {
    "pids": [
-    "2294"
+    "54699"
    ],
-   "starts_30m": 1,
-   "log_age_s": 17.0
+   "starts_30m": 3,
+   "log_age_s": 8.0
   },
   "men": {
    "pids": [
-    "2919"
+    "60656"
    ],
-   "starts_30m": 1,
-   "log_age_s": 35.0
+   "starts_30m": 4,
+   "log_age_s": 92.0
   },
   "ang": {
    "pids": [
-    "46913"
+    "54540"
    ],
-   "starts_30m": 1,
-   "log_age_s": 4.0
+   "starts_30m": 3,
+   "log_age_s": -1.0
   },
   "inf": {
    "pids": [
-    "2484"
+    "60293"
    ],
-   "starts_30m": 1,
-   "log_age_s": 29.0
+   "starts_30m": 4,
+   "log_age_s": -1.0
   },
   "flz": {
    "pids": [
-    "2737"
+    "60396"
    ],
-   "starts_30m": 1,
-   "log_age_s": 3.0
+   "starts_30m": 4,
+   "log_age_s": 91.0
   },
   "trb": {
    "pids": [
-    "99643"
+    "58853"
    ],
-   "starts_30m": 1,
-   "log_age_s": 0.0
+   "starts_30m": 3,
+   "log_age_s": 2.0
   },
   "trc": {
    "pids": [
-    "247"
+    "59025"
    ],
-   "starts_30m": 1,
-   "log_age_s": 6.0
+   "starts_30m": 3,
+   "log_age_s": -1.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:CDW_LONG",
    "evidence": "6 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:CDW_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 6 round trips/60min"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:AAPL_LONG",
    "evidence": "entry notional $1700.58 (median $346.41, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:10:37Z HTF_WT_CHURN_REENTRY_LONG_age16m+POST_CONSOL(2/3)x1.50"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:AAPL_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $1700.58 (median $346.41, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:10:37Z HTF_WT_CHURN_REENTRY_LONG_age16m+POST_CONSOL(2/3)x1.50"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "trb:A_LONG",
-   "evidence": "entry notional $2257.19 (median $693.58, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:04:58Z BROKER_SYNC_ADOPTED_EXACT_VALUE_CAP_2257>2000"
-  },
-  {
-   "ts": "2026-10-20T18:16:30Z",
-   "severity": "WARN",
-   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trb:A_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $2257.19 (median $693.58, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:04:58Z BROKER_SYNC_ADOPTED_EXACT_VALUE_CAP_2257>2000"
-  },
-  {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "trb:ABBV_LONG",
    "evidence": "3 open->flat round trips in 60 min"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:ABBV_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:BNO_LONG",
    "evidence": "entry notional $1993.20 (median $324.93, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:09:43Z BROKER_SYNC_OPEN_FROM_FLAT_STUB"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:BNO_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $1993.20 (median $324.93, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:09:43Z BROKER_SYNC_OPEN_FROM_FLAT_STUB"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:BNO_LONG",
    "evidence": "entry notional $2060.57 (median $324.93, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:09:45Z HARDCODED_RALLY_REENTRY_LONG_close66.5650>exit66.5150_wt6.6>"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:BNO_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $2060.57 (median $324.93, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:09:45Z HARDCODED_RALLY_REENTRY_LONG_close66.5650>exit66.5150_wt6.6>"
   },
   {
-   "ts": "2026-10-20T18:16:30Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $39.01 since 2026-10-20T17:44:35Z (now $+12.07)"
+   "evidence": "unrealised PnL of the same open positions fell $42.46 since 2026-10-20T17:44:35Z (now $+9.80)"
   },
   {
-   "ts": "2026-10-20T18:16:31Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trc:VT_LONG",
    "evidence": "entry notional $3158.90 (median $237.41, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:07:08Z BROKER_SYNC_ADOPTED_EXACT_VALUE_CAP_3159>2000"
   },
   {
-   "ts": "2026-10-20T18:16:31Z",
+   "ts": "2026-10-20T18:21:43Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trc:VT_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $3158.90 (median $237.41, MAX_ORDER_VALUE $7000) @ 2026-10-20T18:07:08Z BROKER_SYNC_ADOPTED_EXACT_VALUE_CAP_3159>2000"
   },
   {
-   "ts": "2026-10-20T18:16:31Z",
+   "ts": "2026-10-20T18:21:44Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "REDUCE 1 @ 2026-10-20T13:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T18:16:31Z",
+   "ts": "2026-10-20T18:21:44Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "men:BTCDOMUSDT_LONG",
    "evidence": "REDUCE 0.001 @ 2026-10-20T13:52:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T18:16:32Z",
+   "ts": "2026-10-20T18:21:44Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:1INCHUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px0.091128_lvl0.091142_g-1.14 @ 2026-10-20T12:31:33Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T18:16:32Z",
+   "ts": "2026-10-20T18:21:44Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "ang:ARUSDT_LONG",
    "evidence": "REDUCE BB_TAKE_15m_g0.48 @ 2026-10-20T12:24:53Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T18:16:32Z",
+   "ts": "2026-10-20T18:21:44Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "inf:ARUSDT_LONG",
    "evidence": "REDUCE VEL_EXIT_v4h-7.05_g1.46 @ 2026-10-20T12:26:38Z: non-vec fill in exact mode"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "fin",
+   "evidence": "3 new process ids in 30 min (['2294', '51368', '54699'])"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "men",
+   "evidence": "4 new process ids in 30 min (['2919', '51687', '53719', '60656'])"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "ang",
+   "evidence": "3 new process ids in 30 min (['46913', '51922', '54540'])"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "inf",
+   "evidence": "4 new process ids in 30 min (['2484', '51689', '54216', '60293'])"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "flz",
+   "evidence": "4 new process ids in 30 min (['2737', '51691', '53718', '60396'])"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "trb",
+   "evidence": "3 new process ids in 30 min (['99643', '51323', '58853'])"
+  },
+  {
+   "ts": "2026-10-20T18:21:46Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "trc",
+   "evidence": "3 new process ids in 30 min (['247', '51448', '59025'])"
   }
  ],
  "alert_counts": {
   "CHURN_KEY": 2,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 7,
-  "SIZE_ANOMALY": 5,
+  "NO_PER_KEY_BLOCK_AVAILABLE": 6,
+  "SIZE_ANOMALY": 4,
   "ACCOUNT_EQUITY_DROP": 1,
   "FILL_WITHOUT_VEC_DECISION": 2,
-  "NATIVE_FILL_IN_EXACT_MODE": 3
+  "NATIVE_FILL_IN_EXACT_MODE": 3,
+  "RESTART_LOOP": 7
  },
  "active_interventions": {
   "acct:trc": {
@@ -365,5 +401,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.19
+ "sweep_s": 2.24
 }

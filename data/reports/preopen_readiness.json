@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-20T18:00:04Z",
+ "generated_utc": "2026-10-20T18:20:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -7,7 +7,8 @@
  "failed_critical": [
   "defaults_chain_completed",
   "apply_report_written",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -15,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 221,
+    "filled_today": 224,
     "filled_before_open": 175
    },
-   "detail": "175 boards filled before the open (221 today)"
+   "detail": "175 boards filled before the open (224 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,8 +64,8 @@
    "measured": {
     "selection_n": 474,
     "exact": 31,
-    "benign_divergence_only": 279,
-    "material_divergence": 163,
+    "benign_divergence_only": 280,
+    "material_divergence": 162,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,22 +202,29 @@
      }
     ]
    },
-   "detail": "31 exact, 279 benign-only, 163 with material divergence, 1 with no live row"
+   "detail": "31 exact, 280 benign-only, 162 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 1,
-    "stale_pct": 0.5,
-    "median_age_min": 60.1,
+    "stale_over_90min": 93,
+    "stale_pct": 46.7,
+    "median_age_min": 80.1,
     "sample": [
-     "DUSKUSDT"
+     "AAVEUSDC",
+     "ACTUSDT",
+     "AGLDUSDT",
+     "AIAUSDT",
+     "ARBUSDC",
+     "ARPAUSDT",
+     "ARUSDT",
+     "AWEUSDT"
     ]
    },
-   "detail": "1/199 symbols past the live 90-min entry gate (0.5%)"
+   "detail": "93/199 symbols past the live 90-min entry gate (46.7%)"
   },
   {
    "name": "s1_sets_synced",
