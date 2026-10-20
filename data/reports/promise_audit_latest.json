@@ -1,37 +1,25 @@
 {
- "generated_utc": "2026-10-20T22:12:03.190876+00:00",
+ "generated_utc": "2026-10-20T23:12:03.500742+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 5861,
-  "entry_broken_no_delivery": 5861,
-  "exit_promises": 9268,
+  "entry_promises": 5858,
+  "entry_broken_no_delivery": 5858,
+  "exit_promises": 9265,
   "exit_skipped_inflight": 11,
   "exit_kept_in_bar": 2,
-  "exit_broken_no_delivery": 9266
+  "exit_broken_no_delivery": 9263
  },
  "per_key": {
-  "inf:ARUSDT_LONG": {
-   "entry_promises": 3,
-   "entry_broken_no_delivery": 3,
-   "exit_promises": 2,
-   "exit_skipped_inflight": 11,
-   "exit_kept_in_bar": 2
-  },
-  "fin:COTIUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "flz:ZECUSDC_LONG": {
-   "exit_promises": 2,
-   "exit_broken_no_delivery": 2
-  },
-  "flz:WLDUSDC_LONG": {
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2
-  },
   "men:ONEUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
+  },
+  "inf:ARUSDT_LONG": {
+   "exit_promises": 2,
+   "exit_skipped_inflight": 11,
+   "exit_kept_in_bar": 2,
+   "entry_promises": 2,
+   "entry_broken_no_delivery": 2
   },
   "men:COTIUSDT_SHORT": {
    "exit_promises": 1,
@@ -457,66 +445,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "inf",
-   "sym_side": "ARUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-19 22:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "HARDCODED_RALLY_REENTRY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "COTIUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-19 22:30",
-   "late_min": null,
-   "action": "REDUCE",
-   "reason": "WT_CROSS_EXIT_1h_bull",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-19 22:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-long g-0.59%",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "WLDUSDC_LONG",
-   "kind": "entry",
-   "bar": "10-19 22:30",
-   "late_min": null,
-   "action": "AUGMENT",
-   "reason": "HAIKU_WINNER_AUG_3.4pct",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "ZECUSDC_LONG",
-   "kind": "exit",
-   "bar": "10-19 22:30",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-long g-0.59%",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "WLDUSDC_LONG",
-   "kind": "entry",
-   "bar": "10-19 22:30",
-   "late_min": null,
-   "action": "AUGMENT",
-   "reason": "HAIKU_WINNER_AUG_3.4pct",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "men",
    "sym_side": "ONEUSDT_LONG",
