@@ -69,3 +69,32 @@ def test_id_features_first_and_cat_side_context():
     assert g[0][0] == "F.fl:DC_BREAK_FILTER_TF" and g[1][0] == "F.fo:DC_BREAK_FILTER_TF=4h"
     assert any(x[0] == "S.vqx" for x in f)
     assert ctx("STOCKS_SHORT").side == "SHORT" and ctx("STOCKS_SHORT").venue == "STOCKS"
+
+
+# ------------------------------------------------------------------ E8d: chain context encoding
+
+def test_canon_value_one_spelling():
+    assert FT.canon_value(True) == "True" and FT.canon_value("true") == "True" and FT.canon_value(False) == "False"
+    assert FT.canon_value(1.0) == "1" and FT.canon_value("1.0") == "1" and FT.canon_value("2") == FT.canon_value(2)
+    assert FT.canon_value(0.25) == "0.25" and FT.canon_value("15m") == "15m" and FT.canon_value(" OFF ") == "OFF"
+    assert FT.canon_value(None) == "None"
+
+
+def test_context_encoder_diff_vs_bold_and_filter_signature():
+    enc = FT.ContextEncoder(ctx())
+    full = {"STOP_LOSS_PCT": 2.0,                     # == bold "2" -> not context
+            "DC_LOW_FROZEN_STOP_TF": "1h",            # switch differs from bold -> X.s:
+            "DC_BREAK_FILTER_TF": "4h",               # yellow filter key without a bold, active -> X.f:
+            "EMA_9_21_FILTER_ENABLED": False,         # filter without a bold, inactive -> not context
+            "NOT_IN_TEMPLATE": 7, "ABLATION_DISABLE_X": True, "MODE": "x",
+            "WT_15M_BOUNCE_OPEN_ENABLED": "Requires the open to bounce off the band"}  # description text, ignored + counted
+    d = enc.diff(full)
+    assert d == {"DC_LOW_FROZEN_STOP_TF": "1h", "DC_BREAK_FILTER_TF": "4h"}
+    assert enc.ignored_values["WT_15M_BOUNCE_OPEN_ENABLED"] == 1
+    f = enc.feats(d)
+    assert f == ("X.f:DC_BREAK_FILTER_TF=4h", "X.s:DC_LOW_FROZEN_STOP_TF=1h")
+    assert FT.ContextEncoder.filter_signature(f) == ("X.f:DC_BREAK_FILTER_TF=4h",)
+    # promotions overlay: back to bold removes, a new value adds, '<absent>' (deleted key) = bold
+    d2 = enc.overlay(d, {"DC_LOW_FROZEN_STOP_TF": "15m", "STOP_LOSS_PCT": "4", "DC_BREAK_FILTER_TF": "<absent>"})
+    assert d2 == {"STOP_LOSS_PCT": "4"}
+    assert enc.diff({}) == {} and enc.feats({}) == ()

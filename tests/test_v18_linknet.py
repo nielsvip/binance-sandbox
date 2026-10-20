@@ -237,3 +237,179 @@ def test_pinned_chain_value_from_precision_extract_wins():
     assert "EXIT_STRUCTURAL|STOP_LOSS_PCT=1|INF=3|Z" in keys  # the start-set override pinned by the extract, not the bold "2"
     assert "EXIT_STRUCTURAL|STOP_LOSS_PCT=4|INF=None|N" in keys
     assert ds.c["R_identity_cand_eq_inforce"] == 1 and ds.c["R"] == 2  # cand == pinned chain value with delta 0 -> identity
+
+
+# ------------------------------------------------------------------ E8d: v2 conditional network
+
+def test_v2_gradients_match_finite_differences():
+    import scipy.sparse as sp
+    rng = np.random.default_rng(0)
+    V, VX, k, H, B = 25, 9, 3, 5, 6
+    net = LN.LinkNet2(V, VX, k=k, H=H, seed=1)
+    for n in net.p:
+        net.p[n] = rng.normal(0, 0.3, net.p[n].shape)
+    net.p["E"][0] = 0
+    idx = rng.integers(1, V, (B, 7))
+    x = rng.random((B, 7))
+    Xb = sp.csr_matrix((rng.random((B, VX)) < 0.5).astype(np.float64))
+    Y = (rng.random((B, len(LN.HEADS))) > 0.5).astype(float)
+    M = rng.random((B, len(LN.HEADS)))
+    out, cache = net.forward_train2(idx, x, 2, 4, Xb)
+    _l, g = LN.loss_grad(out, Y, M)
+    G = net.backward2(g, cache, l2=0.0)
+    for name in ("E", "EX", "wx", "W1", "W2"):
+        P = net.p[name]
+        i = tuple(int(v) for v in np.unravel_index(np.argmax(np.abs(G[name])), P.shape))
+        old = P[i]
+        P[i] = old + 1e-6
+        lp, _ = LN.loss_grad(net.forward_train2(idx, x, 2, 4, Xb)[0], Y, M)
+        P[i] = old - 1e-6
+        lm, _ = LN.loss_grad(net.forward_train2(idx, x, 2, 4, Xb)[0], Y, M)
+        P[i] = old
+        assert abs((lp - lm) / 2e-6 - G[name][i]) < 1e-5 * max(1.0, abs(G[name][i])), name
+    # context changes the prediction (switch x context interaction is live)
+    s = net.predict_tables2((idx, x), (idx[:, :0], x[:, :0]), (idx[:, :0], x[:, :0]), net.xpool(Xb))
+    s0 = net.predict_tables2((idx, x), (idx[:, :0], x[:, :0]), (idx[:, :0], x[:, :0]), net.xpool(sp.csr_matrix((B, VX))))
+    assert not np.allclose(s[:, 0], s0[:, 0])
+
+
+CTXJ_FEATS = [("X.f:DC_BREAK_FILTER_TF=4h",), ("X.s:WT_EXIT_ENABLED=False", "X.f:EMA_9_21_FILTER_ENABLED=False")]
+
+
+def _ctxj():
+    # AAA joins chain 0 (one active filter); BBB joins chain 1 from day 15 on (a NEW active-filter set), chain 0 before; CCC never joins
+    t15 = LN.VB.epoch_of("2026-10-15T00:00:00Z")
+    return {"ctxs": list(CTXJ_FEATS), "natmap": {},
+            "cbmap": {("AAAUSDT_LONG", 0.0): [(0, 50, 0.0, 9e12)],
+                      ("BBBUSDT_LONG", 0.0): [(0, 20, 0.0, t15 - 1), (1, 20, t15, 9e12)]}}
+
+
+@pytest.fixture()
+def ds2_dir(tmp_path):
+    import pickle
+    spill = tmp_path / "spill"
+    write_spill(spill, synth_events())
+    out = tmp_path / "ds2"
+    out.mkdir()
+    for cs in ("CRYPTO_LONG",):
+        with gzip.open(out / f"ctxjoin_{cs}.pkl.gz", "wb") as fh:
+            pickle.dump(_ctxj(), fh)
+
+    class A:
+        pass
+    a = A()
+    a.spill_dir, a.tmp_dir, a.out_dir, a.keep_sorted, a.ctx_dir = [str(spill)], str(tmp_path / "tmp"), str(out), False, str(out)
+    a.defaults = {cs: dict(TIDX["defaults"]) for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
+    a.encoders = {cs: FT.ContextEncoder(fctx(cs)) for cs in ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")}
+    assert LN.cmd_dataset(a) == 0
+    return out
+
+
+def test_context_join_and_promotion_overlay(ds2_dir):
+    d, k = LN.load_ds("CRYPTO_LONG", ds2_dir)
+    xs = [tuple(c) for c in k["xctxs"]]
+    syms = np.array([k["ctxs"][i][2] for i in d["ctx_i"]])
+    assert (d["x_i"][syms == "CCCUSDT_LONG"] == -1).all()            # no chain set in the store -> no context (counted)
+    assert (d["x_i"][syms == "AAAUSDT_LONG"] >= 0).all()
+    assert k["counters"]["R_without_context"] > 0 and k["counters"]["R_with_context"] > 0
+    # day-12 promotion STOP_LOSS_PCT=3 overlays the stored chain for the rest of that board only
+    assert any("X.s:STOP_LOSS_PCT=3" in c for c in xs) and ("X.f:DC_BREAK_FILTER_TF=4h",) in xs
+    # BBB's chain switches to the second set on day 15 (joined by cum_before + ts range)
+    bbb = d["x_i"][(syms == "BBBUSDT_LONG") & (d["ts"] >= LN.VB.epoch_of("2026-10-15T00:00:00Z"))]
+    assert all("X.s:WT_EXIT_ENABLED=False" in xs[i] for i in bbb)
+
+
+def test_native_rows_join_by_row_key_and_stocks_native_excluded():
+    ctxj = {"ctxs": [("X.f:DC_BREAK_FILTER_TF=4h",)], "cbmap": {}, "natmap": {12345: 0}}
+    ds = LN.CatDS("CRYPTO_LONG", defaults=TIDX["defaults"], ctxj=ctxj, enc=FT.ContextEncoder(fctx()))
+    ds.board_event({"e": "board", "t": "2026-10-13T02:00:00Z", "s": "AAAUSDT_LONG", "b": "NAT|99"})
+    e = dict(row_ev("AAAUSDT_LONG", "x", "2026-10-13T02:01:00Z", "STOP_LOSS_PCT=1", -0.5), b="NAT|99", rk=12345, ck="NAT", cv="2")
+    ds.row(e, e["t"])
+    assert ds.ex.c["x_i"][-1] == 0 and ds.ex.c["prov"][-1] == 1
+    assert ds.ex.c["b_t0"][-1] == LN.VB.epoch_of("2026-10-13T02:00:00Z")   # native board start = its board event, not the row ts
+    ss = LN.CatDS("STOCKS_LONG", defaults=TIDX["defaults"], ctxj=ctxj, enc=FT.ContextEncoder(fctx("STOCKS_LONG")))
+    ss.row(dict(e, s="ZZZ_LONG"), e["t"])
+    assert ss.c["stocks_native_rows_excluded"] == 1 and len(ss.ex.c["kind"]) == 0
+
+
+def test_never_tried_context_split(ds2_dir):
+    tr = LN.Trainer2("CRYPTO_LONG", ds_dir=ds2_dir, k=4, H=8, batch=64, max_epochs=2, fctx=fctx(), log=lambda *a: None)
+    D = tr.D
+    rows = np.arange(len(D["kind"]))
+    ref, ev = rows[D["ts"] < LN.VB.epoch_of("2026-10-15T00:00:00Z")], rows[D["ts"] >= LN.VB.epoch_of("2026-10-15T00:00:00Z")]
+    sub = tr.subsets(ref, ev)
+
+    def ck(i):
+        return (int(D["set_i"][i]), int(D["filt_i"][i]) if D["kind"][i] == 1 else -9)
+    seen_c = {ck(i) for i in ref}
+    seen_cs = {(ck(i), int(tr.x_sig[i])) for i in ref}
+    for kn, kv in (("R", 0), ("F", 1)):
+        want = np.array([D["kind"][i] == kv and ck(i) in seen_c and tr.has_ctx[i] and (ck(i), int(tr.x_sig[i])) not in seen_cs for i in ev])
+        assert (sub[(kn, "never_tried_context")] == want).all()
+        assert not (sub[(kn, "never_tried_context")] & sub[(kn, "never_tried_pair")]).any()
+    assert sub[("F", "never_tried_context")].sum() > 0  # BBB's new active-filter set from day 15
+
+
+def test_train2_holdout_selects_and_scores_under_context(ds2_dir):
+    rep = LN.train2_one("CRYPTO_LONG", ds2_dir, fctx=fctx(), log=lambda *a: None, status=False, k=4, H=8, batch=64, max_epochs=2)
+    prod = json.loads((Path(ds2_dir) / "production_CRYPTO_LONG.json").read_text())
+    assert prod["production_scorer"] in LN.SCORERS and prod["production_scorer"] == rep["selection"]["production_scorer"]
+    for kn in ("R", "F"):
+        for nm in ("held_out", "never_tried_pair", "never_tried_context"):
+            assert all(f"auc_{s}" in rep["test"][kn][nm] for s in LN.SCORERS)
+    sc = LN.Scorer2("CRYPTO_LONG", ds_dir=ds2_dir, fctx=fctx())
+    sc.evidence()
+    res = sc.grid([("CAT_SIDE_DEFAULTS", ()), ("LIVE_01", CTXJ_FEATS[1])])
+    assert res["ctx"][0]["cells"]["p_pos"].shape == (len(res["cell_row"]), len(LN.REGIMES))
+    assert res["ctx"][1]["cells"]["p_pos"].shape == (len(res["cell_row"]), 1)
+    p = res["ctx"][0]["cells"]["p_pos"].astype(np.float32)
+    assert np.isfinite(p).all() and (p >= 0).all() and (p <= 1).all()
+    near = sc.closest_context(sc.ctx_by_set[sc.set_ix["EXIT_STRUCTURAL|STOP_LOSS_PCT=1"]], CTXJ_FEATS[1])
+    assert near and near[0]["kind"] == "MEASURED closest context" and near[0]["jaccard"] == 1.0
+    with pytest.raises((ValueError, FileNotFoundError)):
+        LN.Scorer2("STOCKS_LONG", ds_dir=ds2_dir, fctx=fctx("STOCKS_LONG"))
+
+
+def test_diversity_cap_per_row():
+    rows = [0, 0, 0, 0, 0, 0, 0, 1, 1, 2]
+    got = LN.diversity_cap(list(range(10)), lambda i: rows[i], cap=5)
+    assert got == [0, 1, 2, 3, 4, 7, 8, 9]
+    assert LN.diversity_cap(list(range(10)), lambda i: rows[i], cap=2, k=3) == [0, 1, 7]
+
+
+def test_top_chains_most_common_then_typical():
+    ch = {"A_LONG": ("X.f:a=1",), "B_LONG": ("X.f:a=1",), "C_LONG": ("X.f:a=1", "X.s:b=2"), "D_LONG": ("X.s:z=9",)}
+    t = LN.top_chains(ch, k=3)
+    assert t[0]["n_sym_sides"] == 2 and t[0]["sym_sides"] == ["A_LONG", "B_LONG"]
+    assert t[1]["feats"] == ("X.f:a=1", "X.s:b=2")  # more typical than the isolated D chain
+    assert [x["chain_id"] for x in t] == ["LIVE_01", "LIVE_02", "LIVE_03"]
+
+
+def test_pair_with_context_ranks_untried_under_each_live_chain(tmp_path):
+    class Stub:
+        cs = "CRYPTO_LONG"
+        prod = "hybrid_v2"
+
+        def __init__(self):
+            self.fz = type("F", (), {"fctx": fctx()})()
+            self.calls = []
+
+        def predict_items(self, items, feats, kind):
+            self.calls.append((len(items), feats, kind))
+            n = len(items)
+            bonus = 0.5 if feats == ("X.f:DC_BREAK_FILTER_TF=4h",) else 0.0
+            return {"p_pos": np.linspace(0.1, 0.2, n) + bonus, "e_delta": np.ones(n)}
+    pos = {"_meta": {"cat_side": "CRYPTO_LONG"}, "sym_sides": ["AAAUSDT_LONG", "BBBUSDT_LONG", "CCCUSDT_LONG"],
+           "rows": [{"key": "STOP_LOSS_PCT=3", "n": 9, "n_pos": 3, "tried_on": [0], "untried_on": [1, 2]}],
+           "pairs": [{"key": "STOP_LOSS_PCT=3", "filter": "DC_BREAK_FILTER_TF=OFF", "n": 4, "n_pos": 2, "tried_on": [0, 1], "untried_on": [2]},
+                     {"key": "WT_EXIT_ENABLED=False", "filter": "EMA_9_21_FILTER_ENABLED=True", "n": 3, "n_pos": 1, "tried_on": [0], "untried_on": [2]}]}
+    st = Stub()
+    doc = LN.pair_with_context(st, {"CCCUSDT_LONG": ("X.f:DC_BREAK_FILTER_TF=4h",)}, (), pos, tmp_path / "pwc.json.gz", log=lambda *a: None)
+    assert set(doc["per_sym"]) == {"BBBUSDT_LONG", "CCCUSDT_LONG"}           # AAA tried everything -> nothing to order
+    ccc = doc["per_sym"]["CCCUSDT_LONG"]
+    assert ccc["context"]["name"] == "LIVE_CHAIN:CCCUSDT_LONG" and len(ccc["ranked"]) == 3
+    assert [r[1] for r in ccc["ranked"]] == sorted([r[1] for r in ccc["ranked"]], reverse=True)
+    assert doc["per_sym"]["BBBUSDT_LONG"]["context"]["name"] == "CAT_SIDE_DEFAULTS:BBBUSDT_LONG"   # no live set -> defaults, said so
+    assert [r[0] for r in doc["per_sym"]["BBBUSDT_LONG"]["ranked"]] == [0]                        # only the row it has not tried
+    assert doc["items"][1]["tab"] == "EXIT_STRUCTURAL" and "PREDICTION" in doc["meta"]["label"]
+    assert gzip.open(tmp_path / "pwc.json.gz", "rt").read().startswith("{")

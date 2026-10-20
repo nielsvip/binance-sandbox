@@ -100,3 +100,21 @@ def test_cat_sides_never_share_inputs(learn_dir):
     other = D.assemble("CRYPTO_LONG", learn_dir)  # no CRYPTO_LONG files in the fixture: nothing leaks from STOCKS_SHORT
     assert other["winners"] == [] and other["repair_menu"] == {} and other["exit_loss_rank"] == []
     assert other["meta"]["era_cut"] == "2026-10-14T13:00:00Z"
+
+
+def test_v2_proposals_carry_context(learn_dir):
+    item = {"switch": "S", "cand": "2", "filter": "F", "opt": "OFF", "tab": "EXIT_VELOCITY", "regime": "ALL", "p_pos_pred": 0.3, "e_delta_pred": 1.0,
+            "forward_pred": 0.5, "status": "PREDICTED_NOT_MEASURED", "n_measured_pair": 0, "pos_measured_pair": 0, "label": "PREDICTION",
+            "context": {"name": "CAT_SIDE_DEFAULTS", "hash": "00ab", "n_features": 3, "n_active_filter_options": 1, "extra": "dropped"},
+            "nearest_evidence": [{"kind": "MEASURED closest context", "board": "X_SHORT|t", "delta": -0.2, "pos": 0, "jaccard": 0.5, "shared_active_filters": 1}]}
+    v2 = {"meta": {"cat_side": CS}, "template_untried": [item], "needs_row": [], "fixed_stop_family": []}
+    (learn_dir / f"linknet_proposals_v2_{CS}.json").write_text(json.dumps(v2))
+    doc = D.assemble(CS, learn_dir)
+    assert D.validate(doc) == []
+    p = doc["proposals"][0]
+    assert p["context"] == {"name": "CAT_SIDE_DEFAULTS", "hash": "00ab", "n_features": 3, "n_active_filter_options": 1}
+    assert any(ne.get("jaccard") == 0.5 for ne in p["nearest_evidence"])
+    assert doc["meta"]["sources"]["proposals"]["file"].endswith(f"linknet_proposals_v2_{CS}.json")
+    bad = D.assemble(CS, learn_dir)
+    del bad["proposals"][0]["context"]
+    assert any("proposals keys" in b for b in D.validate(bad))
