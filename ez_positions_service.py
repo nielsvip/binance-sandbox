@@ -7952,7 +7952,7 @@ class PositionService:
 
     _history_dedup = {}
     _HISTORY_DEDUP_WINDOW_S = 900.0
-    async def _append_to_history(self, position_key: str, trade_type: str, qty: float, price: float, decision_context: dict = None):
+    async def _append_to_history(self, position_key: str, trade_type: str, qty: float, price: float, decision_context: dict = None, source: str = None):
         try :
             dedup_key = f"{position_key}:{trade_type}:{round(float(qty),6)}"
             now_ts = time.time()
@@ -8029,6 +8029,9 @@ class PositionService:
                     import positions_truth as _ptruth_hp
                     if explicit_reason is not None:
                         _hp_block = _ptruth_hp.match_recent_order_prov(position_key, qty, time.time(), reason=explicit_reason)
+                    if _hp_block is None and explicit_reason is None and trade_type in ("REDUCE", "CLOSE") and _hp.is_entry_label(reason):
+                        from live_twins import vec_provenance as _vp_hp  # E1 r2: an exit carrying an ENTRY label inherited it from the previous history line (no matched order)
+                        _hp_block = _hp.external_exit_block(reason, trade_type, source, _vp_hp.recent_vec_exit(position_key))
                     if _hp_block is None:
                         _hp_block = _hp.classify_event(reason, trade_type)
                     if " |VEC_EXACT" in str(reason):
@@ -8266,7 +8269,7 @@ class PositionService:
             reduction_reason = fallback_reason
         self.position_reasons[position_key]['last_reduction_reason'] = reason_text
         self.position_reasons[position_key]['last_reduction_full_context'] = decision_context
-        await self._append_to_history(position_key, "REDUCE", reduce_qty, current_price, decision_context )
+        await self._append_to_history(position_key, "REDUCE", reduce_qty, current_price, decision_context, source=reduction_source )
         log_reduce_action( position_key=position_key, position_value_str=position_value_str, reduction_value_str=reduction_value_str, gain=position.gain, reason=reduction_reason, conviction=conviction, origin=reduction_reason )
         self._validate_position_consistency(position, position_key)
         account_positions = self.positions_by_account.setdefault(account_key, {})

@@ -1982,6 +1982,24 @@ class TradierPositionManager:
             reason = (rich_context or {}).get('reason') or (rich_context or {}).get('reason_text') or "Manual/System Detection"
             snapshot = (rich_context or {}).get('snapshot') or (rich_context or {}).get('indicators', {})
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
+            try:  # HISTORY_PROV (E1 r2 2026-10-20): metadata only — broker-sync echoes say whether a manager (bot) exit event exists within 15 min before
+                from vec_decisions import history_prov as _hp
+                if _hp.enabled(self.config) and trade_type in ("REDUCE", "CLOSE") and str(reason).startswith(("Broker", "BROKER", "SYNC")):
+                    _echo = False
+                    if filename.exists():
+                        with open(filename, "rb") as _tf:
+                            _tf.seek(max(0, filename.stat().st_size - 8192))
+                            for _ln in _tf.read().decode("utf-8", "replace").splitlines()[-12:]:
+                                try:
+                                    _pe = json.loads(_ln)
+                                    _pt = datetime.fromisoformat(str(_pe.get("ts")).replace("Z", "+00:00")).timestamp()
+                                except Exception:
+                                    continue
+                                if _pe.get("type") in ("REDUCE", "CLOSE") and not str(_pe.get("reason", "")).startswith(("Broker", "BROKER", "SYNC")) and 0 <= datetime.now(timezone.utc).timestamp() - _pt <= 900:
+                                    _echo = True
+                    entry["prov"] = _hp.broker_echo_block(reason, trade_type, _echo)
+            except Exception:
+                pass
             async with aiofiles.open(filename, "a") as f:
                 await f.write(json.dumps(entry, default=str) + "\n")
             if rich_context and self.redis_manager:

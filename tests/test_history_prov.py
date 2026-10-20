@@ -361,3 +361,66 @@ def test_unserialisable_prov_never_loses_the_history_line(tmp_path, monkeypatch)
     asyncio.run(fn(stub, "men:W_LONG", "OPEN", 2.0, 1.0, {}))
     ev = _last(tmp_path, "men", "W_LONG")[0]
     assert "prov" not in ev and ev["qty"] == 2.0 and ev["reason"].startswith("B12 |VEC_EXACT")
+
+
+# ───────────── r2: exits that inherited an ENTRY label (coordinator 2026-10-20) + stock broker echoes ─────────────
+def test_exit_with_inherited_entry_label_is_not_attributed_to_the_entry_switch(tmp_path, monkeypatch):
+    import positions_truth as pt
+    from live_twins import vec_provenance as vp
+
+    monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
+    fn, stub = _crypto_service(tmp_path, True)
+    pt._RECENT_ORDER_REASONS.clear()
+    pt._RECENT_ORDER_PROV.clear()
+    vp._RECENT_VEC_EXITS.clear()
+    # no matched order (position vanished from the API), decision-context fallback handed back the previous line's entry reason
+    ctx = {"reason": "B14 |VEC_EXACT"}
+    asyncio.run(fn(stub, "ang:V_SHORT", "REDUCE", 241.0, 0.047, ctx, source="api_absence_confirmed"))
+    ev = _last(tmp_path, "ang", "V_SHORT")[0]
+    p = ev["prov"]
+    assert p["src"] == "EXTERNAL" and p["switch"] == "UNATTRIBUTED:exit_without_bot_order" and p["reason_inherited"] is True and p["inherited_label"] == "B14" and p["detected_by"] == "api_absence_confirmed"
+    assert "REENTRY_B14_HA_TREND_ENABLED" not in json.dumps(p)
+    # a vec exit was dispatched for the key shortly before: used, with its basis stated
+    xp = H.attribute("EXIT_VELOCITY_WT against-short g0.1%", "CLOSE", "SHORT", "crypto", SET, "V_SHORT")
+    vp.note_vec_exit("ang:V2_SHORT", "CLOSE", "EXIT_VELOCITY_WT against-short g0.1% |VEC_EXACT", xp)
+    asyncio.run(fn(stub, "ang:V2_SHORT", "REDUCE", 10.0, 0.047, {"reason": "B14 |VEC_EXACT"}, source="detected"))
+    p2 = _last(tmp_path, "ang", "V2_SHORT")[0]["prov"]
+    assert p2["switch"] == "EXIT_VELOCITY_WT_ENABLED" and p2["attribution_basis"].startswith("LAST_VEC_EXIT") and p2["reason_inherited"] and p2["inherited_label"] == "B14"
+
+
+def test_entry_label_detector():
+    for r in ("B14 |VEC_EXACT", "B_KZONE", "REENTRY_HIGHER_LOW", "VEC_CONVERGE_OPEN vec-holds-live-flat |VEC_EXACT", "MAKER_PROFIT_EXIT_B12 |VEC_EXACT", "HARDCODED_RALLY_REENTRY"):
+        assert H.is_entry_label(r), r
+    for r in ("EXIT_VELOCITY_WT against-long g1%", "WT_CROSS_EXIT_1h_bull", "FIXED_STOP", "STATEFUL_PORTED_EXIT g1%"):
+        assert not H.is_entry_label(r), r
+
+
+def test_tagged_reason_registers_vec_exit_only_for_exits(monkeypatch):
+    from live_twins import vec_exact as vx
+    from live_twins import vec_provenance as vp
+
+    vp._RECENT_VEC_EXITS.clear()
+    monkeypatch.setattr(vx, "_CFG", [SimpleNamespace(HISTORY_PROV_ENABLED=True)])
+    tok = vp.mark("ang:Q_LONG", 1.0, "CLOSE")
+    try:
+        vx.tagged_reason({"n": 1, "type": "CLOSE", "reason": "WT_CROSS_EXIT_1h_bull", "prov": {"switch": "WT_CROSS_EXIT_ENABLED"}})
+        vx.tagged_reason({"n": 2, "type": "OPEN", "reason": "B12", "prov": {"switch": "X"}})
+    finally:
+        vp.reset(tok)
+    assert vp.recent_vec_exit("ang:Q_LONG")["switch"] == "WT_CROSS_EXIT_ENABLED"
+    assert len(vp._RECENT_VEC_EXITS["ang:Q_LONG"]) == 1
+
+
+def test_stock_broker_echo_states_whether_a_bot_event_precedes(tmp_path, monkeypatch):
+    tp = importlib.import_module("tradier_positions")
+    cls = [c for c in vars(tp).values() if isinstance(c, type) and hasattr(c, "append_to_position_history_file")][0]
+    stub = SimpleNamespace(config=SimpleNamespace(DATA_DIR=tmp_path, HISTORY_PROV_ENABLED=True), redis_manager=None)
+    monkeypatch.delenv("HISTORY_PROV_ENABLED", raising=False)
+    fn = cls.append_to_position_history_file
+    asyncio.run(fn(stub, "trb:ZZ_LONG", "CLOSE", 1.0, 10.0, {"reason": "BROKER_SYNC_CLOSE"}))
+    asyncio.run(fn(stub, "trb:YY_LONG", "CLOSE", 1.0, 10.0, {"reason": "DAYTRADE_TARGET dc_15m_high"}))
+    asyncio.run(fn(stub, "trb:YY_LONG", "CLOSE", 1.0, 10.0, {"reason": "Broker sync"}))
+    a = _last(tmp_path, "trb", "ZZ_LONG")[0]["prov"]
+    assert a["src"] == "BROKER" and a["echo_of_bot_event"] is False and a["switch"] == "UNATTRIBUTED:broker_fill_without_bot_event"
+    y = _last(tmp_path, "trb", "YY_LONG")
+    assert "prov" not in y[0] and y[1]["prov"]["echo_of_bot_event"] is True and y[1]["prov"]["switch"] == "NONE"

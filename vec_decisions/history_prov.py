@@ -484,3 +484,38 @@ def register_dispatch(position_key: str, reason: str, prov, ev_type: str = "", c
         note_dispatch(position_key, reason, prov or classify_event(reason, ev_type))
     except Exception:
         pass
+
+
+def is_entry_label(reason: str) -> bool:
+    """True when the engine label is an ENTRY/RE-ENTRY/CONVERGE-OPEN path (never an exit family)."""
+    lab = strip_label(reason)
+    head = re.split(r"[ ,(]", lab, 1)[0]
+    if head in ENTRY_BLOCK_KEYS or lab.startswith(_REENTRY_PREFIXES) or lab.startswith("VEC_CONVERGE_OPEN") or lab.startswith(("REENTRY_", "HARDCODED_RALLY")):
+        return True
+    return False
+
+
+def external_exit_block(reason: str, trade_type: str, source=None, recent=None) -> dict:
+    """Exit history event with NO matched bot order (exchange-side stop / manual / api-absence detection). The text `reason` of such an event is
+    INHERITED from the previous history line (ez_positions_service._fetch_decision_context falls back to the last event of the sym_side), so an
+    entry label on a REDUCE/CLOSE is not its reason. `recent` = the last vec exit dispatched for the key (basis stated), else UNATTRIBUTED."""
+    inherited = strip_label(reason)[:80]
+    if recent:
+        b = dict(recent)
+        b["attribution_basis"] = "LAST_VEC_EXIT_DISPATCH_WITHIN_30MIN_NO_ORDER_MATCH"
+    else:
+        b = {"v": VERSION, "src": "EXTERNAL", "switch": "UNATTRIBUTED:exit_without_bot_order", "cand": None, "filters": [], "tf": EXECUTION_TF, "set_id": None, "ev": str(trade_type or "").upper()}
+    b["reason_inherited"] = True
+    b["inherited_label"] = inherited
+    if source:
+        b["detected_by"] = str(source)
+    return b
+
+
+def broker_echo_block(reason: str, trade_type: str, echo_of_bot_event: bool) -> dict:
+    b = classify_event(reason, trade_type)
+    b["src"] = "BROKER"
+    b["echo_of_bot_event"] = bool(echo_of_bot_event)
+    if not echo_of_bot_event:
+        b["switch"] = "UNATTRIBUTED:broker_fill_without_bot_event"
+    return b

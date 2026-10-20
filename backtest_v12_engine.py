@@ -3075,6 +3075,32 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     pos.positionAmt = _old_amt + abs(qty)
             return {"orderId": len(executed_trades), "status": "FILLED",
                     "avgPrice": str(px), "executedQty": str(qty)}
+        def futures_position_information(self, **kw):
+            """Position state from the simulated book, in the exchange's own shape.
+            2026-10-20: this method did not exist, so the REAL process_position raised
+            AttributeError("'_RecordingClient' object has no attribute 'futures_position_information'") ->
+            [POSITIONS_BROKER_FETCH_FAILED] on every exit_owed_retry, the live leg produced no execution_ledger,
+            and tools/v15_trade_parity.py therefore wrote NO verdict and NO report file for any sym_side — the one
+            harness that can prove "the real script trades the switch set, nothing more nothing less" was silently
+            incapable of returning an answer. Live callers and the contract they expect:
+            order_dedupe_guard._broker_position_uncached (exposure gate) and ez_positions_service's refresh read a
+            LIST of dicts and take positionAmt SIGNED (LONG +, SHORT -), plus entryPrice and markPrice."""
+            want = str(kw.get("symbol", "") or "").upper()
+            rows = []
+            for pk, pos in (getattr(trade_manager, "positions", None) or {}).items():
+                try:
+                    sym, side = str(pk).split(":", 1)[1].rsplit("_", 1)
+                except (IndexError, ValueError):
+                    continue
+                if want and sym.upper() != want:
+                    continue
+                amt = abs(float(getattr(pos, "positionAmt", 0) or 0))
+                entry = float(getattr(pos, "entry_price", 0) or 0)
+                rows.append({"symbol": sym.upper(), "positionSide": side.upper(),
+                             "positionAmt": str(amt if side.upper() == "LONG" else -amt),
+                             "entryPrice": str(entry), "markPrice": str(float(price_cache.get(sym, entry or 1.0))),
+                             "unRealizedProfit": "0", "leverage": "1"})
+            return rows
         def futures_cancel_order(self, **kw):
             return {"status": "CANCELED"}
         # 2026-10-06 parity lane A: order_dedupe_guard (live, every order) asks the broker for open orders / order state; the
