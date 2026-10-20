@@ -14477,16 +14477,22 @@ async def _augment_core_try(trade_manager, order_queue, position_key, position, 
         _fire, _src, _reason, _add = _acore.decide(_get, _is_long, _px, _entry, _last, _gain, _peak, _qty, _ind, _ind.get("stoch_k_15m_prev"), _secs)
         if not _fire or _add <= 0:
             return None
-        _base_q = float(max(1, int(_add)))  # whole shares, = v12 _size_qty(cfg, qty*px*mult, px) floor >= 1
-        _cap_v = _acore.stock_symbol_cap(_get)
-        _acct_cap = safe_fetch_float(getattr(config, f"{str(account_key).upper()}_MAX_SYMBOL_VALUE", 0.0), 0.0)
-        if _acct_cap > 0:
-            _cap_v = min(_cap_v, _acct_cap) if _cap_v > 0 else _acct_cap
-        _base_q = _acore.cap_add(_base_q, _qty, _px, _cap_v, True)  # never above the symbol cap (= v12 clamp on the same sources)
-        if _base_q <= 0:
-            return None
+        # USER 2026-10-20 ruling: the vector dictates COUNT and TIMING; live dictates SIZE. The add is the vector's multiplier on the LIVE
+        # position (qty x 0.5, whole shares) through the live sizing table (calculate_quantity_complex). It is never refused here; a downstream
+        # live refusal (cap / guard) is a broken promise the parity watcher (promise_ledger -> tools/promise_audit.py) counts as a missed act.
+        _base_q = float(max(1, int(_add)))
+        _bar_ts = safe_fetch_float(_ind.get("timestamp_15m", _ind.get("timestamp", 0)), 0.0)
+        try:
+            import promise_ledger as _pl
+
+            _pl.promise(position_key, _bar_ts, "AUGMENT", _reason, source="AUGMENT_CORE")
+        except Exception:
+            _pl = None
         _q = await trade_manager.strategy.calculate_quantity_complex(symbol, "AUGMENT", position_side, _base_q, _ind, position, market_context)
         if not _q or _q <= 0:
+            if _pl is not None:
+                _pl.broken(position_key, f"AUGMENT {_reason[:80]}", "LIVE_SIZING_ZERO", f"base={_base_q}")
+            logger.warning(f"[AUGMENT_CORE] {position_key}: vec augment {_src} sized to 0 by live sizing -> BROKEN promise (missed act)")
             return None
         _tok = None
         _vp = None
@@ -14502,6 +14508,11 @@ async def _augment_core_try(trade_manager, order_queue, position_key, position, 
             if _tok is not None and _vp is not None:
                 _vp.reset(_tok)
         logger.warning(f"[AUGMENT_CORE] {position_key}: {_reason[:120]} base={_base_q} qty={_q} -> {_res}")
+        if _pl is not None:
+            if str(_res or "").startswith("QUEUE_ADD_REFUSED"):
+                _pl.broken(position_key, f"AUGMENT {_reason[:80]}", "LIVE_REFUSED_VEC_AUGMENT", str(_res)[:120])
+            else:
+                _pl.delivery(position_key, f"AUGMENT {_reason[:80]}", "QUEUED", f"qty={_q}", bar_ts=_bar_ts)
         return f"AUGMENT_CORE:{_src}"
     except Exception as _ac_e:
         logger.warning(f"[AUGMENT_CORE] {position_key}: skipped ({type(_ac_e).__name__}: {_ac_e})")

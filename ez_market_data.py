@@ -439,20 +439,42 @@ class MarketDataEngine:
         if now - self._shared_mem_last_attempt < 60.0:
             return
         self._shared_mem_last_attempt = now
-        if get_shared_memory_client:
-            try:
-                # Use 127.0.0.1
-                mgr = get_shared_memory_client(address=('127.0.0.1', 50005))
-                if mgr:
-                    self.shared_proxy = mgr.get_store()
-                    self.shared_proxy.health_check()
-                    logger.info("✅ Connected to Shared Indicator Memory")
-                else:
-                    self.shared_proxy = None
-            except Exception:
-                self.shared_proxy = None
+        # 2026-10-20: WAS get_shared_memory_client(), i.e. BaseManager.connect() — a blocking auth handshake with NO
+        # socket timeout, called from __init__ BEFORE the first log line is written. When the shared-memory server
+        # goes deaf (its stdlib accept loop dies on an uncaught RuntimeError; see ez_share_ind.ReuseAddrServer.
+        # accepter) this call never returns, the process logs nothing, and run_with_watchdog.sh kills it for
+        # silence. Measured over the 24 h to 2026-10-20 17:08Z: 78 restarts — the worst churner in the whole system,
+        # 54 of them on children younger than their own 180 s timeout, with 44 of the 45 kills after 00:16Z sitting
+        # within 600 s of a logged server-saturation event.
+        # shared_mem_safe.connect_store does the same handshake in a daemon thread with a hard timeout and returns
+        # None instead of hanging; it has existed since 2026-10-14 and ez_indicators.py:2745, ez_manage.py and
+        # ez_positions_service.py already use it. This producer was the only live crypto one still on the raw
+        # blocking client, and it kept churning for 14 h after the safe wrapper landed. One call swap.
+        try:
+            from shared_mem_safe import connect_store, last_error
+            self.shared_proxy = connect_store(address=('127.0.0.1', 50005), timeout=3.0)
+            if self.shared_proxy is not None:
+                logger.info("✅ Connected to Shared Indicator Memory")
+            else:
+                logger.warning("⚠️ Shared Indicator Memory unreachable (%s) — continuing on fallbacks (Redis / market_data)", last_error())
+        except Exception as exc:
+            logger.warning("⚠️ Shared Indicator Memory connect failed (%s) — continuing on fallbacks", exc)
+            self.shared_proxy = None
     async def shared_mem_watchdog(self):
+        # 2026-10-20: this only reconnected `if not self.shared_proxy`, but a proxy whose SERVER HAS DIED is still a
+        # truthy object, so the condition was never true again and the reconnect path never fired. Measured at
+        # 17:28:23Z on pid 34034 after ez_share_ind was recycled: 7 sockets to 127.0.0.1:50005, all CLOSED or
+        # CLOSE_WAIT, ZERO ESTABLISHED — while the engine kept printing "💓 Engine Alive | Symbols: 323 |
+        # Bridge Linked 🟢" (line 764 reads the same truthy object). Detached, and reporting green.
+        # Probing the proxy is what makes the status line and the reconnect honest: on any exception drop it to
+        # None, which both flips the heartbeat to "Redis Only 🟠" and lets _connect_shared() run again.
         while self.running:
+            if self.shared_proxy is not None:
+                try:
+                    await asyncio.to_thread(self.shared_proxy.health_check)
+                except Exception as exc:
+                    logger.warning("⚠️ Shared memory proxy is dead (%s: %s) — dropping it so the bridge reconnects", type(exc).__name__, exc)
+                    self.shared_proxy = None
             if not self.shared_proxy:
                 try: self._connect_shared()
                 except Exception: pass

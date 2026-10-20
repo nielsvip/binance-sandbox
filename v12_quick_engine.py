@@ -68,7 +68,6 @@ import numpy as np
 import vec_decisions.breakout_opener
 import vec_decisions.htf_signal_consume  # 2026-10-13 V17 TF law: HTF signal instance + LTF-confirmed retry with monotone tightening
 import vec_decisions.fixed_stop  # 2026-10-12 FIXED_STOP non-negotiable frozen stop core
-import vec_decisions.augment_core  # 2026-10-20 augment revival: shared vec/live augment decision core (symbol-cap clamp)
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
@@ -4998,7 +4997,7 @@ class QuickConfig:
         True  # 2026-10-20 augment revival: True = venue law (stocks augment only from live sources, forced as before); False = STOCK_LIVE_AUGMENT_ONLY decides and tradier_manage runs the vec sources live via vec_decisions.augment_core
     )
     WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED: bool = (
-        False  # 2026-10-20 parity: False = today (vector cuts EVERY augment leg on a dip below the add price); True = live scope (only WT_D_BOUNCE / AUGMENT_AT_LOSS legs, crypto DD_BOUNCE: tradier_manage dd_qty, ez_manage _dd_bounce_state)
+        True  # 2026-10-20 USER ruling "cut augment legs exactly as live does": True (default) = live scope (only WT_D_BOUNCE / AUGMENT_AT_LOSS legs, crypto DD_BOUNCE: tradier_manage dd_qty, ez_manage _dd_bounce_state); False = pre-ruling vector (every augment leg cut on a dip below the add price)
     )
     PPL_WHOLE_SHARE_RULE_ENABLED: bool = (
         False  # [N4 2b] stocks PPL: whole-share floor + skip-if-would-close (tradier_manage.py:19320-19340)
@@ -16313,8 +16312,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         )
     )
     _dd_live_scope = bool(
-        getattr(cfg, "WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED", False)
-    )  # 2026-10-20 augment revival: False = today (every augment arms the DD leg cut)
+        getattr(cfg, "WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED", True)
+    )  # 2026-10-20 USER ruling: live scope is the default (only the legs live arms are cut)
     _typed_aug_on = bool(
         getattr(cfg, "AUGMENT_TYPED_MIN_GAIN_ENABLED", False)
     )  # [UNWV/002]
@@ -17948,6 +17947,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _sa_cap = None
     _bt_veto = None
+    # 2026-10-20 MRVL_SHORT no-reentry defect (USER "reentry is mandatory"): the BOTTOM/TOP entry REQUIRE stack (RSI2_XTREME/VWAP_STRETCH/..._ENTRY_ENABLED)
+    # vetoed EVERY stock reentry fire although the set says reentries skip the entry-gate stack (REENTRY_APPLY_ENTRY_GATES_ENABLED False) and live tradier
+    # never calls the BT gate at all (_batch1_template_live_gate_tradier has no caller). Stock reentry fires now follow REENTRY_APPLY_ENTRY_GATES_ENABLED;
+    # fresh entries (entry_sig) stay BT-gated; crypto unchanged (live ez check_entry_vetting gates reentries).
+    _bt_reentry_exempt = str(getattr(cfg, "MODE", "crypto")) == "tradier" and not bool(
+        getattr(cfg, "REENTRY_APPLY_ENTRY_GATES_ENABLED", False)
+    )
     try:
         import vec_decisions.bottom_top_signals as _bts
 
@@ -19515,8 +19521,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         )
                     ):
                         continue  # BLOCKED_DC4 twin (LONG band-entry exempt, like live)
-                    if _fx_G["_bt_veto"] is not None and bool(_fx_G["_bt_veto"][i]):
-                        continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed)
+                    if (
+                        _fx_G["_bt_veto"] is not None
+                        and bool(_fx_G["_bt_veto"][i])
+                        and not (_bt_reentry_exempt and has_closed_before and not bool(entry_sig[i]))
+                    ):
+                        continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed); 2026-10-20 stock REENTRY fires exempt unless REENTRY_APPLY_ENTRY_GATES_ENABLED
                     if _lp_on and _lpm.fn_family(entry_reason) in _lp_flags and not _belm.entry_filters_pass(cfg, is_long, float(px), float(_lp_w11[i]), float(_lp_w21[i]), float(_lp_w14[i]), float(_lp_w24[i]), float(_lp_e50[i])):
                         continue  # 2026-10-17 LOSS_PRONE_ENTRY_FILTER: a loss-prone function needs the extra filters
                     pos = _open(qty0, px, i, entry_reason)
@@ -21212,8 +21222,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 if _mvf_on and add_qty > 0:
                     add_qty = max(float(add_qty), _qq.min_viable_qty(sym, px, cfg))  # live floors every vec AUGMENT (VEC_EXACT_SIZE_FLOOR_FINAL)
                 add_qty = _qq.cap_add_qty(cfg, pos["qty"], add_qty, px, is_tradier)  # QTY_LIVE_POSITION_CAP_MULT: live MAX_POSITION_SIZE/START cap
-                if is_tradier and not _n4_live_only and not (_n4_fire or _dd_fire or _hq_fire or _aal_fire) and add_qty > 0:
-                    add_qty = vec_decisions.augment_core.cap_add(add_qty, pos["qty"], px, vec_decisions.augment_core.stock_symbol_cap(lambda _k, _d=None: getattr(cfg, _k, _d)), True)  # 2026-10-20 augment revival: the vector-only sources on stocks respect the live symbol cap (same helper as tradier_manage._augment_core_try); unreachable while STOCK_AUGMENT_VENUE_GUARD_ENABLED is True
                 if _mvf_on and 0 < add_qty < _qq.min_viable_qty(sym, px, cfg):
                     add_qty = 0.0  # the cap left less than the exchange minimum — the order could not be placed
                 if add_qty > 0:

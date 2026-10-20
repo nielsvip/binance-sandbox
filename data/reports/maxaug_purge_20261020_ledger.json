@@ -1,0 +1,78 @@
+{
+ "tag": "maxaug_purge_20261020",
+ "ts": "2026-10-20T17:28:17Z",
+ "apply": true,
+ "files": {
+  "/Users/niels/Documents/binance/data/hourly_reconfig/per_sym_active_config.json": {
+   "keys_before": 0,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/hourly_reconfig/per_sym_active_config_stocks.json": {
+   "keys_before": 0,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/per_sym_settings.json": {
+   "keys_before": 0,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/cat_side_defaults_4.json": {
+   "keys_before": 0,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/cat_side_promotions.json": {
+   "keys_before": 0,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/per_sym_full_sets.json": {
+   "keys_before": 7,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/SWITCH_BIBLE.json": {
+   "keys_before": 1,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/switch_dependencies.json": {
+   "keys_before": 0,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/knob_registry.json": {
+   "keys_before": 2,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/v15_wired_switches.json": {
+   "keys_before": 1,
+   "keys_after": 1,
+   "skipped": "format"
+  },
+  "/Users/niels/Documents/binance/data/opportune_filter_map.json": {
+   "keys_before": 4,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/engine_only_knobs.txt": {
+   "keys_before": 3,
+   "keys_after": 0
+  },
+  "/Users/niels/Documents/binance/data/vec_aware_knobs.txt": {
+   "keys_before": 1,
+   "keys_after": 0
+  }
+ },
+ "kv": {
+  "per_sym_settings": {
+   "keys_before": 0
+  },
+  "cat_side_promotions": {
+   "keys_before": 0
+  }
+ },
+ "store_rows": 1,
+ "store_per_column": {
+  "overrides_json": 1,
+  "full_config_json": 1,
+  "defaults_snapshot_json": 0,
+  "meta_json": 0
+ },
+ "store_sym_sides": [
+  "CHRUSDT_LONG"
+ ]
+}

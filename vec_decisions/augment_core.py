@@ -11,6 +11,8 @@ WHAT THE VECTOR FIRES (v12_quick_engine.simulate_one augment block, ~20767-21250
   BOUNCE   compute_augment_signals_ex bounce_sig (BOUNCE_AUGMENT_ENABLED + _K_D_CROSSING_UP): stoch K crosses D below
            BOUNCE_AUGMENT_K_D_THRESHOLD within BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE of dc_low_4h (short mirror), then the UAG gate.
            Needs the previous base-TF K (k_prev); without it the source cannot fire (fail-closed, never a guess).
+SIZE vs COUNT (USER 2026-10-20 ruling): the vector dictates WHICH bar adds (count + timing); live dictates HOW MUCH (live sizing table on
+the live position). A live cap that refuses the add is a broken promise (promise_ledger), never a reason to model the add away in the vector.
 Order, gates and sizing follow the vector: profit gate (AUGMENT_ONLY_WHEN_PROFITABLE[_TRADIER] -> gain > 0), cooldown
 AUGMENTATION_COOLDOWN_SECONDS, add = position qty x 0.5 (vector augment_mult) or PYRAMID_SIZE_MULT. The venue quantizers (whole
 shares, qty_quantizers caps) are applied by each manager's normal sizing path after this, exactly as for every other augment.
@@ -117,26 +119,6 @@ def cooldown_ok(get: Get, secs_since_last_aug: Optional[float]) -> bool:
     if secs_since_last_aug is None:
         return True
     return secs_since_last_aug >= _f(get("AUGMENTATION_COOLDOWN_SECONDS", 300.0), 300.0)
-
-
-def stock_symbol_cap(get: Get) -> float:
-    """Live tradier per-symbol value cap for an add: min of the positive HARD_MAX_SYMBOL_VALUE_TRADIER / MAX_SYMBOL_VALUE_TRADIER
-    (tradier_manage OVERSIZE_TRIM / evaluate_augment CONC_CAP read the same two keys). 0 = no cap configured."""
-    caps = [x for x in (_f(get("HARD_MAX_SYMBOL_VALUE_TRADIER", 0.0), 0.0), _f(get("MAX_SYMBOL_VALUE_TRADIER", 0.0), 0.0)) if x > 0]
-    return min(caps) if caps else 0.0
-
-
-def cap_add(add_qty: float, pos_qty: float, px: float, cap_value: float, whole_shares: bool) -> float:
-    """Clamp an add to the symbol-value headroom (never raises a cap). Stocks floor to whole shares; < 1 share -> 0."""
-    if add_qty <= 0 or px <= 0:
-        return 0.0
-    q = float(add_qty)
-    if cap_value and cap_value > 0:
-        q = min(q, max(0.0, (cap_value - pos_qty * px) / px))
-    if whole_shares:
-        q = float(int(q))
-        return q if q >= 1.0 else 0.0
-    return q
 
 
 def decide(get: Get, is_long: bool, px: float, entry_px: float, last_aug_px: float, gain_pct: float, max_gain_pct: float, pos_qty: float, ind: Optional[Mapping[str, Any]] = None, k_prev: Optional[float] = None, secs_since_last_aug: Optional[float] = None) -> Tuple[bool, str, str, float]:

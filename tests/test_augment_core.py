@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+os.environ["PROMISE_LEDGER"] = "0"  # never write test promises into the live data/promise_ledger
 
 import vec_decisions.augment_core as AC  # noqa: E402
 import vec_decisions.gain_ladder_augment as GLA  # noqa: E402
@@ -72,7 +73,7 @@ def test_engine_and_config_fields():
     f = {x.name: x.default for x in dataclasses.fields(V.QuickConfig)}
     assert f["STOCK_AUGMENT_VENUE_GUARD_ENABLED"] is True
     assert f["STOCK_LIVE_AUGMENT_ONLY"] is False
-    assert f["WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED"] is False  # today's vector: every augment arms the DD leg cut
+    assert f["WT_D_BOUNCE_DD_STOP_LIVE_SCOPE_ENABLED"] is True  # USER 2026-10-20: the vector cuts augment legs exactly as live
     import config_tradier as CT
 
     t = CT.TradierConfig()
@@ -166,17 +167,35 @@ def test_ez_hook_fires_when_enabled():
     assert sig is not None and sig.action == "AUGMENT" and str(sig.reason).startswith("AUGMENT_CORE_LADDER UAG_LADDER") and abs(sig.quantity - 5.0) < 1e-9
 
 
-def test_symbol_cap_clamp():
-    g = _get({"HARD_MAX_SYMBOL_VALUE_TRADIER": 2500.0, "MAX_SYMBOL_VALUE_TRADIER": 3750.0})
-    assert AC.stock_symbol_cap(g) == 2500.0
-    assert AC.cap_add(5.0, 10.0, 100.0, 2500.0, True) == 5.0  # 1000 + 500 <= 2500
-    assert AC.cap_add(20.0, 20.0, 100.0, 2500.0, True) == 5.0  # headroom 500 -> 5 shares
-    assert AC.cap_add(5.0, 25.0, 100.0, 2500.0, True) == 0.0  # at the cap: no add
-    assert AC.cap_add(5.0, 10.0, 100.0, 0.0, True) == 5.0  # no cap configured
+def test_no_cap_refusal_and_broken_promise_on_zero_size():
+    import promise_ledger as PL
+    import tradier_manage as T
 
+    rows = []
+    o = (PL.promise, PL.broken, PL.delivery)
+    PL.promise = lambda *a, **k: rows.append(("PROMISE", a))
+    PL.broken = lambda *a, **k: rows.append(("BROKEN", a))
+    PL.delivery = lambda *a, **k: rows.append(("DELIVERY", a))
+    try:
+        tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1000.0})  # vector add is never refused by a cap in the core
+        assert tag == "AUGMENT_CORE:LADDER" and queued[0]["qty"] == 5.0
+        assert [r[0] for r in rows] == ["PROMISE", "DELIVERY"]
+        rows.clear()
+        orig = T.queue_trade_action
 
-def test_tradier_hook_respects_symbol_cap():
-    tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1000.0})  # 10 sh @ 103.5 = 1035 >= cap -> no add
-    assert tag is None and queued == []
-    tag, queued = _tradier_stub(False, extra={"MAX_SYMBOL_VALUE_TRADIER": 1350.0})  # headroom 315 -> 3 shares, not 5
-    assert tag == "AUGMENT_CORE:LADDER" and queued[0]["qty"] == 3.0
+        async def zero(symbol, action, side, qty, ind, pos, mc):
+            return 0
+
+        import types as _ty
+        tm = _ty.SimpleNamespace(strategy=_ty.SimpleNamespace(calculate_quantity_complex=zero))
+        vals = {"STOCK_AUGMENT_VENUE_GUARD_ENABLED": False, "STOCK_LIVE_AUGMENT_ONLY": False, "MIN_GAIN_TO_BUY_AGGRESSIVELY": 3.0, "AUGMENT_MIN_GAIN_PCT": 0.0}
+        oc = T._cfg
+        T._cfg = lambda k, d=None, *a, **kw: vals.get(k, d)
+        try:
+            pos = _ty.SimpleNamespace(positionAmt=10.0, entry_price=100.0, gain=3.5, max_gain=3.5, last_augmentation_price=100.0, last_augmentation_time=None)
+            t2 = asyncio.run(T._augment_core_try(tm, None, "trb:SHOP_LONG", pos, {"timestamp_15m": 1.0}, {}, "SHOP", "LONG", "trb", 103.5, True, 30.0, True))
+        finally:
+            T._cfg = oc
+        assert t2 is None and [r[0] for r in rows] == ["PROMISE", "BROKEN"] and rows[1][1][2] == "LIVE_SIZING_ZERO"
+    finally:
+        PL.promise, PL.broken, PL.delivery = o

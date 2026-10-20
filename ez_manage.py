@@ -42804,6 +42804,11 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             _ac_fire, _ac_src, _ac_reason, _ac_qty = _acore.decide(_ac_get, is_long, current_price, _ac_entry, _ac_last, gain, _ac_peak, pos_amt, i, i.get("stoch_k_15m_prev"), _ac_secs)
             if _ac_fire and _ac_qty > 0:
                 logger.warning(f"[AUGMENT_CORE] {position_key}: {_ac_reason[:120]} qty={_ac_qty:.6f}")
+                try:  # USER 2026-10-20: the vector dictates count/timing -> a promise row; the dispatch's DELIVERY/BROKEN rows close it (promise_audit)
+                    import promise_ledger as _pl_ac
+                    _pl_ac.promise(position_key, safe_fetch_float(i.get("timestamp_15m", 0), 0.0), "AUGMENT", _ac_reason, source="AUGMENT_CORE")
+                except Exception:
+                    pass
                 return Signal(action="AUGMENT", reason=_ac_reason, conviction=80.0, quantity=_ac_qty)
     except Exception as _ac_e:
         logger.debug(f"[AUGMENT_CORE] {position_key}: skipped ({type(_ac_e).__name__}: {_ac_e})")

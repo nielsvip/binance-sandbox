@@ -96,6 +96,8 @@ def main():
                 continue
             if not isinstance(full, dict) or not full:
                 continue
+            for _dead in [k for k in full if k.startswith("MAX_AUGMENTS")]:
+                full.pop(_dead)
             if src == "per_sym_active":
                 n_active += 1
             else:
