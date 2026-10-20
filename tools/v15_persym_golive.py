@@ -54,7 +54,8 @@ EV_KEYS = (
 # MAX_AUGMENTS_PER_POSITION joined the artefact list 2026-10-15 (USER "delete the switch completely"): it is gone
 # from config/config_tradier/QuickConfig and from the cat_side layer, but boards published BEFORE the deletion
 # still carry it, so every go-live would write a dead key back into the live set (ACTUSDT_LONG 04:57:19Z did).
-ARTEFACT_KEYS = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER", "MAX_AUGMENTS_PER_POSITION"}
+ARTEFACT_KEYS = {"MODE", "SIMPLE_PRICE_GT0_ENABLED", "VENUE", "IS_TRADIER", "MAX_AUGMENTS_PER_POSITION",
+                 "REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES"}
 
 
 def _ts_epoch(v):

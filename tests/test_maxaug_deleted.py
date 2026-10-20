@@ -123,6 +123,42 @@ def test_reentry_dead_keys_absent_from_live_store():
     assert not offenders, f"{len(offenders)} live rows still carry dead reentry keys: {offenders[:8]}"
 
 
+def test_golive_sanitize_drops_reentry_dead_keys():
+    import tools.v15_persym_golive as golive
+    co = {"REENTRY_TIER2_MAX_MINUTES_TRADIER": 30, "REENTRY_TIER2_MAX_MINUTES": 30,
+          "REENTRY_TIER2_MIN_MINUTES_TRADIER": 10, "MAX_AUGMENTS_PER_POSITION": 3}
+    rec = {}
+    golive.sanitize(dict(co), rec)
+    assert rec["overrides"].get("REENTRY_TIER2_MIN_MINUTES_TRADIER") == 10
+    assert "REENTRY_TIER2_MAX_MINUTES_TRADIER" not in rec["overrides"]
+    assert "REENTRY_TIER2_MAX_MINUTES" not in rec["overrides"]
+    assert "MAX_AUGMENTS_PER_POSITION" not in rec["overrides"]
+
+
+def test_full_sets_builder_drops_reentry_dead_keys(tmp_path):
+    import json
+    import sqlite3
+    import tools.build_per_sym_full_sets as bpf
+    db = tmp_path / "t.db"
+    con = sqlite3.connect(str(db))
+    con.execute("CREATE TABLE per_sym_active (sym_side TEXT, cat_side TEXT, updated_at TEXT, winning_tag TEXT, pool_sharpe REAL, trades INTEGER, max_dd_pct REAL, acc_gain_pct REAL, full_config_json TEXT)")
+    con.execute("CREATE TABLE per_sym_history (sym_side TEXT, cat_side TEXT, updated_at TEXT, winning_tag TEXT, pool_sharpe REAL, trades INTEGER, max_dd_pct REAL, gain_pct REAL, full_config_json TEXT, epoch INTEGER)")
+    full = {"REENTRY_TIER2_MAX_MINUTES_TRADIER": 30, "REENTRY_TIER2_MIN_MINUTES_TRADIER": 10,
+            "MAX_AUGMENTS_PER_POSITION": 3, "SOME_LIVE_KEY": 1}
+    con.execute("INSERT INTO per_sym_active VALUES (?,?,?,?,?,?,?,?,?)",
+                ("TST_LONG", "STOCKS_LONG", "now", "t", 0.5, 10, 1.0, 2.0, json.dumps(full)))
+    con.commit()
+    con.close()
+    out = tmp_path / "full.json"
+    import sys
+    sys.argv = ["bpf", "--db", str(db), "--out", str(out), "--force", "--quiet"]
+    assert bpf.main() == 0
+    got = json.load(open(out))["TST_LONG"]
+    assert got.get("REENTRY_TIER2_MIN_MINUTES_TRADIER") == 10
+    assert "REENTRY_TIER2_MAX_MINUTES_TRADIER" not in got
+    assert "MAX_AUGMENTS_PER_POSITION" not in got
+
+
 def test_reentry_live_siblings_survive_the_purge():
     """The purge must take exactly the dead MAX keys, never the live tier-2 family."""
     from config_tradier import TradierConfig

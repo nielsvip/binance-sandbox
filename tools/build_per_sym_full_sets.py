@@ -41,6 +41,7 @@ sys.path.insert(0, str(ROOT))
 from per_sym_store import _maybe_decompress
 DEFAULT_DB = ROOT / "data" / "hourly_reconfig" / "per_sym_store.db"
 DEFAULT_OUT = ROOT / "data" / "per_sym_full_sets.json"
+_REENTRY_DEAD = {"REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES"}
 
 
 def main():
@@ -96,7 +97,7 @@ def main():
                 continue
             if not isinstance(full, dict) or not full:
                 continue
-            for _dead in [k for k in full if k.startswith("MAX_AUGMENTS")]:
+            for _dead in [k for k in full if k.startswith("MAX_AUGMENTS") or k in _REENTRY_DEAD]:
                 full.pop(_dead)
             if src == "per_sym_active":
                 n_active += 1

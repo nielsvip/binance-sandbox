@@ -447,6 +447,8 @@ def ship_prev_best(symbol, tag, push):
                     continue
                 if not isinstance(ov, dict) or len(ov) < 5:
                     continue
+                for _dead in [k for k in ov if k.startswith("MAX_AUGMENTS") or k in ("REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES")]:
+                    ov.pop(_dead, None)
                 key = json.dumps(ov, sort_keys=True, default=str)
                 if key in seen:
                     continue
