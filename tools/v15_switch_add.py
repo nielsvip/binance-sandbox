@@ -210,13 +210,19 @@ def last_white_row(ws):
     return last_w
 
 
-def insert_switch_rows(ws, sw, opts, dflt, ts):
+def insert_switch_rows(ws, sw, opts, dflt, ts, demote=False):
     """Whole-row insert after the last WHITE row, style mirrored from that row, default first + bold + is_default YES.
     Raises Refused on a defaults-gate failure. Returns (first_row, n_rows)."""
     last_w = last_white_row(ws)
     ws.insert_rows(last_w + 1, len(opts))
     hdrs = [ws.cell(2, c).value for c in range(1, ws.max_column + 1)]
     isd = hdrs.index("is_default") + 1
+    if demote:
+        for r in range(3, ws.max_row + 1):
+            if ws.cell(r, 1).value == sw:
+                f0 = copy.copy(ws.cell(r, 2).font)
+                ws.cell(r, 2).font = Font(name=f0.name, size=f0.size, bold=False, italic=f0.italic, color=f0.color)
+                ws.cell(r, isd).value = "NO"
     ref = last_w
     for i, o in enumerate(opts):
         rr = last_w + 1 + i
@@ -701,6 +707,7 @@ def main():
         return enqueue({"switch": sw, "tab": a.tab, "venues": venues, "sides": sides, "candidates": cands, "default": a.default.strip(), "status": "QUEUED", "source": "v15_switch_add --enqueue", "queued_at": datetime.datetime.utcnow().isoformat() + "Z"}, a.inbox, a.push)
     files = [(f"{v}_{s}", FILES[f"{v}_{s}"]) for v in venues for s in sides]
     plan = []
+    demote_cs = set()
     for cs, fn in files:
         p = Path(a.templates_dir) / fn
         if not p.exists():
@@ -718,8 +725,10 @@ def main():
                 # left untouched — the defaults gate still requires exactly one bold is_default=YES in the group.
                 miss = [o for o in ordered if _opt_key(o) not in have]
                 if _opt_key(dflt) not in have:
-                    die(f"{fn}!{a.tab}: {sw} exists but its rows do not include the default {dflt!r} (have {sorted(have)}) — fix the default row first")
-                if not miss:
+                    # 2026-10-20 USER: the live venue default is not among the rows (stale bold) -> INSERT it as the new bold row and demote the old bold to a plain candidate (never deleted).
+                    demote_cs.add(cs)
+                    plan.append((cs, fn, p, last_white_row(ws), miss, dflt))
+                elif not miss:
                     print(f"[{cs}] {fn}!{a.tab}: all {len(ordered)} candidates already present — nothing to do", flush=True)
                 else:
                     plan.append((cs, fn, p, last_white_row(ws), miss, None))
@@ -728,7 +737,7 @@ def main():
         finally:
             wb.close()
     for cs, fn, p, last_w, opts, pdflt in plan:
-        print(f"[{cs}] {fn}!{a.tab}: insert {len(opts)} rows {opts} at {last_w + 1} (after last white row) default={pdflt!r}" + ("" if pdflt else " (extend: existing bold default kept)"), flush=True)
+        print(f"[{cs}] {fn}!{a.tab}: insert {len(opts)} rows {opts} at {last_w + 1} (after last white row) default={pdflt!r}" + ("" if pdflt else " (extend: existing bold default kept)") + (" [extend: new bold default, old bold demoted]" if cs in demote_cs else ""), flush=True)
     if not plan:
         print("nothing to install — every target already carries all candidates", flush=True)
         return 0
@@ -743,7 +752,7 @@ def main():
             ws = wb[a.tab]
             before = fingerprints(ws)
             try:
-                insert_switch_rows(ws, sw, opts, pdflt, ts)
+                insert_switch_rows(ws, sw, opts, pdflt, ts, demote=cs in demote_cs)
             except Refused as r:
                 die(str(r))
             after = fingerprints(ws)

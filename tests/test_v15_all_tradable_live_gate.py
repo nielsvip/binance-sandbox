@@ -85,20 +85,24 @@ def test_ema50_15m_entry_filter_is_template_switch_and_controls_filter():
         "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx",
         "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx",
         "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx",
-        "SPREADSHEETS/TEMPLATE.xlsx",
-    ]:
+    ]:  # 2026-10-20: generic SPREADSHEETS/TEMPLATE.xlsx is retired (single-home per cat_side); only the four cat_side templates exist on S1/S2/Mac
         p = pathlib.Path(__file__).resolve().parents[1] / tpl
         assert p.exists(), f"missing {tpl}"
-        wb = openpyxl.load_workbook(str(p), data_only=True, read_only=True)
+        wb = openpyxl.load_workbook(str(p), data_only=True)
         ws = wb["ENTRY_CONFIRMATION_GATES"]
         found_enabled = found_pct = False
-        for row in ws.iter_rows(values_only=True):
-            if row and row[0] == "EMA50_15M_ENTRY_FILTER_ENABLED":
+        bold_enabled = []
+        for row in ws.iter_rows(min_row=1, max_row=ws.max_row):
+            key = row[0].value if row else None
+            if key == "EMA50_15M_ENTRY_FILTER_ENABLED":
                 found_enabled = True
-                assert row[1] is True
-            if row and row[0] == "EMA50_15M_ENTRY_FILTER_PCT":
+                # a False row is a legitimate swept candidate; the DEFAULT (bold row) must be True (2026-10-20 re-anchor)
+                if row[1].font is not None and row[1].font.bold:
+                    bold_enabled.append(row[1].value)
+            if key == "EMA50_15M_ENTRY_FILTER_PCT":
                 found_pct = True
-                assert float(row[1]) == 0.0
+                assert float(row[1].value) == 0.0
+        assert bold_enabled == [True], f"{tpl} EMA50_15M_ENTRY_FILTER_ENABLED bold default must be exactly one True row, got {bold_enabled}"
         assert found_enabled, f"{tpl} missing EMA50_15M_ENTRY_FILTER_ENABLED"
         assert found_pct, f"{tpl} missing EMA50_15M_ENTRY_FILTER_PCT"
     # Emergency script fix must still be present until proven wrong (filter in ez_manage, not trigger)
