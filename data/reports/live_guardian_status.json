@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T23:14:33Z",
+ "ts": "2026-10-20T23:19:52Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,177 +127,163 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 10.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 19.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 2.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11610.0
+   "log_age_s": 11928.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11612.0
+   "log_age_s": 11931.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:UNIUSDC_LONG",
    "evidence": "20 23:09:57 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $84 on bounce (prior max 1.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:GALAUSDT_SHORT",
-   "evidence": "20 22:59:50 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $51 on bounce (prior max 13416.0000)"
-  },
-  {
-   "ts": "2026-10-20T23:14:33Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:ARUSDT_LONG",
-   "evidence": "20 23:00:21 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $78 on bounce (prior max 18.4000)"
-  },
-  {
-   "ts": "2026-10-20T23:14:33Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:ARUSDT_LONG",
-   "evidence": "20 23:04:41 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $68 on bounce (prior max 18.4000)"
-  },
-  {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "20 23:07:04 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $223 on bounce (prior max 13416.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "20 23:07:49 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $633 on bounce (prior max 13416.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:GALAUSDT_SHORT",
    "evidence": "order notional $632.55 > MAX_ORDER_VALUE $300: 20 23:07:49 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:GALAUSDT_SHORT @ 0.001973 qty=320660.498124 ($632.55) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.001978_exit0."
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:COMPUSDT_LONG",
    "evidence": "20 23:08:07 - WARNING - [men] [REENTRY_GRANDFATHERED] men:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $4 on bounce (prior max 1.5330)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:GALAUSDT_SHORT",
-   "evidence": "20 23:04:42 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $185 on bounce (prior max 7095.0000)"
-  },
-  {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 23:05:30 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $42 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:COMPUSDT_LONG",
    "evidence": "20 23:05:56 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $32 on bounce (prior max 1.9300)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:COMPUSDT_LONG",
    "evidence": "20 23:08:47 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $7 on bounce (prior max 1.9300)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 23:09:15 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $110 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 23:09:35 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $175 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:COMPUSDT_LONG",
    "evidence": "20 23:10:42 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $5 on bounce (prior max 1.9300)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 23:11:45 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $39 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:COMPUSDT_LONG",
    "evidence": "20 23:12:04 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $5 on bounce (prior max 1.9300)"
   },
   {
-   "ts": "2026-10-20T23:14:33Z",
+   "ts": "2026-10-20T23:19:52Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 23:12:32 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $137 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:19:52Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 23:17:46 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $139 on bounce (prior max 7095.0000)"
+  },
+  {
+   "ts": "2026-10-20T23:19:52Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "20 23:19:36 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $137 on bounce (prior max 7095.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 17,
+  "CAP_BYPASS": 15,
   "SIZE_ANOMALY": 1
  },
  "active_interventions": {
@@ -367,5 +353,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.36
+ "sweep_s": 0.82
 }
