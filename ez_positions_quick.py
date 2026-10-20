@@ -6799,11 +6799,20 @@ class AdvancedSignalRater:
             # Causal classic-formation exit.  This deliberately runs after the
             # global no-loss gate, so enabling a formation can never turn a
             # protected crypto position into a loss-taking exit.
+            # 2026-10-20 DEAD KILL SWITCH IMPLEMENTED (CLAUDE.md: "Dead switch -> ONLY action is IMPLEMENT IT").
+            # FORMATION_EXIT_ENABLED has existed as False in BOTH configs (config.py:7834, config_tradier.py:2108) while
+            # this file never read it — grep of ez_positions_quick.py for the name returned nothing — so the path ran
+            # regardless, gated only by FORMATION_EXIT_MIN_GAIN_PCT=0.0, i.e. a floor of 0 that always passes.
+            # It is a live-only exit: grepping v12_quick_engine.py + vec_decisions/ + vec_paths/ for CLASSIC_FORMATION_EXIT
+            # finds no emitting line, so the vector can never produce it (/history/ since 2026-10-13: 2 such closes).
+            # USER 2026-10-20 "LIVE EXIT EXACTLY WHEN VECTOR WOULD EXIT BY APPLYING THE SWITCHES" — the switch now decides.
+            # ROLLBACK: set FORMATION_EXIT_ENABLED=True.
+            _formation_exit_on = bool(getattr(config, "FORMATION_EXIT_ENABLED", False))
             _formation_exit_floor = max(
                 float(_noloss_min or 0.0),
                 float(getattr(config, "FORMATION_EXIT_MIN_GAIN_PCT", 0.0) or 0.0),
             )
-            if pnl_pct >= _formation_exit_floor:
+            if _formation_exit_on and pnl_pct >= _formation_exit_floor:
                 try:
                     _formation_exit = select_latest_formation(
                         ind,

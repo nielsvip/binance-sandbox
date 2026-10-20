@@ -218,3 +218,16 @@ def test_scoring_and_proposals_labelled(ds_dir, tmp_path, monkeypatch):
     assert LN.digest_proposals("CRYPTO_SHORT", tmp_path) == ([], [])
     (tmp_path / "linknet_proposals_CRYPTO_SHORT.json").write_text(json.dumps(doc))  # a CRYPTO_LONG file under the SHORT name is refused
     assert LN.digest_proposals("CRYPTO_SHORT", tmp_path) == ([], [])
+
+
+def test_pinned_chain_value_from_precision_extract_wins():
+    ds = LN.CatDS("CRYPTO_LONG", defaults=TIDX["defaults"])
+    e1 = dict(row_ev("AAAUSDT_LONG", "2026-10-10T01:00:00Z", "2026-10-10T01:01:00Z", "STOP_LOSS_PCT=1", -0.5), cv="3", ck="Z")
+    e2 = dict(row_ev("AAAUSDT_LONG", "2026-10-10T01:00:00Z", "2026-10-10T01:02:00Z", "STOP_LOSS_PCT=4", -0.5), cv=None, ck="NB")
+    e3 = dict(row_ev("AAAUSDT_LONG", "2026-10-10T01:00:00Z", "2026-10-10T01:03:00Z", "STOP_LOSS_PCT=3", 0.0), cv="3", ck="Z")
+    for e in (e1, e2, e3):
+        ds.row(e, e["t"])
+    keys = ds.scombo.keys
+    assert "EXIT_STRUCTURAL|STOP_LOSS_PCT=1|INF=3|Z" in keys  # the start-set override pinned by the extract, not the bold "2"
+    assert "EXIT_STRUCTURAL|STOP_LOSS_PCT=4|INF=None|N" in keys
+    assert ds.c["R_identity_cand_eq_inforce"] == 1 and ds.c["R"] == 2  # cand == pinned chain value with delta 0 -> identity

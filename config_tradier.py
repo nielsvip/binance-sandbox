@@ -4795,7 +4795,12 @@ class TradierConfig:
     # bottoms. Vector engines set PARITY_DISABLE_NON_VECTORIZABLE=True so this never
     # fires in backtest (no portfolio to measure). Live stays ON.
     INTRADAY_RATIO_REBALANCE_ENABLED: bool = (
-        True  # LIVE-ONLY (see BACKTEST_REPLICA_SWITCHES §16)
+        False  # USER 2026-10-20 "LIVE EXIT EXACTLY WHEN VECTOR WOULD EXIT BY APPLYING THE SWITCHES": its own comment
+        # said LIVE-ONLY, which is precisely the problem — it trims positions on portfolio L/S-ratio state the vector has
+        # no access to. vec_decisions/ported_reduce.py marks INTRADAY_RATIO_TRIM VEC_UNSUPPORTED and
+        # vec_paths/vec_parity_gate.py lists it as a live-only exit; the only vector hits are the FRAC field and that
+        # docstring, never a reason string. A live-only exit cannot be in a system that must match the vector.
+        # ROLLBACK: set True (re-opens an exit the vector cannot model).
     )
     INTRADAY_RATIO_DEVIATION_THR: float = (
         0.10  # |actual_long - target_long| >10% triggers trim
@@ -5057,6 +5062,13 @@ class TradierConfig:
         False  # P2-D: exit if price crosses back through the DC level that triggered the reentry
     )
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
+    MARKET_BIAS_REDUCE_ENABLED: bool = (
+        False  # USER 2026-10-20 "LIVE EXIT EXACTLY WHEN VECTOR WOULD EXIT BY APPLYING THE SWITCHES". Kill switch
+        # for the Market_Against_Position_Bias reduce/close in tradier_manage.py (~26121), which until today ran with
+        # NO enabling switch at all. The vector has no emitting line for that reason (grep of v12_quick_engine.py +
+        # vec_decisions/ + vec_paths/ returns nothing) and vec_paths/vec_parity_gate.py lists it as live-only, so it
+        # can never appear on a board. False = off. ROLLBACK: True.
+    )
     MIN_HOLD_MINUTES_TRADIER: float = (
         30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
     )
@@ -5573,7 +5585,15 @@ class TradierConfig:
         240.0  # 4h max hold (flatten before close regardless)
     )
     DC_DAYTRADE_PRE_CLOSE_MINUTES: int = (
-        120  # Start flattening 2h before market close (14:00 ET)
+        0  # USER 2026-10-20 "LIVE EXIT EXACTLY WHEN VECTOR WOULD EXIT BY APPLYING THE SWITCHES". 120 opened a 2h
+        # pre-close flatten window (tradier_manage.py:60200 `0 < (close_minutes - now_minutes) <= pre_close_min`, closing
+        # with reason PRE_CLOSE at :60680) that the vector NEVER emits: grepping v12_quick_engine.py + vec_decisions/ +
+        # vec_paths/ for PRE_CLOSE finds only this field name (:1210 auto-wire list, :5765 mirrored field) and no reason
+        # string, and vec_paths/vec_parity_gate.py states it outright — "PRE_CLOSE (stocks flatten; engine has the
+        # DC_DAYTRADE_PRE_CLOSE_MINUTES field but never emits the close)". So every afternoon live flattened winners the
+        # board was still holding, and no board could ever show it. /history/ since 2026-10-13: 11 PRE_CLOSE closes.
+        # 0 disables the window (the guard is `0 < ... <= pre_close_min`, so 0 can never be satisfied) without removing
+        # the switch or the code path. ROLLBACK: 120.
     )
     DC_DAYTRADE_STOCH_FILTER: bool = (
         True  # Require stoch not exhausted in entry direction

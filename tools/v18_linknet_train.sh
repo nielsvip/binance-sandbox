@@ -21,7 +21,15 @@ PY=$(bash tools/pyinterp.sh)
 LN=data/learn/linknet
 LOG=$LN/train_$(date -u +%Y%m%dT%H%MZ).log
 mkdir -p $LN/tmp $LN/calib_spill
-SPILLS=${V18_BRAIN_SPILLS:-"data/brain_scratch/spill_mac data/brain_scratch/spill_s2"}
+# corpus: the precision agent's per-cat_side events (brain event format + the chain value pinned per eval, cv/ck) when they
+# exist, else the brain's own spills (in-force then inferred causally: last promotion on the sym_side, else template bold)
+if [ -z "${V18_BRAIN_SPILLS:-}" ] && ls data/learn/precision/events_*.tsv.gz > /dev/null 2>&1; then
+  mkdir -p $LN/prec_spill
+  for f in data/learn/precision/events_*.tsv.gz; do cs=$(basename $f .tsv.gz); ln -sf "$ROOT/$f" $LN/prec_spill/spill_prec_${cs#events_}.tsv.gz; done
+  SPILLS=$LN/prec_spill
+else
+  SPILLS=${V18_BRAIN_SPILLS:-"data/brain_scratch/spill_mac data/brain_scratch/spill_s2"}
+fi
 S2=${V18_LINKNET_S2:-s2}
 log(){ echo "[$(date -u +%FT%TZ)] $*" | tee -a "$LOG"; }
 free_gb=$(df -g . | tail -1 | awk '{print $4}')

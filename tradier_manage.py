@@ -26118,8 +26118,17 @@ async def periodic_override_check(trade_manager, account_key):
                     except Exception:
                         _ovr_hold_min = 0.0
                     _ovr_min_hold_ok = _ovr_hold_min >= _ovr_min_hold
-                    if (is_long and market_bias < -0.3) or (
-                        not is_long and market_bias > 0.3
+                    # 2026-10-20 KILL SWITCH ADDED (CLAUDE.md: "NEVER wire strategy without kill switch").
+                    # Market_Against_Position_Bias reduced/closed on market_bias alone with NO enabling switch anywhere —
+                    # verified by grepping config_tradier.py and this file for MARKET_BIAS_REDUCE*/MARKET_BIAS_ENABLED
+                    # (no hits before this change). It is a live-only exit: grepping v12_quick_engine.py + vec_decisions/ +
+                    # vec_paths/ for Market_Against_Position_Bias returns NOTHING, and vec_paths/vec_parity_gate.py lists it
+                    # among the live-only exits the vector cannot produce (/history/ since 2026-10-13: 7 such closes).
+                    # USER 2026-10-20 "YOU NEED TO MAKE LIVE EXIT EXACTLY WHEN VECTOR WOULD EXIT BY APPLYING THE SWITCHES".
+                    # Default False = path off. ROLLBACK: MARKET_BIAS_REDUCE_ENABLED=True.
+                    if bool(_cfg_auto("MARKET_BIAS_REDUCE_ENABLED", False)) and (
+                        (is_long and market_bias < -0.3)
+                        or (not is_long and market_bias > 0.3)
                     ):
                         last_aug_ts = getattr(position, "last_augmentation_time", None)
                         min_since_aug = (

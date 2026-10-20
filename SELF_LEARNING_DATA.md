@@ -105,6 +105,20 @@ Validated end-to-end on one real board (`XLE_LONG`, 32,725 evals, base recovered
 produced **5,993 edges, 833 quartets, 668 single-key effects, 261 filter-blocks-switch entries**, and carried the
 `rebuilt` provenance into its own output so anything learned from a rebuild is self-labelled.
 
+### 3c. The experience store (work item E2, 2026-10-20) -> `data/experience/`
+
+`tools/v18_experience.py` condenses the evidence above into one append-only SQLite shard per cat_side per month
+(`experience_<CRYPTO_LONG|CRYPTO_SHORT|STOCKS_LONG|STOCKS_SHORT>_<YYYYMM>.db`) plus `experience_index.db` (watermarks, ingest
+runs, proofs, cold copies). A set is stored once (`sets`), every eval is a ~0.3-0.7 KB row pointing at `base_set_id` + delta; the
+cat_sides are never mixed in a file. Registered kinds in `tools/data_locations.py`: `experience_store` (Mac `data/experience`,
+env `V18_EXPERIENCE_ROOT`) and `eval_cache_cold` (zst + `.manifest.json` with sha256). Sources ingested: S2 `rebuilt_v1.db`, the 14 staged
+bench caches, a snapshot of the S2 live cache, the 2026-10-14 zst archive (1,539,007 native rows), S1/S2 `v15_run33` delta logs
+(identity lines `cached: true`, delta 0 collapsed to one `settlements` row per board row, every collapsed line listed),
+`/history` with the era cut (crypto >= 2026-10-14T13:00Z, stocks >= 2026-10-17T13:00Z; broker echoes dropped and counted),
+boards (xlsx + progress JSON; `ts_kind` says what each date is) and ledger-replay trades. `prove` re-reads a source and compares it
+row by row with the store; `reclaim` refuses unless a proof shows 0 missing AND a sha256-verified cold copy sits on a real ext mount.
+Numbers per source and per shard: `docs/v15_pending/19_E2_EXPERIENCE_STORE_HANDOVER_20261020.md`, `data/reports/experience_audit_20261020.json`.
+
 ---
 
 ## 4. Where older backtest results may live

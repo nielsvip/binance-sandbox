@@ -1,0 +1,41 @@
+{
+ "apply": true,
+ "counters": {
+  "evals:CRYPTO_LONG": 120,
+  "evals:CRYPTO_SHORT": 141,
+  "evals:STOCKS_LONG": 135,
+  "evals:STOCKS_SHORT": 135,
+  "files": 531,
+  "inserted": {
+   "evals:CRYPTO_LONG": 120,
+   "evals:CRYPTO_SHORT": 141,
+   "evals:STOCKS_LONG": 135,
+   "evals:STOCKS_SHORT": 135,
+   "trades:CRYPTO_LONG": 18621,
+   "trades:CRYPTO_SHORT": 16816,
+   "trades:STOCKS_LONG": 3999,
+   "trades:STOCKS_SHORT": 4379
+  },
+  "offered": {
+   "evals:CRYPTO_LONG": 120,
+   "evals:CRYPTO_SHORT": 141,
+   "evals:STOCKS_LONG": 135,
+   "evals:STOCKS_SHORT": 135,
+   "trades:CRYPTO_LONG": 18621,
+   "trades:CRYPTO_SHORT": 16816,
+   "trades:STOCKS_LONG": 3999,
+   "trades:STOCKS_SHORT": 4379
+  },
+  "secs": 0.7,
+  "trades:CRYPTO_LONG": 18621,
+  "trades:CRYPTO_SHORT": 16816,
+  "trades:STOCKS_LONG": 3999,
+  "trades:STOCKS_SHORT": 4379
+ },
+ "finished": "2026-10-20T04:11:48Z",
+ "host": "MacBook-Pro.local",
+ "kind": "trades",
+ "source": "data/learn/trade_ledgers/*/*.jsonl",
+ "started": "2026-10-20T04:11:47Z",
+ "store": "/Users/niels/Documents/binance/data/experience"
+}

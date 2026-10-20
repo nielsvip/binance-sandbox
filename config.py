@@ -3567,7 +3567,13 @@ class Config:
         15  # min GR total-vote-score to trigger hedge without 15m/1h WT confirmation. Score = SUM of per-TF raw indicator votes against (0-35 range: 5 crypto TFs × 7 ind). 15 ≈ "3 TFs fully against (5×3) or 2 TFs with 7-8 each". User mandate: keep 15-20 or fires every bar.
     )
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = (
-        True  # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
+        False  # USER 2026-10-20 "YOU NEED TO MAKE LIVE EXIT EXACTLY WHEN VECTOR WOULD EXIT BY APPLYING THE SWITCHES":
+        # a live exit the vector cannot produce must not exist. HEDGE_FAILED_FALLBACK_CLOSE has NO emitting line in the
+        # vector engine — verified 2026-10-20 by grepping v12_quick_engine.py + vec_decisions/ + vec_paths/: the only hits
+        # are this switch NAME (v12_quick_engine.py:1661 in the auto-wire list and :5951 as a mirrored field), never a
+        # reason string. vec_paths/vec_parity_gate.py already records it in its own live-only list ("HEDGE_FAILED_FALLBACK_CLOSE
+        # (hedging off)"). /history/ census since 2026-10-13: 6 closes on this reason. Was: True "on hedge failure -> close".
+        # ROLLBACK: set True (then the vector can never reproduce those closes and board-vs-live exits diverge again).
     )
     # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
