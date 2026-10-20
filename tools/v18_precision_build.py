@@ -655,11 +655,6 @@ def build_cs(cs, a):
         ys = sorted({y for t in tabs for y in yellows_of_tab.get(t, [])})
         row_yellows[k] = ys
         tmpl_pairs += len(ys)
-    in_tmpl = np.zeros(npairs, bool)
-    for j in range(npairs):
-        k = keys.names[pk_u[j, 0]]
-        fo = filts.names[pk_u[j, 1]]
-        in_tmpl[j] = k in row_yellows and fo in set(row_yellows[k]) if False else True
     # p-values: NEEDED (strict option, mean marginal > 0), RESCUE (loose option > 0 => chain filter state suffocates), HARMFUL (strict < 0)
     fname = np.array([filts.names[pk_u[j, 1]].partition("=")[0] for j in range(npairs)], dtype=object) if npairs else np.zeros(0, object)
     fopt = np.array([filts.names[pk_u[j, 1]].partition("=")[2] for j in range(npairs)], dtype=object) if npairs else np.zeros(0, object)
@@ -880,13 +875,13 @@ def build_cs(cs, a):
             for x in r["needed"]:
                 e = agg_need[x["filter_opt"]]
                 e[0] += 1
-                if (x["interval"][0] or -9) > e[1]:
-                    e[1], e[2] = x["interval"][0] or -9, x
+                if e[2] is None or (x["interval"][0] if x["interval"][0] is not None else -9) > e[1]:
+                    e[1], e[2] = (x["interval"][0] if x["interval"][0] is not None else -9), x
             for s in r["suffocating"]:
                 e = agg_suff[s["f"]]
                 e[0] += 1
-                if (s.get("remedy_delta") or -9) > e[1]:
-                    e[1], e[2] = s.get("remedy_delta") or -9, s
+                if e[2] is None or (s.get("remedy_delta") if s.get("remedy_delta") is not None else -9) > e[1]:
+                    e[1], e[2] = (s.get("remedy_delta") if s.get("remedy_delta") is not None else -9), s
         best_row = max(alts, key=lambda r: ((r["interval"][0] or 0), r["sum_pos_delta"] or 0), default=None)
         o = old_sw.get(sw, {})
         switches[sw] = {

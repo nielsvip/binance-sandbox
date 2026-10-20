@@ -6076,7 +6076,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     if _v18_brain_on or _v18_floor_on or _v18_prof_on:
         try:
             from tools import v18_brain as _V18B
-            _v18_bp = Path(os.environ.get("V18_BRAIN_DIR") or (ROOT / "data" / "brain")) / f"v18_brain_{_v18_floor_cs}.json"
+            _v18_bp = _V18P.learn_file(f"v18_brain_{_v18_floor_cs}.json", ROOT, "brain")
             _v18_brain = _V18B.PilotBrainV18(_v18_bp, new_symside) if _v18_bp.exists() else None
             if _v18_brain is not None:
                 _v18_brain.observe_ctx(tier=_tier_name, bh=bh)

@@ -2170,6 +2170,14 @@ class Config:
     STDEV_LADDER_TF: str = "D"  # STDEV ladder reads lrL_pct_b_<TF>: 1x at the top -> STDEV_LADDER_MAX_MULT at the bottom (vv shorts)
     STDEV_LADDER_MAX_MULT: float = 5.0  # USER "should be 1-5x" (replaces the slope_to_top 10x map / BAND_V2 0.7-1.8 when STDEV_SLOPE_SIZING_ENABLED)
     QTY_STREAK_SIZING_ENABLED: bool = False  # kill switch: resize new opens/reentries after consecutive qualifying full-close results
+    # E7 2026-10-20 FIXED_STOP switch family (USER "fixed stop can get switches ... if the numbers prove otherwise I go with the numbers",
+    # doc 17 §3.7; vec_decisions/fixed_stop.freeze_level_spec). Changes WHERE the stop freezes, never whether: no OFF value exists.
+    # Kill switch = these defaults (dc_low/15m/0.25/off) = the dc_15m ∓0.25% level of 2026-10-12, byte for byte.
+    FIXED_STOP_REF_FIELD: str = "dc_low"  # dc_low | dc_basis | bb_low | bb_basis (shorts mirrored: dc_high_TF / bb_upper_TF)
+    FIXED_STOP_REF_TF: str = "15m"  # 15m | 1h | 4h
+    FIXED_STOP_BUFFER_PCT: float = 0.25  # 0.15 | 0.25 | 0.35 | 0.50 — software leg beyond the reference; venue leg stays ~0.15% beyond the software leg
+    FIXED_STOP_TIGHTEN_MODE: str = "off"  # off | breakeven_after_pct | trail_ref — ratchet only (never looser than the frozen level)
+    FIXED_STOP_TIGHTEN_TRIGGER_PCT: float = 1.0  # peak favourable move (%) that arms the tighten mode
     # 2026-10-17 STOP_RECLAIM_REENTRY (vec_decisions/stop_reclaim.py) — swift, very conditional re-entry after FIXED_STOP; off by default
     STOP_RECLAIM_REENTRY_ENABLED: bool = False
     STOP_RECLAIM_WINDOW_BARS: int = 4  # 2 / 4 / 8 closed 15m bars after the stop

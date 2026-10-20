@@ -61,3 +61,16 @@ def test_pilot_reads_only_its_own_cat_side():
     assert 'f"XPOLL:{frm}:{sw}={c}"' in SRC and '"XPOLL", deadline, ph, accept=_v18_accept, max_prom=kx, book=_v18' in SRC
     assert 'kx = int(os.environ.get("V18_XPOLL_K", "5"))' in SRC
     assert '_v18["xpoll"] = {' in SRC
+
+
+def test_learn_file_falls_back_to_the_gated_tools_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("V18_DIGEST_DIR", raising=False)
+    monkeypatch.delenv("V18_BRAIN_DIR", raising=False)
+    assert V.learn_file("digest_CRYPTO_LONG.json", tmp_path) == tmp_path / "data" / "learn" / "digest_CRYPTO_LONG.json"
+    alt = tmp_path / "tools" / "v18_data" / "brain" / "v18_brain_CRYPTO_LONG.json"
+    alt.parent.mkdir(parents=True)
+    alt.write_text("{}")
+    assert V.learn_file("v18_brain_CRYPTO_LONG.json", tmp_path, "brain") == alt
+    (tmp_path / "data" / "brain").mkdir(parents=True)
+    (tmp_path / "data" / "brain" / "v18_brain_CRYPTO_LONG.json").write_text("{}")
+    assert V.learn_file("v18_brain_CRYPTO_LONG.json", tmp_path, "brain") == tmp_path / "data" / "brain" / "v18_brain_CRYPTO_LONG.json"

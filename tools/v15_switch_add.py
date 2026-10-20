@@ -210,19 +210,24 @@ def last_white_row(ws):
     return last_w
 
 
-def insert_switch_rows(ws, sw, opts, dflt, ts, demote=False):
+def demote_rows(ws, sw):
+    """extend with a new bold default: the old bold row(s) of `sw` become plain candidates (bold off, is_default NO); never deleted."""
+    hdrs = [ws.cell(2, c).value for c in range(1, ws.max_column + 1)]
+    isd = hdrs.index("is_default") + 1
+    for r in range(3, ws.max_row + 1):
+        if ws.cell(r, 1).value == sw:
+            f0 = copy.copy(ws.cell(r, 2).font)
+            ws.cell(r, 2).font = Font(name=f0.name, size=f0.size, bold=False, italic=f0.italic, color=f0.color)
+            ws.cell(r, isd).value = "NO"
+
+
+def insert_switch_rows(ws, sw, opts, dflt, ts):
     """Whole-row insert after the last WHITE row, style mirrored from that row, default first + bold + is_default YES.
     Raises Refused on a defaults-gate failure. Returns (first_row, n_rows)."""
     last_w = last_white_row(ws)
     ws.insert_rows(last_w + 1, len(opts))
     hdrs = [ws.cell(2, c).value for c in range(1, ws.max_column + 1)]
     isd = hdrs.index("is_default") + 1
-    if demote:
-        for r in range(3, ws.max_row + 1):
-            if ws.cell(r, 1).value == sw:
-                f0 = copy.copy(ws.cell(r, 2).font)
-                ws.cell(r, 2).font = Font(name=f0.name, size=f0.size, bold=False, italic=f0.italic, color=f0.color)
-                ws.cell(r, isd).value = "NO"
     ref = last_w
     for i, o in enumerate(opts):
         rr = last_w + 1 + i
@@ -750,9 +755,11 @@ def main():
         wb = openpyxl.load_workbook(str(p))
         try:
             ws = wb[a.tab]
+            if cs in demote_cs:
+                demote_rows(ws, sw)
             before = fingerprints(ws)
             try:
-                insert_switch_rows(ws, sw, opts, pdflt, ts, demote=cs in demote_cs)
+                insert_switch_rows(ws, sw, opts, pdflt, ts)
             except Refused as r:
                 die(str(r))
             after = fingerprints(ws)

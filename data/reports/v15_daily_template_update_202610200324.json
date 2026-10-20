@@ -1,0 +1,495 @@
+{
+ "round_id": "bf43f71e4639a581da2443b58b477ec4",
+ "agg": "/Users/niels/Documents/binance/SPREADSHEETS/v15_vector_delta_latest.xlsx",
+ "refused": {
+  "CRYPTO_SHORT": [
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MAX=0.9",
+    0.026,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MAX=0.8",
+    0.026,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MAX=0.95",
+    0.026,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    2.133,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "EMA_BLANKET_FILTER_MIN_TFS=1",
+    0.6534,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "MTF_FILTER_STRONG_BUY_QUICK_BYPASS=False",
+    0.0443,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.602,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "sw",
+    "BB_PULLBACK_GATE_TF=D",
+    0.0798,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "EMA_9_21_FILTER_FILTER_TF=15m",
+    0.602,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MAX=0.95",
+    0.026,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MAX=0.9",
+    0.026,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MAX=0.8",
+    0.026,
+    1,
+    8,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_REVERSAL_BOUNCE",
+    "f",
+    "WT_15M_BOUNCE_BB_MIN=0.05",
+    2.133,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "RZ_BREAKOUT_BAND=0",
+    0.0003,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "TRADIER_MFI_ENTRY_LONG_ENABLED=True",
+    0.0547,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_BREAKOUT_CHANNEL",
+    "sw",
+    "WRONG_SIDE_WT_TFS_REQUIRED=6",
+    0.0008,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS=8",
+    0.1945,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_COMPOSITE_DELTA_SHORT_MAX=200",
+    1.1686,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "OI_SURGE_ENTRY_PCT=2",
+    1.0438,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "GOLDEN_RULE_REQUIRE_ACTIVATION=False",
+    0.1302,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "WT_CROSSUNDER_FINAL_ENABLED=False",
+    0.0004,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "MTF_GR_INVERT_DC_BB=False",
+    0.6714,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "ENTRY_CONFIRMATION_GATES",
+    "sw",
+    "FUNDING_GATE_ENABLED=True",
+    0.8605,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "STDEV_REJECT_EXIT_ZONE=1.6",
+    0.6474,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_STRUCTURAL",
+    "sw",
+    "VEC_VEL_EXIT_AS_TRIGGER=False",
+    0.2739,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "MI_VELOCITY_EXIT_ENABLED=False",
+    0.2936,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "WICK_REJECT_EXIT_TF=D",
+    0.4055,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "DC_HARD_STOP_TF=D",
+    3.8357,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "sw",
+    "EMA_BLANKET_FILTER_FILTER_TF=1h",
+    0.189,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "EXIT_VELOCITY",
+    "f",
+    "EMA_BLANKET_FILTER_FILTER_TF=1h",
+    0.189,
+    1,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "GUARANTEED_REENTRY_K_FAVORABLE_HIGH=87.5",
+    0.0126,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "BTC_GUARANTEED_REENTRY_ENABLED=True",
+    0.013,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY2_QUICK_RECOVERY_ENABLED=True",
+    0.4092,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_FAVORABLE_MOVE_PCT=0.5",
+    0.0658,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "HARDCODED_RALLY_MIN_AGE_MIN=0",
+    2.0559,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "sw",
+    "REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS=3",
+    0.1884,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_WINDOWED",
+    "f",
+    "HARDCODED_RALLY_MIN_AGE_MIN=0",
+    2.0559,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "CHANNEL_REENTRY_STOP_ENABLED=False",
+    0.0002,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "HLR_REENTRY_MULT_W=4.5",
+    0.1247,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REENTRY_ADAPTIVE",
+    "sw",
+    "HLR_REENTRY_MAX_AGE_S=0",
+    2.6566,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "AUGMENT_RISK_SIZING",
+    "sw",
+    "SCALP_V3_AUG_BE_STOP_PCT=0.1",
+    0.1414,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "sw",
+    "NOLOSS_BYPASS_WT_5OF5_MIN_TFS=3",
+    0.2282,
+    2,
+    2,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_PROFIT_LOCK",
+    "f",
+    "HLR_TOP_MIN_TFS=4",
+    0.8578,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "MI_ENTRY_STRUCT_BONUS=8",
+    2.5277,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "HTF_AGAINST_FORCE_CLOSE_ENABLED=False",
+    0.0056,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "REDUCE_SIGNAL_RATER",
+    "sw",
+    "WT_PERCENTILE_ENTRY_GATE_ENABLED=False",
+    0.3334,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "COUNTER_TREND_SMA200_BYPASS_ENABLED=True",
+    0.1034,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "sw",
+    "OPEN_RATE_MAX=15",
+    0.0614,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ],
+   [
+    "GLOBAL_RISK_GATES",
+    "f",
+    "MTF_DC_REJECT_FILTER_TF=1h",
+    0.3704,
+    1,
+    1,
+    "breadth pos<n(min 2/3)"
+   ]
+  ]
+ },
+ "CRYPTO_SHORT": {
+  "rows_with_stats": 1355,
+  "cleared": {},
+  "promoted_switch": [
+   [
+    "AUGMENT_TREND",
+    "REENTRY_AUGMENT_SIZE_MULT",
+    [
+     1
+    ],
+    2,
+    0.4291
+   ]
+  ],
+  "promoted_filter": [],
+  "repaired_defaults": [],
+  "violations": [],
+  "floor_guard": {
+   "ok": true,
+   "refuse_all": false,
+   "refused_keys": [],
+   "reason": "combined promotions keep the trade floor",
+   "samples": [
+    "PUMPUSDT_SHORT",
+    "ZROUSDT_SHORT",
+    "MINAUSDT_SHORT",
+    "BBUSDT_SHORT",
+    "MOVRUSDT_SHORT"
+   ],
+   "candidate_fail": null,
+   "eliminated": null,
+   "single_key": null,
+   "baseline_median": {
+    "med_trades": 0,
+    "med_tim": 0.0
+   },
+   "candidate_median": {
+    "med_trades": 0,
+    "med_tim": 0.0
+   },
+   "final_median": {
+    "med_trades": null,
+    "med_tim": null
+   }
+  }
+ }
+}

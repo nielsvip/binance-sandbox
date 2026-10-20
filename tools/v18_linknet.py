@@ -826,6 +826,7 @@ class Trainer:
         e_pos = np.zeros(len(eval_rows), np.float64)
         n_out = np.zeros(len(eval_rows), np.float64)
         p_out = np.zeros(len(eval_rows), np.float64)
+        pr_out = np.zeros(len(eval_rows), np.float64)
         kind_f = D["kind"][fit_rows]
         y_f = D["y"][fit_rows].astype(np.float64)
         d_f = D["d"][fit_rows].astype(np.float64)
@@ -856,7 +857,7 @@ class Trainer:
                 n_e = np.where(hit, nP[pos_ix], 0)
                 p_e = np.where(hit, pP[pos_ix], 0)
                 out[sel_e] = (p_e + m * prior) / (n_e + m)
-                n_out[sel_e], p_out[sel_e] = n_e, p_e
+                n_out[sel_e], p_out[sel_e], pr_out[sel_e] = n_e, p_e, prior
                 e_pos[sel_e] = np.where(hit & (p_e > 0), sP[pos_ix] / np.maximum(p_e, 1), mpos0)
             else:
                 sk = D["set_i"][fk]
@@ -865,9 +866,9 @@ class Trainer:
                 pS = np.bincount(sk, weights=yk, minlength=len(nS))
                 sS = np.bincount(sk, weights=np.where(yk > 0, dk, 0.0), minlength=len(nS))
                 out[sel_e] = (pS[es] + m * p0) / (nS[es] + m)
-                n_out[sel_e], p_out[sel_e] = nS[es], pS[es]
+                n_out[sel_e], p_out[sel_e], pr_out[sel_e] = nS[es], pS[es], p0
                 e_pos[sel_e] = np.where(pS[es] > 0, sS[es] / np.maximum(pS[es], 1), mpos0)
-        self._last_counts = (n_out, p_out)
+        self._last_counts = (n_out, p_out, pr_out)
         return out, e_pos
 
     def holdout_report(self):
@@ -890,9 +891,11 @@ class Trainer:
         out = self.predict(net, test_rows)
         cold = self.predict(net, test_rows, cold=True)
         cb, cb_e = self.count_baseline(pre_rows, test_rows)
-        n_k, pos_k = self._last_counts
+        n_k, pos_k, prior_k = self._last_counts
         p_ln = sigmoid(out[:, 0])
-        p_hy = (pos_k + VB.M_SHRINK * p_ln) / (n_k + VB.M_SHRINK)
+        lg = lambda q: np.log(np.clip(q, 1e-6, 1 - 1e-6) / (1 - np.clip(q, 1e-6, 1 - 1e-6)))
+        hprior = sigmoid(0.5 * lg(p_ln) + 0.5 * lg(prior_k))  # linknet x the brain's own backoff prior (filter-option / cat_side)
+        p_hy = (pos_k + VB.M_SHRINK * hprior) / (n_k + VB.M_SHRINK)
         p_cold = sigmoid(cold[:, 0])
         y = D["y"][test_rows].astype(np.float64)
         d = D["d"][test_rows].astype(np.float64)
@@ -1552,7 +1555,7 @@ def cmd_calibrate(a):
                 continue
             ev = json.loads(js)
             cs = VB.cat_side_of(ev.get("s"))
-            if cs is None or (a.since and ts < a.since):
+            if cs is None:
                 continue
             by_cs[cs].append((ts, ev))
     os.remove(srt)
@@ -1578,6 +1581,8 @@ def cmd_calibrate(a):
         P, Y, isprop, untried = [], [], [], []
         PR, YR = [], []
         for ts, ev in by_cs.get(cs, []):
+            if since and ts < since:
+                continue
             rk = f"{ev['sh']}|{ev['k']}"
             ri = r_ix.get(rk)
             if ri is None:
@@ -1634,7 +1639,7 @@ def main(argv=None):
     t.add_argument("--hidden", type=int, default=64)
     t.add_argument("--batch", type=int, default=4096)
     t.add_argument("--lr", type=float, default=2e-3)
-    t.add_argument("--max-epochs", type=int, default=10)
+    t.add_argument("--max-epochs", type=int, default=20)
     t.add_argument("--max-train", type=int, default=None)
     s = sub.add_parser("score")
     s.add_argument("--cat-side", action="append", choices=CAT_SIDES)

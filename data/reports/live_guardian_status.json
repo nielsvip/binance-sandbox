@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T03:25:42Z",
+ "ts": "2026-10-20T03:30:15Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,10 +27,10 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 31,
+   "fills_6h": 30,
    "open_positions": 8,
-   "unrealised_usd": -0.05,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.07,
+   "pos_mismatch": 8,
    "vec_parity": {
     "live_vec_decisions": 6,
     "state_divergent": 1,
@@ -38,17 +38,17 @@
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 3,
-    "vec_exact_fills_without_decision": 15,
+    "vec_exact_fills_without_decision": 14,
     "matched_by_reason": 0
    }
   },
   "men": {
    "fills_6h": 0,
    "open_positions": 2,
-   "unrealised_usd": 0.18,
+   "unrealised_usd": 0.21,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 7,
+    "live_vec_decisions": 6,
     "state_divergent": 3,
     "filled": 0,
     "refused_non_safety": 0,
@@ -61,13 +61,13 @@
   "ang": {
    "fills_6h": 15,
    "open_positions": 7,
-   "unrealised_usd": 0.12,
-   "pos_mismatch": 0,
+   "unrealised_usd": 0.07,
+   "pos_mismatch": 4,
    "vec_parity": {
-    "live_vec_decisions": 1528,
+    "live_vec_decisions": 1651,
     "state_divergent": 0,
     "filled": 0,
-    "refused_non_safety": 542,
+    "refused_non_safety": 704,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
     "vec_exact_fills_without_decision": 12,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 1,
    "open_positions": 2,
-   "unrealised_usd": 0.59,
+   "unrealised_usd": 0.57,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
@@ -126,1459 +126,1459 @@
    "pids": [
     "20217"
    ],
-   "starts_30m": 1,
-   "log_age_s": 59.0
+   "starts_30m": 0,
+   "log_age_s": 95.0
   },
   "men": {
    "pids": [
     "25597"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 18.0
   },
   "ang": {
    "pids": [
-    "82480"
+    "88462"
    ],
-   "starts_30m": 4,
-   "log_age_s": 0.0
+   "starts_30m": 5,
+   "log_age_s": -1.0
   },
   "inf": {
    "pids": [
-    "8769"
+    "86836"
    ],
    "starts_30m": 1,
-   "log_age_s": 124.0
+   "log_age_s": 99.0
   },
   "flz": {
    "pids": [
-    "82526"
+    "88695"
    ],
    "starts_30m": 5,
-   "log_age_s": 1.0
+   "log_age_s": 98.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 181.0
+   "log_age_s": -1.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 204.0
+   "log_age_s": 65.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN B14 bar=2026-10-08T05:45:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.58% bar=2026-10-08T06:00:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-08T06:15:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B_EMA20SLOPE bar=2026-10-08T08:45:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-08T09:30:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-08T09:45:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-08T10:15:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-08T13:00:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE PPL_TP_g1.92%>=1.88%_stopBE0.2442 bar=2026-10-08T14:00:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN WR_PULLBACK bar=2026-10-08T15:00:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g3.52% bar=2026-10-08T15:15:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-08T16:15:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.48% bar=2026-10-08T16:30:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-08T17:30:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.31% bar=2026-10-08T17:45:00Z refused by non-safety gate: 20 02:52:31 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791371700 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN B_KZONE bar=2026-10-08T21:30:00Z refused by non-safety gate: 20 02:52:36 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791385200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE FIXED_STOP bar=2026-10-09T01:15:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN B_KZONE bar=2026-10-09T02:15:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B12 bar=2026-10-09T04:15:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-09T04:45:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE FIXED_STOP bar=2026-10-09T06:30:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-09T07:15:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-09T07:30:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE MULTI_TF_EXIT s73/55 g-0.26% bar=2026-10-09T07:30:00Z refused by non-safety gate: 20 02:52:43 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791412200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=2026-10-09T08:00:00Z refused by non-safety gate: 20 02:52:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g1.68% bar=1791432000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-09T10:30:00Z refused by non-safety gate: 20 02:52:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g1.68% bar=1791432000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.04% bar=2026-10-09T10:45:00Z refused by non-safety gate: 20 02:52:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g1.68% bar=1791432000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B_SMA200DIST bar=2026-10-09T11:30:00Z refused by non-safety gate: 20 02:52:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g1.68% bar=1791432000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE MULTI_TF_EXIT s54/45 g0.43% bar=2026-10-09T11:45:00Z refused by non-safety gate: 20 02:52:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g1.68% bar=1791432000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-09T12:00:00Z refused by non-safety gate: 20 02:52:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g1.68% bar=1791432000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.17% bar=2026-10-09T12:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-09T13:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.82% bar=2026-10-09T13:30:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-09T16:00:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-09T17:00:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-09T17:00:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.09% bar=2026-10-09T17:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-09T18:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.34% bar=2026-10-09T18:30:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-09T19:30:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.13% bar=2026-10-09T19:45:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B_SMA200DIST bar=2026-10-09T20:00:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-09T20:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-09T20:30:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-09T20:45:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE PPL_TP_g2.18%>=1.88%_stopBE0.2337 bar=2026-10-09T21:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-09T23:45:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-10T00:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B_EMA20SLOPE bar=2026-10-10T02:45:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-10T03:00:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-10T03:15:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-10T03:30:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-10T03:45:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-long g0.74% bar=2026-10-10T04:00:00Z refused by non-safety gate: 20 02:53:08 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791508500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-10T07:00:00Z refused by non-safety gate: 20 02:53:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791527400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.58% bar=2026-10-10T07:15:00Z refused by non-safety gate: 20 02:53:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791527400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B14 bar=2026-10-10T08:30:00Z refused by non-safety gate: 20 02:53:17 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=1791532800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-10T09:00:00Z refused by non-safety gate: 20 02:53:17 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=1791532800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-10T09:15:00Z refused by non-safety gate: 20 02:53:17 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=1791532800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-10T09:30:00Z refused by non-safety gate: 20 02:53:17 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=1791532800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-10T10:00:00Z refused by non-safety gate: 20 02:53:17 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=1791532800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.21% bar=2026-10-10T10:15:00Z refused by non-safety gate: 20 02:53:17 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=1791532800 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-10T11:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.29% bar=2026-10-10T12:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-10T13:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.04% bar=2026-10-10T13:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B14 bar=2026-10-10T14:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g0.04% bar=2026-10-10T14:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-10T17:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B_EMA20SLOPE bar=2026-10-10T18:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g-0.41% bar=2026-10-10T19:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B14 bar=2026-10-10T22:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE ALL_TF_AGAINST_CLOSE g-0.12% bar=2026-10-10T22:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B_REENTRY2 bar=2026-10-11T01:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-11T02:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_ bar=2026-10-11T03:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-11T06:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE MULTI_TF_EXIT s45/45 g0.54% bar=2026-10-11T06:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-11T07:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE MTF_BB_REJECT_1h bar=2026-10-11T11:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-11T13:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:46Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B12 bar=2026-10-11T14:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE FIXED_STOP bar=2026-10-11T14:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-11T16:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B12 bar=2026-10-11T19:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T19:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T19:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T20:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T20:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T20:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T20:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-11T21:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-11T21:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.45% bar=2026-10-11T21:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN GOLDEN_RULE_ENTRY bar=2026-10-11T23:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-11T23:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-12T00:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-12T00:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-12T00:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.33% bar=2026-10-12T00:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-12T01:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.04% bar=2026-10-12T01:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN GOLDEN_RULE_ENTRY bar=2026-10-12T02:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.24790 bar=2026-10-12T03:00:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.25460 bar=2026-10-12T03:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE PPL_TP_g2.88%>=1.88%_stopBE0.2458 bar=2026-10-12T03:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "AUGMENT UAG_LADDER gain_since_add +3.50% >= 3.0% bar=2026-10-12T03:15:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.25650 bar=2026-10-12T03:30:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.25380 bar=2026-10-12T03:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B15 bar=2026-10-12T05:45:00Z refused by non-safety gate: 20 02:54:13 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1791688500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE TECHNICAL_EXIT dc_4h_high bar=2026-10-12T07:00:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-12T08:00:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.08% bar=2026-10-12T08:15:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-12T09:15:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-12T09:30:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-12T10:30:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN B_KZONE bar=2026-10-12T11:00:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.40% bar=2026-10-12T11:15:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-12T12:00:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN B_KZONE bar=2026-10-12T12:15:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.81% bar=2026-10-12T12:30:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE FIXED_STOP bar=2026-10-12T12:30:00Z refused by non-safety gate: 20 02:54:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1791718200 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-12T13:30:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.53% bar=2026-10-12T13:45:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-12T14:45:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.12% bar=2026-10-12T15:00:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-12T16:45:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.79% bar=2026-10-12T17:00:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-12T18:00:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-12T18:15:00Z refused by non-safety gate: 20 02:54:30 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1791729900 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-12T19:45:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.08% bar=2026-10-12T20:00:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-12T20:30:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-12T22:30:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-12T23:00:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g1.29% bar=2026-10-12T23:15:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-13T00:30:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.59% bar=2026-10-13T00:45:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN TIER1_PRICE_CROSS_REENTRY_exit0.2436_cur bar=2026-10-13T03:15:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-13T04:15:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.37% bar=2026-10-13T04:30:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-13T05:15:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-13T06:00:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.37% bar=2026-10-13T06:15:00Z refused by non-safety gate: 20 02:54:46 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px0.247900_lvl0.247700_TWINBA bar=1791774000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-13T07:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-1.27% bar=2026-10-13T08:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "OPEN B14 bar=2026-10-13T08:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_LONG",
-   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-13T08:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-13T09:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.50% bar=2026-10-13T09:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-13T10:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.13% bar=2026-10-13T10:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN B_KZONE bar=2026-10-13T11:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.04% bar=2026-10-13T12:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-13T13:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.76% bar=2026-10-13T13:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-13T15:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.38% bar=2026-10-13T15:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-13T17:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.21% bar=2026-10-13T17:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_REFUSED",
-   "key": "ang:SNXUSDT_SHORT",
-   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-13T22:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
-  },
-  {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.21% bar=2026-10-13T22:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_SHORT",
    "evidence": "OPEN B_KZONE bar=2026-10-13T23:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.25% bar=2026-10-13T23:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "OPEN B_VWAPBOUNCE bar=2026-10-13T23:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T00:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T00:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T00:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T00:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T01:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T01:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_SHORT",
    "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-14T01:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T01:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_SHORT",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.04% bar=2026-10-14T01:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:45Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-14T01:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:46Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "ang:SNXUSDT_LONG",
    "evidence": "CLOSE PEAK_GIVEBACK_GAIN_EROSION_STOP bar=2026-10-14T02:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-14T04:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-14T04:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_DC4_15M_BREAK bar=2026-10-14T05:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.08% bar=2026-10-14T06:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-14T08:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.04% bar=2026-10-14T08:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-14T09:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.30% bar=2026-10-14T10:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-14T12:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.68% bar=2026-10-14T12:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-14T13:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g1.08% bar=2026-10-14T14:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.229900 bar=2026-10-14T14:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.229700 bar=2026-10-14T14:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.227800 bar=2026-10-14T14:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.229700 bar=2026-10-14T14:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-14T15:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.228200 bar=2026-10-14T15:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-14T15:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-14T16:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.66% bar=2026-10-14T16:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-14T17:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:46Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.48% bar=2026-10-14T17:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-14T22:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.39% bar=2026-10-14T22:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-14T23:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_ bar=2026-10-15T00:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.225500 bar=2026-10-15T01:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN DC_BREAKOUT_ENTRY bar=2026-10-15T01:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.225400 bar=2026-10-15T01:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.223900 bar=2026-10-15T02:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g5.06% age30m bar=2026-10-15T02:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.214000 bar=2026-10-15T02:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.218900 bar=2026-10-15T02:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.219000 bar=2026-10-15T02:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_LONG_px0.218600 bar=2026-10-15T03:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B12 bar=2026-10-15T05:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE MTF_BB_REJECT_1h bar=2026-10-15T10:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-15T12:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE FIXED_STOP bar=2026-10-15T14:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-15T15:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "REDUCE PPL_TP_g1.88%>=1.88%_stopBE0.2229 bar=2026-10-15T16:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-15T16:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.35% bar=2026-10-15T16:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-15T18:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.09% bar=2026-10-15T18:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-15T19:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-15T19:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE MULTI_TF_EXIT s58/55 g-0.26% bar=2026-10-15T19:45:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.04% bar=2026-10-15T20:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-15T21:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.62% bar=2026-10-15T21:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "OPEN B14 bar=2026-10-15T22:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-15T23:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-15T23:00:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.31% bar=2026-10-15T23:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-10-16T00:15:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.04% bar=2026-10-16T00:30:00Z refused by non-safety gate: 20 02:56:15 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792025100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-16T02:30:00Z refused by non-safety gate: 20 02:56:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE STATEFUL_PORTED_EXIT g5.06% age30m bar=1792030500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.13% bar=2026-10-16T02:45:00Z refused by non-safety gate: 20 02:56:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE STATEFUL_PORTED_EXIT g5.06% age30m bar=1792030500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-10-16T03:00:00Z refused by non-safety gate: 20 02:56:21 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE STATEFUL_PORTED_EXIT g5.06% age30m bar=1792030500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-16T05:00:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-16T05:15:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-16T05:30:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-16T05:45:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-16T06:00:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-16T06:00:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:47Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.04% bar=2026-10-16T06:15:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-16T07:45:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.17% bar=2026-10-16T08:00:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "OPEN B14 bar=2026-10-16T08:30:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-16T10:00:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE WT_LOWER_CROSS_EXIT wt_15m lower wt+pric bar=2026-10-16T10:00:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.52% bar=2026-10-16T10:15:00Z refused by non-safety gate: 20 02:56:29 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE MTF_BB_REJECT_1h bar=1792058400 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-16T11:15:00Z refused by non-safety gate: 20 02:56:35 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792074600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-16T11:30:00Z refused by non-safety gate: 20 02:56:35 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792074600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-16T12:30:00Z refused by non-safety gate: 20 02:56:35 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792074600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.57% bar=2026-10-16T12:45:00Z refused by non-safety gate: 20 02:56:35 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792074600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN GOLDEN_RULE_ENTRY bar=2026-10-16T15:00:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_ bar=2026-10-16T15:15:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-16T16:45:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.58% bar=2026-10-16T17:00:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-16T21:45:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE FIXED_STOP bar=2026-10-16T23:00:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-17T00:00:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=2026-10-17T12:45:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE PPL_SL_CLOSE_upgraded-scalp_px0.2183_sto bar=2026-10-17T13:15:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B14 bar=2026-10-17T15:00:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_ bar=2026-10-17T15:15:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN DC_BREAKOUT_ENTRY bar=2026-10-17T16:15:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_ bar=2026-10-17T16:45:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN B_KZONE bar=2026-10-17T20:00:00Z refused by non-safety gate: 20 02:57:19 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE FIXED_STOP bar=1792191600 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g1.65% age75m bar=2026-10-17T21:15:00Z refused by non-safety gate: 20 02:57:40 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=1792241100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-17T22:15:00Z refused by non-safety gate: 20 02:57:40 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=1792241100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "OPEN B_SMA200DIST bar=2026-10-18T11:15:00Z refused by non-safety gate: 20 02:57:40 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=1792241100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.00% bar=2026-10-18T12:00:00Z refused by non-safety gate: 20 02:57:40 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=1792241100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-10-18T12:00:00Z refused by non-safety gate: 20 02:57:40 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=1792241100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_LONG",
+   "evidence": "CLOSE MULTI_TF_EXIT s56/55 g-0.37% bar=2026-10-18T12:30:00Z refused by non-safety gate: 20 02:57:40 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT REDUCE PPL_TP_g2.72%>=2.25%_stopBE0.2245 bar=1792241100 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN REENTRY_LOWER_HIGH bar=2026-10-18T13:00:00Z refused by non-safety gate: 20 02:57:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792255500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.38% bar=2026-10-18T13:15:00Z refused by non-safety gate: 20 02:57:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792255500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN DC_BREAKOUT_ENTRY bar=2026-10-18T14:15:00Z refused by non-safety gate: 20 02:57:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792255500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g0.43% bar=2026-10-18T14:30:00Z refused by non-safety gate: 20 02:57:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792255500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "OPEN LH_TRIGGER_ENTRY bar=2026-10-18T15:30:00Z refused by non-safety gate: 20 02:57:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792255500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:SNXUSDT_SHORT",
+   "evidence": "CLOSE EXIT_VELOCITY_WT against-short g-0.14% bar=2026-10-18T15:45:00Z refused by non-safety gate: 20 02:57:48 - WARNING - [ang] [VEC_EXACT_EXPIRED] SNXUSDT_SHORT CLOSE DAYTRADE_TARGET dc_1h_low +0.10% TARGET_BUF bar=1792255500 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE PPL_TP_g3.08%>=3.00%_stopBE11.3377 bar=2026-09-18T03:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE PROFIT_TP_EXHAUSTION bar=2026-09-18T04:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:48Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN B_EMA20SLOPE bar=2026-09-18T04:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T06:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T06:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE WT_CROSS_EXIT_1h_bear bar=2026-09-18T07:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN B_KZONE bar=2026-09-18T08:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T08:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T08:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T08:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T09:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T09:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T09:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T11:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g0.31% age270m bar=2026-09-18T12:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-09-18T13:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g1.13% age15m bar=2026-09-18T13:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.9920 bar=2026-09-18T14:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.0340 bar=2026-09-18T14:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.0790 bar=2026-09-18T14:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.1640 bar=2026-09-18T14:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.1320 bar=2026-09-18T15:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.2070 bar=2026-09-18T15:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN B15 bar=2026-09-18T15:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T18:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T18:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g1.57% age210m bar=2026-09-18T19:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN DC_BREAKOUT_ENTRY bar=2026-09-18T19:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T22:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-18T22:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-19T05:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-19T06:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:49Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE WT_CROSS_EXIT_1h_bear bar=2026-09-19T18:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN VWAP_STRETCH_ENTRY_PCT0.625 bar=2026-09-20T05:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE PPL_TP_g4.07%>=3.00%_stopBE12.0200 bar=2026-09-20T16:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE PPL_SL_CLOSE_upgraded-scalp_px12.4780_st bar=2026-09-20T17:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN B_MOM3 bar=2026-09-20T17:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-20T19:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "REDUCE WT_CROSS_EXIT_1h_bear bar=2026-09-20T19:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE WT_CROSS_EXIT_1h_bear bar=2026-09-20T19:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN REENTRY_EXIT_PRICE_BREAK bar=2026-09-20T22:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g1.10% age120m bar=2026-09-21T00:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-09-21T00:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.7130 bar=2026-09-21T01:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.8160 bar=2026-09-21T09:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g1.85% age540m bar=2026-09-21T09:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.9620 bar=2026-09-21T09:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px13.0840 bar=2026-09-21T09:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px12.9350 bar=2026-09-21T09:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN B15 bar=2026-09-21T10:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE STATEFUL_PORTED_EXIT g1.58% age570m bar=2026-09-21T20:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px13.2440 bar=2026-09-21T20:15:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px13.1680 bar=2026-09-21T20:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN B_EMA20SLOPE bar=2026-09-21T20:45:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_SHORT",
+   "evidence": "CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px13.2390 bar=2026-09-21T23:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE UNCOND_DC_LOW_15M bar=2026-09-22T01:00:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "OPEN REENTRY_HIGHER_LOW bar=2026-09-22T15:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
+   "severity": "CRITICAL",
+   "kind": "VEC_DECISION_REFUSED",
+   "key": "ang:LINKUSDC_LONG",
+   "evidence": "CLOSE UNCOND_DC_LOW_15M bar=2026-09-23T07:30:00Z refused by non-safety gate: 20 03:02:11 - WARNING - [ang] [VEC_EXACT_EXPIRED] LINKUSDC_SHORT CLOSE ULTIMATE_DC_4h_HARD_STOP_SHORT_px11.992000_lvl11.951000_TWIN bar=1789740000 BLOCKED_SKIPPED_STALE (> 4 bars unconsumed)"
+  },
+  {
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:BNBUSDC_LONG",
    "evidence": "AUGMENT 0.01 @ 2026-10-20T02:31:16Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:BATUSDT_LONG",
    "evidence": "AUGMENT 63.9 @ 2026-10-19T22:52:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:BATUSDT_LONG",
    "evidence": "AUGMENT 63.9 @ 2026-10-20T02:32:21Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:AIAUSDT_LONG",
    "evidence": "AUGMENT 149 @ 2026-10-19T23:28:56Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:AIAUSDT_LONG",
    "evidence": "AUGMENT 7 @ 2026-10-19T23:29:15Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:AIAUSDT_LONG",
    "evidence": "AUGMENT 156 @ 2026-10-19T23:29:34Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:AIAUSDT_LONG",
    "evidence": "REDUCE 156 @ 2026-10-20T01:37:16Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ARUSDT_LONG",
    "evidence": "AUGMENT 1.5 @ 2026-10-20T00:59:35Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:ARUSDT_LONG",
    "evidence": "AUGMENT 1.5 @ 2026-10-20T02:32:28Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:TRBUSDT_LONG",
    "evidence": "AUGMENT 0.6 @ 2026-10-20T02:04:32Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:TRBUSDT_LONG",
    "evidence": "AUGMENT 0.6 @ 2026-10-20T02:32:24Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:50Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "ang:XMRUSDT_LONG",
    "evidence": "AUGMENT 0.02 @ 2026-10-19T21:59:41Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:47Z",
+   "ts": "2026-10-20T03:30:51Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "inf:ARUSDT_LONG",
    "evidence": "AUGMENT 1.5 @ 2026-10-20T02:28:59Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.59% decided 2026-10-19T22:51:54Z bar=2026-10-19T22:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:WLDUSDC_LONG",
    "evidence": "AUGMENT HAIKU_WINNER_AUG_3.4pct bar=2026-10-19T22:30:00Z refused by non-safety gate: 19 22:52:36 - INFO - [flz] [VEC_EXACT] flz:WLDUSDC_LONG AUGMENT HAIKU_WINNER_AUG_3.4pct qty=2.989244 -> BLOCKED_GAIN_GATE_2.67%_lt_3.00%_pos$13"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "CLOSE EXIT_VELOCITY_WT against-long g-0.59% decided 2026-10-19T22:55:13Z bar=2026-10-19T22:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:WLDUSDC_LONG",
    "evidence": "AUGMENT HAIKU_WINNER_AUG_3.4pct bar=2026-10-19T22:30:00Z refused by non-safety gate: 19 22:57:20 - INFO - [flz] [VEC_EXACT] flz:WLDUSDC_LONG AUGMENT HAIKU_WINNER_AUG_3.4pct qty=2.989244 -> BLOCKED_GAIN_GATE_2.69%_lt_3.00%_pos$13"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_REFUSED",
    "key": "flz:BTCDOMUSDT_SHORT",
    "evidence": "OPEN B_KZONE bar=2026-10-19T23:00:00Z refused by non-safety gate: 19 23:59:17 - WARNING - [flz] \ud83d\udeab [EMA_BLANKET_FILTER] flz:BTCDOMUSDT_SHORT: BLOCKED OPEN \u2014 ema9>21 agrees on 0/1 TFs < 1. reason=B_KZONE |VEC_EXACT"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "flz:WLDUSDC_LONG",
    "evidence": "AUGMENT 24.2 @ 2026-10-19T21:53:42Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:COTIUSDT_SHORT",
    "evidence": "REDUCE FIXED_STOP_SHORT_px0.010903_lvl0.010902_g-0.97 @ 2026-10-20T02:11:18Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:52Z",
    "severity": "CRITICAL",
    "kind": "NATIVE_FILL_IN_EXACT_MODE",
    "key": "fin:BTCDOMUSDT_LONG",
    "evidence": "REDUCE FIXED_STOP_LONG_px5581.240598_lvl5584.005000_g-0.35 @ 2026-10-19T22:12:41Z: non-vec fill in exact mode"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:54Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "4 new process ids in 30 min (['18794', '29050', '35107', '82480'])"
+   "evidence": "5 new process ids in 30 min (['18794', '29050', '35107', '82480', '88462'])"
   },
   {
-   "ts": "2026-10-20T03:25:48Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 124s"
-  },
-  {
-   "ts": "2026-10-20T03:25:48Z",
+   "ts": "2026-10-20T03:30:54Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "5 new process ids in 30 min (['3983', '37483', '57830', '76603', '82526'])"
+   "evidence": "5 new process ids in 30 min (['37483', '57830', '76603', '82526', '88695'])"
   }
  ],
  "alert_counts": {
+  "POSITION_STATE_MISMATCH": 12,
   "VEC_OPEN_WHILE_LIVE_IN": 3,
   "VEC_DECISION_NOT_FILLED": 8,
-  "FILL_WITHOUT_VEC_DECISION": 29,
+  "FILL_WITHOUT_VEC_DECISION": 28,
   "VEC_EXIT_WHILE_LIVE_FLAT": 1,
-  "VEC_DECISION_REFUSED": 545,
+  "VEC_DECISION_REFUSED": 707,
   "NATIVE_FILL_IN_EXACT_MODE": 2,
-  "RESTART_LOOP": 2,
-  "STALE_LOG": 1
+  "RESTART_LOOP": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -1612,5 +1612,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 6.85
+ "sweep_s": 38.89
 }

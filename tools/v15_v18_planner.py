@@ -299,13 +299,25 @@ def digest_dir(root=None) -> Path:
     return Path(root or Path(__file__).resolve().parents[1]) / "data" / "learn"
 
 
+def learn_file(name: str, root=None, sub: str = "learn") -> Path:
+    """data/<sub>/<name> (or V18_DIGEST_DIR / V18_BRAIN_DIR); when absent there, tools/v18_data/<sub>/<name> — the gated path a
+    version-gate candidate can carry (the bench root's data/ is the frozen snapshot, candidate data/ files never reach it)."""
+    base = Path(root or Path(__file__).resolve().parents[1])
+    env = os.environ.get("V18_DIGEST_DIR" if sub == "learn" else "V18_BRAIN_DIR")
+    first = (Path(env) if env else base / "data" / sub) / name
+    if first.exists() or env:
+        return first
+    alt = base / "tools" / "v18_data" / sub / name
+    return alt if alt.exists() else first
+
+
 def load_digest(cat_side: str, root=None):
     """-> (digest | None, why). Fail-open (absent / unreadable -> None). A digest whose meta.cat_side is not this board's
     cat_side is REFUSED (principle 13: nothing from another cat_side may steer this board)."""
     cs = str(cat_side or "").upper()
     if cs not in CAT_SIDES:
         return None, f"unknown cat_side {cat_side!r}"
-    p = digest_dir(root) / f"digest_{cs}.json"
+    p = learn_file(f"digest_{cs}.json", root)
     if not p.exists():
         return None, f"absent {p}"
     try:
@@ -706,14 +718,13 @@ def profile_on() -> bool:
 def load_profile(cat_side: str, root=None):
     """-> (needed_filters map, switch_profile rows, min_n, why) for THIS cat_side; fail-open (None maps = today's behaviour)."""
     cs = str(cat_side or "").upper()
-    d = digest_dir(root)
     try:
-        nf = json.loads((d / f"needed_filters_{cs}.json").read_text())
+        nf = json.loads(learn_file(f"needed_filters_{cs}.json", root).read_text())
     except Exception as e:
         return None, None, None, f"needed_filters absent/unreadable: {e}"[:160]
     prof, min_n = {}, int(os.environ.get("V18_PROFILE_MIN_N", "10"))
     try:
-        sp = json.loads((d / f"switch_profile_{cs}.json").read_text())
+        sp = json.loads(learn_file(f"switch_profile_{cs}.json", root).read_text())
         if str((sp.get("_meta") or {}).get("cat_side") or cs).upper() != cs:
             return None, None, None, "switch_profile CAT_SIDE_MISMATCH — refused (principle 13)"
         prof = sp.get("rows") or {}
@@ -722,7 +733,7 @@ def load_profile(cat_side: str, root=None):
         prof = {}
     props = {}
     try:
-        props = json.loads((d / f"linknet_proposals_{cs}.json").read_text())
+        props = json.loads(learn_file(f"linknet_proposals_{cs}.json", root).read_text())
     except Exception:
         props = {}
     nf = {k: v for k, v in (nf or {}).items() if isinstance(v, dict)}
@@ -768,7 +779,7 @@ def must_on() -> bool:
 def load_must_index(cat_side: str, root=None):
     """-> ({item: {syms, best}}, why) from data/learn/must_pos_<CS>.json (tools/v15_v18_must_index.py); fail-open."""
     cs = str(cat_side or "").upper()
-    p = digest_dir(root) / f"must_pos_{cs}.json"
+    p = learn_file(f"must_pos_{cs}.json", root)
     try:
         d = json.loads(p.read_text())
     except Exception as e:

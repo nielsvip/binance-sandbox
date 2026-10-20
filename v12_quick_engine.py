@@ -8324,6 +8324,11 @@ class QuickConfig:
     REENTRY_ON_HIGHER_LOW_ENABLED: bool = (
         True  # USER 2026-10-14 re-entry trigger 3/3: a 15m higher low above the lowest low since the exit + up close (vv lower high short) (+15m WT confirm)
     )
+    FIXED_STOP_REF_FIELD: str = "dc_low"  # E7 USER 2026-10-20: FIXED_STOP reference dc_low|dc_basis|bb_low|bb_basis (shorts mirrored: dc_high/bb_upper); mirror of config.py/config_tradier.py
+    FIXED_STOP_REF_TF: str = "15m"  # E7: reference timeframe 15m|1h|4h
+    FIXED_STOP_BUFFER_PCT: float = 0.25  # E7: software leg ∓% beyond the reference (venue leg stays ~0.15% beyond software, vec_decisions/fixed_stop.crypto_exchange_level)
+    FIXED_STOP_TIGHTEN_MODE: str = "off"  # E7: off|breakeven_after_pct|trail_ref — ratchet only, never looser than the frozen level
+    FIXED_STOP_TIGHTEN_TRIGGER_PCT: float = 1.0  # E7: peak favourable move (%) that arms the tighten mode
     SESSION_OPEN_STOP_REFREEZE_ENABLED: bool = (
         False  # USER 2026-10-13 (stocks): mirror of config_tradier.py — first RTH bar of each ET session re-freezes a carried position's FIXED_STOP to the current dc_15m channel (vec_decisions/fixed_stop.session_open_mask).
     )
@@ -15367,6 +15372,27 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _uh_l15 = _safe(
         npz, "dc_low_15m", n, 0
     )  # USER 2026-10-06 uncond-stop twin LONG side (dc_low_4h var is TF-swapped above)
+    # E7 2026-10-20 FIXED_STOP switch family (USER "fixed stop can get switches ... if the numbers prove otherwise I go with the
+    # numbers", doc 17 §3.7): the reference the stop freezes at. Defaults (dc_low/15m/0.25/off) take the unchanged
+    # freeze_software_level(dc_low_15m, dc_high_15m) path below, so a board without these keys computes today's level exactly.
+    _fx_spec = vec_decisions.fixed_stop.normalize_spec(getattr(cfg, "FIXED_STOP_REF_FIELD", "dc_low"), getattr(cfg, "FIXED_STOP_REF_TF", "15m"), getattr(cfg, "FIXED_STOP_BUFFER_PCT", 0.25), getattr(cfg, "FIXED_STOP_TIGHTEN_MODE", "off"), getattr(cfg, "FIXED_STOP_TIGHTEN_TRIGGER_PCT", 1.0))
+    _fx_ref_default = vec_decisions.fixed_stop.is_default_reference(_fx_spec)
+    _fx_tight_on = _fx_spec[3] != "off"
+    _fx_ref_arr = {"dc_low_15m": _uh_l15, "dc_high_15m": _uh_h15}
+    if not _fx_ref_default or _fx_tight_on:
+        _fx_tf = _fx_spec[1]
+        for _fx_k in set(vec_decisions.fixed_stop.ref_keys(is_long, _fx_spec[0], _fx_tf)) | {f"dc_high_{_fx_tf}", f"dc_low_{_fx_tf}", f"bb_upper_{_fx_tf}", f"bb_lower_{_fx_tf}"}:
+            if _fx_k not in _fx_ref_arr and _fx_k in npz:
+                _fx_ref_arr[_fx_k] = _safe(npz, _fx_k, n, 0)
+    def _fx_get_at(_i):
+        def _g(_k):
+            _a = _fx_ref_arr.get(_k)
+            return float(_a[_i]) if (_a is not None and _i < len(_a)) else None
+        return _g
+    def _fx_freeze_spec(_i, _ep):
+        return vec_decisions.fixed_stop.freeze_level_spec(is_long, _fx_spec, _fx_get_at(_i), _ep)[0]
+    def _fx_ref_now(_i):
+        return vec_decisions.fixed_stop.ref_value(is_long, _fx_spec[0], _fx_spec[1], _fx_get_at(_i))[0]
     # 2026-10-07 filter-ablation: True flags force their groups off (explicit getattr
     # fast path — all False skips the import; static names keep the reads AST-visible
     # for SWITCH_BIBLE, mirroring the ABLATION_DISABLE_REENTRY inline pattern).
@@ -17851,7 +17877,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             "peak_pnl_pct": 0.0,
             "fees": abs(qty0 * px) * half_fee,
             "entry_reason": entry_reason,
-            "fixed_stop": vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_e15l, _fx_e15h, px),
+            "fixed_stop": vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_e15l, _fx_e15h, px) if _fx_ref_default else _fx_freeze_spec(i, px),
             **(
                 {"n_augments": 1, "last_aug_px": float(px), "last_aug_bar": int(i), "last_aug_qty": float(_air_add), "carry_aug": True}
                 if _air_add > 0
@@ -20100,14 +20126,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _fx_c15h = float(_uh_h15[i]) if i < len(_uh_h15) else 0.0
                     except Exception:
                         _fx_c15l, _fx_c15h = 0.0, 0.0
-                    _fx_lvl = vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_c15l, _fx_c15h, float(pos.get("entry_price", pos.get("avg_price", px))))
+                    _fx_lvl = vec_decisions.fixed_stop.freeze_software_level(is_long, _fx_c15l, _fx_c15h, float(pos.get("entry_price", pos.get("avg_price", px)))) if _fx_ref_default else _fx_freeze_spec(i, float(pos.get("entry_price", pos.get("avg_price", px))))
                     pos["fixed_stop"] = _fx_lvl
                 if _fx_sess_open is not None and i < len(_fx_sess_open) and bool(_fx_sess_open[i]) and int(pos.get("entry_bar", i)) < i:
                     # 2026-10-13 SESSION_OPEN_STOP_REFREEZE (stocks): carried into this session -> new stop at the current dc_15m channel
-                    _fx_new = vec_decisions.fixed_stop.freeze_software_level(is_long, float(_uh_l15[i]) if i < len(_uh_l15) else 0.0, float(_uh_h15[i]) if i < len(_uh_h15) else 0.0, float(pos.get("entry_price", pos.get("avg_price", px))))
+                    _fx_new = vec_decisions.fixed_stop.freeze_software_level(is_long, float(_uh_l15[i]) if i < len(_uh_l15) else 0.0, float(_uh_h15[i]) if i < len(_uh_h15) else 0.0, float(pos.get("entry_price", pos.get("avg_price", px)))) if _fx_ref_default else _fx_freeze_spec(i, float(pos.get("entry_price", pos.get("avg_price", px))))
                     if _fx_new > 0:
                         _fx_lvl = _fx_new
                         pos["fixed_stop"] = _fx_lvl
+                        pos["fixed_stop_eff"] = 0.0
+                if _fx_tight_on:
+                    # E7 FIXED_STOP_TIGHTEN_MODE: the level checked on THIS bar is the ratchet set from information through the
+                    # previous bar (updated below, after the checks) — causal, and never looser than the frozen level.
+                    _fx_lvl = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, float(pos.get("fixed_stop_eff", 0.0) or 0.0))
                 _fx_px = px
                 if vec_decisions.fixed_stop.breached(is_long, px, _fx_lvl):
                     _fx_fire = "FIXED_STOP"
@@ -20118,6 +20149,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _fx_o = float(_fx_bar_op[i]) if i < len(_fx_bar_op) else 0.0
                         _fx_px = (min(_fx_lvl, _fx_o) if is_long else max(_fx_lvl, _fx_o)) if _fx_o > 0 else _fx_lvl
                         _fx_fire = "FIXED_STOP"
+                if _fx_tight_on and not _fx_fire:
+                    pos["fixed_stop_eff"] = vec_decisions.fixed_stop.tightened(is_long, _fx_lvl, vec_decisions.fixed_stop.tighten_candidate(is_long, _fx_spec, float(pos.get("avg_price", pos.get("entry_price", px))), float(pos.get("peak_pnl_pct", 0.0) or 0.0), _fx_ref_now(i)))
             if _fx_fire:
                 px = _fx_px
                 pos["fees"] += abs(pos["qty"] * px) * half_fee
