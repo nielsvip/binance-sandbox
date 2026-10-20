@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-20T21:01:51Z",
+ "ts": "2026-10-20T21:06:49Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -141,52 +141,44 @@
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 16.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 3647.0
+   "log_age_s": 3945.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 3649.0
+   "log_age_s": 3947.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-20T21:01:51Z",
+   "ts": "2026-10-20T21:06:49Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
-   "key": "ang:ASTERUSDT_LONG",
-   "evidence": "20 20:46:55 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ASTERUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $1252 on bounce (prior max 22.0000)"
-  },
-  {
-   "ts": "2026-10-20T21:01:51Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:ASTERUSDT_LONG",
-   "evidence": "order notional $1252.14 > MAX_ORDER_VALUE $300: 20 20:46:55 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:ASTERUSDT_LONG @ 0.716809 qty=1746.830196 ($1252.14) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.715648_exit0.708"
+   "key": "ang:TIAUSDC_LONG",
+   "evidence": "20 21:05:30 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $148 on bounce (prior max 0.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 1,
-  "SIZE_ANOMALY": 1
+  "CAP_BYPASS": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -234,5 +226,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.84
+ "sweep_s": 0.89
 }
