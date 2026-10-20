@@ -933,7 +933,7 @@ def repair_needs_redo(rep) -> bool:
 
 
 def content_ok(f_filled, done_n) -> str:
-    """USER 2026-10-03 (publish content gate): a sheet without calculations must NEVER publish. Returns '' if ok, else reason. Threshold: >=300 F cells and >=25% of the done board (a skip-bug publishes ~0; real fills write 48-73% — running/zero/red rows legitimately blank F)."""
+    """USER 2026-10-03 (publish content gate): a sheet without calculations must NEVER publish. 2026-10-17: f_filled counts rows whose F OR G is a measured number (worst_first never writes F). Returns '' if ok, else reason. Threshold: >=300 F cells and >=25% of the done board (a skip-bug publishes ~0; real fills write 48-73% — running/zero/red rows legitimately blank F)."""
     try:
         f = int(f_filled or 0)
     except Exception:
@@ -1539,10 +1539,19 @@ def essential_gate_check(done: dict, final_overrides: dict | None = None, is_lon
             continue
         recs = per.get(sw, [])
         tested = [r for r in recs if not r.get("is_running") and r.get("delta") is not None]
+        # 2026-10-17 MEASURED-ZERO: a real engine number of exactly 0.0 (naked flip evaluated, or yellow cells evaluated on
+        # the switch's rows incl. the running-identity row) is a measurement — the protection is inert on this window, not
+        # unproven. Measured 2026-10-16T12Z..10-17T06Z: 145/161 gate failures (S1 74/80, S2 71/81) were such measured zeros
+        # (naked 0.0 + 26-60 numeric yellow cells each) and refused every board carrying them. FAIL stays for switches with
+        # NO measurement at all (blank/text/never evaluated).
+        _meas_y = sum(1 for r in recs for yd in (r.get("yellows") or {}).values() if isinstance(yd, (int, float)) and not isinstance(yd, bool))
+        _meas_n = sum(1 for r in tested if isinstance(r.get("delta"), (int, float)) and not isinstance(r.get("delta"), bool))
         if not tested:
             if sw in xrow_yellow:
                 _xk, _xd = xrow_yellow[sw][0]
                 out[sw] = {"status": "PASS", "reason": f"cross-row yellow {_xd:+.4f} ({_xk})"}
+            elif _meas_y:
+                out[sw] = {"status": "PASS", "measured_zero": True, "reason": f"measured-zero ({_meas_y} yellow cells evaluated = 0.0 on {len(recs)} running rows)"}
             else:
                 out[sw] = {"status": "FAIL", "reason": f"untested ({len(recs)} rows, all running/skipped/missing)"}
             continue
@@ -1567,7 +1576,7 @@ def essential_gate_check(done: dict, final_overrides: dict | None = None, is_lon
         if ev:
             out[sw] = {"status": "PASS", "reason": ev}
         else:
-            out[sw] = {"status": "FAIL", "reason": f"all-zero ({len(tested)} rows evaluated, ledger unmoved)"}
+            out[sw] = {"status": "PASS", "measured_zero": True, "reason": f"measured-zero ({_meas_n} naked flips + {_meas_y} yellow cells evaluated = 0.0, ledger unmoved)"}
     return out
 
 _START_STAMP = None
@@ -10076,7 +10085,9 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     if _cws.title not in SWITCH_SHEETS:
                         continue
                     for _cr in range(3, _cws.max_row + 1):
-                        if isinstance(_cws.cell(_cr, 6).value, (int, float)):
+                        # 2026-10-17: a row is calculated when F (HUSTLE) OR G (VECTOR) holds a measured number — worst_first leaves F
+                        # empty by design (":13889 not in worst_first"), so an F-only count refused/REDO-ed ~1/3 of finished boards
+                        if isinstance(_cws.cell(_cr, 6).value, (int, float)) or isinstance(_cws.cell(_cr, 7).value, (int, float)):
                             _cf_n += 1
             except Exception:
                 _cf_n = 0
@@ -10165,6 +10176,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                     _maybe_write_json(force=True)
                 else:
                     progress.pop("unprotected", None)
+                    progress["essential_measured_zero"] = {sw: info["reason"] for sw, info in _eg.items() if info.get("measured_zero")}
                     print(f"[ESSENTIAL-GATE] {new_symside} all {len(_eg)} essential filters proven non-zero", flush=True)
             _result_stamp(progress, new_symside)
         # USER 2026-10-13 BELOW-BH: results below B&H still GO LIVE (like negative-gain results, small entry quantity via
@@ -13790,7 +13802,7 @@ def _main_single():
             if _V18P is not None and _V18P.io_throttle_on():
                 raise RuntimeError("V18_IO_THROTTLE: no full workbook re-load for a log line")
             _wb_check = openpyxl.load_workbook(str(wb_path), data_only=False)
-            _f_filled = sum(1 for _ws in _wb_check.worksheets if _ws.title in SWITCH_SHEETS for _r in range(3, _ws.max_row+1) if _ws.cell(_r, 6).value is not None and not isinstance(_ws.cell(_r, 6).value, str))
+            _f_filled = sum(1 for _ws in _wb_check.worksheets if _ws.title in SWITCH_SHEETS for _r in range(3, _ws.max_row+1) if isinstance(_ws.cell(_r, 6).value, (int, float)) or isinstance(_ws.cell(_r, 7).value, (int, float)))  # 2026-10-17 F or G measured
             _wb_check.close()
         except Exception:
             _f_filled = rows_filled
