@@ -6,32 +6,79 @@
    "entry_bar_level": 8.6553075,
    "key": "ang:INJUSDT_LONG",
    "live_level": 8.390835,
-   "mark": 8.829,
+   "mark": 8.79823159,
    "opened_at": "2026-10-21T06:33:15.259000Z",
    "resting_trigger": 8.378
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 12.214387499999999,
+   "key": "men:LINKUSDC_LONG",
+   "live_level": 11.567254062547104,
+   "mark": 12.32803832,
+   "opened_at": "2026-10-21T07:18:27.290000Z",
+   "resting_trigger": 11.549
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 60.757725,
+   "key": "men:LTCUSDC_LONG",
+   "live_level": 56.448525000000004,
+   "mark": 61.4414071,
+   "opened_at": "2026-10-21T07:16:07.970000Z",
+   "resting_trigger": 56.36
   }
  ],
- "n_findings": 1,
- "n_positions": 2,
+ "n_findings": 3,
+ "n_positions": 5,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.22184399999999999,
    "key": "ang:SUSHIUSDT_LONG",
    "live_level": 0.22184399999999999,
-   "mark": 0.2257,
+   "mark": 0.226,
    "opened_at": "2026-10-21T06:17:07.709000Z",
    "resting_trigger": 0.2215
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.09326625000000001,
+   "key": "ang:1INCHUSDT_LONG",
+   "live_level": 0.09326625000000001,
+   "mark": 0.09396,
+   "opened_at": "2026-10-21T07:19:43.952000Z",
+   "resting_trigger": 0.09312
   },
   {
    "armed": true,
    "entry_bar_level": 8.6553075,
    "key": "ang:INJUSDT_LONG",
    "live_level": 8.390835,
-   "mark": 8.829,
+   "mark": 8.79823159,
    "opened_at": "2026-10-21T06:33:15.259000Z",
    "resting_trigger": 8.378
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 12.214387499999999,
+   "key": "men:LINKUSDC_LONG",
+   "live_level": 11.567254062547104,
+   "mark": 12.32803832,
+   "opened_at": "2026-10-21T07:18:27.290000Z",
+   "resting_trigger": 11.549
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 60.757725,
+   "key": "men:LTCUSDC_LONG",
+   "live_level": 56.448525000000004,
+   "mark": 61.4414071,
+   "opened_at": "2026-10-21T07:16:07.970000Z",
+   "resting_trigger": 56.36
   }
  ],
- "ts": "2026-10-21T07:14:00.807950+00:00"
+ "ts": "2026-10-21T07:21:22.420912+00:00"
 }
