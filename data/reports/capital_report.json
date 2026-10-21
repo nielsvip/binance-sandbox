@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-10-21 03:00 UTC",
- "total_capital_usd": 18.51,
+ "generated_at": "2026-10-21 03:37 UTC",
+ "total_capital_usd": 24.68,
  "tier_capital": {
   "A": 0.0,
-  "B": 18.5,
-  "C": 0.0
+  "B": 0.0,
+  "C": 24.68
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "ang:ARUSDT_LONG"
+ "losers": [
+  "inf:ZENUSDT_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "ang",
-   "value_usd": 12.29,
-   "gain_pct": 0.104,
-   "tier": "B",
-   "perf_mult": 0.61,
-   "amt": 3.2,
-   "mark": 3.842
-  },
-  {
-   "pk": "ang:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "account": "ang",
-   "value_usd": 6.21,
-   "gain_pct": -0.405,
-   "tier": "B",
-   "perf_mult": 0.57,
-   "amt": 54.5,
-   "mark": 0.1139761
+   "pk": "inf:ZENUSDT_LONG",
+   "symbol": "ZENUSDT",
+   "account": "inf",
+   "value_usd": 24.68,
+   "gain_pct": 0.124,
+   "tier": "C",
+   "perf_mult": 0.24,
+   "amt": 4.0,
+   "mark": 6.16946552
   }
  ]
 }
