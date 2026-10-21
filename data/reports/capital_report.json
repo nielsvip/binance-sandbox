@@ -1,43 +1,30 @@
 {
- "generated_at": "2026-10-21 17:49 UTC",
- "total_capital_usd": 18.48,
+ "generated_at": "2026-10-21 18:04 UTC",
+ "total_capital_usd": 6.21,
  "tier_capital": {
-  "A": 12.32,
-  "B": 6.16,
+  "A": 6.21,
+  "B": 0.0,
   "C": 0.0
  },
  "tier_count": {
   "A": 1,
-  "B": 1,
+  "B": 0,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [
-  "ang:RENDERUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ZROUSDT_LONG",
-   "symbol": "ZROUSDT",
-   "account": "ang",
-   "value_usd": 12.32,
-   "gain_pct": -0.257,
+   "pk": "men:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "men",
+   "value_usd": 6.21,
+   "gain_pct": -0.024,
    "tier": "A",
-   "perf_mult": 6.52,
-   "amt": 5.9,
-   "mark": 2.08790326
-  },
-  {
-   "pk": "ang:RENDERUSDT_LONG",
-   "symbol": "RENDERUSDT",
-   "account": "ang",
-   "value_usd": 6.16,
-   "gain_pct": -0.038,
-   "tier": "B",
-   "perf_mult": 0.43,
-   "amt": 3.2,
-   "mark": 1.92586792
+   "perf_mult": 10.0,
+   "amt": 150.0,
+   "mark": 0.04142
   }
  ]
 }
