@@ -1,14 +1,14 @@
 {
  "findings": [],
  "n_findings": 0,
- "n_positions": 3,
+ "n_positions": 4,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.11288707500000002,
    "key": "ang:ALGOUSDT_LONG",
    "live_level": 0.11288707500000002,
-   "mark": 0.11368,
+   "mark": 0.11369,
    "opened_at": "2026-10-21T02:06:00.691000Z",
    "resting_trigger": 0.11271
   },
@@ -17,19 +17,28 @@
    "entry_bar_level": 0.11288707500000002,
    "key": "fin:ALGOUSDT_LONG",
    "live_level": 0.11288707500000002,
-   "mark": 0.11368,
+   "mark": 0.11372,
    "opened_at": "2026-10-21T02:06:51.733000Z",
    "resting_trigger": 0.11271
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 3.80247,
+   "key": "men:ARUSDT_LONG",
+   "live_level": 3.80247,
+   "mark": 3.837,
+   "opened_at": "2026-10-21T04:00:32.519000Z",
+   "resting_trigger": 3.796
   },
   {
    "armed": true,
    "entry_bar_level": 6.066795,
    "key": "inf:ZENUSDT_LONG",
    "live_level": 6.066795,
-   "mark": 6.166,
+   "mark": 6.15977546,
    "opened_at": "2026-10-21T03:31:54.086000Z",
    "resting_trigger": 6.057
   }
  ],
- "ts": "2026-10-21T03:50:45.174252+00:00"
+ "ts": "2026-10-21T04:02:18.516794+00:00"
 }

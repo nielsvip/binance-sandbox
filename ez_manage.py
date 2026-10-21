@@ -32400,6 +32400,18 @@ class MultiAccountTradeManager:
         # (they skip the discretionary gates flagged _vd_exempt below); every native decision is suppressed here, the
         # single order chokepoint, except an emergency (liquidation/margin/balance-floor/manual) reduce/close.
         _vd_exempt = False
+        # USER 2026-10-21 zero-pass NO-SUPPRESSION: a calculated sym_side trades EXACTLY what its board set
+        # dictates — entry/exit decision vetoes below become allow-with-log. Correctness (invalid key/price/dup),
+        # infra (broker/sync/mark freshness) and execution integrity (locks/dedup/cooldowns) are untouched, as are
+        # stops and the exit guarantee. Kill switch: ZERO_PASS_TRADE_ALL=False restores every veto.
+        _zp_ns = False
+        try:
+            from live_twins import zero_pass as _zp_ns_mod
+            _zp_ns = _zp_ns_mod.trade_all_on() and _zp_ns_mod.calculated(symbol, position_side)
+        except Exception:
+            _zp_ns = False
+        if _zp_ns:
+            logger.warning(f"[ZERO_PASS_NO_SUPPRESS] {position_key} action={action} — calculated sym_side, decision vetoes bypassed (USER 2026-10-21)")
         if bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
             try:
                 from live_twins import vec_driven as _vdm_en
@@ -32409,10 +32421,14 @@ class MultiAccountTradeManager:
                         logger.info(f"🧭 [VEC_DRIVEN_EXEC] {position_key} action={action} qty={quantity} reason={(reason or '')[:80]} — vec-decided, discretionary gates exempt")
                     elif _vdm_en.is_emergency_reason(reason) and (is_full_close or _broker_sync_is_exit(action)):
                         logger.critical(f"🚨🚨 [VEC_DRIVEN_EMERGENCY_NATIVE] {position_key} action={action} reason={(reason or '')[:80]} — native EMERGENCY exit allowed on a vec-driven sym_side")
+                    elif _zp_ns:
+                        logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} reason={(reason or '')[:80]} — native decision on vec-driven sym_side allowed (USER 2026-10-21)")
                     else:
                         logger.warning(f"⛔ [VEC_DRIVEN_NATIVE_SUPPRESSED] {position_key} action={action} reason={(reason or '')[:80]} — sym_side is VEC_DRIVEN live; native decision refused")
                         return "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
                 # USER 2026-10-06 PARITY: only vectorized trades open/increase positions on EVERY key; native exits still manage existing positions
+                elif _zp_ns and not _vdm_en.is_vec_driven_reason(reason) and not _broker_sync_is_exit(action) and not _vec_exact_reason_ok(reason):
+                    logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} reason={(reason or '')[:80]} — native increase allowed (USER 2026-10-21)")
                 elif bool(getattr(_ezm_base_config, "VEC_DRIVEN_NATIVE_ENTRY_BLOCK_ALL", True)) and not _vdm_en.is_vec_driven_reason(reason) and not _broker_sync_is_exit(action) and not _vec_exact_reason_ok(reason):
                     logger.warning(f"⛔ [NATIVE_ENTRY_BLOCK_VEC_DRIVEN] {position_key} action={action} reason={(reason or '')[:80]} — native position increase refused (only VEC_DRIVEN trades open)")
                     return "BLOCKED_NATIVE_ENTRY_VEC_DRIVEN"
@@ -32432,7 +32448,9 @@ class MultiAccountTradeManager:
             if not _ok365 and _vd_exempt:
                 logger.warning(f"🧭 [VEC_DRIVEN_365D_EXEMPT] {position_key} action={action} — 365D gate would block ({_why365}); director-certified 365D vec set, allowed")
                 _ok365 = True
-            if not _ok365:
+            if not _ok365 and _zp_ns:
+                logger.warning(f"[ZERO_PASS_ALLOW] {position_key} action={action} — 365D gate would block ({_why365}); calculated sym_side trades (USER 2026-10-21)")
+            elif not _ok365:
                 logger.warning(f"🛑 [365D_CONFIRM_BLOCK] {position_key} action={action} reason_in='{(reason or '')[:60]}' BLOCKED: {_why365}")
                 return "BLOCKED_NO_365D_CONFIRM"
         # ─── SYM-HALT (USER unlock 2026-10-15 — tools/v15_sym_halt.py) ───
@@ -32768,12 +32786,16 @@ class MultiAccountTradeManager:
                     _lpog_px = safe_fetch_float(await price(symbol, _lpog_pos), 0.0) or safe_fetch_float(_lpog_ind.get("current_price", _lpog_ind.get("close", 0)), 0.0)
                     if _lpog_ftf_on:
                         _lpog_blk, _lpog_why = _lpog.entry_filter_tf_veto(_lpog_ind, _lpog_long, _lpog_px, _lpog_get)
-                        if _lpog_blk:
+                        if _lpog_blk and _zp_ns:
+                            logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: filter-TF would veto ({_lpog_why}) — calculated sym_side trades (USER 2026-10-21). reason={(reason or '')[:50]}")
+                        elif _lpog_blk:
                             logger.warning(f"🚫 [PARITY_FILTER_TF] {position_key}: BLOCKED {action} — {_lpog_why} reason={(reason or '')[:50]}")
                             return f"BLOCKED_PARITY_FILTER_TF_{_lpog_why}"
                     if _lpog_htf_on:
                         _lpog_blk, _lpog_why = _lpog.strict_open_veto(_lpog_ind, _lpog_long, _lpog_px, _lpog_get)
-                        if _lpog_blk:
+                        if _lpog_blk and _zp_ns:
+                            logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: strict-open would veto ({_lpog_why}) — calculated sym_side trades (USER 2026-10-21). reason={(reason or '')[:50]}")
+                        elif _lpog_blk:
                             logger.warning(f"🚫 [PARITY_STRICT_OPEN] {position_key}: BLOCKED {action} — {_lpog_why} reason={(reason or '')[:50]}")
                             return f"BLOCKED_PARITY_STRICT_OPEN_{_lpog_why}"
         except Exception as _lpog_e:
@@ -33183,7 +33205,9 @@ class MultiAccountTradeManager:
                         _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.confluence_blocks(_tgsa_get, _tgsa_ind, _tgsa_long, "3m")
                     if not _tgsa_blk:
                         _tgsa_blk, _tgsa_why = _twin_gates_sizing_a.sba_veto_blocks(_tgsa_get, _tgsa_ind, _tgsa_long)
-                    if _tgsa_blk:
+                    if _tgsa_blk and _zp_ns:
+                        logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: GATES_A would veto ({_tgsa_why}) — calculated sym_side trades (USER 2026-10-21). reason={(reason or '')[:50]}")
+                    elif _tgsa_blk:
                         logger.warning(f"🚫 [GATES_A_VETO] {position_key}: BLOCKED {action} — {_tgsa_why}. reason={(reason or '')[:50]}")
                         return f"BLOCKED_GATES_A_{position_side}"
         except Exception as _tgsae:

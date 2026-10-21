@@ -98,7 +98,31 @@ def test_switches_default_true_without_config(tmp_path, monkeypatch):
 def test_gates_reference_zero_pass_bypass():
     ez = (ROOT / "ez_manage.py").read_text()
     assert "zero_pass" in ez and "ZERO_PASS_ALLOW" in ez
+    for needle in (
+        "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED",
+        "BLOCKED_NO_365D_CONFIRM",
+        "BLOCKED_GATES_A_",
+        "BLOCKED_PARITY_FILTER_TF_",
+        "BLOCKED_PARITY_STRICT_OPEN_",
+        "BLOCKED_BOARD_ENTRY_",
+    ):
+        assert needle in ez, needle
+    assert ez.count("ZERO_PASS_ALLOW") >= 6, "every disarmed veto logs its allow"
+    assert "ZERO_PASS_NO_SUPPRESS" in ez
     q = (ROOT / "ez_positions_quick.py").read_text()
     assert "zero_pass" in q
     tm = (ROOT / "tradier_manage.py").read_text()
     assert "zero_pass" in tm and "ZERO_PASS_ALLOW" in tm
+
+
+def test_no_suppress_keeps_correctness_and_infra():
+    ez = (ROOT / "ez_manage.py").read_text()
+    for needle in (
+        "BLOCKED_INVALID_POSITION_KEY",
+        "BLOCKED_POSITIONS_BROKER_UNREACHABLE",
+        "BLOCKED_PARITY_DEDUP_",
+        "BLOCKED_NO_DOUBLE_OPEN_",
+        "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN",
+    ):
+        assert needle in ez, needle
+    assert "ZERO_PASS" not in ez[ez.index("BLOCKED_INVALID_POSITION_KEY") - 200 : ez.index("BLOCKED_INVALID_POSITION_KEY")], "correctness refusals stay unconditional"

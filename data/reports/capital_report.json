@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-21 03:57 UTC",
- "total_capital_usd": 1.25,
+ "generated_at": "2026-10-21 04:02 UTC",
+ "total_capital_usd": 24.98,
  "tier_capital": {
   "A": 0.0,
-  "B": 1.25,
+  "B": 24.98,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,21 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "fin:ALGOUSDT_LONG"
+ "losers": [],
+ "mediocre": [
+  "men:ARUSDT_LONG"
  ],
- "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "account": "fin",
-   "value_usd": 1.25,
-   "gain_pct": -0.603,
+   "pk": "men:ARUSDT_LONG",
+   "symbol": "ARUSDT",
+   "account": "men",
+   "value_usd": 24.98,
+   "gain_pct": 0.226,
    "tier": "B",
-   "perf_mult": 0.54,
-   "amt": 11.0,
-   "mark": 0.11366
+   "perf_mult": 0.67,
+   "amt": 6.5,
+   "mark": 3.84370583
   }
  ]
 }
