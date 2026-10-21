@@ -238,6 +238,25 @@ def test_velocity_multi_tf_or():
     assert X.velocity_wt_exit_live_fire({"wt_velocity_1h": 1.0, "wt_velocity_4h": -2.0, "wt_velocity_D": 0.0}, True, g)[0] is True
 
 
+def test_velocity_prefers_completed_bar_values():
+    """USER 2026-10-21 EXIT parity: live 1h/4h/D velocities include the forming
+    bar; *_closed exclude it, matching completed-bar NPZ. Measured: SOL 1h +37.4
+    live vs -5.0 frozen (short must NOT fire on 2/3 TFs)."""
+    g = _get({"EXIT_VELOCITY_WT_TFS": "1h,4h,D", "EXIT_VELOCITY_WT_MIN_TFS": 3})
+    assert X.velocity_wt_exit_live_fire(
+        {"wt_velocity_1h": 37.4, "wt_velocity_1h_closed": -5.0, "wt_velocity_4h": 11.2, "wt_velocity_D": 36.4}, False, g
+    ) == (False, "")
+    assert X.velocity_wt_exit_live_fire(
+        {"wt_velocity_1h": -5.0, "wt_velocity_4h": 11.2, "wt_velocity_D": 36.4}, False, g
+    )[0] is False
+    g1 = _get({"EXIT_VELOCITY_WT_TFS": "1h,4h,D", "EXIT_VELOCITY_WT_MIN_TFS": 1})
+    assert X.velocity_wt_exit_live_fire(
+        {"wt_velocity_D": 23.7, "wt_velocity_D_closed": 3.6}, False, g1
+    )[0] is True
+    # Snapshots predating the fields fall back to forming-inclusive (old behavior).
+    assert X.velocity_wt_exit_live_fire({"wt_velocity_1h": 37.4}, False, _get({"EXIT_VELOCITY_WT_TFS": "1h"}))[0] is True
+
+
 # ─── 3. vec-formula agreement grid ───
 
 def _grid_rows():

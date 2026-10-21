@@ -3,21 +3,21 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.0087371025,
-   "key": "inf:BBUSDT_LONG",
-   "live_level": 0.0084867075,
-   "mark": 0.00880805,
-   "opened_at": "2026-10-21T22:17:39.055000Z",
-   "resting_trigger": 0.008473
+   "entry_bar_level": 0.0114285,
+   "key": "inf:COTIUSDT_SHORT",
+   "live_level": 0.0114114575,
+   "mark": 0.01128967,
+   "opened_at": "2026-10-21T22:22:12.013000Z",
+   "resting_trigger": 0.011446
   },
   {
    "armed": true,
-   "code": "ENTRY_BAR_UNAVAILABLE",
-   "entry_bar_level": 0.0,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 10.063095,
    "key": "inf:AVAXUSDC_SHORT",
-   "live_level": 0.0,
-   "mark": 9.732,
-   "opened_at": "2026-03-04T11:21:05.799632Z",
+   "live_level": 10.0553984065,
+   "mark": 9.767,
+   "opened_at": "2026-10-21T22:21:39.849000Z",
    "resting_trigger": 10.079
   }
  ],
@@ -26,22 +26,22 @@
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 0.0087371025,
-   "key": "inf:BBUSDT_LONG",
-   "live_level": 0.0084867075,
-   "mark": 0.00880805,
-   "opened_at": "2026-10-21T22:17:39.055000Z",
-   "resting_trigger": 0.008473
+   "entry_bar_level": 0.0114285,
+   "key": "inf:COTIUSDT_SHORT",
+   "live_level": 0.0114114575,
+   "mark": 0.01128967,
+   "opened_at": "2026-10-21T22:22:12.013000Z",
+   "resting_trigger": 0.011446
   },
   {
    "armed": true,
-   "entry_bar_level": 0.0,
+   "entry_bar_level": 10.063095,
    "key": "inf:AVAXUSDC_SHORT",
-   "live_level": 0.0,
-   "mark": 9.732,
-   "opened_at": "2026-03-04T11:21:05.799632Z",
+   "live_level": 10.0553984065,
+   "mark": 9.767,
+   "opened_at": "2026-10-21T22:21:39.849000Z",
    "resting_trigger": 10.079
   }
  ],
- "ts": "2026-10-21T22:22:20.253581+00:00"
+ "ts": "2026-10-21T22:32:39.868833+00:00"
 }

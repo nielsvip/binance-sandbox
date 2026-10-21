@@ -47,6 +47,31 @@ def test_target_long_short():
     assert X.technical_dc_exit(90.15, False, [], t, lvl)[0] is False
 
 
+def test_target_crossing_long_short():
+    """USER 2026-10-21 TECHNICAL parity: the vector books tech closes only on a
+    FRESH cross (loop 22579-22696) + min_hold; the level-only twin fired every
+    bar price sat at target (DOGE/XMR kills sat AT target ~breakeven)."""
+    s, t = X.resolve_technical_dc(_get({"TECHNICAL_DC_TARGET_TF": "15m"}))
+    assert len(t) == 1 and abs(t[0]["buf"] - 0.001) < 1e-12
+    lvl = lambda f: {"dc_high_15m": 100.0, "dc_low_15m": 90.0}.get(f, 0.0)
+    lvlp = lambda f: {"dc_high_15m": 100.0, "dc_low_15m": 90.0}.get(f, 0.0)
+    # Sitting AT target with no fresh cross -> hold (the DOGE/XMR shape:
+    # prev close 99.95 never went below the 99.90 band edge).
+    assert X.dc_target_cross(100.0, 99.95, 100.0, 100.0, True, t[0]) is False
+    assert X.technical_dc_exit_crossing(100.0, 99.95, True, [], t, lvl, lvlp) == (False, "")
+    # Fresh cross through the buffer band -> fire with the same reason string.
+    fire, reason = X.technical_dc_exit_crossing(100.05, 99.85, True, [], t, lvl, lvlp)
+    assert fire and reason.startswith("TECHNICAL_TARGET dc_15m_high")
+    # Short mirror: prev above band, now at/below.
+    lvl3 = lambda f: {"dc_high_15m": 110.0, "dc_low_15m": 90.0}.get(f, 0.0)
+    lvl3p = lambda f: {"dc_high_15m": 110.0, "dc_low_15m": 90.5}.get(f, 0.0)
+    assert X.dc_target_cross(89.95, 90.60, 90.0, 90.5, False, t[0]) is True
+    assert X.dc_target_cross(89.95, 89.90, 90.0, 90.5, False, t[0]) is False
+    # Missing prev data -> deny (fail-closed, like the vector's i-1 guard).
+    assert X.dc_target_cross(100.05, 0.0, 100.0, 99.5, True, t[0]) is False
+    assert X.dc_target_cross(100.05, 99.80, 0.0, 99.5, True, t[0]) is False
+
+
 def test_multi_tf_or_and_alias():
     s, t = X.resolve_technical_dc(_get({"TECHNICAL_DC_STOP_TF": "15m, 5m", "TECHNICAL_DC_STOP_BUFFER_PCT": 0.25}))
     assert [x["tf"] for x in s] == ["15m", "3m"]

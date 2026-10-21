@@ -15,9 +15,11 @@ def _iso(tmp_path, monkeypatch, enforce=True):
     k = tmp_path / "kills.json"
     v = tmp_path / "viol.jsonl"
     q = tmp_path / "retrace.jsonl"
+    m = tmp_path / "monitor.jsonl"
     monkeypatch.setattr(ve, "KILLS", k)
     monkeypatch.setattr(ve, "VIOLATIONS", v)
     monkeypatch.setattr(ve, "RETRACE_QUEUE", q)
+    monkeypatch.setattr(ve, "MONITOR_LOG", m)
     ve._KILLS.update(loaded=0.0, killed={})
     mod = types.ModuleType("config")
     mod.Config = type(
@@ -80,7 +82,7 @@ def test_vel_exit_exempt_with_faithful_twin(tmp_path, monkeypatch):
     twin_src = (ROOT / "vec_decisions" / "twin_gates_sizing_a.py").read_text()
     assert "wt_velocity_4h_closed" in twin_src, "twin must read completed-bar velocity"
     ind_src = (ROOT / "ez_indicators.py").read_text()
-    assert "wt_velocity_4h_closed" in ind_src, "producer must emit completed velocity"
+    assert "wt_velocity_%s_closed" in ind_src, "producer must emit completed velocity"
     lane_src = (ROOT / "ez_manage.py").read_text()
     assert "structural_exit_permitted" in lane_src, "VEL lane must hold STRUCT veto"
     assert "STRUCTURAL_EXIT_GATE_ENABLED" in lane_src, "veto must follow per-sym switch"
@@ -106,28 +108,77 @@ def test_bb_recovery_bbkc_stay_killed(tmp_path, monkeypatch):
     ok, _ = ve.check("REDUCE", "a", reason)
     assert ok is False, "QUICK dispatcher prefix must not launder the family"
     assert ve.check("CLOSE", "a", "BBKC_EXIT_1h_px-above-kc-mid_g0.07")[0] is False
-    # 2026-10-21 backlog audit: vector-BOOKED but twin-unfaithful (EXIT velocity
-    # forming-bar 1h/D legs; TECHNICAL level-vs-crossing + no min-hold), plus
-    # unvectorized rater output (REDUCE_K) and portfolio-state rebalancing with no
-    # vector model (RATIO). All stay killed until their recorded fidelity bars land.
-    assert "EXIT" not in ve.VEC_SWITCH_EXIT_FAMILIES
-    assert "TECHNICAL" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    # 2026-10-21 backlog audit: unvectorized rater output (REDUCE_K) stays killed.
     assert "REDUCE_K" not in ve.VEC_SWITCH_EXIT_FAMILIES
-    assert "RATIO" not in ve.VEC_SWITCH_EXIT_FAMILIES
-    assert (
-        ve.check("CLOSE", "a", "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00")[0]
-        is False
+
+
+def test_exit_velocity_exempt_with_completed_bars(tmp_path, monkeypatch):
+    """EXIT velocity is vector-BOOKED (lane-D labeled closes, not exit_sig
+    suppressed) with a faithful twin since 2026-10-21: completed-bar 1h/4h/D
+    velocities + shared predicate/MIN_TFS. Replay: twin==vector 3/3."""
+    assert "EXIT" in ve.VEC_SWITCH_EXIT_FAMILIES
+    twin_src = (ROOT / "vec_decisions" / "twin_exits_dead.py").read_text()
+    assert "wt_velocity_%s_closed" in twin_src
+    k, v = _iso(tmp_path, monkeypatch)
+    ok, verdict = ve.check(
+        "CLOSE", "a", "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00"
     )
-    assert (
-        ve.check("CLOSE", "a", "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03")[
-            0
-        ]
-        is False
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    assert not k.exists(), "exempt family must not write a kill entry"
+
+
+def test_technical_exempt_with_crossing_hold(tmp_path, monkeypatch):
+    """TECHNICAL targets are vector-BOOKED (labeled dc_* crosses + min_hold) with
+    a faithful twin since 2026-10-21: fresh-cross predicate + grid-faithful hold
+    in the lane. Replay: DOGE suppression MATCH, XMR cross."""
+    assert "TECHNICAL" in ve.VEC_SWITCH_EXIT_FAMILIES
+    twin_src = (ROOT / "vec_decisions" / "dc_channel_exits.py").read_text()
+    assert "def dc_target_cross" in twin_src
+    assert "def technical_dc_exit_crossing" in twin_src
+    lane_src = (ROOT / "ez_manage.py").read_text()
+    assert "technical_dc_exit_crossing" in lane_src
+    assert "TECHNICAL_HOLD" in lane_src
+    k, v = _iso(tmp_path, monkeypatch)
+    ok, verdict = ve.check(
+        "CLOSE", "a", "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03"
     )
-    assert (
-        ve.check("REDUCE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")[0]
-        is False
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    assert not k.exists(), "exempt family must not write a kill entry"
+
+
+def test_ratio_trim_allowed_close_killed(tmp_path, monkeypatch):
+    """USER 2026-10-21 (+18:0x, 'augment too'): RATIO trims (REDUCE) and adds
+    (AUGMENT) stay allowed in-window; OPEN/CLOSE fall through to the kill."""
+    _iso(tmp_path, monkeypatch)
+    ok, verdict = ve.check("REDUCE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
+    assert (ok, verdict) == (True, "RATIO_TRIM_ALLOWED")
+    ok, verdict = ve.check(
+        "AUGMENT", "a", "RATIO_REDUCE_SHORT_L0_S100_tgt25/75_breadth26%_gain0.2%"
     )
+    assert (ok, verdict) == (True, "RATIO_TRIM_ALLOWED")
+    ok, verdict = ve.check("CLOSE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")
+    assert ok is False and verdict == "VIOLATION_FAMILY_KILLED"
+    ok, verdict = ve.check(
+        "OPEN", "a", "RATIO_REDUCE_SHORT_L0_S100_tgt25/75_breadth26%_gain0.2%"
+    )
+    assert ok is False
+
+
+def test_monitor_logs_watched_families_only(tmp_path, monkeypatch):
+    """Family watch: monitored verdicts logged, unmonitored never touch the log."""
+    _iso(tmp_path, monkeypatch)
+    ve.check("CLOSE", "a", "VEL_EXIT_v4h-10_g-0.05")
+    ve.check("REDUCE", "a", "MAKER_PROFIT_EXIT_px1_g0.05")
+    rows = [json.loads(line) for line in ve.MONITOR_LOG.read_text().splitlines()]
+    assert [r["family"] for r in rows] == ["VEL_EXIT"]
+    assert rows[0]["verdict"] == "VEC_SWITCH_EXIT"
+
+
+def test_rule_b_route_gated_per_sym():
+    """REDUCE_K parity (§126.1 step 3): the 3m-structure route must read the
+    per-sym switch, never the global default."""
+    src = (ROOT / "ez_positions_quick.py").read_text()
+    assert '_sw_get(symbol, position_side, "RULE_B_3M_EXIT_ENABLED", False)' in src
 
 
 def test_new_kill_files_retrace_order(tmp_path, monkeypatch):
