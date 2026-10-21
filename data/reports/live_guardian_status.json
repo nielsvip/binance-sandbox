@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T18:58:32Z",
+ "ts": "2026-10-21T19:03:54Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,21 +27,21 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 211,
-   "open_positions": 11,
-   "unrealised_usd": 52.51,
+   "fills_6h": 224,
+   "open_positions": 17,
+   "unrealised_usd": 56.72,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 146,
-   "open_positions": 11,
-   "unrealised_usd": 28.91,
+   "fills_6h": 155,
+   "open_positions": 13,
+   "unrealised_usd": 53.45,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 5,
    "open_positions": 1,
-   "unrealised_usd": 0.1,
+   "unrealised_usd": 0.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -71,7 +71,7 @@
    }
   },
   "ang": {
-   "fills_6h": 49,
+   "fills_6h": 43,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -103,7 +103,7 @@
    }
   },
   "flz": {
-   "fills_6h": 2,
+   "fills_6h": 0,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -138,14 +138,14 @@
     "28471"
    ],
    "starts_30m": 3,
-   "log_age_s": 3.0
+   "log_age_s": 23.0
   },
   "men": {
    "pids": [
     "572"
    ],
    "starts_30m": 2,
-   "log_age_s": 102.0
+   "log_age_s": 285.0
   },
   "ang": {
    "pids": [
@@ -159,14 +159,14 @@
     "28789"
    ],
    "starts_30m": 2,
-   "log_age_s": 66.0
+   "log_age_s": 154.0
   },
   "flz": {
    "pids": [
     "34023"
    ],
-   "starts_30m": 4,
-   "log_age_s": 10.0
+   "starts_30m": 3,
+   "log_age_s": 135.0
   },
   "trb": {
    "pids": [
@@ -180,43 +180,65 @@
     "39909"
    ],
    "starts_30m": 2,
-   "log_age_s": -0.0
+   "log_age_s": 3.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T18:58:32Z",
+   "ts": "2026-10-21T19:03:54Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "trb:BNO_LONG",
    "evidence": "entry notional $2621.97 (median $324.99, MAX_ORDER_VALUE $7000) @ 2026-10-21T18:57:10Z DC_BREAK_HIGH_15M |AIR_CARRY1.000|RATIO_BOOST_L(R=0.00)"
   },
   {
-   "ts": "2026-10-21T18:58:32Z",
+   "ts": "2026-10-21T19:03:54Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
    "key": "trb:BNO_LONG",
    "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $2621.97 (median $324.99, MAX_ORDER_VALUE $7000) @ 2026-10-21T18:57:10Z DC_BREAK_HIGH_15M |AIR_CARRY1.000|RATIO_BOOST_L(R=0.00)"
   },
   {
-   "ts": "2026-10-21T18:58:35Z",
+   "ts": "2026-10-21T19:03:56Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['75326', '6871', '28471'])"
   },
   {
-   "ts": "2026-10-21T18:58:35Z",
+   "ts": "2026-10-21T19:03:56Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 285s"
+  },
+  {
+   "ts": "2026-10-21T19:03:56Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "inf",
+   "evidence": "ez_manage_inf.log not written for 154s"
+  },
+  {
+   "ts": "2026-10-21T19:03:56Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "4 new process ids in 30 min (['45945', '83810', '94648', '34023'])"
+   "evidence": "3 new process ids in 30 min (['83810', '94648', '34023'])"
+  },
+  {
+   "ts": "2026-10-21T19:03:56Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 135s"
   }
  ],
  "alert_counts": {
   "SIZE_ANOMALY": 1,
   "NO_PER_KEY_BLOCK_AVAILABLE": 1,
-  "RESTART_LOOP": 2
+  "RESTART_LOOP": 2,
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -244,13 +266,6 @@
    "undo": "rm /Users/niels/Documents/binance/data/HALT_TRADING_ang",
    "dry_run": false
   },
-  "key:ang:NEARUSDC_LONG": {
-   "ts": 1792602225.0015528,
-   "until": 1792609425.001555,
-   "why": "SIZE_ANOMALY order $2411.09 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:NEARUSDC_LONG",
-   "dry_run": false
-  },
   "acct:men": {
    "ts": 1791405204.913714,
    "why": "ORDER_STORM_ACCOUNT 26 fills/10min",
@@ -276,14 +291,7 @@
    "why": "SIZE_ANOMALY order $629.93 > 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:COMPUSDT_LONG",
    "dry_run": false
-  },
-  "key:ang:TIAUSDC_LONG": {
-   "ts": 1792602224.989711,
-   "until": 1792609424.989714,
-   "why": "SIZE_ANOMALY order $522.97 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:TIAUSDC_LONG",
-   "dry_run": false
   }
  },
- "sweep_s": 2.61
+ "sweep_s": 1.77
 }
