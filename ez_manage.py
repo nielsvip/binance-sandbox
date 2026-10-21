@@ -32429,6 +32429,27 @@ class MultiAccountTradeManager:
             _fx_act0 = ""
         if _fx_act0 in ("PLACE_STOP", "CANCEL_STOP"):
             return await self._fixed_stop_order_action(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, side=side, quantity=quantity, old_price=old_price, unique_id=unique_id, reason=reason, action=_fx_act0, stop_price=stop_price, stop_order_id=stop_order_id)
+        # ─── VECTOR-ONLY EXITS (USER 2026-10-21: every non-vector exit path disabled — months of
+        # premature closes. Only a vec-dictated close/reduce may trade: VEC_DRIVEN_* intents,
+        # RECONCILE_* targets, |VEC_EXACT twin acts, and their EXIT_GUARANTEE_FORCE escalations
+        # (the vec token rides in the reason). WT/MTF/DC/stop/vigilance/manual/orphan/sync exits
+        # are refused POLICY (the wrapper never escalates POLICY: no watcher, no FORCE).
+        # NATIVE_EXITS_DISABLED=0 restores legacy behavior. ───
+        try:
+            _voe_disabled = bool(getattr(_ezm_base_config, "NATIVE_EXITS_DISABLED", getattr(config, "NATIVE_EXITS_DISABLED", True)))
+        except Exception:
+            _voe_disabled = True
+        if _voe_disabled and _xg.is_exit_action(action, is_full_close):
+            _voe_rx = str(reason or "").upper()
+            _voe_vec = ("VEC_DRIVEN_" in _voe_rx or "RECONCILE_" in _voe_rx or "|VEC_EXACT" in _voe_rx)
+            if not _voe_vec:
+                logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={str(reason)[:80]} — refused (USER 2026-10-21: exits only on vec dictate; NATIVE_EXITS_DISABLED=0 restores)")
+                try:
+                    if _paper_nv.enabled(config):
+                        _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "NON_VECTOR_EXIT_REFUSED", old_price, quantity)
+                except Exception:
+                    pass
+                return "POLICY_NON_VECTOR_EXIT_DISABLED"
         # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
         # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or a stuck one): exchange truth ->
         # cancel own working orders on the leg -> ONE market reduce-only close of the broker qty -> verify flat. Inside execute_now.

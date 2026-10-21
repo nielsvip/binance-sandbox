@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T23:11:39Z",
+ "ts": "2026-10-21T23:16:45Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -126,81 +126,81 @@
    "pids": [
     "4464"
    ],
-   "starts_30m": 2,
-   "log_age_s": 51.0
+   "starts_30m": 1,
+   "log_age_s": 236.0
   },
   "men": {
    "pids": [
     "39008"
    ],
-   "starts_30m": 2,
-   "log_age_s": 92.0
+   "starts_30m": 1,
+   "log_age_s": 7.0
   },
   "ang": {
    "pids": [
     "41203"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 57.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 3.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 15.0
+   "log_age_s": 41.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11436.0
+   "log_age_s": 11741.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11439.0
+   "log_age_s": 11744.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T23:11:40Z",
+   "ts": "2026-10-21T23:16:45Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T23:11:40Z",
+   "ts": "2026-10-21T23:16:45Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T23:11:40Z",
+   "ts": "2026-10-21T23:16:45Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T23:11:40Z",
+   "ts": "2026-10-21T23:16:46Z",
    "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "inf:XMRUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.192101->0.576304 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.192101)"
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 236s"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "SIZE_ANOMALY": 1
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -255,5 +255,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.36
+ "sweep_s": 1.37
 }

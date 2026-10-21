@@ -3646,6 +3646,26 @@ class StopLevelsManager:
 
     async def manage(self, *, account_key:str, symbol:str, position_key:str, position_side:str, position:Any, current_price:float, entry_price:Optional[float]=None, event:str="sync", force_sync:bool=False) -> List[StopLevel]:
         if not config.SERVICE_STOP: return []
+        try:
+            _voe_off = bool(getattr(config, "NATIVE_EXITS_DISABLED", True))
+        except Exception:
+            _voe_off = True
+        if _voe_off:
+            # USER 2026-10-21 vec-only exits: place/adjust no stops; lift resting managed stops
+            # so no non-vector exit path remains (positions close on vec dictate only).
+            try:
+                _voe_cli = self._get_client(account_key) if callable(getattr(self, "_get_client", None)) else None
+                _voe_open = await self.get_cached_open_orders(account_key, symbol) if self.get_cached_open_orders else []
+                _voe_managed = [o for o in (_voe_open or []) if self._is_managed_stop(o, position_key)]
+                if _voe_cli is not None and _voe_managed:
+                    await self._cancel_all_managed_stops(_voe_cli, symbol, _voe_managed, position_key)
+                    logger.warning(f"[{position_key}] [NON_VECTOR_EXIT_DISABLED] lifted {len(_voe_managed)} resting managed stops (USER 2026-10-21 vec-only exits)")
+                else:
+                    self._clear_stop(position_key, None)
+                    self.stop_levels.pop(position_key, None)
+            except Exception as _voe_e:
+                logger.debug(f"[{position_key}] stop disarm err (fail-open) {_voe_e}")
+            return []
         now_ts = time.time()
         last = self._last_sync_ts.get(position_key, 0)
         if not force_sync and now_ts - last < self.sync_cooldown: 

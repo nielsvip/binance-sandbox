@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-21T22:12:08.561101+00:00",
+ "generated_utc": "2026-10-21T23:12:04.189438+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 3,
-  "exit_kept_in_bar": 1,
+  "exit_promises": 5,
+  "exit_kept_in_bar": 3,
   "entry_promises": 1,
   "entry_broken_no_delivery": 1,
   "exit_skipped_inflight": 3,
   "exit_kept_late": 1,
-  "exit_pending": 1
+  "exit_broken_no_delivery": 1
  },
  "per_key": {
   "inf:RLCUSDT_LONG": {
@@ -17,7 +17,9 @@
   },
   "flz:ZECUSDC_LONG": {
    "entry_promises": 1,
-   "entry_broken_no_delivery": 1
+   "entry_broken_no_delivery": 1,
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
   },
   "fin:RLCUSDT_LONG": {
    "exit_promises": 1,
@@ -26,7 +28,11 @@
   },
   "fin:QTUMUSDT_LONG": {
    "exit_promises": 1,
-   "exit_pending": 1
+   "exit_broken_no_delivery": 1
+  },
+  "inf:COTIUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
   }
  },
  "detail": [
@@ -49,6 +55,16 @@
    "action": "CLOSE",
    "reason": "LH_LL_TOP_EXIT arm=4h_LH+LL leg=WT15M",
    "outcome": "BLOCKED_DISPATCH_TIMEOUT->TIMEOUT_EXIT_F"
+  },
+  {
+   "acct": "fin",
+   "sym_side": "QTUMUSDT_LONG",
+   "kind": "exit",
+   "bar": "10-21 21:45",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bear",
+   "outcome": "NO_DELIVERY"
   }
  ],
  "broken": [
