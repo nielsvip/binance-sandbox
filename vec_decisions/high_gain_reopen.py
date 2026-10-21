@@ -41,7 +41,11 @@ def _get(cfg, k, d):
 
 def enabled(cfg) -> bool:
     v = _get(cfg, "TR_HIGH_GAIN_REOPEN_ENABLED", False)
-    return (str(v).strip().lower() in ("1", "true", "yes")) if isinstance(v, str) else bool(v)
+    return (
+        (str(v).strip().lower() in ("1", "true", "yes"))
+        if isinstance(v, str)
+        else bool(v)
+    )
 
 
 def _bar_of(t):
@@ -105,9 +109,21 @@ def lifecycle_gain_pct(is_long: bool, entry_price: float, exit_price: float) -> 
     return m if is_long else -m
 
 
-def fire(cfg, is_long: bool, bars_since_exit: int, entry_price: float, exit_price: float,
-         close: float, rsi: float, k: float, d: float, ha_color: float, relvol: float,
-         dc4h_low: float, dc4h_high: float) -> bool:
+def fire(
+    cfg,
+    is_long: bool,
+    bars_since_exit: int,
+    entry_price: float,
+    exit_price: float,
+    close: float,
+    rsi: float,
+    k: float,
+    d: float,
+    ha_color: float,
+    relvol: float,
+    dc4h_low: float,
+    dc4h_high: float,
+) -> bool:
     """True when a reduced high-gain lifecycle may re-open on this bar."""
     try:
         if not enabled(cfg):
@@ -125,7 +141,11 @@ def fire(cfg, is_long: bool, bars_since_exit: int, entry_price: float, exit_pric
         px = _num(close, 0.0)
         if px <= 0:
             return False
-        r, kk, dd = _num(rsi, float("nan")), _num(k, float("nan")), _num(d, float("nan"))
+        r, kk, dd = (
+            _num(rsi, float("nan")),
+            _num(k, float("nan")),
+            _num(d, float("nan")),
+        )
         if not (math.isfinite(r) and math.isfinite(kk) and math.isfinite(dd)):
             return False
         ha = _num(ha_color, 0.0)
@@ -133,7 +153,9 @@ def fire(cfg, is_long: bool, bars_since_exit: int, entry_price: float, exit_pric
         if rv < abs(_num(_get(cfg, "TR_HIGH_GAIN_REOPEN_MIN_RELVOL", 1.2), 1.2)):
             return False
         if is_long:
-            if r >= abs(_num(_get(cfg, "TR_HIGH_GAIN_REOPEN_RSI_LONG_MAX", 75.0), 75.0)):
+            if r >= abs(
+                _num(_get(cfg, "TR_HIGH_GAIN_REOPEN_RSI_LONG_MAX", 75.0), 75.0)
+            ):
                 return False
             if not (kk > dd):
                 return False
@@ -143,7 +165,9 @@ def fire(cfg, is_long: bool, bars_since_exit: int, entry_price: float, exit_pric
             if lo > 0 and px <= lo:
                 return False
         else:
-            if r <= abs(_num(_get(cfg, "TR_HIGH_GAIN_REOPEN_RSI_SHORT_MIN", 25.0), 25.0)):
+            if r <= abs(
+                _num(_get(cfg, "TR_HIGH_GAIN_REOPEN_RSI_SHORT_MIN", 25.0), 25.0)
+            ):
                 return False
             if not (kk < dd):
                 return False

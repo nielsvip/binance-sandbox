@@ -73,6 +73,7 @@ import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account 
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
 import vec_decisions.high_gain_reopen as _hgr  # 2026-10-21 TR HIGH-GAIN REOPEN (re-open reduced high-gain lifecycles; stocks only, default off)
+import vec_decisions.reentry_overdue as _rovd  # 2026-10-21 TRADIER OVERDUE reentry bypass (2h+ wait bypasses stoch+WT on dc_15m break or GR HL/HH; stocks only, default off)
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
@@ -5658,6 +5659,9 @@ class QuickConfig:
     TR_HIGH_GAIN_REOPEN_MIN_RELVOL: float = 1.2  # 15m rel-vol floor (live 5m 1.2x, mapped to NPZ 15m)
     TR_HIGH_GAIN_REOPEN_RSI_LONG_MAX: float = 75.0  # LONG refused at/above (live rsi_5m<75, mapped to rsi_15m)
     TR_HIGH_GAIN_REOPEN_RSI_SHORT_MIN: float = 25.0  # SHORT refused at/below (live rsi_5m>25, mapped to rsi_15m)
+    # 2026-10-21 TRADIER OVERDUE reentry bypass (vec_decisions/reentry_overdue.py) — vector twin of the reentry_monitor OVERDUE gate; off by default = live (killed). GR mode/min-tfs reuse REENTRY_GR_HLHH_MODE/_MIN_TFS.
+    REENTRY_OVERDUE_MODEL_ENABLED: bool = False
+    REENTRY_OVERDUE_MIN_BARS: int = 8  # 15m bars since last CLOSE bar (≈ live 2h wall-clock)
     # 2026-10-17 PEAK_GIVEBACK vector twin scope + LOSS_PRONE_ENTRY_FILTER (vec_decisions/breakeven_lock.py; flags data/loss_prone_entries.json)
     PEAK_GIVEBACK_SCOPE: str = "all"  # all / loss_prone — which positions the PEAK_GIVEBACK hard-zero/drop exit covers (pilot-tested)
     LOSS_PRONE_ENTRY_FILTER_ENABLED: bool = True  # loss-prone entry functions need extra filters (boards may switch it off)
@@ -17707,6 +17711,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             pass
         _hgr_d4l, _hgr_d4h = _safe(npz, "dc_low_4h", n), _safe(npz, "dc_high_4h", n)
+    # 2026-10-21 TRADIER OVERDUE inputs (vec_decisions/reentry_overdue.py) — only built when the switch is on; stocks (tradier) only
+    _rovd_on = _rovd.enabled(cfg) and str(getattr(cfg, "MODE", "crypto")) == "tradier"
+    _rovd_fired = (-1, "")
+    if _rovd_on:
+        _rovd_dc = _safe(npz, "dc_high_15m" if is_long else "dc_low_15m", n)
+        _rovd_h = {tf: _safe(npz, f"high_{tf}", n) for tf in ("1h", "4h", "D")}
+        _rovd_l = {tf: _safe(npz, f"low_{tf}", n) for tf in ("1h", "4h", "D")}
+        _rovd_hp = {tf: _safe(npz, f"high_{tf}_prev", _rovd_h[tf]) for tf in ("1h", "4h", "D")}
+        _rovd_lp = {tf: _safe(npz, f"low_{tf}_prev", _rovd_l[tf]) for tf in ("1h", "4h", "D")}
+        _rovd_w = {tf: (_safe(npz, f"wt1_{tf}", n), _safe(npz, f"wt2_{tf}", n)) for tf in ("1h", "4h", "D")}
     # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
     try:
         _n3_k15 = _safe(npz, "stoch_k_15m", n, 50.0)
@@ -18924,6 +18938,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _hgr_fired = (i, _hgr.REASON)
                 except Exception:
                     pass
+            if not fire and _rovd_on and has_closed_before and trades:  # 2026-10-21 TRADIER OVERDUE — single call into the shared predicate (stocks/tradier path only; default off)
+                try:
+                    _rovd_last = next((t for t in reversed(trades) if t.get("type") == "CLOSE"), None)
+                    _rovd_xb = int(_rovd_last.get("bar_exit", i - 1)) if _rovd_last is not None else i - 1
+                    _rovd_fpx = float(px)
+                    _rovd_fdc = float(_rovd_dc[i])
+                    _rovd_fh = {tf: float(_rovd_h[tf][i]) for tf in ("1h", "4h", "D")}
+                    _rovd_fl = {tf: float(_rovd_l[tf][i]) for tf in ("1h", "4h", "D")}
+                    _rovd_fhp = {tf: float(_rovd_hp[tf][i]) for tf in ("1h", "4h", "D")}
+                    _rovd_flp = {tf: float(_rovd_lp[tf][i]) for tf in ("1h", "4h", "D")}
+                    _rovd_fw = {tf: (float(_rovd_w[tf][0][i]), float(_rovd_w[tf][1][i])) for tf in ("1h", "4h", "D")}
+                    if _rovd.fire(cfg, is_long, i - _rovd_xb, _rovd_fpx, _rovd_fdc, _rovd_fh, _rovd_fl, _rovd_fhp, _rovd_flp, _rovd_fw):
+                        fire = True
+                        _rovd_fired = (i, _rovd.REASON)
+                except Exception:
+                    pass
             _n3_tier = None
             _n3_tier_reason = None
             if (
@@ -19504,6 +19534,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _hardcoded_fired = True
                         if _hgr_fired[0] == i and not entry_sig[i]:
                             entry_reason = _hgr_fired[1]  # 2026-10-21 TR HIGH-GAIN REOPEN
+                            _hardcoded_fired = True
+                        if _rovd_fired[0] == i and not entry_sig[i]:
+                            entry_reason = _rovd_fired[1]  # 2026-10-21 TRADIER OVERDUE
                             _hardcoded_fired = True
                         if (
                             has_closed_before

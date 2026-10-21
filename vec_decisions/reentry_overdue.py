@@ -40,10 +40,16 @@ def _get(cfg, k, d):
 
 def enabled(cfg) -> bool:
     v = _get(cfg, "REENTRY_OVERDUE_MODEL_ENABLED", False)
-    return (str(v).strip().lower() in ("1", "true", "yes")) if isinstance(v, str) else bool(v)
+    return (
+        (str(v).strip().lower() in ("1", "true", "yes"))
+        if isinstance(v, str)
+        else bool(v)
+    )
 
 
-def fire(cfg, is_long, age_bars, px, dc_15m, highs, lows, highs_prev, lows_prev, wts) -> bool:
+def fire(
+    cfg, is_long, age_bars, px, dc_15m, highs, lows, highs_prev, lows_prev, wts
+) -> bool:
     """True when the overdue bypass fires this bar.
 
     px: current price. dc_15m: dc_high_15m (LONG) or dc_low_15m (SHORT) level.
