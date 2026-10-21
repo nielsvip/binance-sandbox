@@ -1,66 +1,32 @@
 {
- "generated_at": "2026-10-21 11:48 UTC",
- "total_capital_usd": 42.9,
+ "generated_at": "2026-10-21 11:54 UTC",
+ "total_capital_usd": 6.27,
  "tier_capital": {
   "A": 0.0,
-  "B": 31.16,
-  "C": 11.74
+  "B": 0.0,
+  "C": 6.27
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 2
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:BTCDOMUSDT_LONG",
-  "ang:LTCUSDC_LONG"
+  "men:BBUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ENAUSDC_LONG",
-   "symbol": "ENAUSDC",
-   "account": "ang",
-   "value_usd": 24.93,
-   "gain_pct": 0.191,
-   "tier": "B",
-   "perf_mult": 1.5,
-   "amt": 119.0,
-   "mark": 0.20949
-  },
-  {
-   "pk": "ang:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "account": "ang",
-   "value_usd": 6.23,
-   "gain_pct": -0.082,
-   "tier": "B",
-   "perf_mult": 1.66,
-   "amt": 54.8,
-   "mark": 0.11377607
-  },
-  {
-   "pk": "ang:LTCUSDC_LONG",
-   "symbol": "LTCUSDC",
-   "account": "ang",
-   "value_usd": 6.21,
-   "gain_pct": -0.032,
+   "pk": "men:BBUSDT_LONG",
+   "symbol": "BBUSDT",
+   "account": "men",
+   "value_usd": 6.27,
+   "gain_pct": 0.378,
    "tier": "C",
-   "perf_mult": 0.16,
-   "amt": 0.101,
-   "mark": 61.49047391
-  },
-  {
-   "pk": "ang:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "ang",
-   "value_usd": 5.53,
-   "gain_pct": -0.063,
-   "tier": "C",
-   "perf_mult": 0.28,
-   "amt": 0.001,
-   "mark": 5527.43566008
+   "perf_mult": 0.14,
+   "amt": 739.0,
+   "mark": 0.008487
   }
  ]
 }
