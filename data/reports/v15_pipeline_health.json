@@ -1,13 +1,13 @@
 {
- "at": "2026-10-21T06:16:05Z",
+ "at": "2026-10-21T06:31:08Z",
  "s1": {
   "host": "niels",
-  "now": 1792563359.4946027,
+  "now": 1792564264.663793,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 0.0,
+   "max_lag_min": 15.0,
    "median_lag_min": 0.0,
-   "worst": "1000FLOKIUSDT",
+   "worst": "ACEUSDT",
    "dead": []
   },
   "merge_stocks": {
@@ -25,20 +25,20 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 1.4,
-  "append_last_secs": 574.6,
-  "append_last_stats": "'appended': 778, 'created': 0, 'up_to_date': 5281, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 6.5,
+  "append_last_secs": 571.8,
+  "append_last_stats": "'appended': 757, 'created': 0, 'up_to_date': 5302, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 1,
-  "npz_cycle_last_utc": "06:07:49",
-  "npz_cycle_installed": 91,
+  "npz_cycle_last_utc": "06:21:06",
+  "npz_cycle_installed": 78,
   "npz_cycle_not_ready": 0,
   "npz_cycle_no_new": 0,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 2.0,
-  "sched_launched": 4,
-  "archive_n": 166,
-  "archive_mb": 2020.8,
-  "archive_newest_min": 40.4,
+  "sched_tick_age_min": 1.0,
+  "sched_launched": 0,
+  "archive_n": 167,
+  "archive_mb": 2023.8,
+  "archive_newest_min": 24.9,
   "_via": "s1-int"
  },
  "red": [],
