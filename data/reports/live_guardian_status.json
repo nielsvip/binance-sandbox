@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:16:02Z",
+ "ts": "2026-10-21T00:21:19Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,10 +111,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 227,
+  "total": 232,
   "per_acct": {
    "fin": 62,
-   "ang": 50,
+   "ang": 55,
    "men": 96,
    "flz": 18,
    "inf": 1
@@ -127,64 +127,64 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 7.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 11.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 31.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 4.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15298.0
+   "log_age_s": 15615.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15300.0
+   "log_age_s": 15618.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:16:02Z",
+   "ts": "2026-10-21T00:21:20Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
    "evidence": "21 00:09:20 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $41 on bounce (prior max 3.0000)"
   },
   {
-   "ts": "2026-10-21T00:16:02Z",
+   "ts": "2026-10-21T00:21:20Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
    "evidence": "21 00:11:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $7 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-21T00:16:02Z",
+   "ts": "2026-10-21T00:21:20Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
@@ -275,5 +275,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.17
+ "sweep_s": 0.74
 }
