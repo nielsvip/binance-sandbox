@@ -25801,7 +25801,15 @@ class MultiAccountTradeManager:
                             store.mark(it["intent_id"])
                             continue
                         _it_age = _vdm.intent_age_s(it, now)
-                        if _it_age > max_age:
+                        _zp_vd = False
+                        try:  # USER 2026-10-21: late dictates still trade — staleness never refuses (lane latency is a separate fault, reported not enforced here)
+                            from live_twins import zero_pass as _zp_vd_mod
+                            _zp_vd = _zp_vd_mod.trade_all_on() and _zp_vd_mod.calculated(symbol, side)
+                        except Exception:
+                            _zp_vd = False
+                        if _zp_vd and _it_age > max_age:
+                            logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: intent {it['intent_id']} {it['type']} bar={it.get('bar_ts')} is {_it_age:.0f}s old — executing late dictate (USER 2026-10-21)")
+                        if _it_age > max_age and not _zp_vd:
                             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: intent {it['intent_id']} {it['type']} bar={it.get('bar_ts')} is {_it_age:.0f}s old > {max_age:.0f}s — STALE, consumed WITHOUT order (reconcile owns the target)")
                             _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": f"REFUSED_STALE_{_it_age:.0f}s"})
                             store.mark(it["intent_id"])
@@ -25846,7 +25854,15 @@ class MultiAccountTradeManager:
                             continue
                         _st_tgt = st.get("target_state") if isinstance(st.get("target_state"), dict) else {}
                         _st_dec_age = now - (_vdm.parse_bar_ts(_st_tgt.get("entry_ts")) or _vdm.parse_bar_ts(st.get("bar_ts")))
-                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS:
+                        _zp_vd2 = False
+                        try:  # USER 2026-10-21: late dictates still trade
+                            from live_twins import zero_pass as _zp_vd2_mod
+                            _zp_vd2 = _zp_vd2_mod.trade_all_on() and _zp_vd2_mod.calculated(symbol, side)
+                        except Exception:
+                            _zp_vd2 = False
+                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS and _zp_vd2:
+                            logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: reconcile target open but decision bar {bar_key} is {_st_dec_age:.0f}s old — executing late OPEN (USER 2026-10-21)")
+                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS and not _zp_vd2:
                             store.mark_reconcile(ss, bar_key)
                             logger.warning(f"[VEC_DRIVEN_RECONCILE] {position_key}: target open but decision bar {bar_key} is {_st_dec_age:.0f}s old > {max_age:.0f}s — no late OPEN (stale guard)")
                             continue

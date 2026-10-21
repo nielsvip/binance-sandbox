@@ -1,44 +1,9 @@
 {
-  "fin:ALGOUSDT_LONG": {
-    "orderId": "3000002262823826",
-    "stopPrice": 0.11271,
-    "entry_sig": "2026-10-21 02:06:51.733000+00:00",
-    "symbol": "ALGOUSDT",
-    "side": "LONG"
-  },
-  "fin:ZENUSDT_LONG": {
-    "orderId": "3000002262974528",
-    "stopPrice": 6.064,
-    "entry_sig": "2026-10-21 04:15:27.810000+00:00",
-    "symbol": "ZENUSDT",
-    "side": "LONG"
-  },
-  "fin:AVAXUSDC_LONG": {
-    "orderId": "3000002262973514",
-    "stopPrice": 9.62,
-    "entry_sig": "2026-10-21 04:14:51.937000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "LONG"
-  },
-  "fin:XRPUSDC_LONG": {
-    "orderId": "3000002262990701",
-    "stopPrice": 1.3242,
-    "entry_sig": "2026-10-21 04:27:33.274000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "LONG"
-  },
-  "fin:IOTXUSDT_LONG": {
-    "orderId": "3000002262976662",
-    "stopPrice": 0.003892,
-    "entry_sig": "2026-10-21 04:05:14.116000+00:00",
-    "symbol": "IOTXUSDT",
-    "side": "LONG"
-  },
-  "fin:COTIUSDT_LONG": {
-    "orderId": "3000002262994931",
-    "stopPrice": 0.010698,
-    "entry_sig": "2026-10-21 04:30:22.848000+00:00",
-    "symbol": "COTIUSDT",
+  "inf:1INCHUSDT_LONG": {
+    "orderId": "2000001528223291",
+    "stopPrice": 0.09327,
+    "entry_sig": "2026-10-21 04:34:08.048672+00:00",
+    "symbol": "1INCHUSDT",
     "side": "LONG"
   }
 }
