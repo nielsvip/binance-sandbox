@@ -38,10 +38,10 @@ once, for every caller: the newer user instruction wins over the board, exactly 
 Caps never raise a value that is already below them, and nothing here touches exits or stops.
 
 REVERSIBILITY
-  PER_SYM_FULL_SET_READER=0 turns this off at every call site and each caller falls back to the exact
+  2026-10-21: PER_SYM_FULL_SET_READER=0 is ERASED (it used to turn this off at every call site, reverting to the
   JSON block it used before. No code change needed to go back.
   config.CRYPTO_MINIMUM_TRADING_MODE=False lifts the sizing caps (its own documented rollback).
-  V8_DISABLE_PER_SYM / PER_SYM_STORE_SQLITE_DISABLED / PER_SYM_APPLY_FULL_SET keep working unchanged.
+  diff model). V8_DISABLE_PER_SYM / PER_SYM_STORE_SQLITE_DISABLED remain; PER_SYM_APPLY_FULL_SET is ERASED too.
 """
 from __future__ import annotations
 
@@ -76,8 +76,12 @@ _cap_memo: dict = {}
 
 
 def enabled() -> bool:
-    """False -> every caller reverts to its own legacy JSON `overrides` lookup."""
-    return os.environ.get("PER_SYM_FULL_SET_READER", "1") != "0"
+    """Always True. 2026-10-21 (USER: "Overrides DO NOT EXIST ANYMORE --- ANYWHERE"): this used to honour
+    PER_SYM_FULL_SET_READER=0, which reverted every caller to "its own legacy JSON `overrides` lookup" — i.e. it
+    could put the erased diff model back on live with one env var. There is no legacy lookup to revert to any
+    more: a per-sym set and a cat_side set are each the whole ~3600-switch set, so there is nothing to diff
+    against. Kept as a function so no call site changes."""
+    return True
 
 
 def _json_full_sets() -> dict:

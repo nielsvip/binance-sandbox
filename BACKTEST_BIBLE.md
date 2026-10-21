@@ -4486,3 +4486,41 @@ that rule for §118.9's 179 switches an hour before building a writer for 1,220 
 5. **Disk is part of never-miss.** The gateway was at 100 % (221 MB free) from syslog (1.3 GB, its kline fetcher logs every FORCE FETCH at INFO) + journal (3.2 GB). Cleaned to 5.6 GB free; rsyslog now daily/200 MB/7 kept with an hourly check, journald `SystemMaxUse=500M`.
 6. **Timestamp styles — compare ONLY via `canon()`.** Stores mix `"2026-10-20"` (stock D), `"2026-10-20T19:30"`, `"2026-10-20 15:30"` and `"2026-10-20T19:30:00.000000Z"`. A SPACE-separated stock intraday stamp is **New-York-labelled** (Mac `USO_1h` `"2026-10-20 13:30"` == the UTC 17:30 bar). Text comparison of mixed styles reads the same bar as two. **I made this error on 2026-10-21:** the first heal runs appended 13 UTC bars into Mac `BNO_1h`/`USO_1h` that duplicated their ET-labelled session; all 13 removed (`backups/before_undo_nevermiss_append*`, `before_remove_nevermiss_dup_*`). Guards now: probe reads space stamps as ET, D compares by DATE, merge/tail refuse any stock file with ET rows in its tail, such files are reported `MIXED-LABEL` (currently Mac BNO_1h, USO_1h) and never auto-healed. Pre-existing and untouched: stock D files (ASML, ABT, …) carry every day 2016→2026-08-26 twice (13:30 + 20:00 stamps, identical values) — a grid-merge artefact for a deliberate fix, not a side effect.
 7. **S1's crypto stack is on-demand** (cron `EZ_S1_STACK_REAP` stops `ez_s1_stack` while the Mac is NORMAL). S1 is judged by "Mac push OR own stack fresh", never by the idle stack alone.
+
+### 118.11 ERASING THE DIFF MODEL — VERIFIED INERT ON LIVE, AND THE ONE REMNANT THAT IS REAL
+2026-10-21 a subagent removed two env escape hatches from the live per-sym resolution path
+(`per_sym_store.py:659` `PER_SYM_APPLY_FULL_SET=0`, whose own docstring offered to "restore the 842-key diff";
+`per_sym_live_set.py:80` `PER_SYM_FULL_SET_READER=0`, which reverted every caller to a legacy `overrides`
+lookup). Both files are read by all five live crypto engines, so this was checked before being believed:
+
+1. **Neither variable is set in the environment of any running engine** (`ps -Eww` on four live `ez_manage`
+   PIDs) — both hatches were already at their defaults, so deleting them changes nothing live.
+2. The single behavioural delta on the default path is `full_config` missing/empty → **`None`** now, where it
+   used to fall back to `dict(e["overrides"])`. Measured against the live SQL store: **0 of 759
+   `per_sym_active` rows have an empty/absent `full_config`**, 0 have neither, and **0 have a `full_config`
+   under 500 keys**. So no sym_side loses its board values; the change is inert and the fallback it removed was
+   unreachable in practice.
+3. Both compile; with both old vars forced to `0`, `per_sym_live_set.enabled()` is `True` and
+   `BTCUSDC_LONG` resolves **3,530 keys**.
+
+**A FALSE ALARM WORTH NAMING:** it flagged "`per_sym_full_sets.json` has a `min=10` entry — a near-empty row in
+a file that is supposed to hold only full sets". That row is **`_meta`**, the file's own metadata header. The
+smallest real sym_side row is **3,311 keys** (`DIVTESTUSDT_LONG`, `ZZZTESTUSDT_LONG`). A min/median scan over a
+dict whose keys are data rows must exclude the metadata block, or the header reports as the worst row.
+
+**THE REMNANT THAT IS REAL, AND IT IS ON THE LIVE ENTRY PATH.** `data/published_selection.json` stores each
+board as a **diff**, not a full set — it carries `n_overrides` and an `overrides` dict, and
+`live_twins.vec_exact.latest_board_ok` → `board_live_diff` compares the live set against **only those keys**.
+Independently corroborated by §118.2's own output, where a published row printed
+`"n_board_overrides": 879` beside a 3,500-key live set. That comparison IS the crypto entry gate, so converting
+the generator (`tools/v15_published_selection.py`) to publish full sets also moves the gate and the go-live
+applier — a multi-file change on the live entry path, and precisely where a careless edit refuses every entry on
+every sym_side. That failure happened twice on 2026-10-20 alone (199 stock orders refused with
+`TRADIER_HERMETIC_ENFORCE`, and the `STRICT_VEC_PARITY_MODE` gate admitting 0 of 582,689 board entries). It
+belongs to the pilot and the S2 gate, not a hand edit.
+
+**THIRD MISREPORTED BACKUP FILENAME IN ONE NIGHT.** Claimed
+`backups/before_erase_override_model_202610210459_*`; the real files are `…_202610210538_*`. The mandated
+backups DO exist each time, but the name in the report has been wrong three times
+(`…0015…` vs `…0430…` for `tradier_manage`, and here). **Verify a backup by `ls`, never by the sentence that
+claims it** — a backup you cannot find is a backup you do not have.

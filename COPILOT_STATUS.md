@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 05:34:24 UTC
+# Copilot Status — 2026-10-21 05:39:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:27:27
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:28:30
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T05:28:42
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:29:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:30:39
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T05:30:51
 - **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:31:44
 - **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:32:50
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T05:33:01
 - **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:33:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:34:55
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T05:35:16
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T05:35:57
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T05:37:19
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T05:39:22
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 8 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
 - HELD: **U** SHORT (tradier) peak +4.8%, now +1.0%
@@ -38,8 +38,6 @@ _None_
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
 
-- WATCHING: **KMNOUSDT** LONG (crypto) peaked +11.7%, exited 0m ago
-
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
@@ -49,4 +47,4 @@ _None_
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (553min)
+- [MEDIUM] tradier_prices.py running but log stale (558min)

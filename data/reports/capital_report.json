@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-21 05:37 UTC",
- "total_capital_usd": 49.95,
+ "generated_at": "2026-10-21 05:41 UTC",
+ "total_capital_usd": 49.9,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 49.95
+  "C": 49.9
  },
  "tier_count": {
   "A": 0,
@@ -22,23 +22,23 @@
    "pk": "ang:SKLUSDT_SHORT",
    "symbol": "SKLUSDT",
    "account": "ang",
-   "value_usd": 25.03,
-   "gain_pct": -0.135,
+   "value_usd": 24.99,
+   "gain_pct": -0.0,
    "tier": "C",
    "perf_mult": 0.51,
    "amt": 5827.0,
-   "mark": 0.00429481
+   "mark": 0.004289
   },
   {
    "pk": "ang:1000LUNCUSDT_SHORT",
    "symbol": "1000LUNCUSDT",
    "account": "ang",
-   "value_usd": 24.92,
-   "gain_pct": 0.211,
+   "value_usd": 24.91,
+   "gain_pct": 0.26,
    "tier": "C",
    "perf_mult": 0.35,
    "amt": 537.0,
-   "mark": 0.04641191
+   "mark": 0.04638909
   }
  ]
 }

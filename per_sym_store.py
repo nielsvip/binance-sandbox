@@ -641,7 +641,8 @@ def get_overrides(sym_side: str) -> Optional[dict]:
     saw (115 keys; STOCH_CROSS_ENTRY_TRADIER True->False on 208 rows, COOLDOWN_BARS_TRADIER 8->0 on 182,
     ADX_REGIME_FILTER_ENABLED True->False on 171, MIN_GAIN_TO_BUY_AGGRESSIVELY 4.5->6.0 on 81). Serving full_config
     makes the per-sym layer complete, so a morning default move can no longer drift live off a qualified board; the
-    next go-live re-apply refreshes the snapshot. Kill switch PER_SYM_APPLY_FULL_SET=0 restores the 842-key diff.
+    next go-live re-apply refreshes the snapshot. 2026-10-21: the PER_SYM_APPLY_FULL_SET=0 kill switch that
+    restored an 842-key diff is ERASED — there is no diff model to fall back to. Every row is the whole set.
 
     No copy on return: the full set is 3561 keys and live calls this thousands of times per cycle (copying cost
     8.3 us/call at 842 keys, 18.3 us at 3561 -> the same event-loop freeze the memo was added for; no-copy is 0.05 us).
@@ -654,13 +655,21 @@ def get_overrides(sym_side: str) -> Optional[dict]:
     if _hit is not None and _now - _hit[0] < float(os.environ.get("PER_SYM_OVR_MEMO_SEC", "30.0")):
         return _hit[1]
     e = get(sym_side)
+    # 2026-10-21 THE OVERRIDE MODEL IS ERASED (USER: "Overrides DO NOT EXIST ANYMORE --- ANYWHERE ... ALL PER_SYM
+    # SETTINGS AND DEFAULT SETTINGS ARE ~3600 switches NOT a default set with 8 or 3300 overrides").
+    # There is no diff layer and there has not been one since TEMPLATE_* became the authority: a default that is
+    # re-swept every 24 h per cat_side cannot be "overridden", because tomorrow's default is a different number,
+    # so a stored diff silently means something else the next day. Every row IS the whole ~3600-switch set.
+    # REMOVED: the `PER_SYM_APPLY_FULL_SET=0` branch, whose own docstring offered to "restore the 842-key diff",
+    # and the `e["overrides"]` fallback. Measured 2026-10-21 — full sets are real and present everywhere that
+    # decides: data/per_sym_full_sets.json median 3560 keys/sym_side, data/cat_side_defaults_4.json 3563-3566 per
+    # cat_side. An empty/absent full_config now returns None so the caller resolves cat_side (itself a full set),
+    # instead of silently handing live a partial dict that reads as "everything else is the global default".
     if e is None:
         ov = None
-    elif os.environ.get("PER_SYM_APPLY_FULL_SET", "1") != "0":
-        _full = e.get("full_config")
-        ov = _mandate_sanitize(dict(_full)) if isinstance(_full, dict) and _full else dict(e.get("overrides") or {})
     else:
-        ov = dict(e.get("overrides") or {})
+        _full = e.get("full_config")
+        ov = _mandate_sanitize(dict(_full)) if isinstance(_full, dict) and _full else None
     _OVR_MEMO[_k] = (_now, ov)
     return ov
 

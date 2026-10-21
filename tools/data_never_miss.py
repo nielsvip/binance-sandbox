@@ -271,9 +271,16 @@ def heal(idx, probes):
             if by_ts:
                 patches[rel] = [by_ts[t] for t in sorted(by_ts)]
         res = apply_patch(host, base, patches)
+        # new last bar per file actually appended to — the verdict uses these instead of re-probing remote hosts
+        new_last = {rel: ms_of(rows[-1]["timestamp"]) for rel, rows in patches.items() if isinstance(res.get(rel), int) and res[rel] > 0}
         results[f"{host}:{base}"] = {"files": len(patches), "rows": sum(v for v in res.values() if isinstance(v, int)),
-                                     "skipped": {k: v for k, v in res.items() if not isinstance(v, int)}}
+                                     "skipped": {k: v for k, v in res.items() if not isinstance(v, int)}, "_new_last": new_last}
     return results
+
+
+def ms_of(ts):
+    from datetime import datetime, timezone
+    return int(datetime.strptime(canon(ts), "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp() * 1000)
 
 
 def fetch_tails(host, base, req):
@@ -378,12 +385,26 @@ def main():
     healed = {} if a.no_heal else heal(idx, probes)
     log(f"heal done at {time.time() - t0:.0f}s: " + ", ".join(f"{k} +{v['rows']}" for k, v in healed.items()))
     if healed:
-        # re-probe the targets that were written so the verdict is measured, not assumed
-        with ThreadPoolExecutor(3) as ex:
-            for h, d, _e in ex.map(probe, [k.split(":")[0] for k in healed]):
-                if d:
-                    probes[h] = d
+        # verdict on what was MEASURED: the Mac is re-probed (cached, ~0.1 s); remote files take the last bar the merge
+        # confirmed it appended (re-probing S1 under Mac load cost 60+ s per run)
+        _h, d, _e = probe("mac")
+        if d:
+            probes["mac"] = d
         idx = index(probes, crypto, stocks)
+        for key, v in healed.items():
+            host, base = key.split(":", 1)
+            if host == "mac":
+                continue
+            for rel, ms in v.pop("_new_last", {}).items():
+                m = REL.match(rel)
+                if not m:
+                    continue
+                sub, symbol, tf = m.group(1) or "", m.group(2), m.group(3)
+                stores = idx.get(("stocks" if sub == "tradier" else "crypto", symbol, tf))
+                if stores is not None:
+                    stores[(host, base, sub)] = ms // TF_MS["D"] * TF_MS["D"] if tf == "D" else ms
+        for v in healed.values():
+            v.pop("_new_last", None)
     now_ms = int(time.time() * 1000)
     breaches, unhealable = verdict(idx, probes, now_ms)
     mk = market(probes)
