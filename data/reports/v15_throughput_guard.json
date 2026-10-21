@@ -1,156 +1,150 @@
 {
- "at": "2026-10-21T14:11:05Z",
+ "at": "2026-10-21T15:11:16Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 4,
-   "improved_per_hour": 4.0,
-   "published_n": 4,
+   "improved": 5,
+   "improved_per_hour": 5.0,
+   "published_n": 5,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "EGLDUSDT_LONG"
+    "SKYUSDT_SHORT"
    ],
-   "mem_avail_mb": 19399,
-   "load1": 24.02,
+   "mem_avail_mb": 24802,
+   "load1": 15.09,
    "nproc": 16,
    "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 32699 MB, mem 18922 MB, est_pair 15375 MB) \u2014 slots 1/8",
+   "binding_reason": "scheduler mem guard (disk 32193 MB, mem 25081 MB, est_pair 15375 MB) \u2014 slots 1/8",
    "error": null,
    "published": [
     {
-     "symside": "AVAXUSDC_LONG",
-     "at": "2026-10-21T13:36:41Z",
-     "baseline": 23.780749852923492,
-     "final": 35.36814331170764,
+     "symside": "EGLDUSDT_LONG",
+     "at": "2026-10-21T14:12:11Z",
+     "baseline": 23.48228073118768,
+     "final": 24.69793628752571,
      "state": "improved"
     },
     {
-     "symside": "BNBUSDC_LONG",
-     "at": "2026-10-21T13:53:52Z",
-     "baseline": -1.1035840843593094,
-     "final": 11.93562602205516,
+     "symside": "GRAMUSDT_LONG",
+     "at": "2026-10-21T14:58:05Z",
+     "baseline": -9.055437708461007,
+     "final": 36.592555052860206,
      "state": "improved"
     },
     {
-     "symside": "BNBUSDC_SHORT",
-     "at": "2026-10-21T13:47:52Z",
-     "baseline": 5.274122670394613,
-     "final": 5.274201862597824,
+     "symside": "GRAMUSDT_SHORT",
+     "at": "2026-10-21T14:47:39Z",
+     "baseline": 34.82693974840249,
+     "final": 36.78161842182343,
      "state": "improved"
     },
     {
-     "symside": "KAVAUSDT_LONG",
-     "at": "2026-10-21T13:11:42Z",
-     "baseline": 1.9267960197444522,
-     "final": 11.006921629684118,
+     "symside": "NMRUSDT_SHORT",
+     "at": "2026-10-21T14:33:23Z",
+     "baseline": 46.987281814518084,
+     "final": 50.38610008143868,
+     "state": "improved"
+    },
+    {
+     "symside": "OLED_LONG",
+     "at": "2026-10-21T15:08:44Z",
+     "baseline": 27.93802645141096,
+     "final": 28.476169354033072,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 16.8,
-   "last_improved_symside": "BNBUSDC_LONG",
-   "cadence_ok": false,
-   "improved_gap_min_median_24h": 2.0,
+   "minutes_since_last_improved": 2.5,
+   "last_improved_symside": "OLED_LONG",
+   "cadence_ok": true,
+   "improved_gap_min_median_24h": 2.3,
    "improved_gap_min_max_24h": 39.8,
-   "improved_finishes_24h": 48,
-   "board_cpu_s_median_24h": 727.2,
-   "board_wall_s_median_24h": 483.9075119495392,
-   "board_cores": 2.94,
-   "nonboard_cores_competing": 5.34,
-   "nonboard_cores_niced": 7.3,
+   "improved_finishes_24h": 53,
+   "board_cpu_s_median_24h": 734.5,
+   "board_wall_s_median_24h": 495.2866461277008,
+   "board_cores": 0.99,
+   "nonboard_cores_competing": 3.29,
+   "nonboard_cores_niced": 2.07,
    "cores_by_bucket": {
-    "other": 1.07,
-    "live_helpers": 4.27,
-    "boards": 2.94
+    "other": 0.3,
+    "live_helpers": 2.03,
+    "boards": 0.99,
+    "klines_append": 0.96
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 1.58,
-    "other": 5.72
+    "klines_vault": 1.99,
+    "other": 0.08
    }
   },
   "s2": {
-   "improved": 7,
-   "improved_per_hour": 7.0,
-   "published_n": 7,
+   "improved": 5,
+   "improved_per_hour": 5.0,
+   "published_n": 5,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "VETUSDT_SHORT",
-    "ZENUSDT_LONG"
+    "LTCUSDC_LONG",
+    "SUSHIUSDT_SHORT"
    ],
-   "mem_avail_mb": 23771,
-   "load1": 5.6,
+   "mem_avail_mb": 24700,
+   "load1": 6.98,
    "nproc": 16,
    "slots": "2/6",
-   "binding_reason": "scheduler mem guard (disk 34892 MB, mem 24073 MB, est_pair 13782 MB) \u2014 slots 2/6",
+   "binding_reason": "scheduler mem guard (disk 34544 MB, mem 25149 MB, est_pair 13782 MB) \u2014 slots 2/6",
    "error": null,
    "published": [
     {
-     "symside": "IOTXUSDT_LONG",
-     "at": "2026-10-21T13:51:24Z",
-     "baseline": 14.640310676917542,
-     "final": 14.719386820288952,
+     "symside": "ATOMUSDT_LONG",
+     "at": "2026-10-21T14:33:20Z",
+     "baseline": 19.413825416734326,
+     "final": 22.625957922654617,
      "state": "improved"
     },
     {
-     "symside": "MELANIAUSDT_LONG",
-     "at": "2026-10-21T13:43:59Z",
-     "baseline": 24.893643638039816,
-     "final": 32.49777872804145,
+     "symside": "ATOMUSDT_SHORT",
+     "at": "2026-10-21T14:45:32Z",
+     "baseline": 36.9519137295055,
+     "final": 41.35512373066747,
      "state": "improved"
     },
     {
-     "symside": "MELANIAUSDT_SHORT",
-     "at": "2026-10-21T13:38:14Z",
-     "baseline": 14.388792642847815,
-     "final": 46.93795464162713,
+     "symside": "SUSHIUSDT_LONG",
+     "at": "2026-10-21T14:40:58Z",
+     "baseline": 32.38678881670869,
+     "final": 42.32356085578378,
      "state": "improved"
     },
     {
-     "symside": "TRXUSDT_LONG",
-     "at": "2026-10-21T14:01:16Z",
-     "baseline": 0.6846837581836984,
-     "final": 3.7840745826241284,
+     "symside": "VETUSDT_LONG",
+     "at": "2026-10-21T14:22:13Z",
+     "baseline": -3.148082124255031,
+     "final": 21.3127170716259,
      "state": "improved"
     },
     {
-     "symside": "WUSDT_SHORT",
-     "at": "2026-10-21T13:40:54Z",
-     "baseline": 13.849426360148303,
-     "final": 51.33290745534372,
-     "state": "improved"
-    },
-    {
-     "symside": "ZECUSDC_LONG",
-     "at": "2026-10-21T13:20:03Z",
-     "baseline": 23.231977137998268,
-     "final": 26.06190577890302,
-     "state": "improved"
-    },
-    {
-     "symside": "ZENUSDT_LONG",
-     "at": "2026-10-21T14:09:15Z",
-     "baseline": 23.17323784289155,
-     "final": 29.54086046175801,
+     "symside": "ZENUSDT_SHORT",
+     "at": "2026-10-21T14:17:26Z",
+     "baseline": 59.631612911823176,
+     "final": 67.0097037752189,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1.7,
-   "last_improved_symside": "ZENUSDT_LONG",
-   "cadence_ok": true,
-   "improved_gap_min_median_24h": 8.6,
+   "minutes_since_last_improved": 9.1,
+   "last_improved_symside": "API3USDT_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 8.5,
    "improved_gap_min_max_24h": 129.2,
-   "improved_finishes_24h": 99,
-   "board_cpu_s_median_24h": 1772.0,
-   "board_wall_s_median_24h": 994.0338912010193,
-   "board_cores": 4.88,
+   "improved_finishes_24h": 104,
+   "board_cpu_s_median_24h": 1808.5,
+   "board_wall_s_median_24h": 1042.355250120163,
+   "board_cores": 7.0,
    "nonboard_cores_competing": 0,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 4.88
+    "boards": 7.0
    },
    "cores_by_bucket_niced": {}
   }
@@ -160,6 +154,6 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1"
+  "s2"
  ]
 }
