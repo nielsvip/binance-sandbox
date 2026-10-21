@@ -1,43 +1,32 @@
 {
- "generated_at": "2026-10-21 06:37 UTC",
- "total_capital_usd": 18.53,
+ "generated_at": "2026-10-21 07:05 UTC",
+ "total_capital_usd": 22.14,
  "tier_capital": {
   "A": 0.0,
-  "B": 12.36,
-  "C": 6.16
+  "B": 0.0,
+  "C": 22.14
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:INJUSDT_LONG"
+  "men:BTCDOMUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SUSHIUSDT_LONG",
-   "symbol": "SUSHIUSDT",
-   "account": "ang",
-   "value_usd": 12.36,
-   "gain_pct": 0.402,
-   "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 55.0,
-   "mark": 0.2248
-  },
-  {
-   "pk": "ang:INJUSDT_LONG",
-   "symbol": "INJUSDT",
-   "account": "ang",
-   "value_usd": 6.16,
-   "gain_pct": 0.196,
+   "pk": "men:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "men",
+   "value_usd": 22.14,
+   "gain_pct": -0.012,
    "tier": "C",
-   "perf_mult": 0.36,
-   "amt": 0.7,
-   "mark": 8.80619852
+   "perf_mult": 0.31,
+   "amt": 0.004,
+   "mark": 5534.0
   }
  ]
 }

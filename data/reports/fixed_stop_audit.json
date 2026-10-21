@@ -6,20 +6,30 @@
    "entry_bar_level": 8.6553075,
    "key": "ang:INJUSDT_LONG",
    "live_level": 8.390835,
-   "mark": 8.755,
+   "mark": 8.805,
    "opened_at": "2026-10-21T06:33:15.259000Z",
    "resting_trigger": 8.378
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 5510.988,
+   "key": "men:BTCDOMUSDT_LONG",
+   "live_level": 5512.925410576684,
+   "mark": 5534.08587105,
+   "opened_at": "2026-10-21T07:02:49.743000Z",
+   "resting_trigger": 5504.6
   }
  ],
- "n_findings": 1,
- "n_positions": 2,
+ "n_findings": 2,
+ "n_positions": 3,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.22184399999999999,
    "key": "ang:SUSHIUSDT_LONG",
    "live_level": 0.22184399999999999,
-   "mark": 0.2242,
+   "mark": 0.2247,
    "opened_at": "2026-10-21T06:17:07.709000Z",
    "resting_trigger": 0.2215
   },
@@ -28,10 +38,19 @@
    "entry_bar_level": 8.6553075,
    "key": "ang:INJUSDT_LONG",
    "live_level": 8.390835,
-   "mark": 8.755,
+   "mark": 8.805,
    "opened_at": "2026-10-21T06:33:15.259000Z",
    "resting_trigger": 8.378
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 5510.988,
+   "key": "men:BTCDOMUSDT_LONG",
+   "live_level": 5512.925410576684,
+   "mark": 5534.08587105,
+   "opened_at": "2026-10-21T07:02:49.743000Z",
+   "resting_trigger": 5504.6
   }
  ],
- "ts": "2026-10-21T06:52:27.375635+00:00"
+ "ts": "2026-10-21T07:05:00.820965+00:00"
 }
