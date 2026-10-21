@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T06:40:57Z",
+ "generated_utc": "2026-10-21T07:00:19Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 166,
-    "filled_before_open": 166
+    "filled_today": 168,
+    "filled_before_open": 168
    },
-   "detail": "166 boards filled before the open (166 today)"
+   "detail": "168 boards filled before the open (168 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -62,8 +62,8 @@
    "critical": true,
    "measured": {
     "selection_n": 476,
-    "exact": 28,
-    "benign_divergence_only": 411,
+    "exact": 30,
+    "benign_divergence_only": 409,
     "material_divergence": 36,
     "no_live_row": [
      "LEXX_SHORT"
@@ -148,29 +148,16 @@
       ]
      },
      {
-      "sym_side": "YFIUSDT_LONG",
-      "published_at": "2026-10-21T05:41:02Z",
-      "material": 50,
+      "sym_side": "VETUSDT_LONG",
+      "published_at": "2026-10-16T21:28:41Z",
+      "material": 49,
       "sample": [
-       "BB_BOUNCE_ENTRY_TF",
-       "BB_FROZEN_STOP_ENABLED",
-       "BB_FROZEN_STOP_TF",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF",
-       "DC_EDGE_SIZING_MAX_MULT",
-       "EMA_DIST_SIZING_MULT"
-      ]
-     },
-     {
-      "sym_side": "YFIUSDT_SHORT",
-      "published_at": "2026-10-21T05:39:34Z",
-      "material": 47,
-      "sample": [
-       "ADX_TRENDING_THRESHOLD",
-       "ALL_TF_AGAINST_CLOSE_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BB_BOUNCE_ENTRY_TF",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED",
-       "EMA_DIST_SIZING_ENABLED"
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "BBKC_EXIT_ENABLED",
+       "BB_BREAKOUT_ENTRY_TF"
       ]
      },
      {
@@ -184,6 +171,19 @@
        "DAYTRADE_DC_TARGET_TF",
        "DC_BREAKOUT_TF_EXPANDED",
        "ENTRY_DC_TF"
+      ]
+     },
+     {
+      "sym_side": "RLCUSDT_LONG",
+      "published_at": "2026-10-16T12:38:09Z",
+      "material": 40,
+      "sample": [
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREAK_FILTER_TF",
+       "DC_EDGE_SIZING_ENABLED",
+       "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
       ]
      },
      {
@@ -201,7 +201,7 @@
      }
     ]
    },
-   "detail": "28 exact, 411 benign-only, 36 with material divergence, 1 with no live row"
+   "detail": "30 exact, 409 benign-only, 36 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
