@@ -1,12 +1,13 @@
-# Copilot Status — 2026-10-20 19:33:49 UTC
+# Copilot Status — 2026-10-21 04:18:14 UTC
 
-**Market Hours:** YES | **Tradier Priority:** YES
+**Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-_None_
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T04:17:22
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T04:17:22
 
 ## Missed Trades (trader comparison)
 
@@ -18,24 +19,26 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 8 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.1%
-- HELD: **U** SHORT (tradier) peak +4.8%, now +0.6%
-- HELD: **BHVN** SHORT (tradier) peak +4.8%, now +-0.1%
-- HELD: **PR** LONG (tradier) peak +4.7%, now +0.5%
-- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.3%
+- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
+- HELD: **U** SHORT (tradier) peak +4.8%, now +1.0%
+- HELD: **BHVN** SHORT (tradier) peak +4.8%, now +1.0%
+- HELD: **PR** LONG (tradier) peak +4.7%, now +-0.0%
+- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.4%
 - HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.2%
-- HELD: **TMO** LONG (tradier) peak +3.7%, now +0.1%
-- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.6%
+- HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
+- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
+
+- WATCHING: **BBUSDT** LONG (crypto) peaked +6.7%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 5
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for men is NOT running
+**Issues (last 1h):** 10
 - [HIGH] ez_manage.py for fin is NOT running
 - [HIGH] ez_manage.py for flz is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [MEDIUM] tradier_prices.py running but log stale (477min)

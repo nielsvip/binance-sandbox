@@ -1,9 +1,23 @@
 {
-  "ang:ALGOUSDT_LONG": {
-    "orderId": "4000001983007813",
-    "stopPrice": 0.11271,
-    "entry_sig": "2026-10-21 02:06:00.691000+00:00",
-    "symbol": "ALGOUSDT",
+  "men:BBUSDT_LONG": {
+    "orderId": "2000001528194263",
+    "stopPrice": 0.008296,
+    "entry_sig": "2026-10-21 04:15:56.683000+00:00",
+    "symbol": "BBUSDT",
+    "side": "LONG"
+  },
+  "men:QTUMUSDT_LONG": {
+    "orderId": "2000001528194466",
+    "stopPrice": 0.8698,
+    "entry_sig": "2026-10-21 04:16:00.650000+00:00",
+    "symbol": "QTUMUSDT",
+    "side": "LONG"
+  },
+  "men:ATOMUSDT_LONG": {
+    "orderId": "2000001528194894",
+    "stopPrice": 1.724,
+    "entry_sig": "2026-10-21 04:16:23.868000+00:00",
+    "symbol": "ATOMUSDT",
     "side": "LONG"
   }
 }

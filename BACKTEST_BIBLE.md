@@ -4332,3 +4332,17 @@ share, discarded when 1 share costs more than `START_POSITION_SIZE` — behind `
 Authority: `live_twins/zero_pass.py` (incremental mtime scan, one ~16 s background warm per process so the event
 loop never stalls; old refusals stand while warming). Rollback: both switches False + `backups/before_zero_pass_*`.
 INERT UNTIL THE ENGINES RECYCLE (imports bind once; one graceful SIGTERM per account, watchdog relaunches).
+
+## 122. NO-SUPPRESSION — VALIDITY FILTERS NEVER BLOCK, ONLY SIZE (USER 2026-10-21)
+
+365D was never tested live, nor were several sibling filters — in their best case of validity they may shrink an
+order (~tiers already cut 50–95% for the weak), but they NEVER refuse one. Disarmed behind the same switch for
+calculated sym_sides, every allow logged: vec-driven native suppression incl. native CLOSEs (men was stranding
+exits on it), native-entry block, 365D confirm, GATES_A, lane-B filter/strict vetoes, counter-trend, per-sym live
+profitability gate, sub-step maker zero (steps UP to 1 step when pre-round notional clears the minimum). Coverage
+this night: 476 published sym_sides, 234 tradeable keys, 104 calculated in the live scan. Deliberately STILL wired:
+correctness (bad key/price/duplicate open), infra (broker/sync/mark freshness), execution integrity (locks, dedup,
+cooldowns, no-double-open), loss halts (SYM_HALT/VIGILANCE/STALE_SET/balance floor/brakes), operator blacklist,
+per-sym strategy thresholds that ARE the dictate (WT_DC, ENTRY_SCORE, promoted filter TFs — bypassing those would
+trade MORE than dictated, violating EXACTLY), disabled-strategy flags, and all of exits/stops/guarantees. Rollback:
+`ZERO_PASS_TRADE_ALL=False` + `backups/before_no_suppress_*`.
