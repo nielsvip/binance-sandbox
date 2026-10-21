@@ -1,11 +1,49 @@
 {
- "at": "2026-10-21T01:20:22Z",
+ "at": "2026-10-21T01:30:20Z",
  "s1": {
-  "error": "s1-int:  from master failed: Broken pipe\nConnection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
+  "host": "niels",
+  "now": 1792546215.6422124,
+  "merge_crypto": {
+   "n": 12,
+   "max_lag_min": 15.0,
+   "median_lag_min": 0.0,
+   "worst": "1INCHUSDT",
+   "dead": []
+  },
+  "merge_stocks": {
+   "n": 12,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
+   "worst": "A",
+   "dead": []
+  },
+  "npz_legacy_crypto": [
+   "HBARUSDC",
+   "MOVEUSDT",
+   "NEOUSDC",
+   "QNTUSDT",
+   "WLFIUSDC",
+   "XVGUSDT"
+  ],
+  "append_log_age_min": 6.4,
+  "append_last_secs": 527.4,
+  "append_last_stats": "'appended': 591, 'created': 0, 'up_to_date': 5461, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0, 'guard-blocked': 7",
+  "npz_loop_pids": 1,
+  "npz_cycle_last_utc": "01:20:40",
+  "npz_cycle_installed": 70,
+  "npz_cycle_not_ready": 0,
+  "npz_cycle_no_new": 0,
+  "npz_loop_has_settle": true,
+  "sched_tick_age_min": 2.2,
+  "sched_launched": 1,
+  "archive_n": 164,
+  "archive_mb": 1985.9,
+  "archive_newest_min": 84.6,
+  "_via": "s1-int"
  },
- "red": [
-  "s1 unreachable: s1-int:  from master failed: Broken pipe\nConnection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out | s1-pub: TimeoutExpired"
+ "red": [],
+ "warn": [
+  "L3 6 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC MOVEUSDT NEOUSDC QNTUSDT WLFIUSDC XVGUSDT"
  ],
- "warn": [],
- "ok": false
+ "ok": true
 }
