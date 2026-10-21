@@ -14,10 +14,21 @@ import time
 from datetime import datetime, timezone
 
 # stock D files may carry date-only stamps ("2026-10-20"); everything else "YYYY-MM-DDTHH:MM:SS"
-TS = re.compile(rb'"timestamp"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}(?:[T ][0-9]{2}:[0-9]{2}:[0-9]{2})?)')
+TS = re.compile(rb'"timestamp"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}(?:[T ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?)?)')
 KLINE_GLOBS = ("klines_cache/*.json", "klines_cache/gateway/*.json", "klines_cache/tradier/*.json")
 MARKET_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json", "data/latest_market_data.json", "data/tradier/tradier_indicators_latest.json",
                 "ez_s1_stack/price_cache_1.json", "ez_s1_stack/price_cache_2.json", "ez_s1_stack/price_cache_3.json", "ez_s1_stack/data/latest_market_data.json")
+
+
+def canon(ts):
+    """one key for every stamp style seen in the stores: "2026-10-20", "2026-10-20T19:30", "2026-10-20 19:30:00",
+    "2026-10-20T19:30:00.000000Z" -> "2026-10-20T19:30:00" (2026-10-21: three styles coexist in stock files)."""
+    s = str(ts).replace(" ", "T")
+    if len(s) >= 19 and s[16] == ":":
+        return s[:19]
+    if len(s) >= 16 and s[13] == ":":
+        return s[:16] + ":00"
+    return s[:10] + "T00:00:00"
 
 
 def last_ms(path):
@@ -27,8 +38,7 @@ def last_ms(path):
             fh.seek(max(0, size - 2048))
             hits = TS.findall(fh.read())
         if hits:
-            s = hits[-1].decode().replace(" ", "T")
-            s = s if len(s) == 19 else s + "T00:00:00"
+            s = canon(hits[-1].decode())
             return int(datetime.strptime(s, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp() * 1000)
     except (OSError, ValueError):
         pass

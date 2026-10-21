@@ -15,8 +15,15 @@ import sys
 REQUIRED = ("timestamp", "open", "high", "low", "close")
 
 
-def norm(ts):
-    return str(ts).replace(" ", "T")[:19]
+def canon(ts):
+    """one key for every stamp style seen in the stores: "2026-10-20", "2026-10-20T19:30", "2026-10-20 19:30:00",
+    "2026-10-20T19:30:00.000000Z" -> "2026-10-20T19:30:00" (2026-10-21: three styles coexist in stock files)."""
+    s = str(ts).replace(" ", "T")
+    if len(s) >= 19 and s[16] == ":":
+        return s[:19]
+    if len(s) >= 16 and s[13] == ":":
+        return s[:16] + ":00"
+    return s[:10] + "T00:00:00"
 
 
 def merge_file(path, rows):
@@ -29,19 +36,20 @@ def merge_file(path, rows):
     if not isinstance(cur, list) or not cur or not isinstance(cur[-1], dict) or "timestamp" not in cur[-1]:
         return "not_a_kline_list"
     last = cur[-1]
-    last_ts = norm(last["timestamp"])[:n]
-    core = len(norm(last["timestamp"]))  # write new rows in the target's own stamp style (date-only or full)
-    suffix = str(last["timestamp"])[core:]
+    last_ts = canon(last["timestamp"])[:n]
+    raw = str(last["timestamp"])
+    core = 10 if len(raw) < 16 else (16 if len(raw) < 19 or raw[16] != ":" else 19)  # target's own stamp style
+    suffix = raw[core:]
     keys = list(last.keys())
     add = {}
     for r in rows:
         if not isinstance(r, dict) or any(k not in r for k in REQUIRED):
             continue
-        t = norm(r["timestamp"])
+        t = canon(r["timestamp"])
         if t[:n] <= last_ts:
             continue
         row = {k: r[k] for k in keys if k in r}
-        row["timestamp"] = (t + "T00:00:00")[:core] + suffix
+        row["timestamp"] = t[:core] + suffix
         add.setdefault(t[:n], row)
     if not add:
         return 0

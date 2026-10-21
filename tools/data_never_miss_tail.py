@@ -9,6 +9,17 @@ import sys
 import time
 
 
+def canon(ts):
+    """one key for every stamp style seen in the stores: "2026-10-20", "2026-10-20T19:30", "2026-10-20 19:30:00",
+    "2026-10-20T19:30:00.000000Z" -> "2026-10-20T19:30:00" (2026-10-21: three styles coexist in stock files)."""
+    s = str(ts).replace(" ", "T")
+    if len(s) >= 19 and s[16] == ":":
+        return s[:19]
+    if len(s) >= 16 and s[13] == ":":
+        return s[:16] + ":00"
+    return s[:10] + "T00:00:00"
+
+
 def rows_after(path, after_ms):
     try:
         with open(path) as fh:
@@ -19,7 +30,7 @@ def rows_after(path, after_ms):
         return None
     after = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(after_ms / 1000))
     n = 10 if path.endswith("_D.json") else 19  # D: one row per DATE (stock D files mix "2026-10-20" and "...T20:00:00")
-    return [r for r in data if isinstance(r, dict) and str(r.get("timestamp", "")).replace(" ", "T")[:n] > after[:n]]
+    return [r for r in data if isinstance(r, dict) and canon(r.get("timestamp", ""))[:n] > after[:n]]
 
 
 if __name__ == "__main__":
