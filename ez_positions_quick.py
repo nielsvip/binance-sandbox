@@ -7435,7 +7435,11 @@ class AdvancedSignalRater:
             ) and min_since_aug < 12:
                 should_close = True
                 reasons.append("dc4_broken")
-            if pnl_pct > 0.5:
+            # USER 2026-10-21 EXACT-PARITY: mirror the MOMENTUM_TP live gate
+            # (ez_manage.py MANDATORY PROFIT TAKE). _sw_get precedence ==
+            # _psym_get (per-sym > cat_side > config); config global is now
+            # False so absent-sym boards stop here too. ROLLBACK: drop `and ...`.
+            if pnl_pct > 0.5 and bool(_sw_get(symbol, side, "MOMENTUM_TP_ENABLED", True)):
                 if is_long and k_15m > 90 and k_15m < k_15m_prev:
                     return (
                         -10.0,
@@ -22191,6 +22195,11 @@ async def reallocate_capital_for_winner(
     if (
         _vx_native_off()
     ):  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
+        return 0.0, None
+    if not bool(getattr(config, "CAPITAL_REALLOC_ENABLED", False)):
+        # USER 2026-10-21 EXACT-PARITY: donor-closes (REALLOC_FOR_*) have NO vector model; the 10-06
+        # _vx_native_off gate above is inert while twin mode is off. 1 live fire post-10-18 (near-dormant).
+        # Winner augments now rely on free margin vs donor funding; rollback: default True. ROLLBACK: True.
         return 0.0, None
     global _realloc_cooldowns
     _cd_key = f"realloc_{account_key}"

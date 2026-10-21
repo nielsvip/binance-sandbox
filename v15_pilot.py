@@ -2383,6 +2383,10 @@ _ADAPT_TREND_KIND = ("FILTER", "GATE", "VETO")
 QUAL_TIM_MIN, QUAL_TIM_MAX = 20.0, 80.0
 # USER 2026-10-14: "no xlsx should be able to finalize with <10 trades, >30%dd" — max DD is a hard finish gate (never a near-miss)
 QUAL_DD_MAX = float(os.environ.get("V15_QUAL_DD_MAX", "30"))
+# 🔴 RESCINDED 2026-10-21 USER ("a -50% loss is NEVER QUALIFIED:new_best — ABSOLUTELY IMPOSSIBLE"):
+# gain<=0 fails the finish gate again (default V15_QUAL_GAIN_MIN=0). The 2026-10-16 rationale below is kept
+# as history; its -inf default is revoked. Bleeding boards improve via repair -> REDO re-fills, never by
+# publishing a loss as QUALIFIED.
 # 🔴 2026-10-16 USER: "_qualifies_30d needs gain > 0. Not true since about a week we trade everything just minimal
 # amounts for the losers". The gain>0 publish gate encoded an assumption that stopped being true ~2026-10-09: a
 # negative-gain sym_side IS traded live, at minimal size, so its board still governs real orders and must be allowed
@@ -2396,8 +2400,11 @@ QUAL_DD_MAX = float(os.environ.get("V15_QUAL_DD_MAX", "30"))
 # WHAT STILL PREVENTS A REGRESSION: the best-start law (BIBLE, 2026-10-13) — the baseline is the previous best
 # published set re-measured, and a row only promotes on a POSITIVE delta vs the running cumulative, so a published
 # final can never sit below where it started. Loss REDUCTION is now promotable; loss INCREASE still is not.
-# Restore the old behaviour in one step: V15_QUAL_GAIN_MIN=0
-QUAL_GAIN_MIN = float(os.environ.get("V15_QUAL_GAIN_MIN", "-inf"))
+# USER 2026-10-21 (RESCINDS the -inf below: a loss is NEVER QUALIFIED, NEVER new_best): default 0.
+# gain<=0 fails _qualifies_30d and _nearmiss_30d, so the final goes repair -> REDO (max 2) -> IMPOSSIBLE
+# quarantine, no publish. A bleeding board still improves through REDO re-fills; nothing publishes until
+# gain>0. Env override kept as kill switch: V15_QUAL_GAIN_MIN=-inf restores publish-anything behaviour.
+QUAL_GAIN_MIN = float(os.environ.get("V15_QUAL_GAIN_MIN", "0"))
 QUAL_365D_FLOOR_TRADES = 80
 QUAL_MAX_REDOS = int(os.environ.get("V15_QUAL_MAX_REDOS", "2"))
 QUAL_365D_TIMEOUT = float(os.environ.get("V15_QUAL_365D_TIMEOUT", "600"))
@@ -2424,9 +2431,9 @@ def _qualifies_30d(v, bh):
         r.append(f"TIM {tim:.1f} outside [{QUAL_TIM_MIN:.0f},{QUAL_TIM_MAX:.0f}]")
     g = v.get("gain_pct")
     g = float(g) if g is not None else None
-    # 2026-10-16: floor is QUAL_GAIN_MIN (default -inf = gain is NOT a publish gate) — see its definition.
-    # A losing sym_side is traded live at minimal size, so its board must be publishable; the old `<= 0` froze
-    # exactly the bleeding boards on the settings that were bleeding. An UNKNOWN gain still fails, fail-closed.
+    # 2026-10-21: floor is QUAL_GAIN_MIN (default 0 = gain<=0 never QUALIFIED, never new_best — USER order).
+    # A losing final goes repair -> REDO -> IMPOSSIBLE quarantine, no publish. An UNKNOWN gain still fails,
+    # fail-closed.
     if g is None or g <= QUAL_GAIN_MIN:
         r.append(f"gain {g}" + ("" if g is None else f" <= floor {QUAL_GAIN_MIN}"))
     try:
@@ -10119,8 +10126,10 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             ok, _ = _qualifies_30d(v, bh)
             return ok
         _qual_ok, _qual_reasons = _qualifies_30d(_fresh_final, bh)
-        if not _qual_ok and _qual_reasons and all(str(_r).startswith("TIM ") for _r in _qual_reasons) and os.environ.get("V15_TIM_PUBLISH_LAW", "1") == "1":
-            # USER 2026-10-13 ABSOLUTE best-start law: a TIM-only miss never triggers the compliance repair (it replaced COIN_LONG
+        if not _qual_ok and _qual_reasons and all(str(_r).startswith("TIM ") for _r in _qual_reasons) and os.environ.get("V15_TIM_PUBLISH_LAW", "0") == "1":
+            # USER 2026-10-13 best-start law, DEFAULT-OFF since USER 2026-10-21 (a TIM 5.87 board published
+            # QUALIFIED:new_best): opt back in only via V15_TIM_PUBLISH_LAW=1. At default a TIM-only miss runs
+            # the compliance repair like any other miss (it replaced COIN_LONG
             # 15.73 with a 5.24 set + full REDO) — the higher result publishes, flagged; TIM still guards promotions in the fill
             progress["tim_out_of_band"] = True
             progress["tim_out_of_band_value"] = (_fresh_final or {}).get("tim_pct")

@@ -1,21 +1,12 @@
-# Copilot Status — 2026-10-21 12:54:38 UTC
+# Copilot Status — 2026-10-21 17:18:44 UTC
 
-**Market Hours:** NO | **Tradier Priority:** YES
+**Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:29:07
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:35:16
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:37:19
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:39:22
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:41:25
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:43:29
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:45:32
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:49:39
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:51:44
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T12:53:47
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:17:23
 
 ## Missed Trades (trader comparison)
 
@@ -27,26 +18,25 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 7 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
-- HELD: **U** SHORT (tradier) peak +4.8%, now +1.0%
-- HELD: **BHVN** SHORT (tradier) peak +4.8%, now +1.0%
-- HELD: **PR** LONG (tradier) peak +4.7%, now +-0.0%
-- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.4%
-- HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.2%
-- HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
-- HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
+- HELD: **CLF** LONG (tradier) peak +16.5%, now +0.5%
+- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.1%
+- HELD: **BMNR** LONG (tradier) peak +4.9%, now +-0.4%
+- HELD: **PR** LONG (tradier) peak +4.7%, now +0.2%
+- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.8%
+- HELD: **TMO** LONG (tradier) peak +3.7%, now +1.1%
+- HELD: **ZETA** LONG (tradier) peak +3.2%, now +2.7%
 
-- WATCHING: **BBUSDT** LONG (crypto) peaked +6.7%, exited 0m ago
+- WATCHING: **MSTR** LONG (tradier) peaked +9.0%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
-- [MEDIUM] tradier_manage.py for trb is NOT running
-- [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (994min)
+**Issues (last 1h):** 8
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
+- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)

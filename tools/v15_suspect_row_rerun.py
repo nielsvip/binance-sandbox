@@ -601,16 +601,16 @@ PROTECTED_OFF = {**{k: (False,) for k in REENTRY_ENABLERS}, "DC_HARD_STOP_15M_EN
 # unprotective direction there, and that is a measurable choice, not a hard block.
 
 
-QUAL_GAIN_FLOOR = float(os.environ.get("V15_QUAL_GAIN_MIN", "-inf"))
+QUAL_GAIN_FLOOR = float(os.environ.get("V15_QUAL_GAIN_MIN", "0"))
 
 
 def qualifies(res, bh=None):
-    """`v15_pilot._qualifies_30d` with ONE reason relaxed, per USER 2026-10-16: "EVERY result trades while in
-    tradeable_keys or symbols(stocks) just with minimum amounts but IT TRADES". A negative-gain board is live
-    anyway, so refusing a loss-reducing improvement (RLCUSDT_SHORT -30.65 -> -27.54, +3.11) froze exactly the
-    bleeding sym_sides on the settings that were bleeding. valid / TIM / trades / DD gates are untouched, and an
-    UNKNOWN gain still fails closed. V15_QUAL_GAIN_MIN=0 restores the old behaviour in one step (the Mac's
-    v15_pilot already carries the same floor; the workers' read-only sidecar predates it, so it is applied here)."""
+    """`v15_pilot._qualifies_30d` with ONE reason relaxed (relaxation inoperative at the default floor).
+    History: per USER 2026-10-16 the gain reason was waived ("EVERY result trades ... just with minimum amounts").
+    Per USER 2026-10-21 that waiver is REVOKED: the default floor is 0, so gain<=0 is never qualified and never
+    new_best — a losing final goes repair -> REDO -> IMPOSSIBLE quarantine, no publish. valid / TIM / trades /
+    DD gates are untouched, and an UNKNOWN gain still fails closed. V15_QUAL_GAIN_MIN=-inf restores the
+    publish-anything behaviour in one step."""
     ok, reasons = PILOT._qualifies_30d(res, bh)
     if ok:
         return True, reasons
