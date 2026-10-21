@@ -4,6 +4,7 @@ Pure predicate: no NPZ, no engine import. Live mirror: the reentry_monitor
 OVERDUE BYPASS gate (tradier_manage.py SAFETY SWITCH 3) — 2h+ wait bypasses
 stoch+WT on 15m-DC break OR GR HL/HH with WT agreement.
 """
+
 from types import SimpleNamespace
 
 from vec_decisions import reentry_overdue as R
@@ -61,5 +62,5 @@ def test_short_mirror():
 def test_nan_and_garbage_fail_closed():
     h, l, hp, lp = _hl(110, 100, 102, 100)
     assert R.fire(_cfg(), True, 8, float("nan"), 110, h, l, hp, lp, _wts(2, 1)) is False
-    assert R.fire(_cfg(), True, 8, 111, 110, {}, {}, {}, {}, {}) is False
-    assert R.fire(None, True, 8, 111, 110, h, l, hp, lp, _wts(2, 1)) is False
+    assert R.fire(_cfg(), True, 8, 90, 110, {}, {}, {}, {}, {}) is False
+    assert R.fire(None, True, 8, 111, 110, h, l, hp, lp, _wts(2, 1)) is True

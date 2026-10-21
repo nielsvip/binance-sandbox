@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T21:59:49Z",
+ "ts": "2026-10-21T22:04:56Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 21,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 22,
+   "open_positions": 1,
+   "unrealised_usd": -0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -127,85 +127,71 @@
     "51041"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   },
   "men": {
    "pids": [
     "51407"
    ],
-   "starts_30m": 2,
-   "log_age_s": 12.0
+   "starts_30m": 1,
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "36735"
    ],
    "starts_30m": 2,
-   "log_age_s": 12.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 15.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 16.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 7126.0
+   "log_age_s": 7433.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 7129.0
+   "log_age_s": 7436.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T21:59:49Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:CHRUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 6097.08->18291.3 = $360.01 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 6097.08)"
-  },
-  {
-   "ts": "2026-10-21T21:59:49Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "fin:IOTXUSDT_LONG",
-   "evidence": "BREAKOUT_SIZE_LADDER resized qty 28517.1->85551.3 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 28517.1)"
-  },
-  {
-   "ts": "2026-10-21T21:59:49Z",
+   "ts": "2026-10-21T22:04:56Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:BTCUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.001416->0.004248 = $359.96 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.001416)"
   },
   {
-   "ts": "2026-10-21T21:59:50Z",
+   "ts": "2026-10-21T22:04:56Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T21:59:50Z",
+   "ts": "2026-10-21T22:04:56Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T21:59:50Z",
+   "ts": "2026-10-21T22:04:56Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
@@ -213,7 +199,7 @@
   }
  ],
  "alert_counts": {
-  "SIZE_ANOMALY": 3,
+  "SIZE_ANOMALY": 1,
   "FILL_WITHOUT_VEC_DECISION": 3
  },
  "active_interventions": {
@@ -255,5 +241,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.42
+ "sweep_s": 1.88
 }

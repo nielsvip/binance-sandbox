@@ -47,18 +47,18 @@ def main(argv):
         return 0
     if cmd == "queue":
         try:
-            lines = Path(ve.RETRACE_QUEUE).read_text().splitlines()
+            lines = Path(ve.RETRACE_QUEUE).read_text(encoding="utf-8").splitlines()
         except OSError:
             lines = []
         try:
-            res_lines = Path(ve.RESOLUTIONS).read_text().splitlines()
+            res_lines = Path(ve.RESOLUTIONS).read_text(encoding="utf-8").splitlines()
         except OSError:
             res_lines = []
         resolved_after = {}
         for line in res_lines:
             try:
                 r = json.loads(line)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 continue
             if r.get("family"):
                 resolved_after[r["family"]] = max(
@@ -68,7 +68,7 @@ def main(argv):
         for line in lines:
             try:
                 d = json.loads(line)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 continue
             if d.get("status") != "TODO":
                 continue
@@ -85,7 +85,7 @@ def main(argv):
         return 0
     if cmd == "resolutions":
         try:
-            lines = Path(ve.RESOLUTIONS).read_text().splitlines()
+            lines = Path(ve.RESOLUTIONS).read_text(encoding="utf-8").splitlines()
         except OSError:
             lines = []
         if not lines:
@@ -94,7 +94,7 @@ def main(argv):
         for line in lines[-20:]:
             try:
                 r = json.loads(line)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 continue
             print(
                 f"{time.strftime('%m-%d %H:%M', time.gmtime(r['ts']))} {r['family']} "
@@ -111,7 +111,7 @@ def main(argv):
             )
             return 2
         try:
-            with open(ve.RESOLUTIONS, "a") as fh:
+            with open(ve.RESOLUTIONS, "a", encoding="utf-8") as fh:
                 fh.write(
                     json.dumps(
                         {
@@ -123,7 +123,7 @@ def main(argv):
                     )
                     + "\n"
                 )
-        except Exception as e:
+        except OSError as e:
             print(f"resolve failed: {e}")
             return 1
         print(
