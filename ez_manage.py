@@ -32363,17 +32363,35 @@ class MultiAccountTradeManager:
             if _paper_nv.enabled(config):
                 _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "HERMETIC", old_price, quantity)
             return "BLOCKED_HERMETIC_NOT_VEC"
-        # ─── LOSS_PRONE_ENTRY_FILTER live twin (USER 2026-10-17 "should only be accepted with additional filters"): a NATIVE exposure
-        # increase (no vec provenance) from a function flagged in data/loss_prone_entries.json must pass the vector's filters. ───
+        # ─── VEC-DECIDED SUPREMACY (USER 2026-10-21: NOTHING goes against a vectorized trade
+        # decision). One flag: vec-twin provenance, the in-script twin tag, or a VEC_DRIVEN
+        # reason on a live sym_side. Vec decisions already passed the vector's own gates. ───
+        _vec_decided = str(_hm_why).startswith("vec:") or _vec_exact_reason_ok(reason)
+        if not _vec_decided:
+            try:
+                from live_twins import vec_driven as _vdm_vd
+
+                if bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)) and _vdm_vd.is_vec_driven_reason(reason) and _vec_driven_mode(symbol, position_side, account_key) == "live":
+                    _vec_decided = True
+            except Exception:
+                pass
+        # ─── LOSS_PRONE_ENTRY_FILTER (USER 2026-10-21: ABSENT from all four TEMPLATE sheets —
+        # no sweep row ever measured it, so the per-sym True is the frozen defaults snapshot, not
+        # a board winner. It may NEVER refuse. Allow-with-log + paper record so the ledger keeps
+        # what it would have done.) ───
         try:
-            if _vprov_g.increases_exposure(side, position_side, is_full_close, action, is_hedge) and not str(_hm_why).startswith("vec:"):
+            if _vprov_g.increases_exposure(side, position_side, is_full_close, action, is_hedge):
                 import loss_prone as _lpm_g
 
                 _lp_ind = (self.data_manager._cold_data.get(symbol, {}) if self.data_manager else {}) or {}
                 _lp_ok, _lp_fam = _lpm_g.native_entry_ok(lambda k, d: _psym_get(symbol, position_side, k, d), reason, "crypto", position_side == "LONG", _lp_ind, float(old_price or 0))
                 if not _lp_ok:
-                    logger.warning(f"⛔ [LOSS_PRONE_ENTRY_FILTER] {position_key} {action}: loss-prone {_lp_fam} failed LOSS_PRONE_ENTRY_MIN_FILTERS (WT 1h/WT 4h/ema50 1h) — refused")
-                    return "BLOCKED_LOSS_PRONE_ENTRY_FILTER"
+                    logger.warning(f"[LOSS_PRONE_ALLOW] {position_key} {action}: loss-prone {_lp_fam} failed LOSS_PRONE_ENTRY_MIN_FILTERS — allowed, never refused (USER 2026-10-21: unmeasured switch)")
+                    try:
+                        if _paper_nv.enabled(config):
+                            _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "LOSS_PRONE_WOULD_REFUSE", old_price, quantity)
+                    except Exception:
+                        pass
         except Exception as _lp_e:
             logger.debug(f"[LOSS_PRONE_ENTRY_FILTER] {position_key}: check err (fail-open) {_lp_e}")
         # ─── EXIT-ENGINE PARITY INSTRUMENTATION (2026-09-28) ────────────────────
@@ -32411,7 +32429,9 @@ class MultiAccountTradeManager:
             if _peg.is_entry_action(_act_u):
                 _ckey = position_key or f"{account_key}:{symbol}_{position_side}"
                 _claimed, _cage = _peg.try_claim(f"{_ckey}|INC")
-                if not _claimed:
+                if not _claimed and _vec_decided:
+                    logger.warning(f"[VEC_DECIDED_DEDUP_ALLOW] {position_key}: same-key claim {_cage:.1f}s after prior (ttl={_peg.CLAIM_TTL_S:.0f}s) — allowed, vector fires once per bar (USER 2026-10-21)")
+                elif not _claimed:
                     logger.critical(f"🛑 [PARITY_DEDUP] {position_key}: BLOCKED — same-key exposure increase {_cage:.1f}s after prior claim (ttl={_peg.CLAIM_TTL_S:.0f}s). action={action} reason={(reason or '')[:80]}")
                     return f"BLOCKED_PARITY_DEDUP_{position_key}"
         except Exception as _pcl_e:
