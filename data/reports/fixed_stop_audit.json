@@ -1,20 +1,14 @@
 {
- "findings": [
-  {
-   "account": "men",
-   "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [400]>, 400, '{\"code\":-1021,\"msg\":\"Timestamp for this request is outside of the recvWindow.\"}')"
-  }
- ],
- "n_findings": 1,
- "n_positions": 5,
+ "findings": [],
+ "n_findings": 0,
+ "n_positions": 4,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.11288707500000002,
    "key": "ang:ALGOUSDT_LONG",
    "live_level": 0.11288707500000002,
-   "mark": 0.11398602,
+   "mark": 0.11434429,
    "opened_at": "2026-10-21T02:06:00.691000Z",
    "resting_trigger": 0.11271
   },
@@ -23,7 +17,7 @@
    "entry_bar_level": 3.8194275,
    "key": "ang:ARUSDT_LONG",
    "live_level": 3.8194275,
-   "mark": 3.839,
+   "mark": 3.843,
    "opened_at": "2026-10-21T02:35:19.146000Z",
    "resting_trigger": 3.813
   },
@@ -32,7 +26,7 @@
    "entry_bar_level": 0.11288707500000002,
    "key": "fin:ALGOUSDT_LONG",
    "live_level": 0.11288707500000002,
-   "mark": 0.11401,
+   "mark": 0.11434167,
    "opened_at": "2026-10-21T02:06:51.733000Z",
    "resting_trigger": 0.11271
   },
@@ -44,16 +38,7 @@
    "mark": 4.323,
    "opened_at": "2026-10-21T01:51:08.920000Z",
    "resting_trigger": 4.236
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.00389424,
-   "key": "fin:IOTXUSDT_LONG",
-   "live_level": 0.00389424,
-   "mark": 0.004008,
-   "opened_at": "2026-10-21T01:44:31.890000Z",
-   "resting_trigger": 0.003888
   }
  ],
- "ts": "2026-10-21T02:42:02.726340+00:00"
+ "ts": "2026-10-21T02:50:42.754086+00:00"
 }
