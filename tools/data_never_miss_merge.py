@@ -36,7 +36,7 @@ def merge_file(path, rows):
     if not isinstance(cur, list) or not cur or not isinstance(cur[-1], dict) or "timestamp" not in cur[-1]:
         return "not_a_kline_list"
     last = cur[-1]
-    if "/tradier/" in path.replace(os.sep, "/") and len(str(last["timestamp"])) > 10 and str(last["timestamp"])[10] == " ":
+    if "/tradier/" in path.replace(os.sep, "/") and any(isinstance(r, dict) and len(str(r.get("timestamp", ""))) > 10 and str(r["timestamp"])[10] == " " for r in cur[-60:]):
         return "et_labelled_skip"  # New-York-labelled stock file: UTC rows would duplicate its session (USO/BNO 2026-10-21)
     last_ts = canon(last["timestamp"])[:n]
     raw = str(last["timestamp"])

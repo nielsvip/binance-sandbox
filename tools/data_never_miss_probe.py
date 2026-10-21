@@ -57,6 +57,18 @@ def last_ms(path):
     return None
 
 
+def mixed_labels(path):
+    """stock intraday file whose tail holds New-York "YYYY-MM-DD HH:MM" rows — its UTC-looking rows can be ET bars too
+    (USO 2026-10-21), so its last bar cannot be compared with the UTC stores. Reported, never auto-healed."""
+    try:
+        size = os.path.getsize(path)
+        with open(path, "rb") as fh:
+            fh.seek(max(0, size - 4096))
+            return re.search(rb'"timestamp"\s*:\s*"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}', fh.read()) is not None
+    except OSError:
+        return False
+
+
 def probe(base):
     out = {}
     base = os.path.expanduser(base)
@@ -66,7 +78,10 @@ def probe(base):
                 st = os.stat(p)
             except OSError:
                 continue
-            out[os.path.relpath(p, base)] = [round(st.st_mtime, 1), last_ms(p), st.st_size]
+            ent = [round(st.st_mtime, 1), last_ms(p), st.st_size]
+            if "/tradier/" in p.replace(os.sep, "/") and not p.endswith("_D.json") and mixed_labels(p):
+                ent.append("mixed")
+            out[os.path.relpath(p, base)] = ent
     for rel in MARKET_FILES:
         p = os.path.join(base, rel)
         try:

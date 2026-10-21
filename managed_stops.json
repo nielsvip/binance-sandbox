@@ -1,1 +1,37 @@
-{}
+{
+  "men:XMRUSDT_SHORT": {
+    "orderId": "2000001528241635",
+    "stopPrice": 629.46,
+    "entry_sig": "2026-10-21 04:47:27.732708+00:00",
+    "symbol": "XMRUSDT",
+    "side": "SHORT"
+  },
+  "men:LINKUSDC_LONG": {
+    "orderId": "2000001528260269",
+    "stopPrice": 11.542,
+    "entry_sig": "2026-10-21 05:02:23.967000+00:00",
+    "symbol": "LINKUSDC",
+    "side": "LONG"
+  },
+  "men:1INCHUSDT_LONG": {
+    "orderId": "2000001528260270",
+    "stopPrice": 0.09327,
+    "entry_sig": "2026-10-21 05:02:26.136000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "LONG"
+  },
+  "men:KMNOUSDT_LONG": {
+    "orderId": "2000001528263928",
+    "stopPrice": 0.03846,
+    "entry_sig": "2026-10-21 05:01:17.577000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
+  "men:ETHUSDC_LONG": {
+    "orderId": "2000001528281545",
+    "stopPrice": 2428.98,
+    "entry_sig": "2026-10-21 04:51:02.727000+00:00",
+    "symbol": "ETHUSDC",
+    "side": "LONG"
+  }
+}

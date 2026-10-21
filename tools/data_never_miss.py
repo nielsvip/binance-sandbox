@@ -58,9 +58,10 @@ PRICE_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json")
 MARKET_RULES = [("mac", "crypto prices", PRICE_FILES, 60), ("mac", "crypto snapshot (market_data_*)", ("data/market_data_NEWEST",), 90),
                 ("mac", "crypto latest_market_data", ("data/latest_market_data.json",), 90),
                 ("mac", "stock indicators", ("data/tradier/tradier_indicators_latest.json",), 90),
-                ("s1", "standby crypto prices (ez_s1_stack)", tuple("ez_s1_stack/" + f for f in PRICE_FILES), 60),
-                ("s1", "standby crypto snapshot (ez_s1_stack)", ("ez_s1_stack/data/latest_market_data.json",), 90),
-                ("s1", "Mac snapshot delivered to S1", ("data/market_data_NEWEST",), 180),
+                # USER 2026-10-21: S1 starts its own stack ONLY when the Mac's push stops (cron EZ_S1_STACK_REAP stops it
+                # while the Mac is NORMAL) — so S1 is fine when EITHER source is fresh: never judge the idle stack alone
+                ("s1", "crypto snapshot on S1 (Mac push or own stack)", ("data/market_data_NEWEST", "ez_s1_stack/data/latest_market_data.json"), 180),
+                ("s1", "crypto prices on S1 (Mac push or own stack)", PRICE_FILES + tuple("ez_s1_stack/" + f for f in PRICE_FILES), 300),
                 ("gw", "crypto market_data", ("data/latest_market_data.json",), 300)]
 DISK_MIN_FREE = 3 * 1024 ** 3  # gateway hit 100 % on 2026-10-21 (221 MB) — ENOSPC is what truncated klines on 10-16
 REL = re.compile(r"^klines_cache/(?:(gateway|tradier)/)?([A-Za-z0-9]+)_(3m|15m|1h|4h|D)\.json$")
@@ -119,6 +120,7 @@ def universes():
 
 
 UNPARSED = []
+MIXED = []
 
 
 def index(probes, crypto, stocks):
@@ -126,15 +128,21 @@ def index(probes, crypto, stocks):
     "2026-10-20" and "2026-10-20T20:00:00" — one session, one date). Live files with no readable last bar go to UNPARSED."""
     idx = {}
     UNPARSED.clear()
+    MIXED.clear()
     for host, d in probes.items():
         for base, files in d["bases"].items():
-            for rel, (_mt, last, _sz) in files.items():
+            for rel, ent in files.items():
+                _mt, last, _sz = ent[:3]
                 m = REL.match(rel)
                 if not m:
                     continue
                 sub, symbol, tf = m.group(1) or "", m.group(2), m.group(3)
                 venue = "stocks" if sub == "tradier" else "crypto"
                 if (venue == "crypto" and symbol not in crypto) or (venue == "stocks" and symbol not in stocks):
+                    continue
+                if len(ent) > 3 and ent[3] == "mixed":
+                    if (host, base) in TARGETS:
+                        MIXED.append(f"{host}:{rel}")
                     continue
                 if not last:
                     if (host, base) in TARGETS:
@@ -359,7 +367,7 @@ def main():
     mk_bad = [m for m in mk if not m["ok"]]
     rep = {"generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "secs": round(time.time() - t0, 1),
            "universe": {"crypto": len(crypto), "stocks": len(stocks)}, "unreachable": unreachable, "healed": healed,
-           "kline_breaches": breaches, "unhealable": unhealable, "unparsed_live_files": list(UNPARSED), "market": mk}
+           "kline_breaches": breaches, "unhealable": unhealable, "unparsed_live_files": list(UNPARSED), "mixed_label_files": list(MIXED), "market": mk}
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     tmp = REPORT.with_suffix(".tmp")
     tmp.write_text(json.dumps(rep, indent=1))
@@ -378,6 +386,8 @@ def main():
         log(f"BREACH market {m['host']} {m['file']} " + (f"{m['free_gb']} GB free < 3 GB" if "free_gb" in m else f"age {m['age_s']}s > {m['max_s']}s"))
     for h, e in unreachable.items():
         log(f"BREACH host {h} unreachable: {e}")
+    if MIXED:
+        log(f"MIXED-LABEL {len(MIXED)} stock files hold New-York and UTC stamped rows — not auto-healed: {MIXED[:6]}")
     if UNPARSED:
         log(f"BREACH {len(UNPARSED)} live kline files have no readable last bar — e.g. {UNPARSED[:4]}")
     ok = not (breaches or mk_bad or unreachable or UNPARSED)
