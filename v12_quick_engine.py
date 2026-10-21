@@ -17718,8 +17718,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _rovd_dc = _safe(npz, "dc_high_15m" if is_long else "dc_low_15m", n)
         _rovd_h = {tf: _safe(npz, f"high_{tf}", n) for tf in ("1h", "4h", "D")}
         _rovd_l = {tf: _safe(npz, f"low_{tf}", n) for tf in ("1h", "4h", "D")}
-        _rovd_hp = {tf: _safe(npz, f"high_{tf}_prev", _rovd_h[tf]) for tf in ("1h", "4h", "D")}
-        _rovd_lp = {tf: _safe(npz, f"low_{tf}_prev", _rovd_l[tf]) for tf in ("1h", "4h", "D")}
+        _rovd_hp = {tf: _safe(npz, f"high_{tf}_prev", n) for tf in ("1h", "4h", "D")}
+        _rovd_lp = {tf: _safe(npz, f"low_{tf}_prev", n) for tf in ("1h", "4h", "D")}
         _rovd_w = {tf: (_safe(npz, f"wt1_{tf}", n), _safe(npz, f"wt2_{tf}", n)) for tf in ("1h", "4h", "D")}
     # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
     try:

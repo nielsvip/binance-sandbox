@@ -11,10 +11,10 @@ _have gate).
 import sys
 from pathlib import Path
 
+from wt_dc_delta import structural_exit_permitted as permitted
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
-from wt_dc_delta import structural_exit_permitted as permitted
 
 
 def _ind(**kw):
