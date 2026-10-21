@@ -71,27 +71,20 @@ def test_non_cross_exit_kills_family(tmp_path, monkeypatch):
     assert ok3 is True, "killing an exit family must not touch entries"
 
 
-def test_vel_exit_exempt_skips_kill_keeps_window(tmp_path, monkeypatch):
-    """VEL_EXIT is vector-modeled + switch-gated (v12 vel_exit + twin vel_exit_fires):
-    lawful when its switch says so — never killed, but still bar-windowed."""
+def test_vel_exit_not_exempt_until_twin_faithful(tmp_path, monkeypatch):
+    """2026-10-21 bar replay: the vector leg exists and switches agree, yet live
+    fired where the vector would not on 4/5 bars — (A) forming-bar 4h velocity
+    sign-flips vs completed-bar NPZ, (B) no live twin of the STRUCTURAL_EXIT_GATE
+    veto. Modeled is not enough; re-exempt ONLY with a faithful twin (completed-bar
+    velocity + scalar structural veto, proven by replay). Until then it kills."""
+    assert "VEL_EXIT" not in ve.VEC_SWITCH_EXIT_FAMILIES
     k, v = _iso(tmp_path, monkeypatch)
     assert ve.family_of("VEL_EXIT_v4h-10_g-0.05") == "VEL_EXIT"
     ok, verdict = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
-    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
-    assert not k.exists(), "exempt family must not write a kill entry"
-    monkeypatch.setattr(ve, "in_bar_window", lambda now=None: False)
-    ok2, v2 = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
-    assert (ok2, v2) == (False, "OFF_BAR_WINDOW")
-
-
-def test_vel_exit_stale_kill_does_not_block(tmp_path, monkeypatch):
-    """A kill entry predating the exemption (e.g. live data/vector_kills.json) must
-    not block a vector-modeled switch exit — BIBLE §126.1 step 4, never re-kill."""
-    k, v = _iso(tmp_path, monkeypatch)
-    k.write_text(json.dumps({"VEL_EXIT": {"disabled_at": 1.0, "why": "stale"}}))
-    ve._KILLS.update(loaded=0.0, killed={})
-    ok, verdict = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
-    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    assert ok is False and verdict == "VIOLATION_FAMILY_KILLED"
+    assert "VEL_EXIT" in json.loads(k.read_text())
+    ok2, v2 = ve.check("CLOSE", "ang:Y_LONG", "VEL_EXIT_v4h-9_g0.1")
+    assert ok2 is False and v2 == "KILLED_FAMILY_VEL_EXIT"
 
 
 def test_new_kill_files_retrace_order(tmp_path, monkeypatch):

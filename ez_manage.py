@@ -51240,9 +51240,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         _now_vx = time.time()
-        _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)
+        _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
         if _backstop_only:
-            _acts_now, _acts_catch = [], []  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
+            _acts_now, _acts_catch = [], []
         def _vx_lc_of(_p):
             """opened_at epoch of a live position = the lifecycle identity an owed exit belongs to (2026-10-20).
             None when unknown, which keeps the owed obligation standing (fail-safe: never strand)."""
@@ -51392,10 +51392,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
                     _owed_oside = "SELL" if _side == "LONG" else "BUY"
                     try:
                         from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_o, fire_exit_market as _vx_tmo_mkt_o
-                        _res_o = await _vx_dsp_o(position_key, "CLOSE VEC_EXIT_OWED", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_owed, current_price=_owed_px, side=_owed_oside, position_side=_side, unique_id=f"VXOWED{int(_now_vx)}", is_full_close=True, action="CLOSE", reason=_owed_reason, override_qty=_amt_owed, is_hedge=False), _owed_tmo,
-                        _vx_sync_acted = True on_timeout=lambda: _vx_tmo_mkt_o(trade_manager, position_key, _sym, _owed_oside, _side))
+                        _res_o = await _vx_dsp_o(position_key, "CLOSE VEC_EXIT_OWED", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_owed, current_price=_owed_px, side=_owed_oside, position_side=_side, unique_id=f"VXOWED{int(_now_vx)}", is_full_close=True, action="CLOSE", reason=_owed_reason, override_qty=_amt_owed, is_hedge=False), _owed_tmo, on_timeout=lambda: _vx_tmo_mkt_o(trade_manager, position_key, _sym, _owed_oside, _side))
                     except asyncio.CancelledError:
                         raise
+                    _vx_sync_acted = True
                     logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_EXIT_OWED qty={_amt_owed:.6f} -> {str(_res_o)[:120]}")
             except asyncio.CancelledError:
                 raise
@@ -51433,10 +51433,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
                     _vx_tmo_c = 600.0
                 try:
                     from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_c, fire_exit_market as _vx_tmo_mkt_c
-                    _res_c = await _vx_dsp_c(position_key, "CLOSE VEC_CONVERGE_TO_FLAT", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), _vx_tmo_c,
-                    _vx_sync_acted = True on_timeout=lambda: _vx_tmo_mkt_c(trade_manager, position_key, _sym, _oside_c, _side))
+                    _res_c = await _vx_dsp_c(position_key, "CLOSE VEC_CONVERGE_TO_FLAT", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), _vx_tmo_c, on_timeout=lambda: _vx_tmo_mkt_c(trade_manager, position_key, _sym, _oside_c, _side))
                 except asyncio.CancelledError:
                     raise
+                _vx_sync_acted = True
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT qty={_amt_end:.6f} -> {str(_res_c)[:120]}")
         except Exception as _cvg_e:
             logger.warning(f"[VEC_EXACT_CONVERGE] {position_key} probe err: {_cvg_e}")
@@ -51471,10 +51471,10 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
                 _stf_oside = "SELL" if _side == "LONG" else "BUY"
                 try:
                     from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_s, fire_exit_market as _vx_tmo_mkt_s
-                    _res_s = await _vx_dsp_s(position_key, "CLOSE VEC_STALE_FLATTEN", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), _stf_tmo,
-                    _vx_sync_acted = True on_timeout=lambda: _vx_tmo_mkt_s(trade_manager, position_key, _sym, _stf_oside, _side))
+                    _res_s = await _vx_dsp_s(position_key, "CLOSE VEC_STALE_FLATTEN", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), _stf_tmo, on_timeout=lambda: _vx_tmo_mkt_s(trade_manager, position_key, _sym, _stf_oside, _side))
                 except asyncio.CancelledError:
                     raise
+                _vx_sync_acted = True
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN qty={_amt_end:.6f} -> {str(_res_s)[:120]}")
         if _backstop_only and not _vx_sync_acted:
             return False

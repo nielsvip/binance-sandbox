@@ -1,93 +1,92 @@
 {
- "at": "2026-10-21T19:11:13Z",
+ "at": "2026-10-21T21:11:29Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
    "improved": 1,
    "improved_per_hour": 1.0,
-   "published_n": 1,
-   "flat_or_worse": 0,
+   "published_n": 2,
+   "flat_or_worse": 1,
    "unknown": 0,
    "boards_running": [],
-   "mem_avail_mb": 20975,
-   "load1": 21.03,
+   "mem_avail_mb": 25113,
+   "load1": 8.51,
    "nproc": 16,
    "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 31213 MB, mem 18495 MB, est_pair 15375 MB) \u2014 slots 1/8",
+   "binding_reason": "scheduler mem guard (disk 30674 MB, mem 22899 MB, est_pair 15375 MB) \u2014 slots 1/8",
    "error": null,
    "published": [
     {
-     "symside": "COIN_LONG",
-     "at": "2026-10-21T19:10:13Z",
-     "baseline": 39.20868393323273,
-     "final": 39.89547294111443,
+     "symside": "BIOUSDC_SHORT",
+     "at": "2026-10-21T21:10:03Z",
+     "baseline": 31.398374339511815,
+     "final": 61.066982361588394,
      "state": "improved"
+    },
+    {
+     "symside": "SPY_LONG",
+     "at": "2026-10-21T20:22:59Z",
+     "baseline": 4.2230336738539895,
+     "final": 4.2230336738539895,
+     "state": "flat_or_worse"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 0.7,
-   "last_improved_symside": "COIN_LONG",
+   "minutes_since_last_improved": 1.1,
+   "last_improved_symside": "BIOUSDC_SHORT",
    "cadence_ok": true,
-   "improved_gap_min_median_24h": 2.6,
+   "improved_gap_min_median_24h": 2.7,
    "improved_gap_min_max_24h": 92.2,
-   "improved_finishes_24h": 60,
-   "board_cpu_s_median_24h": 780.8,
-   "board_wall_s_median_24h": 506.23566198349,
+   "improved_finishes_24h": 62,
+   "board_cpu_s_median_24h": 805.4,
+   "board_wall_s_median_24h": 514.7107248306274,
    "board_cores": 0.0,
-   "nonboard_cores_competing": 6.37,
-   "nonboard_cores_niced": 9.02,
+   "nonboard_cores_competing": 3.34,
+   "nonboard_cores_niced": 2.07,
    "cores_by_bucket": {
-    "other": 1.22,
-    "live_helpers": 4.21,
-    "klines_append": 0.94
+    "other": 1.07,
+    "klines_append": 0.99,
+    "live_helpers": 1.28
    },
    "cores_by_bucket_niced": {
-    "backtest_v12": 0.93,
-    "other": 6.39,
-    "klines_vault": 1.7
+    "klines_vault": 0.99,
+    "other": 0.08,
+    "backtest_v12": 1.0
    }
   },
   "s2": {
    "improved": 0,
    "improved_per_hour": 0.0,
-   "published_n": 1,
-   "flat_or_worse": 1,
+   "published_n": 0,
+   "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "KMNOUSDT_LONG",
-    "QBTS_LONG"
+    "FARTCOINUSDT_SHORT",
+    "GRASSUSDT_LONG"
    ],
-   "mem_avail_mb": 22588,
-   "load1": 6.98,
+   "mem_avail_mb": 25259,
+   "load1": 4.77,
    "nproc": 16,
-   "slots": "1/6",
-   "binding_reason": "concurrency 1 boards: 12/h needs <= 5 min per sym_side (measured median 16 min) \u2014 raise concurrent sides or cut evals per board",
+   "slots": "2/6",
+   "binding_reason": "scheduler mem guard (disk 32436 MB, mem 25404 MB, est_pair 13782 MB) \u2014 slots 2/6",
    "error": null,
-   "published": [
-    {
-     "symside": "IBM_LONG",
-     "at": "2026-10-21T19:05:07Z",
-     "baseline": 24.567186947992557,
-     "final": 24.567186947992557,
-     "state": "flat_or_worse"
-    }
-   ],
+   "published": [],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 5.3,
-   "last_improved_symside": "CHRUSDT_LONG",
+   "minutes_since_last_improved": 10.9,
+   "last_improved_symside": "QNTUSDT_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 8.6,
    "improved_gap_min_max_24h": 149.9,
-   "improved_finishes_24h": 107,
-   "board_cpu_s_median_24h": 1701.0,
-   "board_wall_s_median_24h": 979.7418789863586,
-   "board_cores": 8.08,
-   "nonboard_cores_competing": 0.0,
+   "improved_finishes_24h": 104,
+   "board_cpu_s_median_24h": 1712.6,
+   "board_wall_s_median_24h": 1031.782721042633,
+   "board_cores": 4.37,
+   "nonboard_cores_competing": 0.01,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.0,
-    "boards": 8.08
+    "other": 0.01,
+    "boards": 4.37
    },
    "cores_by_bucket_niced": {}
   }

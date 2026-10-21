@@ -74,3 +74,31 @@ def test_sub15m_trigger_refuses_at_defaults():
     ok, reason = E.check_entry_trigger({"k_1m": 1.0}, True)
     assert ok is False
     assert reason == "SUB15M_TRIGGER_OFF_PARITY"
+
+
+def test_backstop_switches_default_on():
+    assert C.Config().VEC_BACKSTOP_SYNC_ENABLED is True
+    assert CT.TradierConfig().VECTOR_ENFORCE_ENABLED is True
+
+
+def test_enforce_venue_override_and_pass_reasons():
+    from types import SimpleNamespace
+
+    from live_twins import vector_enforce as V
+
+    assert V.enabled() is True
+    assert V.enabled(CT.TradierConfig()) is True
+    assert V.enabled(SimpleNamespace(VECTOR_ENFORCE_ENABLED=False)) is False
+    assert V.check("OPEN", "x:Y_LONG", "whatever", SimpleNamespace(VECTOR_ENFORCE_ENABLED=False)) == (True, "ENFORCE_OFF")
+    assert V.check("CLOSE", "trb:AAPL_LONG", "BOARD_CONVERGE_CLOSE vec=abc")[0] is True
+    assert V.check("CLOSE", "x:Y_LONG", "FIXED_STOP_BREACH exit")[0] is True
+    assert V.check("OPEN", "x:Y_LONG", "B12 |VEC_EXACT")[0] is True
+
+
+def test_backstop_wiring_present():
+    src_ez = (ROOT / "ez_manage.py").read_text()
+    assert "def _vec_exact_process_position(account_key, position_key, trade_manager, _backstop_only=False)" in src_ez
+    assert "_backstop_only=True" in src_ez
+    assert "VEC_BACKSTOP_SYNC_ENABLED" in src_ez
+    src_tm = (ROOT / "tradier_manage.py").read_text()
+    assert src_tm.count("vector_enforce as _ve_") >= 2

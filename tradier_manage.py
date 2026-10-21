@@ -25016,6 +25016,16 @@ async def queue_trade_action(
                     override_qty,
                     record_decision,
                 )
+        # USER 2026-10-21 absolute backstopper (stocks): same law as _execute_now_inner — twin orders
+        # already returned above; board/stop/bookkeeping reasons always pass. Kill: VECTOR_ENFORCE_ENABLED=False.
+        try:
+            from live_twins import vector_enforce as _ve_qta
+            _ve_ok, _ve_verdict = _ve_qta.check(action, position_key, reason, config)
+        except Exception:
+            _ve_ok, _ve_verdict = True, "ENFORCE_ERROR_FAILOPEN"
+        if not _ve_ok:
+            logger.critical(f"[VECTOR_EXEC_REFUSED] {position_key} action={action} verdict={_ve_verdict} reason={(reason or '')[:80]}")
+            return False
         current_account.set(account_key)
         if (
             ("MTF_ARROW" in (reason or "") or "LR_BAND" in (reason or ""))
@@ -48639,6 +48649,21 @@ class TradierTradeManager:
     ) -> (
         str
     ):  # 2026-10-06 director: NameError fix — recorder flag passed through from execute_trade_action (direct paths default False = record here)
+        # USER 2026-10-21 absolute backstopper (stocks): vector_enforce gates entries AND exits — 15m bar window,
+        # exits only on cross/board/stop, violating families refused+disabled+flagged (manual restore via
+        # tools/vector_violations.py). BOARD_CONVERGE_/VEC_DECIDED/stop/bookkeeping reasons always pass.
+        # Refusals are LOGGED (violations file) — review daily until parity improves. Kill: VECTOR_ENFORCE_ENABLED=False.
+        try:
+            from live_twins import vector_enforce as _ve_tm
+            _ve_ok, _ve_verdict = _ve_tm.check(action, position_key, reason, config)
+        except Exception:
+            _ve_ok, _ve_verdict = True, "ENFORCE_ERROR_FAILOPEN"
+        if not _ve_ok:
+            if _ve_verdict == "OFF_BAR_WINDOW":
+                logger.info(f"[VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window")
+            else:
+                logger.critical(f"[VECTOR_EXEC_REFUSED] {position_key} action={action} verdict={_ve_verdict} reason={(reason or '')[:80]}")
+            return f"BLOCKED_VECTOR_EXEC_{_ve_verdict[:40]}"
         # ─── HERMETIC VEC-ONLY GATE — STOCKS (2026-10-15 USER "stocks have no gate at all <- last thing i need for
         # you is to fix that"). Twin of the crypto gate at ez_manage.py:31983, which has been in `enforce` since
         # 2026-10-14T20:58Z with 0 false flags. Stocks had ZERO hermetic references before this — and stocks are where
