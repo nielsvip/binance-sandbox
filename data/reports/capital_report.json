@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-21 01:46 UTC",
- "total_capital_usd": 22.78,
+ "generated_at": "2026-10-21 02:00 UTC",
+ "total_capital_usd": 24.63,
  "tier_capital": {
   "A": 0.0,
-  "B": 22.78,
+  "B": 24.63,
   "C": 0.0
  },
  "tier_count": {
@@ -12,21 +12,19 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "men:UNIUSDC_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
-   "pk": "men:UNIUSDC_SHORT",
-   "symbol": "UNIUSDC",
-   "account": "men",
-   "value_usd": 22.78,
-   "gain_pct": -0.663,
+   "pk": "ang:HYPEUSDT_LONG",
+   "symbol": "HYPEUSDT",
+   "account": "ang",
+   "value_usd": 24.63,
+   "gain_pct": 0.04,
    "tier": "B",
-   "perf_mult": 5.11,
-   "amt": 3.0,
-   "mark": 7.593
+   "perf_mult": 1.28,
+   "amt": 0.3,
+   "mark": 82.086
   }
  ]
 }

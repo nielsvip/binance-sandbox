@@ -1,17 +1,35 @@
 {
  "findings": [],
  "n_findings": 0,
- "n_positions": 1,
+ "n_positions": 3,
  "positions": [
+  {
+   "armed": true,
+   "entry_bar_level": 80.0394,
+   "key": "ang:HYPEUSDT_LONG",
+   "live_level": 80.0394,
+   "mark": 81.868,
+   "opened_at": "2026-10-21T01:56:56.642000Z",
+   "resting_trigger": 79.919
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 4.243365,
+   "key": "fin:KSMUSDT_LONG",
+   "live_level": 4.243365,
+   "mark": 4.327,
+   "opened_at": "2026-10-21T01:51:08.920000Z",
+   "resting_trigger": 4.236
+  },
   {
    "armed": true,
    "entry_bar_level": 0.00389424,
    "key": "fin:IOTXUSDT_LONG",
    "live_level": 0.00389424,
-   "mark": 0.00401139,
+   "mark": 0.004007,
    "opened_at": "2026-10-21T01:44:31.890000Z",
    "resting_trigger": 0.003888
   }
  ],
- "ts": "2026-10-21T01:50:49.743428+00:00"
+ "ts": "2026-10-21T02:01:07.354597+00:00"
 }

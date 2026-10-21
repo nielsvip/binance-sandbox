@@ -56,7 +56,7 @@ POSITIONS = {"LONG": ROOT / "inf" / "long_positions.json", "SHORT": ROOT / "inf"
 TRACKER = ROOT / "inf" / "tracker.json"
 EXCLUDE = ROOT / "data" / "universe_exclude.json"
 CONFIRMED_365D = ROOT / "data" / "confirmed_365d.json"
-DEFAULT_HOSTS = ("s1-pub", "s2", "s5")
+DEFAULT_HOSTS = ("s1-pub", "s2")  # USER 2026-10-21: s5 destroyed 2026-10-13 (BIBLE §0); a dead default host refused every --apply
 CRYPTO_QUOTES = ("USDT", "USDC")
 TIM_MIN, TIM_MAX = 20.0, 80.0
 MAX_DD_PCT = 30.0
@@ -130,6 +130,10 @@ print(json.dumps(out, default=str))
 
 def now_utc():
     return dt.datetime.now(dt.timezone.utc)
+
+
+def _pct(x):
+    return f"{x:.2f}" if x is not None else "n/a"
 
 
 def _f(x):
@@ -386,6 +390,94 @@ def build_books(evaluated, open_pos, top=20, both_sides="resolve"):
     return {"ranked": ranked, "books": books, "kept_open": kept_open, "conflicts": conflicts}
 
 
+def prev_gains(records_path, out_dir=OUT_DIR):
+    """{sym_side: gain} from the most recent *_records.json older than records_path (day-over-day momentum input)."""
+    try:
+        cur = Path(records_path)
+        cands = [p for p in Path(out_dir).glob("*_records.json") if p != cur and p.stat().st_mtime < cur.stat().st_mtime]
+        if not cands:
+            return {}
+        prev = max(cands, key=lambda p: p.stat().st_mtime)
+        out = {}
+        for rec in json.loads(prev.read_text()):
+            ss = rec.get("sym_side")
+            g = _f(rec.get("cumulative_gain"))
+            if g is None:
+                g = _f(rec.get("final_gain_fresh_vec"))
+            if ss and g is not None:
+                out[str(ss)] = g
+        return out
+    except Exception:
+        return {}
+
+
+def fallback_books(deduped, allowed, now, max_age_h, open_pos, top=20, prev=None, momentum_weight=2.0):
+    """USER 2026-10-21: when ZERO sym_sides pass the full gates (fleet emits records without fresh full-set
+    metrics, e.g. 'v17 phase cut'), rank by score = gain + momentum_weight * day-over-day gain change instead of
+    booking nobody — a high flier fading since yesterday scores below a riser coming up, so fresh money follows
+    momentum. Still fail-closed on garbage: crypto sym_side, tradeable key, verdict ok, no needs_redo, a final
+    set exists, gain > 0, trades >= 10, evaluated inside the window, no SIMPLE_PRICE_GT0. No TIM/DD/365D
+    assurances exist for these rows, so every one is flagged DEGRADED_FALLBACK and the sizing tiers
+    (RANKED_NO365_SMALL x0.50) size them down. Tokenized/untradeable syms can never enter (allowed check first)."""
+    prev = prev or {}
+    ranked, rows, skipped = {"LONG": [], "SHORT": []}, {}, {}
+    for ss, rec in deduped.items():
+        symbol, _, side = str(ss).rpartition("_")
+        if side not in ("LONG", "SHORT") or not symbol.endswith(CRYPTO_QUOTES) or rec.get("error"):
+            continue
+        if ss not in allowed:
+            skipped[ss] = ["not a tradeable key (fallback)"]
+            continue
+        ev = record_evaluated_at(rec)
+        if ev is None or (now - ev).total_seconds() > max_age_h * 3600:
+            skipped[ss] = [f"stale for fallback: evaluated {ev.isoformat() if ev else '?'}"]
+            continue
+        if str(rec.get("verdict") or "").upper() in BAD_VERDICTS:
+            skipped[ss] = [f"verdict {rec.get('verdict')}"]
+            continue
+        if rec.get("needs_redo"):
+            skipped[ss] = ["needs_redo pending"]
+            continue
+        if not rec.get("has_cumulative_overrides"):
+            skipped[ss] = ["no final per-sym set"]
+            continue
+        if rec.get("simple_price_gt0") is True or str(rec.get("simple_price_gt0")).lower() == "true":
+            skipped[ss] = ["SIMPLE_PRICE_GT0_ENABLED=True set"]
+            continue
+        gain = _f(rec.get("cumulative_gain"))
+        if gain is None:
+            gain = _f(rec.get("final_gain_fresh_vec"))
+        if gain is None or gain <= 0:
+            skipped[ss] = [f"fallback gain {gain}"]
+            continue
+        trades = _f(rec.get("final_trades"))
+        if trades is None or int(trades) < MIN_TRADES_30D:
+            skipped[ss] = [f"fallback trades {trades}"]
+            continue
+        if ss in prev:
+            mom = gain - prev[ss]
+            mom_flag = f"mom {mom:+.2f}pp vs yesterday"
+        else:
+            mom, mom_flag = 0.0, "FIRST_SEEN (no yesterday gain, momentum 0)"
+        score = gain + momentum_weight * mom
+        ranked[side].append((score, symbol))
+        rows[ss] = {"sym_side": ss, "gain_pct": gain, "trades": int(trades), "tim_pct": None, "max_dd_pct": None, "gain_365d": None, "trades_365d": None, "host": rec.get("fetched_from"), "evaluated_at": str(ev), "overrides_md5": rec.get("overrides_md5"), "defaults_round": rec.get("defaults_round"), "verdict": rec.get("verdict"), "flags": ["DEGRADED_FALLBACK: booked on final-set gain, no fresh full-set metrics / TIM / DD / 365D", mom_flag, f"score {score:.2f} = gain {gain:.2f} + {momentum_weight} x mom {mom:+.2f}"]}
+    for side in ranked:
+        ranked[side].sort(key=lambda x: (-x[0], x[1]))
+    if top:
+        gl = {s: g for g, s in ranked["LONG"]}
+        gs = {s: g for g, s in ranked["SHORT"]}
+        for symbol in sorted(set(gl) & set(gs)):
+            drop = "SHORT" if (gl[symbol], 1) >= (gs[symbol], 0) else "LONG"
+            ranked[drop] = [(g, s) for g, s in ranked[drop] if s != symbol]
+    books = {}
+    for side in ("LONG", "SHORT"):
+        chosen = [s for _g, s in ranked[side][:top]]
+        kept = sorted(s for s in open_pos[side] if s not in chosen)
+        books[side] = chosen + kept
+    return {"ranked": ranked, "rows": rows, "books": books, "skipped": skipped}
+
+
 def diff_books(prev, new):
     out = {}
     for side in ("LONG", "SHORT"):
@@ -457,12 +549,13 @@ def main(argv=None):
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--hosts", default=",".join(DEFAULT_HOSTS))
     ap.add_argument("--top", type=int, default=20)
-    ap.add_argument("--max-age-hours", type=float, default=36.0)
+    ap.add_argument("--max-age-hours", type=float, default=216.0)  # USER 2026-10-21: every tradeable sym_side with a backtest inside 9 days belongs in the books
     ap.add_argument("--min-records", type=int, default=20)
     ap.add_argument("--allow-thin-fetch", action="store_true")
     ap.add_argument("--records", help="re-use a fetched records JSON instead of fetching")
     ap.add_argument("--report-tag", default="", help="suffix for the report file names (e.g. a variant dry-run)")
     ap.add_argument("--both-sides", choices=("resolve", "keep"), default="resolve")
+    ap.add_argument("--momentum-weight", type=float, default=2.0, help="fallback score = gain + W x day-over-day gain change; 0 = level only")
     ap.add_argument("--allow-partial-hosts", action="store_true")
     ap.add_argument("--allow-empty-side", action="store_true")
     ap.add_argument("--vec-only-false-ok", action="store_true", help="accept sets whose *_VEC_ONLY_* keys are all False (flagged)")
