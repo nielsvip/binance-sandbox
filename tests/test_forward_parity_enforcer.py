@@ -4,6 +4,7 @@ Covers USER 2026-10-21 barbaric rule tooling: gate incoherence (natives in
 charge + hermetic enforce), corrupt/empty universes, timeframe refusal, and
 the never-orders contract.
 """
+
 import json
 import sys
 import types
@@ -25,20 +26,27 @@ def _stub_config(monkeypatch, vec_exact_mode):
 def test_gate_incoherence_detected_and_fixed(tmp_path, monkeypatch):
     monkeypatch.setattr(fpe, "ROOT", tmp_path)
     (tmp_path / "data").mkdir()
-    (tmp_path / "data" / "hermetic_mode.json").write_text(json.dumps({"mode": "enforce"}))
+    (tmp_path / "data" / "hermetic_mode.json").write_text(
+        json.dumps({"mode": "enforce"})
+    )
     (tmp_path / "backups").mkdir()
     _stub_config(monkeypatch, False)
     gate = fpe.check_gate_coherence()
     assert gate["fault"] is True and gate["hermetic_mode"] == "enforce"
     res = fpe.fix_gate_coherence()
     assert res["fixed"] is True
-    assert json.loads((tmp_path / "data" / "hermetic_mode.json").read_text())["mode"] == "log"
+    assert (
+        json.loads((tmp_path / "data" / "hermetic_mode.json").read_text())["mode"]
+        == "log"
+    )
 
 
 def test_gate_coherent_when_twin_in_charge(tmp_path, monkeypatch):
     monkeypatch.setattr(fpe, "ROOT", tmp_path)
     (tmp_path / "data").mkdir()
-    (tmp_path / "data" / "hermetic_mode.json").write_text(json.dumps({"mode": "enforce"}))
+    (tmp_path / "data" / "hermetic_mode.json").write_text(
+        json.dumps({"mode": "enforce"})
+    )
     _stub_config(monkeypatch, True)
     assert fpe.check_gate_coherence()["fault"] is False
 
@@ -67,7 +75,9 @@ def test_empty_universe_reported_never_refilled(tmp_path, monkeypatch):
 
 
 def test_non_15m_timeframe_refused(monkeypatch, capsys):
-    monkeypatch.setattr(sys, "argv", ["forward_parity_enforcer.py", "--timeframe", "5m"])
+    monkeypatch.setattr(
+        sys, "argv", ["forward_parity_enforcer.py", "--timeframe", "5m"]
+    )
     assert fpe.main() == 2, "must refuse 1/3/5m"
     assert "REFUSED" in capsys.readouterr().out
 

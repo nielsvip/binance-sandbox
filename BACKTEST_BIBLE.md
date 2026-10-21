@@ -4257,3 +4257,41 @@ defect (`adx_1h` recomputed from broadcast HTF arrays, disagreeing with live on 
 both, and stocks additionally run a per-venue opener set the vector may not model at all. It says only this:
 **measured at the bar, stocks execute 21.6% of what their boards decided, so no stock board's published gain can
 currently be claimed as the gain live would have earned.**
+
+## 119. BARBARIC FORWARD-PARITY LAW — NEVER MISS, NEVER EXTRA (USER 2026-10-21)
+
+Until 1/3/5m trading is enabled (which happens ONLY after total parity is reached WITHOUT this law), live obeys
+one barbaric rule on ALL accounts, crypto and stocks, 15m ONLY:
+
+1. **NEVER miss.** Any position that would be open under forward application of the sym_side's board switch set
+   (the set its HTML chart shows, i.e. the same settings run on the latest NPZ) MUST be open live — if the key
+   is tradeable for the account (member of `symbols_<acct>_<side>.json`).
+2. **NEVER extra.** NOTHING may be open live that forward application says is flat.
+3. **15m only.** The law is evaluated at closed-15m-bar cadence. 1/3/5m signals are refused until total parity
+   unlocks them (`tools/forward_parity_enforcer.py --timeframe` exits 2 on anything but `15m`).
+
+**WHY THIS LAW EXISTS.** 2026-10-20 the operator ordered "ez_ AND tradier_ trade SWITCHES not npz's" /
+"NOTHING can live trade an npz" (`PARITY_VEC_EXACT_MODE=False`, `config.py:1786`): natives read the FULL board
+set and apply it to the current dict. But `data/hermetic_mode.json` stayed `enforce` (vec-twin provenance demanded
+for every entry) — so on 2026-10-21 01:33Z live FIRED native entries (`GOLDEN_RULE`, `QUICK_OPEN`) and refused every
+one of them (`BLOCKED_HERMETIC_NOT_VEC`, hundreds per account per 30 min). Natives in charge + vec-only gate =
+a system that can never trade. The fix (same night): hermetic `enforce->log` (runtime mode file, no restart;
+would-refuse stays visible), backup `backups/before_barbaric_parity_202610210135_hermetic_mode.json`.
+
+**WHAT ENFORCES IT IN-LOOP** (no reimplementation — the detector audits these, it does not redo them):
+`VEC_CONVERGE_OPEN` (vec holds + live flat -> OPEN), `VEC_STALE_FLATTEN` 2-bar (vec flat + live holds -> close),
+`promise_ledger` + `tools/promise_audit.py` (promise vs delivery), `exit_guarantee` (refused close -> FORCE),
+`latest_board_ok` entry gate + `tools/per_sym_disparity_guard.py` (board vs live settings).
+
+**THE DETECTOR** (`tools/forward_parity_enforcer.py`, tests `tests/test_forward_parity_enforcer.py` 6/6) runs the
+law's checkable surface on every invocation: gate coherence (auto-fix `--fix`: enforce->log when natives are in
+charge), universe parseable + non-empty per account/side (`--fix` repairs JSON SYNTAX with backup and a
+byte-identical membership proof — 2026-10-21: `symbols_men_long.json` trailing comma repaired, 27/27 identical;
+membership itself is NEVER edited: `symbols_inf_{long,short}.json` are `[]` and `44/466` tradeable sym_sides are
+off-board, both reported for the operator, fixed only via `tools/v15_persym_golive.py golive --published
+--pin-all`), recent-refusal evidence from bounded log tails. It NEVER places, cancels or sizes orders and NEVER
+writes per-sym sets. Alerts append to `data/alerts/forward_parity.jsonl`; exit 0 clean / 1 faults / 2 unmeasured.
+
+**NPZ FRESHNESS** does not excuse a miss: S1 `~/binance-sandbox/backtest_v8/indicators` is the NPZ source
+(`python3 tools/data_locations.py --where npz_indicators --host s1`); a stale NPZ is reported, never used as a
+reason to hold a position the board set says is flat.

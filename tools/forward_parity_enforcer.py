@@ -23,6 +23,7 @@ their inputs and outputs without reimplementing them.
 
 Exit: 0 clean, 1 faults found, 2 cannot measure / refused timeframe.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,9 @@ import pathlib
 import re
 import sys
 
-ROOT = pathlib.Path(os.environ.get("BASE_PATH") or pathlib.Path(__file__).resolve().parents[1])
+ROOT = pathlib.Path(
+    os.environ.get("BASE_PATH") or pathlib.Path(__file__).resolve().parents[1]
+)
 os.environ.setdefault("BASE_PATH", str(ROOT))
 sys.path.insert(0, str(ROOT))
 
@@ -71,17 +74,30 @@ def check_gate_coherence() -> dict:
     out = {"fault": False, "detail": ""}
     try:
         import config as _c
+
         native_in_charge = not bool(getattr(_c.Config, "PARITY_VEC_EXACT_MODE", False))
     except Exception as exc:
-        return {"fault": False, "detail": f"cannot read config: {exc}", "unmeasured": True}
+        return {
+            "fault": False,
+            "detail": f"cannot read config: {exc}",
+            "unmeasured": True,
+        }
     try:
-        mode = str(_read_json(ROOT / "data" / "hermetic_mode.json").get("mode", "log")).lower()
+        mode = str(
+            _read_json(ROOT / "data" / "hermetic_mode.json").get("mode", "log")
+        ).lower()
     except Exception as exc:
         return {"fault": True, "detail": f"hermetic mode unreadable: {exc}"}
     if native_in_charge and mode == "enforce":
-        out = {"fault": True, "detail": "PARITY_VEC_EXACT_MODE=False (natives trade board SWITCHES) but hermetic mode=enforce (demands vec-twin provenance) -> every native entry refused BLOCKED_HERMETIC_NOT_VEC"}
+        out = {
+            "fault": True,
+            "detail": "PARITY_VEC_EXACT_MODE=False (natives trade board SWITCHES) but hermetic mode=enforce (demands vec-twin provenance) -> every native entry refused BLOCKED_HERMETIC_NOT_VEC",
+        }
     else:
-        out = {"fault": False, "detail": f"coherent: natives_in_charge={native_in_charge} hermetic={mode}"}
+        out = {
+            "fault": False,
+            "detail": f"coherent: natives_in_charge={native_in_charge} hermetic={mode}",
+        }
     out["natives_in_charge"] = native_in_charge
     out["hermetic_mode"] = mode
     return out
@@ -89,13 +105,19 @@ def check_gate_coherence() -> dict:
 
 def fix_gate_coherence() -> dict:
     p = ROOT / "data" / "hermetic_mode.json"
-    bak = ROOT / "backups" / f"before_forward_parity_fix_{_dt.datetime.now(_tz_utc()).strftime('%Y%m%d%H%M')}_hermetic_mode.json"
+    bak = (
+        ROOT
+        / "backups"
+        / f"before_forward_parity_fix_{_dt.datetime.now(_tz_utc()).strftime('%Y%m%d%H%M')}_hermetic_mode.json"
+    )
     try:
         d = _read_json(p)
         bak.write_text(json.dumps(d))
         d["mode"] = "log"
         d["set_at"] = _now_iso()
-        d["why"] = "forward_parity_enforcer --fix: natives in charge, enforce refused all native entries; log keeps would-refuse visibility"
+        d["why"] = (
+            "forward_parity_enforcer --fix: natives in charge, enforce refused all native entries; log keeps would-refuse visibility"
+        )
         p.write_text(json.dumps(d))
         return {"fixed": True, "backup": str(bak)}
     except Exception as exc:
@@ -112,10 +134,25 @@ def check_universes() -> list:
                 continue
             try:
                 members = [str(x).upper() for x in _read_json(p)]
-                rows.append({"acct": acct, "side": side, "status": "EMPTY" if not members else "OK", "n": len(members)})
+                rows.append(
+                    {
+                        "acct": acct,
+                        "side": side,
+                        "status": "EMPTY" if not members else "OK",
+                        "n": len(members),
+                    }
+                )
             except Exception:
                 members = _tolerant_members(p)
-                rows.append({"acct": acct, "side": side, "status": "CORRUPT_JSON", "n": len(members) if members else 0, "recoverable": members is not None})
+                rows.append(
+                    {
+                        "acct": acct,
+                        "side": side,
+                        "status": "CORRUPT_JSON",
+                        "n": len(members) if members else 0,
+                        "recoverable": members is not None,
+                    }
+                )
     return rows
 
 
@@ -130,7 +167,11 @@ def fix_universe_syntax(acct: str, side: str) -> dict:
         return {"fixed": False, "error": "already valid JSON, left untouched"}
     except Exception:
         pass
-    bak = ROOT / "backups" / f"before_forward_parity_fix_{_dt.datetime.now(_tz_utc()).strftime('%Y%m%d%H%M')}_symbols_{acct}_{side}.json"
+    bak = (
+        ROOT
+        / "backups"
+        / f"before_forward_parity_fix_{_dt.datetime.now(_tz_utc()).strftime('%Y%m%d%H%M')}_symbols_{acct}_{side}.json"
+    )
     try:
         raw = p.read_text()
         bak.write_text(raw)
@@ -166,7 +207,13 @@ def check_offboard(limit_syms: int = 0) -> dict:
                 if good:
                     ok += 1
                 else:
-                    blocked.append({"sym_side": f"{sym}_{side.upper()}", "acct": acct, "why": str(why)[:120]})
+                    blocked.append(
+                        {
+                            "sym_side": f"{sym}_{side.upper()}",
+                            "acct": acct,
+                            "why": str(why)[:120],
+                        }
+                    )
     return {"n_tradeable": n, "ok": ok, "blocked": blocked}
 
 
@@ -174,12 +221,21 @@ def check_recent_refusals(accounts=(("ang", "fin", "flz", "inf", "men"))) -> dic
     """Bounded tail of live logs: entries refused in the last 30 min proves starvation (or recovery)."""
     logdir = pathlib.Path.home() / "logs"
     cutoff = _dt.datetime.now(_tz_utc()).timestamp() - 1800
-    pats = ("BLOCKED_HERMETIC_NOT_VEC", "WOULD_REFUSE", "NO_LATEST_BOARD", "SET_DRIFTED_SINCE_PUBLISH")
+    pats = (
+        "BLOCKED_HERMETIC_NOT_VEC",
+        "WOULD_REFUSE",
+        "NO_LATEST_BOARD",
+        "SET_DRIFTED_SINCE_PUBLISH",
+    )
     out = {}
     for acct in accounts:
         hits = {k: 0 for k in pats}
         try:
-            lines = (logdir / f"ez_manage_{acct}.log").read_text(errors="replace").splitlines()[-2000:]
+            lines = (
+                (logdir / f"ez_manage_{acct}.log")
+                .read_text(errors="replace")
+                .splitlines()[-2000:]
+            )
         except Exception:
             out[acct] = {"unmeasured": True}
             continue
@@ -199,7 +255,9 @@ def main() -> int:
     ap.add_argument("--limit-syms", type=int, default=0)
     a = ap.parse_args()
     if str(a.timeframe) != "15m":
-        print(f"REFUSED timeframe={a.timeframe}: 1/3/5m trading disabled until total parity (barbaric rule is 15m-only)")
+        print(
+            f"REFUSED timeframe={a.timeframe}: 1/3/5m trading disabled until total parity (barbaric rule is 15m-only)"
+        )
         return 2
     faults = []
     gate = check_gate_coherence()
@@ -222,20 +280,42 @@ def main() -> int:
     if off.get("unmeasured"):
         print(f"UNMEASURED offboard: {off.get('error')}")
     else:
-        print(f"offboard: {len(off['blocked'])}/{off['n_tradeable']} tradeable sym_sides entry-blocked")
+        print(
+            f"offboard: {len(off['blocked'])}/{off['n_tradeable']} tradeable sym_sides entry-blocked"
+        )
         for b in off["blocked"][:20]:
             print(f"  BLOCKED {b['sym_side']} acct={b['acct']} why={b['why']}")
         if off["blocked"]:
             faults.append(f"OFFBOARD_{len(off['blocked'])}")
-            print("sanctioned fix (NOT auto-run): python3 tools/v15_persym_golive.py golive --published --pin-all")
+            print(
+                "sanctioned fix (NOT auto-run): python3 tools/v15_persym_golive.py golive --published --pin-all"
+            )
     print(f"recent refusals: {json.dumps(check_recent_refusals())[:600]}")
     ALERTS.mkdir(parents=True, exist_ok=True)
-    rec = {"ts": _now_iso(), "timeframe": "15m", "gate": gate, "offboard_n": len(off.get("blocked", [])), "faults": faults}
+    rec = {
+        "ts": _now_iso(),
+        "timeframe": "15m",
+        "gate": gate,
+        "offboard_n": len(off.get("blocked", [])),
+        "faults": faults,
+    }
     with open(ALERTS / "forward_parity.jsonl", "a") as f:
         f.write(json.dumps(rec) + "\n")
     if a.apply_golive:
         import subprocess
-        r = subprocess.run([sys.executable, "tools/v15_persym_golive.py", "golive", "--published", "--pin-all"], capture_output=True, text=True, timeout=600)
+
+        r = subprocess.run(
+            [
+                sys.executable,
+                "tools/v15_persym_golive.py",
+                "golive",
+                "--published",
+                "--pin-all",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
         print(f"golive rc={r.returncode} tail={r.stdout[-500:]} err={r.stderr[-500:]}")
     print("FAULTS:" + (",".join(faults) if faults else "none"))
     return 1 if faults else 0

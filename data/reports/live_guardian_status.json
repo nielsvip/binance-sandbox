@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T01:43:29Z",
+ "ts": "2026-10-21T01:48:47Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 0,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 1,
+   "open_positions": 1,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": -0.03,
+   "unrealised_usd": -0.27,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,66 +127,81 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 7.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 10.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 11.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20546.0
+   "log_age_s": 20863.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20548.0
+   "log_age_s": 20865.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T01:43:30Z",
+   "ts": "2026-10-21T01:48:47Z",
+   "severity": "CRITICAL",
+   "kind": "NON_VEC_ENTRY_FILL",
+   "key": "fin:IOTXUSDT_LONG",
+   "evidence": "AUGMENT 6246 @ 2026-10-21T01:44:40Z reason=GOLDEN_RULE_LONG_mult5.0 (must be 0 under PARITY_VEC_EXACT_MODE)"
+  },
+  {
+   "ts": "2026-10-21T01:48:47Z",
    "severity": "CRITICAL",
    "kind": "NON_VEC_ENTRY_FILL",
    "key": "men:UNIUSDC_SHORT",
    "evidence": "AUGMENT 3 @ 2026-10-21T01:42:10Z reason=VEC_DRIVEN_OPEN_RECONCILE_ (must be 0 under PARITY_VEC_EXACT_MODE)"
   },
   {
-   "ts": "2026-10-21T01:43:30Z",
+   "ts": "2026-10-21T01:48:47Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:1000LUNCUSDT_SHORT",
    "evidence": "21 01:41:25 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000LUNCUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $5 on bounce (prior max 1463.0000)"
+  },
+  {
+   "ts": "2026-10-21T01:48:48Z",
+   "severity": "CRITICAL",
+   "kind": "NATIVE_FILL_IN_EXACT_MODE",
+   "key": "fin:IOTXUSDT_LONG",
+   "evidence": "AUGMENT GOLDEN_RULE_LONG_mult5.0 @ 2026-10-21T01:44:40Z: non-vec fill in exact mode"
   }
  ],
  "alert_counts": {
-  "NON_VEC_ENTRY_FILL": 1,
-  "CAP_BYPASS": 1
+  "NON_VEC_ENTRY_FILL": 2,
+  "CAP_BYPASS": 1,
+  "NATIVE_FILL_IN_EXACT_MODE": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -233,20 +248,6 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:ang:GALAUSDT_SHORT",
    "dry_run": false
   },
-  "key:ang:COMPUSDT_LONG": {
-   "ts": 1792539965.175647,
-   "until": 1792547165.175649,
-   "why": "SIZE_ANOMALY order $536.06 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:COMPUSDT_LONG",
-   "dry_run": false
-  },
-  "key:ang:ASTERUSDT_LONG": {
-   "ts": 1792540007.740036,
-   "until": 1792547207.7400372,
-   "why": "SIZE_ANOMALY order $874.24 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:ASTERUSDT_LONG",
-   "dry_run": false
-  },
   "key:ang:SKLUSDT_SHORT": {
    "ts": 1792540351.080862,
    "until": 1792547551.080877,
@@ -255,5 +256,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.85
+ "sweep_s": 0.77
 }
