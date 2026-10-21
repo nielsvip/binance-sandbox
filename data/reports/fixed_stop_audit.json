@@ -3,31 +3,45 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 5502.609,
+   "key": "ang:BTCDOMUSDT_LONG",
+   "live_level": 5510.397885294643,
+   "mark": 5528.3,
+   "opened_at": "2026-10-21T11:02:02.194000Z",
+   "resting_trigger": 5502.1
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.00848508,
+   "mark": 0.0084884,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
-  },
-  {
-   "account": "flz",
-   "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [429]>, 429, '{\"code\":-1003,\"msg\":\"Too many requests; current limit of IP(138.199.60.171) is 2400 requests per minute. Please use "
   }
  ],
  "n_findings": 2,
- "n_positions": 1,
+ "n_positions": 2,
  "positions": [
+  {
+   "armed": true,
+   "entry_bar_level": 5502.609,
+   "key": "ang:BTCDOMUSDT_LONG",
+   "live_level": 5510.397885294643,
+   "mark": 5528.3,
+   "opened_at": "2026-10-21T11:02:02.194000Z",
+   "resting_trigger": 5502.1
+  },
   {
    "armed": true,
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.00848508,
+   "mark": 0.0084884,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "ts": "2026-10-21T11:01:56.103316+00:00"
+ "ts": "2026-10-21T11:11:08.845395+00:00"
 }
