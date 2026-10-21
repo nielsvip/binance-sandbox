@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T20:47:12Z",
+ "ts": "2026-10-21T20:52:42Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -91,7 +91,7 @@
    }
   },
   "flz": {
-   "fills_6h": 30,
+   "fills_6h": 32,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -127,64 +127,78 @@
     "10188"
    ],
    "starts_30m": 3,
-   "log_age_s": 115.0
+   "log_age_s": 88.0
   },
   "men": {
    "pids": [
     "12401"
    ],
    "starts_30m": 3,
-   "log_age_s": 1.0
+   "log_age_s": 284.0
   },
   "ang": {
    "pids": [
     "56197"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "18598"
    ],
    "starts_30m": 3,
-   "log_age_s": 23.0
+   "log_age_s": 54.0
   },
   "flz": {
    "pids": [
     "56248"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 2769.0
+   "log_age_s": 3099.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 2772.0
+   "log_age_s": 3102.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T20:47:14Z",
+   "ts": "2026-10-21T20:52:44Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.089145->0.267435 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.089145)"
+  },
+  {
+   "ts": "2026-10-21T20:52:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['45491', '46265', '10188'])"
   },
   {
-   "ts": "2026-10-21T20:47:14Z",
+   "ts": "2026-10-21T20:52:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
    "evidence": "3 new process ids in 30 min (['49431', '11248', '12401'])"
   },
   {
-   "ts": "2026-10-21T20:47:14Z",
+   "ts": "2026-10-21T20:52:44Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 284s"
+  },
+  {
+   "ts": "2026-10-21T20:52:44Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
@@ -192,7 +206,9 @@
   }
  ],
  "alert_counts": {
-  "RESTART_LOOP": 3
+  "SIZE_ANOMALY": 1,
+  "RESTART_LOOP": 3,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -233,5 +249,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.58
+ "sweep_s": 1.73
 }

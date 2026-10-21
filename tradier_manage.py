@@ -11667,6 +11667,8 @@ async def periodic_evaluate_reentry_loop(trade_manager):
     """
     Scans for positions that were REDUCED and need RE-ENTRY.
     """
+    if getattr(config, "ENABLE_TR_REENTRY_PERIODIC", False) is not True:
+        return None
     logger.info("[TASK] Re-entry Scanner Started")
     while getattr(trade_manager, "running", False):
         try:
@@ -43918,6 +43920,8 @@ class TradierTradeManager:
         ratio=0.7 → long cap ×140%, short cap ×60%. Clamped to ±50% of base.
         Returns (allowed: bool, reason: str).
         """
+        if getattr(config, "ENABLE_TR_SWING_ENTRIES", False) is not True:
+            return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
         if side == "LONG":
             base = _cfg_auto("SWING_LONG_BUDGET", 20000.0)
@@ -51923,6 +51927,8 @@ class TradierTradeManager:
             return True
 
     def would_exit_trigger_now(self, symbol, indicators, side, *, current_price=None):
+        if getattr(config, "ENABLE_TR_SYMGATE_REENTRY", False) is not True:
+            return True, "SYMGATE_REENTRY_OFF_PARITY"
         # Symmetric gate: returns (blocked: bool, reason: str).
         # Blocks an entry/reentry whenever the mirror exit rubric would fire for `side`.
         # Consulted rubrics: wt_dc_score_exit, DELTA engine (zone+exit flags), DELTA speed floor.
@@ -52001,6 +52007,9 @@ class TradierTradeManager:
         logger.info("[REENTRY_MONITOR] Dedicated reentry monitor started (15s cycle)")
         await asyncio.sleep(30)
         while self.running:
+            if getattr(config, "ENABLE_TR_REENTRY_MONITOR", False) is not True:
+                await asyncio.sleep(60)
+                continue
             try:
                 if not is_regular_trading_hours():
                     await asyncio.sleep(60)
@@ -60113,6 +60122,8 @@ async def monitor_direct_high_gain_positions(trade_manager, order_queue):
 
 async def periodic_direct_high_gain_reopen(trade_manager, order_queue, account_key):
     """Periodically check for re-opening high gain positions that were reduced"""
+    if getattr(config, "ENABLE_TR_HIGH_GAIN_REOPEN", False) is not True:
+        return None
     # USER 2026-09-21 CRITICAL: tra never reopens — no buys
     if account_key == "tra":
         logger.info("[periodic_direct_high_gain_reopen] tra SKIPPED — sell-only")
@@ -60493,6 +60504,8 @@ class StockScalpStrategy:
         self, acc: str, symbol: str, side: str, price: float, ha_score: int = 0
     ):
         """Open a scalp position and tag it as scalp wing. ha_score 3/4 = heavy artillery."""
+        if getattr(config, "ENABLE_TR_SCALP_OPEN", False) is not True:
+            return None
         start_size = _cfg_auto("SCALP_START_SIZE", 800.0)
         max_pos = _cfg_auto("SCALP_MAX_POSITION_SIZE", 2000.0)
         if ha_score == 4:
@@ -61062,6 +61075,8 @@ class StockDaytradeWing:
         return signals
 
     async def _scan_dc_entries(self, snapshot: dict):
+        if getattr(config, "ENABLE_TR_DAYTRADE_WING", False) is not True:
+            return None
         acc = self.account_key
         long_budget = _cfg_auto("DC_DAYTRADE_LONG_BUDGET", 3000.0)
         short_budget = _cfg_auto("DC_DAYTRADE_SHORT_BUDGET", 3000.0)
