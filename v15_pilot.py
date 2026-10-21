@@ -16587,44 +16587,31 @@ def _main_single():
                     _cur_all = json.loads(_live_cfg_path.read_text())
                     _cur_entry = _cur_all.get(new_symside, {}) if isinstance(_cur_all, dict) else {}
                     if _cur_entry and _cur_entry.get("overrides"):
-                        _cur_over = _cur_entry.get("overrides") or {}
-                        _cur_san, _ = sanitize_overrides(dict(_cur_over), defaults)
-                        # Evaluate current live config on 365D for fair compare (same window, same costs +$ higher than reality)
-                        _cur_vec = None
-                        _cur_live = None
-                        if _prep365 is not None:
-                            _cur_vec = _eval365(_prep365, _cur_san, window_days=365)
-                        _cur_live = live_evaluate(new_symside, _cur_san, 365)
-                        _ok_cur, _ = parity_ok(_cur_live, _cur_vec, allow_zero_baseline=True) if _cur_vec and _cur_live else (False, "")
-                        _cur_use = _cur_live if _cur_live.get("valid") and _ok_cur else _cur_vec
-                        _cur_gain365 = float(_cur_use.get("gain_pct") or 0) if _cur_use else float(_cur_entry.get("acc_gain_pct") or _cur_entry.get("gain_vs_bh") or 0)
-                        print(f"[LIVE-CUR] {new_symside} current live 365D gain {_cur_gain365:.2f} trades {(_cur_use.get('trades') if _cur_use else _cur_entry.get('trades'))} vs new {_365_gain:.2f}", flush=True)
+                        # USER 2026-10-21: 365D overruled — the incumbent 365D
+                        # re-evaluation (two full 365D evals per promotion) is
+                        # skipped; the comparison no longer gates anything.
+                        # _cur_entry is still loaded below for the backup.
+                        print(f"[LIVE-CUR] {new_symside} has existing per_sym entry — kept for backup only (no 365D compare)", flush=True)
                     else:
                         print(f"[LIVE-CUR] {new_symside} no existing per_sym entry — will create", flush=True)
                 except Exception as _le:
                     print(f"[LIVE-CUR-warn] {_le}", flush=True)
             else:
                 print(f"[LIVE-CUR] no file {_live_cfg_path} — will create", flush=True)
-            # Beat check: new 365D must beat current live 365D (if exists) by >0 and also be positive and have trades floor
+            # USER 2026-10-21: 365D overruled EVERYWHERE — per_sym goes live the
+            # moment the 30D backtest finishes. Promotion rule = 30D robustness
+            # alone (pos gain or beats 30D bh); no 365D gain/trades floor, no
+            # sharpe/dd veto, no incumbent-beat comparison (365D numbers below
+            # are advisory only). Recovery from a worse set: next campaign +
+            # enforcer + family monitor. ROLLBACK: restore the 365D-gated block.
             _beats = False
-            # USER 2026-05-31: promote as soon as 365D has pos gain and best 30D has pos gain or gain > bh (30D bh = baseline_gain)
-            # No incumbent-beat required — per_sym goes live immediately when robustness met
+            # USER 2026-05-31 base rule (kept): promote as soon as best 30D has pos
+            # gain or gain > bh (30D bh = baseline_gain)
             _30d_pos = cumulative_gain > 0
             _30d_beats_bh = (cumulative_gain - baseline_gain) > 1e-9  # delta >0 means 30D best > 30D bh
-            if _365_gain is not None and _365_trades >= 30:
-                if _365_gain > 0 and (_30d_pos or _30d_beats_bh):
-                    _beats = True
-                # For incumbent, also allow if strictly beats current live 365D (even if 30D not pos, but 365D pos already required)
-                elif _cur_gain365 is not None and _365_gain > _cur_gain365 + 1e-9 and _365_gain > 0:
-                    _beats = True
-                # Additional robustness: require 365D sharpe not terrible and dd not huge
-                if _beats and _365_sharpe < -1:
-                    print(f"[LIVE-BEAT-SKIP] 365D sharpe {_365_sharpe:.2f} < -1 — not promoting despite gain beat", flush=True)
-                    _beats = False
-                if _beats and _365_dd > 30:
-                    print(f"[LIVE-BEAT-SKIP] 365D dd {_365_dd:.2f} >30% — not promoting", flush=True)
-                    _beats = False
-            print(f"[LIVE-BEAT] {new_symside} new {_365_gain:.2f} vs cur {_cur_gain365} beats={_beats} delta {_365_delta:.2f}", flush=True)
+            if _30d_pos or _30d_beats_bh:
+                _beats = True
+            print(f"[LIVE-BEAT] {new_symside} 30D gain {cumulative_gain:.2f} vs bh {baseline_gain:.2f} beats={_beats} (365D new {_365_gain} vs cur {_cur_gain365} — advisory only)", flush=True)
             if _beats:
                 # Backup current per_sym settings if existing
                 if _cur_entry:
@@ -16633,7 +16620,7 @@ def _main_single():
                         _bak_dir.mkdir(parents=True, exist_ok=True)
                         _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
                         _bak_path = _bak_dir / f"before_per_sym_{new_symside}_{_ts}.json"
-                        _bak_path.write_text(json.dumps({new_symside: _cur_entry, "_meta": {"backed_up_at": utcnow(), "reason": f"v15 365D beat {new_symside} new {_365_gain:.2f} vs cur {_cur_gain365:.2f}"}}, indent=2))
+                        _bak_path.write_text(json.dumps({new_symside: _cur_entry, "_meta": {"backed_up_at": utcnow(), "reason": f"v15 publish {new_symside} 30D gain {cumulative_gain:.2f} (365D overruled 2026-10-21)"}}, indent=2))
                         print(f"[BACKUP] per_sym {new_symside} -> {_bak_path.name}", flush=True)
                         # also hourly_reconfig backup
                         try:
@@ -16654,16 +16641,20 @@ def _main_single():
                             _all = {}
                         # preserve _meta if exists
                         _meta = _all.pop("_meta", None) if isinstance(_all, dict) else None
+                        # USER 2026-10-21: 365D values are advisory-only metadata now;
+                        # each falls back to the REAL 30D numbers when the 365D
+                        # run is missing (never crash the publish on None).
+                        _e365 = lambda v, fb: float(v if v is not None else fb)
                         _new_entry = {
                             "winning_tag": f"v15_30D365D_{new_symside}_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')}",
-                            "wsharpe": float(_365_sharpe),
-                            "pool_sharpe": float(_365_sharpe),
-                            "trades": int(_365_trades),
-                            "max_dd_pct": float(_365_dd),
-                            "acc_gain_pct": float(_365_gain),
-                            "gain_vs_bh": float(_365_gain - _365_bh),
-                            "bh_pct": float(_365_bh),
-                            "delta_365": float(_365_delta),
+                            "wsharpe": _e365(_365_sharpe, 0.0),
+                            "pool_sharpe": _e365(_365_sharpe, 0.0),
+                            "trades": int(_365_trades or 0),
+                            "max_dd_pct": _e365(_365_dd, 0.0),
+                            "acc_gain_pct": _e365(_365_gain, cumulative_gain),
+                            "gain_vs_bh": _e365((_365_gain - _365_bh if _365_gain is not None and _365_bh is not None else None), cumulative_gain - baseline_gain),
+                            "bh_pct": _e365(_365_bh, baseline_gain),
+                            "delta_365": _365_delta if _365_delta is not None else None,
                             "delta_30d": float(cumulative_gain - baseline_gain),
                             "gain_30d": float(cumulative_gain),
                             "baseline_30d": float(baseline_gain),
@@ -16673,7 +16664,7 @@ def _main_single():
                             "pool_winner_tag_crypto": "v15_30D365D" if _is_crypto else None,
                             "side": new_symside.split("_")[-1],
                             "365d_xlsx": str(_365_xlsx) if _365_xlsx else None,
-                            "source": f"v15_pilot 30D→365D {utcnow()} 365D delta {_365_delta:.2f} beats cur {_cur_gain365}",
+                            "source": f"v15_pilot publish-on-30D-finish {utcnow()} 30D gain {cumulative_gain:.2f} vs bh {baseline_gain:.2f} (365D overruled 2026-10-21)",
                         }
                         # prune None
                         _new_entry = {k: v for k, v in _new_entry.items() if v is not None}
@@ -16683,7 +16674,7 @@ def _main_single():
                         _tmp = _live_cfg_path.with_suffix(".json.tmp")
                         _tmp.write_text(json.dumps(_all, indent=2, default=str))
                         _tmp.replace(_live_cfg_path)
-                        print(f"[LIVE-PUT] {new_symside} -> {_live_cfg_path.name} gain365 {_365_gain:.2f} delta {_365_delta:.2f} LIVE NOW", flush=True)
+                        print(f"[LIVE-PUT] {new_symside} -> {_live_cfg_path.name} 30D gain {cumulative_gain:.2f} (365D {_365_gain} advisory) LIVE NOW", flush=True)
                         # --- per_sym_store: snapshot full defaults+overrides (~5000 keys) to SQLite primary + JSON backup ---
                         try:
                             import per_sym_store as _pss
@@ -16737,7 +16728,7 @@ def _main_single():
                     import traceback
                     print(f"[LIVE-PUT-warn] {_pe} {traceback.format_exc()[:600]}", flush=True)
             else:
-                print(f"[LIVE-SKIP] {new_symside} not beating live — no backup/promote (new {_365_gain} vs cur {_cur_gain365})", flush=True)
+                print(f"[LIVE-SKIP] {new_symside} 30D robustness not met (gain {cumulative_gain:.2f} vs bh {baseline_gain:.2f}) — no publish", flush=True)
         except Exception as _e:
             import traceback
             print(f"[365D-LIVE-warn] {_e} {traceback.format_exc()[:800]}", flush=True)
