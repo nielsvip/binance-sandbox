@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T01:23:05Z",
+ "ts": "2026-10-21T01:28:21Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,14 +127,14 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 5.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
@@ -148,143 +148,164 @@
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 26.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19321.0
+   "log_age_s": 19638.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19323.0
+   "log_age_s": 19640.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T01:23:05Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:GALAUSDT_SHORT",
-   "evidence": "21 01:11:23 - WARNING - [men] [REENTRY_GRANDFATHERED] men:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $1348 on bounce (prior max 13416.0000)"
-  },
-  {
-   "ts": "2026-10-21T01:23:05Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:GALAUSDT_SHORT",
-   "evidence": "order notional $1347.86 > MAX_ORDER_VALUE $300: 21 01:11:23 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:GALAUSDT_SHORT @ 0.001959 qty=688013.662964 ($1347.86) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.001959_exit0"
-  },
-  {
-   "ts": "2026-10-21T01:23:05Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:ARUSDT_LONG",
-   "evidence": "21 01:11:25 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ARUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $10 on bounce (prior max 18.4000)"
-  },
-  {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
    "evidence": "21 01:13:57 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $147 on bounce (prior max 3.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
    "evidence": "21 01:16:27 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $1 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "21 01:16:52 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $117 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:ARUSDT_LONG",
    "evidence": "21 01:17:06 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $58 on bounce (prior max 18.4000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:1000FLOKIUSDT_SHORT",
    "evidence": "21 01:17:34 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $65 on bounce (prior max 2056.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "21 01:18:42 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $473 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "order notional $473.12 > MAX_ORDER_VALUE $300: 21 01:18:42 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:GALAUSDT_SHORT @ 0.001959 qty=241510.418628 ($473.12) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.001959_exit0."
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:ARUSDT_LONG",
    "evidence": "21 01:19:41 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $51 on bounce (prior max 18.4000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:ARUSDT_LONG",
    "evidence": "21 01:20:58 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $60 on bounce (prior max 18.4000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:1000FLOKIUSDT_SHORT",
    "evidence": "21 01:21:28 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $40 on bounce (prior max 2056.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:1000FLOKIUSDT_SHORT",
    "evidence": "21 01:21:34 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $39 on bounce (prior max 2056.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "21 01:22:28 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $337 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-21T01:23:05Z",
+   "ts": "2026-10-21T01:28:22Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "order notional $337.31 > MAX_ORDER_VALUE $300: 21 01:22:28 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:GALAUSDT_SHORT @ 0.001959 qty=172151.466702 ($337.31) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.001959_exit0."
+  },
+  {
+   "ts": "2026-10-21T01:28:22Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "21 01:24:57 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $27 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-21T01:28:22Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:1000FLOKIUSDT_SHORT",
+   "evidence": "21 01:25:33 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $39 on bounce (prior max 2056.0000)"
+  },
+  {
+   "ts": "2026-10-21T01:28:22Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "21 01:26:19 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $49 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-21T01:28:22Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:1000FLOKIUSDT_SHORT",
+   "evidence": "21 01:26:38 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $41 on bounce (prior max 2056.0000)"
+  },
+  {
+   "ts": "2026-10-21T01:28:22Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "21 01:26:52 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $51 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-21T01:28:22Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:1000FLOKIUSDT_SHORT",
+   "evidence": "21 01:27:44 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $6 on bounce (prior max 2056.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 13,
-  "SIZE_ANOMALY": 3
+  "CAP_BYPASS": 17,
+  "SIZE_ANOMALY": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -353,5 +374,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.93
+ "sweep_s": 1.12
 }

@@ -42,8 +42,14 @@ def sh(cmd, timeout=20):
 
 
 def ssh_uptime(target, timeout=10, via=None):
+    # Isolated known_hosts: fleet private IPs get recycled (s4->s2, deleted
+    # s5/s6), so shared known_hosts collects stale keys -> false DOWNs.
+    # TOFU once per watchdog state dir; a genuinely reimaged host logs
+    # a clear changed-key error instead of silently passing.
+    kh = os.path.join(STATE_DIR, "known_hosts")
     cmd = ["ssh", "-o", "ConnectTimeout=%d" % timeout, "-o", "BatchMode=yes",
-           "-o", "StrictHostKeyChecking=accept-new"]
+           "-o", "StrictHostKeyChecking=accept-new",
+           "-o", "UserKnownHostsFile=%s" % kh]
     if via:
         cmd += ["-J", via]
     cmd += [target, "cat /proc/uptime"]
@@ -99,10 +105,11 @@ def dispatcher_ok(timeout=15):
     scheduler, NOT a reboot case (rebooting would kill the dispatcher)."""
     probe = ("python3 -c \"import time,os;p='/tmp/v15_fleet_sched.log';"
                "print(int(time.time()-os.path.getmtime(p)))\"")
+    kh = ["-o", "UserKnownHostsFile=%s" % os.path.join(STATE_DIR, "known_hosts")]
     attempts = [["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
-                 "-o", "StrictHostKeyChecking=accept-new", "s1-int", probe],
+                 "-o", "StrictHostKeyChecking=accept-new"] + kh + ["s1-int", probe],
                 ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
-                 "-o", "StrictHostKeyChecking=accept-new", "-J", GW_JUMP,
+                 "-o", "StrictHostKeyChecking=accept-new"] + kh + ["-J", GW_JUMP,
                  "niels@10.0.0.3", probe]]
     out = ""
     for cmd in attempts:
