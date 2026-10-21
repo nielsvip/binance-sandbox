@@ -48367,6 +48367,104 @@ _override_check_counter = {}
 _override_check_semaphore = asyncio.Semaphore(100)
 
 
+def _r15_15m_htf_proposals(get, ind, prev, is_long, px=0.0):
+    """REENTRY_15M HTF trio live scalar mirror (gap batch1 2026-10-21).
+
+    Mirrors v12_quick_engine.compute_reentry_blocks 15m-HTF blocks
+    (REENTRY_15M_DC_BASIS_CROSS_HTF / REENTRY_15M_LRL_PULLBACK_HTF /
+    REENTRY_15M_BB1H_LOW_BOUNCE_HTF): 15m pullback/cross + side-resolved WT
+    agreement count over 15m/1h/4h/D >= MIN_TFS. Returns (fires, new_prev)
+    with reasons; default-inert (all ENABLED False -> []); fail-open
+    (missing/NaN -> leg skipped). Prev-bar comes from the caller
+    (trade_manager._r15_prev: the pipeline carries no bb/lrl prev keys);
+    first-seen bar cannot cross (strict inequalities). close_15m falls back
+    to px, bb_pct_b_1h to 0.5, lrL to 0.5, bb_lower_1h to 0 — same as vec
+    _safe defaults. Short BB1H uses the band form only when bb_lower_1h > 0
+    (vec keys the form off the whole-array any-nonzero; scalar per-bar).
+    """
+    def _f(v, d=None):
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return d
+        return d if f != f else f
+
+    def _g(k, d):
+        try:
+            return get(k, d)
+        except Exception:
+            return d
+
+    ind = ind or {}
+    prev = prev or {}
+    fires = []
+    c = _f(ind.get("close_15m"), _f(px))
+    p = prev.get("close_15m", c)
+    m = _f(ind.get("bb_middle_15m"))
+    if m is None or m == 0:
+        m = _f(ind.get("bb_basis_15m"))
+    if m is None or m == 0:
+        m = _f(ind.get("dc_basis_15m"))
+    mp = prev.get("mid_15m", m)
+    bb = _f(ind.get("bb_pct_b_1h"), 0.5)
+    bbp = prev.get("bb_pct_1h", bb)
+    lrl = _f(ind.get("lrL_pct_b_15m"), 0.5)
+    lrlp = prev.get("lrl_15m", lrl)
+    low1h = _f(ind.get("bb_lower_1h"), 0.0)
+    cnt = 0
+    wt15_ok = False
+    for _tf in ("15m", "1h", "4h", "D"):
+        _a = _f(ind.get("wt1_" + _tf))
+        _b = _f(ind.get("wt2_" + _tf))
+        if _a is None or _b is None:
+            continue
+        _ok = (_a > _b) if is_long else (_a < _b)
+        if _ok:
+            cnt += 1
+            if _tf == "15m":
+                wt15_ok = True
+    try:
+        _min_dc = int(_g("REENTRY_15M_DC_BASIS_CROSS_HTF_MIN_TFS", 2))
+    except (TypeError, ValueError):
+        _min_dc = 2
+    if bool(_g("REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED", False)):
+        if c is not None and p is not None and m is not None and mp is not None and m > 0 and bb is not None:
+            if is_long:
+                _fire = p < mp and c > m and bb <= 0.85
+            else:
+                _fire = p > mp and c < m and bb >= 0.15
+            if _fire and cnt >= _min_dc:
+                fires.append("REENTRY_15M_DC_BASIS_CROSS_HTF_" + ("LONG" if is_long else "SHORT"))
+    try:
+        _min_lrl = int(_g("REENTRY_15M_LRL_PULLBACK_HTF_MIN_TFS", 2))
+    except (TypeError, ValueError):
+        _min_lrl = 2
+    if bool(_g("REENTRY_15M_LRL_PULLBACK_HTF_ENABLED", False)):
+        if lrl is not None and lrlp is not None:
+            if is_long:
+                _fire = lrlp < 0.20 and lrl > 0.30 and wt15_ok
+            else:
+                _fire = lrlp > 0.80 and lrl < 0.70 and wt15_ok
+            if _fire and cnt >= _min_lrl:
+                fires.append("REENTRY_15M_LRL_PULLBACK_HTF_" + ("LONG" if is_long else "SHORT"))
+    try:
+        _min_bb = int(_g("REENTRY_15M_BB1H_LOW_BOUNCE_HTF_MIN_TFS", 2))
+    except (TypeError, ValueError):
+        _min_bb = 2
+    if bool(_g("REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED", False)):
+        if bb is not None and bbp is not None and c is not None and low1h is not None:
+            if is_long:
+                _fire = bbp < 0.20 and bb > 0.25 and c > low1h and low1h > 0 and wt15_ok
+            elif low1h > 0:
+                _fire = bbp > 0.80 and bb < 0.75 and c < low1h + 0.1 * abs(low1h) and wt15_ok
+            else:
+                _fire = bbp > 0.80 and bb < 0.75 and wt15_ok
+            if _fire and cnt >= _min_bb:
+                fires.append("REENTRY_15M_BB1H_LOW_BOUNCE_HTF_" + ("LONG" if is_long else "SHORT"))
+    new_prev = {"close_15m": c, "mid_15m": m, "bb_pct_1h": bb, "lrl_15m": lrl}
+    return fires, new_prev
+
+
 async def _process_single_override_check(
     trade_manager,
     account_key: str,
@@ -48977,6 +49075,19 @@ async def _process_single_override_check(
                                     await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _teda_reason_z, 80.0)
                         except Exception as _teda_e_z:
                             logger.debug(f"[TEDA_ENTRY] {position_key}: probe err: {_teda_e_z}")
+                        # REENTRY_15M HTF trio 2026-10-21 gap batch1 (default OFF = inert): live mirror of v12 compute_reentry_blocks REENTRY_15M_{DC_BASIS_CROSS,LRL_PULLBACK,BB1H_LOW_BOUNCE}_HTF — 15m pullback/cross + HTF WT agreement flat proposals, WT_3M_FORCE_OPEN mechanics (flat-only + dup cooldown). Prev-bar via trade_manager._r15_prev (pipeline carries no bb/lrl prev keys); first-seen bar cannot cross.
+                        try:
+                            if (position is None or abs(safe_float(getattr(position, "positionAmt", 0))) == 0) and (bool(_psym_get(_sym_z, _side_z, "REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED", False)) or bool(_psym_get(_sym_z, _side_z, "REENTRY_15M_LRL_PULLBACK_HTF_ENABLED", False)) or bool(_psym_get(_sym_z, _side_z, "REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED", False))):
+                                _r15_prev_all = trade_manager.__dict__.setdefault("_r15_prev", {})
+                                _r15_fires_z, _r15_new_z = _r15_15m_htf_proposals(lambda _k, _d: _psym_get(_sym_z, _side_z, _k, _d), _ind_z or {}, _r15_prev_all.get(position_key), _is_long_z, safe_fetch_float(_px_z, 0.0))
+                                _r15_prev_all[position_key] = _r15_new_z
+                                for _r15_reason_z in _r15_fires_z:
+                                    if _px_z > 0 and time.time() - _recent_opens.get(position_key, 0) >= _DUPLICATE_OPEN_COOLDOWN:
+                                        logger.warning(f"[REENTRY_15M] {position_key}: {_r15_reason_z} px={_px_z:.6f} -> OPEN")
+                                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _r15_reason_z, 80.0)
+                                        break
+                        except Exception as _r15_e_z:
+                            logger.debug(f"[REENTRY_15M] {position_key}: probe err: {_r15_e_z}")
             except Exception as _tkm_e:
                 logger.debug(
                     f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}"

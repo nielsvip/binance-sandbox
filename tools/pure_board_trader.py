@@ -38,6 +38,7 @@ import argparse
 import asyncio
 import collections
 import datetime as dt
+import glob
 import json
 import os
 import subprocess
@@ -70,6 +71,17 @@ def universe(accounts):
         if not sym.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")):
             continue  # crypto only
         out.append((acct, ss))
+    if accounts and "trb" in accounts:
+        # USER 2026-10-21: trb converges too — its universe is the curated stock lists.
+        try:
+            _longs = json.load(open(ROOT / "symbols_trb_long.json")) or []
+            _shorts = json.load(open(ROOT / "symbols_trb_short.json")) or []
+        except Exception:
+            _longs, _shorts = [], []
+        for _s in _longs:
+            out.append(("trb", f"{str(_s).upper()}_LONG"))
+        for _s in _shorts:
+            out.append(("trb", f"{str(_s).upper()}_SHORT"))
     return sorted(out)
 
 
@@ -185,12 +197,14 @@ def _fresh_raw(symside: str):
     only (backtest_v8_precompute + htf align twin) — no trading scripts, per the 10-18 lane rule."""
     try:
         import backtest_v8_precompute as _pc
-        raw = _pc.compute_symbol(symside.rsplit("_", 1)[0], "crypto", return_arrays=True)
+        _sym = symside.rsplit("_", 1)[0]
+        _mode = "crypto" if _sym.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")) else "tradier"
+        raw = _pc.compute_symbol(_sym, _mode, return_arrays=True)
         if not isinstance(raw, dict):
             return None
         try:
             from vec_decisions.htf_causal_align import align_store as _hta
-            raw = _hta(raw, symside.rsplit("_", 1)[0], "crypto")
+            raw = _hta(raw, _sym, _mode)
         except ImportError:
             return None
         return raw
@@ -517,10 +531,37 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                         intents.append(row)
 
     held = held or {}
+    def _flush_new(from_idx):
+        if ledger is None or from_idx >= len(intents):
+            return
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        with open(ledger, "a") as fh:
+            for r in intents[from_idx:]:
+                fh.write(json.dumps(r, default=str, separators=(",", ":")) + "\n")
     # USER 2026-10-21 lane repair: chunked submit + drain-as-completed so early keys
     # decide minutes sooner (tail-of-pass intents were born stale). Same order, same
     # aggregation — handling interleaves per chunk. ROLLBACK: single ex.map over jobs.
     _drain(list(skipped))  # skipped detail rows first, exactly as before
+    _flush_new(0)
+    # USER 2026-10-21 trb + staleness: last pass's mismatches evaluate FIRST and each chunk
+    # streams to the ledger immediately, so the keys that need forcing get fresh verdicts in
+    # minutes even when the full pass runs long. ROLLBACK: drop the sort + _flush_new calls.
+    if jobs and ledger is not None:
+        try:
+            _prio = set()
+            for _lf in glob.glob(str(ledger.parent / "intents_*.jsonl")):
+                with open(_lf) as _fh:
+                    for _ln in _fh:
+                        try:
+                            _r = json.loads(_ln)
+                        except Exception:
+                            continue
+                        if str(_r.get("action") or "") in ("CONVERGE_OPEN", "CONVERGE_CLOSE"):
+                            _prio.add(_r.get("sym_side"))
+            if _prio:
+                jobs.sort(key=lambda j: (0 if j[0] in _prio else 1, j[0]))
+        except Exception:
+            pass
     _CH = 24
     if jobs:
         with ProcessPoolExecutor(max_workers=max(1, int(workers))) as ex:
@@ -529,12 +570,9 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                 for ss, res in ex.map(_eval_one, jobs[_ci:_ci + _CH], chunksize=1):
                     _batch.append((ss, res, bds.get(ss)))
                 results.extend(_batch)
+                _n0 = len(intents)
                 _drain(_batch)
-    if ledger is not None and intents:
-        ledger.parent.mkdir(parents=True, exist_ok=True)
-        with open(ledger, "a") as fh:
-            for r in intents:
-                fh.write(json.dumps(r, default=str, separators=(",", ":")) + "\n")
+                _flush_new(_n0)
     book.save()
     return stats, intents
 
