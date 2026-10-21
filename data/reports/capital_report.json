@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-10-21 09:37 UTC",
- "total_capital_usd": 17.5,
+ "generated_at": "2026-10-21 09:55 UTC",
+ "total_capital_usd": 6.25,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 17.5
+  "C": 6.25
  },
  "tier_count": {
   "A": 0,
   "B": 0,
-  "C": 2
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:NMRUSDT_SHORT",
-  "ang:LTCUSDC_LONG"
+  "men:BBUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:NMRUSDT_SHORT",
-   "symbol": "NMRUSDT",
-   "account": "ang",
-   "value_usd": 11.28,
-   "gain_pct": -0.099,
-   "tier": "C",
-   "perf_mult": 0.41,
-   "amt": 1.0,
-   "mark": 11.27771745
-  },
-  {
-   "pk": "ang:LTCUSDC_LONG",
-   "symbol": "LTCUSDC",
-   "account": "ang",
-   "value_usd": 6.22,
-   "gain_pct": 0.212,
+   "pk": "men:BBUSDT_LONG",
+   "symbol": "BBUSDT",
+   "account": "men",
+   "value_usd": 6.25,
+   "gain_pct": 0.024,
    "tier": "C",
    "perf_mult": 0.17,
-   "amt": 0.101,
-   "mark": 61.58
+   "amt": 739.0,
+   "mark": 0.008457
   }
  ]
 }
