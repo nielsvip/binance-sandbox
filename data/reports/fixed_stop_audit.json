@@ -1,7 +1,17 @@
 {
  "findings": [],
  "n_findings": 0,
- "n_positions": 0,
- "positions": [],
- "ts": "2026-10-21T01:40:47.044797+00:00"
+ "n_positions": 1,
+ "positions": [
+  {
+   "armed": true,
+   "entry_bar_level": 0.00389424,
+   "key": "fin:IOTXUSDT_LONG",
+   "live_level": 0.00389424,
+   "mark": 0.00401139,
+   "opened_at": "2026-10-21T01:44:31.890000Z",
+   "resting_trigger": 0.003888
+  }
+ ],
+ "ts": "2026-10-21T01:50:49.743428+00:00"
 }
