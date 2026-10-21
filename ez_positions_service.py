@@ -4186,7 +4186,11 @@ class PositionService:
         self.symbols_inf_long: Set[str] = self._load_symbols_list(self.config.SYMBOLS_INF_LONG)
         self.symbols_inf_short: Set[str] = self._load_symbols_list(self.config.SYMBOLS_INF_SHORT)
         self.symbols_men: Set[str] = self._load_symbols_list(self.config.SYMBOLS_MEN)
+        self.symbols_men_long: Set[str] = self._load_symbols_list(self.config.SYMBOLS_MEN_LONG)
+        self.symbols_men_short: Set[str] = self._load_symbols_list(self.config.SYMBOLS_MEN_SHORT)
         self.symbols_fin: Set[str] = self._load_symbols_list(self.config.SYMBOLS_FIN)
+        self.symbols_fin_long: Set[str] = self._load_symbols_list(self.config.SYMBOLS_FIN_LONG)
+        self.symbols_fin_short: Set[str] = self._load_symbols_list(self.config.SYMBOLS_FIN_SHORT)
         self.symbols_flz: Set[str] = self._load_symbols_list(self.config.SYMBOLS_FLZ)
         self.symbols_active: Set[str] = self._load_symbols_list(self.config.SYMBOLS_ACTIVE)
         self.min_qty: Dict[str, float] = self._load_min_qty()
@@ -6311,7 +6315,7 @@ class PositionService:
 
     async def get_symbols_for_account(self, account_key: str) -> set:
         allowed_symbols = set()
-        account_attr_map = { 'ang': ['symbols_ang_long', 'symbols_ang_short'], 'inf': ['symbols_inf_long', 'symbols_inf_short'], 'men': ['symbols_men'], 'flz': ['symbols_flz'], 'fin': ['symbols_fin'] }
+        account_attr_map = { 'ang': ['symbols_ang_long', 'symbols_ang_short'], 'inf': ['symbols_inf_long', 'symbols_inf_short'], 'men': ['symbols_men_long', 'symbols_men_short'], 'flz': ['symbols_flz'], 'fin': ['symbols_fin_long', 'symbols_fin_short'] }
         target_attrs = account_attr_map.get(account_key, [])
         for attr_name in target_attrs:
             symbol_data = getattr(self, attr_name, None)
@@ -6327,7 +6331,7 @@ class PositionService:
                 allowed_symbols.update(symbol_data)
         if not allowed_symbols:
             try :
-                path_attr_map = { 'ang': ['SYMBOLS_ANG_LONG', 'SYMBOLS_ANG_SHORT'], 'inf': ['SYMBOLS_INF_LONG', 'SYMBOLS_INF_SHORT'], 'flz': ['SYMBOLS_FLZ'], 'men': ['SYMBOLS_MEN'], 'fin': ['SYMBOLS_FIN'] }
+                path_attr_map = { 'ang': ['SYMBOLS_ANG_LONG', 'SYMBOLS_ANG_SHORT'], 'inf': ['SYMBOLS_INF_LONG', 'SYMBOLS_INF_SHORT'], 'flz': ['SYMBOLS_FLZ'], 'men': ['SYMBOLS_MEN_LONG', 'SYMBOLS_MEN_SHORT'], 'fin': ['SYMBOLS_FIN_LONG', 'SYMBOLS_FIN_SHORT'] }
                 attrs = path_attr_map.get(account_key, [])
                 for attr in attrs:
                     path = getattr(self.config, attr, None)
@@ -9845,7 +9849,11 @@ class PositionService:
         self.symbols_inf_short = await _get_symbols(getattr(self.config, 'SYMBOLS_INF_SHORT', 'symbols_inf_short.json'))
         self.symbols_flz = await _get_symbols(getattr(self.config, 'SYMBOLS_FLZ', 'symbols_flz.json'))
         self.symbols_men = await _get_symbols(getattr(self.config, 'SYMBOLS_MEN', 'symbols_men.json'))
+        self.symbols_men_long = await _get_symbols(getattr(self.config, 'SYMBOLS_MEN_LONG', 'symbols_men_long.json'))
+        self.symbols_men_short = await _get_symbols(getattr(self.config, 'SYMBOLS_MEN_SHORT', 'symbols_men_short.json'))
         self.symbols_fin = await _get_symbols(getattr(self.config, 'SYMBOLS_FIN', 'symbols_fin.json'))
+        self.symbols_fin_long = await _get_symbols(getattr(self.config, 'SYMBOLS_FIN_LONG', 'symbols_fin_long.json'))
+        self.symbols_fin_short = await _get_symbols(getattr(self.config, 'SYMBOLS_FIN_SHORT', 'symbols_fin_short.json'))
         if self.redis_manager:
             try :
                 client = self.redis_manager.connections.get('local')
@@ -10040,7 +10048,9 @@ class PositionService:
             return await load_set_from_file(rel)
         ang_l, ang_s = await asyncio.gather(load_set('SYMBOLS_ANG_LONG'), load_set('SYMBOLS_ANG_SHORT'))
         inf_l, inf_s = await asyncio.gather(load_set('SYMBOLS_INF_LONG'), load_set('SYMBOLS_INF_SHORT'))
-        men, fin, flz = await asyncio.gather(load_set('SYMBOLS_MEN'), load_set('SYMBOLS_FIN'), load_set('SYMBOLS_FLZ'))
+        men_l, men_s = await asyncio.gather(load_set('SYMBOLS_MEN_LONG'), load_set('SYMBOLS_MEN_SHORT'))
+        fin_l, fin_s = await asyncio.gather(load_set('SYMBOLS_FIN_LONG'), load_set('SYMBOLS_FIN_SHORT'))
+        flz = await load_set('SYMBOLS_FLZ')
         w20, l20 = await asyncio.gather(load_set('WINNERS_20_FILE'), load_set('LOSERS_20_FILE'))
         w15, l15 = await asyncio.gather(load_set('WINNERS_15M_FILE'), load_set('LOSERS_15M_FILE'))
         all_winners = w20.union(w15)
@@ -10083,27 +10093,26 @@ class PositionService:
         for s in ang_s: add_key('ang', s, 'SHORT')
         for s in inf_l: add_key('inf', s, 'LONG')
         for s in inf_s: add_key('inf', s, 'SHORT')
-        for s in men:
-            # 2026-10-04 USER: men trades its full manual universe (symbols_men.json) BOTH sides, unconditionally
+        for s in men_l:
+            # 2026-10-21 USER: men trades directional outlier books — SYMBOLS_MEN_LONG to LONG,
+            # SYMBOLS_MEN_SHORT to SHORT (outliers vs BTCUSDC on D vs sma_200_D). The 2026-10-04
+            # whole-universe both-sides rule is superseded; indiscriminate both-sides is gone.
             add_key('men', s, 'LONG')
+        for s in men_s:
             add_key('men', s, 'SHORT')
-        for s in fin:
-            # 2026-10-10 USER (unlock ez_positions_service.py): fin trades its full universe
-            # (symbols_fin.json) BOTH sides, unconditionally — men-style. The winners/losers
-            # classification gate starved fin to ~8 keys and re-narrowed every rebuild.
+        for s in fin_l:
+            # 2026-10-21 USER: fin trades directional outlier books — SYMBOLS_FIN_LONG to LONG,
+            # SYMBOLS_FIN_SHORT to SHORT (outliers vs BTCUSDC on 1h vs sma_200_1h). The 2026-10-10
+            # whole-universe both-sides rule is superseded; indiscriminate both-sides is gone.
             add_key('fin', s, 'LONG')
+        for s in fin_s:
             add_key('fin', s, 'SHORT')
         for s in flz:
-            # Use w20/l20 directly (not combined all_winners/all_losers) — flz classification
-            # is based on 20-period rankings only. Checks are independent (symbol can be in
-            # both, in which case both LONG and SHORT are tradeable).
-            _flz_winner = s in w20
-            _flz_loser = s in l20
-            if _flz_winner: add_key('flz', s, 'LONG')
-            if _flz_loser: add_key('flz', s, 'SHORT')
-            if not _flz_winner and not _flz_loser:
-                add_key('flz', s, 'LONG')
-                add_key('flz', s, 'SHORT')
+            # 2026-10-21 USER: flz trades its curated universe (symbols_flz.json, 12 symbols) BOTH
+            # sides unconditionally, no matter what. The w20/l20 narrowing is dropped — flz holds
+            # a couple of symbols but trades them regardless of ranking classification.
+            add_key('flz', s, 'LONG')
+            add_key('flz', s, 'SHORT')
         # Per-account persistence: ang=300 days, inf=4h, flz/men/fin=24h
         # inf extends for minutes-hours only; ang is long-term; all others default 24h.
         _persist_map = {
@@ -10182,10 +10191,9 @@ class PositionService:
                     pass
 
             # HEDGE PAIR CLEANUP — only for ang/inf (accounts that use winners/losers)
-            # flz/men symbols are intentionally added with BOTH sides — do NOT clean them up.
-            # 2026-10-10 USER (unlock ez_positions_service.py): fin joins the exempt set —
-            # fin trades its full universe BOTH sides unconditionally (men-style); pair
-            # cleanup was discarding the unconditional keys and re-narrowing fin to ~13.
+            # 2026-10-21 USER: flz trades its universe BOTH sides unconditionally — do NOT clean
+            # it up. men/fin trade directional outlier books; a both-sides pair there means the
+            # classifier lists that symbol on both books, which is honoured, not cleaned.
             _hedge_cleanup_accounts = {'ang', 'inf'}
             if account_key in _hedge_cleanup_accounts:
                 for _sym, sides in symbols_in_account.items():
@@ -12085,7 +12093,7 @@ class PositionService:
                 loaded_accounts = list(getattr(self, 'accounts', {}).keys())
                 if not loaded_accounts: await asyncio.sleep(15); continue
                 all_symbols = set()
-                symbol_attrs = [ 'symbols_ang_long', 'symbols_ang_short', 'symbols_men', 'symbols_fin', 'symbols_inf_long', 'symbols_inf_short', 'symbols_flz' ]
+                symbol_attrs = [ 'symbols_ang_long', 'symbols_ang_short', 'symbols_men', 'symbols_men_long', 'symbols_men_short', 'symbols_fin', 'symbols_fin_long', 'symbols_fin_short', 'symbols_inf_long', 'symbols_inf_short', 'symbols_flz' ]
                 for account_key in loaded_accounts:
                     for attr_name in symbol_attrs:
                         sym_set = getattr(self, attr_name, set())
