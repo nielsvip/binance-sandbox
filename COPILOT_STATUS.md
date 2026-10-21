@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 09:33:32 UTC
+# Copilot Status — 2026-10-21 09:38:41 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,9 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:11:04
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:13:07
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:15:10
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:19:16
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:21:19
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:23:23
@@ -16,6 +13,9 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:27:30
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:29:34
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:31:38
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:33:42
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:35:45
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:37:49
 
 ## Missed Trades (trader comparison)
 
@@ -35,7 +35,7 @@ _None_
 - HELD: **PR** LONG (tradier) peak +4.7%, now +-0.0%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.4%
 - HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.2%
-- HELD: **NMRUSDT** SHORT (crypto) peak +4.3%, now +-0.2%
+- HELD: **NMRUSDT** SHORT (crypto) peak +4.3%, now +-0.1%
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
 
@@ -44,8 +44,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_prices.py running but log stale (12min)
-- [MEDIUM] tradier_prices.py running but log stale (793min)
+- [MEDIUM] tradier_prices.py running but log stale (798min)
