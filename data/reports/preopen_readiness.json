@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T14:00:02Z",
+ "generated_utc": "2026-10-21T14:20:04Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 476,
-    "filled_before_open": 447
+    "filled_today": 481,
+    "filled_before_open": 441
    },
-   "detail": "447 boards filled before the open (476 today)"
+   "detail": "441 boards filled before the open (481 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 477,
     "exact": 48,
-    "benign_divergence_only": 370,
-    "material_divergence": 58,
+    "benign_divergence_only": 377,
+    "material_divergence": 51,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -79,19 +79,6 @@
        "ATR_ADAPTIVE_STOP_TF",
        "BB_EXIT_AT_LOSS_TF",
        "COOLDOWN_BARS"
-      ]
-     },
-     {
-      "sym_side": "MELANIAUSDT_SHORT",
-      "published_at": "2026-10-21T13:38:15Z",
-      "material": 88,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "AUGMENT_BULL_KILL_ENABLED",
-       "BB_BOUNCE_ENTRY_TF",
-       "BB_EXIT_AT_LOSS_TF",
-       "BB_FROZEN_STOP_ENABLED",
-       "BB_FROZEN_STOP_TF"
       ]
      },
      {
@@ -197,10 +184,23 @@
        "COUNTER_TREND_ADD_BLOCK_ENABLED",
        "DAYTRADE_DC_TARGET_TF"
       ]
+     },
+     {
+      "sym_side": "VLO_LONG",
+      "published_at": "2026-10-21T10:01:14Z",
+      "material": 45,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_MULT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BREAKOUT_RETEST_ARMED_ENABLED",
+       "BREAKOUT_RETEST_FILTER_TF",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
+       "DC_EDGE_SIZING_MIN_MULT"
+      ]
      }
     ]
    },
-   "detail": "48 exact, 370 benign-only, 58 with material divergence, 1 with no live row"
+   "detail": "48 exact, 377 benign-only, 51 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 15.0,
+    "median_age_min": 5.1,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
