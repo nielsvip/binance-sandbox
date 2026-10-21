@@ -1,21 +1,21 @@
 {
- "at": "2026-10-21T19:26:06Z",
+ "at": "2026-10-21T20:26:03Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 1,
-   "per_hour": 0.5,
+   "published_n": 2,
+   "per_hour": 1.0,
    "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 0.6868,
+   "mean_uplift_vs_best_start": 0.3434,
    "median_uplift": 0.6868,
-   "chained_from_previous_published": 1,
+   "chained_from_previous_published": 2,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 0.5/h < 12.0/h (one per 5 min)"
+    "throughput 1.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -32,6 +32,21 @@
      "bh": 3.0027045965514136,
      "verdict": null,
      "npz_age_h_at_publish": 0.67
+    },
+    {
+     "symside": "SPY_LONG",
+     "published_at": 1792614179.670826,
+     "final_gain": 4.2230336738539895,
+     "best_start_gain": 4.2230336738539895,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 9,
+     "baseline_gain": 4.2230336738539895,
+     "npz_ts_last": 1792611900.0,
+     "npz_md5": "8c7db7f7cb76e342af6b42fcdf535d51",
+     "npz_bars": 41033,
+     "bh": 0.9282924132250214,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.63
     }
    ],
    "error": null
