@@ -1,49 +1,8 @@
 {
- "ts": "2026-10-21T04:43:29Z",
+ "ts": "2026-10-21T04:45:26Z",
  "n_venue_modules_checked": 15,
- "n_contamination": 5,
- "contamination": [
-  {
-   "module": "ez_copilot.py",
-   "venue": "crypto",
-   "forbidden": "config_tradier",
-   "line": 921,
-   "kind": "VENUE_IMPORT",
-   "detail": "from config_tradier import TradierConfig"
-  },
-  {
-   "module": "ez_copilot.py",
-   "venue": "crypto",
-   "forbidden": "config_tradier",
-   "line": 1733,
-   "kind": "VENUE_IMPORT",
-   "detail": "from config_tradier import TradierConfig"
-  },
-  {
-   "module": "tradier_rankings.py",
-   "venue": "stocks",
-   "forbidden": "config.py",
-   "line": 30,
-   "kind": "VENUE_IMPORT",
-   "detail": "from config import Config"
-  },
-  {
-   "module": "tradier_rankings.py",
-   "venue": "stocks",
-   "forbidden": "config.py",
-   "line": 2846,
-   "kind": "VENUE_READ",
-   "detail": "Config._CURRENT_MARKET_MODE"
-  },
-  {
-   "module": "tradier_rankings.py",
-   "venue": "stocks",
-   "forbidden": "config.py",
-   "line": 2855,
-   "kind": "VENUE_READ",
-   "detail": "Config.set_market_mode"
-  }
- ],
+ "n_contamination": 0,
+ "contamination": [],
  "n_shared_core_direct_config_imports": 7,
  "shared_core_advisory": [
   {

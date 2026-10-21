@@ -4398,3 +4398,29 @@ sites that call bare `getattr(config, …)` instead, plus 42 in `ez_positions_se
 switches over 165 sites. **The narrow, safe fix for the confirmed 118.7 cause is to pass a per-sym getter
 adapter at the `_rally_ok` call site (the pattern `tradier_manage.py:15484` already uses), NOT to wrap the
 module.** Both files are in `LOCKED_FILES.md`; neither was touched.
+
+### 118.9 A THIRD BASELINE BLOCKER — 179 SWITCHES WHERE THE TEMPLATE DEFAULT ≠ THE VENUE CONFIG DEFAULT
+Bold in a TEMPLATE = default = live (§14). Where that bold value and the venue config's dataclass default
+disagree, a sym_side whose board carries no override for that switch runs live on the CONFIG value while the
+pilot measured its baseline on the TEMPLATE value — **so the board's baseline is not live's baseline**, and
+every delta measured against it inherits the offset. Independently recomputed 2026-10-21 from
+`data/reports/catside_template_vs_config_parity_20261021.json` (preserved off volatile `/tmp`), reproducing a
+subagent's figures exactly:
+
+| lane | flagged | cosmetic (`30` vs `30.0`) | **real** |
+|---|---|---|---|
+| CRYPTO_LONG vs `config.py` | 256 | 184 | **72** |
+| CRYPTO_SHORT vs `config.py` | 247 | 192 | **55** |
+| STOCKS_LONG vs `config_tradier.py` | 261 | 208 | **53** |
+| STOCKS_SHORT vs `config_tradier.py` | 262 | 212 | **50** |
+
+**179 distinct switches**, of which only **2 are systemic across all four lanes**
+(`NEWBORN_LOSS_KILL_VEL_TF`, `KINDERGARTEN_STRICT_TFS`) — the rest are lane-specific, consistent with
+per-cat_side divergence rather than one bad sync. Measured examples (crypto long): `SATOSHIT_ENTRY_ENABLED`
+template True / config False; `STRUCTURAL_RANGE_SHIFT_EXIT` template False / config True;
+`NEWBORN_LOSS_KILL_ENABLED` template True / config False; `TECHNICAL_DC_TARGET_TF` template `'4h'` / config
+`'OFF'`; `DAYTRADE_DC_STOP_TF` template `'1h'` / config `'OFF'`; `DC_EDGE_SIZING_ENABLED` template False /
+config True. Note the trap that nearly made this a 256-per-lane scare: **72% of the flags are `30` vs `30.0`**
+— cast before comparing, and compare bool-ness separately or `True == 1.0` hides a real flip.
+**NOT fixed here, deliberately:** §17 forbids a blind full-sync, and a default flip is a switch change that
+belongs to the pilot and the S2 gate, not a hand edit. Each needs a per-lane ruling on which side is right.
