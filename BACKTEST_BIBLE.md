@@ -4241,7 +4241,7 @@ of them is the finding, not a tolerance.
 (`v12_quick_engine.py:10992` sets `blocks["B_SRS_ENTRY"] = ~srs_block`, an entry PERMISSION; `history_prov.py:95`
 calls it "entry permission = NOT the SRS pctb block"). Do not conclude "unwired" from a grep count.**
 
-**ONE CAUSE IS CONFIRMED, NOT A LEAD.** `tradier_manage.py:11` imports `rally_ok as _rally_ok` and `:40529`
+**ONE CAUSE IS CONFIRMED, NOT A LEAD.** `tradier_manage.py:11` imports `rally_ok as _rally_ok` and `:40539`
 calls `_rally_ok(config, …)` where `config` is the module-level bare `TradierConfig()` (`:6764`, never
 proxy-wrapped — the §117 GLOBAL_LEAK). So every `HARDCODED_RALLY_*` resolves GLOBAL on stocks, while measured on
 the 92 live stock sets: `HARDCODED_RALLY_HTF_TREND_TF` **44 of 92** differ from the global default,
@@ -4346,3 +4346,30 @@ cooldowns, no-double-open), loss halts (SYM_HALT/VIGILANCE/STALE_SET/balance flo
 per-sym strategy thresholds that ARE the dictate (WT_DC, ENTRY_SCORE, promoted filter TFs — bypassing those would
 trade MORE than dictated, violating EXACTLY), disabled-strategy flags, and all of exits/stops/guarantees. Rollback:
 `ZERO_PASS_TRADE_ALL=False` + `backups/before_no_suppress_*`.
+
+## 123. STOCKS OFF-HOURS — NO AGENT EVER FLAGS STOCK INDICATORS OR PRICES OUTSIDE NYSE HOURS (USER 2026-10-21)
+
+**USER VERBATIM 2026-10-21:** "add to the bible that no agent can ever start whining again about indicators or prices for stocks outside market hours it is fkn pathetic" — and: "s1 ONLY starts ez_indicators when rsync from macbook fails to update s1 market data (tradier ONLY ON MARKET HOURS OBVIOUSLY) and syncs it back to macbook so we never have a minute of missing market data in a decade".
+
+1. **Outside the NYSE session (09:30–16:00 America/New_York, Mon–Fri, holidays closed) stock indicators, stock prices and stock market-data files are EXPECTED to be idle.** `data/tradier/tradier_indicators_latest.json`, `tradier_prices_latest.json`, tradier quotes and every stock snapshot may be hours or days old off-hours. That is the design, not a fault. No agent, guard, monitor, report or audit may call it stale, a breach, an outage, a risk, or "worth noting".
+2. **S1 is the standby, not a mirror.** The Mac rsyncs crypto market data to S1 every minute. S1 starts its own `ez_indicators` only when that rsync stops updating S1 market data, and its tradier stack only when the Mac goes stale INSIDE the session (`tools/live_failover_common.py`, `tools/live_failover_s1.py`), then syncs back to the Mac. An old S1 stock file off-hours, or an old S1 crypto file while the Mac is healthy, is never a finding.
+3. **Inside the session** stock freshness IS enforced (failover trigger `SNAPSHOT_STALE_S` = 90 s, `tools/data_never_miss.py`).
+4. **Stock KLINES are different:** a session that is missing from a stock kline file (e.g. Tuesday's bars absent on Wednesday 00:00 ET) is a real data gap at any hour, and `tools/data_never_miss.py` heals it from S1/Mac. The prohibition is on flagging idle off-hours *indicators/prices/snapshots*, not on missing *completed-session bars*.
+5. Machine rule: `tools/data_never_miss.py` checks Mac stock indicators only when `in_rth()`; S1 stock files are never checked.
+
+### 118.8 THE OBVIOUS FIX FOR 118.7 WOULD HANG LIVE STOCKS — VERIFIED
+The tempting repair is to wrap stocks' module config the way crypto does
+(`ez_manage.py:8877 config = _PerSymProxy(_ezm_base_config)`, `ez_positions_quick.py:3342
+config = _PQPerSymProxy(config)`; the plain ones are `tradier_manage.py:6764 config = TradierConfig()` and
+`ez_positions_service.py:435 config = Config()`). **On stocks that recurses.** `tradier_manage._cfg` — the
+correct per-sym resolver at `:7782`, "per-sym overrides > TEMPLATE baseline > global" — **ends at `:7854` with
+`return getattr(config, param, default)`** (read and verified, not taken on report). A proxy bound to the
+module's `config` whose `__getattribute__` resolved through `_cfg` would re-enter `_cfg` on that final line
+forever: an infinite recursion inside the live stock decision loop, i.e. a hang of the real-money account, not a
+wrong number. The crypto proxies avoid it by reading the per-sym layer **directly** and falling back to the
+**inner** object, never to the module name they are bound to — that is the shape stocks needs.
+So stocks is not missing the machinery (`_cfg` exists and many reads use it correctly); the leak is the ~102
+sites that call bare `getattr(config, …)` instead, plus 42 in `ez_positions_service`, 88 distinct template
+switches over 165 sites. **The narrow, safe fix for the confirmed 118.7 cause is to pass a per-sym getter
+adapter at the `_rally_ok` call site (the pattern `tradier_manage.py:15484` already uses), NOT to wrap the
+module.** Both files are in `LOCKED_FILES.md`; neither was touched.

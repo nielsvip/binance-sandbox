@@ -42,8 +42,9 @@ SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAli
 HOSTS = {"mac": {"ssh": None, "bases": [str(ROOT)]},
          "s1": {"ssh": os.environ.get("NEVERMISS_S1", "s1-int"), "bases": ["binance", "binance-sandbox"]},
          "gw": {"ssh": os.environ.get("NEVERMISS_GW", "gateway-internal"), "bases": ["binance"]}}
-# live stores that consumers read — these get healed; S1 sandbox + gateway/ subdirs are sources only
-TARGETS = {("mac", str(ROOT)), ("s1", "binance"), ("gw", "binance")}
+# live stores that consumers read — these get healed; S1 sandbox, klines_cache/gateway/ subdirs and the gateway host are
+# sources only (USER 2026-10-21: "gateway does not want macbook or s1 klines")
+TARGETS = {("mac", str(ROOT)), ("s1", "binance")}
 TF_MS = {"3m": 180000, "15m": 900000, "1h": 3600000, "4h": 14400000, "D": 86400000}
 TOL_BARS = {"3m": 2, "15m": 1, "1h": 1, "4h": 1, "D": 1}
 GRACE_MS = 5 * 60000
@@ -257,10 +258,18 @@ def verdict(idx, probes, now_ms):
 
 def market(probes):
     out = []
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        from live_failover_common import stocks_applicable
+        in_session = stocks_applicable()
+    except Exception:
+        in_session = False
     for host, label, files, max_s in MARKET_RULES:
         d = probes.get(host)
         if not d:
             continue
+        if label.startswith("stock") and not in_session:
+            continue  # BIBLE §123 (USER 2026-10-21): stock indicators/prices are idle outside the NYSE session by design
         base_files = next(iter(d["bases"].values()))
         ages = {rel: round(d["now"] - base_files[rel][0], 1) for rel in files if rel in base_files}
         age = min(ages.values()) if ages else None
