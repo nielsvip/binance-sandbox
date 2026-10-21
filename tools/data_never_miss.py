@@ -352,8 +352,10 @@ def main():
         got = list(ex.map(probe, HOSTS))
     probes = {h: d for h, d, _e in got if d}
     unreachable = {h: e for h, d, e in got if not d}
+    log(f"probed {sorted(probes)} in {time.time() - t0:.0f}s")
     idx = index(probes, crypto, stocks)
     healed = {} if a.no_heal else heal(idx, probes)
+    log(f"heal done at {time.time() - t0:.0f}s: " + ", ".join(f"{k} +{v['rows']}" for k, v in healed.items()))
     if healed:
         # re-probe the targets that were written so the verdict is measured, not assumed
         with ThreadPoolExecutor(3) as ex:

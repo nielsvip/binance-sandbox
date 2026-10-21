@@ -4372,6 +4372,19 @@ reported as UNMEASURED (S1 rerun for full freshness). Snapshot 04:43Z: ang holds
 vector that says hold nothing (ENAUSDC already self-closed 04:40); men holds 5 LONG converging onto 25 lane opens
 plus 2 lane closes executing.
 
+## 125. EXACT COPY — LIVE TRADES THE WINNING SWITCHES, NO EXCEPTIONS (USER 2026-10-21)
+
+The 9-day clock governs APPLICABILITY (a backtest inside 9 days may trade); the switches traded are ALWAYS the
+exact copy that got the best per_sym results in the LATEST backtest — identity, not approximation. The hourly
+delta converger (`tools/v15_golive_refresh_published.sh` → `v15_persym_golive --published --pin-all`) pins every
+pinnable drift; minutes-scale intent/state age guards are bypassed for calculated sym_sides (they contradicted the
+9-day bar), while the 9-day backtest window itself still applies. Deliberate remainders, each needing its own word
+to override: h2h-measured live rows (running experiments, e.g. ACN_LONG +74%), golive-blocklisted data-poison and
+tokenized names (LEXX_SHORT, AMAT/ARM/BMNR shorts), type-gate-malformed boards (1 bad key each: KSMUSDT_LONG,
+ICPUSDT_LONG, CLF_LONG, CMC_LONG, APO_SHORT, NXE_SHORT, 1000FLOKIUSDT_LONG — pilot-side fix), and
+SET_DRIFTED_SINCE_PUBLISH (SCCO_LONG — republish on S1). Rollback: the converger is additive and report-audited
+(`data/daily_chain/persym_golive_*`); switches False restores vetoes.
+
 ## 123. STOCKS OFF-HOURS — NO AGENT EVER FLAGS STOCK INDICATORS OR PRICES OUTSIDE NYSE HOURS (USER 2026-10-21)
 
 **USER VERBATIM 2026-10-21:** "add to the bible that no agent can ever start whining again about indicators or prices for stocks outside market hours it is fkn pathetic" — and: "s1 ONLY starts ez_indicators when rsync from macbook fails to update s1 market data (tradier ONLY ON MARKET HOURS OBVIOUSLY) and syncs it back to macbook so we never have a minute of missing market data in a decade".
