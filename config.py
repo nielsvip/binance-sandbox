@@ -1504,6 +1504,21 @@ class Config:
     EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = False
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = False
+    # USER 2026-10-21 UNVECTORIZED PARITY KILLS — each gates a live path with no vector twin.
+    # All default False = path OFF until parity (vec model + bench) then forward test; True restores.
+    # Global-only reads (getattr on Config, never per-sym): no board can re-enable these.
+    # Forward-test queue: docs/v15_pending/FORWARD_TEST_QUEUE_20261021.md.
+    ENABLE_EPQ_ENTRY_STREAMS: bool = False
+    ENABLE_EPQ_EXIT_PRIORITY: bool = False
+    ENABLE_EPQ_SENT_SCANNER: bool = False
+    ENABLE_EPQ_EXEC_ENTRY: bool = False
+    ENABLE_EPQ_TRANSITION_ENTRY: bool = False
+    ENABLE_EPQ_FORCE_ENTRY: bool = False
+    ENABLE_EPQ_REENTRY_DISPATCH: bool = False
+    ENABLE_EZ_REENTRY_PERIODIC: bool = False
+    ENABLE_BTC_DEDICATED_ENTRY: bool = False
+    ENABLE_SCALP_V3_OPEN: bool = False
+    ENABLE_SUB15M_ENTRY_TRIGGER: bool = False
     # Inline price-cross DISABLED — was the "100% reentry AT ONCE" culprit firing every 5s
     # inside ez_manage immediately after exits. Daemon subprocess owns this path now.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = (

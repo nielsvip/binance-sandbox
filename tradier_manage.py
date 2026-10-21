@@ -24181,6 +24181,8 @@ async def _dispatch_reentry_guaranteed_trd(
     Wraps queue_trade_action with N retries + explicit logging for every attempt.
     Returns the final result (same contract as queue_trade_action: 'SUCCESS' or False).
     """
+    if getattr(config, "ENABLE_TR_REENTRY_DISPATCH", False) is not True:
+        return False
     if not bool(_cfg_auto("REENTRY_NEVER_SKIP_ENABLED", True)):
         return await queue_trade_action(
             order_queue,

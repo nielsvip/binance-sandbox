@@ -3844,6 +3844,19 @@ class TradierConfig:
         # False parks the loop idle (task stays up, zero orders); True restores it. ROLLBACK: True.
         # Route to re-enable honestly: model it in v12 via version gate, then flip with bench proof.
     )
+    # USER 2026-10-21 UNVECTORIZED PARITY KILLS — each gates a live path with no vector twin.
+    # All default False = path OFF until parity (vec model + bench) then forward test; True restores.
+    # Global-only reads (never per-sym): no board can re-enable these.
+    # Forward-test queue: docs/v15_pending/FORWARD_TEST_QUEUE_20261021.md.
+    ENABLE_TR_SCALP_OPEN: bool = False
+    ENABLE_TR_DAYTRADE_WING: bool = False
+    ENABLE_TR_REENTRY_MONITOR: bool = False
+    ENABLE_TR_REENTRY_DISPATCH: bool = False
+    ENABLE_TR_HIGH_GAIN_REOPEN: bool = False
+    ENABLE_TR_SWING_ENTRIES: bool = False
+    ENABLE_TR_SYMGATE_REENTRY: bool = False
+    ENABLE_TR_REENTRY_PERIODIC: bool = False
+    UVE_LIVE_ENABLED: bool = False  # PIN 2026-10-21: was absent (fallback False); 5m UVE leg stays off. Per-sym read kept.
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False

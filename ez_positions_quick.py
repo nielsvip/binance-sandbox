@@ -155,6 +155,8 @@ async def _dispatch_reentry_guaranteed(
     """USER MANDATE 2026-05-09: reentry signals must NEVER be silently dropped on transient queue failure.
     Wraps _ez_queue_trade_action with N retries + explicit logging for every attempt.
     Returns the final result string (same contract as _ez_queue_trade_action)."""
+    if getattr(config, "ENABLE_EPQ_REENTRY_DISPATCH", False) is not True:
+        return "BLOCKED_PARITY_OFF"
     if (
         _vx_native_off()
     ):  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
@@ -3436,6 +3438,8 @@ def _btc_dedicated_entry_decision(
     """Returns (score, rec, reason) tuple matching AdvancedSignalRater.rate() output,
     or None to fall through to rate(). When dedicated loop active and signal fires,
     score=score_threshold to clear gates downstream; if not firing, score=0."""
+    if getattr(config, "ENABLE_BTC_DEDICATED_ENTRY", False) is not True:
+        return None
     cfg = _get_btc_sym_cfg(account_key, symbol, "LONG" if is_long else "SHORT", cfg)
     rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
     if rz is None or div is None:
@@ -15628,6 +15632,8 @@ class SentimentMomentumStrategy:
         snapshot: dict,
         global_score: float,
     ):
+        if getattr(config, "ENABLE_EPQ_SENT_SCANNER", False) is not True:
+            return None
         max_pos = rules.get("max_pos", 20)
         check_keys = rules.get("check_keys", False)
         _btc_data = snapshot.get("BTCUSDC", snapshot.get("BTCUSDC", {}))
@@ -15759,6 +15765,8 @@ class SentimentMomentumStrategy:
                 break
 
     async def _execute_entry(self, account_key: str, cand: dict):
+        if getattr(config, "ENABLE_EPQ_EXEC_ENTRY", False) is not True:
+            return None
         if (
             _vx_native_off()
         ):  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
@@ -19641,6 +19649,8 @@ class TrackerManager:
         from_websocket: bool = False,
         status: str = None,
     ) -> None:
+        if getattr(config, "ENABLE_EPQ_TRANSITION_ENTRY", False) is not True:
+            return None
         data = None
         async with self._exit_candidates_lock:
             if position_key in self.exit_candidates:
@@ -21064,6 +21074,8 @@ class SentimentExposureManager:
         self, account_key: str, side: str, sentiment_score: float, count: int = 1
     ):
         """Force entry into top-ranked symbols if we are under-exposed."""
+        if getattr(config, "ENABLE_EPQ_FORCE_ENTRY", False) is not True:
+            return 0
         if (
             _vx_native_off()
         ):  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
@@ -33866,6 +33878,9 @@ async def priority_exit_scan_loop(
     last_summary = time.time()
     count = 0
     while not stop_event.is_set():
+        if getattr(config, "ENABLE_EPQ_EXIT_PRIORITY", False) is not True:
+            await asyncio.sleep(60)
+            continue
         try:
             async with tracker_manager._exit_candidates_lock:
                 active_keys = list(
@@ -34021,6 +34036,9 @@ async def quick_entry_monitor_loop(
                 )
 
     while not stop_event.is_set():
+        if getattr(config, "ENABLE_EPQ_ENTRY_STREAMS", False) is not True:
+            await asyncio.sleep(60)
+            continue
         try:
             universe = list(
                 tracker_manager.get_tradeable_position_keys_for(account_key)
@@ -34081,6 +34099,9 @@ async def bulk_entry_scan_loop(
 ):
     logger.info(f"🚜 [ENTRY_BULK][{account_key}] STARTED")
     while not stop_event.is_set():
+        if getattr(config, "ENABLE_EPQ_ENTRY_STREAMS", False) is not True:
+            await asyncio.sleep(60)
+            continue
         try:
             await tracker_manager.sync_universe(account_key)
             await tracker_manager.sync_position_keys(account_key)
@@ -35673,6 +35694,8 @@ async def _scalp_v3_attempt_open(
     ob_short: float = 0.0,
     forced_side: Optional[str] = None,
 ) -> bool:
+    if getattr(config, "ENABLE_SCALP_V3_OPEN", False) is not True:
+        return False
     if (
         _vx_native_off()
     ):  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)

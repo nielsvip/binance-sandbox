@@ -1454,6 +1454,8 @@ def check_htf_trend_aligned(
 def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool, str]:
     """Require concurrent 1m AND 3m WT cross (USER 2026-10-11: k is NEVER a gate — stoch fallback removed, WT only).
     Backtest: 150 avg Sharpe vs 77 OR-mode (2x improvement). Falls back if 1m prev missing."""
+    if getattr(config, "ENABLE_SUB15M_ENTRY_TRIGGER", False) is not True:
+        return False, "SUB15M_TRIGGER_OFF_PARITY"
     k_1m = _sf(indicators.get("k_1m"))
     d_1m = _sf(indicators.get("d_1m"))
     d_1m_prev = _sf(indicators.get("d_1m_prev"), d_1m)
@@ -62044,6 +62046,8 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
 
 @timed_function("periodic_evaluate_reentry_loop")
 async def periodic_evaluate_reentry_loop(trade_manager: MultiAccountTradeManager):
+    if getattr(config, "ENABLE_EZ_REENTRY_PERIODIC", False) is not True:
+        return None
     try:
         logger.debug(
             "[periodic_evaluate_reentry_loop] STARTING independent reentry evaluation loop"
