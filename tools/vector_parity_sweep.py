@@ -1,11 +1,15 @@
 """vector_parity_sweep — per-sym_side live-vs-vector switch parity (USER 2026-10-21).
 
 Live-effective chain (ez_manage._psym_get): sqlite per_sym_store overrides >
-cat_side defaults > global config. Vector-effective: pilot-best full_config over
-QuickConfig defaults. Compares the exit+hold enabler set both sides and reports:
+cat_side defaults > global config. Compares sqlite live rows against
+per_sym_full_sets.json (which itself derives FROM the db) on the exit+hold
+enabler set. NOTE the direction: this guards JSON<->DB drift + missing rows,
+NOT pilot-vs-live — for that, compare the db against the CURRENT campaign's
+progress cumulative_overrides (older progress files are superseded, and the
+pilot only publishes on beating live, so a raw diff overstates drift).
   MISSING  sym_side has no sqlite row (live runs defaults/cat_side)
-  MISMATCH sqlite live value != pilot-best value (live not trading the board)
-  DEFDIFF  live global default != vector QuickConfig default (wiring-class gap)
+  MISMATCH sqlite live value != json value (mid-rebuild or hand edit)
+  (DEFDIFF live-global vs QuickConfig defaults: audited 2026-10-21, all equal.)
 
 Usage: python3 tools/vector_parity_sweep.py [--switch NAME] [--sym KEY]
 """
