@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:21:19Z",
+ "ts": "2026-10-21T00:26:14Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,64 +127,64 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 12.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 6.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 31.0
+   "log_age_s": 34.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 16.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15615.0
+   "log_age_s": 15910.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15618.0
+   "log_age_s": 15912.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:21:20Z",
+   "ts": "2026-10-21T00:26:14Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
-   "evidence": "21 00:09:20 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $41 on bounce (prior max 3.0000)"
+   "evidence": "21 00:24:51 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $48 on bounce (prior max 3.0000)"
   },
   {
-   "ts": "2026-10-21T00:21:20Z",
+   "ts": "2026-10-21T00:26:14Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
    "evidence": "21 00:11:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $7 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-21T00:21:20Z",
+   "ts": "2026-10-21T00:26:14Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
@@ -275,5 +275,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.74
+ "sweep_s": 0.97
 }
