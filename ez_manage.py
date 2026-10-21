@@ -31046,12 +31046,30 @@ class MultiAccountTradeManager:
                 if _zp_step:
                     qty_dec = step
                     logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: sub-step qty {qty_abs} -> 1 step {qty_dec} (USER 2026-10-21 minimum entry)")
+                elif ta == "OPEN" and _is_crypto_sym(symbol):
+                    # USER 2026-10-21: crypto OPEN/AUGMENT never dies sub-step — wire the pos min qty.
+                    _up, _ok = _step_up_to_min_viable(qty_dec, step, symbol, current_price, getattr(self, "min_qty", {}), getattr(self, "min_notional", {}))
+                    if _ok:
+                        logger.warning(f"[MIN_QTY_STEP_UP] {position_key}: sub-step qty {qty_abs} -> pos-min {qty_dec} -> {_up} (USER 2026-10-21 every crypto trade wires at least pos min qty)")
+                        qty_dec = _up
+                    else:
+                        logger.critical(
+                            f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0 and min-viable step-up failed. ORDER NOT PLACED — suppressing webhook fallback (sentinel -1.0)"
+                        )
+                        await release_locks()
+                        return False, -1.0
                 else:
                     logger.critical(
                         f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0. ORDER NOT PLACED — suppressing webhook fallback (sentinel -1.0)"
                     )
                     await release_locks()
                     return False, -1.0
+            elif ta == "OPEN" and _is_crypto_sym(symbol) and not qty_dec.is_zero():
+                # USER 2026-10-21: nonzero but below pos-min (would be exchange-rejected) steps UP too.
+                _up2, _ok2 = _step_up_to_min_viable(qty_dec, step, symbol, current_price, getattr(self, "min_qty", {}), getattr(self, "min_notional", {}))
+                if _ok2:
+                    logger.warning(f"[MIN_QTY_STEP_UP] {position_key}: below-min qty {qty_dec} -> pos-min {_up2} (USER 2026-10-21 every crypto trade wires at least pos min qty)")
+                    qty_dec = _up2
             qty_str = f"{qty_dec}"
             _mkr_notional = float(qty_dec) * float(current_price or 0.0)
             if _mkr_notional < 5.0:
@@ -32483,16 +32501,17 @@ class MultiAccountTradeManager:
         # ─── VECTOR-ONLY EXITS BACKSTOP (USER 2026-10-21: emergency fix — refuses any exit
         # that is not vec-dictated, catching whichever native leg a per-function kill misses.
         # Per-leg kills inside the exit functions are the primary mechanism; this gate is the
-        # backstop. Vec: VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT (FORCE escalations carry the token).
-        # Refused POLICY (the wrapper never escalates POLICY: no watcher, no FORCE).
-        # NATIVE_EXITS_DISABLED=0 restores legacy behavior. ───
+        # backstop. Vec (mirrors live_twins/vector_enforce._is_board_confirmed plus the
+        # RECONCILE_ wire): VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT/BOARD_CONVERGE_/EXIT_OWED
+        # (FORCE escalations carry the token). Refused POLICY (never escalated: no watcher,
+        # no FORCE). NATIVE_EXITS_DISABLED=0 restores legacy behavior. ───
         try:
             _voe_disabled = bool(getattr(_ezm_base_config, "NATIVE_EXITS_DISABLED", getattr(config, "NATIVE_EXITS_DISABLED", True)))
         except Exception:
             _voe_disabled = True
         if _voe_disabled and _xg.is_exit_action(action, is_full_close):
             _voe_rx = str(reason or "").upper()
-            _voe_vec = ("VEC_DRIVEN_" in _voe_rx or "RECONCILE_" in _voe_rx or "|VEC_EXACT" in _voe_rx)
+            _voe_vec = ("VEC_DRIVEN_" in _voe_rx or "RECONCILE_" in _voe_rx or "|VEC_EXACT" in _voe_rx or "BOARD_CONVERGE_" in _voe_rx or "EXIT_OWED" in _voe_rx)
             if not _voe_vec:
                 logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={str(reason)[:80]} — refused (USER 2026-10-21 backstop; NATIVE_EXITS_DISABLED=0 restores)")
                 try:
@@ -38496,6 +38515,13 @@ class MultiAccountTradeManager:
                 return False
             step = __import__("decimal").Decimal(str(symbol_conf["step_size"]))
             qty_dec = ( __import__("decimal").Decimal(str(abs(quantity))) // step) * step
+            if qty_dec.is_zero() or (is_augmentation and not is_full_close and _is_crypto_sym(symbol)):
+                # USER 2026-10-21: crypto OPEN/AUGMENT never dies sub-step or below pos-min — wire the pos min qty.
+                if is_augmentation and not is_full_close and _is_crypto_sym(symbol):
+                    _upw, _okw = _step_up_to_min_viable(qty_dec, step, symbol, current_price, getattr(self, "min_qty", {}), getattr(self, "min_notional", {}))
+                    if _okw:
+                        logger.warning(f"[MIN_QTY_STEP_UP] {position_key}: webhook qty {quantity} -> pos-min {_upw} (USER 2026-10-21 every crypto trade wires at least pos min qty)")
+                        qty_dec = _upw
             if qty_dec.is_zero():
                 logger.warning(f"[MARKET_ZERO_QTY] {position_key}: qty {quantity} -> 0 after step {step}")
                 return False
@@ -52164,7 +52190,7 @@ async def process_position(
                 _nb_w1 = safe_fetch_float(_pp_shared_ind.get(f"wt1_{_nb_tf}", 0), 0.0)
                 _nb_w2 = safe_fetch_float(_pp_shared_ind.get(f"wt2_{_nb_tf}", 0), 0.0)
                 _nb_against = (_nb_w1 != 0 or _nb_w2 != 0) and ((_nb_is_long and _nb_w1 < _nb_w2) or ((not _nb_is_long) and _nb_w1 > _nb_w2))
-                if _nb_against:
+                if _nb_against and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _nb_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _nb_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     logger.critical(f"🚨 [NEGBOOK_WT_TURN_EXIT] {position_key}: neg-book side, wt1_{_nb_tf} {_nb_w1:.1f} turned against ({_nb_w2:.1f}) g={_nb_gain:.2f}% → CLOSE (USER 2026-09-28)")
@@ -52212,7 +52238,7 @@ async def process_position(
                     _pp_shared_ind = await ii(trade_manager, symbol) or {}
                 _nt_w1 = safe_fetch_float((_pp_shared_ind or {}).get("wt1_15m", 0), 0.0)
                 _nt_against = _nt_w1 != 0 and ((position_side == "LONG" and _nt_w1 < 0) or (position_side == "SHORT" and _nt_w1 > 0))
-                if _nt_against:
+                if _nt_against and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _nt_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _nt_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                     _nt_side = "SELL" if position_side == "LONG" else "BUY"
@@ -52261,7 +52287,7 @@ async def process_position(
                 position.fixed_stop_armed = True
                 logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl:.6f} — stop is live again")
             _fx_chk = _fixed_stop_effective_level(trade_manager, position_key, symbol, position_side, _fx_is_long, _fx_lvl, _fx_ep, safe_fetch_float(getattr(position, "max_gain", 0), 0.0), _pp_shared_ind, _fx_oa_ep, current_price)  # E7 tighten mode (off -> _fx_lvl)
-            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)):
+            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)) and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _fx_side = "SELL" if _fx_is_long else "BUY"
@@ -52321,7 +52347,7 @@ async def process_position(
                             _ult_breached = False
                     except Exception:
                         pass
-            if _ult_breached:
+            if _ult_breached and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _ult_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _ult_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _ult_side = "SELL" if _ult_is_long else "BUY"
@@ -54087,7 +54113,9 @@ async def process_position(
                         logger.warning(f"[CHANNEL_REENTRY_STOP] {position_key} probe err: {_chre_e}")
                 # Persist state regardless of fire
                 trade_manager.mtf_compound_exit_state[position_key] = _mtfce_state
-                if _mtfce_fire:
+                # USER 2026-10-21 vec-only exits: whole MTF compound family (WT_SIMPLE_GUARANTEE,
+                # GR_WT, CHRE, DC/BB rejects...) stands down; per-leg reasons kept for later testing.
+                if _mtfce_fire and not _voe_native_exits_disabled():
                     _mtfce_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _mtfce_close_side = "SELL" if _mtfce_is_long else "BUY"
                     _mtfce_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
@@ -54133,6 +54161,7 @@ async def process_position(
         and abs(safe_float(getattr(position, "positionAmt", 0))) > 0
         and (_min_hold_ok_for_exit or await _dc_15m_hold_override())
         and bool(getattr(config, "GR_HTF_DIRECT_EXIT_ENABLED", True))
+        and not _voe_native_exits_disabled()
     ):
         try:
             if _pp_shared_ind is None:

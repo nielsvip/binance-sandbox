@@ -1,28 +1,7 @@
 {
- "findings": [
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 604.355325,
-   "key": "inf:XMRUSDT_LONG",
-   "live_level": 574.3272150000001,
-   "mark": 623.3302508,
-   "opened_at": "2026-10-21T23:17:57.284000Z",
-   "resting_trigger": 569.3
-  }
- ],
- "n_findings": 1,
- "n_positions": 1,
- "positions": [
-  {
-   "armed": true,
-   "entry_bar_level": 604.355325,
-   "key": "inf:XMRUSDT_LONG",
-   "live_level": 574.3272150000001,
-   "mark": 623.3302508,
-   "opened_at": "2026-10-21T23:17:57.284000Z",
-   "resting_trigger": 569.3
-  }
- ],
- "ts": "2026-10-21T23:32:31.546518+00:00"
+ "findings": [],
+ "n_findings": 0,
+ "n_positions": 0,
+ "positions": [],
+ "ts": "2026-10-21T23:41:25.469173+00:00"
 }

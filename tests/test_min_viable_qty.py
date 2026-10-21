@@ -35,3 +35,52 @@ def test_floor_sites_and_loader_wired():
     assert "async def load_min_notional(self)" in src
     assert "self.min_notional = await self.load_min_notional()" in src
     assert "[MAKER_STEP_UP]" in src
+
+
+def test_step_up_btc_sub_step():
+    from decimal import Decimal
+    mq = {"BTCUSDC": 0.001}
+    mn = {"BTCUSDC": 50.0}
+    got, stepped = E._step_up_to_min_viable(Decimal("0"), Decimal("0.001"), "BTCUSDC", 100000.0, mq, mn)
+    assert stepped is True
+    assert got == Decimal("0.002")  # floor 0.0012 -> ceil to step
+    assert float(got) * 100000.0 >= 50.0  # placeable: clears BTC $50 minNotional
+
+
+def test_step_up_below_min_nonzero():
+    from decimal import Decimal
+    mq = {"BTCUSDC": 0.001}
+    mn = {"BTCUSDC": 50.0}
+    got, stepped = E._step_up_to_min_viable(Decimal("0.001"), Decimal("0.001"), "BTCUSDC", 100000.0, mq, mn)
+    assert stepped is True
+    assert got == Decimal("0.002")
+
+
+def test_step_up_leaves_healthy_qty():
+    from decimal import Decimal
+    mq = {"BTCUSDC": 0.001}
+    mn = {"BTCUSDC": 50.0}
+    got, stepped = E._step_up_to_min_viable(Decimal("0.005"), Decimal("0.001"), "BTCUSDC", 100000.0, mq, mn)
+    assert stepped is False
+    assert got == Decimal("0.005")
+
+
+def test_step_up_non_crypto_untouched():
+    from decimal import Decimal
+    got, stepped = E._step_up_to_min_viable(Decimal("0"), Decimal("1"), "AAPL", 200.0, {}, {})
+    assert stepped is False
+    assert got == Decimal("0")
+
+
+def test_step_up_bad_inputs_never_raise():
+    from decimal import Decimal
+    assert E._step_up_to_min_viable(Decimal("0"), Decimal("0.001"), "BTCUSDC", 0, {}, {})[1] is False
+    assert E._step_up_to_min_viable(Decimal("0"), Decimal("0"), "BTCUSDC", 100000.0, {}, {})[1] is False
+    assert E._step_up_to_min_viable("bogus", "bogus", "BTCUSDC", 100000.0, {}, {})[1] is False
+
+
+def test_step_up_wired_at_both_wire_sites():
+    src = (ROOT / "ez_manage.py").read_text()
+    assert src.count("_step_up_to_min_viable(") >= 3  # def + maker + webhook
+    assert "[MIN_QTY_STEP_UP]" in src
+    assert "MARKET_ZERO_QTY" in src  # reduce/close path still refuses zero, never steps up

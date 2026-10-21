@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""v15_persym_size_tiers — daily chain: data/persym_size_tiers.json for PERF_TIER_SIZING (USER 2026-10-06: risk carried by SIZE).
+"""v15_persym_size_tiers — daily chain + per-workbook write-through: data/persym_size_tiers.json for PERF_TIER_SIZING (USER 2026-10-06: risk carried by SIZE).
 
 Input: the day's per-sym go-live report (data/daily_chain/persym_golive_<date>*.json; every evaluated row carries the FRESH
 30D evidence of that sym_side's latest final set) + 365D (data/confirmed_365d.json gain_365d, else the progress final_365d).
-Rules (per venue, crypto / stocks ranked separately):
-  30D < 0 and 365D <= 0 or unknown  -> MIN      mult = --min-mult (default 0.25) crypto, --min-mult-stocks (default 0.05 = $45 at trb $900) stocks
-  30D < 0 and 365D > 0              -> NEG30    mult = --neg30-mult (default 0.5)
-  30D > 0 and 365D > 0 (confirmed) -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 6.0 — USER 2026-10-14);
-                                                bigger gain = bigger size, up to 4x. ONLY 365D-confirmed gainers reach above 1x.
-  30D > 0, 365D unknown/absent     -> RANKED_NO365_SMALL  mult = --unconfirmed-mult (default 0.5, USER 2026-10-11: trade always, small)
-  30D > 0 and 365D <= 0 (overfit)  -> RANKED_NEG365_SMALL mult = --unconfirmed-mult (default 0.5; was CAP1 1.0 — a 30D gainer that loses on 365D is not a winner)
+Rules (per venue, crypto / stocks ranked separately). USER 2026-10-21: 365D confirmation OVERRULED
+EVERYWHERE — 365D is carried for reporting only and never gates size:
+  30D < 0                           -> MIN      mult = --min-mult (default 0.25) crypto, --min-mult-stocks (default 0.05 = $45 at trb $900) stocks
+  30D > 0                           -> RANKED   mult = 1 + (--max-mult - 1) * min(g30, --gain-cap) / --gain-cap (default cap 20.0, max-mult 8.0);
+                                                bigger gain = bigger size, top gainers up to 8x START_POSITION_SIZE.
+  (retired 2026-10-21: NEG30_POS365, RANKED_NO365_SMALL, RANKED_NEG365_SMALL — all 365D-gated)
   no fresh row + book acc_gain > 0  -> BOOK_POS_HOLD  mult 1.0 (proven winner awaiting recalc keeps trading)
   no fresh row + book acc_gain <= 0 -> BOOK_NEG  mult = min-mult (monitored, minimal money)
   in tradeable universe, nowhere    -> UNLISTED_MIN  mult = min-mult (monitored, minimal money)
@@ -65,18 +64,75 @@ def _min_mult_for_venue(venue, min_mult, min_mult_stocks):
 
 
 def _size_ranked(x, max_mult, gain_cap, unconfirmed_mult):
-    """USER 2026-10-11: (mult, tier) for a 30D-positive row. Above-1x size requires 365D confirmation (g365 > 0);
-    unconfirmed (g365 None) or 365D-negative rows trade always but small at unconfirmed_mult. Pure: unit-tested."""
-    g365 = x.get("g365")
+    """USER 2026-10-21: 365D confirmation is OVERRULED EVERYWHERE — a 30D-positive row ranks on its 30D gain
+    alone (top gainers up to max_mult = 8x START_POSITION_SIZE). g365 is carried for reporting only and NEVER
+    gates size. unconfirmed_mult is kept for signature compat (daily-chain callers pass it positionally).
+    Pure: unit-tested."""
+    return _ranked_mult(x.get("g30"), None, max_mult, gain_cap), "RANKED"
+
+
+# argparse defaults mirrored here so the per-workbook write-through sizes with the SAME numbers as the daily chain.
+TIER_DEFAULTS = {"min_mult": 0.25, "min_mult_stocks": 0.05, "max_mult": 8.0, "gain_cap": 20.0}
+
+
+def upsert_workbook_tier(sym_side, g30, g365=None, trades_30d=None, tim_30d=None, out=None, **kw):
+    """USER 2026-10-21: immediate absorption — v15_pilot calls this at the end of EVERY workbook calculation
+    (after the sqlite upsert) so the fresh 30D result sizes live within ~30 s (perf_tier_sizing re-reads on
+    mtime), instead of waiting for the next daily chain. Same rules as main(): 30D>0 RANKED to 8x, else venue
+    MIN; 365D advisory only. v17 conviction is re-applied to this one entry. Never raises: returns the entry
+    dict on success, None on any failure (the publish itself must never die on a tier write)."""
     try:
-        confirmed = g365 is not None and float(g365) > 0
-    except (TypeError, ValueError):
-        confirmed = False
-    if confirmed:
-        return _ranked_mult(x.get("g30"), g365, max_mult, gain_cap), "RANKED"
-    if g365 is None:
-        return float(unconfirmed_mult), "RANKED_NO365_SMALL"
-    return float(unconfirmed_mult), "RANKED_NEG365_SMALL"
+        ss = str(sym_side).strip()
+        cfg = dict(TIER_DEFAULTS)
+        cfg.update({k: v for k, v in (kw or {}).items() if v is not None})
+        venue = _venue_of(ss)
+        try:
+            g = float(g30)
+        except (TypeError, ValueError):
+            g = None
+        if g is not None and g > 0:
+            m, tier = _ranked_mult(g, None, cfg["max_mult"], cfg["gain_cap"]), "RANKED"
+        else:
+            m, tier = _min_mult_for_venue(venue, cfg["min_mult"], cfg["min_mult_stocks"]), "MIN"
+        import datetime as _dt
+        now_iso = _dt.datetime.now(_dt.timezone.utc).isoformat()
+        entry = {"venue": venue, "g30": g, "g365": (float(g365) if g365 is not None else None),
+                 "src365": ("workbook 365D advisory" if g365 is not None else "v15_pilot workbook (365D overruled 2026-10-21)"),
+                 "trades_30d": trades_30d, "tim_30d": tim_30d, "mult": m, "tier": tier, "rank": "workbook",
+                 "tier_src": f"v15_pilot {now_iso}"}
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import v17_conviction as _v17c
+            apply_conviction_to_tiers = _v17c.apply_conviction_to_tiers
+            conv_doc = _v17c.latest_conviction(ROOT)
+            apply_conviction_to_tiers({ss: entry}, conv_doc)
+        except Exception:
+            entry["tier_mult"] = entry.get("mult", 1.0)
+        p = Path(out) if out else (ROOT / "data" / "persym_size_tiers.json")
+        try:
+            cur = json.loads(p.read_text()) if p.exists() else {}
+        except Exception:
+            cur = {}
+        if not isinstance(cur, dict):
+            cur = {}
+        tiers = cur.get("tiers")
+        if not isinstance(tiers, dict):
+            tiers = {}
+            cur["tiers"] = tiers
+        tiers[ss] = entry
+        meta = cur.get("_meta")
+        if not isinstance(meta, dict):
+            meta = {}
+            cur["_meta"] = meta
+        meta["at"] = now_iso
+        meta["last_workbook_write"] = {"sym_side": ss, "tier": tier, "mult": entry.get("mult"), "at": now_iso}
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(cur, indent=1, default=str))
+        json.loads(tmp.read_text())
+        os.replace(tmp, p)
+        return entry
+    except Exception:
+        return None
 
 
 def main():
@@ -86,7 +142,7 @@ def main():
     ap.add_argument("--min-mult", type=float, default=0.25)
     ap.add_argument("--min-mult-stocks", type=float, default=0.05)
     ap.add_argument("--neg30-mult", type=float, default=0.5)
-    ap.add_argument("--max-mult", type=float, default=6.0)
+    ap.add_argument("--max-mult", type=float, default=8.0)  # USER 2026-10-21: top gainers trade up to 8x (was 6.0)
     ap.add_argument("--unconfirmed-mult", type=float, default=0.5)
     ap.add_argument("--gain-cap", type=float, default=20.0)
     ap.add_argument("--dry-run", action="store_true")
@@ -121,10 +177,9 @@ def main():
         for x in rows:
             if x["venue"] != venue or x["g30"] >= 0:
                 continue
-            if x["g365"] is not None and x["g365"] > 0:
-                tiers[x["ss"]] = dict(x, mult=a.neg30_mult, tier="NEG30_POS365")
-            else:
-                tiers[x["ss"]] = dict(x, mult=_min_mult_for_venue(x["venue"], a.min_mult, a.min_mult_stocks), tier="MIN")
+            # USER 2026-10-21: 365D overruled — a negative 30D is MIN whatever 365D says (neg/low results trade
+            # a low % of START_POSITION_SIZE down to the pos-min floor). NEG30_POS365 no longer emitted.
+            tiers[x["ss"]] = dict(x, mult=_min_mult_for_venue(x["venue"], a.min_mult, a.min_mult_stocks), tier="MIN")
     for book in ("per_sym_active_config.json", "per_sym_active_config_stocks.json"):  # live NEG-block is relaxed under tier sizing: every
         try:                                                                          # book entry with acc_gain_pct <= 0 and no fresh row -> MIN
             bk = json.loads((ROOT / "data" / "hourly_reconfig" / book).read_text())
