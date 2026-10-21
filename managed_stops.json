@@ -1,1 +1,30 @@
-{}
+{
+  "men:LTCUSDC_LONG": {
+    "orderId": "2000001528487342",
+    "stopPrice": 56.36,
+    "entry_sig": "2026-10-21 07:16:07.970000+00:00",
+    "symbol": "LTCUSDC",
+    "side": "LONG"
+  },
+  "men:LINKUSDC_LONG": {
+    "orderId": "2000001528490961",
+    "stopPrice": 11.549,
+    "entry_sig": "2026-10-21 07:18:27.290000+00:00",
+    "symbol": "LINKUSDC",
+    "side": "LONG"
+  },
+  "men:1INCHUSDT_LONG": {
+    "orderId": "2000001528511692",
+    "stopPrice": 0.09312,
+    "entry_sig": "2026-10-21 07:30:35.435000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "LONG"
+  },
+  "men:XMRUSDT_SHORT": {
+    "orderId": "2000001528515299",
+    "stopPrice": 629.46,
+    "entry_sig": "2026-10-21 07:32:45.558000+00:00",
+    "symbol": "XMRUSDT",
+    "side": "SHORT"
+  }
+}
