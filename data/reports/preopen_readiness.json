@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T11:40:01Z",
+ "generated_utc": "2026-10-21T12:00:08Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 415,
-    "filled_before_open": 415
+    "filled_today": 423,
+    "filled_before_open": 423
    },
-   "detail": "415 boards filled before the open (415 today)"
+   "detail": "423 boards filled before the open (423 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -62,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 477,
-    "exact": 41,
-    "benign_divergence_only": 372,
-    "material_divergence": 63,
+    "exact": 44,
+    "benign_divergence_only": 375,
+    "material_divergence": 57,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,7 +201,7 @@
      }
     ]
    },
-   "detail": "41 exact, 372 benign-only, 63 with material divergence, 1 with no live row"
+   "detail": "44 exact, 375 benign-only, 57 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -211,7 +211,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 10.0,
+    "median_age_min": 0.0,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
