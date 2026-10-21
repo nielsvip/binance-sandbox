@@ -1,0 +1,92 @@
+{
+ "ts": "2026-10-21T04:43:29Z",
+ "n_venue_modules_checked": 15,
+ "n_contamination": 5,
+ "contamination": [
+  {
+   "module": "ez_copilot.py",
+   "venue": "crypto",
+   "forbidden": "config_tradier",
+   "line": 921,
+   "kind": "VENUE_IMPORT",
+   "detail": "from config_tradier import TradierConfig"
+  },
+  {
+   "module": "ez_copilot.py",
+   "venue": "crypto",
+   "forbidden": "config_tradier",
+   "line": 1733,
+   "kind": "VENUE_IMPORT",
+   "detail": "from config_tradier import TradierConfig"
+  },
+  {
+   "module": "tradier_rankings.py",
+   "venue": "stocks",
+   "forbidden": "config.py",
+   "line": 30,
+   "kind": "VENUE_IMPORT",
+   "detail": "from config import Config"
+  },
+  {
+   "module": "tradier_rankings.py",
+   "venue": "stocks",
+   "forbidden": "config.py",
+   "line": 2846,
+   "kind": "VENUE_READ",
+   "detail": "Config._CURRENT_MARKET_MODE"
+  },
+  {
+   "module": "tradier_rankings.py",
+   "venue": "stocks",
+   "forbidden": "config.py",
+   "line": 2855,
+   "kind": "VENUE_READ",
+   "detail": "Config.set_market_mode"
+  }
+ ],
+ "n_shared_core_direct_config_imports": 7,
+ "shared_core_advisory": [
+  {
+   "module": "vec_decisions/guaranteed_price_cross_reentry.py",
+   "line": 485,
+   "kind": "SHARED_CORE",
+   "detail": "import config as cfg"
+  },
+  {
+   "module": "vec_decisions/twin_entries_dead_a.py",
+   "line": 326,
+   "kind": "SHARED_CORE",
+   "detail": "from config import BASE_PATH"
+  },
+  {
+   "module": "live_twins/vec_exact.py",
+   "line": 418,
+   "kind": "SHARED_CORE",
+   "detail": "from config import Config"
+  },
+  {
+   "module": "live_twins/vec_exact.py",
+   "line": 444,
+   "kind": "SHARED_CORE",
+   "detail": "from config import Config"
+  },
+  {
+   "module": "live_twins/vec_exact.py",
+   "line": 258,
+   "kind": "SHARED_CORE",
+   "detail": "import config as _c"
+  },
+  {
+   "module": "live_twins/vec_exact.py",
+   "line": 261,
+   "kind": "SHARED_CORE",
+   "detail": "import config_tradier as _ct"
+  },
+  {
+   "module": "live_twins/vec_exact.py",
+   "line": 1195,
+   "kind": "SHARED_CORE",
+   "detail": "from config import Config"
+  }
+ ]
+}

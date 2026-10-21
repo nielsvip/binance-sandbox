@@ -116,6 +116,12 @@ def test_gates_reference_zero_pass_bypass():
     assert "zero_pass" in tm and "ZERO_PASS_ALLOW" in tm
 
 
+def test_stale_dictate_still_executes():
+    ez = (ROOT / "ez_manage.py").read_text()
+    assert "REFUSED_STALE_" in ez and "no late OPEN (stale guard)" in ez
+    assert ez.count("late dictate") >= 2, "intent consumer + reconcile both execute late dictates"
+
+
 def test_no_suppress_keeps_correctness_and_infra():
     ez = (ROOT / "ez_manage.py").read_text()
     for needle in (

@@ -13,7 +13,7 @@ while true; do
     check_local_size "$MACBOOK_TARGET"
     if ! check_remote_size "$SERVER_HOST" "$SERVER_SOURCE"; then sleep 60; continue; fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 📥 Syncing market_data from server..." >> "$LOG_FILE"
-    rsync -avz --update --timeout=30 --include="market_data_*.json" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude=".git" --exclude="backups*" --max-size=100M "${SERVER_HOST}:${SERVER_SOURCE}" "$MACBOOK_TARGET" >> "$LOG_FILE" 2>&1
+    rsync -auvz --update --timeout=30 --include="market_data_*.json" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude=".git" --exclude="backups*" --max-size=100M "${SERVER_HOST}:${SERVER_SOURCE}" "$MACBOOK_TARGET" >> "$LOG_FILE" 2>&1
     if [ $? -eq 0 ]; then
         check_local_size "$MACBOOK_TARGET"
         FILE_COUNT=$(find "$MACBOOK_TARGET" -name "market_data_*.json" -type f | wc -l | tr -d ' ')

@@ -376,9 +376,23 @@ def apply_newer_klines(stage_dir, dest_dir, log_rows=None, provenance="S1"):
         try:
             with open(staged, "rb") as handle:
                 payload = handle.read()
-            json.loads(payload)
+            staged_rows = json.loads(payload)
         except (OSError, ValueError):
             continue
+        # USER 2026-10-21 "NOTHING destroys klines": a newer tail used to REPLACE the whole file, dropping every dest bar
+        # the staged copy lacked (shorter history). Now the staged bars newer than dest's newest are APPENDED to dest's
+        # own rows; a dest that is unreadable / not a list is still replaced (that is a repair, not a loss).
+        try:
+            with open(dest, "rb") as handle:
+                dest_rows = json.loads(handle.read()) if dest_ts is not None else None
+        except (OSError, ValueError):
+            dest_rows = None
+        if isinstance(dest_rows, list) and dest_rows and isinstance(staged_rows, list):
+            cut = str(dest_rows[-1].get("timestamp", ""))[:19].replace(" ", "T") if isinstance(dest_rows[-1], dict) else ""
+            add = [r for r in staged_rows if isinstance(r, dict) and str(r.get("timestamp", ""))[:19].replace(" ", "T") > cut]
+            if not add:
+                continue
+            payload = json.dumps(dest_rows + add).encode()
         tmp = dest.with_name(f".{dest.name}.lf.{os.getpid()}.tmp")
         with open(tmp, "wb") as handle:
             handle.write(payload)

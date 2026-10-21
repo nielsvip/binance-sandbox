@@ -49,7 +49,7 @@ while true; do
     if [ "$remote_mtime" != "$last_mtime" ]; then
         ts_label=$(date -u -r "$remote_mtime" '+%Y%m%d_%H%M%S')
         name="market_data_${ts_label}_s1.json"
-        if timeout 40 rsync -az --timeout=20 -e "ssh ${SSH_OPTS[*]}" "$host:$REMOTE_FILE" "$STAGE/$name" 2>>"$LOG_FILE"; then
+        if timeout 40 rsync -auz --timeout=20 -e "ssh ${SSH_OPTS[*]}" "$host:$REMOTE_FILE" "$STAGE/$name" 2>>"$LOG_FILE"; then
             size=$(wc -c < "$STAGE/$name" | tr -d ' ')
             tail_char=$(tail -c 64 "$STAGE/$name" | tr -d ' \n\r\t' | tail -c 1)
             mac_ref=$(ls -t "$DATA_DIR"/market_data_2*.json 2>/dev/null | grep -v '_s1\.json$' | grep -v worker | head -1)
@@ -85,7 +85,7 @@ while true; do
     # Cross-symbol ranking inputs (written on Mac by ez_rankings, read by S1 ez_indicators for
     # 0dc_qty / final-score fields) — S1 does not run ez_rankings, so feed it every 60s.
     if [ $((now - ${last_rank_push:-0})) -ge 60 ]; then
-        timeout 30 rsync -az --timeout=20 -e "ssh ${SSH_OPTS[*]}" "$DATA_DIR/rankings.json" "$DATA_DIR/final_score_norm.json" "$host:/home/niels/binance/ez_s1_stack/data/" 2>>"$LOG_FILE"
+        timeout 30 rsync -auz --timeout=20 -e "ssh ${SSH_OPTS[*]}" "$DATA_DIR/rankings.json" "$DATA_DIR/final_score_norm.json" "$host:/home/niels/binance/ez_s1_stack/data/" 2>>"$LOG_FILE"
         last_rank_push=$now
     fi
     sleep "$INTERVAL"

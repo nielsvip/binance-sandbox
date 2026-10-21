@@ -9,7 +9,7 @@ mkdir -p "$GATEWAY_TARGET"
 echo "$(date '+%Y-%m-%d %H:%M:%S') - 🔄 Starting continuous rsync market_data from server to gateway..." | tee -a "$LOG_FILE"
 while true; do
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 📥 Syncing market_data from server to gateway..." >> "$LOG_FILE"
-    rsync -avz --update --timeout=30 --include="market_data_*.json" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude=".git" --exclude="backups*" "${SERVER_HOST}:${SERVER_SOURCE}" "$GATEWAY_TARGET" >> "$LOG_FILE" 2>&1
+    rsync -auvz --update --timeout=30 --include="market_data_*.json" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude=".git" --exclude="backups*" "${SERVER_HOST}:${SERVER_SOURCE}" "$GATEWAY_TARGET" >> "$LOG_FILE" 2>&1
     if [ $? -eq 0 ]; then
         FILE_COUNT=$(find "$GATEWAY_TARGET" -name "market_data_*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
         echo "$(date '+%Y-%m-%d %H:%M:%S') - ✅ Sync complete: $FILE_COUNT files" >> "$LOG_FILE"

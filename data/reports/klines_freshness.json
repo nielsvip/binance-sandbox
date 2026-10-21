@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-10-21T04:35:08Z",
+ "generated_utc": "2026-10-21T04:45:03Z",
  "tol_min": 35,
  "crypto": {
-  "status": "BREACH",
+  "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 35.1,
-  "worst_sym": "ENAUSDC"
+  "worst_lag_min": 15.1,
+  "worst_sym": "BTCUSDC"
  },
  "stocks": {
   "status": "BREACH",
@@ -16,6 +16,6 @@
    "GDX",
    "JNJ"
   ],
-  "worst_lag_min": 1955.1
+  "worst_lag_min": 780.1
  }
 }

@@ -4360,6 +4360,18 @@ always-runs section (loop alive, intents <30 min, matrices <40 h, progress <48 h
 loop, S1-side reported never faulted blindly — the pusher pull is currently failing on the dead s1-int tunnel).
 Rollback: floor default + `backups/before_five_dollar_floor_*`; supervision off via `launchctl bootout` + rm plist.
 
+## 124. STALE DICTATES STILL TRADE; PARITY INVENTORY METHOD (USER 2026-10-21)
+
+The vec lane takes ~27 min to compute a 15 m bar while the consumer refused intents older than 300 s — every men
+intent arrived dead, so the lane's 25 opens never converted (root cause of men holding 5 stale positions against
+25 opens). Both stale guards (intent consumer, reconcile) now execute late dictates for calculated sym_sides with
+a log line; lane latency stays open as the freshness fault to fix. Parity inventory, run don't guess: men forward
+= latest lane intent per sym_side (`data/vec_live/intents/PB-men-*.json`); ang forward = `v12_quick_engine` vector
+sim on the trailing 30 d NPZ with the full board set, holding iff `exposure_series[-1] > 0`, Mac-NPZ staleness
+reported as UNMEASURED (S1 rerun for full freshness). Snapshot 04:43Z: ang holds 5 LONG / 0 short against a fresh
+vector that says hold nothing (ENAUSDC already self-closed 04:40); men holds 5 LONG converging onto 25 lane opens
+plus 2 lane closes executing.
+
 ## 123. STOCKS OFF-HOURS — NO AGENT EVER FLAGS STOCK INDICATORS OR PRICES OUTSIDE NYSE HOURS (USER 2026-10-21)
 
 **USER VERBATIM 2026-10-21:** "add to the bible that no agent can ever start whining again about indicators or prices for stocks outside market hours it is fkn pathetic" — and: "s1 ONLY starts ez_indicators when rsync from macbook fails to update s1 market data (tradier ONLY ON MARKET HOURS OBVIOUSLY) and syncs it back to macbook so we never have a minute of missing market data in a decade".

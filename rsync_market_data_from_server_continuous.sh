@@ -14,9 +14,9 @@ while true; do
     if ! check_remote_size "$SERVER_HOST" "$SERVER_SOURCE"; then sleep 60; continue; fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') - 📥 Syncing market_data from server..." >> "$LOG_FILE"
     # Bidirectional fallback: pull latest_market_data + price_cache + klines if local is stale
-    rsync -avz --timeout=30 --include="latest_market_data.json" --include="price_cache*.json" --include="market_data_*.json" --include="klines_cache/**" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude="backups*" --max-size=100M "${SERVER_HOST}:${SERVER_SOURCE}" "$MACBOOK_TARGET" >> "$LOG_FILE" 2>&1
-    rsync -avz --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "${SERVER_HOST}:/home/niels/binance/klines_cache/" "/Users/niels/Documents/binance/klines_cache/" >> "$LOG_FILE" 2>&1
-    rsync -avz --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "${SERVER_HOST}:/home/niels/binance/price_cache*.json" "/Users/niels/Documents/binance/" >> "$LOG_FILE" 2>&1
+    rsync -auvz --timeout=30 --include="latest_market_data.json" --include="price_cache*.json" --include="market_data_*.json" --include="klines_cache/**" --exclude="*" --exclude="*.tmp" --exclude="*.lock" --exclude="backups*" --max-size=100M "${SERVER_HOST}:${SERVER_SOURCE}" "$MACBOOK_TARGET" >> "$LOG_FILE" 2>&1
+    rsync -auvz --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "${SERVER_HOST}:/home/niels/binance/klines_cache/" "/Users/niels/Documents/binance/klines_cache/" >> "$LOG_FILE" 2>&1
+    rsync -auvz --timeout=30 --exclude="*.tmp" --exclude="*.lock" --max-size=100M "${SERVER_HOST}:/home/niels/binance/price_cache*.json" "/Users/niels/Documents/binance/" >> "$LOG_FILE" 2>&1
     if [ $? -eq 0 ]; then
         check_local_size "$MACBOOK_TARGET"
         FILE_COUNT=$(find "$MACBOOK_TARGET" -name "market_data_*.json" -o -name "latest_market_data.json" -o -name "price_cache*.json" | wc -l | tr -d ' ')

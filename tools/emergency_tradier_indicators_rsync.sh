@@ -22,9 +22,9 @@ fi
 # Gateway indicators live at ~/binance/data/tradier/ on gateway host
 for HOST in gateway-internal 157.90.168.35; do
     if ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" "ls ~/binance/data/tradier/tradier_indicators_latest.json" >/dev/null 2>&1; then
-        rsync -az --timeout=10 "$HOST:~/binance/data/tradier/tradier_indicators_*.json" "$DATA_DIR/" 2>/dev/null || true
+        rsync -auz --timeout=10 "$HOST:~/binance/data/tradier/tradier_indicators_*.json" "$DATA_DIR/" 2>/dev/null || true
         # Also try s1_timestamped dir if gateway has it
-        rsync -az --timeout=10 "$HOST:~/binance/data/tradier/" "$DATA_DIR/s1_timestamped/" 2>/dev/null || true
+        rsync -auz --timeout=10 "$HOST:~/binance/data/tradier/" "$DATA_DIR/s1_timestamped/" 2>/dev/null || true
         break
     fi
 done

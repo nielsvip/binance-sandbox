@@ -27,7 +27,7 @@ import pytz
 from matplotlib.ticker import MaxNLocator
 
 import rankings_qualify
-from config import Config
+# 2026-10-21: `from config import Config` REMOVED — a stocks module may never read config.py (venue boundary).
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
 from tradier_indicators import TradierBarManager, TradierPriceCacheManager, _to_utc
@@ -2842,8 +2842,21 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
     return final_ranking_data_scalars, metadata
 
 async def market_mode_poll_loop():
-    """Poll data/market_mode.json every 30s to pick up EXTREME_MODE changes from news scanner or ez_rankings."""
-    last_mode = Config._CURRENT_MARKET_MODE
+    """Poll data/market_mode.json every 30s to pick up EXTREME_MODE changes from news scanner or ez_rankings.
+
+    2026-10-21 VENUE BOUNDARY (USER: "NO stock can EVER take any info from config.py"). This loop used to seed
+    `last_mode` from the CRYPTO `Config._CURRENT_MARKET_MODE` and then call the CRYPTO `Config.set_market_mode(mode)`
+    — from inside a STOCKS process. That call is not a read: `config.py:5951-5956` sets the class attribute and then
+    runs `instance._apply_mode(mode)` on every registered crypto Config instance, which is the per-sym SIZING
+    CEILING mechanism. `TradierConfig` has no market-mode API at all (no `_CURRENT_MARKET_MODE`, no
+    `set_market_mode`), so there was never a stocks counterpart being driven here.
+    Measured before removing it: lines 2846 and 2855 were the ONLY two references to the crypto `Config` class in
+    this entire file, and nothing in it reads what `set_market_mode` mutates — so the call was a pure cross-venue
+    side effect with no benefit to stocks. The mode is used here for the change log only, which is kept.
+    `last_mode` now starts as None so the first poll logs the mode it finds.
+    If stocks ever needs mode-scaled sizing, that is a TradierConfig feature plus a template switch, not a reach
+    across the venue boundary — reported, not invented here."""
+    last_mode = None
     mode_file = Path(config.BASE_PATH) / "data" / "market_mode.json"
     while True:
         try:
@@ -2852,7 +2865,7 @@ async def market_mode_poll_loop():
                     data = json.loads(await f.read())
                 mode = data.get("mode", "NORMAL_MODE")
                 if mode in {"NORMAL_MODE", "EXTREME_MODE", "LIGHT_MODE"} and mode != last_mode:
-                    Config.set_market_mode(mode)
+                    # crypto Config.set_market_mode(mode) removed — see this function's docstring (venue boundary)
                     news_reason = data.get("news_reason", "")
                     source = "news_scanner" if data.get("news_trigger") else "ez_rankings"
                     logger.warning(f"[MARKET_MODE] Mode changed: {last_mode} -> {mode} (source={source}) {news_reason}")
