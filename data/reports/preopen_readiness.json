@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T09:20:03Z",
+ "generated_utc": "2026-10-21T09:40:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 200,
-    "filled_before_open": 200
+    "filled_today": 223,
+    "filled_before_open": 223
    },
-   "detail": "200 boards filled before the open (200 today)"
+   "detail": "223 boards filled before the open (223 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -49,12 +49,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 7,
-    "newest_report": "persym_golive_20261021_refresh_0755.json",
-    "newest_report_at": "2026-10-21T08:39:53Z",
-    "tiers_at": "2026-10-21T08:41:16Z"
+    "reports_today": 8,
+    "newest_report": "persym_golive_20261021_refresh_0853.json",
+    "newest_report_at": "2026-10-21T09:21:05Z",
+    "tiers_at": "2026-10-21T09:22:09Z"
    },
-   "detail": "persym_golive_20261021_refresh_0755.json at 2026-10-21T08:39:53Z, tiers 2026-10-21T08:41:16Z"
+   "detail": "persym_golive_20261021_refresh_0853.json at 2026-10-21T09:21:05Z, tiers 2026-10-21T09:22:09Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -211,7 +211,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 5.1,
+    "median_age_min": 10.1,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
