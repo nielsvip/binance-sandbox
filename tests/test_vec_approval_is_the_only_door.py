@@ -97,15 +97,25 @@ def test_stock_order_paths_are_accounted_for():
     assert emitters <= allowed, f"a NEW stock order emitter appeared outside the known set: {sorted(emitters - allowed)}"
 
 
-def test_strict_vec_parity_gates_entries_and_exits_and_is_not_shadow():
+def test_strict_vec_parity_is_shadow_by_ruling():
+    """USER 2026-10-20 ruling (measured in config.py): the reason-string gate is
+    SHADOW, not enforcing. MODE=True was proven lethal the same night it went
+    on with the replay off — 0 of 582,689 board entry rows and 60.1% of board
+    exit rows refused, including STOP_LOSS/MTF_ATR_TRAIL/TECHNICAL_EXIT (the
+    2026-09-28 stranded-losers failure, latent again). Authorization belongs to
+    the per-sym set, which the native producers resolve (audited 0 off-board).
+    This pins the ruled state so a silent flip either way fails loudly:
+    enforcing needs the allowlist repaired first; shadow must keep logging.
+    (Renamed 2026-10-21 from test_strict_vec_parity_gates_entries_and_exits_and_is_not_shadow,
+    which pinned the superseded 2026-10-17 regime.)"""
     from config import Config
     from config_tradier import TradierConfig
 
     for name, cfg in (("crypto", Config()), ("stocks", TradierConfig())):
-        assert getattr(cfg, "STRICT_VEC_PARITY_MODE", False) is True, f"{name}: parity enforcement is OFF"
-        assert getattr(cfg, "STRICT_VEC_PARITY_GATE_ENTRIES", False) is True, f"{name}: entries not gated"
-        assert getattr(cfg, "STRICT_VEC_PARITY_GATE_EXITS", False) is True, f"{name}: exits not gated"
-        assert getattr(cfg, "STRICT_VEC_PARITY_SHADOW", True) is False, f"{name}: still SHADOW (logs, refuses nothing)"
+        assert getattr(cfg, "STRICT_VEC_PARITY_MODE", True) is False, f"{name}: enforcing gate back ON without allowlist repair"
+        assert getattr(cfg, "STRICT_VEC_PARITY_SHADOW", False) is True, f"{name}: shadow logging OFF — would-blocks invisible"
+        assert getattr(cfg, "STRICT_VEC_PARITY_GATE_ENTRIES", False) is True, f"{name}: gate wiring removed"
+        assert getattr(cfg, "STRICT_VEC_PARITY_GATE_EXITS", False) is True, f"{name}: gate wiring removed"
 
 
 def test_every_nonnegotiable_stop_is_allowlisted_so_exits_are_never_stranded():

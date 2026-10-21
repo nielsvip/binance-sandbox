@@ -78,6 +78,16 @@ def family(reason):
     m = re.match(r"^(DAYTRADE_TARGET)_.*$", fam)
     if m:
         return m.group(1)
+    # Shared twin: v12 ORs the vel_exit mask into _all_exit (v12:13174+);
+    # live records the leg. Strip the per-bar velocity value + gain.
+    m = re.match(r"^(VEL_EXIT)(_.*)?$", fam)
+    if m:
+        return m.group(1)
+    # Shared twin check_dc_breakout_tiered_vec (DC15M tier): live reason
+    # carries the TF + live-only hard gates stay as timing deltas.
+    m = re.match(r"^DC_BREAK_(HIGH|LOW)_15M$", fam)
+    if m:
+        return "DC_BREAKOUT_ENTRY"
     # Haiku overseer sends orders as HAIKU_WINNER_AUG_*/HAIKU_REDUCE_* (vec
     # haiku_augment twin, ez_manage:8346) but history carries the human
     # decision-log strings "Winner augment:/reduce:". Compare the order
