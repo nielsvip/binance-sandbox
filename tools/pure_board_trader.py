@@ -178,6 +178,38 @@ async def execute_live(tm, acct, ss, action, qty, price, reason):
                                          reason=f"{reason} |PURE_BOARD", is_reduce=(not opening), is_full_close=(a == "CLOSE"))
 
 
+def _fresh_raw(symside: str):
+    """USER 2026-10-21 lane repair: build this bar's arrays from canonical klines.
+    The frozen pkl store rotted (twin off -> no _freeze since Oct 20); deciding on it births
+    intents the 300s consumer rule correctly refuses (70% REFUSED_STALE). Engine-side imports
+    only (backtest_v8_precompute + htf align twin) — no trading scripts, per the 10-18 lane rule."""
+    try:
+        import backtest_v8_precompute as _pc
+        raw = _pc.compute_symbol(symside.rsplit("_", 1)[0], "crypto", return_arrays=True)
+        if not isinstance(raw, dict):
+            return None
+        try:
+            from vec_decisions.htf_causal_align import align_store as _hta
+            raw = _hta(raw, symside.rsplit("_", 1)[0], "crypto")
+        except ImportError:
+            return None
+        return raw
+    except Exception:
+        return None
+
+
+def prepared_from_raw(symside: str, raw: dict):
+    """prepare() on in-memory arrays (store-swap pattern shared with prepared_from_frozen)."""
+    from tools.opt import evaluate_v12 as E
+    o_store, o_start = E._store, E._frozen_npz_start_date
+    E._store = lambda sym, mode, start: raw
+    E._frozen_npz_start_date = lambda *a, **k: "1970-01-01"
+    try:
+        return E.prepare(symside, 30)
+    finally:
+        E._store, E._frozen_npz_start_date = o_store, o_start
+
+
 def prepared_from_frozen(symside: str):
     """Build the engine's own prepare on the frozen 15m bars — nothing from the trading scripts is imported.
 
@@ -188,20 +220,12 @@ def prepared_from_frozen(symside: str):
     """
     import pickle
 
-    from tools.opt import evaluate_v12 as E
-
     path = FROZEN / f"{symside.rsplit('_', 1)[0]}.pkl"
     if not path.exists():
         return None
     with open(path, "rb") as fh:
         raw = dict(pickle.load(fh))
-    o_store, o_start = E._store, E._frozen_npz_start_date
-    E._store = lambda sym, mode, start: raw
-    E._frozen_npz_start_date = lambda *a, **k: "1970-01-01"
-    try:
-        return E.prepare(symside, 30)
-    finally:
-        E._store, E._frozen_npz_start_date = o_store, o_start
+    return prepared_from_raw(symside, raw)
 
 
 def actions_from_engine(symside: str, overrides: dict, prepared: dict, bar_ts: float) -> dict:
@@ -357,10 +381,18 @@ def _eval_one(job):
     """One sym_side on one bar, in its own process. Returns only JSON-able data (no numpy, no engine objects)."""
     ss, ov, bar_ts = job
     try:
-        prep = prepared_from_frozen(ss)
+        raw = _fresh_raw(ss)
+        if raw is not None:
+            prep = prepared_from_raw(ss, raw)
+            store = "fresh"
+        else:
+            prep = prepared_from_frozen(ss)
+            store = "frozen"
         if prep is None:
             return ss, {"status": "SKIP_NO_BAR_STORE", "actions": []}
-        return ss, actions_from_engine(ss, ov, prep, bar_ts)
+        out = actions_from_engine(ss, ov, prep, bar_ts)
+        out["bar_store"] = store
+        return ss, out
     except Exception as exc:
         return ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}
 
@@ -382,103 +414,114 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
             continue
         jobs.append((ss, pb["overrides"], bar_ts))
     results = list(skipped)
+    def _drain(triples):
+        for ss, res, pb in triples:
+                status = res.get("status", "?")
+                stats[status] += 1
+                acts = res.get("actions") or []
+                # THE TRADED DECISION: the board's own position state at this bar vs what the account actually holds.
+                # An event can be missed; a state cannot — this is what stops a position sitting open for hours or days.
+                est = res.get("engine_state") or {}
+                if status == "OK":
+                    for acct in by_ss[ss]:
+                        lh = (held.get((acct, ss)) or {}).get("qty", 0.0)
+                        eng_hold, eng_qty = bool(est.get("holding")), float(est.get("qty") or 0.0)
+                        verdict = ("AGREE_HOLD" if (eng_hold and lh > 0) else "AGREE_FLAT" if (not eng_hold and lh <= 0)
+                                   else "BOARD_HOLDS_LIVE_FLAT" if eng_hold else "BOARD_FLAT_LIVE_HOLDS")
+                        stats[f"STATE_{verdict}"] += 1
+                        if verdict in ("AGREE_HOLD", "AGREE_FLAT"):
+                            continue
+                        conv = "CONVERGE_OPEN" if verdict == "BOARD_HOLDS_LIVE_FLAT" else "CONVERGE_CLOSE"
+                        if close_only and conv == "CONVERGE_OPEN":
+                            stats["SKIPPED_OPEN_CLOSE_ONLY"] += 1
+                            continue
+                        row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": conv,
+                               "reason": f"{verdict} board_qty={eng_qty:.6f} live_qty={lh:.6f} since={est.get('since')}",
+                               "price": float(est.get("entry_price") or 0.0) or None, "vec_qty": (eng_qty if conv == "CONVERGE_OPEN" else lh),
+                               "qty_frac": (1.0 if conv == "CONVERGE_CLOSE" else None), "status": status,
+                               "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
+                               "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
+                               "board_published_at": (pb or {}).get("published_at"), "engine_trades": res.get("engine_trades"),
+                               "engine_gain": res.get("engine_gain"), "live_entry": (held.get((acct, ss)) or {}).get("entry"),
+                               "live_gain_pct": (held.get((acct, ss)) or {}).get("gain")}
+                        stats[f"CONV_{conv}"] += 1
+                        if vec_driven:
+                            try:
+                                iid = write_intent(acct, ss, bar_ts, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
+                                                   row["reason"], target_holding=(conv == "CONVERGE_OPEN"),
+                                                   qty_frac=(1.0 if conv == "CONVERGE_CLOSE" else None))
+                                row["intent_id"] = iid
+                                stats["INTENT_WRITTEN"] += 1
+                            except Exception as exc:
+                                row["intent_error"] = f"{type(exc).__name__}: {exc}"[:120]
+                                stats["INTENT_ERROR"] += 1
+                        if live_tm is not None:
+                            try:
+                                px = float((held.get((acct, ss)) or {}).get("mark") or est.get("entry_price") or 0.0)
+                                if conv == "CONVERGE_OPEN" and px > 0:
+                                    # The board decides WHAT and WHEN; the account's own sizing decides HOW MUCH (BIBLE 68.3a).
+                                    # The engine's qty is on ITS capital base (START_POSITION_SIZE x multipliers) and would
+                                    # oversize a small live book, so a fresh open is sized like live sizes one and then passes
+                                    # through execute_now's own caps (CRYPTO_MINIMUM_TRADING_MODE etc.).
+                                    import config as _cfg_live
+                                    _base = float(getattr(_cfg_live.Config, "START_POSITION_SIZE", 0.0) or 0.0)
+                                    if _base > 0:
+                                        row["vec_qty"] = _base / px
+                                        row["sized_by"] = f"live START_POSITION_SIZE ${_base:.0f}"
+                                r_ = asyncio.get_event_loop().run_until_complete(
+                                    execute_live(live_tm, acct, ss, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
+                                                 row["vec_qty"], px, row["reason"]))
+                                row["live_result"] = str(r_)[:120]
+                                stats["LIVE_SENT"] += 1
+                            except Exception as exc:
+                                row["live_result"] = f"ERROR {type(exc).__name__}: {exc}"[:160]
+                                stats["LIVE_ERROR"] += 1
+                        intents.append(row)
+                if not acts:
+                    if status not in ("OK", "WARMUP"):
+                        for acct in by_ss[ss]:
+                            intents.append({"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": "", "status": status,
+                                            "board_md5": (pb or {}).get("overrides_md5", ""), "detail": res.get("err", "")})
+                    continue
+                for a in acts:
+                    action = str(a.get("type") or "").upper()
+                    reason = str(a.get("reason") or "")[:120]
+                    px = float(a.get("vec_price") or 0.0) or None
+                    for acct in by_ss[ss]:
+                        qty = float(a.get("vec_qty") or 0.0)
+                        row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": action, "reason": reason,
+                               "price": px, "vec_qty": qty, "qty_frac": a.get("qty_frac"), "status": status,
+                               "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
+                               "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
+                               "board_published_at": (pb or {}).get("published_at")}
+                        paper = book.apply(f"{acct}:{ss}", action, qty or 1.0, px, bar_ts, reason, ss.endswith("_LONG"))
+                        row["paper"] = paper
+                        stats[f"ACT_{action}"] += 1
+                        stats[paper] += 1
+                        if live_tm is not None and px and (qty or action in ("CLOSE", "REDUCE")):
+                            try:
+                                r = asyncio.get_event_loop().run_until_complete(execute_live(live_tm, acct, ss, action, qty or 0.0, px, reason))
+                                row["live_result"] = str(r)[:120]
+                                stats["LIVE_SENT"] += 1
+                            except Exception as exc:
+                                row["live_result"] = f"ERROR {type(exc).__name__}: {exc}"[:160]
+                                stats["LIVE_ERROR"] += 1
+                        intents.append(row)
+
+    held = held or {}
+    # USER 2026-10-21 lane repair: chunked submit + drain-as-completed so early keys
+    # decide minutes sooner (tail-of-pass intents were born stale). Same order, same
+    # aggregation — handling interleaves per chunk. ROLLBACK: single ex.map over jobs.
+    _drain(list(skipped))  # skipped detail rows first, exactly as before
+    _CH = 24
     if jobs:
         with ProcessPoolExecutor(max_workers=max(1, int(workers))) as ex:
-            for ss, res in ex.map(_eval_one, jobs, chunksize=1):
-                results.append((ss, res, bds.get(ss)))
-    held = held or {}
-    for ss, res, pb in results:
-        status = res.get("status", "?")
-        stats[status] += 1
-        acts = res.get("actions") or []
-        # THE TRADED DECISION: the board's own position state at this bar vs what the account actually holds.
-        # An event can be missed; a state cannot — this is what stops a position sitting open for hours or days.
-        est = res.get("engine_state") or {}
-        if status == "OK":
-            for acct in by_ss[ss]:
-                lh = (held.get((acct, ss)) or {}).get("qty", 0.0)
-                eng_hold, eng_qty = bool(est.get("holding")), float(est.get("qty") or 0.0)
-                verdict = ("AGREE_HOLD" if (eng_hold and lh > 0) else "AGREE_FLAT" if (not eng_hold and lh <= 0)
-                           else "BOARD_HOLDS_LIVE_FLAT" if eng_hold else "BOARD_FLAT_LIVE_HOLDS")
-                stats[f"STATE_{verdict}"] += 1
-                if verdict in ("AGREE_HOLD", "AGREE_FLAT"):
-                    continue
-                conv = "CONVERGE_OPEN" if verdict == "BOARD_HOLDS_LIVE_FLAT" else "CONVERGE_CLOSE"
-                if close_only and conv == "CONVERGE_OPEN":
-                    stats["SKIPPED_OPEN_CLOSE_ONLY"] += 1
-                    continue
-                row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": conv,
-                       "reason": f"{verdict} board_qty={eng_qty:.6f} live_qty={lh:.6f} since={est.get('since')}",
-                       "price": float(est.get("entry_price") or 0.0) or None, "vec_qty": (eng_qty if conv == "CONVERGE_OPEN" else lh),
-                       "qty_frac": (1.0 if conv == "CONVERGE_CLOSE" else None), "status": status,
-                       "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
-                       "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
-                       "board_published_at": (pb or {}).get("published_at"), "engine_trades": res.get("engine_trades"),
-                       "engine_gain": res.get("engine_gain"), "live_entry": (held.get((acct, ss)) or {}).get("entry"),
-                       "live_gain_pct": (held.get((acct, ss)) or {}).get("gain")}
-                stats[f"CONV_{conv}"] += 1
-                if vec_driven:
-                    try:
-                        iid = write_intent(acct, ss, bar_ts, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
-                                           row["reason"], target_holding=(conv == "CONVERGE_OPEN"),
-                                           qty_frac=(1.0 if conv == "CONVERGE_CLOSE" else None))
-                        row["intent_id"] = iid
-                        stats["INTENT_WRITTEN"] += 1
-                    except Exception as exc:
-                        row["intent_error"] = f"{type(exc).__name__}: {exc}"[:120]
-                        stats["INTENT_ERROR"] += 1
-                if live_tm is not None:
-                    try:
-                        px = float((held.get((acct, ss)) or {}).get("mark") or est.get("entry_price") or 0.0)
-                        if conv == "CONVERGE_OPEN" and px > 0:
-                            # The board decides WHAT and WHEN; the account's own sizing decides HOW MUCH (BIBLE 68.3a).
-                            # The engine's qty is on ITS capital base (START_POSITION_SIZE x multipliers) and would
-                            # oversize a small live book, so a fresh open is sized like live sizes one and then passes
-                            # through execute_now's own caps (CRYPTO_MINIMUM_TRADING_MODE etc.).
-                            import config as _cfg_live
-                            _base = float(getattr(_cfg_live.Config, "START_POSITION_SIZE", 0.0) or 0.0)
-                            if _base > 0:
-                                row["vec_qty"] = _base / px
-                                row["sized_by"] = f"live START_POSITION_SIZE ${_base:.0f}"
-                        r_ = asyncio.get_event_loop().run_until_complete(
-                            execute_live(live_tm, acct, ss, "CLOSE" if conv == "CONVERGE_CLOSE" else "OPEN",
-                                         row["vec_qty"], px, row["reason"]))
-                        row["live_result"] = str(r_)[:120]
-                        stats["LIVE_SENT"] += 1
-                    except Exception as exc:
-                        row["live_result"] = f"ERROR {type(exc).__name__}: {exc}"[:160]
-                        stats["LIVE_ERROR"] += 1
-                intents.append(row)
-        if not acts:
-            if status not in ("OK", "WARMUP"):
-                for acct in by_ss[ss]:
-                    intents.append({"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": "", "status": status,
-                                    "board_md5": (pb or {}).get("overrides_md5", ""), "detail": res.get("err", "")})
-            continue
-        for a in acts:
-            action = str(a.get("type") or "").upper()
-            reason = str(a.get("reason") or "")[:120]
-            px = float(a.get("vec_price") or 0.0) or None
-            for acct in by_ss[ss]:
-                qty = float(a.get("vec_qty") or 0.0)
-                row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": action, "reason": reason,
-                       "price": px, "vec_qty": qty, "qty_frac": a.get("qty_frac"), "status": status,
-                       "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
-                       "board_md5": (pb or {}).get("overrides_md5", ""), "board_gain": _board_gain(pb),
-                       "board_published_at": (pb or {}).get("published_at")}
-                paper = book.apply(f"{acct}:{ss}", action, qty or 1.0, px, bar_ts, reason, ss.endswith("_LONG"))
-                row["paper"] = paper
-                stats[f"ACT_{action}"] += 1
-                stats[paper] += 1
-                if live_tm is not None and px and (qty or action in ("CLOSE", "REDUCE")):
-                    try:
-                        r = asyncio.get_event_loop().run_until_complete(execute_live(live_tm, acct, ss, action, qty or 0.0, px, reason))
-                        row["live_result"] = str(r)[:120]
-                        stats["LIVE_SENT"] += 1
-                    except Exception as exc:
-                        row["live_result"] = f"ERROR {type(exc).__name__}: {exc}"[:160]
-                        stats["LIVE_ERROR"] += 1
-                intents.append(row)
+            for _ci in range(0, len(jobs), _CH):
+                _batch = []
+                for ss, res in ex.map(_eval_one, jobs[_ci:_ci + _CH], chunksize=1):
+                    _batch.append((ss, res, bds.get(ss)))
+                results.extend(_batch)
+                _drain(_batch)
     if ledger is not None and intents:
         ledger.parent.mkdir(parents=True, exist_ok=True)
         with open(ledger, "a") as fh:
@@ -532,6 +575,10 @@ def main():
     book = PaperBook(OUT / "paper_state.json")
     while True:
         bar = a.bar or last_closed_bar()
+        _lag = time.time() - (bar + BAR_S)
+        if _lag > 300:
+            log(f"STALE PASS: bar closed {_lag:.0f}s ago (>300s consumer rule) — evaluating anyway for state "
+                f"convergence; fresh intents will be refused until the pass catches up")
         day = dt.datetime.fromtimestamp(bar, dt.timezone.utc).strftime("%Y-%m-%d")
         t0 = time.time()
         held = live_positions(accounts)

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 17:22:25 UTC
+# Copilot Status — 2026-10-21 17:27:27 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,14 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:17:23
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:18:55
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:19:27
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:19:57
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:20:31
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:21:01
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:21:31
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:22:01
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:25:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-21T17:25:17
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T17:25:17
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:25:52
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T17:25:52
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:26:23
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T17:26:23
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:26:55
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T17:26:55
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T17:27:25
 
 ## Missed Trades (trader comparison)
 
@@ -25,16 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 5 | **Watching for reentry:** 2 | **Reentered:** 0
+**Held:** 7 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - HELD: **CLF** LONG (tradier) peak +16.5%, now +0.4%
-- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
-- HELD: **BMNR** LONG (tradier) peak +4.9%, now +-0.2%
-- HELD: **PR** LONG (tradier) peak +4.7%, now +0.4%
-- HELD: **ZETA** LONG (tradier) peak +3.2%, now +2.7%
+- HELD: **ADP** LONG (tradier) peak +5.6%, now +-0.3%
+- HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.1%
+- HELD: **BMNR** LONG (tradier) peak +4.9%, now +-0.1%
+- HELD: **PR** LONG (tradier) peak +4.7%, now +0.5%
+- HELD: **UNH** LONG (tradier) peak +4.3%, now +0.1%
+- HELD: **ABBV** LONG (tradier) peak +3.7%, now +-0.1%
 
-- WATCHING: **MSTR** LONG (tradier) peaked +9.0%, exited 1m ago
-- WATCHING: **PLTR** LONG (tradier) peaked +3.1%, exited 1m ago
+- WATCHING: **MSTR** LONG (tradier) peaked +9.0%, exited 2m ago
+- WATCHING: **PLTR** LONG (tradier) peaked +3.1%, exited 2m ago
 
 ## Supervisor
 
