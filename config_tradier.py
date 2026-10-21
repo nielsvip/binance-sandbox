@@ -3852,7 +3852,17 @@ class TradierConfig:
     ENABLE_TR_DAYTRADE_WING: bool = False
     ENABLE_TR_REENTRY_MONITOR: bool = False
     ENABLE_TR_REENTRY_DISPATCH: bool = False
-    ENABLE_TR_HIGH_GAIN_REOPEN: bool = False
+    # USER 2026-10-21 batch-1 parity: vec switch names mirror QuickConfig for template rows + pilot.
+    # (ENABLE_TR_HIGH_GAIN_REOPEN removed — unified on TR_HIGH_GAIN_REOPEN_ENABLED, the name boards promote.)
+    # All default False = live (killed); behavior-neutral (live reads these only via vec twin).
+    TR_HIGH_GAIN_REOPEN_ENABLED: bool = False
+    TR_HIGH_GAIN_REOPEN_WINDOW_BARS: int = 12
+    TR_HIGH_GAIN_REOPEN_MIN_GAIN_PCT: float = 0.5
+    TR_HIGH_GAIN_REOPEN_MIN_RELVOL: float = 1.2
+    TR_HIGH_GAIN_REOPEN_RSI_LONG_MAX: float = 75.0
+    TR_HIGH_GAIN_REOPEN_RSI_SHORT_MIN: float = 25.0
+    REENTRY_OVERDUE_MODEL_ENABLED: bool = False
+    REENTRY_OVERDUE_MIN_BARS: int = 8
     ENABLE_TR_SWING_ENTRIES: bool = False
     ENABLE_TR_SYMGATE_REENTRY: bool = False
     ENABLE_TR_REENTRY_PERIODIC: bool = False

@@ -106,6 +106,28 @@ def test_bb_recovery_bbkc_stay_killed(tmp_path, monkeypatch):
     ok, _ = ve.check("REDUCE", "a", reason)
     assert ok is False, "QUICK dispatcher prefix must not launder the family"
     assert ve.check("CLOSE", "a", "BBKC_EXIT_1h_px-above-kc-mid_g0.07")[0] is False
+    # 2026-10-21 backlog audit: vector-BOOKED but twin-unfaithful (EXIT velocity
+    # forming-bar 1h/D legs; TECHNICAL level-vs-crossing + no min-hold), plus
+    # unvectorized rater output (REDUCE_K) and portfolio-state rebalancing with no
+    # vector model (RATIO). All stay killed until their recorded fidelity bars land.
+    assert "EXIT" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "TECHNICAL" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "REDUCE_K" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "RATIO" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert (
+        ve.check("CLOSE", "a", "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00")[0]
+        is False
+    )
+    assert (
+        ve.check("CLOSE", "a", "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03")[
+            0
+        ]
+        is False
+    )
+    assert (
+        ve.check("REDUCE", "a", "RATIO_CLOSE_LONG_L100_S0_tgt30/70_gain1.5%")[0]
+        is False
+    )
 
 
 def test_new_kill_files_retrace_order(tmp_path, monkeypatch):

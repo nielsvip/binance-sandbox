@@ -52518,6 +52518,11 @@ class TradierTradeManager:
                                     f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies"
                                 )
                                 continue
+                            # USER 2026-10-21 batch-1 parity: the overdue bypass additionally requires the
+                            # vec switch (same name boards promote after bench). Default False = bypass stays
+                            # off until parity; unreachable while the monitor loop itself is killed.
+                            if getattr(config, "REENTRY_OVERDUE_MODEL_ENABLED", False) is not True:
+                                continue
                             # Conditional overdue: require 15m Donchian breakout OR GR higher-high / higher-low on N TFs
                             _gr_mode = str(
                                 _cfg_auto("REENTRY_GR_HLHH_MODE", "OR")
@@ -60147,7 +60152,7 @@ async def monitor_direct_high_gain_positions(trade_manager, order_queue):
 
 async def periodic_direct_high_gain_reopen(trade_manager, order_queue, account_key):
     """Periodically check for re-opening high gain positions that were reduced"""
-    if getattr(config, "ENABLE_TR_HIGH_GAIN_REOPEN", False) is not True:
+    if getattr(config, "TR_HIGH_GAIN_REOPEN_ENABLED", False) is not True:
         return None
     # USER 2026-09-21 CRITICAL: tra never reopens — no buys
     if account_key == "tra":

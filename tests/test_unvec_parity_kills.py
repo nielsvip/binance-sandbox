@@ -34,7 +34,7 @@ TRADIER_KILLS = {
     "ENABLE_TR_DAYTRADE_WING": ("tradier_manage.py", ("_scan_dc_entries",)),
     "ENABLE_TR_REENTRY_MONITOR": ("tradier_manage.py", ("reentry_monitor_loop",)),
     "ENABLE_TR_REENTRY_DISPATCH": ("tradier_manage.py", ("_dispatch_reentry_guaranteed_trd",)),
-    "ENABLE_TR_HIGH_GAIN_REOPEN": ("tradier_manage.py", ("periodic_direct_high_gain_reopen",)),
+    "TR_HIGH_GAIN_REOPEN_ENABLED": ("tradier_manage.py", ("periodic_direct_high_gain_reopen",)),
     "ENABLE_TR_SWING_ENTRIES": ("tradier_manage.py", ("is_swing_entry_allowed",)),
     "ENABLE_TR_SYMGATE_REENTRY": ("tradier_manage.py", ("would_exit_trigger_now",)),
     "ENABLE_TR_REENTRY_PERIODIC": ("tradier_manage.py", ("periodic_evaluate_reentry_loop",)),
