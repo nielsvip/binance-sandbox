@@ -51193,7 +51193,7 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
                     logger.critical(f"🚨 [PRE_TWIN_VIGILANCE_DC4_{_vg_tf}_STOP] {position_key}: g={_gain:.2f}% AND px {_px:.6f} breached {'dc_low4' if _is_long else 'dc_high4'}_{_vg_tf} {_vg_lvl:.6f} → IMMEDIATE CLOSE + sym_side BLOCK")
                     if not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits (sym_side block above stands)
                         await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _is_long else 'SHORT'}_g{_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
-                    _fired = f"VIGILANCE_DC4_{_vg_tf}"
+                        _fired = f"VIGILANCE_DC4_{_vg_tf}"  # USER 2026-10-21 vec-only: _fired only inside the live-exit branch above
         if _fired is None:
             try:
                 _hs_tf = str(getattr(__import__("config").Config(), "DC_HARD_STOP_TF", "4h") or "4h").strip().upper()
@@ -51228,8 +51228,11 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
                 _lvl = _u_lo if _is_long else _u_hi
                 _side_o = "SELL" if _is_long else "BUY"
                 logger.critical(f"⛔ [PRE_TWIN_ULTIMATE_DC_{_hs_tf}_HARD_STOP] {position_key}: price {_px:.6f} breached {'dc_low' if _is_long else 'dc_high'}_{_hs_tf} {_lvl:.6f} g={_gain:.2f}% → HARD_STOP CLOSE TF={_hs_tf}")
-                await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{int(time.time())}", reason=f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{'LONG' if _is_long else 'SHORT'}_px{_px:.6f}_lvl{_lvl:.6f}_g{_gain:.2f}", is_full_close=True, action="CLOSE")
-                _fired = f"ULTIMATE_DC_{_hs_tf}"
+                if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
+                    pass
+                else:
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{int(time.time())}", reason=f"ULTIMATE_DC_{_hs_tf}_HARD_STOP_{'LONG' if _is_long else 'SHORT'}_px{_px:.6f}_lvl{_lvl:.6f}_g{_gain:.2f}", is_full_close=True, action="CLOSE")
+                    _fired = f"ULTIMATE_DC_{_hs_tf}"
         if _fired is not None:
             _PRE_TWIN_STOP_FIRED_TS[position_key] = _now
             try:
@@ -53504,7 +53507,7 @@ async def process_position(
                             if _wzg_htf_supports:
                                 logger.warning(f"[R2_WT_VEL_SLOW_HTF_HOLD] {position_key}: R2 fired {_wzg_fired_tf} but Daily WT supports side (wt1_D={_wzg_wt1_D:.2f} wt2_D={_wzg_wt2_D:.2f}) → HOLD")
                                 _wzg_fired_tf = None
-                    if _wzg_fired_tf:
+                    if _wzg_fired_tf and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         _wzg_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _wzg_close_side = "SELL" if _wzg_is_long else "BUY"
                         logger.error(
@@ -54780,7 +54783,7 @@ async def process_position(
                         f"→ skipping cross-back close on parabolic {'UP' if _db_is_long else 'DOWN'}trend, let it ride"
                     )
                     _db_wrong = False
-            if _db_wrong:
+            if _db_wrong and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _db_pos_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _db_close_side = "SELL" if _db_is_long else "BUY"
                 _db_open_pos_side = "SHORT" if _db_is_long else "LONG"
@@ -55754,7 +55757,7 @@ async def process_position(
                 _pp_decision = _hd.should_close_hedge_wt3m1h(
                     i, _pp_long, _pp_gain, config
                 )
-                if _pp_decision is not None:
+                if _pp_decision is not None and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _pp_w13 = _pp_decision["wt"]["wt1_3m"]
                     _pp_w23 = _pp_decision["wt"]["wt2_3m"]
                     _pp_w11 = _pp_decision["wt"]["wt1_1h"]

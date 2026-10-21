@@ -29,3 +29,12 @@ def test_load_blocklist_matches_file():
 def test_load_blocklist_missing_file_returns_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(G, "ROOT", tmp_path)
     assert G.load_blocklist() == {}
+
+
+def test_catastrophic_loser_never_arms_until_replaced():
+    # USER 2026-10-21: 1000FLOKIUSDT_LONG Oct-4 board (gain -32.40, 352
+    # trades, max_dd 33.27) must never arm live until a qualified gain>0
+    # slow replacement publishes.
+    b = G.load_blocklist()["1000FLOKIUSDT_LONG"]
+    assert "-32.40" in b["reason"] and "917890022535f17a3df33c404317c448" in b["reason"]
+    assert "gain>0 replacement" in b["until"]

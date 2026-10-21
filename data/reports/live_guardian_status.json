@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T23:52:45Z",
+ "ts": "2026-10-21T23:57:51Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -126,79 +126,72 @@
    "pids": [
     "56742"
    ],
-   "starts_30m": 3,
-   "log_age_s": 22.0
+   "starts_30m": 2,
+   "log_age_s": 28.0
   },
   "men": {
    "pids": [
     "56740"
    ],
    "starts_30m": 3,
-   "log_age_s": 19.0
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "3731"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 46.0
+   "log_age_s": 7.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13902.0
+   "log_age_s": 14208.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13905.0
+   "log_age_s": 14211.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T23:52:46Z",
+   "ts": "2026-10-21T23:57:51Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T23:52:46Z",
+   "ts": "2026-10-21T23:57:51Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T23:52:46Z",
+   "ts": "2026-10-21T23:57:51Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T23:52:47Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "fin",
-   "evidence": "3 new process ids in 30 min (['4464', '54965', '56742'])"
-  },
-  {
-   "ts": "2026-10-21T23:52:47Z",
+   "ts": "2026-10-21T23:57:52Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
@@ -207,7 +200,7 @@
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "RESTART_LOOP": 2
+  "RESTART_LOOP": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -255,5 +248,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.49
+ "sweep_s": 1.86
 }

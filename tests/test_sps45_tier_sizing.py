@@ -1,5 +1,5 @@
-"""SPS $45 sizing semantics (USER 2026-10-11): base $45, 365D-confirmed gainers to 4x ($180),
-losers and unconfirmed-365 trade always but small (never blocked).
+"""SPS $45 sizing semantics (USER 2026-10-11, tiers USER 2026-10-21): base $45, 30D gainers to 8x ($360),
+losers trade always but small (never blocked). 365D confirmation overruled 2026-10-21.
 
 Light by design: source-regex pins + pure helper tests + live-JSON invariants. No engine imports.
 """
@@ -53,15 +53,16 @@ def test_untested_flat_mult_declared_and_used():
     assert "_ufs.flat_sps_quantity(_oc_base * _oc_fmult, current_price)" in live
 
 
-def test_size_ranked_requires_365d_confirmation():
+def test_size_ranked_365d_overruled():
+    # USER 2026-10-21: 365D confirmation OVERRULED — 30D>0 always RANKED on 30D gain alone.
     m, t = tiers_mod._size_ranked({"g30": 24.0, "g365": 35.0}, 4.0, 20.0, 0.5)
     assert t == "RANKED" and m == 4.0, f"confirmed gainer must reach 4x, got {m} {t}"
     m, t = tiers_mod._size_ranked({"g30": 24.0, "g365": None}, 4.0, 20.0, 0.5)
-    assert (m, t) == (0.5, "RANKED_NO365_SMALL"), f"unconfirmed must trade small, got {m} {t}"
+    assert (m, t) == (4.0, "RANKED"), f"unconfirmed must rank on 30D alone, got {m} {t}"
     m, t = tiers_mod._size_ranked({"g30": 24.0, "g365": -3.0}, 4.0, 20.0, 0.5)
-    assert (m, t) == (0.5, "RANKED_NEG365_SMALL"), f"365D-negative must trade small, got {m} {t}"
+    assert (m, t) == (4.0, "RANKED"), f"365D-negative must rank on 30D alone, got {m} {t}"
     m, t = tiers_mod._size_ranked({"g30": 1.4, "g365": 12.9}, 4.0, 20.0, 0.5)
-    assert t == "RANKED" and 1.0 < m < 4.0, f"small confirmed gainer scales, got {m}"
+    assert t == "RANKED" and 1.0 < m < 4.0, f"small gainer scales, got {m}"
 
 
 def test_live_tiers_invariants():
@@ -70,15 +71,16 @@ def test_live_tiers_invariants():
         raise AssertionError("persym_size_tiers.json missing — regen via tools/v15_persym_size_tiers.py")
     d = json.loads(p.read_text())
     ts = d["tiers"]
-    assert d["_meta"]["rules"]["max_mult"] == 4.0
+    assert d["_meta"]["rules"]["max_mult"] == 8.0  # USER 2026-10-21: top gainers to 8x (was 4.0)
     assert d["_meta"]["rules"]["unconfirmed_mult"] == 0.5
     assert d["_meta"]["rules"]["min_mult_stocks"] == 0.05
     for ss, v in ts.items():
         floor = 0.05 if v.get("venue") == "stocks" else 0.25
-        assert floor <= v["mult"] <= 4.0, f"{ss} mult {v['mult']} outside [{floor}, 4.0]"
+        assert floor <= v["mult"] <= 8.0, f"{ss} mult {v['mult']} outside [{floor}, 8.0]"
         assert v["tier"] != "RANKED_NEG365_CAP1", f"{ss} still on retired CAP1 tier"
+        assert v["tier"] not in ("RANKED_NO365_SMALL", "RANKED_NEG365_SMALL", "NEG30_POS365"), f"{ss} on retired 365D-gated tier {v['tier']}"
         if v["tier"] == "RANKED":
-            assert (v.get("g365") or 0) > 0, f"{ss} RANKED without 365D confirmation"
+            assert (v.get("g30") or 0) > 0, f"{ss} RANKED without positive 30D"
     sps = _fnum(_read("config.py"), "START_POSITION_SIZE")
     assert sps * 0.25 >= 5.0, "smallest crypto tier must clear the $5 futures notional"
 
@@ -94,6 +96,6 @@ def test_min_mult_for_venue():
 def test_effective_step_arithmetic():
     sps = _fnum(_read("config.py"), "START_POSITION_SIZE")
     hard = _fnum(_read("config.py"), "OPEN_CEIL_ABSOLUTE_MAX_USD")
-    assert min(sps * 4.0, hard) == 180.0, "confirmed gainer step must be $180"
+    assert min(sps * 8.0, hard) == 360.0, "top gainer step must be $360 (8x, USER 2026-10-21)"
     assert sps * 0.25 == 11.25, "loser/untested step must be $11.25 (trades, small)"
     assert sps * 0.5 == 22.5, "unconfirmed-365 step must be $22.50 (trades, small)"
