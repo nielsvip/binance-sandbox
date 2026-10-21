@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:31:29Z",
+ "ts": "2026-10-21T00:36:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,10 +111,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 232,
+  "total": 227,
   "per_acct": {
    "fin": 62,
-   "ang": 55,
+   "ang": 50,
    "men": 96,
    "flz": 18,
    "inf": 1
@@ -127,57 +127,57 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 13.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 5.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 21.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 16.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16225.0
+   "log_age_s": 16540.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16227.0
+   "log_age_s": 16542.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:31:29Z",
+   "ts": "2026-10-21T00:36:44Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
    "evidence": "21 00:24:51 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $48 on bounce (prior max 3.0000)"
   },
   {
-   "ts": "2026-10-21T00:31:29Z",
+   "ts": "2026-10-21T00:36:44Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
@@ -219,13 +219,6 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:men:GALAUSDT_SHORT",
    "dry_run": false
   },
-  "key:fin:COMPUSDT_LONG": {
-   "ts": 1792535525.422585,
-   "until": 1792542725.422587,
-   "why": "SIZE_ANOMALY order $612.90 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:COMPUSDT_LONG",
-   "dry_run": false
-  },
   "key:men:ENSUSDT_LONG": {
    "ts": 1792535914.776433,
    "until": 1792543114.776435,
@@ -237,13 +230,6 @@
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
    "undo": "alert-only (never-halt policy 2026-10-10)",
-   "dry_run": false
-  },
-  "key:men:COMPUSDT_LONG": {
-   "ts": 1792535609.3484821,
-   "until": 1792542809.348483,
-   "why": "SIZE_ANOMALY order $1184.63 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:men:COMPUSDT_LONG",
    "dry_run": false
   },
   "key:ang:COMPUSDT_LONG": {
@@ -268,5 +254,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.72
+ "sweep_s": 1.17
 }
