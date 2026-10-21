@@ -1,12 +1,11 @@
 {
- "generated_utc": "2026-10-21T12:40:02Z",
+ "generated_utc": "2026-10-21T13:00:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
-  "selection_fresh",
   "live_set_matches_selection"
  ],
  "checks": [
@@ -15,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 445,
-    "filled_before_open": 445
+    "filled_today": 454,
+    "filled_before_open": 454
    },
-   "detail": "445 boards filled before the open (445 today)"
+   "detail": "454 boards filled before the open (454 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -26,23 +25,23 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "{\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:15:01Z\",\"ended\":\"2026-10-21T12:36:33Z\"}",
+    "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 0.3,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261021=False, s1 stamp {\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:15:01Z\",, cat_side layer 0.3d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261021=False, s1 stamp NO_STAMP, cat_side layer 0.3d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
-   "ok": false,
+   "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-21T10:50:37.969432+00:00",
+    "built_at": "2026-10-21T12:40:56.629501+00:00",
     "n": 477,
-    "age_at_open_s": 9562
+    "age_at_open_s": 2943
    },
-   "detail": "built 2026-10-21T10:50:37.969432+00:00 n=477 \u2014 9562s before the open > 7200s"
+   "detail": "built 2026-10-21T12:40:56.629501+00:00 n=477"
   },
   {
    "name": "apply_report_written",
@@ -62,9 +61,9 @@
    "critical": true,
    "measured": {
     "selection_n": 477,
-    "exact": 47,
-    "benign_divergence_only": 363,
-    "material_divergence": 66,
+    "exact": 46,
+    "benign_divergence_only": 380,
+    "material_divergence": 50,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -135,32 +134,6 @@
       ]
      },
      {
-      "sym_side": "RAYSOLUSDT_LONG",
-      "published_at": "2026-10-18T18:20:18Z",
-      "material": 52,
-      "sample": [
-       "ADX_TRENDING_THRESHOLD",
-       "ALL_TF_AGAINST_BLOCK_ENTRY_MIN_TFS",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BB_FROZEN_STOP_ENABLED",
-       "BREAKOUT_RETEST_FILTER_TF"
-      ]
-     },
-     {
-      "sym_side": "ARUSDT_LONG",
-      "published_at": "2026-10-18T13:23:23Z",
-      "material": 49,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_EDGE_SIZING_ENABLED",
-       "DC_EDGE_SIZING_MAX_MULT"
-      ]
-     },
-     {
       "sym_side": "ACN_LONG",
       "published_at": "2026-10-21T10:07:34Z",
       "material": 47,
@@ -198,10 +171,36 @@
        "BB_RECOVERY_FILTER_TF",
        "COUNTER_TREND_SMA200_BYPASS_ENABLED"
       ]
+     },
+     {
+      "sym_side": "1000FLOKIUSDT_LONG",
+      "published_at": "2026-10-13T03:39:04Z",
+      "material": 41,
+      "sample": [
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_BOUNCE_ENTRY_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREAKOUT_TF_EXPANDED",
+       "ENTRY_DC_TF"
+      ]
+     },
+     {
+      "sym_side": "AR_LONG",
+      "published_at": "2026-10-19T21:48:26Z",
+      "material": 40,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ADX_TRENDING_THRESHOLD",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "47 exact, 363 benign-only, 66 with material divergence, 1 with no live row"
+   "detail": "46 exact, 380 benign-only, 50 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -211,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 10.0,
+    "median_age_min": 15.1,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"

@@ -1,9 +1,16 @@
 {
   "ang:BTCDOMUSDT_LONG": {
-    "orderId": "4000001984099962",
-    "stopPrice": 5499.6,
+    "orderId": "4000001984101703",
+    "stopPrice": 5502.1,
     "entry_sig": "2026-10-21 11:02:02.194000+00:00",
     "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "ang:ENAUSDC_LONG": {
+    "orderId": "4000001984113259",
+    "stopPrice": 0.19923,
+    "entry_sig": "2026-10-21 12:15:42.290000+00:00",
+    "symbol": "ENAUSDC",
     "side": "LONG"
   }
 }
