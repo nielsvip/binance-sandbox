@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T20:11:30Z",
+ "ts": "2026-10-21T20:16:21Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 3,
    "open_positions": 1,
-   "unrealised_usd": 0.11,
+   "unrealised_usd": 0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -46,7 +46,7 @@
    "fills_6h": 15,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 0,
+   "pos_mismatch": 4,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -62,7 +62,7 @@
    "fills_6h": 65,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 0,
+   "pos_mismatch": 12,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -94,7 +94,7 @@
    "fills_6h": 24,
    "open_positions": 0,
    "unrealised_usd": 0.0,
-   "pos_mismatch": 0,
+   "pos_mismatch": 7,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -123,105 +123,239 @@
  "reconcile": {},
  "process": {
   "fin": {
-   "pids": [],
+   "pids": [
+    "6081"
+   ],
    "starts_30m": 5,
-   "log_age_s": 353.0
+   "log_age_s": 9.0
   },
   "men": {
    "pids": [
-    "56489"
+    "11476"
    ],
    "starts_30m": 2,
-   "log_age_s": 324.0
+   "log_age_s": 76.0
   },
   "ang": {
    "pids": [
     "56197"
    ],
-   "starts_30m": 2,
-   "log_age_s": 4.0
+   "starts_30m": 1,
+   "log_age_s": -0.0
   },
   "inf": {
    "pids": [
-    "56478"
+    "12296"
    ],
-   "starts_30m": 3,
-   "log_age_s": 312.0
+   "starts_30m": 4,
+   "log_age_s": 53.0
   },
   "flz": {
    "pids": [
     "56248"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 4.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 1,
-   "log_age_s": 627.0
+   "log_age_s": 919.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 1,
-   "log_age_s": 630.0
+   "log_age_s": 923.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T20:11:31Z",
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:BBUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 739"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:LTCUSDC_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.605"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:RVNUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 9250"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:KSMUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 8.3"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:ALGOUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 459.9"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 11.3"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:COMPUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.99"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:DASHUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.004"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:EDUUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 943"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:KAVAUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 366"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:RAYSOLUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 12.6"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:XMRUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.129"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:ZROUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 32.8"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:AXSUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 7"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:BBUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 9797"
+  },
+  {
+   "ts": "2026-10-21T20:16:22Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:BLURUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 737"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:DASHUSDT_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.273"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:ETHUSDC_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.02"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:SOLUSDC_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.49"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:WLDUSDC_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 88.3"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.071"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:SOLUSDC_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 0.93"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:XRPUSDC_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 50.4"
+  },
+  {
+   "ts": "2026-10-21T20:16:24Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:ZECUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.088595->0.265786 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.088595)"
   },
   {
-   "ts": "2026-10-21T20:11:32Z",
+   "ts": "2026-10-21T20:16:24Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "5 new process ids in 30 min (['8888', '11211', '56496', '64370', '64995'])"
+   "evidence": "5 new process ids in 30 min (['11211', '56496', '64370', '64995', '6081'])"
   },
   {
-   "ts": "2026-10-21T20:11:32Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "fin",
-   "evidence": "no ez_manage.py --account fin process"
-  },
-  {
-   "ts": "2026-10-21T20:11:32Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 353s"
-  },
-  {
-   "ts": "2026-10-21T20:11:32Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 324s"
-  },
-  {
-   "ts": "2026-10-21T20:11:32Z",
+   "ts": "2026-10-21T20:16:24Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "3 new process ids in 30 min (['99365', '13913', '56478'])"
-  },
-  {
-   "ts": "2026-10-21T20:11:32Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 312s"
+   "evidence": "4 new process ids in 30 min (['13913', '56478', '10076', '12296'])"
   }
  ],
  "alert_counts": {
+  "POSITION_STATE_MISMATCH": 23,
   "SIZE_ANOMALY": 1,
-  "RESTART_LOOP": 2,
-  "PROCESS_DOWN": 1,
-  "STALE_LOG": 3
+  "RESTART_LOOP": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -262,5 +396,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.8
+ "sweep_s": 2.94
 }

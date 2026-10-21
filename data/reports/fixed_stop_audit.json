@@ -3,64 +3,26 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 3.8922450000000004,
-   "key": "ang:ARUSDT_LONG",
-   "live_level": 3.8312445000000004,
-   "mark": 3.95703333,
-   "opened_at": "2026-10-21T20:01:44.827000Z",
-   "resting_trigger": 3.825
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.686,
+   "mark": 12.702,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
-  },
-  {
-   "armed": true,
-   "code": "NO_FROZEN_LEVEL",
-   "entry_bar_level": 5640.465999999999,
-   "key": "flz:BTCDOMUSDT_SHORT",
-   "live_level": 0.0,
-   "mark": 5528.91472697,
-   "opened_at": "2026-10-15T08:39:08.553000Z",
-   "resting_trigger": 0.0
   }
  ],
- "n_findings": 3,
- "n_positions": 3,
+ "n_findings": 1,
+ "n_positions": 1,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 3.8922450000000004,
-   "key": "ang:ARUSDT_LONG",
-   "live_level": 3.8312445000000004,
-   "mark": 3.95703333,
-   "opened_at": "2026-10-21T20:01:44.827000Z",
-   "resting_trigger": 3.825
-  },
-  {
-   "armed": true,
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.686,
+   "mark": 12.702,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 5640.465999999999,
-   "key": "flz:BTCDOMUSDT_SHORT",
-   "live_level": 0.0,
-   "mark": 5528.91472697,
-   "opened_at": "2026-10-15T08:39:08.553000Z",
-   "resting_trigger": 0.0
   }
  ],
- "ts": "2026-10-21T20:02:46.291421+00:00"
+ "ts": "2026-10-21T20:12:01.709760+00:00"
 }
