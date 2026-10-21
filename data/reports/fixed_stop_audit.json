@@ -6,42 +6,23 @@
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.588,
+   "mark": 12.534,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.00832713,
-   "key": "men:BBUSDT_LONG",
-   "live_level": 0.0083114775,
-   "mark": 0.00873,
-   "opened_at": "2026-10-21T09:53:31.353000Z",
-   "resting_trigger": 0.008298
   }
  ],
- "n_findings": 2,
- "n_positions": 2,
+ "n_findings": 1,
+ "n_positions": 1,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.588,
+   "mark": 12.534,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.00832713,
-   "key": "men:BBUSDT_LONG",
-   "live_level": 0.0083114775,
-   "mark": 0.00873,
-   "opened_at": "2026-10-21T09:53:31.353000Z",
-   "resting_trigger": 0.008298
   }
  ],
- "ts": "2026-10-21T15:11:12.482959+00:00"
+ "ts": "2026-10-21T15:21:19.541069+00:00"
 }
