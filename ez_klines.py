@@ -888,12 +888,14 @@ WS_1M_URL = "wss://fstream.binance.com/stream"
 WS_CHUNK_SIZE = 180  # max streams per connection (Binance limit 200)
 
 async def _fetch_stale_1m_rest(symbols):
-    """One-time REST fetch for 1m files older than 2 minutes."""
+    """One-time REST fetch for 1m files that do not exist at all.
+    USER 2026-10-21: live 1m is built from mark prices (OHLC); this WS file is only upgraded to OHLCV "if and when we can
+    get a full read", so a stale 1m file is filled by the WS, never by REST (the stale seed pulled 6-8 bars per symbol on
+    every restart)."""
     stale = []
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
     for sym in symbols:
         best_file, _, latest_dt = get_best_klines_file(sym, '1m')
-        if best_file is None or latest_dt is None or latest_dt < cutoff:
+        if best_file is None or latest_dt is None:
             stale.append(sym)
     if not stale:
         log(f'1m REST seed: all {len(symbols)} symbols fresh, skipping')
