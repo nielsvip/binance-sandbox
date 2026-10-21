@@ -3,45 +3,26 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 3.8922450000000004,
-   "key": "ang:ARUSDT_LONG",
-   "live_level": 3.8312445000000004,
-   "mark": 3.9513075,
-   "opened_at": "2026-10-21T20:31:15.682000Z",
-   "resting_trigger": 3.825
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.63572281,
+   "mark": 12.703,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
   }
  ],
- "n_findings": 2,
- "n_positions": 2,
+ "n_findings": 1,
+ "n_positions": 1,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 3.8922450000000004,
-   "key": "ang:ARUSDT_LONG",
-   "live_level": 3.8312445000000004,
-   "mark": 3.9513075,
-   "opened_at": "2026-10-21T20:31:15.682000Z",
-   "resting_trigger": 3.825
-  },
-  {
-   "armed": true,
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.63572281,
+   "mark": 12.703,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
   }
  ],
- "ts": "2026-10-21T20:31:58.841704+00:00"
+ "ts": "2026-10-21T20:41:40.335269+00:00"
 }

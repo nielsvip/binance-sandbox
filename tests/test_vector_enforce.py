@@ -14,8 +14,10 @@ from live_twins import vector_enforce as ve
 def _iso(tmp_path, monkeypatch, enforce=True):
     k = tmp_path / "kills.json"
     v = tmp_path / "viol.jsonl"
+    q = tmp_path / "retrace.jsonl"
     monkeypatch.setattr(ve, "KILLS", k)
     monkeypatch.setattr(ve, "VIOLATIONS", v)
+    monkeypatch.setattr(ve, "RETRACE_QUEUE", q)
     ve._KILLS.update(loaded=0.0, killed={})
     mod = types.ModuleType("config")
     mod.Config = type(
@@ -58,13 +60,53 @@ def test_cross_exits_allowed(tmp_path, monkeypatch):
 
 def test_non_cross_exit_kills_family(tmp_path, monkeypatch):
     k, v = _iso(tmp_path, monkeypatch)
-    ok, verdict = ve.check("REDUCE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
+    ok, verdict = ve.check("REDUCE", "ang:X_LONG", "MAKER_PROFIT_EXIT_px1_g0.05")
     assert ok is False and verdict == "VIOLATION_FAMILY_KILLED"
-    assert json.loads(k.read_text())["VEL_EXIT"]["why"].startswith("non-cross exit")
-    ok2, v2 = ve.check("CLOSE", "ang:Y_LONG", "VEL_EXIT_v4h-9_g0.1")
-    assert ok2 is False and v2 == "KILLED_FAMILY_VEL_EXIT"
+    assert json.loads(k.read_text())["MAKER_PROFIT_EXIT"]["why"].startswith(
+        "non-cross exit"
+    )
+    ok2, v2 = ve.check("CLOSE", "ang:Y_LONG", "MAKER_PROFIT_EXIT_px2_g0.1")
+    assert ok2 is False and v2 == "KILLED_FAMILY_MAKER_PROFIT_EXIT"
     ok3, _ = ve.check("OPEN", "ang:Z_LONG", "QUICK_OPEN_STRONG_BUY_k1")
-    assert ok3 is True, "killing VEL_EXIT must not touch entries"
+    assert ok3 is True, "killing an exit family must not touch entries"
+
+
+def test_vel_exit_exempt_skips_kill_keeps_window(tmp_path, monkeypatch):
+    """VEL_EXIT is vector-modeled + switch-gated (v12 vel_exit + twin vel_exit_fires):
+    lawful when its switch says so — never killed, but still bar-windowed."""
+    k, v = _iso(tmp_path, monkeypatch)
+    assert ve.family_of("VEL_EXIT_v4h-10_g-0.05") == "VEL_EXIT"
+    ok, verdict = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    assert not k.exists(), "exempt family must not write a kill entry"
+    monkeypatch.setattr(ve, "in_bar_window", lambda now=None: False)
+    ok2, v2 = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
+    assert (ok2, v2) == (False, "OFF_BAR_WINDOW")
+
+
+def test_vel_exit_stale_kill_does_not_block(tmp_path, monkeypatch):
+    """A kill entry predating the exemption (e.g. live data/vector_kills.json) must
+    not block a vector-modeled switch exit — BIBLE §126.1 step 4, never re-kill."""
+    k, v = _iso(tmp_path, monkeypatch)
+    k.write_text(json.dumps({"VEL_EXIT": {"disabled_at": 1.0, "why": "stale"}}))
+    ve._KILLS.update(loaded=0.0, killed={})
+    ok, verdict = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+
+
+def test_new_kill_files_retrace_order(tmp_path, monkeypatch):
+    """Every newly killed family files one TODO retrace work order (BIBLE §126.1)."""
+    k, v = _iso(tmp_path, monkeypatch)
+    q = ve.RETRACE_QUEUE
+    ok, _ = ve.check("CLOSE", "ang:X_LONG", "MAKER_PROFIT_EXIT_px1_g0.05")
+    assert ok is False
+    rows = [json.loads(line) for line in q.read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["family"] == "MAKER_PROFIT_EXIT"
+    assert rows[0]["status"] == "TODO" and "retrace" in rows[0]
+    ok2, _ = ve.check("CLOSE", "ang:Y_LONG", "MAKER_PROFIT_EXIT_px2_g0.1")
+    assert ok2 is False
+    rows2 = [json.loads(line) for line in q.read_text().splitlines()]
+    assert len(rows2) == 1, "one TODO row per family, no per-bar spam"
 
 
 def test_off_bar_entries_refused_without_kill(tmp_path, monkeypatch):

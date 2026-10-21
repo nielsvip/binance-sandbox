@@ -2,11 +2,16 @@
 """vector_violations — manual restore console for the vector-copy-trading law.
 
 A disabled family can NEVER act again until restored here, by a human, on purpose.
+Every new kill also files a retrace work order (BIBLE §126.1 standing agent job):
+an agent vectorizes it (switch + shared scalar/vec core, both venues) or notes
+non-vectorizable (stays killed, switch default OFF).
 Usage:
   python3 tools/vector_violations.py list [--n 20]
   python3 tools/vector_violations.py kills
   python3 tools/vector_violations.py restore FAMILY [--why TEXT]   # manual restore, logged
   python3 tools/vector_violations.py disable FAMILY --why TEXT     # manual disable, logged
+  python3 tools/vector_violations.py queue                          # pending retrace work orders
+  python3 tools/vector_violations.py resolve FAMILY --note TEXT --verdict vectorized|non_vectorizable
 """
 
 import json
@@ -38,6 +43,61 @@ def main(argv):
         return 0
     if cmd == "kills":
         print(json.dumps(ve._load_kills(), indent=1))
+        return 0
+    if cmd == "queue":
+        try:
+            lines = Path(ve.RETRACE_QUEUE).read_text().splitlines()
+        except OSError:
+            lines = []
+        pending = 0
+        for line in lines:
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            if d.get("status") != "TODO":
+                continue
+            pending += 1
+            print(
+                f"{time.strftime('%m-%d %H:%M', time.gmtime(d['ts']))} {d['family']} "
+                f"{d.get('example_action', '')} {d.get('example_reason', '')[:90]}"
+            )
+        if not pending:
+            print("queue empty — every killed family has a retrace resolution")
+        return 0
+    if cmd == "resolve":
+        fam = argv[2].upper() if len(argv) > 2 else ""
+        note = argv[argv.index("--note") + 1] if "--note" in argv else ""
+        verdict = argv[argv.index("--verdict") + 1] if "--verdict" in argv else ""
+        if not fam or not note or verdict not in ("vectorized", "non_vectorizable"):
+            print(
+                "usage: resolve FAMILY --note TEXT --verdict vectorized|non_vectorizable"
+            )
+            return 2
+        try:
+            with open(ve.RESOLUTIONS, "a") as fh:
+                fh.write(
+                    json.dumps(
+                        {
+                            "ts": time.time(),
+                            "family": fam,
+                            "verdict": verdict,
+                            "note": note[:500],
+                        }
+                    )
+                    + "\n"
+                )
+        except Exception as e:
+            print(f"resolve failed: {e}")
+            return 1
+        print(
+            f"RESOLVED {fam} as {verdict} ({note[:80]}) — "
+            + (
+                "restore it + list in VEC_SWITCH_EXIT_FAMILIES (done separately, never re-kill)"
+                if verdict == "vectorized"
+                else "stays killed, switch default OFF"
+            )
+        )
         return 0
     if cmd in ("restore", "disable"):
         fam = argv[2].upper() if len(argv) > 2 else ""
