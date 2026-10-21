@@ -1,21 +1,21 @@
 {
- "at": "2026-10-21T01:26:01Z",
+ "at": "2026-10-21T02:26:00Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 3,
-   "per_hour": 1.5,
-   "improved_vs_best_start": 3,
-   "mean_uplift_vs_best_start": 25.3928,
-   "median_uplift": 27.2122,
-   "chained_from_previous_published": 3,
+   "published_n": 4,
+   "per_hour": 2.0,
+   "improved_vs_best_start": 4,
+   "mean_uplift_vs_best_start": 35.3883,
+   "median_uplift": 36.2334,
+   "chained_from_previous_published": 4,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 1.5/h < 12.0/h (one per 5 min)"
+    "throughput 2.0/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -34,19 +34,34 @@
      "npz_age_h_at_publish": 2.26
     },
     {
-     "symside": "GALAUSDT_LONG",
-     "published_at": 1792540083.0210664,
-     "final_gain": 50.64041880759267,
-     "best_start_gain": 31.724226259127065,
-     "best_start_chosen": "history_2",
-     "best_start_candidates": 9,
-     "baseline_gain": 31.724226259127065,
-     "npz_ts_last": 1792535400.0,
-     "npz_md5": "2aca1ab354a9907ad0821873a7008fa2",
-     "npz_bars": 40494,
-     "bh": 1.3312834381110985,
+     "symside": "RVNUSDT_LONG",
+     "published_at": 1792548727.3031058,
+     "final_gain": 46.140790505472715,
+     "best_start_gain": 9.907438031526565,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 7,
+     "baseline_gain": 9.907438031526565,
+     "npz_ts_last": 1792539900.0,
+     "npz_md5": "bfbca47efeda7478d904482064c836b5",
+     "npz_bars": 40498,
+     "bh": -33.034112511334556,
      "verdict": null,
-     "npz_age_h_at_publish": 1.3
+     "npz_age_h_at_publish": 2.45
+    },
+    {
+     "symside": "RVNUSDT_SHORT",
+     "published_at": 1792547215.8237891,
+     "final_gain": 56.04779385427211,
+     "best_start_gain": 7.990133152242859,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 8,
+     "baseline_gain": 8.04068181114037,
+     "npz_ts_last": 1792539900.0,
+     "npz_md5": "bfbca47efeda7478d904482064c836b5",
+     "npz_bars": 40498,
+     "bh": 33.034112511334556,
+     "verdict": null,
+     "npz_age_h_at_publish": 2.03
     },
     {
      "symside": "WLDUSDC_LONG",
@@ -67,17 +82,17 @@
    "error": null
   },
   "s2": {
-   "published_n": 7,
-   "per_hour": 3.5,
-   "improved_vs_best_start": 7,
-   "mean_uplift_vs_best_start": 15.1165,
-   "median_uplift": 13.0037,
-   "chained_from_previous_published": 3,
+   "published_n": 5,
+   "per_hour": 2.5,
+   "improved_vs_best_start": 5,
+   "mean_uplift_vs_best_start": 15.4264,
+   "median_uplift": 10.9412,
+   "chained_from_previous_published": 1,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [],
    "fails": [
-    "throughput 3.5/h < 12.0/h (one per 5 min)"
+    "throughput 2.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -111,21 +126,6 @@
      "npz_age_h_at_publish": 0.89
     },
     {
-     "symside": "ADP_LONG",
-     "published_at": 1792541138.171499,
-     "final_gain": 15.088482800678996,
-     "best_start_gain": 14.166619316036053,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 6,
-     "baseline_gain": 14.166619316036053,
-     "npz_ts_last": 1792526400.0,
-     "npz_md5": "5eff18e0b730989b90f4581837a316ff",
-     "npz_bars": 16147,
-     "bh": 9.150627076117306,
-     "verdict": null,
-     "npz_age_h_at_publish": 4.09
-    },
-    {
      "symside": "BHVN_SHORT",
      "published_at": 1792544747.2921965,
      "final_gain": 70.39044747416591,
@@ -156,34 +156,19 @@
      "npz_age_h_at_publish": 5.11
     },
     {
-     "symside": "SKYUSDT_SHORT",
-     "published_at": 1792542152.6578848,
-     "final_gain": 55.56959128990183,
-     "best_start_gain": 42.56589625994923,
-     "best_start_chosen": "history_0",
-     "best_start_candidates": 8,
-     "baseline_gain": 48.56054889347969,
-     "npz_ts_last": 1792539000.0,
-     "npz_md5": "1a0502d0d1eb8f05e356ad9a57a40abd",
-     "npz_bars": 39043,
-     "bh": -6.627344508366837,
-     "verdict": null,
-     "npz_age_h_at_publish": 0.88
-    },
-    {
-     "symside": "SNXUSDT_SHORT",
-     "published_at": 1792540131.596959,
-     "final_gain": 39.906111971117085,
-     "best_start_gain": 23.679818339668373,
+     "symside": "NXE_SHORT",
+     "published_at": 1792546338.7299767,
+     "final_gain": 48.1029779791832,
+     "best_start_gain": 46.634677174747004,
      "best_start_chosen": "history_1",
-     "best_start_candidates": 9,
-     "baseline_gain": 25.284026081674433,
-     "npz_ts_last": 1792527300.0,
-     "npz_md5": "ac529a1011d6420be287db1ef0ae82b7",
-     "npz_bars": 40484,
-     "bh": 2.0723061124328117,
+     "best_start_candidates": 7,
+     "baseline_gain": 46.634677174747004,
+     "npz_ts_last": 1792526400.0,
+     "npz_md5": "ae3b615748b219c5ed6af9476085a129",
+     "npz_bars": 5434,
+     "bh": 20.113803764511953,
      "verdict": null,
-     "npz_age_h_at_publish": 3.56
+     "npz_age_h_at_publish": 5.54
     }
    ],
    "error": null
