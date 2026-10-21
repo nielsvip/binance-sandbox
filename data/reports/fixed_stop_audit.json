@@ -3,42 +3,23 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.0043769149999999995,
-   "key": "ang:SKLUSDT_SHORT",
-   "live_level": 0.004381281000000001,
-   "mark": 0.004287,
-   "opened_at": "2026-10-21T05:33:31.095000Z",
-   "resting_trigger": 0.004388
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 0.04721775,
    "key": "ang:1000LUNCUSDT_SHORT",
    "live_level": 0.04717065000000001,
-   "mark": 0.04638,
+   "mark": 0.04637864,
    "opened_at": "2026-10-21T05:30:16.625000Z",
    "resting_trigger": 0.04725
   }
  ],
- "n_findings": 2,
- "n_positions": 5,
+ "n_findings": 1,
+ "n_positions": 2,
  "positions": [
-  {
-   "armed": true,
-   "entry_bar_level": 0.0043769149999999995,
-   "key": "ang:SKLUSDT_SHORT",
-   "live_level": 0.004381281000000001,
-   "mark": 0.004287,
-   "opened_at": "2026-10-21T05:33:31.095000Z",
-   "resting_trigger": 0.004388
-  },
   {
    "armed": true,
    "entry_bar_level": 0.04721775,
    "key": "ang:1000LUNCUSDT_SHORT",
    "live_level": 0.04717065000000001,
-   "mark": 0.04638,
+   "mark": 0.04637864,
    "opened_at": "2026-10-21T05:30:16.625000Z",
    "resting_trigger": 0.04725
   },
@@ -47,28 +28,10 @@
    "entry_bar_level": 4.247355000000001,
    "key": "fin:KSMUSDT_LONG",
    "live_level": 4.247355000000001,
-   "mark": 4.2763125,
+   "mark": 4.278,
    "opened_at": "2026-10-21T04:57:29.429000Z",
    "resting_trigger": 4.24
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 6.073777500000001,
-   "key": "fin:ZENUSDT_LONG",
-   "live_level": 6.073777500000001,
-   "mark": 6.15609583,
-   "opened_at": "2026-10-21T04:15:27.810000Z",
-   "resting_trigger": 6.064
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 6.066795,
-   "key": "inf:ZENUSDT_LONG",
-   "live_level": 6.066795,
-   "mark": 6.15578333,
-   "opened_at": "2026-10-21T03:31:54.086000Z",
-   "resting_trigger": 6.057
   }
  ],
- "ts": "2026-10-21T05:41:11.406809+00:00"
+ "ts": "2026-10-21T05:54:56.927389+00:00"
 }
