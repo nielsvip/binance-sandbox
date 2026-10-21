@@ -3499,7 +3499,11 @@ class TradierConfig:
     OUTLIER_STUCK_HOURS: float = 2.0
     OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS: bool = True
     OVERNIGHT_GAP_HEDGE_CLOSE_MINUTES: float = 5.0
-    OVERNIGHT_GAP_HEDGE_ENABLED: bool = False
+    OVERNIGHT_GAP_HEDGE_ENABLED: bool = (
+        True  # USER 2026-10-21: gap protection on by default. Same-sector mate hedges 15min
+        # pre-close on |sentiment|>20, closed 09:35 ET. Hedge mates are tagged positions, never
+        # board positions; per-sym kill: OVERNIGHT_GAP_HEDGE_ENABLED=False. ROLLBACK: False.
+    )
     OVERNIGHT_GAP_HEDGE_OPEN_MINUTES: float = 15.0
     OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD: float = 20.0
     OVERNIGHT_GAP_HEDGE_SIZE_FRAC: float = 0.50

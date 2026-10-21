@@ -22191,15 +22191,14 @@ async def reallocate_capital_for_winner(
     winner_gain: float,
     data_manager=None,
 ):
-    """Close smallest profitable position to free capital for a big winner. Returns (freed_usd, donor_key) or (0, None)."""
+    """Trim half of the smallest profitable position to free capital for a big winner. Returns (freed_usd, donor_key) or (0, None)."""
     if (
         _vx_native_off()
     ):  # 2026-10-06 USER churn audit: native EXIT producer off at the source while the vec twin owns EXIT (legacy positions keep process_position native exits; emergency margin/oversize/stale-price closes stay)
         return 0.0, None
-    if not bool(getattr(config, "CAPITAL_REALLOC_ENABLED", False)):
-        # USER 2026-10-21 EXACT-PARITY: donor-closes (REALLOC_FOR_*) have NO vector model; the 10-06
-        # _vx_native_off gate above is inert while twin mode is off. 1 live fire post-10-18 (near-dormant).
-        # Winner augments now rely on free margin vs donor funding; rollback: default True. ROLLBACK: True.
+    if not bool(getattr(config, "CAPITAL_REALLOC_ENABLED", True)):
+        # USER 2026-10-21: existence-neutral balancer — donor is REDUCED by half, never CLOSED, so the
+        # position's bars-held still match vector (same bars, never same quantities). ROLLBACK: False.
         return 0.0, None
     global _realloc_cooldowns
     _cd_key = f"realloc_{account_key}"
@@ -22248,8 +22247,9 @@ async def reallocate_capital_for_winner(
     donor_sym = parse_position_key(donor_pk)[1]
     donor_price = safe_fetch_float(getattr(donor_pos, "mark_price", 0.0), 0.0)
     winner_sym = winner_key.split(":")[1].replace("_LONG", "").replace("_SHORT", "")
+    trim_amt = donor_amt / 2.0  # USER 2026-10-21: keep a live stub — a balancer resizes, it never flattens.
     logger.warning(
-        f"\U0001f4b0 [CAPITAL_REALLOC] {account_key}: Closing {donor_pk} (gain={donor_gain:.2f}% val=${donor_val:.1f}) to fund {winner_key} (gain={winner_gain:.1f}%)"
+        f"\U0001f4b0 [CAPITAL_REALLOC] {account_key}: Trimming half of {donor_pk} (gain={donor_gain:.2f}% val=${donor_val:.1f}) to fund {winner_key} (gain={winner_gain:.1f}%)"
     )
     success, msg = await execute_trade_wrapper(
         trade_manager,
@@ -22258,20 +22258,20 @@ async def reallocate_capital_for_winner(
         account_key,
         donor_pk,
         donor_pos.positionAmt,
-        "CLOSE",
+        "REDUCE",
         donor_price,
-        donor_amt,
+        trim_amt,
         f"REALLOC_FOR_{winner_sym}_{winner_gain:.0f}pct",
         data_manager=data_manager,
     )
     if success:
         _realloc_cooldowns[_cd_key] = time.time()
         logger.warning(
-            f"\u2705 [CAPITAL_REALLOC] Freed ~${donor_val:.1f} from {donor_pk} for {winner_key}"
+            f"\u2705 [CAPITAL_REALLOC] Freed ~${donor_val / 2.0:.1f} from {donor_pk} for {winner_key}"
         )
-        return donor_val, donor_pk
+        return donor_val / 2.0, donor_pk
     else:
-        logger.error(f"\u274c [CAPITAL_REALLOC] Failed to close {donor_pk}: {msg}")
+        logger.error(f"\u274c [CAPITAL_REALLOC] Failed to trim {donor_pk}: {msg}")
         _realloc_cooldowns[_cd_key] = time.time()
         return 0.0, None
 

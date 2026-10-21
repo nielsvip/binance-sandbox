@@ -210,10 +210,10 @@ class Config:
     OVERSIZE_TRIM_TOLERANCE_PCT: float = 10.0  # trim only when notional > cap x (1 + this %)
     OVERSIZE_TRIM_COOLDOWN_SEC: float = 900.0  # at most one trim per position per 15 min
     CAPITAL_REALLOC_ENABLED: bool = (
-        False  # USER 2026-10-21 EXACT-PARITY: was absent (=on). reallocate_capital_for_winner donor-closes
-        # (REALLOC_FOR_* reasons) have NO vector model; the 10-06 _vx_native_off gate above them is inert while
-        # twin mode is off. 1 live fire post-10-18 (near-dormant). Winner augments rely on free margin now.
-        # ROLLBACK: True.
+        True  # USER 2026-10-21: portfolio balancer stays ON but existence-neutral (same bars as
+        # vector, never same quantities): reallocate_capital_for_winner may only REDUCE the donor by
+        # half (never CLOSE/flatten) and the winner retry is AUGMENT on an already-held position only.
+        # Size may differ from vector; position existence must not. ROLLBACK: False.
     )
     # USER 2026-10-16 "GET IT OUT": stoch-K may not gate a GUARANTEED_REENTRY in either direction (ez_manage
     # ~40049). The system gates reentries on WT + HTF. True restores the pre-2026-10-16 K behaviour.
