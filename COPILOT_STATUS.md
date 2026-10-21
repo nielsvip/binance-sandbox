@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 23:46:44 UTC
+# Copilot Status — 2026-10-21 23:51:52 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T23:38:13
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:38:13
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T23:40:16
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:40:16
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T23:42:18
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:42:18
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T23:44:20
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:44:20
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T23:46:23
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:46:23
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T23:48:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:48:26
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T23:50:29
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T23:50:29
 
 ## Missed Trades (trader comparison)
 

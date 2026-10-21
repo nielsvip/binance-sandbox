@@ -151,5 +151,5 @@ def test_live_wiring_markers_present():
     ez = (ROOT / "ez_manage.py").read_text(errors="ignore")
     tr = (ROOT / "tradier_manage.py").read_text(errors="ignore")
     assert "[V17_CONVICTION_BOOST]" in ez and "not is_reduce and not is_augment and not is_hedge" in ez
-    assert 'getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 6.0)' in ez
-    assert "[OPEN_CEIL_SPS] {position_key} {action}: qty" in tr and 'getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 6.0)' in tr
+    assert 'getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 8.0)' in ez  # USER 2026-10-21: 8x (was 6.0)
+    assert "[OPEN_CEIL_SPS] {position_key} {action}: qty" in tr and 'getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 8.0)' in tr

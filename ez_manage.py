@@ -51515,6 +51515,21 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
                 _cvg_on = False
         except Exception:
             pass
+        try:  # USER 2026-10-21 fresh-fill grace: never converge-flatten a fill the twin never saw (ZEC 44 s churn).
+            _cvg_grace = float(getattr(config, "VEC_CONVERGE_FRESH_FILL_GRACE_S", 900.0) or 0.0)
+            if _cvg_on and _cvg_grace > 0:
+                _cvg_pos = trade_manager.positions.get(position_key)
+                _cvg_ts = getattr(_cvg_pos, "updateTime", None) or getattr(_cvg_pos, "opened_at", None)
+                _cvg_age = None
+                if isinstance(_cvg_ts, datetime):
+                    _cvg_age = (datetime.now(timezone.utc) - _cvg_ts).total_seconds() if _cvg_ts.tzinfo else None
+                elif isinstance(_cvg_ts, (int, float)):
+                    _cvg_age = time.time() - (_cvg_ts / 1000 if _cvg_ts > 1e12 else _cvg_ts)
+                if _cvg_age is not None and _cvg_age < _cvg_grace:
+                    logger.info(f"[VEC_EXACT_CONVERGE] {position_key}: fresh fill {_cvg_age:.0f}s old (<{_cvg_grace:.0f}s grace) — twin never saw it, skipping flatten")
+                    _cvg_on = False
+        except Exception:
+            pass
         try:
             _amt_end = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _cvg_on and _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
@@ -53014,7 +53029,7 @@ async def process_position(
                                 _r1_breach_reason = "LH_LL_3M"
                     except Exception:
                         pass
-                if _r1_breached:
+                if _r1_breached and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _r1_gain_probe = safe_fetch_float(getattr(position, "gain", 0), 0)
                     if _r1_gain_probe > -0.5:
                         _r1_breached = False
@@ -53245,7 +53260,7 @@ async def process_position(
                     (_fa_is_long and current_price < _fa_frozen)
                     or (not _fa_is_long and current_price > _fa_frozen)
                 ) and _fa_gain < 0
-            if _fa_floor_hit or _fa_breach:
+            if (_fa_floor_hit or _fa_breach) and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _fa_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fa_close_side = "SELL" if _fa_is_long else "BUY"
                 _fa_reason_tag = "FROZEN_ACT_STOP_ABSOLUTE_FLOOR" if _fa_floor_hit else "FROZEN_ACT_STOP_FROZEN_BREACH"
@@ -53696,20 +53711,23 @@ async def process_position(
                             _r3_close_failed = False
                             _r3_close_err = None
                             try:
-                                _r3_close_result = await trade_manager.execute_now(
-                                    position_key=position_key,
-                                    account_key=account_key,
-                                    symbol=symbol,
-                                    original_positionAmt=_r3_amt,
-                                    side=_r3_close_side,
-                                    position_side=position_side,
-                                    quantity=_r3_amt,
-                                    old_price=current_price,
-                                    unique_id=f"R3_HEDGE_INVARIANT_{int(time.time())}",
-                                    reason=f"HEDGE_FAILED_R3_INVARIANT_DUMP_g{_r3_gain:.2f}_wt3m+1h_against_hedge_err={str(_r3_hedge_err)[:40]}",
-                                    is_full_close=True,
-                                    action="CLOSE",
-                                )
+                                if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: hedge attempt stands, fallback close dead
+                                    _r3_close_result = "SKIPPED_NON_VECTOR_EXIT_DISABLED"
+                                else:
+                                    _r3_close_result = await trade_manager.execute_now(
+                                        position_key=position_key,
+                                        account_key=account_key,
+                                        symbol=symbol,
+                                        original_positionAmt=_r3_amt,
+                                        side=_r3_close_side,
+                                        position_side=position_side,
+                                        quantity=_r3_amt,
+                                        old_price=current_price,
+                                        unique_id=f"R3_HEDGE_INVARIANT_{int(time.time())}",
+                                        reason=f"HEDGE_FAILED_R3_INVARIANT_DUMP_g{_r3_gain:.2f}_wt3m+1h_against_hedge_err={str(_r3_hedge_err)[:40]}",
+                                        is_full_close=True,
+                                        action="CLOSE",
+                                    )
                                 if isinstance(_r3_close_result, str) and (
                                     "BLOCK" in _r3_close_result.upper()
                                     or "SKIP" in _r3_close_result.upper()
@@ -53815,7 +53833,7 @@ async def process_position(
                             _r3hf_fire = True
                             _r3hf_tier = "4H"
                             _r3hf_detail = f"px={current_price:.6f}_ema4h={_r3hf_ema_20_4h:.6f}_atr4h={_r3hf_atr_4h:.6f}_w1_4h={_r3hf_w1_4h:.2f}_w2_4h={_r3hf_w2_4h:.2f}"
-                if _r3hf_fire:
+                if _r3hf_fire and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _r3hf_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _r3hf_close_side = "SELL" if _r3hf_is_long else "BUY"
                     _r3hf_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
@@ -54549,7 +54567,7 @@ async def process_position(
                             _rh_why = f"RIDICULOUS_HOLD_age{_rh_age_h:.1f}h_cap{_rh_hold_hours:.0f}h_g{_rh_gain:.2f}%_nonneg"
                     except Exception:
                         pass
-        if _rh_force:
+        if _rh_force and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
             _rh_pos_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
             _rh_side = "SELL" if position_side == "LONG" else "BUY"
             logger.error(

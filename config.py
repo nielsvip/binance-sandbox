@@ -1870,6 +1870,9 @@ class Config:
     VEC_CONVERGE_OPEN_ENABLED: bool = (
         True  # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … REENTER FAST": live follows the vec POSITION — vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> OPEN now (latest-board sym_sides only, once per bar). False = event-only.
     )
+    VEC_CONVERGE_FRESH_FILL_GRACE_S: float = (
+        900.0  # USER 2026-10-21: converge-to-flat never flattens a fill the twin never saw (measured: flz:ZECUSDC_LONG native AUG filled 22:52:04, flattened as paper-flat-live-holds 44 s later = pure churn). A position opened/augmented within this many seconds is skipped by legacy-converge; stale-flatten (2 bars) and exit-owed are unaffected. 0 = no grace. ROLLBACK: 0.
+    )
     VEC_BACKSTOP_SYNC_ENABLED: bool = True  # USER 2026-10-21: absolute backstopper — with PARITY_VEC_EXACT_MODE off, _vec_exact_process_position still runs in backstop-only mode (legacy-converge-to-flat + stale-flatten + exit-owed; NO twin act dispatch, NO converge-open). No paper state -> no-op. Kill: False.
     REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = (
         True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on): after any exit, close crosses back through the exit price (+15m WT confirm). vec_decisions/reentry_triggers.py
