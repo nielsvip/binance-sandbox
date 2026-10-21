@@ -48254,18 +48254,23 @@ class TradierTradeManager:
             if _paper_nv.enabled(config):
                 _paper_nv.record("stocks", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "HERMETIC", old_price, quantity)
             return "BLOCKED_HERMETIC_NOT_VEC"
-        # ─── LOSS_PRONE_ENTRY_FILTER live twin (USER 2026-10-17 "should only be accepted with additional filters"): a NATIVE exposure
-        # increase (no vec provenance) from a function flagged in data/loss_prone_entries.json must pass the vector's filters.
-        # Enforced regardless of TRADIER_HERMETIC_ENFORCE (log mode lets natives through — this is the filter they must pass). ───
+        # ─── LOSS_PRONE_ENTRY_FILTER (USER 2026-10-21: ABSENT from all TEMPLATE sheets —
+        # no sweep row ever measured it, so the per-sym True is the frozen defaults snapshot, not
+        # a board winner. It may NEVER refuse. Allow-with-log + paper record so the ledger keeps
+        # what it would have done.) ───
         try:
-            if _vprov_g.increases_exposure(side, position_side, is_full_close, action, False) and not str(_hm_why).startswith("vec:"):
+            if _vprov_g.increases_exposure(side, position_side, is_full_close, action, False):
                 import loss_prone as _lpm_g
 
                 _lp_ind = (self.get_indicators(symbol) if hasattr(self, "get_indicators") else {}) or {}
                 _lp_ok, _lp_fam = _lpm_g.native_entry_ok(lambda k, d: _cfg(k, d, account_key, symbol, position_side), reason, "stocks", position_side == "LONG", _lp_ind, float(old_price or 0))
                 if not _lp_ok:
-                    logger.warning(f"⛔ [LOSS_PRONE_ENTRY_FILTER] {position_key} {action}: loss-prone {_lp_fam} failed LOSS_PRONE_ENTRY_MIN_FILTERS (WT 1h/WT 4h/ema50 1h) — refused")
-                    return "BLOCKED_LOSS_PRONE_ENTRY_FILTER"
+                    logger.warning(f"[LOSS_PRONE_ALLOW] {position_key} {action}: loss-prone {_lp_fam} failed LOSS_PRONE_ENTRY_MIN_FILTERS — allowed, never refused (USER 2026-10-21: unmeasured switch)")
+                    try:
+                        if _paper_nv.enabled(config):
+                            _paper_nv.record("stocks", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "LOSS_PRONE_WOULD_REFUSE", old_price, quantity)
+                    except Exception:
+                        pass
         except Exception as _lp_e:
             logger.debug(f"[LOSS_PRONE_ENTRY_FILTER] {position_key}: check err (fail-open) {_lp_e}")
         # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───

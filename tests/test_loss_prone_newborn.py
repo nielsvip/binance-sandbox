@@ -87,7 +87,10 @@ def test_native_entry_ok_filters_only_flagged_functions(monkeypatch):
 def test_native_entry_filter_wired_at_both_chokepoints():
     for f in ("ez_manage.py", "tradier_manage.py"):
         src = (ROOT / f).read_text()
-        assert "native_entry_ok(" in src and "BLOCKED_LOSS_PRONE_ENTRY_FILTER" in src, f
+        # USER 2026-10-21: the switch is ABSENT from all TEMPLATE sheets (unmeasured) — the
+        # twin evaluates for the paper ledger (LOSS_PRONE_WOULD_REFUSE) but never refuses.
+        assert "native_entry_ok(" in src and "LOSS_PRONE_WOULD_REFUSE" in src, f
+        assert 'return "BLOCKED_LOSS_PRONE_ENTRY_FILTER"' not in src, f
         assert "_peak_giveback_scope_ok(" in src or f == "ez_manage.py", f
     assert "_peak_giveback_scope_ok(config, position_key" in (ROOT / "ez_positions_quick.py").read_text()
 
@@ -133,8 +136,11 @@ def test_paper_nonvec_records_once_per_bar(tmp_path, monkeypatch):
 
 
 def test_refusals_paper_traded_and_stock_hermetic_enforced():
-    for f, n in (("ez_manage.py", 2), ("tradier_manage.py", 2)):
+    for f, n in (("ez_manage.py", 3), ("tradier_manage.py", 3)):
         assert (ROOT / f).read_text().count("_paper_nv.record(") == n, f
     import config_tradier
 
-    assert config_tradier.TradierConfig().TRADIER_HERMETIC_ENFORCE is True
+    # USER 2026-10-20 native flip (see config_tradier.py comment at the knob): stocks hermetic
+    # is deliberately LOG mode — enforce=True stranded the open (199 refused, 0 opened). The
+    # product state is sanctioned; this pins it so a silent re-flip fails loudly.
+    assert config_tradier.TradierConfig().TRADIER_HERMETIC_ENFORCE is False
