@@ -41247,7 +41247,11 @@ class StockStrategy:
         logger.info(
             f"[REENTRY_GATE] {symbol} {'L' if is_long else 'S'}: wt_fav={_wt_fav}/4 5m={_wt1_5m:.0f}/{_wt2_5m:.0f} 15m={_wt1_15m:.0f}/{_wt2_15m:.0f} 1h={_wt1_1h:.0f}/{_wt2_1h:.0f} 4h={_wt1_4h:.0f}/{_wt2_4h:.0f} k5m={k_5m_t2:.0f}/prev={k_5m_prev_t2:.0f}"
         )
-        if _wt_fav >= 2:
+        # GAP-C 2026-10-21 EXACT-PARITY: WT_2of3_REENTRY fired live with NO enable gate, while
+        # REENTRY_B01_WT_2of3_ENABLED defaults False with 0/507 board carriers, and the nearest vector
+        # reentry sits days away (not a label gap). Gate the live block behind the board switch.
+        # ROLLBACK: drop the `and bool(...)` clause. Other reentry lanes below are untouched.
+        if _wt_fav >= 2 and bool(_cfg_auto("REENTRY_B01_WT_2of3_ENABLED", False)):
             # STOCH GATE: 2026-09-10 REENTRY FIX STOCKS: <50→<65 (>50→>35) + bar-turn bypass. Old 50 blocked valid 55-65 continuations where WT already favors.
             _stoch_overdue = last_red_age_min >= 120.0
             # Bar-turn on 5m (stocks 5m = crypto 3m): HH/HL for LONG, LL/LH for SHORT lifts stoch gate
