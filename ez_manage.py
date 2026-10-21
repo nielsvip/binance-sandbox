@@ -51147,12 +51147,13 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
         return False
 
 
-async def _vec_exact_process_position(account_key, position_key, trade_manager) -> bool:
+async def _vec_exact_process_position(account_key, position_key, trade_manager, _backstop_only=False) -> bool:
     """parity-loop-crypto 2026-10-06 (PARITY_VEC_EXACT_MODE): True = handled here, native process_position must not run.
     Flat key + ENTRY family twinned: native flat-key openers are suppressed (the vec ENTRY twin runs in the EPQ candidate loop).
     Open position + EXIT family twinned: the vec CLOSE/REDUCE (and AUGMENT when that family is twinned) at the current closed
     15m bar are executed (live_twins/vec_exact.py) and every native exit/augment/reduce path is suppressed."""
     try:
+        _backstop_only = bool(_backstop_only)
         from live_twins import vec_exact as _vx
         _vx.set_cfg(config)
         _vx.logger = logger  # 2026-10-06 switch-over: twin lines + heartbeat go to ez_manage_{acct}.log (the 'vec_exact' logger had no handler -> stderr)
@@ -51239,7 +51240,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             return False
         want = ("CLOSE", "REDUCE") + (("AUGMENT",) if "AUGMENT" in fams else ())
         _now_vx = time.time()
-        _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
+        _acts_now, _acts_catch = await __import__("positions_truth").offloop_serialized(_vx.take_all, _sym, _side, _now_vx, want)
+        if _backstop_only:
+            _acts_now, _acts_catch = [], []  # 2026-10-11 USER own-it: one acquisition for take+catchup+expire (was 3; convoy -> PAU_TIMEOUT exit-42). Same order/thread/lock.
         def _vx_lc_of(_p):
             """opened_at epoch of a live position = the lifecycle identity an owed exit belongs to (2026-10-20).
             None when unknown, which keeps the owed obligation standing (fail-safe: never strand)."""
@@ -51301,6 +51304,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
             except Exception as _cl_e:
                 logger.warning(f"[VEC_EXACT_CATCHUP_PRIOR_LIFECYCLE] {position_key}: lifecycle filter error (keeping all catch-up acts): {_cl_e}")
         _vx_exit_attempted = False
+        _vx_sync_acted = False
         for _a in (_acts_now or []) + (_acts_catch or []):
             _amt = abs(safe_fetch_float(getattr(trade_manager.positions.get(position_key), "positionAmt", 0), 0))
             if _amt <= 0 and (_a.get("type") == "CLOSE" or (_a.get("type") == "REDUCE" and _a.get("to_flat"))):
@@ -51388,7 +51392,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                     _owed_oside = "SELL" if _side == "LONG" else "BUY"
                     try:
                         from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_o, fire_exit_market as _vx_tmo_mkt_o
-                        _res_o = await _vx_dsp_o(position_key, "CLOSE VEC_EXIT_OWED", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_owed, current_price=_owed_px, side=_owed_oside, position_side=_side, unique_id=f"VXOWED{int(_now_vx)}", is_full_close=True, action="CLOSE", reason=_owed_reason, override_qty=_amt_owed, is_hedge=False), _owed_tmo, on_timeout=lambda: _vx_tmo_mkt_o(trade_manager, position_key, _sym, _owed_oside, _side))
+                        _res_o = await _vx_dsp_o(position_key, "CLOSE VEC_EXIT_OWED", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_owed, current_price=_owed_px, side=_owed_oside, position_side=_side, unique_id=f"VXOWED{int(_now_vx)}", is_full_close=True, action="CLOSE", reason=_owed_reason, override_qty=_amt_owed, is_hedge=False), _owed_tmo,
+                        _vx_sync_acted = True on_timeout=lambda: _vx_tmo_mkt_o(trade_manager, position_key, _sym, _owed_oside, _side))
                     except asyncio.CancelledError:
                         raise
                     logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_EXIT_OWED qty={_amt_owed:.6f} -> {str(_res_o)[:120]}")
@@ -51405,7 +51410,7 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
         # 2026-10-10 forest-bellatrix legacy compromise (peer holds VEC_CONVERGE_TO_FLAT_ENABLED=True transitionally
         # until MANA/GALA land): converge NEVER touches twin-owned keys (vec opened them → only a real vec CLOSE
         # act closes them). Legacy keys (vec never opened; chart silent) may still converge to flat = chart state.
-        _cvg_on = bool(getattr(config, "VEC_CONVERGE_TO_FLAT_ENABLED", False))
+        _cvg_on = bool(getattr(config, "VEC_CONVERGE_TO_FLAT_ENABLED", False)) or _backstop_only
         try:
             if _cvg_on and _vx.owned_has(position_key):
                 _cvg_on = False
@@ -51428,7 +51433,8 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                     _vx_tmo_c = 600.0
                 try:
                     from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_c, fire_exit_market as _vx_tmo_mkt_c
-                    _res_c = await _vx_dsp_c(position_key, "CLOSE VEC_CONVERGE_TO_FLAT", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), _vx_tmo_c, on_timeout=lambda: _vx_tmo_mkt_c(trade_manager, position_key, _sym, _oside_c, _side))
+                    _res_c = await _vx_dsp_c(position_key, "CLOSE VEC_CONVERGE_TO_FLAT", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_px_c, side=_oside_c, position_side=_side, unique_id=f"VXCVG{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_cvg_reason, override_qty=_amt_end, is_hedge=False), _vx_tmo_c,
+                    _vx_sync_acted = True on_timeout=lambda: _vx_tmo_mkt_c(trade_manager, position_key, _sym, _oside_c, _side))
                 except asyncio.CancelledError:
                     raise
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_CONVERGE_TO_FLAT qty={_amt_end:.6f} -> {str(_res_c)[:120]}")
@@ -51465,10 +51471,13 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                 _stf_oside = "SELL" if _side == "LONG" else "BUY"
                 try:
                     from tools.vx_tracked_exec import dispatch_tracked as _vx_dsp_s, fire_exit_market as _vx_tmo_mkt_s
-                    _res_s = await _vx_dsp_s(position_key, "CLOSE VEC_STALE_FLATTEN", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), _stf_tmo, on_timeout=lambda: _vx_tmo_mkt_s(trade_manager, position_key, _sym, _stf_oside, _side))
+                    _res_s = await _vx_dsp_s(position_key, "CLOSE VEC_STALE_FLATTEN", lambda: trade_manager.execute_trade_action(account_key=_acct or account_key, position_key=position_key, symbol=_sym, quantity=_amt_end, current_price=_stf_px, side=_stf_oside, position_side=_side, unique_id=f"VXSTF{int(float(_vx_st.get('bar_ts') or 0))}", is_full_close=True, action="CLOSE", reason=_stf_reason, override_qty=_amt_end, is_hedge=False), _stf_tmo,
+                    _vx_sync_acted = True on_timeout=lambda: _vx_tmo_mkt_s(trade_manager, position_key, _sym, _stf_oside, _side))
                 except asyncio.CancelledError:
                     raise
                 logger.info(f"[VEC_EXACT] {position_key} CLOSE VEC_STALE_FLATTEN qty={_amt_end:.6f} -> {str(_res_s)[:120]}")
+        if _backstop_only and not _vx_sync_acted:
+            return False
         return True
     except Exception as _vx_e:
         logger.error(f"[VEC_EXACT] process_position {position_key}: {_vx_e}")
@@ -51635,8 +51644,13 @@ async def process_position(
         return f"{EvalStatus.ACTION_TAKEN}:OVERSIZE_TRIM_LOSS"
     # parity-loop-crypto 2026-10-06: PARITY_VEC_EXACT_MODE — the twinned families are decided by the vec twin only
     # FIX 2026-10-06: bare `config` is function-local (assigned line ~48386) → UnboundLocalError killed every monitor cycle. Use trade_manager.config (this function's own convention).
-    if bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(getattr(trade_manager, "config", None), "PARITY_VEC_EXACT_MODE", False)):
+    _vx_exact_on = bool(getattr(_ezm_base_config, "PARITY_VEC_EXACT_MODE", False)) or bool(getattr(getattr(trade_manager, "config", None), "PARITY_VEC_EXACT_MODE", False))
+    if _vx_exact_on:
         if await _vec_exact_process_position(account_key, position_key, trade_manager):
+            return
+    _vx_backstop = (not _vx_exact_on) and bool(getattr(_ezm_base_config, "VEC_BACKSTOP_SYNC_ENABLED", True))
+    if _vx_backstop:
+        if await _vec_exact_process_position(account_key, position_key, trade_manager, _backstop_only=True):
             return
     # ANG TIMING EXITS (2026-10-09 USER smarter exits) — USER 2026-10-10 NO EXCEPTIONS: OFF while the vec
     # twin owns EXIT. Twin-idle means NOBODY acts — a native trim without a vec CLOSE act is a parity violation.

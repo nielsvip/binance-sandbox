@@ -3857,6 +3857,7 @@ class TradierConfig:
     ENABLE_TR_SYMGATE_REENTRY: bool = False
     ENABLE_TR_REENTRY_PERIODIC: bool = False
     UVE_LIVE_ENABLED: bool = False  # PIN 2026-10-21: was absent (fallback False); 5m UVE leg stays off. Per-sym read kept.
+    VECTOR_ENFORCE_ENABLED: bool = True  # USER 2026-10-21: absolute backstopper on stocks — vector_enforce.check gates _execute_now_inner + queue_trade_action (entries/exits only at 15m bar change; exits only on cross/board/stop; violating families refused+disabled+flagged). Kill: False.
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False

@@ -1870,6 +1870,7 @@ class Config:
     VEC_CONVERGE_OPEN_ENABLED: bool = (
         True  # USER 2026-10-13 "WHATEVER YOU CLOSE … 100% CERTAINTY THEY WILL BE REENTERED … REENTER FAST": live follows the vec POSITION — vec paper holds + live flat (missed/expired OPEN, live-only stop-out) -> OPEN now (latest-board sym_sides only, once per bar). False = event-only.
     )
+    VEC_BACKSTOP_SYNC_ENABLED: bool = True  # USER 2026-10-21: absolute backstopper — with PARITY_VEC_EXACT_MODE off, _vec_exact_process_position still runs in backstop-only mode (legacy-converge-to-flat + stale-flatten + exit-owed; NO twin act dispatch, NO converge-open). No paper state -> no-op. Kill: False.
     REENTRY_ON_EXIT_PRICE_BREAK_ENABLED: bool = (
         True  # USER 2026-10-14 re-entry trigger 1/3 (all 3 can be on): after any exit, close crosses back through the exit price (+15m WT confirm). vec_decisions/reentry_triggers.py
     )
