@@ -4295,3 +4295,25 @@ writes per-sym sets. Alerts append to `data/alerts/forward_parity.jsonl`; exit 0
 **NPZ FRESHNESS** does not excuse a miss: S1 `~/binance-sandbox/backtest_v8/indicators` is the NPZ source
 (`python3 tools/data_locations.py --where npz_indicators --host s1`); a stale NPZ is reported, never used as a
 reason to hold a position the board set says is flat.
+
+## 120. INF UNIVERSE — WINNERS AND LOSERS, SIZED BY SUCCESS (USER 2026-10-21)
+
+`symbols_inf_{long,short}.json` are owned by ONE writer: `tools/v15_daily_inf_universe.py` (BIBLE §68.3 step 3b;
+daily 15:05Z cron + chain step 5d). `ez_rankings` INF writes stay suspended (`tests/test_inf_rankings_suspended.py`).
+Every tradeable sym_side with a backtest inside 9 days (`--max-age-hours 216`) belongs in the books; start size
+follows backtest success via the tiers (`data/persym_size_tiers.json`, `PERF_TIER_SIZING_ENABLED`, uncertified =
+`RANKED_NO365_SMALL` x0.50 — that half never broke).
+
+**WHY inf WENT EMPTY ON 2026-10-20.** Not one agent's typo but a chain: (1) the fleet emits progress records with
+no fresh full-set metrics (`v17 phase cut` skips ENDGAME+DIAG; 41 of 51 records) plus 365D-invalid boards, so the
+full gates yield 0 eligible and the writer correctly REFUSES (it never writes empties unasked); (2) dead `s5` sat
+in `DEFAULT_HOSTS` and its timeout refused every `--apply`; (3) the standing books had filled with tokenized-stock
+perps, which `tools/excluded_tokenized_stocks.py` rightly stripped down to `[]` — leaving inf nothing tradeable.
+Fix (same night, writer is not locked): `DEFAULT_HOSTS=(s1-pub,s2)`; 9-day default window; FALLBACK ranking when
+zero pass — `score = gain + 2.0 x day-over-day gain change` (`--momentum-weight`, 0 = level only) over the final
+set's fresh gain, still requiring tradeable key, verdict ok, no needs_redo, a final set, gain > 0, trades >= 10,
+in-window eval, no SIMPLE_PRICE_GT0. Fallback rows are DEGRADED (no TIM/DD/365D) and tier-sized down; garbage and
+tokenized syms can never enter by either path. Provenance: `data/inf_universe/<date>.json` carries
+`fallback:{used,weight,skipped}`; `--apply` backups + verifies. First live run booked LONG 4 / SHORT 3 on the
+primary path; the fallback path is proven by 44/44 writer tests and a 26-book dry run, and fires automatically
+whenever the primary yields zero. Rollback: `backups/before_inf_universe_*`.

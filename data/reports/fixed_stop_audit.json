@@ -1,23 +1,43 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 3,
+ "findings": [
+  {
+   "armed": true,
+   "code": "ARMED_BUT_NO_EXCHANGE_STOP",
+   "entry_bar_level": 0.11288707500000002,
+   "key": "fin:ALGOUSDT_LONG",
+   "live_level": 0.11288707500000002,
+   "mark": 0.11416,
+   "opened_at": "2026-10-21T02:06:51.733000Z",
+   "resting_trigger": 0.0
+  }
+ ],
+ "n_findings": 1,
+ "n_positions": 4,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 80.0394,
-   "key": "ang:HYPEUSDT_LONG",
-   "live_level": 80.0394,
-   "mark": 81.868,
-   "opened_at": "2026-10-21T01:56:56.642000Z",
-   "resting_trigger": 79.919
+   "entry_bar_level": 0.11288707500000002,
+   "key": "ang:ALGOUSDT_LONG",
+   "live_level": 0.11288707500000002,
+   "mark": 0.11416,
+   "opened_at": "2026-10-21T02:06:00.691000Z",
+   "resting_trigger": 0.11271
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.11288707500000002,
+   "key": "fin:ALGOUSDT_LONG",
+   "live_level": 0.11288707500000002,
+   "mark": 0.11416,
+   "opened_at": "2026-10-21T02:06:51.733000Z",
+   "resting_trigger": 0.0
   },
   {
    "armed": true,
    "entry_bar_level": 4.243365,
    "key": "fin:KSMUSDT_LONG",
    "live_level": 4.243365,
-   "mark": 4.327,
+   "mark": 4.326,
    "opened_at": "2026-10-21T01:51:08.920000Z",
    "resting_trigger": 4.236
   },
@@ -26,10 +46,10 @@
    "entry_bar_level": 0.00389424,
    "key": "fin:IOTXUSDT_LONG",
    "live_level": 0.00389424,
-   "mark": 0.004007,
+   "mark": 0.004026,
    "opened_at": "2026-10-21T01:44:31.890000Z",
    "resting_trigger": 0.003888
   }
  ],
- "ts": "2026-10-21T02:01:07.354597+00:00"
+ "ts": "2026-10-21T02:10:47.291470+00:00"
 }
