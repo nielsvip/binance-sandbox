@@ -492,6 +492,20 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                                    else "BOARD_HOLDS_LIVE_FLAT" if eng_hold else "BOARD_FLAT_LIVE_HOLDS")
                         stats[f"STATE_{verdict}"] += 1
                         if verdict in ("AGREE_HOLD", "AGREE_FLAT"):
+                            # USER 2026-10-21 AGREE heartbeat: an agreeing key is still a
+                            # calculated key — refresh its state/ so reconcile (1200s
+                            # horizon) and the per-key oracle see a current-bar verdict.
+                            # No intent: nothing needs ordering when board and live agree.
+                            try:
+                                _hb = VEC_LIVE / "state"
+                                _hb.mkdir(parents=True, exist_ok=True)
+                                _st = {"ss": ss, "target_state": ("LONG" if verdict == "AGREE_HOLD" and ss.endswith("_LONG") else "SHORT" if verdict == "AGREE_HOLD" else "FLAT"), "bar_ts": int(bar_ts), "written_utc": dt.datetime.now(dt.timezone.utc).isoformat(), "source": "pure_board_trader", "heartbeat": True}
+                                _tmp = _hb / f"{ss}.json.tmp"
+                                _tmp.write_text(json.dumps(_st, indent=1))
+                                os.replace(_tmp, _hb / f"{ss}.json")
+                                stats["STATE_HEARTBEAT"] += 1
+                            except Exception:
+                                pass
                             continue
                         conv = "CONVERGE_OPEN" if verdict == "BOARD_HOLDS_LIVE_FLAT" else "CONVERGE_CLOSE"
                         if close_only and conv == "CONVERGE_OPEN":
