@@ -1,0 +1,50 @@
+{
+ "window_from": "10-21 02:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 3
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 02:35",
+   "actual": "AUGMENT",
+   "actual_reason": "CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px3.895000_exit1.651684_age805m",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "HYPEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 02:10",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:100/d1100/k3:100.0/d3:90.86_@82.0351_DC_BREAKOUT_DC4H_x3.0@81.819",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "IOTXUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 02:42",
+   "actual": "REDUCE",
+   "actual_reason": "LH_LL_TOP_EXIT_arm=4h_LH_leg=WT15M_g-0.30",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
