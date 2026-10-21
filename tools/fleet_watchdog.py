@@ -166,7 +166,20 @@ def maybe_reboot(h, st, now, args, log):
     return "reboot-FAILED rc=%d %s %s" % (rc, out[:80], err[:80])
 
 
+def ensure_token():
+    if os.environ.get("HCLOUD_TOKEN"):
+        return
+    try:
+        with open(os.path.expanduser("~/.hcloud_token")) as f:
+            tok = f.read().strip()
+        if tok:
+            os.environ["HCLOUD_TOKEN"] = tok
+    except OSError:
+        pass
+
+
 def main():
+    ensure_token()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--fail-threshold", type=int, default=3)
