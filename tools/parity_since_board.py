@@ -26,7 +26,7 @@ BOOK_LIVE = ("BROKER_RECONCILED", "Broker sync", "BROKER_SYNC",
              "SYNC_DETECTION",
              "VEC_CONVERGE_OPEN", "REENTRY_HIGHER_LOW", "REENTRY_LOWER_HIGH",
              "B_KZONE", "VEC_DRIVEN_CLOSE_RECONCILE", "VEC_EXIT_OWED",
-             "VEC_STALE_FLATTEN")
+             "VEC_STALE_FLATTEN", "VEC_DRIVEN_OPEN_RECONCILE_")
 TOL_S = 900.0
 
 
@@ -69,6 +69,20 @@ def family(reason):
     m = re.match(r"^(DC_HOPELESS)_.*$", fam)
     if m:
         return m.group(1)
+    m = re.match(r"^(E_1_WT_DELTA_EXIT)_.*$", fam)
+    if m:
+        return m.group(1)
+    m = re.match(r"^(FIXED_STOP)_(LONG|SHORT)$", fam)
+    if m:
+        return m.group(1)
+    m = re.match(r"^(DAYTRADE_TARGET)_.*$", fam)
+    if m:
+        return m.group(1)
+    # v12 folds target+stop legs into one TECHNICAL_EXIT dc_* computation
+    # (v12:22364-22448); live splits the label. Compare the computation.
+    m = re.match(r"^(TECHNICAL_TARGET)_.*$", fam)
+    if m:
+        return "TECHNICAL_EXIT"
     return fam
 
 
@@ -140,7 +154,8 @@ def match_ledgers(ledgers, out):
             vint = float(b["mtime"])
         if vint is None or vint < now - 30 * 86400:
             vint = now - 30 * 86400
-        vec = [e for e in (rec.get("events") or []) if e["t"] >= vint] \
+        vec = [e for e in (rec.get("events") or []) if e["t"] >= vint
+               and family(e["reason"]) != "FINAL_MTM"] \
             if "error" not in rec else []
         live = []
         for acc in ("ang", "men", "flz", "fin", "inf", "tra", "trb", "trc"):
