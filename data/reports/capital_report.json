@@ -1,57 +1,32 @@
 {
- "generated_at": "2026-10-21 19:58 UTC",
- "total_capital_usd": 27.78,
+ "generated_at": "2026-10-21 20:03 UTC",
+ "total_capital_usd": 5.53,
  "tier_capital": {
   "A": 0.0,
-  "B": 11.99,
-  "C": 15.79
+  "B": 0.0,
+  "C": 5.53
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
+  "B": 0,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:AAVEUSDC_LONG"
+  "flz:BTCDOMUSDT_SHORT"
  ],
- "mediocre": [
-  "ang:RLCUSDT_LONG",
-  "ang:ENSUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:AAVEUSDC_LONG",
-   "symbol": "AAVEUSDC",
-   "account": "ang",
-   "value_usd": 15.79,
-   "gain_pct": -0.133,
+   "pk": "flz:BTCDOMUSDT_SHORT",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 5.53,
+   "gain_pct": -0.011,
    "tier": "C",
-   "perf_mult": 0.44,
-   "amt": 0.1,
-   "mark": 157.8537617
-  },
-  {
-   "pk": "ang:RLCUSDT_LONG",
-   "symbol": "RLCUSDT",
-   "account": "ang",
-   "value_usd": 6.16,
-   "gain_pct": -0.243,
-   "tier": "B",
-   "perf_mult": 0.35,
-   "amt": 8.7,
-   "mark": 0.70857862
-  },
-  {
-   "pk": "ang:ENSUSDT_SHORT",
-   "symbol": "ENSUSDT",
-   "account": "ang",
-   "value_usd": 5.83,
-   "gain_pct": -0.2,
-   "tier": "B",
-   "perf_mult": 0.66,
-   "amt": 1.0,
-   "mark": 5.83262032
+   "perf_mult": 0.27,
+   "amt": 0.001,
+   "mark": 5529.3
   }
  ]
 }

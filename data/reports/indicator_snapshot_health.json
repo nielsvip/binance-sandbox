@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-21T20:01:09Z",
+ "generated_utc": "2026-10-21T20:05:52Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1203.7,
+  "age_s": 1487.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 47403,
-  "proc_age_s": 6968.0,
-  "log_age_s": 73.6,
+  "proc_age_s": 7253.0,
+  "log_age_s": 137.2,
   "warmup_done": true,
   "timeframes_since_restart": [
    "1h",
@@ -28,6 +28,7 @@
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
+   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)"
   ],
   "policy": {
@@ -41,21 +42,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792612714.7389855,
-  "mac_snapshot_age_s": 983.7956779003143,
+  "hb_mtime": 1792613087.5712824,
+  "mac_snapshot_age_s": 1356.6260108947754,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-20T16:54:28Z",
   "lease_reason": "Mac healthy 124s (needed 120s) venues=['crypto', 'stocks']",
-  "now": 1792612736.2286346,
-  "from_cache_age_s": 132.9,
-  "heartbeat_age_s": 21.5,
-  "active_s": 10554.0,
+  "now": 1792613087.8574488,
+  "from_cache_age_s": 65.0,
+  "heartbeat_age_s": 0.3,
+  "active_s": 10905.7,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1203s old (> 600s). ez_indicators pid=47403 warmup_done=True tfs_since_restart=['1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1487s old (> 600s). ez_indicators pid=47403 warmup_done=True tfs_since_restart=['1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
