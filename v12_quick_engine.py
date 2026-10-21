@@ -72,11 +72,13 @@ import vec_decisions.reentry_crossback  # 2026-10-20 USER LAW: reentry only afte
 import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account T+1 settlement (GFV) rule, shared with tradier_manage + backtest_v12_engine
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
+import vec_decisions.high_gain_reopen as _hgr  # 2026-10-21 TR HIGH-GAIN REOPEN (re-open reduced high-gain lifecycles; stocks only, default off)
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
+import vec_decisions.btc_dedicated_entry
 import vec_decisions.check_entry_candidates_crypto__bb_squeeze_gate
 import vec_decisions.check_entry_candidates_crypto__compression_boost
 import vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered
@@ -241,6 +243,7 @@ import vec_decisions.stock_augment_sources
 import vec_decisions.dyn_struct_trail
 import vec_decisions.lr_band_ladder_aug
 import vec_decisions.mandatory_reentry_wt_vec
+import vec_decisions.stocks_symgate_reentry_vec
 import vec_decisions.quick_reduce_sources
 import vec_decisions.filter_tf_gates
 import vec_decisions.generic_filter_tf
@@ -5648,6 +5651,13 @@ class QuickConfig:
     STOP_RECLAIM_REQUIRE_HTF: bool = True  # 4h structure + trend must agree
     STOP_RECLAIM_SIZE_MULT: float = 1.0  # 0.5 / 1.0 x the normal open
     STOP_RECLAIM_EXCLUSIVE: bool = True  # inside the window only the strict reclaim may re-enter after a FIXED_STOP (fresh entries unaffected)
+    # 2026-10-21 TR HIGH-GAIN REOPEN (vec_decisions/high_gain_reopen.py) — vector twin of tradier_manage.periodic_direct_high_gain_reopen; off by default = live (config_tradier.ENABLE_TR_HIGH_GAIN_REOPEN False)
+    TR_HIGH_GAIN_REOPEN_ENABLED: bool = False
+    TR_HIGH_GAIN_REOPEN_WINDOW_BARS: int = 12  # closed 15m bars after a reduced high-gain close in which a reopen may fire
+    TR_HIGH_GAIN_REOPEN_MIN_GAIN_PCT: float = 0.5  # lifecycle entry->exit move % floor (live direct_high_gain_augmentation floor)
+    TR_HIGH_GAIN_REOPEN_MIN_RELVOL: float = 1.2  # 15m rel-vol floor (live 5m 1.2x, mapped to NPZ 15m)
+    TR_HIGH_GAIN_REOPEN_RSI_LONG_MAX: float = 75.0  # LONG refused at/above (live rsi_5m<75, mapped to rsi_15m)
+    TR_HIGH_GAIN_REOPEN_RSI_SHORT_MIN: float = 25.0  # SHORT refused at/below (live rsi_5m>25, mapped to rsi_15m)
     # 2026-10-17 PEAK_GIVEBACK vector twin scope + LOSS_PRONE_ENTRY_FILTER (vec_decisions/breakeven_lock.py; flags data/loss_prone_entries.json)
     PEAK_GIVEBACK_SCOPE: str = "all"  # all / loss_prone — which positions the PEAK_GIVEBACK hard-zero/drop exit covers (pilot-tested)
     LOSS_PRONE_ENTRY_FILTER_ENABLED: bool = True  # loss-prone entry functions need extra filters (boards may switch it off)
@@ -7893,6 +7903,7 @@ class QuickConfig:
             "BTCDOMUSDT",
         ]
     )
+    ENABLE_BTC_DEDICATED_ENTRY: bool = False  # 2026-10-21 BTC dedicated entry override kill switch (crypto); live default False config.py:1519 with head-gate ez_positions_quick.py:3441; vec twin vec_decisions.btc_dedicated_entry (ONE call site in simulate_one)
     BTC_DIVERGENCE_BEAR_MIN_INDS: int = 2
     BTC_DIVERGENCE_BLOCK_AGAINST: bool = True
     BTC_DIVERGENCE_BULL_MIN_INDS: int = 2
@@ -15434,6 +15445,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         cfg
     )  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
     entry_sig = _setup_memo("entry_sig", compute_entry_signals, cfg, npz, n, is_long, lambda: compute_entry_signals(npz, n, is_long, cfg))
+    # 2026-10-21 BTC dedicated entry override (crypto; default OFF = baseline untouched).
+    # Live: ez_positions_quick.py:29364-29378 (_btc_dedicated_active gate) + :3441 head-gate
+    # on ENABLE_BTC_DEDICATED_ENTRY. Vec has no account leg: scope = switch ON + sym in
+    # BTC_DEDICATED_SYMBOLS. Signal = vec_decisions.btc_dedicated_entry.allow_mask
+    # (vectorized btc_loop.should_enter_btc_long/short).
+    if bool(getattr(cfg, "ENABLE_BTC_DEDICATED_ENTRY", False)) and sym in set(
+        getattr(cfg, "BTC_DEDICATED_SYMBOLS", ("BTCUSDC",)) or ()
+    ):
+        _btcde_m = vec_decisions.btc_dedicated_entry.allow_mask(npz, n, is_long, cfg)
+        if _btcde_m is not None:
+            entry_sig = entry_sig & np.asarray(_btcde_m, dtype=bool)
     _hsc_core = _setup_memo("nonhtf_core", None, cfg, npz, n, is_long, lambda: vec_decisions.htf_signal_consume.nonhtf_core(cfg, npz, n, is_long, close, _safe, _base_safe, compute_reentry_blocks, compute_entry_signals))  # 2026-10-13 V17 TF law: exact non-HTF provenance (None = disabled / no HTF path)
     exit_sig = compute_exit_signals(npz, n, is_long, cfg, entry_sig)
     # TWIN_VEC_SPECIAL H1: pre-loop masks — DC breakout OR-entry (live ez_positions_quick.py:4555), R3 OR-exit (live ez_manage.py:48824). R3 stocks newborn/R1 guards need loop state (twin kw); pre-loop mask is the core flip.
@@ -16287,6 +16309,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _n4_mrwt = vec_decisions.mandatory_reentry_wt_vec.precompute(npz, n, _safe)
         except Exception:
             _n4_mrwt = None
+    # [stocks lane] SYMGATE reentry veto precompute (live would_exit_trigger_now
+    # twin: vec_decisions.stocks_symgate_reentry_vec). None unless tradier MODE
+    # and REENTRY_SYMGATE_ENABLED (default False = current behaviour exactly).
+    _n4_symgate = None
+    if getattr(cfg, "MODE", "crypto") == "tradier" and bool(
+        getattr(cfg, "REENTRY_SYMGATE_ENABLED", False)
+    ):
+        try:
+            _n4_symgate = vec_decisions.stocks_symgate_reentry_vec.precompute(
+                npz, n, is_long, cfg
+            )
+        except Exception:
+            _n4_symgate = None
     # [N4 queue/2c] SIMPLE_TP_EXIT / MACD_EXIT arrays (crypto live rate() exit scorer), only when QUICK_REDUCE_TECHNICAL_ONLY is False
     _n4_qr = None
     _n4_qr_macd = None
@@ -17656,6 +17691,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _sr_w1, _sr_w2, _sr_vel = _safe(npz, "wt1_15m", n), _safe(npz, "wt2_15m", n), _safe(npz, "wt_velocity_15m", n)
         _sr_d4l, _sr_d4h = _safe(npz, "dc_low_4h", n), _safe(npz, "dc_high_4h", n)
         _sr_w14, _sr_w24, _sr_e50 = _safe(npz, "wt1_4h", n), _safe(npz, "wt2_4h", n), _safe(npz, "ema_50_4h", n)
+    # 2026-10-21 TR HIGH-GAIN REOPEN inputs (vec_decisions/high_gain_reopen.py) — only built when the switch is on; stocks (tradier) only
+    _hgr_on = _hgr.enabled(cfg) and str(getattr(cfg, "MODE", "crypto")) == "tradier"
+    _hgr_fired = (-1, "")
+    if _hgr_on:
+        _hgr_rsi = _safe(npz, "rsi_15m", n)
+        _hgr_k, _hgr_d = _safe(npz, "stoch_k_15m", n), _safe(npz, "stoch_d_15m", n)
+        _hgr_ha = _safe(npz, "ha_color_15m", n)
+        _hgr_rv = _safe(npz, "rel_vol_15m", n)
+        try:
+            import numpy as _hgr_np
+
+            if (_hgr_np.asarray(_hgr_rv) == 0).all():
+                _hgr_rv = _safe(npz, "relative_volume_15m", n)
+        except Exception:
+            pass
+        _hgr_d4l, _hgr_d4h = _safe(npz, "dc_low_4h", n), _safe(npz, "dc_high_4h", n)
     # 2026-10-06 TIER twin inputs (15m stoch, == live NO-1m/3m fallback legs).
     try:
         _n3_k15 = _safe(npz, "stoch_k_15m", n, 50.0)
@@ -18863,6 +18914,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _rt_fired = (i, _rt_name)
                 except Exception:
                     pass
+            if not fire and _hgr_on and has_closed_before and trades:  # 2026-10-21 TR HIGH-GAIN REOPEN — single call into the shared predicate (stocks/tradier path only; default off)
+                try:
+                    _hgr_last = next((t for t in reversed(trades) if t.get("type") == "CLOSE"), None)
+                    if _hgr_last is not None and _hgr.was_reduced(_hgr_last, trades, events):
+                        _hgr_xb = int(_hgr_last.get("bar_exit", i - 1))
+                        if _hgr.fire(cfg, is_long, i - _hgr_xb, float(_hgr_last.get("entry_price", 0) or 0), float(_hgr_last.get("exit_price", 0) or 0), float(px), float(_hgr_rsi[i]), float(_hgr_k[i]), float(_hgr_d[i]), float(_hgr_ha[i]), float(_hgr_rv[i]), float(_hgr_d4l[i]), float(_hgr_d4h[i])):
+                            fire = True
+                            _hgr_fired = (i, _hgr.REASON)
+                except Exception:
+                    pass
             _n3_tier = None
             _n3_tier_reason = None
             if (
@@ -19178,6 +19239,25 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             # 2026-10-01 WIRING b1: live ENTRY_VET (ez_manage 25616 'REENTRY respects ENTRY_VET') blocks ANY entry/reentry while >= MIN_TFS WT TFs are against
             if fire and _fx_G["_atf_entry_block"] is not None and bool(_fx_G["_atf_entry_block"][i]):
                 fire = False
+            # [stocks lane] SYMGATE reentry veto (live would_exit_trigger_now
+            # :51929 via reentry_monitor :52171): veto ANY post-close reentry
+            # open while the mirror exit rubric fires for the side, unless
+            # price reclaimed the exit (live GUARANTEED bypass, no buffer).
+            # Fresh entries (never closed) and augments are out of scope.
+            if (
+                fire
+                and pos is None
+                and has_closed_before
+                and trades
+                and _n4_symgate is not None
+                and i < len(_n4_symgate["blocked"])
+                and bool(_n4_symgate["blocked"][i])
+            ):
+                _sg_exit = float(trades[-1].get("exit_price", 0) or 0)
+                if not vec_decisions.stocks_symgate_reentry_vec.reclaimed(
+                    is_long, px, _sg_exit
+                ):
+                    fire = False
             # USER 2026-09-27: NEVER reenter when falling through 4h bottom/top, below STOP, against KG all TFs, against GR all TFs — FIX 2026-09-27: block ANY px below dc_low_4h (not just 0.25% below) to stop 1-bar ULTIMATE churn
             # 2026-10-02: SELL_TOP recross bypass (flag above) skips these hard blocks only.
             if fire and not _selltop_recross_bypass:
@@ -19421,6 +19501,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _hardcoded_fired = True
                         if _sr_fired[0] == i and not entry_sig[i]:
                             entry_reason = _sr_fired[1]  # 2026-10-17 STOP_RECLAIM_REENTRY
+                            _hardcoded_fired = True
+                        if _hgr_fired[0] == i and not entry_sig[i]:
+                            entry_reason = _hgr_fired[1]  # 2026-10-21 TR HIGH-GAIN REOPEN
                             _hardcoded_fired = True
                         if (
                             has_closed_before

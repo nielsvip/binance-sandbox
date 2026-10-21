@@ -28,7 +28,7 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 14000,
+   "mem_reserve_mb": 2000,
    "max_pairs": 6,
    "workers_per_side": 4,
    "oom_mb": 1500,
@@ -45,8 +45,8 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 5000,
-   "max_pairs": 4,
+   "mem_reserve_mb": 1500,
+   "max_pairs": 6,
    "workers_per_side": 3,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
@@ -62,8 +62,8 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 5000,
-   "max_pairs": 4,
+   "mem_reserve_mb": 1500,
+   "max_pairs": 6,
    "workers_per_side": 3,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",

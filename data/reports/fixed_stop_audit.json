@@ -1,28 +1,7 @@
 {
- "findings": [
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.008721142500000001,
-   "key": "inf:BBUSDT_LONG",
-   "live_level": 0.0084867075,
-   "mark": 0.00891427,
-   "opened_at": "2026-10-21T21:31:33.434000Z",
-   "resting_trigger": 0.008473
-  }
- ],
- "n_findings": 1,
- "n_positions": 1,
- "positions": [
-  {
-   "armed": true,
-   "entry_bar_level": 0.008721142500000001,
-   "key": "inf:BBUSDT_LONG",
-   "live_level": 0.0084867075,
-   "mark": 0.00891427,
-   "opened_at": "2026-10-21T21:31:33.434000Z",
-   "resting_trigger": 0.008473
-  }
- ],
- "ts": "2026-10-21T21:32:26.118591+00:00"
+ "findings": [],
+ "n_findings": 0,
+ "n_positions": 0,
+ "positions": [],
+ "ts": "2026-10-21T21:41:55.894430+00:00"
 }
