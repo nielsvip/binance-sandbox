@@ -14459,6 +14459,46 @@ def _min_viable_qty(symbol_min_qty, symbol_min_notional, current_price):
         return 0.0
 
 
+_CRYPTO_QTY_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
+
+
+def _is_crypto_sym(symbol):
+    """Venue check for qty rules: crypto perpetuals trade fractional qty with exchange LOT_SIZE floors."""
+    try:
+        return str(symbol or "").upper().endswith(_CRYPTO_QTY_SUFFIXES)
+    except Exception:
+        return False
+
+
+def _step_up_to_min_viable(qty_dec, step, symbol, current_price, min_qty_map, min_notional_map):
+    """USER 2026-10-21: ANY crypto OPEN/AUGMENT wires at least the pos min qty — NO MATTER WHAT.
+
+    A tier-min USD size on a high-price symbol (BTC $5 / $110k = 0.00005) step-floors to ZERO and the order
+    dies at MAKER_ZERO_QTY / MARKET_ZERO_QTY, so the board's measured trade never exists live. This rounds UP
+    to ceil(_min_viable_qty / step) * step instead of refusing. REDUCE/CLOSE never call this (dust closes
+    wire as-is; stepping a reduce up could over-close and flip the side). Non-crypto returns qty_dec
+    untouched. Pure: unit-tested (tests/test_min_viable_qty.py). Never raises; any bad input -> (qty_dec, False)."""
+    try:
+        if not _is_crypto_sym(symbol):
+            return qty_dec, False
+        px = float(current_price or 0.0)
+        st = __import__("decimal").Decimal(str(step))
+        if px <= 0 or st <= 0:
+            return qty_dec, False
+        floor = _min_viable_qty((min_qty_map or {}).get(symbol, 0.0001), (min_notional_map or {}).get(symbol, 5.0), px)
+        if floor <= 0:
+            return qty_dec, False
+        need = ( (__import__("decimal").Decimal(str(floor)) + st - __import__("decimal").Decimal("0.000000000001")) // st) * st
+        if __import__("decimal").Decimal(str(qty_dec)) >= need:
+            return qty_dec, False
+        return need, True
+    except Exception:
+        try:
+            return qty_dec, False
+        except Exception:
+            return qty_dec, False
+
+
 class MultiAccountTradeManager:
     def __init__(
         self,
@@ -32440,6 +32480,27 @@ class MultiAccountTradeManager:
             _fx_act0 = ""
         if _fx_act0 in ("PLACE_STOP", "CANCEL_STOP"):
             return await self._fixed_stop_order_action(position_key=position_key, account_key=account_key, symbol=symbol, position_side=position_side, side=side, quantity=quantity, old_price=old_price, unique_id=unique_id, reason=reason, action=_fx_act0, stop_price=stop_price, stop_order_id=stop_order_id)
+        # ─── VECTOR-ONLY EXITS BACKSTOP (USER 2026-10-21: emergency fix — refuses any exit
+        # that is not vec-dictated, catching whichever native leg a per-function kill misses.
+        # Per-leg kills inside the exit functions are the primary mechanism; this gate is the
+        # backstop. Vec: VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT (FORCE escalations carry the token).
+        # Refused POLICY (the wrapper never escalates POLICY: no watcher, no FORCE).
+        # NATIVE_EXITS_DISABLED=0 restores legacy behavior. ───
+        try:
+            _voe_disabled = bool(getattr(_ezm_base_config, "NATIVE_EXITS_DISABLED", getattr(config, "NATIVE_EXITS_DISABLED", True)))
+        except Exception:
+            _voe_disabled = True
+        if _voe_disabled and _xg.is_exit_action(action, is_full_close):
+            _voe_rx = str(reason or "").upper()
+            _voe_vec = ("VEC_DRIVEN_" in _voe_rx or "RECONCILE_" in _voe_rx or "|VEC_EXACT" in _voe_rx)
+            if not _voe_vec:
+                logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={str(reason)[:80]} — refused (USER 2026-10-21 backstop; NATIVE_EXITS_DISABLED=0 restores)")
+                try:
+                    if _paper_nv.enabled(config):
+                        _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "NON_VECTOR_EXIT_REFUSED", old_price, quantity)
+                except Exception:
+                    pass
+                return "POLICY_NON_VECTOR_EXIT_DISABLED"
         # ─── EXIT GUARANTEE FORCE LEG (2026-10-14 USER "make sure at least EXITS will never be compromised again") ───
         # Only reached via exit_guarantee escalation of a refused/unconfirmed FULL close (or a stuck one): exchange truth ->
         # cancel own working orders on the leg -> ONE market reduce-only close of the broker qty -> verify flat. Inside execute_now.
