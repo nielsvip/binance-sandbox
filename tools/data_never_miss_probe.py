@@ -13,6 +13,12 @@ import sys
 import time
 from datetime import datetime, timezone
 
+try:
+    from zoneinfo import ZoneInfo
+    ET = ZoneInfo("America/New_York")
+except Exception:  # pragma: no cover
+    ET = None
+
 # stock D files may carry date-only stamps ("2026-10-20"); everything else "YYYY-MM-DDTHH:MM:SS"
 TS = re.compile(rb'"timestamp"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}(?:[T ][0-9]{2}:[0-9]{2}(?::[0-9]{2})?)?)')
 KLINE_GLOBS = ("klines_cache/*.json", "klines_cache/gateway/*.json", "klines_cache/tradier/*.json")
@@ -38,8 +44,14 @@ def last_ms(path):
             fh.seek(max(0, size - 2048))
             hits = TS.findall(fh.read())
         if hits:
-            s = canon(hits[-1].decode())
-            return int(datetime.strptime(s, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp() * 1000)
+            raw = hits[-1].decode()
+            s = canon(raw)
+            tz = timezone.utc
+            # 2026-10-21 MEASURED: stock intraday files stamped "YYYY-MM-DD HH:MM" (space) are New-York-labelled
+            # (USO "2026-10-20 13:30" == UTC 17:30 bar) — read them in ET so they compare with the UTC stores
+            if "/tradier/" in path.replace(os.sep, "/") and len(raw) > 10 and raw[10] == " " and ET is not None:
+                tz = ET
+            return int(datetime.strptime(s, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=tz).timestamp() * 1000)
     except (OSError, ValueError):
         pass
     return None

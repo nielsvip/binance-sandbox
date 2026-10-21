@@ -26,8 +26,11 @@ def rows_after(path, after_ms):
             data = json.load(fh)
     except (OSError, ValueError):
         return None
-    if not isinstance(data, list):
+    if not isinstance(data, list) or not data:
         return None
+    last = str(data[-1].get("timestamp", "")) if isinstance(data[-1], dict) else ""
+    if "/tradier/" in path.replace(os.sep, "/") and len(last) > 10 and last[10] == " ":
+        return None  # New-York-labelled stock file — never a source for the UTC stores
     after = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(after_ms / 1000))
     n = 10 if path.endswith("_D.json") else 19  # D: one row per DATE (stock D files mix "2026-10-20" and "...T20:00:00")
     return [r for r in data if isinstance(r, dict) and canon(r.get("timestamp", ""))[:n] > after[:n]]
