@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-10-21 14:19 UTC",
- "total_capital_usd": 30.91,
+ "generated_at": "2026-10-21 14:28 UTC",
+ "total_capital_usd": 6.47,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 30.91
+  "C": 6.47
  },
  "tier_count": {
   "A": 0,
   "B": 0,
-  "C": 2
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:AVAXUSDC_LONG",
-  "fin:LINKUSDC_LONG"
+  "men:BBUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:AVAXUSDC_LONG",
-   "symbol": "AVAXUSDC",
-   "account": "fin",
-   "value_usd": 24.74,
-   "gain_pct": -1.211,
+   "pk": "men:BBUSDT_LONG",
+   "symbol": "BBUSDT",
+   "account": "men",
+   "value_usd": 6.47,
+   "gain_pct": 3.619,
    "tier": "C",
-   "perf_mult": 0.17,
-   "amt": 2.57,
-   "mark": 9.625
-  },
-  {
-   "pk": "fin:LINKUSDC_LONG",
-   "symbol": "LINKUSDC",
-   "account": "fin",
-   "value_usd": 6.17,
-   "gain_pct": -0.982,
-   "tier": "C",
-   "perf_mult": 0.18,
-   "amt": 0.5,
-   "mark": 12.34654733
+   "perf_mult": 0.14,
+   "amt": 739.0,
+   "mark": 0.008761
   }
  ]
 }
