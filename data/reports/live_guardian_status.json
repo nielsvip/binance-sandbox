@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:00:35Z",
+ "ts": "2026-10-21T00:05:51Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,148 +127,71 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": -0.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 10.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": -0.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 2.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14371.0
+   "log_age_s": 14687.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14373.0
+   "log_age_s": 14689.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:COMPUSDT_LONG",
-   "evidence": "20 23:45:49 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $536 on bounce (prior max 1.9300)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:COMPUSDT_LONG",
-   "evidence": "order notional $536.06 > MAX_ORDER_VALUE $300: 20 23:45:49 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:COMPUSDT_LONG @ 25.680000 qty=20.874436 ($536.06) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px25.650000_exit22.7000"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:ASTERUSDT_LONG",
-   "evidence": "20 23:46:47 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ASTERUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $874 on bounce (prior max 22.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:ASTERUSDT_LONG",
-   "evidence": "order notional $874.24 > MAX_ORDER_VALUE $300: 20 23:46:47 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:ASTERUSDT_LONG @ 0.716566 qty=1220.034912 ($874.24) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px0.716314_exit0.7087"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:GALAUSDT_SHORT",
-   "evidence": "20 23:46:50 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $42 on bounce (prior max 7095.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "20 23:48:19 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $318 on bounce (prior max 0.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "order notional $318.27 > MAX_ORDER_VALUE $300: 20 23:48:19 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:SKLUSDT_SHORT @ 0.004290 qty=74191.161475 ($318.27) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.004299_exit0.00"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:GALAUSDT_SHORT",
-   "evidence": "20 23:48:34 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $42 on bounce (prior max 7095.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:ASTERUSDT_LONG",
-   "evidence": "20 23:48:58 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ASTERUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $62 on bounce (prior max 22.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:COMPUSDT_LONG",
-   "evidence": "20 23:49:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:COMPUSDT_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $313 on bounce (prior max 1.9300)"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:COMPUSDT_LONG",
-   "evidence": "order notional $312.67 > MAX_ORDER_VALUE $300: 20 23:49:43 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:COMPUSDT_LONG @ 25.732989 qty=12.150715 ($312.67) side=BUY | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_LONG_px25.591729_exit22.7000"
-  },
-  {
-   "ts": "2026-10-21T00:00:35Z",
+   "ts": "2026-10-21T00:05:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "20 23:51:09 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $41 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-21T00:00:35Z",
+   "ts": "2026-10-21T00:05:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:SKLUSDT_SHORT",
    "evidence": "20 23:52:13 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $487 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-21T00:00:35Z",
+   "ts": "2026-10-21T00:05:51Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:SKLUSDT_SHORT",
    "evidence": "order notional $487.30 > MAX_ORDER_VALUE $300: 20 23:52:13 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:SKLUSDT_SHORT @ 0.004296 qty=113430.001930 ($487.30) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.004298_exit0.0"
   },
   {
-   "ts": "2026-10-21T00:00:35Z",
+   "ts": "2026-10-21T00:05:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
@@ -276,8 +199,8 @@
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 10,
-  "SIZE_ANOMALY": 5
+  "CAP_BYPASS": 3,
+  "SIZE_ANOMALY": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -360,5 +283,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.93
+ "sweep_s": 0.95
 }
