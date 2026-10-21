@@ -24157,6 +24157,16 @@ def _qta_entry_sizing(
             if quantity < 1:  # Safety net only: apply_qty floors positive input at 1, so < 1 means zero/negative pre-tier quantity -> skip (never invent an order)
                 logger.warning(f"[PERF_TIER_SIZING] {position_key}: tier qty {quantity} < 1 share with non-positive input -> trade SKIPPED")
                 return 0
+            if quantity == 1 and int(_pt_q0 * _pts.get_mult(symbol, position_side)) <= 0 and _pts.zero_pass_neg(symbol, position_side):
+                try:
+                    _zp_start = float(getattr(config, "START_POSITION_SIZE", 0) or 0)
+                    _zp_px = float(current_price or 0)
+                except Exception:
+                    _zp_start, _zp_px = 0.0, 0.0
+                if _zp_start > 0 and _zp_px > _zp_start:  # USER 2026-10-21: 1 floor share costs more than START_POSITION_SIZE -> discard
+                    logger.warning(f"[ZERO_PASS] {position_key}: floor 1 share @ {_zp_px} > START_POSITION_SIZE {_zp_start} -> trade DISCARDED")
+                    return 0
+                logger.info(f"[ZERO_PASS] {position_key}: neg-gain floor 1 share @ {_zp_px} (USER 2026-10-21)")
         except Exception as _pte:
             logger.warning(f"[PERF_TIER_SIZING] {position_key}: fail-open {_pte}")
     if (

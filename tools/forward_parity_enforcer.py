@@ -287,8 +287,14 @@ def main() -> int:
             print(f"  BLOCKED {b['sym_side']} acct={b['acct']} why={b['why']}")
         if off["blocked"]:
             faults.append(f"OFFBOARD_{len(off['blocked'])}")
+            try:
+                from live_twins import zero_pass as _zp
+
+                _zp_on = _zp.trade_all_on()
+            except Exception:
+                _zp_on = "unknown"
             print(
-                "sanctioned fix (NOT auto-run): python3 tools/v15_persym_golive.py golive --published --pin-all"
+                f"offboard entries allowed at ZERO_PASS bypass={_zp_on} (USER 2026-10-21: every calculation trades; risk by size). Set hygiene stays: python3 tools/v15_persym_golive.py golive --published --pin-all (NOT auto-run)"
             )
     print(f"recent refusals: {json.dumps(check_recent_refusals())[:600]}")
     ALERTS.mkdir(parents=True, exist_ok=True)

@@ -8,12 +8,16 @@ Live callers (behind config PERF_TIER_SIZING_ENABLED):
   * negbook_blocks(entry, tier_sizing_on): with tier sizing ON nothing blocks (no _NEG_BLOCK, USER 2026-10-13); acc_gain_pct <= 0 -> minimal size
 Missing/unreadable file or sym_side -> multiplier 1.0 (fail-open = unchanged sizing).
 """
+
 import json
 import os
 import time
 from pathlib import Path
 
-PATH = Path(os.environ.get("PERSYM_SIZE_TIERS_PATH") or (Path(__file__).resolve().parent / "data" / "persym_size_tiers.json"))
+PATH = Path(
+    os.environ.get("PERSYM_SIZE_TIERS_PATH")
+    or (Path(__file__).resolve().parent / "data" / "persym_size_tiers.json")
+)
 _CACHE = {"mtime": None, "tiers": {}, "checked": 0.0}
 
 
@@ -39,12 +43,19 @@ _ROOT = Path(os.environ.get("PERF_TIER_ROOT") or Path(__file__).resolve().parent
 
 def _trigger_files():
     d = _ROOT / "data"
-    return [d / "stale_set_halt" / "halts_ez.json", d / "stale_set_halt" / "halts_tradier.json", d / "vigilance_blocks_ez.json", d / "vigilance_blocks_tradier.json", d / "v15_365_priority.json"]
+    return [
+        d / "stale_set_halt" / "halts_ez.json",
+        d / "stale_set_halt" / "halts_tradier.json",
+        d / "vigilance_blocks_ez.json",
+        d / "vigilance_blocks_tradier.json",
+        d / "v15_365_priority.json",
+    ]
 
 
 def _triggered():
     """V17 CONVICTION (USER 2026-10-14): sym_sides under a live drawdown guard RIGHT NOW (stale-set 2-loss halt, vigilance block,
-    2-loss 365D escalation). Re-read on mtime change, checked every 30 s. Any IO error -> previous set (never raises)."""
+    2-loss 365D escalation). Re-read on mtime change, checked every 30 s. Any IO error -> previous set (never raises).
+    """
     now = time.time()
     if now - _TRIG["checked"] < 30.0:
         return _TRIG["set"]
@@ -61,7 +72,9 @@ def _triggered():
     out = set()
     for p, key in zip(files, ("halts", "halts", "blocks", "blocks", "sym_sides")):
         try:
-            out.update(str(k).upper() for k in (json.loads(p.read_text()).get(key) or {}))
+            out.update(
+                str(k).upper() for k in (json.loads(p.read_text()).get(key) or {})
+            )
         except Exception:
             pass
     _TRIG["sig"], _TRIG["set"] = sig, frozenset(out)
@@ -69,12 +82,16 @@ def _triggered():
 
 
 def _conviction_disabled() -> bool:
-    return os.environ.get("V17_CONVICTION_DISABLED") == "1" or (_ROOT / "data" / "conviction" / "DISABLED").exists()
+    return (
+        os.environ.get("V17_CONVICTION_DISABLED") == "1"
+        or (_ROOT / "data" / "conviction" / "DISABLED").exists()
+    )
 
 
 def get_mult(symbol: str, side: str) -> float:
     """Tier multiplier (data/persym_size_tiers.json "mult" = tier x v17 conviction, tools/v17_conviction.combine_entry).
-    Kill switch data/conviction/DISABLED -> the tier rule's own "tier_mult". Live drawdown guard active -> capped at 1.0 immediately."""
+    Kill switch data/conviction/DISABLED -> the tier rule's own "tier_mult". Live drawdown guard active -> capped at 1.0 immediately.
+    """
     try:
         ss = f"{str(symbol).upper()}_{str(side).upper()}"
         e = _tiers().get(ss) or {}
@@ -98,12 +115,15 @@ def zero_pass_neg(symbol: str, side: str) -> bool:
     """USER 2026-10-21: floor sizing applies (switch on + latest backtest gain negative)."""
     try:
         from live_twins import zero_pass as _zp
+
         return _zp.neg(symbol, side)
     except Exception:
         return False
 
 
-def apply_usd(base_usd: float, symbol: str, side: str, min_usd: float, max_usd: float) -> float:
+def apply_usd(
+    base_usd: float, symbol: str, side: str, min_usd: float, max_usd: float
+) -> float:
     """Crypto START_POSITION_SIZE in USD x tier multiplier; never below the exchange minimum, never above MAX_ORDER_VALUE.
     USER 2026-10-21 zero-pass: a calculated sym_side with negative latest gain trades at the floor (the exchange
     minimum); positive gains flow through the tiers untouched."""
@@ -137,18 +157,15 @@ def apply_qty(qty: float, symbol: str, side: str) -> float:
         return qty
     if q <= 0:
         return 0
+    try:
+        if zero_pass_neg(symbol, side):
+            return 1  # USER 2026-10-21: neg-gain calculated sym_side trades exactly 1 share, never 0 or 2+ (the caller discards when 1 share > START_POSITION_SIZE)
+    except Exception:
+        pass
     m = get_mult(symbol, side)
     if m == 1.0:
         return qty
-    v = int(q * m)
-    if v <= 0:
-        try:
-            if zero_pass_neg(symbol, side):
-                return 1  # USER 2026-10-21: neg-gain calculated sym_side trades exactly 1 share (the caller discards when 1 share > START_POSITION_SIZE)
-        except Exception:
-            pass
-        return 0
-    return v
+    return int(q * m)
 
 
 def negbook_blocks(entry: dict, tier_sizing_on: bool) -> bool:

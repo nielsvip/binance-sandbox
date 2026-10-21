@@ -4317,3 +4317,18 @@ tokenized syms can never enter by either path. Provenance: `data/inf_universe/<d
 `fallback:{used,weight,skipped}`; `--apply` backups + verifies. First live run booked LONG 4 / SHORT 3 on the
 primary path; the fallback path is proven by 44/44 writer tests and a 26-book dry run, and fires automatically
 whenever the primary yields zero. Rollback: `backups/before_inf_universe_*`.
+
+## 121. ZERO-PASS GOES COMPLETELY — EVERY CALCULATION TRADES, NEGATIVES AT FLOOR (USER 2026-10-21)
+
+"Zero-pass" = any mechanism that keeps a calculated sym_side from being promoted to live. It is gone on ALL
+accounts: a sym_side counts as calculated with a published board or a backtest < 9 days old (verdict not
+IMPOSSIBLE/NO_TRADES), and board-gate refusals (`NO_LATEST_BOARD`, `LIVE_SET_NE_BOARD`, `BOARD_TOO_OLD`) become
+allow-with-log at every entry gate — crypto `execute_now` board gate, both twin ENTRY/AUGMENT paths, stocks
+`TRADIER_NO_BOARD_ENTRY_BLOCK`. The gate functions stay truthful (disparity + enforcer keep measuring); only the
+refusal is bypassed, behind `ZERO_PASS_TRADE_ALL` (default True; False restores every old refusal). Sizing carries
+the risk, per the standing rule: positive gains untouched (RANKED tiers to x6 stay exactly as they are); a
+calculated sym_side with negative latest gain trades at the floor — crypto the exchange minimum, stocks exactly 1
+share, discarded when 1 share costs more than `START_POSITION_SIZE` — behind `ZERO_PASS_NEG_FLOOR` (default True).
+Authority: `live_twins/zero_pass.py` (incremental mtime scan, one ~16 s background warm per process so the event
+loop never stalls; old refusals stand while warming). Rollback: both switches False + `backups/before_zero_pass_*`.
+INERT UNTIL THE ENGINES RECYCLE (imports bind once; one graceful SIGTERM per account, watchdog relaunches).

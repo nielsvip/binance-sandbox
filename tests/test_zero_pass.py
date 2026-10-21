@@ -1,4 +1,5 @@
 """zero_pass (USER 2026-10-21): every calculated sym_side trades; negatives at floor, never refused."""
+
 import json
 import sys
 import time
@@ -29,13 +30,19 @@ def _sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(zp, "PROGRESS_DIR", tmp_path / "prog")
     monkeypatch.setattr(zp, "SELECTION", tmp_path / "sel.json")
     (tmp_path / "prog").mkdir()
-    zp._SCAN.update(checked=0.0, files={}, gains={}, sel_mtime=None, sel_syms=frozenset())
+    zp._SCAN.update(
+        checked=0.0, files={}, gains={}, sel_mtime=None, sel_syms=frozenset()
+    )
     return tmp_path
 
 
 def _stub_switches(monkeypatch, trade_all=True, neg_floor=True):
     mod = types.ModuleType("config")
-    mod.Config = type("Config", (), {"ZERO_PASS_TRADE_ALL": trade_all, "ZERO_PASS_NEG_FLOOR": neg_floor})
+    mod.Config = type(
+        "Config",
+        (),
+        {"ZERO_PASS_TRADE_ALL": trade_all, "ZERO_PASS_NEG_FLOOR": neg_floor},
+    )
     monkeypatch.setitem(sys.modules, "config", mod)
     tmod = types.ModuleType("config_tradier")
     tmod.TradierConfig = type("TradierConfig", (), {})
