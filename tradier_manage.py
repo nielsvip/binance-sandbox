@@ -12635,7 +12635,14 @@ async def board_state_converge_loop(trade_manager):
         return
     logger.warning("[BOARD_CONVERGE] started: forcing board-state parity through execute_now")
     base = str(getattr(config, "BASE_PATH", "."))
-    acct = getattr(trade_manager, "account_key", "") or ""
+    try:
+        _own = _own_accounts_from_argv()
+    except Exception:
+        _own = []
+    acct = (_own[0] if _own else getattr(trade_manager, "account_key", "")) or ""
+    if not acct:
+        logger.warning("[BOARD_CONVERGE] no own account resolved — loop idle")
+        return
     while getattr(trade_manager, "running", False):
         try:
             try:
