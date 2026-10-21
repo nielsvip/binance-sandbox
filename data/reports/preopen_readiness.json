@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T10:00:04Z",
+ "generated_utc": "2026-10-21T10:20:37Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 277,
-    "filled_before_open": 277
+    "filled_today": 346,
+    "filled_before_open": 346
    },
-   "detail": "277 boards filled before the open (277 today)"
+   "detail": "346 boards filled before the open (346 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -49,12 +49,12 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "reports_today": 8,
-    "newest_report": "persym_golive_20261021_refresh_0853.json",
-    "newest_report_at": "2026-10-21T09:21:05Z",
-    "tiers_at": "2026-10-21T09:22:09Z"
+    "reports_today": 9,
+    "newest_report": "persym_golive_20261021_preopen_0943.json",
+    "newest_report_at": "2026-10-21T10:19:19Z",
+    "tiers_at": "2026-10-21T10:20:34Z"
    },
-   "detail": "persym_golive_20261021_refresh_0853.json at 2026-10-21T09:21:05Z, tiers 2026-10-21T09:22:09Z"
+   "detail": "persym_golive_20261021_preopen_0943.json at 2026-10-21T10:19:19Z, tiers 2026-10-21T10:20:34Z"
   },
   {
    "name": "live_set_matches_selection",
@@ -62,9 +62,9 @@
    "critical": true,
    "measured": {
     "selection_n": 476,
-    "exact": 35,
-    "benign_divergence_only": 412,
-    "material_divergence": 28,
+    "exact": 36,
+    "benign_divergence_only": 414,
+    "material_divergence": 25,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -201,7 +201,7 @@
      }
     ]
    },
-   "detail": "35 exact, 412 benign-only, 28 with material divergence, 1 with no live row"
+   "detail": "36 exact, 414 benign-only, 25 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -211,7 +211,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 15.1,
+    "median_age_min": 5.6,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
