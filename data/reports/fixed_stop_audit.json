@@ -3,10 +3,20 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 82.1097625,
+   "key": "ang:HYPEUSDT_SHORT",
+   "live_level": 82.07879601037276,
+   "mark": 80.538,
+   "opened_at": "2026-10-21T14:03:17.702000Z",
+   "resting_trigger": 82.202
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.343,
+   "mark": 12.34211664,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
   },
@@ -16,7 +26,7 @@
    "entry_bar_level": 9.576997500000001,
    "key": "fin:AVAXUSDC_LONG",
    "live_level": 9.5246915,
-   "mark": 9.622,
+   "mark": 9.61773193,
    "opened_at": "2026-10-21T13:27:14.224000Z",
    "resting_trigger": 9.51
   },
@@ -26,20 +36,29 @@
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.008647,
+   "mark": 0.00868393,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "n_findings": 3,
- "n_positions": 3,
+ "n_findings": 4,
+ "n_positions": 4,
  "positions": [
   {
    "armed": true,
+   "entry_bar_level": 82.1097625,
+   "key": "ang:HYPEUSDT_SHORT",
+   "live_level": 82.07879601037276,
+   "mark": 80.538,
+   "opened_at": "2026-10-21T14:03:17.702000Z",
+   "resting_trigger": 82.202
+  },
+  {
+   "armed": true,
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.343,
+   "mark": 12.34211664,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
   },
@@ -48,7 +67,7 @@
    "entry_bar_level": 9.576997500000001,
    "key": "fin:AVAXUSDC_LONG",
    "live_level": 9.5246915,
-   "mark": 9.622,
+   "mark": 9.61773193,
    "opened_at": "2026-10-21T13:27:14.224000Z",
    "resting_trigger": 9.51
   },
@@ -57,10 +76,10 @@
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.008647,
+   "mark": 0.00868393,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "ts": "2026-10-21T14:01:26.555352+00:00"
+ "ts": "2026-10-21T14:11:39.009577+00:00"
 }
