@@ -1,28 +1,7 @@
 {
- "findings": [
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.19668705,
-   "key": "ang:ENAUSDC_LONG",
-   "live_level": 0.19619409999999998,
-   "mark": 0.20265,
-   "opened_at": "2026-10-21T08:01:31.410000Z",
-   "resting_trigger": 0.19589
-  }
- ],
- "n_findings": 1,
- "n_positions": 1,
- "positions": [
-  {
-   "armed": true,
-   "entry_bar_level": 0.19668705,
-   "key": "ang:ENAUSDC_LONG",
-   "live_level": 0.19619409999999998,
-   "mark": 0.20265,
-   "opened_at": "2026-10-21T08:01:31.410000Z",
-   "resting_trigger": 0.19589
-  }
- ],
- "ts": "2026-10-21T09:02:19.045876+00:00"
+ "findings": [],
+ "n_findings": 0,
+ "n_positions": 0,
+ "positions": [],
+ "ts": "2026-10-21T09:11:57.060198+00:00"
 }
