@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 09:49:00 UTC
+# Copilot Status — 2026-10-21 09:54:10 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,6 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:27:30
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:29:34
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:31:38
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:33:42
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:35:45
@@ -16,6 +14,8 @@
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:41:57
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:44:00
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T09:46:04
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:50:12
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T09:52:16
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 8 | **Watching for reentry:** 1 | **Reentered:** 0
 
 - HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
 - HELD: **U** SHORT (tradier) peak +4.8%, now +1.0%
@@ -38,6 +38,8 @@ _None_
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
 
+- WATCHING: **BBUSDT** LONG (crypto) peaked +6.7%, exited 0m ago
+
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
@@ -47,4 +49,4 @@ _None_
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (808min)
+- [MEDIUM] tradier_prices.py running but log stale (813min)
