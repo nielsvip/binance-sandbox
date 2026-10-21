@@ -78,6 +78,15 @@ def family(reason):
     m = re.match(r"^(DAYTRADE_TARGET)_.*$", fam)
     if m:
         return m.group(1)
+    # Haiku overseer sends orders as HAIKU_WINNER_AUG_*/HAIKU_REDUCE_* (vec
+    # haiku_augment twin, ez_manage:8346) but history carries the human
+    # decision-log strings "Winner augment:/reduce:". Compare the order
+    # (checked on the raw reason: fam truncates at the first space).
+    raw = str(reason or "").strip()
+    if raw.startswith("Winner augment:"):
+        return "HAIKU_WINNER_AUG"
+    if raw.startswith("Winner reduce:"):
+        return "HAIKU_REDUCE"
     # modeled in v12 (HARDCODED_RALLY_REENTRY x12, LH_LL_TOP_EXIT x14):
     # live appends entry-price params; compare the signal.
     m = re.match(r"^(HARDCODED_RALLY_REENTRY)_.*$", fam)
