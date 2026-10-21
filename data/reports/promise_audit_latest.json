@@ -1,46 +1,13 @@
 {
- "generated_utc": "2026-10-20T23:12:03.500742+00:00",
+ "generated_utc": "2026-10-21T00:12:03.442273+00:00",
  "days": 1.0,
  "totals": {
-  "entry_promises": 5858,
-  "entry_broken_no_delivery": 5858,
-  "exit_promises": 9265,
-  "exit_skipped_inflight": 11,
-  "exit_kept_in_bar": 2,
-  "exit_broken_no_delivery": 9263
+  "entry_promises": 5852,
+  "entry_broken_no_delivery": 5852,
+  "exit_promises": 9261,
+  "exit_broken_no_delivery": 9261
  },
  "per_key": {
-  "men:ONEUSDT_LONG": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "inf:ARUSDT_LONG": {
-   "exit_promises": 2,
-   "exit_skipped_inflight": 11,
-   "exit_kept_in_bar": 2,
-   "entry_promises": 2,
-   "entry_broken_no_delivery": 2
-  },
-  "men:COTIUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "fin:ATOMUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
-  },
-  "flz:BTCDOMUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "fin:1INCHUSDT_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
-  "fin:ADAUSDC_SHORT": {
-   "entry_promises": 1,
-   "entry_broken_no_delivery": 1
-  },
   "men:KSMUSDT_LONG": {
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
@@ -445,86 +412,6 @@
   }
  },
  "detail": [
-  {
-   "acct": "men",
-   "sym_side": "ONEUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-19 22:45",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "B_SMA200DIST",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "men",
-   "sym_side": "COTIUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-19 22:45",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "STATEFUL_PORTED_EXIT g0.35% age30m",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "ATOMUSDT_SHORT",
-   "kind": "exit",
-   "bar": "10-19 23:00",
-   "late_min": null,
-   "action": "CLOSE",
-   "reason": "EXIT_VELOCITY_WT against-short g-0.12%",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "ARUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-19 23:15",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "HARDCODED_RALLY_REENTRY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "flz",
-   "sym_side": "BTCDOMUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-19 23:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "B_KZONE",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "1INCHUSDT_SHORT",
-   "kind": "entry",
-   "bar": "10-19 23:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_LOWER_HIGH",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "inf",
-   "sym_side": "ARUSDT_LONG",
-   "kind": "entry",
-   "bar": "10-19 23:45",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_MANDATORY",
-   "outcome": "NO_DELIVERY"
-  },
-  {
-   "acct": "fin",
-   "sym_side": "ADAUSDC_SHORT",
-   "kind": "entry",
-   "bar": "10-19 23:00",
-   "late_min": null,
-   "action": "OPEN",
-   "reason": "REENTRY_LOWER_HIGH",
-   "outcome": "NO_DELIVERY"
-  },
   {
    "acct": "men",
    "sym_side": "KSMUSDT_LONG",
@@ -151656,19 +151543,5 @@
    "outcome": "NO_DELIVERY"
   }
  ],
- "broken": [
-  {
-   "ts": 1792453933.020105,
-   "kind": "BROKEN",
-   "acct": "inf",
-   "key": "inf:ARUSDT_LONG",
-   "sym_side": "ARUSDT_LONG",
-   "label": "CLOSE VEC_EXIT_OWED",
-   "why": "EXIT_WEDGED_FORCED",
-   "is_exit": true,
-   "bar_ts": 1792452600.0,
-   "lag_s": 433.0,
-   "detail": "inflight_age_s=97"
-  }
- ]
+ "broken": []
 }
