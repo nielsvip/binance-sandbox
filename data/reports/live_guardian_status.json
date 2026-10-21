@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T18:53:15Z",
+ "ts": "2026-10-21T18:58:32Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,21 +27,21 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 203,
-   "open_positions": 12,
-   "unrealised_usd": 51.82,
+   "fills_6h": 211,
+   "open_positions": 11,
+   "unrealised_usd": 52.51,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 143,
-   "open_positions": 14,
-   "unrealised_usd": 40.5,
+   "fills_6h": 146,
+   "open_positions": 11,
+   "unrealised_usd": 28.91,
    "pos_mismatch": 0
   },
   "fin": {
    "fills_6h": 5,
    "open_positions": 1,
-   "unrealised_usd": 0.12,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -138,100 +138,85 @@
     "28471"
    ],
    "starts_30m": 3,
-   "log_age_s": 426.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "572"
    ],
    "starts_30m": 2,
-   "log_age_s": 19.0
+   "log_age_s": 102.0
   },
   "ang": {
    "pids": [
-    "47926"
+    "37571"
    ],
-   "starts_30m": 1,
-   "log_age_s": 14.0
+   "starts_30m": 2,
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "28789"
    ],
    "starts_30m": 2,
-   "log_age_s": 75.0
+   "log_age_s": 66.0
   },
   "flz": {
    "pids": [
-    "94648"
+    "34023"
    ],
-   "starts_30m": 3,
-   "log_age_s": 127.0
+   "starts_30m": 4,
+   "log_age_s": 10.0
   },
   "trb": {
    "pids": [
-    "50826"
+    "38636"
    ],
-   "starts_30m": 1,
-   "log_age_s": 9.0
+   "starts_30m": 2,
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [
-    "51329"
+    "39909"
    ],
-   "starts_30m": 1,
-   "log_age_s": 14.0
+   "starts_30m": 2,
+   "log_age_s": -0.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T18:53:15Z",
+   "ts": "2026-10-21T18:58:32Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
-   "key": "trb:ARM_SHORT",
-   "evidence": "entry notional $1133.10 (median $239.89, MAX_ORDER_VALUE $7000) @ 2026-10-21T18:40:09Z BROKER_SYNC_OPEN_FROM_FLAT_STUB"
+   "key": "trb:BNO_LONG",
+   "evidence": "entry notional $2621.97 (median $324.99, MAX_ORDER_VALUE $7000) @ 2026-10-21T18:57:10Z DC_BREAK_HIGH_15M |AIR_CARRY1.000|RATIO_BOOST_L(R=0.00)"
   },
   {
-   "ts": "2026-10-21T18:53:15Z",
+   "ts": "2026-10-21T18:58:32Z",
    "severity": "WARN",
    "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trb:ARM_SHORT",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $1133.10 (median $239.89, MAX_ORDER_VALUE $7000) @ 2026-10-21T18:40:09Z BROKER_SYNC_OPEN_FROM_FLAT_STUB"
+   "key": "trb:BNO_LONG",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $2621.97 (median $324.99, MAX_ORDER_VALUE $7000) @ 2026-10-21T18:57:10Z DC_BREAK_HIGH_15M |AIR_CARRY1.000|RATIO_BOOST_L(R=0.00)"
   },
   {
-   "ts": "2026-10-21T18:53:17Z",
+   "ts": "2026-10-21T18:58:35Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['75326', '6871', '28471'])"
   },
   {
-   "ts": "2026-10-21T18:53:17Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 426s"
-  },
-  {
-   "ts": "2026-10-21T18:53:17Z",
+   "ts": "2026-10-21T18:58:35Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "3 new process ids in 30 min (['45945', '83810', '94648'])"
-  },
-  {
-   "ts": "2026-10-21T18:53:17Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 127s"
+   "evidence": "4 new process ids in 30 min (['45945', '83810', '94648', '34023'])"
   }
  ],
  "alert_counts": {
   "SIZE_ANOMALY": 1,
   "NO_PER_KEY_BLOCK_AVAILABLE": 1,
-  "RESTART_LOOP": 2,
-  "STALE_LOG": 2
+  "RESTART_LOOP": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -300,5 +285,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.86
+ "sweep_s": 2.61
 }
