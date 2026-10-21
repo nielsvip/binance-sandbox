@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:57:26Z",
+ "ts": "2026-10-21T01:02:20Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,58 +127,72 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 13.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 8.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 21.0
+   "log_age_s": 31.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 12.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17783.0
+   "log_age_s": 18077.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17785.0
+   "log_age_s": 18079.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:57:27Z",
+   "ts": "2026-10-21T01:02:21Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:1000FLOKIUSDT_SHORT",
    "evidence": "21 00:53:43 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $19 on bounce (prior max 2056.0000)"
+  },
+  {
+   "ts": "2026-10-21T01:02:21Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:ARUSDT_LONG",
+   "evidence": "21 00:57:51 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:ARUSDT_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $8 on bounce (prior max 18.4000)"
+  },
+  {
+   "ts": "2026-10-21T01:02:21Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:GALAUSDT_SHORT",
+   "evidence": "21 00:57:56 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $120 on bounce (prior max 7095.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 1
+  "CAP_BYPASS": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -240,5 +254,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.0
+ "sweep_s": 1.16
 }
