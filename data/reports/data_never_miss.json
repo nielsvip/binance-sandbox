@@ -1,1015 +1,24 @@
 {
- "generated_utc": "2026-10-21T16:27:59Z",
- "secs": 118.0,
+ "generated_utc": "2026-10-21T16:32:42Z",
+ "secs": 159.4,
  "universe": {
   "crypto": 197,
   "stocks": 223
  },
  "unreachable": {},
  "healed": {
-  "mac:/Users/niels/Documents/binance": {
-   "files": 80,
-   "rows": 70,
+  "s1:binance": {
+   "files": 195,
+   "rows": 1893,
    "skipped": {}
   },
-  "s1:binance": {
-   "files": 280,
-   "rows": 921,
+  "mac:/Users/niels/Documents/binance": {
+   "files": 86,
+   "rows": 62,
    "skipped": {}
   }
  },
- "kline_breaches": [
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DVN",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EXEL",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COP",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DUOL",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EPD",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCX",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "JPM",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DE",
-   "tf": "1h",
-   "last": "2026-10-20T15:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 23.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GME",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DINO",
-   "tf": "1h",
-   "last": "2026-10-20T18:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 20.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LDOS",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DHR",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EPD",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "HII",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COP",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "IBM",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COHR",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "INTC",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "KO",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FIVN",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DELL",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COHR",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COP",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DHR",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "HON",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DINO",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "KGC",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DE",
-   "tf": "4h",
-   "last": "2026-10-20T13:30",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 5.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DELL",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCX",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "HAO",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EPD",
-   "tf": "15m",
-   "last": "2026-10-20T19:15",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 83.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LNG",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COHR",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FNV",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LLY",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EPD",
-   "tf": "1h",
-   "last": "2026-10-20T18:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 20.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DIS",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EXEL",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DVN",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCN",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "INOD",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DHR",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FDX",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "ELD",
-   "tf": "4h",
-   "last": "2026-10-20T13:30",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 5.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LAC",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LEXX",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GLD",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GE",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DAR",
-   "tf": "1h",
-   "last": "2026-10-20T15:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 23.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DELL",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "MO",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LRCX",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EXEL",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FDX",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "ETN",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCX",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "JOBY",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GILD",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "HP",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DUOL",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "MA",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GOOGL",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCN",
-   "tf": "1h",
-   "last": "2026-10-20T15:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 23.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "JNJ",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COHR",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "HD",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DINO",
-   "tf": "15m",
-   "last": "2026-10-20T18:30",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 86.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FANG",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FANG",
-   "tf": "1h",
-   "last": "2026-10-20T15:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 23.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GDXJ",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "META",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FNV",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EOG",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FNV",
-   "tf": "15m",
-   "last": "2026-10-20T17:30",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 90.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DAR",
-   "tf": "15m",
-   "last": "2026-10-20T16:00",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 96.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GDXJ",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "IBIT",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCN",
-   "tf": "4h",
-   "last": "2026-10-20T13:30",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 5.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LMT",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DVN",
-   "tf": "15m",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 82.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DHR",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DUOL",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FDX",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GDX",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EXEL",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FANG",
-   "tf": "4h",
-   "last": "2026-10-20T13:30",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 5.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GDXJ",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "COP",
-   "tf": "15m",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 82.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DAR",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DVN",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GDX",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DE",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "ETN",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GM",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DAR",
-   "tf": "4h",
-   "last": "2026-10-20T13:30",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 5.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DUOL",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DE",
-   "tf": "15m",
-   "last": "2026-10-20T16:00",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 96.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "LITE",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "15m",
-   "last": "2026-10-20T19:45",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 81.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GDXJ",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DINO",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FANG",
-   "tf": "15m",
-   "last": "2026-10-20T16:00",
-   "expect": "2026-10-21T16:00",
-   "bars_behind": 96.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "ETN",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FCX",
-   "tf": "1h",
-   "last": "2026-10-20T19:30",
-   "expect": "2026-10-21T14:30",
-   "bars_behind": 19.0
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "FDX",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "DELL",
-   "tf": "4h",
-   "last": "2026-10-20T17:00",
-   "expect": "2026-10-21T09:30",
-   "bars_behind": 4.1
-  },
-  {
-   "host": "s1",
-   "venue": "stocks",
-   "symbol": "GOLD",
-   "tf": "D",
-   "last": "2026-08-26T00:00",
-   "expect": "2026-10-20T12:00",
-   "bars_behind": 55.5
-  }
- ],
+ "kline_breaches": [],
  "unhealable": [],
  "unparsed_live_files": [],
  "mixed_label_files": [
@@ -1019,100 +28,100 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": -5.6,
+   "age_s": -10.2,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": -5.6,
-    "price_cache_2.json": 10.5,
-    "price_cache_3.json": -5.6
+    "price_cache_1.json": -5.8,
+    "price_cache_2.json": 31.6,
+    "price_cache_3.json": -10.2
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 3.9,
+   "age_s": 19.3,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 3.9
+    "data/market_data_NEWEST": 19.3
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 4.4,
+   "age_s": 23.9,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 4.4
+    "data/latest_market_data.json": 23.9
    }
   },
   {
    "host": "mac",
    "file": "stock indicators",
-   "age_s": -8.3,
+   "age_s": 78.9,
    "max_s": 90,
    "ok": true,
    "files": {
-    "data/tradier/tradier_indicators_latest.json": -8.3
+    "data/tradier/tradier_indicators_latest.json": 78.9
    }
   },
   {
    "host": "s1",
    "file": "crypto snapshot on S1 (Mac push or own stack)",
-   "age_s": 50.3,
+   "age_s": 117.1,
    "max_s": 180,
    "ok": true,
    "files": {
-    "data/market_data_NEWEST": 50.3,
-    "ez_s1_stack/data/latest_market_data.json": 7399.9
+    "data/market_data_NEWEST": 117.1,
+    "ez_s1_stack/data/latest_market_data.json": 7633.7
    }
   },
   {
    "host": "s1",
    "file": "crypto prices on S1 (Mac push or own stack)",
-   "age_s": 82.3,
+   "age_s": 53.1,
    "max_s": 300,
    "ok": true,
    "files": {
-    "price_cache_1.json": 82.3,
-    "price_cache_2.json": 113.3,
-    "price_cache_3.json": 108.3,
-    "ez_s1_stack/price_cache_1.json": 1342711.8,
-    "ez_s1_stack/price_cache_2.json": 7357.5,
-    "ez_s1_stack/price_cache_3.json": 7334.0
+    "price_cache_1.json": 59.1,
+    "price_cache_2.json": 53.1,
+    "price_cache_3.json": 59.1,
+    "ez_s1_stack/price_cache_1.json": 1342945.6,
+    "ez_s1_stack/price_cache_2.json": 7591.3,
+    "ez_s1_stack/price_cache_3.json": 7567.8
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 137.5,
+   "age_s": 115.7,
    "max_s": 300,
    "ok": true,
    "files": {
-    "data/latest_market_data.json": 137.5
+    "data/latest_market_data.json": 115.7
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 0.8,
-   "ok": false
+   "free_gb": 6.1,
+   "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 31.5,
+   "free_gb": 31.3,
    "ok": true
   },
   {
    "host": "s1",
    "file": "disk free binance-sandbox",
    "age_s": null,
-   "free_gb": 31.3,
+   "free_gb": 31.2,
    "ok": true
   },
   {
