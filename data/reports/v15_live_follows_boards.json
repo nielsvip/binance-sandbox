@@ -1,9 +1,37 @@
 {
- "at": "2026-10-21T02:38:01Z",
+ "at": "2026-10-21T03:38:00Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261021_refresh_0251.json",
+   "age_min": 42.6,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 10,
+    "SKIP": 12,
+    "PASS": 11
+   },
+   "registered": 3,
+   "already_live_skipped": 8,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 6,
+    "golive-blocklisted": 4,
+    "live row is a MEASURED h2h decision (2026-10-19T14": 3,
+    "live row is a MEASURED h2h decision (2026-10-18T01": 1,
+    "live row is a MEASURED h2h decision (2026-10-17T17": 1,
+    "live row is a MEASURED h2h decision (2026-10-19T22": 1,
+    "live row is a MEASURED h2h decision (2026-10-18T00": 1,
+    "live row is a MEASURED h2h decision (2026-10-20T14": 1,
+    "live row is a MEASURED h2h decision (2026-10-19T19": 1,
+    "live row is a MEASURED h2h decision (2026-10-18T17": 1,
+    "published": 1,
+    "live row is a MEASURED h2h decision (2026-10-18T16": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261021_refresh_0152.json",
-   "age_min": 39.1,
+   "age_min": 99.1,
    "applied": true,
    "n": null,
    "results": {
@@ -28,38 +56,10 @@
     "live row is a MEASURED h2h decision (2026-10-18T16": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261021_refresh_0057.json",
-   "age_min": 94.5,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 10,
-    "PASS": 16,
-    "SKIP": 12
-   },
-   "registered": 8,
-   "already_live_skipped": 8,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 6,
-    "golive-blocklisted": 4,
-    "live row is a MEASURED h2h decision (2026-10-19T14": 3,
-    "live row is a MEASURED h2h decision (2026-10-18T01": 1,
-    "live row is a MEASURED h2h decision (2026-10-17T17": 1,
-    "live row is a MEASURED h2h decision (2026-10-19T22": 1,
-    "live row is a MEASURED h2h decision (2026-10-18T00": 1,
-    "live row is a MEASURED h2h decision (2026-10-20T14": 1,
-    "live row is a MEASURED h2h decision (2026-10-19T19": 1,
-    "live row is a MEASURED h2h decision (2026-10-18T17": 1,
-    "published": 1,
-    "live row is a MEASURED h2h decision (2026-10-18T16": 1
-   },
-   "changed_symsides": []
   }
  ],
  "fails": [
-  "two consecutive runs still had pending sets (8 then 5) \u2014 live is not converging on the boards"
+  "two consecutive runs still had pending sets (5 then 3) \u2014 live is not converging on the boards"
  ],
  "refused_total": 22
 }

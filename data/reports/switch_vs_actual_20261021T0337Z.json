@@ -1,0 +1,76 @@
+{
+ "window_from": "10-21 02:37",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 5
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 03:13",
+   "actual": "REDUCE",
+   "actual_reason": "DC_BREACH_REDUCE_UNHEDGED_LOW_15m_price_3.828206",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "IOTXUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 02:42",
+   "actual": "REDUCE",
+   "actual_reason": "LH_LL_TOP_EXIT_arm=4h_LH_leg=WT15M_g-0.30",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "KSMUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 03:13",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_DC4_LOW_3M_GAIN_EROSION_STOP_p4.294000<dc44.296519_g-0.70%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ZENUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 03:31",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:95/d196/k3:63.31/d3:36.16_@6.1640_RZ_BASELINE_BASELINE_BOUNCE_LON",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ZENUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 03:33",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:95/d196/k3:63.31/d3:36.16_@6.1640_RZ_BASELINE_BASELINE_BOUNCE_LON",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
