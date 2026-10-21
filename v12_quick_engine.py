@@ -11908,6 +11908,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 & np.asarray(_pt, dtype=bool)
                 & np.asarray(_pq, dtype=bool)
             )
+        # GAP batch2 2026-10-21: k-low block leg + delta-z pass leg. Both None
+        # on frozen NPZ (k_3m / speed_z absent) -> default-inert, fail-open.
         for _sw in (
             "BTC_GUARANTEED_REENTRY_ENABLED",
             "DELTA_REENTRY_MIN_TF",
@@ -11915,6 +11917,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED",
             "REENTRY_EXHAUSTED_PARTIAL_ENABLED",
             "DAEMON_REENTRY_SHORT_WT_XUNDER_GATE_ENABLED",
+            "MANDATORY_REENTRY_K_LOW_BLOCK",
+            "DELTA_REENTRY_Z_THRESHOLD",
         ):
             _m = _lvr2.get(_sw, npz, n, is_long, cfg)
             if _m is not None:
@@ -17695,6 +17699,29 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             )  # [N3 q4]
         except Exception:
             _n3_epq = None
+    # GAP batch2 2026-10-21: REENTRY_RALLY_K15M_MAX block mask for the EPQ path.
+    # None at cap>=100 (disabled) or when EPQ master off -> default-inert.
+    _n3_rally = None
+    if _n3_epq is not None:
+        try:
+            import vec_decisions.lane_vec_reentry2 as _lvr2_rally
+
+            _m = _lvr2_rally.get("REENTRY_RALLY_K15M_MAX", npz, n, is_long, cfg)
+            if _m is not None:
+                _n3_rally = np.asarray(_m, dtype=bool)
+        except Exception:
+            _n3_rally = None
+    # GAP batch2 2026-10-21: REENTRY2_DIR_FAV bar mask (triple-gated in the
+    # predicate; None at live defaults and on frozen NPZ) -> default-inert.
+    _dfr_mask = None
+    try:
+        import vec_decisions.lane_vec_reentry2 as _lvr2_dfr
+
+        _m = _lvr2_dfr.get("REENTRY2_DIR_FAV_ENABLED", npz, n, is_long, cfg)
+        if _m is not None:
+            _dfr_mask = np.asarray(_m, dtype=bool)
+    except Exception:
+        _dfr_mask = None
     _n3_obl = None
     if (
         getattr(cfg, "REENTRY_OBLIGATORY_MODEL_ENABLED", False)
@@ -18740,6 +18767,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 )
                 except Exception:
                     pass
+            # GAP batch2 2026-10-21: REENTRY2_DIR_FAV immediate reentry (live
+            # ez_positions_quick 32641-32649). Triple-gated in the predicate
+            # (LEGACY_DIRECTION_FAVORABLE + DIRECTION_FAVORABLE_REENTRY_ENABLED
+            # default False); 120m window mirrors live min_since_exit < 120.
+            # Vec evaluates flat after a close, so the notional leg is vacuous.
+            if not fire and has_closed_before and trades and _dfr_mask is not None:
+                try:
+                    _dfr_xb = int(trades[-1].get("bar_exit", i))
+                    _dfr_mins = (
+                        float(ts[i])
+                        - float(ts[min(max(_dfr_xb, 0), len(ts) - 1)])
+                    ) / 60.0
+                    if (
+                        0 <= _dfr_mins < 120
+                        and i < len(_dfr_mask)
+                        and bool(_dfr_mask[i])
+                    ):
+                        fire = True
+                        if _fire_src is None:
+                            _fire_src = "REENTRY2_DIR_FAV"
+                except Exception:
+                    pass
             # WIRING LANE E 2026-10-05: GAP morning rebuy trigger (live tradier 9948-10005). Pending set by the gap inline-close; fires in the first-120m window on dip/wt/ha/dc/force; vv-danger drops pending (not attractive); later gates may veto (retry next bar, like live).
             _gm_rebuy = False
             if (
@@ -18864,7 +18913,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     ) / 60.0
                     _pq = float(trades[-1].get("qty", 0) or 0)
                     _sps = float(cfg.START_POSITION_SIZE)
-                    if not _E.rally_k15_blocked(_n3_epq, i, cfg):
+                    # GAP batch2 2026-10-21: REENTRY_RALLY_K15M_MAX veto (live
+                    # _epq_rally_k15m_blocked). _E.rally_k15_blocked stays
+                    # pinned-False per the 2026-10-16 ruling; this mask is new.
+                    _rally_blk = bool(
+                        _n3_rally[i]
+                        if (_n3_rally is not None and i < len(_n3_rally))
+                        else False
+                    )
+                    if not _rally_blk and not _E.rally_k15_blocked(_n3_epq, i, cfg):
                         _tier = _E.size_tier_mult(_n3_epq, i, px, _ex, cfg)
                         if _E.dc_breakout(_n3_epq, i, px, cfg):
                             fire = True

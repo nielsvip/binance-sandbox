@@ -26176,7 +26176,7 @@ async def check_exit_candidates_for_account(
                             is_hedge = True
                             hedge_for = _cand_hedge_for
 
-                hard_exit_reason = ""
+                hard_exit_reason = None  # 2026-10-21 FIX: was "" which is not None, so the QUICK_REDUCE_TECHNICAL_ONLY trap-suppressor below (hard_exit_reason is None) never engaged — unvectorized stochastic reduces sailed through. ROLLBACK: = "".
                 _trend_veto_active = _bge_core.trend_veto(lambda k, d: _sw_get(symbol, position_side, k, d), is_long, indicators)  # 2026-10-17 shared core (vec_decisions/breakeven_gain_erosion.py)
                 # ═══ K1M EXTREME REVERSE EXIT (USER RULE 2026-04-27) ═══
                 # Simple top-level: k_1m at overbought/oversold extreme AND turning back = trade is OUT.
@@ -27897,6 +27897,11 @@ async def check_exit_candidates_for_account(
                         stagnation_exit = True
                         rec_exit = "REDUCE"
                         reason_exit += "STAGNATION"
+                # 2026-10-21 VECTOR LAW: SCALP_REDUCE direct-route gate — this dispatch calls trade_manager.execute_now directly, bypassing the three SCALP_REDUCE_ENABLED gates (queue_trade_action / execute_trade_action x2). Zero boards promote it (global False = 2026-05-30 USER OFF), so default-neutral; a board MAY opt in per-sym via pilot. ROLLBACK: delete this block.
+                if should_close and str(rec_exit).upper().strip() == "SCALP_REDUCE" and not bool(_psym_get(symbol, position_side, "SCALP_REDUCE_ENABLED", getattr(config, "SCALP_REDUCE_ENABLED", False))):
+                    should_close = False
+                    reason_exit = str(reason_exit) + "_SCALP_DISABLED_DIRECT"
+                    logger.info(f"[SCALP_REDUCE_DISABLED_DIRECT] {position_key}: rec={rec_exit} blocked on direct route — SCALP_REDUCE_ENABLED off for {symbol}_{position_side}")
                 if should_close:
                     if is_h_acc and not is_hedge:
                         async with tracker_manager._hedges_lock:

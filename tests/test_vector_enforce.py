@@ -31,7 +31,9 @@ def test_bar_window_math(tmp_path, monkeypatch):
     import sys as _s
 
     mod = _t.ModuleType("config")
-    mod.Config = type("Config", (), {"VECTOR_ENFORCE_ENABLED": True, "VECTOR_BAR_WINDOW_S": 180.0})
+    mod.Config = type(
+        "Config", (), {"VECTOR_ENFORCE_ENABLED": True, "VECTOR_BAR_WINDOW_S": 180.0}
+    )
     monkeypatch.setitem(_s.modules, "config", mod)
     assert ve.in_bar_window(1800 * 900 + 10) is True
     assert ve.in_bar_window(1800 * 900 + 400) is False
@@ -84,3 +86,51 @@ def test_enforce_off_allows_all(tmp_path, monkeypatch):
 def test_execute_now_calls_enforcer():
     src = (ROOT / "ez_manage.py").read_text()
     assert "vector_enforce" in src and "VECTOR_EXEC_REFUSED" in src
+
+
+def test_quick_category_never_killed(tmp_path, monkeypatch):
+    """USER 2026-10-21 retrace: QUICK_* is the whole twin-lane dispatcher — the family
+    is the embedded rec token, and the category itself can never be disabled."""
+    k, v = _iso(tmp_path, monkeypatch)
+    assert (
+        ve.family_of(
+            "QUICK_REDUCE_SCALP_REDUCE_k_1m:89/d_1m:89_TIGHT_LEASH_PROFIT_SAVE_REDUCE"
+        )
+        == "SCALP_REDUCE"
+    )
+    ok, verdict = ve.check(
+        "REDUCE", "inf:X_LONG", "QUICK_REDUCE_SCALP_REDUCE_k_1m:89_TIGHT_LEASH_REDUCE"
+    )
+    assert (ok, verdict) == (False, "VIOLATION_FAMILY_KILLED")
+    assert "SCALP_REDUCE" in json.loads(
+        k.read_text()
+    ), "sub-rec family killed, not QUICK_*"
+    assert "QUICK_REDUCE" not in json.loads(
+        k.read_text()
+    ) and "QUICK" not in json.loads(k.read_text())
+    ok2, v2 = ve.check(
+        "REDUCE", "inf:Y_LONG", "QUICK_CLOSE_STRONG_REDUCE_k1_TIGHT_REDUCE"
+    )
+    assert (ok2, v2) == (False, "VIOLATION_FAMILY_KILLED")
+    assert "STRONG_REDUCE" in json.loads(k.read_text())
+
+
+def test_vec_switch_exits_skip_kill_keep_window(tmp_path, monkeypatch):
+    """BB_TAKE_4h under a promoting board is vector-modeled switch output, not a violation."""
+    _iso(tmp_path, monkeypatch)
+    assert ve.family_of("CLOSE BB_TAKE_4h_g0.02") == "BB_TAKE"
+    ok, verdict = ve.check("CLOSE", "inf:X_LONG", "BB_TAKE_4h_g0.02")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    monkeypatch.setattr(ve, "in_bar_window", lambda now=None: False)
+    ok2, v2 = ve.check("CLOSE", "inf:X_LONG", "BB_TAKE_4h_g0.02")
+    assert (ok2, v2) == (False, "OFF_BAR_WINDOW")
+
+
+def test_board_confirmed_and_stops_skip_window(tmp_path, monkeypatch):
+    _iso(tmp_path, monkeypatch)
+    monkeypatch.setattr(ve, "in_bar_window", lambda now=None: False)
+    assert ve.check("CLOSE", "a", "VEC_DRIVEN_EXIT_RECONCILE_x")[0] is True
+    assert ve.check("CLOSE", "a", "BOARD_CONVERGE_CLOSE vec=leg")[0] is True
+    assert ve.check("CLOSE", "a", "FIXED_STOP_HIT_px")[0] is True
+    ok, v = ve.check("CLOSE", "a", "WT_LOWER_CROSS_EXIT")
+    assert (ok, v) == (False, "OFF_BAR_WINDOW")

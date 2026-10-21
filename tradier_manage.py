@@ -14684,6 +14684,176 @@ async def _augment_core_try(trade_manager, order_queue, position_key, position, 
         return None
 
 
+def _b2_delta_entry_proposals(get, ind, is_long, px=0.0):
+    """B_DELTAENTRY live scalar mirror (gap batch2 2026-10-21).
+
+    Mirrors v12_quick_engine.compute_reentry_blocks B_DELTAENTRY
+    (DELTA_ENTRY_Z_THRESHOLD / DELTA_ENTRY_ACCEL_THRESHOLD / DELTA_ENTRY_MIN_TF):
+    side-aware 1h-velocity gate + accel gate + min-TF count (+D leg when
+    min_tf>=4; +ATR bar-move sub-gate while DELTA_ATR_ENTRY_FILTER is on, a
+    QUEUED switch owned by another batch — read here for fidelity only).
+    Returns [reason] (0-1 items); default-inert (ENGINE+ENTRY False -> []);
+    fail-open (missing/NaN -> leg skipped, no fire).
+    """
+    def _f(v, d=None):
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return d
+        return d if f != f else f
+
+    def _g(k, d):
+        try:
+            return get(k, d)
+        except Exception:
+            return d
+
+    ind = ind or {}
+    try:
+        if not bool(_g("DELTA_ENGINE_ENABLED", False)):
+            return []
+        if not bool(_g("DELTA_ENTRY_ENABLED", False)):
+            return []
+    except Exception:
+        return []
+    try:
+        z_thr = float(_g("DELTA_ENTRY_Z_THRESHOLD", 2.5))
+    except (TypeError, ValueError):
+        z_thr = 2.5
+    try:
+        accel_thr = float(_g("DELTA_ENTRY_ACCEL_THRESHOLD", 0.0))
+    except (TypeError, ValueError):
+        accel_thr = 0.0
+    try:
+        min_tf = int(float(_g("DELTA_ENTRY_MIN_TF", 3)))
+    except (TypeError, ValueError):
+        min_tf = 3
+    v1h = _f(ind.get("wt_velocity_1h"))
+    v4h = _f(ind.get("wt_velocity_4h"))
+    if v1h is None or v4h is None:
+        return []
+    if is_long:
+        if not (v1h > z_thr and v4h > 0):
+            return []
+        if accel_thr > 0:
+            acc = _f(ind.get("wt_acceleration_1h"), 0.0)
+            if acc is None or not acc > accel_thr:
+                return []
+        if min_tf >= 4:
+            vd = _f(ind.get("wt_velocity_D"), 0.0)
+            if vd is None or not vd > 0:
+                return []
+    else:
+        if not (v1h < -z_thr and v4h < 0):
+            return []
+        if accel_thr > 0:
+            acc = _f(ind.get("wt_acceleration_1h"), 0.0)
+            if acc is None or not acc < -accel_thr:
+                return []
+        if min_tf >= 4:
+            vd = _f(ind.get("wt_velocity_D"), 0.0)
+            if vd is None or not vd < 0:
+                return []
+    if bool(_g("DELTA_ATR_ENTRY_FILTER", False)):
+        atr = _f(ind.get("atr_1h"), 0.0) or 0.0
+        if atr > 0:
+            c = _f(ind.get("close"), _f(px))
+            cp = _f(ind.get("close_5m_prev"), c)
+            if c is None or cp is None or abs(c - cp) < atr * 0.3:
+                return []
+    return ["DELTAENTRY_" + ("LONG" if is_long else "SHORT")]
+
+
+def _b2_reentry_b029010_proposals(get, ind, is_long):
+    """REENTRY B02/B09/B10 live scalar mirrors (gap batch2 2026-10-21).
+
+    Mirrors v12_quick_engine.compute_reentry_blocks blocks B02 (BC156 bottom:
+    15m oversold + rising + 1h bull + >=2/4 TF bull), B09 (snapback: 3m stoch
+    cross up from oversold + base WT recovering), B10 (stoch reversal: 3m
+    cross + extreme + 15m confirm). Only the three blocks whose template +
+    live default is False (B04/B11/B12/B14/B15 default True -> QUEUED, a
+    faithful mirror would fire at default). Returns fires list (0-3);
+    default-inert (all ENABLED False -> []); fail-open.
+    """
+    def _f(v, d=None):
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return d
+        return d if f != f else f
+
+    def _g(k, d):
+        try:
+            return get(k, d)
+        except Exception:
+            return d
+
+    ind = ind or {}
+    fires = []
+    try:
+        if bool(_g("REENTRY_B02_BC156_BOTTOM_ENABLED", False)):
+            w15a = _f(ind.get("wt1_15m"))
+            wv15 = _f(ind.get("wt_velocity_15m"))
+            w1a = _f(ind.get("wt1_1h"))
+            w1b = _f(ind.get("wt2_1h"))
+            bull = 0
+            bull_ok = True
+            for _tf in ("3m", "15m", "1h", "4h"):
+                _a = _f(ind.get("wt1_" + _tf))
+                _b = _f(ind.get("wt2_" + _tf))
+                if _a is None or _b is None:
+                    bull_ok = False
+                    break
+                if (_a > _b) if is_long else (_a < _b):
+                    bull += 1
+            if bull_ok and w15a is not None and wv15 is not None and w1a is not None and w1b is not None:
+                if is_long:
+                    _fire = w15a < -20 and wv15 > 0 and w1a > w1b and bull >= 2
+                else:
+                    _fire = w15a > 20 and wv15 < 0 and w1a < w1b and bull >= 2
+                if _fire:
+                    fires.append("B02_BC156_BOTTOM_" + ("LONG" if is_long else "SHORT"))
+    except Exception:
+        pass
+    try:
+        if bool(_g("REENTRY_B09_SNAPBACK_ENABLED", False)):
+            k3 = _f(ind.get("k_3m"))
+            k3p = _f(ind.get("k_3m_prev"), k3)
+            b1 = _f(ind.get("wt1_5m"))
+            b2 = _f(ind.get("wt2_5m"))
+            if b1 is None or b2 is None:
+                b1 = _f(ind.get("wt1_3m"))
+                b2 = _f(ind.get("wt2_3m"))
+            if b1 is None or b2 is None:
+                b1 = _f(ind.get("wt1"))
+                b2 = _f(ind.get("wt2"))
+            if k3 is not None and k3p is not None and b1 is not None and b2 is not None:
+                if is_long:
+                    _fire = k3p < 25 and k3 > k3p and b1 > b2
+                else:
+                    _fire = k3p > 75 and k3 < k3p and b1 < b2
+                if _fire:
+                    fires.append("B09_SNAPBACK_" + ("LONG" if is_long else "SHORT"))
+    except Exception:
+        pass
+    try:
+        if bool(_g("REENTRY_B10_STOCH_REV_ENABLED", False)):
+            k3 = _f(ind.get("k_3m"))
+            k3p = _f(ind.get("k_3m_prev"), k3)
+            d3 = _f(ind.get("d_3m"))
+            k15 = _f(ind.get("k_15m"))
+            if k3 is not None and k3p is not None and d3 is not None and k15 is not None:
+                if is_long:
+                    _fire = k3p <= d3 and k3 > d3 and k3 < 25 and k15 < 40
+                else:
+                    _fire = k3p >= d3 and k3 < d3 and k3 > 75 and k15 > 60
+                if _fire:
+                    fires.append("B10_STOCH_REV_" + ("LONG" if is_long else "SHORT"))
+    except Exception:
+        pass
+    return fires
+
+
 def _r15_15m_htf_proposals(get, ind, prev, is_long, px=0.0):
     """REENTRY_15M HTF trio live scalar mirror (gap batch1 2026-10-21).
 
@@ -18611,6 +18781,33 @@ async def process_position(
                         break
             except Exception as _r15_err:
                 logger.debug(f"[REENTRY_15M] {position_key}: probe err: {_r15_err}")
+        # GAP BATCH2 2026-10-21 (default-inert): B_DELTAENTRY flat OPEN mirror (DELTA_ENTRY_Z_THRESHOLD /
+        # DELTA_ENTRY_ACCEL_THRESHOLD / DELTA_ENTRY_MIN_TF; vec B_DELTAENTRY; live DeltaTracker.update ignores
+        # entry_z/entry_accel and has no flat trigger). Gate ENGINE+ENTRY (stocks default False+False = inert);
+        # TEDA mechanics (flat-only, per-sym _cfg, queue OPEN 80.0).
+        if (not has_position) and bool(_cfg("DELTA_ENGINE_ENABLED", False, account_key, symbol, position_side)) and bool(_cfg("DELTA_ENTRY_ENABLED", False, account_key, symbol, position_side)):
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side) and current_price > 0:
+                    _b2d_ct = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                    for _b2d_reason_t in _b2_delta_entry_proposals(_b2d_ct, i or {}, is_long, safe_fetch_float(current_price, 0.0)):
+                        logger.warning(f"[B2_DELTAENTRY] {position_key}: {_b2d_reason_t} -> OPEN")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _b2d_reason_t, 80.0)
+                        break
+            except Exception as _b2d_err:
+                logger.debug(f"[B2_DELTAENTRY] {position_key}: probe err: {_b2d_err}")
+        # GAP BATCH2 2026-10-21 (default-inert): REENTRY B02/B09/B10 flat OPEN mirrors (vec blocks; stocks had only
+        # dead `and False` research-gate reads). B04/B11/B12/B14/B15 default True -> QUEUED (faithful mirror would
+        # fire at default). TEDA mechanics (flat-only, per-sym _cfg, queue OPEN 80.0, first fire wins).
+        if (not has_position) and (bool(_cfg("REENTRY_B02_BC156_BOTTOM_ENABLED", False, account_key, symbol, position_side)) or bool(_cfg("REENTRY_B09_SNAPBACK_ENABLED", False, account_key, symbol, position_side)) or bool(_cfg("REENTRY_B10_STOCH_REV_ENABLED", False, account_key, symbol, position_side))):
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side) and current_price > 0:
+                    _b2r_ct = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                    for _b2r_reason_t in _b2_reentry_b029010_proposals(_b2r_ct, i or {}, is_long):
+                        logger.warning(f"[B2_REENTRY_B] {position_key}: {_b2r_reason_t} -> OPEN")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _b2r_reason_t, 80.0)
+                        break
+            except Exception as _b2r_err:
+                logger.debug(f"[B2_REENTRY_B] {position_key}: probe err: {_b2r_err}")
         was_reduced = getattr(position, "was_reduced", False)
         last_red_time = getattr(position, "last_reduction_time", None)
         # FIX 2026-08-20: gain from prior closed leg must be erased when flat — USER MANDATE: positionAmt==0 => gain 0 (was -10.91% stale)

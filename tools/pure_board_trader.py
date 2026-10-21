@@ -398,6 +398,47 @@ def _board_gain(pb):
         return None
 
 
+def _eval_symbol_group(job):
+    """One SYMBOL (both sides) on one bar, in its own process. The klines load + prepare is
+    side-independent, so LONG+SHORT share one load (prepare + board evaluation still run per
+    side). A watchdog thread bounds pathological slowness (stock forming-frames): on timeout every
+    side reports EVAL_TIMEOUT and the pass moves on — one slow symbol can never wedge the lane.
+    Returns ([(ss, result)], nothing else crosses the process boundary but JSON-able data)."""
+    import threading
+    sym, sides, bar_ts = job
+    box = {}
+
+    def _run():
+        try:
+            raw = _fresh_raw(sides[0][0])
+            if raw is not None:
+                store = "fresh"
+            else:
+                store = None
+            outs = []
+            for ss, ov in sides:
+                try:
+                    prep = prepared_from_raw(ss, raw) if raw is not None else prepared_from_frozen(ss)
+                    if prep is None:
+                        outs.append((ss, {"status": "SKIP_NO_BAR_STORE", "actions": []}))
+                        continue
+                    out = actions_from_engine(ss, ov, prep, bar_ts)
+                    out["bar_store"] = store or "frozen"
+                    outs.append((ss, out))
+                except Exception as exc:
+                    outs.append((ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}))
+            box["res"] = outs
+        except Exception as exc:
+            box["res"] = [(ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}) for ss, _ in sides]
+
+    th = threading.Thread(target=_run, daemon=True)
+    th.start()
+    th.join(600.0)
+    if th.is_alive() or "res" not in box:
+        return [(ss, {"status": "EVAL_TIMEOUT", "actions": [], "err": "symbol eval exceeded 600s"}) for ss, _ in sides]
+    return box["res"]
+
+
 def _eval_one(job):
     """One sym_side on one bar, in its own process. Returns only JSON-able data (no numpy, no engine objects)."""
     ss, ov, bar_ts = job
@@ -562,13 +603,22 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                 jobs.sort(key=lambda j: (0 if j[0] in _prio else 1, j[0]))
         except Exception:
             pass
-    _CH = 24
-    if jobs:
+    # Group sides by symbol (priority order kept): one worker loads once, evaluates both sides.
+    _groups, _seen = [], {}
+    for ss, ov, bts in jobs:
+        _sym = ss.rsplit("_", 1)[0]
+        if _sym not in _seen:
+            _seen[_sym] = len(_groups)
+            _groups.append((_sym, [], bts))
+        _groups[_seen[_sym]][1].append((ss, ov))
+    _CH = 12
+    if _groups:
         with ProcessPoolExecutor(max_workers=max(1, int(workers))) as ex:
-            for _ci in range(0, len(jobs), _CH):
+            for _ci in range(0, len(_groups), _CH):
                 _batch = []
-                for ss, res in ex.map(_eval_one, jobs[_ci:_ci + _CH], chunksize=1):
-                    _batch.append((ss, res, bds.get(ss)))
+                for _pairs in ex.map(_eval_symbol_group, _groups[_ci:_ci + _CH], chunksize=1):
+                    for ss, res in _pairs:
+                        _batch.append((ss, res, bds.get(ss)))
                 results.extend(_batch)
                 _n0 = len(intents)
                 _drain(_batch)

@@ -14,7 +14,7 @@ Live citations (real engine semantics; dead-wire B1 veto stubs NOT mirrored):
   REENTRY_POST_CONSOL_ATR_THRESHOLD . ez_manage.py:43570/:43575 (bar_atr_rank < thr count)
   REENTRY_POST_CONSOL_TFS_REQUIRED .. ez_manage.py:43572/:43580 (compressed >= req)
   REENTRY_PRICE_IMPROVE_PCT ......... ez_positions_quick.py:17224/:17228 (EPQ dip-vs-exit leg)
-  REENTRY2_DIR_FAV_ENABLED .......... ez_positions_quick.py:17237 (BC_152 AND leg)
+  REENTRY2_DIR_FAV_ENABLED .......... ez_positions_quick.py:32641/:32649 (EPQ k/d/wt AND-leg, triple-gated)
   REENTRY_CROSS_FRESHNESS_ENABLED ... ez_positions_quick.py:16979 (wt_cross_bars_ago < 5)
   REENTRY_EXHAUSTED_PARTIAL_ENABLED . ez_positions_quick.py:15811/:15816 (k_3m >95/<5 partial)
   BTC_GUARANTEED_REENTRY_ENABLED .... ez_manage.py:6999 (side of sma_200_1h filter)
@@ -33,12 +33,19 @@ Design (mirrors lane_vec_scalp_v3.py):
 Defaults mirror live config.py exactly (True/35/65/80/20/0.2/0.15/2/0.08/5/2/1;
 False for ALLOW_WT0/CROSS_FRESHNESS/XUNDER/DIR_FAV).
 
-NPZ reality (frozen backtest NPZ): k_3m, wt1_3m/wt2_3m, wt_bullish_3m,
-wt_cross_bars_ago_3m ABSENT; k_15m, sma_200_1h, close, bar_atr_rank_*,
-wt_bullish_15m/1h/4h/D, wt_cross_bars_ago_15m/1h PRESENT.
+NPZ reality (frozen backtest NPZ): k_3m, d_3m, wt1_3m/wt2_3m, wt_bullish_3m,
+wt_cross_bars_ago_3m, speed_z ABSENT; k_15m, d_15m, sma_200_1h, close,
+bar_atr_rank_*, wt1_15m/wt2_15m, wt_bullish_15m/1h/4h/D,
+wt_cross_bars_ago_15m/1h, wt_trough_structure_15m/wt_peak_structure_15m PRESENT.
 Predicates needing absent keys return None on real NPZ and a real mask when
 the caller supplies the key.
 
+GAP batch2 2026-10-21: DELTA_REENTRY_Z_THRESHOLD wired as delta_z_pass_mask
+  (None unless DELTA_REENTRY_FILTER_ENABLED and speed_z present);
+  REENTRY2_DIR_FAV_ENABLED repointed from the all-ones stub to the real
+  reentry2_dir_fav_mask (EPQ 32649 AND-leg, triple-gated);
+  REENTRY_RALLY_K15M_MAX wired as rally_k15m_block_mask (None at cap>=100),
+  consumed ONLY in the EPQ-gated reentry path (REENTRY_EPQ_MODEL_ENABLED).
 SKIPPED (no bar semantics — honest stop, do not fabricate):
   REENTRY_POST_CONSOL_MULT / REENTRY_K15M_PARTIAL_MULT / REENTRY_WT15M_SIZE_MULT
     sizing multipliers, no bar predicate (parent sizes live-side).
@@ -46,8 +53,6 @@ SKIPPED (no bar semantics — honest stop, do not fabricate):
     bar-age bookkeeping on position state; live hits are synthetic close<=thr.
   DAEMON_REENTRY_STALE_EXIT_ENABLED
     live R1b path parses exit from augment_reason string; no bar predicate.
-  DELTA_REENTRY_Z_THRESHOLD
-    needs delta_tracker speed_z, absent from NPZ (ez_manage.py:208 comment).
   OBLIGATORY_REENTRY_SCORE_TIER3
     score constant added when Tier3 fires, not a predicate.
   ABLATION_DISABLE_PERIODIC_REENTRY
@@ -83,6 +88,8 @@ SUPPORTED = (
     "DIRECTION_FAVORABLE_REENTRY_ENABLED",
     "DELTA_REENTRY_MIN_TF",
     "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED",
+    "DELTA_REENTRY_Z_THRESHOLD",
+    "REENTRY_RALLY_K15M_MAX",
 )
 
 
@@ -377,12 +384,40 @@ def price_improve_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any, 
         return None
 
 
-# === 14. REENTRY2_DIR_FAV_ENABLED (EPQ :17237) — BC_152 armed gate ===
-def reentry2_dir_fav_armed(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
+# === 14. REENTRY2_DIR_FAV_ENABLED (EPQ :32641-32649 AND-leg) ===
+# LONG: k_3m>d_3m & k_15m>d_15m & k_3m<85 ; SHORT mirrored (& k_3m>15).
+# WT confirm LONG wt1_15m>wt2_15m & wt1_3m>wt2_3m (SHORT mirrored).
+# Triple-gated exactly like live: LEGACY_DIRECTION_FAVORABLE (def False) &
+# DIRECTION_FAVORABLE_REENTRY_ENABLED (def False) & REENTRY2_DIR_FAV_ENABLED
+# (def True). 3m keys absent from frozen NPZ -> None there (no fabrication).
+# The 120m window + notional legs are position state: applied at the call site.
+def reentry2_dir_fav_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
     try:
+        if not _b(cfg, "LEGACY_DIRECTION_FAVORABLE", False):
+            return None
+        if not _b(cfg, "DIRECTION_FAVORABLE_REENTRY_ENABLED", False):
+            return None
         if not _b(cfg, "REENTRY2_DIR_FAV_ENABLED", True):
             return None
-        return np.ones(n, dtype=bool)
+        k3 = _col(npz, "k_3m", n)
+        d3 = _col(npz, "d_3m", n)
+        k15 = _col(npz, "k_15m", n)
+        d15 = _col(npz, "d_15m", n)
+        w1_15 = _col(npz, "wt1_15m", n)
+        w2_15 = _col(npz, "wt2_15m", n)
+        w1_3 = _col(npz, "wt1_3m", n)
+        w2_3 = _col(npz, "wt2_3m", n)
+        if any(a is None for a in (k3, d3, k15, d15, w1_15, w2_15, w1_3, w2_3)):
+            return None
+        if is_long:
+            dk = np.isfinite(k3) & np.isfinite(d3) & (k3 > d3) & (k3 < 85.0)
+            dk = dk & np.isfinite(k15) & np.isfinite(d15) & (k15 > d15)
+            wt = (w1_15 > w2_15) & (w1_3 > w2_3)
+        else:
+            dk = np.isfinite(k3) & np.isfinite(d3) & (k3 < d3) & (k3 > 15.0)
+            dk = dk & np.isfinite(k15) & np.isfinite(d15) & (k15 < d15)
+            wt = (w1_15 < w2_15) & (w1_3 < w2_3)
+        return dk & wt
     except Exception:
         return None
 
@@ -514,6 +549,44 @@ def obligatory_tier2_htf_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg
         return None
 
 
+# === 22. DELTA_REENTRY_Z_THRESHOLD (ez_manage.py:221/:244-245 check_reentry_delta_tolerant) ===
+# Live blocks reentry when speed z < thr; reachable only when
+# DELTA_REENTRY_FILTER_ENABLED (default False -> early allow). speed_z is the
+# delta_tracker output column, absent from frozen NPZ -> None there.
+# Allow-side mask for the F1 OR convention: True = passes the z gate
+# (live consumes the block side: z < thr -> DELTA_REENTRY_BLOCKED).
+def delta_z_pass_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
+    try:
+        if not _b(cfg, "DELTA_REENTRY_FILTER_ENABLED", False):
+            return None
+        z = _col(npz, "speed_z", n)
+        if z is None:
+            return None
+        return np.isfinite(z) & (z >= _f(cfg, "DELTA_REENTRY_Z_THRESHOLD", 1.0))
+    except Exception:
+        return None
+
+
+# === 23. REENTRY_RALLY_K15M_MAX (ez_positions_quick.py:31293 _epq_rally_k15m_blocked; :29682 inline) ===
+# Block mask: LONG k_15m >= cap ; SHORT k_15m <= 100-cap ; cap >= 100 disables.
+# k_15m present in frozen NPZ. Consumed ONLY in the EPQ-gated reentry path
+# (REENTRY_EPQ_MODEL_ENABLED, default False) so QuickConfig default runs stay inert.
+def rally_k15m_block_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
+    try:
+        cap = _f(cfg, "REENTRY_RALLY_K15M_MAX", 100.0)
+        if cap >= 100.0:
+            return None
+        k15 = _col(npz, "k_15m", n)
+        if k15 is None:
+            return None
+        ok = np.isfinite(k15)
+        if is_long:
+            return ok & (k15 >= cap)
+        return ok & (k15 <= (100.0 - cap))
+    except Exception:
+        return None
+
+
 # === dispatcher (literal keys; BIBLE 19: no dynamic getattr dispatch) ===
 def get(switch: str, npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any, **kw: Any) -> np.ndarray | None:
     if switch == "BOUNCE_REENTRY_ENABLED":
@@ -543,7 +616,7 @@ def get(switch: str, npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any, **
     if switch == "REENTRY_PRICE_IMPROVE_PCT":
         return price_improve_mask(npz, n, is_long, cfg, exit_px_arr=kw.get("exit_px_arr"))
     if switch == "REENTRY2_DIR_FAV_ENABLED":
-        return reentry2_dir_fav_armed(npz, n, is_long, cfg)
+        return reentry2_dir_fav_mask(npz, n, is_long, cfg)
     if switch == "REENTRY_CROSS_FRESHNESS_ENABLED":
         return cross_freshness_mask(npz, n, is_long, cfg)
     if switch == "REENTRY_EXHAUSTED_PARTIAL_ENABLED":
@@ -558,4 +631,8 @@ def get(switch: str, npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any, **
         return delta_min_tf_mask(npz, n, is_long, cfg)
     if switch == "OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED":
         return obligatory_tier2_htf_mask(npz, n, is_long, cfg)
+    if switch == "DELTA_REENTRY_Z_THRESHOLD":
+        return delta_z_pass_mask(npz, n, is_long, cfg)
+    if switch == "REENTRY_RALLY_K15M_MAX":
+        return rally_k15m_block_mask(npz, n, is_long, cfg)
     raise KeyError(f"unknown reentry2 switch: {switch!r}")
