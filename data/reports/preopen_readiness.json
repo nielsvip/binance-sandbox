@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T18:40:07Z",
+ "generated_utc": "2026-10-21T19:00:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -15,9 +15,9 @@
    "critical": true,
    "measured": {
     "filled_today": 520,
-    "filled_before_open": 406
+    "filled_before_open": 404
    },
-   "detail": "406 boards filled before the open (520 today)"
+   "detail": "404 boards filled before the open (520 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -37,11 +37,11 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-21T17:53:46.362239+00:00",
+    "built_at": "2026-10-21T18:51:31.652861+00:00",
     "n": 477,
-    "age_at_open_s": -15826
+    "age_at_open_s": -19292
    },
-   "detail": "built 2026-10-21T17:53:46.362239+00:00 n=477"
+   "detail": "built 2026-10-21T18:51:31.652861+00:00 n=477"
   },
   {
    "name": "apply_report_written",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 477,
     "exact": 50,
-    "benign_divergence_only": 389,
-    "material_divergence": 37,
+    "benign_divergence_only": 390,
+    "material_divergence": 36,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -200,7 +200,7 @@
      }
     ]
    },
-   "detail": "50 exact, 389 benign-only, 37 with material divergence, 1 with no live row"
+   "detail": "50 exact, 390 benign-only, 36 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -208,12 +208,21 @@
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 55.1,
-    "sample": []
+    "stale_over_90min": 11,
+    "stale_pct": 5.5,
+    "median_age_min": 75.1,
+    "sample": [
+     "ILVUSDT",
+     "IOTXUSDT",
+     "IOUSDT",
+     "JASMYUSDT",
+     "MAGICUSDT",
+     "ROSEUSDT",
+     "TRUMPUSDC",
+     "UMAUSDT"
+    ]
    },
-   "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "11/199 symbols past the live 90-min entry gate (5.5%)"
   },
   {
    "name": "s1_sets_synced",

@@ -279,6 +279,7 @@ def engine_state(ledger) -> dict:
     """
     last_open = last_close = None
     entry_px = qty = 0.0
+    entry_reason, last_close_reason = "", ""  # USER 2026-10-21 converge audit: which vector leg live ignored.
     for e in ledger or []:
         typ = str(e.get("type") or "").upper()
         reason = str(e.get("reason") or e.get("exit_reason") or "")
@@ -293,22 +294,28 @@ def engine_state(ledger) -> dict:
             px = float(e.get("price") or 0.0)
             if typ == "OPEN" or qty <= 0:
                 qty, entry_px = q, px
+                entry_reason = reason
             else:
                 tot = qty + q
                 entry_px = (entry_px * qty + px * q) / tot if tot else entry_px
                 qty = tot
+            if qty > 0 and not entry_reason:
+                entry_reason = reason
         elif typ == "CLOSE" or (typ == "REDUCE" and e.get("pnl_dollars") is not None and float(e.get("qty") or 0.0) == 0.0):
             last_close = ts
+            last_close_reason = reason
             qty, entry_px = 0.0, 0.0
         elif typ == "REDUCE":
             q = abs(float(e.get("qty") or 0.0))
             qty = max(0.0, qty - q)
             if qty <= 1e-12:
                 last_close = ts
+                last_close_reason = reason
                 entry_px = 0.0
     holding = last_open is not None and (last_close is None or last_open > last_close) and qty > 0
     return {"holding": bool(holding), "qty": round(qty, 10), "entry_price": entry_px,
-            "since": last_open if holding else None, "last_close": last_close}
+            "since": last_open if holding else None, "last_close": last_close,
+            "entry_reason": entry_reason, "last_close_reason": last_close_reason}
 
 
 VEC_LIVE = ROOT / "data" / "vec_live"
@@ -437,6 +444,7 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
                             continue
                         row = {"ts": time.time(), "bar_ts": bar_ts, "acct": acct, "sym_side": ss, "action": conv,
                                "reason": f"{verdict} board_qty={eng_qty:.6f} live_qty={lh:.6f} since={est.get('since')}",
+                               "vec_leg": (est.get("entry_reason") if conv == "CONVERGE_OPEN" else est.get("last_close_reason")) or "",
                                "price": float(est.get("entry_price") or 0.0) or None, "vec_qty": (eng_qty if conv == "CONVERGE_OPEN" else lh),
                                "qty_frac": (1.0 if conv == "CONVERGE_CLOSE" else None), "status": status,
                                "decided_s_after_bar_close": round(time.time() - (float(bar_ts) + BAR_S), 1),
