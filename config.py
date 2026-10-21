@@ -1937,7 +1937,7 @@ class Config:
     OPEN_CEIL_HARD_MAX_USD: float = (
         180.0  # SUPERSEDED 2026-10-12 (kept for history): static 4x$45 veto replaced by computed 4x per-sym SPS + OPEN_CEIL_ABSOLUTE_MAX_USD. No live readers.
     )
-    OPEN_CEIL_SPS_MAX_MULT: float = 6.0  # USER 2026-10-14: MAX_ORDER_SIZE = 6x per-sym START_POSITION_SIZE (was hardcoded 4x); OPEN_CEIL_ABSOLUTE_MAX_USD + MAX_POSITION_SIZE still bind
+    OPEN_CEIL_SPS_MAX_MULT: float = 8.0  # USER 2026-10-21: top gainers trade up to 8x per-sym START_POSITION_SIZE (was 6.0 2026-10-14, 4x before); OPEN_CEIL_ABSOLUTE_MAX_USD ($8000) + MAX_POSITION_SIZE still bind
     OPEN_CEIL_ABSOLUTE_MAX_USD: float = (
         8000.0  # USER 2026-10-12: real risk ceiling — no single OPEN/AUGMENT step exceeds $8000, any sym, any tier. Global-only, never swept, never per-sym.
     )

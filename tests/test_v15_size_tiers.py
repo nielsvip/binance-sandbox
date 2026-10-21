@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-from v15_persym_size_tiers import _min_mult_for_venue, _ranked_mult, _size_ranked, _venue_of
+from v15_persym_size_tiers import _min_mult_for_venue, _ranked_mult, _size_ranked, _venue_of, upsert_workbook_tier
 
 
 class RankedMultTest(unittest.TestCase):
@@ -49,18 +49,19 @@ class TiersEndToEndTest(unittest.TestCase):
                            capture_output=True, text=True, cwd=str(ROOT))
         self.assertEqual(r.returncode, 0, r.stderr[-500:])
         d = json.loads(out.read_text())["tiers"]
-        # current rules (2026-10-11/14, tool docstring): max-mult 6.0 / gain-cap 20, 365D-negative or unconfirmed gainers trade small at 0.5
-        # (RANKED_NEG365_SMALL), stocks MIN = 0.05. The synthetic sym_sides have no per_sym_store row, so USER 2026-10-09 NOSTORE_MIN demotes every
-        # above-min row to the venue minimum and keeps the rule outcome in was_tier - the rule tier is read from there.
+        # current rules (USER 2026-10-21, tool docstring): 365D OVERRULED — 30D>0 always RANKED (max-mult 8.0 /
+        # gain-cap 20), 30D<0 MIN, stocks MIN = 0.05. The synthetic sym_sides have no per_sym_store row, so USER
+        # 2026-10-09 NOSTORE_MIN demotes every above-min row to the venue minimum and keeps the rule outcome in
+        # was_tier - the rule tier is read from there.
         rule = {s: d[s].get("was_tier", d[s]["tier"]) for s in d}
         self.assertEqual(rule["AAA_LONG"], "RANKED")
         self.assertEqual(rule["BBB_SHORT"], "RANKED")
-        self.assertEqual(rule["CCC_LONG"], "RANKED_NEG365_SMALL")
+        self.assertEqual(rule["CCC_LONG"], "RANKED")
         self.assertEqual(rule["DDD_SHORT"], "MIN")
-        self.assertEqual(_size_ranked({"g30": 30.0, "g365": 12.0}, 6.0, 20.0, 0.5), (6.0, "RANKED"))
-        self.assertEqual(_size_ranked({"g30": 2.0, "g365": 1.0}, 6.0, 20.0, 0.5), (1.5, "RANKED"))
-        self.assertEqual(_size_ranked({"g30": 25.0, "g365": -4.0}, 6.0, 20.0, 0.5), (0.5, "RANKED_NEG365_SMALL"))
-        self.assertEqual(_size_ranked({"g30": 25.0, "g365": None}, 6.0, 20.0, 0.5), (0.5, "RANKED_NO365_SMALL"))
+        self.assertEqual(_size_ranked({"g30": 30.0, "g365": 12.0}, 8.0, 20.0, 0.5), (8.0, "RANKED"))
+        self.assertEqual(_size_ranked({"g30": 2.0, "g365": 1.0}, 8.0, 20.0, 0.5), (1.7, "RANKED"))
+        self.assertEqual(_size_ranked({"g30": 25.0, "g365": -4.0}, 8.0, 20.0, 0.5), (8.0, "RANKED"))
+        self.assertEqual(_size_ranked({"g30": 25.0, "g365": None}, 8.0, 20.0, 0.5), (8.0, "RANKED"))
         stocks_min = _min_mult_for_venue("stocks", 0.25, 0.05)
         self.assertEqual(stocks_min, 0.05)
         for s in ("AAA_LONG", "BBB_SHORT", "CCC_LONG"):
@@ -68,6 +69,33 @@ class TiersEndToEndTest(unittest.TestCase):
             self.assertEqual(d[s]["mult"], stocks_min)
         self.assertEqual(d["DDD_SHORT"]["mult"], stocks_min)
         self.assertEqual(d["DDD_SHORT"]["tier"], "MIN")
+
+
+class WorkbookWriteThroughTest(unittest.TestCase):
+    def test_upsert_winner_and_loser(self):
+        out = Path("/tmp/test_size_tiers_writethrough.json")
+        if out.exists():
+            out.unlink()
+        win = upsert_workbook_tier("ZZZUSDC_LONG", 25.0, g365=-4.0, trades_30d=60, out=str(out))
+        self.assertIsNotNone(win)
+        self.assertEqual(win["tier"], "RANKED")  # 365D-negative no longer demotes (overruled)
+        self.assertEqual(win["mult"], 8.0)
+        lose = upsert_workbook_tier("YYYUSDC_SHORT", -5.0, out=str(out))
+        self.assertIsNotNone(lose)
+        self.assertEqual(lose["tier"], "MIN")
+        self.assertEqual(lose["mult"], 0.25)
+        cur = json.loads(out.read_text())
+        self.assertEqual(cur["tiers"]["ZZZUSDC_LONG"]["tier"], "RANKED")
+        self.assertEqual(cur["tiers"]["YYYUSDC_SHORT"]["tier"], "MIN")
+        self.assertEqual(cur["_meta"]["last_workbook_write"]["sym_side"], "YYYUSDC_SHORT")
+        out.unlink()
+
+    def test_upsert_never_raises(self):
+        self.assertIsNone(upsert_workbook_tier("ZZZUSDC_LONG", 25.0, out="/nonexistent_dir_xyz/tiers.json"))
+        e = upsert_workbook_tier("ZZZUSDC_LONG", "bogus", out="/tmp/test_size_tiers_wt2.json")
+        self.assertIsNotNone(e)
+        self.assertEqual(e["tier"], "MIN")
+        Path("/tmp/test_size_tiers_wt2.json").unlink()
 
 
 if __name__ == "__main__":

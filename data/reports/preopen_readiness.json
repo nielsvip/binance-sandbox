@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T23:20:05Z",
+ "generated_utc": "2026-10-21T23:40:04Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 572,
+    "filled_today": 585,
     "filled_before_open": 385
    },
-   "detail": "385 boards filled before the open (572 today)"
+   "detail": "385 boards filled before the open (585 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,8 +63,8 @@
    "critical": true,
    "measured": {
     "selection_n": 486,
-    "exact": 50,
-    "benign_divergence_only": 403,
+    "exact": 49,
+    "benign_divergence_only": 404,
     "material_divergence": 31,
     "no_live_row": [
      "LEXX_SHORT",
@@ -121,19 +121,6 @@
        "BB_PROFIT_TAKE_TF",
        "BB_PULLBACK_GATE_ON_FINAL",
        "BB_PULLBACK_GATE_TF"
-      ]
-     },
-     {
-      "sym_side": "ZECUSDC_SHORT",
-      "published_at": "2026-10-21T22:31:44Z",
-      "material": 63,
-      "sample": [
-       "ALL_TF_AGAINST_CLOSE_ENABLED",
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BAR_PATTERNS_FILTER_TF",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF"
       ]
      },
      {
@@ -200,10 +187,23 @@
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
        "DELTA_ENGINE_FILTER_TF"
       ]
+     },
+     {
+      "sym_side": "PTBUSDT_SHORT",
+      "published_at": "2026-10-15T23:44:48Z",
+      "material": 31,
+      "sample": [
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_EDGE_SIZING_ENABLED",
+       "EMA_DIST_SIZING_MULT",
+       "EXIT_SCORER_MIN_CONDITIONS",
+       "E_1_EXIT_DELTA_THR"
+      ]
      }
     ]
    },
-   "detail": "50 exact, 403 benign-only, 31 with material divergence, 2 with no live row"
+   "detail": "49 exact, 404 benign-only, 31 with material divergence, 2 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -213,7 +213,7 @@
     "symbols": 199,
     "stale_over_90min": 199,
     "stale_pct": 100.0,
-    "median_age_min": 305.1,
+    "median_age_min": 325.1,
     "sample": [
      "1000000MOGUSDT",
      "1000BONKUSDC",

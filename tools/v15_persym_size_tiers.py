@@ -96,7 +96,11 @@ def upsert_workbook_tier(sym_side, g30, g365=None, trades_30d=None, tim_30d=None
             m, tier = _min_mult_for_venue(venue, cfg["min_mult"], cfg["min_mult_stocks"]), "MIN"
         import datetime as _dt
         now_iso = _dt.datetime.now(_dt.timezone.utc).isoformat()
-        entry = {"venue": venue, "g30": g, "g365": (float(g365) if g365 is not None else None),
+        try:
+            g365f = float(g365) if g365 is not None else None
+        except (TypeError, ValueError):
+            g365f = None
+        entry = {"venue": venue, "g30": g, "g365": g365f,
                  "src365": ("workbook 365D advisory" if g365 is not None else "v15_pilot workbook (365D overruled 2026-10-21)"),
                  "trades_30d": trades_30d, "tim_30d": tim_30d, "mult": m, "tier": tier, "rank": "workbook",
                  "tier_src": f"v15_pilot {now_iso}"}

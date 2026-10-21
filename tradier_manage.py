@@ -24667,13 +24667,13 @@ def _qta_entry_sizing(
         and current_price > 0
         and action.upper() in ("OPEN", "AUGMENT", "REENTRY", "REENTER", "QUICK_OPEN", "QUICK_AUGMENT", "BUY")
     ):
-        try:  # USER 2026-10-14: MAX_ORDER_SIZE = OPEN_CEIL_SPS_MAX_MULT (6) x per-sym START_POSITION_SIZE — stocks twin of ez_manage OPEN_CEIL_SPS hard cap (absolute-target ladder + WT_3M_FORCE_OPEN keep their own caps)
+        try:  # USER 2026-10-14/21: MAX_ORDER_SIZE = OPEN_CEIL_SPS_MAX_MULT (8x since 2026-10-21) x per-sym START_POSITION_SIZE — stocks twin of ez_manage OPEN_CEIL_SPS hard cap (absolute-target ladder + WT_3M_FORCE_OPEN keep their own caps)
             _oc_sps = float(_cfg("START_POSITION_SIZE", config.START_POSITION_SIZE, account_key, symbol, position_side) or config.START_POSITION_SIZE)
-            _oc_hard = float(getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 6.0) or 6.0) * _oc_sps
+            _oc_hard = float(getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 8.0) or 8.0) * _oc_sps
             if bool(getattr(config, "STOCKS_OPEN_CEIL_SPS_ENABLED", False)) and _oc_hard > 0 and quantity * current_price > _oc_hard:  # USER 2026-10-14: stocks were never capped at 6x SPS ($3k) — MAX_ORDER_VALUE $7000 rules
                 _oc_q0 = quantity
                 quantity = int(_oc_hard / current_price)
-                logger.warning(f"[OPEN_CEIL_SPS] {position_key} {action}: qty {_oc_q0}->{quantity} (${_oc_q0 * current_price:.0f} > {getattr(config, 'OPEN_CEIL_SPS_MAX_MULT', 6.0)}x SPS ${_oc_sps:.0f})")
+                logger.warning(f"[OPEN_CEIL_SPS] {position_key} {action}: qty {_oc_q0}->{quantity} (${_oc_q0 * current_price:.0f} > {getattr(config, 'OPEN_CEIL_SPS_MAX_MULT', 8.0)}x SPS ${_oc_sps:.0f})")
                 if quantity < 1:
                     return 0
         except Exception as _oce:

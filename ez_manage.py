@@ -37511,7 +37511,7 @@ class MultiAccountTradeManager:
                 # 2026-10-06 USER (men NMR/KSM $14-18 vec OPENs -> $180: indicator adds + sentiment x2 + LS_REBALANCE x2 + DC_POS + LADDER x3):
                 # HARD ceiling for every new OPEN / AUGMENT step, vec or native = START_POSITION_SIZE(sym_side) x perf tier (missing -> 1.0).
                 # Live multipliers still apply INSIDE the ceiling; MAX_ORDER_VALUE (above) caps first; MAX_POSITION_SIZE caps the total.
-                # USER 2026-10-12: MAX_ORDER_SIZE = 4x per-sym SPS (default $180), absolute risk ceiling OPEN_CEIL_ABSOLUTE_MAX_USD ($8000) — reentries included, no tier boost can exceed either.
+                # USER 2026-10-12/21: MAX_ORDER_SIZE = OPEN_CEIL_SPS_MAX_MULT x per-sym SPS (8x since 2026-10-21), absolute risk ceiling OPEN_CEIL_ABSOLUTE_MAX_USD ($8000) — reentries included, no tier boost can exceed either.
                 if bool(getattr(config, "OPEN_CEIL_SPS_TIER_ENABLED", True)) and quantity and quantity > 0 and current_price and current_price > 0 and not is_reduce:
                     try:
                         _oc_side = position_side or ("LONG" if side == "BUY" else "SHORT")
@@ -37523,7 +37523,7 @@ class MultiAccountTradeManager:
                             _oc_mult = 1.0
                         _oc_ceil = max(_oc_base * _oc_mult, float(getattr(config, "PERF_TIER_MIN_ORDER_USD", 6.0)))
                         _oc_abs = float(getattr(config, "OPEN_CEIL_ABSOLUTE_MAX_USD", 8000.0))  # USER 2026-10-12: real risk ceiling, global-only
-                        _oc_hard = max(0.0, min(float(getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 6.0)) * _oc_base, _oc_abs))  # USER 2026-10-12: MAX_ORDER_SIZE = 4x per-sym SPS (default 4x$45=$180), absolute $8000; supersedes static OPEN_CEIL_HARD_MAX_USD
+                        _oc_hard = max(0.0, min(float(getattr(config, "OPEN_CEIL_SPS_MAX_MULT", 8.0)) * _oc_base, _oc_abs))  # USER 2026-10-12/21: MAX_ORDER_SIZE = OPEN_CEIL_SPS_MAX_MULT (8x) x per-sym SPS, absolute $8000; supersedes static OPEN_CEIL_HARD_MAX_USD
                         if _oc_ceil > _oc_hard:
                             _oc_ceil = _oc_hard
                         if bool(getattr(config, "UNTESTED_FLAT_SPS_ENABLED", True)):
@@ -39018,7 +39018,7 @@ class MultiAccountTradeManager:
                         logger.critical(
                             f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_{_tyf_dcbr_tf}={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. {'Closing' if _dc_action == 'CLOSE' else 'Reducing'} unhedged loser."
                         )
-                        if _dc_action == "CLOSE":
+                        if _dc_action == "CLOSE" and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                             _dc_close_side = "SELL" if is_long else "BUY"
                             _dc_reason = f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_{_tyf_dcbr_tf}_price_{current_price:.6f}"
                             await self.execute_now(
@@ -51191,7 +51191,8 @@ async def _pp_unconditional_hard_stops(trade_manager, account_key, position_key,
                     _side_o = "SELL" if _is_long else "BUY"
                     ez_vigilance_block(_sym, _side, f"DC4_{_vg_tf}_BREACH_g{_gain:.2f}pct_px{_px:.6f}_lvl{_vg_lvl:.6f}", exit_price=_px)
                     logger.critical(f"🚨 [PRE_TWIN_VIGILANCE_DC4_{_vg_tf}_STOP] {position_key}: g={_gain:.2f}% AND px {_px:.6f} breached {'dc_low4' if _is_long else 'dc_high4'}_{_vg_tf} {_vg_lvl:.6f} → IMMEDIATE CLOSE + sym_side BLOCK")
-                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _is_long else 'SHORT'}_g{_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
+                    if not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits (sym_side block above stands)
+                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=_sym, original_positionAmt=_amt, side=_side_o, position_side=_side, quantity=_amt, old_price=_px, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _is_long else 'SHORT'}_g{_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
                     _fired = f"VIGILANCE_DC4_{_vg_tf}"
         if _fired is None:
             try:
@@ -52224,9 +52225,10 @@ async def process_position(
                         _vg_side = "SELL" if _vg_is_long else "BUY"
                         ez_vigilance_block(symbol, position_side, f"DC4_{_vg_tf}_BREACH_g{_vg_gain:.2f}pct_px{current_price:.6f}_lvl{_vg_lvl:.6f}", exit_price=current_price)
                         logger.critical(f"🚨 [VIGILANCE_DC4_{_vg_tf}_STOP] {position_key}: g={_vg_gain:.2f}% AND px {current_price:.6f} breached {'dc_low4' if _vg_is_long else 'dc_high4'}_{_vg_tf} {_vg_lvl:.6f} → IMMEDIATE CLOSE + sym_side BLOCK (USER EXTREME VIGILANCE, structural NO fixed %)")
-                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_vg_amt, side=_vg_side, position_side=position_side, quantity=_vg_amt, old_price=current_price, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _vg_is_long else 'SHORT'}_g{_vg_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
-                        trade_manager.processing_keys.discard(position_key)
-                        return f"{EvalStatus.ACTION_TAKEN}:VIGILANCE_DC4_{_vg_tf}_CLOSED"
+                        if not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits (sym_side block above stands)
+                            await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_vg_amt, side=_vg_side, position_side=position_side, quantity=_vg_amt, old_price=current_price, unique_id=f"VIGILANCE_DC4_{_vg_tf}_{int(time.time())}", reason=f"VIGILANCE_DC4_{_vg_tf}_HARD_STOP_USER_{'LONG' if _vg_is_long else 'SHORT'}_g{_vg_gain:.2f}_lvl{_vg_lvl:.6f}", is_full_close=True, action="CLOSE")
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:VIGILANCE_DC4_{_vg_tf}_CLOSED"
         except Exception as _vg_e:
             logger.warning(f"[VIGILANCE] probe err {position_key}: {_vg_e}")
     # 2026-10-06 USER MANDATE — NON-TRADEABLE: exit at first wt1_15m against, keep closed (entry gate blocks reentry).
@@ -52620,7 +52622,7 @@ async def process_position(
                 if _xcf_veto:
                     logger.info(f"[EXIT_CONFIRM_FILTER_TF] {position_key}: hold {_gx_reason} — {_xcf_veto}")
                     _gx_fire, _gx_reason = False, ""
-            if _gx_fire:
+            if _gx_fire and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _gx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _gx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 logger.warning(f"[GREY_REWIRE_EXIT] {position_key}: {_gx_reason} px={current_price:.6f} g={_gx_gain:.2f}% -> CLOSE")
@@ -52641,7 +52643,7 @@ async def process_position(
                 _klx_long = position_side == "LONG"
                 _klx_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _klx_fire, _klx_reason, _klx_frac = _lbkl.decide(lambda _k, _d: _psym_cs_get(symbol, position_side, _k, _d), _pp_shared_ind or {}, _klx_long, safe_fetch_float(current_price, 0.0), _klx_gain)
-                if _klx_fire:
+                if _klx_fire and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _klx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _klx_qty = _klx_amt if _klx_frac is None else _klx_amt * float(_klx_frac)
                     _klx_ref = abs(safe_fetch_float(getattr(position, "max_quantity", 0), 0.0)) or _klx_amt
@@ -52678,7 +52680,7 @@ async def process_position(
                         trade_manager._l1_squeeze_prev = {}
                     _sq_prev = trade_manager._l1_squeeze_prev.get(position_key)
                     trade_manager._l1_squeeze_prev[position_key] = _sq_now
-                    if _sq_prev is not None and _sq_prev == 0 and _sq_now == 1:
+                    if _sq_prev is not None and _sq_prev == 0 and _sq_now == 1 and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         _sq_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _sq_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                         _sq_is_long = position_side == "LONG"
@@ -52793,7 +52795,7 @@ async def process_position(
                             _nlk_veto = True
                     except Exception:
                         pass
-                if _nlk_veto:
+                if _nlk_veto and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     logger.info(f"[NEWBORN_LOSS_KILL_VETOED] {position_key}: vetoed by HTF WT with position, not closing")
                 else:
                     _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
@@ -52879,7 +52881,7 @@ async def process_position(
                 _hac_w2_D = safe_fetch_float(_pp_shared_ind.get("wt2_D", 0), 0.0)
                 if abs(_hac_w1_D) > 1e-9 or abs(_hac_w2_D) > 1e-9:
                     _hac_confirm_ok = (_hac_is_long and _hac_w1_D < _hac_w2_D) or ((not _hac_is_long) and _hac_w1_D > _hac_w2_D)
-            if _hac_1h_against and _hac_confirm_ok:
+            if _hac_1h_against and _hac_confirm_ok and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _hac_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _hac_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 logger.error(f"🚨 [HTF_AGAINST_FORCE_CLOSE] {position_key}: wt1_1h AGAINST ({_hac_w1:.1f} vs {_hac_w2:.1f}) — CLOSE NOW (g={_hac_gain:.2f}%). Nothing survives a 1h flip against.")
@@ -53138,7 +53140,7 @@ async def process_position(
                             setattr(position, "_last_struct_open", _se_open)
                             setattr(position, "_last_high_prev", _se_high_prev)
                             setattr(position, "_last_low_prev", _se_low_prev)
-                            if _se_fire:
+                            if _se_fire and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                                 _se_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                                 _se_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                                 logger.error(f"⛔ [HYBRID_STRUCT_EXIT] {position_key}: structure breakdown on {_se_tf} (high_prev={_se_high_prev:.6f} vs last_hp={_last_hp:.6f}, low_prev={_se_low_prev:.6f} vs last_lp={_last_lp:.6f}) → CLOSE")
@@ -53174,7 +53176,7 @@ async def process_position(
                     _r1b_stale = (not _r1b_is_long and current_price > _r1b_exit_px) or (
                         _r1b_is_long and current_price < _r1b_exit_px
                     )
-                    if _r1b_stale:
+                    if _r1b_stale and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         _r1b_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _r1b_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                         _r1b_close_side = "BUY" if not _r1b_is_long else "SELL"
@@ -53309,7 +53311,7 @@ async def process_position(
                         except (TypeError, ValueError):
                             _bb_frozen = None
             if _bb_frozen is not None and _bb_gain < 0:
-                if (_bb_is_long and current_price < _bb_frozen) or (not _bb_is_long and current_price > _bb_frozen):
+                if ((_bb_is_long and current_price < _bb_frozen) or (not _bb_is_long and current_price > _bb_frozen)) and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _bb_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _bb_close_side = "SELL" if _bb_is_long else "BUY"
                     _bb_reason = f"BB_FROZEN_STOP_BREACH_g{_bb_gain:.2f}%_frozen{_bb_tf}={_bb_frozen}_cur={current_price}"
@@ -53344,7 +53346,7 @@ async def process_position(
                 else:
                     _r2_thr = float(_psym_get(symbol, position_side, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", getattr(config, "TRADIER_RSI2_EXIT_THRESHOLD_SHORT", 10.0)))
                     _r2_fire = _r2v <= _r2_thr
-                if _r2_fire:
+                if _r2_fire and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _r2_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _r2_close_side = "SELL" if _r2_is_long else "BUY"
                     _r2_reason = f"RSI2_EXIT_LIVE_rsi2={_r2v:.1f}_thr={_r2_thr}"
@@ -53367,7 +53369,7 @@ async def process_position(
                 _pp_shared_ind = await ii(trade_manager, symbol) or {}
             _bbx_ind = _pp_shared_ind or {}
             _bbx_fire, _bbx_rsn = _bbx_exits(lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)), _bbx_is_long, _bbx_ind)
-            if _bbx_fire:
+            if _bbx_fire and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 _bbx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _bbx_close_side = "SELL" if _bbx_is_long else "BUY"
                 _bbx_reason = f"BB_BAND_EXIT_{_bbx_rsn}"
@@ -53405,7 +53407,7 @@ async def process_position(
                         _lbh_sl_f = safe_fetch_float(_lbh_sl, 0.0)
                         if (_lbh_sl_f <= 0) if _lbh_is_long else (_lbh_sl_f >= 0):
                             _lbh_top = True
-                    if _lbh_top:
+                    if _lbh_top and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         _lbh_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                         _lbh_side = "SELL" if _lbh_is_long else "BUY"
                         _lbh_reason = f"LR_BAND_HARVEST_{_lbh_tf}_pb{_lbh_pb_f:.2f}_g{_lbh_gain:.2f}%"
@@ -53892,7 +53894,7 @@ async def process_position(
                     except Exception:
                         _leash_gain = 0.0
                     _leash_max_loss = float(getattr(config, "BREAKOUT_LEASH_MAX_LOSS_PCT", -0.5))
-                    if _leash_gain <= _leash_max_loss:
+                    if _leash_gain <= _leash_max_loss and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         logger.info(f"[BREAKOUT_LEASH_SKIP] {position_key}: LH_LL={_lh_ll} dropped={_dropped_back} but gain {_leash_gain:.2f}% <= {_leash_max_loss:.2f}% — HOLD (before-loss gate)")
                     else:
                         _leash_reason = f"BREAKOUT_LEASH_EXIT_{'LH_LL' if _lh_ll else 'DROPPED_BACK'}"
@@ -54211,7 +54213,7 @@ async def process_position(
                     except Exception as _grde_xc_e:
                         _grde_xc_ok = True
                         logger.warning(f"[PARITY_EXIT_CONFIRM] {position_key} GR err (fail-open): {_grde_xc_e}")
-                if _grde_exit_score >= _grde_exit_score_min and _grde_xc_ok:
+                if _grde_exit_score >= _grde_exit_score_min and _grde_xc_ok and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _grde_exit_amt = abs(
                         safe_float(getattr(position, "positionAmt", 0))
                     )
@@ -54301,7 +54303,7 @@ async def process_position(
                     )
                 _at_min_tfs = int(float(_psym_get(symbol, position_side, "ALL_TF_AGAINST_CLOSE_MIN_TFS", getattr(config, "ALL_TF_AGAINST_CLOSE_MIN_TFS", 5)) or 5))  # UNW-L 2026-10-01: per-sym/cat_side resolver (same default 4 from config.py), so a sweep winner can reach live
                 _at_against = _at_count >= _at_min_tfs
-                if _at_against:
+                if _at_against and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _at_pos_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _at_close_side = "SELL" if _at_is_long else "BUY"
                     _at_cd_dict[position_key] = now_ts
@@ -54467,7 +54469,7 @@ async def process_position(
                                         f"🌟 [WT15M_FORCE_CLOSE_PARABOLIC_BYPASS] {position_key}: "
                                         f"rsi_4h={_pp_r4w:.1f} rsi_1h={_pp_r1w:.1f} bb%B_4h={_pp_bb4w:.2f} → skip force-close, let trend run"
                                     )
-                            if not _w15_skip:
+                            if not _w15_skip and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                                 # Hedge already on but bleed continues + wt1_15m against → force close primary
                                 _w15_side_close = "SELL" if _w15_is_long else "BUY"
                                 logger.error(

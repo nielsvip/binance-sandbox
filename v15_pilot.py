@@ -16612,7 +16612,11 @@ def _main_single():
             if _30d_pos or _30d_beats_bh:
                 _beats = True
             print(f"[LIVE-BEAT] {new_symside} 30D gain {cumulative_gain:.2f} vs bh {baseline_gain:.2f} beats={_beats} (365D new {_365_gain} vs cur {_cur_gain365} — advisory only)", flush=True)
-            if _beats:
+            # USER 2026-10-21: publish EVERY workbook result — neg/low boards go live at tier-min size via
+            # PERF_TIER_SIZING (risk carried by size, never by refusal). _beats is informational only now.
+            # ROLLBACK: `_publish = _beats` restores the 30D-robustness gate.
+            _publish = True
+            if _publish:
                 # Backup current per_sym settings if existing
                 if _cur_entry:
                     try:
@@ -16717,6 +16721,13 @@ def _main_single():
                         except Exception as _pss_e:
                             import traceback as _tb
                             print(f"[PER_SYM_STORE-warn] {new_symside} sqlite upsert failed {_pss_e} {_tb.format_exc()[:400]}", flush=True)
+                        # --- size tier write-through: the fresh 30D result sizes live within ~30 s ---
+                        try:
+                            from tools.v15_persym_size_tiers import upsert_workbook_tier as _wbt
+                            _wt = _wbt(new_symside, cumulative_gain, g365=_365_gain)
+                            print(f"[TIER-WRITE] {new_symside} -> {(_wt or {}).get('tier')} x{(_wt or {}).get('mult')} (30D {cumulative_gain:.2f})", flush=True)
+                        except Exception as _wte:
+                            print(f"[TIER-WRITE-warn] {new_symside} {str(_wte)[:200]}", flush=True)
                         # Also sync to tradier_manage in-memory cache clear hint
                         try:
                             Path("/tmp/per_sym_live_promoted.flag").write_text(f"{new_symside} {utcnow()} {json.dumps(_new_entry)[:300]}")
@@ -16728,6 +16739,7 @@ def _main_single():
                     import traceback
                     print(f"[LIVE-PUT-warn] {_pe} {traceback.format_exc()[:600]}", flush=True)
             else:
+                # Unreachable while _publish is True (kept for ROLLBACK to `_publish = _beats`).
                 print(f"[LIVE-SKIP] {new_symside} 30D robustness not met (gain {cumulative_gain:.2f} vs bh {baseline_gain:.2f}) — no publish", flush=True)
         except Exception as _e:
             import traceback
