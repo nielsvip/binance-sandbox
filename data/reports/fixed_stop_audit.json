@@ -3,12 +3,42 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.20083665,
-   "key": "ang:ENAUSDC_LONG",
-   "live_level": 0.1995373,
-   "mark": 0.20807443,
-   "opened_at": "2026-10-21T12:15:42.290000Z",
-   "resting_trigger": 0.19923
+   "entry_bar_level": 0.45116925,
+   "key": "ang:ONDOUSDT_LONG",
+   "live_level": 0.4103835,
+   "mark": 0.45788392,
+   "opened_at": "2026-10-21T13:31:38.684000Z",
+   "resting_trigger": 0.4097
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.14473725,
+   "key": "ang:APEUSDT_LONG",
+   "live_level": 0.1466325,
+   "mark": 0.14634016,
+   "opened_at": "2026-10-21T13:31:44.312000Z",
+   "resting_trigger": 0.1445
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 12.231345000000001,
+   "key": "fin:LINKUSDC_LONG",
+   "live_level": 11.519285783583129,
+   "mark": 12.389,
+   "opened_at": "2026-10-21T13:27:08.625000Z",
+   "resting_trigger": 11.501
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 9.576997500000001,
+   "key": "fin:AVAXUSDC_LONG",
+   "live_level": 9.5246915,
+   "mark": 9.659,
+   "opened_at": "2026-10-21T13:27:14.224000Z",
+   "resting_trigger": 9.51
   },
   {
    "armed": true,
@@ -16,32 +46,59 @@
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.00858517,
+   "mark": 0.008543,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "n_findings": 2,
- "n_positions": 2,
+ "n_findings": 5,
+ "n_positions": 5,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 0.20083665,
-   "key": "ang:ENAUSDC_LONG",
-   "live_level": 0.1995373,
-   "mark": 0.20807443,
-   "opened_at": "2026-10-21T12:15:42.290000Z",
-   "resting_trigger": 0.19923
+   "entry_bar_level": 0.45116925,
+   "key": "ang:ONDOUSDT_LONG",
+   "live_level": 0.4103835,
+   "mark": 0.45788392,
+   "opened_at": "2026-10-21T13:31:38.684000Z",
+   "resting_trigger": 0.4097
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.14473725,
+   "key": "ang:APEUSDT_LONG",
+   "live_level": 0.1466325,
+   "mark": 0.14634016,
+   "opened_at": "2026-10-21T13:31:44.312000Z",
+   "resting_trigger": 0.1445
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 12.231345000000001,
+   "key": "fin:LINKUSDC_LONG",
+   "live_level": 11.519285783583129,
+   "mark": 12.389,
+   "opened_at": "2026-10-21T13:27:08.625000Z",
+   "resting_trigger": 11.501
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 9.576997500000001,
+   "key": "fin:AVAXUSDC_LONG",
+   "live_level": 9.5246915,
+   "mark": 9.659,
+   "opened_at": "2026-10-21T13:27:14.224000Z",
+   "resting_trigger": 9.51
   },
   {
    "armed": true,
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.00858517,
+   "mark": 0.008543,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "ts": "2026-10-21T13:21:13.794509+00:00"
+ "ts": "2026-10-21T13:32:56.523351+00:00"
 }

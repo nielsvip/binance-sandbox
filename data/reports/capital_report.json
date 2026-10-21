@@ -1,30 +1,32 @@
 {
- "generated_at": "2026-10-21 13:15 UTC",
- "total_capital_usd": 24.76,
+ "generated_at": "2026-10-21 13:34 UTC",
+ "total_capital_usd": 6.23,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.76,
-  "C": 0.0
+  "B": 0.0,
+  "C": 6.23
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "fin:LINKUSDC_LONG"
+ ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ENAUSDC_LONG",
-   "symbol": "ENAUSDC",
-   "account": "ang",
-   "value_usd": 24.76,
-   "gain_pct": -0.218,
-   "tier": "B",
-   "perf_mult": 3.67,
-   "amt": 119.0,
-   "mark": 0.20803432
+   "pk": "fin:LINKUSDC_LONG",
+   "symbol": "LINKUSDC",
+   "account": "fin",
+   "value_usd": 6.23,
+   "gain_pct": -0.088,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 0.5,
+   "mark": 12.458
   }
  ]
 }

@@ -1,18 +1,16 @@
 {
- "generated_utc": "2026-10-21T13:31:02Z",
+ "generated_utc": "2026-10-21T13:35:06Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 48.1,
+  "age_s": 30.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 41479,
-  "proc_age_s": 43016.0,
-  "log_age_s": 9.0,
+  "proc_age_s": 43259.0,
+  "log_age_s": 9.8,
   "warmup_done": true,
   "timeframes_since_restart": [
-   "15m",
-   "3m",
    "3m",
    "15m",
    "3m",
@@ -328,10 +326,12 @@
    "3m",
    "15m",
    "3m",
-   "1h"
+   "1h",
+   "15m",
+   "3m"
   ],
-  "last_timeframe": "1h",
-  "last_timeframe_utc": "2026-10-21T13:30:38Z",
+  "last_timeframe": "3m",
+  "last_timeframe_utc": "2026-10-21T13:33:59Z",
   "last_restart_utc": "2026-10-21T01:34:05Z",
   "restarts_last_hour": 0
  },
@@ -356,16 +356,15 @@
   "mode": "NORMAL",
   "since_epoch": 1792587811.9397178,
   "activations": 161,
-  "hb_mtime": 1792589343.2992024,
-  "mac_snapshot_age_s": 25.080521821975708,
+  "hb_mtime": 1792589647.1551347,
+  "mac_snapshot_age_s": 31.698749780654907,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-20T16:54:28Z",
   "lease_reason": "Mac healthy 124s (needed 120s) venues=['crypto', 'stocks']",
-  "now": 1792589386.2905447,
-  "from_cache_age_s": 75.5,
-  "heartbeat_age_s": 43.0,
+  "now": 1792589706.665143,
+  "heartbeat_age_s": 59.5,
   "active_s": 0
  },
  "alerts": [],
