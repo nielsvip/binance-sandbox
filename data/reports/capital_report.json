@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-21 15:30 UTC",
- "total_capital_usd": 24.78,
+ "generated_at": "2026-10-21 16:09 UTC",
+ "total_capital_usd": 6.34,
  "tier_capital": {
   "A": 0.0,
-  "B": 24.78,
-  "C": 0.0
+  "B": 0.0,
+  "C": 6.34
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "ang:ARUSDT_LONG"
+ "losers": [
+  "fin:LINKUSDC_LONG"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:ARUSDT_LONG",
-   "symbol": "ARUSDT",
-   "account": "ang",
-   "value_usd": 24.78,
-   "gain_pct": 0.02,
-   "tier": "B",
-   "perf_mult": 0.48,
-   "amt": 6.3,
-   "mark": 3.934
+   "pk": "fin:LINKUSDC_LONG",
+   "symbol": "LINKUSDC",
+   "account": "fin",
+   "value_usd": 6.34,
+   "gain_pct": 1.708,
+   "tier": "C",
+   "perf_mult": 0.18,
+   "amt": 0.5,
+   "mark": 12.682
   }
  ]
 }

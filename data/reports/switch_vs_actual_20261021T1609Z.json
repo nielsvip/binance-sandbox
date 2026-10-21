@@ -1,0 +1,129 @@
+{
+ "window_from": "10-21 15:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 8,
+  "STATE_CONVERGENCE": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "ALGOUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:46",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:98/d194/k3:63.64909196961042/d3:49.86717605632452_@0.1147_RZ_BASE",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ALGOUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:52",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:98/d194/k3:63.64909196961042/d3:49.86717605632452_@0.1147_RZ_BASE",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:30",
+   "actual": "AUGMENT",
+   "actual_reason": "GOLDEN_RULE_LONG_mult5.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "ARUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:36",
+   "actual": "REDUCE",
+   "actual_reason": "GOLDEN_RULE_LONG_mult5.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "fin",
+   "sym_side": "AVAXUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:09",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:74/d185/k3:69.80145696889906/d3:35.754145268629586_@9.7370_RZ_BAS",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "BBUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:15",
+   "actual": "REDUCE",
+   "actual_reason": "VEC_DRIVEN_OPEN_RECONCILE_",
+   "late_bars": null,
+   "verdict": "STATE_CONVERGENCE",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "KAVAUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:33",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:71/d169/k3:94.03/d3:88.22_@0.0705_RZ_BASELINE_BASELINE_BOUNCE_LON",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "RENDERUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:33",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:80/d174/k3:68.61/d3:64.02_@1.9070_DC_BREAKOUT_DC4H_x3.0@1.905",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "RENDERUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 15:41",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:80/d174/k3:68.61/d3:64.02_@1.9070_DC_BREAKOUT_DC4H_x3.0@1.905",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
