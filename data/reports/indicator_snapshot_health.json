@@ -1,22 +1,16 @@
 {
- "generated_utc": "2026-10-21T09:12:49Z",
+ "generated_utc": "2026-10-21T09:17:45Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 10.9,
+  "age_s": 8.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 41479,
-  "proc_age_s": 27523.0,
-  "log_age_s": 1.3,
+  "proc_age_s": 27820.0,
+  "log_age_s": 8.2,
   "warmup_done": true,
   "timeframes_since_restart": [
-   "15m",
-   "3m",
-   "15m",
-   "3m",
-   "15m",
-   "3m",
    "3m",
    "3m",
    "3m",
@@ -292,10 +286,19 @@
    "1h",
    "15m",
    "3m",
-   "1h"
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "15m"
   ],
-  "last_timeframe": "1h",
-  "last_timeframe_utc": "2026-10-21T09:12:46Z",
+  "last_timeframe": "15m",
+  "last_timeframe_utc": "2026-10-21T09:16:28Z",
   "last_restart_utc": "2026-10-21T01:34:05Z",
   "restarts_last_hour": 0
  },
@@ -329,6 +332,7 @@
   "lease_since": "2026-10-20T16:54:28Z",
   "lease_reason": "Mac healthy 124s (needed 120s) venues=['crypto', 'stocks']",
   "now": 1792573970.1176822,
+  "from_cache_age_s": 296.0,
   "heartbeat_age_s": 36.7,
   "active_s": 393.5
  },

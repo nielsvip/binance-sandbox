@@ -1,45 +1,32 @@
 {
- "generated_at": "2026-10-21 08:37 UTC",
- "total_capital_usd": 49.6,
+ "generated_at": "2026-10-21 09:17 UTC",
+ "total_capital_usd": 6.21,
  "tier_capital": {
   "A": 0.0,
-  "B": 49.6,
-  "C": 0.0
+  "B": 0.0,
+  "C": 6.21
  },
  "tier_count": {
   "A": 0,
-  "B": 2,
-  "C": 0
+  "B": 0,
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:ENAUSDC_LONG"
+  "flz:DASHUSDT_LONG"
  ],
- "mediocre": [
-  "ang:RAYSOLUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "ang:RAYSOLUSDT_LONG",
-   "symbol": "RAYSOLUSDT",
-   "account": "ang",
-   "value_usd": 24.9,
-   "gain_pct": -0.214,
-   "tier": "B",
-   "perf_mult": 0.83,
-   "amt": 12.6,
-   "mark": 1.97592647
-  },
-  {
-   "pk": "ang:ENAUSDC_LONG",
-   "symbol": "ENAUSDC",
-   "account": "ang",
-   "value_usd": 24.7,
-   "gain_pct": -0.765,
-   "tier": "B",
-   "perf_mult": 0.97,
-   "amt": 122.0,
-   "mark": 0.20245
+   "pk": "flz:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 6.21,
+   "gain_pct": -0.053,
+   "tier": "C",
+   "perf_mult": 0.29,
+   "amt": 0.123,
+   "mark": 50.46457021
   }
  ]
 }
