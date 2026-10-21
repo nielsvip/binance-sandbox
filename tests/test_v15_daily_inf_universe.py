@@ -26,7 +26,19 @@ def rec(sym_side, gain=10.0, trades=100, tim=30.0, dd=5.0, valid=True, **kw):
         "simple_price_gt0": None,
         "vec_only_keys": [],
         "vec_only_true": [],
-        "diagnose_repair": {"accepted": True, "after": {"gain": gain, "trades": trades, "tim": tim, "dd": dd, "wr": 50.0, "valid": valid, "reason": "", "bh": 1.0}},
+        "diagnose_repair": {
+            "accepted": True,
+            "after": {
+                "gain": gain,
+                "trades": trades,
+                "tim": tim,
+                "dd": dd,
+                "wr": 50.0,
+                "valid": valid,
+                "reason": "",
+                "bh": 1.0,
+            },
+        },
         "fetched_from": "s5",
     }
     r.update(kw)
@@ -38,7 +50,9 @@ def allowed_for(*recs):
 
 
 def ev(r, allowed=None, **kw):
-    return U.evaluate(r, allowed if allowed is not None else {r["sym_side"]}, NOW, 36.0, **kw)
+    return U.evaluate(
+        r, allowed if allowed is not None else {r["sym_side"]}, NOW, 36.0, **kw
+    )
 
 
 def test_eligible_record_passes():
@@ -107,7 +121,13 @@ def test_legacy_switch_names_are_migrated_not_refused():
 
 
 def test_bad_verdicts_and_flags():
-    for kw, needle in (({"verdict": "IMPOSSIBLE"}, "IMPOSSIBLE"), ({"verdict": "NO_TRADES"}, "NO_TRADES"), ({"diagnostic_only": "trades=0"}, "diagnostic_only"), ({"needs_redo": True}, "needs_redo"), ({"has_cumulative_overrides": False}, "cumulative_overrides")):
+    for kw, needle in (
+        ({"verdict": "IMPOSSIBLE"}, "IMPOSSIBLE"),
+        ({"verdict": "NO_TRADES"}, "NO_TRADES"),
+        ({"diagnostic_only": "trades=0"}, "diagnostic_only"),
+        ({"needs_redo": True}, "needs_redo"),
+        ({"has_cumulative_overrides": False}, "cumulative_overrides"),
+    ):
         ok, reasons, _m, _f = ev(rec("DOTUSDT_LONG", **kw))
         assert not ok and any(needle in r for r in reasons), (kw, reasons)
 
@@ -125,8 +145,22 @@ def test_metrics_must_describe_final_set():
 
 def _fallback_rec(sym_side, skipped, gain=12.0, **kw):
     r = rec(sym_side, gain=gain, **kw)
-    after = {"gain": gain, "trades": 100, "tim": 30.0, "dd": 5.0, "wr": 50.0, "valid": True, "reason": "", "bh": 1.0, "fallback": skipped}
-    r["diagnose_repair"] = {"skipped": skipped, "after": after, "accept_reason": "SKIP_FALLBACK_METRICS_ONLY"}
+    after = {
+        "gain": gain,
+        "trades": 100,
+        "tim": 30.0,
+        "dd": 5.0,
+        "wr": 50.0,
+        "valid": True,
+        "reason": "",
+        "bh": 1.0,
+        "fallback": skipped,
+    }
+    r["diagnose_repair"] = {
+        "skipped": skipped,
+        "after": after,
+        "accept_reason": "SKIP_FALLBACK_METRICS_ONLY",
+    }
     return r
 
 
@@ -155,12 +189,20 @@ def test_365d_verdict_gate():
     ok, reasons, _m, flags = ev(rec("ALGOUSDT_LONG", final_365d=good))
     assert ok, reasons
     assert "365D: no verdict" not in flags
-    for bad in ({"gain_pct": -1.0, "trades": 500, "valid": True, "span_days": 400}, {"gain_pct": 5.0, "trades": 500, "valid": False, "invalid_reason": "DD"}, {"gain_pct": 5.0, "trades": 79, "valid": True, "span_days": 400}):
+    for bad in (
+        {"gain_pct": -1.0, "trades": 500, "valid": True, "span_days": 400},
+        {"gain_pct": 5.0, "trades": 500, "valid": False, "invalid_reason": "DD"},
+        {"gain_pct": 5.0, "trades": 79, "valid": True, "span_days": 400},
+    ):
         ok, reasons, _m, _f = ev(rec("ALGOUSDT_LONG", final_365d=bad))
         assert not ok and any(r.startswith("365D") for r in reasons), bad
-    ok, _r = U.qualifies_365d({"gain_pct": 5.0, "trades": 20, "valid": True, "span_days": 80})
+    ok, _r = U.qualifies_365d(
+        {"gain_pct": 5.0, "trades": 20, "valid": True, "span_days": 80}
+    )
     assert ok
-    ok, _r = U.qualifies_365d({"gain_pct": 5.0, "trades": 15, "valid": True, "span_days": 80})
+    ok, _r = U.qualifies_365d(
+        {"gain_pct": 5.0, "trades": 15, "valid": True, "span_days": 80}
+    )
     assert not ok
 
 
@@ -169,15 +211,24 @@ def _evaluated(recs):
 
 
 def test_ranking_top_n_by_gain():
-    recs = [rec(f"S{i:02d}USDT_LONG", gain=float(i)) for i in range(1, 31)] + [rec("ZZZUSDT_SHORT", gain=2.0), rec("YYYUSDT_SHORT", gain=9.0)]
+    recs = [rec(f"S{i:02d}USDT_LONG", gain=float(i)) for i in range(1, 31)] + [
+        rec("ZZZUSDT_SHORT", gain=2.0),
+        rec("YYYUSDT_SHORT", gain=9.0),
+    ]
     res = U.build_books(_evaluated(recs), {"LONG": set(), "SHORT": set()}, top=25)
     assert len(res["books"]["LONG"]) == 25
-    assert res["books"]["LONG"][0] == "S30USDT" and res["books"]["LONG"][-1] == "S06USDT"
+    assert (
+        res["books"]["LONG"][0] == "S30USDT" and res["books"]["LONG"][-1] == "S06USDT"
+    )
     assert res["books"]["SHORT"] == ["YYYUSDT", "ZZZUSDT"]
 
 
 def test_never_pads_with_ineligible():
-    recs = [rec("AUSDT_LONG", gain=5.0), rec("BUSDT_LONG", gain=-1.0), rec("CUSDT_LONG", tim=95.0)]
+    recs = [
+        rec("AUSDT_LONG", gain=5.0),
+        rec("BUSDT_LONG", gain=-1.0),
+        rec("CUSDT_LONG", tim=95.0),
+    ]
     res = U.build_books(_evaluated(recs), {"LONG": set(), "SHORT": set()}, top=25)
     assert res["books"]["LONG"] == ["AUSDT"]
     assert res["books"]["SHORT"] == []
@@ -199,20 +250,38 @@ def test_open_position_kept_beyond_top():
 
 
 def test_both_side_conflict_resolution():
-    recs = [rec("GRTUSDT_LONG", gain=5.0), rec("GRTUSDT_SHORT", gain=8.0), rec("AUSDT_SHORT", gain=1.0)]
+    recs = [
+        rec("GRTUSDT_LONG", gain=5.0),
+        rec("GRTUSDT_SHORT", gain=8.0),
+        rec("AUSDT_SHORT", gain=1.0),
+    ]
     res = U.build_books(_evaluated(recs), {"LONG": set(), "SHORT": set()}, top=25)
     assert res["books"]["SHORT"] == ["GRTUSDT", "AUSDT"] and res["books"]["LONG"] == []
     assert res["conflicts"][0]["kept_side"] == "SHORT"
     res = U.build_books(_evaluated(recs), {"LONG": {"GRTUSDT"}, "SHORT": set()}, top=25)
     assert "GRTUSDT" in res["books"]["LONG"] and "GRTUSDT" not in res["books"]["SHORT"]
-    res = U.build_books(_evaluated(recs), {"LONG": set(), "SHORT": set()}, top=25, both_sides="keep")
+    res = U.build_books(
+        _evaluated(recs), {"LONG": set(), "SHORT": set()}, top=25, both_sides="keep"
+    )
     assert res["books"]["LONG"] == ["GRTUSDT"] and "GRTUSDT" in res["books"]["SHORT"]
 
 
 def test_dedupe_prefers_newest_mtime_and_readable():
     a = rec("ALGOUSDT_LONG", fetched_from="s1-pub", mtime=100.0, size=10)
-    b = rec("ALGOUSDT_LONG", fetched_from="s5", mtime=200.0, size=10, final_365d={"gain_pct": 3.0})
-    c = {"sym_side": "ALGOUSDT_LONG", "fetched_from": "s2", "mtime": 300.0, "size": 5, "error": "unreadable"}
+    b = rec(
+        "ALGOUSDT_LONG",
+        fetched_from="s5",
+        mtime=200.0,
+        size=10,
+        final_365d={"gain_pct": 3.0},
+    )
+    c = {
+        "sym_side": "ALGOUSDT_LONG",
+        "fetched_from": "s2",
+        "mtime": 300.0,
+        "size": 5,
+        "error": "unreadable",
+    }
     out = U.dedupe_records([a, b, c])
     assert out["ALGOUSDT_LONG"]["fetched_from"] == "s5"
 
@@ -221,7 +290,12 @@ def test_dedupe_prefers_complete_over_newer_partial():
     # 2026-10-08: a fresh campaign dir's partial copy must not shadow the complete evaluation
     old = rec("QTUMUSDT_LONG", gain=24.0)
     old["mtime"] = NOW.timestamp() - 7200
-    new = rec("QTUMUSDT_LONG", gain=24.0, has_cumulative_overrides=False, diagnose_repair={"skipped": "fresh run"})
+    new = rec(
+        "QTUMUSDT_LONG",
+        gain=24.0,
+        has_cumulative_overrides=False,
+        diagnose_repair={"skipped": "fresh run"},
+    )
     new["mtime"] = NOW.timestamp() - 100
     assert U.dedupe_records([old, new])["QTUMUSDT_LONG"]["mtime"] == old["mtime"]
     new2 = rec("QTUMUSDT_LONG", gain=25.0)
@@ -230,8 +304,20 @@ def test_dedupe_prefers_complete_over_newer_partial():
 
 
 def test_open_inf_positions_reader(tmp_path):
-    lp, sp, tr = tmp_path / "long_positions.json", tmp_path / "short_positions.json", tmp_path / "tracker.json"
-    lp.write_text(json.dumps({"inf:AUSDT_LONG": {"positionAmt": 3.0}, "inf:BUSDT_LONG": {"positionAmt": 0.0}, "men:CUSDT_LONG": {"positionAmt": 1.0}}))
+    lp, sp, tr = (
+        tmp_path / "long_positions.json",
+        tmp_path / "short_positions.json",
+        tmp_path / "tracker.json",
+    )
+    lp.write_text(
+        json.dumps(
+            {
+                "inf:AUSDT_LONG": {"positionAmt": 3.0},
+                "inf:BUSDT_LONG": {"positionAmt": 0.0},
+                "men:CUSDT_LONG": {"positionAmt": 1.0},
+            }
+        )
+    )
     sp.write_text(json.dumps({"inf:DUSDT_SHORT": {"positionAmt": -2.0}}))
     tr.write_text(json.dumps({"active_hedges": [{"position_key": "inf:EUSDT_SHORT"}]}))
     out, problems = U.open_inf_positions({"LONG": lp, "SHORT": sp}, tr)
@@ -240,17 +326,25 @@ def test_open_inf_positions_reader(tmp_path):
     os.utime(lp, (time.time() - 3600, time.time() - 3600))
     _out, problems = U.open_inf_positions({"LONG": lp, "SHORT": sp}, tr)
     assert any("stale" in p for p in problems)
-    _out, problems = U.open_inf_positions({"LONG": tmp_path / "nope.json", "SHORT": sp}, tr)
+    _out, problems = U.open_inf_positions(
+        {"LONG": tmp_path / "nope.json", "SHORT": sp}, tr
+    )
     assert any("missing" in p for p in problems)
 
 
 def _sandbox(tmp_path, monkeypatch, prev_long, prev_short, positions_long=None):
     (tmp_path / "inf").mkdir()
     (tmp_path / "backups").mkdir()
-    books = {"LONG": tmp_path / "symbols_inf_long.json", "SHORT": tmp_path / "symbols_inf_short.json"}
+    books = {
+        "LONG": tmp_path / "symbols_inf_long.json",
+        "SHORT": tmp_path / "symbols_inf_short.json",
+    }
     books["LONG"].write_text(json.dumps(prev_long))
     books["SHORT"].write_text(json.dumps(prev_short))
-    pos = {"LONG": tmp_path / "inf" / "long_positions.json", "SHORT": tmp_path / "inf" / "short_positions.json"}
+    pos = {
+        "LONG": tmp_path / "inf" / "long_positions.json",
+        "SHORT": tmp_path / "inf" / "short_positions.json",
+    }
     pos["LONG"].write_text(json.dumps(positions_long or {}))
     pos["SHORT"].write_text(json.dumps({}))
     monkeypatch.setattr(U, "ROOT", tmp_path)
@@ -264,8 +358,19 @@ def _sandbox(tmp_path, monkeypatch, prev_long, prev_short, positions_long=None):
 
 
 def test_main_apply_end_to_end(tmp_path, monkeypatch):
-    books = _sandbox(tmp_path, monkeypatch, ["OLDUSDT", "KEEPUSDT"], ["SOLUSDC"], {"inf:KEEPUSDT_LONG": {"positionAmt": 1.0}})
-    recs = [rec("XTZUSDT_LONG", gain=31.0), rec("AAVEUSDC_LONG", gain=27.0), rec("ZENUSDT_SHORT", gain=18.0), rec("BADUSDT_LONG", gain=-2.0)]
+    books = _sandbox(
+        tmp_path,
+        monkeypatch,
+        ["OLDUSDT", "KEEPUSDT"],
+        ["SOLUSDC"],
+        {"inf:KEEPUSDT_LONG": {"positionAmt": 1.0}},
+    )
+    recs = [
+        rec("XTZUSDT_LONG", gain=31.0),
+        rec("AAVEUSDC_LONG", gain=27.0),
+        rec("ZENUSDT_SHORT", gain=18.0),
+        rec("BADUSDT_LONG", gain=-2.0),
+    ]
     monkeypatch.setattr(U, "allowed_sym_sides", lambda root=None: allowed_for(*recs))
     rp = tmp_path / "recs.json"
     rp.write_text(json.dumps(recs))
@@ -276,7 +381,9 @@ def test_main_apply_end_to_end(tmp_path, monkeypatch):
     assert json.loads(books["SHORT"].read_text()) == ["ZENUSDT"]
     rep = json.loads((tmp_path / "data" / "inf_universe" / "20261006.json").read_text())
     assert rep["applied"] and rep["kept_open"]["LONG"] == ["KEEPUSDT"]
-    assert rep["diff"]["LONG"]["removed"] == ["OLDUSDT"] and rep["diff"]["SHORT"]["removed"] == ["SOLUSDC"]
+    assert rep["diff"]["LONG"]["removed"] == ["OLDUSDT"] and rep["diff"]["SHORT"][
+        "removed"
+    ] == ["SOLUSDC"]
     assert len(list((tmp_path / "backups").glob("before_inf_universe_*"))) == 2
     assert (tmp_path / "data" / "inf_universe" / "20261006.md").exists()
 
@@ -290,19 +397,33 @@ def test_main_apply_refuses_empty_side(tmp_path, monkeypatch):
     assert U.main(["--records", str(rp), "--apply"]) == 2
     assert json.loads(books["SHORT"].read_text()) == ["SOLUSDC"]
     assert json.loads(books["LONG"].read_text()) == ["OLDUSDT"]
-    assert U.main(["--records", str(rp), "--apply", "--allow-empty-side", "--allow-thin-fetch"]) == 0
+    assert (
+        U.main(
+            [
+                "--records",
+                str(rp),
+                "--apply",
+                "--allow-empty-side",
+                "--allow-thin-fetch",
+            ]
+        )
+        == 0
+    )
     assert json.loads(books["SHORT"].read_text()) == []
 
 
 def test_build_books_default_top_is_20():
     import inspect
+
     assert inspect.signature(U.build_books).parameters["top"].default == 20
 
 
 def test_cli_default_top_is_20(tmp_path, monkeypatch):
     # USER 2026-10-08: the daily chain writes the top-20 30D gainers per side (was 25, then 15)
     books = _sandbox(tmp_path, monkeypatch, [], [])
-    recs = [rec(f"L{i:02d}USDT_LONG", gain=float(30 - i)) for i in range(25)] + [rec(f"S{i:02d}USDT_SHORT", gain=float(30 - i)) for i in range(25)]
+    recs = [rec(f"L{i:02d}USDT_LONG", gain=float(30 - i)) for i in range(25)] + [
+        rec(f"S{i:02d}USDT_SHORT", gain=float(30 - i)) for i in range(25)
+    ]
     monkeypatch.setattr(U, "allowed_sym_sides", lambda root=None: allowed_for(*recs))
     rp = tmp_path / "recs.json"
     rp.write_text(json.dumps(recs))
@@ -314,7 +435,9 @@ def test_cli_default_top_is_20(tmp_path, monkeypatch):
 def test_remote_extract_sets_tools_sys_path():
     # 2026-10-07: s2/s5 extracts died with ModuleNotFoundError (remote cwd=$HOME) -> 0 records -> refused apply
     assert "binance-sandbox/tools" in U.REMOTE_EXTRACT
-    assert U.REMOTE_EXTRACT.index("sys.path.insert(0, _cand)") < U.REMOTE_EXTRACT.index("import v15_persym_golive")
+    assert U.REMOTE_EXTRACT.index("sys.path.insert(0, _cand)") < U.REMOTE_EXTRACT.index(
+        "import v15_persym_golive"
+    )
 
 
 def test_thin_fetch_refuses_apply(tmp_path, monkeypatch):
@@ -337,22 +460,52 @@ def test_thin_fetch_refuses_apply(tmp_path, monkeypatch):
 def test_remote_extract_covers_all_campaign_dirs(tmp_path):
     # 2026-10-08: pointers rotate fleet-wide; the extract must union pointer + all v15_* dirs + lifecycle_pilot
     import subprocess
+
     home = tmp_path / "home"
     (home / "v15_old").mkdir(parents=True)
     (home / "v15_new" / "progress").mkdir(parents=True)
-    (home / "binance-sandbox" / "data" / "reports" / "lifecycle_pilot").mkdir(parents=True)
+    (home / "binance-sandbox" / "data" / "reports" / "lifecycle_pilot").mkdir(
+        parents=True
+    )
     tools = home / "binance-sandbox" / "tools"
     tools.mkdir(parents=True)
-    (tools / "v15_persym_golive.py").write_text("def migrate(co):\n    return dict(co), {}, []\n")
-    for p in (home / "v15_old" / "AAVEUSDC_LONG_v14_progress.json", home / "v15_new" / "progress" / "ZENUSDT_SHORT_v14_progress.json",
-              home / "binance-sandbox" / "data" / "reports" / "lifecycle_pilot" / "DOTUSDT_LONG_v14_progress.json"):
+    (tools / "v15_persym_golive.py").write_text(
+        "def migrate(co):\n    return dict(co), {}, []\n"
+    )
+    for p in (
+        home / "v15_old" / "AAVEUSDC_LONG_v14_progress.json",
+        home / "v15_new" / "progress" / "ZENUSDT_SHORT_v14_progress.json",
+        home
+        / "binance-sandbox"
+        / "data"
+        / "reports"
+        / "lifecycle_pilot"
+        / "DOTUSDT_LONG_v14_progress.json",
+    ):
         p.write_text(json.dumps({"cumulative_overrides": {"X": 1}}))
     (home / "v15_old" / "readme.txt").write_text("ignored")
     env = dict(os.environ, HOME=str(home))
-    r = subprocess.run([sys.executable, "-", str(home / "v15_new" / "progress"), str(72 * 3600), json.dumps(list(U.KEEP_FIELDS))],
-                       input=U.REMOTE_EXTRACT, capture_output=True, text=True, timeout=60, cwd=str(tmp_path), env=env)
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-",
+            str(home / "v15_new" / "progress"),
+            str(72 * 3600),
+            json.dumps(list(U.KEEP_FIELDS)),
+        ],
+        input=U.REMOTE_EXTRACT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=str(tmp_path),
+        env=env,
+    )
     assert r.returncode == 0, r.stderr[-500:]
-    assert {rec["sym_side"] for rec in json.loads(r.stdout)} == {"AAVEUSDC_LONG", "ZENUSDT_SHORT", "DOTUSDT_LONG"}
+    assert {rec["sym_side"] for rec in json.loads(r.stdout)} == {
+        "AAVEUSDC_LONG",
+        "ZENUSDT_SHORT",
+        "DOTUSDT_LONG",
+    }
 
 
 def test_report_rotation_keeps_previous(tmp_path, monkeypatch):
@@ -377,3 +530,89 @@ def test_main_apply_refuses_stale_positions(tmp_path, monkeypatch):
     rp.write_text(json.dumps(recs))
     assert U.main(["--records", str(rp), "--apply"]) == 2
     assert json.loads(books["LONG"].read_text()) == ["OLDUSDT"]
+
+
+def fbrec(sym_side, gain=10.0, trades=100, **kw):
+    r = rec(sym_side, gain=gain)
+    r["diagnose_repair"] = {"skipped": "v17 phase cut"}
+    r["final_trades"] = trades
+    r.update(kw)
+    return r
+
+
+def fb(recs, prev=None, weight=2.0, top=20):
+    deduped = {r["sym_side"]: r for r in recs}
+    allowed = {r["sym_side"] for r in recs if not r.get("excluded")}
+    return U.fallback_books(
+        deduped, allowed, NOW, 216.0, {"LONG": set(), "SHORT": set()}, top, prev, weight
+    )
+
+
+def test_fallback_riser_outranks_fader():
+    a = fbrec("ARUSDT_LONG", gain=30.0)
+    b = fbrec("KSMUSDT_LONG", gain=40.0)
+    out = fb([a, b], prev={"ARUSDT_LONG": 20.0, "KSMUSDT_LONG": 45.0})
+    assert [s for _g, s in out["ranked"]["LONG"]] == ["ARUSDT", "KSMUSDT"]
+    assert out["rows"]["ARUSDT_LONG"]["flags"][1] == "mom +10.00pp vs yesterday"
+    assert out["books"]["LONG"][0] == "ARUSDT"
+
+
+def test_fallback_level_order_at_zero_weight():
+    a = fbrec("ARUSDT_LONG", gain=30.0)
+    b = fbrec("KSMUSDT_LONG", gain=40.0)
+    out = fb([a, b], prev={"ARUSDT_LONG": 20.0, "KSMUSDT_LONG": 45.0}, weight=0.0)
+    assert [s for _g, s in out["ranked"]["LONG"]] == ["KSMUSDT", "ARUSDT"]
+
+
+def test_fallback_first_seen_momentum_zero():
+    out = fb([fbrec("NEWDUSDT_LONG", gain=12.0)], prev={})
+    row = out["rows"]["NEWDUSDT_LONG"]
+    assert "FIRST_SEEN" in row["flags"][1] and "score 12.00" in row["flags"][2]
+
+
+def test_fallback_still_fail_closed_on_garbage():
+    recs = [
+        fbrec("NEGUSDT_LONG", gain=-5.0),
+        fbrec("BADUSDT_LONG", gain=9.0, verdict="IMPOSSIBLE"),
+        fbrec("REDOUSDT_LONG", gain=9.0, needs_redo=True),
+        fbrec("NOSETUSDT_LONG", gain=9.0, has_cumulative_overrides=False),
+        fbrec("FEWUSDT_LONG", gain=9.0, trades=4),
+        fbrec(
+            "STALEUSDT_LONG",
+            gain=9.0,
+            result_start_utc=(NOW - dt.timedelta(days=10)).isoformat(),
+            result_done_utc=(NOW - dt.timedelta(days=10)).isoformat(),
+        ),
+        fbrec("AAPLUSDT_LONG", gain=99.0),
+        fbrec("OKUSDT_LONG", gain=9.0),
+    ]
+    recs[-2]["excluded"] = True
+    out = fb(recs)
+    assert set(out["rows"]) == {"OKUSDT_LONG"}
+    assert out["books"]["LONG"] == ["OKUSDT"]
+
+
+def test_fallback_empty_when_nothing_qualifies():
+    out = fb([fbrec("NEGUSDT_LONG", gain=-1.0)])
+    assert out["books"] == {"LONG": [], "SHORT": []} and out["rows"] == {}
+
+
+def test_fallback_resolves_both_sides_to_better_score():
+    out = fb(
+        [fbrec("DUALUSDT_LONG", gain=10.0), fbrec("DUALUSDT_SHORT", gain=50.0)], prev={}
+    )
+    assert out["books"]["LONG"] == [] and out["books"]["SHORT"] == ["DUALUSDT"]
+
+
+def test_prev_gains_reads_prior_records_file(tmp_path):
+    d = tmp_path / "inf_universe"
+    d.mkdir(parents=True)
+    old = d / "20261019_records.json"
+    new = d / "20261020_records.json"
+    old.write_text(json.dumps([{"sym_side": "ARUSDT_LONG", "cumulative_gain": 20.0}]))
+    new.write_text(json.dumps([{"sym_side": "ARUSDT_LONG", "cumulative_gain": 30.0}]))
+    import time as _t
+
+    os.utime(old, (_t.time() - 100000, _t.time() - 100000))
+    assert U.prev_gains(new, d) == {"ARUSDT_LONG": 20.0}
+    assert U.prev_gains(d / "missing.json", d) == {}

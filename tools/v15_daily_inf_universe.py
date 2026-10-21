@@ -14,10 +14,16 @@ final_gain_fresh_vec), i.e. it describes the set that is actually final. Anythin
 
 Gates (same as step 3 / switch_parity.qualifies_30d + v15_pilot._qualifies_365d):
   tradeable crypto sym_side (tools/v15_universe.build()['allowed_sym_sides'] = tradeable_keys.json minus
-  data/universe_exclude.json), fresh (evaluated inside --max-age-hours), valid, gain > 0, TIM 20-80, DD <= 30,
-  trades >= 10, verdict not IMPOSSIBLE/NO_TRADES, no diagnostic_only / needs_redo, 365D passes when a final_365d verdict
-  exists, final set has no SIMPLE_PRICE_GT0_ENABLED=True and no *_VEC_ONLY_* key (BIBLE §68.2.1; the registrar refuses
-  such sets, so they can never be live per-sym).
+  data/universe_exclude.json), fresh (evaluated inside --max-age-hours, default 216 = USER 2026-10-21 9-day rule),
+  valid, gain > 0, TIM 20-80, DD <= 30, trades >= 10, verdict not IMPOSSIBLE/NO_TRADES, no diagnostic_only /
+  needs_redo, 365D passes when a final_365d verdict exists, final set has no SIMPLE_PRICE_GT0_ENABLED=True and no
+  *_VEC_ONLY_* key (BIBLE §68.2.1; the registrar refuses such sets, so they can never be live per-sym).
+
+Fallback (USER 2026-10-21): when ZERO sym_sides pass the full gates, books are ranked by
+  score = gain + --momentum-weight x day-over-day gain change (default 2.0; risers outrank faders) over the final
+  set's own fresh gain (cumulative_gain, else final_gain_fresh_vec), still requiring tradeable key, verdict ok,
+  no needs_redo, a final set, gain > 0, trades >= 10, in-window evaluation, no SIMPLE_PRICE_GT0. Fallback rows are
+  DEGRADED (no TIM/DD/365D) and tier-sized down. Garbage and tokenized/untradeable syms can never enter by either path.
 
 Safety:
   * symbols with an OPEN inf position (inf/{long,short}_positions.json positionAmt != 0, or an inf active hedge in
@@ -38,6 +44,7 @@ fetched records data/inf_universe/<YYYYMMDD>_records.json. All numbers are singl
 usage: v15_daily_inf_universe.py [--apply] [--hosts s1-pub,s2,s5] [--top 20] [--max-age-hours 36] [--min-records 20]
                                  [--records PATH] [--both-sides resolve|keep] [--allow-partial-hosts] [--allow-empty-side]
 """
+
 import argparse
 import datetime as dt
 import json
@@ -51,12 +58,21 @@ from pathlib import Path
 ROOT = Path(os.environ.get("INF_UNIVERSE_ROOT") or Path(__file__).resolve().parents[1])
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 OUT_DIR = ROOT / "data" / "inf_universe"
-BOOKS = {"LONG": ROOT / "symbols_inf_long.json", "SHORT": ROOT / "symbols_inf_short.json"}
-POSITIONS = {"LONG": ROOT / "inf" / "long_positions.json", "SHORT": ROOT / "inf" / "short_positions.json"}
+BOOKS = {
+    "LONG": ROOT / "symbols_inf_long.json",
+    "SHORT": ROOT / "symbols_inf_short.json",
+}
+POSITIONS = {
+    "LONG": ROOT / "inf" / "long_positions.json",
+    "SHORT": ROOT / "inf" / "short_positions.json",
+}
 TRACKER = ROOT / "inf" / "tracker.json"
 EXCLUDE = ROOT / "data" / "universe_exclude.json"
 CONFIRMED_365D = ROOT / "data" / "confirmed_365d.json"
-DEFAULT_HOSTS = ("s1-pub", "s2")  # USER 2026-10-21: s5 destroyed 2026-10-13 (BIBLE §0); a dead default host refused every --apply
+DEFAULT_HOSTS = (
+    "s1-pub",
+    "s2",
+)  # USER 2026-10-21: s5 destroyed 2026-10-13 (BIBLE §0); a dead default host refused every --apply
 CRYPTO_QUOTES = ("USDT", "USDC")
 TIM_MIN, TIM_MAX = 20.0, 80.0
 MAX_DD_PCT = 30.0
@@ -66,11 +82,30 @@ GAIN_MATCH_TOL = 1e-4
 POSITIONS_MAX_AGE_S = 900
 BAD_VERDICTS = ("IMPOSSIBLE", "NO_TRADES")
 KEEP_FIELDS = (
-    "symside", "baseline_gain", "bh", "window_days", "cumulative_gain", "final_gain_fresh_vec", "final_gain", "final_trades",
-    "verdict", "verdict_reasons", "publish_class", "run_class", "diagnostic_only", "not_compliant", "last_run_failed",
-    "final_365d", "engine_mixed_chain", "result_start_utc", "result_done_utc", "defaults_round", "host", "impossible_reasons",
+    "symside",
+    "baseline_gain",
+    "bh",
+    "window_days",
+    "cumulative_gain",
+    "final_gain_fresh_vec",
+    "final_gain",
+    "final_trades",
+    "verdict",
+    "verdict_reasons",
+    "publish_class",
+    "run_class",
+    "diagnostic_only",
+    "not_compliant",
+    "last_run_failed",
+    "final_365d",
+    "engine_mixed_chain",
+    "result_start_utc",
+    "result_done_utc",
+    "defaults_round",
+    "host",
+    "impossible_reasons",
 )
-REMOTE_EXTRACT = r'''
+REMOTE_EXTRACT = r"""
 import glob, hashlib, json, os, sys, time
 pdir, max_age_s = sys.argv[1], float(sys.argv[2])
 keep = json.loads(sys.argv[3])
@@ -125,7 +160,7 @@ for path in paths:
     rec["npz_ts_last"] = npz.get("ts_last") if isinstance(npz, dict) else None
     out.append(rec)
 print(json.dumps(out, default=str))
-'''
+"""
 
 
 def now_utc():
@@ -164,19 +199,42 @@ def fetch_host(host, max_age_s, timeout=600):
     """(records, error) for one host: reads ~/v15_current_progress_dir.txt, extracts crypto progress summaries remotely."""
     ssh = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", host]
     try:
-        r = subprocess.run(ssh + ["cat ~/v15_current_progress_dir.txt"], capture_output=True, text=True, timeout=60)
+        r = subprocess.run(
+            ssh + ["cat ~/v15_current_progress_dir.txt"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
     except Exception as e:
         return [], f"{host}: progress dir read failed: {e}"
-    pdir = (r.stdout or "").strip().splitlines()[0].strip() if r.returncode == 0 and r.stdout.strip() else ""
+    pdir = (
+        (r.stdout or "").strip().splitlines()[0].strip()
+        if r.returncode == 0 and r.stdout.strip()
+        else ""
+    )
     if not pdir:
-        return [], f"{host}: no ~/v15_current_progress_dir.txt ({(r.stderr or '').strip()[:120]})"
-    cmd = "python3 - {} {} '{}'".format(pdir, int(max_age_s), json.dumps(list(KEEP_FIELDS)))
+        return (
+            [],
+            f"{host}: no ~/v15_current_progress_dir.txt ({(r.stderr or '').strip()[:120]})",
+        )
+    cmd = "python3 - {} {} '{}'".format(
+        pdir, int(max_age_s), json.dumps(list(KEEP_FIELDS))
+    )
     try:
-        r = subprocess.run(ssh + [cmd], input=REMOTE_EXTRACT, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(
+            ssh + [cmd],
+            input=REMOTE_EXTRACT,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
     except Exception as e:
         return [], f"{host}: extract failed: {e}"
     if r.returncode != 0:
-        return [], f"{host}: extract rc={r.returncode} {(r.stderr or '').strip()[-200:]}"
+        return (
+            [],
+            f"{host}: extract rc={r.returncode} {(r.stderr or '').strip()[-200:]}",
+        )
     try:
         recs = json.loads(r.stdout)
     except Exception as e:
@@ -189,7 +247,14 @@ def fetch_host(host, max_age_s, timeout=600):
 
 def record_evaluated_at(rec):
     """latest of result_start_utc / result_done_utc (stale carried done stamps exist), else file mtime."""
-    stamps = [t for t in (_parse_ts(rec.get("result_start_utc")), _parse_ts(rec.get("result_done_utc"))) if t is not None]
+    stamps = [
+        t
+        for t in (
+            _parse_ts(rec.get("result_start_utc")),
+            _parse_ts(rec.get("result_done_utc")),
+        )
+        if t is not None
+    ]
     if stamps:
         return max(stamps)
     try:
@@ -200,10 +265,15 @@ def record_evaluated_at(rec):
 
 def _record_complete(rec):
     """a copy counts as complete when it carries a final per-sym set plus fresh full-set metrics (2026-10-08: a fresh
-    campaign dir holds newer-but-partial copies that must not shadow the complete evaluation from the previous one)."""
+    campaign dir holds newer-but-partial copies that must not shadow the complete evaluation from the previous one).
+    """
     dr = rec.get("diagnose_repair") or {}
     after = dr.get("after") if isinstance(dr, dict) else None
-    return bool(rec.get("has_cumulative_overrides")) and isinstance(after, dict) and after.get("gain") is not None
+    return (
+        bool(rec.get("has_cumulative_overrides"))
+        and isinstance(after, dict)
+        and after.get("gain") is not None
+    )
 
 
 def dedupe_records(records):
@@ -215,7 +285,12 @@ def dedupe_records(records):
         ss = rec.get("sym_side")
         if not ss:
             continue
-        key = (0 if rec.get("error") else 1, 1 if _record_complete(rec) else 0, float(rec.get("mtime") or 0), int(rec.get("size") or 0))
+        key = (
+            0 if rec.get("error") else 1,
+            1 if _record_complete(rec) else 0,
+            float(rec.get("mtime") or 0),
+            int(rec.get("size") or 0),
+        )
         if ss not in best or key > best[ss][0]:
             best[ss] = (key, rec)
     return {ss: v[1] for ss, v in best.items()}
@@ -226,7 +301,11 @@ def final_metrics(rec):
     dr = rec.get("diagnose_repair") or {}
     after = dr.get("after") if isinstance(dr, dict) else None
     if not isinstance(after, dict) or after.get("gain") is None:
-        why = dr.get("skipped") if isinstance(dr, dict) and dr.get("skipped") else "no diagnose_repair.after"
+        why = (
+            dr.get("skipped")
+            if isinstance(dr, dict) and dr.get("skipped")
+            else "no diagnose_repair.after"
+        )
         return None, f"no fresh full-set metrics ({why})"
     final_gain = _f(rec.get("cumulative_gain"))
     if final_gain is None:
@@ -234,7 +313,10 @@ def final_metrics(rec):
     if final_gain is None:
         return None, "no final-set gain to match the fresh metrics against"
     if abs(_f(after.get("gain")) - final_gain) > GAIN_MATCH_TOL:
-        return None, f"fresh metrics describe another set (diagnose_repair.after gain {_f(after.get('gain')):.4f} != final {final_gain:.4f})"
+        return (
+            None,
+            f"fresh metrics describe another set (diagnose_repair.after gain {_f(after.get('gain')):.4f} != final {final_gain:.4f})",
+        )
     return {
         "gain_pct": _f(after.get("gain")),
         "trades": int(after.get("trades") or 0),
@@ -277,10 +359,14 @@ def evaluate(rec, allowed, now, max_age_h, vec_only_false_ok=False):
     if rec.get("error"):
         return False, [rec["error"]], None, flags
     if ss not in allowed:
-        reasons.append("not a tradeable key (tradeable_keys.json / universe_exclude.json)")
+        reasons.append(
+            "not a tradeable key (tradeable_keys.json / universe_exclude.json)"
+        )
     ev = record_evaluated_at(rec)
     if ev is None or (now - ev).total_seconds() > max_age_h * 3600:
-        reasons.append(f"stale: evaluated {ev.isoformat() if ev else '?'} > {max_age_h:.0f}h ago")
+        reasons.append(
+            f"stale: evaluated {ev.isoformat() if ev else '?'} > {max_age_h:.0f}h ago"
+        )
     if str(rec.get("verdict") or "").upper() in BAD_VERDICTS:
         reasons.append(f"verdict {rec.get('verdict')}")
     if rec.get("diagnostic_only"):
@@ -289,10 +375,15 @@ def evaluate(rec, allowed, now, max_age_h, vec_only_false_ok=False):
         reasons.append("needs_redo pending (365D-driven re-fill)")
     if not rec.get("has_cumulative_overrides"):
         reasons.append("no final per-sym set (cumulative_overrides empty)")
-    if rec.get("simple_price_gt0") is True or str(rec.get("simple_price_gt0")).lower() == "true":
+    if (
+        rec.get("simple_price_gt0") is True
+        or str(rec.get("simple_price_gt0")).lower() == "true"
+    ):
         reasons.append("SIMPLE_PRICE_GT0_ENABLED=True set")
     if rec.get("legacy_renamed") or rec.get("legacy_dropped"):
-        flags.append(f"old switch names migrated by the go-live alias map: renamed {sorted(rec.get('legacy_renamed') or {})[:4]} dropped {(rec.get('legacy_dropped') or [])[:4]}")
+        flags.append(
+            f"old switch names migrated by the go-live alias map: renamed {sorted(rec.get('legacy_renamed') or {})[:4]} dropped {(rec.get('legacy_dropped') or [])[:4]}"
+        )
     m, why = final_metrics(rec)
     if m is None:
         reasons.append(why)
@@ -321,7 +412,9 @@ def evaluate(rec, allowed, now, max_age_h, vec_only_false_ok=False):
     return (not reasons, reasons, m, flags)
 
 
-def open_inf_positions(positions=None, tracker=None, max_age_s=POSITIONS_MAX_AGE_S, now_ts=None):
+def open_inf_positions(
+    positions=None, tracker=None, max_age_s=POSITIONS_MAX_AGE_S, now_ts=None
+):
     """({'LONG': set(symbols), 'SHORT': set(symbols)}, problems). Read-only."""
     positions = positions or POSITIONS
     tracker = tracker or TRACKER
@@ -381,20 +474,37 @@ def build_books(evaluated, open_pos, top=20, both_sides="resolve"):
                 keep = "SHORT"
             drop = "SHORT" if keep == "LONG" else "LONG"
             ranked[drop] = [(g, s) for g, s in ranked[drop] if s != symbol]
-            conflicts.append({"symbol": symbol, "kept_side": keep, "dropped_side": drop, "gain_long": gl[symbol], "gain_short": gs[symbol]})
+            conflicts.append(
+                {
+                    "symbol": symbol,
+                    "kept_side": keep,
+                    "dropped_side": drop,
+                    "gain_long": gl[symbol],
+                    "gain_short": gs[symbol],
+                }
+            )
     books, kept_open = {}, {}
     for side in ("LONG", "SHORT"):
         chosen = [s for _g, s in ranked[side][:top]]
         kept_open[side] = sorted(s for s in open_pos[side] if s not in chosen)
         books[side] = chosen + kept_open[side]
-    return {"ranked": ranked, "books": books, "kept_open": kept_open, "conflicts": conflicts}
+    return {
+        "ranked": ranked,
+        "books": books,
+        "kept_open": kept_open,
+        "conflicts": conflicts,
+    }
 
 
 def prev_gains(records_path, out_dir=OUT_DIR):
     """{sym_side: gain} from the most recent *_records.json older than records_path (day-over-day momentum input)."""
     try:
         cur = Path(records_path)
-        cands = [p for p in Path(out_dir).glob("*_records.json") if p != cur and p.stat().st_mtime < cur.stat().st_mtime]
+        cands = [
+            p
+            for p in Path(out_dir).glob("*_records.json")
+            if p != cur and p.stat().st_mtime < cur.stat().st_mtime
+        ]
         if not cands:
             return {}
         prev = max(cands, key=lambda p: p.stat().st_mtime)
@@ -411,26 +521,35 @@ def prev_gains(records_path, out_dir=OUT_DIR):
         return {}
 
 
-def fallback_books(deduped, allowed, now, max_age_h, open_pos, top=20, prev=None, momentum_weight=2.0):
+def fallback_books(
+    deduped, allowed, now, max_age_h, open_pos, top=20, prev=None, momentum_weight=2.0
+):
     """USER 2026-10-21: when ZERO sym_sides pass the full gates (fleet emits records without fresh full-set
     metrics, e.g. 'v17 phase cut'), rank by score = gain + momentum_weight * day-over-day gain change instead of
     booking nobody — a high flier fading since yesterday scores below a riser coming up, so fresh money follows
     momentum. Still fail-closed on garbage: crypto sym_side, tradeable key, verdict ok, no needs_redo, a final
     set exists, gain > 0, trades >= 10, evaluated inside the window, no SIMPLE_PRICE_GT0. No TIM/DD/365D
     assurances exist for these rows, so every one is flagged DEGRADED_FALLBACK and the sizing tiers
-    (RANKED_NO365_SMALL x0.50) size them down. Tokenized/untradeable syms can never enter (allowed check first)."""
+    (RANKED_NO365_SMALL x0.50) size them down. Tokenized/untradeable syms can never enter (allowed check first).
+    """
     prev = prev or {}
     ranked, rows, skipped = {"LONG": [], "SHORT": []}, {}, {}
     for ss, rec in deduped.items():
         symbol, _, side = str(ss).rpartition("_")
-        if side not in ("LONG", "SHORT") or not symbol.endswith(CRYPTO_QUOTES) or rec.get("error"):
+        if (
+            side not in ("LONG", "SHORT")
+            or not symbol.endswith(CRYPTO_QUOTES)
+            or rec.get("error")
+        ):
             continue
         if ss not in allowed:
             skipped[ss] = ["not a tradeable key (fallback)"]
             continue
         ev = record_evaluated_at(rec)
         if ev is None or (now - ev).total_seconds() > max_age_h * 3600:
-            skipped[ss] = [f"stale for fallback: evaluated {ev.isoformat() if ev else '?'}"]
+            skipped[ss] = [
+                f"stale for fallback: evaluated {ev.isoformat() if ev else '?'}"
+            ]
             continue
         if str(rec.get("verdict") or "").upper() in BAD_VERDICTS:
             skipped[ss] = [f"verdict {rec.get('verdict')}"]
@@ -441,7 +560,10 @@ def fallback_books(deduped, allowed, now, max_age_h, open_pos, top=20, prev=None
         if not rec.get("has_cumulative_overrides"):
             skipped[ss] = ["no final per-sym set"]
             continue
-        if rec.get("simple_price_gt0") is True or str(rec.get("simple_price_gt0")).lower() == "true":
+        if (
+            rec.get("simple_price_gt0") is True
+            or str(rec.get("simple_price_gt0")).lower() == "true"
+        ):
             skipped[ss] = ["SIMPLE_PRICE_GT0_ENABLED=True set"]
             continue
         gain = _f(rec.get("cumulative_gain"))
@@ -461,7 +583,25 @@ def fallback_books(deduped, allowed, now, max_age_h, open_pos, top=20, prev=None
             mom, mom_flag = 0.0, "FIRST_SEEN (no yesterday gain, momentum 0)"
         score = gain + momentum_weight * mom
         ranked[side].append((score, symbol))
-        rows[ss] = {"sym_side": ss, "gain_pct": gain, "trades": int(trades), "tim_pct": None, "max_dd_pct": None, "gain_365d": None, "trades_365d": None, "host": rec.get("fetched_from"), "evaluated_at": str(ev), "overrides_md5": rec.get("overrides_md5"), "defaults_round": rec.get("defaults_round"), "verdict": rec.get("verdict"), "flags": ["DEGRADED_FALLBACK: booked on final-set gain, no fresh full-set metrics / TIM / DD / 365D", mom_flag, f"score {score:.2f} = gain {gain:.2f} + {momentum_weight} x mom {mom:+.2f}"]}
+        rows[ss] = {
+            "sym_side": ss,
+            "gain_pct": gain,
+            "trades": int(trades),
+            "tim_pct": None,
+            "max_dd_pct": None,
+            "gain_365d": None,
+            "trades_365d": None,
+            "host": rec.get("fetched_from"),
+            "evaluated_at": str(ev),
+            "overrides_md5": rec.get("overrides_md5"),
+            "defaults_round": rec.get("defaults_round"),
+            "verdict": rec.get("verdict"),
+            "flags": [
+                "DEGRADED_FALLBACK: booked on final-set gain, no fresh full-set metrics / TIM / DD / 365D",
+                mom_flag,
+                f"score {score:.2f} = gain {gain:.2f} + {momentum_weight} x mom {mom:+.2f}",
+            ],
+        }
     for side in ranked:
         ranked[side].sort(key=lambda x: (-x[0], x[1]))
     if top:
@@ -482,7 +622,11 @@ def diff_books(prev, new):
     out = {}
     for side in ("LONG", "SHORT"):
         p, n = list(prev.get(side) or []), list(new.get(side) or [])
-        out[side] = {"added": sorted(set(n) - set(p)), "removed": sorted(set(p) - set(n)), "kept": sorted(set(p) & set(n))}
+        out[side] = {
+            "added": sorted(set(n) - set(p)),
+            "removed": sorted(set(p) - set(n)),
+            "kept": sorted(set(p) & set(n)),
+        }
     return out
 
 
@@ -500,6 +644,7 @@ def atomic_write_json(path, obj):
 
 def allowed_sym_sides(root=ROOT):
     import v15_universe as U
+
     allowed = {str(s).upper() for s in U.build(root)["allowed_sym_sides"]}
     excl = jload(Path(root) / "data" / "universe_exclude.json", {}) or {}
     allowed -= {str(s).upper() for s in excl.get("exclude_sym_sides", [])}
@@ -510,33 +655,66 @@ def write_report(rep, stamp_date):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     jp = OUT_DIR / f"{stamp_date}.json"
     mp = OUT_DIR / f"{stamp_date}.md"
-    for cur, prev in ((jp, OUT_DIR / f"{stamp_date}.prev.json"), (mp, OUT_DIR / f"{stamp_date}.prev.md")):
+    for cur, prev in (
+        (jp, OUT_DIR / f"{stamp_date}.prev.json"),
+        (mp, OUT_DIR / f"{stamp_date}.prev.md"),
+    ):
         try:
             if cur.exists():
                 shutil.copy2(cur, prev)
         except Exception:
             pass
     jp.write_text(json.dumps(rep, indent=1, default=str))
-    L = [f"# inf universe {stamp_date} ({'APPLIED' if rep['applied'] else 'DRY-RUN'})", ""]
-    L.append(f"- generated {rep['generated_utc']}; hosts {rep['hosts']}; host errors {rep['host_errors'] or 'none'}")
-    L.append(f"- crypto sym_side records fetched {rep['n_records']} (deduped {rep['n_deduped']}); eligible LONG {rep['n_eligible']['LONG']} / SHORT {rep['n_eligible']['SHORT']}")
-    L.append(f"- window: evaluated within {rep['max_age_hours']}h; top {rep['top']} per side; both-sides policy {rep['both_sides']}; vec_only_false_ok {rep['vec_only_false_ok']}")
-    L.append("- numbers: single sym_side 30D vector backtest of the final per-sym set (diagnose_repair.after) — [DIAGNOSTIC ONLY] under the CLAUDE.md sample floor; no Sharpe emitted")
+    L = [
+        f"# inf universe {stamp_date} ({'APPLIED' if rep['applied'] else 'DRY-RUN'})",
+        "",
+    ]
+    L.append(
+        f"- generated {rep['generated_utc']}; hosts {rep['hosts']}; host errors {rep['host_errors'] or 'none'}"
+    )
+    L.append(
+        f"- crypto sym_side records fetched {rep['n_records']} (deduped {rep['n_deduped']}); eligible LONG {rep['n_eligible']['LONG']} / SHORT {rep['n_eligible']['SHORT']}"
+    )
+    L.append(
+        f"- window: evaluated within {rep['max_age_hours']}h; top {rep['top']} per side; both-sides policy {rep['both_sides']}; vec_only_false_ok {rep['vec_only_false_ok']}"
+    )
+    L.append(
+        "- numbers: single sym_side 30D vector backtest of the final per-sym set (diagnose_repair.after) — [DIAGNOSTIC ONLY] under the CLAUDE.md sample floor; no Sharpe emitted"
+    )
+    if rep.get("fallback", {}).get("used"):
+        L.append(
+            f"- **FALLBACK ranking active** (0 full-gate eligible): score = gain + {rep['fallback'].get('momentum_weight')} x day-over-day change; every row DEGRADED (no TIM/DD/365D assurances), sized down by the tiers"
+        )
     if rep.get("apply_refused"):
         L.append(f"- **APPLY REFUSED**: {rep['apply_refused']}")
     if rep.get("position_problems"):
         L.append(f"- positions problems: {rep['position_problems']}")
-    L.append(f"- 365D live certificates (data/confirmed_365d.json) present for: {rep.get('confirmed_365d_in_books') or 'none'} — live crypto opens are fail-closed on that file")
+    L.append(
+        f"- 365D live certificates (data/confirmed_365d.json) present for: {rep.get('confirmed_365d_in_books') or 'none'} — live crypto opens are fail-closed on that file"
+    )
     for side in ("LONG", "SHORT"):
-        L += ["", f"## {side} book ({len(rep['books'][side])} symbols)", "", "| # | sym_side | gain% | trades | TIM% | DD% | 365D gain% | 365D trades | host | flags |", "|---|---|---|---|---|---|---|---|---|---|"]
+        L += [
+            "",
+            f"## {side} book ({len(rep['books'][side])} symbols)",
+            "",
+            "| # | sym_side | gain% | trades | TIM% | DD% | 365D gain% | 365D trades | host | flags |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ]
         for i, row in enumerate(rep["ranked"][side], 1):
-            L.append(f"| {i} | {row['sym_side']} | {row['gain_pct']:.2f} | {row['trades']} | {row['tim_pct']:.2f} | {row['max_dd_pct']:.2f} | {row.get('gain_365d') if row.get('gain_365d') is None else round(row['gain_365d'], 2)} | {row.get('trades_365d')} | {row['host']} | {'; '.join(row['flags'])} |")
+            L.append(
+                f"| {i} | {row['sym_side']} | {row['gain_pct']:.2f} | {row['trades']} | {_pct(row['tim_pct'])} | {_pct(row['max_dd_pct'])} | {_pct(row.get('gain_365d'))} | {row.get('trades_365d') if row.get('trades_365d') is not None else 'n/a'} | {row['host']} | {'; '.join(row['flags'])} |"
+            )
         if rep["kept_open"][side]:
             L.append(f"\nkept for OPEN inf position: {rep['kept_open'][side]}")
         d = rep["diff"][side]
-        L.append(f"\ndiff vs previous book: added {d['added']} | removed {d['removed']} | kept {d['kept']}")
+        L.append(
+            f"\ndiff vs previous book: added {d['added']} | removed {d['removed']} | kept {d['kept']}"
+        )
     if rep["conflicts"]:
-        L += ["", "## both-side conflicts (resolved to the better-gain side)", ""] + [f"- {c['symbol']}: kept {c['kept_side']} ({c['gain_long']:.2f} L / {c['gain_short']:.2f} S)" for c in rep["conflicts"]]
+        L += ["", "## both-side conflicts (resolved to the better-gain side)", ""] + [
+            f"- {c['symbol']}: kept {c['kept_side']} ({c['gain_long']:.2f} L / {c['gain_short']:.2f} S)"
+            for c in rep["conflicts"]
+        ]
     L += ["", "## ineligible", "", "| sym_side | reasons |", "|---|---|"]
     for ss, rs in sorted(rep["ineligible"].items()):
         L.append(f"| {ss} | {'; '.join(rs)[:300]} |")
@@ -549,16 +727,33 @@ def main(argv=None):
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--hosts", default=",".join(DEFAULT_HOSTS))
     ap.add_argument("--top", type=int, default=20)
-    ap.add_argument("--max-age-hours", type=float, default=216.0)  # USER 2026-10-21: every tradeable sym_side with a backtest inside 9 days belongs in the books
+    ap.add_argument(
+        "--max-age-hours", type=float, default=216.0
+    )  # USER 2026-10-21: every tradeable sym_side with a backtest inside 9 days belongs in the books
     ap.add_argument("--min-records", type=int, default=20)
     ap.add_argument("--allow-thin-fetch", action="store_true")
-    ap.add_argument("--records", help="re-use a fetched records JSON instead of fetching")
-    ap.add_argument("--report-tag", default="", help="suffix for the report file names (e.g. a variant dry-run)")
+    ap.add_argument(
+        "--records", help="re-use a fetched records JSON instead of fetching"
+    )
+    ap.add_argument(
+        "--report-tag",
+        default="",
+        help="suffix for the report file names (e.g. a variant dry-run)",
+    )
     ap.add_argument("--both-sides", choices=("resolve", "keep"), default="resolve")
-    ap.add_argument("--momentum-weight", type=float, default=2.0, help="fallback score = gain + W x day-over-day gain change; 0 = level only")
+    ap.add_argument(
+        "--momentum-weight",
+        type=float,
+        default=2.0,
+        help="fallback score = gain + W x day-over-day gain change; 0 = level only",
+    )
     ap.add_argument("--allow-partial-hosts", action="store_true")
     ap.add_argument("--allow-empty-side", action="store_true")
-    ap.add_argument("--vec-only-false-ok", action="store_true", help="accept sets whose *_VEC_ONLY_* keys are all False (flagged)")
+    ap.add_argument(
+        "--vec-only-false-ok",
+        action="store_true",
+        help="accept sets whose *_VEC_ONLY_* keys are all False (flagged)",
+    )
     a = ap.parse_args(argv)
     now = now_utc()
     stamp_date = now.strftime("%Y%m%d")
@@ -574,14 +769,47 @@ def main(argv=None):
                 host_errors.append(err)
                 print(f"[inf-universe] {err}", flush=True)
             records.extend(recs)
-            print(f"[inf-universe] {h}: {len(recs)} crypto progress records", flush=True)
+            print(
+                f"[inf-universe] {h}: {len(recs)} crypto progress records", flush=True
+            )
         OUT_DIR.mkdir(parents=True, exist_ok=True)
-        (OUT_DIR / f"{stamp_date}_records.json").write_text(json.dumps(records, default=str))
+        (OUT_DIR / f"{stamp_date}_records.json").write_text(
+            json.dumps(records, default=str)
+        )
     allowed = allowed_sym_sides()
     deduped = dedupe_records(records)
-    evaluated = {ss: evaluate(rec, allowed, now, a.max_age_hours, a.vec_only_false_ok) for ss, rec in deduped.items()}
+    evaluated = {
+        ss: evaluate(rec, allowed, now, a.max_age_hours, a.vec_only_false_ok)
+        for ss, rec in deduped.items()
+    }
     open_pos, pos_problems = open_inf_positions()
     res = build_books(evaluated, open_pos, a.top, a.both_sides)
+    fb = None
+    if sum(1 for v in evaluated.values() if v[0]) == 0:
+        prev_path = a.records or str(OUT_DIR / f"{stamp_date}_records.json")
+        fb = fallback_books(
+            deduped,
+            allowed,
+            now,
+            a.max_age_hours,
+            open_pos,
+            a.top,
+            prev_gains(prev_path, OUT_DIR),
+            a.momentum_weight,
+        )
+        if any(fb["books"].values()):
+            res["books"] = fb["books"]
+            res["ranked"] = fb["ranked"]
+            res["kept_open"] = {
+                side: sorted(
+                    s for s in fb["books"][side] if f"{s}_{side}" not in fb["rows"]
+                )
+                for side in ("LONG", "SHORT")
+            }
+            print(
+                f"[inf-universe] FALLBACK ranking active: score = gain + {a.momentum_weight} x day-over-day change",
+                flush=True,
+            )
     prev = {side: jload(p, []) or [] for side, p in BOOKS.items()}
     conf = jload(CONFIRMED_365D, {}) or {}
     ranked_rows = {}
@@ -589,33 +817,88 @@ def main(argv=None):
         rows = []
         for g, symbol in res["ranked"][side][: a.top]:
             ss = f"{symbol}_{side}"
+            if fb is not None and ss in fb["rows"]:
+                rows.append(fb["rows"][ss])
+                continue
             ok, _r, m, fl = evaluated[ss]
             rec = deduped[ss]
             v365 = rec.get("final_365d") or {}
-            rows.append({"sym_side": ss, **m, "gain_365d": _f(v365.get("gain_pct")), "trades_365d": v365.get("trades"), "host": rec.get("fetched_from"),
-                         "evaluated_at": str(record_evaluated_at(rec)), "overrides_md5": rec.get("overrides_md5"), "defaults_round": rec.get("defaults_round"),
-                         "verdict": rec.get("verdict"), "flags": fl + ([] if ss in conf else ["no live 365D certificate"])})
+            rows.append(
+                {
+                    "sym_side": ss,
+                    **m,
+                    "gain_365d": _f(v365.get("gain_pct")),
+                    "trades_365d": v365.get("trades"),
+                    "host": rec.get("fetched_from"),
+                    "evaluated_at": str(record_evaluated_at(rec)),
+                    "overrides_md5": rec.get("overrides_md5"),
+                    "defaults_round": rec.get("defaults_round"),
+                    "verdict": rec.get("verdict"),
+                    "flags": fl + ([] if ss in conf else ["no live 365D certificate"]),
+                }
+            )
         ranked_rows[side] = rows
     refused = []
     if host_errors and not a.allow_partial_hosts:
         refused.append(f"host fetch errors: {host_errors}")
     if len(deduped) < a.min_records and not a.allow_thin_fetch:
-        refused.append(f"thin fleet view: {len(deduped)} fresh sym_sides < --min-records {a.min_records} (campaign rotation or fleet outage? keeping yesterday's books)")
+        refused.append(
+            f"thin fleet view: {len(deduped)} fresh sym_sides < --min-records {a.min_records} (campaign rotation or fleet outage? keeping yesterday's books)"
+        )
     if pos_problems:
         refused.append(f"open-position state not trustworthy: {pos_problems}")
     for side in ("LONG", "SHORT"):
         if not res["books"][side] and not a.allow_empty_side:
-            refused.append(f"{side} book would be empty (0 eligible, 0 open) — pass --allow-empty-side to write an empty book")
+            refused.append(
+                f"{side} book would be empty (0 eligible, 0 open) — pass --allow-empty-side to write an empty book"
+            )
     rep = {
-        "generated_utc": now.isoformat(), "applied": False, "hosts": hosts, "host_errors": host_errors, "top": a.top,
-        "max_age_hours": a.max_age_hours, "min_records": a.min_records, "both_sides": a.both_sides, "vec_only_false_ok": a.vec_only_false_ok, "n_records": len(records), "n_deduped": len(deduped),
-        "n_eligible": {s: sum(1 for ss, v in evaluated.items() if v[0] and ss.endswith("_" + s)) for s in ("LONG", "SHORT")},
-        "ranked": ranked_rows, "books": res["books"], "kept_open": res["kept_open"], "open_positions": {k: sorted(v) for k, v in open_pos.items()},
-        "position_problems": pos_problems, "conflicts": res["conflicts"], "previous_books": prev, "diff": diff_books(prev, res["books"]),
+        "generated_utc": now.isoformat(),
+        "applied": False,
+        "hosts": hosts,
+        "host_errors": host_errors,
+        "top": a.top,
+        "max_age_hours": a.max_age_hours,
+        "min_records": a.min_records,
+        "both_sides": a.both_sides,
+        "vec_only_false_ok": a.vec_only_false_ok,
+        "n_records": len(records),
+        "n_deduped": len(deduped),
+        "n_eligible": {
+            s: sum(1 for ss, v in evaluated.items() if v[0] and ss.endswith("_" + s))
+            for s in ("LONG", "SHORT")
+        },
+        "ranked": ranked_rows,
+        "books": res["books"],
+        "kept_open": res["kept_open"],
+        "open_positions": {k: sorted(v) for k, v in open_pos.items()},
+        "position_problems": pos_problems,
+        "conflicts": res["conflicts"],
+        "previous_books": prev,
+        "diff": diff_books(prev, res["books"]),
         "ineligible": {ss: v[1] for ss, v in evaluated.items() if not v[0]},
-        "eligible_beyond_top": {s: [f"{sym}_{s}" for _g, sym in res["ranked"][s][a.top:]] for s in ("LONG", "SHORT")},
-        "confirmed_365d_in_books": sorted(f"{s}_{side}" for side in ("LONG", "SHORT") for s in res["books"][side] if f"{s}_{side}" in conf),
-        "apply_refused": None, "backups": {},
+        "fallback": (
+            {
+                "used": True,
+                "momentum_weight": a.momentum_weight,
+                "n": len(fb["rows"]),
+                "skipped": fb["skipped"],
+            }
+            if fb is not None and any(fb["books"].values())
+            else {"used": False}
+        ),
+        "eligible_beyond_top": {
+            s: [f"{sym}_{s}" for _g, sym in res["ranked"][s][a.top :]]
+            for s in ("LONG", "SHORT")
+        },
+        "confirmed_365d_in_books": sorted(
+            f"{s}_{side}"
+            for side in ("LONG", "SHORT")
+            for s in res["books"][side]
+            if f"{s}_{side}" in conf
+        ),
+        "apply_refused": None,
+        "backups": {},
     }
     if a.apply:
         if refused:
@@ -632,11 +915,21 @@ def main(argv=None):
             for side, path in BOOKS.items():
                 atomic_write_json(path, res["books"][side])
             rep["applied"] = True
-            print(f"[inf-universe] APPLIED LONG={len(res['books']['LONG'])} SHORT={len(res['books']['SHORT'])}", flush=True)
+            print(
+                f"[inf-universe] APPLIED LONG={len(res['books']['LONG'])} SHORT={len(res['books']['SHORT'])}",
+                flush=True,
+            )
     elif refused:
-        rep["apply_refused"] = "(dry-run) an --apply now would be refused: " + " | ".join(refused)
-    jp, mp = write_report(rep, stamp_date + (f"_{a.report_tag}" if a.report_tag else ""))
-    print(f"[inf-universe] eligible LONG={rep['n_eligible']['LONG']} SHORT={rep['n_eligible']['SHORT']} books LONG={len(res['books']['LONG'])} SHORT={len(res['books']['SHORT'])} report {jp} {mp}", flush=True)
+        rep["apply_refused"] = (
+            "(dry-run) an --apply now would be refused: " + " | ".join(refused)
+        )
+    jp, mp = write_report(
+        rep, stamp_date + (f"_{a.report_tag}" if a.report_tag else "")
+    )
+    print(
+        f"[inf-universe] eligible LONG={rep['n_eligible']['LONG']} SHORT={rep['n_eligible']['SHORT']} books LONG={len(res['books']['LONG'])} SHORT={len(res['books']['SHORT'])} report {jp} {mp}",
+        flush=True,
+    )
     return 0 if (rep["applied"] or not a.apply) else 2
 
 
