@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 08:12:10 UTC
+# Copilot Status — 2026-10-21 08:17:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:05:23
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:06:25
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T08:06:46
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:07:28
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:08:31
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T08:08:52
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:09:33
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:10:36
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T08:10:58
 - **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:11:38
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:12:40
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T08:13:02
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:13:42
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:14:44
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T08:15:06
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:15:47
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T08:16:49
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T08:17:11
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 0 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **AXON** SHORT (tradier) peak +5.5%, now +0.2%
 - HELD: **U** SHORT (tradier) peak +4.8%, now +1.0%
@@ -37,6 +37,7 @@ _None_
 - HELD: **UNH** LONG (tradier) peak +4.3%, now +-0.2%
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
+- HELD: **ENJUSDT** LONG (crypto) peak +3.2%, now +-0.0%
 
 ## Supervisor
 
@@ -47,4 +48,4 @@ _None_
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (711min)
+- [MEDIUM] tradier_prices.py running but log stale (716min)
