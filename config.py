@@ -2072,7 +2072,11 @@ class Config:
         True  # ez_positions_quick augmented position reduce-to-min on 3m DC break
     )
     MOMENTUM_TP_ENABLED: bool = (
-        True  # ez_manage mandatory profit take on momentum exhaustion (k_15m)
+        False  # USER 2026-10-21 EXACT-PARITY: was True. ez_manage MANDATORY PROFIT TAKE (PROFIT_TP_EXHAUSTION)
+        # has NO vector model (v12:7043 "vec-only toggle", 0 emissions) and fires on gain>0.5 + stoch extreme.
+        # Boards: 94 True / 44 False / 369 absent — per-sym proxy keeps all measured boards identical; only
+        # untested keys stop taking unmeasured profit. Verified zero PROFIT_TP_EXHAUSTION fills post-2026-10-20
+        # on any account, so this flips no current behavior, only future unmeasured exits. ROLLBACK: True.
     )
     DC_BASIS_3M_REDUCE_ENABLED: bool = (
         True  # ez_manage reduce when price crosses 3m DC level
