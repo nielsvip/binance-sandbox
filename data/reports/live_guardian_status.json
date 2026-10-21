@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:46:54Z",
+ "ts": "2026-10-21T00:52:11Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -127,71 +127,71 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 27.0
+   "log_age_s": 10.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 7.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 14.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17150.0
+   "log_age_s": 17468.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17153.0
+   "log_age_s": 17470.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:46:54Z",
+   "ts": "2026-10-21T00:52:11Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:1000FLOKIUSDT_SHORT",
    "evidence": "21 00:40:27 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $74 on bounce (prior max 2056.0000)"
   },
   {
-   "ts": "2026-10-21T00:46:54Z",
+   "ts": "2026-10-21T00:52:11Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "21 00:42:18 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $398 on bounce (prior max 7095.0000)"
   },
   {
-   "ts": "2026-10-21T00:46:54Z",
+   "ts": "2026-10-21T00:52:11Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "ang:GALAUSDT_SHORT",
    "evidence": "order notional $397.96 > MAX_ORDER_VALUE $300: 21 00:42:18 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:GALAUSDT_SHORT @ 0.001974 qty=201647.385340 ($397.96) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.001973_exit0."
   },
   {
-   "ts": "2026-10-21T00:46:54Z",
+   "ts": "2026-10-21T00:52:11Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "ang:TIAUSDC_LONG",
@@ -262,5 +262,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.76
+ "sweep_s": 1.61
 }
