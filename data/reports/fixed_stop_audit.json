@@ -1,28 +1,52 @@
 {
  "findings": [
   {
+   "account": "ang",
+   "code": "BROKER_UNREACHABLE",
+   "error": "BinanceAPIException(<Response [400]>, 400, '{\"code\":-1021,\"msg\":\"Timestamp for this request is outside of the recvWindow.\"}')"
+  },
+  {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 0.09326625000000001,
    "key": "men:1INCHUSDT_LONG",
-   "live_level": 0.09342585,
-   "mark": 0.09374117,
+   "live_level": 0.093276225,
+   "mark": 0.09375,
    "opened_at": "2026-10-21T06:04:44.412326Z",
    "resting_trigger": 0.09313
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 12.2722425,
+   "key": "men:LINKUSDC_LONG",
+   "live_level": 11.560327109220365,
+   "mark": 12.272,
+   "opened_at": "2026-10-21T05:02:23.967000Z",
+   "resting_trigger": 11.549
   }
  ],
- "n_findings": 1,
- "n_positions": 1,
+ "n_findings": 3,
+ "n_positions": 2,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.09326625000000001,
    "key": "men:1INCHUSDT_LONG",
-   "live_level": 0.09342585,
-   "mark": 0.09374117,
+   "live_level": 0.093276225,
+   "mark": 0.09375,
    "opened_at": "2026-10-21T06:04:44.412326Z",
    "resting_trigger": 0.09313
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 12.2722425,
+   "key": "men:LINKUSDC_LONG",
+   "live_level": 11.560327109220365,
+   "mark": 12.272,
+   "opened_at": "2026-10-21T05:02:23.967000Z",
+   "resting_trigger": 11.549
   }
  ],
- "ts": "2026-10-21T06:08:25.435983+00:00"
+ "ts": "2026-10-21T06:18:56.989375+00:00"
 }
