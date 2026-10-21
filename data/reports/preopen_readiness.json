@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T22:40:02Z",
+ "generated_utc": "2026-10-21T23:00:06Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 563,
+    "filled_today": 572,
     "filled_before_open": 385
    },
-   "detail": "385 boards filled before the open (563 today)"
+   "detail": "385 boards filled before the open (572 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -29,21 +29,21 @@
     "mac_done_stamp": false,
     "s1_stamp": "{\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",\"ended\":\"2026-10-21T13:15:53Z\"}",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 0.7,
+    "cat_side_age_days": 0.8,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261021=False, s1 stamp {\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",, cat_side layer 0.7d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261021=False, s1 stamp {\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",, cat_side layer 0.8d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "built_at": "2026-10-21T21:51:23.530463+00:00",
-    "n": 477,
-    "age_at_open_s": -30084
+    "built_at": "2026-10-21T22:51:56.454074+00:00",
+    "n": 486,
+    "age_at_open_s": -33716
    },
-   "detail": "built 2026-10-21T21:51:23.530463+00:00 n=477"
+   "detail": "built 2026-10-21T22:51:56.454074+00:00 n=486"
   },
   {
    "name": "apply_report_written",
@@ -62,14 +62,43 @@
    "ok": false,
    "critical": true,
    "measured": {
-    "selection_n": 477,
+    "selection_n": 486,
     "exact": 50,
     "benign_divergence_only": 398,
-    "material_divergence": 28,
+    "material_divergence": 34,
     "no_live_row": [
-     "LEXX_SHORT"
+     "LEXX_SHORT",
+     "RIFUSDT_SHORT",
+     "TLMUSDT_SHORT",
+     "PWR_SHORT"
     ],
     "worst": [
+     {
+      "sym_side": "KASUSDT_LONG",
+      "published_at": "2026-10-21T22:44:00Z",
+      "material": 137,
+      "sample": [
+       "ADX_RANGING_THRESHOLD",
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_TF",
+       "AUGMENT_TYPED_MIN_GAIN_ENABLED",
+       "BB_FROZEN_STOP_ENABLED"
+      ]
+     },
+     {
+      "sym_side": "BOMEUSDC_SHORT",
+      "published_at": "2026-10-21T22:44:21Z",
+      "material": 103,
+      "sample": [
+       "ALL_TF_AGAINST_CLOSE_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "ATR_ADAPTIVE_STOP_MULT",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "BB_BOUNCE_ENTRY_FILTER_ENABLED"
+      ]
+     },
      {
       "sym_side": "NXE_SHORT",
       "published_at": "2026-10-21T01:32:19Z",
@@ -123,6 +152,19 @@
       ]
      },
      {
+      "sym_side": "ZECUSDC_SHORT",
+      "published_at": "2026-10-21T22:31:44Z",
+      "material": 63,
+      "sample": [
+       "ALL_TF_AGAINST_CLOSE_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "AUGMENT_INTO_REENTRY_ENABLED",
+       "BAR_PATTERNS_FILTER_TF",
+       "CIRCUIT_SHARPE_GATES_FILTER_TF"
+      ]
+     },
+     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -133,19 +175,6 @@
        "DC_EDGE_SIZING_MAX_MULT",
        "DC_HARD_STOP_15M_ENABLED",
        "DC_MOMENTUM_BOTA_SCORER_FILTER_TF"
-      ]
-     },
-     {
-      "sym_side": "RLCUSDT_SHORT",
-      "published_at": "2026-10-21T13:32:10Z",
-      "material": 50,
-      "sample": [
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "COOLDOWN_BARS",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED",
-       "CRYPTO_REENTRY_PATHWAYS_ENABLED",
-       "DC_BREACH_REDUCE_FILTER_TF",
-       "DC_EDGE_SIZING_MIN_MULT"
       ]
      },
      {
@@ -162,47 +191,21 @@
       ]
      },
      {
-      "sym_side": "1000FLOKIUSDT_LONG",
-      "published_at": "2026-10-13T03:39:04Z",
-      "material": 41,
+      "sym_side": "PUMPUSDT_SHORT",
+      "published_at": "2026-10-21T22:45:56Z",
+      "material": 43,
       "sample": [
-       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "BB_BOUNCE_ENTRY_TF",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_BREAKOUT_TF_EXPANDED",
-       "ENTRY_DC_TF"
-      ]
-     },
-     {
-      "sym_side": "AR_LONG",
-      "published_at": "2026-10-19T21:48:26Z",
-      "material": 40,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ADX_TRENDING_THRESHOLD",
-       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
        "ATR_ADAPTIVE_STOP_TF",
-       "BB_SQUEEZE_ENTRY_ENABLED",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "BMNRUSDT_SHORT",
-      "published_at": "2026-10-13T20:03:17Z",
-      "material": 30,
-      "sample": [
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "COOLDOWN_BARS",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DELTA_ENGINE_FILTER_TF",
-       "EMA_DIST_SIZING_ENABLED"
+       "BB_PROFIT_TAKE_TF",
+       "BREAKOUT_RETEST_ARMED_ENABLED",
+       "BREAKOUT_RETEST_FILTER_TF",
+       "COUNTER_TREND_SMA200_BYPASS_ENABLED"
       ]
      }
     ]
    },
-   "detail": "50 exact, 398 benign-only, 28 with material divergence, 1 with no live row"
+   "detail": "50 exact, 398 benign-only, 34 with material divergence, 4 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -212,7 +215,7 @@
     "symbols": 199,
     "stale_over_90min": 198,
     "stale_pct": 99.5,
-    "median_age_min": 265.0,
+    "median_age_min": 285.1,
     "sample": [
      "1000000MOGUSDT",
      "1000CHEEMSUSDT",
