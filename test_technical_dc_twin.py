@@ -58,7 +58,10 @@ def test_target_crossing_long_short():
     # Sitting AT target with no fresh cross -> hold (the DOGE/XMR shape:
     # prev close 99.95 never went below the 99.90 band edge).
     assert X.dc_target_cross(100.0, 99.95, 100.0, 100.0, True, t[0]) is False
-    assert X.technical_dc_exit_crossing(100.0, 99.95, True, [], t, lvl, lvlp) == (False, "")
+    assert X.technical_dc_exit_crossing(100.0, 99.95, True, [], t, lvl, lvlp) == (
+        False,
+        "",
+    )
     # Fresh cross through the buffer band -> fire with the same reason string.
     fire, reason = X.technical_dc_exit_crossing(100.05, 99.85, True, [], t, lvl, lvlp)
     assert fire and reason.startswith("TECHNICAL_TARGET dc_15m_high")

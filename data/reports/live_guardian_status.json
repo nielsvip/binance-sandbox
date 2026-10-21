@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T22:35:40Z",
+ "ts": "2026-10-21T22:41:00Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,7 +27,7 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 25,
+   "fills_6h": 27,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 30,
+   "fills_6h": 32,
    "open_positions": 1,
-   "unrealised_usd": -0.03,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -127,64 +127,64 @@
     "53005"
    ],
    "starts_30m": 1,
-   "log_age_s": 31.0
+   "log_age_s": 2.0
   },
   "men": {
    "pids": [
     "60170"
    ],
    "starts_30m": 1,
-   "log_age_s": 28.0
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "41203"
    ],
    "starts_30m": 1,
-   "log_age_s": 61.0
+   "log_age_s": 16.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 13.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 75.0
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9277.0
+   "log_age_s": 9596.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9280.0
+   "log_age_s": 9600.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T22:35:40Z",
+   "ts": "2026-10-21T22:41:00Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T22:35:40Z",
+   "ts": "2026-10-21T22:41:00Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T22:35:40Z",
+   "ts": "2026-10-21T22:41:00Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
@@ -247,5 +247,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.88
+ "sweep_s": 1.41
 }

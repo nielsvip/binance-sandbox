@@ -181,6 +181,28 @@ def test_rule_b_route_gated_per_sym():
     assert '_sw_get(symbol, position_side, "RULE_B_3M_EXIT_ENABLED", False)' in src
 
 
+def test_backstop_catches_stay_killed(tmp_path, monkeypatch):
+    """2026-10-21 backstop audit round 2: ALL_TF_AGAINST_CLOSE has vector code
+    with zero callers (dead template wiring, never books); STRONG_REDUCE is a
+    06-02-mandate stochastic trap whose PANIC sanction hole is now closed.
+    Both stay killed."""
+    assert "ALL_TF_AGAINST" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "STRONG_REDUCE" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    _iso(tmp_path, monkeypatch)
+    assert (
+        ve.check("CLOSE", "a", "ALL_TF_AGAINST_CLOSE_3m-53_15m1_1h65_4h69_D-28")[0]
+        is False
+    )
+    assert (
+        ve.check(
+            "STRONG_REDUCE", "a", "QUICK_REDUCE_STRONG_REDUCE_k_1m:98_SIMPLE_TP_0.16%"
+        )[0]
+        is False
+    )
+    src = (ROOT / "ez_positions_quick.py").read_text()
+    assert '"PANIC",' not in src, "PANIC sanction hole must stay closed"
+
+
 def test_new_kill_files_retrace_order(tmp_path, monkeypatch):
     """Every newly killed family files one TODO retrace work order (BIBLE §126.1)."""
     k, v = _iso(tmp_path, monkeypatch)

@@ -27679,7 +27679,11 @@ async def check_exit_candidates_for_account(
                             "PPL",
                             "BREAK_EVEN",
                             "HEDGE_FAILED",
-                            "PANIC",
+                            # USER 2026-10-21 (backstop catch 22:16): "PANIC" REMOVED
+                            # — no vector PANIC/PANIC_TIGHTEN model exists, and the
+                            # substring sanction let SIMPLE_TP sail through
+                            # piggybacked on PANIC_TIGHTEN
+                            # (QUICK_REDUCE_STRONG_REDUCE_..._SIMPLE_TP_..._PANIC_TIGHTEN_REDUCE).
                             "TECHNICAL_EXIT",
                             "TECHNICAL",
                         )

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 22:35:06 UTC
+# Copilot Status — 2026-10-21 22:40:13 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T22:28:36
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T22:28:36
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T22:30:38
-- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T22:30:38
 - **RATIO_IMBALANCE** [crypto] inf — 2026-10-21T22:31:40
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T22:32:42
 - **RATIO_IMBALANCE** [crypto] inf — 2026-10-21T22:32:42
 - **RATIO_IMBALANCE** [crypto] inf — 2026-10-21T22:33:44
 - **STALE_INDICATORS** [tradier]  — 2026-10-21T22:34:45
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T22:34:45
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T22:36:47
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T22:36:47
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T22:38:50
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-21T22:38:50
 
 ## Missed Trades (trader comparison)
 
@@ -42,8 +42,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_rankings.py running but log stale (56min)
+- [MEDIUM] ez_prices.py running but log stale (11min)
+- [MEDIUM] ez_rankings.py running but log stale (62min)
