@@ -1815,6 +1815,8 @@ class Config:
     EXIT_GUARANTEE_REDUCE_RETRY_SEC: str = "15,30,60,120,240"  # partial REDUCE refused -> retry schedule (stops when the broker shows the reduce / lifecycle changed)
     EXIT_GUARANTEE_STUCK_CHECK_SEC: str = "20,60,180"  # FULL close still open -> FORCE re-check schedule, then ALERT (data/alerts/exit_never_blocked.jsonl + desktop notify)
     EXIT_DUST_USD: float = 5.0  # closes below this notional never count as a win/loss in VIGILANCE / STALE-SET / per_trade_ledger
+    ZERO_PASS_TRADE_ALL: bool = True  # USER 2026-10-21 zero-pass goes completely: ANY per_sym calculation (published board or backtest <9d) trades live; board-gate refusals (NO_LATEST_BOARD/LIVE_SET_NE_BOARD/BOARD_TOO_OLD) become allow-with-log at entries. Risk carried by size, never refusal. Kill switch: False restores the old refusals.
+    ZERO_PASS_NEG_FLOOR: bool = True  # USER 2026-10-21: calculated sym_side with negative latest gain trades at the floor (crypto exchange minimum, stocks 1 share). Positive gains untouched (RANKED tiers to x6 stay). Kill switch: False.
     PARITY_VEC_EXACT_FAMILIES: str = (
         "ENTRY,EXIT,AUGMENT"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
     )

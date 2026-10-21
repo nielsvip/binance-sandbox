@@ -48200,8 +48200,17 @@ class TradierTradeManager:
             except Exception as _lb_e:
                 _lb_ok, _lb_why = True, f"board check error {_lb_e}"  # fail-OPEN: a gate bug must never stop trading
             if not _lb_ok and str(_lb_why).startswith("NO_LATEST_BOARD"):
-                logger.warning(f"[NO_BOARD_TR] REFUSED {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_lb_why}")
-                return "BLOCKED_NO_LATEST_BOARD"
+                _zp_allow = False
+                try:
+                    from live_twins import zero_pass as _zp_tr
+                    _zp_allow = _zp_tr.trade_all_on() and _zp_tr.calculated(symbol, position_side)
+                except Exception:
+                    _zp_allow = False
+                if _zp_allow:
+                    logger.warning(f"[ZERO_PASS_ALLOW] {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_lb_why}; calculated sym_side trades (USER 2026-10-21)")
+                else:
+                    logger.warning(f"[NO_BOARD_TR] REFUSED {position_key} {action} {side}/{position_side} reason={str(reason)[:80]} — {_lb_why}")
+                    return "BLOCKED_NO_LATEST_BOARD"
         if _odg.entry_banned(account_key, config) and (
             str(action or "").upper()
             in (

@@ -94,16 +94,33 @@ def get_mult(symbol: str, side: str) -> float:
         return 1.0
 
 
+def zero_pass_neg(symbol: str, side: str) -> bool:
+    """USER 2026-10-21: floor sizing applies (switch on + latest backtest gain negative)."""
+    try:
+        from live_twins import zero_pass as _zp
+        return _zp.neg(symbol, side)
+    except Exception:
+        return False
+
+
 def apply_usd(base_usd: float, symbol: str, side: str, min_usd: float, max_usd: float) -> float:
-    """Crypto START_POSITION_SIZE in USD x tier multiplier; never below the exchange minimum, never above MAX_ORDER_VALUE."""
+    """Crypto START_POSITION_SIZE in USD x tier multiplier; never below the exchange minimum, never above MAX_ORDER_VALUE.
+    USER 2026-10-21 zero-pass: a calculated sym_side with negative latest gain trades at the floor (the exchange
+    minimum); positive gains flow through the tiers untouched."""
     m = get_mult(symbol, side)
     if m == 1.0:
-        return base_usd
-    v = float(base_usd) * m
-    if min_usd and v < min_usd:
-        v = float(min_usd)
-    if max_usd and v > max_usd:
-        v = max(float(max_usd), float(min_usd or 0.0))
+        v = float(base_usd)
+    else:
+        v = float(base_usd) * m
+        if min_usd and v < min_usd:
+            v = float(min_usd)
+        if max_usd and v > max_usd:
+            v = max(float(max_usd), float(min_usd or 0.0))
+    try:
+        if zero_pass_neg(symbol, side) and min_usd:
+            return float(min_usd)
+    except Exception:
+        pass
     return v
 
 
@@ -123,7 +140,15 @@ def apply_qty(qty: float, symbol: str, side: str) -> float:
     m = get_mult(symbol, side)
     if m == 1.0:
         return qty
-    return int(q * m)
+    v = int(q * m)
+    if v <= 0:
+        try:
+            if zero_pass_neg(symbol, side):
+                return 1  # USER 2026-10-21: neg-gain calculated sym_side trades exactly 1 share (the caller discards when 1 share > START_POSITION_SIZE)
+        except Exception:
+            pass
+        return 0
+    return v
 
 
 def negbook_blocks(entry: dict, tier_sizing_on: bool) -> bool:

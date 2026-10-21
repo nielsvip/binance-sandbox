@@ -28555,7 +28555,16 @@ async def _vec_exact_entries(trade_manager, account_key: str, position_keys) -> 
                 if _lb_tag not in _VX_HOLD_SKIP_LOGGED:
                     _VX_HOLD_SKIP_LOGGED.add(_lb_tag)
                     logger.info(f"[VEC_EXACT_ENTRY_REFUSED] {_pk}: {_lb_why} — no entry (exits unaffected)")
-                return f"SKIP_NO_LATEST_BOARD_{_pk}"
+                _zp_allow = False
+                try:
+                    from live_twins import zero_pass as _zp_q
+                    _zp_allow = _zp_q.trade_all_on() and _zp_q.calculated(_sym, _side)
+                except Exception:
+                    _zp_allow = False
+                if _zp_allow:
+                    logger.warning(f"[ZERO_PASS_ALLOW] {_pk}: {_lb_why} — calculated sym_side trades (USER 2026-10-21)")
+                else:
+                    return f"SKIP_NO_LATEST_BOARD_{_pk}"
             _pos = (
                 trade_manager.positions.get(_pk)
                 if hasattr(trade_manager, "positions")

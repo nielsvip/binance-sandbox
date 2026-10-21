@@ -33382,8 +33382,17 @@ class MultiAccountTradeManager:
                     except Exception as _bg_e:
                         _bg_ok, _bg_why = True, f"board check error {_bg_e}"
                     if not _bg_ok:
-                        logger.critical(f"🧮 [BOARD_ENTRY_BLOCK] {position_key}: {_bg_why} — ENTRY refused (exits unaffected). action={action} reason={(reason or '')[:70]}")
-                        return f"BLOCKED_BOARD_ENTRY_{str(_bg_why)[:40]}"
+                        _zp_allow = False
+                        try:
+                            from live_twins import zero_pass as _zp_bg
+                            _zp_allow = _zp_bg.trade_all_on() and _zp_bg.calculated(_sym, position_side)
+                        except Exception:
+                            _zp_allow = False
+                        if _zp_allow:
+                            logger.warning(f"🧮 [ZERO_PASS_ALLOW] {position_key}: {_bg_why} — calculated sym_side trades (USER 2026-10-21 zero-pass goes completely; risk carried by size). action={action} reason={(reason or '')[:70]}")
+                        else:
+                            logger.critical(f"🧮 [BOARD_ENTRY_BLOCK] {position_key}: {_bg_why} — ENTRY refused (exits unaffected). action={action} reason={(reason or '')[:70]}")
+                            return f"BLOCKED_BOARD_ENTRY_{str(_bg_why)[:40]}"
         except Exception as _bg_outer:
             logger.warning(f"[BOARD_ENTRY_BLOCK] check error (fail-open): {_bg_outer}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -51017,7 +51026,16 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager) 
                     _lb_ok, _lb_why = _vx.pin_is_latest(_sym, _side)  # 2026-10-14: an add decided by a pinned (older) set is not the latest board
                 if not _lb_ok:
                     logger.info(f"[VEC_EXACT_ENTRY_REFUSED] {position_key} AUGMENT {_a['reason'][:40]}: {_lb_why}")
-                    continue
+                    _zp_allow = False
+                    try:
+                        from live_twins import zero_pass as _zp_au
+                        _zp_allow = _zp_au.trade_all_on() and _zp_au.calculated(_sym, _side)
+                    except Exception:
+                        _zp_allow = False
+                    if _zp_allow:
+                        logger.warning(f"[ZERO_PASS_ALLOW] {position_key} AUGMENT: {_lb_why} — calculated sym_side trades (USER 2026-10-21)")
+                    else:
+                        continue
             if _qty <= 0:  # vec action of zero size on the live position (e.g. a vec REDUCE fraction of 0) -> nothing to send, never a SUCCESS
                 logger.warning(f"[VEC_EXACT] {position_key} {_act} {_a['reason'][:60]} SKIPPED_BLOCKED_ZERO_QTY (frac={_a.get('qty_frac')} to_flat={_a.get('to_flat')})")
                 continue

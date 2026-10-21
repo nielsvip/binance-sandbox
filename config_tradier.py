@@ -656,6 +656,8 @@ class TradierConfig:
         # decision via tradier_vec_exact (every live-only path suppressed; stale-twin fallback = native EXITS only).
     )
     HISTORY_PROV_ENABLED: bool = True  # 2026-10-20 USER E1 (flipped False->True after tests/test_history_prov.py + neutrality proof; kill switch = set False) "/history/ reasons need the switch + approving filters": structured prov block + |SW=..|F=.. tail on every history event (vec_decisions/history_prov.py). METADATA ONLY, no decision reads it; flip to True only after tests/test_history_prov.py + neutrality proof.
+    ZERO_PASS_TRADE_ALL: bool = True  # USER 2026-10-21 zero-pass goes completely: ANY per_sym calculation (published board or backtest <9d) trades live; NO_LATEST_BOARD refusals become allow-with-log at entries. Kill switch: False restores the old refusal.
+    ZERO_PASS_NEG_FLOOR: bool = True  # USER 2026-10-21: calculated sym_side with negative latest gain trades exactly 1 share (discarded when 1 share > START_POSITION_SIZE). Positive gains untouched. Kill switch: False.
     # USER 2026-10-17 "fix the stock vector-decided path first, then enforce it": npz_twin = live_twins/vec_exact.py on the stock NPZ
     # (board path, causal-proven 2789/2789 bars on 3 sym_sides); oracle = the 10-06 in-memory row buffer (empty after restarts).
     TRADIER_VEC_EXACT_ENGINE: str = "npz_twin"
