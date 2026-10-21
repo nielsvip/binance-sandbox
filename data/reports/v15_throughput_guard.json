@@ -1,5 +1,5 @@
 {
- "at": "2026-10-21T00:11:20Z",
+ "at": "2026-10-21T01:11:20Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -33,54 +33,74 @@
    "cores_by_bucket_niced": null
   },
   "s2": {
-   "improved": 2,
-   "improved_per_hour": 2.0,
-   "published_n": 2,
+   "improved": 5,
+   "improved_per_hour": 5.0,
+   "published_n": 5,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "1000LUNCUSDT_SHORT",
-    "ACEUSDT_SHORT",
-    "DOTUSDT_LONG",
-    "SKYUSDT_LONG"
+    "AMD_LONG",
+    "SKYUSDT_LONG",
+    "VICR_SHORT"
    ],
-   "mem_avail_mb": 10157,
-   "load1": 10.45,
+   "mem_avail_mb": 14284,
+   "load1": 6.51,
    "nproc": 16,
    "slots": null,
-   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side (measured median 14 min) \u2014 raise concurrent sides or cut evals per board",
+   "binding_reason": "board CPU DEMAND, not host capacity: 3 running sides pull only 4.6 cores (1.55 core/side) of 16.0 usable -> 8.6 boards/h. 12/h needs 6.5 board-cores = 4 sides at this per-side draw (niced filler 0 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
    "error": null,
    "published": [
     {
-     "symside": "ADP_LONG",
-     "at": "2026-10-21T00:05:38Z",
-     "baseline": 14.166619316036053,
-     "final": 15.088482800678996,
+     "symside": "1000LUNCUSDT_SHORT",
+     "at": "2026-10-21T00:46:44Z",
+     "baseline": -0.9095808256488304,
+     "final": 10.031650321843808,
      "state": "improved"
     },
     {
-     "symside": "SNXUSDT_SHORT",
-     "at": "2026-10-20T23:48:51Z",
-     "baseline": 25.284026081674433,
-     "final": 39.906111971117085,
+     "symside": "ACEUSDT_SHORT",
+     "at": "2026-10-21T00:38:27Z",
+     "baseline": -3.1268629222044666,
+     "final": 19.623623356483698,
+     "state": "improved"
+    },
+    {
+     "symside": "BHVN_SHORT",
+     "at": "2026-10-21T01:05:47Z",
+     "baseline": 33.150681695041094,
+     "final": 70.39044747416591,
+     "state": "improved"
+    },
+    {
+     "symside": "CDE_SHORT",
+     "at": "2026-10-21T01:06:33Z",
+     "baseline": 54.27661057615506,
+     "final": 59.00885085352574,
+     "state": "improved"
+    },
+    {
+     "symside": "SKYUSDT_SHORT",
+     "at": "2026-10-21T00:22:32Z",
+     "baseline": 48.56054889347969,
+     "final": 55.56959128990183,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 5.9,
-   "last_improved_symside": "ADP_LONG",
-   "cadence_ok": false,
-   "improved_gap_min_median_24h": 13.4,
-   "improved_gap_min_max_24h": 143.4,
-   "improved_finishes_24h": 70,
-   "board_cpu_s_median_24h": 1848.4,
-   "board_wall_s_median_24h": 862.4862399101257,
-   "board_cores": 10.88,
-   "nonboard_cores_competing": 0.01,
+   "minutes_since_last_improved": 4.8,
+   "last_improved_symside": "CDE_SHORT",
+   "cadence_ok": true,
+   "improved_gap_min_median_24h": 14.3,
+   "improved_gap_min_max_24h": 263.9,
+   "improved_finishes_24h": 72,
+   "board_cpu_s_median_24h": 1952.5,
+   "board_wall_s_median_24h": 883.3745021820068,
+   "board_cores": 4.64,
+   "nonboard_cores_competing": 0.0,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "other": 0.01,
-    "boards": 10.88
+    "other": 0.0,
+    "boards": 4.64
    },
    "cores_by_bucket_niced": {}
   }
@@ -90,7 +110,6 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1",
-  "s2"
+  "s1"
  ]
 }
