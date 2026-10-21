@@ -1,12 +1,13 @@
 {
- "generated_utc": "2026-10-21T19:00:06Z",
+ "generated_utc": "2026-10-21T19:20:08Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -14,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 520,
-    "filled_before_open": 404
+    "filled_today": 524,
+    "filled_before_open": 396
    },
-   "detail": "404 boards filled before the open (520 today)"
+   "detail": "396 boards filled before the open (524 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -62,8 +63,8 @@
    "measured": {
     "selection_n": 477,
     "exact": 50,
-    "benign_divergence_only": 390,
-    "material_divergence": 36,
+    "benign_divergence_only": 393,
+    "material_divergence": 33,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -200,29 +201,29 @@
      }
     ]
    },
-   "detail": "50 exact, 390 benign-only, 36 with material divergence, 1 with no live row"
+   "detail": "50 exact, 393 benign-only, 33 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 11,
-    "stale_pct": 5.5,
-    "median_age_min": 75.1,
+    "stale_over_90min": 174,
+    "stale_pct": 87.4,
+    "median_age_min": 95.1,
     "sample": [
-     "ILVUSDT",
-     "IOTXUSDT",
-     "IOUSDT",
-     "JASMYUSDT",
-     "MAGICUSDT",
-     "ROSEUSDT",
-     "TRUMPUSDC",
-     "UMAUSDT"
+     "1000000MOGUSDT",
+     "1000BONKUSDC",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC"
     ]
    },
-   "detail": "11/199 symbols past the live 90-min entry gate (5.5%)"
+   "detail": "174/199 symbols past the live 90-min entry gate (87.4%)"
   },
   {
    "name": "s1_sets_synced",
