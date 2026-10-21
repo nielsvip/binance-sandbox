@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T21:23:32Z",
+ "ts": "2026-10-21T21:28:35Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,7 +27,7 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 3,
+   "fills_6h": 11,
    "open_positions": 1,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -38,7 +38,7 @@
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
-    "vec_exact_fills_without_decision": 0,
+    "vec_exact_fills_without_decision": 3,
     "matched_by_reason": 0
    }
   },
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 10,
+   "fills_6h": 14,
    "open_positions": 1,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,66 +126,104 @@
    "pids": [
     "51041"
    ],
-   "starts_30m": 5,
-   "log_age_s": -0.0
+   "starts_30m": 4,
+   "log_age_s": 2.0
   },
   "men": {
    "pids": [
     "50858"
    ],
-   "starts_30m": 3,
-   "log_age_s": 20.0
+   "starts_30m": 2,
+   "log_age_s": 65.0
   },
   "ang": {
    "pids": [
-    "50298"
+    "84836"
    ],
    "starts_30m": 2,
-   "log_age_s": 94.0
+   "log_age_s": 398.0
   },
   "inf": {
    "pids": [
     "50118"
    ],
    "starts_30m": 2,
-   "log_age_s": 78.0
+   "log_age_s": 122.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
-   "starts_30m": 2,
-   "log_age_s": 13.0
+   "starts_30m": 1,
+   "log_age_s": 1.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4948.0
+   "log_age_s": 5252.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4952.0
+   "log_age_s": 5255.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T21:23:33Z",
+   "ts": "2026-10-21T21:28:35Z",
+   "severity": "CRITICAL",
+   "kind": "ORDER_STORM_KEY",
+   "key": "fin:KSMUSDT_LONG",
+   "evidence": "6 fills in 10 min: AUGMENT 1.4 VEC_DRIVEN_OPEN_B12; REDUCE 0.1 VEC_CONVERGE_TO_FLAT paper-flat-live-hol; REDUCE 0.3 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.5 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.9 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.7 VEC_CONVERGE_TO_FLAT paper-flat-live-hol"
+  },
+  {
+   "ts": "2026-10-21T21:28:36Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "fin:KSMUSDT_LONG",
+   "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
+  },
+  {
+   "ts": "2026-10-21T21:28:36Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "fin:KSMUSDT_LONG",
+   "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
+  },
+  {
+   "ts": "2026-10-21T21:28:36Z",
+   "severity": "CRITICAL",
+   "kind": "FILL_WITHOUT_VEC_DECISION",
+   "key": "fin:KSMUSDT_LONG",
+   "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
+  },
+  {
+   "ts": "2026-10-21T21:28:37Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "5 new process ids in 30 min (['69430', '12500', '14719', '17916', '51041'])"
+   "evidence": "4 new process ids in 30 min (['12500', '14719', '17916', '51041'])"
   },
   {
-   "ts": "2026-10-21T21:23:33Z",
+   "ts": "2026-10-21T21:28:37Z",
    "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "men",
-   "evidence": "3 new process ids in 30 min (['57774', '95140', '50858'])"
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 398s"
+  },
+  {
+   "ts": "2026-10-21T21:28:37Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "inf",
+   "evidence": "ez_manage_inf.log not written for 122s"
   }
  ],
  "alert_counts": {
-  "RESTART_LOOP": 2
+  "ORDER_STORM_KEY": 1,
+  "FILL_WITHOUT_VEC_DECISION": 3,
+  "RESTART_LOOP": 1,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -218,6 +256,13 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
+  "key:fin:KSMUSDT_LONG": {
+   "ts": 1792617927.339692,
+   "until": 1792625127.3396952,
+   "why": "ORDER_STORM_KEY 6 fills in 10 min: AUGMENT 1.4 VEC_DRIVEN_OPEN_B12; REDUCE 0.1 VEC_CONVERGE_TO_FLAT paper-flat-live-hol; REDUCE 0.3 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.5 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.9 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.7 VEC_CONVERGE_TO_FLAT paper-flat-live-hol",
+   "undo": "redis-cli -p 6379 DEL open_blocked:fin:KSMUSDT_LONG",
+   "dry_run": false
+  },
   "key:ang:ACEUSDT_SHORT": {
    "ts": 1792611365.712852,
    "until": 1792618565.712854,
@@ -226,5 +271,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.59
+ "sweep_s": 1.82
 }
