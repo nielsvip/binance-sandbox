@@ -1,1 +1,23 @@
-{}
+{
+  "ang:RLCUSDT_LONG": {
+    "orderId": "4000001985200723",
+    "stopPrice": 0.6744,
+    "entry_sig": "2026-10-21 19:31:44.868000+00:00",
+    "symbol": "RLCUSDT",
+    "side": "LONG"
+  },
+  "ang:AAVEUSDC_LONG": {
+    "orderId": "4000001985204243",
+    "stopPrice": 152.98,
+    "entry_sig": "2026-10-21 19:33:46.813000+00:00",
+    "symbol": "AAVEUSDC",
+    "side": "LONG"
+  },
+  "ang:ENSUSDT_SHORT": {
+    "orderId": "4000001985221942",
+    "stopPrice": 5.949,
+    "entry_sig": "2026-10-21 19:43:11.527000+00:00",
+    "symbol": "ENSUSDT",
+    "side": "SHORT"
+  }
+}

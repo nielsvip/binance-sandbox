@@ -18597,6 +18597,20 @@ async def process_position(
                 logger.debug(
                     f"[TWIN_DEAD_B_ENTRY] {position_key}: probe err \u2014 {_twin_err}"
                 )
+        # REENTRY_15M HTF trio 2026-10-21 gap batch1 (default OFF = inert): live mirror of v12 compute_reentry_blocks REENTRY_15M_{DC_BASIS_CROSS,LRL_PULLBACK,BB1H_LOW_BOUNCE}_HTF — 15m pullback/cross + HTF WT agreement flat proposals, TEDA mechanics (flat-only, per-sym _cfg, queue OPEN 80.0). Prev-bar via trade_manager._r15_prev (pipeline carries no bb/lrl prev keys); first-seen bar cannot cross.
+        if (not has_position) and (bool(_cfg("REENTRY_15M_DC_BASIS_CROSS_HTF_ENABLED", False, account_key, symbol, position_side)) or bool(_cfg("REENTRY_15M_LRL_PULLBACK_HTF_ENABLED", False, account_key, symbol, position_side)) or bool(_cfg("REENTRY_15M_BB1H_LOW_BOUNCE_HTF_ENABLED", False, account_key, symbol, position_side))):
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side) and current_price > 0:
+                    _r15_ct = lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side)
+                    _r15_prev_all = trade_manager.__dict__.setdefault("_r15_prev", {})
+                    _r15_fires_t, _r15_new_t = _r15_15m_htf_proposals(_r15_ct, i or {}, _r15_prev_all.get(position_key), is_long, safe_fetch_float(current_price, 0.0))
+                    _r15_prev_all[position_key] = _r15_new_t
+                    for _r15_reason_t in _r15_fires_t:
+                        logger.warning(f"[REENTRY_15M] {position_key}: {_r15_reason_t} -> OPEN")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _r15_reason_t, 80.0)
+                        break
+            except Exception as _r15_err:
+                logger.debug(f"[REENTRY_15M] {position_key}: probe err: {_r15_err}")
         was_reduced = getattr(position, "was_reduced", False)
         last_red_time = getattr(position, "last_reduction_time", None)
         # FIX 2026-08-20: gain from prior closed leg must be erased when flat — USER MANDATE: positionAmt==0 => gain 0 (was -10.91% stale)
