@@ -1,0 +1,24 @@
+{
+ "window_from": "10-21 16:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "KAVAUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 16:07",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:71/d169/k3:94.03/d3:88.22_@0.0705_RZ_BASELINE_BASELINE_BOUNCE_LON",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

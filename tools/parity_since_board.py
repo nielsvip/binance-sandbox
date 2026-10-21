@@ -88,6 +88,30 @@ def family(reason):
     m = re.match(r"^DC_BREAK_(HIGH|LOW)_15M$", fam)
     if m:
         return "DC_BREAKOUT_ENTRY"
+    # Reconciler-verified naming variants (both emission sites cited in the
+    # parity report addendum): same computation, different labels.
+    m = re.match(r"^QUICK_PEAK_GIVEBACK_.*$", fam)
+    if m:
+        return "PEAK_GIVEBACK_GAIN_EROSION_STOP"
+    m = re.match(r"^QUICK_WT_CROSS_EXIT_.*$", fam)
+    if m:
+        return "WT_CROSS_EXIT"
+    m = re.match(r"^GR_HTF_DIRECT_EXIT_\d+$", fam)
+    if m:
+        return "GR_HTF_DIRECT_EXIT"
+    m = re.match(r"^VWAP_STRETCH_ENTRY_PCT.*$", fam)
+    if m:
+        return "VWAP_STRETCH_ENTRY"
+    m = re.match(r"^WHOLE_SHARE_REDUCE_TO_FLAT.*$", fam)
+    if m:
+        return "REDUCE_TO_FLAT"
+    if fam.startswith("GUARANTEED_PRICE_CROSS_REENTRY") or \
+            fam.startswith("TIER1_PRICE_CROSS_REENTRY") or \
+            fam.startswith("GUARANTEED_REENTRY"):
+        return "GUARANTEED_PRICE_CROSS_REENTRY"
+    m = re.match(r"^GAP_RISK_EXIT_.*$", fam)
+    if m:
+        return "GAP_RISK_EXIT"
     # Haiku overseer sends orders as HAIKU_WINNER_AUG_*/HAIKU_REDUCE_* (vec
     # haiku_augment twin, ez_manage:8346) but history carries the human
     # decision-log strings "Winner augment:/reduce:". Compare the order
