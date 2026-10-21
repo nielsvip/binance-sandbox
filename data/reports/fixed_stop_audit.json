@@ -1,52 +1,47 @@
 {
  "findings": [
   {
-   "account": "ang",
-   "code": "BROKER_UNREACHABLE",
-   "error": "BinanceAPIException(<Response [400]>, 400, '{\"code\":-1021,\"msg\":\"Timestamp for this request is outside of the recvWindow.\"}')"
+   "armed": true,
+   "code": "EXCHANGE_STOP_WRONG_LEVEL",
+   "entry_bar_level": 0.22413825,
+   "key": "ang:SUSHIUSDT_LONG",
+   "live_level": 0.22413825,
+   "mark": 0.2248,
+   "opened_at": "2026-10-16T04:15:04.534000Z",
+   "resting_trigger": 0.2215
   },
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.09326625000000001,
-   "key": "men:1INCHUSDT_LONG",
-   "live_level": 0.093276225,
-   "mark": 0.09375,
-   "opened_at": "2026-10-21T06:04:44.412326Z",
-   "resting_trigger": 0.09313
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 12.2722425,
-   "key": "men:LINKUSDC_LONG",
-   "live_level": 11.560327109220365,
-   "mark": 12.272,
-   "opened_at": "2026-10-21T05:02:23.967000Z",
-   "resting_trigger": 11.549
+   "entry_bar_level": 8.759047500000001,
+   "key": "ang:INJUSDT_LONG",
+   "live_level": 8.7690225,
+   "mark": 8.805,
+   "opened_at": "2026-10-21T05:01:06.166000Z",
+   "resting_trigger": 8.378
   }
  ],
- "n_findings": 3,
+ "n_findings": 2,
  "n_positions": 2,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 0.09326625000000001,
-   "key": "men:1INCHUSDT_LONG",
-   "live_level": 0.093276225,
-   "mark": 0.09375,
-   "opened_at": "2026-10-21T06:04:44.412326Z",
-   "resting_trigger": 0.09313
+   "entry_bar_level": 0.22413825,
+   "key": "ang:SUSHIUSDT_LONG",
+   "live_level": 0.22413825,
+   "mark": 0.2248,
+   "opened_at": "2026-10-16T04:15:04.534000Z",
+   "resting_trigger": 0.2215
   },
   {
    "armed": true,
-   "entry_bar_level": 12.2722425,
-   "key": "men:LINKUSDC_LONG",
-   "live_level": 11.560327109220365,
-   "mark": 12.272,
-   "opened_at": "2026-10-21T05:02:23.967000Z",
-   "resting_trigger": 11.549
+   "entry_bar_level": 8.759047500000001,
+   "key": "ang:INJUSDT_LONG",
+   "live_level": 8.7690225,
+   "mark": 8.805,
+   "opened_at": "2026-10-21T05:01:06.166000Z",
+   "resting_trigger": 8.378
   }
  ],
- "ts": "2026-10-21T06:18:56.989375+00:00"
+ "ts": "2026-10-21T06:39:18.097155+00:00"
 }
