@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T23:00:06Z",
+ "generated_utc": "2026-10-21T23:20:05Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -64,41 +64,13 @@
    "measured": {
     "selection_n": 486,
     "exact": 50,
-    "benign_divergence_only": 398,
-    "material_divergence": 34,
+    "benign_divergence_only": 403,
+    "material_divergence": 31,
     "no_live_row": [
      "LEXX_SHORT",
-     "RIFUSDT_SHORT",
-     "TLMUSDT_SHORT",
-     "PWR_SHORT"
+     "TLMUSDT_SHORT"
     ],
     "worst": [
-     {
-      "sym_side": "KASUSDT_LONG",
-      "published_at": "2026-10-21T22:44:00Z",
-      "material": 137,
-      "sample": [
-       "ADX_RANGING_THRESHOLD",
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_TYPED_MIN_GAIN_ENABLED",
-       "BB_FROZEN_STOP_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "BOMEUSDC_SHORT",
-      "published_at": "2026-10-21T22:44:21Z",
-      "material": 103,
-      "sample": [
-       "ALL_TF_AGAINST_CLOSE_ENABLED",
-       "ATR_ADAPTIVE_SIZING_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BB_BOUNCE_ENTRY_FILTER_ENABLED"
-      ]
-     },
      {
       "sym_side": "NXE_SHORT",
       "published_at": "2026-10-21T01:32:19Z",
@@ -191,21 +163,47 @@
       ]
      },
      {
-      "sym_side": "PUMPUSDT_SHORT",
-      "published_at": "2026-10-21T22:45:56Z",
-      "material": 43,
+      "sym_side": "1000FLOKIUSDT_LONG",
+      "published_at": "2026-10-13T03:39:04Z",
+      "material": 41,
       "sample": [
-       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_BOUNCE_ENTRY_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREAKOUT_TF_EXPANDED",
+       "ENTRY_DC_TF"
+      ]
+     },
+     {
+      "sym_side": "AR_LONG",
+      "published_at": "2026-10-19T21:48:26Z",
+      "material": 40,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ADX_TRENDING_THRESHOLD",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
        "ATR_ADAPTIVE_STOP_TF",
-       "BB_PROFIT_TAKE_TF",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
+     },
+     {
+      "sym_side": "ZECUSDC_LONG",
+      "published_at": "2026-10-21T22:33:13Z",
+      "material": 39,
+      "sample": [
+       "BB_BOUNCE_ENTRY_TF",
        "BREAKOUT_RETEST_ARMED_ENABLED",
        "BREAKOUT_RETEST_FILTER_TF",
-       "COUNTER_TREND_SMA200_BYPASS_ENABLED"
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
+       "DELTA_ENGINE_FILTER_TF"
       ]
      }
     ]
    },
-   "detail": "50 exact, 398 benign-only, 34 with material divergence, 4 with no live row"
+   "detail": "50 exact, 403 benign-only, 31 with material divergence, 2 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -213,21 +211,21 @@
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 198,
-    "stale_pct": 99.5,
-    "median_age_min": 285.1,
+    "stale_over_90min": 199,
+    "stale_pct": 100.0,
+    "median_age_min": 305.1,
     "sample": [
      "1000000MOGUSDT",
+     "1000BONKUSDC",
      "1000CHEEMSUSDT",
      "1000FLOKIUSDT",
      "1000LUNCUSDT",
      "1000PEPEUSDC",
      "1000SATSUSDT",
-     "1000SHIBUSDC",
-     "1000XECUSDT"
+     "1000SHIBUSDC"
     ]
    },
-   "detail": "198/199 symbols past the live 90-min entry gate (99.5%)"
+   "detail": "199/199 symbols past the live 90-min entry gate (100.0%)"
   },
   {
    "name": "s1_sets_synced",
