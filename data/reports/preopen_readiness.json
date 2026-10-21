@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T18:00:05Z",
+ "generated_utc": "2026-10-21T18:20:09Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 518,
-    "filled_before_open": 408
+    "filled_today": 519,
+    "filled_before_open": 406
    },
-   "detail": "408 boards filled before the open (518 today)"
+   "detail": "406 boards filled before the open (519 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -27,10 +27,10 @@
     "mac_done_stamp": false,
     "s1_stamp": "{\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",\"ended\":\"2026-10-21T13:15:53Z\"}",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 0.5,
+    "cat_side_age_days": 0.6,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261021=False, s1 stamp {\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",, cat_side layer 0.5d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261021=False, s1 stamp {\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",, cat_side layer 0.6d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 477,
     "exact": 50,
-    "benign_divergence_only": 386,
-    "material_divergence": 40,
+    "benign_divergence_only": 388,
+    "material_divergence": 38,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -92,19 +92,6 @@
        "BB_BREAKOUT_TF",
        "BB_PULLBACK_GATE_TF",
        "BB_RECOVERY_EXIT_ENABLED_TRADIER"
-      ]
-     },
-     {
-      "sym_side": "STRKUSDT_LONG",
-      "published_at": "2026-10-21T12:49:55Z",
-      "material": 82,
-      "sample": [
-       "ADX_RANGING_THRESHOLD",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "BREAKOUT_RETEST_FILTER_TF",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF",
-       "COMMISSION_BUFFER_PCT",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
      },
      {
@@ -197,10 +184,23 @@
        "DC_BREAKOUT_TF_EXPANDED",
        "ENTRY_DC_TF"
       ]
+     },
+     {
+      "sym_side": "AR_LONG",
+      "published_at": "2026-10-19T21:48:26Z",
+      "material": 40,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ADX_TRENDING_THRESHOLD",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "50 exact, 386 benign-only, 40 with material divergence, 1 with no live row"
+   "detail": "50 exact, 388 benign-only, 38 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 0.0,
+    "median_age_min": 35.2,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"
