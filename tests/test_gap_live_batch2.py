@@ -150,8 +150,9 @@ class B02Firing(unittest.TestCase):
 
     def test_short_fires(self):
         get = _don(("REENTRY_B02_BC156_BOTTOM_ENABLED",))
-        ind = {"wt1_15m": 30.0, "wt_velocity_15m": -1.5, "wt1_1h": -5.0, "wt2_1h": 5.0}
+        ind = {"wt_velocity_15m": -1.5}
         _bull(ind, False)
+        ind["wt1_15m"] = 30.0
         self.assertEqual(BBLOCKS(get, ind, False), ["B02_BC156_BOTTOM_SHORT"])
 
     def test_bull_count_blocks(self):

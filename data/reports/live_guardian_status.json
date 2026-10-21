@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T19:55:45Z",
+ "ts": "2026-10-21T20:00:51Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -24,24 +24,12 @@
   "KEY_BLOCK_TTL_S": 7200,
   "POS_MISMATCH_PCT": 5.0
  },
- "rth": true,
+ "rth": false,
  "accounts": {
-  "trb": {
-   "fills_6h": 335,
-   "open_positions": 14,
-   "unrealised_usd": 44.55,
-   "pos_mismatch": 0
-  },
-  "trc": {
-   "fills_6h": 236,
-   "open_positions": 12,
-   "unrealised_usd": -11.71,
-   "pos_mismatch": 0
-  },
   "fin": {
    "fills_6h": 3,
    "open_positions": 1,
-   "unrealised_usd": 0.11,
+   "unrealised_usd": 0.1,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -71,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 55,
-   "open_positions": 3,
-   "unrealised_usd": -0.04,
+   "fills_6h": 57,
+   "open_positions": 1,
+   "unrealised_usd": -0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -119,6 +107,7 @@
    }
   }
  },
+ "stocks": "market closed: stock checks idle",
  "tradeable_guard": {
   "poison": false,
   "restored": false,
@@ -135,124 +124,86 @@
  "process": {
   "fin": {
    "pids": [
-    "11211"
+    "64995"
    ],
-   "starts_30m": 4,
-   "log_age_s": 144.0
+   "starts_30m": 7,
+   "log_age_s": 449.0
   },
   "men": {
    "pids": [
-    "9636"
-   ],
-   "starts_30m": 2,
-   "log_age_s": 67.0
-  },
-  "ang": {
-   "pids": [
-    "1396"
-   ],
-   "starts_30m": 1,
-   "log_age_s": 7.0
-  },
-  "inf": {
-   "pids": [
-    "13913"
+    "56489"
    ],
    "starts_30m": 3,
    "log_age_s": 8.0
   },
+  "ang": {
+   "pids": [
+    "56197"
+   ],
+   "starts_30m": 2,
+   "log_age_s": -0.0
+  },
+  "inf": {
+   "pids": [
+    "56478"
+   ],
+   "starts_30m": 4,
+   "log_age_s": 4.0
+  },
   "flz": {
    "pids": [
-    "60537"
+    "56248"
    ],
-   "starts_30m": 1,
-   "log_age_s": 11.0
+   "starts_30m": 2,
+   "log_age_s": 15.0
   },
   "trb": {
    "pids": [
     "19803"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 10.0
   },
   "trc": {
    "pids": [
     "19883"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 12.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T19:55:45Z",
-   "severity": "CRITICAL",
-   "kind": "CHURN_KEY",
-   "key": "trb:CDW_LONG",
-   "evidence": "3 open->flat round trips in 60 min"
-  },
-  {
-   "ts": "2026-10-21T19:55:45Z",
-   "severity": "WARN",
-   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trb:CDW_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
-  },
-  {
-   "ts": "2026-10-21T19:55:45Z",
-   "severity": "CRITICAL",
-   "kind": "CHURN_KEY",
-   "key": "trb:IBM_LONG",
-   "evidence": "3 open->flat round trips in 60 min"
-  },
-  {
-   "ts": "2026-10-21T19:55:45Z",
-   "severity": "WARN",
-   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
-   "key": "trb:IBM_LONG",
-   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
-  },
-  {
-   "ts": "2026-10-21T19:55:45Z",
-   "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "trb",
-   "evidence": "unrealised PnL of the same open positions fell $50.83 since 2026-10-21T19:03:10Z (now $+44.55)"
-  },
-  {
-   "ts": "2026-10-21T19:55:46Z",
-   "severity": "CRITICAL",
-   "kind": "ACCOUNT_EQUITY_DROP",
-   "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $31.77 since 2026-10-21T18:56:40Z (now $-11.71)"
-  },
-  {
-   "ts": "2026-10-21T19:55:47Z",
+   "ts": "2026-10-21T20:00:52Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "4 new process ids in 30 min (['65053', '91260', '8888', '11211'])"
+   "evidence": "7 new process ids in 30 min (['65053', '91260', '8888', '11211', '56496', '64370', '64995'])"
   },
   {
-   "ts": "2026-10-21T19:55:47Z",
+   "ts": "2026-10-21T20:00:52Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 144s"
+   "evidence": "ez_manage_fin.log not written for 449s"
   },
   {
-   "ts": "2026-10-21T19:55:47Z",
+   "ts": "2026-10-21T20:00:52Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "men",
+   "evidence": "3 new process ids in 30 min (['91875', '9636', '56489'])"
+  },
+  {
+   "ts": "2026-10-21T20:00:52Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "3 new process ids in 30 min (['87834', '99365', '13913'])"
+   "evidence": "4 new process ids in 30 min (['87834', '99365', '13913', '56478'])"
   }
  ],
  "alert_counts": {
-  "CHURN_KEY": 2,
-  "NO_PER_KEY_BLOCK_AVAILABLE": 2,
-  "ACCOUNT_EQUITY_DROP": 2,
-  "RESTART_LOOP": 2,
+  "RESTART_LOOP": 3,
   "STALE_LOG": 1
  },
  "active_interventions": {
@@ -293,13 +244,6 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
-  "key:ang:COMPUSDT_LONG": {
-   "ts": 1792605500.416259,
-   "until": 1792612700.4162612,
-   "why": "SIZE_ANOMALY order $629.93 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:COMPUSDT_LONG",
-   "dry_run": false
-  },
   "key:ang:ACEUSDT_SHORT": {
    "ts": 1792611365.712852,
    "until": 1792618565.712854,
@@ -308,5 +252,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.86
+ "sweep_s": 1.66
 }

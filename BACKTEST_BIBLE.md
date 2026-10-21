@@ -4400,6 +4400,24 @@ hourly delta applier pins all pinnable (05:43Z run: 18 PASS + 10 registered); re
 blocklist poison/tokenized, 6 type-malformed boards (pilot fix), SCCO republish. Rollback: `VECTOR_ENFORCE_ENABLED`
 False + `backups/before_vector_enforce_*`; kills cleared only by hand.
 
+## 126.1. RETRACE PROCEDURE — EVERY KILL GETS A SWITCH OR A RESTORE (USER 2026-10-21)
+
+`QUICK_*` is a dispatcher category, never a violator — retrace each kill to its function
+before building anything. Proven pattern from the first two kills: (1) locate the emitting
+branch (`TIGHT_LEASH_PROFIT_SAVE` = `AdvancedSignalRater.rate()` `:6590`, unvectorized,
+user-ordered OFF since 2026-05-30); (2) find the route that bypassed the existing gates
+(twin direct `execute_now` dispatch skips all three `SCALP_REDUCE_ENABLED` gates; `""` vs
+`None` had killed the trap-suppressor); (3) gate the ROUTE per-sym on the EXISTING switch
+(zero boards True = default-neutral, pilot may opt in) — that gate IS the switch built for
+the discovery; (4) if the family is vector-modeled and switch-gated (`BB_TAKE` =
+`BB_PROFIT_TAKE_TF`, 174 boards), the kill was a false positive — RESTORE it and list it in
+`VEC_SWITCH_EXIT_FAMILIES` (skips kill, keeps bar window), do not re-kill. Standing agent
+job: every new `data/vector_violations.jsonl` family gets this retrace; vectorizable →
+switch + wire both venues; not vectorizable → switch default OFF. Interference log: a
+parallel agent softened `check()` to flag-only and added an inert `board_state_converge_loop`
+— the soften was reverted (kill law stands), the loop kept and whitelisted as board-confirmed.
+Two agents editing `ez_manage.py` concurrently is a collision risk; coordinate via the lock file.
+
 ## 123. STOCKS OFF-HOURS — NO AGENT EVER FLAGS STOCK INDICATORS OR PRICES OUTSIDE NYSE HOURS (USER 2026-10-21)
 
 **USER VERBATIM 2026-10-21:** "add to the bible that no agent can ever start whining again about indicators or prices for stocks outside market hours it is fkn pathetic" — and: "s1 ONLY starts ez_indicators when rsync from macbook fails to update s1 market data (tradier ONLY ON MARKET HOURS OBVIOUSLY) and syncs it back to macbook so we never have a minute of missing market data in a decade".
