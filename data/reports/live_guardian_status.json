@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T22:25:25Z",
+ "ts": "2026-10-21T22:30:34Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 29,
    "open_positions": 2,
-   "unrealised_usd": -0.01,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 1,
@@ -127,80 +127,88 @@
     "53005"
    ],
    "starts_30m": 1,
-   "log_age_s": 111.0
+   "log_age_s": 101.0
   },
   "men": {
    "pids": [
     "60170"
    ],
    "starts_30m": 1,
-   "log_age_s": 25.0
+   "log_age_s": 6.0
   },
   "ang": {
    "pids": [
     "41203"
    ],
    "starts_30m": 1,
-   "log_age_s": 46.0
+   "log_age_s": 181.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 19.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 59.0
+   "log_age_s": 82.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8661.0
+   "log_age_s": 8971.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 8664.0
+   "log_age_s": 8974.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T22:25:25Z",
+   "ts": "2026-10-21T22:30:34Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T22:25:25Z",
+   "ts": "2026-10-21T22:30:34Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T22:25:25Z",
+   "ts": "2026-10-21T22:30:34Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T22:25:25Z",
+   "ts": "2026-10-21T22:30:35Z",
    "severity": "CRITICAL",
    "kind": "CHURN_KEY",
    "key": "inf:BBUSDT_LONG",
    "evidence": "3 open->flat round trips in 60 min"
+  },
+  {
+   "ts": "2026-10-21T22:30:36Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 181s"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "CHURN_KEY": 1
+  "CHURN_KEY": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -255,5 +263,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.59
+ "sweep_s": 1.61
 }

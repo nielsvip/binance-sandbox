@@ -1761,13 +1761,13 @@ def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_s
     result[f"wt_velocity_{tf}"] = round(velocity, 4)
     result[f"wt_velocity_{tf}_prev"] = round(velocity_prev, 4)  # Agent D: tradier_manage R2 zero-gain guard reads wt_velocity_{tf}_prev
     # USER 2026-10-21 VEL parity: wt1_arr[-1] is the still-forming bar (mark-patched
-    # by with_mark_price), but the vector's wt_velocity_4h is completed-bar-only
-    # (stepwise-flat per 4h window in frozen NPZs). velocity_closed excludes the
-    # forming bar so the live VEL twin reads what the backtest measured. Measured
-    # 2026-10-21: live -9.92 vs NPZ +2.31 (EGLD), -14.45 vs +6.67 (RLC) mid-window.
-    if tf == "4h":
+    # by with_mark_price), but frozen-NPZ velocities are completed-bar-only
+    # (stepwise-flat per window). velocity_closed excludes the forming bar so live
+    # twins read what the backtest measured. Measured 2026-10-21: 4h EGLD live
+    # -9.92 vs NPZ +2.31, RLC -14.45 vs +6.67; 1h SOL live +37.4 vs NPZ -5.0.
+    if tf in ("1h", "4h", "D"):
         velocity_closed = wt1_arr[-2] - wt1_arr[-2 - lag] if n > lag + 1 else 0.0
-        result["wt_velocity_4h_closed"] = round(float(velocity_closed), 4)
+        result["wt_velocity_%s_closed" % tf] = round(float(velocity_closed), 4)
     result[f"wt_acceleration_{tf}"] = round(acceleration, 4)
     wt_rising = velocity > 0
     if wt_rising and acceleration > 0:

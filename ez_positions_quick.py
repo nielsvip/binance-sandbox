@@ -27589,7 +27589,10 @@ async def check_exit_candidates_for_account(
                 # 2026-05-30 USER: RULE B exit (validated) — rewire the reduce onto the 3m structure turn. LONG exits
                 # on a 3m lower-low+lower-high; SHORT on a 3m higher-high+higher-low. Fires a REDUCE via the normal
                 # path; still NO-LOSS-gated downstream (locks profit on the turn; underwater positions held by R1/R2).
-                if getattr(config, "RULE_B_3M_EXIT_ENABLED", False):
+                # USER 2026-10-21 REDUCE_K parity (§126.1 step 3): gate the ROUTE
+                # per-sym on the EXISTING switch (was global getattr — boards set
+                # False never actually gated). Default False = unchanged default.
+                if _sw_get(symbol, position_side, "RULE_B_3M_EXIT_ENABLED", False):
                     _rb_hi = safe_fetch_float(indicators.get("high_3m"), 0.0)
                     _rb_lo = safe_fetch_float(indicators.get("low_3m"), 0.0)
                     _rb_hip = safe_fetch_float(indicators.get("high_3m_prev"), 0.0)

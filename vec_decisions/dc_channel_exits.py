@@ -113,6 +113,71 @@ def dc_target_hit(px: float, lvl: float, is_long: bool, spec: Mapping[str, Any])
     return px >= lvl * (1 - buf) if is_long else px <= lvl * (1 + buf)
 
 
+def dc_target_cross(
+    px: float,
+    px_prev: float,
+    lvl: float,
+    lvl_prev: float,
+    is_long: bool,
+    spec: Mapping[str, Any],
+) -> bool:
+    """Fresh-cross TARGET twin (vec loop: long 22579/22618, short 22654/22695).
+
+    The level-only dc_target_hit fires EVERY bar price sits at target; the vector
+    books only the crossing bar (+ min_hold). Measured 2026-10-21: both TECHNICAL
+    kills sat AT target ~breakeven with no fresh cross (DOGE g-0.00, XMR g0.03).
+    """
+    if not (lvl > 0 and lvl_prev > 0 and px > 0 and px_prev > 0):
+        return False
+    buf = float(spec.get("buf", 0.0))
+    if is_long:
+        return px_prev < lvl_prev * (1 - buf) and px >= lvl * (1 - buf)
+    return px_prev > lvl_prev * (1 + buf) and px <= lvl * (1 + buf)
+
+
+def technical_dc_exit_crossing(
+    px: float,
+    px_prev: float,
+    is_long: bool,
+    stop_specs: list,
+    tgt_specs: list,
+    level: Callable[[str], float],
+    level_prev: Callable[[str], float],
+) -> Tuple[bool, str]:
+    """TECHNICAL DC exit with vector-faithful TARGET crossing (stops keep the
+    existing dc_stop_hit path). Same reason strings as technical_dc_exit, so the
+    enforcer family is unchanged. Callers must ALSO mirror the vector min_hold
+    (loop 22307) — this function checks the cross only."""
+    seen = {}
+    for sp in stop_specs:
+        lvl = _f(level(sp["field_long"] if is_long else sp["field_short"]), 0.0)
+        seen[sp["tag"]] = lvl
+        if sp.get("fallback_of") and seen.get(sp["fallback_of"], 0.0) > 0:
+            continue
+        if dc_stop_hit(px, lvl, is_long, sp):
+            side = "low -" if is_long else "high +"
+            return (
+                True,
+                f"TECHNICAL_STOP {sp['tag']}_{side.split()[0]} {side.split()[1]}{sp['buf'] * 100:.2f}% STOP_BUF",
+            )
+    seen = {}
+    for sp in tgt_specs:
+        lvl = _f(level(sp["field_long"] if is_long else sp["field_short"]), 0.0)
+        lvl_p = _f(
+            level_prev(sp["field_long"] if is_long else sp["field_short"]), 0.0
+        )
+        seen[sp["tag"]] = lvl
+        if sp.get("fallback_of") and seen.get(sp["fallback_of"], 0.0) > 0:
+            continue
+        if dc_target_cross(px, px_prev, lvl, lvl_p, is_long, sp):
+            side = "high -" if is_long else "low +"
+            return (
+                True,
+                f"TECHNICAL_TARGET {sp['tag']}_{side.split()[0]} {side.split()[1]}{sp['buf'] * 100:.2f}% TARGET_BUF",
+            )
+    return False, ""
+
+
 def daytrade_dc_exit(px: float, is_long: bool, stop_specs: list, tgt_specs: list, level: Callable[[str], float]) -> Tuple[bool, str]:
     """First STOP spec that fires wins, then TARGET specs (vec order).  level(field) -> float.
     Alias DC spec with fallback_of=dc4_15m is only consulted when the DC4 level is missing (0),

@@ -52315,7 +52315,37 @@ async def process_position(
                         _tx_lvl = _ldpb.level_getter(_pp_shared_ind, _gx_is_long, _tx_stop, _psym_cs_get(symbol, position_side, "DC_PRIOR_BAR_CHANNEL", True))
                     except Exception:
                         _tx_lvl = lambda _f: safe_fetch_float(_pp_shared_ind.get(_f, 0), 0.0)
-                    _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit(current_price, _gx_is_long, _tx_stop, _tx_tgt, _tx_lvl)
+                    _tx_lvl_prev = lambda _fl: safe_fetch_float((_pp_shared_ind or {}).get(_fl + "_prev", 0), 0)
+                    _tx_px_prev = safe_fetch_float((_pp_shared_ind or {}).get("close_15m_prev", 0), 0)
+                    _gx_fire, _gx_reason = _dc_channel_exits.technical_dc_exit_crossing(current_price, _tx_px_prev, _gx_is_long, _tx_stop, _tx_tgt, _tx_lvl, _tx_lvl_prev)
+                    # USER 2026-10-21 TECHNICAL parity: the vector books tech closes
+                    # only on a FRESH cross (loop 22579-22696, mirror above) AND
+                    # held_bars >= min_hold on the 15m grid (loop 22307 + 17311-32:
+                    # ceil(MIN_HOLD_BARS_BEFORE_EXIT*180/900)). Live fired every bar
+                    # price sat at target with no hold (DOGE/XMR kills sat AT target).
+                    if _gx_fire:
+                        try:
+                            _tx_bbe = float(_psym_get(symbol, position_side, "MIN_HOLD_BARS_BEFORE_EXIT", 10) or 0)
+                            _tx_req = max(0, int(math.ceil(_tx_bbe * 180.0 / 900.0)))
+                            _tx_oa = _pp_opened_raw_for_hold
+                            _tx_oa_s = 0.0
+                            if isinstance(_tx_oa, datetime):
+                                _tx_oa_s = (_tx_oa.replace(tzinfo=_tx_oa.tzinfo or timezone.utc) - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds()
+                            elif isinstance(_tx_oa, str) and _tx_oa:
+                                try:
+                                    _tx_oa_d = isoparse(_tx_oa)
+                                    _tx_oa_s = (_tx_oa_d.replace(tzinfo=_tx_oa_d.tzinfo or timezone.utc) - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds()
+                                except Exception:
+                                    _tx_oa_s = 0.0
+                            elif isinstance(_tx_oa, (int, float)) and float(_tx_oa) > 0:
+                                _tx_oa_s = float(_tx_oa)
+                            _tx_held = max(0, int(time.time() // 900) - int(_tx_oa_s // 900)) if _tx_oa_s > 0 else 0
+                            if _tx_held < _tx_req:
+                                logger.info(f"[TECHNICAL_HOLD] {position_key}: hold {_gx_reason} — held {_tx_held}b < {_tx_req}b")
+                                _gx_fire, _gx_reason = False, ""
+                        except Exception:
+                            logger.info(f"[TECHNICAL_HOLD] {position_key}: hold {_gx_reason} — age unknown")
+                            _gx_fire, _gx_reason = False, ""
                     # PARITY LANE B 2026-10-06: vec FILTER_TF exit_confirm (EXIT_TOP_FADE / CANDLE_PATTERN_STOPS) gates the exit_sig TECHNICAL_DC close (live_twins/exit_confirm.py).
                     if _gx_fire:
                         try:

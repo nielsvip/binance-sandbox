@@ -36,9 +36,72 @@ def _rows(sym_side=None):
     return [dict(r) for r in con.execute(q, args)]
 
 
-def _era(updated_at):
+def _launch_table():
+    """(sym_side, launch_ts) -> era, from the scheduler tick log (mode per
+    tick + launched syms) overlaid with direct-dispatch tags. A pair launch
+    covers both sides (partner computes in-process). Missing record =
+    fall back to the done-time cutoff. Log paths are s1-absolute;
+    absent logs (Mac runs) degrade to cutoff-only."""
+    table = {}
+    try:
+        with open(os.environ.get("V15_SCHED_LOG", "/tmp/v15_fleet_sched.log"), errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line.startswith("{"):
+                    continue
+                try:
+                    d = json.loads(line)
+                except Exception:
+                    continue
+                cov = d.get("coverage") or {}
+                mode = cov.get("mode")
+                if mode not in ("slow", "catchup") or not d.get("now"):
+                    continue
+                for entry in d.get("launched") or []:
+                    try:
+                        _h, sym, rest = str(entry).split(":")
+                        side = "LONG" if rest.startswith("L") else "SHORT" if rest.startswith("S") else None
+                        if side is None:
+                            continue
+                        for sd in (side, "LONG", "SHORT"):
+                            table[(f"{sym}_{sd}", str(d["now"]))] = mode
+                    except Exception:
+                        continue
+    except Exception:
+        pass
+    try:
+        with open(os.environ.get("V15_DISPATCH_LOG", "/tmp/v15_dispatch.log"), errors="replace") as fh:
+            for line in fh:
+                try:
+                    d = json.loads(line)
+                except Exception:
+                    continue
+                if d.get("event") != "launched" or not d.get("symbol") or not d.get("ts"):
+                    continue
+                tag = str(d.get("tag") or "")
+                era = "slow" if tag.startswith("slow-neg") else "catchup" if "catchup-canary" in tag else None
+                if era is None:
+                    continue
+                for sd in ("LONG", "SHORT"):
+                    table[(f"{d['symbol']}_{sd}", str(d["ts"]))] = era
+    except Exception:
+        pass
+    return table
+
+
+_LAUNCH_TABLE = None
+
+
+def _era(updated_at, sym_side=None):
+    if _LAUNCH_TABLE is None:
+        globals()["_LAUNCH_TABLE"] = _launch_table()
     try:
         ts = str(updated_at).replace("Z", "+00:00")
+        if sym_side:
+            cands = [(t, e) for (ss, t), e in _LAUNCH_TABLE.items() if ss == sym_side and t <= ts]
+            if cands:
+                cands.sort()
+                return cands[-1][1]
         return "slow" if ts >= SLOW_CUTOFF else "catchup"
     except Exception:
         return "catchup"
@@ -52,8 +115,8 @@ def _npz_of(meta_json):
 
 
 def compare(sym_side, rows):
-    catch = [r for r in rows if _era(r["updated_at"]) == "catchup"]
-    slow = [r for r in rows if _era(r["updated_at"]) == "slow"]
+    catch = [r for r in rows if _era(r["updated_at"], sym_side) == "catchup"]
+    slow = [r for r in rows if _era(r["updated_at"], sym_side) == "slow"]
     if not catch or not slow:
         return None
     c, s = catch[-1], slow[-1]

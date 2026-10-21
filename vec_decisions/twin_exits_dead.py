@@ -637,11 +637,21 @@ def velocity_wt_fire_at(arrs, i, is_long, get):
 
 
 def velocity_wt_exit_live_fire(ind, is_long, get):
+    # USER 2026-10-21 EXIT parity: read wt_velocity_{tf}_closed (completed bars,
+    # what frozen NPZs measure) with fallback to wt_velocity_{tf} (forming bar
+    # included) for snapshots predating the field. Measured: SOL 1h +37.4 vs -5.0.
     tfs = velocity_wt_tfs(get)
     if not tfs:
         return False, ""
     d = ind or {}
-    hits = velocity_wt_hits([(tf, _f(d.get("wt_velocity_%s" % tf, 0), 0.0)) for tf in tfs], is_long)
+
+    def _closed(tf):
+        return _f(
+            d.get("wt_velocity_%s_closed" % tf, d.get("wt_velocity_%s" % tf, 0)),
+            0.0,
+        )
+
+    hits = velocity_wt_hits([(tf, _closed(tf)) for tf in tfs], is_long)
     if len(hits) < velocity_wt_min_tfs(get):
         return False, ""
     tf, vel = hits[0]
