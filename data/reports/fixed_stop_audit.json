@@ -3,20 +3,10 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.45116925,
-   "key": "ang:ONDOUSDT_LONG",
-   "live_level": 0.4103835,
-   "mark": 0.4586,
-   "opened_at": "2026-10-21T12:01:14.812000Z",
-   "resting_trigger": 0.4097
-  },
-  {
-   "armed": true,
-   "code": "LEVEL_NOT_ENTRY_BAR",
    "entry_bar_level": 5502.609,
    "key": "ang:BTCDOMUSDT_LONG",
    "live_level": 5510.397885294643,
-   "mark": 5526.03933285,
+   "mark": 5529.29148912,
    "opened_at": "2026-10-21T11:02:02.194000Z",
    "resting_trigger": 5502.1
   },
@@ -26,7 +16,7 @@
    "entry_bar_level": 60.997125000000004,
    "key": "ang:LTCUSDC_LONG",
    "live_level": 56.448525000000004,
-   "mark": 61.67211556,
+   "mark": 61.64492108,
    "opened_at": "2026-10-21T11:46:12.321000Z",
    "resting_trigger": 56.36
   },
@@ -36,38 +26,20 @@
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.00851521,
+   "mark": 0.008501,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "n_findings": 4,
- "n_positions": 5,
+ "n_findings": 3,
+ "n_positions": 3,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 0.112248675,
-   "key": "ang:ALGOUSDT_LONG",
-   "live_level": 0.112248675,
-   "mark": 0.11372,
-   "opened_at": "2026-10-21T11:31:27.569000Z",
-   "resting_trigger": 0.11207
-  },
-  {
-   "armed": true,
-   "entry_bar_level": 0.45116925,
-   "key": "ang:ONDOUSDT_LONG",
-   "live_level": 0.4103835,
-   "mark": 0.4586,
-   "opened_at": "2026-10-21T12:01:14.812000Z",
-   "resting_trigger": 0.4097
-  },
-  {
-   "armed": true,
    "entry_bar_level": 5502.609,
    "key": "ang:BTCDOMUSDT_LONG",
    "live_level": 5510.397885294643,
-   "mark": 5526.03933285,
+   "mark": 5529.29148912,
    "opened_at": "2026-10-21T11:02:02.194000Z",
    "resting_trigger": 5502.1
   },
@@ -76,7 +48,7 @@
    "entry_bar_level": 60.997125000000004,
    "key": "ang:LTCUSDC_LONG",
    "live_level": 56.448525000000004,
-   "mark": 61.67211556,
+   "mark": 61.64492108,
    "opened_at": "2026-10-21T11:46:12.321000Z",
    "resting_trigger": 56.36
   },
@@ -85,10 +57,10 @@
    "entry_bar_level": 0.00832713,
    "key": "men:BBUSDT_LONG",
    "live_level": 0.0083114775,
-   "mark": 0.00851521,
+   "mark": 0.008501,
    "opened_at": "2026-10-21T09:53:31.353000Z",
    "resting_trigger": 0.008298
   }
  ],
- "ts": "2026-10-21T12:02:58.127303+00:00"
+ "ts": "2026-10-21T12:11:58.749181+00:00"
 }
