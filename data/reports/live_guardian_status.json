@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T20:31:55Z",
+ "ts": "2026-10-21T20:37:04Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 3,
    "open_positions": 1,
-   "unrealised_usd": 0.08,
+   "unrealised_usd": 0.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,8 +59,8 @@
    }
   },
   "ang": {
-   "fills_6h": 61,
-   "open_positions": 1,
+   "fills_6h": 58,
+   "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
@@ -91,7 +91,7 @@
    }
   },
   "flz": {
-   "fills_6h": 24,
+   "fills_6h": 26,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -127,73 +127,80 @@
     "46265"
    ],
    "starts_30m": 3,
-   "log_age_s": 188.0
+   "log_age_s": 177.0
   },
   "men": {
    "pids": [
     "49431"
    ],
    "starts_30m": 2,
-   "log_age_s": 56.0
+   "log_age_s": 114.0
   },
   "ang": {
    "pids": [
     "56197"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "59448"
    ],
    "starts_30m": 3,
-   "log_age_s": 71.0
+   "log_age_s": 201.0
   },
   "flz": {
    "pids": [
     "56248"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 18.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1852.0
+   "log_age_s": 2160.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1855.0
+   "log_age_s": 2164.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T20:31:57Z",
+   "ts": "2026-10-21T20:37:05Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
    "evidence": "3 new process ids in 30 min (['6081', '45491', '46265'])"
   },
   {
-   "ts": "2026-10-21T20:31:57Z",
+   "ts": "2026-10-21T20:37:05Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 188s"
+   "evidence": "ez_manage_fin.log not written for 177s"
   },
   {
-   "ts": "2026-10-21T20:31:57Z",
+   "ts": "2026-10-21T20:37:05Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
    "evidence": "3 new process ids in 30 min (['10076', '12296', '59448'])"
+  },
+  {
+   "ts": "2026-10-21T20:37:05Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "inf",
+   "evidence": "ez_manage_inf.log not written for 201s"
   }
  ],
  "alert_counts": {
   "RESTART_LOOP": 2,
-  "STALE_LOG": 1
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -234,5 +241,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.97
+ "sweep_s": 1.61
 }
