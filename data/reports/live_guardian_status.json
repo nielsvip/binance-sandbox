@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T19:19:14Z",
+ "ts": "2026-10-21T19:24:34Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,15 +27,15 @@
  "rth": true,
  "accounts": {
   "trb": {
-   "fills_6h": 257,
-   "open_positions": 13,
-   "unrealised_usd": 12.56,
+   "fills_6h": 272,
+   "open_positions": 15,
+   "unrealised_usd": 7.84,
    "pos_mismatch": 0
   },
   "trc": {
-   "fills_6h": 183,
+   "fills_6h": 195,
    "open_positions": 14,
-   "unrealised_usd": 25.86,
+   "unrealised_usd": 10.74,
    "pos_mismatch": 0
   },
   "fin": {
@@ -71,7 +71,7 @@
    }
   },
   "ang": {
-   "fills_6h": 42,
+   "fills_6h": 40,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -137,15 +137,15 @@
    "pids": [
     "9422"
    ],
-   "starts_30m": 4,
-   "log_age_s": 471.0
+   "starts_30m": 2,
+   "log_age_s": 0.0
   },
   "men": {
    "pids": [
     "19275"
    ],
-   "starts_30m": 5,
-   "log_age_s": 75.0
+   "starts_30m": 4,
+   "log_age_s": 2.0
   },
   "ang": {
    "pids": [
@@ -158,22 +158,22 @@
    "pids": [
     "4220"
    ],
-   "starts_30m": 2,
-   "log_age_s": 37.0
+   "starts_30m": 1,
+   "log_age_s": 48.0
   },
   "flz": {
    "pids": [
     "4230"
    ],
    "starts_30m": 2,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [
     "19803"
    ],
    "starts_30m": 3,
-   "log_age_s": 2.0
+   "log_age_s": 0.0
   },
   "trc": {
    "pids": [
@@ -185,42 +185,56 @@
  },
  "alerts": [
   {
-   "ts": "2026-10-21T19:19:16Z",
+   "ts": "2026-10-21T19:24:34Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "trb:ALB_SHORT",
+   "evidence": "entry notional $4810.57 (median $1536.70, MAX_ORDER_VALUE $7000) @ 2026-10-21T19:24:22Z HTF_WT_CHURN_REENTRY_SHORT_age34m+WT15Mx1.50|RATIO_BOOST_S(R"
+  },
+  {
+   "ts": "2026-10-21T19:24:34Z",
+   "severity": "WARN",
+   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
+   "key": "trb:ALB_SHORT",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for SIZE_ANOMALY entry notional $4810.57 (median $1536.70, MAX_ORDER_VALUE $7000) @ 2026-10-21T19:24:22Z HTF_WT_CHURN_REENTRY_SHORT_age34m+WT15Mx1.50|RATIO_BOOST_S(R"
+  },
+  {
+   "ts": "2026-10-21T19:24:35Z",
+   "severity": "CRITICAL",
+   "kind": "CHURN_KEY",
+   "key": "trb:IBM_LONG",
+   "evidence": "3 open->flat round trips in 60 min"
+  },
+  {
+   "ts": "2026-10-21T19:24:35Z",
+   "severity": "WARN",
+   "kind": "NO_PER_KEY_BLOCK_AVAILABLE",
+   "key": "trb:IBM_LONG",
+   "evidence": "stocks: tradier_manage honours no per-key open block; would have blocked for CHURN_KEY 3 round trips/60min"
+  },
+  {
+   "ts": "2026-10-21T19:24:35Z",
    "severity": "CRITICAL",
    "kind": "ACCOUNT_EQUITY_DROP",
    "key": "trc",
-   "evidence": "unrealised PnL of the same open positions fell $25.33 since 2026-10-21T19:06:38Z (now $+25.86)"
+   "evidence": "unrealised PnL of the same open positions fell $34.98 since 2026-10-21T19:06:15Z (now $+10.74)"
   },
   {
-   "ts": "2026-10-21T19:19:17Z",
-   "severity": "CRITICAL",
-   "kind": "RESTART_LOOP",
-   "key": "fin",
-   "evidence": "4 new process ids in 30 min (['6871', '28471', '4217', '9422'])"
-  },
-  {
-   "ts": "2026-10-21T19:19:17Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 471s"
-  },
-  {
-   "ts": "2026-10-21T19:19:17Z",
+   "ts": "2026-10-21T19:24:36Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "5 new process ids in 30 min (['572', '80154', '95514', '2279', '19275'])"
+   "evidence": "4 new process ids in 30 min (['80154', '95514', '2279', '19275'])"
   },
   {
-   "ts": "2026-10-21T19:19:17Z",
+   "ts": "2026-10-21T19:24:36Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trb",
    "evidence": "3 new process ids in 30 min (['38636', '1052', '19803'])"
   },
   {
-   "ts": "2026-10-21T19:19:17Z",
+   "ts": "2026-10-21T19:24:36Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "trc",
@@ -228,9 +242,11 @@
   }
  ],
  "alert_counts": {
+  "SIZE_ANOMALY": 1,
+  "NO_PER_KEY_BLOCK_AVAILABLE": 2,
+  "CHURN_KEY": 1,
   "ACCOUNT_EQUITY_DROP": 1,
-  "RESTART_LOOP": 4,
-  "STALE_LOG": 1
+  "RESTART_LOOP": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -285,5 +301,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.01
+ "sweep_s": 1.9
 }
