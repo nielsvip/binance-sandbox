@@ -3,12 +3,12 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 3.8274075000000005,
-   "key": "ang:ARUSDT_LONG",
-   "live_level": 3.8312445000000004,
-   "mark": 3.93571667,
-   "opened_at": "2026-10-21T15:30:24.348000Z",
-   "resting_trigger": 3.825
+   "entry_bar_level": 1.8573450000000002,
+   "key": "ang:RENDERUSDT_LONG",
+   "live_level": 1.8526900000000002,
+   "mark": 1.914,
+   "opened_at": "2026-10-21T15:33:07.305000Z",
+   "resting_trigger": 1.849
   },
   {
    "armed": true,
@@ -16,32 +16,41 @@
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.62904762,
+   "mark": 12.66691178,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
   }
  ],
  "n_findings": 2,
- "n_positions": 2,
+ "n_positions": 3,
  "positions": [
   {
    "armed": true,
-   "entry_bar_level": 3.8274075000000005,
-   "key": "ang:ARUSDT_LONG",
-   "live_level": 3.8312445000000004,
-   "mark": 3.93571667,
-   "opened_at": "2026-10-21T15:30:24.348000Z",
-   "resting_trigger": 3.825
+   "entry_bar_level": 0.069854925,
+   "key": "ang:KAVAUSDT_LONG",
+   "live_level": 0.069854925,
+   "mark": 0.0703837,
+   "opened_at": "2026-10-21T15:33:47.693000Z",
+   "resting_trigger": 0.06974
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 1.8573450000000002,
+   "key": "ang:RENDERUSDT_LONG",
+   "live_level": 1.8526900000000002,
+   "mark": 1.914,
+   "opened_at": "2026-10-21T15:33:07.305000Z",
+   "resting_trigger": 1.849
   },
   {
    "armed": true,
    "entry_bar_level": 12.231345000000001,
    "key": "fin:LINKUSDC_LONG",
    "live_level": 11.519285783583129,
-   "mark": 12.62904762,
+   "mark": 12.66691178,
    "opened_at": "2026-10-21T13:27:08.625000Z",
    "resting_trigger": 11.501
   }
  ],
- "ts": "2026-10-21T15:31:36.978324+00:00"
+ "ts": "2026-10-21T15:41:02.530738+00:00"
 }
