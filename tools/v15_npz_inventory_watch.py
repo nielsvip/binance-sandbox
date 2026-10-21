@@ -13,6 +13,7 @@ Stocks cannot build outside market hours (no klines) — failed builds are
 logged and skipped, never fatal. Dry-run by default; --apply builds.
 Runs on either host (ROOT = cwd); S1 cron owns the source inventory.
 """
+
 import argparse
 import glob
 import json
@@ -82,19 +83,47 @@ def classify(root=ROOT, max_age_s=DEFAULT_MAX_AGE_S, now=None):
 
 
 def build(sym, root=ROOT, timeout_s=DEFAULT_BUILD_TIMEOUT_S, builder=None):
-    cmd = list(builder) if builder else [sys.executable, "backtest_v8_precompute.py", "--symbol", sym, "--mode", mode_of(sym)]
+    cmd = (
+        list(builder)
+        if builder
+        else [
+            sys.executable,
+            "backtest_v8_precompute.py",
+            "--symbol",
+            sym,
+            "--mode",
+            mode_of(sym),
+        ]
+    )
     try:
-        proc = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True, timeout=timeout_s)
+        proc = subprocess.run(
+            cmd, cwd=str(root), capture_output=True, text=True, timeout=timeout_s
+        )
         tail = (proc.stderr or proc.stdout or "")[-600:]
         return proc.returncode == 0, tail
     except Exception as e:
         return False, str(e)[:300]
 
 
-def watch(max_age_s=DEFAULT_MAX_AGE_S, max_builds=DEFAULT_MAX_BUILDS, apply=False, root=ROOT, builder=None):
+def watch(
+    max_age_s=DEFAULT_MAX_AGE_S,
+    max_builds=DEFAULT_MAX_BUILDS,
+    apply=False,
+    root=ROOT,
+    builder=None,
+):
     missing, stale, fresh = classify(root=root, max_age_s=max_age_s)
     targets = missing + stale
-    res = {"universe": len(missing) + len(stale) + len(fresh), "missing": missing, "stale": stale, "fresh_n": len(fresh), "built": [], "failed": [], "skipped_cap": [], "applied": bool(apply)}
+    res = {
+        "universe": len(missing) + len(stale) + len(fresh),
+        "missing": missing,
+        "stale": stale,
+        "fresh_n": len(fresh),
+        "built": [],
+        "failed": [],
+        "skipped_cap": [],
+        "applied": bool(apply),
+    }
     if not apply:
         res["would_build"] = targets[:max_builds]
         res["would_build_truncated"] = len(targets) > max_builds
@@ -107,20 +136,33 @@ def watch(max_age_s=DEFAULT_MAX_AGE_S, max_builds=DEFAULT_MAX_BUILDS, apply=Fals
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Rebuild missing/stale NPZs for the live trading universe.")
+    ap = argparse.ArgumentParser(
+        description="Rebuild missing/stale NPZs for the live trading universe."
+    )
     ap.add_argument("--max-age-s", type=float, default=DEFAULT_MAX_AGE_S)
     ap.add_argument("--max-builds", type=int, default=DEFAULT_MAX_BUILDS)
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args(argv)
     res = watch(max_age_s=args.max_age_s, max_builds=args.max_builds, apply=args.apply)
     tag = "APPLY" if args.apply else "DRY-RUN"
-    print(f"[npz-watch:{tag}] universe={res['universe']} missing={len(res['missing'])} stale={len(res['stale'])} fresh={res['fresh_n']} built={len(res['built'])} failed={len(res['failed'])} capped={len(res['skipped_cap'])}")
+    print(
+        f"[npz-watch:{tag}] universe={res['universe']} missing={len(res['missing'])} stale={len(res['stale'])} fresh={res['fresh_n']} built={len(res['built'])} failed={len(res['failed'])} capped={len(res['skipped_cap'])}"
+    )
     for f in res["failed"][:10]:
         print(f"[npz-watch] BUILD-FAILED {f['sym']}: {f['tail'][:160]}")
     outdir = ROOT / "data" / "npz_inventory_watch"
     try:
         outdir.mkdir(parents=True, exist_ok=True)
-        (outdir / f"{time.strftime('%Y%m%d')}.jsonl").open("a").write(json.dumps({"ts": time.time(), **{k: v for k, v in res.items() if k != 'failed'}, "failed": [f['sym'] for f in res['failed']]}) + "\n")
+        (outdir / f"{time.strftime('%Y%m%d')}.jsonl").open("a").write(
+            json.dumps(
+                {
+                    "ts": time.time(),
+                    **{k: v for k, v in res.items() if k != "failed"},
+                    "failed": [f["sym"] for f in res["failed"]],
+                }
+            )
+            + "\n"
+        )
     except Exception:
         pass
     return 1 if res["failed"] else 0
