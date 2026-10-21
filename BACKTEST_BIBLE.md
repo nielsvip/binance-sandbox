@@ -4385,6 +4385,21 @@ ICPUSDT_LONG, CLF_LONG, CMC_LONG, APO_SHORT, NXE_SHORT, 1000FLOKIUSDT_LONG — p
 SET_DRIFTED_SINCE_PUBLISH (SCCO_LONG — republish on S1). Rollback: the converger is additive and report-audited
 (`data/daily_chain/persym_golive_*`); switches False restores vetoes.
 
+## 126. VECTOR-COPY-TRADING LAW — BAR, CROSS, CONFIRM, KILL (USER 2026-10-21)
+
+THE SWITCHES AND NOTHING ELSE. Tonight's exit census showed why: live bled through VEL_EXIT, QUICK_REDUCE_*,
+PEAK_GIVEBACK erosion stops, DAYTRADE_TARGET, WRONG_SIDE kills, ALL_TF_AGAINST closes — none of them crosses.
+#1 exits only on cross/board-intent/stop (cross/channel-break/flip/LH-LL, VEC_DRIVEN/RECONCILE/owed, backstop,
+bookkeeping). #2 entries AND exits only inside 180 s after each 15 m bar close (`VECTOR_BAR_WINDOW_S`) — mid-bar
+decisions wait, they don't die. #3 unconfirmed executions never happen: the first non-cross exit from a family
+refuses it, DISABLES the family in `data/vector_kills.json`, and FLAGS `data/vector_violations.jsonl` — manual
+restore only (`tools/vector_violations.py restore FAMILY --why`). Proven 05:47Z: `inf:1INCHUSDT_LONG` filled in
+window, first `BB_TAKE_4h` CLOSE killed+flagged the family. Untouched: backstops, reconcile bookkeeping,
+correctness, infra, locks/dedup/cooldowns, loss halts, blacklist, per-sym recipe thresholds. Convergence state:
+hourly delta applier pins all pinnable (05:43Z run: 18 PASS + 10 registered); remainders deliberate — h2h rows,
+blocklist poison/tokenized, 6 type-malformed boards (pilot fix), SCCO republish. Rollback: `VECTOR_ENFORCE_ENABLED`
+False + `backups/before_vector_enforce_*`; kills cleared only by hand.
+
 ## 123. STOCKS OFF-HOURS — NO AGENT EVER FLAGS STOCK INDICATORS OR PRICES OUTSIDE NYSE HOURS (USER 2026-10-21)
 
 **USER VERBATIM 2026-10-21:** "add to the bible that no agent can ever start whining again about indicators or prices for stocks outside market hours it is fkn pathetic" — and: "s1 ONLY starts ez_indicators when rsync from macbook fails to update s1 market data (tradier ONLY ON MARKET HOURS OBVIOUSLY) and syncs it back to macbook so we never have a minute of missing market data in a decade".
@@ -4524,3 +4539,4 @@ belongs to the pilot and the S2 gate, not a hand edit.
 backups DO exist each time, but the name in the report has been wrong three times
 (`…0015…` vs `…0430…` for `tradier_manage`, and here). **Verify a backup by `ls`, never by the sentence that
 claims it** — a backup you cannot find is a backup you do not have.
+8. **3m year on ext = Binance bulk zips (USER 2026-10-21 "mac has only 1899 ext has a year").** MEASURED that day it did NOT: the ext 3m archive began 2026-10-12 (9 days), `klines_ext_archive --deepen` never covers 3m (and pages fapi at limit 1500), SSD2T + TOSHIBA_EXT were **100 % full** (SSD2T's archive stalled 10-20 20:45; both are personal drives — nothing deleted), WD25 not mounted, E3T 11 GB free. Now: `tools/klines_3m_vision_backfill.py` (cron `KLINES_3M_VISION` 03:35 daily, log `~/logs/klines_3m_vision_backfill.log`) keeps the last 12 months + current-month dailies of every live crypto symbol as Binance's own monthly/daily zips from data.binance.vision (no API weight), sha256-verified against `.CHECKSUM`, append-only, at `<freest drive>/binance_archive/vision_3m/<SYM>/` (~10 MB/symbol, ~2 GB total).
