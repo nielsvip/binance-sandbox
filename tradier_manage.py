@@ -7853,6 +7853,87 @@ def _cfg(
     return getattr(config, param, default)
 
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+# PER-SYM CONFIG PROXY (2026-10-21). USER: "if a per_sym setting exists you use it - no exceptions" /
+# "this is another problem that will make parity impossible".
+#
+# WHY. `config = TradierConfig()` (:6764) is a PLAIN dataclass instance, so every bare
+# `getattr(config, "SWITCH", default)` in this module returned ONE value for every sym_side while the pilot swept
+# that switch PER SYM_SIDE and the board stores a per-sym winner. Measured over the 1288 template switch/filter
+# keys (tools/template_switch_psym_audit.py): 88 keys / 165 read sites still resolve global, and this module holds
+# the large majority of them. `ez_manage.py:8877` has had the equivalent proxy for weeks and holds ZERO such
+# leaks; `ez_positions_quick.py:3342` got one on 2026-10-20, which closed 339 sites at a stroke.
+#
+# WHY IT DELEGATES TO _cfg INSTEAD OF READING THE BOARD ITSELF. `_cfg` is the sanctioned stocks resolver and its
+# precedence is NOT just "board first": per-sym overrides > TEMPLATE baseline (cat_side copy) > global, PLUS three
+# exclusions that must survive — `SUB15M_BLOCKED_SWITCHES` (:7796), the exchange-resting-stop keys that are always
+# True (:7801), and `_LIVE_AUTHORITY_TR` (:7803), the keys the operator ruled must come from `config` ONLY and
+# never from a frozen per-sym/cat_side set. Re-deriving any of that here would fork the precedence and eventually
+# disagree with `_cfg` — the exact failure that made the go-live applier and the live entry gate call 139
+# sym_sides "already live" while the gate refused them.
+#
+# THE RECURSION TRAP, AND THE GUARD. `_cfg` ends `return getattr(config, param, default)` (:7853, also :7803),
+# and `config` is now this proxy — so a naive delegation would recurse forever and hang live stocks. The
+# thread-local re-entrancy guard makes the INNER read resolve straight off the dataclass: proxy -> _cfg -> (guard
+# set) -> plain getattr. `_cfg` is synchronous, so a thread-local is sufficient and cannot leak across an await.
+#
+# FAIL-SAFE: with no per-sym context set, or on any exception, the value comes from the plain object exactly as
+# today. TR_PER_SYM_PROXY=0 restores the unwrapped `TradierConfig()`.
+_TR_PSYM_CTX: ContextVar = ContextVar("_TR_PSYM_CTX", default=None)
+_TR_PROXY_GUARD = threading.local()
+
+
+def _tr_psym_ctx_set(account_key: str, symbol: str, side: str):
+    return _TR_PSYM_CTX.set((account_key, symbol, side) if (symbol and side) else None)
+
+
+def _tr_psym_ctx_clear(tok):
+    try:
+        _TR_PSYM_CTX.reset(tok)
+    except Exception:
+        _TR_PSYM_CTX.set(None)
+
+
+class _TRPerSymProxy:
+    """Transparent wrapper around the stocks `config`: UPPERCASE reads go through _cfg when a context is set."""
+
+    __slots__ = ("_inner",)
+
+    def __init__(self, inner):
+        object.__setattr__(self, "_inner", inner)
+
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, "_inner"), name)
+
+    def __setattr__(self, name, value):
+        if name == "_inner":
+            object.__setattr__(self, name, value)
+        else:
+            setattr(object.__getattribute__(self, "_inner"), name, value)
+
+    def __getattribute__(self, name):
+        if name in ("_inner", "__class__", "__dict__", "__slots__", "__weakref__"):
+            return object.__getattribute__(self, name)
+        inner = object.__getattribute__(self, "_inner")
+        if not name.startswith("_") and name.isupper() and not getattr(_TR_PROXY_GUARD, "busy", False):
+            ctx = _TR_PSYM_CTX.get()
+            if ctx is not None:
+                try:
+                    _TR_PROXY_GUARD.busy = True
+                    _ak, _sym, _side = ctx
+                    return _cfg(name, getattr(inner, name, None), _ak, _sym, _side)
+                except Exception:
+                    pass
+                finally:
+                    _TR_PROXY_GUARD.busy = False
+        return getattr(inner, name)
+
+
+if os.environ.get("TR_PER_SYM_PROXY", "1") != "0":
+    config = _TRPerSymProxy(config)
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
 def _cfg_auto(param, default=None):
     """Zero-tolerance vector hook: resolve _cfg with current frame's account_key/symbol/side if available, else global fallback."""
     import inspect
@@ -14531,6 +14612,16 @@ async def process_position(
         ak, symbol, position_side = parse_position_key(position_key)
         if ak != account_key:
             return
+        # 2026-10-21 PER-SYM CONTEXT for the _TRPerSymProxy on `config` (see the proxy block above). Set as soon as
+        # the key is parsed so EVERY switch read in this position's processing resolves through _cfg's per-sym
+        # precedence instead of the one global value. No reset: each position is processed in its own asyncio Task
+        # (the callers gather/create_task per position_key), and a Task gets its own COPY of the context, so the
+        # value cannot leak to a sibling symbol or back to the caller. With no context set — any path that does not
+        # come through here — behaviour is exactly as before.
+        try:
+            _tr_psym_ctx_set(account_key, symbol, position_side)
+        except Exception:
+            pass
         if force:
             logger.info(f"[{account_key}] 🔎 MONITORING {position_key} (Force=True)")
         now_ts = time.time()

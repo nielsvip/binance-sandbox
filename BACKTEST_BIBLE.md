@@ -4347,6 +4347,19 @@ per-sym strategy thresholds that ARE the dictate (WT_DC, ENTRY_SCORE, promoted f
 trade MORE than dictated, violating EXACTLY), disabled-strategy flags, and all of exits/stops/guarantees. Rollback:
 `ZERO_PASS_TRADE_ALL=False` + `backups/before_no_suppress_*`.
 
+## 123. EVERY MATRIX TRADES AT $5; THE DECIDER NEVER SLEEPS (USER 2026-10-21)
+
+"Thresholds ARE the edge" means: the KINDERGARTEN/WT_DC/ENTRY_SCORE gates only fire when the board itself promoted
+them (`enabled` defaults False) — they are the backtest's recipe, not overlays, so they stand; everything else
+that could veto a calculated sym_side is bypassed. Floor: `PERF_TIER_MIN_ORDER_USD` 6.0→**5.0** (Binance minimum),
+so every calculated backtest result trades live if only at $5 — the live-vs-vector comparison always has fills.
+ALWAYS-RUNS: the vectorized decider lane (`pure_board_trader --loop`, men intents) was an unsupervised Sunday
+manual run next to a duplicate from Oct 19 — now exactly one copy under launchd KeepAlive
+(`com.niels.pure-board-trader`, lock-guarded), duplicates reaped. `tools/forward_parity_enforcer.py` gains the
+always-runs section (loop alive, intents <30 min, matrices <40 h, progress <48 h; `--fix` relaunches the local
+loop, S1-side reported never faulted blindly — the pusher pull is currently failing on the dead s1-int tunnel).
+Rollback: floor default + `backups/before_five_dollar_floor_*`; supervision off via `launchctl bootout` + rm plist.
+
 ## 123. STOCKS OFF-HOURS — NO AGENT EVER FLAGS STOCK INDICATORS OR PRICES OUTSIDE NYSE HOURS (USER 2026-10-21)
 
 **USER VERBATIM 2026-10-21:** "add to the bible that no agent can ever start whining again about indicators or prices for stocks outside market hours it is fkn pathetic" — and: "s1 ONLY starts ez_indicators when rsync from macbook fails to update s1 market data (tradier ONLY ON MARKET HOURS OBVIOUSLY) and syncs it back to macbook so we never have a minute of missing market data in a decade".
