@@ -20,6 +20,7 @@ def norm(ts):
 
 
 def merge_file(path, rows):
+    n = 10 if path.endswith("_D.json") else 19  # D: one row per DATE (stock D files mix "2026-10-20" and "...T20:00:00")
     try:
         with open(path) as fh:
             cur = json.load(fh)
@@ -28,19 +29,20 @@ def merge_file(path, rows):
     if not isinstance(cur, list) or not cur or not isinstance(cur[-1], dict) or "timestamp" not in cur[-1]:
         return "not_a_kline_list"
     last = cur[-1]
-    last_ts = norm(last["timestamp"])
-    suffix = str(last["timestamp"])[19:]
+    last_ts = norm(last["timestamp"])[:n]
+    core = len(norm(last["timestamp"]))  # write new rows in the target's own stamp style (date-only or full)
+    suffix = str(last["timestamp"])[core:]
     keys = list(last.keys())
     add = {}
     for r in rows:
         if not isinstance(r, dict) or any(k not in r for k in REQUIRED):
             continue
         t = norm(r["timestamp"])
-        if t <= last_ts:
+        if t[:n] <= last_ts:
             continue
         row = {k: r[k] for k in keys if k in r}
-        row["timestamp"] = t + suffix
-        add[t] = row
+        row["timestamp"] = (t + "T00:00:00")[:core] + suffix
+        add.setdefault(t[:n], row)
     if not add:
         return 0
     out = cur + [add[t] for t in sorted(add)]

@@ -18,7 +18,8 @@ def rows_after(path, after_ms):
     if not isinstance(data, list):
         return None
     after = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(after_ms / 1000))
-    return [r for r in data if isinstance(r, dict) and str(r.get("timestamp", "")).replace(" ", "T")[:19] > after]
+    n = 10 if path.endswith("_D.json") else 19  # D: one row per DATE (stock D files mix "2026-10-20" and "...T20:00:00")
+    return [r for r in data if isinstance(r, dict) and str(r.get("timestamp", "")).replace(" ", "T")[:n] > after[:n]]
 
 
 if __name__ == "__main__":

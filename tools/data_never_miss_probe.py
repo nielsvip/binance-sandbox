@@ -7,12 +7,14 @@ import glob
 import json
 import os
 import re
+import shutil
 import socket
 import sys
 import time
 from datetime import datetime, timezone
 
-TS = re.compile(rb'"timestamp"\s*:\s*"([0-9T:\- ]{19})')
+# stock D files may carry date-only stamps ("2026-10-20"); everything else "YYYY-MM-DDTHH:MM:SS"
+TS = re.compile(rb'"timestamp"\s*:\s*"([0-9]{4}-[0-9]{2}-[0-9]{2}(?:[T ][0-9]{2}:[0-9]{2}:[0-9]{2})?)')
 KLINE_GLOBS = ("klines_cache/*.json", "klines_cache/gateway/*.json", "klines_cache/tradier/*.json")
 MARKET_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json", "data/latest_market_data.json", "data/tradier/tradier_indicators_latest.json",
                 "ez_s1_stack/price_cache_1.json", "ez_s1_stack/price_cache_2.json", "ez_s1_stack/price_cache_3.json", "ez_s1_stack/data/latest_market_data.json")
@@ -26,6 +28,7 @@ def last_ms(path):
             hits = TS.findall(fh.read())
         if hits:
             s = hits[-1].decode().replace(" ", "T")
+            s = s if len(s) == 19 else s + "T00:00:00"
             return int(datetime.strptime(s, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp() * 1000)
     except (OSError, ValueError):
         pass
@@ -54,6 +57,10 @@ def probe(base):
     if snaps:
         newest = max(snaps, key=os.path.getmtime)
         out["data/market_data_NEWEST"] = [round(os.path.getmtime(newest), 1), None, os.path.getsize(newest)]
+    try:
+        out["_disk_free"] = [time.time(), None, shutil.disk_usage(base).free]
+    except OSError:
+        pass
     return out
 
 

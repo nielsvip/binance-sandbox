@@ -62,6 +62,7 @@ MARKET_RULES = [("mac", "crypto prices", PRICE_FILES, 60), ("mac", "crypto snaps
                 ("s1", "standby crypto snapshot (ez_s1_stack)", ("ez_s1_stack/data/latest_market_data.json",), 90),
                 ("s1", "Mac snapshot delivered to S1", ("data/market_data_NEWEST",), 180),
                 ("gw", "crypto market_data", ("data/latest_market_data.json",), 300)]
+DISK_MIN_FREE = 3 * 1024 ** 3  # gateway hit 100 % on 2026-10-21 (221 MB) — ENOSPC is what truncated klines on 10-16
 REL = re.compile(r"^klines_cache/(?:(gateway|tradier)/)?([A-Za-z0-9]+)_(3m|15m|1h|4h|D)\.json$")
 
 
@@ -71,17 +72,21 @@ def log(msg):
 
 def probe(host):
     h = HOSTS[host]
-    try:
-        if h["ssh"] is None:
-            r = subprocess.run([sys.executable, str(PROBE)] + h["bases"], capture_output=True, text=True, timeout=120)
-        else:
-            r = subprocess.run(SSH + [h["ssh"], "python3 - " + " ".join("~/" + b for b in h["bases"])], input=PROBE.read_text(), capture_output=True, text=True, timeout=120)
-        d = json.loads(r.stdout)
-        # remote bases come back expanded (/home/niels/binance) — key them by our short names
-        d["bases"] = dict(zip(h["bases"], d["bases"].values()))
-        return host, d, ""
-    except Exception as e:
-        return host, None, f"{type(e).__name__}: {e}"[:200]
+    err = ""
+    for attempt in range(3):  # 2026-10-21: the S1 link drops single sessions under load (empty stdout) — retry
+        try:
+            if h["ssh"] is None:
+                r = subprocess.run([sys.executable, str(PROBE)] + h["bases"], capture_output=True, text=True, timeout=120)
+            else:
+                r = subprocess.run(SSH + [h["ssh"], "python3 - " + " ".join("~/" + b for b in h["bases"])], input=PROBE.read_text(), capture_output=True, text=True, timeout=120)
+            d = json.loads(r.stdout)
+            # remote bases come back expanded (/home/niels/binance) — key them by our short names
+            d["bases"] = dict(zip(h["bases"], d["bases"].values()))
+            return host, d, ""
+        except Exception as e:
+            err = f"{type(e).__name__}: {e} {(r.stderr if 'r' in dir() else '')[-120:]}"[:240]
+            time.sleep(3)
+    return host, None, err
 
 
 def universes():
@@ -102,19 +107,30 @@ def universes():
     return crypto, stocks
 
 
+UNPARSED = []
+
+
 def index(probes, crypto, stocks):
-    """{(venue, symbol, tf): {(host, base, sub): last_ms}}"""
+    """{(venue, symbol, tf): {(host, base, sub): last_ms}}; D bars floored to their DATE (stock D files mix
+    "2026-10-20" and "2026-10-20T20:00:00" — one session, one date). Live files with no readable last bar go to UNPARSED."""
     idx = {}
+    UNPARSED.clear()
     for host, d in probes.items():
         for base, files in d["bases"].items():
             for rel, (_mt, last, _sz) in files.items():
                 m = REL.match(rel)
-                if not m or not last:
+                if not m:
                     continue
                 sub, symbol, tf = m.group(1) or "", m.group(2), m.group(3)
                 venue = "stocks" if sub == "tradier" else "crypto"
                 if (venue == "crypto" and symbol not in crypto) or (venue == "stocks" and symbol not in stocks):
                     continue
+                if not last:
+                    if (host, base) in TARGETS:
+                        UNPARSED.append(f"{host}:{base}/{rel}")
+                    continue
+                if tf == "D":
+                    last = last // TF_MS["D"] * TF_MS["D"]
                 idx.setdefault((venue, symbol, tf), {})[(host, base, sub)] = last
     return idx
 
@@ -204,10 +220,12 @@ def heal(idx, probes):
         for rel, own, srcs in items:
             symbol_tf = rel.rsplit("/", 1)[-1]
             by_ts = {}
+            n = 10 if symbol_tf.endswith("_D.json") else 19  # D: one row per date
+            cut = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(own / 1000))[:n]
             for (sh, sb, ssub) in srcs:
                 for r in got.get((sh, sb), {}).get(f"klines_cache/{ssub + '/' if ssub else ''}{symbol_tf}", []):
-                    t = str(r.get("timestamp", "")).replace(" ", "T")[:19]
-                    if t > time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(own / 1000)):
+                    t = str(r.get("timestamp", "")).replace(" ", "T")[:n]
+                    if t > cut:
                         by_ts.setdefault(t, r)
             if by_ts:
                 patches[rel] = [by_ts[t] for t in sorted(by_ts)]
@@ -274,6 +292,11 @@ def market(probes):
         ages = {rel: round(d["now"] - base_files[rel][0], 1) for rel in files if rel in base_files}
         age = min(ages.values()) if ages else None
         out.append({"host": host, "file": label, "age_s": age, "max_s": max_s, "ok": age is not None and age <= max_s, "files": ages})
+    for host, d in probes.items():
+        for base, files in d["bases"].items():
+            free = (files.get("_disk_free") or [0, None, None])[2]
+            if free is not None:
+                out.append({"host": host, "file": f"disk free {base}", "age_s": None, "free_gb": round(free / 1024 ** 3, 1), "ok": free >= DISK_MIN_FREE})
     return out
 
 
@@ -324,7 +347,7 @@ def main():
     mk_bad = [m for m in mk if not m["ok"]]
     rep = {"generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "secs": round(time.time() - t0, 1),
            "universe": {"crypto": len(crypto), "stocks": len(stocks)}, "unreachable": unreachable, "healed": healed,
-           "kline_breaches": breaches, "unhealable": unhealable, "market": mk}
+           "kline_breaches": breaches, "unhealable": unhealable, "unparsed_live_files": list(UNPARSED), "market": mk}
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     tmp = REPORT.with_suffix(".tmp")
     tmp.write_text(json.dumps(rep, indent=1))
@@ -340,10 +363,12 @@ def main():
     if unhealable:
         log(f"UNHEALABLE {len(unhealable)} files: no host has the bars — e.g. {[(u['symbol'], u['tf'], u['best']) for u in unhealable[:6]]}")
     for m in mk_bad:
-        log(f"BREACH market {m['host']} {m['file']} age {m['age_s']}s > {m['max_s']}s")
+        log(f"BREACH market {m['host']} {m['file']} " + (f"{m['free_gb']} GB free < 3 GB" if "free_gb" in m else f"age {m['age_s']}s > {m['max_s']}s"))
     for h, e in unreachable.items():
         log(f"BREACH host {h} unreachable: {e}")
-    ok = not (breaches or mk_bad or unreachable)
+    if UNPARSED:
+        log(f"BREACH {len(UNPARSED)} live kline files have no readable last bar — e.g. {UNPARSED[:4]}")
+    ok = not (breaches or mk_bad or unreachable or UNPARSED)
     log(f"{'OK' if ok else 'BREACH'} probed={sorted(probes)} keys={len(idx)} secs={rep['secs']}")
     if not ok:
         ALERTS.parent.mkdir(parents=True, exist_ok=True)
