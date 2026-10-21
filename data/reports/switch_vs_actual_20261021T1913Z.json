@@ -1,0 +1,37 @@
+{
+ "window_from": "10-21 18:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 145,
+  "status_OK": 184,
+  "EXTRA": 2
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 18:31",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_GOOD_BUY_k1:98/d196/k3:88.51694423593612/d3:91.74974737937059_@2.0178_STDEV_RET",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "ang",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 18:32",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_OPEN_GOOD_BUY_k1:98/d196/k3:88.51694423593612/d3:91.74974737937059_@2.0178_STDEV_RET",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

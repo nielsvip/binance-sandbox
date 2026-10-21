@@ -215,6 +215,13 @@ class Config:
         # half (never CLOSE/flatten) and the winner retry is AUGMENT on an already-held position only.
         # Size may differ from vector; position existence must not. ROLLBACK: False.
     )
+    BOARD_STATE_CONVERGE_ENABLED: bool = (
+        True  # USER 2026-10-21: converge every tradeable_key to the forward paper-test state —
+        # CONVERGE_OPEN forces an OPEN where the board holds and live is flat, CONVERGE_CLOSE forces
+        # a CLOSE where the board is flat and live holds. Verdicts older than 20min or on rotted
+        # snapshots are refused, never guessed. Every forced bar records the live refusal + ignored
+        # vector leg to data/converge/. Kill: False. ROLLBACK: False.
+    )
     # USER 2026-10-16 "GET IT OUT": stoch-K may not gate a GUARANTEED_REENTRY in either direction (ez_manage
     # ~40049). The system gates reentries on WT + HTF. True restores the pre-2026-10-16 K behaviour.
     GUARANTEED_REENTRY_K_STOCH_GATE_ENABLED: bool = False

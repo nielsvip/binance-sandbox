@@ -12620,6 +12620,84 @@ def _is_near_dc4_high_with_wt_down(indicators: dict, is_long: bool = True) -> bo
         return False
 
 
+async def board_state_converge_loop(trade_manager):
+    """USER 2026-10-21 BOARD-STATE CONVERGE (stocks): force board-state parity through execute_now.
+
+    Same contract as the crypto twin: fresh CONVERGE verdicts only, rotted snapshots refuse the pass,
+    every forced bar recorded to data/converge/ with the live refusal + ignored vector leg.
+    Kill: BOARD_STATE_CONVERGE_ENABLED=False (config_tradier).
+    """
+    import board_state_converge as _bsc
+
+    await asyncio.sleep(120.0)
+    if not bool(getattr(config, "BOARD_STATE_CONVERGE_ENABLED", False)):
+        logger.warning("[BOARD_CONVERGE] disabled via BOARD_STATE_CONVERGE_ENABLED=False")
+        return
+    logger.warning("[BOARD_CONVERGE] started: forcing board-state parity through execute_now")
+    base = str(getattr(config, "BASE_PATH", "."))
+    acct = getattr(trade_manager, "account_key", "") or ""
+    while getattr(trade_manager, "running", False):
+        try:
+            try:
+                held, _ = _bsc.read_live_snapshots(base, acct)
+            except _bsc.StaleInput as exc:
+                logger.warning(f"[BOARD_CONVERGE] {acct}: refusing pass ({exc})")
+                await asyncio.sleep(300.0)
+                continue
+            rpath = _bsc.record_path(base, acct)
+            for v in _bsc.fresh_verdicts(os.path.join(base, "data", "pure_board"), acct):
+                ss = v.get("sym_side") or ""
+                bar = float(v.get("bar_ts") or 0.0)
+                if not ss or bar <= 0:
+                    continue
+                is_long = ss.endswith("_LONG")
+                sym = ss.rsplit("_", 1)[0]
+                lh = (held.get((acct, ss)) or {}).get("qty", 0.0)
+                opening = v.get("action") == _bsc.CONVERGE_OPEN
+                if opening and lh > 0:
+                    continue
+                if not opening and lh <= 0:
+                    continue
+                if _bsc.already_forced(rpath, acct, ss, bar):
+                    continue
+                vec_leg = v.get("vec_leg") or ""
+                refusal = _bsc.diagnose(os.path.join(base, "data", "history"), acct, ss,
+                                        v.get("action"), lh, vec_leg)
+                pk = f"{acct}:{ss}"
+                uid = f"BOARD_CONVERGE_{int(bar)}"
+                side_long = "LONG" if is_long else "SHORT"
+                if opening:
+                    try:
+                        px, _ = await trade_manager.get_current_price(sym)
+                    except Exception:
+                        px = 0.0
+                    px = float(px or 0.0)
+                    base_n = float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0)
+                    qty = base_n / px if (base_n > 0 and px > 0) else 0.0
+                    if qty <= 0:
+                        res = "SKIPPED_NO_PRICE_OR_SIZE"
+                    else:
+                        res = await trade_manager.execute_now(
+                            pk, acct, sym, 0.0, ("BUY" if is_long else "SELL"), side_long,
+                            qty, px, uid, f"BOARD_CONVERGE_OPEN vec={vec_leg[:60]}", False,
+                            action="OPEN")
+                else:
+                    res = await trade_manager.execute_now(
+                        pk, acct, sym, lh, ("SELL" if is_long else "BUY"), side_long, lh,
+                        float((held.get((acct, ss)) or {}).get("mark") or 0.0), uid,
+                        f"BOARD_CONVERGE_CLOSE vec={vec_leg[:60]}", True, action="CLOSE")
+                _bsc.append_record(rpath, _bsc.build_record(
+                    time.time(), bar, acct, ss, v.get("action"), vec_leg,
+                    v.get("board_md5"), v.get("engine_trades"), v.get("engine_gain"),
+                    lh, refusal, res))
+                logger.warning(f"[BOARD_CONVERGE] {acct}:{ss} {v.get('action')} qty_before={lh:.6f} -> {str(res)[:80]}")
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            logger.error(f"[BOARD_CONVERGE] loop error: {exc}", exc_info=True)
+        await asyncio.sleep(300.0)
+
+
 async def overnight_gap_hedge_loop(trade_manager):
     """Opens same-sector opposite-side hedges (50% notional) 15 min before market close
     when |market_sentiment_score| > threshold, then closes them at 09:35 ET next morning.
@@ -44282,24 +44360,42 @@ class TradierTradeManager:
                                     / _b_price
                                 ),
                             )
-                            _open_reason = f"INTRADAY_RATIO_OPEN_{_under}_tgt{target:.2f}_act{actual:.2f}_dev{dev:+.2f}_rank={_best}"
+                            _open_reason = f"INTRADAY_RATIO_AUGMENT_{_under}_tgt{target:.2f}_act{actual:.2f}_dev{dev:+.2f}_rank={_best}"
                             _pk_open = f"trb:{_best}_{_under}"
-                            await self.execute_trade_action(
-                                "trb",
-                                _pk_open,
-                                _best,
-                                _b_qty,
-                                _b_price,
-                                "SELL" if _under == "SHORT" else "BUY",
-                                _under,
-                                f"ratio_open_{int(time.time())}",
-                                action="OPEN",
-                                reason=_open_reason,
-                                override_qty=_b_qty,
-                            )
-                            logger.warning(
-                                f"[INTRADAY_RATIO] opened {_pk_open} qty={_b_qty} dev={dev:+.2%} t={target:.2%} a={actual:.2%}"
-                            )
+                            # USER 2026-10-21: balancer resizes, never opens — augment the underweight
+                            # side only when already held; a flat underweight side is the board's entry
+                            # job, not the balancer's. ROLLBACK: restore action="OPEN".
+                            _held_open = {}
+                            try:
+                                _held_open = self.position_manager.get_positions_by_account("trb") or {}
+                            except Exception:
+                                _held_open = {}
+                            _held_qty = 0.0
+                            try:
+                                _held_qty = abs(float(getattr(_held_open.get(_pk_open), "positionAmt", 0) or 0))
+                            except Exception:
+                                _held_qty = 0.0
+                            if _held_qty <= 0:
+                                logger.warning(
+                                    f"[INTRADAY_RATIO] {_pk_open} flat — balancer skips (no balancer opens)"
+                                )
+                            else:
+                                await self.execute_trade_action(
+                                    "trb",
+                                    _pk_open,
+                                    _best,
+                                    _b_qty,
+                                    _b_price,
+                                    "SELL" if _under == "SHORT" else "BUY",
+                                    _under,
+                                    f"ratio_augment_{int(time.time())}",
+                                    action="AUGMENT",
+                                    reason=_open_reason,
+                                    override_qty=_b_qty,
+                                )
+                                logger.warning(
+                                    f"[INTRADAY_RATIO] augmented {_pk_open} qty={_b_qty} dev={dev:+.2%} t={target:.2%} a={actual:.2%}"
+                                )
                 except Exception as _open_e:
                     logger.debug(f"[INTRADAY_RATIO] underweight open failed: {_open_e}")
             except asyncio.CancelledError:
@@ -58872,6 +58968,10 @@ class TradierTradeManager:
         # 2026-05-15: overnight gap hedge — same-sector opposite-side before close (default OFF).
         self.background_tasks.append(
             asyncio.create_task(overnight_gap_hedge_loop(self))
+        )
+        # USER 2026-10-21 BOARD-STATE CONVERGE: force board-state parity through execute_now.
+        self.background_tasks.append(
+            asyncio.create_task(board_state_converge_loop(self))
         )
         # 2026-09-09: gap-aware MOC exit before close + morning rebuy (harvest gaps, no commissions)
         # 2026-09-10 FIX: 90m window + small-top detection + daily gap record (was dead code 10m MOC)

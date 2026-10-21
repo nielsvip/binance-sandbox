@@ -9386,6 +9386,91 @@ async def restore_heartbeat_on_ban_lifted():
             )
 
 
+async def board_state_converge_loop(trade_manager):
+    """USER 2026-10-21 BOARD-STATE CONVERGE: every tradeable_key follows the forward paper-test state.
+
+    Reads the pure-board lane's fresh CONVERGE verdicts (same machine, data/pure_board/): forces an
+    immediate OPEN where the board holds and live is flat, an immediate CLOSE where the board is flat
+    and live holds — through execute_now, the one and only gate. Stale verdicts (>20min) and rotted
+    snapshots (>5min) are refused, never guessed. Every forced bar is recorded to data/converge/ with
+    the live refusal diagnosis + the ignored vector leg. Kill: BOARD_STATE_CONVERGE_ENABLED=False.
+    """
+    import board_state_converge as _bsc
+
+    await asyncio.sleep(120.0)
+    if not bool(getattr(config, "BOARD_STATE_CONVERGE_ENABLED", False)):
+        logger.warning("[BOARD_CONVERGE] disabled via BOARD_STATE_CONVERGE_ENABLED=False")
+        return
+    logger.warning("[BOARD_CONVERGE] started: forcing board-state parity through execute_now")
+    base = str(getattr(config, "BASE_PATH", "."))
+    while getattr(trade_manager, "running", False):
+        try:
+            for acct in list(getattr(trade_manager, "account_keys", []) or []):
+                try:
+                    held, _ = _bsc.read_live_snapshots(base, acct)
+                except _bsc.StaleInput as exc:
+                    logger.warning(f"[BOARD_CONVERGE] {acct}: refusing pass ({exc})")
+                    continue
+                rpath = _bsc.record_path(base, acct)
+                for v in _bsc.fresh_verdicts(os.path.join(base, "data", "pure_board"), acct):
+                    ss = v.get("sym_side") or ""
+                    bar = float(v.get("bar_ts") or 0.0)
+                    if not ss or bar <= 0:
+                        continue
+                    is_long = ss.endswith("_LONG")
+                    sym = ss.rsplit("_", 1)[0]
+                    lh = (held.get((acct, ss)) or {}).get("qty", 0.0)
+                    opening = v.get("action") == _bsc.CONVERGE_OPEN
+                    if opening and lh > 0:
+                        continue
+                    if not opening and lh <= 0:
+                        continue
+                    if _bsc.already_forced(rpath, acct, ss, bar):
+                        continue
+                    vec_leg = v.get("vec_leg") or ""
+                    refusal = _bsc.diagnose(os.path.join(base, "data", "history"), acct, ss,
+                                            v.get("action"), lh, vec_leg)
+                    pk = f"{acct}:{ss}"
+                    uid = f"BOARD_CONVERGE_{int(bar)}"
+                    res = None
+                    if opening:
+                        try:
+                            px, _ = await trade_manager.get_current_price(sym)
+                        except Exception:
+                            px = 0.0
+                        px = float(px or 0.0)
+                        base_n = float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0)
+                        qty = base_n / px if (base_n > 0 and px > 0) else 0.0
+                        if qty <= 0:
+                            res = "SKIPPED_NO_PRICE_OR_SIZE"
+                        else:
+                            res = await trade_manager.execute_now(
+                                position_key=pk, account_key=acct, symbol=sym,
+                                original_positionAmt=0.0, side=("BUY" if is_long else "SELL"),
+                                position_side=("LONG" if is_long else "SHORT"), quantity=qty,
+                                old_price=px, unique_id=uid,
+                                reason=f"BOARD_CONVERGE_OPEN vec={vec_leg[:60]}",
+                                is_full_close=False, action="OPEN")
+                    else:
+                        res = await trade_manager.execute_now(
+                            position_key=pk, account_key=acct, symbol=sym,
+                            original_positionAmt=lh, side=("SELL" if is_long else "BUY"),
+                            position_side=("LONG" if is_long else "SHORT"), quantity=lh,
+                            old_price=float((held.get((acct, ss)) or {}).get("mark") or 0.0),
+                            unique_id=uid, reason=f"BOARD_CONVERGE_CLOSE vec={vec_leg[:60]}",
+                            is_full_close=True, action="CLOSE")
+                    _bsc.append_record(rpath, _bsc.build_record(
+                        time.time(), bar, acct, ss, v.get("action"), vec_leg,
+                        v.get("board_md5"), v.get("engine_trades"), v.get("engine_gain"),
+                        lh, refusal, res))
+                    logger.warning(f"[BOARD_CONVERGE] {acct}:{ss} {v.get('action')} qty_before={lh:.6f} -> {str(res)[:80]}")
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            logger.error(f"[BOARD_CONVERGE] loop error: {exc}", exc_info=True)
+        await asyncio.sleep(300.0)
+
+
 async def periodic_heartbeat_update():
     """Periodically update server heartbeat for each account to keep it fresh"""
     global _heartbeat_deleted_due_to_ban
@@ -63967,6 +64052,9 @@ async def main():
             )
             background_tasks.append(
                 asyncio.create_task(trade_manager._golden_rule_loop())
+            )
+            background_tasks.append(
+                asyncio.create_task(board_state_converge_loop(trade_manager))
             )
             trade_manager.websocket_managers = websocket_managers
             background_tasks.append(asyncio.create_task(log_timing_summary()))

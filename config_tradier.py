@@ -3504,6 +3504,13 @@ class TradierConfig:
         # pre-close on |sentiment|>20, closed 09:35 ET. Hedge mates are tagged positions, never
         # board positions; per-sym kill: OVERNIGHT_GAP_HEDGE_ENABLED=False. ROLLBACK: False.
     )
+    BOARD_STATE_CONVERGE_ENABLED: bool = (
+        True  # USER 2026-10-21: converge every tradeable_key to the forward paper-test state —
+        # CONVERGE_OPEN forces an OPEN where the board holds and live is flat, CONVERGE_CLOSE forces
+        # a CLOSE where the board is flat and live holds. Stale verdicts/rotted snapshots refused.
+        # Every forced bar records the live refusal + ignored vector leg to data/converge/.
+        # Kill: False. ROLLBACK: False.
+    )
     OVERNIGHT_GAP_HEDGE_OPEN_MINUTES: float = 15.0
     OVERNIGHT_GAP_HEDGE_SENTIMENT_THRESHOLD: float = 20.0
     OVERNIGHT_GAP_HEDGE_SIZE_FRAC: float = 0.50
