@@ -78,6 +78,14 @@ def family(reason):
     m = re.match(r"^(DAYTRADE_TARGET)_.*$", fam)
     if m:
         return m.group(1)
+    # modeled in v12 (HARDCODED_RALLY_REENTRY x12, LH_LL_TOP_EXIT x14):
+    # live appends entry-price params; compare the signal.
+    m = re.match(r"^(HARDCODED_RALLY_REENTRY)_.*$", fam)
+    if m:
+        return m.group(1)
+    m = re.match(r"^(LH_LL_TOP_EXIT)_.*$", fam)
+    if m:
+        return m.group(1)
     # v12 folds target+stop legs into one TECHNICAL_EXIT dc_* computation
     # (v12:22364-22448); live splits the label. Compare the computation.
     m = re.match(r"^(TECHNICAL_TARGET)_.*$", fam)
