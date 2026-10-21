@@ -106,11 +106,13 @@ def dispatcher_ok(timeout=15):
     probe = ("python3 -c \"import time,os;p='/tmp/v15_fleet_sched.log';"
                "print(int(time.time()-os.path.getmtime(p)))\"")
     kh = ["-o", "UserKnownHostsFile=%s" % os.path.join(STATE_DIR, "known_hosts")]
-    attempts = [["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
-                 "-o", "StrictHostKeyChecking=accept-new"] + kh + ["s1-int", probe],
-                ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
-                 "-o", "StrictHostKeyChecking=accept-new"] + kh + ["-J", GW_JUMP,
-                 "niels@10.0.0.3", probe]]
+    base = ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes",
+            "-o", "StrictHostKeyChecking=accept-new"] + kh
+    attempts = [base + ["s1-int", probe],
+                base + ["s1-pub", probe],
+                base + ["niels@10.0.0.3", probe],
+                base + ["-J", GW_JUMP, "niels@10.0.0.3", probe],
+                base + ["-J", "niels@10.0.0.2", "niels@10.0.0.3", probe]]
     out = ""
     for cmd in attempts:
         rc, out, _ = sh(cmd, timeout=timeout)
