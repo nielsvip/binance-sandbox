@@ -2020,11 +2020,36 @@ def _s1_trading_forbidden(script_name: str) -> bool:
         return False
 
 
+def _wrapper_alive(script_name: str, args=()) -> bool:
+    """True when a live run_with_watchdog.sh wrapper already owns this script+args.
+
+    USER 2026-10-21 single-ownership: the copilot must never stack a second
+    wrapper atop a live one — the pair then SIGKILL-fights via
+    kill_duplicate_python and the child flaps. Fail-open (pgrep error -> False).
+    """
+    import subprocess
+    pat = "run_with_watchdog.sh " + " ".join([script_name] + [str(a) for a in args])
+    try:
+        out = subprocess.run(["pgrep", "-f", pat], capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return False
+    for pid in out.split():
+        try:
+            if int(pid) != os.getpid():
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
 def _try_restart_script(script_name: str):
     """Attempt to restart a crashed script via the watchdog."""
     import subprocess
     if _s1_trading_forbidden(script_name):
         logger.warning(f"[SUPERVISOR] Refusing {script_name} restart on S1 (S1_LIVE_TRADING_FORBIDDEN; failover owns traders)")
+        return
+    if _wrapper_alive(script_name):
+        logger.warning(f"[SUPERVISOR] Not restarting {script_name}: live wrapper already owns it (single-ownership 2026-10-21)")
         return
     watchdog = str(BASE_PATH / "run_with_watchdog.sh")
     try:
@@ -2039,6 +2064,9 @@ def _try_restart_script_with_args(script_name: str, *args):
     import subprocess
     if _s1_trading_forbidden(script_name):
         logger.warning(f"[SUPERVISOR] Refusing {script_name} restart on S1 (S1_LIVE_TRADING_FORBIDDEN; failover owns traders)")
+        return
+    if _wrapper_alive(script_name, args):
+        logger.warning(f"[SUPERVISOR] Not restarting {script_name} {' '.join(args)}: live wrapper already owns it (single-ownership 2026-10-21)")
         return
     watchdog = str(BASE_PATH / "run_with_watchdog.sh")
     cmd = ["bash", watchdog, script_name] + list(args)
