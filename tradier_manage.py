@@ -59319,6 +59319,16 @@ class StockSentimentStrategy:
         )
         await asyncio.sleep(30)  # Warmup
 
+        # USER 2026-10-21 EXACT-PARITY: no vector model exists for this loop (0 refs in both engines,
+        # no per-sym board keys), so every order it emits is unmeasured. Parked idle until modeled.
+        # Kill switch: STOCK_SENTIMENT_STRATEGY_ENABLED=True restores. Existing SENT_STRAT positions
+        # keep all other exits; only this loop's opens/trims stop.
+        if not _cfg_auto("STOCK_SENTIMENT_STRATEGY_ENABLED", False):
+            logger.warning(
+                "[SENT_STRAT] STOCK_SENTIMENT_STRATEGY_ENABLED=False -> loop idle, zero orders (unmeasured strategy)"
+            )
+            return
+
         while self.trade_manager.running:
             try:
                 # Market Hours Check

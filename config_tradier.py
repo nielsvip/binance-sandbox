@@ -3825,6 +3825,14 @@ class TradierConfig:
     # stub-farm line `if bool(getattr(...)): _ = getattr(...)`, so it already fires nothing and flipping it would be a
     # cosmetic change that falsely suggests a 3m path was closed.)
     RULE_B_5M_EXIT_ENABLED: bool = False
+    STOCK_SENTIMENT_STRATEGY_ENABLED: bool = (
+        False  # USER 2026-10-21: live must trade EXACT bars/reasons vectorized does. StockSentimentStrategy
+        # (tradier_manage.py StockSentimentStrategy.run_loop: SENT_STRAT_DIV opens + SENT_STRAT_TRIM 25% slices)
+        # has NO vector model (0 refs in v12_quick_engine.py + backtest_v12_engine.py), NO per-sym board keys, and
+        # fired 11 live opens after 2026-10-20 alone. Every one of its trades is unmeasured by definition.
+        # False parks the loop idle (task stays up, zero orders); True restores it. ROLLBACK: True.
+        # Route to re-enable honestly: model it in v12 via version gate, then flip with bench proof.
+    )
     RULE_B_W_TREND_4H_PULLBACK_ENABLED: bool = False
     RULE_NAME_TAGGING_ENABLED: bool = True
     RZ_BASELINE_BOUNCE_SHORT_ENABLED: bool = False
