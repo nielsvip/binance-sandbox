@@ -109,6 +109,7 @@ def test_gates_reference_zero_pass_bypass():
         assert needle in ez, needle
     assert ez.count("ZERO_PASS_ALLOW") >= 6, "every disarmed veto logs its allow"
     assert "ZERO_PASS_NO_SUPPRESS" in ez
+    assert "MAKER_ZERO_QTY" in ez and "1 step" in ez, "sub-step minimum entry steps up instead of dying"
     q = (ROOT / "ez_positions_quick.py").read_text()
     assert "zero_pass" in q
     tm = (ROOT / "tradier_manage.py").read_text()

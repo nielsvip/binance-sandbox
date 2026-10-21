@@ -30878,11 +30878,26 @@ class MultiAccountTradeManager:
             except Exception:
                 pass
             if qty_dec.is_zero():
-                logger.critical(
-                    f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0. ORDER NOT PLACED — suppressing webhook fallback (sentinel -1.0)"
-                )
-                await release_locks()
-                return False, -1.0
+                _zp_step = False
+                try:  # USER 2026-10-21 zero-pass minimum entry: sub-step qty with viable pre-round notional steps UP to 1 step instead of dying (mirrors MAKER_STEP_UP above)
+                    from live_twins import zero_pass as _zp_mkr
+                    _zp_pre = float(qty_abs) * float(current_price or 0.0)
+                    _zp_step = (
+                        _zp_mkr.trade_all_on()
+                        and _zp_pre >= float(self.min_notional.get(symbol, 5.0))
+                        and _zp_mkr.calculated(symbol, position_side)
+                    )
+                except Exception:
+                    _zp_step = False
+                if _zp_step:
+                    qty_dec = step
+                    logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: sub-step qty {qty_abs} -> 1 step {qty_dec} (USER 2026-10-21 minimum entry)")
+                else:
+                    logger.critical(
+                        f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0. ORDER NOT PLACED — suppressing webhook fallback (sentinel -1.0)"
+                    )
+                    await release_locks()
+                    return False, -1.0
             qty_str = f"{qty_dec}"
             _mkr_notional = float(qty_dec) * float(current_price or 0.0)
             if _mkr_notional < 5.0:
@@ -32734,12 +32749,16 @@ class MultiAccountTradeManager:
                                 _ctb_struct = (_ctb_ll_n > 0 and _ctb_ll_p > 0 and _ctb_ll_n < _ctb_ll_p) or (_ctb_w1 < _ctb_w2)
                                 _ctb_aligned = (current_price < _ctb_sma200) and _ctb_struct
                     if (abs(_ctb_w1) > 1e-9 or abs(_ctb_w2) > 1e-9) and not _ctb_aligned and ((_ctb_is_long and _ctb_w1 < _ctb_w2) or ((not _ctb_is_long) and _ctb_w1 > _ctb_w2)):
-                        logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
+                        if _zp_ns:
+                            logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: counter-trend would block (wt1_1h {_ctb_w1:.1f}vs{_ctb_w2:.1f}) — calculated sym_side trades (USER 2026-10-21). reason={(reason or '')[:50]}")
+                        else:
+                            logger.critical(f"🚫 [COUNTER_TREND_ADD_BLOCK] {position_key}: BLOCKED {action} — side against wt1_1h ({_ctb_w1:.1f}vs{_ctb_w2:.1f}). NO open/add against the 1h. reason={(reason or '')[:50]}")
                         try:
                             from live_filter_per_sym_retest import maybe_queue_filter_retest as _lfq
                             _lfq(symbol or (position_key.split(':')[-1].rsplit('_',1)[0] if position_key else ''), position_side, f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}", account_key or (position_key.split(':',1)[0] if position_key and ':' in position_key else ''))
                         except Exception: pass
-                        return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
+                        if not _zp_ns:
+                            return f"BLOCKED_COUNTER_TREND_1H_AGAINST_{position_side}"
         except Exception as _ctbe:
             logger.warning(f"[COUNTER_TREND_ADD_BLOCK] check error (fail-open): {_ctbe}")
         # ═══ EMA_BLANKET_FILTER (2026-09-29 USER "any value found in vector must be applied in live") ═══
@@ -33340,6 +33359,9 @@ class MultiAccountTradeManager:
                 _live_ok, _live_reason = _ezm_is_live_side_enabled(symbol, position_side, _acct_for_gate)
                 if not _live_ok and _vd_exempt:
                     logger.info(f"🧭 [VEC_DRIVEN_PER_SYM_LIVE_GATE_EXEMPT] {position_key}: per-sym gate would block ({_live_reason}); vec-driven live sym_side, allowed")
+                    _live_ok = True
+                if not _live_ok and _zp_ns:
+                    logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: per-sym live gate would block ({_live_reason}); calculated sym_side trades (USER 2026-10-21)")
                     _live_ok = True
                 if not _live_ok:
                     logger.critical(f"🚫 [PER_SYM_LIVE_GATE] {position_key}: BLOCKED live side not profitable gain>0 and beat bh required. side={position_side} reason={_live_reason} action={action}")
