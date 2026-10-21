@@ -4186,7 +4186,7 @@ class Config:
         True  # USER 2026-10-06: per-sym START_POSITION_SIZE x performance tier (data/persym_size_tiers.json: neg 30D+365D -> minimal, ranked gainers -> larger); acc_gain<=0 no longer NEG-blocks (only _NEG_BLOCK tag). False = legacy sizing + legacy NEG-block
     )
     PERF_TIER_MIN_ORDER_USD: float = (
-        6.0  # PERF_TIER_SIZING floor: never size an order below the Binance futures minimum notional (5 USDT) + margin
+        5.0  # USER 2026-10-21: size down to $5 — every calculated backtest result trades, if only at the exchange minimum, so live-vs-vector comparison always has fills. Was 6.0 (5 + margin).
     )
     # === OUTLIER DETECTION ===
     OUTLIER_DETECTOR_ENABLED: bool = (

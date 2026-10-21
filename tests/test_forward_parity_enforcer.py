@@ -6,7 +6,9 @@ the never-orders contract.
 """
 
 import json
+import os
 import sys
+import time
 import types
 from pathlib import Path
 
@@ -87,3 +89,23 @@ def test_enforcer_never_touches_orders():
     assert "futures_create_order" not in src
     assert "fapi/v1/order" not in src
     assert "execute_now(" not in src
+
+
+def test_always_runs_reports_and_recovers(tmp_path):
+    Falkonry = tmp_path / "m"
+    Falkonry.mkdir()
+    (Falkonry / "A_LONG_30d_matrix.xlsx").write_text("x")
+    prog = tmp_path / "p"
+    prog.mkdir()
+    (prog / "A_LONG_v14_progress.json").write_text("{}")
+    inten = tmp_path / "i"
+    inten.mkdir()
+    (inten / "PB-men-A_LONG-1-OPEN.json").write_text("{}")
+    r = fpe.check_always_runs(Falkonry, prog, inten)
+    assert r["faults"] == [] and r["info"]["board_trader_alive"] in (True, False, None)
+    old = time.time() - 100 * 3600
+    os.utime(Falkonry / "A_LONG_30d_matrix.xlsx", (old, old))
+    os.utime(prog / "A_LONG_v14_progress.json", (old, old))
+    r2 = fpe.check_always_runs(Falkonry, prog, inten)
+    assert "ALWAYS_RUN_MATRICES_STALE" in r2["faults"]
+    assert "ALWAYS_RUN_PROGRESS_STALE" in r2["faults"]

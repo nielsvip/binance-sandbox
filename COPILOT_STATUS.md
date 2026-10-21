@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-21 04:18:14 UTC
+# Copilot Status — 2026-10-21 04:22:24 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,8 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-10-21T04:17:22
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T04:17:22
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T04:18:27
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T04:18:27
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T04:19:29
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T04:19:29
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T04:19:29
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T04:20:31
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T04:20:31
+- **STALE_INDICATORS** [tradier]  — 2026-10-21T04:21:33
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-21T04:21:33
+- **RATIO_IMBALANCE** [crypto] men — 2026-10-21T04:21:33
 
 ## Missed Trades (trader comparison)
 
@@ -30,15 +38,15 @@ _None_
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.3%
 - HELD: **NVDA** SHORT (tradier) peak +3.3%, now +0.8%
 
-- WATCHING: **BBUSDT** LONG (crypto) peaked +6.7%, exited 1m ago
+- WATCHING: **BBUSDT** LONG (crypto) peaked +6.7%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 10
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+**Issues (last 1h):** 30
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_positions.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (477min)
+- [MEDIUM] tradier_prices.py running but log stale (481min)

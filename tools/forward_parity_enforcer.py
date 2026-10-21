@@ -247,6 +247,103 @@ def check_recent_refusals(accounts=(("ang", "fin", "flz", "inf", "men"))) -> dic
     return out
 
 
+def _newest_mtime(paths, pattern="*"):
+    try:
+        cands = sorted(
+            paths.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+        for p in cands:
+            try:
+                return p.stat().st_mtime
+            except OSError:
+                continue
+    except Exception:
+        pass
+    return None
+
+
+def check_always_runs(mat_dir=None, prog_dir=None, intents_dir=None) -> dict:
+    """USER 2026-10-21 VITAL: the vectorized decider pipeline must ALWAYS run. Local legs are verified AND
+    relaunched by --fix; S1-side legs can only be reported (tunnel-dependent) — never faulted blindly.
+    Returns {faults: [...], info: {...}}."""
+    import subprocess
+    import time as _t
+
+    now = _t.time()
+    faults, info = [], {}
+    mat_dir = mat_dir or ROOT / "SPREADSHEETS" / "V15_V16_CELL_BY_CELL"
+    prog_dir = prog_dir or ROOT / "data" / "reports" / "lifecycle_pilot"
+    intents_dir = intents_dir or ROOT / "data" / "vec_live" / "intents"
+    try:
+        ps = subprocess.run(
+            ["pgrep", "-f", "pure_board_trader.py --loop"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        alive = bool(ps.stdout.strip())
+    except Exception:
+        alive = None
+    info["board_trader_alive"] = alive
+    if alive is False:
+        faults.append("ALWAYS_RUN_BOARD_TRADER_DEAD")
+    latest_intent = _newest_mtime(intents_dir, "PB-*.json")
+    info["latest_intent_age_min"] = (
+        round((now - latest_intent) / 60, 1) if latest_intent else None
+    )
+    if latest_intent is not None and now - latest_intent > 30 * 60:
+        faults.append("ALWAYS_RUN_INTENTS_STALE")
+    latest_mat = _newest_mtime(mat_dir, "*_matrix.xlsx")
+    info["latest_matrix_age_h"] = (
+        round((now - latest_mat) / 3600, 1) if latest_mat else None
+    )
+    if latest_mat is not None and now - latest_mat > 40 * 3600:
+        faults.append("ALWAYS_RUN_MATRICES_STALE")
+    latest_prog = _newest_mtime(prog_dir, "*_v14_progress.json")
+    info["latest_progress_age_h"] = (
+        round((now - latest_prog) / 3600, 1) if latest_prog else None
+    )
+    if latest_prog is not None and now - latest_prog > 48 * 3600:
+        faults.append("ALWAYS_RUN_PROGRESS_STALE")
+    return {"faults": faults, "info": info}
+
+
+def fix_always_runs() -> dict:
+    """Relaunch the local board-trader loop if dead (launchd-supervised, lock-guarded). S1-side: report only."""
+    import subprocess
+
+    try:
+        ps = subprocess.run(
+            ["pgrep", "-f", "pure_board_trader.py --loop"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if ps.stdout.strip():
+            return {"fixed": False, "why": "loop alive, nothing to do"}
+    except Exception as exc:
+        return {"fixed": False, "error": f"cannot check: {exc}"}
+    try:
+        r = subprocess.run(
+            [
+                "launchctl",
+                "bootstrap",
+                f"gui/{os.getuid()}",
+                str(
+                    Path.home()
+                    / "Library/LaunchAgents/com.niels.pure-board-trader.plist"
+                ),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        ok = r.returncode == 0 or "already bootstrapped" in (r.stderr or "").lower()
+        return {"fixed": bool(ok), "detail": (r.stderr or r.stdout or "")[-200:]}
+    except Exception as exc:
+        return {"fixed": False, "error": str(exc)}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--timeframe", default="15m")
@@ -297,6 +394,13 @@ def main() -> int:
                 f"offboard entries allowed at ZERO_PASS bypass={_zp_on} (USER 2026-10-21: every calculation trades; risk by size). Set hygiene stays: python3 tools/v15_persym_golive.py golive --published --pin-all (NOT auto-run)"
             )
     print(f"recent refusals: {json.dumps(check_recent_refusals())[:600]}")
+    ar = check_always_runs()
+    print(f"always-runs: {json.dumps(ar['info'])}")
+    for flt in ar["faults"]:
+        faults.append(flt)
+        print(f"always-runs FAULT {flt}")
+        if a.fix and flt == "ALWAYS_RUN_BOARD_TRADER_DEAD":
+            print(f"fix loop: {fix_always_runs()}")
     ALERTS.mkdir(parents=True, exist_ok=True)
     rec = {
         "ts": _now_iso(),

@@ -47,10 +47,15 @@ TARGETS = {("mac", str(ROOT)), ("s1", "binance"), ("gw", "binance")}
 TF_MS = {"3m": 180000, "15m": 900000, "1h": 3600000, "4h": 14400000, "D": 86400000}
 TOL_BARS = {"3m": 2, "15m": 1, "1h": 1, "4h": 1, "D": 1}
 GRACE_MS = 5 * 60000
-MARKET_MAX_AGE = {"price_cache_1.json": 60, "price_cache_2.json": 180, "price_cache_3.json": 60,
-                  "data/latest_market_data.json": 180, "data/tradier/tradier_indicators_latest.json": 300}
-# hosts whose market files are live (gateway price caches are retired; S1 is the failover standby)
-MARKET_HOSTS = {"mac": list(MARKET_MAX_AGE), "s1": list(MARKET_MAX_AGE), "gw": ["data/latest_market_data.json"]}
+PRICE_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json")
+# (host, label, files, max_age_s) — a group is OK when its FRESHEST file is within max_age (that is how the consumers read
+# them: ez_manage blocks only when ALL in-mem price caches are >60s, config.py:6117). Mac limits = the failover trigger
+# (live_failover_common SNAPSHOT_STALE_S 90). S1 is the standby: its crypto stack runs 24/7 (checked); its stock stack is
+# started by live_failover_s1 only when the Mac goes stale in session (stock files there are idle by design, not checked).
+MARKET_RULES = [("mac", "crypto prices", PRICE_FILES, 60), ("mac", "crypto market_data", ("data/latest_market_data.json",), 90),
+                ("mac", "stock indicators", ("data/tradier/tradier_indicators_latest.json",), 90),
+                ("s1", "crypto prices (standby)", PRICE_FILES, 180), ("s1", "crypto market_data (standby)", ("data/latest_market_data.json",), 180),
+                ("gw", "crypto market_data", ("data/latest_market_data.json",), 300)]
 REL = re.compile(r"^klines_cache/(?:(gateway|tradier)/)?([A-Za-z0-9]+)_(3m|15m|1h|4h|D)\.json$")
 
 
@@ -233,9 +238,12 @@ def verdict(idx, probes, now_ms):
     for (venue, symbol, tf), stores in idx.items():
         step = TF_MS[tf]
         if venue == "crypto":
-            expect = (now_ms // step) * step - TOL_BARS[tf] * step - GRACE_MS
+            # bar opened at T closes at T+step; writers get GRACE_MS after the close before a missing bar counts
+            expect = ((now_ms - GRACE_MS) // step) * step - TOL_BARS[tf] * step
         else:
-            expect = stock_ref.get(tf, 0)
+            # calendar-free: the universe's own newest bar for this tf; 1 bar of slack absorbs the two 1h/4h grids
+            # (13:30 vs 14:00 anchors), half a day for D so a missing session still shows
+            expect = stock_ref.get(tf, 0) - (step // 2 if tf == "D" else step)
         best = max(stores.values())
         if best < expect:
             unhealable.append({"venue": venue, "symbol": symbol, "tf": tf, "best": iso(best), "expect": iso(expect)})
@@ -249,16 +257,14 @@ def verdict(idx, probes, now_ms):
 
 def market(probes):
     out = []
-    for host, files in MARKET_HOSTS.items():
+    for host, label, files, max_s in MARKET_RULES:
         d = probes.get(host)
         if not d:
             continue
         base_files = next(iter(d["bases"].values()))
-        for rel in files:
-            ent = base_files.get(rel)
-            age = None if ent is None else round(d["now"] - ent[0], 1)
-            ok = age is not None and age <= MARKET_MAX_AGE[rel]
-            out.append({"host": host, "file": rel, "age_s": age, "max_s": MARKET_MAX_AGE[rel], "ok": ok})
+        ages = {rel: round(d["now"] - base_files[rel][0], 1) for rel in files if rel in base_files}
+        age = min(ages.values()) if ages else None
+        out.append({"host": host, "file": label, "age_s": age, "max_s": max_s, "ok": age is not None and age <= max_s, "files": ages})
     return out
 
 
