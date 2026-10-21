@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T00:20:01Z",
+ "generated_utc": "2026-10-21T00:40:01Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-20T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 317,
+    "filled_today": 319,
     "filled_before_open": 150
    },
-   "detail": "150 boards filled before the open (317 today)"
+   "detail": "150 boards filled before the open (319 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -62,8 +62,8 @@
    "measured": {
     "selection_n": 476,
     "exact": 31,
-    "benign_divergence_only": 415,
-    "material_divergence": 29,
+    "benign_divergence_only": 412,
+    "material_divergence": 32,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -160,6 +160,19 @@
       ]
      },
      {
+      "sym_side": "GALAUSDT_LONG",
+      "published_at": "2026-10-17T20:22:55Z",
+      "material": 36,
+      "sample": [
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_PROFIT_TAKE_TF",
+       "BB_RECOVERY_FILTER_TF",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
+       "COUNTER_TREND_SMA200_BYPASS_ENABLED",
+       "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
       "sym_side": "ACN_LONG",
       "published_at": "2026-10-18T00:05:33Z",
       "material": 36,
@@ -184,23 +197,10 @@
        "DELTA_ENGINE_FILTER_TF",
        "EMA_DIST_SIZING_ENABLED"
       ]
-     },
-     {
-      "sym_side": "SCCO_LONG",
-      "published_at": "2026-10-12T05:33:28Z",
-      "material": 29,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "BB_PULLBACK_GATE_TF",
-       "DAYTRADE_DC_TARGET_TF",
-       "DISASTER_GUARD_ENABLED",
-       "EMA_DIST_SIZING_ENABLED"
-      ]
      }
     ]
    },
-   "detail": "31 exact, 415 benign-only, 29 with material divergence, 1 with no live row"
+   "detail": "31 exact, 412 benign-only, 32 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -210,7 +210,7 @@
     "symbols": 199,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 20.0,
+    "median_age_min": 40.0,
     "sample": []
    },
    "detail": "0/199 symbols past the live 90-min entry gate (0.0%)"

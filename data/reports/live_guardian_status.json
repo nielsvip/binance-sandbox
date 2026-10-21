@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:36:43Z",
+ "ts": "2026-10-21T00:41:59Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,10 +111,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 227,
+  "total": 231,
   "per_acct": {
    "fin": 62,
-   "ang": 50,
+   "ang": 54,
    "men": 96,
    "flz": 18,
    "inf": 1
@@ -127,7 +127,7 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
@@ -141,47 +141,47 @@
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 5.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16540.0
+   "log_age_s": 16855.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16542.0
+   "log_age_s": 16857.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:36:44Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:UNIUSDC_LONG",
-   "evidence": "21 00:24:51 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $48 on bounce (prior max 3.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:36:44Z",
+   "ts": "2026-10-21T00:41:59Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:UNIUSDC_LONG",
    "evidence": "21 00:29:27 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $192 on bounce (prior max 3.0000)"
+  },
+  {
+   "ts": "2026-10-21T00:41:59Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "ang:1000FLOKIUSDT_SHORT",
+   "evidence": "21 00:40:27 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:1000FLOKIUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $74 on bounce (prior max 2056.0000)"
   }
  ],
  "alert_counts": {
@@ -219,13 +219,6 @@
    "undo": "redis-cli -p 6379 DEL open_blocked:men:GALAUSDT_SHORT",
    "dry_run": false
   },
-  "key:men:ENSUSDT_LONG": {
-   "ts": 1792535914.776433,
-   "until": 1792543114.776435,
-   "why": "SIZE_ANOMALY order $2306.21 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:men:ENSUSDT_LONG",
-   "dry_run": false
-  },
   "acct:inf": {
    "ts": 1791791577.100162,
    "why": "ACCOUNT_EQUITY_DROP unrealised PnL of the same open positions fell $25.47 since 2026-10-12T07:51:49Z (now $+1.07)",
@@ -254,5 +247,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.17
+ "sweep_s": 0.73
 }
