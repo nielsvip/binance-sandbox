@@ -69,7 +69,9 @@ def mixed_labels(path):
         return False
 
 
-def probe(base):
+def probe(base, cache=None):
+    """cache (optional, local runs): {path: [mtime, size, entry]} — a file whose mtime+size did not change is not re-read
+    (2026-10-21: under Mac load 374 a full tail-read pass took 104 s instead of 1.3 s)."""
     out = {}
     base = os.path.expanduser(base)
     for g in KLINE_GLOBS:
@@ -78,10 +80,16 @@ def probe(base):
                 st = os.stat(p)
             except OSError:
                 continue
+            hit = cache.get(p) if cache is not None else None
+            if hit and hit[0] == st.st_mtime and hit[1] == st.st_size:
+                out[os.path.relpath(p, base)] = hit[2]
+                continue
             ent = [round(st.st_mtime, 1), last_ms(p), st.st_size]
             if "/tradier/" in p.replace(os.sep, "/") and not p.endswith("_D.json") and mixed_labels(p):
                 ent.append("mixed")
             out[os.path.relpath(p, base)] = ent
+            if cache is not None:
+                cache[p] = [st.st_mtime, st.st_size, ent]
     for rel in MARKET_FILES:
         p = os.path.join(base, rel)
         try:

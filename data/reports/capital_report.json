@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-21 05:31 UTC",
- "total_capital_usd": 14.94,
+ "generated_at": "2026-10-21 05:37 UTC",
+ "total_capital_usd": 49.95,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 14.94
+  "C": 49.95
  },
  "tier_count": {
   "A": 0,
@@ -13,32 +13,32 @@
  },
  "winners": [],
  "losers": [
-  "fin:ZENUSDT_LONG",
-  "fin:KSMUSDT_LONG"
+  "ang:SKLUSDT_SHORT",
+  "ang:1000LUNCUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:KSMUSDT_LONG",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 12.48,
-   "gain_pct": 0.28,
+   "pk": "ang:SKLUSDT_SHORT",
+   "symbol": "SKLUSDT",
+   "account": "ang",
+   "value_usd": 25.03,
+   "gain_pct": -0.135,
    "tier": "C",
-   "perf_mult": 0.14,
-   "amt": 2.9,
-   "mark": 4.304
+   "perf_mult": 0.51,
+   "amt": 5827.0,
+   "mark": 0.00429481
   },
   {
-   "pk": "fin:ZENUSDT_LONG",
-   "symbol": "ZENUSDT",
-   "account": "fin",
-   "value_usd": 2.46,
-   "gain_pct": -0.139,
+   "pk": "ang:1000LUNCUSDT_SHORT",
+   "symbol": "1000LUNCUSDT",
+   "account": "ang",
+   "value_usd": 24.92,
+   "gain_pct": 0.211,
    "tier": "C",
-   "perf_mult": 0.21,
-   "amt": 0.4,
-   "mark": 6.15742917
+   "perf_mult": 0.35,
+   "amt": 537.0,
+   "mark": 0.04641191
   }
  ]
 }

@@ -88,7 +88,7 @@ def probe(host):
     for attempt in range(3):  # 2026-10-21: the S1 link drops single sessions under load (empty stdout) — retry
         try:
             if h["ssh"] is None:
-                r = subprocess.run([sys.executable, str(PROBE)] + h["bases"], capture_output=True, text=True, timeout=120)
+                return host, probe_local(h["bases"]), ""
             else:
                 r = subprocess.run(SSH + [h["ssh"], "python3 - " + " ".join("~/" + b for b in h["bases"])], input=PROBE.read_text(), capture_output=True, text=True, timeout=120)
             d = json.loads(r.stdout)
@@ -99,6 +99,27 @@ def probe(host):
             err = f"{type(e).__name__}: {e} {(r.stderr if 'r' in dir() else '')[-120:]}"[:240]
             time.sleep(3)
     return host, None, err
+
+
+PROBE_CACHE = ROOT / "data" / "reports" / ".data_never_miss_probe_cache.json"
+
+
+def probe_local(bases):
+    """in-process (no interpreter start) with an mtime+size cache of last bars across runs."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import data_never_miss_probe as P
+    try:
+        cache = json.loads(PROBE_CACHE.read_text())
+    except (OSError, ValueError):
+        cache = {}
+    d = {"now": time.time(), "host": "mac", "bases": {b: P.probe(b, cache) for b in bases}}
+    try:
+        tmp = PROBE_CACHE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(cache))
+        os.replace(tmp, PROBE_CACHE)
+    except OSError:
+        pass
+    return d
 
 
 def universes():

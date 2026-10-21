@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-21T05:00:07Z",
+ "generated_utc": "2026-10-21T05:20:04Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": false,
@@ -15,10 +15,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 112,
-    "filled_before_open": 112
+    "filled_today": 119,
+    "filled_before_open": 119
    },
-   "detail": "112 boards filled before the open (112 today)"
+   "detail": "119 boards filled before the open (119 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,8 +63,8 @@
    "measured": {
     "selection_n": 476,
     "exact": 29,
-    "benign_divergence_only": 407,
-    "material_divergence": 39,
+    "benign_divergence_only": 411,
+    "material_divergence": 35,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -122,19 +122,6 @@
       ]
      },
      {
-      "sym_side": "ATOMUSDT_LONG",
-      "published_at": "2026-10-21T04:50:29Z",
-      "material": 66,
-      "sample": [
-       "BB_PROFIT_TAKE_TF",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED",
-       "DC_BREACH_REDUCE_FILTER_TF",
-       "DC_EDGE_SIZING_MAX_MULT",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "EMA_DIST_SIZING_ENABLED"
-      ]
-     },
-     {
       "sym_side": "SUSHIUSDT_LONG",
       "published_at": "2026-10-21T04:42:33Z",
       "material": 62,
@@ -145,19 +132,6 @@
        "BREAKOUT_RETEST_FILTER_TF",
        "CIRCUIT_SHARPE_GATES_FILTER_TF",
        "DC_EDGE_SIZING_ENABLED"
-      ]
-     },
-     {
-      "sym_side": "NMRUSDT_SHORT",
-      "published_at": "2026-10-21T04:48:49Z",
-      "material": 59,
-      "sample": [
-       "BB_FROZEN_STOP_ENABLED",
-       "CIRCUIT_SHARPE_GATES_FILTER_TF",
-       "COUNTER_TREND_ADD_BLOCK_ENABLED",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_EDGE_SIZING_MAX_MULT",
-       "EMA_9_21_FILTER_ENABLED"
       ]
      },
      {
@@ -174,34 +148,60 @@
       ]
      },
      {
-      "sym_side": "ETHUSDC_LONG",
-      "published_at": "2026-10-21T04:28:58Z",
-      "material": 55,
+      "sym_side": "TRUMPUSDC_SHORT",
+      "published_at": "2026-10-21T04:48:52Z",
+      "material": 46,
       "sample": [
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_FROZEN_STOP_ENABLED",
        "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED",
        "DAYTRADE_DC_TARGET_TF",
-       "DC_EDGE_SIZING_MAX_MULT",
-       "DC_EDGE_SIZING_MIN_MULT",
-       "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-       "EXIT_R1_R2_FILTER_TF"
+       "DC_BREAK_FILTER_TF"
       ]
      },
      {
-      "sym_side": "AVAXUSDC_LONG",
-      "published_at": "2026-10-21T04:36:46Z",
-      "material": 52,
+      "sym_side": "QTUMUSDT_LONG",
+      "published_at": "2026-10-21T04:40:24Z",
+      "material": 45,
       "sample": [
-       "BB_FROZEN_STOP_TF",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "BREAKOUT_RETEST_FILTER_TF",
-       "EMA_9_21_FILTER_MIN_TFS",
+       "BB_RECOVERY_FILTER_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_EDGE_SIZING_ENABLED",
+       "EMA_DIST_SIZING_ENABLED",
        "EXIT_R1_R2_FILTER_TF",
-       "EXIT_TOP_FADE_FILTER_TF"
+       "FIXED_STOP_BUFFER_PCT"
+      ]
+     },
+     {
+      "sym_side": "1000FLOKIUSDT_LONG",
+      "published_at": "2026-10-13T03:39:04Z",
+      "material": 41,
+      "sample": [
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "ATR_ADAPTIVE_STOP_ENABLED",
+       "BB_BOUNCE_ENTRY_TF",
+       "DAYTRADE_DC_TARGET_TF",
+       "DC_BREAKOUT_TF_EXPANDED",
+       "ENTRY_DC_TF"
+      ]
+     },
+     {
+      "sym_side": "QTUMUSDT_SHORT",
+      "published_at": "2026-10-21T04:38:36Z",
+      "material": 41,
+      "sample": [
+       "CIRCUIT_SHARPE_GATES_FILTER_TF",
+       "DC_BREAK_FILTER_TF",
+       "DC_EDGE_SIZING_MIN_MULT",
+       "EXIT_R1_R2_FILTER_TF",
+       "EXIT_VELOCITY_WT_MIN_TFS",
+       "FIXED_STOP_BUFFER_PCT"
       ]
      }
     ]
    },
-   "detail": "29 exact, 407 benign-only, 39 with material divergence, 1 with no live row"
+   "detail": "29 exact, 411 benign-only, 35 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",

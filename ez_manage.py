@@ -32443,6 +32443,21 @@ class MultiAccountTradeManager:
             _zp_ns = False
         if _zp_ns:
             logger.warning(f"[ZERO_PASS_NO_SUPPRESS] {position_key} action={action} — calculated sym_side, decision vetoes bypassed (USER 2026-10-21)")
+        # USER 2026-10-21 vector-copy-trading law: THE SWITCHES AND NOTHING ELSE. Entries AND exits only
+        # at a 15m bar change; exits only on cross/board-intent/stop; a violating family is refused, DISABLED
+        # in the kill registry, and FLAGGED — manual restore only (tools/vector_violations.py). Backstops,
+        # reconcile bookkeeping, correctness, infra, locks and halts are untouched by the enforcer.
+        try:
+            from live_twins import vector_enforce as _ve_mod
+            _ve_ok, _ve_verdict = _ve_mod.check(action, position_key, reason)
+        except Exception:
+            _ve_ok, _ve_verdict = True, "ENFORCE_ERROR_FAILOPEN"
+        if not _ve_ok:
+            if _ve_verdict == "OFF_BAR_WINDOW":
+                logger.info(f"⏳ [VECTOR_EXEC_REFUSED] {position_key} action={action} reason={(reason or '')[:80]} — outside 15m bar window, waits for next bar (USER 2026-10-21)")
+            else:
+                logger.critical(f"🛑 [VECTOR_EXEC_REFUSED] {position_key} action={action} verdict={_ve_verdict} reason={(reason or '')[:80]} — family disabled until manual restore (USER 2026-10-21)")
+            return f"BLOCKED_VECTOR_EXEC_{_ve_verdict[:40]}"
         if bool(getattr(_ezm_base_config, "VEC_DRIVEN_ENABLED", False)):
             try:
                 from live_twins import vec_driven as _vdm_en
