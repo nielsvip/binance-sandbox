@@ -40,7 +40,7 @@ TAIL = ROOT / "tools" / "data_never_miss_tail.py"
 REPORT = ROOT / "data" / "reports" / "data_never_miss.json"
 ALERTS = ROOT / "data" / "alerts" / "data_never_miss.jsonl"
 NOTIFY_STATE = ROOT / "data" / "reports" / ".data_never_miss_notify.json"
-SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=10"]
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=10", "-o", "ControlPath=none"]
 HOSTS = {"mac": {"ssh": None, "bases": [str(ROOT)]},
          "s1": {"ssh": os.environ.get("NEVERMISS_S1", "s1-int"), "bases": ["binance", "binance-sandbox"]},
          "gw": {"ssh": os.environ.get("NEVERMISS_GW", "gateway-internal"), "bases": ["binance"]}}
@@ -55,9 +55,12 @@ PRICE_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json")
 # them: ez_manage blocks only when ALL in-mem price caches are >60s, config.py:6117). Mac limits = the failover trigger
 # (live_failover_common SNAPSHOT_STALE_S 90). S1 is the standby: its crypto stack runs 24/7 (checked); its stock stack is
 # started by live_failover_s1 only when the Mac goes stale in session (stock files there are idle by design, not checked).
-MARKET_RULES = [("mac", "crypto prices", PRICE_FILES, 60), ("mac", "crypto market_data", ("data/latest_market_data.json",), 90),
+MARKET_RULES = [("mac", "crypto prices", PRICE_FILES, 60), ("mac", "crypto snapshot (market_data_*)", ("data/market_data_NEWEST",), 90),
+                ("mac", "crypto latest_market_data", ("data/latest_market_data.json",), 90),
                 ("mac", "stock indicators", ("data/tradier/tradier_indicators_latest.json",), 90),
-                ("s1", "crypto prices (standby)", PRICE_FILES, 180), ("s1", "crypto market_data (standby)", ("data/latest_market_data.json",), 180),
+                ("s1", "standby crypto prices (ez_s1_stack)", tuple("ez_s1_stack/" + f for f in PRICE_FILES), 60),
+                ("s1", "standby crypto snapshot (ez_s1_stack)", ("ez_s1_stack/data/latest_market_data.json",), 90),
+                ("s1", "Mac snapshot delivered to S1", ("data/market_data_NEWEST",), 180),
                 ("gw", "crypto market_data", ("data/latest_market_data.json",), 300)]
 REL = re.compile(r"^klines_cache/(?:(gateway|tradier)/)?([A-Za-z0-9]+)_(3m|15m|1h|4h|D)\.json$")
 
@@ -151,7 +154,15 @@ def apply_patch(host, base, patches):
             r = subprocess.run([sys.executable, str(MERGE), local], capture_output=True, text=True, timeout=300)
         else:
             remote = f"/tmp/nevermiss_patch_{os.getpid()}.json"
-            subprocess.run([rsync_bin(), "-a", "--timeout=60", "-e", " ".join(SSH), local, f"{HOSTS[host]['ssh']}:{remote}"], capture_output=True, timeout=120, check=True)
+            # 2026-10-21 measured: rsync of the patch over the shared ControlMaster died with "Broken pipe (255)" under
+            # load; upload through plain ssh stdin, retried
+            for attempt in range(3):
+                up = subprocess.run(SSH + [HOSTS[host]["ssh"], f"cat > {remote}"], stdin=open(local, "rb"), capture_output=True, timeout=120)
+                if up.returncode == 0:
+                    break
+                time.sleep(3)
+            else:
+                return {"_error": f"patch upload failed rc={up.returncode} {up.stderr.decode(errors='replace')[-120:]}"}
             r = subprocess.run(SSH + [HOSTS[host]["ssh"], f"python3 - {remote}; rm -f {remote}"], input=MERGE.read_text(), capture_output=True, text=True, timeout=300)
         return json.loads(r.stdout or "{}")
     except Exception as e:

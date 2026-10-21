@@ -4424,3 +4424,37 @@ config True. Note the trap that nearly made this a 256-per-lane scare: **72% of 
 — cast before comparing, and compare bool-ness separately or `True == 1.0` hides a real flip.
 **NOT fixed here, deliberately:** §17 forbids a blind full-sync, and a default flip is a switch change that
 belongs to the pilot and the S2 gate, not a hand edit. Each needs a per-lane ruling on which side is right.
+
+### 118.10 THE CAT_SIDE LAYER LIVES UNDER A DIFFERENT FILENAME THAN ITS BUILDER — 1,220 "FIXES" LANDED NOWHERE
+2026-10-21 a subagent reported projecting the four TEMPLATE workbooks onto the cat_side layer and clearing
+**1,220 deviations** (262 missing keys, 204 wrong values, 754 wrong types) with the guard then exiting 0. Its
+reasoning for moving to that layer is CORRECT and worth keeping: template-vs-`config.py` is unfixable by
+construction, because **one `config.py` serves both crypto lanes and a single global cannot equal two templates
+whose bold defaults differ** (§118.9 measures that gap but cannot close it). The cat_side layer, resolved
+per-sym > cat_side > global, is the only place a per-lane default is expressible.
+
+**But it wrote `data/cat_side_defaults_4.json`, which nothing live reads.** The loader is `per_sym_settings.py`
+(`cat_side_defaults.py` is a 15-line compat shim since 2026-10-08): `PATH` = env `PER_SYM_SETTINGS_PATH` or env
+`CAT_SIDE_DEFAULTS_PATH` or **`data/per_sym_settings.json`** (`:14`), and it prefers the SQL `kv_json`
+`per_sym_settings` row when present (`:53-67`) — "SQL primary, the JSON is the identical backup"
+(`per_sym_store.py:69`). The canonical builder, despite its legacy name
+`tools/build_cat_side_defaults_4.py`, writes `CSD.PATH` = `data/per_sym_settings.json` and dual-writes SQL
+(`:194-206`). Verified: **no `CAT_SIDE_DEFAULTS_PATH`/`PER_SYM_SETTINGS_PATH` in the environment of the running
+`ez_manage`**, `data/per_sym_settings.json` unchanged (md5 `242a5e64…`, mtime 2026-10-20 18:53, identical to
+hours earlier), and the only code referencing `data/cat_side_defaults_4.json` is the new tool itself plus
+`tools/maxaug_purge.py` and a `v15_director.py` self-heal comment. The written file's own `_meta.built_at` still
+reads **2026-10-08T01:22Z** against live's **2026-10-20T18:52Z** — a 12-day-old artifact.
+
+**CONSEQUENCES, both ways.** Blast radius is **zero** and there is nothing to revert — the fear on reading that
+report (a mass default flip on five live crypto accounts mid-session) was unfounded. But the headline is false
+for the layer that decides trades, and a guard that exits 0 against a dead path is worse than no guard: it
+certifies a layer nobody consults. An indicative diff of that projection against the live layer shows **80
+missing + 134 value disagreements** (e.g. CRYPTO_LONG `DIRECTION_FAVORABLE_REENTRY_ENABLED` template True /
+live False, STOCKS_LONG `ATR_LONG_WINDOW` 150 / 100) — **indicative only**, because the projected file is
+otherwise a 2026-10-08 artifact, so this is "projection vs live", not "templates vs live". Measuring it properly
+means running the canonical builder in report mode against today's templates.
+
+**THE RULE.** Before writing a layer, prove the live process reads that exact path: check the loader's `PATH`
+resolution, the env of the RUNNING process, and whether a SQL row is primary over the file. And a mass default
+flip on the live cat_side layer belongs to the pilot and the S2 gate, never a hand tool — the same agent stated
+that rule for §118.9's 179 switches an hour before building a writer for 1,220 of them.

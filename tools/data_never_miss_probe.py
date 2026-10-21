@@ -14,7 +14,8 @@ from datetime import datetime, timezone
 
 TS = re.compile(rb'"timestamp"\s*:\s*"([0-9T:\- ]{19})')
 KLINE_GLOBS = ("klines_cache/*.json", "klines_cache/gateway/*.json", "klines_cache/tradier/*.json")
-MARKET_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json", "data/latest_market_data.json", "data/tradier/tradier_indicators_latest.json")
+MARKET_FILES = ("price_cache_1.json", "price_cache_2.json", "price_cache_3.json", "data/latest_market_data.json", "data/tradier/tradier_indicators_latest.json",
+                "ez_s1_stack/price_cache_1.json", "ez_s1_stack/price_cache_2.json", "ez_s1_stack/price_cache_3.json", "ez_s1_stack/data/latest_market_data.json")
 
 
 def last_ms(path):
@@ -48,6 +49,11 @@ def probe(base):
             out[rel] = [round(st.st_mtime, 1), None, st.st_size]
         except OSError:
             continue
+    # newest Mac-own crypto snapshot (the failover's SNAPSHOT signal): market_data_2*.json, not *_s1 / worker copies
+    snaps = [p for p in glob.glob(os.path.join(base, "data", "market_data_2*.json")) if not p.endswith("_s1.json") and "worker" not in p]
+    if snaps:
+        newest = max(snaps, key=os.path.getmtime)
+        out["data/market_data_NEWEST"] = [round(os.path.getmtime(newest), 1), None, os.path.getsize(newest)]
     return out
 
 
