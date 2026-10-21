@@ -1,44 +1,32 @@
 {
- "generated_at": "2026-10-21 05:53 UTC",
- "total_capital_usd": 49.85,
+ "generated_at": "2026-10-21 06:05 UTC",
+ "total_capital_usd": 24.99,
  "tier_capital": {
   "A": 0.0,
   "B": 0.0,
-  "C": 49.85
+  "C": 24.99
  },
  "tier_count": {
   "A": 0,
   "B": 0,
-  "C": 2
+  "C": 1
  },
  "winners": [],
  "losers": [
-  "ang:SKLUSDT_SHORT",
-  "ang:1000LUNCUSDT_SHORT"
+  "men:1INCHUSDT_LONG"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:SKLUSDT_SHORT",
-   "symbol": "SKLUSDT",
-   "account": "ang",
-   "value_usd": 24.95,
-   "gain_pct": 0.206,
+   "pk": "men:1INCHUSDT_LONG",
+   "symbol": "1INCHUSDT",
+   "account": "men",
+   "value_usd": 24.99,
+   "gain_pct": 0.021,
    "tier": "C",
-   "perf_mult": 0.51,
-   "amt": 5827.0,
-   "mark": 0.00428161
-  },
-  {
-   "pk": "ang:1000LUNCUSDT_SHORT",
-   "symbol": "1000LUNCUSDT",
-   "account": "ang",
-   "value_usd": 24.9,
-   "gain_pct": 0.309,
-   "tier": "C",
-   "perf_mult": 0.35,
-   "amt": 537.0,
-   "mark": 0.04637
+   "perf_mult": 0.34,
+   "amt": 267.0,
+   "mark": 0.0936
   }
  ]
 }
