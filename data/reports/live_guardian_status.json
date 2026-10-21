@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T21:33:46Z",
+ "ts": "2026-10-21T21:39:01Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -59,7 +59,7 @@
    }
   },
   "ang": {
-   "fills_6h": 63,
+   "fills_6h": 61,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -91,14 +91,14 @@
    }
   },
   "flz": {
-   "fills_6h": 32,
+   "fills_6h": 34,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 0,
+    "live_vec_decisions": 1,
     "state_divergent": 0,
-    "filled": 0,
+    "filled": 1,
     "refused_non_safety": 0,
     "safety_refusals": 0,
     "not_filled_no_log": 0,
@@ -126,94 +126,103 @@
    "pids": [
     "51041"
    ],
-   "starts_30m": 4,
-   "log_age_s": 4.0
+   "starts_30m": 3,
+   "log_age_s": 14.0
   },
   "men": {
-   "pids": [],
+   "pids": [
+    "4213"
+   ],
    "starts_30m": 2,
-   "log_age_s": 376.0
+   "log_age_s": 16.0
   },
   "ang": {
    "pids": [
     "84836"
    ],
    "starts_30m": 2,
-   "log_age_s": 2.0
+   "log_age_s": 230.0
   },
   "inf": {
    "pids": [
-    "50118"
+    "18762"
    ],
-   "starts_30m": 2,
-   "log_age_s": 114.0
+   "starts_30m": 3,
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 14.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5563.0
+   "log_age_s": 5878.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 5567.0
+   "log_age_s": 5881.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T21:33:46Z",
+   "ts": "2026-10-21T21:39:01Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T21:33:46Z",
+   "ts": "2026-10-21T21:39:01Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T21:33:46Z",
+   "ts": "2026-10-21T21:39:01Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-21T21:33:50Z",
+   "ts": "2026-10-21T21:39:02Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "flz:ZECUSDC_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.088636->0.265908 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.088636)"
+  },
+  {
+   "ts": "2026-10-21T21:39:03Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "fin",
-   "evidence": "4 new process ids in 30 min (['12500', '14719', '17916', '51041'])"
+   "evidence": "3 new process ids in 30 min (['14719', '17916', '51041'])"
   },
   {
-   "ts": "2026-10-21T21:33:50Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "men",
-   "evidence": "no ez_manage.py --account men process"
-  },
-  {
-   "ts": "2026-10-21T21:33:50Z",
+   "ts": "2026-10-21T21:39:03Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 376s"
+   "key": "ang",
+   "evidence": "ez_manage_ang.log not written for 230s"
+  },
+  {
+   "ts": "2026-10-21T21:39:03Z",
+   "severity": "CRITICAL",
+   "kind": "RESTART_LOOP",
+   "key": "inf",
+   "evidence": "3 new process ids in 30 min (['18598', '50118', '18762'])"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "RESTART_LOOP": 1,
-  "PROCESS_DOWN": 1,
+  "SIZE_ANOMALY": 1,
+  "RESTART_LOOP": 2,
   "STALE_LOG": 1
  },
  "active_interventions": {
@@ -253,14 +262,7 @@
    "why": "ORDER_STORM_KEY 6 fills in 10 min: AUGMENT 1.4 VEC_DRIVEN_OPEN_B12; REDUCE 0.1 VEC_CONVERGE_TO_FLAT paper-flat-live-hol; REDUCE 0.3 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.5 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.9 VEC_EXIT_OWED paper-flat-live-holds-retr; REDUCE 0.7 VEC_CONVERGE_TO_FLAT paper-flat-live-hol",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:KSMUSDT_LONG",
    "dry_run": false
-  },
-  "key:ang:ACEUSDT_SHORT": {
-   "ts": 1792611365.712852,
-   "until": 1792618565.712854,
-   "why": "SIZE_ANOMALY entry notional $25.02 (median $7.50, MAX_ORDER_VALUE $300) @ 2026-10-21T19:34:59Z VEC_DRIVEN_OPEN_B12",
-   "undo": "redis-cli -p 6379 DEL open_blocked:ang:ACEUSDT_SHORT",
-   "dry_run": false
   }
  },
- "sweep_s": 3.46
+ "sweep_s": 1.71
 }

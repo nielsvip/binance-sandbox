@@ -52426,6 +52426,26 @@ async def process_position(
                     _tgsa_fire, _tgsa_reason = _twin_gates_sizing_a.vel_exit_fires(_tgsa_get, _pp_shared_ind, _gx_is_long)
                     if not _tgsa_fire:
                         _tgsa_fire, _tgsa_reason = _twin_gates_sizing_a.wt_vel_decay_fires(_tgsa_get, _pp_shared_ind, _gx_is_long, "3m")
+                    # USER 2026-10-21 STRUCTURAL parity (top priority): the vector ANDs
+                    # STRUCTURAL_EXIT_GATE over _all_exit twice (v12:13606-30, :13643-73,
+                    # twin of wt_dc_delta.structural_exit_permitted) — live had no veto
+                    # and exited into favorable moves (WLD long rising, ENS short
+                    # falling, measured 2026-10-21). Per-sym flag, default True = vector
+                    # default; False boards skip exactly like the vector skips the AND.
+                    if _tgsa_fire and bool(_tgsa_get("STRUCTURAL_EXIT_GATE_ENABLED", True)):
+                        try:
+                            from wt_dc_delta import structural_exit_permitted as _tgsa_struct
+                            _tgsa_ltf = str(_tgsa_get("BASE_TF", "15m") or "15m")
+                            if f"high_{_tgsa_ltf}" not in (_pp_shared_ind or {}):
+                                _tgsa_ltf = "15m"
+                            _tgsa_ind = dict(_pp_shared_ind or {})
+                            _tgsa_ind["current_price"] = safe_fetch_float(current_price, 0.0)
+                            _tgsa_ok, _tgsa_why = _tgsa_struct(_tgsa_ind, _gx_is_long, {"rz_ltf_micro": _tgsa_ltf})
+                        except Exception:
+                            _tgsa_ok, _tgsa_why = False, "STRUCT_VETO_exception"
+                        if not _tgsa_ok:
+                            logger.info(f"[STRUCT_VETO_GATES_A] {position_key}: hold {_tgsa_reason} — {_tgsa_why}")
+                            _tgsa_fire, _tgsa_reason = False, ""
                     if _tgsa_fire:
                         _gx_fire, _gx_reason = True, _tgsa_reason
                 except Exception as _tgsa_e:

@@ -126,12 +126,17 @@ def vel_exit_fires(get: Get, ind: Mapping[str, Any], is_long: bool) -> Tuple[boo
 
     Vec also ANDs VEC_VEL_EXIT_AS_TRIGGER (QuickConfig True); the twin
     reads it too so a flip stays faithful on both sides.
+    USER 2026-10-21 VEL parity: velocity reads wt_velocity_4h_closed (completed 4h
+    bars, what the frozen NPZ measures) with fallback to wt_velocity_4h (forming
+    bar included) for snapshots predating the field. Measured 2026-10-21: forming
+    values sign-flipped mid-window (EGLD -9.92 vs +2.31, RLC -14.45 vs +6.67).
     """
     if not bool(get("VEL_EXIT_ENABLED", True)):
         return False, ""
     if not bool(get("VEC_VEL_EXIT_AS_TRIGGER", True)):
         return False, ""
-    v = _f((ind or {}).get("wt_velocity_4h", 0), 0)
+    m = ind or {}
+    v = _f(m.get("wt_velocity_4h_closed", m.get("wt_velocity_4h", 0)), 0)
     fire = (v < -2.0) if is_long else (v > 2.0)
     return fire, f"VEL_EXIT_v4h{v:.2f}" if fire else ""
 

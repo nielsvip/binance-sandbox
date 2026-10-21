@@ -97,6 +97,28 @@ def test_vel_and_decay_boundaries():
     assert T.wt_vel_decay_fires(gd, s_ind, False, "3m")[0] is True
 
 
+def test_vel_exit_prefers_completed_bar_velocity():
+    """USER 2026-10-21 VEL parity: wt_velocity_4h includes the still-forming 4h bar
+    (live klines + mark patch); wt_velocity_4h_closed excludes it, matching the
+    completed-bar-only frozen NPZ. Measured: EGLD live -9.92 vs NPZ +2.31."""
+    g = _get({})
+    assert T.vel_exit_fires(
+        g, {"wt_velocity_4h": -9.92, "wt_velocity_4h_closed": 2.31}, True
+    ) == (False, "")
+    assert T.vel_exit_fires(
+        g, {"wt_velocity_4h": -14.45, "wt_velocity_4h_closed": 6.67}, True
+    ) == (False, "")
+    assert T.vel_exit_fires(
+        g, {"wt_velocity_4h": -64.11, "wt_velocity_4h_closed": -56.95}, True
+    )[0] is True
+    assert T.vel_exit_fires(
+        g, {"wt_velocity_4h": 24.26, "wt_velocity_4h_closed": 28.69}, False
+    )[0] is True
+    # Snapshots predating the field fall back to forming-inclusive (old behavior).
+    assert T.vel_exit_fires(g, {"wt_velocity_4h": -14.45}, True)[0] is True
+    assert T.vel_exit_fires(g, {"wt_velocity_4h_closed": -14.45}, True)[0] is True
+
+
 def test_fh_boundaries():
     assert T.fh_enabled(_get({"FH_MOMENTUM_ENABLED": True, "TRADIER_FH_MOMENTUM_ENABLED": False}), False) is True
     assert T.fh_enabled(_get({"FH_MOMENTUM_ENABLED": True, "TRADIER_FH_MOMENTUM_ENABLED": False}), True) is False

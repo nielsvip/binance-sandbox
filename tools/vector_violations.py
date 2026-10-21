@@ -12,6 +12,7 @@ Usage:
   python3 tools/vector_violations.py disable FAMILY --why TEXT     # manual disable, logged
   python3 tools/vector_violations.py queue                          # pending retrace work orders
   python3 tools/vector_violations.py resolve FAMILY --note TEXT --verdict vectorized|non_vectorizable
+  python3 tools/vector_violations.py resolutions                   # recorded verdicts
 """
 
 import json
@@ -49,6 +50,20 @@ def main(argv):
             lines = Path(ve.RETRACE_QUEUE).read_text().splitlines()
         except OSError:
             lines = []
+        try:
+            res_lines = Path(ve.RESOLUTIONS).read_text().splitlines()
+        except OSError:
+            res_lines = []
+        resolved_after = {}
+        for line in res_lines:
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if r.get("family"):
+                resolved_after[r["family"]] = max(
+                    resolved_after.get(r["family"], 0.0), float(r.get("ts", 0.0))
+                )
         pending = 0
         for line in lines:
             try:
@@ -57,6 +72,8 @@ def main(argv):
                 continue
             if d.get("status") != "TODO":
                 continue
+            if resolved_after.get(d.get("family"), 0.0) >= float(d.get("ts", 0.0)):
+                continue
             pending += 1
             print(
                 f"{time.strftime('%m-%d %H:%M', time.gmtime(d['ts']))} {d['family']} "
@@ -64,6 +81,25 @@ def main(argv):
             )
         if not pending:
             print("queue empty — every killed family has a retrace resolution")
+            print("verdicts: python3 tools/vector_violations.py resolutions")
+        return 0
+    if cmd == "resolutions":
+        try:
+            lines = Path(ve.RESOLUTIONS).read_text().splitlines()
+        except OSError:
+            lines = []
+        if not lines:
+            print("no resolutions recorded")
+            return 0
+        for line in lines[-20:]:
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            print(
+                f"{time.strftime('%m-%d %H:%M', time.gmtime(r['ts']))} {r['family']} "
+                f"{r['verdict']} {r.get('note', '')[:100]}"
+            )
         return 0
     if cmd == "resolve":
         fam = argv[2].upper() if len(argv) > 2 else ""

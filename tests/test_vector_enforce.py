@@ -71,20 +71,41 @@ def test_non_cross_exit_kills_family(tmp_path, monkeypatch):
     assert ok3 is True, "killing an exit family must not touch entries"
 
 
-def test_vel_exit_not_exempt_until_twin_faithful(tmp_path, monkeypatch):
-    """2026-10-21 bar replay: the vector leg exists and switches agree, yet live
-    fired where the vector would not on 4/5 bars — (A) forming-bar 4h velocity
-    sign-flips vs completed-bar NPZ, (B) no live twin of the STRUCTURAL_EXIT_GATE
-    veto. Modeled is not enough; re-exempt ONLY with a faithful twin (completed-bar
-    velocity + scalar structural veto, proven by replay). Until then it kills."""
-    assert "VEL_EXIT" not in ve.VEC_SWITCH_EXIT_FAMILIES
+def test_vel_exit_exempt_with_faithful_twin(tmp_path, monkeypatch):
+    """VEL_EXIT is vector-modeled + switch-gated AND twin-faithful since 2026-10-21:
+    completed-bar 4h velocity (wt_velocity_4h_closed) + per-sym STRUCTURAL veto in
+    the live lane — replay proof twin==vector on all 5 fire bars. The exemption is
+    conditional on that fidelity: the pins below fail if either half is removed."""
+    assert "VEL_EXIT" in ve.VEC_SWITCH_EXIT_FAMILIES
+    twin_src = (ROOT / "vec_decisions" / "twin_gates_sizing_a.py").read_text()
+    assert "wt_velocity_4h_closed" in twin_src, "twin must read completed-bar velocity"
+    ind_src = (ROOT / "ez_indicators.py").read_text()
+    assert "wt_velocity_4h_closed" in ind_src, "producer must emit completed velocity"
+    lane_src = (ROOT / "ez_manage.py").read_text()
+    assert "structural_exit_permitted" in lane_src, "VEL lane must hold STRUCT veto"
+    assert "STRUCTURAL_EXIT_GATE_ENABLED" in lane_src, "veto must follow per-sym switch"
     k, v = _iso(tmp_path, monkeypatch)
     assert ve.family_of("VEL_EXIT_v4h-10_g-0.05") == "VEL_EXIT"
     ok, verdict = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
-    assert ok is False and verdict == "VIOLATION_FAMILY_KILLED"
-    assert "VEL_EXIT" in json.loads(k.read_text())
-    ok2, v2 = ve.check("CLOSE", "ang:Y_LONG", "VEL_EXIT_v4h-9_g0.1")
-    assert ok2 is False and v2 == "KILLED_FAMILY_VEL_EXIT"
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    assert not k.exists(), "exempt family must not write a kill entry"
+    monkeypatch.setattr(ve, "in_bar_window", lambda now=None: False)
+    ok2, v2 = ve.check("CLOSE", "ang:X_LONG", "VEL_EXIT_v4h-10_g-0.05")
+    assert (ok2, v2) == (False, "OFF_BAR_WINDOW")
+
+
+def test_bb_recovery_bbkc_stay_killed(tmp_path, monkeypatch):
+    """BB_RECOVERY + BBKC have vector masks but the vector books NEITHER with
+    VEC_EXIT_SIG_IS_TRIGGER=False fleet-wide (764 boards): exit_sig closes land as
+    bare TECHNICAL_EXIT and are suppressed (v12:22617-22620). Live fires are
+    unmodeled P&L — keep killed; vectorizable only via a pilot-proven trigger flip."""
+    assert "BB_RECOVERY" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "BBKC" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    _iso(tmp_path, monkeypatch)
+    reason = "QUICK_BB_RECOVERY_EXIT_TRADIER_LONG_px3.9560_k81"
+    ok, _ = ve.check("REDUCE", "a", reason)
+    assert ok is False, "QUICK dispatcher prefix must not launder the family"
+    assert ve.check("CLOSE", "a", "BBKC_EXIT_1h_px-above-kc-mid_g0.07")[0] is False
 
 
 def test_new_kill_files_retrace_order(tmp_path, monkeypatch):
