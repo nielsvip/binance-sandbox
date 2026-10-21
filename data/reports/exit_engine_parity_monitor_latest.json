@@ -1,21 +1,21 @@
 {
- "now": "2026-10-21T00:02:53.597422+00:00",
+ "now": "2026-10-21T01:02:54.367397+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 1388,
+ "n_exit_rows": 1357,
  "last_exit_ts": "2026-10-20T12:05:55.388962+00:00",
  "n_leaks": 1,
  "n_gate_on": 176,
  "n_ungated": 0,
- "n_safety": 91,
+ "n_safety": 90,
  "n_unmapped": 2,
  "n_unverified": 143,
- "since": "2026-10-19T00:02:53.597422+00:00",
+ "since": "2026-10-19T01:02:54.367397+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 33,
-  "OPEN": 888,
+  "OPEN": 861,
+  "CLOSE": 30,
   "REDUCE": 54
  },
- "native_rows": 413,
+ "native_rows": 412,
  "unverified_by_family": {
   "QUICK_REDUCE_SCALP (ABLATION_DISABLE_SCALP_GUARD=False)": 17,
   "QUICK_WT_CROSS_EXIT (None=None)": 42,
@@ -44,15 +44,15 @@
  },
  "ungated_by_family": {},
  "safety_by_family": {
-  "FIXED_STOP": 91
+  "FIXED_STOP": 90
  },
  "unmapped": {
   "HEDGE_CLOSE_WT3M1H_PRE_GATE": 1,
   "R3_HTF_FLIP_DAILY": 1
  },
  "actions": {
-  "CLOSE": 214,
-  "OPEN": 888,
+  "CLOSE": 210,
+  "OPEN": 861,
   "REDUCE": 233,
   "SCALP_REDUCE": 17,
   "STRONG_REDUCE": 27,
