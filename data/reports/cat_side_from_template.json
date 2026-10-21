@@ -1,0 +1,34 @@
+{
+ "ts": "2026-10-21T04:55:02Z",
+ "total_deviations": 0,
+ "per_lane": {
+  "CRYPTO_LONG": {
+   "n_template": 1092,
+   "missing": [],
+   "value_diff": [],
+   "type_diff": [],
+   "n_extras_not_in_template": 2471
+  },
+  "CRYPTO_SHORT": {
+   "n_template": 1098,
+   "missing": [],
+   "value_diff": [],
+   "type_diff": [],
+   "n_extras_not_in_template": 2465
+  },
+  "STOCKS_LONG": {
+   "n_template": 1191,
+   "missing": [],
+   "value_diff": [],
+   "type_diff": [],
+   "n_extras_not_in_template": 2375
+  },
+  "STOCKS_SHORT": {
+   "n_template": 1171,
+   "missing": [],
+   "value_diff": [],
+   "type_diff": [],
+   "n_extras_not_in_template": 2393
+  }
+ }
+}

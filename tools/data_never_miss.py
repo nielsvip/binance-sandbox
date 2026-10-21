@@ -25,6 +25,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -35,6 +36,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PROBE = ROOT / "tools" / "data_never_miss_probe.py"
 MERGE = ROOT / "tools" / "data_never_miss_merge.py"
+TAIL = ROOT / "tools" / "data_never_miss_tail.py"
 REPORT = ROOT / "data" / "reports" / "data_never_miss.json"
 ALERTS = ROOT / "data" / "alerts" / "data_never_miss.jsonl"
 NOTIFY_STATE = ROOT / "data" / "reports" / ".data_never_miss_notify.json"
@@ -118,32 +120,6 @@ def rel_of(symbol, tf, sub):
     return f"klines_cache/{sub + '/' if sub else ''}{symbol}_{tf}.json"
 
 
-def fetch_sources(needed):
-    """needed = {(host, base): {rel}} -> {(host, base, rel): local path} (remote files pulled with ONE rsync per base)."""
-    stage = Path(tempfile.mkdtemp(prefix="nevermiss_src_"))
-    out = {}
-    for (host, base), rels in needed.items():
-        h = HOSTS[host]
-        if h["ssh"] is None:
-            for rel in rels:
-                out[(host, base, rel)] = str(Path(base) / rel)
-            continue
-        dst = stage / host / base
-        dst.mkdir(parents=True, exist_ok=True)
-        lst = dst / ".files"
-        lst.write_text("".join(r + "\n" for r in sorted(rels)))
-        cmd = [rsync_bin(), "-a", "--timeout=60", "-e", " ".join(SSH), f"--files-from={lst}", f"{h['ssh']}:{base}/", str(dst) + "/"]
-        try:
-            subprocess.run(cmd, capture_output=True, timeout=180)
-        except (OSError, subprocess.SubprocessError) as e:
-            log(f"pull {host}:{base} failed: {e}")
-        for rel in rels:
-            p = dst / rel
-            if p.exists():
-                out[(host, base, rel)] = str(p)
-    return stage, out
-
-
 def rsync_bin():
     for p in ("/opt/homebrew/bin/rsync", "/usr/local/bin/rsync"):
         if os.path.exists(p):
@@ -200,33 +176,46 @@ def heal(idx, probes):
             plan.setdefault((host, base), []).append((rel_of(symbol, tf, sub_t), own, srcs))
     if not plan:
         return {}
-    needed = {}
+    # per source store: the rows after the OLDEST target bar that needs it (one request per source base)
+    want = {}
     for (_host, _base), items in plan.items():
-        for rel, _own, srcs in items:
+        for rel, own, srcs in items:
             symbol_tf = rel.rsplit("/", 1)[-1]
             for (sh, sb, ssub) in srcs:
-                needed.setdefault((sh, sb), set()).add(f"klines_cache/{ssub + '/' if ssub else ''}{symbol_tf}")
-    stage, local = fetch_sources(needed)
+                src_rel = f"klines_cache/{ssub + '/' if ssub else ''}{symbol_tf}"
+                cur = want.setdefault((sh, sb), {}).get(src_rel)
+                want[(sh, sb)][src_rel] = own if cur is None else min(cur, own)
+    with ThreadPoolExecutor(4) as ex:
+        got = dict(zip(want, ex.map(lambda k: fetch_tails(k[0], k[1], want[k]), want)))
     results = {}
-    try:
-        for (host, base), items in plan.items():
-            patches = {}
-            for rel, own, srcs in items:
-                symbol_tf = rel.rsplit("/", 1)[-1]
-                by_ts = {}
-                for (sh, sb, ssub) in srcs:
-                    p = local.get((sh, sb, f"klines_cache/{ssub + '/' if ssub else ''}{symbol_tf}"))
-                    if p:
-                        for r in rows_after(p, own):
-                            by_ts.setdefault(str(r["timestamp"]).replace(" ", "T")[:19], r)
-                if by_ts:
-                    patches[rel] = [by_ts[t] for t in sorted(by_ts)]
-            res = apply_patch(host, base, patches)
-            results[f"{host}:{base}"] = {"files": len(patches), "rows": sum(v for v in res.values() if isinstance(v, int)),
-                                         "skipped": {k: v for k, v in res.items() if not isinstance(v, int)}}
-    finally:
-        subprocess.run(["rm", "-rf", str(stage)])
+    for (host, base), items in plan.items():
+        patches = {}
+        for rel, own, srcs in items:
+            symbol_tf = rel.rsplit("/", 1)[-1]
+            by_ts = {}
+            for (sh, sb, ssub) in srcs:
+                for r in got.get((sh, sb), {}).get(f"klines_cache/{ssub + '/' if ssub else ''}{symbol_tf}", []):
+                    t = str(r.get("timestamp", "")).replace(" ", "T")[:19]
+                    if t > time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(own / 1000)):
+                        by_ts.setdefault(t, r)
+            if by_ts:
+                patches[rel] = [by_ts[t] for t in sorted(by_ts)]
+        res = apply_patch(host, base, patches)
+        results[f"{host}:{base}"] = {"files": len(patches), "rows": sum(v for v in res.values() if isinstance(v, int)),
+                                     "skipped": {k: v for k, v in res.items() if not isinstance(v, int)}}
     return results
+
+
+def fetch_tails(host, base, req):
+    """{rel: after_ms} -> {rel: rows newer than after_ms}; remote hosts extract server-side so only new bars travel."""
+    if HOSTS[host]["ssh"] is None:
+        return {rel: rows for rel, after in req.items() if (rows := rows_after(str(Path(base) / rel), after))}
+    try:
+        r = subprocess.run(SSH + [HOSTS[host]["ssh"], f"python3 - ~/{base} {shlex.quote(json.dumps(req))}"], input=TAIL.read_text(), capture_output=True, text=True, timeout=150)
+        return json.loads(r.stdout or "{}")
+    except Exception as e:
+        log(f"tail fetch {host}:{base} failed: {type(e).__name__}: {e}"[:200])
+        return {}
 
 
 def verdict(idx, probes, now_ms):
