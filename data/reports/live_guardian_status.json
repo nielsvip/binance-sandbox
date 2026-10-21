@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-21T00:05:51Z",
+ "ts": "2026-10-21T00:10:46Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -111,10 +111,10 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 237,
+  "total": 227,
   "per_acct": {
    "fin": 62,
-   "ang": 60,
+   "ang": 50,
    "men": 96,
    "flz": 18,
    "inf": 1
@@ -127,80 +127,58 @@
     "65053"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "64770"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 8.0
   },
   "ang": {
    "pids": [
     "70770"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "64834"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "64950"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 7.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14687.0
+   "log_age_s": 14982.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14689.0
+   "log_age_s": 14984.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-21T00:05:51Z",
+   "ts": "2026-10-21T00:10:46Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
-   "key": "ang:GALAUSDT_SHORT",
-   "evidence": "20 23:51:09 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:GALAUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $41 on bounce (prior max 7095.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:05:51Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "20 23:52:13 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:SKLUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $487 on bounce (prior max 0.0000)"
-  },
-  {
-   "ts": "2026-10-21T00:05:51Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "ang:SKLUSDT_SHORT",
-   "evidence": "order notional $487.30 > MAX_ORDER_VALUE $300: 20 23:52:13 - INFO - [ang] [execute_trade_action][ang] \u2705 \u2705 \u2705 \u2705 OPEN ang:SKLUSDT_SHORT @ 0.004296 qty=113430.001930 ($487.30) side=SELL | CRYPTO_REENTRY_PATHWAY_HARDCODED_RALLY_SHORT_px0.004298_exit0.0"
-  },
-  {
-   "ts": "2026-10-21T00:05:51Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "ang:TIAUSDC_LONG",
-   "evidence": "20 23:52:26 - WARNING - [ang] [REENTRY_GRANDFATHERED] ang:TIAUSDC_LONG: bypass MAX_ORDER_VALUE $90 / MAX_POSITION_SIZE $140 \u2014 restoring $22 on bounce (prior max 0.0000)"
+   "key": "men:UNIUSDC_LONG",
+   "evidence": "21 00:09:20 - WARNING - [men] [REENTRY_GRANDFATHERED] men:UNIUSDC_LONG: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $120 \u2014 restoring $41 on bounce (prior max 3.0000)"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 3,
-  "SIZE_ANOMALY": 1
+  "CAP_BYPASS": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -283,5 +261,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 0.95
+ "sweep_s": 0.7
 }
