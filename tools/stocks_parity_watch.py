@@ -108,7 +108,7 @@ def daemons() -> dict:
         ps = subprocess.run(["ps", "-eo", "command"], capture_output=True, text=True, timeout=15).stdout
     except Exception:
         return {}
-    return {a: (f"tradier_manage.py --accounts {a}" in ps) for a in ("tra", "trb", "trc")}
+    return {a: (f"bin/python -u tradier_manage.py --accounts {a}" in ps) for a in ("tra", "trb", "trc")}
 
 
 def s1_npz_max_age_min():
