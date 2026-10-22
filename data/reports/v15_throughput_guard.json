@@ -1,123 +1,150 @@
 {
- "at": "2026-10-22T08:11:04Z",
+ "at": "2026-10-22T09:11:04Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 1,
-   "improved_per_hour": 1.0,
-   "published_n": 1,
+   "improved": 3,
+   "improved_per_hour": 3.0,
+   "published_n": 3,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BIDU_SHORT",
-    "ENSUSDT_SHORT"
+    "BEAMXUSDT_LONG"
    ],
-   "mem_avail_mb": 10345,
-   "load1": 43.78,
+   "mem_avail_mb": 13445,
+   "load1": 41.24,
    "nproc": 16,
-   "slots": "2/8",
-   "binding_reason": "scheduler mem guard (disk 24734 MB, mem 9740 MB, est_pair 8638 MB) \u2014 slots 2/8",
+   "slots": "1/8",
+   "binding_reason": "scheduler mem guard (disk 25227 MB, mem 13988 MB, est_pair 8638 MB) \u2014 slots 1/8",
    "error": null,
    "published": [
     {
-     "symside": "PSX_LONG",
-     "at": "2026-10-22T07:17:56Z",
-     "baseline": 22.19891730332801,
-     "final": 22.319067235226626,
+     "symside": "BIDU_SHORT",
+     "at": "2026-10-22T08:21:46Z",
+     "baseline": 26.523048881129323,
+     "final": 26.832540852620117,
+     "state": "improved"
+    },
+    {
+     "symside": "CAT_SHORT",
+     "at": "2026-10-22T08:33:00Z",
+     "baseline": 18.20664322310189,
+     "final": 19.609400692290805,
+     "state": "improved"
+    },
+    {
+     "symside": "ENSUSDT_SHORT",
+     "at": "2026-10-22T08:12:52Z",
+     "baseline": 39.46684293559277,
+     "final": 65.35569013040048,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 52.4,
-   "last_improved_symside": "PSX_LONG",
+   "minutes_since_last_improved": 5.6,
+   "last_improved_symside": "1000LUNCUSDT_SHORT",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 14.9,
    "improved_gap_min_max_24h": 124.4,
-   "improved_finishes_24h": 8,
-   "board_cpu_s_median_24h": 2102.3,
-   "board_wall_s_median_24h": 2563.6093571186066,
-   "board_cores": 4.2,
-   "nonboard_cores_competing": 8.9,
-   "nonboard_cores_niced": 2.21,
+   "improved_finishes_24h": 12,
+   "board_cpu_s_median_24h": 2467.8,
+   "board_wall_s_median_24h": 2133.5178689956665,
+   "board_cores": 3.83,
+   "nonboard_cores_competing": 7.47,
+   "nonboard_cores_niced": 4.06,
    "cores_by_bucket": {
-    "other": 4.27,
-    "klines_append": 0.5,
-    "live_helpers": 4.13,
-    "boards": 4.2
+    "other": 5.3,
+    "live_helpers": 1.48,
+    "boards": 3.83,
+    "klines_append": 0.69
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.19,
-    "other": 1.85,
-    "npz_precompute": 0.17
+    "klines_vault": 0.25,
+    "other": 2.84,
+    "npz_precompute": 0.97
    }
   },
   "s2": {
-   "improved": 3,
-   "improved_per_hour": 3.0,
-   "published_n": 4,
-   "flat_or_worse": 1,
+   "improved": 4,
+   "improved_per_hour": 4.0,
+   "published_n": 6,
+   "flat_or_worse": 2,
    "unknown": 0,
    "boards_running": [
-    "AXON_SHORT",
-    "BTCUSDC_LONG",
-    "CRWV_SHORT"
+    "MAGICUSDT_LONG",
+    "QNTUSDT_LONG",
+    "STRKUSDT_LONG"
    ],
-   "mem_avail_mb": 14330,
-   "load1": 21.96,
+   "mem_avail_mb": 12294,
+   "load1": 24.24,
    "nproc": 16,
    "slots": "3/8",
-   "binding_reason": "scheduler mem guard (disk 23429 MB, mem 14820 MB, est_pair 9223 MB) \u2014 slots 3/8",
+   "binding_reason": "scheduler mem guard (disk 22797 MB, mem 12766 MB, est_pair 9223 MB) \u2014 slots 3/8",
    "error": null,
    "published": [
     {
-     "symside": "CDE_SHORT",
-     "at": "2026-10-22T07:24:27Z",
-     "baseline": 59.580134909718176,
-     "final": 62.45679916247753,
+     "symside": "BTCUSDC_LONG",
+     "at": "2026-10-22T08:39:50Z",
+     "baseline": 0.8890771375012017,
+     "final": 12.547066917209268,
      "state": "improved"
     },
     {
-     "symside": "IOTAUSDT_SHORT",
-     "at": "2026-10-22T07:35:18Z",
-     "baseline": 15.833380195016804,
-     "final": 44.115388574984436,
+     "symside": "BTCUSDC_SHORT",
+     "at": "2026-10-22T08:34:40Z",
+     "baseline": 6.795726938569653,
+     "final": 12.772713080312533,
      "state": "improved"
     },
     {
-     "symside": "VALE_SHORT",
-     "at": "2026-10-22T07:35:31Z",
-     "baseline": 29.587091311710463,
-     "final": 29.587091311710463,
+     "symside": "CRWV_SHORT",
+     "at": "2026-10-22T08:13:05Z",
+     "baseline": 65.46264673604782,
+     "final": 66.14291872160605,
+     "state": "improved"
+    },
+    {
+     "symside": "GE_SHORT",
+     "at": "2026-10-22T08:24:49Z",
+     "baseline": 23.66345533048023,
+     "final": 24.116756489802686,
+     "state": "improved"
+    },
+    {
+     "symside": "HP_SHORT",
+     "at": "2026-10-22T08:21:00Z",
+     "baseline": 28.63827420303821,
+     "final": 28.63827420303821,
      "state": "flat_or_worse"
     },
     {
-     "symside": "WMT_LONG",
-     "at": "2026-10-22T07:35:21Z",
-     "baseline": 20.33667077494514,
-     "final": 21.172429172943335,
-     "state": "improved"
+     "symside": "MSFT_LONG",
+     "at": "2026-10-22T08:32:38Z",
+     "baseline": 14.641375289856917,
+     "final": 14.641375289856917,
+     "state": "flat_or_worse"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 35.5,
-   "last_improved_symside": "IOTAUSDT_SHORT",
+   "minutes_since_last_improved": 31.0,
+   "last_improved_symside": "BTCUSDC_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 5.9,
    "improved_gap_min_max_24h": 149.9,
-   "improved_finishes_24h": 125,
-   "board_cpu_s_median_24h": 1928.6,
-   "board_wall_s_median_24h": 1079.7346918582916,
-   "board_cores": 9.47,
-   "nonboard_cores_competing": 2.25,
-   "nonboard_cores_niced": 4.0,
+   "improved_finishes_24h": 127,
+   "board_cpu_s_median_24h": 1940.3,
+   "board_wall_s_median_24h": 1083.1536900997162,
+   "board_cores": 10.3,
+   "nonboard_cores_competing": 1.2,
+   "nonboard_cores_niced": 3.09,
    "cores_by_bucket": {
-    "other": 0.02,
-    "live_helpers": 2.23,
-    "boards": 9.47
+    "other": 0.08,
+    "live_helpers": 1.12,
+    "boards": 10.3
    },
    "cores_by_bucket_niced": {
-    "other": 4.0
+    "other": 3.09
    }
   }
  },
