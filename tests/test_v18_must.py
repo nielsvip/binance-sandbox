@@ -110,3 +110,24 @@ def test_positives_all_ignores_native_unconfirmed(tmp_path, monkeypatch):
         json.dump(d, fh)
     idx, tried, _ = V.load_positives_all("STOCKS_LONG", "ME_LONG")
     assert idx == {} and tried == set()  # native_unconfirmed is never a MUST source
+
+
+def test_v20_pair_lift_demotes_inherited_pairs_to_row(tmp_path, monkeypatch):
+    # spec 22 §4.1 (2026-10-22): with V20_PAIR_LIFT a pair whose filter never beat its own naked row is not a MUST item as a pair
+    import gzip, json
+    from tools import v15_v18_planner as P
+    d = {"_meta": {"cat_side": "CRYPTO_LONG"}, "sym_sides": ["A_LONG", "B_LONG", "ME_LONG"],
+         "rows": [{"key": "SW=1", "pos_syms": ["A_LONG"], "tried_on": [0], "n_pos": 3}],
+         "pairs": [{"key": "SW=1", "filter": "F=o", "pos_syms": ["A_LONG", "B_LONG"], "tried_on": [0, 1], "n_pos": 5, "lift_ci": [-0.1, 0.1], "n_pos_marginal": 0},
+                   {"key": "SW=1", "filter": "G=p", "pos_syms": ["B_LONG"], "tried_on": [1], "n_pos": 2, "lift_ci": [0.4, 2.0], "n_pos_marginal": 2},
+                   {"key": "SW=1", "filter": "H=q", "pos_syms": ["B_LONG"], "tried_on": [1], "n_pos": 1, "lift_ci": None, "n_pos_marginal": 1}]}
+    (tmp_path / "data" / "learn").mkdir(parents=True)
+    with gzip.open(tmp_path / "data" / "learn" / "positives_all_CRYPTO_LONG.json.gz", "wt") as fh:
+        json.dump(d, fh)
+    monkeypatch.delenv("V20_PAIR_LIFT", raising=False)
+    idx, tried, why = P.load_positives_all("CRYPTO_LONG", "ME_LONG", tmp_path)
+    assert set(idx) == {"SW=1", "SW=1@F=o", "SW=1@G=p", "SW=1@H=q"}
+    monkeypatch.setenv("V20_PAIR_LIFT", "1")
+    idx2, tried2, why2 = P.load_positives_all("CRYPTO_LONG", "ME_LONG", tmp_path)
+    assert set(idx2) == {"SW=1", "SW=1@G=p", "SW=1@H=q"} and "pairs_demoted_to_row=1" in why2
+    assert P.pair_beats_naked({"lift_ci": [0.01, 1]}) and P.pair_beats_naked({"n_pos_marginal": 1}) and not P.pair_beats_naked({"lift_ci": [-1, 1]}) and not P.pair_beats_naked({})

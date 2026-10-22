@@ -863,6 +863,8 @@ def load_positives_all(cat_side: str, symside: str, root=None):
     syms = list(d.get("sym_sides") or [])
     me = syms.index(symside) if symside in syms else None
     idx, tried = {}, set()
+    pair_lift = flag_on("V20_PAIR_LIFT")  # spec 22 §4.1 (2026-10-22): a pair is a MUST item AS A PAIR only when its filter beats the row
+    demoted = 0
     for kind in ("rows", "pairs"):
         for e in d.get(kind) or []:
             if not isinstance(e, dict) or not e.get("key"):
@@ -873,9 +875,27 @@ def load_positives_all(cat_side: str, symside: str, root=None):
             if me is not None and me in set(e.get("tried_on") or []):
                 tried.add(k)
             ps = [s_ for s_ in (e.get("pos_syms") or []) if s_ != symside]
+            if ps and kind == "pairs" and pair_lift and not pair_beats_naked(e):
+                demoted += 1  # the ROW carries the must duty; the cell rides at its binding-map / model p (never dropped from the matrix)
+                continue
             if ps:
                 idx[k] = {"syms": ps, "best": float(e.get("n_pos") or len(ps))}
-    return idx, tried, f"{why} rows={len(d.get('rows') or [])} pairs={len(d.get('pairs') or [])} items={len(idx)} tried_here={len(tried)}"
+    return idx, tried, f"{why} rows={len(d.get('rows') or [])} pairs={len(d.get('pairs') or [])} items={len(idx)} tried_here={len(tried)}" + (f" pairs_demoted_to_row={demoted}" if pair_lift else "")
+
+
+def pair_beats_naked(e: dict) -> bool:
+    """Spec 22 §4.1: PAIR-positive = marginal lift (cell − naked, same chain) 90% interval lower bound > 0, OR the cell was positive
+    where the naked was not (n_pos_marginal > 0 in the precision builder's contract). Unknown fields -> False (the row stays the must)."""
+    ci = e.get("lift_ci")
+    try:
+        if ci and len(ci) >= 1 and ci[0] is not None and float(ci[0]) > 0:
+            return True
+    except Exception:
+        pass
+    try:
+        return float(e.get("n_pos_marginal") or 0) > 0
+    except Exception:
+        return False
 
 
 # ── V18_LINKNET_FIRST: first trials of untried pairs come from the linknet's ranked template_untried list ───────────────
