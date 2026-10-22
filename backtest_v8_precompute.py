@@ -2042,6 +2042,16 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         if len(base_df) < 30:
             logger.warning(f"[SKIP] {symbol}: <30 live-session 15m bars")
             return False
+        # USER 2026-10-22 lane window: the lane decides the last bar off a 30d engine
+        # ledger, but n=len(base_df) drives the per-step bundling loop — S1 carries
+        # 16k+ bars and the loop alone exceeds the 600s lane watchdog even fully
+        # cache-hit. Cap the evaluated window lane-only (NPZ builds never set
+        # PURE_BOARD_STEP_CACHE_DIR); auth HTF frames stay full for history lookups.
+        # 2500 15m RTH bars ~= 96 sessions >> 30d engine window + indicator warmup.
+        if os.environ.get("PURE_BOARD_STEP_CACHE_DIR") and len(base_df) > 2500:
+            logger.info(f"  {symbol}: lane window capped to last 2500 15m bars (of {len(base_df)})")
+            base_df = base_df.iloc[-2500:]
+            dfs[base_tf] = base_df
     # 15m-only base — no 1/3/5m fabrication. Pure 15m history.
     n = len(base_df)
     _dt_unit = np.datetime_data(base_df.index.values.dtype)[0]

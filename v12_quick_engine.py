@@ -13443,16 +13443,20 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
 
     # --- MTF_GR_EXIT (2026-08-18) — side-aware TOP/BREAKDOWN mirror ---
     # USER 2026-10-22 parity restore: faithful to the live MTF_GR_WT_EXIT lane
-    # (tradier 18055 / ez 54570): GR count over 1h+4h+D+W with nonzero guards,
-    # WT cross on the MTF_WT_CROSS_EXIT_TF param (default 15m), dual-gated by
+    # (tradier 18055 / ez 54570): GR count with nonzero guards, WT cross on
+    # the MTF_WT_CROSS_EXIT_TF param (default 15m), dual-gated by
     # MTF_GR_EXIT_GATE_ENABLED + MTF_WT_CROSS_EXIT_ENABLED. The live
     # structural veto (wt_dc_delta.structural_exit_permitted) stays live-only:
     # it only ever SUPPRESSES, so every live-fired act is vector-booked.
+    # TF sets are venue-split (see gr_cnt2 below): ez counts 15m/1h/4h/D,
+    # tradier counts 1h/4h/D/W.
     mtf_gr_exit = np.zeros(n, dtype=bool)
     if bool(getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False)) and bool(
         getattr(cfg, "MTF_WT_CROSS_EXIT_ENABLED", True)
     ):
         gr_min_tfs = int(float(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3)))
+        wt1_15m_arr2 = _safe(npz, "wt1_15m", n)
+        wt2_15m_arr2 = _safe(npz, "wt2_15m", n)
         wt1_1h_arr2 = _safe(npz, "wt1_1h", n)
         wt2_1h_arr2 = _safe(npz, "wt2_1h", n)
         wt1_4h_arr2 = _safe(npz, "wt1_4h", n)
@@ -13466,12 +13470,23 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
             nz = (a1 != 0) & (a2 != 0)
             return (nz & ((a1 < a2) if is_long else (a1 > a2))).astype(int)
 
-        gr_cnt2 = (
-            _mtf_against(wt1_1h_arr2, wt2_1h_arr2)
-            + _mtf_against(wt1_4h_arr2, wt2_4h_arr2)
-            + _mtf_against(wt1_D_arr2, wt2_D_arr2)
-            + _mtf_against(wt1_W_arr2, wt2_W_arr2)
-        )
+        # USER 2026-10-22 MTF venue split: the two live lanes count different
+        # TF sets (ez 54706: 15m/1h/4h/D; tradier 18055: 1h/4h/D/W). One leg
+        # cannot mirror both, so branch on QuickConfig.MODE like the engines.
+        if str(getattr(cfg, "MODE", "crypto")) == "tradier":
+            gr_cnt2 = (
+                _mtf_against(wt1_1h_arr2, wt2_1h_arr2)
+                + _mtf_against(wt1_4h_arr2, wt2_4h_arr2)
+                + _mtf_against(wt1_D_arr2, wt2_D_arr2)
+                + _mtf_against(wt1_W_arr2, wt2_W_arr2)
+            )
+        else:
+            gr_cnt2 = (
+                _mtf_against(wt1_15m_arr2, wt2_15m_arr2)
+                + _mtf_against(wt1_1h_arr2, wt2_1h_arr2)
+                + _mtf_against(wt1_4h_arr2, wt2_4h_arr2)
+                + _mtf_against(wt1_D_arr2, wt2_D_arr2)
+            )
         _mtf_tf = str(getattr(cfg, "MTF_WT_CROSS_EXIT_TF", "15m") or "15m")
         _mtf_pair = {
             "5m": ("wt1_5m", "wt2_5m"),
