@@ -42636,6 +42636,27 @@ async def _xg_tr_confirmed(mgr, a, c, result):
 _XG_TR_HOOKS = _xg.Hooks(force=_xg_tr_force, broker=_xg_tr_broker, confirmed=_xg_tr_confirmed, cfg=lambda: config, logger=lambda: logger)
 
 
+def _tr_parity_vec_order(reason) -> bool:
+    """USER 2026-10-22 TOTAL PARITY (stocks twin of ez_manage._parity_vec_order):
+    True when the order IS the vector's own decision (board intent, reconcile,
+    VEC_EXACT twin, owed/obligatory exit). Such an order may never be refused
+    by a live opinion gate — the vector decided it, live only executes it."""
+    r = str(reason or "")
+    try:
+        from live_twins.vector_enforce import _is_board_confirmed as _bc
+
+        if _bc(r):
+            return True
+    except Exception:
+        pass
+    u = r.upper()
+    return (
+        "|VEC_EXACT" in r
+        or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_"))
+        or "PURE_BOARD" in u
+    )
+
+
 class TradierTradeManager:
     def __init__(self, account_list: List[str] = None):
         self.config = config

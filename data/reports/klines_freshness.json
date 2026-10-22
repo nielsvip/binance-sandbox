@@ -1,12 +1,12 @@
 {
- "generated_utc": "2026-10-22T21:00:11Z",
+ "generated_utc": "2026-10-22T21:05:05Z",
  "tol_min": 35,
  "crypto": {
   "status": "OK",
   "mode": "live",
   "missing": [],
-  "worst_lag_min": 30.2,
-  "worst_sym": "ENAUSDC"
+  "worst_lag_min": 20.1,
+  "worst_sym": "BTCUSDC"
  },
  "stocks": {
   "status": "BREACH",
@@ -15,6 +15,6 @@
   "stale_vs_close": [
    "JNJ"
   ],
-  "worst_lag_min": 150.2
+  "worst_lag_min": 155.1
  }
 }

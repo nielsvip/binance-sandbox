@@ -33456,8 +33456,11 @@ class MultiAccountTradeManager:
             if symbol and ("OPEN" in _kill_act or "ENTRY" in _kill_act or "REENTRY" in _kill_act or "AUGMENT" in _kill_act or "REVERSE" in _kill_act or _kill_act == "BUY") and "CLOSE" not in _kill_act and "REDUCE" not in _kill_act:
                 _ssh_blk, _ssh_why = _stale_set_halt.entry_gate("ez", symbol, position_side, _kill_act, cfg=config, logger=logger)
                 if _ssh_blk:
-                    logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
-                    return "BLOCKED_STALE_SET_HALT"
+                    if _vd_exempt or _parity_vec_order(reason):
+                        logger.warning(f"[STALE_SET_PARITY_EXEMPT] {position_key}: {_ssh_why} — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused; native stays halted)")
+                    else:
+                        logger.critical(f"🛑 [STALE_SET_HALT_ENTRY_BLOCK] {position_key}: {_ssh_why} — action={action} reason={(reason or '')[:60]}")
+                        return "BLOCKED_STALE_SET_HALT"
         except Exception as _ssh_be:
             logger.warning(f"[STALE_SET_HALT] entry check err (fail-open): {_ssh_be}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -35377,10 +35380,32 @@ class MultiAccountTradeManager:
                     getattr(config, "MIN_POSITION_SIZE", 45.0), 45.0
                 ) / max(_ndo_px, 1e-9)
                 if _ndo_amt > _ndo_min_q:
-                    logger.critical(
-                        f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED action={action} positionAmt={_ndo_amt:.6f} > min_q={_ndo_min_q:.6f}. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{(reason or '')[:80]}'"
-                    )
-                    return f"BLOCKED_NO_DOUBLE_OPEN_{(action or '')[:20]}"
+                    # USER 2026-10-22 parity restore: local positionAmt can be
+                    # stale-nonzero while the broker is flat (or holding). For a
+                    # vector-dictated OPEN the broker truth arbitrates: flat ->
+                    # stale local, proceed; holding -> convert to AUGMENT (decided
+                    # by the vec-exempt augment path), never refuse.
+                    _ndo_vec = bool(_vd_exempt or _parity_vec_order(reason))
+                    _ndo_broker = None
+                    if _ndo_vec:
+                        try:
+                            _ndo_acct, _ndo_sym, _ndo_ps = parse_position_key(position_key)
+                            _ndo_broker = _ptruth.ez_leftover_position(
+                                self, _ndo_acct, _ndo_sym, _ndo_ps
+                            )
+                        except Exception:
+                            _ndo_broker = None
+                    if _ndo_vec and _ndo_broker is not None and _ndo_broker <= 0:
+                        logger.warning(f"[NO_DOUBLE_OPEN_STALE_LOCAL] {position_key}: local amt={_ndo_amt:.6f} but broker flat — stale local, vec-dictated {action} proceeds (USER 2026-10-22)")
+                    elif _ndo_vec and _ndo_broker is not None and _ndo_broker > 0:
+                        logger.warning(f"[NO_DOUBLE_OPEN_VEC_TO_AUGMENT] {position_key}: broker holds {_ndo_broker} — vec-dictated {action} -> AUGMENT (USER 2026-10-22)")
+                        action = "AUGMENT"
+                        _odg.retag_action("AUGMENT")
+                    else:
+                        logger.critical(
+                            f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED action={action} positionAmt={_ndo_amt:.6f} > min_q={_ndo_min_q:.6f}. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{(reason or '')[:80]}'"
+                        )
+                        return f"BLOCKED_NO_DOUBLE_OPEN_{(action or '')[:20]}"
             except Exception as _ndo_e:
                 logger.warning(
                     f"[NO_DOUBLE_OPEN_CHECK_ERR] {position_key}: {type(_ndo_e).__name__}: {_ndo_e} — proceeding"
@@ -35787,8 +35812,16 @@ class MultiAccountTradeManager:
                         _lo_px = 0.0
                     _lo_gain = _ptruth_gain(_lo_ps, _lo_entry, _lo_px)
                     if _lo_gain is None or _lo_gain < _lo_min:
-                        logger.warning(f"🚫 [OPEN_ON_LEFTOVER_BLOCK] {position_key}: broker holds {_lo_amt} (entry={_lo_entry} px={_lo_px}) — OPEN treated as AUGMENT, gain={_lo_gain} < {_lo_min:.2f}% — refused")
-                        return "BLOCKED_OPEN_ON_LEFTOVER_GAIN_GATE"
+                        # USER 2026-10-22 parity restore: a vector-dictated OPEN
+                        # into a broker leftover becomes an AUGMENT (decided by the
+                        # vec-exempt augment path below), never a refusal.
+                        if _vd_exempt or _parity_vec_order(reason):
+                            logger.warning(f"🔁 [OPEN_ON_LEFTOVER_VEC_TO_AUGMENT] {position_key}: broker holds {_lo_amt}, gain={_lo_gain} < {_lo_min:.2f}% but vector-dictated — action {action} -> AUGMENT")
+                            action = "AUGMENT"
+                            _odg.retag_action("AUGMENT")
+                        else:
+                            logger.warning(f"🚫 [OPEN_ON_LEFTOVER_BLOCK] {position_key}: broker holds {_lo_amt} (entry={_lo_entry} px={_lo_px}) — OPEN treated as AUGMENT, gain={_lo_gain} < {_lo_min:.2f}% — refused")
+                            return "BLOCKED_OPEN_ON_LEFTOVER_GAIN_GATE"
                     logger.warning(f"🔁 [OPEN_ON_LEFTOVER_TO_AUGMENT] {position_key}: broker holds {_lo_amt}, gain={_lo_gain:+.2f}% >= {_lo_min:.2f}% — action {action} -> AUGMENT")
                     action = "AUGMENT"
                     _odg.retag_action("AUGMENT")
@@ -35850,10 +35883,16 @@ class MultiAccountTradeManager:
                                 and (_uag_max_gain - _uag_raw_gain) >= _uag_pb_rev
                             )
                             if not _uag_pb_ok:
-                                logger.warning(
-                                    f"🚫 [UAGAIN_BLOCK] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < {_uag_min_gain:.1f}% (max={_uag_max_gain:.2f}% raw={_uag_raw_gain:.2f}% pb_ok={_uag_pb_ok}) — action={action} reason={(reason or '')[:60]}"
-                                )
-                                return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
+                                # USER 2026-10-22 parity restore: vector-dictated
+                                # augments (incl. leftover-converted OPENs) are never
+                                # refused here — same class as EXEC_AUGMENT below.
+                                if _vd_exempt or _parity_vec_order(reason):
+                                    logger.warning(f"[UAGAIN_VEC_EXEMPT] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < {_uag_min_gain:.1f}% but vector-dictated — allowed. action={action}")
+                                else:
+                                    logger.warning(
+                                        f"🚫 [UAGAIN_BLOCK] {position_key}: gain_since_last_add={_uag_gain_since:+.2f}% < {_uag_min_gain:.1f}% (max={_uag_max_gain:.2f}% raw={_uag_raw_gain:.2f}% pb_ok={_uag_pb_ok}) — action={action} reason={(reason or '')[:60]}"
+                                    )
+                                    return f"BLOCKED_UAGAIN_gain_since_last_add={_uag_gain_since:+.2f}%_lt_{_uag_min_gain:.1f}%"
                             logger.info(
                                 f"✅ [PULLBACK_AUG_UAGAIN] {position_key}: max={_uag_max_gain:.2f}% → {_uag_raw_gain:.2f}% (Δ={_uag_max_gain - _uag_raw_gain:.2f}%) — pullback aug bypassing UAGAIN"
                             )
@@ -36244,14 +36283,21 @@ class MultiAccountTradeManager:
                 logger.warning(f"[LIVE_VEC_EMERGENCY_BRAKE_SHADOW_ERR] {type(_eb_sh_err).__name__}: {_eb_sh_err}")
             if _live_eb_blocked:
                 if _live_eb_reason == "EMERGENCY_BRAKE_10_PER_MIN_CHURN":
-                    logger.critical(f"🛑 [EMERGENCY_BRAKE_10/MIN] {_acct}: {_cache.get('min_total',0)} trades/min — HALTED. Max {int(getattr(config, 'EMERGENCY_BRAKE_MAX_TRADES_PER_MIN', 10))}. Churn detected.")
-                    try:
-                        _halt_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / ".FLZ_TRADING_HALTED"
-                        if _acct == "flz" or "flz" in str(_halt_path):
-                            _halt_path.write_text(f"HALTED {datetime.now(timezone.utc).isoformat()} 10trades/min\n")
-                    except Exception:
-                        pass
-                    return "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN"
+                    # USER 2026-10-22 parity restore: vec-dictated bursts (measured
+                    # 14-24 vec OPENs/min on converge) are the vector's will, bounded
+                    # upstream by VEC_DRIVEN_CONCURRENCY + order-dedupe + ODG gate —
+                    # not glitch churn. Count + log, no halt, no refusal. Native keeps it.
+                    if _vd_exempt or _parity_vec_order(reason):
+                        logger.warning(f"[CHURN_PARITY_EXEMPT] {_acct}: {_cache.get('min_total',0)} trades/min on vec-dictated {action} — counted, proceeds (USER 2026-10-22)")
+                    else:
+                        logger.critical(f"🛑 [EMERGENCY_BRAKE_10/MIN] {_acct}: {_cache.get('min_total',0)} trades/min — HALTED. Max {int(getattr(config, 'EMERGENCY_BRAKE_MAX_TRADES_PER_MIN', 10))}. Churn detected.")
+                        try:
+                            _halt_path = Path(getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance')) / ".FLZ_TRADING_HALTED"
+                            if _acct == "flz" or "flz" in str(_halt_path):
+                                _halt_path.write_text(f"HALTED {datetime.now(timezone.utc).isoformat()} 10trades/min\n")
+                        except Exception:
+                            pass
+                        return "BLOCKED_EMERGENCY_BRAKE_10_PER_MIN_CHURN"
                 elif _live_eb_reason == "EMERGENCY_BRAKE_MAX_ENTRIES":
                     logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} entries/hr — HALTED. Max 500. Glitch detected.")
                     return "BLOCKED_EMERGENCY_BRAKE_MAX_ENTRIES"
