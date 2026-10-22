@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-22T17:28:50.850611+00:00",
+ "generated_at": "2026-10-22T17:29:37.965289+00:00",
  "trigger": "fin:RLCUSDT_SHORT REDUCE QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7 refused 2026-10-22 17:12:53 (NON_VECTOR_EXIT_DISABLED)",
  "trigger_verdict": "correct refusal: BB_RECOVERY killed 2026-10-21, resolved non_vectorizable (exit_sig suppressed fleet-wide by VEC_EXIT_SIG_IS_TRIGGER=False); backstop + enforce agree (KILLED_FAMILY_BB_RECOVERY). No action; stays forward-tested.",
  "finding_1": "Backstop stricter than vector_enforce for VEC_SWITCH_EXIT families (measured 2026-10-22 on live code: EXIT_VELOCITY_WT/VEL_EXIT/TECHNICAL_TARGET/BB_TAKE -> enforce VEC_SWITCH_EXIT-allow, backstop non-vec-refuse). Violates _voe_reason_is_vec mirror contract. Fix needs unlock (ez_manage, locked): teach backstop VEC_SWITCH_EXIT_FAMILIES + tests. NOT applied this turn.",
@@ -7,12 +7,12 @@
  "kills_note": "vector_kills.json at gen time lacks WT (present in earlier 10-22 read; restored by parallel session, not this turn). This turn removed only its own BT probe entry + 6 probe ledger rows.",
  "base_list_oct21": "tests/test_unvec_parity_kills.py (42 kill switches) + data/vector_kills.json + data/vector_retrace_queue.jsonl TODOs + data/vector_retrace_resolutions.jsonl verdicts",
  "scope": "NON_VECTOR_EXIT_REFUSED live (non-probe) events 2026-10-17..22; entries are HERMETIC-gated (not backstop) and listed separately in verdict.md",
- "n_events": 1102,
+ "n_events": 1107,
  "n_families": 36,
  "families": [
   {
    "family": "QUICK_BB_RECOVERY_EXIT_TRADIER",
-   "events": 445,
+   "events": 448,
    "n_syms": 59,
    "sides": [
     "LONG",
@@ -78,7 +78,7 @@
   },
   {
    "family": "QUICK_REDUCE_REDUCE_k_1m",
-   "events": 163,
+   "events": 164,
    "n_syms": 65,
    "sides": [
     "LONG",
@@ -818,57 +818,9 @@
    "spec_note": "v12 books exit_sig (crypto); native leg refused; Finding-1-class or converge proof"
   },
   {
-   "family": "WRONG_SIDE_ABS_KILL_wt/3_k/0_agein_gain",
-   "events": 10,
-   "n_syms": 1,
-   "sides": [
-    "LONG"
-   ],
-   "venues": [
-    "crypto"
-   ],
-   "actions": [
-    "QUICK_CLOSE"
-   ],
-   "sample_reason": "WRONG_SIDE_ABS_KILL_wt=3/3_k=2/0_age=32min_gain=0.02%",
-   "enforce_family": "WRONG_SIDE",
-   "killed": true,
-   "resolution": null,
-   "registry": {
-    "family": "WRONG_SIDE_ABS_KILL",
-    "vec_twin": false,
-    "tf": "tick",
-    "gate": "WRONG_SIDE_ABS_KILL_ENABLED",
-    "kind": "bool"
-   },
-   "switch_bible": {
-    "defaults": {
-     "QuickConfig": false,
-     "QuickConfig_apply_tradier_defaults": false,
-     "cat_side_defaults_4": {
-      "CRYPTO_LONG": false,
-      "CRYPTO_SHORT": false,
-      "STOCKS_LONG": false,
-      "STOCKS_SHORT": false
-     },
-     "config.py": false,
-     "config_tradier.py": false,
-     "template_bold": {}
-    },
-    "live_read_count": {
-     "crypto": 1,
-     "stocks": 1
-    },
-    "template_bold": {}
-   },
-   "verdict": "correct_refusal_forward",
-   "proposed_tab": "GLOBAL_RISK_GATES",
-   "spec_note": "WRONG_SIDE killed; risk kill stays refused + forward-tested"
-  },
-  {
    "family": "CYCLE_TP_TIERED_T2_0.50pct",
-   "events": 9,
-   "n_syms": 7,
+   "events": 10,
+   "n_syms": 8,
    "sides": [
     "LONG",
     "SHORT"
@@ -939,6 +891,54 @@
    "verdict": "correct_refusal_forward",
    "proposed_tab": "REDUCE_PROFIT_LOCK",
    "spec_note": "same as T0"
+  },
+  {
+   "family": "WRONG_SIDE_ABS_KILL_wt/3_k/0_agein_gain",
+   "events": 10,
+   "n_syms": 1,
+   "sides": [
+    "LONG"
+   ],
+   "venues": [
+    "crypto"
+   ],
+   "actions": [
+    "QUICK_CLOSE"
+   ],
+   "sample_reason": "WRONG_SIDE_ABS_KILL_wt=3/3_k=2/0_age=32min_gain=0.02%",
+   "enforce_family": "WRONG_SIDE",
+   "killed": true,
+   "resolution": null,
+   "registry": {
+    "family": "WRONG_SIDE_ABS_KILL",
+    "vec_twin": false,
+    "tf": "tick",
+    "gate": "WRONG_SIDE_ABS_KILL_ENABLED",
+    "kind": "bool"
+   },
+   "switch_bible": {
+    "defaults": {
+     "QuickConfig": false,
+     "QuickConfig_apply_tradier_defaults": false,
+     "cat_side_defaults_4": {
+      "CRYPTO_LONG": false,
+      "CRYPTO_SHORT": false,
+      "STOCKS_LONG": false,
+      "STOCKS_SHORT": false
+     },
+     "config.py": false,
+     "config_tradier.py": false,
+     "template_bold": {}
+    },
+    "live_read_count": {
+     "crypto": 1,
+     "stocks": 1
+    },
+    "template_bold": {}
+   },
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "GLOBAL_RISK_GATES",
+   "spec_note": "WRONG_SIDE killed; risk kill stays refused + forward-tested"
   },
   {
    "family": "WT_4H_VEL_EXIT_vel_g_k3m_k15m",
@@ -1292,9 +1292,9 @@
     "live_read_count": {},
     "template_bold": {}
    },
-   "verdict": "unmapped",
-   "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_VELOCITY",
+   "spec_note": "row exists (unknown); research emitter then spec"
   },
   {
    "family": "QUICK_WT_CROSS_EXIT_1h_bull_wt_wt_15m4.5/3.2",
@@ -1594,9 +1594,9 @@
     "live_read_count": {},
     "template_bold": {}
    },
-   "verdict": "unmapped",
-   "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "covered by GAIN_EROSION_STOP row (unknown); distinguish from breakeven_gain_erosion core, then spec"
   },
   {
    "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.277873>dc",
@@ -1627,9 +1627,9 @@
     "live_read_count": {},
     "template_bold": {}
    },
-   "verdict": "unmapped",
-   "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "covered by GAIN_EROSION_STOP row (unknown); distinguish from breakeven_gain_erosion core, then spec"
   },
   {
    "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.257760>dc",
@@ -1660,9 +1660,9 @@
     "live_read_count": {},
     "template_bold": {}
    },
-   "verdict": "unmapped",
-   "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "covered by GAIN_EROSION_STOP row (unknown); distinguish from breakeven_gain_erosion core, then spec"
   },
   {
    "family": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p107.267266>dc",
@@ -1693,9 +1693,9 @@
     "live_read_count": {},
     "template_bold": {}
    },
-   "verdict": "unmapped",
-   "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "verdict": "needs_emitter_read",
+   "proposed_tab": "EXIT_STRUCTURAL",
+   "spec_note": "covered by GAIN_EROSION_STOP row (unknown); distinguish from breakeven_gain_erosion core, then spec"
   },
   {
    "family": "LIQUIDATION_PROTECT",
@@ -1726,9 +1726,9 @@
     "live_read_count": {},
     "template_bold": {}
    },
-   "verdict": "unmapped",
+   "verdict": "already_fixed",
    "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "spec_note": "1 live refusal pre-dates 10-22 emergency exemption; current _voe_reason_is_vec allows LIQUIDATION_PROTECT; no action"
   },
   {
    "family": "PPL_TP",
@@ -1788,9 +1788,9 @@
      ]
     }
    },
-   "verdict": "unmapped",
+   "verdict": "followup_partial_scale",
    "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "spec_note": "1 live PPL_TP refusal; partial-scale exemption question (cf RATIO ruling) \u2014 operator decision, not auto-exempt"
   },
   {
    "family": "WRONG_SIDE_ABS_KILL_wt/4_k/0_agein_gain",
@@ -1836,9 +1836,9 @@
     },
     "template_bold": {}
    },
-   "verdict": "unmapped",
-   "proposed_tab": null,
-   "spec_note": "not hand-mapped; triage"
+   "verdict": "correct_refusal_forward",
+   "proposed_tab": "GLOBAL_RISK_GATES",
+   "spec_note": "WRONG_SIDE killed; risk kill stays refused + forward-tested"
   },
   {
    "family": "QUICK_PARABOLIC_EXIT_LONG_k15_px>0.000459_low3m<prev",

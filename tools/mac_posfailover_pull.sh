@@ -3,10 +3,20 @@
 # Runs on Mac (launchd com.niels.s1-posfailover-pull, every 30s). No-op unless S1 has
 # s1_posfailover_active_* flags. Uses rsync --update (never overwrites newer Mac files, never deletes).
 set -u
-REPO="/Users/niels/Documents/binance"
-LOG="/Users/niels/logs/mac_posfailover_pull.log"
+# 2026-10-22 STALENESS GUARD + TEST HOOKS (all additive, defaults = legacy behaviour):
+# S1's takeover flags say "S1 is producing", but flags can outlive S1's writers (retired loop, dead units —
+# measured 2026-10-22: flags 07:03Z with S1 live-dir files from March and sandbox files 23 h old). rsync -a
+# preserves the SOURCE mtime, so a staged file's age IS the S1 file's age; anything older than
+# POSFAILOVER_MAX_S1_FILE_AGE_S is never merged (fail closed — stale S1 rows must not touch live files).
+# POSFAILOVER_REPO/SSH/RSYNC/PY/LOG overrides exist so tests can drive this script with fakes.
+REPO="${POSFAILOVER_REPO:-/Users/niels/Documents/binance}"
+LOG="${POSFAILOVER_LOG:-/Users/niels/logs/mac_posfailover_pull.log}"
+POSFAILOVER_SSH="${POSFAILOVER_SSH:-ssh}"
+POSFAILOVER_RSYNC="${POSFAILOVER_RSYNC:-rsync}"
+POSFAILOVER_PY="${POSFAILOVER_PY:-/opt/anaconda3/envs/binance_env/bin/python}"
+POSFAILOVER_MAX_S1_FILE_AGE_S="${POSFAILOVER_MAX_S1_FILE_AGE_S:-600}"
 SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=accept-new"
-FLAGS=$(ssh $SSH_OPTS s1-pub "ls /home/niels/binance/data/s1_posfailover_active_* 2>/dev/null" 2>/dev/null) || exit 0
+FLAGS=$($POSFAILOVER_SSH $SSH_OPTS s1-pub "ls /home/niels/binance/data/s1_posfailover_active_* 2>/dev/null" 2>/dev/null) || exit 0
 [ -z "$FLAGS" ] && exit 0
 mkdir -p "$(dirname "$LOG")"
 for acct in ang inf flz men fin; do
@@ -47,10 +57,17 @@ EOF
     # may only add a genuinely new position or mark a close).
     STAGE="$REPO/data/posfailover_incoming/${acct}"
     mkdir -p "$STAGE"
-    rsync -az --timeout=15 -e "ssh $SSH_OPTS" "s1-pub:/home/niels/binance/${acct}/{long,short}_positions.json" "$STAGE/" >>"$LOG" 2>&1 || true
+    $POSFAILOVER_RSYNC -az --timeout=15 -e "$POSFAILOVER_SSH $SSH_OPTS" "s1-pub:/home/niels/binance/${acct}/{long,short}_positions.json" "$STAGE/" >>"$LOG" 2>&1 || true
     for side in long short; do
-        [ -s "$STAGE/${side}_positions.json" ] || continue
-        (cd "$REPO" && /opt/anaconda3/envs/binance_env/bin/python position_writer_guard.py merge "$REPO/${acct}/${side}_positions.json" "$STAGE/${side}_positions.json") >>"$LOG" 2>&1 || echo "$(date -u +%FT%TZ) MERGE FAILED $acct $side" >>"$LOG"
+        _staged="$STAGE/${side}_positions.json"
+        [ -s "$_staged" ] || continue
+        _stage_age=$(/usr/bin/python3 -c "import os,time,sys;print(int(time.time()-os.stat(sys.argv[1]).st_mtime))" "$_staged" 2>/dev/null || echo 9999999)
+        case "$_stage_age" in ''|*[!0-9]*) _stage_age=9999999 ;; esac
+        if [ "$_stage_age" -gt "$POSFAILOVER_MAX_S1_FILE_AGE_S" ]; then
+            echo "$(date -u +%FT%TZ) SKIP $acct $side — staged S1 file ${_stage_age}s old (> ${POSFAILOVER_MAX_S1_FILE_AGE_S}s); S1 writers are down, never merging stale rows" >>"$LOG"
+            continue
+        fi
+        (cd "$REPO" && "$POSFAILOVER_PY" position_writer_guard.py merge "$REPO/${acct}/${side}_positions.json" "$_staged") >>"$LOG" 2>&1 || echo "$(date -u +%FT%TZ) MERGE FAILED $acct $side" >>"$LOG"
     done
     echo "$(date -u +%FT%TZ) merged $acct from S1 (S1 takeover active, per-position merge)" >>"$LOG"
 done

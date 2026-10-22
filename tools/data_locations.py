@@ -68,6 +68,8 @@ HOSTS = {
     "s1": {"ssh": "s1-int", "base": S1_LIVE, "sandbox": S1_SANDBOX},
     "s2": {"ssh": "s2", "base": S1_SANDBOX, "sandbox": S1_SANDBOX},
     "gateway": {"ssh": "157.90.168.35", "base": GATEWAY_BASE},
+    "s5": {"ssh": "s5", "base": "/home/niels"},
+    "s6": {"ssh": "s6", "base": "/home/niels"},
 }
 
 
@@ -271,6 +273,12 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
                 ("{ext}/v15_mega_progress_mirror", "archive", "MEGA_{crypto,stocks}_jump boards", None),
                 ("{ext}/s1_daily_reports_20261013", "archive", "per-day S1 report trees", None)],
     },
+    "rebuild_scratch_s5": {
+        "s5": [("{base}/rebuild_scratch_s5", "staging", "USER 2026-10-22: scratch until S5/S6 deletion after the weekend of 2026-10-24; everything here must be on an ext drive or proven duplicate before deletion; s2_run33/ s2_eval_archive/ manifests/", None)],
+    },
+    "rebuild_scratch_s6": {
+        "s6": [("{base}/rebuild_scratch_s6", "staging", "USER 2026-10-22: scratch until S5/S6 deletion after the weekend of 2026-10-24; everything here must be on an ext drive or proven duplicate before deletion; s1_data_archive/ s1_backups/ manifests/", None)],
+    },
 }
 
 KINDS = tuple(REGISTRY)
@@ -297,7 +305,7 @@ def resolve(kind: str, host: str) -> list[Location]:
     if kind not in REGISTRY:
         raise LocationError(f"unknown kind {kind!r}; known: {', '.join(KINDS)}")
     entries = REGISTRY[kind].get(host)
-    if entries is None and host in ("mac", "s1", "s2", "gateway"):
+    if entries is None and host in ("mac", "s1", "s2", "gateway", "s5", "s6"):
         entries = []
     if entries is None:
         raise LocationError(f"kind {kind!r} declares nothing for host {host!r}")
@@ -467,7 +475,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--audit", action="store_true")
     ap.add_argument("--kind", action="append", help="limit to this kind (repeatable)")
-    ap.add_argument("--host", action="append", help="mac|s1|s2|gateway|ext (repeatable)")
+    ap.add_argument("--host", action="append", help="mac|s1|s2|s5|s6|gateway|ext (repeatable)")
     ap.add_argument("--where", help="print the authoritative path for this kind and exit")
     ap.add_argument("--kinds", action="store_true", help="list known kinds")
     ap.add_argument("--json", action="store_true")

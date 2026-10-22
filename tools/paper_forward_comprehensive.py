@@ -90,6 +90,8 @@ def canon_family(fn: str) -> str:
     lowercase key (adx63->adx), and standalone _NN tokens (ENTRY_57). Kept:
     TF tokens (3M/5M: digit follows _ or uppercase), B-names (B12: single
     uppercase + digits), single-digit structure ids (E_1 vs E_3 stay distinct).
+    Trailing bare _g is a gain-param stub (g=<num> value-stripped): E_1 ..._thr_g
+    and ..._thr are the same path (USER 2026-10-22 backstop hunt).
     """
     try:
         from loss_prone import fn_family as _ff
@@ -112,6 +114,7 @@ def canon_family(fn: str) -> str:
     r = re.sub(r"(?<!\d)([a-z]{2,})\d+(\.\d+)?(?![a-z])", r"\1", r)
     r = re.sub(r"_\d{2,}(?=_|$)", "", r)
     r = re.sub(r"_+", "_", r).strip("_")
+    r = re.sub(r"_g$", "", r)
     return r or "UNKNOWN"
 
 

@@ -185,3 +185,135 @@ def test_inventory_covers_known_knobs():
     assert "QUICK_REDUCE_STRONG" in inv or "QUICK_REDUCE" in inv
     kinds = {d.get("kind") for pid, d in inv.items() if not pid.startswith("_")}
     assert {"nonvec", "low_tf", "disabled"} <= kinds
+
+
+def _fam():
+    import tools.forward_parity.families as _f
+
+    return _f
+
+
+def test_backstop_refused_families_classify():
+    """USER 2026-10-22 parity hunt: the 7 backstop-refused families added to the
+    registry classify to their own row (vec_twin + gate knob pinned)."""
+    F = _fam()
+    assert F.classify("BT_STOCH_XTREME_EXIT_g=0.60%") == {
+        "family": "BT_STOCH_XTREME_EXIT",
+        "input_tf": "1h",
+        "vec_twin": True,
+        "gate_knob": "STOCH_XTREME_EXIT_ENABLED",
+        "gate_kind": "bool",
+        "token": "BT_STOCH_XTREME_EXIT",
+    }
+    d = F.classify("BT_WICK_REJECT_EXIT_g=0.15%")
+    assert (d["family"], d["vec_twin"], d["gate_knob"]) == (
+        "BT_WICK_REJECT_EXIT",
+        False,
+        "WICK_REJECT_EXIT_ENABLED",
+    )
+    d = F.classify("BT_RSI2_XTREME_EXIT_g=0.79%")
+    assert (d["family"], d["vec_twin"], d["gate_knob"]) == (
+        "BT_RSI2_XTREME_EXIT",
+        False,
+        "RSI2_XTREME_EXIT_ENABLED",
+    )
+    d = F.classify("QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.05%")
+    assert (d["family"], d["vec_twin"], d["gate_knob"]) == (
+        "STDEV_REJECT_EXIT",
+        True,
+        "STDEV_REJECT_EXIT_ENABLED",
+    )
+    d = F.classify("HEDGE_CLOSE_WT3M1H_PRE_GATE_3m=-49.1/-35.8_1h=-82.3/-75.1_gain=0.03%")
+    assert (d["family"], d["vec_twin"], d["gate_kind"]) == (
+        "HEDGE_CLOSE_WT3M1H",
+        False,
+        "unknown",
+    )
+
+
+def test_e1_row_precedes_delta_exit():
+    """Ordering regression: E_1_WT_DELTA_EXIT contains DELTA_EXIT and must win."""
+    F = _fam()
+    d = F.classify("E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%")
+    assert d["family"] == "E_1_WT_DELTA_EXIT"
+    assert d["gate_knob"] == "E_1_WT_EXIT_USE_DELTA_ENABLED"
+    assert F.classify("DELTA_EXIT_DC15M_FLOOR_BREAK")["family"] == "DELTA_EXIT"
+
+
+def test_parabolic_row_is_live_only_input():
+    F = _fam()
+    d = F.classify("QUICK_PARABOLIC_EXIT_SHORT_k15=5_px<0.025200_high3m=0.025340>prev0.025330")
+    assert d["family"] == "PARABOLIC_EXIT"
+    assert d["vec_twin"] is False
+    assert F.is_live_only_input(d) is True
+
+
+def test_trigger_reason_maps_to_killed_bb_recovery():
+    """The 17:12:53Z fin:RLCUSDT_SHORT refusal stays in the killed BB_RECOVERY taxonomy."""
+    F = _fam()
+    d = F.classify("QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7")
+    assert d["family"] == "BB_RECOVERY_EXIT"
+    assert d["gate_knob"] == "BB_RECOVERY_EXIT_ENABLED_TRADIER"
+
+
+def test_canon_folds_new_backstop_fns():
+    assert pfc.canon_family("BT_STOCH_XTREME_EXIT_g=0.60%") == pfc.canon_family(
+        "BT_STOCH_XTREME_EXIT_g=-0.11%"
+    )
+    assert pfc.canon_family(
+        "QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.05%"
+    ) == pfc.canon_family("QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.14%")
+    assert pfc.canon_family("E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%") == pfc.canon_family(
+        "E_1_WT_DELTA_EXIT_delta=-19_thr=0_g0.32"
+    )
+    assert pfc.canon_family("E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%") != pfc.canon_family(
+        "E_3_STRUCTURE_EXIT_3TF_g=0.24%"
+    )
+
+
+def test_inventory_covers_backstop_refused_families():
+    """Each new registry row feeds build_inventory with its gate knob + kind, so the
+    refused path carries taxonomy metadata (observed siblings keep the raw events)."""
+    inv = pfc.build_inventory()
+    expect = {
+        "BT_STOCH_XTREME_EXIT": ("STOCH_XTREME_EXIT_ENABLED", "disabled"),
+        "BT_WICK_REJECT_EXIT": ("WICK_REJECT_EXIT_ENABLED", "nonvec"),
+        "BT_RSI2_XTREME_EXIT": ("RSI2_XTREME_EXIT_ENABLED", "nonvec"),
+        "E_1_WT_DELTA_EXIT": ("E_1_WT_EXIT_USE_DELTA_ENABLED", "nonvec"),
+        "STDEV_REJECT_EXIT": ("STDEV_REJECT_EXIT_ENABLED", "disabled"),
+        "PARABOLIC_EXIT": ("PARABOLIC_EXIT_ENABLED", "low_tf"),
+        "HEDGE_CLOSE_WT3M1H": (None, "low_tf"),
+    }
+    for pid, (knob, kind) in expect.items():
+        assert pid in inv, pid
+        assert "families.py" in inv[pid]["sources"], (pid, inv[pid]["sources"])
+        assert inv[pid]["gate_knob"] == knob, (pid, inv[pid]["gate_knob"])
+        assert inv[pid]["kind"] == kind, (pid, inv[pid]["kind"])
+
+
+def test_backstop_exit_scores_into_forward_ledger(monkeypatch):
+    """A refused BT_STOCH exit lands in the scored (non-pending) forward ledger under
+    its observed key — the path the nightly forward test actually aggregates."""
+    t0 = 1_700_000_000
+    pfc._KL[("crypto", "DOTUSDT")] = (
+        [t0 + i * 900 for i in range(64)],
+        [1.10 + 0.001 * i for i in range(64)],
+    )
+    monkeypatch.setattr(
+        pfc, "real_closes", lambda a, ss: [(t0 + 50 * 900, 1.05)]
+    )
+    e = {
+        "venue": "crypto",
+        "kind": "exit",
+        "fn": "BT_STOCH_XTREME_EXIT_g=0.60%",
+        "reason": "BT_STOCH_XTREME_EXIT_g=0.60%",
+        "_t": t0 + 900,
+        "position_key": "fin:DOTUSDT_SHORT",
+        "_venue": "crypto",
+        "_fam": pfc.canon_family("BT_STOCH_XTREME_EXIT_g=0.60%"),
+    }
+    per, _ = pfc.score([e], horizon_bars=4)
+    key = (e["_fam"], "crypto", "exit", "DOTUSDT_SHORT")
+    assert key in per, (e["_fam"], list(per))
+    d, pend = per[key][0]
+    assert not pend and d is not None
