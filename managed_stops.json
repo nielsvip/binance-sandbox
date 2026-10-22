@@ -1,23 +1,23 @@
 {
-  "fin:ZILUSDT_SHORT": {
-    "orderId": "3000002266925014",
-    "stopPrice": 0.002274,
-    "entry_sig": "2026-10-22 17:23:12.122000+00:00",
-    "symbol": "ZILUSDT",
+  "men:ACTUSDT_SHORT": {
+    "orderId": "2000001532922629",
+    "stopPrice": 0.008778,
+    "entry_sig": "2026-10-22 19:28:47.192000+00:00",
+    "symbol": "ACTUSDT",
     "side": "SHORT"
   },
-  "fin:ETHFIUSDC_LONG": {
-    "orderId": "3000002267148555",
-    "stopPrice": 0.6493,
-    "entry_sig": "2026-10-22 19:23:40.469000+00:00",
-    "symbol": "ETHFIUSDC",
-    "side": "LONG"
+  "men:BIGTIMEUSDT_SHORT": {
+    "orderId": "2000001532924274",
+    "stopPrice": 0.006603,
+    "entry_sig": "2026-10-22 19:28:14.747000+00:00",
+    "symbol": "BIGTIMEUSDT",
+    "side": "SHORT"
   },
-  "fin:NMRUSDT_SHORT": {
-    "orderId": "3000002267151372",
-    "stopPrice": 10.788,
-    "entry_sig": "2026-10-22 18:27:21.165000+00:00",
-    "symbol": "NMRUSDT",
+  "men:BIOUSDC_SHORT": {
+    "orderId": "2000001533047482",
+    "stopPrice": 0.02409,
+    "entry_sig": "2026-10-22 19:28:21.590000+00:00",
+    "symbol": "BIOUSDC",
     "side": "SHORT"
   }
 }

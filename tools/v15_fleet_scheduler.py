@@ -200,7 +200,8 @@ def _progress_must(path):
     """2026-10-22 round-completion record (spec 22 §6.1): the must-set counters + board identity of one progress JSON, read where the
     file lives. refusal_codes = the reason codes (text before the first ':') of v18.must.refused_sample — a SAMPLE, never all refusals."""
     try:
-        _jd = json.loads(open(path).read())
+        _raw = open(path).read()
+        _jd = json.loads(_raw)
     except Exception:
         return None
     if not isinstance(_jd, dict):
@@ -208,7 +209,8 @@ def _progress_must(path):
     _v18 = _jd.get("v18") if isinstance(_jd.get("v18"), dict) else {}
     _m = _v18.get("must") if isinstance(_v18.get("must"), dict) else None
     out = {"verdict": _jd.get("verdict"), "final_gain": _jd.get("final_gain"), "initial_baseline_gain": _jd.get("initial_baseline_gain"),
-           "result_done_utc": _jd.get("result_done_utc"), "pilot_md5": _jd.get("result_pilot_md5"), "must_present": _m is not None}
+           "result_done_utc": _jd.get("result_done_utc"), "pilot_md5": _jd.get("result_pilot_md5"), "must_present": _m is not None,
+           "catchup": bool(_v18.get("catchup")) or any(_t in _raw for _t in ("[V18-CATCHUP]", "catchup_skipped", "CATCHUP_SKIPPED"))}
     if _m is not None:
         for _k in ("n_items", "n_evaluated", "n_carried_over", "n_refused"):
             out[_k] = _m.get(_k)
@@ -319,7 +321,7 @@ if mode == "probe":
                 stt = os.stat(f)
                 o.setdefault("started_mt", {})[ss] = stt.st_mtime
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
-                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache or key + "|t" not in cache or key + "|m" not in cache:
+                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache or key + "|t" not in cache or key + "|m2" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
                     _done, _q, _g, _r = _progress_marks(f)
                     cache[key] = _done
@@ -327,9 +329,9 @@ if mode == "probe":
                     cache[key + "|g"] = _g
                     cache[key + "|r"] = _r
                     cache[key + "|t"] = _progress_done_epoch(f)
-                    cache[key + "|m"] = _progress_must(f)
-                if cache.get(key + "|m") is not None:
-                    o["must"][ss] = cache[key + "|m"]
+                    cache[key + "|m2"] = _progress_must(f)  # |m2 (2026-10-22 20:5xZ): + catch-up evidence
+                if cache.get(key + "|m2") is not None:
+                    o["must"][ss] = cache[key + "|m2"]
                 if cache.get(key + "|t"):
                     o.setdefault("boarded_at", {})[ss] = cache[key + "|t"]
                 if cache[key]:
@@ -2213,7 +2215,7 @@ def _is_structural_refusal(code):
     c = str(code or "").strip().upper()
     return bool(c) and (c in _STRUCTURAL_REFUSALS or c.startswith(_STRUCTURAL_PREFIXES))
 _COMPLETION_CRITERION = ("every tradeable sym_side (tradeable_universe()) has complete_at = newest PUBLISHED board with manifest.mode in "
-                         f"{list(_FULL_MODES)} on an NPZ <= npz_min old (the _qualifying_ages rule), AND this round's progress JSON for it is finished "
+                         f"{list(_FULL_MODES)} (mode missing = full unless the board has catch-up evidence; template md5 not used) on an NPZ <= npz_min old (the _qualifying_ages rule), AND this round's progress JSON for it is finished "
                          "(result_done_utc set) with v18.must n_carried_over == 0 and every refusal reason code in v18.must.refused_sample within "
                          f"{sorted(_STRUCTURAL_REFUSALS)} or prefixed {list(_STRUCTURAL_PREFIXES)} (a SAMPLE of refusals, not all of them); OR it is listed in data/round_exclusions.json with a reason. "
                          "A budget/catch-up board never counts.")
@@ -2341,28 +2343,20 @@ def _rget(r, i):
 
 
 def build_round_completion(round_id, universe, rows, must_by_host, exclusions, now_ts, npz_min=20.0, hosts_not_visible=(), round_meta=None, launchable_syms=None,
-                           running=(), carried_from_previous=None):
+                           running=(), carried_from_previous=None, catchup_launches=None, previous_record=None, evidence_window_s=1800.0):
     """The full-course round record (brief 20 §4, spec 22 §6.1). Pure (tested).
     universe = tradeable_universe() dict; rows = _manifest_rows (merged hosts, fields 0-10); must_by_host = {host: {SS: _progress_must dict}} from
     each host's CURRENT progress dir (the probe channel); exclusions = {SS: reason}; hosts_not_visible = hosts whose probe failed this tick.
     launchable_syms = symbols the scheduler would launch NOW (its new-launch order, NPZ-dead removed); running = sym_sides running now. A PENDING
     sym_side whose symbol is launchable and that is not running is `launchable_pending` (the roll guard waits only for those).
-    carried_from_previous = (prev_round, {SS: prev_verdict}) of the previous round's unfinished sym_sides (tracked across the roll)."""
+    carried_from_previous = (prev_round, {SS: prev_verdict}) of the previous round's unfinished sym_sides (tracked across the roll).
+    FULL rule (coordinator 2026-10-22 20:4xZ): manifest mode slow/full = full; catchup / budget:<n> / any other string = not full; mode None
+    (pilots older than the 10-20 `mode` field) = FULL unless that board has catch-up evidence: this round's progress for the sym_side shows
+    catch-up and finished within evidence_window_s of the publish, or the last launch before the publish (catchup_launches {SS: [(epoch,
+    catchup_bool)]}, from the decision log) carried V18_CATCHUP=1. The template md5 is NOT part of the rule.
+    previous_record = last tick's record: a sym_side whose progress host is blind this tick keeps that host's last-known must data
+    (must_source='previous_record'), so a failed probe cannot un-complete boards."""
     best_full, best_any, counts = {}, {}, {}
-    for r in rows or []:
-        ss, ts = _rget(r, 0), _row_epoch(r)
-        if not ss or ts is None:
-            continue
-        lag = _board_npz_age_min(r, venue_of(str(ss).rsplit("_", 1)[0]))
-        if lag is None or lag > npz_min:
-            continue
-        full = str(_rget(r, 6) or "") in _FULL_MODES
-        c = counts.setdefault(ss, {"full": 0, "not_full": 0})
-        c["full" if full else "not_full"] += 1
-        if ts > (best_any.get(ss) or (0.0, None))[0]:
-            best_any[ss] = (ts, r)
-        if full and ts > (best_full.get(ss) or (0.0, None))[0]:
-            best_full[ss] = (ts, r)
     must = {}
     for hn, per in (must_by_host or {}).items():
         for ss, m in (per or {}).items():
@@ -2373,6 +2367,47 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
             if cur is None or key > cur[0]:
                 must[ss] = (key, hn, m)
     blind = sorted(set(hosts_not_visible or ()))
+    if blind and isinstance(previous_record, dict):
+        for ss, pe in (previous_record.get("sym_sides") or {}).items():
+            if ss in must or not isinstance(pe, dict) or pe.get("progress_host") not in blind or not isinstance(pe.get("must_items_total"), int):
+                continue
+            must[ss] = ((1, ""), pe["progress_host"], {"result_done_utc": pe.get("progress_done_utc"), "verdict": pe.get("board_verdict"), "n_items": pe.get("must_items_total"),
+                                                         "n_evaluated": pe.get("must_evaluated"), "n_carried_over": pe.get("must_carried"), "n_refused": pe.get("must_refused"),
+                                                         "refusal_codes": pe.get("refusal_reasons_sample"), "refused_sample_n": pe.get("refused_sample_n"), "must_present": True,
+                                                         "catchup": pe.get("progress_catchup"), "_from_previous": True})
+    cl = catchup_launches or {}
+
+    def _mode_full(ss, r, ts):
+        md = _rget(r, 6)
+        if md is not None:
+            return (str(md) in _FULL_MODES), f"mode={md}"
+        mm_ = must.get(ss)
+        if mm_ and mm_[2].get("catchup"):
+            try:
+                dts = datetime.datetime.fromisoformat(str(mm_[2].get("result_done_utc")).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                dts = None
+            if dts is not None and abs(dts - ts) <= evidence_window_s:
+                return False, "mode=None + catch-up evidence in progress"
+        prior = [x for x in (cl.get(ss) or []) if x[0] <= ts]
+        if prior and max(prior)[1]:
+            return False, "mode=None + V18_CATCHUP=1 on its launch (decision log)"
+        return True, "mode=None counted full (no catch-up evidence)"
+
+    for r in rows or []:
+        ss, ts = _rget(r, 0), _row_epoch(r)
+        if not ss or ts is None:
+            continue
+        lag = _board_npz_age_min(r, venue_of(str(ss).rsplit("_", 1)[0]))
+        if lag is None or lag > npz_min:
+            continue
+        full, _why_m = _mode_full(ss, r, ts)
+        c = counts.setdefault(ss, {"full": 0, "not_full": 0})
+        c["full" if full else "not_full"] += 1
+        if ts > (best_any.get(ss) or (0.0, None))[0]:
+            best_any[ss] = (ts, r)
+        if full and ts > (best_full.get(ss) or (0.0, None))[0]:
+            best_full[ss] = (ts, r, _why_m)
     iso = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     per_ss, per_cat, outside = {}, {}, {}
     for ss in universe.get("sym_sides") or []:
@@ -2383,12 +2418,14 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
         brow = (bf or ba or (None, None))[1]
         e = {"complete_at": (iso(bf[0]) if bf else None), "host": _rget(brow, 2), "pilot_md5": _rget(brow, 7), "npz_last_bar_ts": (_rget(brow, 10) if _rget(brow, 10) is not None else _rget(brow, 3)),
              "mode": _rget(brow, 6), "start_gain": _rget(brow, 8), "published_gain": _rget(brow, 9),
-             "board_published_at": (iso(ba[0]) if ba else None), "qualifying_boards": counts.get(ss, {"full": 0, "not_full": 0})}
+             "board_published_at": (iso(ba[0]) if ba else None), "qualifying_boards": counts.get(ss, {"full": 0, "not_full": 0}),
+             "full_board_rule": (bf[2] if bf else None)}
         mm = must.get(ss)
         why = []
         if mm:
             m = mm[2]
-            e.update({"progress_host": mm[1], "progress_done_utc": m.get("result_done_utc"), "board_verdict": m.get("verdict"),
+            e.update({"progress_host": mm[1], "progress_done_utc": m.get("result_done_utc"), "board_verdict": m.get("verdict"), "progress_catchup": m.get("catchup"),
+                      "must_source": ("previous_record (host not visible this tick)" if m.get("_from_previous") else "probe"),
                       "must_items_total": m.get("n_items"), "must_evaluated": m.get("n_evaluated"), "must_carried": m.get("n_carried_over"),
                       "must_refused": m.get("n_refused"), "refusal_reasons_sample": m.get("refusal_codes"), "refused_sample_n": m.get("refused_sample_n")})
             if e["start_gain"] is None:
@@ -2487,6 +2524,29 @@ def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
     if nl > 0:
         return False, "REFUSED (launchable pending work exists): " + msg
     return True, "ALLOWED (exhausted: nothing launchable, record frozen incomplete): " + msg
+
+
+def _catchup_launches(path, now_ts, keep_s=14 * 86400.0):
+    """{SYM_SIDE: [(epoch, catchup_bool)]} of launches recorded in the decision log (mode_per_launch). Never raises."""
+    out = {}
+    try:
+        fh = open(path, encoding="utf-8")
+    except Exception:
+        return out
+    with fh:
+        for ln in fh:
+            try:
+                d = json.loads(ln)
+                t = float(d.get("ts_epoch") or 0.0)
+            except Exception:
+                continue
+            if now_ts - t > keep_s:
+                continue
+            for hk, v in (d.get("mode_per_launch") or {}).items():
+                sym = str(hk).split(":", 1)[-1]
+                for sd, md in ((v or {}).get("mode") or {}).items():
+                    out.setdefault(f"{sym}_{sd}".upper(), []).append((t, "V18_CATCHUP" in str(md)))
+    return out
 
 
 def freeze_round_record(path, reason, now_ts):
@@ -4749,7 +4809,9 @@ def tick(args, cfg, now):
             _lsyms = set().union(*[set(_v) for _v in _ORDER_BY_HOST.values()]) - set(_npz_dead) if _ORDER_BY_HOST else set()
             _rec = build_round_completion(_rid, _uni1, _mrows, _mbh, _load_round_exclusions(_rid), _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")),
                                           hosts_not_visible=_blind, round_meta={"round_source": _rsrc, "round_env_round": _renv, "current_progress_dir": cur_pdir},
-                                          launchable_syms=_lsyms, running=set(running), carried_from_previous=_previous_round_carry(_rid))
+                                          launchable_syms=_lsyms, running=set(running), carried_from_previous=_previous_round_carry(_rid),
+                                          catchup_launches=_catchup_launches(os.environ.get("V15_SCHED_DECISION_LOG", str(ROOT / "logs" / "v15_fleet_sched_decisions.jsonl")), _now_ts),
+                                          previous_record=_jload(ROOT / "data" / "reports" / f"full_course_round_{_rid}.json", None))
             _wp = write_round_completion(_rec)
             log["round_completion"] = {"path": str(_wp), "round": _rid, "complete": _rec["complete"], "universe_n": _rec["universe_n"], "n_complete": _rec["n_complete"], "n_pending": _rec["n_pending"],
                                        "n_refused_only": _rec["n_refused_only"], "n_excluded": _rec["n_excluded"], "n_launchable_pending": _rec["n_launchable_pending"], "hosts_not_visible": _blind}
