@@ -1,80 +1,68 @@
 {
- "generated_at": "2026-10-22 06:52 UTC",
- "total_capital_usd": 87.36,
+ "generated_at": "2026-10-22 07:20 UTC",
+ "total_capital_usd": 69.08,
  "tier_capital": {
-  "A": 31.06,
-  "B": 56.3,
-  "C": 0.0
+  "A": 0.0,
+  "B": 44.11,
+  "C": 24.96
  },
  "tier_count": {
-  "A": 2,
+  "A": 0,
   "B": 3,
-  "C": 0
+  "C": 1
  },
- "winners": [
-  "fin:XMRUSDT_LONG"
+ "winners": [],
+ "losers": [
+  "fin:COMPUSDT_LONG"
  ],
- "losers": [],
  "mediocre": [
-  "fin:MOVRUSDT_SHORT",
-  "fin:BEAMXUSDT_LONG",
-  "fin:VETUSDT_LONG"
+  "fin:1000PEPEUSDC_LONG",
+  "fin:KSMUSDT_SHORT"
  ],
  "positions": [
   {
-   "pk": "fin:MOVRUSDT_SHORT",
-   "symbol": "MOVRUSDT",
+   "pk": "fin:PUMPUSDT_LONG",
+   "symbol": "PUMPUSDT",
    "account": "fin",
-   "value_usd": 25.04,
-   "gain_pct": -0.29,
+   "value_usd": 25.13,
+   "gain_pct": 0.486,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 20.71,
-   "mark": 1.2093
+   "perf_mult": 0.28,
+   "amt": 5213.0,
+   "mark": 0.00482132
   },
   {
-   "pk": "fin:BEAMXUSDT_LONG",
-   "symbol": "BEAMXUSDT",
+   "pk": "fin:COMPUSDT_LONG",
+   "symbol": "COMPUSDT",
    "account": "fin",
-   "value_usd": 25.02,
-   "gain_pct": 0.118,
+   "value_usd": 24.96,
+   "gain_pct": -0.151,
+   "tier": "C",
+   "perf_mult": 0.21,
+   "amt": 0.995,
+   "mark": 25.08207578
+  },
+  {
+   "pk": "fin:1000PEPEUSDC_LONG",
+   "symbol": "1000PEPEUSDC",
+   "account": "fin",
+   "value_usd": 13.0,
+   "gain_pct": -0.172,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 8038.0,
-   "mark": 0.00311266
+   "perf_mult": 0.36,
+   "amt": 2902.0,
+   "mark": 0.00448138
   },
   {
-   "pk": "fin:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
+   "pk": "fin:KSMUSDT_SHORT",
+   "symbol": "KSMUSDT",
    "account": "fin",
-   "value_usd": 24.82,
-   "gain_pct": 0.412,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 0.038,
-   "mark": 653.21
-  },
-  {
-   "pk": "fin:ALTUSDT_LONG",
-   "symbol": "ALTUSDT",
-   "account": "fin",
-   "value_usd": 6.24,
-   "gain_pct": -0.117,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 656.0,
-   "mark": 0.0095079
-  },
-  {
-   "pk": "fin:VETUSDT_LONG",
-   "symbol": "VETUSDT",
-   "account": "fin",
-   "value_usd": 6.24,
-   "gain_pct": -0.125,
+   "value_usd": 5.98,
+   "gain_pct": 0.175,
    "tier": "B",
-   "perf_mult": 0.32,
-   "amt": 870.0,
-   "mark": 0.00717133
+   "perf_mult": 0.89,
+   "amt": 1.5,
+   "mark": 3.987
   }
  ]
 }

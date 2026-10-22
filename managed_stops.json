@@ -1,51 +1,30 @@
 {
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002636574790",
-    "stopPrice": 5501.5,
-    "entry_sig": "2026-10-22 03:01:29.308000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "fin:PUMPUSDT_LONG": {
+    "orderId": "3000002265736874",
+    "stopPrice": 0.004763,
+    "entry_sig": "2026-10-22 06:48:45.110000+00:00",
+    "symbol": "PUMPUSDT",
     "side": "LONG"
   },
-  "flz:XRPUSDC_LONG": {
-    "orderId": "1000002636574596",
-    "stopPrice": 1.3309,
-    "entry_sig": "2026-10-22 06:48:14.721000+00:00",
-    "symbol": "XRPUSDC",
+  "fin:COMPUSDT_LONG": {
+    "orderId": "3000002265743545",
+    "stopPrice": 24.81,
+    "entry_sig": "2026-10-22 06:57:14.920000+00:00",
+    "symbol": "COMPUSDT",
     "side": "LONG"
   },
-  "flz:DASHUSDT_LONG": {
-    "orderId": "1000002636572520",
-    "stopPrice": 50.2,
-    "entry_sig": "2026-10-22 04:09:32.424000+00:00",
-    "symbol": "DASHUSDT",
+  "fin:1000PEPEUSDC_LONG": {
+    "orderId": "3000002265746062",
+    "stopPrice": 0.0044491,
+    "entry_sig": "2026-10-22 06:58:57.978000+00:00",
+    "symbol": "1000PEPEUSDC",
     "side": "LONG"
   },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002636574783",
-    "stopPrice": 1318.03,
-    "entry_sig": "2026-10-22 06:56:24.269000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:XRPUSDC_SHORT": {
-    "orderId": "1000002636567392",
-    "stopPrice": 1.345,
-    "entry_sig": "2026-10-22 07:00:13.710000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002636449734",
-    "stopPrice": 105.5,
-    "entry_sig": "2026-10-22 05:34:21.630000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "SHORT"
-  },
-  "flz:GRAMUSDT_SHORT": {
-    "orderId": "1000002636578413",
-    "stopPrice": 1.375,
-    "entry_sig": "2026-10-22 05:08:56.834000+00:00",
-    "symbol": "GRAMUSDT",
+  "fin:KSMUSDT_SHORT": {
+    "orderId": "3000002265761439",
+    "stopPrice": 4.11,
+    "entry_sig": "2026-10-22 06:48:27.962000+00:00",
+    "symbol": "KSMUSDT",
     "side": "SHORT"
   }
 }
