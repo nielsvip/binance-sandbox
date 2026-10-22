@@ -1,23 +1,25 @@
 {
- "generated_at": "2026-10-22 07:20 UTC",
- "total_capital_usd": 69.08,
+ "generated_at": "2026-10-22 07:35 UTC",
+ "total_capital_usd": 119.66,
  "tier_capital": {
   "A": 0.0,
-  "B": 44.11,
-  "C": 24.96
+  "B": 84.04,
+  "C": 35.62
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 1
+  "B": 5,
+  "C": 2
  },
  "winners": [],
  "losers": [
-  "fin:COMPUSDT_LONG"
+  "fin:ACEUSDT_SHORT",
+  "fin:DASHUSDT_LONG"
  ],
  "mediocre": [
+  "fin:MAGICUSDT_SHORT",
   "fin:1000PEPEUSDC_LONG",
-  "fin:KSMUSDT_SHORT"
+  "fin:BEAMXUSDT_LONG"
  ],
  "positions": [
   {
@@ -25,44 +27,77 @@
    "symbol": "PUMPUSDT",
    "account": "fin",
    "value_usd": 25.13,
-   "gain_pct": 0.486,
+   "gain_pct": 0.481,
    "tier": "B",
    "perf_mult": 0.28,
    "amt": 5213.0,
-   "mark": 0.00482132
+   "mark": 0.00482107
   },
   {
-   "pk": "fin:COMPUSDT_LONG",
-   "symbol": "COMPUSDT",
+   "pk": "fin:MAGICUSDT_SHORT",
+   "symbol": "MAGICUSDT",
    "account": "fin",
-   "value_usd": 24.96,
-   "gain_pct": -0.151,
+   "value_usd": 25.13,
+   "gain_pct": -0.109,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 268.5,
+   "mark": 0.09360155
+  },
+  {
+   "pk": "fin:ACEUSDT_SHORT",
+   "symbol": "ACEUSDT",
+   "account": "fin",
+   "value_usd": 25.11,
+   "gain_pct": -0.507,
    "tier": "C",
-   "perf_mult": 0.21,
-   "amt": 0.995,
-   "mark": 25.08207578
+   "perf_mult": 0.14,
+   "amt": 171.17,
+   "mark": 0.14669
   },
   {
    "pk": "fin:1000PEPEUSDC_LONG",
    "symbol": "1000PEPEUSDC",
    "account": "fin",
-   "value_usd": 13.0,
-   "gain_pct": -0.172,
+   "value_usd": 13.01,
+   "gain_pct": -0.118,
    "tier": "B",
    "perf_mult": 0.36,
    "amt": 2902.0,
-   "mark": 0.00448138
+   "mark": 0.0044838
   },
   {
-   "pk": "fin:KSMUSDT_SHORT",
-   "symbol": "KSMUSDT",
+   "pk": "fin:BEAMXUSDT_LONG",
+   "symbol": "BEAMXUSDT",
    "account": "fin",
-   "value_usd": 5.98,
-   "gain_pct": 0.175,
+   "value_usd": 10.52,
+   "gain_pct": -0.107,
    "tier": "B",
-   "perf_mult": 0.89,
-   "amt": 1.5,
-   "mark": 3.987
+   "perf_mult": 1.0,
+   "amt": 3385.0,
+   "mark": 0.00310766
+  },
+  {
+   "pk": "fin:DASHUSDT_LONG",
+   "symbol": "DASHUSDT",
+   "account": "fin",
+   "value_usd": 10.51,
+   "gain_pct": 0.059,
+   "tier": "C",
+   "perf_mult": 0.39,
+   "amt": 0.206,
+   "mark": 51.0
+  },
+  {
+   "pk": "fin:MASKUSDT_LONG",
+   "symbol": "MASKUSDT",
+   "account": "fin",
+   "value_usd": 10.25,
+   "gain_pct": 0.376,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 24.0,
+   "mark": 0.427
   }
  ]
 }
