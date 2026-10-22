@@ -7414,7 +7414,7 @@ async def calculate_market_movement_index(use_cache=True, volume_weighted=False,
         _cached_indicators_hash = data_hash
         if redis_manager:
             try:
-                ticker_data = {"symbol": "MARKET_INDEX", "price": float(smoothed_index), "timestamp": datetime.now(timezone.utc).isoformat(), "mode": "EXTREME_MODE" if smoothed_index >= 65 else "LIGHT_MODE" if smoothed_index <= 35 else "NORMAL_MODE"}
+                ticker_data = {"symbol": "MARKET_INDEX", "price": float(smoothed_index), "timestamp": datetime.now(timezone.utc).isoformat(), "mode": "EXTREME_MODE" if smoothed_index > 40 else "LIGHT_MODE" if smoothed_index < 12 else "NORMAL_MODE"}
                 await redis_manager.publish("market_index_ticker", orjson.dumps(ticker_data))  # type: ignore # pylint: disable=no-member,c-extension-no-member
             except Exception as e:
                 logger.debug(f"Failed to publish market index ticker: {e}")
@@ -7464,9 +7464,9 @@ def _write_market_mode_file(mode_data: dict):
         logger.error(f"Could not publish market_mode.json ({exc!r}) — mode {mode_data.get('mode')} is applied in-process but the engines will not see it")
 async def trigger_market_mode(market_index: float) -> tuple:
     global last_market_mode, signals_data
-    EXTREME_THRESHOLD = 65
-    LIGHT_THRESHOLD = 35
-    new_mode = "EXTREME_MODE" if market_index >= EXTREME_THRESHOLD else "LIGHT_MODE" if market_index <= LIGHT_THRESHOLD else "NORMAL_MODE"
+    EXTREME_THRESHOLD = 40  # USER 2026-10-22: light <12, normal 12-40, extreme >40 (old 65/35 never fired: 5d max index 26.0)
+    LIGHT_THRESHOLD = 12
+    new_mode = "EXTREME_MODE" if market_index > EXTREME_THRESHOLD else "LIGHT_MODE" if market_index < LIGHT_THRESHOLD else "NORMAL_MODE"
     mode_changed = new_mode != last_market_mode
     last_market_mode = new_mode
     mode_data = {
