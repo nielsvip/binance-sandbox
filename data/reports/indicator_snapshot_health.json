@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T03:18:54Z",
+ "generated_utc": "2026-10-22T03:23:01Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 8950.8,
+  "age_s": 9198.0,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 38213,
-  "proc_age_s": 1219.0,
-  "log_age_s": 14.0,
+  "proc_age_s": 1467.0,
+  "log_age_s": 2.4,
   "warmup_done": false,
   "timeframes_since_restart": [],
   "last_timeframe": "15m",
@@ -17,15 +17,17 @@
   "restarts_last_hour": 2
  },
  "heartbeat": {
-  "written": 0,
-  "lines": [],
+  "written": 1,
+  "lines": [
+   "[2026-10-22 03:22:59,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=38213 warm-up in progress \u2014 alive and progressing (cpu +0.16s in 10.0s, last progress 1454s ago) (tools/ez_indicators_warmup_guard.py)"
+  ],
   "decisions": [
-   "log fresh (23s < 45s)",
-   "log fresh (28s < 45s)",
-   "log fresh (35s < 45s)",
-   "log fresh (44s < 45s)",
-   "log fresh (6s < 45s)",
-   "log fresh (12s < 45s)"
+   "log fresh (11s < 45s)",
+   "log fresh (18s < 45s)",
+   "log fresh (24s < 45s)",
+   "log fresh (32s < 45s)",
+   "log fresh (38s < 45s)",
+   "alive and progressing (cpu +0.16s in 10.0s, last progress 1454s ago)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -36,10 +38,10 @@
  },
  "s1_failover": {
   "error": "TimeoutExpired: Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', 's1-pub', 'python3 -c \"import json,time;s=json.load(open(\\'/home/niels/binance/data/live_failover/state.json\\'));h=json.load(open(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\'));v=(s.get(\\'venues\\') or {}).get(\\'crypto\\') or {};c=(h.get(\\'venues\\') or {}).get(\\'crypto\\') or {};print(json.dumps({\\'mode\\':v.get(\\'mode\\'),\\'since_epoch\\':v.get(\\'since_epoch\\'),\\'activations\\':v.get(\\'activations\\'),\\'hb_mtime\\':__import__(\\'os\\').stat(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\').st_mtime,\\'mac_snapshot_age_s\\':c.get(\\'snapshot_age_s\\'),\\'mac_stale\\':c.get(\\'stale\\'),\\'lease_holder\\':(s.get(\\'lease\\') or {}).get(\\'holder\\'),\\'lease_venues\\':(s.get(\\'lease\\') or {}).get(\\'venues\\'),\\'lease_since\\':(s.get(\\'lease\\') or {}).get(\\'since\\'),\\'lease_reason\\':(s.get(\\'lease\\') or {}).get(\\'reason\\'),\\'now\\':time.time()}))\"']' timed out after 20 seconds",
-  "from_cache_age_s": 214.9
+  "from_cache_age_s": 109.5
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 8950s old (> 600s). ez_indicators pid=38213 warmup_done=False tfs_since_restart=[] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 9197s old (> 600s). ez_indicators pid=38213 warmup_done=False tfs_since_restart=[] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

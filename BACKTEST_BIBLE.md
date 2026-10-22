@@ -4677,3 +4677,36 @@ the autopilot, or running it by hand.
 **TO PERSIST, the greying belongs in `SPREADSHEETS/TEMPLATE_*.xlsx` (or in the normaliser's grey rule), applied
 through the sanctioned writer, since only `tools/v15_autopilot.py` may write TEMPLATEs.** Its guard will at
 least FAIL loudly after a regeneration rather than silently resume the spend — that part of the design is right.
+
+### 118.15 "S1 IS DOWN" WAS A STALE SSH SOCKET — AND THE REAL GAP WAS THE SANDBOX COPY
+2026-10-22 a subagent escalated **"S1 is unreachable — treat it as more urgent than the template sync"**, citing
+`s1-int Connection timed out during banner exchange (ControlMaster broken pipe)` and no answer on `s1-pub`.
+**S1 was healthy throughout**: `ssh -o ControlPath=none s1-pub "hostname; uptime"` → `niels`, **up 8 days
+14:20**, and `s1-int` answered too. The symptom is the trap diagnosed the same hour in
+`tools/never_untraded_guard.py`: **a stale `~/.ssh/cm-*` ControlMaster socket swallows the connection inside
+`ConnectTimeout`, and the host reads as dead.** Third instance in one session (the guard's S1 probe, an
+`rsync`/`ssh` to s2 that printed `mux_client_request_session: read from master failed: Broken pipe`, and this).
+**LAW: never conclude a host is down from a connection that shares a ControlMaster socket. Re-probe with
+`-o ControlPath=none` before reporting it, and for anything that decides whether a failover host exists, pass
+that flag permanently.** Note also that re-bootstrapping the tunnel would have *looked* like the fix and been
+irrelevant: `ssh -fNT s1-sftp` returned `cannot listen to port: 2201` because the tunnel was already up.
+
+**ITS OTHER CLAIM — "S1 has NOT received the greyed templates" — was also wrong, and the truth was worse in a
+different place.** S1's `~/binance/SPREADSHEETS/TEMPLATE_FINAL_NORM/` was ALREADY md5-identical to the Mac on
+all four workbooks. The stale copies were in **`~/binance-sandbox/`** — and that is the directory the herd
+actually runs from: measured on S1, **29 live `v15_pilot` processes with `cwd=/home/niels/binance-sandbox`**. So
+S1 was spending real compute on the rows this campaign exists to stop. Pushed (after backing up S1's four to
+`~/binance-sandbox/backups/TEMPLATE_*_before_grey_push_202610220520.xlsx`) and md5-verified identical on all
+four. `rsync` renames into place, so the 29 running pilots keep their open inode and only new opens see the new
+file — safe to replace mid-run.
+
+**THE COUNT, RECONCILED — and a scan error of mine worth not repeating.** Restricted to the 13
+`SWITCH_SHEETS` (`v15_pilot.py:842-851`), **138 of 138** queueable rows for those keys are grey in all four
+workbooks, on the Mac and on S1. A first pass reported "4 still swept per lane" because it walked **every**
+worksheet, picking up `FILTERS_EXPLAINED` rows 382-385 whose column B reads the literal word `Threshold` —
+documentation, not a candidate, in a sheet the pilot never iterates. **Count skipped work only over the tabs the
+pilot iterates; a switch NAME appearing in the filter dictionary is not a swept row.** The agent's "146"
+reconciles exactly: 138 queueable + the 8 `CAT_SIDE_DEFAULTS_ENABLED` rows whose candidate cells it cleared
+(cleared cells are unqueueable via the `cand is None` test at `:3279`, before the grey test at `:3283`).
+Supporting detail: `SIZING_FALSE_ALPHA_SWITCHES = {"START_POSITION_SIZE", "MIN_POSITION_SIZE"}` (`:860`) already
+blocked PROMOTION for two of these — greying additionally stops the COMPUTE, which promotion-blocking never did.
