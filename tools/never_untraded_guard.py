@@ -59,7 +59,14 @@ GRACE_S = float(os.environ.get("NEVER_UNTRADED_GRACE_S", "90"))  # 90 s + a 30 s
 CRYPTO = ["fin", "men", "inf", "flz", "ang"]
 STOCKS = ["trb", "trc", "tra"]
 S1 = os.environ.get("NEVER_UNTRADED_S1", "s1-int")
-SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
+# 2026-10-22 FALLBACK + NO MULTIPLEXING. Measured: this probe reported S1 unreachable on all 8 accounts while S1
+# was healthy — `s1-int` answered only once ssh printed "ControlSocket ~/.ssh/cm-s1-int already exists, disabling
+# multiplexing", i.e. a STALE ControlMaster socket was swallowing the connection inside ConnectTimeout. Sharing a
+# long-lived socket is what makes the rest of the session fast, but the one probe that decides whether a failover
+# host exists must not depend on it. ControlPath=none dials its own connection, and s1-pub (157.180.125.52:22) is
+# tried when the s1-int tunnel on 127.0.0.1:2201 is down — CLAUDE.md names it as the documented fallback.
+S1_FALLBACK = os.environ.get("NEVER_UNTRADED_S1_FALLBACK", "s1-pub")
+SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ControlPath=none"]
 
 
 def stocks_in_session(now_ts: float | None = None) -> bool:
@@ -109,11 +116,19 @@ def _engines_s1() -> dict | None:
     """Same count on S1, or None when S1 cannot be reached (then we never claim 'nobody trades it')."""
     probe = ("ps -eo pid=,args= | grep -E 'python' | grep -vE 'run_with_watchdog|bash -c' | "
              "grep -oE '(ez_manage\\.py --account|tradier_manage\\.py --accounts) [a-z]+'")
-    try:
-        r = subprocess.run(SSH + [S1, probe], capture_output=True, text=True, timeout=30)
-    except Exception:
-        return None
-    if r.returncode not in (0, 1):
+    r = None
+    for host in (S1, S1_FALLBACK):
+        if not host:
+            continue
+        try:
+            r = subprocess.run(SSH + [host, probe], capture_output=True, text=True, timeout=30)
+        except Exception:
+            r = None
+            continue
+        if r.returncode in (0, 1):
+            break
+        r = None
+    if r is None:
         return None
     n = {a: 0 for a in CRYPTO + STOCKS}
     for ln in r.stdout.split("\n"):

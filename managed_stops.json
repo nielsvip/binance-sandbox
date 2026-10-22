@@ -1,9 +1,9 @@
 {
-  "inf:XMRUSDT_LONG": {
-    "orderId": "2000001530801818",
-    "stopPrice": 569.3,
-    "entry_sig": "2026-10-22 02:02:06.107000+00:00",
-    "symbol": "XMRUSDT",
+  "inf:KMNOUSDT_LONG": {
+    "orderId": "2000001530737163",
+    "stopPrice": 0.04066,
+    "entry_sig": "2026-10-22 01:35:46.433000+00:00",
+    "symbol": "KMNOUSDT",
     "side": "LONG"
   },
   "inf:XRPUSDC_SHORT": {
@@ -13,26 +13,12 @@
     "symbol": "XRPUSDC",
     "side": "SHORT"
   },
-  "inf:KMNOUSDT_LONG": {
-    "orderId": "2000001530737163",
-    "stopPrice": 0.04066,
-    "entry_sig": "2026-10-22 01:35:46.433000+00:00",
-    "symbol": "KMNOUSDT",
-    "side": "LONG"
-  },
   "inf:ALTUSDT_LONG": {
     "orderId": "2000001530767875",
     "stopPrice": 0.01224,
     "entry_sig": "2026-10-22 01:47:43.277000+00:00",
     "symbol": "ALTUSDT",
     "side": "LONG"
-  },
-  "inf:DOTUSDT_SHORT": {
-    "orderId": "2000001530801819",
-    "stopPrice": 1.1883,
-    "entry_sig": "2026-10-22 02:02:09.487000+00:00",
-    "symbol": "DOTUSDT",
-    "side": "SHORT"
   },
   "inf:GRTUSDT_SHORT": {
     "orderId": "2000001530789019",
@@ -41,9 +27,37 @@
     "symbol": "GRTUSDT",
     "side": "SHORT"
   },
+  "inf:DOTUSDT_SHORT": {
+    "orderId": "2000001530801819",
+    "stopPrice": 1.1883,
+    "entry_sig": "2026-10-22 02:02:09.487000+00:00",
+    "symbol": "DOTUSDT",
+    "side": "SHORT"
+  },
+  "inf:AVAXUSDC_SHORT": {
+    "orderId": "2000001530814865",
+    "stopPrice": 9.907,
+    "entry_sig": "2026-10-22 02:07:35.189000+00:00",
+    "symbol": "AVAXUSDC",
+    "side": "SHORT"
+  },
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001530816506",
+    "stopPrice": 5501.5,
+    "entry_sig": "2026-10-22 02:08:16.488000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "inf:COTIUSDT_SHORT": {
+    "orderId": "2000001530820857",
+    "stopPrice": 0.011428,
+    "entry_sig": "2026-10-22 02:10:07.484000+00:00",
+    "symbol": "COTIUSDT",
+    "side": "SHORT"
+  },
   "inf:MELANIAUSDT_SHORT": {
-    "orderId": "2000001530807568",
-    "stopPrice": 0.08955,
+    "orderId": "2000001530828221",
+    "stopPrice": 0.08946,
     "entry_sig": "2026-10-22 02:02:01.187000+00:00",
     "symbol": "MELANIAUSDT",
     "side": "SHORT"

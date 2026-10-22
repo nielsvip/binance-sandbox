@@ -1,32 +1,161 @@
 {
- "generated_at": "2026-10-22 02:12 UTC",
- "total_capital_usd": 24.63,
+ "generated_at": "2026-10-22 02:14 UTC",
+ "total_capital_usd": 183.43,
  "tier_capital": {
-  "A": 0.0,
-  "B": 0.0,
-  "C": 24.63
+  "A": 36.81,
+  "B": 37.1,
+  "C": 109.5
  },
  "tier_count": {
-  "A": 0,
-  "B": 0,
-  "C": 1
+  "A": 3,
+  "B": 3,
+  "C": 6
  },
- "winners": [],
+ "winners": [
+  "inf:XMRUSDT_LONG"
+ ],
  "losers": [
-  "ang:1000FLOKIUSDT_SHORT"
+  "inf:ENAUSDC_LONG",
+  "inf:BTCDOMUSDT_LONG",
+  "inf:TRUMPUSDC_SHORT",
+  "inf:AVAXUSDC_SHORT",
+  "inf:COTIUSDT_SHORT",
+  "inf:MELANIAUSDT_SHORT",
+  "inf:GRTUSDT_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "ang:1000FLOKIUSDT_SHORT",
-   "symbol": "1000FLOKIUSDT",
-   "account": "ang",
-   "value_usd": 24.63,
-   "gain_pct": 1.34,
+   "pk": "inf:COTIUSDT_SHORT",
+   "symbol": "COTIUSDT",
+   "account": "inf",
+   "value_usd": 24.98,
+   "gain_pct": 0.134,
    "tier": "C",
-   "perf_mult": 0.27,
-   "amt": 1014.0,
-   "mark": 0.02429
+   "perf_mult": 0.36,
+   "amt": 2248.0,
+   "mark": 0.01111292
+  },
+  {
+   "pk": "inf:AVAXUSDC_SHORT",
+   "symbol": "AVAXUSDC",
+   "account": "inf",
+   "value_usd": 24.96,
+   "gain_pct": 0.044,
+   "tier": "C",
+   "perf_mult": 0.19,
+   "amt": 2.64,
+   "mark": 9.45533465
+  },
+  {
+   "pk": "inf:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "inf",
+   "value_usd": 24.92,
+   "gain_pct": 0.331,
+   "tier": "B",
+   "perf_mult": 1.2,
+   "amt": 18.5,
+   "mark": 1.34701408
+  },
+  {
+   "pk": "inf:MELANIAUSDT_SHORT",
+   "symbol": "MELANIAUSDT",
+   "account": "inf",
+   "value_usd": 24.91,
+   "gain_pct": 0.396,
+   "tier": "C",
+   "perf_mult": 0.16,
+   "amt": 291.4,
+   "mark": 0.08549
+  },
+  {
+   "pk": "inf:XMRUSDT_LONG",
+   "symbol": "XMRUSDT",
+   "account": "inf",
+   "value_usd": 24.56,
+   "gain_pct": 0.189,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 0.04,
+   "mark": 614.0925
+  },
+  {
+   "pk": "inf:BTCDOMUSDT_LONG",
+   "symbol": "BTCDOMUSDT",
+   "account": "inf",
+   "value_usd": 22.2,
+   "gain_pct": -0.073,
+   "tier": "C",
+   "perf_mult": 0.26,
+   "amt": 0.004,
+   "mark": 5550.14057488
+  },
+  {
+   "pk": "inf:TRUMPUSDC_SHORT",
+   "symbol": "TRUMPUSDC",
+   "account": "inf",
+   "value_usd": 6.24,
+   "gain_pct": -0.006,
+   "tier": "C",
+   "perf_mult": 0.45,
+   "amt": 3.45,
+   "mark": 1.80909842
+  },
+  {
+   "pk": "inf:GRTUSDT_SHORT",
+   "symbol": "GRTUSDT",
+   "account": "inf",
+   "value_usd": 6.21,
+   "gain_pct": 0.509,
+   "tier": "C",
+   "perf_mult": 0.2,
+   "amt": 253.0,
+   "mark": 0.02455524
+  },
+  {
+   "pk": "inf:KMNOUSDT_LONG",
+   "symbol": "KMNOUSDT",
+   "account": "inf",
+   "value_usd": 6.16,
+   "gain_pct": -1.171,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 147.0,
+   "mark": 0.04189069
+  },
+  {
+   "pk": "inf:DOTUSDT_SHORT",
+   "symbol": "DOTUSDT",
+   "account": "inf",
+   "value_usd": 6.11,
+   "gain_pct": 0.497,
+   "tier": "B",
+   "perf_mult": 6.63,
+   "amt": 5.4,
+   "mark": 1.13191869
+  },
+  {
+   "pk": "inf:ALTUSDT_LONG",
+   "symbol": "ALTUSDT",
+   "account": "inf",
+   "value_usd": 6.09,
+   "gain_pct": -2.445,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 486.0,
+   "mark": 0.012541
+  },
+  {
+   "pk": "inf:ENAUSDC_LONG",
+   "symbol": "ENAUSDC",
+   "account": "inf",
+   "value_usd": 6.07,
+   "gain_pct": -0.573,
+   "tier": "B",
+   "perf_mult": 2.38,
+   "amt": 29.0,
+   "mark": 0.20922166
   }
  ]
 }
