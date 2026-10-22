@@ -30,7 +30,7 @@ def test_prev_best_sets_become_forward_candidates(tmp_path):
     a = out[0]
     assert a["src"] == "prev_best:per_sym_history" and a["ts_source"] == "updated_at_proxy" and a["final_gain"] == 12.5
     assert a["overrides"] == {"SW": "1"}  # ' + ' joint strings dropped like the npzprev branch
-    assert abs(a["ts_last"] - 1761089908.0) < 1  # 2026-10-21T23:38:28Z
+    assert abs(a["ts_last"] - 1792625908.0) < 1  # 2026-10-21T23:38:28Z
     assert out[1]["ts_source"] == "npz_last_bar_ts" and out[1]["ts_last"] == 1761000000.0
     assert ns["forward_prev_best_candidates"]("NOPE_LONG", prev_best_dir=tmp_path) == []
 
@@ -39,11 +39,11 @@ def test_pick_prev_uses_the_proxy_with_the_one_hour_gap(tmp_path):
     ns = _load_funcs()
     (tmp_path / "ABC_LONG.json").write_text(json.dumps({"sets": [{"gain_recorded": 1.0, "updated_at": "2026-10-21T23:38:28Z", "overrides": {"SW": "1"}}]}))
     cands = ns["forward_prev_best_candidates"]("ABC_LONG", prev_best_dir=tmp_path)
-    cur = 1761089908.0 + 86400 * 2  # current NPZ ends two days later
+    cur = 1792625908.0 + 86400 * 2  # current NPZ ends two days later
     picked = ns["forward_pick_prev"](cands, cur)
     assert picked is not None and picked["ts_source"] == "updated_at_proxy"
     assert ns["forward_unseen_window"](picked["ts_last"], cur) in (1, 7, 30)
-    assert ns["forward_pick_prev"](cands, 1761089908.0 + 600) is None  # 10 min later = not a refresh
+    assert ns["forward_pick_prev"](cands, 1792625908.0 + 600) is None  # 10 min later = not a refresh
 
 
 def test_forward_record_carries_prev_ts_source():

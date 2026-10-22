@@ -71,17 +71,21 @@ def universe(accounts):
         if not sym.endswith(("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")):
             continue  # crypto only
         out.append((acct, ss))
-    if accounts and "trb" in accounts:
-        # USER 2026-10-21: trb converges too — its universe is the curated stock lists.
+    # USER 2026-10-21: trb converges too — its universe is the curated stock lists.
+    # USER 2026-10-22: tra/trc trade stocks live with no vector mirror — same
+    # curated pattern, otherwise their books are never policed (parity blind spot).
+    for _acct in ("trb", "tra", "trc"):
+        if accounts and _acct not in accounts:
+            continue
         try:
-            _longs = json.load(open(ROOT / "symbols_trb_long.json")) or []
-            _shorts = json.load(open(ROOT / "symbols_trb_short.json")) or []
+            _longs = json.load(open(ROOT / f"symbols_{_acct}_long.json")) or []
+            _shorts = json.load(open(ROOT / f"symbols_{_acct}_short.json")) or []
         except Exception:
             _longs, _shorts = [], []
         for _s in _longs:
-            out.append(("trb", f"{str(_s).upper()}_LONG"))
+            out.append((_acct, f"{str(_s).upper()}_LONG"))
         for _s in _shorts:
-            out.append(("trb", f"{str(_s).upper()}_SHORT"))
+            out.append((_acct, f"{str(_s).upper()}_SHORT"))
     return sorted(out)
 
 
