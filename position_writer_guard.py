@@ -165,8 +165,33 @@ def heartbeat_path(account_dir):
     return Path(account_dir) / HEARTBEAT_NAME
 
 
+def _ban_remaining_s():
+    """Seconds left on this process's Binance IP ban, 0.0 when clear or unknown.
+
+    2026-10-22 (USER: "'blocked by binance' BULLSHIT the moment that happens s1 needs to start the script and kick
+    the info into macbook immediately"): the ban lived ONLY in ez_positions_service._GLOBAL_BAN_UNTIL_MS, a
+    per-process in-memory global behind a lock, so NOTHING outside the banned process could see it. That is why a
+    banned Mac looked perfectly healthy to every failover layer: `heartbeat_age` says the writer is alive, and alive
+    was the only question anyone asked. Measured today: fin took 70x HTTP 418 + 23 "IP ban" and men 67x 429 + 41
+    -1003 while `.positions_service_heartbeat.json` said nothing but "fetch ok", so mac_posfailover_pull.sh skipped
+    the pull ("Mac ez_positions_service alive") and fin sat on 671 unexecuted OPEN intents holding zero positions.
+    Lazy import and fail-open to 0.0: this lookup may never cost a heartbeat.
+    """
+    try:
+        import ez_positions_service as _eps
+
+        return max(0.0, float(_eps._ban_remaining_seconds()))
+    except Exception:
+        return 0.0
+
+
 def write_heartbeat(account_dir, extra=None):
-    body = {"ts": time.time(), "iso": datetime.now(timezone.utc).isoformat(), "pid": os.getpid(), "role": process_role()}
+    # ban_remaining_s is written on EVERY heartbeat, by whichever process is actually doing the fetching, so the
+    # file answers "can this writer reach the broker?" and not merely "is it running?". Consumers:
+    # tools/mac_posfailover_pull.sh (pull S1's positions even though we are alive) and the S1-side
+    # tools/s1_position_failover.py via data/mac_live_heartbeat.json.
+    body = {"ts": time.time(), "iso": datetime.now(timezone.utc).isoformat(), "pid": os.getpid(),
+            "role": process_role(), "ban_remaining_s": round(_ban_remaining_s(), 1)}
     if extra:
         body.update(extra)
     try:
