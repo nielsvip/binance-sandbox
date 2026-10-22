@@ -61,6 +61,20 @@ GREY_SWITCHES = [
     "HEDGE_MODE",
     "NEW_POSITION_MAX_LOSS_THRESHOLD",
     "CAT_SIDE_DEFAULTS_ENABLED",
+    # 2026-10-22 USER: "fixed stop is also a lie only the dc_15m_low -0.25% at time of entry and dc_4h_low -0.25%
+    # at any time (vv shorts) are 'fixed' non negotiable stops we NEVER EVER use a % for this".
+    # The non-negotiable stop is a FIXED STRUCTURE, not a parameter set: entry-bar dc_low_15m minus 0.25%, and
+    # dc_low_4h minus 0.25% at any time (mirrored for shorts). Sweeping WHERE it freezes (REF_FIELD
+    # dc_low/dc_basis/bb_low/bb_basis, REF_TF 15m/1h/4h) or HOW FAR (BUFFER_PCT 0.15/0.25/0.35/0.50) or whether it
+    # ratchets (TIGHTEN_MODE, TIGHTEN_TRIGGER_PCT) offers the pilot a choice the operator says does not exist. The
+    # 0.25% is a fixed buffer off the Donchian channel, not a percentage stop off entry — the thing never to use.
+    # This REVERSES my own earlier call: I excluded these from the first grey pass on the grounds that they are
+    # exit-bar decisions rather than sizing. They are exit-bar decisions, and they are still not negotiable.
+    # LOCKED_FILES.md 2026-10-20 made them a tested family; this supersedes that, and the kill-switch defaults
+    # recorded there (dc_low / 15m / 0.25 / off / 1.0) are byte-for-byte today's behaviour, so greying them keeps
+    # exactly the stop that is running and removes only the sweep.
+    "FIXED_STOP_REF_FIELD", "FIXED_STOP_REF_TF", "FIXED_STOP_BUFFER_PCT",
+    "FIXED_STOP_TIGHTEN_MODE", "FIXED_STOP_TIGHTEN_TRIGGER_PCT",
 ]
 CLEAR_CANDIDATE = {"CAT_SIDE_DEFAULTS_ENABLED"}   # operator said DELETE: also blank the candidate so no row can win
 
@@ -148,6 +162,13 @@ def main() -> int:
          "marker": GREY, "applied": bool(a.apply), "totals": dict(tot), "per_template": report}, indent=1))
     print(f"\n  TOTAL rows matched={tot['rows']} greyed={tot['greyed']} already={tot['already']} cleared={tot['cleared']}")
     print(f"  wrote {a.json}")
+    # GUARD MODE (USER 2026-10-22: "make sure NONE of these can EVER waste compute again"). Without --apply this
+    # exits non-zero whenever any listed switch is NOT grey, so a re-added or un-greyed row fails a scheduled
+    # check instead of quietly costing pilot cells again. v15_pilot.py:3283 skips a grey switch name before the
+    # row is ever queued, so grey is what actually stops the compute.
+    if not a.apply and tot["greyed"]:
+        print(f"  FAIL: {tot['greyed']} row(s) are NOT grey and would be swept — run with --apply")
+        return 1
     return 0
 
 
