@@ -25913,10 +25913,38 @@ class MultiAccountTradeManager:
                 await asyncio.sleep(5)
 
     async def _vec_driven_live_amt(self, position_key: str, symbol: str):
-        """(abs positionAmt, price, min_qty, position) for the vec-driven consumer."""
-        position = await self.get_position(position_key, max_age_s=5.0)
+        """(abs positionAmt, price, min_qty, position) for the vec-driven consumer — LOCAL READS ONLY, NO AWAITS.
+
+        USER 2026-10-22: "the vector only gives a start sizing which then passes through execute_trade_action and
+        ez_pos_quick quantizing functions, so if you can get rid of it do it now — blockers that get stuck need to be
+        destroyed. If it is a verification of the position size on the broker side, ez_positions should be 100%
+        reliable so it has no need here", and "a wss://fstream timeout is a problem for the price fetchers, never for
+        the trading scripts, and can never cause even a 1s wait".
+
+        It used to `await self.get_position(..., max_age_s=5.0)` — a broker round trip with an 8 s abandon — and
+        `await quick_price(symbol)` (redis + fallbacks). The reconcile sweep calls this per key SEQUENTIALLY, so one
+        stuck read wedged a whole account. Measured 2026-10-22 over a 19-minute window with ONE launch each: ang (70
+        live keys, 20 fresh reconcile tries) and men (93/24) made ZERO reconcile attempts and never moved off 1
+        position, while inf — same code, same registry, healthy feed — ran 15 reconcile attempts and 6 fills; the
+        guard then caught the read red-handed (`inf:ALTUSDT_LONG … did not return within 8s`).
+
+        Now: the position comes from the position writer's own dict (ez_positions_service is the single writer and the
+        authority) and the price from the in-memory price cache the fetchers keep. Nothing here can block, and sizing
+        remains live's job downstream (calculate_final_order_quantity + the ez_positions_quick quantizers)."""
+        position = None
+        try:
+            position = self.positions.get(position_key)
+        except Exception:
+            position = None
         amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)) if position else 0.0
-        price = safe_fetch_float(await quick_price(symbol), 0.0)
+        price = 0.0
+        for _src in (getattr(self, "price_cache", None), getattr(self, "mark_price_cache", None)):
+            if price > 0 or _src is None:
+                continue
+            try:
+                price = safe_fetch_float((_src.get(symbol) or {}).get("price"), 0.0)
+            except Exception:
+                price = 0.0
         if price <= 0 and position:
             price = safe_fetch_float(getattr(position, "mark_price", 0.0), 0.0) or safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
         min_qty = max((float(getattr(config, "MIN_POSITION_SIZE", 1.0)) / price) if price > 0 else 0.0, float(self.min_qty.get(symbol, 0.0) or 0.0))

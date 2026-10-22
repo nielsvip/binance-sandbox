@@ -221,6 +221,13 @@ def test_exempt_gates_wired_in_source():
 
 # ───────────────────────── consumer loop ─────────────────────────
 
+class _AlwaysPriced(dict):
+    """Price cache stub: every symbol has a usable price, so tests exercise decisions, not a missing-feed path."""
+
+    def get(self, key, default=None):
+        return {"price": 10.0}
+
+
 class _FakeTM:
     _vec_driven_live_amt = EZ.MultiAccountTradeManager._vec_driven_live_amt
     _vec_driven_live_amt_guarded = EZ.MultiAccountTradeManager._vec_driven_live_amt_guarded
@@ -233,6 +240,11 @@ class _FakeTM:
         self.min_qty = {}
         self.order_queue = object()
         self.amts = amts
+        # USER 2026-10-22: the consumer reads the position writer's dict and the in-memory price cache — never the
+        # broker and never an awaited price — so the harness models those, not get_position.
+        self.positions = {pk: SimpleNamespace(positionAmt=v, mark_price=10.0, entry_price=10.0, gain=0.0) for pk, v in (amts or {}).items()}
+        self.price_cache = _AlwaysPriced()
+        self.mark_price_cache = {}
 
     async def get_position(self, pk, max_age_s=None):
         return SimpleNamespace(positionAmt=self.amts.get(pk, 0.0), mark_price=10.0, entry_price=10.0, gain=0.0)
