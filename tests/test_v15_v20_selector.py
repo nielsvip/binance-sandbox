@@ -148,8 +148,9 @@ def test_budget_plan_never_skips_protected_and_budget_zero_is_full():
     full = S.budget_plan(cands, 0)
     assert len(full["keep"]) == 6 and not full["skipped"]
     b = S.budget_plan(cands, 20)
-    assert set(b["keep"]) >= {"e", "m1", "m2"} and "n1" in b["keep"]
-    assert [s["id"] for s in b["skipped"]] == ["c2", "c1"] and all(s["reason_code"] == S.RC_BUDGET_SKIPPED for s in b["skipped"])
+    assert set(b["keep"]) >= {"e", "m1", "m2"} and "n1" in b["keep"] and "c2" in b["keep"]  # protected classes sit outside the budget; c2 outranks c1
+    assert [s["id"] for s in b["skipped"]] == ["c1"] and all(s["reason_code"] == S.RC_BUDGET_SKIPPED for s in b["skipped"])
+    assert b["spent"] == 20 and b["protected_spent"] == 150
     assert S.budget_forced_profile(0) == {} and S.budget_forced_profile(5000)["V15_V17_ROUNDS"] == "0" and "V15_HOLDOUT_DAYS" not in S.budget_forced_profile(5000)
     assert S.board_budget_from_env({}) == 0 and S.board_budget_from_env({"V15_BOARD_BUDGET": "12000"}) == 12000 and S.board_budget_from_env({"V15_BOARD_BUDGET": "x"}) == 0
 

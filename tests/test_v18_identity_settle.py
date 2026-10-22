@@ -89,7 +89,7 @@ def test_pilot_wiring_pins():
     assert SRC.index("_v18_ids.begin_row(key, _v18_chain_hash)") < SRC.index("_v18_settle_row(sname, rr, switch, cand, key, cumulative_before)")
     assert "progress[\"v18_identity\"] = dict(_v18_ids.totals)" in SRC
     # V18_* keys of the gate flags file are injected like V15_* (the gate decides production defaults)
-    assert 'str(k).startswith(("V15_", "V18_"))' in SRC
+    assert 'str(k).startswith(("V15_", "V18_", "V20_"))' in SRC  # 2026-10-22: V20_* gate flags injected the same way
     # missing helper module = all E4 switches OFF, never a crash
     assert "from tools import v15_v18_planner as _V18P\nexcept Exception:\n    _V18P = None" in SRC
 

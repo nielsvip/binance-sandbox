@@ -45,9 +45,21 @@ def _canon(v) -> str:
         return s.lower()
 
 
+def learn_path(name: str, root=None, sub: str = "learn") -> Path:
+    """Same resolution as the V18 planner's learn_file: data/<sub>/<name> (production's nightly files win) -> tools/v18_data/<sub>/<name>
+    -> the flat gate-deploy copy tools/v18_data_<sub>_<name> (the gate deploys only into existing parents). Returns the first that exists,
+    else the first path (absent)."""
+    r = Path(root or ".")
+    cands = [r / "data" / sub / name, r / "tools" / "v18_data" / sub / name, r / "tools" / f"v18_data_{sub}_{name}"]
+    for p in cands:
+        if p.exists():
+            return p
+    return cands[0]
+
+
 def load_binding_map(cat_side: str, root=None, path=None):
     """-> dict or None (fail-open). Refuses a file whose meta.cat_side differs (law: four cat_sides apart)."""
-    p = Path(path) if path else Path(root or ".") / "data" / "learn" / f"binding_map_{cat_side}.json"
+    p = Path(path) if path else learn_path(f"binding_map_{cat_side}.json", root)
     if not p.exists():
         return None
     try:
@@ -305,7 +317,7 @@ def load_positives_all_raw(cat_side: str, root=None):
     import gzip
     cs = str(cat_side or "").upper()
     for name in (f"positives_all_{cs}.json.gz", f"positives_all_{cs}.json"):
-        p = Path(root or ".") / "data" / "learn" / name
+        p = learn_path(name, root)
         if not p.exists():
             continue
         try:
@@ -321,7 +333,7 @@ def load_positives_all_raw(cat_side: str, root=None):
 
 def load_losing(cat_side: str, root=None) -> list:
     """data/learn/losing_live_switches_<CS>.json = [{sym_side, switch, value, n, mean, ci}] (evidence base §5); [] when absent."""
-    p = Path(root or ".") / "data" / "learn" / f"losing_live_switches_{str(cat_side).upper()}.json"
+    p = learn_path(f"losing_live_switches_{str(cat_side).upper()}.json", root)
     try:
         d = json.loads(p.read_text())
     except Exception:
@@ -364,15 +376,18 @@ def budget_plan(candidates: list, budget: int) -> dict:
     order = {"ESSENTIAL": 0, "MUST": 1, "EVIDENCE": 2, "ABLATION_FLOOR": 3, "EXIT_REPAIR": 4, "NAKED": 5, "CELL": 6, "FLOOR": 7}
     never_skip = {"ESSENTIAL", "MUST", "EVIDENCE"}
     cands = sorted(list(candidates or []), key=lambda c: (order.get(str(c.get("cls")), 9), float(c.get("rank", 0.0)), str(c.get("id"))))
-    keep, skipped, spent = [], [], 0
+    keep, skipped, spent, protected = [], [], 0, 0
     for c in cands:
         cost = int(c.get("cost", 1) or 1)
-        if budget <= 0 or str(c.get("cls")) in never_skip or spent + cost <= budget:
+        if str(c.get("cls")) in never_skip:  # law: outside the budget accounting, never skipped
+            keep.append(c["id"])
+            protected += cost
+        elif budget <= 0 or spent + cost <= budget:
             keep.append(c["id"])
             spent += cost
         else:
             skipped.append({"id": c["id"], "cls": c.get("cls"), "rank": c.get("rank"), "reason_code": RC_BUDGET_SKIPPED})
-    return {"keep": keep, "skipped": skipped, "spent": spent, "budget": budget}
+    return {"keep": keep, "skipped": skipped, "spent": spent, "protected_spent": protected, "budget": budget}
 
 
 def budget_forced_profile(budget: int) -> dict:

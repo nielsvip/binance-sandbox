@@ -20,7 +20,7 @@ PILOT_SRC = (ROOT / "v15_pilot.py").read_text()
 PLAN_SRC = (ROOT / "tools" / "v15_v18_planner.py").read_text()
 
 # phase / feature master switches the pilot reads through _V18P.flag_on("...")
-PILOT_MASTERS = ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_C_BARE_VALUES", "V18_SET_SHA", "V18_COMPACT_KEYS", "V18_MEM_FREE", "V18_MUST_ORDER")  # V18_CATCHUP is read via os.environ at import (module flag), not flag_on  # 2026-10-20: C_BARE (regression #3 fix) declared by the pilot owner
+PILOT_MASTERS = ("V18_BRAIN", "V18_WINNERS", "V18_EXIT_REPAIR", "V18_ABLATION", "V18_FLOOR", "V18_C_BARE_VALUES", "V18_SET_SHA", "V18_COMPACT_KEYS", "V18_MEM_FREE", "V18_MUST_ORDER", "V20_SELECTOR")  # 2026-10-22: V20_SELECTOR declared by the pilot owner (tools/v15_v20_selector)  # V18_CATCHUP is read via os.environ at import (module flag), not flag_on  # 2026-10-20: C_BARE (regression #3 fix) declared by the pilot owner
 # planner accessors that wrap one master switch each: accessor -> switch
 PLANNER_ACCESSORS = {
     "identity_settle_on": "V18_IDENTITY_SETTLE",
@@ -114,7 +114,7 @@ def test_pilot_reads_every_master_switch_through_the_planner():
     for sw in PILOT_MASTERS + tuple(PLANNER_ACCESSORS.values()):
         assert not re.search(rf'["\']{sw}["\']\s*,\s*["\']1["\']', PILOT_SRC + PLAN_SRC), f"{sw} must not default ON in code"
     assert '"V18_"' in PILOT_SRC or "V18_" in PILOT_SRC
-    assert 'startswith(("V15_", "V18_"))' in PILOT_SRC, "gate-flag injection must cover V18_* keys"
+    assert 'startswith(("V15_", "V18_", "V20_"))' in PILOT_SRC, "gate-flag injection must cover V18_* and V20_* keys"
 
 
 def test_pilot_references_every_planner_accessor_and_each_switch_name_is_declared():

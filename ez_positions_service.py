@@ -6901,8 +6901,12 @@ class PositionService:
         await self._check_for_deletions(account_key, f"before _process_account_update_impl")
         await self._process_account_update_impl(account_key, raw_positions_data, now, updated_keys_in_api, account_positions)
         await self._check_for_deletions(account_key, f"after _process_account_update_impl")
+        # 2026-10-22 PAU BOUND (USER positions-reliability: the service must never hang, or the
+        # realtime backup starts): the stop cycle is best-effort per fetch — a wedged klines/API leg may
+        # cost one cycle's stop verification, never the 120 s PAU tripwire. Already-spawned breach closes
+        # and backstop ensures (tasks) keep running; verification resumes next cycle.
         try:
-            await self._fixed_stop_fetch_cycle(account_key, account_positions)
+            await asyncio.wait_for(self._fixed_stop_fetch_cycle(account_key, account_positions), timeout=45.0)
         except Exception:
             pass
         positions_after_keys = set(account_positions.keys())
@@ -6965,6 +6969,13 @@ class PositionService:
                     self._fixed_stop_close_inflight = _inflight
             except Exception:
                 _inflight = set()
+            # 2026-10-22 PAU BOUND (USER positions-reliability: the service must never hang, or the
+            # realtime backup starts): entry-bar klines rebuilds are 15 s-timeouted and SERIAL, so N
+            # unverified positions cost N*15 s inside process_account_update (fin died with 9). Cap per
+            # cycle; capped positions keep their frozen level (or the live-channel fallback when they
+            # have none) and are retried next cycle via _fx_ver. Correctness deferred, never dropped.
+            _fx_klines_this_cycle = 0
+            _FX_KLINES_PER_CYCLE = 3
             for position_key, position in list(account_positions.items()):
                 try:
                     if position is None:
@@ -7032,7 +7043,8 @@ class PositionService:
                                 _src = "SPEC_LIVE:" + _src
                                 if _src.startswith("SPEC_LIVE:FALLBACK"):
                                     logger.warning(f"🛡️ [FIXED_STOP_REF_FALLBACK] {position_key}: reference {_fx_spec_s[0]}_{_fx_spec_s[1]} unusable ({_src}) — frozen at today's dc_15m level {_new:.6f}")
-                            elif _oa_ep is not None:
+                            elif _oa_ep is not None and _fx_klines_this_cycle < _FX_KLINES_PER_CYCLE:
+                                _fx_klines_this_cycle += 1
                                 try:
                                     _cli = self.get_client(account_key)
                                     if _cli is None:

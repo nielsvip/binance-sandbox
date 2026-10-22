@@ -1,11 +1,4 @@
 {
-  "fin:BEAMXUSDT_LONG": {
-    "orderId": "3000002266908507",
-    "stopPrice": 0.00309,
-    "entry_sig": "2026-10-22 17:15:33.964000+00:00",
-    "symbol": "BEAMXUSDT",
-    "side": "LONG"
-  },
   "fin:MAGICUSDT_SHORT": {
     "orderId": "3000002266911927",
     "stopPrice": 0.09454,
@@ -27,32 +20,11 @@
     "symbol": "DASHUSDT",
     "side": "LONG"
   },
-  "fin:KSMUSDT_SHORT": {
-    "orderId": "3000002266986174",
-    "stopPrice": 4.007,
-    "entry_sig": "2026-10-22 17:21:11.232000+00:00",
-    "symbol": "KSMUSDT",
-    "side": "SHORT"
-  },
-  "fin:MEWUSDT_LONG": {
-    "orderId": "3000002266986172",
-    "stopPrice": 0.000442,
-    "entry_sig": "2026-10-22 17:15:16.629000+00:00",
-    "symbol": "MEWUSDT",
-    "side": "LONG"
-  },
   "fin:STRKUSDT_SHORT": {
     "orderId": "3000002266988695",
     "stopPrice": 0.05476,
     "entry_sig": "2026-10-22 17:53:17.913000+00:00",
     "symbol": "STRKUSDT",
-    "side": "SHORT"
-  },
-  "fin:RIFUSDT_SHORT": {
-    "orderId": "3000002266988696",
-    "stopPrice": 0.07293,
-    "entry_sig": "2026-10-22 17:53:11.539000+00:00",
-    "symbol": "RIFUSDT",
     "side": "SHORT"
   },
   "fin:BOMEUSDC_SHORT": {
@@ -62,11 +34,32 @@
     "symbol": "BOMEUSDC",
     "side": "SHORT"
   },
+  "fin:NMRUSDT_SHORT": {
+    "orderId": "3000002266996562",
+    "stopPrice": 10.788,
+    "entry_sig": "2026-10-22 17:56:49.708000+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
+  },
   "fin:BLURUSDT_SHORT": {
-    "orderId": "3000002266992593",
-    "stopPrice": 0.00908,
+    "orderId": "3000002267000871",
+    "stopPrice": 0.00904,
     "entry_sig": "2026-10-22 08:45:09.638000+00:00",
     "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "fin:MEWUSDT_LONG": {
+    "orderId": "3000002267001100",
+    "stopPrice": 0.0004741,
+    "entry_sig": "2026-10-22 17:15:16.629000+00:00",
+    "symbol": "MEWUSDT",
+    "side": "LONG"
+  },
+  "fin:KSMUSDT_SHORT": {
+    "orderId": "3000002267001101",
+    "stopPrice": 3.981,
+    "entry_sig": "2026-10-22 17:21:11.232000+00:00",
+    "symbol": "KSMUSDT",
     "side": "SHORT"
   }
 }

@@ -30,7 +30,7 @@ def test_wiring_pins():
     assert 'if _COARSE_INLINE and st.get("coarse_deferred_filters") and not _V18_CATCHUP:' in SRC
     assert '_cap = int(os.environ.get("V18_MUST_CATCHUP_MAX", "3000"))' in SRC and "items = items[:_cap]" in SRC
     assert 'float(os.environ.get("V18_CATCHUP_EXITREP_MIN_PP", "5"))' in SRC
-    assert '_man["mode"] = "catchup" if _V18_CATCHUP else "slow"' in SRC
+    assert '_man["mode"] = "catchup" if _V18_CATCHUP else (f"budget:{_v20_budget}" if (_v20_on and _v20_budget > 0) else "slow")' in SRC  # 2026-10-22 V20 budget board (spec §7)
     assert '_ffr_cut = bool(_v17_on and _v17_phase_cut("P4_FFR")) or _V18_CATCHUP' in SRC
     # the catch-up step runs BEFORE the floor (the floor / untried draw still rescues cells)
     assert SRC.index("if _V18_CATCHUP and info[\"kind\"] == \"eval\"") < SRC.index("_V18P.floor_apply(info, _v18_floor_keep_fn(sname, switch, cand), _v18_floor_p)")
