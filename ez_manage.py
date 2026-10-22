@@ -14322,7 +14322,13 @@ def _parity_breach_record(position_key, action, reason, result) -> None:
     """USER 2026-10-22 BACKSTOP AUDIT: a vector decision that live REFUSED is a parity breach — the position sets
     diverge on that bar. Logged CRITICAL, appended to data/vector_parity_breaches.jsonl, and the refusing gate is
     filed as a work order (vector_enforce's retrace queue) so it is exempted, or vectorized with its own TEMPLATE_*
-    switch, before parity can be claimed. The ledger is the proof that nothing the vector decided was refused."""
+    switch, before parity can be claimed. The ledger is the proof that nothing the vector decided was refused.
+
+    Never writes under pytest: the gate suites drive `_execute_now_inner` with synthetic keys, and 8 phantom
+    `men:T<n>USDT_LONG` rows landed in the live ledger within minutes of it existing. A ledger a later agent cannot
+    trust is worse than no ledger (same guard as the EXIT_ENGINE_PARITY instrumentation)."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
     try:
         _p = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_parity_breaches.jsonl"
         _p.parent.mkdir(parents=True, exist_ok=True)
@@ -26112,13 +26118,28 @@ class MultiAccountTradeManager:
                             continue
                         target = _vdm.normalize_target(st.get("target_state"))
                         bar_key = st.get("bar_ts")
-                        if target is None or store.reconcile_done(ss, bar_key):
+                        if target is None:
+                            continue
+                        # USER 2026-10-22 ("ANYTHING THAT IS OPEN in the paper trading … HAS TO HAVE AN OPEN POSITION,
+                        # no exceptions"): one reconcile attempt per sym_side per bar was itself a refusal of the
+                        # retry. A key whose single attempt failed — or whose attempt was consumed by a process that
+                        # restarted — stayed flat for a whole lane cycle (the board lane needs ~26 min per 15m bar, so
+                        # bar_key does not advance for far longer than a bar). An OPEN toward a target the board still
+                        # holds now retries while the key is flat, throttled to one attempt per
+                        # VEC_DRIVEN_RECONCILE_GRACE_S per key by the last_sent check above (≈5 per bar). A CLOSE keeps
+                        # exactly one attempt per bar — repeated close attempts are how double closes happen.
+                        _rc_done = store.reconcile_done(ss, bar_key)
+                        if _rc_done and not bool(getattr(_ezm_base_config, "VEC_DRIVEN_RECONCILE_RETRY_IN_BAR", True)):
                             continue
                         symbol, side = _vdm.split_ss(ss)
                         amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
                         act = _vdm.reconcile_action(target, amt, min_qty)
                         if not act:
                             continue
+                        if _rc_done and act != "OPEN":
+                            continue
+                        if _rc_done:
+                            logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {position_key}: still flat and the board still holds it — retrying OPEN inside bar {bar_key} (USER 2026-10-22: no exceptions)")
                         _st_tgt = st.get("target_state") if isinstance(st.get("target_state"), dict) else {}
                         _st_dec_age = now - (_vdm.parse_bar_ts(_st_tgt.get("entry_ts")) or _vdm.parse_bar_ts(st.get("bar_ts")))
                         _zp_vd2 = False
