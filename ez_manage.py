@@ -8285,7 +8285,7 @@ _CRYPTO_MIN_SIZE_LOGGED: set = set()
 # the same trap the 2026-10-15 sub-15m block had to solve. These caps therefore sit ABOVE the per_sym lookup.
 # Only NEW EXPOSURE is capped: no exit, stop, reduce or close path reads these knobs.
 CRYPTO_MIN_SIZE_CAPS = {
-    "START_POSITION_SIZE": 6.0,
+    # USER 2026-10-22: START_POSITION_SIZE is NEVER a clamp — it is the base the 0.01x-8x multipliers scale.
     "MAX_ORDER_VALUE": 6.0,
     "MAX_ORDER_VALUE_MEN": 6.0,
     "MAX_ORDER_VALUE_FIN": 6.0,

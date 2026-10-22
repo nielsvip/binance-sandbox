@@ -27,9 +27,10 @@ CONTRACT
 
 SIZING CAPS BEAT THE BOARD — USER 2026-10-16 ("reduce crypto trading to minimum - only men account is
 still eroding my savings for NOTHING"). config.CRYPTO_MINIMUM_TRADING_MODE cuts new crypto exposure to
-the exchange floor, and every one of the 328 crypto boards was MEASURED at the old sizes: all 328 carry
-START_POSITION_SIZE above the 6.0 cap (up to 45.0) and MAX_POSITION_SIZE above the 12.0 cap (up to
-780.0, 65x). ez_manage._psym_get already caps those 8 knobs (_crypto_min_size_cap, fail-SAFE), but
+the exchange floor, and every one of the 328 crypto boards was MEASURED at the old sizes: MAX_POSITION_SIZE
+above the 12.0 cap (up to 780.0, 65x) and the other 6 order/position knobs likewise. USER 2026-10-22:
+START_POSITION_SIZE is exempt — never a clamp, it is the base the 0.01x-8x multipliers scale — so 7 knobs
+clamp, not 8. ez_manage._psym_get already caps those 7 knobs (_crypto_min_size_cap, fail-SAFE), but
 _PerSymProxy and the whole ez_positions_quick entry path never did — measured 2026-10-16: 269 capped
 knobs above their cap were ALREADY being served to live through the JSON `overrides` half, so the
 minimum-trading mandate was partly bypassed before this module existed. Serving the full board set
@@ -58,7 +59,7 @@ JSON_VIEWS = (
 # MIRROR of ez_manage.CRYPTO_MIN_SIZE_CAPS (USER 2026-10-16 minimum crypto trading). Kept as a literal
 # so this module never imports ez_manage; tests/test_per_sym_live_set.py asserts the two are identical.
 CRYPTO_MIN_SIZE_CAPS = {
-    "START_POSITION_SIZE": 6.0,
+    # USER 2026-10-22: START_POSITION_SIZE is NEVER a clamp — it is the base the 0.01x-8x multipliers scale.
     "MAX_ORDER_VALUE": 6.0,
     "MAX_ORDER_VALUE_MEN": 6.0,
     "MAX_ORDER_VALUE_FIN": 6.0,

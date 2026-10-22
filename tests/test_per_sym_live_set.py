@@ -3,9 +3,10 @@
 
   1. the sizing-cap table must stay identical to ez_manage.CRYPTO_MIN_SIZE_CAPS (it is duplicated as a
      literal so this module never imports ez_manage — parsed here with ast, never executed);
-  2. the caps must actually clamp a live crypto board, and must never touch a stock sym_side;
-  3. PER_SYM_FULL_SET_READER=0 must switch the module off, so every caller falls back to its legacy
-     JSON block without a code change.
+  2. the caps must actually clamp a live crypto board, and must never touch a stock sym_side.
+     START_POSITION_SIZE is exempt (USER 2026-10-22: never a clamp — the 0.01x-8x base) and must pass
+     through even far above every table;
+  3. the reader is always on (PER_SYM_FULL_SET_READER=0 was erased 2026-10-21 — no legacy lookup exists).
 """
 import ast
 import os
@@ -33,11 +34,13 @@ def test_cap_table_matches_ez_manage():
     assert pls.CRYPTO_MIN_SIZE_CAPS == _ez_manage_caps()
 
 
-def test_reader_kill_switch():
+def test_reader_kill_switch_erased():
+    # 2026-10-21 USER "Overrides DO NOT EXIST ANYWHERE": PER_SYM_FULL_SET_READER=0 was erased — there is
+    # no legacy lookup to revert to, so the reader stays on unconditionally. (The old off-switch
+    # expectation failed from that date; this pins the deliberate contract instead.)
     os.environ["PER_SYM_FULL_SET_READER"] = "0"
     try:
-        assert pls.enabled() is False
-        assert pls.full_set("BTCUSDT_LONG") is None
+        assert pls.enabled() is True
     finally:
         os.environ.pop("PER_SYM_FULL_SET_READER", None)
     assert pls.enabled() is True
@@ -49,9 +52,11 @@ def test_min_mode_fail_safe():
     saved = sys.modules.pop("config", None)
     sys.modules["config"] = object()  # getattr on a bare object -> no attribute -> False, not a crash
     try:
-        broken = {"START_POSITION_SIZE": 999.0}
+        broken = {"START_POSITION_SIZE": 999.0, "MAX_POSITION_SIZE": 999.0}
         sys.modules["config"] = None  # import config -> raises -> fail-safe branch
-        assert pls._apply_caps("BTCUSDT_LONG", broken)["START_POSITION_SIZE"] == 6.0
+        got = pls._apply_caps("BTCUSDT_LONG", broken)
+        assert got["START_POSITION_SIZE"] == 999.0, "START is never clamped, even fail-safe"
+        assert got["MAX_POSITION_SIZE"] == 12.0
     finally:
         sys.modules.pop("config", None)
         if saved is not None:
@@ -103,18 +108,20 @@ def test_caps_off_is_a_pure_passthrough():
 
 def test_mode_ceiling_clamps_above_and_keeps_below():
     """USER 2026-10-17 "LIGHT_MODE temporarily but not take out any order size differentiation ... ~1-8x": with minimum mode
-    off, a board size ABOVE the active mode's own value is clamped to it, a size BELOW passes untouched (ratios survive)."""
+    off, a board size ABOVE the active mode's own value is clamped to it, a size BELOW passes untouched (ratios survive).
+    USER 2026-10-22: START_POSITION_SIZE is exempt from that ceiling — it passes through at any size."""
     import config as cfg
 
     saved = _force_min_mode(False)
     try:
         table = pls._cap_table()
         assert table and set(table) == set(pls.CRYPTO_MIN_SIZE_CAPS)
+        assert "START_POSITION_SIZE" not in table
         raw = {k: v * 10 for k, v in table.items()}
-        raw["START_POSITION_SIZE"] = table["START_POSITION_SIZE"] / 2
+        raw["START_POSITION_SIZE"] = 999.0
         got = pls._apply_caps("BTCUSDT_LONG", raw)
-        assert got["START_POSITION_SIZE"] == table["START_POSITION_SIZE"] / 2
-        assert all(got[k] == table[k] for k in table if k != "START_POSITION_SIZE")
+        assert got["START_POSITION_SIZE"] == 999.0, "START passes through even 10x above every table"
+        assert all(got[k] == table[k] for k in table)
         assert pls._apply_caps("AAPL_LONG", raw) is raw
     finally:
         pls._min_mode_on = saved
