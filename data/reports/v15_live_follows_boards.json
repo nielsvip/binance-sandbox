@@ -1,9 +1,33 @@
 {
- "at": "2026-10-22T11:38:00Z",
+ "at": "2026-10-22T12:38:01Z",
  "reports": [
   {
+   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261022_preopen_1141.json",
+   "age_min": 39.0,
+   "applied": true,
+   "n": null,
+   "results": {
+    "REFUSED": 11,
+    "PASS": 14,
+    "SKIP": 7
+   },
+   "registered": 8,
+   "already_live_skipped": 5,
+   "refused_by_class": {
+    "type-gate refused ALL (1 bad)": 6,
+    "golive-blocklisted": 5,
+    "live row is a MEASURED h2h decision (2026-10-19T14": 2,
+    "live row is a MEASURED h2h decision (2026-10-22T06": 1,
+    "live row is a MEASURED h2h decision (2026-10-19T22": 1,
+    "published": 1,
+    "live row is a MEASURED h2h decision (2026-10-22T08": 1,
+    "live row is a MEASURED h2h decision (2026-10-18T16": 1
+   },
+   "changed_symsides": []
+  },
+  {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261022_refresh_1053.json",
-   "age_min": 10.7,
+   "age_min": 70.8,
    "applied": true,
    "n": null,
    "results": {
@@ -24,33 +48,10 @@
     "live row is a MEASURED h2h decision (2026-10-18T16": 1
    },
    "changed_symsides": []
-  },
-  {
-   "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261022_refresh_0852.json",
-   "age_min": 93.3,
-   "applied": true,
-   "n": null,
-   "results": {
-    "REFUSED": 11,
-    "SKIP": 6,
-    "PASS": 45
-   },
-   "registered": 37,
-   "already_live_skipped": 7,
-   "refused_by_class": {
-    "type-gate refused ALL (1 bad)": 6,
-    "golive-blocklisted": 5,
-    "live row is a MEASURED h2h decision (2026-10-19T14": 2,
-    "live row is a MEASURED h2h decision (2026-10-22T06": 1,
-    "live row is a MEASURED h2h decision (2026-10-19T22": 1,
-    "published": 1,
-    "live row is a MEASURED h2h decision (2026-10-18T16": 1
-   },
-   "changed_symsides": []
   }
  ],
  "fails": [
-  "two consecutive runs still had pending sets (37 then 16) \u2014 live is not converging on the boards"
+  "two consecutive runs still had pending sets (16 then 8) \u2014 live is not converging on the boards"
  ],
  "refused_total": 18
 }
