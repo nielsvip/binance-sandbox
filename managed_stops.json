@@ -1,30 +1,16 @@
 {
-  "flz:BTCDOMUSDT_SHORT": {
-    "orderId": "1000002636647778",
-    "stopPrice": 5589.6,
-    "entry_sig": "2026-10-22 07:57:48.040000+00:00",
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001531387030",
+    "stopPrice": 5501.5,
+    "entry_sig": "2026-10-22 02:08:16.488000+00:00",
     "symbol": "BTCDOMUSDT",
-    "side": "SHORT"
+    "side": "LONG"
   },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002636729739",
-    "stopPrice": 1318.03,
-    "entry_sig": "2026-10-22 06:56:24.269000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:HYPEUSDT_SHORT": {
-    "orderId": "1000002636748979",
-    "stopPrice": 79.513,
-    "entry_sig": "2026-10-22 08:35:24.069000+00:00",
-    "symbol": "HYPEUSDT",
-    "side": "SHORT"
-  },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002636752896",
-    "stopPrice": 105.98,
-    "entry_sig": "2026-10-22 08:27:07.230000+00:00",
-    "symbol": "SOLUSDC",
+  "inf:EGLDUSDT_SHORT": {
+    "orderId": "2000001531390127",
+    "stopPrice": 3.772,
+    "entry_sig": "2026-10-22 05:28:20.205000+00:00",
+    "symbol": "EGLDUSDT",
     "side": "SHORT"
   }
 }
