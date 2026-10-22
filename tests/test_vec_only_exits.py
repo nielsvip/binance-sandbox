@@ -41,15 +41,45 @@ NATIVE_REASONS = [
 
 
 def _gate_passes(reason):
-    # Mirrors ez_manage._voe_reason_is_vec (single definition of vec-dictated).
+    # Mirrors ez_manage._voe_reason_is_vec (single definition of vec-dictated):
+    # the markers, the enforce-delegated classes, plus any twin-faithful vector
+    # exit family the enforcer allows (USER 2026-10-22 unlock: backstop mirrors
+    # vector_enforce, never stricter).
+    from live_twins.vector_enforce import VEC_SWITCH_EXIT_FAMILIES
+    from live_twins.vector_enforce import family_of as _ve_fam
+
     rx = str(reason or "").upper()
-    return (
+    if (
         "VEC_DRIVEN_" in rx
         or "RECONCILE_" in rx
         or "|VEC_EXACT" in rx
         or "BOARD_CONVERGE_" in rx
         or "EXIT_OWED" in rx
-    )
+    ):
+        return True
+    # Same stop/emergency/guarantee tail as the implementation (kept literal here
+    # so the corpus test below proves mirror == implementation on every sample).
+    if any(
+        _t in rx
+        for _t in (
+            "OBLIGATORY",
+            "GUARANTEE",
+            "FORCED",
+            "LIQUIDATION",
+            "EMERGENCY",
+            "BALANCE_FLOOR",
+            "MANUAL",
+            "STOP",
+            "TRAILING",
+            "BACKSTOP",
+            "BROKER_RECONCILED",
+        )
+    ):
+        return True
+    try:
+        return _ve_fam(reason) in VEC_SWITCH_EXIT_FAMILIES
+    except Exception:
+        return False
 
 
 def test_refusal_classifies_policy_never_escalated():
@@ -64,7 +94,23 @@ def test_refusal_classifies_policy_never_escalated():
 
 def test_vec_reasons_pass_native_blocked():
     assert all(_gate_passes(r) for r in VEC_REASONS)
-    assert not any(_gate_passes(r) for r in NATIVE_REASONS)
+    # The "native blocked" set is whatever carries no vec marker, no stop/safety
+    # tail and no switch family — asserted as mirror == implementation per reason
+    # (stops, MANUAL, guarantee escalations and switch families flow by design).
+    import ez_manage as em
+
+    for r in NATIVE_REASONS:
+        assert _gate_passes(r) == em._voe_reason_is_vec(r), r
+    blocked = [r for r in NATIVE_REASONS if not em._voe_reason_is_vec(r)]
+    assert set(blocked) == {
+        "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_UP_g-0.13%",
+        "MTF_GR_WT_EXIT_15m",
+        "ALL_ALL_GREEN_DIRECT_CLOSE",
+        "DC_BREAK_HIGH_15m_EXTREME_g0.03%",
+        "DC_15M_HOLD_OVERRIDE",
+        "VIGILANCE_2_CONSECUTIVE_LOSING",
+        "CB_HTF_EXHAUST_X",
+    }
 
 
 def test_gate_present_before_force_branch():
@@ -151,19 +197,40 @@ def test_new_exit_legs_stood_down():
     assert _ezm._voe_native_exits_disabled() is True
 
 
-def test_backstop_still_refuses_native_and_killed_exits():
-    """Pins the still-in-force USER 2026-10-21 vec-only-exits law: the backstop
-    refuses unattributed native exits and killed families. (Finding 1 notes the
-    backstop is stricter than vector_enforce for restored VEC_SWITCH_EXIT
-    families — deliberately NOT changed here; that needs an explicit rescind.)"""
+def test_vec_switch_exit_families_pass_backstop():
+    """USER 2026-10-22 (unlock, S2-bench bypassed for this switch set): the backstop
+    mirrors vector_enforce — a twin-faithful vector exit the enforcer allows
+    (VEC_SWITCH_EXIT) is vec here too. Killed families and unattributed natives
+    stay refused; kills/window enforced downstream in vector_enforce.check."""
     import ez_manage as em
 
     assert bool(em._voe_native_exits_disabled()) is True
+    for r in (
+        "VEL_EXIT_v4h-64.11_g0.01",
+        "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
+        "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
+        "BB_TAKE_15m_g-0.16",
+    ):
+        assert em._voe_reason_is_vec(r) is True, r
     assert (
         em._voe_reason_is_vec("QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7")
         is False
     )
     assert em._voe_reason_is_vec("MTF_GR_WT_EXIT_15m") is False
+
+
+def test_mirror_matches_implementation_on_corpus():
+    import ez_manage as em
+
+    corpus = list(VEC_REASONS) + list(NATIVE_REASONS) + [
+        "VEL_EXIT_v4h-64.11_g0.01",
+        "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
+        "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
+        "BB_TAKE_15m_g-0.16",
+        "QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7",
+    ]
+    for r in corpus:
+        assert _gate_passes(r) == em._voe_reason_is_vec(r), r
 
 
 def test_exec_augment_gate_exempts_vec_orders():

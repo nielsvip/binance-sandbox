@@ -110,7 +110,7 @@ def scan(lookback_min: int):
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=lookback_min)
     cands = {}
     for acct in ("trb", "trc"):
-        for pat in (ROOT / f"../logs/tradier_manage_{acct}.log", Path(f"/Users/niels/logs/tradier_manage_{acct}.log")):
+        for pat in (ROOT / f"../logs/tradier_manage_{acct}.log", Path.home() / "logs" / f"tradier_manage_{acct}.log"):
             try:
                 fp = pat if pat.exists() else None
             except Exception:

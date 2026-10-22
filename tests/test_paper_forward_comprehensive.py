@@ -208,13 +208,13 @@ def test_backstop_refused_families_classify():
     d = F.classify("BT_WICK_REJECT_EXIT_g=0.15%")
     assert (d["family"], d["vec_twin"], d["gate_knob"]) == (
         "BT_WICK_REJECT_EXIT",
-        False,
+        True,
         "WICK_REJECT_EXIT_ENABLED",
     )
     d = F.classify("BT_RSI2_XTREME_EXIT_g=0.79%")
     assert (d["family"], d["vec_twin"], d["gate_knob"]) == (
         "BT_RSI2_XTREME_EXIT",
-        False,
+        True,
         "RSI2_XTREME_EXIT_ENABLED",
     )
     d = F.classify("QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.05%")
@@ -281,8 +281,8 @@ def test_inventory_covers_backstop_refused_families():
     inv = pfc.build_inventory()
     expect = {
         "BT_STOCH_XTREME_EXIT": ("STOCH_XTREME_EXIT_ENABLED", "disabled"),
-        "BT_WICK_REJECT_EXIT": ("WICK_REJECT_EXIT_ENABLED", "nonvec"),
-        "BT_RSI2_XTREME_EXIT": ("RSI2_XTREME_EXIT_ENABLED", "nonvec"),
+        "BT_WICK_REJECT_EXIT": ("WICK_REJECT_EXIT_ENABLED", "disabled"),
+        "BT_RSI2_XTREME_EXIT": ("RSI2_XTREME_EXIT_ENABLED", "disabled"),
         "E_1_WT_DELTA_EXIT": ("E_1_WT_EXIT_USE_DELTA_ENABLED", "nonvec"),
         "STDEV_REJECT_EXIT": ("STDEV_REJECT_EXIT_ENABLED", "disabled"),
         "PARABOLIC_EXIT": ("PARABOLIC_EXIT_ENABLED", "low_tf"),

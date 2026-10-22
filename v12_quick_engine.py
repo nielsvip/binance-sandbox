@@ -13191,6 +13191,23 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
             delta_exit = np.asarray(_rich, dtype=bool)
         except Exception:
             pass
+    # USER 2026-10-22 (unlock, S2-bench bypassed for this switch set): E_1_WT_DELTA exit — vectorized twin of
+    # vec_decisions/process_position_crypto__e1_wt_delta_exit (pure per-bar predicate on wt_composite_delta,
+    # cross-TF composite present in NPZ). Gated by E_1_WT_EXIT_USE_DELTA_ENABLED (default False both venues):
+    # inert unless a board enables it; then swept like every modeled exit. Threshold E_1_EXIT_DELTA_THR (50.0).
+    _e1_delta_arr = _safe(npz, "wt_composite_delta", n, np.nan)
+    if bool(getattr(cfg, "E_1_WT_EXIT_USE_DELTA_ENABLED", False)):
+        try:
+            e1_wt_delta_exit = np.asarray(
+                vec_decisions.process_position_crypto__e1_wt_delta_exit.check_e1_wt_delta_exit_vec(
+                    cfg, _e1_delta_arr, is_long, np.isfinite(_e1_delta_arr)
+                ),
+                dtype=bool,
+            )
+        except Exception:
+            e1_wt_delta_exit = np.zeros(n, dtype=bool)
+    else:
+        e1_wt_delta_exit = np.zeros(n, dtype=bool)
     # [C2 q007 -> DEF2/001] stocks live DELTA_EXIT_DC_FLOOR (tradier_manage.py:19690): a valid Delta exit is HELD until price breaks the 15m Donchian boundary; gated by STOCKS_LIVE_TWINS_ENABLED (default OFF)
     if (
         str(getattr(cfg, "MODE", "crypto")) == "tradier"
@@ -13613,6 +13630,7 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
         pass
     _all_exit = (
         delta_exit
+        | e1_wt_delta_exit
         | vel_exit
         | srs_exit
         | sat_exit

@@ -111,6 +111,18 @@ def daemons() -> dict:
     return {a: (f"bin/python -u tradier_manage.py --accounts {a}" in ps) for a in ("tra", "trb", "trc")}
 
 
+def s1_npz_dir():
+    """Local S1 NPZ dir when running on S1 (live, else sandbox), else None."""
+    for cand in (Path.home() / "binance" / "backtest_v8" / "indicators",
+                 Path.home() / "binance-sandbox" / "backtest_v8" / "indicators"):
+        try:
+            if cand.is_dir():
+                return cand
+        except Exception:
+            continue
+    return None
+
+
 def s1_npz_max_age_min():
     """Oldest S1 stocks NPZ among tradeable syms (plan-B freshness). None on ssh fail."""
     try:
@@ -123,6 +135,16 @@ def s1_npz_max_age_min():
                 continue
         if not uni:
             return None, 0
+        local = s1_npz_dir()
+        if local is not None:
+            now = time.time()
+            ages, missing = [], 0
+            for s in sorted(uni):
+                try:
+                    ages.append((now - (local / f"{s}.npz").stat().st_mtime) / 60)
+                except OSError:
+                    missing += 1
+            return (max(ages) if ages else None), missing
         r = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "s1-int",
                             "date +%s; for s in " + " ".join(sorted(uni)) + "; do stat -c '%Y' "
                             "~/binance-sandbox/backtest_v8/indicators/$s.npz 2>/dev/null || echo 0; done"],
@@ -146,7 +168,7 @@ def refused_signals_15m():
     syms: dict = {}
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
     for acct in ("tra", "trb", "trc"):
-        for pat in (ROOT / f"../logs/tradier_manage_{acct}.log", Path(f"/Users/niels/logs/tradier_manage_{acct}.log")):
+        for pat in (ROOT / f"../logs/tradier_manage_{acct}.log", Path.home() / "logs" / f"tradier_manage_{acct}.log"):
             try:
                 fp = pat if pat.exists() else None
             except Exception:

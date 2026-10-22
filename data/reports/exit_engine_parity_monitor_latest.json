@@ -1,33 +1,33 @@
 {
- "now": "2026-10-22T17:45:33.183391+00:00",
+ "now": "2026-10-22T18:46:31.999848+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 12744,
- "last_exit_ts": "2026-10-22T17:45:47.929077+00:00",
- "n_leaks": 3704,
- "n_gate_on": 7193,
+ "n_exit_rows": 12968,
+ "last_exit_ts": "2026-10-22T18:45:11.502333+00:00",
+ "n_leaks": 3739,
+ "n_gate_on": 7293,
  "n_ungated": 15,
- "n_safety": 478,
+ "n_safety": 545,
  "n_unmapped": 147,
- "n_unverified": 1110,
- "since": "2026-10-20T17:45:33.183391+00:00",
+ "n_unverified": 1131,
+ "since": "2026-10-20T18:46:31.999848+00:00",
  "vec_exact_by_action": {
-  "CLOSE": 97
+  "CLOSE": 98
  },
- "native_rows": 12647,
+ "native_rows": 12870,
  "unverified_by_family": {
-  "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 57,
-  "GAIN_EROSION_STOP (None=None)": 95,
+  "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 61,
+  "GAIN_EROSION_STOP (None=None)": 100,
   "ULTIMATE_DC (None=None)": 56,
-  "QUICK_OPEN_GOOD (None=None)": 126,
+  "QUICK_OPEN_GOOD (None=None)": 127,
   "QUICK_REDUCE_SCALP (ABLATION_DISABLE_SCALP_GUARD=False)": 482,
   "VEL_EXIT_V4H (None=None)": 221,
   "QUICK_WT_CROSS_EXIT (None=None)": 21,
   "RATIO_REBALANCE (ABLATION_DISABLE_RATIO_REBALANCE=False)": 36,
   "HEDGE_CLOSE_WT3M1H (None=None)": 10,
-  "HAIKU_WINNER (HAIKU_WINNER_ENABLED=True)": 6
+  "HAIKU_WINNER (HAIKU_WINNER_ENABLED=True)": 17
  },
  "leaks_by_family": {
-  "QUICK_OPEN_STRONG": 3660,
+  "QUICK_OPEN_STRONG": 3695,
   "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED=False)": 4,
   "WT_LOWER_CROSS_EXIT (WT_LOWER_CROSS_EXIT_TF=OFF)": 35,
   "WRONG_SIDE_ABS_KILL": 1,
@@ -64,9 +64,9 @@
   "QUICK_OPEN_STRONG fin:XTZUSDT_LONG": 33,
   "QUICK_OPEN_STRONG men:EDUUSDT_LONG": 33,
   "QUICK_OPEN_STRONG fin:BTCUSDC_LONG": 32,
+  "QUICK_OPEN_STRONG fin:IOTXUSDT_LONG": 32,
   "QUICK_OPEN_STRONG men:XTZUSDT_LONG": 31,
   "QUICK_OPEN_STRONG fin:1INCHUSDT_LONG": 30,
-  "QUICK_OPEN_STRONG fin:IOTXUSDT_LONG": 30,
   "QUICK_OPEN_STRONG ang:XTZUSDT_LONG": 29,
   "QUICK_OPEN_STRONG men:1INCHUSDT_LONG": 29,
   "QUICK_OPEN_STRONG fin:BTCDOMUSDT_LONG": 29,
@@ -87,7 +87,7 @@
   "QUICK_OPEN_STRONG men:BBUSDT_LONG": 23
  },
  "gate_on_by_family": {
-  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 4647,
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 4747,
   "GOLDEN_RULE": 388,
   "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 21,
   "QUICK_REDUCE_STRONG (ABLATION_DISABLE_QUICK_EXIT)": 585,
@@ -110,7 +110,7 @@
   "BREAK_EVEN_GUARD": 15
  },
  "safety_by_family": {
-  "FIXED_STOP": 478
+  "FIXED_STOP": 545
  },
  "unmapped": {
   "R3_HTF_FLIP_DAILY": 49,
@@ -134,9 +134,9 @@
   "BB_BOUNCE_ENTRY_4h_S": 1
  },
  "actions": {
-  "OPEN": 4513,
-  "QUICK_OPEN": 3786,
-  "CLOSE": 2222,
+  "OPEN": 4606,
+  "QUICK_OPEN": 3822,
+  "CLOSE": 2306,
   "QUICK_CLOSE": 26,
   "QUICK_QUICK_CLOSE": 23,
   "STRONG_REDUCE": 585,
@@ -146,6 +146,6 @@
   "QUICK_REDUCE": 2,
   "NOW_REDUCE": 29,
   "QUICK_AUGMENT": 2,
-  "AUGMENT": 17
+  "AUGMENT": 28
  }
 }

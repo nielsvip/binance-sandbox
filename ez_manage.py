@@ -8503,8 +8503,11 @@ def _voe_reason_is_vec(reason) -> bool:
     `EMERGENCY_MARGIN_KILL` and `BALANCE_FLOOR_FORCE_REDUCE` — the stop loss and every account-protecting close —
     while vector_enforce itself exempts stops (STOP_PROTECTION), emergencies, the guarantee/owed escalations and
     broker bookkeeping. Exits are NEVER blocked (CLAUDE.md): the vector decides which DISCRETIONARY exits fire,
-    never whether a stop may. Discretionary native exits (EXIT_VELOCITY_WT, BB_TAKE, TECHNICAL, …) stay refused —
-    that is the point of the backstop while parity is being reached."""
+    never whether a stop may.
+    USER 2026-10-22 (unlock, S2-bench bypassed for this switch set): the twin-faithful vector exit families
+    vector_enforce allows (VEC_SWITCH_EXIT_FAMILIES) are vec here too — the backstop mirrors vector_enforce
+    and is never stricter than it, so a vector-booked exit is never refused at this gate. Kills and the bar
+    window stay enforced downstream in vector_enforce.check."""
     _r = str(reason or "")
     _rx = _r.upper()
     if "VEC_DRIVEN_" in _rx or "RECONCILE_" in _rx or "|VEC_EXACT" in _r or "BOARD_CONVERGE_" in _rx:
@@ -8514,6 +8517,8 @@ def _voe_reason_is_vec(reason) -> bool:
         if _ve._is_board_confirmed(_r) or _ve._is_emergency(_r) or _ve._is_stop_reason(_r):
             return True
         if any(_b in _rx for _b in _ve.BOOKKEEPING):
+            return True
+        if _ve.family_of(_r) in _ve.VEC_SWITCH_EXIT_FAMILIES:
             return True
     except Exception:
         pass
