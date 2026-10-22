@@ -1,51 +1,44 @@
 {
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002636958609",
-    "stopPrice": 77.721,
-    "entry_sig": "2026-10-22 11:56:57.601212+00:00",
-    "symbol": "HYPEUSDT",
+  "ang:KAVAUSDT_LONG": {
+    "orderId": "4000001986687186",
+    "stopPrice": 0.06926,
+    "entry_sig": "2026-10-22 08:58:30.063000+00:00",
+    "symbol": "KAVAUSDT",
     "side": "LONG"
   },
-  "flz:XRPUSDC_SHORT": {
-    "orderId": "1000002636958620",
-    "stopPrice": 1.3469,
-    "entry_sig": "2026-10-22 11:56:57.079000+00:00",
-    "symbol": "XRPUSDC",
+  "ang:BLURUSDT_SHORT": {
+    "orderId": "4000001986688111",
+    "stopPrice": 0.00904,
+    "entry_sig": "2026-10-22 08:39:13.646000+00:00",
+    "symbol": "BLURUSDT",
     "side": "SHORT"
   },
-  "flz:WLDUSDC_SHORT": {
-    "orderId": "1000002636960834",
-    "stopPrice": 0.5974,
-    "entry_sig": "2026-10-22 11:43:15.580000+00:00",
-    "symbol": "WLDUSDC",
-    "side": "SHORT"
-  },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002636964267",
-    "stopPrice": 105.1,
-    "entry_sig": "2026-10-22 11:10:34.111000+00:00",
-    "symbol": "SOLUSDC",
-    "side": "SHORT"
-  },
-  "flz:BTCDOMUSDT_SHORT": {
-    "orderId": "1000002636964271",
-    "stopPrice": 5589.6,
-    "entry_sig": "2026-10-22 07:57:48.040000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "SHORT"
-  },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002636970310",
-    "stopPrice": 1290.48,
-    "entry_sig": "2026-10-22 11:55:28.335000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002636970321",
-    "stopPrice": 5521.8,
-    "entry_sig": "2026-10-22 11:29:46.137862+00:00",
-    "symbol": "BTCDOMUSDT",
+  "ang:COMPUSDT_LONG": {
+    "orderId": "4000001986685647",
+    "stopPrice": 24.87,
+    "entry_sig": "2026-10-22 08:57:42.635000+00:00",
+    "symbol": "COMPUSDT",
     "side": "LONG"
+  },
+  "ang:GALAUSDT_SHORT": {
+    "orderId": "4000001986684800",
+    "stopPrice": 0.002031,
+    "entry_sig": "2026-10-22 07:18:30.388000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "ang:ENSUSDT_SHORT": {
+    "orderId": "4000001986701837",
+    "stopPrice": 5.949,
+    "entry_sig": "2026-10-22 07:26:04.798000+00:00",
+    "symbol": "ENSUSDT",
+    "side": "SHORT"
+  },
+  "ang:NMRUSDT_SHORT": {
+    "orderId": "4000001986705808",
+    "stopPrice": 10.981,
+    "entry_sig": "2026-10-22 09:03:07.349397+00:00",
+    "symbol": "NMRUSDT",
+    "side": "SHORT"
   }
 }
