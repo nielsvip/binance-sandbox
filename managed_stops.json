@@ -1,58 +1,37 @@
 {
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001530816506",
+  "flz:BTCUSDC_SHORT": {
+    "orderId": "1000002636337655",
+    "stopPrice": 85315.1,
+    "entry_sig": "2026-10-22 04:00:30.700000+00:00",
+    "symbol": "BTCUSDC",
+    "side": "SHORT"
+  },
+  "flz:DASHUSDT_LONG": {
+    "orderId": "1000002636370408",
+    "stopPrice": 50.2,
+    "entry_sig": "2026-10-22 04:09:32.424000+00:00",
+    "symbol": "DASHUSDT",
+    "side": "LONG"
+  },
+  "flz:ZECUSDC_SHORT": {
+    "orderId": "1000002636361896",
+    "stopPrice": 1375.45,
+    "entry_sig": "2026-10-22 03:26:22.832000+00:00",
+    "symbol": "ZECUSDC",
+    "side": "SHORT"
+  },
+  "flz:DOGEUSDC_SHORT": {
+    "orderId": "1000002636286722",
+    "stopPrice": 0.08379,
+    "entry_sig": "2026-10-22 03:20:33.126000+00:00",
+    "symbol": "DOGEUSDC",
+    "side": "SHORT"
+  },
+  "flz:BTCDOMUSDT_LONG": {
+    "orderId": "1000002636364781",
     "stopPrice": 5501.5,
-    "entry_sig": "2026-10-22 02:08:16.488000+00:00",
+    "entry_sig": "2026-10-22 03:01:29.308000+00:00",
     "symbol": "BTCDOMUSDT",
     "side": "LONG"
-  },
-  "inf:XMRUSDT_LONG": {
-    "orderId": "2000001530880272",
-    "stopPrice": 569.3,
-    "entry_sig": "2026-10-22 02:31:26.818000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
-  "inf:ATOMUSDT_SHORT": {
-    "orderId": "2000001531045064",
-    "stopPrice": 1.784,
-    "entry_sig": "2026-10-22 04:05:12.561000+00:00",
-    "symbol": "ATOMUSDT",
-    "side": "SHORT"
-  },
-  "inf:TRUMPUSDC_SHORT": {
-    "orderId": "2000001530983583",
-    "stopPrice": 1.866,
-    "entry_sig": "2026-10-22 03:30:46.363000+00:00",
-    "symbol": "TRUMPUSDC",
-    "side": "SHORT"
-  },
-  "inf:DOTUSDT_SHORT": {
-    "orderId": "2000001531001266",
-    "stopPrice": 1.1883,
-    "entry_sig": "2026-10-22 03:39:17.017000+00:00",
-    "symbol": "DOTUSDT",
-    "side": "SHORT"
-  },
-  "inf:ZENUSDT_SHORT": {
-    "orderId": "2000001530931250",
-    "stopPrice": 6.379,
-    "entry_sig": "2026-10-22 03:02:12.484000+00:00",
-    "symbol": "ZENUSDT",
-    "side": "SHORT"
-  },
-  "inf:XRPUSDC_SHORT": {
-    "orderId": "2000001531078911",
-    "stopPrice": 1.3971,
-    "entry_sig": "2026-10-22 03:43:47.382000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
-  "inf:API3USDT_SHORT": {
-    "orderId": "2000001531078909",
-    "stopPrice": 0.2873,
-    "entry_sig": "2026-10-22 03:46:55.200000+00:00",
-    "symbol": "API3USDT",
-    "side": "SHORT"
   }
 }

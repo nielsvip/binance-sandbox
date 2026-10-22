@@ -2724,6 +2724,18 @@ class IndicatorOrchestrator:
         self._dirty = False
         self._save_due = False
         self._last_payload_hash: Optional[str] = None
+        # USER 2026-10-22 ("FUCKING FIX THE EZ_INDICATORS SCRIPT RIGHT NOW"): warm-up incremental-save state.
+        # _warming_up gates the shorter save cadence and the non-regression floor used ONLY during warm-up;
+        # _warm_high_water is the largest number of non-empty symbols ever persisted, so a warm-up save can
+        # only ever add symbols to the live snapshot, never blank one the engines already had.
+        self._warming_up = False
+        self._warm_high_water = 0
+        self._warm_first_save_ts: Optional[float] = None
+        self._warm_start_ts = time.time()
+        self._stage_seconds: Dict[str, float] = {}
+        self._signal_publish_inflight: Set[asyncio.Task] = set()
+        self._signal_publish_fail_count = 0
+        self._signal_publish_fail_last_log = 0.0
         self._sentiment_dirty = True
         self.sentiment_top_file = self.base_path / "sentiment_top_40.json"
         self.sentiment_bottom_file = self.base_path / "sentiment_bottom_40.json"
@@ -2932,11 +2944,31 @@ class IndicatorOrchestrator:
     async def run(self) -> None:
         logger.info(f"Starting orchestrator for {len(self.symbols)} symbols in {self.env}")
         await self.price_cache.start()
-        for tf in self._schedule_order:
-            await self._process_timeframe(tf, force=self.reactive_mode)
+        # USER 2026-10-22 ("FUCKING FIX THE EZ_INDICATORS SCRIPT RIGHT NOW"): THE STRUCTURAL DEFECT.
+        # _save_loop used to be created only AFTER this warm-up loop, so NOTHING was written to
+        # data/latest_market_data.json until all five timeframes had finished. MEASURED on pid 38213 this morning:
+        # start 02:58:34Z, D 03:04:56->03:43:29 (2,313 s), 4h 792 s, 1h 813 s, 15m 19 s, 3m ~1,400 s, first save
+        # 04:49:08Z = 6,634 s = 110.6 MINUTES during which every live engine read a 4-hour-old snapshot. The process
+        # never crashed; the snapshot simply did not exist yet. Any restart therefore blanked the live snapshot for
+        # the whole warm-up, which is what tools/ez_indicators_warmup_guard.py documents as outstanding item (2).
+        # The save loop now runs CONCURRENTLY with warm-up on a short cadence, so the snapshot appears within
+        # seconds of start and keeps advancing with whatever symbols/timeframes are ready. _save_data's
+        # non-regression floor (see there) makes a partial warm-up save incapable of blanking a good file.
+        self._warming_up = True
+        self._warm_start_ts = time.time()
+        save_task = asyncio.create_task(self._save_loop())
+        shm_task = asyncio.create_task(self._shared_mem_connect_loop())
+        try:
+            for tf in self._schedule_order:
+                await self._process_timeframe(tf, force=self.reactive_mode)
+                self._dirty = True
+                self._save_due = True
+        finally:
+            self._warming_up = False
+            logger.info("[WARMUP] complete in %.1fs — first save at +%s", time.time() - self._warm_start_ts, f"{self._warm_first_save_ts - self._warm_start_ts:.1f}s" if self._warm_first_save_ts else "NEVER")
         self._sentiment_dirty = True
         self._save_due = True
-        tasks = [asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._midcycle_loop()), asyncio.create_task(self._save_loop()), asyncio.create_task(self._3m_refresh_loop()),asyncio.create_task(self._priority_fix_loop()), asyncio.create_task(self._npz_update_loop())]
+        tasks = [save_task, shm_task, asyncio.create_task(self._schedule_loop()), asyncio.create_task(self._midcycle_loop()), asyncio.create_task(self._3m_refresh_loop()),asyncio.create_task(self._priority_fix_loop()), asyncio.create_task(self._npz_update_loop())]
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
@@ -3536,7 +3568,9 @@ class IndicatorOrchestrator:
         # a cadence well under the limit means the watchdog's 120 s can only fire on a genuinely wedged process, which
         # is exactly what it is for. Log line only — no trading logic, no save behaviour changed.
         hb_interval = float(os.environ.get("EZIND_SAVE_HB_S", "45"))
+        warm_interval = float(os.environ.get("EZIND_WARMUP_SAVE_S", "15"))
         last_hb = time.time()
+        last_periodic_save = time.time() - max(save_interval, warm_interval)
         while not self._shutdown.is_set():
             try:
                 await asyncio.wait_for(self._shutdown.wait(), timeout=1.0)
@@ -3544,14 +3578,21 @@ class IndicatorOrchestrator:
             except asyncio.TimeoutError:
                 pass
             now = time.time()
+            # USER 2026-10-22: during warm-up the snapshot must advance, not wait 90 s between attempts and
+            # 110 min for the first one. EZIND_WARMUP_SAVE_S (default 15 s) is the warm-up cadence; the steady-state
+            # cadence is untouched. The first save is forced as soon as anything is dirty, so it lands within one
+            # tick of the first symbols completing instead of after all five timeframes.
+            effective_interval = warm_interval if self._warming_up else save_interval
             time_since_last_save = now - last_periodic_save
-            if time_since_last_save >= save_interval:
+            if time_since_last_save >= effective_interval:
                 self._save_due = True
                 self._dirty = True
                 last_periodic_save = now
+            if self._warming_up and self._dirty and self._warm_first_save_ts is None:
+                self._save_due = True
             if hb_interval > 0 and now - last_hb >= hb_interval:
                 last_hb = now
-                logger.info("[SAVE_HB] due=%s dirty=%s since_save=%.0fs interval=%.0fs", bool(self._save_due), bool(self._dirty), time_since_last_save, save_interval)
+                logger.info("[SAVE_HB] warmup=%s due=%s dirty=%s since_save=%.0fs interval=%.0fs", bool(self._warming_up), bool(self._save_due), bool(self._dirty), time_since_last_save, effective_interval)
             if not (self._save_due and self._dirty):
                 continue
             await self._save_data()
