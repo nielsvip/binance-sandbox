@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-22 14:26:32 UTC
+# Copilot Status — 2026-10-22 14:31:38 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-22T14:24:29
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-22T14:24:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:24:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:25:29
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-22T14:25:30
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-22T14:25:30
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:26:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:26:31
-- **RATIO_IMBALANCE** [crypto] ang — 2026-10-22T14:26:31
-- **RATIO_IMBALANCE** [crypto] inf — 2026-10-22T14:26:31
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-22T14:29:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:30:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:30:35
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-22T14:30:35
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-22T14:30:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:31:07
+- **STALE_INDICATORS** [tradier]  — 2026-10-22T14:31:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-10-22T14:31:37
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-22T14:31:37
+- **RATIO_IMBALANCE** [crypto] inf — 2026-10-22T14:31:37
 
 ## Missed Trades (trader comparison)
 
@@ -27,21 +27,20 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 6 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 6 | **Reentered:** 0
 
-- HELD: **MASKUSDT** LONG (crypto) peak +5.9%, now +-3.5%
-- HELD: **ADP** LONG (tradier) peak +5.5%, now +1.7%
-- HELD: **ZECUSDC** SHORT (crypto) peak +5.5%, now +0.6%
-- HELD: **U** SHORT (tradier) peak +4.8%, now +1.5%
-- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.3%
-- HELD: **AG** SHORT (tradier) peak +4.3%, now +4.0%
+- HELD: **MASKUSDT** LONG (crypto) peak +5.9%, now +-4.4%
+- HELD: **ADP** LONG (tradier) peak +5.5%, now +1.8%
+- HELD: **ZECUSDC** SHORT (crypto) peak +5.5%, now +1.2%
+- HELD: **AG** SHORT (tradier) peak +4.6%, now +4.5%
+- HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.1%
 
-- WATCHING: **APO** SHORT (tradier) peaked +19.5%, exited 23m ago
-- WATCHING: **MSFT** LONG (tradier) peaked +7.6%, exited 26m ago
-- WATCHING: **IOTXUSDT** LONG (crypto) peaked +5.3%, exited 1m ago
-- WATCHING: **BLURUSDT** SHORT (crypto) peaked +5.0%, exited 1m ago
-- WATCHING: **BCHUSDC** SHORT (crypto) peaked +4.5%, exited 1m ago
-- WATCHING: **NMRUSDT** SHORT (crypto) peaked +4.3%, exited 1m ago
+- WATCHING: **APO** SHORT (tradier) peaked +19.5%, exited 29m ago
+- WATCHING: **MSFT** LONG (tradier) peaked +7.6%, exited 31m ago
+- WATCHING: **IOTXUSDT** LONG (crypto) peaked +5.6%, exited 0m ago
+- WATCHING: **BLURUSDT** SHORT (crypto) peaked +5.0%, exited 0m ago
+- WATCHING: **BCHUSDC** SHORT (crypto) peaked +4.5%, exited 0m ago
+- WATCHING: **NMRUSDT** SHORT (crypto) peaked +4.3%, exited 0m ago
 
 ## Supervisor
 
