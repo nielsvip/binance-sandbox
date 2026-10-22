@@ -1,30 +1,55 @@
 {
- "generated_at": "2026-10-22 18:34 UTC",
- "total_capital_usd": 20.84,
+ "generated_at": "2026-10-22 19:21 UTC",
+ "total_capital_usd": 70.7,
  "tier_capital": {
   "A": 0.0,
-  "B": 20.84,
+  "B": 70.69,
   "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 1,
+  "B": 3,
   "C": 0
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "men:ARBUSDC_LONG",
+  "men:ZILUSDT_SHORT"
+ ],
  "positions": [
+  {
+   "pk": "men:ARBUSDC_LONG",
+   "symbol": "ARBUSDC",
+   "account": "men",
+   "value_usd": 24.99,
+   "gain_pct": -0.067,
+   "tier": "B",
+   "perf_mult": 1.0,
+   "amt": 137.8,
+   "mark": 0.18137932
+  },
+  {
+   "pk": "men:ZILUSDT_SHORT",
+   "symbol": "ZILUSDT",
+   "account": "men",
+   "value_usd": 24.95,
+   "gain_pct": 0.139,
+   "tier": "B",
+   "perf_mult": 0.77,
+   "amt": 11891.0,
+   "mark": 0.00209812
+  },
   {
    "pk": "men:BATUSDT_LONG",
    "symbol": "BATUSDT",
    "account": "men",
-   "value_usd": 20.84,
-   "gain_pct": 1.178,
+   "value_usd": 20.75,
+   "gain_pct": 0.743,
    "tier": "B",
    "perf_mult": 7.06,
    "amt": 119.6,
-   "mark": 0.17427884
+   "mark": 0.17353
   }
  ]
 }
