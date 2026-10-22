@@ -1,58 +1,37 @@
 {
-  "flz:BTCDOMUSDT_SHORT": {
-    "orderId": "1000002636964271",
-    "stopPrice": 5589.6,
-    "entry_sig": "2026-10-22 07:57:48.040000+00:00",
-    "symbol": "BTCDOMUSDT",
+  "inf:COTIUSDT_SHORT": {
+    "orderId": "2000001531882487",
+    "stopPrice": 0.011145,
+    "entry_sig": "2026-10-22 11:58:21.765669+00:00",
+    "symbol": "COTIUSDT",
     "side": "SHORT"
   },
-  "flz:HYPEUSDT_LONG": {
-    "orderId": "1000002636983214",
-    "stopPrice": 77.721,
-    "entry_sig": "2026-10-22 11:56:57.601212+00:00",
-    "symbol": "HYPEUSDT",
-    "side": "LONG"
-  },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002636983181",
-    "stopPrice": 1290.48,
-    "entry_sig": "2026-10-22 12:17:14.992000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:XMRUSDT_LONG": {
-    "orderId": "1000002637001458",
-    "stopPrice": 599.53,
-    "entry_sig": "2026-10-22 12:36:30.872000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002637006867",
-    "stopPrice": 5521.8,
-    "entry_sig": "2026-10-22 11:29:46.137862+00:00",
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001531919486",
+    "stopPrice": 5518.2,
+    "entry_sig": "2026-10-22 10:21:37.368000+00:00",
     "symbol": "BTCDOMUSDT",
     "side": "LONG"
   },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002637007360",
-    "stopPrice": 105.1,
-    "entry_sig": "2026-10-22 11:10:34.111000+00:00",
-    "symbol": "SOLUSDC",
+  "inf:ETCUSDT_SHORT": {
+    "orderId": "2000001531927131",
+    "stopPrice": 7.922,
+    "entry_sig": "2026-10-22 12:28:44.624000+00:00",
+    "symbol": "ETCUSDT",
     "side": "SHORT"
   },
-  "flz:WLDUSDC_SHORT": {
-    "orderId": "1000002637008938",
-    "stopPrice": 0.5967,
-    "entry_sig": "2026-10-22 12:43:14.817000+00:00",
-    "symbol": "WLDUSDC",
+  "inf:EGLDUSDT_SHORT": {
+    "orderId": "2000001531939094",
+    "stopPrice": 3.751,
+    "entry_sig": "2026-10-22 12:29:47.366000+00:00",
+    "symbol": "EGLDUSDT",
     "side": "SHORT"
   },
-  "flz:DASHUSDT_SHORT": {
-    "orderId": "1000002637009668",
-    "stopPrice": 54.15,
-    "entry_sig": "2026-10-22 12:44:04.787000+00:00",
-    "symbol": "DASHUSDT",
+  "inf:WUSDT_SHORT": {
+    "orderId": "2000001531945409",
+    "stopPrice": 0.014376,
+    "entry_sig": "2026-10-22 10:57:00.456000+00:00",
+    "symbol": "WUSDT",
     "side": "SHORT"
   }
 }
