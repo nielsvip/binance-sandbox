@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T05:20:09Z",
+ "generated_utc": "2026-10-22T05:40:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": false,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 192,
-    "filled_before_open": 192
+    "filled_today": 217,
+    "filled_before_open": 217
    },
-   "detail": "192 boards filled before the open (192 today)"
+   "detail": "217 boards filled before the open (217 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -63,9 +63,9 @@
    "critical": true,
    "measured": {
     "selection_n": 508,
-    "exact": 48,
-    "benign_divergence_only": 407,
-    "material_divergence": 52,
+    "exact": 49,
+    "benign_divergence_only": 402,
+    "material_divergence": 56,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -162,6 +162,19 @@
       ]
      },
      {
+      "sym_side": "EDUUSDT_LONG",
+      "published_at": "2026-10-21T10:37:33Z",
+      "material": 47,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "BB_BREAKOUT_ENTRY_TF",
+       "BB_PROFIT_TAKE_TF",
+       "BREAKOUT_RETEST_FILTER_TF",
+       "CRYPTO_REENTRY_PATHWAYS_ENABLED",
+       "DAYTRADE_DC_TARGET_TF"
+      ]
+     },
+     {
       "sym_side": "1000FLOKIUSDT_LONG",
       "published_at": "2026-10-13T03:39:04Z",
       "material": 41,
@@ -186,23 +199,10 @@
        "BB_SQUEEZE_ENTRY_ENABLED",
        "COUNTER_TREND_ADD_BLOCK_ENABLED"
       ]
-     },
-     {
-      "sym_side": "ZECUSDC_LONG",
-      "published_at": "2026-10-21T22:33:13Z",
-      "material": 39,
-      "sample": [
-       "BB_BOUNCE_ENTRY_TF",
-       "BREAKOUT_RETEST_ARMED_ENABLED",
-       "BREAKOUT_RETEST_FILTER_TF",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_MOMENTUM_BOTA_SCORER_FILTER_TF",
-       "DELTA_ENGINE_FILTER_TF"
-      ]
      }
     ]
    },
-   "detail": "48 exact, 407 benign-only, 52 with material divergence, 1 with no live row"
+   "detail": "49 exact, 402 benign-only, 56 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -212,7 +212,7 @@
     "symbols": 201,
     "stale_over_90min": 0,
     "stale_pct": 0.0,
-    "median_age_min": 0.0,
+    "median_age_min": 10.1,
     "sample": []
    },
    "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
