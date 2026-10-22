@@ -3129,37 +3129,20 @@ def _per_sym_full_set(sym_side: str):
 
 
 def _get_per_sym_overrides(symbol: str, side: str) -> dict:
-    """Return per-sym override dict from global per_sym_active_config.json.
-    Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, etc.).
-    Applies to all accounts. Re-reads only when file mtime changes.
-    V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
+    """The sym_side's COMPLETE live set. USER 2026-10-22: "OVERRIDES HAVE BEEN TAKEN OUT WEEKS AGO, WE NOW ONLY
+    TRADE A COMPLETE SET OF ~4000 SWITCHES AND FILTERS — THIS IS COMPLETELY GONE, GET RID OF IT."
+
+    The legacy half this used to resolve read `data/hourly_reconfig/per_sym_active_config.json`, which no longer
+    exists, so every call paid a failing `stat()` and then merged an always-empty dict through
+    `_inject_neg_sharpe_no_trade` + `_apply_final_book` — for a layer that is gone. It was not free: across 1,168
+    ez_manage event-loop freeze dumps this function held the loop in 50 of them, and the entry path calls it
+    thousands of times per cycle. Now it returns `per_sym_live_set.full_set` (the ~4,000-key set, per_sym_store SQL
+    row primary, memoised 30 s in `_per_sym_full_set`) and `{}` when no row exists, so the caller falls back to
+    cat_side > global exactly as it always did. `V8_DISABLE_PER_SYM=1` still forces config defaults."""
     if os.environ.get("V8_DISABLE_PER_SYM") == "1":
         return {}
-    global _per_sym_cfgs, _per_sym_cfgs_entries, _per_sym_cfgs_mtime
-    try:
-        mtime = _per_sym_cfgs_path.stat().st_mtime
-        if mtime != _per_sym_cfgs_mtime:
-            with _per_sym_cfgs_path.open() as _f:
-                raw = json.load(_f)
-            # 2026-05-28 3-source rule (parity with tradier_manage): never ban on one bad
-            # test — disable a side only if no positive sharpe in any source on the entry.
-            _per_sym_cfgs = {
-                k: _inject_neg_sharpe_no_trade(k, v)
-                for k, v in raw.items()
-                if isinstance(v, dict)
-            }
-            _per_sym_cfgs_entries = raw
-            _per_sym_cfgs_mtime = mtime
-    except FileNotFoundError:
-        pass
-    except Exception as _exc:
-        logger.warning("PER_SYM_CFG load error: %s", _exc)
     full = _per_sym_full_set(f"{symbol}_{side}")
-    if full is not None:
-        return full
-    return _apply_final_book(
-        f"{symbol}_{side}", _per_sym_cfgs.get(f"{symbol}_{side}", {})
-    )
+    return full if full is not None else {}
 
 
 def _psym_get(symbol: str, side: str, knob: str, default):
