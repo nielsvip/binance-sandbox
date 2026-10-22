@@ -3748,6 +3748,31 @@ def tick(args, cfg, now):
             if not acts:
                 # USER 2026-10-13: never drop a candidate silently — an idling fleet must name its own blocker.
                 log.setdefault("skipped_no_actions", []).append(f"{h['name']}:{sym}")
+                if _rank0 < 40:  # USER 2026-10-22: break the bucket down per side so a top-ranked stall names its filter.
+                    _why = {}
+                    for _sd, (_sst, _att) in (chain_state.get(sym) or {}).items():
+                        _ss, _key = f"{sym}_{_sd}", f"{sym}_{_sd}|30D"
+                        if _sst in ("need30", "need365", "needrepair", "needgs"):
+                            _w = {"need30": "30D", "need365": "365D", "needrepair": "REPAIR", "needgs": "GS"}[_sst]
+                            if _launch_exhausted(_key if _w == "30D" else f"{_ss}|{_w}{_att or ''}", _w, _ss, st, started, redo, _pin_sides):
+                                _why[_sd] = f"{_sst}-budget-exhausted"
+                            elif f"{_ss}" in running:
+                                _why[_sd] = "pilot-running"
+                            elif _launched_recently(_key if _w == "30D" else f"{_ss}|{_w}{_att or ''}", st.get("launched_at"), _now_ts):
+                                _why[_sd] = "launched-grace-180s"
+                            elif _launched_recently(_key if _w == "30D" else f"{_ss}|{_w}{_att or ''}", st.get("dispatch_q"), _now_ts, _DISPATCH_GRACE_S):
+                                _why[_sd] = "dispatch-grace-40min"
+                            elif f"{_ss}" in (quar or set()):
+                                _why[_sd] = "quarantined-terminal"
+                            elif _sst == "need30" and not _parity_gate_ok(venue_of(sym), _sd, _tmpl_dir_by_host.get(h["name"]) or next(iter(_tmpl_dir_by_host.values()), "SPREADSHEETS"), _parity_cache):
+                                _why[_sd] = "parity-gate"
+                            elif not _repair_sticky_ok({"sym": sym, "side": _sd, "window": _w, "attempt": _att or 1}, rep_host, h["name"]):
+                                _why[_sd] = f"{_sst}-repair-sticky-other-host"
+                            else:
+                                _why[_sd] = f"{_sst}-unreachable-cut"
+                        else:
+                            _why[_sd] = _sst
+                    log.setdefault("no_actions_why", {})[f"{h['name']}:{sym}"] = _why
                 continue
             if needs_slot and _PAIR_ALWAYS and len(acts) == 1 and acts[0]["window"] == "30D":
                 # USER 2026-10-13: "HOW CAN IT ONLY BE CALCULATING SHORT AND NOT LONG IF IT HAS THE NPZ IN MEMORY" — the sibling
