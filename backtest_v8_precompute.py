@@ -2161,7 +2161,17 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         from vec_decisions.stock_live_frames import StepFrames as _StepFrames, forming_values as _forming_values, STEP_TFS as _STEP_TFS
         _sf = _StepFrames(base_df, _stock_auth.get("1h"), _stock_auth.get("4h"), _stock_auth.get("D"))
         from vec_decisions.stock_live_frames import builder_step_fn as _builder_step_fn
-        _step_vals = _forming_values(_sf, _builder_step_fn(compute_tf_arrays), tfs=_STEP_TFS)
+        _pbc = None  # USER 2026-10-22 incremental step cache: env-gated, lane-only (NPZ builds never set it)
+        try:
+            _pbc_dir = os.environ.get("PURE_BOARD_STEP_CACHE_DIR")
+            if _pbc_dir:
+                from vec_decisions.stock_live_frames import StepValueCache as _StepValueCache
+                _pbc = _StepValueCache(os.path.join(_pbc_dir, f"{symbol}.pkl"))
+        except Exception:
+            _pbc = None
+        _step_vals = _forming_values(_sf, _builder_step_fn(compute_tf_arrays), tfs=_STEP_TFS, cache=_pbc)
+        if _pbc is not None:
+            logger.info(f"  {symbol}: step cache hits={_pbc.hits} misses={_pbc.misses}")
         for _t in _STEP_TFS:
             merged.update(_step_vals.get(_t, {}))
             if _t != base_tf:

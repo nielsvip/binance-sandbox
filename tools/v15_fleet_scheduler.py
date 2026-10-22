@@ -196,6 +196,29 @@ def _progress_marks(path):
     return _done, _q, (float(_fg) if _fg_ok else None), bool(_jd.get("needs_redo")) and not (_fg_ok and _terminal)
 
 
+def _progress_must(path):
+    """2026-10-22 round-completion record (spec 22 §6.1): the must-set counters + board identity of one progress JSON, read where the
+    file lives. refusal_codes = the reason codes (text before the first ':') of v18.must.refused_sample — a SAMPLE, never all refusals."""
+    try:
+        _jd = json.loads(open(path).read())
+    except Exception:
+        return None
+    if not isinstance(_jd, dict):
+        return None
+    _v18 = _jd.get("v18") if isinstance(_jd.get("v18"), dict) else {}
+    _m = _v18.get("must") if isinstance(_v18.get("must"), dict) else None
+    out = {"verdict": _jd.get("verdict"), "final_gain": _jd.get("final_gain"), "initial_baseline_gain": _jd.get("initial_baseline_gain"),
+           "result_done_utc": _jd.get("result_done_utc"), "pilot_md5": _jd.get("result_pilot_md5"), "must_present": _m is not None}
+    if _m is not None:
+        for _k in ("n_items", "n_evaluated", "n_carried_over", "n_refused"):
+            out[_k] = _m.get(_k)
+        _rs = _m.get("refused_sample")
+        _vals = list(_rs.values()) if isinstance(_rs, dict) else (list(_rs) if isinstance(_rs, list) else [])
+        out["refused_sample_n"] = len(_vals)
+        out["refusal_codes"] = sorted({str(_v).split(":", 1)[0].strip() for _v in _vals if _v})
+    return out
+
+
 def environ(pid):
     try:
         return dict(x.split("=", 1) for x in open("/proc/%d/environ" % pid, "rb").read().decode("utf8", "replace").split("\0") if "=" in x)
@@ -282,7 +305,7 @@ if mode == "probe":
     busy = round(100.0 * (1 - (_i1 - _i0) / max(1, _t1 - _t0)), 1)
     busy_nn = round(100.0 * (1 - ((_i1 - _i0) + (_n1 - _n0)) / max(1, _t1 - _t0)), 1)
     o = {"nproc": os.cpu_count(), "load1": float(open("/proc/loadavg").read().split()[0]), "busy_pct": busy, "busy_nonnice_pct": busy_nn, "mem_avail_mb": mem, "pdir": pdir, "swap_total_mb": swp_t, "swap_used_mb": swp_u, "disk_avail_mb": dsk,
-         "running": pilots(), "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
+         "running": pilots(), "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}, "must": {}}
     if pdir and os.path.isdir(pdir):
         cache_p = "/tmp/v15_sched_done_cache_v3.json"  # v3 (2026-10-16): redo flag semantics changed (terminal soft-skip != redo); v2 (2026-10-10): v1 cached flat-regex done verdicts poisoned by nested endgame.final_gain
         try:
@@ -296,7 +319,7 @@ if mode == "probe":
                 stt = os.stat(f)
                 o.setdefault("started_mt", {})[ss] = stt.st_mtime
                 key = "%s|%s|%s" % (f, stt.st_mtime, stt.st_size)
-                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache or key + "|t" not in cache:
+                if key not in cache or key + "|q" not in cache or key + "|g" not in cache or key + "|r" not in cache or key + "|t" not in cache or key + "|m" not in cache:
                     cache = {k: v for k, v in cache.items() if not k.startswith(f + "|")}
                     _done, _q, _g, _r = _progress_marks(f)
                     cache[key] = _done
@@ -304,6 +327,9 @@ if mode == "probe":
                     cache[key + "|g"] = _g
                     cache[key + "|r"] = _r
                     cache[key + "|t"] = _progress_done_epoch(f)
+                    cache[key + "|m"] = _progress_must(f)
+                if cache.get(key + "|m") is not None:
+                    o["must"][ss] = cache[key + "|m"]
                 if cache.get(key + "|t"):
                     o.setdefault("boarded_at", {})[ss] = cache[key + "|t"]
                 if cache[key]:
@@ -1890,13 +1916,15 @@ _REMOTE_MANIFEST_PY = (
     "for f in glob.glob(d+'/*_30d_matrix_manifest.json'):\n"
     "    try:\n"
     "        j=json.load(open(f));w=(j.get('provenance') or {}).get('npz_window') or {}\n"
-    "        o.append([j.get('symside'),j.get('published_utc'),j.get('host'),w.get('ts_last'),w.get('mtime_ns'),j.get('npz_age_min')])\n"
+    "        p=j.get('provenance') or {}\n"
+    "        o.append([j.get('symside'),j.get('published_utc'),j.get('host'),w.get('ts_last'),w.get('mtime_ns'),j.get('npz_age_min'),j.get('mode'),j.get('pilot_md5'),j.get('start_gain'),p.get('final_gain'),j.get('npz_last_bar_ts')])\n"
     "    except Exception: pass\n"
     "print(json.dumps(o))\n")
 
 
 def _manifest_rows(matrix_dir):
-    """[[symside, published_utc, host, npz_ts_last, npz_mtime_ns, npz_age_min|None]] from the publish manifests in matrix_dir. Never raises."""
+    """[[symside, published_utc, host, npz_ts_last, npz_mtime_ns, npz_age_min|None, mode, pilot_md5, start_gain, final_gain, npz_last_bar_ts]] from the
+    publish manifests in matrix_dir (fields 6-10 added 2026-10-22 for the round-completion record; readers of 0-5 unchanged). Never raises."""
     import glob as _glob
 
     out = []
@@ -1904,8 +1932,9 @@ def _manifest_rows(matrix_dir):
         for p in _glob.glob(os.path.join(str(matrix_dir), "*_30d_matrix_manifest.json")):
             try:
                 j = json.loads(pathlib.Path(p).read_text()) or {}
-                w = (j.get("provenance") or {}).get("npz_window") or {}
-                out.append([j.get("symside"), j.get("published_utc"), j.get("host"), w.get("ts_last"), w.get("mtime_ns"), j.get("npz_age_min")])
+                pv = j.get("provenance") or {}
+                w = pv.get("npz_window") or {}
+                out.append([j.get("symside"), j.get("published_utc"), j.get("host"), w.get("ts_last"), w.get("mtime_ns"), j.get("npz_age_min"), j.get("mode"), j.get("pilot_md5"), j.get("start_gain"), pv.get("final_gain"), j.get("npz_last_bar_ts")])
             except Exception:
                 continue
     except Exception:
@@ -1984,8 +2013,12 @@ def _coverage(allowed, rows, now_ts, max_age_h=24.0, npz_min=20.0):
     return out
 
 
-def _select_catchup_mode(prev_catchup, coverage, below=0.80, exit_=0.95):
-    """Hysteresis: enter catch-up when coverage < below, leave it only when coverage >= exit_. Pure (tested)."""
+def _select_catchup_mode(prev_catchup, coverage, below=0.80, exit_=0.95, n=None, n_never=0):
+    """Hysteresis: enter catch-up when coverage < below, leave it only when coverage >= exit_. Pure (tested).
+    2026-10-22 (spec 22 §7.2(5)): with n (tradeable count) given, never-boarded sym_sides (n_never) leave the denominator — they are their own
+    launch class, and counting them as uncovered is what kept the hysteresis from ever clearing."""
+    if n is not None and coverage is not None and int(n) > int(n_never or 0):
+        coverage = float(coverage) * int(n) / (int(n) - int(n_never or 0))
     if prev_catchup:
         return not (coverage >= exit_)
     return coverage < below
@@ -2025,15 +2058,25 @@ def _qualifying_ages(allowed, rows, now_ts, npz_min=20.0):
     return {ss: ((now_ts - best[ss]) / 3600.0 if ss in best else None) for ss in (allowed or [])}
 
 
-def _catchup_rules(ages, trading, any_h=216.0, trading_h=96.0):
+def _catchup_rules(ages, trading, any_h=216.0, trading_h=96.0, count_never=True):
     """USER 2026-10-20 age rules. Catch-up is ON when ANY tradeable sym_side's qualifying board is older than any_h (9 d; none = infinitely
-    old) OR any actively trading sym_side's is older than trading_h (4 d). It turns OFF only when neither holds. Pure (tested)."""
+    old) OR any actively trading sym_side's is older than trading_h (4 d). It turns OFF only when neither holds. Pure (tested).
+    count_never=False (2026-10-22, spec 22 §7.2(5); the tick uses it): a never-boarded sym_side is NOT an age violator — it is its own class
+    (n_never), so it can neither switch the mode on nor keep it from clearing."""
     inf = float("inf")
     a = {ss: (inf if v is None else float(v)) for ss, v in (ages or {}).items()}
     tr = set(trading or ()) & set(a)
-    over_any = sorted((ss for ss, v in a.items() if v > any_h), key=lambda x: -a[x])
-    over_tr = sorted((ss for ss in tr if a[ss] > trading_h), key=lambda x: -a[x])
+    elig = (lambda ss: True) if count_never else (lambda ss: a[ss] != inf)
+    over_any = sorted((ss for ss, v in a.items() if v > any_h and elig(ss)), key=lambda x: -a[x])
+    over_tr = sorted((ss for ss in tr if a[ss] > trading_h and elig(ss)), key=lambda x: -a[x])
     fin = lambda v: None if v == inf else round(v, 1)
+    if not count_never:
+        af = {ss: v for ss, v in a.items() if v != inf}
+        trf = tr & set(af)
+        return {"mode": bool(over_any or over_tr), "n_tradeable": len(a), "n_never_qualifying": sum(1 for v in a.values() if v == inf), "n_never": sum(1 for v in a.values() if v == inf),
+                "n_over_any": len(over_any), "n_trading": len(tr), "n_trading_over": len(over_tr), "never_counted_as_violator": False,
+                "max_age_any_h": (fin(max(af.values())) if af else None), "max_age_trading_h": (fin(max(af[ss] for ss in trf)) if trf else None),
+                "over_any": over_any, "over_trading": over_tr, "any_h": any_h, "trading_h": trading_h}
     return {"mode": bool(over_any or over_tr), "n_tradeable": len(a), "n_never_qualifying": sum(1 for v in a.values() if v == inf),
             "n_over_any": len(over_any), "n_trading": len(tr), "n_trading_over": len(over_tr),
             "max_age_any_h": ("never" if any(v == inf for v in a.values()) else fin(max(a.values()))) if a else None,
@@ -2041,14 +2084,21 @@ def _catchup_rules(ages, trading, any_h=216.0, trading_h=96.0):
             "over_any": over_any, "over_trading": over_tr, "any_h": any_h, "trading_h": trading_h}
 
 
-def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_gain=None):
+_NEVER_CLASS = 1.5  # 2026-10-22 spec 22 §7.2(5): never-boarded sym_sides — after real violators (0) and due gainers (1), before everyone else (2)
+
+
+def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_gain=None, never_class=False, last_activity=None):
     """-> ({sym_side: (class, sub, key)}, top-10 gainer table, {gainer: cadence_h}). Sort key (lower = launch first). class 0 = catch-up violators (trading > trading_h first, then the
     oldest), class 1 = LIVE-realised gainers whose cadence is DUE (top decile of gainers 6 h, next quartile 12 h, rest 24 h; ordered by 7-day
     realised P&L, the board gain only breaks ties), class 2 = everyone else, oldest first (never-boarded oldest). Losers/flat sit in class 2
-    so they are never deferred behind a gainer beyond the 24 h cadence. Also returns the per-gainer cadence table. Pure (tested)."""
+    so they are never deferred behind a gainer beyond the 24 h cadence. Also returns the per-gainer cadence table. Pure (tested).
+    never_class=True (2026-10-22, spec 22 §7.2(5); the tick uses it; forensics: 86% of catch-up launches were not age violators): a sym_side with
+    no qualifying board is class _NEVER_CLASS (trading first, then oldest last live activity first — last_activity {sym_side: epoch}, none = oldest),
+    never an `inf` age inside class 0, so class 0 holds real violators only (trading > trading_h first, then > any_h, oldest first)."""
     inf = float("inf")
     live = live or {}
     bg = board_gain or {}
+    la = last_activity or {}
     gainers = sorted((ss for ss in ages if (live.get(ss) or {}).get("pnl_usd", 0.0) > 0), key=lambda x: (-live[x]["pnl_usd"], -(bg.get(x) or 0.0)))
     n = len(gainers)
     top, nxt = (max(1, -(-n // 10)) if n else 0), (max(1, -(-n // 4)) if n else 0)
@@ -2057,7 +2107,9 @@ def _refresh_priority(ages, live, trading, any_h=216.0, trading_h=96.0, board_ga
     out = {}
     for ss, age in ages.items():
         a = inf if age is None else float(age)
-        if (ss in trset and a > trading_h) or a > any_h:
+        if never_class and age is None:
+            out[ss] = (_NEVER_CLASS, 0.0 if ss in trset else 1.0, float(la.get(ss) or 0.0))
+        elif (ss in trset and a > trading_h) or a > any_h:
             out[ss] = (0, 0.0 if (ss in trset and a > trading_h) else 1.0, -a)
         elif ss in cad and a >= cad[ss]:
             out[ss] = (1, float(gainers.index(ss)), -(bg.get(ss) or 0.0))
@@ -2089,6 +2141,8 @@ def _rule_label(prio, cad_h=None):
         return "violator-trading-4d" if prio[1] == 0.0 else "violator-9d"
     if c == 1:
         return f"gainer-due-{int(cad_h) if cad_h else '?'}h"
+    if c == _NEVER_CLASS:
+        return "never-boarded-trading" if prio[1] == 0.0 else "never-boarded"
     return "oldest"
 
 
@@ -2113,16 +2167,21 @@ def _trading_file_sides(home=None):
     return out
 
 
-def _order_audit(order_by_host, launched, explain, rule_of, age_of, top_n=10):
+def _order_audit(order_by_host, launched, explain, rule_of, age_of, top_n=10, class_of=None, mode_of=None):
     """ORDER AUDIT (USER 2026-10-20 'pushes the correct ones in the right order always'). order_by_host {host: [sym, ...]} = the computed new-launch
     order; launched [(host, sym)] in launch sequence; explain(host, sym) -> reason string or None for a higher-ranked sym that was not launched.
-    Returns {top, checks, violations}: a launch with an UNEXPLAINED higher-ranked, unlaunched sym ahead of it is an ORDER_VIOLATION. Pure (tested)."""
-    top, checks, viol = {}, [], []
+    Returns {top, checks, violations, mode_per_launch}: a launch with an UNEXPLAINED higher-ranked, unlaunched sym ahead of it is an ORDER_VIOLATION.
+    2026-10-22 (forensics gap: no scheduler decision was logged): class_of(sym) -> selection class, mode_of(host, sym) -> {side: 'full'|'budget:N'}
+    are stamped on every top entry / check, and mode_per_launch {'host:sym': {...}} covers every launch, ranked or not. Pure (tested)."""
+    top, checks, viol, mpl = {}, [], [], {}
+    _cls = class_of or (lambda sy: None)
+    _mod = mode_of or (lambda hn, sy: None)
     by_host = {}
     for hn, sym in launched:
         by_host.setdefault(hn, []).append(sym)
+        mpl[f"{hn}:{sym}"] = {"class": _cls(sym), "rule": rule_of(sym), "mode": _mod(hn, sym)}
     for hn, order in order_by_host.items():
-        top[hn] = [{"sym": sy, "rule": rule_of(sy), "board_age_h": age_of(sy)} for sy in order[:top_n]]
+        top[hn] = [{"sym": sy, "rule": rule_of(sy), "board_age_h": age_of(sy), "class": _cls(sy)} for sy in order[:top_n]]
         got = set(by_host.get(hn, []))
         for sym in by_host.get(hn, []):
             if sym not in order:
@@ -2130,10 +2189,10 @@ def _order_audit(order_by_host, launched, explain, rule_of, age_of, top_n=10):
             ahead = [x for x in order[:order.index(sym)] if x not in got]
             named = {x: explain(hn, x) for x in ahead}
             bad = [x for x, r in named.items() if not r]
-            checks.append({"host": hn, "launched": sym, "rank": order.index(sym) + 1, "skipped_ahead": {x: r for x, r in named.items() if r}})
+            checks.append({"host": hn, "launched": sym, "rank": order.index(sym) + 1, "skipped_ahead": {x: r for x, r in named.items() if r}, "class": _cls(sym), "mode_per_launch": _mod(hn, sym)})
             if bad:
                 viol.append({"host": hn, "launched": sym, "rank": order.index(sym) + 1, "unlaunched_ahead": bad[:10], "cause": "higher-ranked sym skipped with no logged reason"})
-    return {"top": top, "checks": checks, "violations": viol}
+    return {"top": top, "checks": checks, "violations": viol, "mode_per_launch": mpl}
 
 
 _ORDER_BY_HOST = {}  # per tick: host -> [sym] of the NEW-launch order (needs_slot entries only)

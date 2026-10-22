@@ -93,22 +93,96 @@ def tried_items(paths, symside: str) -> set:
     return out
 
 
-def build(log_glob: str, out_dir: Path, max_s: float = 1800.0) -> dict:
+def naked_key(rec: dict) -> str:
+    return "|".join(str(rec.get(k)) for k in ("sym_side", "sheet", "row", "switch", "cand"))
+
+
+def is_naked_line(line: str) -> bool:
+    return '"label": "naked"' in line and '"delta": ' in line
+
+
+def split_item(item: str):
+    """'SW=c' -> (SW, c, None); 'SW=c@F=o' -> (SW, c, 'F=o')."""
+    sw, rest = item.split("=", 1)
+    if "@" in rest:
+        c, hdr = rest.split("@", 1)
+        return sw, c, hdr
+    return sw, rest, None
+
+
+def load_bmap(cs: str, bmap_dir: Path):
+    """-> (binding map or None, why). Fail-open: absent/mismatched map = no drop."""
+    p = Path(bmap_dir) / f"binding_map_{cs}.json"
+    if not p.exists():
+        return None, f"absent {p}"
+    try:
+        from tools import v18_binding_map as BM
+        return BM.load_binding_map(p, cs), f"ok {p.name}"
+    except Exception as e:
+        return None, f"refused {p.name}: {e}"[:200]
+
+
+def hygiene(cs: str, items: dict, bm) -> tuple:
+    """-> (published items, dropped {reason: n}, dropped sample, demoted_to_row n, beats_unknown n). Spec 22 §4.1/§4.2."""
+    from tools import v18_binding_map as BM
+    out, dropped, sample, demoted, unknown = {}, {}, [], 0, 0
+    for k, e in items.items():
+        try:
+            sw, c, hdr = split_item(k)
+        except ValueError:
+            out[k] = dict(e)
+            continue
+        if bm is not None:
+            if hdr is None:
+                v = {"verdict": "NEVER", "reason": "DEAD_ROW"} if ((bm.get("switches") or {}).get(sw) or {}).get("dead") else {"verdict": "BINDS", "reason": ""}
+            else:
+                v = BM.pair_verdict(bm, sw, c, hdr, e.get("sheets") or None)
+            if v.get("verdict") == "NEVER" and v.get("reason") in BM.DROP_REASONS:
+                dropped[v["reason"]] = dropped.get(v["reason"], 0) + 1
+                if len(sample) < 40:
+                    sample.append({"item": k, "reason": v["reason"]})
+                continue
+        pub = {kk: vv for kk, vv in e.items() if kk not in ("beats_syms", "nk_unknown")}
+        if hdr is None:
+            pub["positive_class"] = "row"
+        else:
+            beats = e.get("beats_syms")
+            if beats is None or (not beats and e.get("nk_unknown")):
+                pub.update(positive_class="pair", beats_naked=None)
+                unknown += 1
+            elif beats:
+                pub.update(positive_class="pair", beats_naked=True, beats_syms=list(beats))
+            else:
+                demoted += 1
+                continue
+        out[k] = pub
+    return out, dropped, sample, demoted, unknown
+
+
+def build(log_glob: str, out_dir: Path, max_s: float = 1800.0, bmap_dir=None) -> dict:
     t0 = time.time()
     out_dir.mkdir(parents=True, exist_ok=True)
+    bmap_dir = Path(bmap_dir) if bmap_dir else out_dir
     wm_path = out_dir / "must_pos_watermarks.json"
     try:
         wm = json.loads(wm_path.read_text())
     except Exception:
         wm = {}
     idx = {}
+    migrated = False
     for cs in CAT_SIDES:
         try:
-            idx[cs] = json.loads((out_dir / f"must_pos_{cs}.json").read_text()).get("items") or {}
+            idx[cs] = json.loads((out_dir / f"must_pos_state_{cs}.json").read_text()).get("items") or {}
         except Exception:
-            idx[cs] = {}
+            try:
+                idx[cs] = {k: {**v, "beats_syms": None} if "@" in k else v for k, v in (json.loads((out_dir / f"must_pos_{cs}.json").read_text()).get("items") or {}).items()}
+            except Exception:
+                idx[cs] = {}
+            migrated = True
+    if migrated:
+        wm = {}  # first build with pair classes: rescan every log from 0 so legacy pairs learn beats_naked (idempotent: syms dedup, best max)
     files = sorted({str(Path(p)) for g in log_glob.split(",") for p in glob.glob(os.path.expanduser(g))}, key=lambda p: -os.path.getmtime(p))
-    stats = {"files": 0, "bytes": 0, "positives": 0, "timed_out": False}
+    stats = {"files": 0, "bytes": 0, "positives": 0, "timed_out": False, "rescan_from_zero": migrated}
     for p in files:
         if time.time() - t0 > max_s:
             stats["timed_out"] = True
@@ -118,8 +192,9 @@ def build(log_glob: str, out_dir: Path, max_s: float = 1800.0) -> dict:
         except OSError:
             continue
         off = int((wm.get(p) or {}).get("off") or 0)
+        nk = dict((wm.get(p) or {}).get("naked") or {})
         if off > size:
-            off = 0
+            off, nk = 0, {}
         if off == size:
             continue
         with open(p, "rb") as fh:
@@ -128,7 +203,18 @@ def build(log_glob: str, out_dir: Path, max_s: float = 1800.0) -> dict:
                 if not raw.endswith(b"\n"):
                     break
                 off += len(raw)
-                r = scan_line(raw.decode("utf-8", "replace"))
+                line = raw.decode("utf-8", "replace")
+                if is_naked_line(line):
+                    try:
+                        rn = json.loads(line)
+                        nkk = naked_key(rn)
+                        nk.pop(nkk, None)
+                        nk[nkk] = float(rn["delta"]) if rn.get("valid") and not rn.get("err") and rn.get("delta") is not None else None
+                        if len(nk) > 64:
+                            nk.pop(next(iter(nk)))
+                    except Exception:
+                        pass
+                r = scan_line(line)
                 if r is None or not positive(r):
                     continue
                 ss = str(r.get("sym_side") or "")
@@ -142,14 +228,34 @@ def build(log_glob: str, out_dir: Path, max_s: float = 1800.0) -> dict:
                 d = float(r["delta"])
                 if e["best"] is None or d > e["best"]:
                     e["best"] = round(d, 6)
+                sh = r.get("sheet")
+                if sh and sh not in e.setdefault("sheets", []):
+                    e["sheets"].append(sh)
+                if "@" in k:
+                    nd = nk.get(naked_key(r), "missing")
+                    if e.get("beats_syms") is None:
+                        e["beats_syms"] = []
+                    if nd == "missing" or nd is None:
+                        e["nk_unknown"] = int(e.get("nk_unknown") or 0) + 1
+                    elif d > nd + 1e-9 and ss not in e["beats_syms"]:
+                        e["beats_syms"].append(ss)
                 stats["positives"] += 1
-        wm[p] = {"off": off, "size": size}
+        wm[p] = {"off": off, "size": size, "naked": nk}
         stats["files"] += 1
         stats["bytes"] += size
     at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    stats["hygiene"] = {}
     for cs in CAT_SIDES:
+        tmp = out_dir / f"must_pos_state_{cs}.json.tmp"
+        tmp.write_text(json.dumps({"meta": {"cat_side": cs, "built_at": at, "n_items": len(idx[cs]), "note": "full index state (pre-hygiene); the pilot reads must_pos_<CS>.json"}, "items": idx[cs]}))
+        os.replace(tmp, out_dir / f"must_pos_state_{cs}.json")
+        bm, why = load_bmap(cs, bmap_dir)
+        if bm is None:
+            print(f"[MUST-INDEX] {cs} binding map {why} -> no hygiene drop (fail-open)", file=sys.stderr)
+        pub, dropped, sample, demoted, unknown = hygiene(cs, idx[cs], bm)
+        stats["hygiene"][cs] = {"binding_map": why, "dropped": dropped, "demoted_to_row": demoted, "beats_unknown": unknown, "published": len(pub)}
         tmp = out_dir / f"must_pos_{cs}.json.tmp"
-        tmp.write_text(json.dumps({"meta": {"cat_side": cs, "built_at": at, "n_items": len(idx[cs]), "source": "host delta logs (real evals, valid, delta > 0, trades >= 10)"}, "items": idx[cs]}))
+        tmp.write_text(json.dumps({"meta": {"cat_side": cs, "built_at": at, "n_items": len(pub), "n_state_items": len(idx[cs]), "binding_map": why, "source": "host delta logs (real evals, valid, delta > 0, trades >= 10); pairs only when the cell beat its row's naked on >= 1 sym_side (spec 22 §4.1)"}, "_dropped": dropped, "_dropped_sample": sample, "_demoted_to_row": demoted, "_beats_unknown": unknown, "items": pub}))
         os.replace(tmp, out_dir / f"must_pos_{cs}.json")
     tmp = wm_path.with_suffix(".tmp")
     tmp.write_text(json.dumps(wm))

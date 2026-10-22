@@ -223,7 +223,9 @@ def test_backstop_refused_families_classify():
         True,
         "STDEV_REJECT_EXIT_ENABLED",
     )
-    d = F.classify("HEDGE_CLOSE_WT3M1H_PRE_GATE_3m=-49.1/-35.8_1h=-82.3/-75.1_gain=0.03%")
+    d = F.classify(
+        "HEDGE_CLOSE_WT3M1H_PRE_GATE_3m=-49.1/-35.8_1h=-82.3/-75.1_gain=0.03%"
+    )
     assert (d["family"], d["vec_twin"], d["gate_kind"]) == (
         "HEDGE_CLOSE_WT3M1H",
         False,
@@ -242,7 +244,9 @@ def test_e1_row_precedes_delta_exit():
 
 def test_parabolic_row_is_live_only_input():
     F = _fam()
-    d = F.classify("QUICK_PARABOLIC_EXIT_SHORT_k15=5_px<0.025200_high3m=0.025340>prev0.025330")
+    d = F.classify(
+        "QUICK_PARABOLIC_EXIT_SHORT_k15=5_px<0.025200_high3m=0.025340>prev0.025330"
+    )
     assert d["family"] == "PARABOLIC_EXIT"
     assert d["vec_twin"] is False
     assert F.is_live_only_input(d) is True
@@ -263,12 +267,12 @@ def test_canon_folds_new_backstop_fns():
     assert pfc.canon_family(
         "QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.05%"
     ) == pfc.canon_family("QUICK_STDEV_REJECT_EXIT_OFF_pctb=0.500_g=0.14%")
-    assert pfc.canon_family("E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%") == pfc.canon_family(
-        "E_1_WT_DELTA_EXIT_delta=-19_thr=0_g0.32"
-    )
-    assert pfc.canon_family("E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%") != pfc.canon_family(
-        "E_3_STRUCTURE_EXIT_3TF_g=0.24%"
-    )
+    assert pfc.canon_family(
+        "E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%"
+    ) == pfc.canon_family("E_1_WT_DELTA_EXIT_delta=-19_thr=0_g0.32")
+    assert pfc.canon_family(
+        "E_1_WT_DELTA_EXIT_delta=-7_thr=1_g=-0.50%"
+    ) != pfc.canon_family("E_3_STRUCTURE_EXIT_3TF_g=0.24%")
 
 
 def test_inventory_covers_backstop_refused_families():
@@ -299,9 +303,7 @@ def test_backstop_exit_scores_into_forward_ledger(monkeypatch):
         [t0 + i * 900 for i in range(64)],
         [1.10 + 0.001 * i for i in range(64)],
     )
-    monkeypatch.setattr(
-        pfc, "real_closes", lambda a, ss: [(t0 + 50 * 900, 1.05)]
-    )
+    monkeypatch.setattr(pfc, "real_closes", lambda a, ss: [(t0 + 50 * 900, 1.05)])
     e = {
         "venue": "crypto",
         "kind": "exit",

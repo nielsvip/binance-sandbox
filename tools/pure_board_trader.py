@@ -682,6 +682,8 @@ def main():
     ap.add_argument("--bar", type=float, default=0.0, help="evaluate this bar ts instead of the last closed one")
     ap.add_argument("--offset", type=float, default=8.0, help="seconds after the 15m bar close to start the pass")
     a = ap.parse_args()
+    os.environ.setdefault("PURE_BOARD_STEP_CACHE_DIR", str(ROOT / "data" / "pure_board" / "step_cache"))
+    os.environ.setdefault("NPZ_STOCK_STEP_WORKERS", "8")
     accounts = [x.strip() for x in a.accounts.split(",") if x.strip()]
     uni = universe(accounts)
     held = live_positions(accounts)

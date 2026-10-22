@@ -15,9 +15,13 @@ forming_values() evaluates a per-frame array function (backtest_v8_precompute.co
 value of the last row -> per-15m-step arrays. W/M are unchanged (previous fully closed bar, already equal to live)."""
 from __future__ import annotations
 
+import hashlib
 import multiprocessing as _mp
 import os
+import pickle
+import tempfile
 from datetime import datetime, time as dt_time, timedelta
+from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 import numpy as np
@@ -186,27 +190,120 @@ class StepFrames:
 _CTX: Dict[str, object] = {}
 
 
+def _eval_step(sf: StepFrames, fn: Callable, tfs, j: int) -> Dict[str, Dict[str, object]]:
+    """One step's last-row values (the sharable unit: pure function of the bundled frames)."""
+    b = sf.bundle(j, tfs)
+    per_tf: Dict[str, Dict[str, object]] = {}
+    for tf in tfs:
+        lf = b.get(tf)
+        if lf is None or len(lf) == 0:
+            per_tf[tf] = {}
+            continue
+        arrs = fn(from_live_frame(lf), tf)
+        per_tf[tf] = {k: v[-1] for k, v in arrs.items() if isinstance(v, np.ndarray) and v.ndim == 1 and len(v) == len(lf)}
+    return per_tf
+
+
 def _eval_range(args):
-    j0, j1 = args
+    idx = args[2] if len(args) == 3 else list(range(args[0], args[1]))
     sf: StepFrames = _CTX["sf"]
     fn: Callable = _CTX["fn"]
     tfs = _CTX["tfs"]
-    rows: List[Dict[str, Dict[str, object]]] = []
-    for j in range(j0, j1):
-        b = sf.bundle(j, tfs)
-        per_tf: Dict[str, Dict[str, object]] = {}
-        for tf in tfs:
-            lf = b.get(tf)
-            if lf is None or len(lf) == 0:
-                per_tf[tf] = {}
-                continue
-            arrs = fn(from_live_frame(lf), tf)
-            per_tf[tf] = {k: v[-1] for k, v in arrs.items() if isinstance(v, np.ndarray) and v.ndim == 1 and len(v) == len(lf)}
-        rows.append(per_tf)
-    return rows
+    return [_eval_step(sf, fn, tfs, j) for j in idx]
 
 
-def forming_values(sf: StepFrames, fn: Callable[[pd.DataFrame, str], Dict[str, np.ndarray]], tfs=STEP_TFS, workers: Optional[int] = None) -> Dict[str, Dict[str, np.ndarray]]:
+def _code_version() -> str:
+    """Cache namespace: any change to the frame/indicator code invalidates stored steps."""
+    here = Path(__file__).resolve().parent
+    parts = []
+    for f in ("stock_live_frames.py", "stock_live_extras.py"):
+        try:
+            parts.append(f"{f}:{int((here / f).stat().st_mtime)}")
+        except OSError:
+            parts.append(f"{f}:0")
+    for f in ("backtest_v8_precompute.py", "tradier_indicators.py", "live_parity_keys.py"):
+        try:
+            parts.append(f"{f}:{int((here.parent / f).stat().st_mtime)}")
+        except OSError:
+            parts.append(f"{f}:0")
+    return "|".join(parts)
+
+
+def _frame_key(tf: str, lf: pd.DataFrame):
+    """Exact content key for one step frame: (label, rows, blake2b over OHLCV bytes).
+
+    Any revision anywhere in the frame changes the key, so a mid-history klines
+    edit can never serve stale values — that step and every later step (whose
+    frames contain the edited row) miss and recompute.
+    """
+    try:
+        if lf is None or len(lf) == 0:
+            return None
+        ts = lf["timestamp"].astype(str) if "timestamp" in lf.columns else lf.index.astype(str)
+        h = hashlib.blake2b(digest_size=8)
+        for c in ("open", "high", "low", "close", "volume"):
+            if c in lf.columns:
+                h.update(np.ascontiguousarray(pd.to_numeric(lf[c], errors="coerce").fillna(0).values.astype(np.float64)).tobytes())
+        return (tf, str(ts.iloc[-1]), int(len(lf)), h.hexdigest())
+    except Exception:
+        return None
+
+
+class StepValueCache:
+    """Incremental per-step value store (USER 2026-10-22: pure-board lane EVAL_TIMEOUT).
+
+    forming_values evaluates fn on EVERY step's frame (~1,700 steps x 4 TFs for
+    stocks, ~1,600 s CPU/symbol) and the lane re-pays it per symbol per pass.
+    Step j's frame for CLOSED bars is immutable, so last-row values are cached
+    by exact frame-content key: repeat passes only evaluate NEW steps
+    (seconds), a mid-history klines revision cascades misses correctly, and a
+    code change (see _code_version) drops the whole file. Opt-in only:
+    forming_values(cache=None) is byte-identical to before. Atomic
+    tmp+rename saves; parent-process I/O only (fork children inherit a copy).
+    """
+
+    def __init__(self, path, code_version: str = None):
+        self.path = Path(path)
+        self.version = code_version if code_version is not None else _code_version()
+        self.steps: dict = {}
+        self.hits = self.misses = 0
+        try:
+            with open(self.path, "rb") as fh:
+                d = pickle.load(fh)
+            if isinstance(d, dict) and d.get("version") == self.version:
+                self.steps = d.get("steps", {})
+        except Exception:
+            self.steps = {}
+
+    def get(self, key):
+        try:
+            v = self.steps.get(repr(key))
+        except Exception:
+            return None
+        if v is None:
+            self.misses += 1
+            return None
+        self.hits += 1
+        return v
+
+    def put(self, key, values: dict) -> None:
+        try:
+            self.steps[repr(key)] = {k: v for k, v in (values or {}).items()}
+        except Exception:
+            pass
+
+    def save(self) -> None:
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(dir=str(self.path.parent), prefix=self.path.name + ".")
+            with os.fdopen(fd, "wb") as fh:
+                pickle.dump({"version": self.version, "steps": self.steps}, fh, protocol=4)
+            os.replace(tmp, self.path)
+        except Exception:
+            pass
+
+
+def forming_values(sf: StepFrames, fn: Callable[[pd.DataFrame, str], Dict[str, np.ndarray]], tfs=STEP_TFS, workers: Optional[int] = None, cache: "StepValueCache | None" = None) -> Dict[str, Dict[str, np.ndarray]]:
     """{tf: {field: array(n)}} — fn evaluated on every step's live frame, value of the last row. Steps without a frame / field -> 0."""
     n = sf.n
     if workers is None:
@@ -214,14 +311,53 @@ def forming_values(sf: StepFrames, fn: Callable[[pd.DataFrame, str], Dict[str, n
     if _mp.current_process().daemon:
         workers = 1
     _CTX.update(sf=sf, fn=fn, tfs=tuple(tfs))
-    chunk = max(1, -(-n // max(1, workers * 4)))
-    ranges = [(a, min(n, a + chunk)) for a in range(0, n, chunk)]
-    if workers > 1 and n > 1:
-        with _mp.get_context("fork").Pool(workers) as pool:
-            parts = pool.map(_eval_range, ranges)
+    if cache is None:
+        chunk = max(1, -(-n // max(1, workers * 4)))
+        ranges = [(a, min(n, a + chunk)) for a in range(0, n, chunk)]
+        if workers > 1 and n > 1:
+            with _mp.get_context("fork").Pool(workers) as pool:
+                parts = pool.map(_eval_range, ranges)
+        else:
+            parts = [_eval_range(r) for r in ranges]
+        rows = [r for p in parts for r in p]
     else:
-        parts = [_eval_range(r) for r in ranges]
-    rows = [r for p in parts for r in p]
+        rows: List[Optional[dict]] = [None] * n
+        miss_idx: List[int] = []
+        miss_keys: Dict[int, dict] = {}
+        for j in range(n):
+            b = sf.bundle(j, tuple(tfs))
+            keys = {tf: _frame_key(tf, b.get(tf)) for tf in tfs}
+            hit_row: dict = {}
+            missed = False
+            for tf in tfs:
+                key = keys[tf]
+                v = cache.get(key) if key is not None else None
+                if v is None:
+                    missed = True
+                    break
+                hit_row[tf] = v
+            if missed:
+                miss_idx.append(j)
+                miss_keys[j] = keys
+            else:
+                rows[j] = hit_row
+            del b
+        if miss_idx:
+            if workers > 1 and len(miss_idx) > 1:
+                chunk = max(1, -(-len(miss_idx) // max(1, workers * 4)))
+                groups = [tuple(miss_idx[a:a + chunk]) for a in range(0, len(miss_idx), chunk)]
+                with _mp.get_context("fork").Pool(workers) as pool:
+                    parts = pool.map(_eval_range, [(0, 0, g) for g in groups])
+                fresh = [r for p in parts for r in p]
+            else:
+                fresh = [_eval_step(sf, fn, tuple(tfs), j) for j in miss_idx]
+            for j, per_tf in zip(miss_idx, fresh):
+                rows[j] = per_tf
+                for tf in tfs:
+                    key = miss_keys[j][tf]
+                    if key is not None:
+                        cache.put(key, per_tf.get(tf, {}))
+        cache.save()
     out: Dict[str, Dict[str, np.ndarray]] = {}
     for tf in tfs:
         keys: Dict[str, np.dtype] = {}

@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-22T17:29:37.965289+00:00",
+ "generated_at": "2026-10-22T17:34:51.708116+00:00",
  "trigger": "fin:RLCUSDT_SHORT REDUCE QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7 refused 2026-10-22 17:12:53 (NON_VECTOR_EXIT_DISABLED)",
  "trigger_verdict": "correct refusal: BB_RECOVERY killed 2026-10-21, resolved non_vectorizable (exit_sig suppressed fleet-wide by VEC_EXIT_SIG_IS_TRIGGER=False); backstop + enforce agree (KILLED_FAMILY_BB_RECOVERY). No action; stays forward-tested.",
  "finding_1": "Backstop stricter than vector_enforce for VEC_SWITCH_EXIT families (measured 2026-10-22 on live code: EXIT_VELOCITY_WT/VEL_EXIT/TECHNICAL_TARGET/BB_TAKE -> enforce VEC_SWITCH_EXIT-allow, backstop non-vec-refuse). Violates _voe_reason_is_vec mirror contract. Fix needs unlock (ez_manage, locked): teach backstop VEC_SWITCH_EXIT_FAMILIES + tests. NOT applied this turn.",
@@ -7,12 +7,12 @@
  "kills_note": "vector_kills.json at gen time lacks WT (present in earlier 10-22 read; restored by parallel session, not this turn). This turn removed only its own BT probe entry + 6 probe ledger rows.",
  "base_list_oct21": "tests/test_unvec_parity_kills.py (42 kill switches) + data/vector_kills.json + data/vector_retrace_queue.jsonl TODOs + data/vector_retrace_resolutions.jsonl verdicts",
  "scope": "NON_VECTOR_EXIT_REFUSED live (non-probe) events 2026-10-17..22; entries are HERMETIC-gated (not backstop) and listed separately in verdict.md",
- "n_events": 1107,
+ "n_events": 1113,
  "n_families": 36,
  "families": [
   {
    "family": "QUICK_BB_RECOVERY_EXIT_TRADIER",
-   "events": 448,
+   "events": 452,
    "n_syms": 59,
    "sides": [
     "LONG",
@@ -155,7 +155,7 @@
    "spec_note": "REDUCE_K killed nonvec (rater unvectorized); forward-test only"
   },
   {
-   "family": "BT_STOCH_XTREME_EXIT_g",
+   "family": "BT_STOCH_XTREME_EXIT",
    "events": 129,
    "n_syms": 2,
    "sides": [
@@ -229,7 +229,7 @@
    "spec_note": "v12 books exit_sig; native leg refused; needs Finding-1-class fix or twin-lane converge proof"
   },
   {
-   "family": "BT_WICK_REJECT_EXIT_g",
+   "family": "BT_WICK_REJECT_EXIT",
    "events": 58,
    "n_syms": 4,
    "sides": [
@@ -453,7 +453,7 @@
    "spec_note": "switched (DELTA_EXIT_ENABLED) unmodeled; add vec leg + row, gate path"
   },
   {
-   "family": "BT_RSI2_XTREME_EXIT_g",
+   "family": "BT_RSI2_XTREME_EXIT",
    "events": 33,
    "n_syms": 2,
    "sides": [
@@ -528,8 +528,8 @@
   },
   {
    "family": "QUICK_AUGMENTED_DC_BREAK_REDUCE_TO_MIN",
-   "events": 31,
-   "n_syms": 19,
+   "events": 32,
+   "n_syms": 20,
    "sides": [
     "LONG",
     "SHORT"
@@ -561,7 +561,7 @@
    "spec_note": "covered by DC_BREAK row (unknown gate); locate emitter, then spec"
   },
   {
-   "family": "E_1_WT_DELTA_EXIT_delta_thr_g",
+   "family": "E_1_WT_DELTA_EXIT_delta_thr",
    "events": 29,
    "n_syms": 3,
    "sides": [
@@ -744,7 +744,7 @@
    "spec_note": "row exists (unknown gate); emitter unlocated \u2014 do not guess; research then spec"
   },
   {
-   "family": "QUICK_STDEV_REJECT_EXIT_OFF_pctb_g",
+   "family": "QUICK_STDEV_REJECT_EXIT_OFF_pctb",
    "events": 14,
    "n_syms": 1,
    "sides": [
@@ -1016,8 +1016,8 @@
   },
   {
    "family": "CYCLE_TP_TIERED_T3_0.70pct",
-   "events": 7,
-   "n_syms": 6,
+   "events": 8,
+   "n_syms": 7,
    "sides": [
     "LONG",
     "SHORT"
@@ -1090,7 +1090,7 @@
    "spec_note": "same as T0"
   },
   {
-   "family": "E_3_STRUCTURE_EXIT_3TF_g",
+   "family": "E_3_STRUCTURE_EXIT_3TF",
    "events": 5,
    "n_syms": 1,
    "sides": [
@@ -1231,7 +1231,7 @@
    "spec_note": "ranking-direct webhook close; no switch; forward-test only"
   },
   {
-   "family": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_UP_g",
+   "family": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_UP",
    "events": 5,
    "n_syms": 1,
    "sides": [
@@ -1264,7 +1264,7 @@
    "spec_note": "row exists (unknown); research emitter then spec"
   },
   {
-   "family": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_DOWN_g",
+   "family": "WT_EXHAUST_mom4h=EXHAUST_DOWN_1h=IMPULSE_DOWN",
    "events": 4,
    "n_syms": 2,
    "sides": [
