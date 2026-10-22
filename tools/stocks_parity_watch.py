@@ -111,6 +111,69 @@ def daemons() -> dict:
     return {a: (f"tradier_manage.py --accounts {a}" in ps) for a in ("tra", "trb", "trc")}
 
 
+def s1_npz_max_age_min():
+    """Oldest S1 stocks NPZ among tradeable syms (plan-B freshness). None on ssh fail."""
+    try:
+        uni = set()
+        for name in ("symbols_trb_long.json", "symbols_trb_short.json", "symbols_tra_long.json",
+                     "symbols_tra_short.json", "symbols_trc_long.json", "symbols_trc_short.json"):
+            try:
+                uni.update(json.loads((ROOT / name).read_text()))
+            except Exception:
+                continue
+        if not uni:
+            return None, 0
+        r = subprocess.run(["ssh", "-o", "ConnectTimeout=8", "s1-int",
+                            "date +%s; for s in " + " ".join(sorted(uni)) + "; do stat -c '%Y' "
+                            "~/binance-sandbox/backtest_v8/indicators/$s.npz 2>/dev/null || echo 0; done"],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            return None, len(uni)
+        vals = r.stdout.split()
+        now = float(vals[0])
+        ages = [(now - float(v)) / 60 for v in vals[1:] if v != "0"]
+        missing = sum(1 for v in vals[1:] if v == "0")
+        return (max(ages) if ages else None), missing
+    except Exception:
+        return None, 0
+
+
+def refused_signals_15m():
+    """Native OPEN verdicts refused in the last 15 min, by verdict (the find-the-switch feed)."""
+    import re
+    from collections import Counter
+    c: Counter = Counter()
+    syms: dict = {}
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
+    for acct in ("tra", "trb", "trc"):
+        for pat in (ROOT / f"../logs/tradier_manage_{acct}.log", Path(f"/Users/niels/logs/tradier_manage_{acct}.log")):
+            try:
+                fp = pat if pat.exists() else None
+            except Exception:
+                fp = None
+            if fp is None:
+                continue
+            try:
+                for ln in open(fp, errors="replace"):
+                    if "VECTOR_EXEC_REFUSED" not in ln or "action=OPEN" not in ln:
+                        continue
+                    try:
+                        ts = datetime.strptime(ln[:14], "%m-%d %H:%M:%S").replace(year=2026, tzinfo=timezone.utc)
+                    except Exception:
+                        continue
+                    if ts < cutoff:
+                        continue
+                    m = re.search(r"verdict=([A-Za-z_]+)", ln)
+                    v = m.group(1) if m else "?"
+                    c[v] += 1
+                    m2 = re.search(r"(tr[abc]:[A-Z]+_(?:LONG|SHORT))", ln)
+                    if m2:
+                        syms[m2.group(1)] = v
+            except OSError:
+                continue
+    return dict(c), syms
+
+
 def verdict_age_s():
     try:
         files = sorted((ROOT / "data" / "pure_board").glob("intents_*.jsonl"))
@@ -137,9 +200,13 @@ def main():
     a = ap.parse_args()
     op, rate = opens(), rate_h()
     sa, (lag, nlag) = snap_age_s(), tail_lag_min()
+    (npz_age, npz_missing) = s1_npz_max_age_min()
+    refused, refused_syms = refused_signals_15m()
     rep = {"ts": datetime.now(timezone.utc).isoformat(), "rth": rth_now(), "opens": len(op),
            "open_list": op, "rate_h": rate, "snap_age_s": sa, "tail_lag_max_min": lag,
-           "tail_n": nlag, "daemons": daemons(), "verdict_age_s": verdict_age_s()}
+           "tail_n": nlag, "daemons": daemons(), "verdict_age_s": verdict_age_s(),
+           "s1_npz_max_age_min": npz_age, "s1_npz_missing": npz_missing,
+           "refused_15m": refused, "refused_syms": refused_syms}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(rep, indent=1))
     msgs = [f"opens={len(op)} rate={rate}/h snap_age={sa} tail_max={lag} daemons={rep['daemons']} verdict_age={rep['verdict_age_s']}"]
@@ -158,6 +225,10 @@ def main():
     dead = [k for k, v in rep["daemons"].items() if not v]
     if dead:
         msgs.append(f"WARN daemons down: {dead}")
+    if npz_age is not None and (npz_age > 45 or npz_missing):
+        msgs.append(f"WARN S1 plan-B NPZ max-age {npz_age:.0f}min missing={npz_missing}")
+    if refused:
+        msgs.append(f"WARN refused OPENs 15m: {refused} syms={len(refused_syms)}")
     if len(op) < a.min_opens_breach and rate < a.min_rate:
         msgs.append("BREACH book and flow both dead in RTH")
         breach = True
