@@ -223,6 +223,7 @@ def test_exempt_gates_wired_in_source():
 
 class _FakeTM:
     _vec_driven_live_amt = EZ.MultiAccountTradeManager._vec_driven_live_amt
+    _vec_driven_live_amt_guarded = EZ.MultiAccountTradeManager._vec_driven_live_amt_guarded
     _vec_driven_send = EZ.MultiAccountTradeManager._vec_driven_send
     _vec_driven_consumer_loop = EZ.MultiAccountTradeManager._vec_driven_consumer_loop
 

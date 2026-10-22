@@ -25922,6 +25922,27 @@ class MultiAccountTradeManager:
         min_qty = max((float(getattr(config, "MIN_POSITION_SIZE", 1.0)) / price) if price > 0 else 0.0, float(self.min_qty.get(symbol, 0.0) or 0.0))
         return amt, price, min_qty, position
 
+    async def _vec_driven_live_amt_guarded(self, position_key: str, symbol: str):
+        """USER 2026-10-22: one sick key may never wedge the sweep. `_vec_driven_live_amt` awaits a broker position
+        read and a price read with NO timeout, and the reconcile sweep calls it per key SEQUENTIALLY, so a single
+        hanging read stalls every remaining key of that account for as long as it hangs. Measured this day: ang (70
+        live keys, 20 fresh reconcile tries) and men (93/24) emitted ZERO reconcile lines for 8+ minutes while their
+        periodic loops kept logging — the event loop was healthy, only this await was stuck — and both logged
+        `[mark_price] Aggregate stream error`, while inf with a healthy feed converged normally. Returns None on
+        timeout so the caller skips that one key this cycle and the log names it: an invisible wedge becomes a
+        visible, attributable fault."""
+        _t = float(getattr(_ezm_base_config, "VEC_DRIVEN_LIVE_AMT_TIMEOUT_S", 8.0) or 8.0)
+        try:
+            return await asyncio.wait_for(self._vec_driven_live_amt(position_key, symbol), timeout=_t)
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱️ [VEC_DRIVEN_LIVE] {position_key}: live amount/price read did not return within {_t:.0f}s — key skipped this cycle so the sweep continues (broker/price read stuck)")
+            return None
+        except asyncio.CancelledError:
+            raise
+        except Exception as _la_e:
+            logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: live amount/price read error {_la_e} — key skipped this cycle")
+            return None
+
     async def _vec_driven_send(self, account_key: str, ss: str, action: str, vec_type: str, vec_reason, qty_frac, src: str, caps=None, modes=None) -> str:
         """Translate one vec decision into the existing order path: queue_trade_action -> execute_trade_action -> execute_now.
         OPEN/AUGMENT size = qty_frac x calculate_final_order_quantity (same preliminary qty as queue_trade_action); REDUCE = qty_frac of
@@ -25929,7 +25950,10 @@ class MultiAccountTradeManager:
         from live_twins import vec_driven as _vdm
         symbol, side = _vdm.split_ss(ss)
         position_key = f"{account_key}:{ss}"
-        amt, price, min_qty, position = await self._vec_driven_live_amt(position_key, symbol)
+        _la = await self._vec_driven_live_amt_guarded(position_key, symbol)
+        if _la is None:
+            return "SKIPPED_LIVE_AMT_TIMEOUT"
+        amt, price, min_qty, position = _la
         if price <= 0:
             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: no price — {src} {action} not sent")
             return "SKIPPED_NO_PRICE"
@@ -26051,7 +26075,10 @@ class MultiAccountTradeManager:
                         if mode == "shadow" or it_mode == "shadow":
                             if bar > 0 and now < bar + _vdm.BAR_SECONDS + 30:
                                 continue
-                            amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
+                            _la_s = await self._vec_driven_live_amt_guarded(position_key, symbol)
+                            if _la_s is None:
+                                continue
+                            amt, _px, min_qty, _pos = _la_s
                             would, why = _vdm.translate(it["type"], amt, min_qty)
                             hist = Path(getattr(self.config, "BASE_PATH", ".")) / "data" / "history" / account_key / f"{ss}.jsonl"
                             native = _vdm.native_trades_on_bar(hist, bar - _vdm.BAR_SECONDS, 2 * _vdm.BAR_SECONDS)
@@ -26074,7 +26101,10 @@ class MultiAccountTradeManager:
                             _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": f"REFUSED_STALE_{_it_age:.0f}s"})
                             store.mark(it["intent_id"])
                             continue
-                        amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
+                        _la_i = await self._vec_driven_live_amt_guarded(position_key, symbol)
+                        if _la_i is None:
+                            continue
+                        amt, _px, min_qty, _pos = _la_i
                         action, why = _vdm.translate(it["type"], amt, min_qty)
                         store.mark(it["intent_id"])
                         if not action:
@@ -26138,7 +26168,10 @@ class MultiAccountTradeManager:
                         if _rc_done and not bool(getattr(_ezm_base_config, "VEC_DRIVEN_RECONCILE_RETRY_IN_BAR", True)):
                             continue
                         symbol, side = _vdm.split_ss(ss)
-                        amt, _px, min_qty, _pos = await self._vec_driven_live_amt(position_key, symbol)
+                        _la_r = await self._vec_driven_live_amt_guarded(position_key, symbol)
+                        if _la_r is None:
+                            continue
+                        amt, _px, min_qty, _pos = _la_r
                         act = _vdm.reconcile_action(target, amt, min_qty)
                         if not act:
                             continue

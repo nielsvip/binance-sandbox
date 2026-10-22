@@ -1,17 +1,17 @@
 {
-  "inf:KMNOUSDT_LONG": {
-    "orderId": "2000001530737163",
-    "stopPrice": 0.04066,
-    "entry_sig": "2026-10-22 01:35:46.433000+00:00",
-    "symbol": "KMNOUSDT",
-    "side": "LONG"
-  },
   "inf:XRPUSDC_SHORT": {
     "orderId": "2000001530761651",
     "stopPrice": 1.3971,
     "entry_sig": "2026-10-22 01:43:15.951000+00:00",
     "symbol": "XRPUSDC",
     "side": "SHORT"
+  },
+  "inf:KMNOUSDT_LONG": {
+    "orderId": "2000001530737163",
+    "stopPrice": 0.04066,
+    "entry_sig": "2026-10-22 01:35:46.433000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
   },
   "inf:ALTUSDT_LONG": {
     "orderId": "2000001530767875",
@@ -20,13 +20,6 @@
     "symbol": "ALTUSDT",
     "side": "LONG"
   },
-  "inf:GRTUSDT_SHORT": {
-    "orderId": "2000001530789019",
-    "stopPrice": 0.02627,
-    "entry_sig": "2026-10-22 01:57:02.695000+00:00",
-    "symbol": "GRTUSDT",
-    "side": "SHORT"
-  },
   "inf:DOTUSDT_SHORT": {
     "orderId": "2000001530801819",
     "stopPrice": 1.1883,
@@ -34,30 +27,16 @@
     "symbol": "DOTUSDT",
     "side": "SHORT"
   },
-  "inf:AVAXUSDC_SHORT": {
-    "orderId": "2000001530814865",
-    "stopPrice": 9.907,
-    "entry_sig": "2026-10-22 02:07:35.189000+00:00",
-    "symbol": "AVAXUSDC",
-    "side": "SHORT"
-  },
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001530816506",
-    "stopPrice": 5501.5,
-    "entry_sig": "2026-10-22 02:08:16.488000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
-  "inf:COTIUSDT_SHORT": {
-    "orderId": "2000001530820857",
-    "stopPrice": 0.011428,
-    "entry_sig": "2026-10-22 02:10:07.484000+00:00",
-    "symbol": "COTIUSDT",
+  "inf:GRTUSDT_SHORT": {
+    "orderId": "2000001530789019",
+    "stopPrice": 0.02627,
+    "entry_sig": "2026-10-22 01:57:02.695000+00:00",
+    "symbol": "GRTUSDT",
     "side": "SHORT"
   },
   "inf:MELANIAUSDT_SHORT": {
-    "orderId": "2000001530828221",
-    "stopPrice": 0.08946,
+    "orderId": "2000001530807568",
+    "stopPrice": 0.08955,
     "entry_sig": "2026-10-22 02:02:01.187000+00:00",
     "symbol": "MELANIAUSDT",
     "side": "SHORT"
