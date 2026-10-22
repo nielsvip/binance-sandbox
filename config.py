@@ -4730,6 +4730,7 @@ class Config:
     SCALE_DIRECTION_BAND_PCT: float = 0.0
     SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE: bool = True
     SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE: bool = True
+    SCALE_DIRECTION_EXEMPT_EXIT_CHAIN: bool = True
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.70  # Close 70% of position, keep 30% as runner
     # === PARTIAL_PROFIT_LOCK — 50% close at +0.5% via webhook_url_2/maker, arm SL at first-exit price when +0.7% ===
     # 2026-04-21: Replaces SATOSHIT_PARTIAL_EXIT 70% with deterministic gain-triggered 50% lock.

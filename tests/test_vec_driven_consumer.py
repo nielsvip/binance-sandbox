@@ -29,9 +29,13 @@ def _write_registry(d: Path, entries: dict, expires=None):
     (d / "vec_driven.json").write_text(json.dumps(raw))
 
 
-def test_config_defaults_off():
+def test_vec_driven_switches_exist_and_are_boolean():
+    """The lane shipped default-OFF in 2026-10-06 and the operator has since armed it (the board set is what live
+    trades), so asserting VEC_DRIVEN_ENABLED is False asserted the old rollout state, not a contract. What IS a
+    contract: both switches exist and are real booleans, so the rollback is always one flag away."""
     c = C.Config()
-    assert c.VEC_DRIVEN_ENABLED is False
+    assert isinstance(c.VEC_DRIVEN_ENABLED, bool)
+    assert isinstance(c.VEC_DRIVEN_EXEMPT_RATIO_GATES, bool)
     assert c.VEC_DRIVEN_EXEMPT_RATIO_GATES is False
 
 
@@ -135,15 +139,23 @@ def _run_exec(**kw):
     AttributeError before reaching a gate."""
     self = SimpleNamespace()
     self._execute_now_inner = lambda **a: EZ.MultiAccountTradeManager._execute_now_inner(self, **a)
-    args = dict(position_key="men:BTCUSDT_LONG", account_key="men", symbol="BTCUSDT", position_side="LONG", action="OPEN", reason="X", quantity=1.0)
+    # A FRESH key per call: execute_now's same-key dedup claim (_peg.try_claim, TTL in seconds) is process-global, so
+    # reusing one position_key made the second entry of a test — or of the next test — return BLOCKED_PARITY_DEDUP
+    # instead of reaching the gate under test.
+    _run_exec.n = getattr(_run_exec, "n", 0) + 1
+    _sym = f"T{_run_exec.n}USDT"
+    args = dict(position_key=f"men:{_sym}_LONG", account_key="men", symbol=_sym, position_side="LONG", action="OPEN", reason="X", quantity=1.0)
     args.update(kw)
     return asyncio.run(EZ.MultiAccountTradeManager.execute_now(self, **args))
 
 
 def test_native_suppressed_when_vec_driven_live(monkeypatch):
+    """A native decision never trades a vec-driven key. Since 2026-10-21 the vector-copy enforcer (bar window / killed
+    family) usually refuses it FIRST, so the contract is the refusal, not which gate got there first."""
     _mode_live(monkeypatch)
     for action, reason in (("OPEN", "WT_DC_ENTRY"), ("CLOSE", "EXIT_VELOCITY_WT_1h"), ("AUGMENT", "GOLDEN_RULE_LONG"), ("REDUCE", "DC_BREACH_REDUCE")):
-        assert _run_exec(action=action, reason=reason) == "BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED"
+        res = _run_exec(action=action, reason=reason)
+        assert res.startswith(("BLOCKED_VEC_DRIVEN_NATIVE_SUPPRESSED", "BLOCKED_VECTOR_EXEC_", "POLICY_NON_VECTOR_EXIT_DISABLED")), f"{action}/{reason} -> {res}"
 
 
 def test_native_emergency_exit_allowed(monkeypatch):
@@ -183,7 +195,8 @@ def test_default_off_byte_identical(monkeypatch):
 
 
 def test_exempt_gates_wired_in_source():
-    src = inspect.getsource(EZ.MultiAccountTradeManager.execute_now)
+    # execute_now is now a thin wrapper (2026-10-17 entry-stop requirement); the gates live in _execute_now_inner.
+    src = inspect.getsource(EZ.MultiAccountTradeManager._execute_now_inner)
     must = [
         "if not _ok365 and _vd_exempt:",
         "if not _live_ok and _vd_exempt:",

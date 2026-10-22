@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-22T01:25:37Z",
+ "ts": "2026-10-22T01:31:09Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 49,
+   "fills_6h": 44,
    "open_positions": 1,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.03,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,10 +77,10 @@
   "inf": {
    "fills_6h": 47,
    "open_positions": 5,
-   "unrealised_usd": -0.39,
+   "unrealised_usd": -0.19,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 5,
+    "live_vec_decisions": 6,
     "state_divergent": 1,
     "filled": 4,
     "refused_non_safety": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 60,
    "open_positions": 5,
-   "unrealised_usd": 0.03,
+   "unrealised_usd": 0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -111,12 +111,12 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 309,
+  "total": 311,
   "per_acct": {
    "men": 93,
    "inf": 40,
    "fin": 82,
-   "ang": 70,
+   "ang": 72,
    "flz": 24
   }
  },
@@ -124,118 +124,126 @@
  "process": {
   "fin": {
    "pids": [
-    "22021"
+    "30689"
    ],
-   "starts_30m": 1,
-   "log_age_s": 18.0
+   "starts_30m": 2,
+   "log_age_s": 23.0
   },
   "men": {
    "pids": [
-    "20406"
+    "30414"
    ],
-   "starts_30m": 3,
-   "log_age_s": 0.0
+   "starts_30m": 4,
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
-    "21739"
+    "30561"
    ],
-   "starts_30m": 4,
-   "log_age_s": 21.0
+   "starts_30m": 5,
+   "log_age_s": 89.0
   },
   "inf": {
    "pids": [
-    "20617"
+    "29999"
    ],
-   "starts_30m": 3,
-   "log_age_s": 4.0
+   "starts_30m": 4,
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
-    "21738"
+    "30403"
    ],
    "starts_30m": 6,
-   "log_age_s": 22.0
+   "log_age_s": 15.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19474.0
+   "log_age_s": 19806.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19478.0
+   "log_age_s": 19809.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-22T01:25:37Z",
+   "ts": "2026-10-22T01:31:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T01:25:37Z",
+   "ts": "2026-10-22T01:31:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T01:25:37Z",
+   "ts": "2026-10-22T01:31:09Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T01:25:38Z",
+   "ts": "2026-10-22T01:31:10Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:CRVUSDC_LONG",
    "evidence": "CLOSE MTF_DC_REJECT_1h_px0.4029 decided 2026-10-22T00:33:13Z bar=2026-10-22T00:15:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-22T01:25:39Z",
+   "ts": "2026-10-22T01:31:10Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "inf:XMRUSDT_LONG",
+   "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.16708->0.50124 = $310.96 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.16708)"
+  },
+  {
+   "ts": "2026-10-22T01:31:10Z",
    "severity": "WARN",
    "kind": "VEC_OPEN_WHILE_LIVE_IN",
    "key": "inf:XMRUSDT_LONG",
    "evidence": "OPEN B_KZONE bar=2026-10-22T00:00:00Z: live already holds 0.039 (state divergence)"
   },
   {
-   "ts": "2026-10-22T01:25:39Z",
+   "ts": "2026-10-22T01:31:11Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "men",
-   "evidence": "3 new process ids in 30 min (['3249', '14066', '20406'])"
+   "evidence": "4 new process ids in 30 min (['3249', '14066', '20406', '30414'])"
   },
   {
-   "ts": "2026-10-22T01:25:39Z",
+   "ts": "2026-10-22T01:31:11Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "ang",
-   "evidence": "4 new process ids in 30 min (['53140', '97595', '1498', '21739'])"
+   "evidence": "5 new process ids in 30 min (['53140', '97595', '1498', '21739', '30561'])"
   },
   {
-   "ts": "2026-10-22T01:25:39Z",
+   "ts": "2026-10-22T01:31:11Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "inf",
-   "evidence": "3 new process ids in 30 min (['18762', '96546', '20617'])"
+   "evidence": "4 new process ids in 30 min (['18762', '96546', '20617', '29999'])"
   },
   {
-   "ts": "2026-10-22T01:25:39Z",
+   "ts": "2026-10-22T01:31:11Z",
    "severity": "CRITICAL",
    "kind": "RESTART_LOOP",
    "key": "flz",
-   "evidence": "6 new process ids in 30 min (['28318', '48684', '96531', '3248', '13271', '21738'])"
+   "evidence": "6 new process ids in 30 min (['48684', '96531', '3248', '13271', '21738', '30403'])"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
   "VEC_DECISION_NOT_FILLED": 1,
+  "SIZE_ANOMALY": 1,
   "VEC_OPEN_WHILE_LIVE_IN": 1,
   "RESTART_LOOP": 4
  },
@@ -299,5 +307,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.42
+ "sweep_s": 1.7
 }

@@ -4826,6 +4826,7 @@ class QuickConfig:
     SCALE_DIRECTION_BAND_PCT: float = 0.0
     SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE: bool = True
     SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE: bool = True
+    SCALE_DIRECTION_EXEMPT_EXIT_CHAIN: bool = True
     SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER: float = 55.0
     SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER: float = 60.0
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.7
@@ -19927,6 +19928,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         f"KEY_LEVEL_{'CRASH' if is_long else 'BREAKOUT'}_S{_kl_sev}_DC_{'LOW' if is_long else 'HIGH'}_BROKEN",
                         False,
                     )
+            # SCALE_DIRECTION: the exit chain's PARTIAL leg (WT_CROSS_EXIT_1h_against, KEY_LEVEL ...) is the
+            # largest reduce producer measured — 6,320 of 12,936 — and 63.3% of its legs fire while price is
+            # still rising in the position's favour, because the 1h WT cross leads price. Whether that counts
+            # as "price falling" is a strategy question, so it is a SWEPT exemption, not a judgement baked in
+            # here: exempt by default (today's behaviour), and the pilot may include it. Full closes are exits
+            # and are never affected either way.
+            if (
+                _lec_hit
+                and not _lec_hit[1]
+                and not bool(getattr(cfg, "SCALE_DIRECTION_EXEMPT_EXIT_CHAIN", True))
+                and not _sd_ok("REDUCE")
+            ):
+                _lec_hit = None
             if _lec_hit:
                 _lec_reason, _lec_full = _lec_hit
                 _lec_frac = (

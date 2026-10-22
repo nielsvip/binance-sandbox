@@ -8399,9 +8399,28 @@ def _voe_reason_is_vec(reason) -> bool:
     """USER 2026-10-21 vec-only exits: single definition of a vec-dictated exit reason.
 
     Mirrors live_twins/vector_enforce._is_board_confirmed plus the RECONCILE_ wire.
-    Used by the execute_now backstop AND the queue_trade_action choke-point gate."""
-    _rx = str(reason or "").upper()
-    return ("VEC_DRIVEN_" in _rx or "RECONCILE_" in _rx or "|VEC_EXACT" in _rx or "BOARD_CONVERGE_" in _rx or "EXIT_OWED" in _rx)
+    Used by the execute_now backstop AND the queue_trade_action choke-point gate.
+
+    USER 2026-10-22: it must MIRROR vector_enforce, never be STRICTER than it. Measured this day, the original list
+    (VEC_DRIVEN_/RECONCILE_/|VEC_EXACT/BOARD_CONVERGE_/EXIT_OWED) refused `FIXED_STOP_HIT`, `LIQUIDATION_PROTECT`,
+    `EMERGENCY_MARGIN_KILL` and `BALANCE_FLOOR_FORCE_REDUCE` — the stop loss and every account-protecting close —
+    while vector_enforce itself exempts stops (STOP_PROTECTION), emergencies, the guarantee/owed escalations and
+    broker bookkeeping. Exits are NEVER blocked (CLAUDE.md): the vector decides which DISCRETIONARY exits fire,
+    never whether a stop may. Discretionary native exits (EXIT_VELOCITY_WT, BB_TAKE, TECHNICAL, …) stay refused —
+    that is the point of the backstop while parity is being reached."""
+    _r = str(reason or "")
+    _rx = _r.upper()
+    if "VEC_DRIVEN_" in _rx or "RECONCILE_" in _rx or "|VEC_EXACT" in _r or "BOARD_CONVERGE_" in _rx:
+        return True
+    try:
+        from live_twins import vector_enforce as _ve
+        if _ve._is_board_confirmed(_r) or _ve._is_emergency(_r) or _ve._is_stop_reason(_r):
+            return True
+        if any(_b in _rx for _b in _ve.BOOKKEEPING):
+            return True
+    except Exception:
+        pass
+    return any(_t in _rx for _t in ("EXIT_OWED", "OBLIGATORY", "GUARANTEE", "FORCED", "LIQUIDATION", "EMERGENCY", "BALANCE_FLOOR", "MANUAL", "STOP", "TRAILING", "BACKSTOP", "BROKER_RECONCILED"))
 
 
 _AIR_BARS_LOADER = None  # V17 AIR: callable(symbol, side) -> [(ts, low, high)] for REENTRY_AUGMENT_HL_REF='low'; None = klines_cache/{SYM}_15m.json (backtest_v12_engine injects frozen-NPZ bars)
