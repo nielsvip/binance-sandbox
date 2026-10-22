@@ -258,3 +258,43 @@ def test_progress_must_host_helper(tmp_path):
     assert ns["_progress_must"](str(f))["must_present"] is False
     f.write_text("{bad")
     assert ns["_progress_must"](str(f)) is None
+
+
+def test_mode_none_counts_full_without_catchup_evidence():
+    uni = _uni(["AAAUSDT_LONG", "BBBUSDT_LONG", "CCCUSDT_LONG", "DDDUSDT_LONG", "EEEUSDT_LONG"])
+    rows = [_row("AAAUSDT_LONG", 2, mode=None), _row("BBBUSDT_LONG", 2, mode=None), _row("CCCUSDT_LONG", 2, mode=None), _row("DDDUSDT_LONG", 2, mode="budget:12000"),
+            _row("EEEUSDT_LONG", 2, mode="catchup")]
+    pub = NOW - 2 * 3600
+    m_ev = dict(_must(), catchup=True, result_done_utc=_iso(pub - 60))
+    must = {"s2": {"AAAUSDT_LONG": _must(), "BBBUSDT_LONG": m_ev, "CCCUSDT_LONG": _must(), "DDDUSDT_LONG": _must(), "EEEUSDT_LONG": _must()}}
+    launches = {"CCCUSDT_LONG": [(pub - 7200, True)]}
+    rec = S.build_round_completion("run35", uni, rows, must, {}, NOW, catchup_launches=launches)
+    ss = rec["sym_sides"]
+    assert ss["AAAUSDT_LONG"]["verdict"] == "COMPLETE" and ss["AAAUSDT_LONG"]["full_board_rule"] == "mode=None counted full (no catch-up evidence)"
+    assert ss["BBBUSDT_LONG"]["complete_at"] is None  # progress shows catch-up, finished at publish time
+    assert ss["CCCUSDT_LONG"]["complete_at"] is None  # its launch carried V18_CATCHUP=1
+    assert ss["DDDUSDT_LONG"]["complete_at"] is None and ss["EEEUSDT_LONG"]["complete_at"] is None
+    later = {"CCCUSDT_LONG": [(pub - 7200, True), (pub - 3600, False)]}
+    assert S.build_round_completion("run35", uni, rows, must, {}, NOW, catchup_launches=later)["sym_sides"]["CCCUSDT_LONG"]["verdict"] == "COMPLETE"  # last launch was full
+    far = dict(m_ev, result_done_utc=_iso(pub + 10 * 3600))
+    assert S.build_round_completion("run35", uni, rows, {"s2": {**must["s2"], "BBBUSDT_LONG": far}}, {}, NOW)["sym_sides"]["BBBUSDT_LONG"]["verdict"] == "COMPLETE"  # evidence is a different board
+
+
+def test_blind_host_keeps_previous_must_data():
+    uni = _uni(["AAAUSDT_LONG"])
+    rows = [_row("AAAUSDT_LONG", 1)]
+    first = S.build_round_completion("run35", uni, rows, {"s1": {"AAAUSDT_LONG": _must()}}, {}, NOW)
+    assert first["sym_sides"]["AAAUSDT_LONG"]["verdict"] == "COMPLETE"
+    blind = S.build_round_completion("run35", uni, rows, {"s2": {}}, {}, NOW, hosts_not_visible=["s1"], previous_record=first)
+    e = blind["sym_sides"]["AAAUSDT_LONG"]
+    assert e["verdict"] == "COMPLETE" and e["must_source"].startswith("previous_record") and blind["n_complete"] == 1
+    assert S.build_round_completion("run35", uni, rows, {"s2": {}}, {}, NOW, hosts_not_visible=["s1"])["sym_sides"]["AAAUSDT_LONG"]["must_carried"] == "not_visible"
+
+
+def test_catchup_launches_from_decision_log(tmp_path):
+    p = tmp_path / "d.jsonl"
+    p.write_text(json.dumps({"ts_epoch": NOW - 100, "mode_per_launch": {"s2:AAA": {"class": 0, "mode": {"LONG": "budget:12000+V18_CATCHUP", "SHORT": "full"}}}}) + "\n"
+                 + json.dumps({"ts_epoch": NOW - 50, "mode_per_launch": {}}) + "\n" + "{bad\n")
+    got = S._catchup_launches(p, NOW)
+    assert got == {"AAA_LONG": [(NOW - 100, True)], "AAA_SHORT": [(NOW - 100, False)]}
+    assert S._catchup_launches(tmp_path / "none", NOW) == {}

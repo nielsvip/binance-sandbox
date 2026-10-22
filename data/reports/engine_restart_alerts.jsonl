@@ -73,3 +73,4 @@
 {"ts":1792701568,"account":"men","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (3780s > 120s) but host overloaded (load 344.26 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792701580,"account":"ang","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (10556s > 120s) but host overloaded (load 344.26 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1792701586,"account":"inf","kind":"engine_restart_suppressed","msg":"NO ENGINE CHILD for 1997s and the 24h budget was already spent (last 11223s ago) — starting anyway: an account is never left without an engine"}
+{"ts":1792702243,"account":"flz","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (166s > 120s) but host overloaded (load 249.31 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}

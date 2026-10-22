@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T20:48:55Z",
+ "generated_utc": "2026-10-22T20:53:08Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 170.4,
+  "age_s": 197.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 65078,
-  "proc_age_s": 650.0,
-  "log_age_s": 21.4,
+  "proc_age_s": 899.0,
+  "log_age_s": 5.3,
   "warmup_done": false,
   "timeframes_since_restart": [],
   "last_timeframe": "4h",
@@ -19,13 +19,13 @@
  "heartbeat": {
   "written": 1,
   "lines": [
-   "[2026-10-22 20:48:26,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=65078 warm-up in progress \u2014 alive and progressing (cpu +0.17s in 10.0s, last progress 611s ago) (tools/ez_indicators_warmup_guard.py)"
+   "[2026-10-22 20:52:58,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=65078 warm-up in progress \u2014 alive and progressing (cpu +0.16s in 10.0s, last progress 883s ago) (tools/ez_indicators_warmup_guard.py)"
   ],
   "decisions": [
-   "alive and progressing (cpu +0.17s in 10.0s, last progress 611s ago)",
-   "log fresh (1s < 45s)",
-   "log fresh (9s < 45s)",
-   "log fresh (18s < 45s)"
+   "log fresh (20s < 45s)",
+   "log fresh (31s < 45s)",
+   "log fresh (41s < 45s)",
+   "alive and progressing (cpu +0.16s in 10.0s, last progress 883s ago)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -38,20 +38,19 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792702042.6485732,
-  "mac_snapshot_age_s": 9.530232906341553,
+  "hb_mtime": 1792702376.6389697,
+  "mac_snapshot_age_s": 48.06457448005676,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-22T20:45:58Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792702080.6205883,
-  "from_cache_age_s": 54.9,
-  "heartbeat_age_s": 38.0,
-  "active_s": 99898.4
+  "lease_since": "2026-10-22T20:52:21Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792702388.0526714,
+  "heartbeat_age_s": 11.4,
+  "active_s": 100205.8
  },
  "alerts": [
-  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 99898s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (37s) AND the Mac snapshot is fresh (170s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
+  "S1 STUCK IN CRYPTO DATA FAILOVER: mode=ACTIVE for 100205s while the Mac holds the lease (holder='mac'), the Mac heartbeat is fresh (11s) AND the Mac snapshot is fresh (197s). S1 is spending cores on live producers instead of backtests. ONE-COMMAND REVERT: ssh s1-pub 'sudo systemctl stop live-failover-crypto-producers.service && bash ~/binance/tools/s1_failover_stop.sh crypto'"
  ],
  "verdict": "ALERT"
 }

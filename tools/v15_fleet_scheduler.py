@@ -2535,6 +2535,8 @@ def _catchup_launches(path, now_ts, keep_s=14 * 86400.0):
         return out
     with fh:
         for ln in fh:
+            if '"mode_per_launch": {}' in ln:
+                continue
             try:
                 d = json.loads(ln)
                 t = float(d.get("ts_epoch") or 0.0)

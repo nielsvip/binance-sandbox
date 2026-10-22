@@ -8524,6 +8524,11 @@ def _voe_reason_is_vec(reason) -> bool:
             return True
         if _ve.family_of(_r) in _ve.VEC_SWITCH_EXIT_FAMILIES:
             return True
+        # USER 2026-10-22 parity restores (mandates, same class as stops):
+        # OVERSIZE_TRIM_* (USER 2026-10-17 trim-excess-even-at-loss) and
+        # NON_TRADEABLE_* exits (USER 2026-10-06 exit-dead-symbols).
+        if "OVERSIZE_TRIM" in _rx or "NON_TRADEABLE" in _rx:
+            return True
     except Exception:
         pass
     return any(_t in _rx for _t in ("EXIT_OWED", "OBLIGATORY", "GUARANTEE", "FORCED", "LIQUIDATION", "EMERGENCY", "BALANCE_FLOOR", "MANUAL", "STOP", "TRAILING", "BACKSTOP", "BROKER_RECONCILED"))
