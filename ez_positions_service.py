@@ -10061,6 +10061,52 @@ class PositionService:
         except Exception as e:
             self.logger.error(f"[SYMBOLS] Error in _sync_memory_with_master_symbols: {e}")
 
+    def _seed_memory_universe_blocking(self) -> int:
+        import position_writer_guard as _pwg
+        added = 0
+        for account_config in self.accounts.values():
+            account_key = account_config.prefix
+            account_positions = self.positions_by_account.setdefault(account_key, {})
+            for side in ("LONG", "SHORT"):
+                side_file = self.base_path / account_key / f"{side.lower()}_positions.json"
+                symbols = _pwg.universe_symbols(side_file)
+                if not symbols:
+                    continue
+                disk_blob = _pwg.read_json_any(side_file)
+                if not isinstance(disk_blob, dict):
+                    disk_blob = {}
+                for symbol in symbols:
+                    position_key = f"{account_key}:{symbol}_{side}"
+                    if position_key in account_positions:
+                        continue
+                    position = self.positions.get(position_key)
+                    if position is None:
+                        blob = disk_blob.get(position_key)
+                        try:
+                            position = Position.from_dict(blob) if isinstance(blob, dict) else Position.from_dict({"symbol": symbol, "position_side": side})
+                        except Exception:
+                            position = Position.from_dict({"symbol": symbol, "position_side": side})
+                        self.positions[position_key] = position
+                    account_positions[position_key] = position
+                    added += 1
+        return added
+
+    async def seed_memory_universe(self) -> int:
+        """ADDITIVE-ONLY memory twin of position_writer_guard.ensure_universe (USER 2026-10-22: a position for every
+        _LONG and _SHORT of every symbol in symbols.json, SACRED, never erased even at positionAmt 0). The disk floor
+        alone is not enough — process_position only runs for keys present in positions_by_account, so a newly listed
+        symbol whose row exists in the file but not in memory is never traded. Prefers the disk row over a flat one so
+        a held position is never re-seeded empty. NEVER pops: deleting position dict entries is an Absolute
+        Prohibition, so an obsolete symbol is left exactly where it is."""
+        try:
+            added = await asyncio.to_thread(self._seed_memory_universe_blocking)
+        except Exception as e:
+            logger.error(f"[POSITION_FLOOR][memory] seed failed: {e}", exc_info=True)
+            return 0
+        if added:
+            logger.critical(f"🛡️ [POSITION_FLOOR][memory] seeded {added} missing universe position(s) into memory")
+        return added
+
     async def cleanup_positions(self, force: bool = False):
         await self._sync_memory_with_master_symbols()
         import json

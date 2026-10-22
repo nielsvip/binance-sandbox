@@ -60,11 +60,20 @@ def _get_freshness(account_key: str) -> float:
 
 
 def _is_realtime_running(account_key: str) -> bool:
+    """Fail CLOSED: an unanswered pgrep means "assume it is running", never "spawn another one".
+
+    2026-10-22: this returned False on any pgrep trouble, and under Mac load the 3s timeout expires routinely —
+    so the watchdog spawned a duplicate every GRACE_PERIOD_S. Measured: 4 live ez_positions_realtime.py flz, 2 for
+    fin and 2 for inf, with 53 "Another instance is already running (PID file locked)" refusals in the flz log in
+    one hour. The pid-file flock kept the single-writer law intact, but each loser still imported the whole
+    904KB service module before refusing, on the very machine whose load was making the files look stale.
+    """
     try:
-        result = subprocess.run(["pgrep", "-f", f"ez_positions_realtime.py {account_key}"], capture_output=True, text=True, timeout=3)
+        result = subprocess.run(["pgrep", "-f", f"ez_positions_realtime.py {account_key}"], capture_output=True, text=True, timeout=10)
         return result.returncode == 0
-    except Exception:
-        return False
+    except Exception as e:
+        logger.warning(f"[{account_key}] pgrep failed ({e}) — assuming realtime IS running (no duplicate spawn)")
+        return True
 
 
 def _start_realtime(account_key: str) -> bool:

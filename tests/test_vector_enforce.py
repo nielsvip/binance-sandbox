@@ -392,3 +392,165 @@ def test_wt_percentile_restore(tmp_path, monkeypatch):
     assert "| wt_percentile_exit" in v12_src, "leg must be OR'd into _all_exit"
     assert "WT_PERCENTILE_EXIT_ENABLED" in v12_src
     assert not (tmp_path / "vector_kills.json").exists()
+
+
+def _ksm_npz():
+    import numpy as np
+    raw = np.load(ROOT / "backtest_v8/indicators/KSMUSDT.npz", allow_pickle=True)
+    npz = {}
+    for k in raw.files:
+        try:
+            a = np.asarray(raw[k], dtype=float).ravel()
+            if a.size > 100:
+                npz[k] = a
+        except Exception:
+            pass
+    return npz, min(len(v) for v in npz.values())
+
+
+def test_mtf_core_matches_live_lane_arithmetic():
+    """USER 2026-10-22 parity restore: the shared scalar+vec core must compute
+    exactly what each live lane computes — ez counts 15m/1h/4h/D (ez 54706),
+    tradier counts 1h/4h/D/W (tradier 18055), both with the wt1!=0 guard and
+    the 0.0 missing default. Real KSMUSDT bars, both sides."""
+    import numpy as np
+    from vec_decisions.process_position_stocks__mtf_gr_wt_exit import (
+        check_mtf_gr_wt_exit_vec as core,
+    )
+    npz, n = _ksm_npz()
+
+    class Cfg:
+        MTF_GR_EXIT_GATE_ENABLED = True
+        MTF_WT_CROSS_EXIT_ENABLED = True
+        MTF_GR_EXIT_MIN_TFS = 3
+        MTF_WT_CROSS_EXIT_TF = "1h"
+
+    cfg = Cfg()
+    c1 = npz["wt1_1h"][:n]
+    c2 = npz["wt2_1h"][:n]
+    for is_long in (True, False):
+        for set_name, tfs in (
+            ("ez", ("15m", "1h", "4h", "D")),
+            ("tradier", ("1h", "4h", "D", "W")),
+        ):
+            g1 = [npz[f"wt1_{t}"][:n] for t in tfs]
+            g2 = [npz[f"wt2_{t}"][:n] for t in tfs]
+            got = np.asarray(core(cfg, c1, c2, g1, g2, is_long), dtype=bool)
+            # Independent mirror of the live lane arithmetic (safe_fetch 0.0,
+            # wt1!=0 guard, count>=3, cross-against on the 1h pair).
+            if is_long:
+                against = c1 < c2
+            else:
+                against = c1 > c2
+            cnt = np.zeros(n, dtype=int)
+            for a1, a2 in zip(g1, g2):
+                if is_long:
+                    cnt += ((a1 < a2) & (a1 != 0)).astype(int)
+                else:
+                    cnt += ((a1 > a2) & (a1 != 0)).astype(int)
+            want = against & (cnt >= 3)
+            assert (got == want).all(), (set_name, is_long)
+            assert got.sum() > 0, (set_name, is_long, "fixture must fire")
+
+
+def test_mtf_engine_delta_within_core_mask():
+    """USER 2026-10-22 parity restore: the v12 MTF leg must feed the exit
+    aggregate exactly the venue TF set the live lane counts — the ON-vs-OFF
+    aggregate delta on real KSM bars stays inside the independently computed
+    core mask, in all four venue/side arms."""
+    import numpy as np
+    import v12_quick_engine as V
+    from vec_decisions.process_position_stocks__mtf_gr_wt_exit import (
+        check_mtf_gr_wt_exit_vec as core,
+    )
+    npz, n = _ksm_npz()
+    for mode, tfs in (
+        ("crypto", ("15m", "1h", "4h", "D")),
+        ("tradier", ("1h", "4h", "D", "W")),
+    ):
+        for is_long in (True, False):
+            on = V.QuickConfig()
+            on.MODE = mode
+            on.MTF_GR_EXIT_GATE_ENABLED = True
+            on.MTF_WT_CROSS_EXIT_ENABLED = True
+            on.MTF_WT_CROSS_EXIT_TF = "1h"
+            off = V.QuickConfig()
+            off.MODE = mode
+            off.MTF_GR_EXIT_GATE_ENABLED = False
+            off.MTF_WT_CROSS_EXIT_ENABLED = True
+            off.MTF_WT_CROSS_EXIT_TF = "1h"
+            m_on = V.compute_exit_signals(npz, n, is_long, on)
+            m_off = V.compute_exit_signals(npz, n, is_long, off)
+            delta = np.asarray(m_on & ~m_off, dtype=bool)
+            assert int(delta.sum()) > 0, (mode, is_long, "leg must fire")
+            mask = np.asarray(
+                core(
+                    on,
+                    npz["wt1_1h"][:n],
+                    npz["wt2_1h"][:n],
+                    [npz[f"wt1_{t}"][:n] for t in tfs],
+                    [npz[f"wt2_{t}"][:n] for t in tfs],
+                    is_long,
+                ),
+                dtype=bool,
+            )
+            assert ((delta & ~mask).sum() == 0), (mode, is_long)
+
+
+def test_mtf_gr_restore(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore: MTF_GR_WT_EXIT (killed 10-22 20:47Z on
+    fin:KSMUSDT_LONG) and GR_HTF_DIRECT_EXIT (killed 10-22 14:00Z on
+    trb:CRWD_LONG) flow in-window — legs booked (fidelity pinned above), twins
+    faithful after the venue-split + ez guard-port fixes."""
+    _iso(tmp_path, monkeypatch)
+    assert "MTF" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "GR" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert ve.family_of("MTF_GR_WT_EXIT_1h_grTFs=3_g-0.44%") == "MTF"
+    ok, verdict = ve.check("CLOSE", "fin:KSMUSDT_LONG", "MTF_GR_WT_EXIT_1h_grTFs=3_g-0.44%")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    ok2, verdict2 = ve.check("CLOSE", "trb:CRWD_LONG", "GR_HTF_DIRECT_EXIT_8_g1.72%_tfs=4/1req")
+    assert (ok2, verdict2) == (True, "VEC_SWITCH_EXIT")
+    v12_src = (ROOT / "v12_quick_engine.py").read_text()
+    assert "| mtf_gr_exit" in v12_src, "MTF leg must be OR'd into _all_exit"
+    assert "| gr_htf_exit" in v12_src, "GR leg must be OR'd into _all_exit"
+    assert "process_position_stocks__mtf_gr_wt_exit" in v12_src
+    ez_src = (ROOT / "ez_manage.py").read_text()
+    for marker in (
+        "GR_HTF_DIRECT_EXIT_GAIN_AGE_VETO",
+        "_GR_HTF_EXIT_CONFIRM_STATE_EZ",
+        "GR_HTF_DIRECT_EXIT_HTF_VETO",
+        "GR_HTF_DIRECT_EXIT_STRUCT_VETO",
+        "MTF_GR_STRUCT_VETO",
+    ):
+        assert marker in ez_src, marker
+    assert not (tmp_path / "vector_kills.json").exists()
+
+
+def test_gr_twin_two_bar_staging():
+    """USER 2026-10-22 parity restore: the shared GR twin fires only on two
+    consecutive score>=min bars (bar 0 never fires) — the staging the ez lane
+    now mirrors. Real KSMUSDT bars, both sides."""
+    import numpy as np
+    import v12_quick_engine as V
+    from vec_decisions import gr_htf_direct_entry as grd
+    npz, n = _ksm_npz()
+    for is_long in (True, False):
+        cfg = V.QuickConfig()
+        cfg.GR_HTF_DIRECT_EXIT_ENABLED = True
+        close = V._base_safe(npz, "close", n, cfg)
+        twin = np.asarray(grd.gr_direct_exit_mask(npz, n, is_long, cfg, close), dtype=bool)
+        assert twin.dtype == bool and twin.shape == (n,)
+        assert not twin[0], "bar 0 never fires (cold counter)"
+        gate = grd._resolve_gate(cfg)
+        score = grd._gate_score_vec(
+            npz, n, not is_long, np.asarray(close, dtype=float),
+            gate["dc_thr"], gate["bb_thr"], gate["vote_min"], gate["min_tfs"],
+            gate["req_act"], gate["act_list"], gate["entry_list"],
+            gate["default_tfs"], gate["min_ind"],
+        )
+        smin = float(getattr(cfg, "GR_HTF_DIRECT_EXIT_SCORE", 22.0))
+        ok = np.asarray(score, dtype=float) >= smin
+        # Twin == two-bar staging of the raw score mask, nothing else.
+        want = np.zeros(n, dtype=bool)
+        want[1:] = ok[1:] & ok[:-1]
+        assert (twin == want).all(), is_long

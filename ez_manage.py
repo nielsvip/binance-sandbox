@@ -54886,6 +54886,69 @@ async def process_position(
                     except Exception as _grde_xc_e:
                         _grde_xc_ok = True
                         logger.warning(f"[PARITY_EXIT_CONFIRM] {position_key} GR err (fail-open): {_grde_xc_e}")
+                # USER 2026-10-22 GR parity port: the tradier lane (35651+) and
+                # the v12 twin (gr_direct_exit_mask) require gain/age + 2-bar
+                # confirm + opposite HTF trend + structural veto — the ez lane
+                # fired single-bar where the vector holds. Same order, same
+                # numbers; a vetoed bar sets score -1 like the tradier lane.
+                if _grde_exit_score >= 0:
+                    _grde_gain_v = safe_fetch_float(getattr(position, "gain", 0), 0)
+                    _grde_age_min = 999999.0
+                    _grde_opened = getattr(position, "opened_at", None)
+                    if _grde_opened is not None:
+                        try:
+                            if isinstance(_grde_opened, (int, float)):
+                                _grde_age_min = (time.time() - float(_grde_opened)) / 60.0
+                            else:
+                                _grde_dt = isoparse(str(_grde_opened)) if not isinstance(_grde_opened, datetime) else _grde_opened
+                                if _grde_dt.tzinfo is None:
+                                    _grde_dt = _grde_dt.replace(tzinfo=timezone.utc)
+                                _grde_age_min = (datetime.now(timezone.utc) - _grde_dt).total_seconds() / 60.0
+                        except Exception:
+                            _grde_age_min = 999999.0
+                    if not (float(_grde_gain_v) > 0.3 or float(_grde_age_min) > 30.0):
+                        logger.debug(f"[GR_HTF_DIRECT_EXIT_GAIN_AGE_VETO] {position_key} gain={float(_grde_gain_v):.2f}% age={float(_grde_age_min):.1f}m — churn guard")
+                        _grde_exit_score = -1
+                if _grde_exit_score >= 0:
+                    import ez_manage as _ez_gr_mod
+                    if not hasattr(_ez_gr_mod, "_GR_HTF_EXIT_CONFIRM_STATE_EZ"):
+                        _ez_gr_mod._GR_HTF_EXIT_CONFIRM_STATE_EZ = {}
+                    _grde_key = f"{symbol}_{'L' if _grde_exit_is_long else 'S'}"
+                    _grde_prev = _ez_gr_mod._GR_HTF_EXIT_CONFIRM_STATE_EZ.get(_grde_key, 0)
+                    if _grde_exit_score >= _grde_exit_score_min:
+                        _grde_cnt = _grde_prev + 1
+                    else:
+                        _grde_cnt = 0
+                    _ez_gr_mod._GR_HTF_EXIT_CONFIRM_STATE_EZ[_grde_key] = _grde_cnt
+                    if _grde_cnt < 2:
+                        logger.debug(f"[GR_HTF_DIRECT_EXIT_CONFIRM_VETO] {position_key} score={_grde_exit_score:.0f} need 2 bars (have {_grde_cnt}/2)")
+                        _grde_exit_score = -1
+                if _grde_exit_score >= 0:
+                    try:
+                        _grde_htf_d = float(_grde_exit_ind.get("trend_D", 0) or _grde_exit_ind.get("ema_trend_D", 0) or 0)
+                        _grde_htf_4h = float(_grde_exit_ind.get("trend_4h", 0) or _grde_exit_ind.get("sma_trend_4h", 0) or _grde_exit_ind.get("wt_trend_4h", 0) or 0)
+                        _grde_trend_ok = True
+                        if _grde_exit_is_long:
+                            if _grde_htf_d != 0 or _grde_htf_4h != 0:
+                                _grde_trend_ok = _grde_htf_d < 0 and _grde_htf_4h < 0
+                        elif _grde_htf_d != 0 or _grde_htf_4h != 0:
+                            _grde_trend_ok = _grde_htf_d > 0 and _grde_htf_4h > 0
+                        if not _grde_trend_ok:
+                            logger.debug(f"[GR_HTF_DIRECT_EXIT_HTF_VETO] {position_key} D={_grde_htf_d:.2f} 4h={_grde_htf_4h:.2f} not opposite trend")
+                            _grde_exit_score = -1
+                    except Exception as _grde_htf_e:
+                        logger.debug(f"[GR_HTF_DIRECT_EXIT_HTF_ERR] {position_key}: {_grde_htf_e}")
+                if _grde_exit_score >= _grde_exit_score_min:
+                    try:
+                        from wt_dc_delta import structural_exit_permitted as _grde_struct
+                        _grde_ind = dict(_grde_exit_ind or {})
+                        _grde_ind["current_price"] = safe_fetch_float(current_price, 0.0)
+                        _grde_ok, _grde_why = _grde_struct(_grde_ind, _grde_exit_is_long, {"rz_ltf_micro": "15m"})
+                    except Exception:
+                        _grde_ok, _grde_why = False, "STRUCT_VETO_exception"
+                    if not _grde_ok:
+                        logger.info(f"[GR_HTF_DIRECT_EXIT_STRUCT_VETO] {position_key}: hold score={_grde_exit_score:.0f} — {_grde_why}")
+                        _grde_exit_score = -1
                 if _grde_exit_score >= _grde_exit_score_min and _grde_xc_ok and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _grde_exit_amt = abs(
                         safe_float(getattr(position, "positionAmt", 0))

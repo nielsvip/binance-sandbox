@@ -33,6 +33,8 @@ OVERLAY_FIELDS = ("fixed_stop_price", "fixed_stop_anchor", "fixed_stop_armed", "
 _ROLE_BY_SCRIPT = {"ez_manage.py": "manage", "tradier_manage.py": "manage", "ez_positions_realtime.py": "failover", "ez_positions_service_main.py": "service"}
 _identity_write_ok = contextvars.ContextVar("pwg_identity_write_ok", default=False)
 _last_log = {}
+CRYPTO_ACCOUNTS = ("ang", "inf", "men", "flz", "fin")
+_universe_cache = {}
 
 
 def process_role():
@@ -159,6 +161,95 @@ def seeded_disk_rows(path, disk_rows=None):
         return merged
     except Exception:
         return disk_rows
+
+
+def universe_symbols(path):
+    """The symbol universe that owns this positions file: symbols.json for the crypto accounts,
+    symbols_tradier.json for the Tradier ones. Cached per (file, mtime) so this costs one stat per write.
+    Empty when the list cannot be read — a floor is never guessed."""
+    p = Path(path).resolve()
+    account = p.parent.name
+    name = "symbols.json" if account in CRYPTO_ACCOUNTS else "symbols_tradier.json"
+    source = p.parent.parent / name
+    try:
+        mtime = source.stat().st_mtime
+    except OSError:
+        return set()
+    hit = _universe_cache.get(str(source))
+    if hit and hit[0] == mtime:
+        return hit[1]
+    data = read_json_any(source)
+    if isinstance(data, dict):
+        data = data.get("symbols") or data.get("pairs") or []
+    syms = {str(s).strip().upper() for s in data if isinstance(s, str) and str(s).strip()} if isinstance(data, list) else set()
+    _universe_cache[str(source)] = (mtime, syms)
+    return syms
+
+
+def read_json_any(path):
+    try:
+        with open(path) as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
+
+
+def flat_row(symbol, position_side):
+    """A never-traded row: the full schema the readers expect, every broker and bookkeeping field zeroed.
+    opened_at/entry_price/max_gain start empty here because this lifecycle has not happened yet — they are
+    SACRED only once set, and the floor never overwrites an existing row."""
+    return {"symbol": str(symbol).upper(), "position_side": str(position_side).upper(), "entry_price": 0.0, "mark_price": 0.0,
+            "positionAmt": 0.0, "initial_quantity": 0.0, "gain": 0.0, "max_gain": 0.0, "prev_gain": 0.0, "max_quantity": 0.0,
+            "last_augmentation_amount": 0.0, "last_augmentation_price": 0.0, "last_augmentation_time": None,
+            "last_reduction_amount": 0.0, "last_reduction_price": 0.0, "last_reduction_time": None, "max_positionSize": 0.0,
+            "opened_at": None, "last_updated": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "last_signal": "",
+            "realized_pnl": 0.0, "unrealized_pnl_USD": 0.0, "was_reentered": False, "was_reduced": False, "is_reduced": False,
+            "reduced_at": None, "augment_reason": "", "reduction_reason": "", "sba_add_count": 0, "last_sba_time": 0.0,
+            "sba_total_added_usd": 0.0, "entry_price_before_sba": 0.0, "is_hedge": False, "hedge_for": None,
+            "r1_stop_price": 0.0, "fixed_stop_price": 0.0, "fixed_stop_anchor": 0.0, "fixed_stop_armed": True,
+            "exchange_stop_order_id": ""}
+
+
+def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
+    """THE POSITION FLOOR (USER 2026-10-22: positions "are SACRED and can NEVER be erased as they contain vital
+    information even if a position has positionAmt 0"). A positions file may only ever GAIN keys:
+      1. every row already on disk that this write does not carry is restored verbatim, and
+      2. every {account}:{SYMBOL}_{SIDE} of the account's universe that neither disk nor this write has is seeded flat.
+    Returns (restored, seeded).
+
+    Why it belongs here: ez_positions.atomic_save, ez_positions_service._atomic_write_json_impl and
+    positions_truth.rewrite_row_from_broker all REPLACE the whole file from their own in-memory dict, and all three
+    pass through before_write — so this is the one place that covers every writer. A key missing from memory used to
+    be erased from disk and never return: the reconciler that re-seeded it (_sync_memory_with_master_symbols) has not
+    run in production since 2026-10-14, when ez_positions_service_main.py made ez_positions_realtime the single
+    writer with start_maintenance=False. Measured 2026-10-22, before this floor: 28 symbols.json rows absent across
+    the 5 crypto accounts (DUSKUSDT, ONEUSDT, JUPUSDT, SPELLUSDT), and fin/long_positions.json had dropped 382 -> 199
+    rows in one write on 10-21 with nothing to put them back."""
+    log = log or logger
+    if not isinstance(rows, dict):
+        return 0, 0
+    p = Path(path).resolve()
+    side = "LONG" if p.name.lower().startswith("long") else "SHORT"
+    account = p.parent.name
+    disk_rows = read_json(path) if disk_rows is None else disk_rows
+    restored = 0
+    for k, r in (disk_rows or {}).items():
+        if isinstance(r, dict) and k not in rows:
+            rows[k] = r
+            restored += 1
+    seeded = 0
+    for symbol in universe_symbols(p):
+        k = f"{account}:{symbol}_{side}"
+        if k not in rows:
+            rows[k] = flat_row(symbol, side)
+            seeded += 1
+    if restored:
+        _alert("POSITION_FLOOR_RESTORED", {"file": str(p), "account": account, "restored": restored}, p.parent.parent)
+        if _rate_limited(f"floor_restore:{p}", 60.0):
+            log.critical(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: RESTORED {restored} row(s) this write would have ERASED (role={role or process_role()} pid={os.getpid()})")
+    if seeded and _rate_limited(f"floor_seed:{p}", 60.0):
+        log.warning(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: seeded {seeded} missing universe row(s) flat")
+    return restored, seeded
 
 
 def heartbeat_path(account_dir):
@@ -449,6 +540,7 @@ def before_write(path, rows, role=None, log=None, overlay=True):
     for k, disk_oa, new_oa in rejected:
         log.critical(f"🛑 [OPENED_AT_CHANGE_REJECTED] {k}: kept {disk_oa}, refused {new_oa} (role={role} pid={os.getpid()})")
         _alert("OPENED_AT_CHANGE_REJECTED", {"key": k, "kept": disk_oa, "refused": new_oa, "file": str(path)}, Path(path).parent.parent)
+    ensure_universe(path, rows, disk, log=log, role=role)  # last: the floor restores verbatim, so it needs no identity work
     return True
 
 

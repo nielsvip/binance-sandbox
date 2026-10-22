@@ -238,6 +238,20 @@ class RealtimePositionUpdater:
                 logger.error(f"[FETCH_LOOP][{self.account_key}] ❌ Loop error: {e}", exc_info=True)
             await asyncio.sleep(6.0)
 
+SEED_UNIVERSE_EVERY_S = 180.0
+
+
+async def _universe_floor_loop(service, account_key):
+    """Keeps memory's universe complete while the process lives, so a symbol added to symbols.json starts being
+    tracked without a restart. Additive only — it can add a flat row, never remove or zero one."""
+    while True:
+        await asyncio.sleep(SEED_UNIVERSE_EVERY_S)
+        try:
+            await service.seed_memory_universe()
+        except Exception as e:
+            logger.error(f"[POSITION_FLOOR][{account_key}] seed loop error: {e}", exc_info=True)
+
+
 async def main():
     if len(sys.argv) < 2:
         logger.critical("Usage: ez_positions_realtime.py <account_key>")
@@ -307,6 +321,14 @@ async def main():
         else:
             logger.warning(f"[REALTIME][{account_key}] ✅ Positions already in memory ({total_loaded}) - NOT reloading")
         
+        # USER 2026-10-22 POSITION FLOOR: every symbols.json symbol needs a LONG and a SHORT row, and this process —
+        # not ez_positions_service.py — is the single writer (ez_positions_service_main.py execs main() with
+        # role=service), so the universe reconciler behind start_maintenance=False has never run here. Seed memory
+        # additively at startup and every SEED_UNIVERSE_EVERY_S; the disk side is enforced in
+        # position_writer_guard.ensure_universe on every write.
+        await service.seed_memory_universe()
+        asyncio.create_task(_universe_floor_loop(service, account_key))
+
         # Initialize attributes
         if not hasattr(service, 'reenter_level'): service.reenter_level = {}
         if not hasattr(service, 'augmentation_cooldown_map'): service.augmentation_cooldown_map = {}
