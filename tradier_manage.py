@@ -18111,25 +18111,16 @@ async def process_position(
                                 _mtfce_gr_count += 1
                             elif (not is_long) and _gw1 > _gw2 and _gw1 != 0:
                                 _mtfce_gr_count += 1
+                        # USER 2026-10-22 MTF parity: NO structural veto here — the
+                        # vector books MTF_GR_WT_EXIT unvetoed (crypto compound
+                        # block + the tradier walk arm below), so a live veto
+                        # holds exits the vector books (live-behind gap). The
+                        # veto made live stricter than its own board.
                         if _mtfce_gr_count >= _mtfce_gr_min_tfs:
                             _mtfce_fire = True
-                            from wt_dc_delta import (
-                                structural_exit_permitted as _sep_mtf,
+                            _mtfce_reason = (
+                                f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
                             )
-                        _ok_mtf, _ = _sep_mtf(
-                            indicators if indicators else i,
-                            is_long,
-                            {
-                                "structural_exit_gate_enabled": True,
-                                "rz_ltf_micro": "5m",
-                            },
-                        )
-                        if not _ok_mtf:
-                            logger.info(f"[MTF_GR_STRUCT_VETO] {symbol} STRUCT_VETO")
-                            _mtfce_fire = False
-                        _mtfce_reason = (
-                            f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
-                        )
                 # ─── 5. WT_SIMPLE_GUARANTEE exit leg (LANE G2 2026-10-05 live twin of v12:10226-10231: opposite-WT 15m close even when structural gate blocks — no structural check by design). Default False = inert. Fail-open.
                 if not _mtfce_fire:
                     try:

@@ -17712,6 +17712,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     else:
         _mtfwt_w1 = None
     _mtfwt_min = int(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3))
+    # USER 2026-10-22 MTF parity: tradier-mode GR_WT ladder (tradier TF set
+    # 1h/4h/D/W per tradier_manage 18055; live defaults GATE/CROSS False).
+    # COMPOUND deliberately reads False-default (live tradier 17775): the
+    # crypto arm above rides _mtfcmp_on (True-default, pre-existing, boards
+    # measured it) but this arm is NEW — nothing measured it, so it follows
+    # live exactly and only boards holding the switch book exits.
+    _mtftr_tf = str(getattr(cfg, "MTF_WT_CROSS_EXIT_TF", "1h") or "1h")
+    _mtftr_on = _mtftr_tf in ("5m", "3m", "15m", "1h", "4h", "D", "W") and (
+        is_tradier
+        and bool(getattr(cfg, "MTF_EXIT_USE_COMPOUND", False))
+        and bool(getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False))
+        and bool(getattr(cfg, "MTF_WT_CROSS_EXIT_ENABLED", False))
+    )
+        _mtftr_w1 = _safe(npz, _mtftr_pair[0], n, 0)
+        _mtftr_w2 = _safe(npz, _mtftr_pair[1], n, 0)
+        _mtftr_lad = [
+            (_safe(npz, f"wt1_{_t}", n, 0), _safe(npz, f"wt2_{_t}", n, 0))
+            for _t in ("1h", "4h", "D", "W")
+        ]
+        _mtftr_min = int(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3))
+    else:
+        _mtftr_w1 = None
     _vig_block_px = 0.0
     _vig_scan_start = 0
     _qs_on = _qq.streak_on(cfg)  # 2026-10-16 QTY_STREAK quantizer: state folded from full CLOSE rows at each new open
