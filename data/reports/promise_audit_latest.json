@@ -1,9 +1,9 @@
 {
- "generated_utc": "2026-10-21T23:12:04.189438+00:00",
+ "generated_utc": "2026-10-22T00:12:04.155365+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 5,
-  "exit_kept_in_bar": 3,
+  "exit_promises": 6,
+  "exit_kept_in_bar": 4,
   "entry_promises": 1,
   "entry_broken_no_delivery": 1,
   "exit_skipped_inflight": 3,
@@ -31,6 +31,10 @@
    "exit_broken_no_delivery": 1
   },
   "inf:COTIUSDT_SHORT": {
+   "exit_promises": 1,
+   "exit_kept_in_bar": 1
+  },
+  "inf:XMRUSDT_LONG": {
    "exit_promises": 1,
    "exit_kept_in_bar": 1
   }
@@ -93,6 +97,19 @@
    "bar_ts": null,
    "lag_s": null,
    "detail": "inflight_age_s=100"
+  },
+  {
+   "ts": 1792627648.724852,
+   "kind": "BROKEN",
+   "acct": "flz",
+   "key": "flz:SOLUSDC_LONG",
+   "sym_side": "SOLUSDC_LONG",
+   "label": "CLOSE VEC_EXIT_OWED",
+   "why": "EXIT_WEDGED_FORCED",
+   "is_exit": true,
+   "bar_ts": null,
+   "lag_s": null,
+   "detail": "inflight_age_s=108"
   }
  ]
 }

@@ -28687,6 +28687,19 @@ class MultiAccountTradeManager:
                     dc_low_4h > dc_low_4h_ant and dc_high_4h > dc_high_4h_ant
                 ):
                     quantity -= SP * 0.8 * 2.0
+                if is_augment and not is_hedge:
+                    try:
+                        import vec_decisions.dc_slope_incentive as _dcsi_live
+
+                        _dcsi_m = _dcsi_live.open_mult_live(
+                            i,
+                            bool(is_long),
+                            lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)),
+                        )
+                    except Exception:
+                        _dcsi_m = 1.0
+                    if _dcsi_m != 1.0:
+                        quantity = float(quantity) * float(_dcsi_m)
                 if (
                     current_price <= dc_low_3m
                     and k_1m < d_1m
@@ -51928,7 +51941,7 @@ async def process_position(
                     if position
                     else 0.0
                 )
-                if _ag_action == "force_close" and _ag_pos_amt > 0:
+                if _ag_action == "force_close" and _ag_pos_amt > 0 and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _ag_gain = (
                         safe_float(getattr(position, "gain", 0)) if position else 0.0
                     )
@@ -52822,7 +52835,9 @@ async def process_position(
                     except Exception:
                         pass
                 if _nlk_veto and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
-                    logger.info(f"[NEWBORN_LOSS_KILL_VETOED] {position_key}: vetoed by HTF WT with position, not closing")
+                    logger.info(f"[NEWBORN_LOSS_KILL_VETOED] {position_key}: vetoed by HTF WT with position,
+                elif _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: would-fire leg stood down, falls through
+                    logger.info(f"[NEWBORN_LOSS_KILL_STOOD_DOWN] {position_key}: native exit disabled — no trade, decision unchanged") not closing")
                 else:
                     _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _nlk_is_long = position_side == "LONG"
@@ -55022,7 +55037,7 @@ async def process_position(
                             logger.info(
                                 f"[UNDERWATER_HEDGED_HOLD] {position_key}: gain={_uh_gain:.2f}% wt1_15m against but {_uh_htf_count}/4 HTF agree (need {_uh_htf_req}) — holding, hedge covers"
                             )
-                    if locals().get("_uh_force_close"):
+                    if locals().get("_uh_force_close") and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         _uh_side = "SELL" if position_side == "LONG" else "BUY"
                         try:
                             await trade_manager.execute_now(
@@ -55590,7 +55605,7 @@ async def process_position(
                 if _ms_pos_amt > pos_min_qty and current_price > 0:
                     _ms_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                     _ms_prev = float(_ms_st.get("prev_gain", _ms_gain))
-                    if _ms_gain >= _ms_threshold and _ms_gain < _ms_prev:
+                    if _ms_gain >= _ms_threshold and _ms_gain < _ms_prev and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         _ms_close_side = "SELL" if _ms_long else "BUY"
                         _ms_uid = f"MS_USDC_CLOSE_{int(time.time() * 1000)}"
                         _ms_reason = f"MICRO_SCALP_USDC_CLOSE_g{_ms_gain:.3f}%_prev{_ms_prev:.3f}%"
@@ -57427,7 +57442,7 @@ async def process_position(
                     logger.warning(
                         f"[PPL_STOP_UPGRADED] {position_key}: gain={_pp_gain:.2f}% ≥ {_ppl_arm_gain}% — stop upgraded BE→first_exit {_ppl_first_exit_px:.6f} (locks +0.5% scalp)"
                     )
-                if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty:
+                if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                     _sl_hit = (is_long and current_price <= _ppl_stop_level) or (
                         not is_long and current_price >= _ppl_stop_level
                     )
@@ -58110,6 +58125,9 @@ async def process_position(
                 logger.debug(
                     f"[BREAK_EVEN_GUARD_HOLD] {position_key}: gain still rising ({current_gain:.2f}%), waiting for turn"
                 )
+            elif _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: guard stood down, decision intact
+                position._prev_gain_beg = current_gain
+                logger.info(f"[BREAK_EVEN_GUARD_STOOD_DOWN] {position_key}: native exit disabled — no trade")
             else:
                 position._prev_gain_beg = current_gain
                 logger.info(
@@ -58149,6 +58167,7 @@ async def process_position(
             and position.positionAmt > pos_min_qty
             and not config.HEDGE_MODE
             and not _recently_reduced
+            and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits
         ):
             if _check_loss_protection(position, position_key):
                 logger.debug(

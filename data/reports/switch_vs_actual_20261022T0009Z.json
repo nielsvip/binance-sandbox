@@ -1,0 +1,103 @@
+{
+ "window_from": "10-21 23:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 148,
+  "status_OK": 184,
+  "EXTRA": 6,
+  "FILLED_ON_BAR": 1
+ },
+ "rows": [
+  {
+   "acct": "inf",
+   "sym_side": "KMNOUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-22 00:05",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:53/d140/k3:5.865634945137585/d3:9.323980309430045_@0.0419_RZ_BASE",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "LTCUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-22 00:03",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:85/d186/k3:74.68176532544591/d3:51.993870081879855_@61.5353_RZ_BA",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "LTCUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-22 00:06",
+   "actual": "REDUCE",
+   "actual_reason": "MAKER_PROFIT_EXIT_VEC_CONVERGE_TO_FLAT paper-flat-live-holds |VEC_EXACT|SW=NONE|F=-",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": true
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-22 00:03",
+   "actual": "AUGMENT",
+   "actual_reason": "QUICK_OPEN_STRONG_BUY_k1:100/d198/k3:65.63989000195107/d3:64.18277088934983_@106.9105_RZ_B",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "flz",
+   "sym_side": "WLDUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 23:09",
+   "actual": "REDUCE",
+   "actual_reason": "QUICK_DC4_HIGH_3M_GAIN_EROSION_STOP_p0.578700>dc40.577900_g-0.03%",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "inf",
+   "sym_side": "XMRUSDT_LONG",
+   "dictated_bar": "10-21 23:15",
+   "dictated": "CLOSE",
+   "dictated_reason": "PEAK_GIVEBACK_GAIN_EROSION_STOP",
+   "actual_at": "10-21 23:33",
+   "actual": "REDUCE",
+   "actual_reason": "MAKER_PROFIT_EXIT_VEC_CONVERGE_TO_FLAT paper-flat-live-holds |VEC_EXACT|SW=NONE|F=-",
+   "late_bars": 0,
+   "verdict": "FILLED_ON_BAR",
+   "vec_tagged": true
+  },
+  {
+   "acct": "inf",
+   "sym_side": "XMRUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-21 23:18",
+   "actual": "AUGMENT",
+   "actual_reason": "GOLDEN_RULE_LONG_mult5.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

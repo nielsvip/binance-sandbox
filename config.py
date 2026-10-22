@@ -2286,6 +2286,10 @@ class Config:
     BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 1.0
     BAND_SLOPE_SIZING_V2_MIN: float = 0.7
     BAND_SLOPE_SIZING_V2_MAX: float = 1.8
+    DC_SLOPE_INCENTIVE_ENABLED: bool = False  # 2026-10-22 MTF DC-slope incentive: entries/reentries on a rising channel (vv shorts) open bigger instead of being gated
+    DC_SLOPE_INCENTIVE_TF: str = "4h"  # OFF/15m/1h/4h/D — which channel's rise counts
+    DC_SLOPE_INCENTIVE_MIN_PCT: float = 0.0  # min rise vs the 30-bar _ant level, in pct (0.0/0.25/0.5)
+    DC_SLOPE_INCENTIVE_ENTRY_MULT: float = 2.0  # open-dollar multiplier on slope-aligned entries (1.5/2.0/3.0)
     # 2026-07-15 LR_BAND swing-harvest strategy (bt_band_bounce v7: crypto 4h_L200 r2_0.7 L-only
     # pool_sharpe 0.4427 / sym_sharpe 0.51 / +24.6%/sym/yr). DEFAULT OFF — Tier-2 A/B required
     # (kill switch per NEW STRATEGY PROHIBITION). Harvest/BE/readd knobs declared for the engine.

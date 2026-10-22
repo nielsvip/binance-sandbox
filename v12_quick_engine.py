@@ -5618,6 +5618,10 @@ class QuickConfig:
     )
     BAND_SLOPE_SIZING_V2_MIN: float = 0.7  # TEMPLATE 0.5 (was 0.25)
     BAND_SLOPE_SIZING_V2_SLOPE_NORM_PCT_DAY: float = 1.0  # TEMPLATE 1.0 (was 0.5)
+    DC_SLOPE_INCENTIVE_ENABLED: bool = False  # 2026-10-22 MTF DC-slope incentive master (OFF = baseline unchanged)
+    DC_SLOPE_INCENTIVE_TF: str = "4h"  # OFF/15m/1h/4h/D
+    DC_SLOPE_INCENTIVE_MIN_PCT: float = 0.0  # min rise vs _ant in pct
+    DC_SLOPE_INCENTIVE_ENTRY_MULT: float = 2.0  # open-dollar multiplier on slope-aligned entries
     STDEV_SLOPE_SIZING_ENABLED: bool = (
         True  # stdev 2.5 ladder master (lane-D 2026-10-06: kept True per director correction; crypto live masks it via _NON_VEC_KNOBS_EZ)
     )
@@ -15706,6 +15710,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _exit_no_gr = exit_sig & ~_grd_exit_raw
     except Exception:
         pass
+    # DC_SLOPE_INCENTIVE (2026-10-22): MTF DC-slope open-size incentive — OPEN qty only, never augments (same shape as _grd_open_mult above). OFF = all 1.0.
+    _dcsi_open_mult = None
+    try:
+        import vec_decisions.dc_slope_incentive as _dcsi_prep
+
+        _dcsi_open_mult = np.asarray(_dcsi_prep.open_mult_vec(npz, n, is_long, cfg), dtype=float)
+    except Exception:
+        _dcsi_open_mult = None
     events = (
         []
     )  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
@@ -19444,6 +19456,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _dollar = _dollar * float(
                         _grd_open_mult[i]
                     )  # W2-GR5M: DIRECT 2x OPEN
+                if _dcsi_open_mult is not None and i < len(_dcsi_open_mult):
+                    _dollar = _dollar * float(
+                        _dcsi_open_mult[i]
+                    )  # DC_SLOPE_INCENTIVE: slope-aligned OPEN xENTRY_MULT
                 if _n3_epq_dollar:
                     _dollar = float(
                         _n3_epq_dollar
