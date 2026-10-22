@@ -4335,7 +4335,8 @@ def tick(args, cfg, now):
             if _ft:
                 return "fate: " + str(_ft)[:80]
             if f"{hn}:{sy}" in (log.get("skipped_no_actions") or []):
-                return "no launchable action (capped/grace/running/unreachable sides)"
+                _naw = (log.get("no_actions_why") or {}).get(f"{hn}:{sy}")
+                return "no launchable action " + (str(_naw)[:120] if _naw else "(capped/grace/running/unreachable sides)")
             if f"{hn}:{sy}" in (log.get("skipped_quota") or []):
                 return "winner-quota"
             if any(x == f"{hn}:{sy}" or x.startswith(f"{hn}:{sy}:") for x in (log.get("skipped_pair_gate") or [])):
