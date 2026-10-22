@@ -1,78 +1,66 @@
 {
- "generated_at": "2026-10-22 10:21 UTC",
- "total_capital_usd": 107.07,
+ "generated_at": "2026-10-22 10:23 UTC",
+ "total_capital_usd": 60.06,
  "tier_capital": {
-  "A": 50.24,
-  "B": 31.34,
-  "C": 25.5
+  "A": 0.0,
+  "B": 43.38,
+  "C": 16.68
  },
  "tier_count": {
-  "A": 2,
-  "B": 2,
+  "A": 0,
+  "B": 3,
   "C": 1
  },
  "winners": [],
  "losers": [
-  "fin:BEAMXUSDT_LONG"
+  "flz:DASHUSDT_SHORT",
+  "flz:BTCDOMUSDT_SHORT"
  ],
- "mediocre": [
-  "fin:BLURUSDT_SHORT"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "fin:STRKUSDT_SHORT",
-   "symbol": "STRKUSDT",
-   "account": "fin",
-   "value_usd": 25.56,
-   "gain_pct": -1.914,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 466.0,
-   "mark": 0.05484
+   "pk": "flz:WLDUSDC_SHORT",
+   "symbol": "WLDUSDC",
+   "account": "flz",
+   "value_usd": 25.46,
+   "gain_pct": 0.265,
+   "tier": "B",
+   "perf_mult": 5.55,
+   "amt": 46.5,
+   "mark": 0.54744451
   },
   {
-   "pk": "fin:BEAMXUSDT_LONG",
-   "symbol": "BEAMXUSDT",
-   "account": "fin",
-   "value_usd": 25.5,
-   "gain_pct": 2.1,
+   "pk": "flz:BTCDOMUSDT_SHORT",
+   "symbol": "BTCDOMUSDT",
+   "account": "flz",
+   "value_usd": 16.68,
+   "gain_pct": -0.414,
    "tier": "C",
-   "perf_mult": 0.33,
-   "amt": 8018.0,
-   "mark": 0.0031804
+   "perf_mult": 0.37,
+   "amt": 0.003,
+   "mark": 5559.83697664
   },
   {
-   "pk": "fin:BOMEUSDC_SHORT",
-   "symbol": "BOMEUSDC",
-   "account": "fin",
-   "value_usd": 25.11,
-   "gain_pct": -0.416,
+   "pk": "flz:XRPUSDC_SHORT",
+   "symbol": "XRPUSDC",
+   "account": "flz",
+   "value_usd": 11.59,
+   "gain_pct": -0.445,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 41254.0,
-   "mark": 0.00060862
+   "perf_mult": 0.97,
+   "amt": 8.7,
+   "mark": 1.3318
   },
   {
-   "pk": "fin:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
-   "account": "fin",
-   "value_usd": 24.68,
-   "gain_pct": -0.145,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 0.038,
-   "mark": 649.55494444
-  },
-  {
-   "pk": "fin:BLURUSDT_SHORT",
-   "symbol": "BLURUSDT",
-   "account": "fin",
-   "value_usd": 6.23,
-   "gain_pct": -0.113,
+   "pk": "flz:DASHUSDT_SHORT",
+   "symbol": "DASHUSDT",
+   "account": "flz",
+   "value_usd": 6.33,
+   "gain_pct": -1.732,
    "tier": "B",
-   "perf_mult": 0.2,
-   "amt": 702.0,
-   "mark": 0.00887
+   "perf_mult": 0.46,
+   "amt": 0.124,
+   "mark": 51.0795441
   }
  ]
 }
