@@ -28342,11 +28342,23 @@ def _disk_exit_cache_invalidate(account_key: str = None) -> None:
 
 
 def _load_disk_exit_cache(account_key: str) -> dict:
-    """Read EVERY account JSON file every cycle. Called once per account per scan (~60s).
-    Covers: long/short_positions, long/short_reentry, long/short_ladder,
+    """DISABLED 2026-10-22 per USER ("_load_disk_exit_cache NO fkn idea what it is, delete or disable").
+
+    It re-read EVERY account JSON file on every entry scan — long/short_positions (up to 581 rows), long/short
+    reentry, ladder and stop_levels, reduced/augmented/direct_high_gain, plus tracker.json — synchronously on the
+    event loop. Across 1,168 ez_manage loop-freeze dumps it held the loop in 31 of them, and a parked loop trades
+    nothing. It is also redundant: this process already holds all of that in memory ("ONE process, ONE dict, ZERO
+    Redis reads"), and its ONE consumer uses it only as a guarded fallback for a reentry exit price/time that the
+    in-memory reentry data did not have (`_disk_info["exit_px"] if _disk_info else 0`), writing whatever it resolves
+    back into the memory dicts. With an empty cache that path falls back to the in-memory state, which is the
+    authority. Re-enable with EZ_DISK_EXIT_CACHE=1 if a gap ever shows up.
+
+    Covers (when re-enabled): long/short_positions, long/short_reentry, long/short_ladder,
             long/short_stop_levels, reduced_positions, augmented_positions,
             direct_high_gain_augmented, tracker.json (entry+exit candidates).
     """
+    if os.environ.get("EZ_DISK_EXIT_CACHE", "0") != "1":
+        return {}
     # Backtest fast path: return cached result unless an exit-write has dirtied it.
     # Live path leaves V8_BACKTEST_DISK_CACHE unset → always reads fresh below.
     if os.environ.get("V8_BACKTEST_DISK_CACHE", "0") == "1":

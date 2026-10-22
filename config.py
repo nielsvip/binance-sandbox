@@ -6039,30 +6039,66 @@ class Config:
 
     @classmethod
     def _get_regime_from_redis(cls, full_key: str) -> dict | None:
-        """Load single regime override from Redis. 5s cache per key."""
+        """Regime override for one key. USER 2026-10-22: "redis only gets 0.001s to resolve, after that you read the
+        json, NO FUCKING EXCEPTIONS."
+
+        What this used to do, measured on 2026-10-22: build a BRAND-NEW `redis.Redis(...)` on every call with a 1 s
+        connect timeout and NO read timeout, GET a key, and on a miss return None **without caching the miss** — so
+        the next lookup did it all again. `adaptive_regime.py` (the only writer) is not running and there are ZERO
+        `regime_cfg:*` keys, so every one of those connections was pure cost: it held the ez_manage event loop in 33
+        of 1,168 freeze dumps, and while that loop is parked the account trades nothing.
+
+        Now: one shared client, 1 ms connect AND 1 ms read timeout, misses cached for the same 5 s window as hits,
+        and a JSON fallback (data/adaptive_regime/current_overrides.json, re-read only on mtime change)."""
         import time as _time
 
         now = _time.time()
         cached = cls._REGIME_REDIS_CACHE.get(full_key)
-        if cached and now - cached.get("_cache_ts", 0) < 5.0:
-            return cached
+        if cached is not None and now - (cached.get("_cache_ts", 0) if cached else 0) < 5.0:
+            return cached or None
+        data = None
         try:
             import json as _json
 
             import redis as _redis
 
-            r = _redis.Redis(
-                host="localhost", port=6379, db=0, socket_connect_timeout=1
-            )
+            r = getattr(cls, "_REGIME_REDIS_CLIENT", None)
+            if r is None:
+                r = _redis.Redis(host="localhost", port=6379, db=0, socket_connect_timeout=0.001, socket_timeout=0.001)
+                cls._REGIME_REDIS_CLIENT = r
             raw = r.get(f"regime_cfg:{full_key}")
             if raw:
                 data = _json.loads(raw)
-                data["_cache_ts"] = now
-                cls._REGIME_REDIS_CACHE[full_key] = data
-                return data
         except Exception:
-            pass
-        return None
+            data = None
+        if data is None:
+            data = cls._regime_from_json(full_key)
+        # Cache the answer either way — an empty dict means "asked, nothing there" and stops the hammering.
+        cls._REGIME_REDIS_CACHE[full_key] = dict(data, _cache_ts=now) if data else {"_cache_ts": now}
+        return cls._REGIME_REDIS_CACHE[full_key] if data else None
+
+    _REGIME_JSON_MEMO: dict = {"mtime": None, "map": {}}
+
+    @classmethod
+    def _regime_from_json(cls, full_key: str) -> dict | None:
+        """The JSON half of the rule above: whatever adaptive_regime last published on disk. Re-read only when the
+        file's mtime changes, so this costs one dict lookup per call."""
+        try:
+            import json as _json
+            import os as _os
+
+            p = _os.path.join(str(getattr(cls, "BASE_PATH", "/Users/niels/Documents/binance")), "data", "adaptive_regime", "current_overrides.json")
+            mt = _os.path.getmtime(p)
+            memo = cls._REGIME_JSON_MEMO
+            if memo.get("mtime") != mt:
+                with open(p) as _f:
+                    raw = _json.load(_f)
+                memo["map"] = raw if isinstance(raw, dict) else {}
+                memo["mtime"] = mt
+            hit = memo["map"].get(full_key)
+            return hit if isinstance(hit, dict) else None
+        except Exception:
+            return None
 
     @classmethod
     def set_regime_override(

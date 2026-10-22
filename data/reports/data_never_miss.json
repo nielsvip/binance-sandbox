@@ -1,140 +1,35 @@
 {
- "generated_utc": "2026-10-22T02:12:06Z",
- "secs": 122.5,
+ "generated_utc": "2026-10-22T03:56:32Z",
+ "secs": 148.0,
  "universe": {
   "crypto": 201,
   "stocks": 223
  },
- "unreachable": {
-  "s1": "JSONDecodeError: Expecting value: line 1 column 1 (char 0) Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n"
- },
+ "unreachable": {},
  "healed": {
   "mac:/Users/niels/Documents/binance": {
-   "files": 149,
-   "rows": 181,
+   "files": 85,
+   "rows": 97,
+   "skipped": {}
+  },
+  "s1:binance": {
+   "files": 81,
+   "rows": 24,
    "skipped": {}
   }
  },
  "kline_breaches": [
   {
    "host": "mac",
-   "venue": "crypto",
-   "symbol": "AGLDUSDT",
-   "tf": "3m",
-   "last": "2026-10-22T01:57",
-   "expect": "2026-10-22T02:00",
+   "venue": "stocks",
+   "symbol": "ELD",
+   "tf": "15m",
+   "last": "2026-10-21T19:30",
+   "expect": "2026-10-21T19:45",
    "bars_behind": 1.0
   },
   {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "IBM",
-   "tf": "15m",
-   "last": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 2.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "DELL",
-   "tf": "15m",
-   "last": "2026-10-21T17:30",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 9.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "KGC",
-   "tf": "15m",
-   "last": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 2.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "1h",
-   "last": "2026-10-21T15:30",
-   "expect": "2026-10-21T18:30",
-   "bars_behind": 3.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "LITE",
-   "tf": "15m",
-   "last": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 2.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "HP",
-   "tf": "15m",
-   "last": "2026-10-21T19:00",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 3.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "LRCX",
-   "tf": "15m",
-   "last": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 2.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "HD",
-   "tf": "15m",
-   "last": "2026-10-21T16:00",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 15.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "DAR",
-   "tf": "15m",
-   "last": "2026-10-21T17:45",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 8.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "LLY",
-   "tf": "15m",
-   "last": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 2.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "LSCC",
-   "tf": "15m",
-   "last": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 2.0
-  },
-  {
-   "host": "mac",
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "15m",
-   "last": "2026-10-21T15:30",
-   "expect": "2026-10-21T19:45",
-   "bars_behind": 17.0
-  },
-  {
-   "host": "mac",
+   "host": "s1",
    "venue": "stocks",
    "symbol": "ELD",
    "tf": "15m",
@@ -145,109 +40,11 @@
  ],
  "unhealable": [
   {
-   "venue": "crypto",
-   "symbol": "AGLDUSDT",
-   "tf": "3m",
-   "best": "2026-10-22T01:57",
-   "expect": "2026-10-22T02:00"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "IBM",
-   "tf": "15m",
-   "best": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "DELL",
-   "tf": "15m",
-   "best": "2026-10-21T17:30",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "KGC",
-   "tf": "15m",
-   "best": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "1h",
-   "best": "2026-10-21T15:30",
-   "expect": "2026-10-21T18:30"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "LITE",
-   "tf": "15m",
-   "best": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "HP",
-   "tf": "15m",
-   "best": "2026-10-21T19:00",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "LRCX",
-   "tf": "15m",
-   "best": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "HD",
-   "tf": "15m",
-   "best": "2026-10-21T16:00",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "DAR",
-   "tf": "15m",
-   "best": "2026-10-21T17:45",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "LLY",
-   "tf": "15m",
-   "best": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "LSCC",
-   "tf": "15m",
-   "best": "2026-10-21T19:15",
-   "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "EQT",
-   "tf": "15m",
-   "best": "2026-10-21T15:30",
-   "expect": "2026-10-21T19:45"
-  },
-  {
    "venue": "stocks",
    "symbol": "ELD",
    "tf": "15m",
    "best": "2026-10-21T19:30",
    "expect": "2026-10-21T19:45"
-  },
-  {
-   "venue": "stocks",
-   "symbol": "USO",
-   "tf": "1h",
-   "best": "2026-10-21T15:30",
-   "expect": "2026-10-21T18:30"
   }
  ],
  "unparsed_live_files": [],
@@ -258,50 +55,90 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 3.3,
+   "age_s": -2.0,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": 5.5,
-    "price_cache_2.json": 294.7,
-    "price_cache_3.json": 3.3
+    "price_cache_1.json": -2.0,
+    "price_cache_2.json": 34.0,
+    "price_cache_3.json": -2.0
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 4535.7,
+   "age_s": 10770.0,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/market_data_NEWEST": 4535.7
+    "data/market_data_NEWEST": 10770.0
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 4925.5,
+   "age_s": 11159.8,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 4925.5
+    "data/latest_market_data.json": 11159.8
+   }
+  },
+  {
+   "host": "s1",
+   "file": "crypto snapshot on S1 (Mac push or own stack)",
+   "age_s": 44.5,
+   "max_s": 180,
+   "ok": true,
+   "files": {
+    "data/market_data_NEWEST": 10675.3,
+    "ez_s1_stack/data/latest_market_data.json": 44.5
+   }
+  },
+  {
+   "host": "s1",
+   "file": "crypto prices on S1 (Mac push or own stack)",
+   "age_s": 10.1,
+   "max_s": 300,
+   "ok": true,
+   "files": {
+    "price_cache_1.json": 67.3,
+    "price_cache_2.json": 185.3,
+    "price_cache_3.json": 67.3,
+    "ez_s1_stack/price_cache_1.json": 1383985.8,
+    "ez_s1_stack/price_cache_2.json": 44.5,
+    "ez_s1_stack/price_cache_3.json": 10.1
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 4827.2,
+   "age_s": 11065.2,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 4827.2
+    "data/latest_market_data.json": 11065.2
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 8.5,
+   "free_gb": 13.7,
+   "ok": true
+  },
+  {
+   "host": "s1",
+   "file": "disk free binance",
+   "age_s": null,
+   "free_gb": 26.8,
+   "ok": true
+  },
+  {
+   "host": "s1",
+   "file": "disk free binance-sandbox",
+   "age_s": null,
+   "free_gb": 27.0,
    "ok": true
   },
   {

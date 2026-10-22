@@ -157,12 +157,45 @@ def _db_signature():
     return tuple(sig)
 
 
+def _prime_get_bucket_bulk(bucket: dict) -> bool:
+    """One SELECT for the WHOLE table. USER 2026-10-22: "you read the fucking sql every fucking second, it gets
+    updated with the latest backtest results, THAT is what you trade; the json is a backup in case you can't read
+    the sql."
+
+    The authority and the cadence are right — the cost was the shape. The read cache is keyed on the db+wal
+    signature, so a table rewritten every second dropped the whole cache every second, and then EVERY sym_side
+    lookup opened its own connection for a single-row SELECT. With ~180 keys read thousands of times per cycle that
+    is a connection storm on the event loop thread: `per_sym_store.py get` held the ez_manage loop in 24 of 1,168
+    freeze dumps, and a parked loop trades nothing. One bulk read per change serves every lookup from memory, so the
+    SQL is still the authority and still re-read the moment it changes."""
+    try:
+        con = _connect()
+        try:
+            for row in con.execute("SELECT * FROM per_sym_active"):
+                try:
+                    e = _row_to_entry(row)
+                    k = str(e.get("sym_side") or row["sym_side"] or "").strip()
+                    if k:
+                        bucket[k] = e
+                except Exception:
+                    continue
+        finally:
+            con.close()
+        bucket["__primed__"] = True
+        return True
+    except Exception:
+        # SQL unreadable -> leave the bucket unprimed so every get() falls through to the JSON backup.
+        return False
+
+
 def _read_cache_bucket(name: str) -> dict:
     sig = _db_signature()
     if _READ_CACHE["sig"] != sig:
         _READ_CACHE["sig"] = sig
         _READ_CACHE["get"] = {}
         _READ_CACHE["kv"] = {}
+        if name == "get":
+            _prime_get_bucket_bulk(_READ_CACHE["get"])
     return _READ_CACHE[name]
 
 
@@ -170,6 +203,15 @@ def _invalidate_read_cache() -> None:
     _READ_CACHE["sig"] = None
     _READ_CACHE["get"] = {}
     _READ_CACHE["kv"] = {}
+
+
+def _copy_read(v):
+    """USER 2026-10-22 hot read: a top-level copy that SHARES the nested values. `_copy2` copies every nested dict,
+    and an entry's `full_config` is the complete ~3,535-switch set, so each `get()` copied 3,535 keys — measured at
+    ~11 ms per warm call, i.e. ~2 s to read 180 sym_sides once, on the event loop thread. Nothing in production
+    mutates a nested member of a returned entry (only tests read them), so sharing is safe; callers that build a
+    merged view (`ez_positions_quick._per_sym_full_set`) already construct their own dicts."""
+    return dict(v) if isinstance(v, dict) else v
 
 
 def _copy2(v):
@@ -536,7 +578,11 @@ def get(sym_side: str) -> Optional[dict]:
                     jf = _json_load_fallback(sym_side)
                     if jf and jf.get("full_config"):
                         return jf
-                return _copy2(_hit)
+                return _copy_read(_hit)
+            # The bucket was primed in bulk from the whole table, so "absent" is authoritative: no per-key SELECT,
+            # straight to the JSON backup. Only an unprimed bucket (SQL unreadable) falls through to the query below.
+            if _bucket.get("__primed__"):
+                return _json_load_fallback(sym_side)
             con = _connect()
             try:
                 cur = con.execute("SELECT * FROM per_sym_active WHERE sym_side=?", (sym_side,))
@@ -549,7 +595,7 @@ def get(sym_side: str) -> Optional[dict]:
                         jf = _json_load_fallback(sym_side)
                         if jf and jf.get("full_config"):
                             return jf
-                    return _copy2(e)
+                    return _copy_read(e)
                 _bucket[sym_side] = _READ_MISS
             finally:
                 con.close()
@@ -1112,7 +1158,7 @@ def kv_get(key: str) -> Optional[Any]:
         _bucket = _read_cache_bucket("kv")
         _hit = _bucket.get(str(key), _READ_MISS)
         if _hit is not _READ_MISS:
-            return _copy2(_hit)
+            return _copy_read(_hit)
         con = _connect()
         try:
             row = con.execute("SELECT value_json FROM kv_json WHERE key=?", (str(key),)).fetchone()
