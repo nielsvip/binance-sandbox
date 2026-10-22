@@ -75,10 +75,30 @@ def test_realized_windows_and_unknown_basis():
     assert s["pnl_30d"] == 90.0
     assert s["pnl_total"] == 90.0
     assert s["unknown"] == 1
+    assert s["unknown_phantom"] == 1
+    assert s["unknown_partial"] == 0
     by_sym = {e["symbol"]: e for e in out if e["action"] in ("REDUCE", "CLOSE")}
     assert by_sym["A"]["rpnl"] == 40.0
     assert by_sym["B"]["rpnl"] == 50.0
     assert "rpnl" not in by_sym["C"]
+
+
+def test_unknown_partial_vs_phantom():
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    iso = lambda dt: dt.isoformat()
+    from datetime import timedelta
+    evts = [
+        _ev(iso(now - timedelta(hours=2)), "P", "LONG", "OPEN", 10.0, 100.0),
+        _ev(iso(now - timedelta(hours=1)), "P", "LONG", "REDUCE", 14.0, 110.0),  # 10 known (+100) + 4 partial
+    ]
+    out, s = srv.realized_walk(evts)
+    assert s["known"] == 1
+    assert s["unknown"] == 1
+    assert s["unknown_partial"] == 1
+    assert s["unknown_phantom"] == 0
+    assert s["pnl_1d"] == 100.0
+    by_sym = {e["symbol"]: e for e in out if e["action"] in ("REDUCE", "CLOSE")}
+    assert by_sym["P"]["rpnl"] == 100.0
 
 
 def test_intent_validation():

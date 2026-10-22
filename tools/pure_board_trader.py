@@ -463,11 +463,19 @@ def _eval_symbol_group(job):
         except Exception as exc:
             box["res"] = [(ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}) for ss, _ in sides]
 
+    # USER 2026-10-22: per-symbol watchdog is host-gated — Mac decides in ~30s,
+    # S1 needs 10-15min per eval (slower box + deeper histories). Default 600s;
+    # S1's keepalive exports EVAL_TIMEOUT_S=1800 for the trb lane. Raising the
+    # ceiling never changes a decision, only how long a slow host may take it.
+    try:
+        _wd = max(60.0, float(os.environ.get("EVAL_TIMEOUT_S", "600") or 600))
+    except Exception:
+        _wd = 600.0
     th = threading.Thread(target=_run, daemon=True)
     th.start()
-    th.join(600.0)
+    th.join(_wd)
     if th.is_alive() or "res" not in box:
-        return [(ss, {"status": "EVAL_TIMEOUT", "actions": [], "err": "symbol eval exceeded 600s"}) for ss, _ in sides]
+        return [(ss, {"status": "EVAL_TIMEOUT", "actions": [], "err": f"symbol eval exceeded {_wd:.0f}s"}) for ss, _ in sides]
     return box["res"]
 
 
