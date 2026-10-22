@@ -200,7 +200,14 @@ done
 WATCHDOG_LOCK="$LOGDIR/.watchdog_${SCRIPT_BASE}${ACCT_SUFFIX}.pid"
 if [ -f "$WATCHDOG_LOCK" ]; then
     OLD_WD_PID=$(cat "$WATCHDOG_LOCK" 2>/dev/null)
-    if [ -n "$OLD_WD_PID" ] && kill -0 "$OLD_WD_PID" 2>/dev/null; then
+    # 2026-10-22: NEVER mistake OURSELVES for the incumbent. [WD_SELF_REEXEC] (:752) re-execs this script with `exec`
+    # to pick up a changed copy, and `exec` PRESERVES the pid — which is exactly why the re-exec was considered safe
+    # for the lock. But this check then read our own pid back out of the lock file, `kill -0 $$` succeeded, and the
+    # fresh image exited as a "duplicate" of itself. The EXIT trap below then removed the lock, so the account was
+    # left with NO watchdog and NO child at all: measured on ez_indicators 2026-10-22 05:02:18-05:03:55Z
+    # ("[WD_SELF_REEXEC] … pid 46034 preserved" immediately followed by "[WATCHDOG_SINGLETON] Another watchdog is
+    # alive (pid=46034) — refusing to start"), i.e. the one supervisor the crypto indicator producer has.
+    if [ -n "$OLD_WD_PID" ] && [ "$OLD_WD_PID" != "$$" ] && kill -0 "$OLD_WD_PID" 2>/dev/null; then
         echo "[$(date +'%Y-%m-%d %H:%M:%S')] [WATCHDOG_SINGLETON] Another watchdog is alive (pid=$OLD_WD_PID) for ${SCRIPT_BASE}${ACCT_SUFFIX} — refusing to start to avoid SIGKILL fight" | tee -a "$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_watchdog.log"
         exit 0
     fi

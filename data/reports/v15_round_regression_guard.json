@@ -1,37 +1,51 @@
 {
- "at": "2026-10-22T04:26:01Z",
+ "at": "2026-10-22T05:26:07Z",
  "window_hours": 2.0,
  "target_per_host_per_hour": 12.0,
  "max_npz_age_h": 6.0,
  "hosts": {
   "s1": {
-   "published_n": 2,
-   "per_hour": 1.0,
-   "improved_vs_best_start": 1,
-   "mean_uplift_vs_best_start": 7.314,
-   "median_uplift": 7.314,
-   "chained_from_previous_published": 1,
-   "no_floor_recorded": 1,
+   "published_n": 3,
+   "per_hour": 1.5,
+   "improved_vs_best_start": 3,
+   "mean_uplift_vs_best_start": 6.3181,
+   "median_uplift": 6.8635,
+   "chained_from_previous_published": 3,
+   "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
     {
-     "symside": "FLUXUSDT_SHORT",
-     "npz_age_h": null
+     "symside": "CRWD_LONG",
+     "npz_age_h": 8.98
     },
     {
      "symside": "RIO_SHORT",
      "npz_age_h": 8.07
+    },
+    {
+     "symside": "SLV_LONG",
+     "npz_age_h": 8.78
     }
    ],
    "fails": [
-    "throughput 1.0/h < 12.0/h (one per 5 min)",
-    "2/2 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+    "throughput 1.5/h < 12.0/h (one per 5 min)",
+    "3/3 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
    ],
    "rows": [
     {
-     "symside": "FLUXUSDT_SHORT",
-     "published_at": 1792637215.4401722,
-     "npz_age_h_at_publish": null
+     "symside": "CRWD_LONG",
+     "published_at": 1792645143.6676662,
+     "final_gain": 39.53187599431317,
+     "best_start_gain": 34.75509524975187,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 9,
+     "baseline_gain": 34.75509524975187,
+     "npz_ts_last": 1792612800.0,
+     "npz_md5": "3b101a9fcb5aa3db0ff228656ce4d4ba",
+     "npz_bars": 27147,
+     "bh": 14.984387872198274,
+     "verdict": null,
+     "npz_age_h_at_publish": 8.98
     },
     {
      "symside": "RIO_SHORT",
@@ -47,17 +61,32 @@
      "bh": 17.1164337823208,
      "verdict": null,
      "npz_age_h_at_publish": 8.07
+    },
+    {
+     "symside": "SLV_LONG",
+     "published_at": 1792644406.9145746,
+     "final_gain": 11.268094318349222,
+     "best_start_gain": 4.404574147078221,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 5,
+     "baseline_gain": 4.404574147078221,
+     "npz_ts_last": 1792612800.0,
+     "npz_md5": "82709f3df9952ac22beb09798801be6f",
+     "npz_bars": 4329,
+     "bh": -9.913793103448276,
+     "verdict": null,
+     "npz_age_h_at_publish": 8.78
     }
    ],
    "error": null
   },
   "s2": {
-   "published_n": 9,
-   "per_hour": 4.5,
-   "improved_vs_best_start": 9,
-   "mean_uplift_vs_best_start": 13.7721,
+   "published_n": 15,
+   "per_hour": 7.5,
+   "improved_vs_best_start": 15,
+   "mean_uplift_vs_best_start": 16.0288,
    "median_uplift": 6.7344,
-   "chained_from_previous_published": 6,
+   "chained_from_previous_published": 11,
    "no_floor_recorded": 0,
    "backslides": [],
    "stale_npz": [
@@ -74,17 +103,20 @@
      "npz_age_h": 8.17
     },
     {
-     "symside": "SHOP_LONG",
-     "npz_age_h": 8.05
+     "symside": "MA_LONG",
+     "npz_age_h": 9.1
     },
     {
-     "symside": "XOP_LONG",
-     "npz_age_h": 7.32
+     "symside": "PWR_SHORT",
+     "npz_age_h": 9.27
+    },
+    {
+     "symside": "SHOP_LONG",
+     "npz_age_h": 8.05
     }
    ],
    "fails": [
-    "throughput 4.5/h < 12.0/h (one per 5 min)",
-    "5/9 boards fitted an NPZ older than 6.0 h \u2014 not new bars"
+    "throughput 7.5/h < 12.0/h (one per 5 min)"
    ],
    "rows": [
     {
@@ -101,6 +133,21 @@
      "bh": 15.726798569775632,
      "verdict": null,
      "npz_age_h_at_publish": 0.95
+    },
+    {
+     "symside": "AAVEUSDC_LONG",
+     "published_at": 1792644250.0480914,
+     "final_gain": 62.58601796134609,
+     "best_start_gain": 25.911092002352255,
+     "best_start_chosen": "history_1",
+     "best_start_candidates": 9,
+     "baseline_gain": 25.911092002352255,
+     "npz_ts_last": 1792640700.0,
+     "npz_md5": "eff335eeea682458e175284c0c5466c9",
+     "npz_bars": 42929,
+     "bh": 4.739960409167757,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.99
     },
     {
      "symside": "ADP_LONG",
@@ -163,6 +210,21 @@
      "npz_age_h_at_publish": 1.2
     },
     {
+     "symside": "ARUSDT_LONG",
+     "published_at": 1792646713.2504144,
+     "final_gain": 35.153261820547776,
+     "best_start_gain": 29.270790461420038,
+     "best_start_chosen": "prior_v15_run34_20261021",
+     "best_start_candidates": 9,
+     "baseline_gain": 29.270790461420038,
+     "npz_ts_last": 1792643400.0,
+     "npz_md5": "995ba2e02b22a345a478514926b6d148",
+     "npz_bars": 40615,
+     "bh": -13.676775280901317,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.92
+    },
+    {
      "symside": "BA_SHORT",
      "published_at": 1792642205.4161959,
      "final_gain": 22.373555607755716,
@@ -176,6 +238,36 @@
      "bh": 7.308843793239948,
      "verdict": null,
      "npz_age_h_at_publish": 8.17
+    },
+    {
+     "symside": "EDUUSDT_LONG",
+     "published_at": 1792646582.9370263,
+     "final_gain": 71.48803499685239,
+     "best_start_gain": 29.749282060818544,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 8,
+     "baseline_gain": 29.749282060818544,
+     "npz_ts_last": 1792641600.0,
+     "npz_md5": "30a0e02a75afce3df1e2217724dcf2c0",
+     "npz_bars": 40701,
+     "bh": 41.06831549394884,
+     "verdict": null,
+     "npz_age_h_at_publish": 1.38
+    },
+    {
+     "symside": "EDUUSDT_SHORT",
+     "published_at": 1792645002.507387,
+     "final_gain": 43.66583292783381,
+     "best_start_gain": 15.633773699457679,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 8,
+     "baseline_gain": 15.633773699457679,
+     "npz_ts_last": 1792641600.0,
+     "npz_md5": "30a0e02a75afce3df1e2217724dcf2c0",
+     "npz_bars": 40701,
+     "bh": -41.06831549394884,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.95
     },
     {
      "symside": "ENJUSDT_SHORT",
@@ -193,6 +285,51 @@
      "npz_age_h_at_publish": 1.6
     },
     {
+     "symside": "GALAUSDT_SHORT",
+     "published_at": 1792644351.2130728,
+     "final_gain": 42.82514556144676,
+     "best_start_gain": 40.67842125176633,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 9,
+     "baseline_gain": 40.67842125176633,
+     "npz_ts_last": 1792641600.0,
+     "npz_md5": "546569754023bf55b6d26cc981fbb2ed",
+     "npz_bars": 40612,
+     "bh": 9.772293175311866,
+     "verdict": null,
+     "npz_age_h_at_publish": 0.76
+    },
+    {
+     "symside": "MA_LONG",
+     "published_at": 1792645571.4730654,
+     "final_gain": 16.816552175229305,
+     "best_start_gain": 13.729784784141819,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 9,
+     "baseline_gain": 13.729784784141819,
+     "npz_ts_last": 1792612800.0,
+     "npz_md5": "2d8c16405f2ae2d5b9fa4ecbee396dd4",
+     "npz_bars": 2156,
+     "bh": 10.003532706216872,
+     "verdict": null,
+     "npz_age_h_at_publish": 9.1
+    },
+    {
+     "symside": "PWR_SHORT",
+     "published_at": 1792646159.9643738,
+     "final_gain": 18.08936735687058,
+     "best_start_gain": 17.687539867088528,
+     "best_start_chosen": "history_0",
+     "best_start_candidates": 5,
+     "baseline_gain": 17.687539867088528,
+     "npz_ts_last": 1792612800.0,
+     "npz_md5": "1dfdfe312ff2951ac4385ecbe7fd8e6a",
+     "npz_bars": 1599,
+     "bh": 3.66963082257894,
+     "verdict": null,
+     "npz_age_h_at_publish": 9.27
+    },
+    {
      "symside": "SHOP_LONG",
      "published_at": 1792641775.5319307,
      "final_gain": 50.126267901605935,
@@ -206,21 +343,6 @@
      "bh": 29.583638130953766,
      "verdict": null,
      "npz_age_h_at_publish": 8.05
-    },
-    {
-     "symside": "XOP_LONG",
-     "published_at": 1792639137.6060498,
-     "final_gain": 18.886121999495902,
-     "best_start_gain": 17.40514477992583,
-     "best_start_chosen": "history_1",
-     "best_start_candidates": 6,
-     "baseline_gain": 17.40514477992583,
-     "npz_ts_last": 1792612800.0,
-     "npz_md5": "dcab81002340d0cdf6853668db4e553c",
-     "npz_bars": 14999,
-     "bh": 0.27207202566810057,
-     "verdict": null,
-     "npz_age_h_at_publish": 7.32
     }
    ],
    "error": null

@@ -133,7 +133,8 @@ REGISTRY: dict[str, dict[str, list[tuple]]] = {
     },
     "indicators_snapshot_crypto": {
         "mac": [("{base}/data/latest_market_data.json", "canonical", "freshness of this file drives LF_SNAPSHOT_STALE_S=90", None)],
-        "s1": [("{base}/ez_s1_stack/data/latest_market_data.json", "canonical", "isolated S1 stack output", None)],
+        "s1": [("{base}/ez_s1_stack/data/latest_market_data.json", "canonical", "isolated S1 stack output; this - NOT S1's ~/binance/data/latest_market_data.json, which was 4 h old on 2026-10-22 - is what tools/mac_market_data_pull.py pulls", None)],
+        "s2": [("/home/niels/binance/ez_s2_stack/data/latest_market_data.json", "canonical", "second fallback producer stack (s2-crypto-producers.service, 2026-10-22); pulled by tools/mac_market_data_pull.py", None)],
     },
     "indicators_snapshot_stocks": {
         "mac": [("{base}/data/tradier/tradier_indicators_latest.json", "canonical", "stocks equivalent of the 90 s staleness probe", None)],

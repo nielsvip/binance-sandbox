@@ -71,6 +71,7 @@ BETTER_S = float(os.environ.get("MAC_MD_BETTER_S", "300"))    # a fallback must 
 WRITE_LATEST = os.environ.get("MAC_MD_WRITE_LATEST", "1") == "1"
 LATEST_MINE = {"mtime": None}   # mtime of the latest_market_data.json THIS script installed (so it never counts as the Mac producer writing)
 OVERRIDE = os.environ.get("MAC_MD_CONTENT_OVERRIDE", "1") == "1"
+FALLBACK_DOWN_S = float(os.environ.get("MAC_MD_FALLBACK_DOWN_S", "300"))
 ALERT_EVERY_S = 30.0
 NOTIFY_EVERY_S = 600.0
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
@@ -498,6 +499,15 @@ class Run:
             if now - self.last_hb > 60:
                 self.last_hb = now
                 log(f"ok: engines see a {int(visible_age)}s old snapshot (Mac own {int(status['mac_own_age_s'])}s) action={status['action'][:120]}")
+        for name, src in status["sources"].items():
+            age = src.get("age_s")
+            if age is None or age > FALLBACK_DOWN_S:
+                key = f"last_down_alert_{name}"
+                if now - float(self.state.get(key, 0)) > 300:
+                    self.state[key] = now
+                    why = ("unreachable/missing: " + ",".join(src.get("errors") or [])) if age is None else f"its snapshot is {int(age)}s old"
+                    self.alert("market_data_fallback_source_down", status["mac_own_age_s"], visible_age, status, f"fallback source {name} cannot back the Mac up right now ({why})")
+                    log(f"FALLBACK_DOWN {name}: {why}")
         self.state.update(status)
         self.state["latest_mine_mtime"] = LATEST_MINE["mtime"]
         self.state["last_alert_ts"] = self.last_alert
