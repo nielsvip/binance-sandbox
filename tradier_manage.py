@@ -12715,6 +12715,100 @@ async def board_state_converge_loop(trade_manager):
         await asyncio.sleep(300.0)
 
 
+async def native_replay_loop(trade_manager):
+    """Replays refused native OPENs once per bar (USER 2026-10-22: enforce immediately).
+
+    Producer tools/native_replay_verdicts.py stages rows for refused native signals that are
+    board-authorized, flat, and gate-passing NOW. This loop fires them through execute_now (the
+    one gate — enforce/hermetic/strict/universe/stops re-verify) with the ORIGINAL reason
+    (NATIVE_REPLAY_ prefix; provenance honest, no vector claim). Same guards as converge:
+    startup grace, kill switch, stale verdicts refused, already-forced dedupe shared with the
+    converge record file, holdings re-checked at fire time, per-bar records in data/converge/.
+    """
+    await asyncio.sleep(60.0)
+    try:
+        import board_state_converge as _bsc
+    except Exception as exc:
+        logger.error(f"[NATIVE_REPLAY] import failed: {exc}")
+        return
+    try:
+        base = BASE_PATH
+    except Exception:
+        base = os.getcwd()
+    if not bool(_cfg_auto("NATIVE_REPLAY_ENABLED", False)):
+        logger.warning("[NATIVE_REPLAY] disabled via NATIVE_REPLAY_ENABLED=False")
+        return
+    try:
+        import json as _rjson
+    except Exception:
+        return
+    logger.warning("[NATIVE_REPLAY] started: enforcing refused native OPENs through execute_now")
+    while getattr(trade_manager, "running", False):
+        try:
+            try:
+                accts = set(_own_accounts_from_argv())
+            except Exception:
+                accts = set()
+            vfile = os.path.join(base, "data", "pure_board", "native_replay_verdicts.jsonl")
+            try:
+                with open(vfile, errors="replace") as _fh:
+                    vrows = [_rjson.loads(_ln) for _ln in _fh if _ln.strip().startswith("{")]
+            except OSError:
+                vrows = []
+            now = time.time()
+            for v in vrows:
+                try:
+                    if v.get("action") != "REPLAY_OPEN":
+                        continue
+                    acct = v.get("acct") or ""
+                    if accts and acct not in accts:
+                        continue
+                    if now - float(v.get("ts") or 0.0) > 1200.0:
+                        continue
+                    ss = v.get("sym_side") or ""
+                    bar = float(v.get("bar_ts") or 0.0)
+                    if not ss or bar <= 0 or now - (bar + 900.0) > 1200.0:
+                        continue
+                    is_long = ss.endswith("_LONG")
+                    sym = ss.rsplit("_", 1)[0]
+                    held, _ = _bsc.read_live_snapshots(base, acct)
+                    lh = (held.get((acct, ss)) or {}).get("qty", 0.0)
+                    if lh > 0:
+                        continue
+                    rpath = _bsc.record_path(base, acct)
+                    if _bsc.already_forced(rpath, acct, ss, bar):
+                        continue
+                    try:
+                        px, _ = await trade_manager.get_current_price(sym)
+                    except Exception:
+                        px = 0.0
+                    px = float(px or 0.0)
+                    base_n = float(getattr(config, "START_POSITION_SIZE", 0.0) or 0.0)
+                    qty = base_n / px if (base_n > 0 and px > 0) else 0.0
+                    if qty <= 0:
+                        continue
+                    pk = f"{acct}:{ss}"
+                    uid = f"NATIVE_REPLAY_{int(bar)}"
+                    reason = str(v.get("reason") or "")[:160]
+                    res = await trade_manager.execute_now(
+                        pk, acct, sym, 0.0, ("BUY" if is_long else "SELL"),
+                        ("LONG" if is_long else "SHORT"), qty, px, uid, reason, False,
+                        action="OPEN")
+                    _bsc.append_record(rpath, _bsc.build_record(
+                        time.time(), bar, acct, ss, "REPLAY_OPEN", str(v.get("orig_reason") or ""),
+                        "", 0, 0.0, lh, "native signal refused, replayed", res))
+                    logger.warning(f"[NATIVE_REPLAY] {acct}:{ss} qty_before={lh:.6f} -> {str(res)[:80]}")
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    continue
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            logger.error(f"[NATIVE_REPLAY] loop error: {exc}", exc_info=True)
+        await asyncio.sleep(60.0)
+
+
 async def overnight_gap_hedge_loop(trade_manager):
     """Opens same-sector opposite-side hedges (50% notional) 15 min before market close
     when |market_sentiment_score| > threshold, then closes them at 09:35 ET next morning.
@@ -59394,6 +59488,10 @@ class TradierTradeManager:
         # USER 2026-10-21 BOARD-STATE CONVERGE: force board-state parity through execute_now.
         self.background_tasks.append(
             asyncio.create_task(board_state_converge_loop(self))
+        )
+        # USER 2026-10-22 NATIVE REPLAY: enforce refused native OPENs immediately.
+        self.background_tasks.append(
+            asyncio.create_task(native_replay_loop(self))
         )
         # 2026-09-09: gap-aware MOC exit before close + morning rebuy (harvest gaps, no commissions)
         # 2026-09-10 FIX: 90m window + small-top detection + daily gap record (was dead code 10m MOC)

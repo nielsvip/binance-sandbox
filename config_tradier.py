@@ -3508,6 +3508,12 @@ class TradierConfig:
         # pre-close on |sentiment|>20, closed 09:35 ET. Hedge mates are tagged positions, never
         # board positions; per-sym kill: OVERNIGHT_GAP_HEDGE_ENABLED=False. ROLLBACK: False.
     )
+    NATIVE_REPLAY_ENABLED: bool = (
+        True  # USER 2026-10-22: enforce refused native OPENs immediately — a sym_side whose native
+        # signal was refused while live stayed flat is replayed once per bar with its ORIGINAL reason
+        # (provenance honest; gates re-verify inside execute_now). Producer pre-filters: fresh pos-gain
+        # board, flat, gates pass now, never risk/physics refusals. Kill: False. ROLLBACK: False.
+    )
     BOARD_STATE_CONVERGE_ENABLED: bool = (
         True  # USER 2026-10-21: converge every tradeable_key to the forward paper-test state —
         # CONVERGE_OPEN forces an OPEN where the board holds and live is flat, CONVERGE_CLOSE forces
