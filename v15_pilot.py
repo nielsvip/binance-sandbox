@@ -6296,7 +6296,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
     # (always kept — CDE_SHORT guard), MUST cells (p = 1), the brain's p with the untried rate, the literal DEAD_END row state
     # (§5) and the budget (§7). Replaces the PROFILE and brain-CELL policies while ON; rows, floor, MUST, LINKNET untouched.
     _v20_on = bool(_V20 is not None and _V18P is not None and _V18P.flag_on("V20_SELECTOR"))
-    _v20_bm, _v20_why, _v20_losing, _v20_tpl_cands, _v20_pa_raw = None, "off", [], {}, None
+    _v20_bm, _v20_why, _v20_losing, _v20_tpl_cands, _v20_pa_raw, _v20_clusters = None, "off", [], {}, None, {}
     if _v20_on:
         try:
             _v20_bm = _V20.load_binding_map(_v18_floor_cs, ROOT)
@@ -6304,13 +6304,14 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
             _v20_tpl_cands = _V20.template_cands_from_map(_v20_bm)
             _v20_losing = _V20.load_losing(_v18_floor_cs, ROOT)
             _v20_pa_raw = _V20.load_positives_all_raw(_v18_floor_cs, ROOT)
+            _v20_clusters = _V20.load_clusters(_v18_floor_cs, ROOT)  # brief §6.2 b: same-cluster positives first in the MUST order
         except Exception as _v20le:
             _v20_on, _v20_why = False, f"OFF: {_v20le}"[:200]
     _v20_budget = int(_V20_BUDGET) if _v20_on else 0
     _v20_tot = {"rows": 0, "never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "budget_skipped": 0}
     _v20_indirect_seen: set = set()
     if _V20 is not None:
-        print(f"[V20] {new_symside} {_v18_floor_cs} selector={'ON' if _v20_on else 'off'} budget={_v20_budget} ({_v20_why}; losing_switches={len(_v20_losing)} template_switches={len(_v20_tpl_cands)})", flush=True)
+        print(f"[V20] {new_symside} {_v18_floor_cs} selector={'ON' if _v20_on else 'off'} budget={_v20_budget} ({_v20_why}; losing_switches={len(_v20_losing)} template_switches={len(_v20_tpl_cands)} clusters={len(_v20_clusters)})", flush=True)
     _v18_prof, _v18_prof_rows, _v18_prof_min_n, _v18_prof_why = (_V18P.load_profile(_v18_floor_cs, ROOT) if (_v18_prof_on or _v20_on) else (None, None, None, "off"))
     _v18_prof_tot = {"rows": 0, "rows_dead": 0, "cells_pool": 0, "cells_must": 0, "cells_drawn": 0, "cells_settled": 0}
     _v18_prof_sib: dict = {}  # row "SW=c" -> [filter cells positive on >= 1 sibling sym_side] (positives_all pairs)
@@ -8943,8 +8944,8 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 items, _v20_ref_skipped = _V20.must_skip_refused(items, ledger, start_sha)
                 _v20_alt = [a for a in _V20.losing_switch_alternatives(cumulative_overrides, _v20_losing, _v20_tpl_cands, new_symside) if a not in tried and a not in items and not ((ledger.get(a) or {}).get("start_sha") == start_sha)]
                 _v20_alt_n = len(_v20_alt)
-                items = _V20.rank_must(list(items) + _v20_alt, _v20_pa_raw, new_symside, None, _mo if isinstance(_mo, dict) else None)
-                why = f"{why}; v20 refused_skipped={_v20_ref_skipped} alternatives={_v20_alt_n} order=interval_lb"
+                items = _V20.rank_must(list(items) + _v20_alt, _v20_pa_raw, new_symside, _v20_clusters or None, _mo if isinstance(_mo, dict) else None)
+                why = f"{why}; v20 refused_skipped={_v20_ref_skipped} alternatives={_v20_alt_n} order=cluster+interval_lb clusters={len(_v20_clusters)}"
             except Exception as _v20me:
                 print(f"[V20-MUST-WARN] {_v20me} — V18 order kept", flush=True)
         _must_carried = 0

@@ -290,7 +290,7 @@ def rank_must(items: list, positives_all: dict, symside: str, cluster_of: dict |
             lb = -abs(float(rec.get("best_delta") or 0.0)) * 1e-3  # weak proxy: measured positive, no interval
         same_cluster = 0.0
         if my_cluster is not None and cluster_of:
-            pos_syms = [syms[i] for i in (rec.get("pos_syms_idx") or []) if isinstance(i, int) and i < len(syms)] or list(rec.get("pos_syms_names") or [])
+            pos_syms = [s for s in (rec.get("pos_syms") or []) if isinstance(s, str)] or [syms[i] for i in (rec.get("pos_syms_idx") or []) if isinstance(i, int) and i < len(syms)]
             same_cluster = -1.0 if any(cluster_of.get(s) == my_cluster for s in pos_syms) else 0.0
         return (0, same_cluster, -lb, -float((linknet_p or {}).get(it) or 0.0))
 
@@ -343,6 +343,21 @@ def load_losing(cat_side: str, root=None) -> list:
             raise CatSideMismatch(f"CAT_SIDE_MISMATCH: {p}")
         d = d.get("items") or []
     return [x for x in d if isinstance(x, dict)]
+
+
+def load_clusters(cat_side: str, root=None) -> dict:
+    """data/learn/clusters_<CS>.json (brief §6.2 b: 60-day 15m return-correlation clusters) -> {sym_side: cluster_id}. Prefers the
+    residual clusters (`cluster_of_residual`, market factor removed) when present — the plain crypto clusters are one market-factor
+    blob (131 of 182 symbols in one cluster, 2026-10-22). Own cat_side only; {} when absent (fail-open: no cluster preference)."""
+    p = learn_path(f"clusters_{str(cat_side).upper()}.json", root)
+    try:
+        d = json.loads(p.read_text())
+    except Exception:
+        return {}
+    if str(((d.get("meta") or {}).get("cat_side")) or cat_side).upper() != str(cat_side).upper():
+        raise CatSideMismatch(f"CAT_SIDE_MISMATCH: {p}")
+    co = d.get("cluster_of_residual") or d.get("cluster_of") or {}
+    return {str(k): str(v) for k, v in co.items() if v is not None}
 
 
 def template_cands_from_map(bm) -> dict:

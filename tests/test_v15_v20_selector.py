@@ -163,3 +163,19 @@ def test_settle_record_has_no_delta_field():
 def test_template_cands_from_map(tmp_path):
     bm = json.loads(_bm(tmp_path, rows=ROWS).read_text())
     assert S.template_cands_from_map(bm) == {"BB_BOUNCE_ENTRY_TF": ["4h"], "DEAD_SWITCH": ["1"]}
+
+
+def test_load_clusters_prefers_residual_and_rank_uses_pos_syms_names(tmp_path):
+    (tmp_path / "data" / "learn").mkdir(parents=True)
+    (tmp_path / "data" / "learn" / "clusters_CRYPTO_LONG.json").write_text(json.dumps({"meta": {"cat_side": "CRYPTO_LONG"}, "cluster_of": {"A_LONG": "crypto-c1", "B_LONG": "crypto-c1", "ME_LONG": "crypto-c1"}, "cluster_of_residual": {"A_LONG": "r-c1", "B_LONG": "r-c2", "ME_LONG": "r-c1"}}))
+    co = S.load_clusters("CRYPTO_LONG", tmp_path)
+    assert co == {"A_LONG": "r-c1", "B_LONG": "r-c2", "ME_LONG": "r-c1"}
+    assert S.load_clusters("STOCKS_LONG", tmp_path) == {}
+    (tmp_path / "data" / "learn" / "clusters_CRYPTO_SHORT.json").write_text(json.dumps({"meta": {"cat_side": "CRYPTO_LONG"}, "cluster_of": {}}))
+    with pytest.raises(S.CatSideMismatch):
+        S.load_clusters("CRYPTO_SHORT", tmp_path)
+    pa = {"sym_sides": ["A_LONG", "B_LONG", "ME_LONG"], "rows": [], "pairs": [
+        {"key": "SW=1", "filter": "F=o", "lift_ci": [0.5, 1.0], "pos_syms": ["B_LONG"]},   # higher lb, other cluster
+        {"key": "SW=2", "filter": "F=o", "lift_ci": [0.2, 1.0], "pos_syms": ["A_LONG"]}]}  # same residual cluster as ME_LONG
+    assert S.rank_must(["SW=1@F=o", "SW=2@F=o"], pa, "ME_LONG", co) == ["SW=2@F=o", "SW=1@F=o"]
+    assert S.rank_must(["SW=1@F=o", "SW=2@F=o"], pa, "ME_LONG", None) == ["SW=1@F=o", "SW=2@F=o"]
