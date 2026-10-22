@@ -33133,12 +33133,13 @@ class MultiAccountTradeManager:
         # that refuses the vector's own dictates is the not-trading failure, not a protection. Native opens are still
         # halted after 3 trailing net losers; exits were never in scope (CLOSE/REDUCE match no token below).
         try:
-            # DEFAULT OFF since 2026-10-22 (USER on BLOCKED_SYM_HALT: "??? NOT MY CODe"). This gate and
-            # tools/v15_sym_halt.py first appear in the tree on 2026-10-16 23:42 and the switch is absent from
-            # SWITCH_BIBLE.json, i.e. it is not a measured TEMPLATE switch and never carried sweep proof — it is
-            # exactly what CLAUDE.md's NEW STRATEGY PROHIBITION forbids, and it spent the last six days refusing
-            # vector-dictated opens (12 on inf + 4 on flz in one 15-minute window). The code stays, inert, and
-            # V15_SYM_HALT_ENABLED=1 re-arms it for anyone who can show the proof it never had.
+            # SUSPENDED 2026-10-22 BY OPERATOR ORDER: "SYM_HALT should be suspended we are trading EXACTLY what the
+            # vectorized forward looking per_sym set of switches dictates - ANYTHING ELSE IS VOID." The 2026-10-15
+            # request this gate came from (crontab V15_SYM_HALT, "3 trailing losers since apply halts pair opens") is
+            # superseded: a trailing-loss count is live history, not a per_sym switch, so it may not veto the set.
+            # MEASURED while it was armed: 12 halted pairs across 4 accounts and 12 BLOCKED_SYM_HALT on inf + 4 on flz
+            # in a single 15-minute window, against 4,720 pending intents. Default OFF; V15_SYM_HALT_ENABLED=1 re-arms
+            # it only for whoever can show a per_sym switch that calls for it.
             _sh_on = str(os.environ.get("V15_SYM_HALT_ENABLED", "0")).lower() not in ("0", "false", "no")
             _sh_act = str(action or "").upper()
             if _sh_on and (_vd_exempt or _parity_vec_order(reason)):

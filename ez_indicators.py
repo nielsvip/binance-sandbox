@@ -3640,7 +3640,11 @@ class IndicatorOrchestrator:
 
     async def _save_loop(self) -> None:
         base_interval = float(getattr(config, "INDICATORS_SAVE_INTERVAL_SECONDS", 60.0))
-        save_interval = 90.0 if self.env == "macbook" else base_interval
+        # USER 2026-10-22: the operator's law is "the snapshot is NEVER more than 90 s stale". A 90 s save INTERVAL
+        # cannot satisfy a 90 s staleness CEILING — the age at the moment of each save is already ~90 s plus the
+        # save's own duration. MEASURED on this generation: 05:15:35 -> 05:17:12 with no save, age 97 s, a law
+        # breach with the engines reading throughout. 45 s leaves the ceiling intact with margin on a box at load 210.
+        save_interval = float(os.environ.get("EZIND_SAVE_INTERVAL_S", "45")) if self.env == "macbook" else base_interval
         last_periodic_save = time.time()
         # USER 2026-10-20 ("unlock and fix"): STEADY-STATE half of the warm-up trap. The [WARMUP] heartbeat fixed the
         # silent warm-up, but this loop then `continue`s every 1 s writing NOTHING until a save is due, and on the

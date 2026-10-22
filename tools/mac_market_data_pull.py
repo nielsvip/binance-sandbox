@@ -61,6 +61,7 @@ LOG = Path(os.environ.get("MD_LOG", "/Users/niels/logs/mac_market_data_pull_s1.l
 MAX_AGE = float(os.environ.get("MAC_MD_MAX_AGE_S", "90"))
 ROUNDS = int(os.environ.get("MAC_MD_ROUNDS", "11"))
 SLEEP_S = float(os.environ.get("MAC_MD_SLEEP_S", "5"))
+DEADLINE_S = float(os.environ.get("MAC_MD_DEADLINE_S", "58"))   # never run into the next cron minute even if ssh hangs
 DRY = os.environ.get("MAC_MD_DRY") == "1"
 MARGIN_S = 3.0           # a candidate must beat the engines' newest file by this much (jitter between probes)
 TOL_S = float(os.environ.get("MAC_MD_TOL_S", "120"))           # content tolerance vs the Mac's newest snapshot (median bar age, seconds)
@@ -509,7 +510,10 @@ class Run:
 
 def main():
     run = Run()
+    t_start = time.time()
     for index in range(ROUNDS):
+        if index and time.time() - t_start > DEADLINE_S:
+            break
         started = time.time()
         try:
             run.one_round()
