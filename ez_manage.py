@@ -64811,6 +64811,14 @@ async def main():
             # building it is the supported state. Flip either switch and it builds exactly as before.
             _hedge_on = bool(getattr(config, "HEDGE_MODE", False)) or bool(getattr(config, "OBLIGATORY_HEDGE_ENABLED", False))
             if not _hedge_on:
+                # The local name MUST be bound even when nothing is built: it is passed positionally to every
+                # per-account quick loop below, and QUICK_EMBED starts them all inside ONE try block. Leaving it
+                # unbound raised UnboundLocalError at the first hedge loop (monitor_hedge_health_loop) and that
+                # exception aborted the whole block BEFORE priority_exit_scan_loop / quick_exit_monitor_loop /
+                # quick_entry_monitor_loop / position_watchdog_loop were ever created — measured on fin at
+                # 2026-10-22 04:27:11Z: "[QUICK_EMBED] Failed to start quick loops: cannot access local variable
+                # 'hedge_engine'", i.e. the account ran with NO exit monitors at all.
+                hedge_engine = None
                 trade_manager.hedge_engine = None
                 logger.warning("[ez_manage] HedgeEngine SKIPPED — HEDGE_MODE=False and OBLIGATORY_HEDGE_ENABLED=False (USER 2026-10-22: disabled for over a year; not constructed, no hedge records loaded)")
             else:
@@ -65192,25 +65200,30 @@ async def main():
                     )
                 )
                 background_tasks.append(asyncio.create_task(registry.run_loop()))
-                background_tasks.append(
-                    asyncio.create_task(
-                        hedge_engine.monitor_hedge_health_loop(quick_stop_event)
-                    )
-                )
-                background_tasks.append(
-                    asyncio.create_task(
-                        hedge_engine.breathing_hedge_scan(quick_stop_event)
-                    )
-                )
                 # 2026-05-09 USER MANDATE: re-enable obligatory hedge-or-close periodic scanner inside QUICK_EMBED.
                 # scan_and_hedge_losers retains all 2026-03-30 cascade guards. Master kill via config.
-                background_tasks.append(
-                    asyncio.create_task(
-                        hedge_engine.obligatory_hedge_or_close_loop(
-                            quick_stop_event, sorted(_allowed)
+                # Guarded 2026-10-22: with hedging off there is no engine, and these three must not be the reason
+                # the exit/entry/watchdog loops below never start. They are hedge-only; the trading loops are not.
+                if hedge_engine is not None:
+                    background_tasks.append(
+                        asyncio.create_task(
+                            hedge_engine.monitor_hedge_health_loop(quick_stop_event)
                         )
                     )
-                )
+                    background_tasks.append(
+                        asyncio.create_task(
+                            hedge_engine.breathing_hedge_scan(quick_stop_event)
+                        )
+                    )
+                    background_tasks.append(
+                        asyncio.create_task(
+                            hedge_engine.obligatory_hedge_or_close_loop(
+                                quick_stop_event, sorted(_allowed)
+                            )
+                        )
+                    )
+                else:
+                    logger.warning("[QUICK_EMBED] 3 hedge loops SKIPPED (no HedgeEngine — hedging off); exit/entry/watchdog loops unaffected")
                 # _cross_account_hedge_scanner KILLED 2026-03-30: spreads bad positions to other accounts. Hedges only via breathing_hedge_scan.
                 for _ak in sorted(_allowed):
                     background_tasks.append(

@@ -254,6 +254,7 @@ def test_the_gate_runs_before_the_order_and_returns_without_placing_it():
 
 # ── the vector-copy law: live executes what the vector dictated, it never caps it ────────────────
 VEC_DICTATED = ("VEC_DRIVEN_REDUCE_PARTIAL", "VEC_DRIVEN_AUGMENT", "BOARD_CONVERGE_REDUCE",
+                "PURE_BOARD_REDUCE", "PURE_BOARD_AUGMENT",
                 "RECONCILE_TRIM", "EXIT_OWED_PARTIAL", "WT_CROSS_EXIT_1h_bear|VEC_EXACT",
                 "FIXED_STOP_HIT", "LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL",
                 "BALANCE_FLOOR_FORCE_REDUCE", "exit_guarantee FORCE", "BROKER_RECONCILED")
@@ -274,14 +275,20 @@ def test_a_vec_dictated_act_is_never_touched_at_any_setting():
         assert SDL.is_vec_dictated(reason), reason
 
 
-def test_is_vec_dictated_mirrors_the_live_definition_and_is_never_stricter():
-    """It must MIRROR ez_manage._voe_reason_is_vec, never be stricter — two definitions that drift are the bug."""
+def test_is_vec_dictated_is_never_stricter_than_either_live_definition():
+    """USER 2026-10-22: "there is NO reason a vector trade could ever be refused". So this predicate must be a
+    SUPERSET of both live definitions — _voe_reason_is_vec (the vec-only backstop) and _parity_vec_order (whose
+    docstring names exactly this class of gate: "may never be refused by a live opinion gate")."""
     import ez_manage
-    corpus = list(VEC_DICTATED) + ["PPL_TP_g3.05%", "SATOSHIT_EXIT_PARTIAL 0.70", "REGIME_REDUCE",
+    corpus = list(VEC_DICTATED) + ["PURE_BOARD_REDUCE", "PURE_BOARD_AUGMENT", "PPL_TP_g3.05%",
+                                   "SATOSHIT_EXIT_PARTIAL 0.70", "REGIME_REDUCE",
                                    "HLR_TOP_EXIT_SELL_TOP_g=2.10%", "UAG_LADDER gain_since_add +6.18%", ""]
     for r in corpus:
-        mine, theirs = SDL.is_vec_dictated(r), ez_manage._voe_reason_is_vec(r)
-        assert mine == theirs, f"{r!r}: twin={mine} ez_manage={theirs}"
+        if ez_manage._voe_reason_is_vec(r):
+            assert SDL.is_vec_dictated(r), f"{r!r}: stricter than the vec-only backstop"
+        if ez_manage._parity_vec_order(r):
+            assert SDL.is_vec_dictated(r), f"{r!r}: a vector order a live opinion gate may never refuse"
+    assert not SDL.is_vec_dictated("PPL_TP_g3.05%"), "a native take-profit is not a vector order"
 
 
 def test_a_native_wrong_way_scale_is_observed_by_default_and_refused_only_on_opt_in():
