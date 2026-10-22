@@ -115,6 +115,34 @@ def boards():
     return doc.get("sym_sides") or {}
 
 
+def best_settings(ss, bds):
+    """(settings, source) for one sym_side — USER 2026-10-22: SKIP_NO_PUBLISHED_BOARD IS DESTROYED. Every tradeable
+    key is evaluated and traded on the best settings that exist for it, in CLAUDE.md's own order: the latest published
+    board, else the per_sym best set through its sanctioned reader (per_sym_live_set.full_set: per_sym_store SQL row
+    primary, JSON views second), else that key's own pilot progress overrides, else the engine/live defaults. A key is
+    never skipped for want of a board again; the source is reported per pass so a defaults key is visible, not silent."""
+    ov = ((bds or {}).get(ss) or {}).get("overrides") or {}
+    if ov:
+        return ov, "published_board"
+    try:
+        import per_sym_live_set as _psl
+        fs = _psl.full_set(ss)
+        if fs:
+            return dict(fs), "per_sym_best"
+    except Exception:
+        pass
+    try:
+        prog = ROOT / "data" / "reports" / "lifecycle_pilot" / f"{ss}_v14_progress.json"
+        if prog.exists():
+            d = json.load(open(prog))
+            po = d.get("cumulative_overrides") or d.get("hustler_overrides") or {}
+            if po:
+                return dict(po), "pilot_progress"
+    except Exception:
+        pass
+    return {}, "live_defaults"
+
+
 def last_closed_bar(now=None):
     return (float(now or time.time()) // BAR_S) * BAR_S - BAR_S
 
@@ -470,11 +498,11 @@ def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=N
 
     jobs, skipped = [], []
     for ss in sorted(by_ss):
-        pb = bds.get(ss)
-        if not pb or not (pb.get("overrides") or {}):
-            skipped.append((ss, {"status": "SKIP_NO_PUBLISHED_BOARD", "actions": []}, None))
-            continue
-        jobs.append((ss, pb["overrides"], bar_ts))
+        ov, _src = best_settings(ss, bds)
+        stats[f"SETTINGS_{_src}"] += 1
+        if _src != "published_board":
+            log(f"NO PUBLISHED BOARD for {ss} — evaluating on {_src} (USER 2026-10-22: no key is skipped)")
+        jobs.append((ss, ov, bar_ts))
     results = list(skipped)
     def _drain(triples):
         for ss, res, pb in triples:
@@ -668,7 +696,8 @@ def main():
         + ("  [CLOSE-ONLY: the board's exits are traded, no new exposure]" if a.close_only else "")
         + ("  [LIVE ORDERS]" if a.live else "  [paper]"))
     if missing:
-        log(f"NO PUBLISHED BOARD (never traded by this script): {', '.join(missing[:12])}{' …' if len(missing) > 12 else ''}")
+        _fb = collections.Counter(best_settings(ss, bds)[1] for ss in missing)
+        log(f"NO PUBLISHED BOARD for {len(missing)} key(s) — all still traded, on their best existing settings {dict(_fb)} (USER 2026-10-22: SKIP_NO_PUBLISHED_BOARD destroyed): {', '.join(missing[:12])}{' …' if len(missing) > 12 else ''}")
     live_tm = None
     if a.live:
         clash = live_trader_running(accounts)

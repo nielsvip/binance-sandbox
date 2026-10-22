@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T00:40:04Z",
+ "generated_utc": "2026-10-22T01:00:09Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 613,
+    "filled_today": 620,
     "filled_before_open": 383
    },
-   "detail": "383 boards filled before the open (613 today)"
+   "detail": "383 boards filled before the open (620 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -27,12 +27,12 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "NO_STAMP",
+    "s1_stamp": "{\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",\"ended\":\"2026-10-21T13:15:53Z\"}",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 0.8,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261021=False, s1 stamp NO_STAMP, cat_side layer 0.8d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261021=False, s1 stamp {\"date\":\"20261021\",\"status\":\"FAILED\",\"failed_step\":\"3\",\"why\":\"build_cat_side_defaults_4 rc=1\",\"steps_ok\":\"1,2,2a,2b\",\"started\":\"2026-10-21T12:55:01Z\",, cat_side layer 0.8d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -211,21 +211,21 @@
    "critical": true,
    "measured": {
     "symbols": 199,
-    "stale_over_90min": 156,
-    "stale_pct": 78.4,
-    "median_age_min": 385.1,
+    "stale_over_90min": 117,
+    "stale_pct": 58.8,
+    "median_age_min": 90.2,
     "sample": [
-     "BLURUSDT",
-     "BNBUSDC",
-     "BOMEUSDC",
-     "BTCUSDC",
-     "C98USDT",
-     "CAKEUSDT",
-     "CELOUSDT",
-     "CELRUSDT"
+     "1000000MOGUSDT",
+     "1000BONKUSDC",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC"
     ]
    },
-   "detail": "156/199 symbols past the live 90-min entry gate (78.4%)"
+   "detail": "117/199 symbols past the live 90-min entry gate (58.8%)"
   },
   {
    "name": "s1_sets_synced",

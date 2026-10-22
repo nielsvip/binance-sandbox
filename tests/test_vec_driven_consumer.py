@@ -354,13 +354,36 @@ def test_margin_floor_refuses_open(tmp_path, monkeypatch):
     assert rows[-1]["result"] == "REFUSED_MARGIN_FLOOR"
 
 
-def test_one_open_per_sym_side_per_bar(tmp_path, monkeypatch):
+def test_dictates_not_refused_while_flat(tmp_path, monkeypatch):
+    """USER 2026-10-22: the per-bar cap is only correct WHEN A POSITION ACTUALLY EXISTS. Two OPEN dictates on a FLAT
+    key both reach the order path — a vector decision is never refused by a counter. (Old law: exactly 1 per bar,
+    which left the key flat for the whole bar whenever the first attempt was refused downstream.)"""
     base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
     now = time.time()
     _intent(vl, "a1", "BTCUSDT_LONG", "OPEN", now - 5)
     _intent(vl, "a2", "BTCUSDT_LONG", "OPEN", now - 4)
     _run_loop(tm, monkeypatch, cycles=1)
-    assert len(calls) == 1
+    assert len(calls) == 2, calls
+
+
+def test_same_bar_duplicate_dictates_collapse(tmp_path, monkeypatch):
+    """The lane writes one intent file per (account, sym_side, bar), so N files for the same sym_side+bar+type are ONE
+    vector decision: collapsed in the consumer, not refused by a cap downstream."""
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
+    bar = time.time() - 30
+    _intent(vl, "PB-ang-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
+    _intent(vl, "PB-men-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
+    _intent(vl, "PB-inf-BTCUSDT_LONG-OPEN", "BTCUSDT_LONG", "OPEN", bar)
+    _run_loop(tm, monkeypatch, cycles=1)
+    assert len(calls) == 1, calls
+
+
+def test_open_dictate_sends_nothing_when_already_held(tmp_path, monkeypatch):
+    """The only correct refusal of an OPEN: the account already holds the key (translate -> ALREADY_OPEN)."""
+    base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE, amts={"men:BTCUSDT_LONG": 5.0})
+    _intent(vl, "h1", "BTCUSDT_LONG", "OPEN", time.time() - 10)
+    _run_loop(tm, monkeypatch, cycles=1)
+    assert calls == [], calls
 
 
 def test_consumer_not_started_when_off():
