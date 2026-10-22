@@ -28691,11 +28691,13 @@ class MultiAccountTradeManager:
                     try:
                         import vec_decisions.dc_slope_incentive as _dcsi_live
 
-                        _dcsi_m = _dcsi_live.open_mult_live(
-                            i,
-                            bool(is_long),
-                            lambda _k, _d: _psym_get(symbol, position_side, _k, getattr(config, _k, _d)),
-                        )
+                        _dcsi_knobs = {
+                            "DC_SLOPE_INCENTIVE_ENABLED": _psym_get(symbol, position_side, "DC_SLOPE_INCENTIVE_ENABLED", getattr(config, "DC_SLOPE_INCENTIVE_ENABLED", False)),
+                            "DC_SLOPE_INCENTIVE_TF": _psym_get(symbol, position_side, "DC_SLOPE_INCENTIVE_TF", getattr(config, "DC_SLOPE_INCENTIVE_TF", "4h")),
+                            "DC_SLOPE_INCENTIVE_MIN_PCT": _psym_get(symbol, position_side, "DC_SLOPE_INCENTIVE_MIN_PCT", getattr(config, "DC_SLOPE_INCENTIVE_MIN_PCT", 0.0)),
+                            "DC_SLOPE_INCENTIVE_ENTRY_MULT": _psym_get(symbol, position_side, "DC_SLOPE_INCENTIVE_ENTRY_MULT", getattr(config, "DC_SLOPE_INCENTIVE_ENTRY_MULT", 2.0)),
+                        }
+                        _dcsi_m = _dcsi_live.open_mult_live(i, bool(is_long), lambda _k, _d: _dcsi_knobs.get(_k, _d))
                     except Exception:
                         _dcsi_m = 1.0
                     if _dcsi_m != 1.0:
@@ -41245,7 +41247,7 @@ class MultiAccountTradeManager:
                         )  # lowest profit first — trim the weakest winners
                         max_reduces = min(3, max(1, int(skew / 5)))
                         _reduced = 0
-                        for _rpk, _rpos, _rgain in _reduce_candidates:
+                        for _rpk, _rpos, _rgain in ([] if _voe_native_exits_disabled() else _reduce_candidates):  # USER 2026-10-21 vec-only exits: rebalance stood down, decision intact
                             if _reduced >= max_reduces:
                                 break
                             _reason = f"RATIO_REDUCE_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_breadth{_breadth_bias:.0%}_gain{_rgain:.1f}%"
@@ -41298,7 +41300,7 @@ class MultiAccountTradeManager:
                         _close_candidates.sort(key=lambda x: x[2])
                         _max_close = min(3, max(1, int(skew / 10)))
                         _closed = 0
-                        for _cpk2, _cpos2, _cgain2 in _close_candidates:
+                        for _cpk2, _cpos2, _cgain2 in ([] if _voe_native_exits_disabled() else _close_candidates):  # USER 2026-10-21 vec-only exits: rebalance stood down, decision intact
                             if _closed >= _max_close:
                                 break
                             _creason = f"RATIO_CLOSE_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_gain{_cgain2:.1f}%"
@@ -41375,7 +41377,7 @@ class MultiAccountTradeManager:
                         )  # smallest |wt15m delta| first
                         _ow_max = _cfg_i("RATIO_REBALANCE_MAX_CLOSES", 3)
                         _ow_closed = 0
-                        for _ow_pk, _ow_pos, _ow_gain, _ow_delta in _ow_candidates:
+                        for _ow_pk, _ow_pos, _ow_gain, _ow_delta in ([] if _voe_native_exits_disabled() else _ow_candidates):  # USER 2026-10-21 vec-only exits: rebalance stood down, decision intact
                             if _ow_closed >= _ow_max:
                                 break
                             _ow_reason = f"RATIO_CLOSE_OW_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_wt15Δ{_ow_delta:.1f}_g{_ow_gain:.2f}%"
@@ -41722,6 +41724,7 @@ class MultiAccountTradeManager:
                         _ree_enabled
                         and _current_ratio > _ree_threshold
                         and overweight_side == "LONG"
+                        and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits: emergency exit stood down, scan intact
                     ):
                         _ree_last = getattr(self, _ree_last_key, 0.0)
                         if time.time() - _ree_last >= _ree_cooldown:
@@ -52835,9 +52838,9 @@ async def process_position(
                     except Exception:
                         pass
                 if _nlk_veto and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
-                    logger.info(f"[NEWBORN_LOSS_KILL_VETOED] {position_key}: vetoed by HTF WT with position,
+                    logger.info(f"[NEWBORN_LOSS_KILL_VETOED] {position_key}: vetoed by HTF WT with position, not closing")
                 elif _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: would-fire leg stood down, falls through
-                    logger.info(f"[NEWBORN_LOSS_KILL_STOOD_DOWN] {position_key}: native exit disabled — no trade, decision unchanged") not closing")
+                    logger.info(f"[NEWBORN_LOSS_KILL_STOOD_DOWN] {position_key}: native exit disabled — no trade, decision unchanged")
                 else:
                     _nlk_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                     _nlk_is_long = position_side == "LONG"
@@ -58359,7 +58362,10 @@ async def process_position(
                                 logger.warning(
                                     f"⚠️ [HEDGE_FAILED] Could not create dual hedge for {position_key}: {hedge_result_stop}"
                                 )
-            result = await trade_manager.execute_now(
+            if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: hedge logic above stands, reduce dead
+                result = "SKIPPED_NON_VECTOR_EXIT_DISABLED"
+            else:
+                result = await trade_manager.execute_now(
                 position_key,
                 account_key,
                 symbol,
@@ -58372,7 +58378,7 @@ async def process_position(
                 f"REDUCE_HUGE_LOSS: {current_gain:.2f}% loss with indicators against",
                 True,
                 "REDUCE",
-            )
+                )
             if "SUCCESS" in result:
                 logger.info(
                     f"[🚨 REDUCE_HUGE_LOSS] {position_key}: Reduced position to pos_min_qty with {current_gain:.2f}% loss"

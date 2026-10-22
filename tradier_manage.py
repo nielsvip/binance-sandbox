@@ -47713,6 +47713,22 @@ class TradierTradeManager:
             ):
                 quantity += 0.3 * SP
 
+            # DC_SLOPE_INCENTIVE (2026-10-22): slope-aligned entries/augments open bigger, never gated
+            try:
+                import vec_decisions.dc_slope_incentive as _dcsi_live_tr
+
+                _dcsi_knobs_tr = {
+                    "DC_SLOPE_INCENTIVE_ENABLED": _cfg("DC_SLOPE_INCENTIVE_ENABLED", False, account_key, symbol, position_side),
+                    "DC_SLOPE_INCENTIVE_TF": _cfg("DC_SLOPE_INCENTIVE_TF", "4h", account_key, symbol, position_side),
+                    "DC_SLOPE_INCENTIVE_MIN_PCT": _cfg("DC_SLOPE_INCENTIVE_MIN_PCT", 0.0, account_key, symbol, position_side),
+                    "DC_SLOPE_INCENTIVE_ENTRY_MULT": _cfg("DC_SLOPE_INCENTIVE_ENTRY_MULT", 2.0, account_key, symbol, position_side),
+                }
+                _dcsi_m_tr = _dcsi_live_tr.open_mult_live(i, bool(is_long), lambda _k, _d: _dcsi_knobs_tr.get(_k, _d))
+            except Exception:
+                _dcsi_m_tr = 1.0
+            if _dcsi_m_tr != 1.0:
+                quantity = float(quantity) * float(_dcsi_m_tr)
+
             # Minimum viable checks
             exchange_min_qty = self.min_qty.get(symbol, 1.0)
             min_viable_qty = max(exchange_min_qty, 6.0 / current_price)
