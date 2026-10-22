@@ -1,9 +1,9 @@
 {
- "at": "2026-10-22T05:38:04Z",
+ "at": "2026-10-22T06:38:03Z",
  "reports": [
   {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261022.json",
-   "age_min": 92.7,
+   "age_min": 152.7,
    "applied": true,
    "n": null,
    "results": {
@@ -31,7 +31,7 @@
   },
   {
    "path": "/Users/niels/Documents/binance/data/daily_chain/persym_golive_20261021_refresh_2155.json",
-   "age_min": 433.2,
+   "age_min": 493.1,
    "applied": true,
    "n": null,
    "results": {
@@ -58,6 +58,7 @@
   }
  ],
  "fails": [
+  "newest go-live report is 153 min old (> 135) \u2014 V15_GOLIVE_REFRESH is not landing, live keeps its old sets",
   "two consecutive runs still had pending sets (6 then 144) \u2014 live is not converging on the boards",
   "132 sym_sides keep an older set because go-live refused the latest board (> 80)"
  ],

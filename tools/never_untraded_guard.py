@@ -98,18 +98,43 @@ def log(msg: str) -> None:
         pass
 
 
-def _engines_local() -> dict:
-    """{account: n} engines on this host. Excludes wrappers and any shell: `ps` once, match in python, so no
-    pgrep self-match can inflate or hide a count (both happened today)."""
-    out = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True).stdout
+def _etime_s(tok: str) -> float:
+    """ps etime ([[dd-]hh:]mm:ss) -> seconds. Unparseable reads as 0 (treated as brand new, never as stable)."""
+    try:
+        days, _, rest = tok.partition("-")
+        if not rest:
+            days, rest = "0", days
+        parts = [float(p) for p in rest.split(":")]
+        while len(parts) < 3:
+            parts.insert(0, 0.0)
+        return float(days) * 86400 + parts[0] * 3600 + parts[1] * 60 + parts[2]
+    except Exception:
+        return 0.0
+
+
+def _engines_local() -> tuple:
+    """({account: n}, {account: oldest engine age s}) on this host. Excludes wrappers and any shell: `ps` once,
+    match in python, so no pgrep self-match can inflate or hide a count (both happened today).
+
+    The AGE is why this returns two dicts (2026-10-22). A count alone cannot tell a trading engine from one that is
+    being killed and respawned: during the mac_pos_writer_keepalive orphan storm the per-account count flapped 0<->1
+    on every 30 s sample, and the caller's `st.pop(key)` erased the outage clock on each sighting, so `untraded_s`
+    never reached GRACE_S and this guard logged WITHIN_GRACE for ~50 min while fin had gone 54 min with no execution
+    and was restarted 8 times between 05:54 and 06:24Z. An engine younger than MIN_STABLE_S has not yet proven it
+    can trade, so it may not be used to forget an outage already in progress.
+    """
+    out = subprocess.run(["ps", "-eo", "etime=,args="], capture_output=True, text=True).stdout
     n = {a: 0 for a in CRYPTO + STOCKS}
+    age = {a: 0.0 for a in CRYPTO + STOCKS}
     for ln in out.split("\n"):
         if "python" not in ln or "run_with_watchdog" in ln or "bash -c" in ln:
             continue
         m = re.search(r"ez_manage\.py\s+--account\s+(\w+)", ln) or re.search(r"tradier_manage\.py\s+--accounts\s+(\w+)", ln)
         if m and m.group(1) in n:
-            n[m.group(1)] += 1
-    return n
+            acct = m.group(1)
+            n[acct] += 1
+            age[acct] = max(age[acct], _etime_s(ln.strip().split()[0]))
+    return n, age
 
 
 def _engines_s1() -> dict | None:
@@ -183,7 +208,7 @@ def main() -> int:
         st = json.loads(STATE.read_text())
     except Exception:
         st = {}
-    here, there, lease = _engines_local(), _engines_s1(), _lease()
+    (here, here_age), there, lease = _engines_local(), _engines_s1(), _lease()
     holder = str(lease.get("holder") or "")
     try:
         lease_age = now - float(lease.get("fetched_epoch") or 0)
