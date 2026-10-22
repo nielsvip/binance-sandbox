@@ -281,9 +281,23 @@ engine_keepalive() {
   # dictates pending in the spool AND the ledger not advancing => this account is not trading => repair it locally.
   # Local repair first; mac_failover_agent still raises not_trading_account (30 s) for the S1 path when repair fails.
   local nt_ledger="$BASE/data/vec_live/live_exec_${A}.jsonl"
-  local nt_limit="${MAC_NOT_TRADING_S:-120}"
-  local nt_age nt_pending
-  nt_age=$(age_of "$nt_ledger")
+  # 900 s = one 15m bar, NOT the operator's 30 s target, and the gap is a measurement limit I must not paper over:
+  # this ledger only gains rows when dictates are PROCESSED, and dictates arrive per bar, so a healthy account is
+  # legitimately quiet for minutes — flz booked 23 SUCCESS in the hour its ledger sat 208 s idle. At 120 s this rule
+  # flagged four of five healthy accounts. Detecting a stall in 30 s needs a signal that ticks continuously (a
+  # per-cycle consumer heartbeat), which does not exist yet; until it does, this catches only an unambiguously dead
+  # account — a full bar with work pending and nothing processed.
+  local nt_limit="${MAC_NOT_TRADING_S:-900}"
+  local nt_age nt_pending nt_mt
+  # NOT age_of(): that helper greps the FIRST "ts" field out of the file, which is correct for a single-object
+  # heartbeat but on an append-only JSONL ledger returns the OLDEST row. 2026-10-22 05:54Z it therefore reported
+  # 31,224s / 37,875s / 341,946s for ledgers that were seconds old and this rule killed ALL FIVE engines, including
+  # inf and flz which were actively trading (15 and 23 SUCCESS in the preceding hour). Use the file's mtime, and when
+  # the ledger cannot be read treat it as fresh — an unreadable signal must never cost a running engine.
+  nt_mt=0
+  [ -f "$nt_ledger" ] && nt_mt=$(/usr/bin/stat -f %m "$nt_ledger" 2>/dev/null || echo 0)
+  case "$nt_mt" in ''|*[!0-9]*) nt_mt=0 ;; esac
+  if [ "$nt_mt" -gt 0 ]; then nt_age=$(( now - nt_mt )); else nt_age=0; fi
   nt_pending=$(/bin/ls "$BASE/data/vec_live/intents/" 2>/dev/null | /usr/bin/grep -c "^PB-${A}-" 2>/dev/null || echo 0)
   case "$nt_pending" in ''|*[!0-9]*) nt_pending=0 ;; esac
   if [ -n "$mgr_pids" ] && [ "$nt_pending" -gt 0 ] && [ "$nt_age" -gt "$nt_limit" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then

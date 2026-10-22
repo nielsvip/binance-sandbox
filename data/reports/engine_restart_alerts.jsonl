@@ -32,3 +32,4 @@
 {"ts":1792648030,"account":"fin","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (128s > 120s) but the 24h restart budget is spent (last restart 2699s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
 {"ts":1792648143,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (321s > 120s) but the 24h restart budget is spent (last restart 9679s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
 {"ts":1792648337,"account":"men","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (138s > 120s) but the 24h restart budget is spent (last restart 3001s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"}
+{"ts":1792648461,"account":"flz","kind":"engine_restart_suppressed","msg":"NOT TRADING: 274 dictate(s) pending and live_exec_flz.jsonl has not advanced in 37343s (> 120s) while the engine is up — replacing the engine"}

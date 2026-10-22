@@ -1,79 +1,79 @@
 {
-  "flz:BTCUSDC_LONG": {
-    "orderId": "1000002636411256",
-    "stopPrice": 82492.2,
-    "entry_sig": "2026-10-22 05:03:39.731000+00:00",
-    "symbol": "BTCUSDC",
+  "ang:BEAMXUSDT_LONG": {
+    "orderId": "4000001986178639",
+    "stopPrice": 0.003075,
+    "entry_sig": "2026-10-22 04:17:20.414000+00:00",
+    "symbol": "BEAMXUSDT",
     "side": "LONG"
   },
-  "flz:BTCDOMUSDT_LONG": {
-    "orderId": "1000002636399458",
-    "stopPrice": 5501.5,
-    "entry_sig": "2026-10-22 03:01:29.308000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
-  "flz:WLDUSDC_SHORT": {
-    "orderId": "1000002636444441",
-    "stopPrice": 0.5533,
-    "entry_sig": "2026-10-22 05:30:07.540000+00:00",
-    "symbol": "WLDUSDC",
+  "ang:TRUMPUSDC_SHORT": {
+    "orderId": "4000001986069523",
+    "stopPrice": 1.866,
+    "entry_sig": "2026-10-22 03:15:10.272000+00:00",
+    "symbol": "TRUMPUSDC",
     "side": "SHORT"
   },
-  "flz:SOLUSDC_SHORT": {
-    "orderId": "1000002636449734",
-    "stopPrice": 105.5,
-    "entry_sig": "2026-10-22 05:34:21.630000+00:00",
-    "symbol": "SOLUSDC",
+  "ang:BCHUSDC_SHORT": {
+    "orderId": "4000001986184037",
+    "stopPrice": 291.65,
+    "entry_sig": "2026-10-22 04:20:48.779000+00:00",
+    "symbol": "BCHUSDC",
     "side": "SHORT"
   },
-  "flz:DASHUSDT_LONG": {
-    "orderId": "1000002636370408",
-    "stopPrice": 50.2,
-    "entry_sig": "2026-10-22 04:09:32.424000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "LONG"
-  },
-  "flz:DOGEUSDC_SHORT": {
-    "orderId": "1000002636286722",
+  "ang:DOGEUSDC_SHORT": {
+    "orderId": "4000001986073824",
     "stopPrice": 0.08379,
-    "entry_sig": "2026-10-22 03:20:33.126000+00:00",
+    "entry_sig": "2026-10-22 03:16:58.828000+00:00",
     "symbol": "DOGEUSDC",
     "side": "SHORT"
   },
-  "flz:GRAMUSDT_SHORT": {
-    "orderId": "1000002636449783",
-    "stopPrice": 1.375,
-    "entry_sig": "2026-10-22 05:08:56.834000+00:00",
-    "symbol": "GRAMUSDT",
-    "side": "SHORT"
-  },
-  "flz:DASHUSDT_SHORT": {
-    "orderId": "1000002636452211",
-    "stopPrice": 51.04,
-    "entry_sig": "2026-10-22 05:36:04.157000+00:00",
-    "symbol": "DASHUSDT",
-    "side": "SHORT"
-  },
-  "flz:ZECUSDC_SHORT": {
-    "orderId": "1000002636458330",
-    "stopPrice": 1277.24,
-    "entry_sig": "2026-10-22 05:40:59.297000+00:00",
-    "symbol": "ZECUSDC",
-    "side": "SHORT"
-  },
-  "flz:XRPUSDC_LONG": {
-    "orderId": "1000002636458560",
-    "stopPrice": 1.3391,
-    "entry_sig": "2026-10-22 05:41:14.181000+00:00",
+  "ang:XRPUSDC_SHORT": {
+    "orderId": "4000001986186693",
+    "stopPrice": 1.3985,
+    "entry_sig": "2026-10-22 04:22:44.989000+00:00",
     "symbol": "XRPUSDC",
+    "side": "SHORT"
+  },
+  "ang:GALAUSDT_SHORT": {
+    "orderId": "4000001986194049",
+    "stopPrice": 0.002031,
+    "entry_sig": "2026-10-22 04:17:12.433000+00:00",
+    "symbol": "GALAUSDT",
+    "side": "SHORT"
+  },
+  "ang:XLMUSDT_SHORT": {
+    "orderId": "4000001986170229",
+    "stopPrice": 0.18515,
+    "entry_sig": "2026-10-22 04:12:45.568000+00:00",
+    "symbol": "XLMUSDT",
+    "side": "SHORT"
+  },
+  "ang:SNXUSDT_SHORT": {
+    "orderId": "4000001986176596",
+    "stopPrice": 0.234,
+    "entry_sig": "2026-10-22 04:16:14.512000+00:00",
+    "symbol": "SNXUSDT",
+    "side": "SHORT"
+  },
+  "ang:AXSUSDT_SHORT": {
+    "orderId": "4000001986053455",
+    "stopPrice": 1.0696,
+    "entry_sig": "2026-10-22 03:06:28.968000+00:00",
+    "symbol": "AXSUSDT",
+    "side": "SHORT"
+  },
+  "ang:1000FLOKIUSDT_SHORT": {
+    "orderId": "4000001986271158",
+    "stopPrice": 0.02418,
+    "entry_sig": "2026-03-09 12:48:10.749615+00:00",
+    "symbol": "1000FLOKIUSDT",
+    "side": "SHORT"
+  },
+  "ang:XMRUSDT_LONG": {
+    "orderId": "4000001986056248",
+    "stopPrice": 569.3,
+    "entry_sig": "2026-10-22 03:07:58.884000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
-  },
-  "flz:XRPUSDC_SHORT": {
-    "orderId": "1000002636461644",
-    "stopPrice": 1.3637,
-    "entry_sig": "2026-10-22 05:38:38.865000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
   }
 }
