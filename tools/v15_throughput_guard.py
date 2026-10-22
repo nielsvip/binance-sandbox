@@ -247,6 +247,15 @@ def binding_reason(h, tick, target, improved, win, d=None):
         if ceil_demand < target:
             per = (board_cores / running) if running else 0.0
             need = target * float(cpu_s) / 3600.0
+            if per <= 0:
+                # USER 2026-10-22: `need / per` raised ZeroDivisionError on EVERY hourly run, so the guard that exists to
+                # report an idle host crashed exactly when a host went idle (running=0 -> per=0). Measured 2026-10-22 03:10Z:
+                # s2/s5/s6 starved at 0/6 while this guard died at line 252 each hour and alerted nobody. Report, never divide.
+                return (f"host IDLE, not CPU-bound: {running} running sides pull {board_cores:.1f} cores of {avail:.1f} "
+                        f"usable -> {ceil_demand:.1f} boards/h against target {target}/h. Nothing is dispatched here: "
+                        f"{target}/h needs {need:.1f} board-cores. Check the scheduler's idle_reason for this host "
+                        f"(slots {t.get('slots') if isinstance(t, dict) else '?'}) and whether the round is exhausted "
+                        f"(tools/v15_round_watchdog.sh quorum rule rolls it).")
             return (f"board CPU DEMAND, not host capacity: {running} running sides pull only {board_cores:.1f} "
                     f"cores ({per:.2f} core/side) of {avail:.1f} usable -> {ceil_demand:.1f} boards/h. "
                     f"{target}/h needs {need:.1f} board-cores = {need / per:.0f} sides at this per-side draw "

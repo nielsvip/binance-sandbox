@@ -26350,6 +26350,11 @@ class MultiAccountTradeManager:
                     elif now - _pulse.get(account_key, 0.0) > 60.0:
                         _pulse[account_key] = now
                         logger.warning(f"🧭 [VEC_DRIVEN_PULSE] {account_key}: nothing to converge — modes={len(modes)} live={sum(1 for _v in modes.values() if _v == 'live')} intents_on_disk={len(intents)} | skips {dict(_rc_skip)}")
+                    # USER 2026-10-22: one ledger write per account per pass, not one per marked intent.
+                    try:
+                        store.flush()
+                    except Exception as _fl_e:
+                        logger.warning(f"[VEC_DRIVEN] {account_key}: consumed-store flush failed: {_fl_e}")
             except asyncio.CancelledError:
                 break
             except Exception as _vdc_e:

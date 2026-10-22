@@ -1,5 +1,5 @@
 {
- "at": "2026-10-22T03:12:08Z",
+ "at": "2026-10-22T03:15:08Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
@@ -13,9 +13,9 @@
    "mem_avail_mb": null,
    "load1": null,
    "nproc": null,
-   "slots": null,
-   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
-   "error": "Connection timed out during banner exchange\nConnection to 127.0.0.1 port 2201 timed out\n",
+   "slots": "3/8",
+   "binding_reason": "concurrency 3 boards: 12/h needs <= 15 min per sym_side \u2014 raise concurrent sides or cut evals per board",
+   "error": "no output",
    "published": null,
    "cadence_target_min": 5.0,
    "minutes_since_last_improved": null,
@@ -46,11 +46,11 @@
     "MRVL_LONG",
     "XOP_LONG"
    ],
-   "mem_avail_mb": 14538,
-   "load1": 35.41,
+   "mem_avail_mb": 13417,
+   "load1": 37.32,
    "nproc": 16,
-   "slots": null,
-   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side (measured median 18 min) \u2014 raise concurrent sides or cut evals per board",
+   "slots": "6/8",
+   "binding_reason": "scheduler mem guard (disk 28468 MB, mem 13987 MB, est_pair 6315 MB) \u2014 slots 6/8",
    "error": null,
    "published": [
     {
@@ -62,19 +62,20 @@
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 55.0,
+   "minutes_since_last_improved": 57.8,
    "last_improved_symside": "RVNUSDT_LONG",
    "cadence_ok": false,
-   "improved_gap_min_median_24h": 8.5,
+   "improved_gap_min_median_24h": 8.2,
    "improved_gap_min_max_24h": 149.9,
-   "improved_finishes_24h": 106,
-   "board_cpu_s_median_24h": 1814.4,
-   "board_wall_s_median_24h": 1063.8476328849792,
-   "board_cores": 15.79,
-   "nonboard_cores_competing": 0,
+   "improved_finishes_24h": 105,
+   "board_cpu_s_median_24h": 1809.0,
+   "board_wall_s_median_24h": 1059.478718996048,
+   "board_cores": 15.87,
+   "nonboard_cores_competing": 0.06,
    "nonboard_cores_niced": 0,
    "cores_by_bucket": {
-    "boards": 15.79
+    "other": 0.06,
+    "boards": 15.87
    },
    "cores_by_bucket_niced": {}
   }

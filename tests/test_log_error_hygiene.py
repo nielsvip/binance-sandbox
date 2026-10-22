@@ -131,7 +131,7 @@ def _ctx(coro_qualname, exc):
     }
 
 
-class _BinanceAPIException(Exception):
+class BinanceAPIException(Exception):
     pass
 
 
@@ -140,7 +140,7 @@ def test_loop_handler_demotes_known_benign():
     loop = _FakeLoop()
     EZ._ez_loop_exception_handler(loop, _ctx("Redis.execute_command", TimeoutError("Timeout reading from 127.0.0.1:6380")))
     EZ._ez_loop_exception_handler(loop, _ctx("Redis.execute_command", ConnectionError("refused")))
-    EZ._ez_loop_exception_handler(loop, _ctx("to_thread", _BinanceAPIException("{'code':-2011}")))
+    EZ._ez_loop_exception_handler(loop, _ctx("to_thread", BinanceAPIException("{'code':-2011}")))
     EZ._ez_loop_exception_handler(loop, _ctx("TradierDedupeGuard._fetch_orders", TimeoutError()))
     assert loop.defaults == []
     assert sum(EZ._LOOP_EXC_STATS.values()) == 4
@@ -192,7 +192,7 @@ def test_watchdog_cancels_pending_dump(monkeypatch):
 
     async def _main():
         task = asyncio.ensure_future(EZ._ez_loop_lag_watchdog())
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.1)
         task.cancel()
         try:
             await task

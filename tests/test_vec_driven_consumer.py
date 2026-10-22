@@ -93,12 +93,20 @@ def test_make_reason_neutralises_classifier_tokens():
     assert "CLOSE" in VD.make_reason("CLOSE", "x") and VD.is_vec_driven_reason(r)
 
 
-def test_consumed_store_persists(tmp_path):
+def test_consumed_store_persists_on_flush(tmp_path):
+    """USER 2026-10-22: marks are in-memory and the pass flushes once. mark() used to rewrite the whole ledger every
+    call, which is why the accounts with the biggest ledgers (men 819 KB, fin 321 KB) stopped trading entirely."""
     s = VD.ConsumedStore(tmp_path / "c.json")
     s.mark("a")
     s.mark_reconcile("X_LONG", 123)
+    # Visible to this process at once — idempotency within the pass does not wait for disk.
+    assert s.has("a") and s.reconcile_done("X_LONG", 123)
+    # Not yet on disk: one write per pass is the whole point.
+    assert not VD.ConsumedStore(tmp_path / "c.json").has("a")
+    s.flush()
     s2 = VD.ConsumedStore(tmp_path / "c.json")
     assert s2.has("a") and s2.reconcile_done("X_LONG", 123) and not s2.has("b")
+    s.flush()  # no-op when nothing was marked since the last flush
 
 
 def test_open_caps_bar_cap_needs_a_real_position():

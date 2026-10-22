@@ -40,5 +40,26 @@
     "entry_sig": "2026-10-22 03:02:12.484000+00:00",
     "symbol": "ZENUSDT",
     "side": "SHORT"
+  },
+  "inf:KMNOUSDT_LONG": {
+    "orderId": "2000001530954394",
+    "stopPrice": 0.04066,
+    "entry_sig": "2026-10-22 03:15:00.533000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
+  "inf:ONEUSDT_SHORT": {
+    "orderId": "2000001530958510",
+    "stopPrice": 0.0015143,
+    "entry_sig": "2026-10-22 03:16:57.708000+00:00",
+    "symbol": "ONEUSDT",
+    "side": "SHORT"
+  },
+  "inf:VETUSDT_SHORT": {
+    "orderId": "2000001530953666",
+    "stopPrice": 0.007706,
+    "entry_sig": "2026-10-22 03:14:39.397000+00:00",
+    "symbol": "VETUSDT",
+    "side": "SHORT"
   }
 }
