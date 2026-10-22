@@ -1,11 +1,45 @@
 {
- "at": "2026-10-22T09:45:02Z",
+ "at": "2026-10-22T10:00:18Z",
  "s1": {
-  "error": "s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: kex_exchange_identification: read: Connection reset by peer\nConnection reset by 157.180.125.52 port 22"
+  "host": "niels",
+  "now": 1792663214.594295,
+  "merge_crypto": {
+   "n": 12,
+   "max_lag_min": 15.0,
+   "median_lag_min": 0.0,
+   "worst": "AAVEUSDC",
+   "dead": []
+  },
+  "merge_stocks": {
+   "n": 12,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
+   "worst": "A",
+   "dead": []
+  },
+  "npz_legacy_crypto": [
+   "HBARUSDC",
+   "NEOUSDC",
+   "WLFIUSDC",
+   "XVGUSDT"
+  ],
+  "append_log_age_min": 28.2,
+  "append_last_secs": 1317.8,
+  "append_last_stats": "'appended': 749, 'created': 0, 'up_to_date': 5310, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "npz_loop_pids": 9,
+  "npz_loop_has_settle": true,
+  "sched_tick_age_min": 2.2,
+  "sched_launched": 0,
+  "archive_n": 188,
+  "archive_mb": 2230.5,
+  "archive_newest_min": 97.4,
+  "_via": "s1-int"
  },
  "red": [
-  "s1 unreachable: s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: kex_exchange_identification: read: Connection reset by peer\nConnection reset by 157.180.125.52 port 22"
+  "L2 appender silent for 28.2 min (cron */5) "
  ],
- "warn": [],
+ "warn": [
+  "L3 4 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC NEOUSDC WLFIUSDC XVGUSDT"
+ ],
  "ok": false
 }
