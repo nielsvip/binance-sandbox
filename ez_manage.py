@@ -7986,8 +7986,10 @@ def _broker_sync_freshest_ts(*candidates):
             continue
         try:
             c = cand.replace(tzinfo=timezone.utc) if getattr(cand, 'tzinfo', None) is None else cand
+            # USER 2026-10-22: epoch-0/1970 sentinel = never synced, not a
+            # 56-year-old sync (men 19:22Z refused vec OPENs on it).
             if c.year < 2020:
-                continue  # USER 2026-10-22: epoch-0/1970 sentinel = never synced, not a 56-year-old sync (men 19:22Z refused vec OPENs on it)
+                continue
             if best is None or c > best:
                 best = c
         except Exception:
@@ -33247,7 +33249,9 @@ class MultiAccountTradeManager:
                     pass
                 try:
                     _bs_acct2 = (str(position_key).split(":", 1)[0] if position_key and ":" in str(position_key) else account_key) or ""
-                    _truth_age_bs = min(_ptruth.truth_slot_age_s(_bb, _bs_acct2) for _bb in ("binance", "tradier")) if _bs_acct2 else float("inf")
+                    _truth_age_bs = (
+                        min(_ptruth.truth_slot_age_s(_bb, _bs_acct2) for _bb in ("binance", "tradier")) if _bs_acct2 else float("inf")
+                    )
                     if _truth_age_bs < _age:
                         _age = _truth_age_bs
                 except Exception:

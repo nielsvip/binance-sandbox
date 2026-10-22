@@ -2897,10 +2897,40 @@ def forward_pick_prev(candidates, cur_ts_last, min_gap_s=3600.0):
     return _best
 
 
+def forward_prev_best_candidates(symside, prev_best_dir=None) -> list:
+    """2026-10-22 (V20 network: FORWARD labels were 0 in every production log because the only previous-set source was the
+    .npzprev sidecar of the SAME progress dir — a run roll or a host change means no previous set is ever found). Second source:
+    the sets the dispatch ships from per_sym_history to ~/v15_prev_best/<SS>.json ({sets: [{overrides, gain_recorded, updated_at}]}).
+    `updated_at` (publish time) is a CONSERVATIVE proxy for that board's NPZ end: the true end is earlier, so bars after it are
+    certainly unseen and nothing seen can leak into the forward window; every record carries ts_source='updated_at_proxy'."""
+    _out = []
+    try:
+        _dir = Path(prev_best_dir or os.environ.get("V15_PREV_BEST_DIR") or os.path.expanduser("~/v15_prev_best"))
+        _p = _dir / f"{symside}.json"
+        if not _p.exists():
+            return _out
+        _pj = json.loads(_p.read_text())
+        for _s in (_pj.get("sets") or []):
+            if not isinstance(_s, dict):
+                continue
+            _ov = {k: v for k, v in ((_s.get("overrides") or _s.get("full_set") or {}).items()) if not (isinstance(v, str) and " + " in v)}
+            _ua = _s.get("npz_last_bar_ts") or _s.get("ts_last") or _s.get("updated_at")
+            if not _ov or not _ua:
+                continue
+            try:
+                _tl = float(_ua) if not isinstance(_ua, str) else datetime.datetime.fromisoformat(str(_ua).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                continue
+            _out.append({"src": f"prev_best:{_pj.get('source') or 'per_sym_history'}", "ts_last": _tl, "ts_source": ("updated_at_proxy" if not (_s.get("npz_last_bar_ts") or _s.get("ts_last")) else "npz_last_bar_ts"), "final_gain": _s.get("gain_recorded", _s.get("gain_pct")), "overrides": _ov})
+    except Exception:
+        pass
+    return _out
+
+
 def forward_prev_candidates(symside, progress_dir=None) -> list:
     """Task 04.1 source: archived refresh boards (.npzprev_*.json sidecars written at RULE#4 refill) for this
-    symside, each {src, ts_last, final_gain, overrides}. Read-only; [] on any error."""
-    _out = []
+    symside, each {src, ts_last, final_gain, overrides}, PLUS (2026-10-22) the dispatch-shipped prev_best sets. Read-only; [] on any error."""
+    _out = list(forward_prev_best_candidates(symside))
     try:
         _d = Path(progress_dir) if progress_dir else PROGRESS_DIR
         _files = sorted(_d.glob(f"{symside}_v14_progress.json.npzprev_*.json"), key=lambda q: q.stat().st_mtime)
@@ -2971,7 +3001,7 @@ def run_forward_score(symside, cur_ts_last, defaults, delta_log_fn=None, progres
                 _rb = _pick(_eps_f(_prep, _sov, int(_win)) or {})
             except Exception as _le:
                 _rb = {"gain_pct": None, "trades": None, "max_dd_pct": None, "tim_pct": None, "pool_sharpe": None, "valid": None, "error": f"{_le}"[:120]}
-            _rec = {"ts": utcnow(), "sym_side": symside, "label": "FORWARD", "key": _key, "d_gain": _d(_rb.get("gain_pct"), _fb.get("gain_pct")), "d_trades": _d(_rb.get("trades"), _fb.get("trades")), "d_dd": _d(_rb.get("max_dd_pct"), _fb.get("max_dd_pct")), "d_tim": _d(_rb.get("tim_pct"), _fb.get("tim_pct")), "d_sharpe": _d(_rb.get("pool_sharpe"), _fb.get("pool_sharpe")), "unseen_bars": _unseen_bars, "prev_npz_end": _prev.get("ts_last"), "window_days": int(_win), "src": _prev.get("src")}
+            _rec = {"ts": utcnow(), "sym_side": symside, "label": "FORWARD", "key": _key, "prev_src": _prev.get("src"), "prev_ts_source": _prev.get("ts_source") or "npzprev", "d_gain": _d(_rb.get("gain_pct"), _fb.get("gain_pct")), "d_trades": _d(_rb.get("trades"), _fb.get("trades")), "d_dd": _d(_rb.get("max_dd_pct"), _fb.get("max_dd_pct")), "d_tim": _d(_rb.get("tim_pct"), _fb.get("tim_pct")), "d_sharpe": _d(_rb.get("pool_sharpe"), _fb.get("pool_sharpe")), "unseen_bars": _unseen_bars, "prev_npz_end": _prev.get("ts_last"), "window_days": int(_win), "src": _prev.get("src")}
             _recs.append(_rec)
             if delta_log_fn is not None:
                 try:
