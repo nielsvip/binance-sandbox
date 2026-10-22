@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T14:21:55Z",
+ "generated_utc": "2026-10-22T14:27:53Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 1859.0,
+  "age_s": 2216.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 45502,
-  "proc_age_s": 24819.0,
-  "log_age_s": 366.4,
+  "proc_age_s": 25177.0,
+  "log_age_s": 43.2,
   "warmup_done": true,
   "timeframes_since_restart": [
    "3m",
@@ -54,21 +54,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792678625.3167357,
-  "mac_snapshot_age_s": 46.69197964668274,
+  "hb_mtime": 1792678988.307017,
+  "mac_snapshot_age_s": 34.95638871192932,
   "mac_stale": false,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-22T14:17:11Z",
-  "lease_reason": "manual force-mac",
-  "now": 1792678676.9581704,
-  "from_cache_age_s": 236.0,
-  "heartbeat_age_s": 51.6,
-  "active_s": 76494.8,
+  "lease_since": "2026-10-22T14:22:43Z",
+  "lease_reason": "yield crypto: S1 was not running it and holds nothing else",
+  "now": 1792679035.1527781,
+  "from_cache_age_s": 238.4,
+  "heartbeat_age_s": 46.8,
+  "active_s": 76852.9,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 1858s old (> 600s). ez_indicators pid=45502 warmup_done=True tfs_since_restart=['3m', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 2216s old (> 600s). ez_indicators pid=45502 warmup_done=True tfs_since_restart=['3m', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
