@@ -38080,7 +38080,14 @@ class MultiAccountTradeManager:
                             return "SUCCESS_VIA_FALLBACK"
                         return "FAILED_VERIFICATION_AND_FALLBACK"
                 else:
-                    if executed_qty < 0:
+                    # USER 2026-10-22 TOTAL PARITY: on an ENTRY there is no double-close to protect against, so a
+                    # suppress-sentinel (lock busy / zero qty / AUG timeout) must not swallow the vector's dictate —
+                    # measured this day, 15 of 19 parity breaches were exactly this gate on vec OPENs. A vec-dictated
+                    # entry takes the webhook fallback instead; zero qty is still impossible to send (@ez_confirmed).
+                    # The REDUCE/exit maker path keeps its refusal — that one really can double-close.
+                    if executed_qty < 0 and _parity_vec_order(reason) and not _is_reduce:
+                        logger.warning(f"[MAKER_SUPPRESS_PARITY_FALLBACK] {position_key}: maker suppress-sentinel on a vec-dictated {action} — taking the webhook fallback instead of refusing (USER 2026-10-22)")
+                    elif executed_qty < 0:
                         logger.warning(
                             f"⛔ [MAKER_FAILED_SUPPRESS_WEBHOOK] {position_key}: Maker returned suppress-sentinel (lock busy / zero qty / AUG timeout) — NOT firing webhook fallback"
                         )

@@ -4638,3 +4638,42 @@ sizing knobs from `CRYPTO_MIN_SIZE_CAPS`, not 4 — and its own docstring says *
 never capped."** So the mode table does NOT own the sizing knobs on stocks, and deleting those rows from
 `TEMPLATE_STOCKS_*` would remove a sweep the stock venue genuinely uses. Any such decision is per-venue, and a
 template row change belongs to the pilot and the S2 gate regardless.
+
+### 118.14 GREYING STOPS THE SWEEP — BUT IT WAS WRITTEN INTO A GENERATED DIRECTORY
+2026-10-22 a subagent greyed 146 switch rows across the four workbooks so the pilot stops sweeping knobs whose
+value is not negotiable (the sizing/order-value family, `HEDGE_MODE`, `NEW_POSITION_MAX_LOSS_THRESHOLD`,
+`CAT_SIDE_DEFAULTS_ENABLED`, and the five `FIXED_STOP_*`). Three things verified, two of them reassuring:
+
+**1. The mechanism is real, not cosmetic.** `v15_pilot.py:110` `GREY_SKIP_RGB = {"FFBFBFBF","00BFBFBF"}`, tested
+against the font colour of the switch NAME in column A at `:1877` (is_default violation exemption) and
+decisively at **`:3283`, inside the loop that BUILDS the work list** — `continue` fires there, twelve lines
+before `rows.append((tab, sw, cand))` at `:3290`. A grey switch name never enters `rows`, so its cells are never
+evaluated and cost no slot.
+
+**2. It changes no live behaviour** — confirmed on both halves, because greying a template row could in
+principle move the default live resolves. It does not: `tools/build_cat_side_defaults_4.py` never reads column
+A's font (its only style test is `h.font.b` on the `=`-bearing option headers at `:103`), so grey is invisible
+to the cat_side build; and the five `FIXED_STOP_*` config defaults are **`dc_low` / `15m` / `0.25` / `off` /
+`1.0` in BOTH `config.py` and `config_tradier.py`** — byte-identical to the non-negotiable stop
+(entry-bar `dc_low_15m − 0.25%`, `dc_low_4h − 0.25%` any time, mirrored for shorts). Greying removed the sweep
+and kept the stop.
+
+**3. BUT IT LANDED IN A GENERATED DIRECTORY, SO IT IS LATENT WORK.** `v15_pilot.py:719-722` resolves all four
+templates from **`SPREADSHEETS/TEMPLATE_FINAL_NORM/`** — so that IS the path the pilot reads, and an initial
+alarm that the agent had edited "the wrong copy" was WRONG (the giveaway that triggered it: canonical-looking
+`SPREADSHEETS/TEMPLATE_CRYPTO_LONG.xlsx` is mtime 2026-10-20 17:22, 1.40 MB / 8,094 data rows, while
+`TEMPLATE_FINAL_NORM/` is 2026-10-22 02:03, 1.17 MB / 4,395 — the newer file is the smaller one). The catch is
+that `TEMPLATE_FINAL_NORM/` is **output**: `tools/v15_autopilot.py:326` runs
+`v15_template_normalize_defaults.py --src SPREADSHEETS --out SPREADSHEETS/TEMPLATE_FINAL_NORM`, which
+`load_workbook`s the SOURCE (`:76`), applies its OWN §56.0 grey rule (`:117-118`, `:126-127` — grey only where
+no option matches the venue default and nothing is bold) and saves over the destination (`:140`). **It does not
+carry across grey that exists only in the destination.** Measured in the source for CRYPTO_LONG: those keys are
+still ungreyed — `START_POSITION_SIZE` 1 row, `MIN_POSITION_SIZE` 1, `HEDGE_MODE` 2,
+`NEW_POSITION_MAX_LOSS_THRESHOLD` 8, `CAT_SIDE_DEFAULTS_ENABLED` 2 = **14 rows that would be re-queued**. So the
+next NORMALISE rebuilds the ungreyed set and the 146 rows come back.
+**Not urgent, and the reason matters:** every autopilot cron line is currently commented `#AUTOPILOT_OFF#`, so
+nothing is regenerating that directory today. This is a latent regression with one clear trigger — re-enabling
+the autopilot, or running it by hand.
+**TO PERSIST, the greying belongs in `SPREADSHEETS/TEMPLATE_*.xlsx` (or in the normaliser's grey rule), applied
+through the sanctioned writer, since only `tools/v15_autopilot.py` may write TEMPLATEs.** Its guard will at
+least FAIL loudly after a regeneration rather than silently resume the spend — that part of the design is right.

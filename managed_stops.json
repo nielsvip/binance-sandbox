@@ -1,9 +1,9 @@
 {
-  "inf:KMNOUSDT_LONG": {
-    "orderId": "2000001530737163",
-    "stopPrice": 0.04066,
-    "entry_sig": "2026-10-22 01:35:46.433000+00:00",
-    "symbol": "KMNOUSDT",
+  "inf:XMRUSDT_LONG": {
+    "orderId": "2000001530801818",
+    "stopPrice": 569.3,
+    "entry_sig": "2026-10-22 02:02:06.107000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   },
   "inf:XRPUSDC_SHORT": {
@@ -13,32 +13,18 @@
     "symbol": "XRPUSDC",
     "side": "SHORT"
   },
+  "inf:KMNOUSDT_LONG": {
+    "orderId": "2000001530737163",
+    "stopPrice": 0.04066,
+    "entry_sig": "2026-10-22 01:35:46.433000+00:00",
+    "symbol": "KMNOUSDT",
+    "side": "LONG"
+  },
   "inf:ALTUSDT_LONG": {
     "orderId": "2000001530767875",
     "stopPrice": 0.01224,
     "entry_sig": "2026-10-22 01:47:43.277000+00:00",
     "symbol": "ALTUSDT",
-    "side": "LONG"
-  },
-  "inf:GRTUSDT_SHORT": {
-    "orderId": "2000001530789019",
-    "stopPrice": 0.02627,
-    "entry_sig": "2026-10-22 01:57:02.695000+00:00",
-    "symbol": "GRTUSDT",
-    "side": "SHORT"
-  },
-  "inf:MELANIAUSDT_SHORT": {
-    "orderId": "2000001530801551",
-    "stopPrice": 0.08946,
-    "entry_sig": "2026-10-22 02:02:01.187000+00:00",
-    "symbol": "MELANIAUSDT",
-    "side": "SHORT"
-  },
-  "inf:XMRUSDT_LONG": {
-    "orderId": "2000001530801818",
-    "stopPrice": 569.3,
-    "entry_sig": "2026-10-22 02:02:06.107000+00:00",
-    "symbol": "XMRUSDT",
     "side": "LONG"
   },
   "inf:DOTUSDT_SHORT": {
@@ -48,11 +34,18 @@
     "symbol": "DOTUSDT",
     "side": "SHORT"
   },
-  "inf:TRUMPUSDC_SHORT": {
-    "orderId": "2000001530805240",
-    "stopPrice": 1.869,
-    "entry_sig": "2026-10-22 02:03:32.238000+00:00",
-    "symbol": "TRUMPUSDC",
+  "inf:GRTUSDT_SHORT": {
+    "orderId": "2000001530789019",
+    "stopPrice": 0.02627,
+    "entry_sig": "2026-10-22 01:57:02.695000+00:00",
+    "symbol": "GRTUSDT",
+    "side": "SHORT"
+  },
+  "inf:MELANIAUSDT_SHORT": {
+    "orderId": "2000001530807568",
+    "stopPrice": 0.08955,
+    "entry_sig": "2026-10-22 02:02:01.187000+00:00",
+    "symbol": "MELANIAUSDT",
     "side": "SHORT"
   }
 }

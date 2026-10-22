@@ -1,6 +1,6 @@
 {
- "generated_utc": "2026-10-21T23:12:40Z",
- "secs": 157.4,
+ "generated_utc": "2026-10-22T02:12:06Z",
+ "secs": 122.5,
  "universe": {
   "crypto": 201,
   "stocks": 223
@@ -10,8 +10,8 @@
  },
  "healed": {
   "mac:/Users/niels/Documents/binance": {
-   "files": 225,
-   "rows": 248,
+   "files": 149,
+   "rows": 181,
    "skipped": {}
   }
  },
@@ -19,11 +19,20 @@
   {
    "host": "mac",
    "venue": "crypto",
-   "symbol": "ACHUSDT",
+   "symbol": "AGLDUSDT",
    "tf": "3m",
-   "last": "2026-10-21T22:57",
-   "expect": "2026-10-21T23:00",
+   "last": "2026-10-22T01:57",
+   "expect": "2026-10-22T02:00",
    "bars_behind": 1.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "IBM",
+   "tf": "15m",
+   "last": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45",
+   "bars_behind": 2.0
   },
   {
    "host": "mac",
@@ -37,11 +46,11 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "EOG",
+   "symbol": "KGC",
    "tf": "15m",
-   "last": "2026-10-21T19:00",
+   "last": "2026-10-21T19:15",
    "expect": "2026-10-21T19:45",
-   "bars_behind": 3.0
+   "bars_behind": 2.0
   },
   {
    "host": "mac",
@@ -55,6 +64,42 @@
   {
    "host": "mac",
    "venue": "stocks",
+   "symbol": "LITE",
+   "tf": "15m",
+   "last": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "HP",
+   "tf": "15m",
+   "last": "2026-10-21T19:00",
+   "expect": "2026-10-21T19:45",
+   "bars_behind": 3.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "LRCX",
+   "tf": "15m",
+   "last": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45",
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "HD",
+   "tf": "15m",
+   "last": "2026-10-21T16:00",
+   "expect": "2026-10-21T19:45",
+   "bars_behind": 15.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
    "symbol": "DAR",
    "tf": "15m",
    "last": "2026-10-21T17:45",
@@ -64,11 +109,20 @@
   {
    "host": "mac",
    "venue": "stocks",
-   "symbol": "EXEL",
+   "symbol": "LLY",
    "tf": "15m",
-   "last": "2026-10-21T19:00",
+   "last": "2026-10-21T19:15",
    "expect": "2026-10-21T19:45",
-   "bars_behind": 3.0
+   "bars_behind": 2.0
+  },
+  {
+   "host": "mac",
+   "venue": "stocks",
+   "symbol": "LSCC",
+   "tf": "15m",
+   "last": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45",
+   "bars_behind": 2.0
   },
   {
    "host": "mac",
@@ -92,10 +146,17 @@
  "unhealable": [
   {
    "venue": "crypto",
-   "symbol": "ACHUSDT",
+   "symbol": "AGLDUSDT",
    "tf": "3m",
-   "best": "2026-10-21T22:57",
-   "expect": "2026-10-21T23:00"
+   "best": "2026-10-22T01:57",
+   "expect": "2026-10-22T02:00"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "IBM",
+   "tf": "15m",
+   "best": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45"
   },
   {
    "venue": "stocks",
@@ -106,9 +167,9 @@
   },
   {
    "venue": "stocks",
-   "symbol": "EOG",
+   "symbol": "KGC",
    "tf": "15m",
-   "best": "2026-10-21T19:00",
+   "best": "2026-10-21T19:15",
    "expect": "2026-10-21T19:45"
   },
   {
@@ -120,6 +181,34 @@
   },
   {
    "venue": "stocks",
+   "symbol": "LITE",
+   "tf": "15m",
+   "best": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "HP",
+   "tf": "15m",
+   "best": "2026-10-21T19:00",
+   "expect": "2026-10-21T19:45"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "LRCX",
+   "tf": "15m",
+   "best": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "HD",
+   "tf": "15m",
+   "best": "2026-10-21T16:00",
+   "expect": "2026-10-21T19:45"
+  },
+  {
+   "venue": "stocks",
    "symbol": "DAR",
    "tf": "15m",
    "best": "2026-10-21T17:45",
@@ -127,9 +216,16 @@
   },
   {
    "venue": "stocks",
-   "symbol": "EXEL",
+   "symbol": "LLY",
    "tf": "15m",
-   "best": "2026-10-21T19:00",
+   "best": "2026-10-21T19:15",
+   "expect": "2026-10-21T19:45"
+  },
+  {
+   "venue": "stocks",
+   "symbol": "LSCC",
+   "tf": "15m",
+   "best": "2026-10-21T19:15",
    "expect": "2026-10-21T19:45"
   },
   {
@@ -162,57 +258,57 @@
   {
    "host": "mac",
    "file": "crypto prices",
-   "age_s": 0.1,
+   "age_s": 3.3,
    "max_s": 60,
    "ok": true,
    "files": {
-    "price_cache_1.json": 0.1,
-    "price_cache_2.json": 341.6,
-    "price_cache_3.json": 0.1
+    "price_cache_1.json": 5.5,
+    "price_cache_2.json": 294.7,
+    "price_cache_3.json": 3.3
    }
   },
   {
    "host": "mac",
    "file": "crypto snapshot (market_data_*)",
-   "age_s": 341.1,
+   "age_s": 4535.7,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/market_data_NEWEST": 341.1
+    "data/market_data_NEWEST": 4535.7
    }
   },
   {
    "host": "mac",
    "file": "crypto latest_market_data",
-   "age_s": 823.6,
+   "age_s": 4925.5,
    "max_s": 90,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 823.6
+    "data/latest_market_data.json": 4925.5
    }
   },
   {
    "host": "gw",
    "file": "crypto market_data",
-   "age_s": 698.7,
+   "age_s": 4827.2,
    "max_s": 300,
    "ok": false,
    "files": {
-    "data/latest_market_data.json": 698.7
+    "data/latest_market_data.json": 4827.2
    }
   },
   {
    "host": "mac",
    "file": "disk free /Users/niels/Documents/binance",
    "age_s": null,
-   "free_gb": 5.9,
+   "free_gb": 8.5,
    "ok": true
   },
   {
    "host": "gw",
    "file": "disk free binance",
    "age_s": null,
-   "free_gb": 5.2,
+   "free_gb": 5.4,
    "ok": true
   }
  ]

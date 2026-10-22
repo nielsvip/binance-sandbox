@@ -180,7 +180,18 @@ def main() -> int:
     for venue, accts in (("crypto", CRYPTO), ("stocks", STOCKS)):
         for a in accts:
             h, t = here.get(a, 0), (None if there is None else there.get(a, 0))
-            nobody = h == 0 and (t == 0 if t is not None else False)
+            # 2026-10-22 FAIL-OPEN HOLE, found in this tool's own output: `t` is None when S1 cannot be reached,
+            # and the old test `(t == 0 if t is not None else False)` made `nobody` False for EVERY account in
+            # that case — so one failed S1 probe blinded the guard while it still printed verdict OK. Measured
+            # live: all 8 accounts came back "s1": null, untraded_s 0, verdict OK, with the stock accounts not
+            # even reaching the market-closed branch. If the Mac had stopped trading during that window this tool
+            # would have said nothing, which is the exact silence it exists to prevent (USER: "NEVER EVER EVER
+            # AGAIN CAN WE HAVE 3 MINUTES OR MORE WITHOUT TRADING ON ANY ACCOUNT").
+            # An unreachable S1 is NOT evidence that S1 is trading this account, so an unknown counts as "not
+            # trading here" for DETECTION. It still must not drive the lease: forcing the lease back needs S1
+            # truth, and that path below is already conditioned on `t == 0`, which None never satisfies.
+            s1_unknown = t is None
+            nobody = h == 0 and (t == 0 or s1_unknown)
             if nobody and venue == "stocks" and not stocks_in_session():
                 # closed market: an absent stock engine is correct, not a fault
                 st.pop(f"down_{a}", None)
@@ -195,7 +206,7 @@ def main() -> int:
             else:
                 st.pop(key, None)
                 down_s = 0.0
-            rep["accounts"][a] = {"venue": venue, "mac": h, "s1": t, "untraded_s": round(down_s)}
+            rep["accounts"][a] = {"venue": venue, "mac": h, "s1": t, "untraded_s": round(down_s), **({"s1_unknown": True} if s1_unknown else {})}
             if both:
                 rep["double"].append(a)
             if not nobody:
@@ -213,6 +224,8 @@ def main() -> int:
             log(f"UNTRADED {a} ({venue}) {int(down_s)}s mac={h} s1={t} holder={holder or 'none'} -> {act2}")
             st.pop(key, None)  # re-arm the clock so a slow start is not double-acted next run
     rep["verdict"] = "OK" if not rep["untraded"] else ("ACTED" if rep["actions"] else "WITHIN_GRACE")
+    if there is None and rep["verdict"] == "OK":
+        rep["verdict"] = "OK_S1_UNREACHABLE"  # not a clean OK: half the question could not be asked
     try:
         STATE.write_text(json.dumps(st))
         (OUT / "latest.json").write_text(json.dumps(rep, indent=1))
