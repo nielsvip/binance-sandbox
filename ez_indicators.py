@@ -229,27 +229,40 @@ if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
     logger.addHandler(handler)
-    # Add file handler with append mode and restart separator
-    from logging.handlers import RotatingFileHandler
-    # Honor the standard sandbox/test log root.  V8 imports this live module
-    # before it can load an NPZ; hard-coding ~/logs made a perfectly valid
-    # local/isolated backtest fail during import rather than report its data
-    # preflight.  The default remains the live location.
-    logs_dir = Path(os.environ.get("EZ_LOG_DIR") or (Path.home() / "logs"))
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    _wid = int(os.getenv("WORKER_INSTANCE_ID", "0"))
-    _wtot = int(os.getenv("WORKER_TOTAL_INSTANCES", "1"))
-    log_file = logs_dir / (f"ez_indicators_worker{_wid}.log" if _wtot > 1 else "ez_indicators.log")
-    try:
-        with open(log_file, 'a', encoding='utf-8') as f:
-            f.write(f"\n{'='*80}\n")
-            f.write(f"SCRIPT RESTART - ez_indicators - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"{'='*80}\n")
-    except Exception:
-        pass
-    file_handler = RotatingFileHandler(log_file, maxBytes=100*1024*1024, backupCount=5, encoding='utf-8', mode='a')
-    file_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))  # type: ignore[arg-type]
-    logger.addHandler(file_handler)
+    # 2026-10-22 (USER "UNLOCK"): the restart banner and the shared-log file handler belong to the
+    # DAEMON ONLY. This block runs on every IMPORT, so all 5 ez_manage (:535), all 5
+    # ez_positions_service_main (ez_positions_service.py:350), all 5 ez_positions_realtime,
+    # tradier_indicators (:1928) and every multiprocessing spawn child were each appending
+    # "SCRIPT RESTART - ez_indicators" to the live daemon's ~/logs/ez_indicators.log at their own
+    # startup, and each attached a RotatingFileHandler to it. Measured: 127 banners in the 04:00Z
+    # hour, 48 in 05:00Z, 13 in the first 16 min of 06:00Z, against 3 real daemon restarts all day
+    # (05:04:00/05:11:48/05:17:50 in ez_indicators_watchdog.log) — the banner overstated churn ~40x
+    # and read as "restarting every 2 minutes" while the daemon was 58 min old. 20 foreign pids also
+    # held the live log open for rotation at the 100MB mark, i.e. an importer could rotate the
+    # producer's log out from under the watchdog's mtime check. Importers keep the stdout handler,
+    # which their own wrappers already capture into their own log.
+    if __name__ == "__main__":
+        # Add file handler with append mode and restart separator
+        from logging.handlers import RotatingFileHandler
+        # Honor the standard sandbox/test log root.  V8 imports this live module
+        # before it can load an NPZ; hard-coding ~/logs made a perfectly valid
+        # local/isolated backtest fail during import rather than report its data
+        # preflight.  The default remains the live location.
+        logs_dir = Path(os.environ.get("EZ_LOG_DIR") or (Path.home() / "logs"))
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        _wid = int(os.getenv("WORKER_INSTANCE_ID", "0"))
+        _wtot = int(os.getenv("WORKER_TOTAL_INSTANCES", "1"))
+        log_file = logs_dir / (f"ez_indicators_worker{_wid}.log" if _wtot > 1 else "ez_indicators.log")
+        try:
+            with open(log_file, 'a', encoding='utf-8') as f:
+                f.write(f"\n{'='*80}\n")
+                f.write(f"SCRIPT RESTART - ez_indicators - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+                f.write(f"{'='*80}\n")
+        except Exception:
+            pass
+        file_handler = RotatingFileHandler(log_file, maxBytes=100*1024*1024, backupCount=5, encoding='utf-8', mode='a')
+        file_handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))  # type: ignore[arg-type]
+        logger.addHandler(file_handler)
 
 TIMEFRAMES: Dict[str, Dict[str, Any]] = {
     "3m": {"seconds": 180, "half": 90, "dc_window": 20, "ema": [20], "sma": [("sma_200_1m", 70)], "atr": 14},

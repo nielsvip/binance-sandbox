@@ -26253,9 +26253,21 @@ class MultiAccountTradeManager:
                             _zp_vd = _zp_vd_mod.trade_all_on() and _zp_vd_mod.calculated(symbol, side)
                         except Exception:
                             _zp_vd = False
-                        if _zp_vd and _it_age > max_age:
+                        if _it_age > max_age:
                             logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: intent {it['intent_id']} {it['type']} bar={it.get('bar_ts')} is {_it_age:.0f}s old — executing late dictate (USER 2026-10-21)")
-                        if _it_age > max_age and not _zp_vd:
+                        # STALENESS NEVER REFUSES A VEC DICTATE (USER 2026-10-22: "ANY 15m bar that has an open
+                        # position in the per_sym switches forward paper test HAS an open position in live trading NO
+                        # EXCEPTIONS", and "NOW JUST MAKE SURE ANY OPEN POSITION IN VEC IS OPEN IN LIVE ... NOT ONE
+                        # MORE NOT ONE LESS"). The comment above has said "staleness never refuses" since 2026-10-21,
+                        # but the refusal below still fired whenever zero_pass.calculated() happened to be False —
+                        # and it also store.mark()ed the intent, so the dictate was lost for good rather than retried.
+                        # MEASURED 2026-10-22 06:2xZ, with every other gate already cleared: ang REFUSED_STALE_8063s,
+                        # inf REFUSED_STALE_1878s x11 + _3581s x4, flz REFUSED_STALE_2675s x10 + _1775s x10, and 0
+                        # SUCCESS anywhere. The board itself stamps intents with a bar ~1,915 s old at write time, so
+                        # this gate refused the lane's normal output. Lane latency is a real fault and is reported by
+                        # the ZERO_PASS_ALLOW line above with the exact age — it is never a reason to skip a position
+                        # the vector holds. Set VEC_DRIVEN_STALE_REFUSES=1 to restore the old refusal.
+                        if _it_age > max_age and str(os.environ.get("VEC_DRIVEN_STALE_REFUSES") or "0").lower() in ("1", "true", "yes"):
                             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: intent {it['intent_id']} {it['type']} bar={it.get('bar_ts')} is {_it_age:.0f}s old > {max_age:.0f}s — STALE, consumed WITHOUT order (reconcile owns the target)")
                             _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": f"REFUSED_STALE_{_it_age:.0f}s"})
                             store.mark(it["intent_id"])
@@ -26360,9 +26372,18 @@ class MultiAccountTradeManager:
                             _zp_vd2 = _zp_vd2_mod.trade_all_on() and _zp_vd2_mod.calculated(symbol, side)
                         except Exception:
                             _zp_vd2 = False
-                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS and _zp_vd2:
+                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS:
                             logger.warning(f"[ZERO_PASS_ALLOW] {position_key}: reconcile target open but decision bar {bar_key} is {_st_dec_age:.0f}s old — executing late OPEN (USER 2026-10-21)")
-                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS and not _zp_vd2:
+                        # RECONCILE IS THE CONVERGER, so an old decision bar may never stop it (USER 2026-10-22:
+                        # "ANY 15m bar that has an open position in the per_sym switches forward paper test HAS an
+                        # open position in live trading NO EXCEPTIONS ... NOT ONE MORE NOT ONE LESS"). This refusal
+                        # ALSO called store.mark_reconcile(), so the sym_side got no further attempt in that bar and
+                        # the position simply never opened. The forward lane holds 44 sym_sides open while live held
+                        # ang 12 / inf 9 / flz 10 / men 0 / fin 0 (measured 06:2xZ); for men and fin every single one
+                        # of their 7 allowed-and-wanted keys was live in the registry, had a pending intent, and was
+                        # not consumed — this gate and its intent-side twin are what kept them flat.
+                        # VEC_DRIVEN_STALE_REFUSES=1 restores both refusals together.
+                        if act == "OPEN" and _st_dec_age > max_age + _vdm.BAR_SECONDS and str(os.environ.get("VEC_DRIVEN_STALE_REFUSES") or "0").lower() in ("1", "true", "yes"):
                             store.mark_reconcile(ss, bar_key)
                             _rc_skip["stale_decision_no_late_open"] += 1
                             logger.warning(f"[VEC_DRIVEN_RECONCILE] {position_key}: target open but decision bar {bar_key} is {_st_dec_age:.0f}s old > {max_age:.0f}s — no late OPEN (stale guard)")
