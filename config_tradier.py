@@ -3942,6 +3942,14 @@ class TradierConfig:
     SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE: bool = True
     SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE: bool = True
     SCALE_DIRECTION_EXEMPT_EXIT_CHAIN: bool = True
+    # SCALE_DIRECTION live enforcement (USER 2026-10-22 vector-copy law): the LAW itself lives in the vector
+    # (v12_quick_engine, 8 partial-scaling sites) and live executes the ledger it produces. This knob only decides
+    # whether live_twins/scale_direction_live ALSO refuses a NATIVE wrong-way partial scale, or merely records it
+    # to the non-vector paper ledger. False = record only, because a native act that contradicts the vector is
+    # already refused by machinery that disables the family, flags it and files a retrace work order
+    # (_voe_native_exits_disabled, the VECTOR-ONLY EXITS BACKSTOP, vector_enforce.check). A vec-dictated act is
+    # NEVER touched at either setting. Live-only: no template row, nothing to sweep.
+    SCALE_DIRECTION_LIVE_ENFORCE: bool = False
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.70
     SATOSHIT_EXIT_SHORT_RSI_MAX: float = 42.0
     SATOSHIT_EXIT_SHORT_STOCH_K_MAX: float = 50.0

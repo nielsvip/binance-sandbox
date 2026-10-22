@@ -48560,16 +48560,24 @@ class TradierTradeManager:
             _sd_px = float(old_price or 0.0)
             if _sd_px > 0:
                 _sdl.note_price(symbol, _sd_px)
-            _sd_why = _sdl.blocked(
+            _sd_why, _sd_obs = _sdl.check(
                 lambda _k, _d: _cfg(_k, _d, account_key, symbol, position_side),
                 symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
                 quantity=quantity, original_positionAmt=original_position_amt, price=_sd_px,
                 is_full_close=is_full_close, is_hedge=False,
             )
         except Exception:
-            _sd_why = ""
+            _sd_why, _sd_obs = "", ""
+        if _sd_obs:
+            # Never silent — same non-vector paper ledger the crypto twin writes to.
+            try:
+                import paper_nonvec as _paper_nv_sd
+                if _paper_nv_sd.enabled(config):
+                    _paper_nv_sd.record("tradier", account_key, position_key, _paper_nv_sd.kind_of(action, side, position_side), action, reason, "SCALE_DIRECTION_WRONG_WAY", old_price, quantity)
+            except Exception:
+                pass
+            logger.warning(f"🧭 [SCALE_DIRECTION] {position_key} {action} — {'REFUSED' if _sd_why else 'observed (not refused)'}: {_sd_obs}")
         if _sd_why:
-            logger.info(f"🧭 [SCALE_DIRECTION] {position_key}: refused {action} — {_sd_why}")
             return f"BLOCKED_SCALE_DIRECTION {_sd_why}"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,

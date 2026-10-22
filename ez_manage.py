@@ -32727,16 +32727,24 @@ class MultiAccountTradeManager:
             _sd_px = safe_fetch_float(old_price, 0.0)
             if _sd_px > 0:
                 _sdl.note_price(symbol, _sd_px)
-            _sd_why = _sdl.blocked(
+            _sd_why, _sd_obs = _sdl.check(
                 lambda _k, _d: _psym_get(symbol, position_side, _k, _d),
                 symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
                 quantity=quantity, original_positionAmt=original_positionAmt, price=_sd_px,
                 is_full_close=is_full_close, is_hedge=is_hedge,
             )
         except Exception:
-            _sd_why = ""
+            _sd_why, _sd_obs = "", ""
+        if _sd_obs:
+            # Never silent: the disagreement lands in the non-vector paper ledger the parity watcher reads, beside
+            # the vector's own trades — the same sink the VECTOR-ONLY EXITS BACKSTOP uses for a refused native exit.
+            try:
+                if _paper_nv.enabled(config):
+                    _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "SCALE_DIRECTION_WRONG_WAY", old_price, quantity)
+            except Exception:
+                pass
+            logger.warning(f"🧭 [SCALE_DIRECTION] {position_key} {action} — {'REFUSED' if _sd_why else 'observed (not refused)'}: {_sd_obs}")
         if _sd_why:
-            logger.info(f"🧭 [SCALE_DIRECTION] {position_key}: refused {action} — {_sd_why}")
             return f"BLOCKED_SCALE_DIRECTION {_sd_why}"
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,

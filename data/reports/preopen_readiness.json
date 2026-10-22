@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T03:20:04Z",
+ "generated_utc": "2026-10-22T03:40:03Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-21T13:30:00Z",
  "market_open": true,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 653,
-    "filled_before_open": 367
+    "filled_today": 663,
+    "filled_before_open": 363
    },
-   "detail": "367 boards filled before the open (653 today)"
+   "detail": "363 boards filled before the open (663 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -64,8 +64,8 @@
    "measured": {
     "selection_n": 506,
     "exact": 49,
-    "benign_divergence_only": 417,
-    "material_divergence": 34,
+    "benign_divergence_only": 418,
+    "material_divergence": 33,
     "no_live_row": [
      "LEXX_SHORT",
      "TLMUSDT_SHORT",
@@ -141,19 +141,6 @@
       ]
      },
      {
-      "sym_side": "LLY_LONG",
-      "published_at": "2026-10-22T02:16:56Z",
-      "material": 59,
-      "sample": [
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "COOLDOWN_BARS_TRADIER",
-       "DAYTRADE_DC_TARGET_TF",
-       "DC_HOPELESS_EXIT_ENABLED",
-       "DC_SLOPE_INCENTIVE_ENABLED",
-       "DC_SLOPE_INCENTIVE_ENTRY_MULT"
-      ]
-     },
-     {
       "sym_side": "APO_SHORT",
       "published_at": "2026-10-20T11:43:52Z",
       "material": 55,
@@ -204,10 +191,23 @@
        "DC_BREAKOUT_TF_EXPANDED",
        "ENTRY_DC_TF"
       ]
+     },
+     {
+      "sym_side": "AR_LONG",
+      "published_at": "2026-10-19T21:48:26Z",
+      "material": 40,
+      "sample": [
+       "ADX_REGIME_FILTER_ENABLED",
+       "ADX_TRENDING_THRESHOLD",
+       "ATR_ADAPTIVE_SIZING_TARGET_PCT",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BB_SQUEEZE_ENTRY_ENABLED",
+       "COUNTER_TREND_ADD_BLOCK_ENABLED"
+      ]
      }
     ]
    },
-   "detail": "49 exact, 417 benign-only, 34 with material divergence, 6 with no live row"
+   "detail": "49 exact, 418 benign-only, 33 with material divergence, 6 with no live row"
   },
   {
    "name": "indicators_fresh",
@@ -217,7 +217,7 @@
     "symbols": 199,
     "stale_over_90min": 199,
     "stale_pct": 100.0,
-    "median_age_min": 230.1,
+    "median_age_min": 250.1,
     "sample": [
      "1000000MOGUSDT",
      "1000BONKUSDC",

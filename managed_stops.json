@@ -1,30 +1,9 @@
 {
-  "ang:DOGEUSDC_SHORT": {
-    "orderId": "4000001986073824",
-    "stopPrice": 0.08379,
-    "entry_sig": "2026-10-22 03:16:58.828000+00:00",
-    "symbol": "DOGEUSDC",
-    "side": "SHORT"
-  },
-  "ang:SNXUSDT_SHORT": {
-    "orderId": "4000001986070483",
-    "stopPrice": 0.234,
-    "entry_sig": "2026-10-22 03:15:32.344000+00:00",
-    "symbol": "SNXUSDT",
-    "side": "SHORT"
-  },
-  "ang:FARTCOINUSDT_SHORT": {
-    "orderId": "4000001986071619",
-    "stopPrice": 0.1579,
-    "entry_sig": "2026-10-22 03:16:12.420000+00:00",
-    "symbol": "FARTCOINUSDT",
-    "side": "SHORT"
-  },
-  "ang:VETUSDT_LONG": {
-    "orderId": "4000001986048270",
-    "stopPrice": 0.006389,
-    "entry_sig": "2026-10-22 03:04:00.883000+00:00",
-    "symbol": "VETUSDT",
+  "ang:XMRUSDT_LONG": {
+    "orderId": "4000001986056248",
+    "stopPrice": 569.3,
+    "entry_sig": "2026-10-22 03:07:58.884000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   },
   "ang:ONDOUSDT_LONG": {
@@ -34,18 +13,39 @@
     "symbol": "ONDOUSDT",
     "side": "LONG"
   },
-  "ang:XMRUSDT_LONG": {
-    "orderId": "4000001986056248",
-    "stopPrice": 569.3,
-    "entry_sig": "2026-10-22 03:07:58.884000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
   "ang:EGLDUSDT_SHORT": {
     "orderId": "4000001986045656",
     "stopPrice": 3.805,
     "entry_sig": "2026-10-22 03:02:38.218000+00:00",
     "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "ang:VETUSDT_LONG": {
+    "orderId": "4000001986048270",
+    "stopPrice": 0.006389,
+    "entry_sig": "2026-10-22 03:04:00.883000+00:00",
+    "symbol": "VETUSDT",
+    "side": "LONG"
+  },
+  "ang:DOGEUSDC_SHORT": {
+    "orderId": "4000001986073824",
+    "stopPrice": 0.08379,
+    "entry_sig": "2026-10-22 03:16:58.828000+00:00",
+    "symbol": "DOGEUSDC",
+    "side": "SHORT"
+  },
+  "ang:FARTCOINUSDT_SHORT": {
+    "orderId": "4000001986071619",
+    "stopPrice": 0.1579,
+    "entry_sig": "2026-10-22 03:16:12.420000+00:00",
+    "symbol": "FARTCOINUSDT",
+    "side": "SHORT"
+  },
+  "ang:SNXUSDT_SHORT": {
+    "orderId": "4000001986070483",
+    "stopPrice": 0.234,
+    "entry_sig": "2026-10-22 03:15:32.344000+00:00",
+    "symbol": "SNXUSDT",
     "side": "SHORT"
   },
   "ang:TRUMPUSDC_SHORT": {
