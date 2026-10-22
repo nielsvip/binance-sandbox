@@ -170,6 +170,65 @@ def test_env_gpg_silent_without_binary(monkeypatch, capsys):
     assert capsys.readouterr().err == ""
 
 
+_ENV_LOADER_DRIVER = """\
+import json
+import logging
+
+recs = []
+
+
+class H(logging.Handler):
+    def emit(self, r):
+        recs.append((r.levelname, r.getMessage()))
+
+
+logging.getLogger().addHandler(H())
+logging.getLogger().setLevel(logging.DEBUG)
+import utils
+
+ok1 = utils.load_environment_from_gpg(None)
+ok2 = utils.load_environment_from_gpg(None)
+loud = [m for lv, m in recs if lv in ("INFO", "WARNING", "ERROR")]
+print(json.dumps({"ok": [ok1, ok2], "loud": loud}))
+"""
+
+
+def _run_env_loader(path_value, tmp_path):
+    """Subprocess driver: run utils.load_environment_from_gpg twice, report the
+    INFO+ log lines. Isolated process because the loader mutates os.environ and
+    the ENV_LOADED global."""
+    import os
+
+    driver = tmp_path / "env_loader_driver.py"
+    driver.write_text(_ENV_LOADER_DRIVER)
+    env = dict(os.environ)
+    env["PATH"] = path_value
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    env["PYTHONPATH"] = repo_root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    out = subprocess.run([sys.executable, str(driver)], capture_output=True, text=True, cwd=str(Path(__file__).resolve().parent.parent), timeout=120, env=env)
+    assert out.returncode == 0, out.stderr[-2000:]
+    import json as _json
+
+    return _json.loads(out.stdout.strip())
+
+
+def test_env_loader_quiet_without_gpg(tmp_path):
+    """Cron PATH (no gpg): one line naming the plain-.env win, no GPG chatter."""
+    res = _run_env_loader("/usr/bin:/bin", tmp_path)
+    assert res["ok"] == [True, True]
+    assert len(res["loud"]) == 1, res["loud"]
+    assert "plain .env" in res["loud"][0]
+    assert not any("GPG decryption failed" in m or "Searching for" in m or "Attempting to load" in m for m in res["loud"])
+
+
+def test_env_loader_quiet_with_gpg(tmp_path):
+    """Login PATH (gpg present): one line naming the .env.gpg win."""
+    res = _run_env_loader("/opt/homebrew/bin:/usr/bin:/bin", tmp_path)
+    assert res["ok"] == [True, True]
+    assert len(res["loud"]) == 1, res["loud"]
+    assert ".env.gpg" in res["loud"][0]
+
+
 def test_watchdog_cancels_pending_dump(monkeypatch):
     """Cancelling the watchdog must disarm its faulthandler dump (no post-shutdown dump)."""
     import faulthandler

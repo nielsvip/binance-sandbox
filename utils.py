@@ -10,6 +10,7 @@ import platform
 import pwd
 import random
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -729,11 +730,15 @@ def setup_ez_script_logger(script_name: str, level=logging.INFO) -> Logger:
     return logger
 
 def load_environment_from_gpg(logger=None) -> bool:
+    # 2026-10-22: quiet by design. Both sources carry the same keys (.env.gpg decrypts
+    # fine wherever gpg is on PATH; plain .env covers cron PATHs without it), so every
+    # step below is debug except ONE line naming the source that won, and a warning
+    # only when BOTH fail. Same paths, same overwrite semantics, same return values.
     global ENV_LOADED
     if logger is None:
         from utils import logger
     if ENV_LOADED:
-        logger.info("Environment variables already loaded. Skipping GPG decryption.")
+        logger.debug("Environment variables already loaded. Skipping GPG decryption.")
         return True
     possible_env_paths = [".env.gpg", os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.gpg")] # Script directory
         # os.path.join(os.environ.get("HOME") or "/tmp", "Documents", "binance", ".env.gpg"),  # Home Documents/binance
@@ -745,52 +750,53 @@ def load_environment_from_gpg(logger=None) -> bool:
         if path not in seen:
             seen.add(path)
             unique_paths.append(path)
-    logger.info(f"Searching for .env.gpg in: {unique_paths}")
-    for env_path in unique_paths:
-        if os.path.exists(env_path):
-            logger.info(f"Found .env.gpg at: {env_path}")
-            try:
-                # Try GPG decryption with absolute path
-                decrypt_command = f"gpg --batch --yes --decrypt '{env_path}'"
-                gpg_process = subprocess.run(decrypt_command, shell=True, capture_output=True, text=True, check=False)
-                
-                if gpg_process.returncode == 0:
-                    decrypted_env_content = gpg_process.stdout
-                    if decrypted_env_content and decrypted_env_content.strip():
-                        logger.info("GPG decryption successful.")
-                        decrypted_stream = StringIO(decrypted_env_content)
-                        env_vars_from_gpg = dotenv_values(stream=decrypted_stream)
-                        clean_env_vars = {
-                            key: value for key, value in env_vars_from_gpg.items() 
-                            if value is not None and value.strip() != ""
-                        }
-                        if clean_env_vars:
-                            os.environ.update(clean_env_vars)
-                            ENV_LOADED = True
-                            logger.info(f"Loaded {len(clean_env_vars)} non-empty variables from {env_path}.")
-                            return True
+    logger.debug(f"Searching for .env.gpg in: {unique_paths}")
+    if shutil.which("gpg") is not None:
+        for env_path in unique_paths:
+            if os.path.exists(env_path):
+                logger.debug(f"Found .env.gpg at: {env_path}")
+                try:
+                    # Try GPG decryption with absolute path
+                    decrypt_command = f"gpg --batch --yes --decrypt '{env_path}'"
+                    gpg_process = subprocess.run(decrypt_command, shell=True, capture_output=True, text=True, check=False)
+
+                    if gpg_process.returncode == 0:
+                        decrypted_env_content = gpg_process.stdout
+                        if decrypted_env_content and decrypted_env_content.strip():
+                            decrypted_stream = StringIO(decrypted_env_content)
+                            env_vars_from_gpg = dotenv_values(stream=decrypted_stream)
+                            clean_env_vars = {
+                                key: value for key, value in env_vars_from_gpg.items()
+                                if value is not None and value.strip() != ""
+                            }
+                            if clean_env_vars:
+                                os.environ.update(clean_env_vars)
+                                ENV_LOADED = True
+                                logger.info(f"Loaded {len(clean_env_vars)} non-empty variables from {env_path}.")
+                                return True
+                            else:
+                                logger.debug("GPG decrypted, but resulted in no non-empty variables.")
                         else:
-                            logger.warning("GPG decrypted, but resulted in no non-empty variables.")
+                            logger.debug("GPG decryption command was successful but produced no content.")
                     else:
-                        logger.warning("GPG decryption command was successful but produced no content.")
-                else:
-                    logger.warning(f"GPG decryption failed for {env_path}. Stderr: {gpg_process.stderr.strip()}")
+                        logger.debug(f"GPG decryption failed for {env_path}. Stderr: {gpg_process.stderr.strip()}")
+                        continue  # Try next path
+
+                except FileNotFoundError:
+                    logger.debug("GPG command not found. Ensure GPG is installed and in your PATH.")
                     continue  # Try next path
-                    
-            except FileNotFoundError:
-                logger.warning("GPG command not found. Ensure GPG is installed and in your PATH.")
-                continue  # Try next path
-            except Exception as e:
-                logger.warning(f"An unexpected error occurred during GPG decryption of {env_path}: {e}")
-                continue  # Try next path
-        else:
-            logger.debug(f".env.gpg not found at: {env_path}")
-    logger.info("Attempting to load from plain .env file...")
+                except Exception as e:
+                    logger.debug(f"An unexpected error occurred during GPG decryption of {env_path}: {e}")
+                    continue  # Try next path
+            else:
+                logger.debug(f".env.gpg not found at: {env_path}")
+    else:
+        logger.debug("gpg binary not on PATH; skipping .env.gpg decryption.")
     try:
         from dotenv import load_dotenv
         if load_dotenv():
             ENV_LOADED = True
-            logger.info("Loaded variables from .env file.")
+            logger.info("Loaded variables from plain .env file.")
             return True
         else:
             logger.warning("No .env file found. Environment variables may be missing.")
