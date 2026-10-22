@@ -2384,10 +2384,13 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
         lower = fit_end - 2.5 * resid_std
         width = upper - lower
         price = W[:, -1]
-        pb = np.clip(np.where(width > 0, (price - lower) / width, 0.5), 0.0, 1.0)
         ss_res = (resid_std ** 2) * L
         ss_tot = ((W - ym[:, None]) ** 2).sum(axis=1)
-        r2 = np.where(ss_tot > 0, 1.0 - ss_res / ss_tot, 0.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            pb_raw = (price - lower) / np.where(width > 0, width, 1.0)
+            r2_raw = 1.0 - ss_res / np.where(ss_tot > 0, ss_tot, 1.0)
+        pb = np.clip(np.where(width > 0, pb_raw, 0.5), 0.0, 1.0)
+        r2 = np.where(ss_tot > 0, r2_raw, 0.0)
         sl_pct = slope / np.where(np.abs(price) > 1e-9, np.abs(price), 1e-9) * 100.0
         out_pb[L - 1:] = pb.astype(np.float32)
         out_sl[L - 1:] = sl_pct.astype(np.float32)
@@ -2423,7 +2426,9 @@ def compute_symbol(symbol: str, mode: str, *, return_arrays: bool = False):
             continue
         cl = cl_t.astype(np.float64)
         prev = np.roll(cl, 1); prev[0] = cl[0]
-        vel = np.where(prev > 0, (cl - prev) / prev * 100.0, 0.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            vel_raw = (cl - prev) / np.where(prev > 0, prev, 1.0) * 100.0
+        vel = np.where(prev > 0, vel_raw, 0.0)
         merged[f"velocity_{t}"] = vel.astype(np.float32)
     # 7. bb_high_1h / bb_low_1h / bb_mult_1h / bb_touches_1h / bb_width_1h / bb_width_4h.
     # Use mult=2.0 (the live bb_features default) for the 1h/4h families; per-TF dynamic

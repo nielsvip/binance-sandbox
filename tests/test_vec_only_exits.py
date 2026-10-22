@@ -191,6 +191,7 @@ def test_new_exit_legs_stood_down():
     ):
         assert _stop_leg in SRC, _stop_leg
     import ez_manage as _ezm
+
     assert _ezm._voe_native_exits_disabled("stop") is False
     assert _ezm._voe_native_exits_disabled() is True
 
@@ -220,13 +221,17 @@ def test_vec_switch_exit_families_pass_backstop():
 def test_mirror_matches_implementation_on_corpus():
     import ez_manage as em
 
-    corpus = list(VEC_REASONS) + list(NATIVE_REASONS) + [
-        "VEL_EXIT_v4h-64.11_g0.01",
-        "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
-        "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
-        "BB_TAKE_15m_g-0.16",
-        "QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7",
-    ]
+    corpus = (
+        list(VEC_REASONS)
+        + list(NATIVE_REASONS)
+        + [
+            "VEL_EXIT_v4h-64.11_g0.01",
+            "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
+            "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
+            "BB_TAKE_15m_g-0.16",
+            "QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7",
+        ]
+    )
     for r in corpus:
         assert _gate_passes(r) == em._voe_reason_is_vec(r), r
 

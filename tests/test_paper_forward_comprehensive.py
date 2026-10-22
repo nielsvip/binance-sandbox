@@ -295,6 +295,27 @@ def test_inventory_covers_backstop_refused_families():
         assert inv[pid]["kind"] == kind, (pid, inv[pid]["kind"])
 
 
+def test_ppl_tp_partial_scale_stays_forward_only():
+    """PPL_TP followup_partial_scale (1 live refusal `PPL_TP_gain1.26_URL2_50pct`,
+    QUICK_REDUCE, crypto LONG): the 50% scale-out is native-only today — v12 only
+    declares VEC_LIVE_REDUCE_PPL_REASONS=(PARTIAL_PROFIT_LOCK_STEP1,PPL_STEP1) /
+    STEP1_FRAC=0.5 with no booking site, and neither token matches the native
+    `PPL_TP_gain.._URL2_50pct` reason — so the backstop refusal STANDS (refusing
+    keeps full-size parity with the vector) and the PPL BE-stop leg stays armed.
+    Sizing/scale is operator-decided (cf RATIO ruling): never auto-exempt."""
+    F = _fam()
+    d = F.classify("PPL_TP_gain1.26_URL2_50pct")
+    assert (d["family"], d["vec_twin"], d["gate_knob"]) == (
+        "PARTIAL_PROFIT_LOCK",
+        True,
+        "PARTIAL_PROFIT_LOCK_ENABLED",
+    )
+    import ez_manage as em
+
+    assert em._voe_reason_is_vec("PPL_TP_gain1.26_URL2_50pct") is False
+    assert em._voe_native_exits_disabled("stop") is False
+
+
 def test_backstop_exit_scores_into_forward_ledger(monkeypatch):
     """A refused BT_STOCH exit lands in the scored (non-pending) forward ledger under
     its observed key — the path the nightly forward test actually aggregates."""
