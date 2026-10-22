@@ -40853,7 +40853,7 @@ class MultiAccountTradeManager:
             return int(getattr(config, key, default))
 
         while True:
-            if _vx_native_off() or _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: ratio loop (opens AND closes) dead at source
+            if _vx_native_off():  # 2026-10-06 switch-over: native producer off at the source while the vec twin owns ENTRY/EXIT/AUGMENT (PARITY_VEC_EXACT_MODE)
                 await asyncio.sleep(30)
                 continue
             try:
@@ -59506,13 +59506,6 @@ async def queue_trade_action(
     if "SCALP_REDUCE" in reason_str.upper() and not getattr(config, "SCALP_REDUCE_ENABLED", True):
         logger.info(f"[queue_trade_action] SCALP_REDUCE_DISABLED skip: {position_key} {reason_str[:50]}")
         return "SKIPPED_SCALP_REDUCE_DISABLED"
-    # USER 2026-10-21 vec-only exits: queue-path choke-point gate. Every native CLOSE/REDUCE
-    # that reaches the order queue dies here unless its reason is vec-dictated. Vec exits
-    # (VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT/BOARD_CONVERGE_/EXIT_OWED) pass through untouched.
-    # NATIVE_EXITS_DISABLED=0 restores legacy behavior.
-    if action in ("REDUCE", "QUICK_CLOSE", "CLOSE", "SELL", "PROFIT_TAKE", "HEDGE_CLOSE", "REVERSE_REDUCE", "FORCE_CLOSE", "REVERSE") and _voe_native_exits_disabled() and not _voe_reason_is_vec(reason_str):
-        logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={reason_str[:80]} — refused at queue (USER 2026-10-21; NATIVE_EXITS_DISABLED=0 restores)")
-        return "SKIPPED_NON_VECTOR_EXIT_DISABLED"
     try:
         account_key, symbol, position_side = parse_position_key(position_key)
         if account_key not in trade_manager.accounts:
