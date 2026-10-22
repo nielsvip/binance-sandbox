@@ -31,6 +31,10 @@ unaffected; absent proposals file -> both lists empty):
   "proposed_rows"  the NEEDS_ROW items grouped per switch in tools/v15_switch_add.py --queue entry shape {switch, tab, venues,
                    sides, candidates, default, status: PROPOSED_NOT_QUEUED, source, why, needs_wiring, label}; never written
                    into data/template_row_queue.json by this tool.
+ADDED 2026-10-22 (V20 v3, design 22 §4; optional keys AFTER the v1 keys, every v1 key unchanged):
+  "scorer"         {cat_side: {arm: counts|linknet|hybrid, auc_seen, auc_never, n_never, n_pos_never, rule, ...}} from the run's
+                   linknet_report_<CS>.json (results.F.never_seen_before_cut / held_out_boards); absent report -> key left out
+  "binding_audit"  reserved for the nightly BINDS-vs-noop audit (work item 3); the validator accepts a dict, nothing writes it yet
 Each file <= 10 MB (refused otherwise). One file per cat_side; nothing is averaged across cat_sides.
 
 usage: python3 tools/v18_digest.py [--apply] [--out-dir data/learn]
@@ -65,6 +69,41 @@ PROP_CONTEXT_KEYS = ("name", "hash", "n_features", "n_active_filter_options")
 PROP_STATUS = ("PREDICTED_NOT_MEASURED", "HAS_TEMPLATE_ROW", "NEEDS_ROW")
 PROPOSALS_MAX_BYTES = 2 * 1024 * 1024
 RANK_TOP = 40
+
+
+OPTIONAL_KEYS = ("scorer", "binding_audit")
+SCORER_ARMS = ("counts", "linknet", "hybrid")
+SCORER_KEYS = ("arm", "auc_seen", "auc_never", "n_never", "n_pos_never", "rule")
+SCORER_TIE = 0.01
+SCORER_RULE = "best never-tried-pair AUC (linknet report results.F.never_seen_before_cut) unless hybrid is within 0.01 of it -> hybrid"
+REPORT_ARM_KEY = {"counts": "auc_count", "linknet": "auc_linknet", "hybrid": "auc_hybrid_linknet_prior_counts"}
+
+
+def choose_scorer(rep, head="F", tie=SCORER_TIE):
+    """design 22 §4 rule on one linknet report (tools/v18_linknet.py train, linknet_report_<CS>.json): arm with the best AUC on
+    never-tried pairs (results.<head>.never_seen_before_cut), hybrid when it is within `tie` of the best. None when the report
+    carries no comparable never-tried AUC (never guessed)."""
+    res = ((rep or {}).get("results") or {}).get(head) or {}
+    nev, seen = res.get("never_seen_before_cut") or {}, res.get("held_out_boards") or {}
+    aucs = {arm: nev.get(k) for arm, k in REPORT_ARM_KEY.items() if isinstance(nev.get(k), (int, float))}
+    if not aucs:
+        return None
+    best = max(aucs.values())
+    arm = "hybrid" if ("hybrid" in aucs and aucs["hybrid"] >= best - tie) else max(aucs, key=lambda k: (aucs[k], k == "hybrid"))
+    return {"arm": arm, "auc_seen": seen.get(REPORT_ARM_KEY[arm]), "auc_never": aucs[arm], "n_never": nev.get("n"), "n_pos_never": nev.get("pos"),
+            "rule": SCORER_RULE, "auc_never_by_arm": {k: aucs.get(k) for k in SCORER_ARMS}, "auc_seen_by_arm": {k: seen.get(v) for k, v in REPORT_ARM_KEY.items()},
+            "head": head, "n_seen": seen.get("n"), "n_pos_seen": seen.get("pos"), "report_cut_test": (rep or {}).get("cut_test")}
+
+
+def linknet_scorer(cat_side, learn_dir, report_dir=None):
+    """-> ({cat_side: scorer} or None, source path). Reads <report_dir or learn_dir/linknet>/linknet_report_<CS>.json; a report
+    of another cat_side is refused; absent / unreadable / no never-tried AUC -> None (the key is then left out)."""
+    p = Path(report_dir or (Path(learn_dir) / "linknet")) / f"linknet_report_{cat_side}.json"
+    rep = C.read_json(p, None)
+    if not isinstance(rep, dict) or rep.get("cat_side") not in (None, cat_side):
+        return None, str(p)
+    sc = choose_scorer(rep)
+    return ({cat_side: sc} if sc else None), str(p)
 
 
 def linknet_proposals(cat_side, learn_dir):
@@ -112,7 +151,7 @@ def coverage(cat_side, tidx, ev, floor=None):
     return out, detail
 
 
-def assemble(cat_side, learn_dir=None):
+def assemble(cat_side, learn_dir=None, linknet_report_dir=None):
     d = Path(learn_dir or C.LEARN_DIR)
     tidx = C.template_index(cat_side)
     ev = C.canonicalize_evidence(C.read_json(d / "evidence" / f"evidence_{cat_side}.json.gz", {}) or {}, tidx)
@@ -157,16 +196,32 @@ def assemble(cat_side, learn_dir=None):
     pf = f"data/learn/linknet_proposals_v2_{cat_side}.json" if (d / f"linknet_proposals_v2_{cat_side}.json").exists() else f"data/learn/linknet_proposals_{cat_side}.json"
     sources["proposals"] = {"file": pf, "n": len(props), "n_proposed_rows": len(prow),
                             "label": "PREDICTION (tools/v18_linknet.py), never a measurement"}
-    return {"meta": meta, "exit_loss_rank": rows, "repair_menu": rmenu, "winners": winners, "filter_veto": fveto, "coverage": cov, "xpoll": xpoll,
-            "proposals": props, "proposed_rows": prow}
+    doc = {"meta": meta, "exit_loss_rank": rows, "repair_menu": rmenu, "winners": winners, "filter_veto": fveto, "coverage": cov, "xpoll": xpoll,
+           "proposals": props, "proposed_rows": prow}
+    sc, sp = linknet_scorer(cat_side, d, linknet_report_dir)
+    if sc:
+        doc["scorer"] = sc
+        sources["scorer"] = {"file": sp, "rule": SCORER_RULE}
+    return doc
 
 
 def validate(doc):
     """Contract check: exact key sets, types, sort order, size. Returns a list of problems (empty = valid)."""
     bad = []
-    if tuple(doc.keys()) != TOP_KEYS:
-        bad.append(f"top keys {list(doc.keys())} != {list(TOP_KEYS)}")
+    keys = tuple(doc.keys())
+    if keys[: len(TOP_KEYS)] != TOP_KEYS or any(k not in OPTIONAL_KEYS for k in keys[len(TOP_KEYS):]) or len(set(keys)) != len(keys):
+        bad.append(f"top keys {list(doc.keys())} != {list(TOP_KEYS)} [+ optional {list(OPTIONAL_KEYS)}]")
     m = doc.get("meta") or {}
+    if "scorer" in doc:
+        sc = doc["scorer"]
+        if not isinstance(sc, dict) or set(sc) != {m.get("cat_side")}:
+            bad.append(f"scorer must hold exactly the own cat_side, got {sorted(sc) if isinstance(sc, dict) else type(sc).__name__}")
+        else:
+            s = sc[m.get("cat_side")]
+            if not isinstance(s, dict) or not set(SCORER_KEYS) <= set(s) or s.get("arm") not in SCORER_ARMS:
+                bad.append(f"scorer entry {s}")
+    if "binding_audit" in doc and not isinstance(doc["binding_audit"], dict):
+        bad.append("binding_audit not a dict")
     if set(m) != set(META_KEYS):
         bad.append(f"meta keys {sorted(m)}")
     if m.get("cat_side") not in C.CAT_SIDES:
@@ -238,15 +293,18 @@ def main(argv=None):
     ap.add_argument("--learn-dir", default=str(C.LEARN_DIR))
     ap.add_argument("--out-dir", default=str(C.LEARN_DIR))
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--linknet-report-dir", help="dir with linknet_report_<CS>.json of the run (default <learn-dir>/linknet)")
     a = ap.parse_args(argv)
     rc = 0
     for cs in C.CAT_SIDES:
-        doc = assemble(cs, a.learn_dir)
+        doc = assemble(cs, a.learn_dir, a.linknet_report_dir)
         bad = validate(doc)
         cov = doc["coverage"]
         line = (f"[digest] {cs}: rank {len(doc['exit_loss_rank'])} · menu families {len(doc['repair_menu'])} · winners {len(doc['winners'])} · "
                 f"veto {len(doc['filter_veto'])} · xpoll {len(doc['xpoll'])} · proposals {len(doc['proposals'])} rows {len(doc['proposed_rows'])} · coverage pairs {cov['pairs_total']} n<3 {cov['pairs_n_lt_3']} "
                 f"at_floor {cov['pairs_at_floor']} floor {cov['floor_per_1000']}/1000")
+        sc = (doc.get("scorer") or {}).get(cs)
+        line += f" · scorer {sc['arm']} auc_never {sc['auc_never']} n {sc['n_never']} pos {sc['n_pos_never']}" if sc else " · scorer absent (no linknet report)"
         print(line + (f" · INVALID {bad}" if bad else " · contract OK"), flush=True)
         if bad:
             rc = 2

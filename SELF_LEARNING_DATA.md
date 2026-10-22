@@ -144,3 +144,4 @@ See also: [`BACKTEST_BIBLE.md`](BACKTEST_BIBLE.md), [`INFRASTRUCTURE.md`](INFRAS
 `tools/data_locations.py --audit`.
 
 - 2026-10-22 (USER: S5/S6 are storage until deleted after the 2026-10-24 weekend): scratch roots `rebuild_scratch_s5` (S2 `v15_run33_20261019` + `eval_archive`, both proven in the experience store) and `rebuild_scratch_s6` (S1 `_archive` + backups >14 d) are registered in `tools/data_locations.py` (`--where rebuild_scratch_s5 --host s5`). Everything there must reach an ext drive or be proven duplicate before S5/S6 are deleted. Report: `docs/v15_pending/22_DISK_RECLAIM_20261022.md`.
+- 2026-10-22 Hetzner snapshots (v20-absorb): s5 s6 — ids in data/reports/hetzner_snapshots.jsonl (USER 2026-10-22: snapshot before condensing; keep until a later upgrade no longer needs the raw corpus)

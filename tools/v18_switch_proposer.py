@@ -402,11 +402,15 @@ def gen_a(ins, ev, tc, refused):
         nums = {v: num(v) for v in vals}
         if all(nums[v] is not None for v in vals) and len(vals) >= 2 and nums[bold] is not None:
             ints = all(re.match(r"^-?\d+$", v) for v in vals)
-            for v in vals:
-                if v == bold:
-                    continue
+            srt = sorted(vals, key=lambda x: nums[x])
+            bi = srt.index(bold)
+            for v in [srt[j] for j in (bi - 1, bi + 1) if 0 <= j < len(srt)]:  # adjacent neighbours only: the gap is unsampled
                 e = ev.key(sw, v)
                 if e["pos_syms"] < 2:
+                    continue
+                lo_, hi_ = sorted((abs(nums[bold]), abs(nums[v])))
+                if lo_ > 0 and hi_ / lo_ > 20:
+                    refused["intermediate_scale_gap"] += 1  # neighbours 20x apart: different units/sentinels, a midpoint means nothing
                     continue
                 mid = (nums[bold] + nums[v]) / 2.0
                 if ints:
@@ -414,9 +418,8 @@ def gen_a(ins, ev, tc, refused):
                 c = fmt_num(mid, ints)
                 if c in vals or num(c) in {nums[x] for x in vals}:
                     continue
-                eb = ev.key(sw, bold)
-                p = (shrunk(e["pos"], e["n"], ins["p0"]) + shrunk(eb["pos"], eb["n"], ins["p0"])) / 2.0
-                add(sw, c, tab, "intermediate_bold_to_positive", p, "counts_fallback:mean(bold,positive_neighbour)", f"midpoint of bold {bold} and {v} (positive on {e['pos_syms']} sym_sides)")
+                p = shrunk(e["pos"], e["n"], ins["p0"])
+                add(sw, c, tab, "intermediate_bold_to_positive", p, "counts_fallback:adjacent_positive_neighbour", f"midpoint of bold {bold} and adjacent {v} (positive on {e['pos_syms']} sym_sides)")
         kinds = [(ins["features"].get("settings") or {}).get(sw, {}).get(v, {}).get("kind") for v in vals]
         if kinds and all(k == "tf" for k in kinds) and any("," in v for v in vals):
             singles = [v for v in vals if "," not in v and v != "OFF" and v in TF_RANK and ev.key(sw, v)["pos_syms"] >= 1]
@@ -596,29 +599,32 @@ def _rationale(item):
     return f"unshaded BINDS pair ({item['bind_verdict'].get('reason')}); row pos_syms={r.get('pos_syms')} n={r.get('n')}; filter marginal pos_syms={f.get('pos_syms')} n={f.get('n')}" + ("; filter is interval-proven NEEDED on this row" if item.get("needed_listed") else "")
 
 
-def select(cands, quota=20, min_b=5, max_c=5):
-    """C first (<= max_c by score), >= min_b B, rest by score over A u B; <= MAX_PER_SWITCH per switch, <= MAX_PER_FILTER per filter."""
+def select(cands, quota=20, min_b=5, max_c=5, min_a=5):
+    """C first (<= max_c by score), >= min_b B, >= min_a A, rest by score over A u B.
+    Caps: <= MAX_PER_SWITCH per switch, <= MAX_PER_FILTER per filter, one option per (switch, filter)."""
     for c in cands:
         c["score"] = round(float(c["p_pos_pred"]) * float(c["support"]), 6)
     by = lambda t: sorted((c for c in cands if c["type"] == t), key=lambda c: (-c["score"], c["switch"], str(c["cand"]), str(c.get("filter")), str(c.get("opt"))))
-    sel, per_sw, per_f = [], collections.Counter(), collections.Counter()
+    sel, per_sw, per_f, per_sf = [], collections.Counter(), collections.Counter(), set()
 
     def take(c):
-        if per_sw[c["switch"]] >= MAX_PER_SWITCH or (c.get("filter") and per_f[c["filter"]] >= MAX_PER_FILTER):
+        if per_sw[c["switch"]] >= MAX_PER_SWITCH or (c.get("filter") and (per_f[c["filter"]] >= MAX_PER_FILTER or (c["switch"], c["filter"]) in per_sf)):
             return False
         sel.append(c)
         per_sw[c["switch"]] += 1
         if c.get("filter"):
             per_f[c["filter"]] += 1
+            per_sf.add((c["switch"], c["filter"]))
         return True
     for c in by("C"):
         if sum(1 for s in sel if s["type"] == "C") >= min(max_c, quota):
             break
         take(c)
-    for c in by("B"):
-        if sum(1 for s in sel if s["type"] == "B") >= min_b or len(sel) >= quota:
-            break
-        take(c)
+    for t, k in (("B", min_b), ("A", min_a)):
+        for c in by(t):
+            if sum(1 for s in sel if s["type"] == t) >= k or len(sel) >= quota:
+                break
+            take(c)
     rest = sorted((c for c in cands if c["type"] in ("A", "B") and c not in sel), key=lambda c: (-c["score"], c["switch"], str(c["cand"]), str(c.get("filter")), str(c.get("opt"))))
     for c in rest:
         if len(sel) >= quota:
@@ -628,7 +634,7 @@ def select(cands, quota=20, min_b=5, max_c=5):
     return sel
 
 
-def build_cat_side(ins, quota=20, min_b=5, max_c=5, predicted_at=None):
+def build_cat_side(ins, quota=20, min_b=5, max_c=5, predicted_at=None, min_a=5):
     cs = ins["cs"]
     predicted_at = predicted_at or utc_now()
     refused = collections.Counter()
@@ -641,7 +647,7 @@ def build_cat_side(ins, quota=20, min_b=5, max_c=5, predicted_at=None):
     a = gen_a(ins, ev, tc, refused)
     b = gen_b(ins, ev, refused)
     c = gen_c(ins, ev, refused)
-    sel = select(a + b + c, quota, min_b, max_c)
+    sel = select(a + b + c, quota, min_b, max_c, min_a)
     for i, p in enumerate(sel):
         p["proposal_id"] = f"pv3-{cs}-{i + 1:02d}"
         p["cat_side"] = cs
@@ -656,9 +662,9 @@ def build_cat_side(ins, quota=20, min_b=5, max_c=5, predicted_at=None):
     n_by = collections.Counter(x["type"] for x in sel)
     p_pred = [x["p_pos_pred"] for x in sel]
     meta = {"schema": SCHEMA, "cat_side": cs, "built_at": utc_now(), "predicted_at": predicted_at, "model": MODEL, "label": "every p_pos_pred / e_delta_pred here is a PREDICTION (linknet v3u score or a counts fallback, see p_source); nothing is a measurement and nothing is adopted except by the real engine under the gates",
-            "quota": quota, "min_b": min_b, "max_c": max_c, "selected": dict(n_by), "candidates": {"A": len(a), "B": len(b), "C": len(c)}, "refused": dict(sorted(refused.items())),
+            "quota": quota, "min_b": min_b, "max_c": max_c, "min_a": min_a, "selected": dict(n_by), "candidates": {"A": len(a), "B": len(b), "C": len(c)}, "refused": dict(sorted(refused.items())),
             "p0_cat_side": round(ins["p0"], 6), "scoring": f"score = p_pos_pred x support; support = {SUPPORT_FLOOR} + {1 - SUPPORT_FLOOR} x min(1, ln(1+pos_syms)/ln(1+{SUPPORT_FULL_AT})) of the nearest measured key (B: mean of row and filter-marginal support, 1.0 when the filter is interval-proven NEEDED on the row); counts fallback = Beta mean shrunk to p0 (m={M_SHRINK}); B fallback shrinks the row toward the filter's marginal rate",
-            "selection": f"C first (<= {max_c}), >= {min_b} B, rest by score over A u B; <= {MAX_PER_SWITCH} per switch, <= {MAX_PER_FILTER} per filter",
+            "selection": f"C first (<= {max_c}, all valid designs), >= {min_b} B, >= {min_a} A, rest by score over A u B; <= {MAX_PER_SWITCH} per switch, <= {MAX_PER_FILTER} per filter, one option per (switch, filter). The per-type floors are a choice of this tool: A is scored by a naked-row head and B by a cell head that inherits its row's sign (evidence base §2: lift ~ 0), so a raw cross-type ranking would always fill the quota with B",
             "p_pos_pred_range": [min(p_pred), max(p_pred)] if p_pred else None, "sources": ins["sources"],
             "caveats": ["STOCKS_LONG: the network loses to counts on never-tried pairs (design 22 §0/§4, AUC 0.639 vs 0.741) — p_pos_pred there is weaker than the counts it is ranked with" if cs == "STOCKS_LONG" else None, "STOCKS_SHORT: the 10-20 proposals were uncalibrated (p_pos_pred 0.74-0.87 vs realised < 1%); treat these as ranks, not probabilities" if cs == "STOCKS_SHORT" else None, "linknet v3u needs_row items all carry config_field=false (bible in_config unavailable on the training host); wiring is re-checked here from config.py/config_tradier.py/QuickConfig AST + SWITCH_BIBLE status"]}
     meta["caveats"] = [x for x in meta["caveats"] if x]
@@ -688,13 +694,13 @@ def append_calibration(docs, path=CALIBRATION):
     return n
 
 
-def build(cat_side, quota=20, min_b=5, max_c=5, out_dir=LEARN, calibration=True):
+def build(cat_side, quota=20, min_b=5, max_c=5, out_dir=LEARN, calibration=True, min_a=5):
     sides = CAT_SIDES if cat_side == "all" else (cat_side,)
     pa = utc_now()
     docs, res = [], {}
     for cs in sides:
         t0 = time.time()
-        doc = build_cat_side(load_inputs(cs), quota, min_b, max_c, pa)
+        doc = build_cat_side(load_inputs(cs), quota, min_b, max_c, pa, min_a)
         p = Path(out_dir) / f"proposals_v3_{cs}.json"
         LC.write_json(p, doc)
         docs.append(doc)
@@ -761,6 +767,7 @@ def main():
     b.add_argument("--quota", type=int, default=20)
     b.add_argument("--min-b", type=int, default=5)
     b.add_argument("--max-c", type=int, default=5)
+    b.add_argument("--min-a", type=int, default=5)
     b.add_argument("--out-dir", default=str(LEARN))
     b.add_argument("--no-calibration", action="store_true")
     q = sub.add_parser("queue")
@@ -769,7 +776,7 @@ def main():
     q.add_argument("--no-extend", action="store_true")
     a = ap.parse_args()
     if a.cmd == "build":
-        print(json.dumps(build(a.cat_side, a.quota, a.min_b, a.max_c, Path(a.out_dir), not a.no_calibration), indent=1))
+        print(json.dumps(build(a.cat_side, a.quota, a.min_b, a.max_c, Path(a.out_dir), not a.no_calibration, a.min_a), indent=1))
     else:
         print(json.dumps(queue(a.cat_side, Path(a.out_dir), extend=not a.no_extend), indent=1))
     return 0

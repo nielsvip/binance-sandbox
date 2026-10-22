@@ -98,7 +98,7 @@ try:
 except Exception:  # pragma: no cover - numpy is present in every training env (S2 .venv, Mac conda)
     np = None
 
-import v18_features as FX  # noqa: E402  binding features (V20 v3): stdlib-only module next to this file
+from tools import v18_features as FX  # noqa: E402  binding features (V20 v3): stdlib-only module next to this file
 
 SCHEMA = "v18_brain/1"
 EPS = 1e-9

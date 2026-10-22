@@ -550,10 +550,35 @@ class MarketDataEngine:
                     vals = d.get('symbols') or d.get('pairs') or []
                     for x in vals: universe.add(str(x).upper())
         self.symbols = {s for s in universe if "USDT" in s or "USDC" in s}
-        
-        for s in self.symbols: 
-            self.market.init_symbol_from_disk(s)
-        logger.info(f"✅ Ready. Monitoring {len(self.symbols)} symbols.")
+        # 2026-10-22: eager init read ~700 kline files (~15s at normal load, 10+ min at
+        # load 400+) and nothing published until it finished — every slow-boot child was
+        # murdered for silence mid-init. Init lazily: broadcast inits a symbol on its first
+        # tick (non-blocking via to_thread) and this background task warms the rest.
+        asyncio.create_task(self._warm_symbols())
+        logger.info(f"✅ Ready. Monitoring {len(self.symbols)} symbols (warming in background).")
+
+    async def _warm_symbols(self):
+        try:
+            done = 0
+            for s in sorted(self.symbols):
+                if not self.running:
+                    break
+                if s not in self.market.data:
+                    try:
+                        await asyncio.to_thread(self.market.init_symbol_from_disk, s)
+                    except Exception:
+                        pass
+                    done += 1
+                    if done % 50 == 0:
+                        try: logger.info(f"🔥 Warming symbols {done}/{len(self.symbols)}")
+                        except Exception: pass
+                if done % 10 == 0:
+                    await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            try: logger.warning(f"[WARM] symbols warmup ended early: {e}")
+            except Exception: pass
 
     # ==========================================
     # PRICE INJECTORS (WS, REDIS, JSON)
@@ -684,16 +709,21 @@ class MarketDataEngine:
         loop = asyncio.get_running_loop()
         
         while self.running:
-            active_symbols = list(self.market.data.keys())
             tasks_data = []
 
-            for sym in active_symbols:
-                store = self.market.data.get(sym)
-                if not store: continue
-
+            for sym in self.symbols:
                 # 1. READ FROM CACHE (Buffer)
                 buf = self.price_buffer.get(sym)
                 if not buf: continue
+                store = self.market.data.get(sym)
+                if not store:
+                    # 2026-10-22 lazy init: first tick warms this symbol off-loop; compute resumes next pass.
+                    try:
+                        await asyncio.to_thread(self.market.init_symbol_from_disk, sym)
+                    except Exception:
+                        pass
+                    store = self.market.data.get(sym)
+                    if not store: continue
 
                 # 2. STALE-BUF WALL-CLOCK SYNTHESIS (checked BEFORE the sync check).
                 # 2026-10-22: the old order ran the sync check first, so a synthetic pass set
