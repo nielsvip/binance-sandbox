@@ -1,11 +1,50 @@
 {
- "at": "2026-10-22T08:01:42Z",
+ "at": "2026-10-22T08:15:10Z",
  "s1": {
-  "error": "s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: no output"
+  "host": "niels",
+  "now": 1792656905.6328528,
+  "merge_crypto": {
+   "n": 12,
+   "max_lag_min": 15.0,
+   "median_lag_min": 15.0,
+   "worst": "1000BONKUSDC",
+   "dead": []
+  },
+  "merge_stocks": {
+   "n": 12,
+   "max_lag_min": 0.0,
+   "median_lag_min": 0.0,
+   "worst": "A",
+   "dead": []
+  },
+  "npz_legacy_crypto": [
+   "HBARUSDC",
+   "NEOUSDC",
+   "WLFIUSDC",
+   "XVGUSDT"
+  ],
+  "append_log_age_min": 45.7,
+  "append_last_secs": 860.4,
+  "append_last_stats": "'appended': 719, 'created': 0, 'up_to_date': 5340, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "npz_loop_pids": 9,
+  "npz_cycle_last_utc": "07:15:02",
+  "npz_cycle_installed": 94,
+  "npz_cycle_not_ready": 0,
+  "npz_cycle_no_new": 0,
+  "npz_loop_has_settle": true,
+  "sched_tick_age_min": 1.1,
+  "sched_launched": 3,
+  "archive_n": 187,
+  "archive_mb": 2211.7,
+  "archive_newest_min": 347.1,
+  "_via": "s1-int"
  },
  "red": [
-  "s1 unreachable: s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: no output"
+  "L2 appender silent for 45.7 min (cron */5) "
  ],
- "warn": [],
+ "warn": [
+  "L3 4 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC NEOUSDC WLFIUSDC XVGUSDT",
+  "L5 newest archived board NPZ is 347 min old \u2014 publishes may not be recording"
+ ],
  "ok": false
 }
