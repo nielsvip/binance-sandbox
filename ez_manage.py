@@ -26276,7 +26276,7 @@ class MultiAccountTradeManager:
                         # order's full round trip made one slow fill delay every other key in the bar; the exchange
                         # takes many orders per second. Bounded so one account cannot monopolise the event loop, and
                         # each result is still written to the ledger by its own task, so the ledger stays truthful.
-                        _vd_lim = max(1, int(os.environ.get("VEC_DRIVEN_CONCURRENCY") or getattr(_ezm_base_config, "VEC_DRIVEN_CONCURRENCY", 12) or 1))
+                        _vd_lim = max(1, int(os.environ.get("VEC_DRIVEN_CONCURRENCY") or getattr(_ezm_base_config, "VEC_DRIVEN_CONCURRENCY", 256) or 1))
                         _vd_sem = asyncio.Semaphore(_vd_lim)
 
                         async def _vd_one(_it, _ss, _action, _pk):
@@ -26377,7 +26377,7 @@ class MultiAccountTradeManager:
                         # the bar, so the book never caught up however permissive the gates became. Same bounded
                         # concurrency as the intent dispatch; one attempt per sym_side per bar is unchanged
                         # (store.mark_reconcile already ran above), and each task writes its own ledger row.
-                        _rc_lim = max(1, int(os.environ.get("VEC_DRIVEN_CONCURRENCY") or getattr(_ezm_base_config, "VEC_DRIVEN_CONCURRENCY", 12) or 1))
+                        _rc_lim = max(1, int(os.environ.get("VEC_DRIVEN_CONCURRENCY") or getattr(_ezm_base_config, "VEC_DRIVEN_CONCURRENCY", 256) or 1))
                         _rc_sem = asyncio.Semaphore(_rc_lim)
 
                         async def _rc_one(_ss, _pk, _act, _reason, _frac, _bar_key):
@@ -64510,6 +64510,20 @@ async def main():
         logger.warning(f"[LOOP_STALL_WATCH] armed — thread stacks on any loop freeze -> {_lsw_path}")
     except Exception as _lsw_e:
         logger.warning(f"[LOOP_STALL_WATCH] not armed: {_lsw_e}")
+    # USER 2026-10-22: "NO SYM_SIDE EVER WAITS FOR ANOTHER ONE WE CAN RUN MILLIONS PER SECOND NO STALL ALLOWED EVER" —
+    # while one sym_side sits in its 120 s maker chase, every other sym_side must still be revised.
+    # asyncio.to_thread runs on the loop's DEFAULT executor, which is min(32, cpu+4) = 16 threads on this 12-core Mac.
+    # Every broker call in place_maker_order is (correctly) wrapped in to_thread, so those 16 slots were the real
+    # concurrency ceiling: with a 120 s chase, 174 live sym_sides needed 174/16 x 120 s = 21 minutes for ONE revision
+    # pass, and sym_side #17 waited on sym_side #1 for no reason but a thread. The work is pure network I/O, so the
+    # pool can be wide; threads here cost a stack, not a core.
+    try:
+        from concurrent.futures import ThreadPoolExecutor as _EzTPE
+        _ez_pool_n = max(64, int(os.environ.get("EZ_IO_THREADS") or getattr(_ezm_base_config, "EZ_IO_THREADS", 256) or 256))
+        asyncio.get_running_loop().set_default_executor(_EzTPE(max_workers=_ez_pool_n, thread_name_prefix="ez-io"))
+        logger.warning(f"[IO_POOL] default executor widened to {_ez_pool_n} threads (was min(32, cpu+4)={min(32, (os.cpu_count() or 1) + 4)}) — no sym_side waits on another's broker call")
+    except Exception as _tpe_e:
+        logger.warning(f"[IO_POOL] could not widen the default executor: {_tpe_e}")
     for acct in accounts_to_init:
         try:
             check_pid_file(acct)

@@ -272,6 +272,28 @@ engine_keepalive() {
     for p in $(pgrep -f "bin/python -u ez_manage.py --account $A"); do kill -9 "$p" 2>/dev/null; done
     mgr_pids=""
   fi
+  # ── NOT-TRADING IS A FAULT, NOT A STATE (USER 2026-10-22: "NO ACCOUNT CAN EVER NOT TRADE", "you need to make sure
+  # NO account can EVER stop trading"). Log freshness cannot see this: fin and men logged happily while executing
+  # NOTHING. MEASURED 2026-10-22 05:5xZ from data/vec_live/live_exec_<acct>.jsonl, which gets a row for EVERY vec
+  # decision outcome — inf 153 outcomes/h (15 SUCCESS) and flz 141 (23 SUCCESS), against men 5 and fin 4, all of
+  # those "already handled"/"already flat". Both engines were up, both logs were fresh, neither traded.
+  # The test is execution, and it is conditioned on WORK BEING AVAILABLE so it cannot false-positive between bars:
+  # dictates pending in the spool AND the ledger not advancing => this account is not trading => repair it locally.
+  # Local repair first; mac_failover_agent still raises not_trading_account (30 s) for the S1 path when repair fails.
+  local nt_ledger="$BASE/data/vec_live/live_exec_${A}.jsonl"
+  local nt_limit="${MAC_NOT_TRADING_S:-120}"
+  local nt_age nt_pending
+  nt_age=$(age_of "$nt_ledger")
+  nt_pending=$(/bin/ls "$BASE/data/vec_live/intents/" 2>/dev/null | /usr/bin/grep -c "^PB-${A}-" 2>/dev/null || echo 0)
+  case "$nt_pending" in ''|*[!0-9]*) nt_pending=0 ;; esac
+  if [ -n "$mgr_pids" ] && [ "$nt_pending" -gt 0 ] && [ "$nt_age" -gt "$nt_limit" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
+    engine_alert "$A" "NOT TRADING: ${nt_pending} dictate(s) pending and live_exec_${A}.jsonl has not advanced in ${nt_age}s (> ${nt_limit}s) while the engine is up — replacing the engine"
+    klog "$A: NOT TRADING (${nt_pending} pending dictates, ledger ${nt_age}s stale) -> replacing engine $mgr_pids"
+    echo "$now" > "$rb_stamp"
+    for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
+    for p in $(pgrep -f "bin/python -u ez_manage.py --account $A"); do kill -9 "$p" 2>/dev/null; done
+    mgr_pids=""
+  fi
   if [ -z "$mgr_pids" ]; then
     # 2026-10-16: re-check immediately before spawning. `procs_for` was observed to false-negative transiently under
     # load (04:38:00Z and 04:40:14Z logged "NO ez_manage watchdog -> start" for inf while wrapper 77006 was alive and

@@ -90,7 +90,12 @@ LF_POSITIONS_STALE_S = float(os.environ.get("LF_POSITIONS_STALE_S", "600"))
 # machinery existed (live_failover_s1._scoped_accounts narrows a takeover to a strict subset) but NO kind ever fired
 # on "this account is not trading", so a wedged engine was invisible to the failover: measured 2026-10-22, men and fin
 # executed nothing for hours while the lease sat holder=mac, 34.6 h stale, and S1 never moved.
-LF_NOT_TRADING_S = float(os.environ.get("LF_NOT_TRADING_S", "180"))
+# 180 -> 30 on 2026-10-22, USER: "NO ACCOUNT CAN EVER NOT TRADE IF IT IS NOT TRADING for 30s it has to be taken over
+# by s1 ESPECIALLY with open positions". 180 s was chosen when a takeover still SIGTERMed the Mac's own traders and the
+# watchdog lease gate then refused to restart them, so a false positive cost real trading; both of those are gone
+# (tools/live_failover_lease_gate.sh is Mac-exempt, the fence only logs), which makes fast detection cheap: the Mac
+# keeps trading either way and the condition becomes visible in 30 s instead of 3 minutes.
+LF_NOT_TRADING_S = float(os.environ.get("LF_NOT_TRADING_S", "30"))
 # The lane must be alive before silence means anything: tools/pure_board_trader.py rewrites vec_driven.json every
 # pass, so a fresh registry proves dictates are still being published and an idle live_exec is the ACCOUNT's fault.
 LF_LANE_FRESH_S = float(os.environ.get("LF_LANE_FRESH_S", "2400"))
