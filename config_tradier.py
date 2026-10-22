@@ -4501,7 +4501,6 @@ class TradierConfig:
     )
     WATCHDOG_WT3M_ESCALATE_MAX_USD: float = 600.0
     WINNER_PROTECT_ENABLED: bool = False
-    WIN_TRAIL_EROSION_PCT: float = 0.0
     WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC: float = 30.0
     WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = False
     WT15M_AGAINST_PENALTY: float = -5.0
@@ -6151,9 +6150,7 @@ class TradierConfig:
     DELTA_PYRAMID_QTY_MULT: float = 1.5
     DELTA_PYRAMID_ACCEL_THRESHOLD: float = 0.2
     DELTA_Z_WINDOW: int = 200
-    DELTA_MAX_HOLD_BARS: int = (
-        0  # DISABLED — ride winners until technicals turn. No fixed time exits. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    )
+    UNCOND_DC_HARD_STOP_BUFFER_PCT: float = 0.25  # 2026-10-22 USER: UNCOND_DC_* hard-stop buffer below dc_low / above dc_high (0.25 = the twin default tol)
     DELTA_COOLDOWN_BARS: int = (
         60  # WINNER ST: 60 bars (5h) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     )

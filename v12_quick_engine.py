@@ -73,6 +73,7 @@ import vec_decisions.cash_settlement as _cash_settle  # 2026-10-14 cash-account 
 import vec_decisions.qty_quantizers as _qq  # 2026-10-16 STDEV 1-5x ladder + streak quantizer, shared with ez_manage + tradier_manage
 import vec_decisions.stop_reclaim as _srm  # 2026-10-17 STOP_RECLAIM_REENTRY (swift conditional re-entry after FIXED_STOP)
 import vec_decisions.high_gain_reopen as _hgr  # 2026-10-21 TR HIGH-GAIN REOPEN (re-open reduced high-gain lifecycles; stocks only, default off)
+import vec_decisions.uncond_dc_stop as _udcs  # 2026-10-22 USER UNCOND_DC_HARD_STOP_BUFFER_PCT (default 0.25 = the 0.9975/1.0025 literals)
 import vec_decisions.reentry_overdue as _rovd  # 2026-10-21 TRADIER OVERDUE reentry bypass (2h+ wait bypasses stoch+WT on dc_15m break or GR HL/HH; stocks only, default off)
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
@@ -1308,7 +1309,6 @@ AUTO_WIRED_PARAMS = [
     "DELTA_LT_EXIT_TF",
     "DELTA_LT_EXIT_TYPE",
     "DELTA_LT_HTF_GATE",
-    "DELTA_MAX_HOLD_BARS",
     "DELTA_MIN_TF_FOR_ACTION",
     "DELTA_OPTIONS_COOLDOWN",
     "DELTA_OPTIONS_ENTRY_Z",
@@ -3351,7 +3351,6 @@ AUTO_WIRED_PARAMS = [
     "WATCHDOG_DC_TFS",
     "WATCHDOG_WT3M_ESCALATE_ENABLED",
     "WINNER_PROTECT_ENABLED",
-    "WIN_TRAIL_EROSION_PCT",
     "WR_PULLBACK_ENABLED",
     "WRONG_SIDE_ABS_KILL_ENABLED",
     "WRONG_SIDE_DIV_LOOKBACK_BARS",
@@ -4683,7 +4682,7 @@ class QuickConfig:
     )
     DELTA_GATE_STDEV_BREAKOUT: bool = True
     DELTA_GATE_VOL_SPIKE: bool = True
-    DELTA_MAX_HOLD_BARS: int = 0
+    UNCOND_DC_HARD_STOP_BUFFER_PCT: float = 0.25  # 2026-10-22 USER: UNCOND_DC_* hard-stop buffer below dc_low / above dc_high (0.25 = the 0.9975/1.0025 literals)
     DELTA_PYRAMID_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)
     )
@@ -4917,9 +4916,6 @@ class QuickConfig:
     VWAP_BOUNCE_DIST_PCT: float = 0.3
     VWAP_BOUNCE_ENTRY_ENABLED: bool = (
         True  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off until sweep-proven
-    )
-    WIN_TRAIL_EROSION_PCT: float = (
-        0.0  # STRUCTURAL ONLY — was 0.5, now disabled (user 2026-08-14: never exit on percentage, only DC reject / WT 15m cross / HH+HL)
     )
     ABLATION_DISABLE_HEDGE: bool = (
         False  # 2026-10-08 USER: ablation never on outside a momentary test; = live config.py/config_tradier.py False
@@ -14497,7 +14493,6 @@ _DEFAULTS_625 = {
     "DELTA_GATE_SBA": False,
     "DELTA_GATE_STDEV_BREAKOUT": True,
     "DELTA_GATE_VOL_SPIKE": True,
-    "DELTA_MAX_HOLD_BARS": 0,
     "DELTA_PYRAMID_ACCEL_THRESHOLD": 0.1,
     "DELTA_PYRAMID_ENABLED": False,
     "DELTA_PYRAMID_MIN_BARS": 4,
@@ -15172,7 +15167,6 @@ _DEFAULTS_625 = {
     "VWAP_BOUNCE_DIST_PCT": 0.3,
     "VWAP_BOUNCE_ENTRY_ENABLED": False,
     "VWAP_FILTER_ENABLED": True,
-    "WIN_TRAIL_EROSION_PCT": 0.5,
     "WT_15M_VEL_NEAR_ZERO_THRESHOLD": 0.05,
     "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED": False,
     "WT_15M_VEL_SLOW_GAIN_BAND_PCT": 0.05,
@@ -17434,11 +17428,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 cooldown_bars = _cd_live
         except Exception:
             pass
-    max_hold_bars = (
-        getattr(cfg, "DELTA_MAX_HOLD_BARS", 0)
-        if getattr(cfg, "DELTA_ENGINE_ENABLED", False)
-        else 0
-    )
     # venue-aware daytrade toggle — tradier vs crypto both respect DC_DAYTRADE_ENABLED
     _dt_enabled_tradier = bool(getattr(cfg, "TRADIER_DC_DAYTRADE_ENABLED", False))
     _dt_enabled_crypto = bool(getattr(cfg, "DC_DAYTRADE_ENABLED", False))
@@ -17576,7 +17565,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _tech_tgt_dc = _tech_tgt_dcs[0][1] if len(_tech_tgt_dcs) == 1 else None
     _ = getattr(cfg, "TECHNICAL_DC_STOP_TF", "OFF")
     _ = getattr(cfg, "TECHNICAL_DC_TARGET_TF", "OFF")
-    trail_erosion = getattr(cfg, "WIN_TRAIL_EROSION_PCT", 0.0)
     satoshit_partial = (
         getattr(cfg, "SATOSHIT_EXIT_PARTIAL_PCT", 0.0)
         if getattr(cfg, "SATOSHIT_EXIT_ENABLED", False)
@@ -17744,6 +17732,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _mtftr_min = int(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3))
     else:
         _mtftr_w1 = None
+        _mtftr_w2 = None
+        _mtftr_lad = []
+        _mtftr_min = 3
+        _mtftr_tf = "1h"
     _vig_block_px = 0.0
     _vig_scan_start = 0
     _qs_on = _qq.streak_on(cfg)  # 2026-10-16 QTY_STREAK quantizer: state folded from full CLOSE rows at each new open
@@ -20617,16 +20609,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 else i
             )
             _uh_fire = ""
+            _uh_lo_f, _uh_hi_f = _udcs.buffer_factors(cfg)
             if pos is not None:
                 if is_long:
                     _uh_llvl4 = float(_uh_l4[_uh_j]) if _uh_j < len(_uh_l4) else 0.0
-                    if _uh_llvl4 > 0 and px <= _uh_llvl4 * 0.9975:
+                    if _uh_llvl4 > 0 and px <= _uh_llvl4 * _uh_lo_f:
                         _uh_fire = "UNCOND_DC_LOW_4H"
                     if not _uh_fire and bool(
                         getattr(cfg, "DC_HARD_STOP_1H_ENABLED", True)
                     ):
                         _uh_llvl1 = float(_uh_l1[_uh_j]) if _uh_j < len(_uh_l1) else 0.0
-                        if _uh_llvl1 > 0 and px <= _uh_llvl1 * 0.9975:
+                        if _uh_llvl1 > 0 and px <= _uh_llvl1 * _uh_lo_f:
                             _uh_fire = "UNCOND_DC_LOW_1H"
                     if not _uh_fire and bool(
                         getattr(cfg, "DC_HARD_STOP_15M_ENABLED", True)
@@ -20634,17 +20627,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _uh_llvl15 = (
                             float(_uh_l15[_uh_j]) if _uh_j < len(_uh_l15) else 0.0
                         )
-                        if _uh_llvl15 > 0 and px <= _uh_llvl15 * 0.9975:
+                        if _uh_llvl15 > 0 and px <= _uh_llvl15 * _uh_lo_f:
                             _uh_fire = "UNCOND_DC_LOW_15M"
                 else:
                     _uh_lvl4 = float(_uh_h4[_uh_j]) if _uh_j < len(_uh_h4) else 0.0
-                    if _uh_lvl4 > 0 and px >= _uh_lvl4 * 1.0025:
+                    if _uh_lvl4 > 0 and px >= _uh_lvl4 * _uh_hi_f:
                         _uh_fire = "UNCOND_DC_HIGH_4H"
                     if not _uh_fire and bool(
                         getattr(cfg, "DC_HARD_STOP_1H_ENABLED", True)
                     ):
                         _uh_lvl1 = float(_uh_h1[_uh_j]) if _uh_j < len(_uh_h1) else 0.0
-                        if _uh_lvl1 > 0 and px >= _uh_lvl1 * 1.0025:
+                        if _uh_lvl1 > 0 and px >= _uh_lvl1 * _uh_hi_f:
                             _uh_fire = "UNCOND_DC_HIGH_1H"
                     if not _uh_fire and bool(
                         getattr(cfg, "DC_HARD_STOP_15M_ENABLED", True)
@@ -20652,7 +20645,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _uh_lvl15 = (
                             float(_uh_h15[_uh_j]) if _uh_j < len(_uh_h15) else 0.0
                         )
-                        if _uh_lvl15 > 0 and px >= _uh_lvl15 * 1.0025:
+                        if _uh_lvl15 > 0 and px >= _uh_lvl15 * _uh_hi_f:
                             _uh_fire = "UNCOND_DC_HIGH_15M"
             if _uh_fire:
                 pos["fees"] += abs(pos["qty"] * px) * half_fee
@@ -22042,19 +22035,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pass
         # 2026-09-28 USER SPEC: fixed-% DAYTRADE_STOP/TARGET branches DELETED — "NEVER a fix % loss or
         # profit exit"; DC-channel exits above (dc_low−0.25% / dc_high−0.10%, 15m/1h) are the only daytrade exits.
-        elif max_hold_bars > 0 and held_bars >= max_hold_bars:
-            closed, reason = True, "DELTA_MAX_HOLD"
-        elif (
-            trail_erosion > 0
-            and pos["peak_pnl_pct"] > 0
-            and (pos["peak_pnl_pct"] - live_pnl_pct)
-            >= pos["peak_pnl_pct"] * trail_erosion
-            and (
-                _gftf.get("erosion_confirm") is None
-                or bool(_gftf["erosion_confirm"][i])
-            )
-        ):
-            closed, reason = True, "WIN_TRAIL_EROSION"
+        # 2026-10-22 USER ERASE: DELTA_MAX_HOLD (time exit) and WIN_TRAIL_EROSION (fixed-% giveback) legs deleted.
 
         if (not closed) and _ty_fire:
             closed, reason = True, _ty_reason
@@ -23295,10 +23276,6 @@ def _disable_all_exits(cfg):
             setattr(cfg, flag, False)
     cfg.RSI_EXIT_LONG_TRADIER = 0.0
     cfg.RSI_EXIT_SHORT_TRADIER = 100.0
-    cfg.WIN_TRAIL_EROSION_PCT = (
-        0.0  # non-flag numeric knob (default 0.5) — must be zeroed, not just flag-gated
-    )
-    cfg.DELTA_MAX_HOLD_BARS = 0
     # G0 must also be pure single-entry B&H: no augment/reduce/sizing-multiplier,
     # or the forced seed position stops being an exact B&H replica. These get
     # turned back on one at a time during the real G3 (REENTRY/SIZING) search.

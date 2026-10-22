@@ -166,7 +166,6 @@ class Config:
     )
     COOLDOWN_BARS_15m: int = 3
     BREAKEVEN_EXIT_AFTER_BARS_ENABLED: bool = False
-    WIN_TRAIL_EROSION_PCT: float = 0.25
     STRUCTURAL_EXIT_GATE_ENABLED: bool = False
     VEC_REENTRY_REQUIRE_PRIOR_EXIT: bool = False
     VEC_REENTRY_WINDOW_BARS: int = 400
@@ -3430,9 +3429,7 @@ class Config:
     DELTA_PYRAMID_QTY_MULT: float = 1.5
     DELTA_PYRAMID_ACCEL_THRESHOLD: float = 0.2
     DELTA_Z_WINDOW: int = 200
-    DELTA_MAX_HOLD_BARS: int = (
-        0  # DISABLED — ride winners until technicals turn. No fixed time exits.
-    )
+    UNCOND_DC_HARD_STOP_BUFFER_PCT: float = 0.25  # 2026-10-22 USER: UNCOND_DC_* hard-stop buffer below dc_low / above dc_high (0.25 = the 0.9975/1.0025 literals)
     DELTA_COOLDOWN_BARS: int = 120  # WINNER: 120 bars (6h at 3m)
     DELTA_HTF_GATE: str = (
         "hh_hl_4h"  # 2026-05-22: HH/HL structure gate — LONG if (dc_high_4h>prev AND dc_low_4h>prev) OR ha_4h=="green"; SHORT vv. More reactive than WT crossover. Values: 'none'/'4h'/'4h_D'/'hh_hl_4h'
@@ -4670,9 +4667,6 @@ class Config:
     # - The real edge is NEVER selling at a loss — proven by months of live data
     # MAX_LOSS_HOLD_MINUTES and LOSS_CUT disabled permanently.
     LOSS_CUT_ENABLED: bool = False  # NEVER enable — proven to lose 20%+ weekly
-    WIN_TRAIL_EROSION_PCT: float = (
-        0.0  # STRUCTURAL ONLY — was 0.50, now disabled (user 2026-08-14: never exit on percentage, only DC reject / WT 15m cross / HH+HL)
-    )
     K_ZONE_ENTRY_ENABLED: bool = (
         True  # BACKTEST_CHANGE_109: K-zone entry — enter when K in zone (<35 LONG / >65 SHORT) + K turning + candle confirms. No crossover wait needed.
     )

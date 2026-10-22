@@ -298,3 +298,55 @@ def test_catchup_launches_from_decision_log(tmp_path):
     got = S._catchup_launches(p, NOW)
     assert got == {"AAA_LONG": [(NOW - 100, True)], "AAA_SHORT": [(NOW - 100, False)]}
     assert S._catchup_launches(tmp_path / "none", NOW) == {}
+
+
+def _host_fn(name):
+    tree = ast.parse(S.HOST_PY)
+    fns = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.Assign)) and (getattr(n, "name", None) in (name,) or (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "_STRUCT_EXIT_MARKERS"))]
+    ns = {"json": json}
+    exec(compile(ast.Module(body=fns, type_ignores=[]), "<host_py>", "exec"), ns)
+    return ns[name]
+
+
+def test_slow_redo_due_only_catchup_budget_in_slow_pinned_round():
+    assert S._slow_redo_due({"complete_at": None, "mode": "catchup"}, True) is True
+    assert S._slow_redo_due({"complete_at": None, "mode": "budget:12000"}, True) is True
+    assert S._slow_redo_due({"complete_at": None, "mode": "catchup"}, False) is False  # round not slow-pinned
+    assert S._slow_redo_due({"complete_at": "2026-10-22T10:00:00Z", "mode": "catchup"}, True) is False  # an older full board completes it
+    assert S._slow_redo_due({"complete_at": None, "mode": None}, True) is False and S._slow_redo_due(None, True) is False
+
+
+def test_round_forces_slow_with_budget_pin(tmp_path):
+    p = tmp_path / "e.json"
+    p.write_text(json.dumps({"round": "run35", "env": {"V15_BOARD_BUDGET": "0"}}))
+    assert S._round_forces_slow("run35", p) is True
+
+
+def test_struct_exit_marker_host_helper():
+    f = _host_fn("_struct_exit_marker")
+    assert f("x\n[DEFAULTS-GATE] A_LONG: template T has 1 default violations — NOT running. First: ...\n[PAIR-IN-RAM] early exit\n") == "[DEFAULTS-GATE]"
+    assert f("[DEFAULTS-GATE] A_LONG: 3 bold defaults = running default\n[spec-fill] row 3\n") is None
+    assert f("STALE_NPZ_SKIPPED: NPZ last bar ...\n") == "STALE_NPZ_SKIPPED"
+    assert f("[NO-WRITE] A_LONG no prepared NPZ\n") == "[NO-WRITE]"
+    assert f("[PARITY-GATE] A_LONG: hard default disparity — NOT running: x\n") == "[PARITY-GATE]"
+    assert f("[PARITY-GATE] A_LONG: defaults symmetric (cached)\n") is None
+    assert f("STALE_NPZ_SKIPPED old run\n[DEDUP] acquired\n[spec-fill] workbook complete\n") is None  # a later run did work
+    assert f("") is None and f(None) is None
+
+
+def test_refund_structural_exits_once_per_log_mtime():
+    st = {"attempts": {"ADBE_LONG|30D": 3, "BABA_SHORT|30D": 0}}
+    ex = {"s2": {"ADBE_LONG": [1000.0, "[DEFAULTS-GATE]"], "BABA_SHORT": [1000.0, "STALE_NPZ_SKIPPED"]}}
+    got = S._refund_structural_exits(st, ex)
+    assert got == [("s2", "ADBE_LONG", "[DEFAULTS-GATE]", 2)] and st["attempts"]["BABA_SHORT|30D"] == 0  # never below 0
+    assert S._refund_structural_exits(st, ex) == [] and st["attempts"]["ADBE_LONG|30D"] == 2  # same log mtime -> no double refund
+    ex["s2"]["ADBE_LONG"] = [2000.0, "STALE_NPZ_SKIPPED"]
+    assert S._refund_structural_exits(st, ex)[0][3] == 1
+    assert S._refund_structural_exits(st, {"s5": None, "s6": {"X_LONG": "bad"}}) == []
+
+
+def test_base_wait_release_after_one_tick_with_incumbent():
+    st = {}
+    assert S._base_wait_release("ICXUSDT_SHORT", st, 1000.0, True) is False  # first tick waits
+    assert S._base_wait_release("ICXUSDT_SHORT", st, 1121.0, True) is True  # next tick launches
+    assert S._base_wait_release("NOINC_SHORT", st, 1000.0, False) is False and S._base_wait_release("NOINC_SHORT", st, 9999.0, False) is False

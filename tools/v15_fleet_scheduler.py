@@ -221,6 +221,35 @@ def _progress_must(path):
     return out
 
 
+_STRUCT_EXIT_MARKERS = (("STALE_NPZ_SKIPPED",), ("[NO-WRITE]",), ("[DEFAULTS-GATE]", "NOT running"), ("[PARITY-GATE]", "NOT running"), ("[PROHIBITED]",),
+                        ("[SOFT-SKIP]",), ("[IMPOSSIBLE-SKIP]",), ("[DEDUP] another v15_pilot",))
+
+
+def _struct_exit_marker(tail):
+    """2026-10-22 coordinator: the structural refusal a 30D launch log ENDS on (the launch computed nothing), or None. The newest marker in
+    the tail wins; any work token after it ([spec-fill], [PUBLISH, ROW_DONE, [BASELINE]) means a later run did work -> None. Never raises."""
+    try:
+        t = str(tail or "")
+        best, at = None, -1
+        for parts in _STRUCT_EXIT_MARKERS:
+            i = t.rfind(parts[0])
+            if i < 0:
+                continue
+            line_end = t.find("\n", i)
+            line = t[i:(line_end if line_end >= 0 else len(t))]
+            if all(x in line for x in parts[1:]) and i > at:
+                best, at = parts[0], i
+        if best is None:
+            return None
+        after = t[at:]
+        for work in ("[spec-fill]", "[PUBLISH", "ROW_DONE", "[BASELINE]"):
+            if work in after:
+                return None
+        return best
+    except Exception:
+        return None
+
+
 def environ(pid):
     try:
         return dict(x.split("=", 1) for x in open("/proc/%d/environ" % pid, "rb").read().decode("utf8", "replace").split("\0") if "=" in x)
@@ -377,7 +406,50 @@ if mode == "probe":
             v = gs_verdict(f)
             if v:
                 o["gs"].setdefault(os.path.basename(f)[:-len(".gs.json")], {})[int(re.search(r"gs_a(\d+)", f).group(1))] = v
+    try:  # 2026-10-22: structural early exits of finished 30D launches (the scheduler refunds their attempt once per log mtime)
+        o["early_exits"] = {}
+        for _lf in glob.glob("/tmp/sweep_*_30D.log"):
+            _ss = os.path.basename(_lf)[len("sweep_"):-len("_30D.log")]
+            _mt = os.path.getmtime(_lf)
+            if _ss in o["running"] or time.time() - _mt > 6 * 3600:
+                continue
+            with open(_lf, "rb") as _fh:
+                _fh.seek(max(0, os.path.getsize(_lf) - 4096))
+                _mk = _struct_exit_marker(_fh.read().decode("utf-8", "replace"))
+            if _mk:
+                o["early_exits"][_ss] = [_mt, _mk]
+    except Exception:
+        pass
     print(json.dumps(o))
+
+elif mode == "mark_redo":
+    # 2026-10-22 coordinator (slow-pinned round): the sanctioned REDO path of tools/v15_hollow_scrub.py — archive the progress JSON, set
+    # needs_redo from the board's own cumulative set (best-start: the incumbent), unpublish final_gain/final_path. Nothing deleted.
+    _p = os.path.join(arg["pdir"], arg["ss"] + "_v14_progress.json")
+    _res = {"ok": False, "ss": arg["ss"]}
+    try:
+        if arg["ss"] in pilots():
+            _res["why"] = "running"
+        else:
+            _pg = json.load(open(_p))
+            if _pg.get("needs_redo"):
+                _res.update(ok=True, why="already needs_redo")
+            elif _pg.get("verdict") == "IMPOSSIBLE":
+                _res["why"] = "IMPOSSIBLE tombstone"
+            else:
+                _ts = time.strftime("%Y%m%d%H%M%S", time.gmtime())
+                json.dump(_pg, open(_p + ".slowredo_prev_" + _ts + ".json", "w"))
+                _d = int(_pg.get("redo_depth", 0) or 0) + 1
+                _pg["needs_redo"] = {"overrides": dict(_pg.get("cumulative_overrides") or {}), "result": {"gain_pct": _pg.get("cumulative_gain")}, "depth": _d, "reason": str(arg.get("reason") or "slow re-board")[:300]}
+                for _rk in ("final_gain", "final_path", "not_compliant"):
+                    _pg.pop(_rk, None)
+                _tmp = _p + ".tmp_slowredo"
+                json.dump(_pg, open(_tmp, "w"))
+                os.replace(_tmp, _p)
+                _res.update(ok=True, why="marked", archive=_p + ".slowredo_prev_" + _ts + ".json", depth=_d)
+    except Exception as _e:
+        _res["why"] = "error " + str(_e)[:200]
+    print(json.dumps(_res))
 
 elif mode == "ready":
     import numpy as np
@@ -2243,6 +2315,52 @@ def _budget_mode_label(budget):
     return "full" if not budget else f"budget:{int(budget)}"
 
 
+def _slow_redo_due(entry, slow_forced):
+    """Coordinator 2026-10-22: in a slow-pinned round a sym_side whose NEWEST qualifying board is a catch-up / budget board is need30 (slow
+    re-board), never terminal_ok — the completion criterion rejects that board, so the state machine must agree. entry = the sym_side's row of
+    the last completion record. Pure (tested)."""
+    if not slow_forced or not isinstance(entry, dict) or entry.get("complete_at"):
+        return False
+    md = str(entry.get("mode") or "")
+    return md == "catchup" or md.startswith("budget:")
+
+
+def _refund_structural_exits(st, early_by_host, keep=4000):
+    """Coordinator 2026-10-22: a 30D launch that ended on a structural refusal (STALE_NPZ_SKIPPED, [NO-WRITE], DEFAULTS-GATE/PARITY-GATE
+    NOT running, PROHIBITED, SOFT-SKIP, IMPOSSIBLE-SKIP, DEDUP) computed nothing and must not consume an attempt. Refunds one attempt per
+    (host, sym_side, log mtime), never below 0. Returns [(host, ss, marker, attempts_after)]. Mutates st only. Pure otherwise (tested)."""
+    seen = st.setdefault("refunded_exits", {})
+    att = st.setdefault("attempts", {})
+    out = []
+    for hn, ex in sorted((early_by_host or {}).items()):
+        for ss, v in sorted((ex or {}).items()):
+            try:
+                mt, mk = float(v[0]), str(v[1])
+            except Exception:
+                continue
+            k = f"{hn}:{ss}:{mt:.0f}"
+            if k in seen:
+                continue
+            seen[k] = mk
+            ak = f"{ss}|30D"
+            if att.get(ak, 0) > 0:
+                att[ak] = att[ak] - 1
+                out.append((hn, ss, mk, att[ak]))
+    if len(seen) > keep:
+        for _k in list(seen)[: len(seen) - keep]:
+            seen.pop(_k, None)
+    return out
+
+
+def _base_wait_release(ss, st, now_ts, has_incumbent, min_wait_s=100.0):
+    """Coordinator 2026-10-22: a side in waiting_base (no usable autopsy base, e.g. a 0-trade autopsy) whose best-start law has a start set
+    (incumbent board / cat_side defaults) launches without the base after ONE tick of waiting. No incumbent at all -> keeps waiting
+    (V15_SCHED_REQUIRE_BASE keeps its meaning). Records the first waiting epoch in st['waiting_base_since']. Pure otherwise (tested)."""
+    ws = st.setdefault("waiting_base_since", {})
+    first = ws.setdefault(ss, now_ts)
+    return bool(has_incumbent) and now_ts - float(first) >= min_wait_s
+
+
 def _round_forces_slow(round_id, path=None):
     """True when data/v15_round_env.json is for THIS round and pins V18_CATCHUP=0 (or V15_BOARD_BUDGET=0) — the operator's 'full slow round'.
     A file naming another round has expired (round_env_inline's own rule). Never raises."""
@@ -3445,6 +3563,15 @@ def tick(args, cfg, now):
         st["attempts"] = {}
         st["slices"] = {}
         st["attempts_pdir"] = cur_pdir  # SLOT fix 2026-10-01: day-level attempt counters carried over from the previous run's progress dir exhausted every chain action of the new run, so pairs held slots forever
+    _attempt_refunds = []
+    try:  # 2026-10-22 coordinator: a launch that ended on a structural refusal computed nothing -> its attempt is refunded
+        _rf = _refund_structural_exits(st, {_hn: (_sx or {}).get("early_exits") for _hn, _sx in stats.items() if isinstance(_sx, dict)})
+        if _rf:
+            _attempt_refunds = [list(x) for x in _rf]
+            for _x in _rf:
+                print(f"[sched] ATTEMPT-REFUND {_x[1]} on {_x[0]}: launch ended on {_x[2]} (computed nothing) -> attempts now {_x[3]}", flush=True)
+    except Exception as _e_rf:
+        print(f"[sched] attempt refund FAILED (non-fatal): {_e_rf}", flush=True)
     is_open, mto = us_market_open(now), minutes_to_open(now)
     vorder = venue_order(now)
     # ---- merge host views
@@ -3558,6 +3685,23 @@ def tick(args, cfg, now):
             return True
         return False
 
+    _cur_round = _round_id_of(cur_pdir)
+    _slow_pin = _round_forces_slow(_cur_round)  # 2026-10-22 coordinator: slow-pinned round -> catch-up/budget boards are re-boarded slow
+    _prev_rec_ss = ((_jload(ROOT / "data" / "reports" / f"full_course_round_{_cur_round}.json", None) or {}).get("sym_sides") or {}) if _cur_round else {}
+    _slowredo_n = [0]
+    _slowredo_cap = int(float(os.environ.get("V15_SCHED_SLOWREDO_PER_TICK", "6") or 6))
+    _cat_start = set()
+    try:
+        _cat_start = {str(k) for k in (_jload(pathlib.Path(os.path.expanduser("~/binance-sandbox/data/sweep_defaults/per_sym_settings.json")), {}) or {}) if not str(k).startswith("_")}
+    except Exception:
+        _cat_start = set()
+
+    def _has_incumbent(ss_):
+        import glob as _gl_i
+        if cat_of_ss(ss_) in _cat_start:
+            return True
+        return bool(_gl_i.glob(os.path.join(os.path.expanduser("~"), "binance-sandbox", "SPREADSHEETS", "V15_V16_CELL_BY_CELL", f"{ss_}_*_manifest.json")))
+
     def side_state(sym, side, host_name, _tiers=None):
         ss = f"{sym}_{side}"
         if ss in running:
@@ -3623,8 +3767,26 @@ def tick(args, cfg, now):
                 except Exception:
                     _ok = False
                 if not _ok:
+                    # 2026-10-22 coordinator: the best-start law supplies the start set (incumbent / cat_side defaults / defaults+winners),
+                    # so a side that has one launches without the base after one tick; V15_SCHED_REQUIRE_BASE still holds a side with none.
+                    if os.environ.get("V15_SCHED_BASE_WAIT_RELEASE", "1") == "1" and _base_wait_release(ss, st, _now_ts, _has_incumbent(ss)):
+                        print(f"[sched] BASE-WAIT-RELEASE {ss}: no usable autopsy base, best-start law has a start set -> need30 without the base", flush=True)
+                        return "need30", 1
                     return "waiting_base", None
             return "need30", 1
+        if _slow_pin and _slow_redo_due(_prev_rec_ss.get(ss), True) and not (args.dry_run or sim) and cur_pdir:
+            _sre = _prev_rec_ss.get(ss) or {}
+            _srk = f"{ss}|{_sre.get('board_published_at')}"
+            _srd = st.setdefault("slow_redo_marked", {})
+            if _srd.get(_srk) != cur_pdir and _slowredo_n[0] < _slowredo_cap:
+                _srh = next((h for h in hosts if h["name"] == done_host.get(ss)), None)
+                _srr = host_py(_srh, "mark_redo", {"pdir": cur_pdir, "ss": ss, "reason": f"slow-pinned round {_cur_round}: newest qualifying board mode={_sre.get('mode')} ({_sre.get('board_published_at')}) never completes the course — slow re-board from its own set"}, timeout=30) if _srh else None
+                _slowredo_n[0] += 1
+                if _srr and _srr.get("ok"):
+                    _srd[_srk] = cur_pdir
+                    print(f"[sched] SLOW-REDO {ss} on {_srh['name']}: newest board mode={_sre.get('mode')} -> needs_redo set ({_srr.get('why')}, archive {_srr.get('archive')}) -> need30", flush=True)
+                    return "need30", 1
+                print(f"[sched] SLOW-REDO {ss} FAILED on {(_srh or {}).get('name')}: {_srr}", flush=True)
         if os.environ.get("V15_SCHED_30D_ONLY", "1") == "1":
             return "terminal_ok", None  # 2026-10-14 365D LAW: 365D never gates and never REDOs -> no 365D verify / REPAIR / GS chain launches (running ones finish). V15_SCHED_30D_ONLY=0 restores the chain.
         if os.environ.get("V15_SCHED_NO_CHAIN") == "1" and not (ROOT / "data" / "autopilot" / "chain_mode.flag").exists():  # FINAL PHASE 2026-10-02: the autopilot creates this flag Mon 08:00Z -> 365D verify + REPAIR chains run
@@ -3854,6 +4016,7 @@ def tick(args, cfg, now):
     log = {"now": now.isoformat(), "market_open": is_open, "venue_order": vorder, "priority_syms": sorted(priority_syms()), "min_to_open": round(mto), "universe_source": how,
            "universe": uni["counts"], "reaped": reaped, "server_watchdog": server_wd, "hosts": {}, "launched": [], "skipped_unready": {}, "foreign_running": {k: v["host"] for k, v in foreign.items()},
            "autokilled": _ak_killed, "autokill_report": _ak_report}
+    log["attempt_refunds"] = _attempt_refunds
 
     # ---- candidate work
     # (A) adopted chain work: owner host known, not terminal, not currently running anything for that side; (B) brand-new symbols

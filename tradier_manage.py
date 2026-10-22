@@ -10,6 +10,7 @@ import positions_truth as _ptruth  # 2026-10-06 USER POSITIONS_TRUTH: zero-qty r
 import tradier_broker_snapshot as _bsnap  # 2026-10-16 USER "TOTAL AND COMPLETE SYNCHRONICITY": broker positions+orders read on a dedicated thread, immune to main-loop freezes
 from live_rally_filters import rally_ok as _rally_ok
 import tradier_filter_tf_twins as _ftf_twins  # PARITY LANE C 2026-10-06: vec entry FILTER_TF predicates (stocks live)
+import vec_decisions.uncond_dc_stop as _udcs  # 2026-10-22 USER UNCOND_DC_HARD_STOP_BUFFER_PCT (shared with v12_quick_engine)
 import datetime as dt
 import hashlib
 import json
@@ -4663,7 +4664,6 @@ _FULL_COVERAGE_PARAMS = [
     "DELTA_GATE_STDEV_BREAKOUT",
     "DELTA_GATE_STRONG_BUY_QUICK_BYPASS",
     "DELTA_GATE_VOL_SPIKE",
-    "DELTA_MAX_HOLD_BARS",
     "DELTA_PYRAMID_ENABLED",
     "DELTA_REENTRY_FILTER_ENABLED",
     "DELTA_REENTRY_MIN_TF",
@@ -5900,7 +5900,6 @@ _FULL_COVERAGE_PARAMS = [
     "WATCHDOG_WT3M_ESCALATE_MAX_USD",
     "WINNERS_15M_FILE",
     "WINNERS_20_FILE",
-    "WIN_TRAIL_EROSION_PCT",
     "WORKER_INSTANCE_ID",
     "WORKER_TOTAL_INSTANCES",
     "WS_URL",
@@ -9767,7 +9766,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "DELTA_GATE_SBA",
         "DELTA_GATE_STDEV_BREAKOUT",
         "DELTA_GATE_VOL_SPIKE",
-        "DELTA_MAX_HOLD_BARS",
         "DELTA_PYRAMID_ACCEL_THRESHOLD",
         "DELTA_PYRAMID_ENABLED",
         "DELTA_PYRAMID_MIN_BARS",
@@ -10418,7 +10416,6 @@ def _wire_625_live_reads(account_key, symbol, side):
         "VWAP_BOUNCE_DIST_PCT",
         "VWAP_BOUNCE_ENTRY_ENABLED",
         "VWAP_FILTER_ENABLED",
-        "WIN_TRAIL_EROSION_PCT",
         "WT_15M_VEL_NEAR_ZERO_THRESHOLD",
         "WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED",
         "WT_15M_VEL_SLOW_GAIN_BAND_PCT",
@@ -15655,9 +15652,10 @@ async def process_position(
                 _uh_gain = safe_fetch_float(getattr(position, "gain", 0), 0.0)
                 _uh_fire = ""
                 _uh_prior = bool(_cfg("DC_PRIOR_BAR_CHANNEL", True, account_key, symbol, position_side))
+                _uh_tol = _udcs.buffer_pct_value(_cfg("UNCOND_DC_HARD_STOP_BUFFER_PCT", _udcs.DEFAULT_BUFFER_PCT, account_key, symbol, position_side))
                 if is_long:
                     _uh_l4 = _dc_stop_prev_aware(i, "dc_low_4h", _uh_prior)
-                    if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l4):
+                    if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l4, _uh_tol):
                         _uh_fire = f"DC_LOW_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l4:.4f}"
                     if not _uh_fire and _ftf_twins.truthy(
                         _cfg(
@@ -15669,7 +15667,7 @@ async def process_position(
                         )
                     ):
                         _uh_l1 = _dc_stop_prev_aware(i, "dc_low_1h", _uh_prior)
-                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l1):
+                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l1, _uh_tol):
                             _uh_fire = (
                                 f"DC_LOW_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_l1:.4f}"
                             )
@@ -15683,13 +15681,13 @@ async def process_position(
                         )
                     ):
                         _uh_l15 = _dc_stop_prev_aware(i, "dc_low_15m", _uh_prior)
-                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l15):
+                        if _ftf_twins.long_dc_low_stop_fires(_uh_px, _uh_l15, _uh_tol):
                             _uh_fire = (
                                 f"DC_LOW_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_l15:.4f}"
                             )
                 else:
                     _uh_h4 = _dc_stop_prev_aware(i, "dc_high_4h", _uh_prior)
-                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4):
+                    if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h4, _uh_tol):
                         _uh_fire = f"DC_HIGH_4H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h4:.4f}"
                     if not _uh_fire and _ftf_twins.truthy(
                         _cfg(
@@ -15701,7 +15699,7 @@ async def process_position(
                         )
                     ):
                         _uh_h1 = _dc_stop_prev_aware(i, "dc_high_1h", _uh_prior)
-                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1):
+                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h1, _uh_tol):
                             _uh_fire = (
                                 f"DC_HIGH_1H_UNCOND_px{_uh_px:.4f}_lvl{_uh_h1:.4f}"
                             )
@@ -15715,7 +15713,7 @@ async def process_position(
                         )
                     ):
                         _uh_h15 = _dc_stop_prev_aware(i, "dc_high_15m", _uh_prior)
-                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15):
+                        if _ftf_twins.short_dc_high_stop_fires(_uh_px, _uh_h15, _uh_tol):
                             _uh_fire = (
                                 f"DC_HIGH_15M_UNCOND_px{_uh_px:.4f}_lvl{_uh_h15:.4f}"
                             )
@@ -28525,17 +28523,6 @@ def _apply_research_only_live_gates(
         and os.environ.get("V8_FORCE_REAL", "0") != "1"
     ):
         return True, "DELTA_GATE_VOL_SPIKE_BLOCK"
-    _v_delta_max_hold_bars = _cfg("DELTA_MAX_HOLD_BARS", 0, account_key, symbol, side)
-    try:
-        if (
-            is_entry
-            and float(_v_delta_max_hold_bars or 0) != 0
-            and False
-            and os.environ.get("V8_FORCE_REAL", "0") != "1"
-        ):
-            return True, "DELTA_MAX_HOLD_BARS_BLOCK"
-    except Exception:
-        pass
     if (
         is_entry
         and _cfg("DELTA_PYRAMID_ENABLED", False, account_key, symbol, side)
@@ -30625,19 +30612,6 @@ def _apply_research_only_live_gates(
         and os.environ.get("V8_FORCE_REAL", "0") != "1"
     ):
         return True, "VWAP_BOUNCE_ENTRY_ENABLED_BLOCK"
-    _v_win_trail_erosion_pct = _cfg(
-        "WIN_TRAIL_EROSION_PCT", 0, account_key, symbol, side
-    )
-    try:
-        if (
-            is_entry
-            and float(_v_win_trail_erosion_pct or 0) != 0
-            and False
-            and os.environ.get("V8_FORCE_REAL", "0") != "1"
-        ):
-            return True, "WIN_TRAIL_EROSION_PCT_BLOCK"
-    except Exception:
-        pass
     if (
         is_entry
         and _cfg("WT_CROSSUNDER_FINAL_ENABLED", False, account_key, symbol, side)
