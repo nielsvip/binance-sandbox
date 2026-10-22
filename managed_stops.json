@@ -13,13 +13,6 @@
     "symbol": "ENJUSDT",
     "side": "LONG"
   },
-  "inf:BTCDOMUSDT_LONG": {
-    "orderId": "2000001531827318",
-    "stopPrice": 5518.2,
-    "entry_sig": "2026-10-22 10:21:37.368000+00:00",
-    "symbol": "BTCDOMUSDT",
-    "side": "LONG"
-  },
   "inf:ALGOUSDT_LONG": {
     "orderId": "2000001531828232",
     "stopPrice": 0.10795,
@@ -27,23 +20,23 @@
     "symbol": "ALGOUSDT",
     "side": "LONG"
   },
+  "inf:BTCDOMUSDT_LONG": {
+    "orderId": "2000001531827318",
+    "stopPrice": 5518.2,
+    "entry_sig": "2026-10-22 10:21:37.368000+00:00",
+    "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
   "inf:WUSDT_SHORT": {
-    "orderId": "2000001531844501",
-    "stopPrice": 0.014376,
+    "orderId": "2000001531854205",
+    "stopPrice": 0.01364,
     "entry_sig": "2026-10-22 10:57:00.456000+00:00",
     "symbol": "WUSDT",
     "side": "SHORT"
   },
-  "inf:RAYSOLUSDT_LONG": {
-    "orderId": "2000001531854764",
-    "stopPrice": 1.855,
-    "entry_sig": "2026-10-22 11:44:39.688000+00:00",
-    "symbol": "RAYSOLUSDT",
-    "side": "LONG"
-  },
   "inf:NMRUSDT_SHORT": {
-    "orderId": "2000001531855921",
-    "stopPrice": 10.815,
+    "orderId": "2000001531867235",
+    "stopPrice": 10.731,
     "entry_sig": "2026-10-22 11:45:20.290000+00:00",
     "symbol": "NMRUSDT",
     "side": "SHORT"
