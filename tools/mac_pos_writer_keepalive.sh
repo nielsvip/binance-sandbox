@@ -275,10 +275,23 @@ engine_keepalive() {
   local mgr_boot_grace="${MAC_MGR_BOOT_GRACE:-600}"
   if [ -z "$mgr_pids" ]; then
     klog "$A: NO ez_manage watchdog -> start (decision engine was down)"
-  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ] && [ "$rb_age" -lt "$rb_window" ]; then
-    engine_alert "$A" "ez_manage SILENT (${mgr_age}s > ${max_age}s) but the 24h restart budget is spent (last restart ${rb_age}s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"
+  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ] && [ "$rb_age" -lt "$rb_window" ] \
+       && ! "$PY" "$BASE/tools/account_holds_risk.py" --account "$A" --quiet 2>/dev/null; then
+    # 2026-10-22 (USER: "can you ABSOLUTELY GUARANTEE no account can stop trading EVER when there is any open
+    # position?"): the budget may only refuse a restart for an account that is PROVABLY FLAT. The refusal below is
+    # correct for an idle account — a wedged engine with nothing at stake should wait for a human rather than be
+    # restarted forever — and it is indefensible for an account holding real exposure, which is what it did at
+    # 06:42:06Z today ("ALERT ang: ez_manage SILENT (158s > 120s) ... NOT restarting") while ang held 6 open
+    # positions. account_holds_risk exits 0 on holds-risk AND on any unreadable/missing file, so only a positions
+    # file that parses and is genuinely empty reaches this arm. 61 positions were open across 6 accounts when
+    # this was written.
+    engine_alert "$A" "ez_manage SILENT (${mgr_age}s > ${max_age}s) but the 24h restart budget is spent (last restart ${rb_age}s ago) and the account is PROVABLY FLAT — NOT restarting; a genuinely wedged engine now needs a human/code fix"
   elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
-    klog "$A: ez_manage SILENT (freshest of quick+manage logs ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart (24h budget consumed)"
+    _risk_note="budget available"
+    if [ "$rb_age" -lt "$rb_window" ]; then
+      _risk_note="BUDGET OVERRIDDEN: $("$PY" "$BASE/tools/account_holds_risk.py" --account "$A" 2>/dev/null | sed 's/^[a-z]*: //')"
+    fi
+    klog "$A: ez_manage SILENT (freshest of quick+manage logs ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart (${_risk_note})"
     echo "$now" > "$rb_stamp"
     for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
     for p in $(pgrep -f "bin/python -u ez_manage.py --account $A"); do kill -9 "$p" 2>/dev/null; done
