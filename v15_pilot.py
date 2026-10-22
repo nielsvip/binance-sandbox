@@ -4581,7 +4581,7 @@ def scan_template_cands(template_path, defaults: dict, cat_side: str, zero_on: b
 # ─── AUGMENT/REDUCE GAIN ADJUSTMENT (USER 2026-10-22: "the gain calculations ... are making many errors in the
 # augment/reduce gain adjustments") ─────────────────────────────────────────────────────────────────────────────
 # gain% = net $ / PEAK COST BASIS (§51 peak-concurrent). A row that changes position SIZE moves the denominator,
-# so its gain delta is not a pure measure of the change: an AUGMENT raises the basis and an REDUCE lowers it.
+# so its gain delta is not a pure measure of the change: an AUGMENT raises the basis and a REDUCE lowers it.
 # MEASURED 2026-10-22 on frozen Mac NPZs (30d, diagnostic V12_ALLOW_STALE_NPZ, tools/augment_reduce_denom_probe.py):
 #   UNIUSDC_LONG  AUGMENT_AT_LOSS_ENABLED=True        gain -15.697 -> -14.425 (+1.272)  net $ -56.51 -> -65.39 (-8.88)   basis $360 -> $453
 #   ALGOUSDT_LONG AUGMENT_INTO_REENTRY_ENABLED=True   gain  -5.023 ->  -2.961 (+2.062)  net $ -18.08 -> -23.10 (-5.02)   basis $360 -> $780
