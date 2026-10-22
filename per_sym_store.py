@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS kv_json (
 # bumps -wal or db mtime_ns/size -> cache dropped). Values returned are identical; copies are
 # handed out so callers cannot mutate the cache.
 _ENSURED_DB: set = set()
-_READ_CACHE: dict = {"sig": None, "get": {}, "kv": {}}
+_READ_CACHE: dict = {"sig": None, "get": {}, "kv": {}, "watermark": "", "count": -1}
 _READ_MISS = object()
 
 
@@ -189,21 +189,135 @@ def _prime_get_bucket_bulk(bucket: dict) -> bool:
         return False
 
 
-def _read_cache_bucket(name: str) -> dict:
-    sig = _db_signature()
-    if _READ_CACHE["sig"] != sig:
-        _READ_CACHE["sig"] = sig
+_PRIME_POLL_S = float(os.environ.get("PER_SYM_PRIME_POLL_S", "0.5"))
+_PRIMER_LOCK = threading.Lock()
+_PRIMER_STARTED = False
+_PRIME_SYNC_NEXT = True
+
+
+def _prime_swap(sig) -> None:
+    """Full rebuild. COLD START AND ROW-DELETION ONLY — never the per-change path, see _refresh_once."""
+    bucket: dict = {}
+    if _prime_get_bucket_bulk(bucket):
+        _READ_CACHE["get"] = bucket
+        try:
+            con = _connect()
+            try:
+                _READ_CACHE["watermark"] = con.execute("SELECT MAX(updated_at) FROM per_sym_active").fetchone()[0] or ""
+                _READ_CACHE["count"] = con.execute("SELECT COUNT(*) FROM per_sym_active").fetchone()[0]
+            finally:
+                con.close()
+        except Exception:
+            _READ_CACHE["watermark"] = ""
+            _READ_CACHE["count"] = -1
+    else:
         _READ_CACHE["get"] = {}
+        _READ_CACHE["watermark"] = ""
+        _READ_CACHE["count"] = -1
+    _READ_CACHE["kv"] = {}
+    _READ_CACHE["sig"] = sig
+
+
+def _refresh_once(sig) -> None:
+    """USER 2026-10-22: "the ~1s cadence IS BULLSHIT YOU JUST UPDATE 1 LINE WHEN IT GETS A NEW LINE."
+
+    Correct, and measured here: a full rebuild re-parses `overrides_json` + `defaults_snapshot_json` +
+    `full_config_json` for all 776 rows and costs **2,605 ms**, while `SELECT * ... WHERE updated_at > watermark`
+    costs **0.59 ms** and `COUNT(*)` **0.02 ms**. The table is rewritten about once a second, so the old code paid the
+    2.6 s rebuild about once a second — on the asyncio event loop. Now only the rows whose `updated_at` advanced are
+    parsed and written into the live bucket (one key each; per-key assignment is atomic under the GIL, so a reader sees
+    either the old entry or the new one, never a half-built table). `updated_at` is uniform ISO-8601 Z with no NULLs,
+    so it orders lexicographically. A DROP in COUNT(*) means a row was deleted, which no watermark can express — that
+    alone falls back to a full rebuild."""
+    bucket = _READ_CACHE["get"]
+    if not bucket.get("__primed__"):
+        _prime_swap(sig)
+        return
+    con = _connect()
+    try:
+        n = con.execute("SELECT COUNT(*) FROM per_sym_active").fetchone()[0]
+        if n < int(_READ_CACHE.get("count") or 0):
+            con.close()
+            _prime_swap(sig)
+            return
+        wm = str(_READ_CACHE.get("watermark") or "")
+        newest = wm
+        for row in con.execute("SELECT * FROM per_sym_active WHERE updated_at > ?", (wm,)):
+            try:
+                e = _row_to_entry(row)
+                k = str(e.get("sym_side") or row["sym_side"] or "").strip()
+                if k:
+                    bucket[k] = e
+                ua = str(row["updated_at"] or "")
+                if ua > newest:
+                    newest = ua
+            except Exception:
+                continue
+        _READ_CACHE["watermark"] = newest
+        _READ_CACHE["count"] = n
         _READ_CACHE["kv"] = {}
-        if name == "get":
-            _prime_get_bucket_bulk(_READ_CACHE["get"])
+        _READ_CACHE["sig"] = sig
+    finally:
+        try:
+            con.close()
+        except Exception:
+            pass
+
+
+def _primer_loop() -> None:
+    while True:
+        try:
+            sig = _db_signature()
+            if sig != _READ_CACHE["sig"]:
+                _refresh_once(sig)
+        except Exception:
+            pass
+        time.sleep(_PRIME_POLL_S)
+
+
+def _start_primer() -> None:
+    global _PRIMER_STARTED
+    if _PRIMER_STARTED:
+        return
+    with _PRIMER_LOCK:
+        if _PRIMER_STARTED:
+            return
+        threading.Thread(target=_primer_loop, name="per_sym_store_primer", daemon=True).start()
+        _PRIMER_STARTED = True
+
+
+def _read_cache_bucket(name: str) -> dict:
+    """NEVER run the bulk SELECT on the caller's thread except on a cold start.
+
+    MEASURED 2026-10-22 04:53:35Z, which is why this exists: the operator's rule is that the SQL is the authority and
+    is re-read whenever it changes, and the table is rewritten about once a second — so the db+wal signature changed
+    about once a second, and this function then re-ran `SELECT * FROM per_sym_active` plus `_row_to_entry` over ~3,573
+    rows INLINE, on whatever thread asked. That thread was the asyncio event loop:
+    `per_sym_store._prime_get_bucket_bulk <- _read_cache_bucket <- get <- get_overrides <- _svc_psym_get <-
+    _svc_fixed_stop_spec <- _fixed_stop_fetch_cycle <- process_account_update <- asyncio/events.py _run`
+    in `loop_stall_ez_positions_service_men.log` — an 8.6 s block, with ang showing 32.1 s and men 12.0/16.0/12.7 s
+    `[LOOP_LAG] event loop frozen` in the same window. A parked loop writes no positions file (ang and men went 1,455 s
+    stale) and places no orders, which is the whole point of the loop.
+
+    A daemon thread now does the re-read and swaps the finished bucket in, so the authority and the ~1 s cadence are
+    unchanged and no reader ever waits for SQLite. Cold start and any in-process write still prime inline, so a writer
+    always reads its own write back."""
+    global _PRIME_SYNC_NEXT
+    _start_primer()
+    if name == "get" and (_PRIME_SYNC_NEXT or not _READ_CACHE["get"]):
+        _PRIME_SYNC_NEXT = False
+        _prime_swap(_db_signature())
     return _READ_CACHE[name]
 
 
 def _invalidate_read_cache() -> None:
+    global _PRIME_SYNC_NEXT
+    _PRIME_SYNC_NEXT = True
     _READ_CACHE["sig"] = None
     _READ_CACHE["get"] = {}
     _READ_CACHE["kv"] = {}
+    _READ_CACHE["watermark"] = ""
+    _READ_CACHE["count"] = -1
 
 
 def _copy_read(v):

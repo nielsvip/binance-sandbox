@@ -47,6 +47,23 @@ lf_lease_fenced() {
     lf_is_gated_script "$script" || return 1
     venue="$(lf_script_venue "$script")"
     if [[ "${LF_UNAME:-$(uname)}" == "Darwin" ]]; then
+        # THE MAC IS NEVER FENCED (USER 2026-10-22: "s1 is an EMERGENCY system that runs as long as macbook is DEAD
+        # but it can NEVER block any mac action it needs to STAND DOWN as soon as mac trades").
+        #
+        # This branch used to stop the Mac's own watchdog from spawning its own trader whenever S1 held the lease. That
+        # put the dedup burden on the wrong host and cost live trading. MEASURED 2026-10-22 05:00:37-05:01:18Z: the
+        # fence SIGTERMed ang, men and fin (exit=143, signal 15), and then every relaunch attempt logged
+        # "[LEASE_FENCED] ... NOT spawning ez_manage.py" and slept 30 s — on repeat — while S1 ran **zero**
+        # ez_manage processes (pgrep -cf 'ez_manage.py --account' = 0 on s1-int). Three accounts had no engine on
+        # either host. The ghost-lease age guard and the run_venues guard below are both earlier patches aimed at this
+        # same failure; neither could fix it, because the premise — that the Mac should ever stand down — is wrong.
+        #
+        # Dedup now lives entirely on S1: the Linux branch still refuses to spawn unless S1 holds the lease, which is
+        # exactly "S1 stands down as soon as the Mac trades". The Mac is authoritative and always starts its own
+        # engines. LF_MAC_RESPECT_FENCE=1 restores the old behaviour for the failover harness only.
+        if [[ "${LF_MAC_RESPECT_FENCE:-0}" != "1" ]]; then
+            return 1
+        fi
         file="$workdir/data/live_failover/lease_local.json"
         grep -q '"holder": *"s1"' "$file" 2>/dev/null || return 1
         # 2026-10-16 A GHOST LEASE MUST NOT FENCE FOREVER (USER: "trading can only stop because macbook went offline,

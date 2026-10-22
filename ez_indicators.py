@@ -2730,10 +2730,12 @@ class IndicatorOrchestrator:
         # only ever add symbols to the live snapshot, never blank one the engines already had.
         self._warming_up = False
         self._warm_high_water = 0
+        self._gen_full_computes = 0
         self._warm_first_save_ts: Optional[float] = None
         self._warm_start_ts = time.time()
         self._stage_seconds: Dict[str, float] = {}
         self._signal_publish_inflight: Set[asyncio.Task] = set()
+        self._signal_publish_max_inflight = int(os.environ.get("EZIND_SIGNAL_INFLIGHT_MAX", "512"))
         self._signal_publish_fail_count = 0
         self._signal_publish_fail_last_log = 0.0
         self._sentiment_dirty = True
@@ -2773,11 +2775,39 @@ class IndicatorOrchestrator:
             logger.error(f"Shared Memory connect fail: {e}")
             self.shared_proxy = None
 
+    async def _shared_mem_connect_loop(self) -> None:
+        # USER 2026-10-22: the connect that used to happen INLINE on the event loop, moved off it. MEASURED
+        # 2026-10-22 04:55Z against the live ez_share_ind (pid 78041, up since 04:06): shared_mem_safe.connect_store
+        # blocks the CALLING thread for exactly 3.005 s and then returns None ("still handshaking after 3.0s
+        # (server saturated?)"). _push_to_shared_memory called it per symbol from _run_full, guarded only by
+        # _connect_shared_memory's 10 s gate, so warm-up froze the whole event loop for 3.005 s out of every 10 s —
+        # a 30 % duty cycle of total paralysis, ~694 s of the 2,313 s D pass, while the process burned just 165 s of
+        # CPU in 112 min of wall. The operator is right that READING a healthy shared store costs microseconds; this
+        # was never a read, it was a 3-second blocking auth handshake to a server that never answers. Nothing about
+        # the shared-memory wiring is removed: the same connect runs here, off-loop, on a slow cadence, and the
+        # per-pass batched update_batch in _process_timeframe still carries every symbol's payload.
+        interval = float(os.environ.get("EZIND_SHM_CONNECT_S", "60"))
+        while not self._shutdown.is_set():
+            if self.shared_proxy is None:
+                try:
+                    await asyncio.to_thread(self._connect_shared_memory)
+                except Exception as e:
+                    logger.warning(f"[SharedMem] off-loop connect error: {e}")
+            try:
+                await asyncio.wait_for(self._shutdown.wait(), timeout=interval)
+                break
+            except asyncio.TimeoutError:
+                continue
+
     def _push_to_shared_memory(self, symbol: str, data: Dict[str, Any]):
-        # Lazy Reconnect
-        if self.shared_proxy is None:
-            self._connect_shared_memory()
-        
+        # No inline connect — see _shared_mem_connect_loop. When no proxy exists this is a no-op and the
+        # end-of-pass update_batch (already off-loop via asyncio.to_thread) delivers the data instead.
+        # During warm-up the per-symbol push is skipped as well: update_symbol is a BLOCKING multiprocessing
+        # proxy round-trip on the event loop, and the end-of-pass batch carries the identical payload for every
+        # symbol, so 201 serialized socket round-trips per timeframe buy nothing and can only re-create the
+        # paralysis measured above if the server comes back slow. Steady state is unchanged.
+        if self._warming_up:
+            return
         if self.shared_proxy:
             try:
                 # Add hot metadata for the client to verify freshness
@@ -2988,40 +3018,49 @@ class IndicatorOrchestrator:
         return minute in (0, 15, 30, 45)
 
     async def _ensure_15m_complete(self) -> bool:
-        all_done = True
-        for symbol in self.symbols:
+        # USER 2026-10-22: this ran `for symbol in self.symbols` with awaits INSIDE — 201 symbols strictly
+        # one at a time, while _process_timeframe does the identical work for the same 201 symbols with
+        # asyncio.gather. MEASURED on pid 38213: 04:15:01 -> 04:24:30 = 569 s of serial 15m work, after which
+        # the 15m pass itself took 19 s because this had already done everything. 569 s of the 110-minute warm-up,
+        # spent purely on being sequential. Same body, same state transitions, now concurrent like its twin.
+        all_done = [True]
+        required_keys = self.required_by_timeframe.get("15m", [])
+        if not required_keys:
+            return True
+        async def ensure_symbol(symbol: str) -> None:
             state = self.state[symbol]["15m"]
-            required_keys = self.required_by_timeframe.get("15m", [])
             symbol_data = self.data.get(symbol, {})
-            if not required_keys:
-                continue
             missing = [key for key in required_keys if symbol_data.get(key) is None]
-            if missing or not state.full_done:
-                df, close_ts, _ = await self.kline_manager.get_latest(symbol, "15m")
-                if df is None or close_ts is None:
-                    df = await self.kline_manager._calculate_15m_from_3m(symbol)
-                    if df is not None and not df.empty and "timestamp_dt" in df.columns:
-                        ts_series = df["timestamp_dt"].dropna()
-                        if not ts_series.empty:
-                            close_ts = ts_series.iloc[-1].to_pydatetime().astimezone(timezone.utc)
-                        else:
-                            all_done = False
-                            continue
+            if not (missing or not state.full_done):
+                return
+            df, close_ts, _ = await self.kline_manager.get_latest(symbol, "15m")
+            if df is None or close_ts is None:
+                df = await self.kline_manager._calculate_15m_from_3m(symbol)
+                if df is not None and not df.empty and "timestamp_dt" in df.columns:
+                    ts_series = df["timestamp_dt"].dropna()
+                    if not ts_series.empty:
+                        close_ts = ts_series.iloc[-1].to_pydatetime().astimezone(timezone.utc)
                     else:
-                        all_done = False
-                        continue
-                mark_price = await self.price_cache.get_price(symbol)
-                if close_ts is not None:
-                    await self._run_full(symbol, "15m", df, close_ts, mark_price, state)
-                    state.last_close = close_ts
-                    state.full_done = True
-                    state.mid_done = False
-                    state.trivial_done = False
-                    state.mid_due = close_ts + timedelta(seconds=TIMEFRAMES["15m"]["half"])
-                    state.last_full_finish = utc_now()
-                    state.last_df = df.copy()
-                    await self._try_trivial(symbol)
-        return all_done
+                        all_done[0] = False
+                        return
+                else:
+                    all_done[0] = False
+                    return
+            mark_price = await self.price_cache.get_price(symbol)
+            if close_ts is not None:
+                await self._run_full(symbol, "15m", df, close_ts, mark_price, state)
+                state.last_close = close_ts
+                state.full_done = True
+                state.mid_done = False
+                state.trivial_done = False
+                state.mid_due = close_ts + timedelta(seconds=TIMEFRAMES["15m"]["half"])
+                state.last_full_finish = utc_now()
+                state.last_df = df.copy()
+                await self._try_trivial(symbol)
+        _t = time.perf_counter()
+        await asyncio.gather(*[asyncio.create_task(ensure_symbol(symbol)) for symbol in self.symbols], return_exceptions=True)
+        logger.info("[ENSURE_15M] %d symbols in %.1fs all_done=%s", len(self.symbols), time.perf_counter() - _t, all_done[0])
+        return all_done[0]
 
     async def _priority_fix_loop(self) -> None:
         """Listens for high-priority fix requests from the Merger"""
@@ -3198,9 +3237,18 @@ class IndicatorOrchestrator:
             symbols_to_process = [s for s in missing_symbols if s in self.symbol_set] + [s for s in symbols_to_process if s not in missing_symbols]
             logger.debug(f"🎯 Prioritizing {len(missing_symbols)} missing symbols for 3m processing")
 
+        # USER 2026-10-22: per-stage cumulative wall-clock, logged once per timeframe pass. The 110-minute warm-up
+        # had to be diagnosed from outside the process because nothing in here reported where the time went.
+        # Measured out-of-process on the same files at load 121: all 201 get_latest calls for D = 0.74 s, 201
+        # concurrent redis GETs = 0.032 s, and the process used 165 s of CPU in 112 min of wall — so the cost was
+        # never the I/O. These counters make the next generation say so itself.
+        stage = {"get_latest": 0.0, "get_price": 0.0, "run_full": 0.0, "reactive_mid": 0.0}
+
         async def process_symbol(symbol: str) -> None:
             nonlocal full_count, mid_count, reactive_count
+            _t = time.perf_counter()
             df, close_ts, source = await self.kline_manager.get_latest(symbol, timeframe)
+            stage["get_latest"] += time.perf_counter() - _t
             symbol_data = self.data.setdefault(symbol, {})
             state = self.state[symbol][timeframe]
             reuse_previous = False
@@ -3229,10 +3277,14 @@ class IndicatorOrchestrator:
             now = utc_now()
             required_keys = self.required_by_timeframe.get(timeframe, [])
             needs_refresh = any(symbol_data.get(key) is None for key in required_keys)
+            _t = time.perf_counter()
             mark_price = await self.price_cache.get_price(symbol) if required_keys or force or needs_refresh or reuse_previous or (close_ts is not None and (now - close_ts).total_seconds() >= 90) else None
+            stage["get_price"] += time.perf_counter() - _t
             new_bar = state.last_close is None or (close_ts is not None and close_ts > state.last_close)
             if new_bar or needs_refresh or (required_keys and force):
+                _t = time.perf_counter()
                 await self._run_full(symbol, timeframe, df, close_ts, mark_price, state)
+                stage["run_full"] += time.perf_counter() - _t
                 state.last_close = close_ts
                 state.full_done = True
                 state.mid_done = False
@@ -3245,11 +3297,13 @@ class IndicatorOrchestrator:
                 full_count += 1
             else:
                 state.full_done = True
+                _t = time.perf_counter()
                 if reuse_previous or force or needs_refresh:
                     if await self._run_reactive(symbol, timeframe, df, close_ts, mark_price, state):
                         reactive_count += 1
                 if close_ts is not None and await self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price):
                     mid_count += 1
+                stage["reactive_mid"] += time.perf_counter() - _t
 
         # USER 2026-10-19 ("the root cause needs to be fixed forever at once this is not supposed to be possible"):
         # the warm-up loop in run() calls this once per timeframe BEFORE _save_loop exists, so a 199-symbol pass
@@ -3272,8 +3326,13 @@ class IndicatorOrchestrator:
                 done += 1
                 if done % 25 == 0 or done == total:
                     logger.info(f"[WARMUP] {timeframe} {done}/{total} symbols")
+        _pass_wall = time.perf_counter()
+        _pass_cpu = time.process_time()
         tasks = [asyncio.create_task(_tracked(symbol)) for symbol in self.symbols]
         await asyncio.gather(*tasks)
+        _pass_wall = time.perf_counter() - _pass_wall
+        _pass_cpu = time.process_time() - _pass_cpu
+        logger.info("[TF_TIMING] %s wall=%.1fs cpu=%.1fs (%.0f%%) get_latest=%.1fs get_price=%.1fs run_full=%.1fs reactive_mid=%.1fs symbols=%d", timeframe, _pass_wall, _pass_cpu, 100.0 * _pass_cpu / _pass_wall if _pass_wall > 0 else 0.0, stage["get_latest"], stage["get_price"], stage["run_full"], stage["reactive_mid"], total)
 
         # OPTIMIZATION: Push to Shared Memory in a single BATCH
         if self.shared_proxy:
@@ -3339,7 +3398,8 @@ class IndicatorOrchestrator:
         # ALSO update top-level timestamp to match master timestamp for consistency
         if 'timestamp' in symbol_data:
             symbol_data['ts'] = symbol_data.get('_tick_ts', time.time())
-        
+
+        self._gen_full_computes += 1
         self._push_to_shared_memory(symbol, symbol_data)
         await self._emit_signals(symbol)
         await self._mark_dirty()
@@ -3570,7 +3630,6 @@ class IndicatorOrchestrator:
         hb_interval = float(os.environ.get("EZIND_SAVE_HB_S", "45"))
         warm_interval = float(os.environ.get("EZIND_WARMUP_SAVE_S", "15"))
         last_hb = time.time()
-        last_periodic_save = time.time() - max(save_interval, warm_interval)
         while not self._shutdown.is_set():
             try:
                 await asyncio.wait_for(self._shutdown.wait(), timeout=1.0)
@@ -3582,17 +3641,22 @@ class IndicatorOrchestrator:
             # 110 min for the first one. EZIND_WARMUP_SAVE_S (default 15 s) is the warm-up cadence; the steady-state
             # cadence is untouched. The first save is forced as soon as anything is dirty, so it lands within one
             # tick of the first symbols completing instead of after all five timeframes.
-            effective_interval = warm_interval if self._warming_up else save_interval
+            # A warm-up save is allowed ONLY once this generation has actually recomputed symbols
+            # (_gen_full_computes > 0). Without that gate the periodic tick would force-save the stale
+            # `[LOAD] Loaded 199 symbols from Redis latest_market_data` preload under a fresh file mtime,
+            # which is the forbidden "old numbers wearing a new date" (CLAUDE.md NO-LIES / board date truth).
+            warming = self._warming_up and self._gen_full_computes > 0
+            effective_interval = warm_interval if warming else save_interval
             time_since_last_save = now - last_periodic_save
-            if time_since_last_save >= effective_interval:
+            if time_since_last_save >= effective_interval and not (self._warming_up and not warming):
                 self._save_due = True
                 self._dirty = True
                 last_periodic_save = now
-            if self._warming_up and self._dirty and self._warm_first_save_ts is None:
+            if warming and self._dirty and self._warm_first_save_ts is None:
                 self._save_due = True
             if hb_interval > 0 and now - last_hb >= hb_interval:
                 last_hb = now
-                logger.info("[SAVE_HB] warmup=%s due=%s dirty=%s since_save=%.0fs interval=%.0fs", bool(self._warming_up), bool(self._save_due), bool(self._dirty), time_since_last_save, effective_interval)
+                logger.info("[SAVE_HB] warmup=%s computes=%d due=%s dirty=%s since_save=%.0fs interval=%.0fs", bool(self._warming_up), self._gen_full_computes, bool(self._save_due), bool(self._dirty), time_since_last_save, effective_interval)
             if not (self._save_due and self._dirty):
                 continue
             await self._save_data()
@@ -3811,6 +3875,20 @@ class IndicatorOrchestrator:
             for sym in self.symbols:
                 if sym not in ordered_symbols: ordered_symbols[sym] = OrderedDict()
 
+            # USER 2026-10-22: NON-REGRESSION FLOOR — warm-up only. The loop above deliberately writes an EMPTY
+            # OrderedDict for any symbol with no data yet, which was harmless when the first save happened after all
+            # five timeframes but is a live hazard now that the snapshot advances DURING warm-up. A warm-up save may
+            # only ever ADD symbols: it is refused if it carries fewer non-empty symbols than the last save did, and
+            # refused outright below 25 non-empty (one [WARMUP] milestone). Steady-state saves are untouched.
+            nonempty = sum(1 for values in ordered_symbols.values() if isinstance(values, dict) and values)
+            if self._warming_up:
+                floor = max(25, self._warm_high_water)
+                if nonempty < floor:
+                    logger.info("[WARMUP_SAVE] skipped — %d non-empty symbols < floor %d (never blank a good snapshot)", nonempty, floor)
+                    self._save_due = False
+                    return
+            self._warm_high_water = max(self._warm_high_water, nonempty)
+
 
             # # 3.5 Merge 1m/3m real-time stochastic data from ez_market_data (hot_metrics)
             # # Only overlay stochastic VALUES — timestamps stay from kline candle close times
@@ -3907,7 +3985,10 @@ class IndicatorOrchestrator:
                     async with aiofiles.open(backup_file, "wb") as f:
                         await f.write(file_payload_bytes)
                     await self._prune_market_data_backups()
-                    logger.info(f"✅ Saved indicators to {self.market_data_file.name}")
+                    if self._warm_first_save_ts is None:
+                        self._warm_first_save_ts = time.time()
+                        logger.info("[WARMUP_SAVE] FIRST SNAPSHOT at +%.1fs from orchestrator start — %d non-empty symbols, %d full computes, file=%s backup=%s", self._warm_first_save_ts - self._warm_start_ts, nonempty, self._gen_full_computes, self.market_data_file.name, backup_file.name)
+                    logger.info(f"✅ Saved indicators to {self.market_data_file.name} nonempty={nonempty} warmup={bool(self._warming_up)}")
 
             except Exception as e:
                 logger.error(f"IO Error during save: {e}")
@@ -5106,18 +5187,32 @@ class IndicatorOrchestrator:
             self._previous_indicators[symbol] = snapshot
             return
 
+        # USER 2026-10-22, secondary hardening: this publish used to be AWAITED inline, 0.1 s budget each, from
+        # inside _run_full, with a synchronous logger.warning per failure — 307,811 "[SIGNAL] Failed to publish"
+        # across the multi-day log, 171 in the 02:58:34Z generation alone. On a cold warm-up prev_snapshot is empty
+        # so every true boolean fires, which is where a publish storm meets 201 concurrent tasks and brakes the
+        # snapshot loop. Now fire-and-forget behind a bounded in-flight set (back-pressure instead of unbounded
+        # task growth) with one rate-limited warning per minute carrying the suppressed count.
         for signal in filtered:
-            try:
-                await asyncio.wait_for(self.redis_client.publish(self._signal_channel, json.dumps(signal, default=str)), timeout=0.1)
-                logger.debug(f"[SIGNAL] Published {signal.get('event_type')} for {symbol} on {signal.get('timeframe')}: {signal.get('action')}")
-            except Exception as e:
-                logger.warning(
-                    "[SIGNAL] Failed to publish signal for %s: %s: %s",
-                    symbol,
-                    type(e).__name__,
-                    e or "no error detail",
-                )
+            if len(self._signal_publish_inflight) >= self._signal_publish_max_inflight:
+                self._signal_publish_fail_count += 1
+                continue
+            task = asyncio.create_task(self._publish_signal_bg(symbol, signal))
+            self._signal_publish_inflight.add(task)
+            task.add_done_callback(self._signal_publish_inflight.discard)
         self._previous_indicators[symbol] = snapshot
+
+    async def _publish_signal_bg(self, symbol: str, signal: Dict[str, Any]) -> None:
+        try:
+            await asyncio.wait_for(self.redis_client.publish(self._signal_channel, json.dumps(signal, default=str)), timeout=0.1)
+        except Exception as e:
+            self._signal_publish_fail_count += 1
+            now = time.time()
+            if now - self._signal_publish_fail_last_log >= 60.0:
+                self._signal_publish_fail_last_log = now
+                count = self._signal_publish_fail_count
+                self._signal_publish_fail_count = 0
+                logger.warning("[SIGNAL] publish failures suppressed: %d in the last 60s (latest %s on %s: %s)", count, type(e).__name__, symbol, e or "no error detail")
 
     def _update_master_timestamp(self, symbol_data: Dict[str, Any]) -> None:
         latest = None

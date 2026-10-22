@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T04:56:44Z",
+ "generated_utc": "2026-10-22T05:01:43Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 24.0,
+  "age_s": 323.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 38213,
-  "proc_age_s": 7090.0,
-  "log_age_s": 0.0,
+  "proc_age_s": 7389.0,
+  "log_age_s": 9.0,
   "warmup_done": true,
   "timeframes_since_restart": [
    "D",
@@ -52,12 +52,13 @@
   "lease_since": "2026-10-22T04:56:12Z",
   "lease_reason": "yield stable scoped account(s) back to Mac",
   "now": 1792645004.7887697,
+  "from_cache_age_s": 299.4,
   "heartbeat_age_s": 30.2,
   "active_s": 42822.6,
   "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-22T04:56:12Z, reason 'yield stable scoped account(s) back to Mac'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-22T04:56:12Z (reason 'yield stable scoped account(s) back to Mac'), Mac heartbeat 30s, Mac snapshot 23s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-22T04:56:12Z (reason 'yield stable scoped account(s) back to Mac'), Mac heartbeat 30s, Mac snapshot 323s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
