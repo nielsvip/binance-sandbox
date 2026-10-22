@@ -14274,6 +14274,33 @@ _AUGMENT_LOCK = {}  # {position_key: timestamp_of_last_augment}
 _AUGMENT_LOCK_MIN_SECONDS = 900  # 15 minutes minimum between augments
 
 
+def _parity_vec_order(reason) -> bool:
+    """USER 2026-10-22 TOTAL PARITY: True when the order IS the vector's own decision (board intent, reconcile,
+    VEC_EXACT twin, owed/obligatory exit). Such an order may never be refused by a live opinion gate and may never
+    be judged by the circuit breaker — the vector decided it, live only executes it."""
+    r = str(reason or "")
+    try:
+        from live_twins.vector_enforce import _is_board_confirmed as _bc
+        if _bc(r):
+            return True
+    except Exception:
+        pass
+    u = r.upper()
+    return "|VEC_EXACT" in r or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_")) or "PURE_BOARD" in u
+
+
+def _parity_forward_holds(position_key) -> bool:
+    """USER 2026-10-22: anything OPEN in the forward best-settings paper lane MUST have a live position, so no
+    converge/stale flatten may close a key whose published forward target is LONG/SHORT (data/vec_live/state)."""
+    try:
+        from live_twins import vec_driven as _vdf
+        ss = position_key.split(":", 1)[1] if ":" in str(position_key) else str(position_key)
+        st = _vdf.load_state(_vdf.vec_live_dir(getattr(config, "BASE_PATH", ".")) / "state", ss)
+        return _vdf.normalize_target((st or {}).get("target_state")) is True
+    except Exception:
+        return False
+
+
 def _cb_path_tag(reason):
     """entry-path tag for the breaker (2026-10-08: first TWO underscore tokens — one token nuked whole families:
     'B' killed B_KZONE/B_SRS/B_MOM5/B_EMADIST/B_SMA200DIST together, 'ENTRY' killed every entry strategy, and the
@@ -25877,15 +25904,21 @@ class MultiAccountTradeManager:
                         _amt_c, _px_c, _mq_c, _p_c = await self._vec_driven_live_amt(f"{account_key}:{_ss_c}", _vdm.split_ss(_ss_c)[0])
                         if _amt_c > _mq_c:
                             n_open += 1
-            _cap_ok, _cap_why = caps.check(account_key, ss, n_open)
+            # USER 2026-10-22: the one-open-per-bar cap is only correct when a position ACTUALLY exists — flat plus a
+            # vector OPEN means the order goes, however many times this bar. live_amt/min_qty decide, not a counter.
+            _cap_ok, _cap_why = caps.check(account_key, ss, n_open, live_amt=amt, min_qty=min_qty)
             if not _cap_ok:
                 logger.warning(f"🚧 [VEC_DRIVEN_CAP] {position_key}: {src} OPEN refused — {_cap_why}")
                 return f"REFUSED_CAP_{_cap_why}"
-            caps.record(account_key, ss)
+        if qty <= 0 and final_action in ("OPEN", "AUGMENT") and min_qty > 0:
+            logger.warning(f"[VEC_DRIVEN_FLOOR] {position_key}: {src} {final_action} live sizing returned {qty} (normal={normal_qty}) — floored to venue minimum {min_qty:.8f} (USER 2026-10-22: a vec dictate is never refused for size)")
+            qty = min_qty
         if qty <= 0:
             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: qty<=0 for {src} {final_action} (amt={amt} normal={normal_qty}) — not sent")
             return "SKIPPED_ZERO_QTY"
         res = await queue_trade_action(self.order_queue, self, position_key, final_action, reason, 0.5, override_qty=qty)
+        if final_action == "OPEN" and caps is not None and not str(res).upper().startswith(("REFUS", "BLOCKED", "SKIP")):
+            caps.record(account_key, ss)
         logger.info(f"🧭 [VEC_DRIVEN_LIVE] {position_key}: {src} {vec_type}->{final_action} qty={qty:.8f} amt={amt:.8f} px={price} reason={reason} -> {res}")
         return str(res)
 
@@ -25926,6 +25959,7 @@ class MultiAccountTradeManager:
                         continue
                     store = stores.get(account_key) or _vdm.ConsumedStore(base / f"consumed_{account_key}.json")
                     stores[account_key] = store
+                    _seen_dictate = set()
                     for it in intents:
                         ss = it["ss"]
                         mode = modes.get(ss)
@@ -25935,6 +25969,16 @@ class MultiAccountTradeManager:
                         bar = it["_bar_epoch"]
                         symbol, side = _vdm.split_ss(ss)
                         position_key = f"{account_key}:{ss}"
+                        # USER 2026-10-22: the lane writes one intent file per (account, sym_side, bar), and this
+                        # process answers for its own accounts only, so N files for the same sym_side+bar+type are ONE
+                        # vector decision — collapsed here, not refused downstream. tradeable_keys decides which keys
+                        # an account may hold; the intent's own account field is not a filter.
+                        _dkey = (ss, int(bar or 0), it["type"])
+                        if _dkey in _seen_dictate:
+                            store.mark(it["intent_id"])
+                            _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": "SAME_DICTATE_ALREADY_HANDLED"})
+                            continue
+                        _seen_dictate.add(_dkey)
                         if mode == "shadow" or it_mode == "shadow":
                             if bar > 0 and now < bar + _vdm.BAR_SECONDS + 30:
                                 continue
@@ -35229,10 +35273,15 @@ class MultiAccountTradeManager:
                         0.90,
                     )
                 )
-            if self.circuit_breaker.is_blocked(reason or ""):
-                logger.critical(
-                    f"🛑 [CIRCUIT_BREAKER] {position_key}: BLOCKED '{reason}' — path auto-disabled (WT/DC wrong at entry)"
-                )
+            # USER 2026-10-22 TOTAL PARITY: a vec-dictated order can NEVER be refused here. The breaker's tag is the
+            # first two reason tokens, so the single tag 'VEC_DRIVEN' disabled every board open on every account for
+            # 24h (588 blocks, 9% fill rate, measured 2026-10-22) on strikes whose p50 gain was -0.04% at p50 age 1
+            # minute — i.e. the entry spread, judged by the live WT/DC opinion the vector replaces. Also honours
+            # CIRCUIT_BREAKER_ENABLED, which this gate ignored while the flag read False.
+            if _parity_vec_order(reason) or _vd_exempt or _zp_ns:
+                logger.info(f"[CIRCUIT_BREAKER_PARITY_EXEMPT] {position_key}: vec-dictated order — breaker has no vote. action={action} reason={(reason or '')[:70]}")
+            elif bool(getattr(config, "CIRCUIT_BREAKER_ENABLED", False)) and self.circuit_breaker.is_blocked(reason or ""):
+                logger.critical(f"🛑 [CIRCUIT_BREAKER] {position_key}: BLOCKED '{reason}' — path auto-disabled (WT/DC wrong at entry)")
                 return "CIRCUIT_BREAKER_BLOCKED"
         # ═══ MOMENTUM_RIDER BYPASS — DISABLED 2026-03-29: NOTHING bypasses execute_now guards ═══
         _is_momentum_rider = (
@@ -37811,9 +37860,11 @@ class MultiAccountTradeManager:
                                 )
                             except Exception:
                                 pass
-                            self.circuit_breaker.record_entry(
-                                position_key, current_price, reason, indicators=_cb_ind
-                            )
+                            # USER 2026-10-22 TOTAL PARITY: vec-dictated entries are not judged, so they are not
+                            # recorded — a strike on a board open is a strike on the vector's own decision, and 3 of
+                            # them disabled the whole lane under one tag.
+                            if not _parity_vec_order(reason):
+                                self.circuit_breaker.record_entry(position_key, current_price, reason, indicators=_cb_ind)
                         return "SUCCESS"
                     else:
                         logger.warning(
@@ -51558,6 +51609,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
                 _cvg_on = False
         except Exception:
             pass
+        if _cvg_on and _parity_forward_holds(position_key):
+            logger.warning(f"[VEC_EXACT_CONVERGE] {position_key}: forward best-settings paper lane HOLDS this key — flatten refused (USER 2026-10-22: anything open in the forward paper test must have a live position)")
+            _cvg_on = False
         try:  # USER 2026-10-21 fresh-fill grace: never converge-flatten a fill the twin never saw (ZEC 44 s churn).
             _cvg_grace = float(getattr(config, "VEC_CONVERGE_FRESH_FILL_GRACE_S", 900.0) or 0.0)
             if _cvg_on and _cvg_grace > 0:
@@ -51604,6 +51658,9 @@ async def _vec_exact_process_position(account_key, position_key, trade_manager, 
             _stf_on = bool(getattr(config, "VEC_STALE_FLATTEN_ENABLED", True))
         except Exception:
             _stf_on = True
+        if _stf_on and _parity_forward_holds(position_key):
+            logger.warning(f"[VEC_EXACT_STALE_FLATTEN] {position_key}: forward best-settings paper lane HOLDS this key — stale flatten refused (USER 2026-10-22)")
+            _stf_on = False
         if _stf_on and _amt_end > 0 and not _vx_exit_attempted and _vx_st.get("status") == "OK" and _vx_st.get("vec_holds") is False:
             try:
                 _stf_bars = float(getattr(config, "VEC_STALE_FLATTEN_BARS", 8.0) or 8.0)

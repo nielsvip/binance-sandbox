@@ -97,14 +97,18 @@ def test_consumed_store_persists(tmp_path):
     assert s2.has("a") and s2.reconcile_done("X_LONG", 123) and not s2.has("b")
 
 
-def test_open_caps_defaults_only_one_per_bar():
+def test_open_caps_bar_cap_needs_a_real_position():
+    """USER 2026-10-22: the per-bar cap refuses a second open only when the account actually HOLDS the key.
+    Flat (live_amt 0, or unknown) + the vector says open -> never refused, however many times this bar."""
     c = VD.OpenCaps()
     t = 1_000_000 * 900.0
     for i in range(50):
         assert c.check("men", f"S{i}_LONG", 49, t + i)[0]
         c.record("men", f"S{i}_LONG", t + i)
-    assert c.check("men", "S0_LONG", 0, t + 60) == (False, "ONE_OPEN_PER_SYM_SIDE_PER_BAR")
-    assert c.check("men", "S0_LONG", 0, t + 900)[0]
+    assert c.check("men", "S0_LONG", 0, t + 60, live_amt=5.0, min_qty=1.0) == (False, "ALREADY_OPEN_SAME_BAR")
+    assert c.check("men", "S0_LONG", 0, t + 60, live_amt=0.0, min_qty=1.0)[0]
+    assert c.check("men", "S0_LONG", 0, t + 60)[0]
+    assert c.check("men", "S0_LONG", 0, t + 900, live_amt=5.0, min_qty=1.0)[0]
 
 
 def test_intent_age():

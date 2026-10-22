@@ -1,37 +1,31 @@
 {
- "generated_utc": "2026-10-22T00:59:50Z",
+ "generated_utc": "2026-10-22T01:05:17Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 607.1,
+  "age_s": 924.8,
   "stale_alert_s": 600
  },
  "ez_indicators": {
-  "pid": 47403,
-  "proc_age_s": 24890.0,
-  "log_age_s": 44.5,
-  "warmup_done": true,
-  "timeframes_since_restart": [
-   "1h",
-   "15m",
-   "3m",
-   "4h",
-   "1h"
-  ],
+  "pid": 44443,
+  "proc_age_s": 89.0,
+  "log_age_s": 13.8,
+  "warmup_done": false,
+  "timeframes_since_restart": [],
   "last_timeframe": "1h",
   "last_timeframe_utc": "2026-10-21T23:03:57Z",
-  "last_restart_utc": "2026-10-21T18:04:59Z",
-  "restarts_last_hour": 0
+  "last_restart_utc": "2026-10-22T01:03:37Z",
+  "restarts_last_hour": 2
  },
  "heartbeat": {
-  "written": 0,
-  "lines": [],
+  "written": 1,
+  "lines": [
+   "[2026-10-22 01:04:29,000] INFO [WARMUP_HEARTBEAT] ez_indicators pid=44443 warm-up in progress \u2014 alive and progressing (cpu +0.18s in 10.0s, last progress 42s ago) (tools/ez_indicators_warmup_guard.py)"
+  ],
   "decisions": [
-   "warm-up already complete (steady state is self-sustaining)",
-   "warm-up already complete (steady state is self-sustaining)",
-   "warm-up already complete (steady state is self-sustaining)",
-   "warm-up already complete (steady state is self-sustaining)",
-   "warm-up already complete (steady state is self-sustaining)",
-   "warm-up already complete (steady state is self-sustaining)"
+   "alive and progressing (cpu +0.18s in 10.0s, last progress 42s ago)",
+   "log fresh (9s < 45s)",
+   "log fresh (4s < 45s)",
+   "log fresh (6s < 45s)"
   ],
   "policy": {
    "when_log_age_s": 45,
@@ -44,21 +38,20 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792630606.2542052,
-  "mac_snapshot_age_s": 29.260399341583252,
+  "hb_mtime": 1792631086.004283,
+  "mac_snapshot_age_s": 508.0144383907318,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
   "lease_since": "2026-10-20T16:54:28Z",
   "lease_reason": "Mac healthy 124s (needed 120s) venues=['crypto', 'stocks']",
-  "now": 1792630731.106372,
-  "from_cache_age_s": 59.8,
-  "heartbeat_age_s": 124.9,
-  "active_s": 28548.9,
+  "now": 1792631117.2311873,
+  "heartbeat_age_s": 31.2,
+  "active_s": 28935.0,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 607s old (> 600s). ez_indicators pid=47403 warmup_done=True tfs_since_restart=['1h', '15m', '3m', '4h', '1h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 924s old (> 600s). ez_indicators pid=44443 warmup_done=False tfs_since_restart=[] restarts_last_hour=2. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

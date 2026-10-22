@@ -180,10 +180,15 @@ engine_keepalive() {
     rm -f "$nochild_stamp" 2>/dev/null
   fi
 
+  # 2026-10-22 fin silence limit: fin's engine is legitimately quiet 210-343 s every PERF_REPORT cycle and during
+  # STEP 2+3 Redis flushes, so the 300 s limit killed it on every cycle. fin alone gets 900 s; a true wedge is still
+  # caught by run_with_watchdog.sh (600 s no-output with a CPU-progress gate).
+  local max_age="$MAX_MGR_LOG_AGE"
+  [ "$A" = "fin" ] && max_age="${MAC_MGR_MAX_LOG_AGE_FIN:-900}"
   if [ -z "$mgr_pids" ]; then
     klog "$A: NO ez_manage watchdog -> start (decision engine was down)"
-  elif [ "$mgr_age" -gt "$MAX_MGR_LOG_AGE" ] && [ "$mgr_since" -gt "$BOOT_GRACE" ]; then
-    klog "$A: ez_manage SILENT (log ${mgr_age}s > ${MAX_MGR_LOG_AGE}s) -> kill watchdog $mgr_pids + child and restart"
+  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$BOOT_GRACE" ]; then
+    klog "$A: ez_manage SILENT (log ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart"
     for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
     for p in $(pgrep -f "bin/python -u ez_manage.py --account $A"); do kill -9 "$p" 2>/dev/null; done
     mgr_pids=""
