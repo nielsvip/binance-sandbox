@@ -10,6 +10,7 @@ NEVER prints or logs values.
 """
 from __future__ import annotations
 import os
+import shutil
 import subprocess
 import sys
 
@@ -32,6 +33,8 @@ def load_env_gpg() -> int:
     here = os.path.dirname(os.path.abspath(__file__))
     gpg_file = os.path.join(here, ".env.gpg")
     if not os.path.exists(gpg_file):
+        return 0
+    if shutil.which("gpg") is None:
         return 0
     try:
         out = subprocess.run(

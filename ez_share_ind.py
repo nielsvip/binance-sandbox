@@ -59,9 +59,16 @@ class ReuseAddrServer(Server):
                 time.sleep(0.5)
                 continue
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s [SHARED_MEM] %(message)s")
+# 2026-10-22: basicConfig runs ONLY for the standalone server. It used to run at
+# import time, so every process importing get_shared_memory_client (ez_indicators,
+# ez_manage, services) got its root logger reformatted to [SHARED_MEM] — asyncio's
+# own "Task exception was never retrieved" lines wore the tag, and every record
+# printed twice (importer's handler + this root handler). Importers configure
+# their own logging; this module only needs a named logger.
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s [SHARED_MEM] %(message)s")
 logger = logging.getLogger("ez_share_ind")
 
 # The file run_with_watchdog.sh monitors for this script's liveness. Refreshed by the heartbeat ONLY when a real

@@ -4224,6 +4224,24 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                      quantity=0.0, old_price=0.0, unique_id=None, reason='',
                                      is_full_close=False, action=None, is_hedge=False,
                                      hedge_for=None, url_variant='', **kw):
+        # SCALE_DIRECTION (USER 2026-10-22): the harness REPLACES execute_now with this seam, so a gate added to
+        # the real execute_now is invisible here — the same reason the KINDERGARTEN/EMA veto had to be mirrored.
+        # Same twin, same per-sym resolution, same exemptions; inert until a board promotes the switch.
+        try:
+            from live_twins import scale_direction_live as _sdl_seam
+            _sd_px_seam = float(old_price or 0.0)
+            if _sd_px_seam > 0:
+                _sdl_seam.note_price(str(symbol or ''), _sd_px_seam)
+            _sd_why_seam = _sdl_seam.blocked(
+                lambda _k, _d=None: ez_manage._psym_get(str(symbol or ''), str(position_side or ''), _k, _d),
+                symbol=str(symbol or ''), position_side=str(position_side or ''), action=str(action or ''), reason=str(reason or ''), side=str(side or ''),
+                quantity=quantity, original_positionAmt=original_positionAmt, price=_sd_px_seam,
+                is_full_close=is_full_close, is_hedge=is_hedge,
+            )
+        except Exception:
+            _sd_why_seam = ""
+        if _sd_why_seam:
+            return f"BLOCKED_SCALE_DIRECTION {_sd_why_seam}"
         return await _crypto_eta(
             account_key=account_key or '',
             position_key=position_key or '',
@@ -10327,6 +10345,24 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         is_full_close = _a[10] if len(_a) > 10 else _en_kw.get('is_full_close', False)
         action = _a[11] if len(_a) > 11 else _en_kw.get('action', None)
         side = str(side or ''); position_side = str(position_side or ''); symbol = str(symbol or ''); reason = str(reason or ''); action = str(action or '')
+        # SCALE_DIRECTION (USER 2026-10-22): the harness REPLACES execute_now with this seam, so a gate added to
+        # the real execute_now is invisible here — the same reason the KINDERGARTEN/EMA veto had to be mirrored.
+        # Same twin, same per-sym resolution, same exemptions; inert until a board promotes the switch.
+        try:
+            from live_twins import scale_direction_live as _sdl_seam
+            _sd_px_seam = float(old_price or 0.0)
+            if _sd_px_seam > 0:
+                _sdl_seam.note_price(symbol, _sd_px_seam)
+            _sd_why_seam = _sdl_seam.blocked(
+                lambda _k, _d=None: tradier_manage._cfg(_k, _d, account_key_en, symbol, position_side),
+                symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
+                quantity=quantity, original_positionAmt=original_position_amt, price=_sd_px_seam,
+                is_full_close=is_full_close, is_hedge=False,
+            )
+        except Exception:
+            _sd_why_seam = ""
+        if _sd_why_seam:
+            return f"BLOCKED_SCALE_DIRECTION {_sd_why_seam}"
         _ordinary_ladder_order_en = reason.upper().startswith(
             "LR_BAND_LADDER_PARITY_TARGET"
         ) or "MANDATORY_REENTRY_PRICE_CROSS" in reason.upper()

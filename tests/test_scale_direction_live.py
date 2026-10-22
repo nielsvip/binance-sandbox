@@ -213,6 +213,17 @@ def test_both_trading_scripts_feed_the_close_ring_off_the_price_path():
         assert "_sdl_feed.note_price(" in src, name
 
 
+def test_the_live_faithful_verifier_mirrors_the_gate_at_both_seams():
+    """backtest_v12_engine REPLACES execute_now with a seam, so a gate added only to the real execute_now is
+    invisible to the LIVE_DELTA column — the same trap that made the KINDERGARTEN/EMA veto need a mirror."""
+    src = (ROOT / "backtest_v12_engine.py").read_text()
+    assert src.count("scale_direction_live as _sdl_seam") == 2, "both seams (crypto + stocks) must mirror it"
+    assert src.count('return f"BLOCKED_SCALE_DIRECTION') == 2
+    assert "ez_manage._psym_get(" in src and "tradier_manage._cfg(" in src
+    c = src.index("async def _v8_execute_now_crypto")
+    assert src.index("_sdl_seam", c) < src.index("return await _crypto_eta(", c), "crypto seam: gate before the fill"
+
+
 def test_the_gate_runs_before_the_order_and_returns_without_placing_it():
     """A refusal must short-circuit — never place and then complain."""
     for name in ("ez_manage.py", "tradier_manage.py"):

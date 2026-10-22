@@ -8023,6 +8023,85 @@ async def _run_redis_operation(operation: Awaitable[Any], label: str) -> None:
         logger.debug("[REDIS_BG] %s failed: %s", label, exc)
 
 
+async def _cancel_order_background(client: Any, symbol: str, order_id: Any, label: str) -> None:
+    """Cancel one broker order in the background without leaking an unobserved task error.
+
+    Fire-and-forget ``futures_cancel_order`` used to die as ``Task exception was
+    never retrieved ... BinanceAPIException(-2011 Unknown order sent)`` whenever the
+    order was already gone (filled/cancelled) — the expected outcome on these paths,
+    not an error. -2011 stays at debug; anything else is a warning with context.
+    """
+    try:
+        await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=order_id)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        if "-2011" in str(exc):
+            logger.debug("[CANCEL_BG] %s already gone (-2011): %s %s", label, symbol, order_id)
+        else:
+            logger.warning("[CANCEL_BG] %s failed: %s %s: %r", label, symbol, order_id, exc)
+
+
+_LOOP_EXC_STATS: Dict[Any, Any] = {}
+_LOOP_EXC_SUMMARY_EVERY = 100
+
+
+def _ez_loop_exception_handler(loop: Any, context: Any) -> None:
+    """Loop-level backstop: demote KNOWN-BENIGN unretrieved task errors, keep the rest loud.
+
+    Sources in files this change may not touch (utils.py redis wait_for races on the
+    flapping localhost:6380 tunnel, order_dedupe_guard.py shared listing tasks that
+    outlive one waiter, cancel/query of already-gone broker orders) die as
+    ``Task exception was never retrieved`` with a full traceback on EVERY occurrence.
+    Those are counted here instead: first occurrence per (task, error) logs at WARNING
+    with a short traceback, repeats are counted, every 100th logs a summary line.
+    Anything not on the benign list keeps the default ERROR-with-traceback behaviour.
+    """
+    try:
+        message = str((context or {}).get("message", ""))
+        exc = (context or {}).get("exception")
+        fut = (context or {}).get("future")
+        coro_name = ""
+        try:
+            coro = fut.get_coro() if fut is not None and hasattr(fut, "get_coro") else None
+            coro_name = getattr(coro, "__qualname__", "") or ""
+        except Exception:
+            pass
+        exc_name = type(exc).__name__ if exc is not None else ""
+        exc_mod = type(exc).__module__ if exc is not None else ""
+        exc_s = str(exc)[:200] if exc is not None else ""
+        benign = False
+        if "never retrieved" in message and exc is not None:
+            if "execute_command" in coro_name and exc_name in ("TimeoutError", "ConnectionError"):
+                benign = True
+            elif exc_name == "BinanceAPIException" and "-2011" in exc_s:
+                benign = True
+            elif "_fetch_orders" in coro_name and exc_name == "TimeoutError":
+                benign = True
+        if benign:
+            key = (coro_name, exc_name, exc_mod)
+            try:
+                count = int(_LOOP_EXC_STATS.get(key, 0)) + 1
+            except Exception:
+                count = 1
+            _LOOP_EXC_STATS[key] = count
+            if count == 1:
+                try:
+                    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                except Exception:
+                    tb = exc_s
+                logger.warning("[LOOP_EXC] benign %s %s (further repeats counted, summary every %d): %s", coro_name, exc_s, _LOOP_EXC_SUMMARY_EVERY, tb[:2000])
+            elif count % _LOOP_EXC_SUMMARY_EVERY == 0:
+                logger.warning("[LOOP_EXC] benign %s %s x%d total (per-call paths already retried/fell back)", coro_name, exc_name, count)
+            return
+    except Exception:
+        pass
+    try:
+        loop.default_exception_handler(context)
+    except Exception:
+        pass
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # 2026-05-18 PER-SYM CONFIG OVERLAY — Path B wiring per user mandate.
 # Reads data/hourly_reconfig/per_sym_active_config.json with mtime cache.
@@ -11091,10 +11170,11 @@ class TradeVerifier:
                 for order_id in order_ids_to_cancel:
                     try:
                         asyncio.create_task(
-                            asyncio.to_thread(
-                                client.futures_cancel_order,
-                                symbol=symbol,
-                                orderId=order_id,
+                            _cancel_order_background(
+                                client,
+                                symbol,
+                                order_id,
+                                f"trade_verifier:{position_key}",
                             )
                         )
                     except Exception:
@@ -31027,10 +31107,11 @@ class MultiAccountTradeManager:
                         account = self.accounts.get(account_key)
                         if account and account.client:
                             asyncio.create_task(
-                                asyncio.to_thread(
-                                    account.client.futures_cancel_order,
-                                    symbol=symbol,
-                                    orderId=tracked_order_id,
+                                _cancel_order_background(
+                                    account.client,
+                                    symbol,
+                                    tracked_order_id,
+                                    f"retire_tracked:{position_key}",
                                 )
                             )
                 self.active_maker_orders.pop(position_key, None)
@@ -31077,10 +31158,11 @@ class MultiAccountTradeManager:
             account = self.accounts.get(account_key)
             if account and account.client:
                 asyncio.create_task(
-                    asyncio.to_thread(
-                        account.client.futures_cancel_order,
-                        symbol=symbol,
-                        orderId=order_id,
+                    _cancel_order_background(
+                        account.client,
+                        symbol,
+                        order_id,
+                        f"force_clear:{position_key}",
                     )
                 )
         async with self.dedupe_lock:
@@ -64262,33 +64344,47 @@ class ManipulationDetector:
 
 
 async def _ez_loop_lag_watchdog():
-    """2026-10-14: same probe as tradier_manage — logs event-loop freezes and dumps the main-thread stack DURING a freeze (>20 s)."""
+    """2026-10-14: same probe as tradier_manage — logs event-loop freezes and dumps the main-thread stack DURING a freeze (>20 s).
+
+    2026-10-22: a pending dump is always cancelled on the way out (shutdown task-cancel
+    used to leave it armed, firing a full thread dump into stderr ~20 s after the
+    process was already gone). The task is started after STARTUP COMPLETE so the
+    blocking bootstrap phase no longer trips the 20 s dump on every healthy start.
+    """
     import faulthandler as _fh
     import time as _t
     _prev = None
-    while True:
-        try:
-            _fh.dump_traceback_later(20.0, repeat=False)
-        except Exception:
-            pass
-        await asyncio.sleep(5.0)
+    try:
+        while True:
+            try:
+                _fh.dump_traceback_later(20.0, repeat=False)
+            except Exception:
+                pass
+            try:
+                await asyncio.sleep(5.0)
+            finally:
+                try:
+                    _fh.cancel_dump_traceback_later()
+                except Exception:
+                    pass
+            _now = _t.monotonic()
+            if _prev is not None and _now - _prev - 5.0 > 10.0:
+                try:
+                    logger.critical(f"🛑 [LOOP_LAG] event loop frozen {_now - _prev - 5.0:.1f}s — orders/evaluations starve while loop parked")
+                except Exception:
+                    pass
+            _prev = _now
+    finally:
         try:
             _fh.cancel_dump_traceback_later()
         except Exception:
             pass
-        _now = _t.monotonic()
-        if _prev is not None and _now - _prev - 5.0 > 10.0:
-            try:
-                logger.critical(f"🛑 [LOOP_LAG] event loop frozen {_now - _prev - 5.0:.1f}s — orders/evaluations starve while loop parked")
-            except Exception:
-                pass
-        _prev = _now
 
 
 async def main():
     global logger
     try:
-        asyncio.get_running_loop().create_task(_ez_loop_lag_watchdog())
+        asyncio.get_running_loop().set_exception_handler(_ez_loop_exception_handler)
     except Exception:
         pass
     args = parse_arguments()
@@ -65204,6 +65300,10 @@ async def main():
             logger.info(
                 "STARTUP COMPLETE! All primary + quick logic loops are running (ONE process, ONE dict, ZERO Redis reads)"
             )
+            try:
+                background_tasks.append(asyncio.create_task(_ez_loop_lag_watchdog()))
+            except Exception:
+                pass
             await create_server_heartbeat()
             try:
                 await shutdown_event.wait()
