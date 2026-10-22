@@ -1,26 +1,25 @@
 {
- "generated_at": "2026-10-22 05:12 UTC",
- "total_capital_usd": 171.98,
+ "generated_at": "2026-10-22 05:35 UTC",
+ "total_capital_usd": 166.27,
  "tier_capital": {
-  "A": 25.25,
-  "B": 93.14,
-  "C": 53.58
+  "A": 25.67,
+  "B": 93.15,
+  "C": 47.44
  },
  "tier_count": {
   "A": 1,
   "B": 6,
-  "C": 6
+  "C": 5
  },
  "winners": [
   "ang:XMRUSDT_LONG"
  ],
  "losers": [
   "ang:ENAUSDC_LONG",
-  "ang:GRTUSDT_LONG",
+  "ang:TRUMPUSDC_SHORT",
   "ang:1000FLOKIUSDT_SHORT",
   "ang:SNXUSDT_SHORT",
   "ang:GALAUSDT_SHORT",
-  "ang:TRUMPUSDC_SHORT",
   "ang:AXSUSDT_SHORT"
  ],
  "mediocre": [
@@ -33,144 +32,133 @@
    "pk": "ang:XMRUSDT_LONG",
    "symbol": "XMRUSDT",
    "account": "ang",
-   "value_usd": 25.25,
-   "gain_pct": 1.241,
+   "value_usd": 25.67,
+   "gain_pct": 2.916,
    "tier": "A",
    "perf_mult": 10.0,
    "amt": 0.041,
-   "mark": 615.94
+   "mark": 626.13
   },
   {
    "pk": "ang:BEAMXUSDT_LONG",
    "symbol": "BEAMXUSDT",
    "account": "ang",
-   "value_usd": 25.03,
-   "gain_pct": 0.04,
+   "value_usd": 25.04,
+   "gain_pct": 0.107,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 8018.0,
-   "mark": 0.00312125
+   "mark": 0.00312333
   },
   {
    "pk": "ang:1000FLOKIUSDT_SHORT",
    "symbol": "1000FLOKIUSDT",
    "account": "ang",
    "value_usd": 24.91,
-   "gain_pct": 0.166,
+   "gain_pct": 0.132,
    "tier": "C",
    "perf_mult": 0.24,
    "amt": 1036.0,
-   "mark": 0.02404
+   "mark": 0.02404833
   },
   {
    "pk": "ang:DOGEUSDC_SHORT",
    "symbol": "DOGEUSDC",
    "account": "ang",
    "value_usd": 24.9,
-   "gain_pct": 0.187,
+   "gain_pct": 0.175,
    "tier": "B",
    "perf_mult": 0.38,
    "amt": 311.0,
-   "mark": 0.08005
+   "mark": 0.08006
   },
   {
    "pk": "ang:XRPUSDC_SHORT",
    "symbol": "XRPUSDC",
    "account": "ang",
-   "value_usd": 24.9,
-   "gain_pct": -0.047,
+   "value_usd": 24.89,
+   "gain_pct": -0.022,
    "tier": "B",
-   "perf_mult": 1.08,
+   "perf_mult": 1.53,
    "amt": 18.5,
-   "mark": 1.34593576
+   "mark": 1.34559328
   },
   {
    "pk": "ang:GALAUSDT_SHORT",
    "symbol": "GALAUSDT",
    "account": "ang",
-   "value_usd": 6.24,
-   "gain_pct": 0.293,
+   "value_usd": 6.23,
+   "gain_pct": 0.48,
    "tier": "C",
    "perf_mult": 0.13,
    "amt": 3285.0,
-   "mark": 0.00190041
+   "mark": 0.00189685
   },
   {
    "pk": "ang:TRUMPUSDC_SHORT",
    "symbol": "TRUMPUSDC",
    "account": "ang",
-   "value_usd": 6.2,
-   "gain_pct": 0.391,
+   "value_usd": 6.23,
+   "gain_pct": 0.056,
    "tier": "C",
    "perf_mult": 0.45,
    "amt": 3.48,
-   "mark": 1.783
-  },
-  {
-   "pk": "ang:GRTUSDT_LONG",
-   "symbol": "GRTUSDT",
-   "account": "ang",
-   "value_usd": 6.16,
-   "gain_pct": -0.899,
-   "tier": "C",
-   "perf_mult": 0.2,
-   "amt": 254.0,
-   "mark": 0.02426
+   "mark": 1.789
   },
   {
    "pk": "ang:BCHUSDC_SHORT",
    "symbol": "BCHUSDC",
    "account": "ang",
-   "value_usd": 6.13,
-   "gain_pct": 0.443,
+   "value_usd": 6.14,
+   "gain_pct": 0.34,
    "tier": "B",
-   "perf_mult": 0.24,
+   "perf_mult": 0.25,
    "amt": 0.022,
-   "mark": 278.76
+   "mark": 279.04758713
   },
   {
    "pk": "ang:XLMUSDT_SHORT",
    "symbol": "XLMUSDT",
    "account": "ang",
    "value_usd": 6.11,
-   "gain_pct": 0.172,
+   "gain_pct": 0.161,
    "tier": "B",
    "perf_mult": 0.59,
    "amt": 34.0,
-   "mark": 0.1798
+   "mark": 0.17981995
   },
   {
    "pk": "ang:ENAUSDC_LONG",
    "symbol": "ENAUSDC",
    "account": "ang",
    "value_usd": 6.07,
-   "gain_pct": -1.509,
+   "gain_pct": -1.524,
    "tier": "B",
    "perf_mult": 0.66,
    "amt": 30.0,
-   "mark": 0.20229
+   "mark": 0.20226
   },
   {
    "pk": "ang:AXSUSDT_SHORT",
    "symbol": "AXSUSDT",
    "account": "ang",
    "value_usd": 5.12,
-   "gain_pct": 0.64,
+   "gain_pct": 0.701,
    "tier": "C",
    "perf_mult": 0.15,
    "amt": 5.0,
-   "mark": 1.0249
+   "mark": 1.02426833
   },
   {
    "pk": "ang:SNXUSDT_SHORT",
    "symbol": "SNXUSDT",
    "account": "ang",
    "value_usd": 4.95,
-   "gain_pct": 0.271,
+   "gain_pct": 0.26,
    "tier": "C",
    "perf_mult": 0.15,
    "amt": 22.4,
-   "mark": 0.221
+   "mark": 0.22102324
   }
  ]
 }
