@@ -281,13 +281,17 @@ engine_keepalive() {
   # dictates pending in the spool AND the ledger not advancing => this account is not trading => repair it locally.
   # Local repair first; mac_failover_agent still raises not_trading_account (30 s) for the S1 path when repair fails.
   local nt_ledger="$BASE/data/vec_live/live_exec_${A}.jsonl"
-  # 900 s = one 15m bar, NOT the operator's 30 s target, and the gap is a measurement limit I must not paper over:
-  # this ledger only gains rows when dictates are PROCESSED, and dictates arrive per bar, so a healthy account is
-  # legitimately quiet for minutes — flz booked 23 SUCCESS in the hour its ledger sat 208 s idle. At 120 s this rule
-  # flagged four of five healthy accounts. Detecting a stall in 30 s needs a signal that ticks continuously (a
-  # per-cycle consumer heartbeat), which does not exist yet; until it does, this catches only an unambiguously dead
-  # account — a full bar with work pending and nothing processed.
-  local nt_limit="${MAC_NOT_TRADING_S:-900}"
+  # ONE BAR of the lane's current cadence, derived — not a constant. USER 2026-10-22: "we trade 15m bars for now
+  # (copy trading from vector trades until parity is reached) but the system trades every ms", so this bound has to
+  # shrink on its own when the cadence does. VEC_LANE_BAR_SECONDS is the single knob (live_twins/vec_driven.py
+  # BAR_SECONDS reads the same one); at the 15m copy-trading cadence this is 900 s, at a 60 s cadence it is 60 s, and
+  # the operator's 30 s target becomes reachable for free once the lane itself ticks faster than that.
+  # Why one bar and not 30 s today: this ledger only gains rows when dictates are PROCESSED, and dictates arrive per
+  # bar, so a healthy account is legitimately quiet for minutes — flz booked 23 SUCCESS in the hour its ledger sat
+  # 208 s idle, and a 120 s limit flagged four of five healthy accounts and replaced two that were trading.
+  local nt_bar="${VEC_LANE_BAR_SECONDS:-900}"
+  case "$nt_bar" in ''|*[!0-9]*) nt_bar=900 ;; esac
+  local nt_limit="${MAC_NOT_TRADING_S:-$nt_bar}"
   local nt_age nt_pending nt_mt
   # NOT age_of(): that helper greps the FIRST "ts" field out of the file, which is correct for a single-object
   # heartbeat but on an append-only JSONL ledger returns the OLDEST row. 2026-10-22 05:54Z it therefore reported
