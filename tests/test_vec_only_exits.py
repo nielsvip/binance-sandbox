@@ -24,6 +24,9 @@ VEC_REASONS = [
     "RECONCILE_XRPUSDC_LONG",
     "EXIT_GUARANTEE_FORCE[VEC_DRIVEN_OPEN_PURE_BOARD] WT_X",
     "twin act |VEC_EXACT live",
+    "BOARD_CONVERGE_CLOSE vec=WT_EXIT",
+    "CLOSE VEC_EXIT_OWED",
+    "CLOSE VEC_EXIT_OWED_BROKER",
 ]
 NATIVE_REASONS = [
     "WT_SIMPLE_GUARANTEE_15m_wt-27.8vs-21.4_g-0.08%",
@@ -38,8 +41,15 @@ NATIVE_REASONS = [
 
 
 def _gate_passes(reason):
+    # Mirrors ez_manage._voe_reason_is_vec (single definition of vec-dictated).
     rx = str(reason or "").upper()
-    return "VEC_DRIVEN_" in rx or "RECONCILE_" in rx or "|VEC_EXACT" in rx
+    return (
+        "VEC_DRIVEN_" in rx
+        or "RECONCILE_" in rx
+        or "|VEC_EXACT" in rx
+        or "BOARD_CONVERGE_" in rx
+        or "EXIT_OWED" in rx
+    )
 
 
 def test_refusal_classifies_policy_never_escalated():
@@ -78,3 +88,46 @@ def test_stop_manager_disarmed():
 
 def test_kill_switch_documented():
     assert "NATIVE_EXITS_DISABLED=0 restores" in SRC
+
+
+def test_vec_reason_helper_single_definition():
+    assert "def _voe_reason_is_vec(reason)" in SRC
+    for tok in ["VEC_DRIVEN_", "RECONCILE_", "|VEC_EXACT", "BOARD_CONVERGE_", "EXIT_OWED"]:
+        assert tok in SRC.split("def _voe_reason_is_vec(reason)")[1].split("def ")[0]
+
+
+def test_heart_intact_no_queue_chokepoint():
+    # process_position / queue_trade_action / execute_trade_action stay whole:
+    # no blanket kill inside the queue transport (reverted USER 2026-10-21).
+    assert "_voe_native_exits_disabled() and not _voe_reason_is_vec" not in SRC
+    assert "refused at queue" not in SRC
+
+
+def test_new_exit_legs_stood_down():
+    legs = [
+        'if _ag_action == "force_close" and _ag_pos_amt > 0 and not _voe_native_exits_disabled()',
+        "[NEWBORN_LOSS_KILL_STOOD_DOWN]",
+        '"_uh_force_close") and not _voe_native_exits_disabled()',
+        "if _ms_gain >= _ms_threshold and _ms_gain < _ms_prev and not _voe_native_exits_disabled()",
+        "if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled()",
+        "and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits\n        ):",
+        'result = "SKIPPED_NON_VECTOR_EXIT_DISABLED"',
+        "if reduce_qty_kill1 > 0 and reduce_qty_kill1 < position.positionAmt and not _voe_native_exits_disabled()",
+        "if tp_reason and not _voe_native_exits_disabled()",
+        "[OVERRIDE_REDUCE_STOOD_DOWN]",
+        "([] if _voe_native_exits_disabled() else _ss_stalled)",
+        "([] if _voe_native_exits_disabled() else _reduce_candidates)",
+        "([] if _voe_native_exits_disabled() else _close_candidates)",
+        "([] if _voe_native_exits_disabled() else _ow_candidates)",
+        "and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits: emergency exit stood down",
+        "[DC_BREACH_STOOD_DOWN]",
+        "[BREAK_EVEN_GUARD_STOOD_DOWN]",
+        "if _af_frac > 0 and _af_last > 0 and not _voe_native_exits_disabled()",
+        "MOMENTUM_RIDER_EXIT_PROFIT_",
+        "MOMENTUM_RIDER_HEDGE_CLOSE_profit",
+        "MOMENTUM_RIDER_HEDGE_KILL_loss",
+    ]
+    for leg in legs:
+        assert leg in SRC, leg
+    assert SRC.count("vec-only exits: rider close stood down") == 3
+    assert SRC.count("_voe_native_exits_disabled()") >= 50

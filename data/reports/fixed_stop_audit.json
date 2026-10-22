@@ -3,54 +3,63 @@
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 608.1957000000001,
-   "key": "inf:XMRUSDT_LONG",
-   "live_level": 574.3372,
-   "mark": 625.82561111,
-   "opened_at": "2026-10-22T00:17:44.719000Z",
-   "resting_trigger": 569.3
+   "entry_bar_level": 3.8034675000000004,
+   "key": "men:ARUSDT_LONG",
+   "live_level": 3.8261521500000004,
+   "mark": 3.857,
+   "opened_at": "2026-10-22T00:27:51.496000Z",
+   "resting_trigger": 3.82
   },
   {
    "armed": true,
    "code": "LEVEL_NOT_ENTRY_BAR",
-   "entry_bar_level": 0.0114094525,
-   "key": "inf:COTIUSDT_SHORT",
-   "live_level": 0.011426495,
-   "mark": 0.01123,
-   "opened_at": "2026-10-22T00:16:09.804000Z",
-   "resting_trigger": 0.011427
+   "entry_bar_level": 0.56658,
+   "key": "men:WLDUSDC_LONG",
+   "live_level": 0.5622745,
+   "mark": 0.5853,
+   "opened_at": "2026-10-22T00:26:12.724000Z",
+   "resting_trigger": 0.5614
   }
  ],
  "n_findings": 2,
- "n_positions": 3,
+ "n_positions": 4,
  "positions": [
   {
    "armed": true,
    "entry_bar_level": 0.025092575,
    "key": "ang:1000FLOKIUSDT_SHORT",
    "live_level": 0.025092575,
-   "mark": 0.02459,
+   "mark": 0.02461,
    "opened_at": "2026-10-22T00:20:08.641000Z",
    "resting_trigger": 0.02514
   },
   {
    "armed": true,
-   "entry_bar_level": 608.1957000000001,
-   "key": "inf:XMRUSDT_LONG",
-   "live_level": 574.3372,
-   "mark": 625.82561111,
-   "opened_at": "2026-10-22T00:17:44.719000Z",
-   "resting_trigger": 569.3
+   "entry_bar_level": 0.112647675,
+   "key": "men:ALGOUSDT_LONG",
+   "live_level": 0.112647675,
+   "mark": 0.11386,
+   "opened_at": "2026-10-22T00:27:20.039000Z",
+   "resting_trigger": 0.11247
   },
   {
    "armed": true,
-   "entry_bar_level": 0.0114094525,
-   "key": "inf:COTIUSDT_SHORT",
-   "live_level": 0.011426495,
-   "mark": 0.01123,
-   "opened_at": "2026-10-22T00:16:09.804000Z",
-   "resting_trigger": 0.011427
+   "entry_bar_level": 3.8034675000000004,
+   "key": "men:ARUSDT_LONG",
+   "live_level": 3.8261521500000004,
+   "mark": 3.857,
+   "opened_at": "2026-10-22T00:27:51.496000Z",
+   "resting_trigger": 3.82
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.56658,
+   "key": "men:WLDUSDC_LONG",
+   "live_level": 0.5622745,
+   "mark": 0.5853,
+   "opened_at": "2026-10-22T00:26:12.724000Z",
+   "resting_trigger": 0.5614
   }
  ],
- "ts": "2026-10-22T00:22:39.168181+00:00"
+ "ts": "2026-10-22T00:32:39.838892+00:00"
 }
