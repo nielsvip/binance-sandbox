@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T00:49:54Z",
+ "generated_utc": "2026-10-22T00:54:51Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 220.3,
+  "age_s": 308.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 47403,
-  "proc_age_s": 24295.0,
-  "log_age_s": 15.1,
+  "proc_age_s": 24592.0,
+  "log_age_s": 52.1,
   "warmup_done": true,
   "timeframes_since_restart": [
    "1h",
@@ -42,7 +42,7 @@
  },
  "s1_failover": {
   "error": "TimeoutExpired: Command '['ssh', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', 's1-pub', 'python3 -c \"import json,time;s=json.load(open(\\'/home/niels/binance/data/live_failover/state.json\\'));h=json.load(open(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\'));v=(s.get(\\'venues\\') or {}).get(\\'crypto\\') or {};c=(h.get(\\'venues\\') or {}).get(\\'crypto\\') or {};print(json.dumps({\\'mode\\':v.get(\\'mode\\'),\\'since_epoch\\':v.get(\\'since_epoch\\'),\\'activations\\':v.get(\\'activations\\'),\\'hb_mtime\\':__import__(\\'os\\').stat(\\'/home/niels/binance/data/live_failover/mac_data_heartbeat.json\\').st_mtime,\\'mac_snapshot_age_s\\':c.get(\\'snapshot_age_s\\'),\\'mac_stale\\':c.get(\\'stale\\'),\\'lease_holder\\':(s.get(\\'lease\\') or {}).get(\\'holder\\'),\\'lease_venues\\':(s.get(\\'lease\\') or {}).get(\\'venues\\'),\\'lease_since\\':(s.get(\\'lease\\') or {}).get(\\'since\\'),\\'lease_reason\\':(s.get(\\'lease\\') or {}).get(\\'reason\\'),\\'now\\':time.time()}))\"']' timed out after 20 seconds",
-  "from_cache_age_s": 159.7
+  "from_cache_age_s": 100.7
  },
  "alerts": [],
  "verdict": "OK"

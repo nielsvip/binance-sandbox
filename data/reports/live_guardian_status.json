@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-22T00:49:55Z",
+ "ts": "2026-10-22T00:55:01Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 9,
    "open_positions": 3,
-   "unrealised_usd": -0.02,
+   "unrealised_usd": -0.0,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 3,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 50,
    "open_positions": 1,
-   "unrealised_usd": -0.05,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -81,7 +81,7 @@
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 5,
-    "state_divergent": 0,
+    "state_divergent": 1,
     "filled": 4,
     "refused_non_safety": 0,
     "safety_refusals": 0,
@@ -127,80 +127,80 @@
     "99304"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 8.0
   },
   "men": {
    "pids": [
     "93091"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "53140"
    ],
    "starts_30m": 2,
-   "log_age_s": 11.0
+   "log_age_s": 3.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 164.0
+   "log_age_s": 96.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17332.0
+   "log_age_s": 17637.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 17335.0
+   "log_age_s": 17641.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-22T00:49:55Z",
+   "ts": "2026-10-22T00:55:01Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T00:49:55Z",
+   "ts": "2026-10-22T00:55:01Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T00:49:55Z",
+   "ts": "2026-10-22T00:55:01Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T00:49:56Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 164s"
+   "ts": "2026-10-22T00:55:02Z",
+   "severity": "WARN",
+   "kind": "VEC_OPEN_WHILE_LIVE_IN",
+   "key": "inf:XMRUSDT_LONG",
+   "evidence": "OPEN B_KZONE bar=2026-10-22T00:00:00Z: live already holds 0.039 (state divergence)"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "STALE_LOG": 1
+  "VEC_OPEN_WHILE_LIVE_IN": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -255,5 +255,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.44
+ "sweep_s": 1.45
 }

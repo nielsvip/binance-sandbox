@@ -1,45 +1,32 @@
 {
- "generated_at": "2026-10-22 00:27 UTC",
- "total_capital_usd": 31.17,
+ "generated_at": "2026-10-22 00:50 UTC",
+ "total_capital_usd": 24.98,
  "tier_capital": {
-  "A": 24.93,
-  "B": 6.24,
-  "C": 0.0
+  "A": 0.0,
+  "B": 0.0,
+  "C": 24.98
  },
  "tier_count": {
-  "A": 1,
-  "B": 1,
-  "C": 0
+  "A": 0,
+  "B": 0,
+  "C": 1
  },
- "winners": [
-  "men:WLDUSDC_LONG"
+ "winners": [],
+ "losers": [
+  "ang:1000FLOKIUSDT_SHORT"
  ],
- "losers": [],
- "mediocre": [
-  "men:ALGOUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:WLDUSDC_LONG",
-   "symbol": "WLDUSDC",
-   "account": "men",
-   "value_usd": 24.93,
-   "gain_pct": 0.154,
-   "tier": "A",
-   "perf_mult": 7.91,
-   "amt": 42.7,
-   "mark": 0.5838
-  },
-  {
-   "pk": "men:ALGOUSDT_LONG",
-   "symbol": "ALGOUSDT",
-   "account": "men",
-   "value_usd": 6.24,
-   "gain_pct": 0.0,
-   "tier": "B",
-   "perf_mult": 0.42,
-   "amt": 54.8,
-   "mark": 0.1139211
+   "pk": "ang:1000FLOKIUSDT_SHORT",
+   "symbol": "1000FLOKIUSDT",
+   "account": "ang",
+   "value_usd": 24.98,
+   "gain_pct": -0.081,
+   "tier": "C",
+   "perf_mult": 0.27,
+   "amt": 1014.0,
+   "mark": 0.02464
   }
  ]
 }
