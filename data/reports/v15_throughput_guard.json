@@ -1,116 +1,123 @@
 {
- "at": "2026-10-22T07:11:26Z",
+ "at": "2026-10-22T08:11:04Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 0,
-   "improved_per_hour": 0.0,
-   "published_n": null,
-   "flat_or_worse": null,
-   "unknown": null,
-   "boards_running": null,
-   "mem_avail_mb": null,
-   "load1": null,
-   "nproc": null,
-   "slots": null,
-   "binding_reason": "concurrency 0 boards: 12/h needs <= 0 min per sym_side \u2014 raise concurrent sides or cut evals per board",
-   "error": "ssh: connect to host 127.0.0.1 port 2201: Connection refused\n",
-   "published": null,
-   "cadence_target_min": 5.0,
-   "minutes_since_last_improved": null,
-   "last_improved_symside": null,
-   "cadence_ok": false,
-   "improved_gap_min_median_24h": null,
-   "improved_gap_min_max_24h": null,
-   "improved_finishes_24h": null,
-   "board_cpu_s_median_24h": null,
-   "board_wall_s_median_24h": null,
-   "board_cores": null,
-   "nonboard_cores_competing": null,
-   "nonboard_cores_niced": null,
-   "cores_by_bucket": null,
-   "cores_by_bucket_niced": null
-  },
-  "s2": {
-   "improved": 6,
-   "improved_per_hour": 6.0,
-   "published_n": 6,
+   "improved": 1,
+   "improved_per_hour": 1.0,
+   "published_n": 1,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BHVN_SHORT",
-    "IOTAUSDT_SHORT"
+    "BIDU_SHORT",
+    "ENSUSDT_SHORT"
    ],
-   "mem_avail_mb": 18059,
-   "load1": 15.29,
+   "mem_avail_mb": 10345,
+   "load1": 43.78,
    "nproc": 16,
-   "slots": null,
-   "binding_reason": "board CPU DEMAND, not host capacity: 2 running sides pull only 3.6 cores (1.81 core/side) of 14.6 usable -> 6.9 boards/h. 12/h needs 6.3 board-cores = 3 sides at this per-side draw (niced filler 5.14 cores yields). Lever: more concurrent sides (RAM-bound) or deeper eval pipelining per side (V15_PREFETCH_TASKCAP on an idle host).",
+   "slots": "2/8",
+   "binding_reason": "scheduler mem guard (disk 24734 MB, mem 9740 MB, est_pair 8638 MB) \u2014 slots 2/8",
    "error": null,
    "published": [
     {
-     "symside": "MNTS_SHORT",
-     "at": "2026-10-22T06:41:32Z",
-     "baseline": 64.15138211975156,
-     "final": 64.38895410591498,
-     "state": "improved"
-    },
-    {
-     "symside": "ONEUSDT_SHORT",
-     "at": "2026-10-22T07:00:52Z",
-     "baseline": 56.489051654718295,
-     "final": 168.75850758964,
-     "state": "improved"
-    },
-    {
-     "symside": "PBF_LONG",
-     "at": "2026-10-22T06:15:30Z",
-     "baseline": 37.50431895523001,
-     "final": 39.994218248215816,
-     "state": "improved"
-    },
-    {
-     "symside": "SCHW_SHORT",
-     "at": "2026-10-22T07:02:46Z",
-     "baseline": 15.310278692262807,
-     "final": 22.903603887807158,
-     "state": "improved"
-    },
-    {
-     "symside": "UEC_SHORT",
-     "at": "2026-10-22T06:59:00Z",
-     "baseline": 48.7606659114019,
-     "final": 60.264471365608166,
-     "state": "improved"
-    },
-    {
-     "symside": "VT_LONG",
-     "at": "2026-10-22T06:45:07Z",
-     "baseline": 5.599756180401663,
-     "final": 6.30790154159527,
+     "symside": "PSX_LONG",
+     "at": "2026-10-22T07:17:56Z",
+     "baseline": 22.19891730332801,
+     "final": 22.319067235226626,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 1.4,
-   "last_improved_symside": "NXE_SHORT",
-   "cadence_ok": true,
+   "minutes_since_last_improved": 52.4,
+   "last_improved_symside": "PSX_LONG",
+   "cadence_ok": false,
+   "improved_gap_min_median_24h": 14.9,
+   "improved_gap_min_max_24h": 124.4,
+   "improved_finishes_24h": 8,
+   "board_cpu_s_median_24h": 2102.3,
+   "board_wall_s_median_24h": 2563.6093571186066,
+   "board_cores": 4.2,
+   "nonboard_cores_competing": 8.9,
+   "nonboard_cores_niced": 2.21,
+   "cores_by_bucket": {
+    "other": 4.27,
+    "klines_append": 0.5,
+    "live_helpers": 4.13,
+    "boards": 4.2
+   },
+   "cores_by_bucket_niced": {
+    "klines_vault": 0.19,
+    "other": 1.85,
+    "npz_precompute": 0.17
+   }
+  },
+  "s2": {
+   "improved": 3,
+   "improved_per_hour": 3.0,
+   "published_n": 4,
+   "flat_or_worse": 1,
+   "unknown": 0,
+   "boards_running": [
+    "AXON_SHORT",
+    "BTCUSDC_LONG",
+    "CRWV_SHORT"
+   ],
+   "mem_avail_mb": 14330,
+   "load1": 21.96,
+   "nproc": 16,
+   "slots": "3/8",
+   "binding_reason": "scheduler mem guard (disk 23429 MB, mem 14820 MB, est_pair 9223 MB) \u2014 slots 3/8",
+   "error": null,
+   "published": [
+    {
+     "symside": "CDE_SHORT",
+     "at": "2026-10-22T07:24:27Z",
+     "baseline": 59.580134909718176,
+     "final": 62.45679916247753,
+     "state": "improved"
+    },
+    {
+     "symside": "IOTAUSDT_SHORT",
+     "at": "2026-10-22T07:35:18Z",
+     "baseline": 15.833380195016804,
+     "final": 44.115388574984436,
+     "state": "improved"
+    },
+    {
+     "symside": "VALE_SHORT",
+     "at": "2026-10-22T07:35:31Z",
+     "baseline": 29.587091311710463,
+     "final": 29.587091311710463,
+     "state": "flat_or_worse"
+    },
+    {
+     "symside": "WMT_LONG",
+     "at": "2026-10-22T07:35:21Z",
+     "baseline": 20.33667077494514,
+     "final": 21.172429172943335,
+     "state": "improved"
+    }
+   ],
+   "cadence_target_min": 5.0,
+   "minutes_since_last_improved": 35.5,
+   "last_improved_symside": "IOTAUSDT_SHORT",
+   "cadence_ok": false,
    "improved_gap_min_median_24h": 5.9,
    "improved_gap_min_max_24h": 149.9,
    "improved_finishes_24h": 125,
-   "board_cpu_s_median_24h": 1890.8,
-   "board_wall_s_median_24h": 1077.3219208717346,
-   "board_cores": 3.62,
-   "nonboard_cores_competing": 1.41,
-   "nonboard_cores_niced": 5.14,
+   "board_cpu_s_median_24h": 1928.6,
+   "board_wall_s_median_24h": 1079.7346918582916,
+   "board_cores": 9.47,
+   "nonboard_cores_competing": 2.25,
+   "nonboard_cores_niced": 4.0,
    "cores_by_bucket": {
-    "other": 0.05,
-    "live_helpers": 1.36,
-    "boards": 3.62
+    "other": 0.02,
+    "live_helpers": 2.23,
+    "boards": 9.47
    },
    "cores_by_bucket_niced": {
-    "other": 5.14
+    "other": 4.0
    }
   }
  },
@@ -119,6 +126,7 @@
   "s2"
  ],
  "cadence_breach": [
-  "s1"
+  "s1",
+  "s2"
  ]
 }
