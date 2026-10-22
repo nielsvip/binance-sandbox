@@ -171,6 +171,30 @@ def test_ratio_trim_allowed_close_killed(tmp_path, monkeypatch):
     assert "candidates = []" in ez_src
 
 
+def test_ppl_reaugment_allowed_ppl_tp_stays_killed(tmp_path, monkeypatch):
+    """USER 2026-10-22 PPL re-augment switch (standing order -> per-sym_side
+    switch, backtest decides; implied augment MULT x TP qty on WT cross back
+    above dc_low_15m): the switch-gated DC-reclaim AUGMENT flows as its own
+    narrow family even with the broad PPL kill present; standing-order
+    PPL_TP_*/PPL_SL_* reasons stay mapped to the killed PPL family
+    (operator-open question, not auto-exempt)."""
+    k, _v = _iso(tmp_path, monkeypatch)
+    k.write_text(json.dumps({"PPL": {"disabled_at": 0.0, "why": "standing order"}}))
+    assert ve.family_of("PPL_REAUGMENT_DC_RECLAIM_wt1.2>dc0.5000") == "PPL_REAUGMENT"
+    assert ve.family_of("PPL_TP_gain1.50_URL2_50pct") == "PPL"
+    ok, verdict = ve.check(
+        "QUICK_AUGMENT", "a", "PPL_REAUGMENT_DC_RECLAIM_wt1.2>dc0.5000"
+    )
+    assert (ok, verdict) == (True, "PPL_REAUGMENT_ALLOWED")
+    # Both live lanes + the v12 walk leg gate on the same per-sym switch.
+    ez_src = (ROOT / "ez_manage.py").read_text()
+    assert '_psym_get(symbol, position_side, "PPL_REAUGMENT_ENABLED", False)' in ez_src
+    tr_src = (ROOT / "tradier_manage.py").read_text()
+    assert '"PPL_REAUGMENT_ENABLED"' in tr_src
+    v12_src = (ROOT / "v12_quick_engine.py").read_text()
+    assert "PPL_REAUGMENT_DC_RECLAIM" in v12_src
+
+
 def test_monitor_logs_watched_families_only(tmp_path, monkeypatch):
     """Family watch: monitored verdicts logged, unmonitored never touch the log."""
     _iso(tmp_path, monkeypatch)
