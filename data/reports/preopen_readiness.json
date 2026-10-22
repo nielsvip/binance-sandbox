@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T13:00:36Z",
+ "generated_utc": "2026-10-22T13:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": false,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 474,
-    "filled_before_open": 474
+    "filled_today": 483,
+    "filled_before_open": 483
    },
-   "detail": "474 boards filled before the open (474 today)"
+   "detail": "483 boards filled before the open (483 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -25,12 +25,12 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "NO_STAMP",
+    "s1_stamp": "{\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026-10-22T13:02:46Z\"}",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
-    "cat_side_age_days": 1.3,
+    "cat_side_age_days": 1.4,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261022=False, s1 stamp NO_STAMP, cat_side layer 1.3d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261022=False, s1 stamp {\"date\":\"20261022\",\"status\":\"FAILED\",\"failed_step\":\"1\",\"why\":\"v15_avg_delta_rebuild rc=1\",\"steps_ok\":\"\",\"started\":\"2026-10-22T13:01:00Z\",\"ended\":\"2026, cat_side layer 1.4d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -208,21 +208,15 @@
    "critical": true,
    "measured": {
     "symbols": 330,
-    "stale_over_90min": 18,
-    "stale_pct": 5.5,
-    "median_age_min": 30.6,
+    "stale_over_90min": 2,
+    "stale_pct": 0.6,
+    "median_age_min": 35.0,
     "sample": [
-     "ASMLUSDT",
-     "BRKBUSDT",
      "DUSKUSDT",
-     "EWYUSDT",
-     "GLWUSDT",
-     "HOODUSDT",
-     "KSTRUSDT",
-     "NOWUSDT"
+     "ONEUSDT"
     ]
    },
-   "detail": "18/330 symbols past the live 90-min entry gate (5.5%)"
+   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
   },
   {
    "name": "s1_sets_synced",
