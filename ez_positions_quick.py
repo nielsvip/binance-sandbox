@@ -30827,7 +30827,10 @@ async def check_entry_candidates_for_account(
                                 logger.info(
                                     f"[VOL_SPIKE_BLOCKED] {position_key}: {_vs_signal} relvol={_vs_relvol:.1f} blocked: {','.join(_block_reasons)}"
                                 )
-                if not should_trade:
+                # 2026-10-22: hedge_engine is None when hedging is off (USER: disabled over
+                # a year) — the unguarded call crashed EVERY entry check where should_trade
+                # was False (thousands of ENTRY_CHECK_FAIL fleet-wide). Guard it.
+                if not should_trade and hedge_engine is not None:
                     pyramid_data = await hedge_engine.try_aggressive_pyramid(
                         account_key, position_key, current_price
                     )

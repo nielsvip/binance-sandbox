@@ -10091,6 +10091,51 @@ class PositionService:
                     added += 1
         return added
 
+    def _prune_memory_universe_blocking(self) -> int:
+        import position_writer_guard as _pwg
+        removed = 0
+        for account_config in self.accounts.values():
+            account_key = account_config.prefix
+            account_positions = self.positions_by_account.get(account_key) or {}
+            universe = {}
+            for side in ("LONG", "SHORT"):
+                universe[side] = _pwg.universe_symbols(self.base_path / account_key / f"{side.lower()}_positions.json")
+            if not all(universe.values()):
+                continue
+            for position_key, position in list(account_positions.items()):
+                if position is None:
+                    continue
+                side = str(getattr(position, "position_side", "") or "").upper()
+                symbol = str(getattr(position, "symbol", "") or "").upper()
+                if side not in universe or not symbol:
+                    continue
+                if symbol in universe[side] and position_key == f"{account_key}:{symbol}_{side}":
+                    continue
+                if abs(float(getattr(position, "positionAmt", 0) or 0)) > 0:
+                    logger.critical(f"🛑 [POSITION_FOREIGN_HELD][memory] {position_key} is outside the symbol universe but holds {position.positionAmt} — KEPT in memory (never drop live exposure)")
+                    continue
+                account_positions.pop(position_key, None)
+                self.positions.pop(position_key, None)
+                removed += 1
+                logger.warning(f"🧹 [POSITION_FLOOR][memory] dropped {position_key} (outside symbol universe, flat) — the file copy is archived by the write guard")
+        return removed
+
+    async def prune_memory_universe(self) -> int:
+        """USER 2026-10-22 "only symbols that are in symbols.json are kept": the file cap lives in
+        position_writer_guard.ensure_universe, but redis is published straight from memory
+        (_broadcast_positions_to_redis snapshots positions_by_account), so a foreign row left in memory keeps
+        reappearing in redis and in every save. Mirrors the cap exactly — flat + outside the universe, or a key that
+        disagrees with its own symbol/side. A row with positionAmt != 0 is NEVER dropped (the Absolute Prohibition on
+        popping position entries exists so a real position can never vanish; a flat foreign row is not one)."""
+        try:
+            removed = await asyncio.to_thread(self._prune_memory_universe_blocking)
+        except Exception as e:
+            logger.error(f"[POSITION_FLOOR][memory] prune failed: {e}", exc_info=True)
+            return 0
+        if removed:
+            logger.critical(f"🧹 [POSITION_FLOOR][memory] dropped {removed} position(s) outside the symbol universe")
+        return removed
+
     async def seed_memory_universe(self) -> int:
         """ADDITIVE-ONLY memory twin of position_writer_guard.ensure_universe (USER 2026-10-22: a position for every
         _LONG and _SHORT of every symbol in symbols.json, SACRED, never erased even at positionAmt 0). The disk floor

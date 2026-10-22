@@ -248,6 +248,7 @@ async def _universe_floor_loop(service, account_key):
         await asyncio.sleep(SEED_UNIVERSE_EVERY_S)
         try:
             await service.seed_memory_universe()
+            await service.prune_memory_universe()
         except Exception as e:
             logger.error(f"[POSITION_FLOOR][{account_key}] seed loop error: {e}", exc_info=True)
 
@@ -327,6 +328,7 @@ async def main():
         # additively at startup and every SEED_UNIVERSE_EVERY_S; the disk side is enforced in
         # position_writer_guard.ensure_universe on every write.
         await service.seed_memory_universe()
+        await service.prune_memory_universe()
         asyncio.create_task(_universe_floor_loop(service, account_key))
 
         # Initialize attributes

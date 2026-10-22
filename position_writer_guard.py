@@ -210,6 +210,41 @@ def flat_row(symbol, position_side):
             "exchange_stop_order_id": ""}
 
 
+_archived = set()
+
+
+def archive_rows(path, dropped):
+    """Append pruned rows to data/position_archive/<acct>_<side>.jsonl before they leave the live file. A row that
+    leaves the universe is still history (realized_pnl, opened_at, max_gain), so it is moved, never destroyed."""
+    if not dropped:
+        return
+    p = Path(path).resolve()
+    try:
+        out = p.parent.parent / "data" / "position_archive"
+        out.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        with open(out / f"{p.parent.name}_{p.name.split('_')[0].lower()}.jsonl", "a") as fh:
+            for k, r in dropped.items():
+                fh.write(json.dumps({"archived_at": stamp, "reason": "not_in_symbols_universe", "key": k, "row": r}, default=str) + "\n")
+    except Exception as e:
+        logger.warning(f"[POSITION_FLOOR] archive write failed for {p}: {e!r}")
+
+
+def canonical_key(key, row, account, side):
+    """The key this row is entitled to occupy, from its OWN symbol/position_side. Used to enforce one record per
+    sym_side: a row whose key disagrees with its contents (wrong account, wrong side, stale rename) is contamination,
+    not a position."""
+    symbol = str((row or {}).get("symbol") or "").strip().upper()
+    row_side = str((row or {}).get("position_side") or "").strip().upper()
+    if not symbol:
+        if not isinstance(key, str) or ":" not in key or "_" not in key:
+            return None, None
+        symbol = key.split(":", 1)[1].rsplit("_", 1)[0].strip().upper()
+    if row_side and row_side != side:
+        return symbol, None
+    return symbol, f"{account}:{symbol}_{side}"
+
+
 def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
     """THE POSITION FLOOR (USER 2026-10-22: positions "are SACRED and can NEVER be erased as they contain vital
     information even if a position has positionAmt 0"). A positions file may only ever GAIN keys:
@@ -237,19 +272,47 @@ def ensure_universe(path, rows, disk_rows=None, log=None, role=None):
         if isinstance(r, dict) and k not in rows:
             rows[k] = r
             restored += 1
+    universe = universe_symbols(p)
     seeded = 0
-    for symbol in universe_symbols(p):
+    for symbol in universe:
         k = f"{account}:{symbol}_{side}"
         if k not in rows:
             rows[k] = flat_row(symbol, side)
             seeded += 1
+    # THE CAP (USER 2026-10-22 "only symbols that are in symbols.json are kept and only one record per sym_side").
+    # Skipped entirely when the universe is unreadable — an empty list must never be read as "prune everything".
+    # A HELD row is NEVER dropped even when foreign: that would hide real exposure, so it is kept and alerted on.
+    pruned, held_foreign = {}, []
+    if universe:
+        for k in list(rows.keys()):
+            r = rows.get(k)
+            if not isinstance(r, dict):
+                continue
+            symbol, canon = canonical_key(k, r, account, side)
+            if symbol in universe and canon == k:
+                continue
+            if _amt(r) > 0:
+                held_foreign.append(k)
+                continue
+            pruned[k] = rows.pop(k)
+    if pruned:
+        fresh = {k: v for k, v in pruned.items() if (str(p), k) not in _archived}
+        archive_rows(p, fresh)
+        _archived.update((str(p), k) for k in fresh)
+        _alert("POSITION_UNIVERSE_PRUNED", {"file": str(p), "account": account, "pruned": len(pruned), "keys": sorted(pruned)[:40]}, p.parent.parent)
+        if _rate_limited(f"floor_prune:{p}", 60.0):
+            log.warning(f"🧹 [POSITION_FLOOR] {account}/{p.name}: pruned {len(pruned)} row(s) outside the symbol universe (archived to data/position_archive/) — e.g. {sorted(pruned)[:5]}")
+    for k in held_foreign:
+        if _rate_limited(f"foreign_held:{k}", 300.0):
+            log.critical(f"🛑 [POSITION_FOREIGN_HELD] {k} is NOT in the symbol universe but reports positionAmt {rows[k].get('positionAmt')} — KEPT (dropping it would hide real exposure). Verify against the broker and remove by hand if flat.")
+            _alert("POSITION_FOREIGN_HELD", {"key": k, "file": str(p), "positionAmt": rows[k].get("positionAmt")}, p.parent.parent)
     if restored:
         _alert("POSITION_FLOOR_RESTORED", {"file": str(p), "account": account, "restored": restored}, p.parent.parent)
         if _rate_limited(f"floor_restore:{p}", 60.0):
             log.critical(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: RESTORED {restored} row(s) this write would have ERASED (role={role or process_role()} pid={os.getpid()})")
     if seeded and _rate_limited(f"floor_seed:{p}", 60.0):
         log.warning(f"🛡️ [POSITION_FLOOR] {account}/{p.name}: seeded {seeded} missing universe row(s) flat")
-    return restored, seeded
+    return restored, seeded, len(pruned)
 
 
 def heartbeat_path(account_dir):

@@ -98,9 +98,18 @@ fi
 # Belt-and-braces behind `timeout -k`: anything carrying this script's argv, reparented to init, and older than
 # ORPHAN_MAX_S cannot be a legitimate pass (the bound above is RUN_MAX_S + 15s). Never touches this pid or a pass
 # that still has a live parent.
+# NOTE: macOS `ps` has NO `etimes` (seconds) keyword — that is GNU-only, and asking for it makes ps fail outright
+# ("ps: etimes: keyword not found"), which would have made this reaper silently match nothing. Parse BSD `etime`
+# ([[dd-]hh:]mm:ss) instead.
 ORPHAN_MAX_S="${MAC_POS_ORPHAN_MAX_S:-120}"
-for _op in $(/bin/ps -eo pid=,ppid=,etimes=,command= 2>/dev/null \
-  | /usr/bin/awk -v me="$$" -v cap="$ORPHAN_MAX_S" '$2==1 && $3>cap && $1!=me && /mac_pos_writer_keepalive/ {print $1}'); do
+for _op in $(/bin/ps -eo pid=,ppid=,etime=,command= 2>/dev/null \
+  | /usr/bin/awk -v me="$$" -v cap="$ORPHAN_MAX_S" '
+      function secs(e){ d=0; t=e; if (split(e,a,"-")==2) { d=a[1]+0; t=a[2] }
+                        m=split(t,b,":");
+                        if (m==3) return d*86400+b[1]*3600+b[2]*60+b[3];
+                        if (m==2) return d*86400+b[1]*60+b[2];
+                        return d*86400+b[1]+0 }
+      $2==1 && $1!=me && secs($3)>cap && /mac_pos_writer_keepalive/ {print $1}'); do
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [keepalive] ORPHAN REAPED: pid=$_op (PPID 1, older than ${ORPHAN_MAX_S}s) — a pass that outlived its timeout bound" >&2
   kill -9 "$_op" 2>/dev/null || true
 done
