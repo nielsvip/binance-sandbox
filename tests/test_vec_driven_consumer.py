@@ -332,17 +332,28 @@ def test_shadow_never_orders(tmp_path, monkeypatch):
     assert len(rows) == 1 and rows[0]["would_action"] == "OPEN" and rows[0]["native_matches"] is True
 
 
-def test_reconcile_once_per_bar(tmp_path, monkeypatch):
+def test_reconcile_retries_open_while_flat_but_closes_once(tmp_path, monkeypatch):
+    """USER 2026-10-22: anything the board holds MUST have a live position, no exceptions — so an OPEN toward a target
+    the board still holds retries while the key is flat (throttled by VEC_DRIVEN_RECONCILE_GRACE_S, here 0 to expose
+    every attempt). A CLOSE keeps exactly ONE attempt per bar: repeated close attempts are how double closes happen."""
     base, vl, tm, calls = _setup(tmp_path, monkeypatch, REG_LIVE)
     bar = time.time() - 30
     (vl / "state" / "BTCUSDT_LONG.json").write_text(json.dumps({"target_state": "LONG", "bar_ts": bar, "reason": "WT"}))
     monkeypatch.setattr(EZ._ezm_base_config, "VEC_DRIVEN_RECONCILE_GRACE_S", 0.0, raising=False)
     _run_loop(tm, monkeypatch, cycles=3)
-    assert len(calls) == 1 and calls[0]["action"] == "OPEN" and "RECONCILE" in calls[0]["reason"]
+    assert len(calls) == 3, calls
+    assert all(c["action"] == "OPEN" and "RECONCILE" in c["reason"] for c in calls), calls
+    # Close side: one attempt per bar, however many cycles run.
     base2, vl2, tm2, calls2 = _setup(tmp_path / "b", monkeypatch, REG_LIVE, amts={"men:BTCUSDT_LONG": 5.0})
     (vl2 / "state" / "BTCUSDT_LONG.json").write_text(json.dumps({"target_state": "FLAT", "bar_ts": time.time() - 30}))
-    _run_loop(tm2, monkeypatch, cycles=2)
-    assert [c["action"] for c in calls2] == ["CLOSE"]
+    _run_loop(tm2, monkeypatch, cycles=3)
+    assert [c["action"] for c in calls2] == ["CLOSE"], calls2
+    # And the per-bar law is still one flag away for OPENs too.
+    base3, vl3, tm3, calls3 = _setup(tmp_path / "c", monkeypatch, REG_LIVE)
+    (vl3 / "state" / "BTCUSDT_LONG.json").write_text(json.dumps({"target_state": "LONG", "bar_ts": time.time() - 30, "reason": "WT"}))
+    monkeypatch.setattr(EZ._ezm_base_config, "VEC_DRIVEN_RECONCILE_RETRY_IN_BAR", False, raising=False)
+    _run_loop(tm3, monkeypatch, cycles=3)
+    assert len(calls3) == 1, calls3
 
 
 def test_reconcile_no_late_open(tmp_path, monkeypatch):
