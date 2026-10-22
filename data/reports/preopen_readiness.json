@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T08:00:02Z",
+ "generated_utc": "2026-10-22T08:20:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": false,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 316,
-    "filled_before_open": 316
+    "filled_today": 333,
+    "filled_before_open": 333
    },
-   "detail": "316 boards filled before the open (316 today)"
+   "detail": "333 boards filled before the open (333 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -27,12 +27,12 @@
    "critical": true,
    "measured": {
     "mac_done_stamp": false,
-    "s1_stamp": "unreachable: Command '['ssh', '-S', 'none', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ControlPath=none', 's1-pub', 'd=~/binance-sandbox/data/daily_chain; if [ -s $d/20261022.json ]; then head -c 400 $d/20261022.json; elif [ -s $d/20261022.FAILED.json ]; then head -c 400 $d/20261022.FAILED.json; else echo NO_STAMP; fi']' timed out after 60 seconds",
+    "s1_stamp": "NO_STAMP",
     "cat_side_defaults_4_at": "2026-10-21T04:54:49Z",
     "cat_side_age_days": 1.1,
     "cat_side_note": "rebuilt only by v15_daily_template_update --sync-defaults, a deliberate manual step \u2014 reported, never fails this gate"
    },
-   "detail": "mac stamp 20261022=False, s1 stamp unreachable: Command '['ssh', '-S', 'none', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ControlPath=none', 's1-pub', 'd=~/binance-sandbox, cat_side layer 1.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
+   "detail": "mac stamp 20261022=False, s1 stamp NO_STAMP, cat_side layer 1.1d old \u2014 step 2 never finished, so no new TEMPLATE defaults landed today"
   },
   {
    "name": "selection_fresh",
@@ -63,9 +63,9 @@
    "critical": true,
    "measured": {
     "selection_n": 508,
-    "exact": 46,
-    "benign_divergence_only": 409,
-    "material_divergence": 52,
+    "exact": 48,
+    "benign_divergence_only": 415,
+    "material_divergence": 44,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -202,20 +202,23 @@
      }
     ]
    },
-   "detail": "46 exact, 409 benign-only, 52 with material divergence, 1 with no live row"
+   "detail": "48 exact, 415 benign-only, 44 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 45.0,
-    "sample": []
+    "symbols": 330,
+    "stale_over_90min": 2,
+    "stale_pct": 0.6,
+    "median_age_min": 20.0,
+    "sample": [
+     "DUSKUSDT",
+     "ONEUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "2/330 symbols past the live 90-min entry gate (0.6%)"
   },
   {
    "name": "s1_sets_synced",
