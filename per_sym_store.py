@@ -192,7 +192,6 @@ def _prime_get_bucket_bulk(bucket: dict) -> bool:
 _PRIME_POLL_S = float(os.environ.get("PER_SYM_PRIME_POLL_S", "0.5"))
 _PRIMER_LOCK = threading.Lock()
 _PRIMER_STARTED = False
-_PRIME_SYNC_NEXT = True
 
 
 def _prime_swap(sig) -> None:
@@ -299,20 +298,28 @@ def _read_cache_bucket(name: str) -> dict:
     `[LOOP_LAG] event loop frozen` in the same window. A parked loop writes no positions file (ang and men went 1,455 s
     stale) and places no orders, which is the whole point of the loop.
 
-    A daemon thread now does the re-read and swaps the finished bucket in, so the authority and the ~1 s cadence are
-    unchanged and no reader ever waits for SQLite. Cold start and any in-process write still prime inline, so a writer
-    always reads its own write back."""
-    global _PRIME_SYNC_NEXT
+    A daemon thread now does the re-read and swaps the finished bucket in, so the authority is unchanged and no reader
+    ever waits for SQLite.
+
+    NO caller ever builds the bucket — not even on a cold start. An earlier version of this fix primed inline when the
+    bucket was empty, and the stall dump caught it doing exactly the damage it was meant to remove:
+    `_prime_get_bucket_bulk <- _prime_swap <- _read_cache_bucket <- get <- get_overrides <- _svc_psym_get <-
+    _svc_fixed_stop_spec <- _fixed_stop_fetch_cycle <- process_account_update` on the event loop at 05:08Z, a 2.6-4.0 s
+    full rebuild blocking ang's and inf's writers at startup (both logged `MultiAccountTradeManager instantiated
+    locally` and then wrote nothing for 3.5 min; positions went 2,183 s / 474 s stale) while the primer thread was
+    rebuilding the very same table beside it.
+
+    While the bucket is still empty, `get()` falls through to its own single-row `WHERE sym_side=?` SELECT and then to
+    the JSON backup — both bounded at about a millisecond — and the primer fills the bucket within a second, after
+    which every lookup is served from memory. That ordering is the operator's rule: SQL is the authority, JSON is the
+    backup for when SQL cannot be read yet."""
     _start_primer()
-    if name == "get" and (_PRIME_SYNC_NEXT or not _READ_CACHE["get"]):
-        _PRIME_SYNC_NEXT = False
-        _prime_swap(_db_signature())
     return _READ_CACHE[name]
 
 
 def _invalidate_read_cache() -> None:
-    global _PRIME_SYNC_NEXT
-    _PRIME_SYNC_NEXT = True
+    """Clear only. The next get() reads its own write back through the single-row SELECT path (about a millisecond),
+    and the primer refills the bucket — no caller ever pays the full rebuild."""
     _READ_CACHE["sig"] = None
     _READ_CACHE["get"] = {}
     _READ_CACHE["kv"] = {}

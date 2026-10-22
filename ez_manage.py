@@ -33124,10 +33124,26 @@ class MultiAccountTradeManager:
         # (account, sym_side) pair only. Exits untouched by construction
         # (CLOSE/REDUCE never match the OPEN/AUGMENT/REENTRY/REVERSE tokens).
         # Env kill-switch V15_SYM_HALT_ENABLED=0. Fail-open on ANY error.
-        # No vec-driven exemption: live booked losses outrank twin agreement.
+        # USER 2026-10-22 REVERSES THE OLD RULE HERE. This block used to read "No vec-driven exemption: live booked
+        # losses outrank twin agreement" — but the operator's law is "NOTHING that vectorized forward trades can be
+        # refused for any reason in execute_now", restated as "I care less about double trading than about NOT trading"
+        # and "as long as you just simply blindly stupidly follow vectorized trades I will not be bankrupt".
+        # MEASURED 2026-10-22 05:1xZ: 4,720 intent files were pending in data/vec_live/intents while the only
+        # execute_now outcomes in 15 minutes across five accounts were 12 BLOCKED_SYM_HALT (inf) + 4 (flz). A halt
+        # that refuses the vector's own dictates is the not-trading failure, not a protection. Native opens are still
+        # halted after 3 trailing net losers; exits were never in scope (CLOSE/REDUCE match no token below).
         try:
-            _sh_on = str(os.environ.get("V15_SYM_HALT_ENABLED", "1")).lower() not in ("0", "false", "no")
+            # DEFAULT OFF since 2026-10-22 (USER on BLOCKED_SYM_HALT: "??? NOT MY CODe"). This gate and
+            # tools/v15_sym_halt.py first appear in the tree on 2026-10-16 23:42 and the switch is absent from
+            # SWITCH_BIBLE.json, i.e. it is not a measured TEMPLATE switch and never carried sweep proof — it is
+            # exactly what CLAUDE.md's NEW STRATEGY PROHIBITION forbids, and it spent the last six days refusing
+            # vector-dictated opens (12 on inf + 4 on flz in one 15-minute window). The code stays, inert, and
+            # V15_SYM_HALT_ENABLED=1 re-arms it for anyone who can show the proof it never had.
+            _sh_on = str(os.environ.get("V15_SYM_HALT_ENABLED", "0")).lower() not in ("0", "false", "no")
             _sh_act = str(action or "").upper()
+            if _sh_on and (_vd_exempt or _parity_vec_order(reason)):
+                _sh_on = False
+                logger.warning(f"[SYM_HALT_VEC_EXEMPT] {position_key} action={action}: vector-dictated, halt not applied (USER 2026-10-22)")
             if _sh_on and any(_t in _sh_act for _t in ("OPEN", "AUGMENT", "REENTRY", "REVERSE")):
                 from tools.v15_sym_halt import sym_halt_active as _sym_halt_active
                 _sh_hit, _sh_why = _sym_halt_active(account_key, f"{symbol}_{position_side}")
@@ -35139,6 +35155,12 @@ class MultiAccountTradeManager:
                             logger.info(
                                 f"✅ [PULLBACK_AUGMENT] {position_key}: max={_lpb_max_gain:.2f}% pulled to eff={_lpb_gain:.2f}% (≥{_lpb_pb_floor:.2f}%), Δ={_lpb_max_gain - _lpb_gain:.2f}% ≥ {_lpb_pb_reversal_min:.1f}% — pullback augment allowed. action={action}"
                             )
+                        elif _vd_exempt or _parity_vec_order(reason):
+                            # USER 2026-10-22: a vector-dictated exposure increase is never refused here. The vector
+                            # already decided this add on the same bar data; "losing position" is a live-only opinion.
+                            # MEASURED 05:1xZ: 4 BLOCKED_LOSING_POSITION_GAIN on flz in 15 min, against 4,720 pending
+                            # intents and 0 executions on three accounts.
+                            logger.warning(f"[LOSING_POSITION_VEC_EXEMPT] {position_key}: eff={_lpb_gain:.2f}% < MIN_GAIN={_lpb_min:.2f}% but vector-dictated — allowed. action={action}")
                         else:
                             logger.critical(
                                 f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}"

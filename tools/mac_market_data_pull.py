@@ -65,6 +65,11 @@ DRY = os.environ.get("MAC_MD_DRY") == "1"
 MARGIN_S = 3.0           # a candidate must beat the engines' newest file by this much (jitter between probes)
 TOL_S = float(os.environ.get("MAC_MD_TOL_S", "120"))           # content tolerance vs the Mac's newest snapshot (median bar age, seconds)
 TOL_FRAC = 0.10          # tolerance on the share of 15m bars older than 30 min
+LAG_S = float(os.environ.get("MAC_MD_LAG_S", "600"))          # Mac snapshot whose median 3m bar is older than this is "mtime-fresh, content-stale"
+BETTER_S = float(os.environ.get("MAC_MD_BETTER_S", "300"))    # a fallback must beat the Mac's median 3m bar age by this much to override a fresh-mtime file
+WRITE_LATEST = os.environ.get("MAC_MD_WRITE_LATEST", "1") == "1"
+LATEST_MINE = {"mtime": None}   # mtime of the latest_market_data.json THIS script installed (so it never counts as the Mac producer writing)
+OVERRIDE = os.environ.get("MAC_MD_CONTENT_OVERRIDE", "1") == "1"
 ALERT_EVERY_S = 30.0
 NOTIFY_EVERY_S = 600.0
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new",
@@ -108,27 +113,36 @@ def atomic_json(path, obj):
     os.replace(tmp, path)
 
 
-def engine_visible_files():
-    """(own, all): [(mtime, path)] - own = what the Mac's producer wrote, all = everything the engines may open."""
-    own, every = [], []
+def engine_visible_files(mine_latest=None):
+    """(own, every, stamped): [(mtime, path)].
+    own     = what the Mac's producer wrote (timestamped non-_s1 files + latest_market_data.json unless WE wrote that one),
+    every   = everything the engines may open,
+    stamped = the timestamped files only (ez_manage picks the newest mtime among these)."""
+    own, every, stamped = [], [], []
     try:
         with os.scandir(DATA) as entries:
             for entry in entries:
                 name = entry.name
                 if not name.endswith(".json") or "worker" in name:
                     continue
-                if name != "latest_market_data.json" and not (name.startswith("market_data_2")):
+                is_latest = name == "latest_market_data.json"
+                if not is_latest and not name.startswith("market_data_2"):
                     continue
                 try:
                     mtime = entry.stat().st_mtime
                 except OSError:
                     continue
                 every.append((mtime, entry.path))
-                if not name.endswith("_s1.json"):
-                    own.append((mtime, entry.path))
+                if not is_latest:
+                    stamped.append((mtime, entry.path))
+                if name.endswith("_s1.json"):
+                    continue
+                if is_latest and mine_latest is not None and abs(mtime - mine_latest) < 0.05:
+                    continue
+                own.append((mtime, entry.path))
     except OSError:
         pass
-    return own, every
+    return own, every, stamped
 
 
 def iso_age(value, now):
@@ -138,10 +152,14 @@ def iso_age(value, now):
         return None
 
 
-def content_stats(data, now):
-    """Median 3m / 15m bar age + share of 15m bars older than 30 min (same quantities as s1_snapshot_fresh_gate)."""
+def content_stats(data, now, symbols=None):
+    """Median 3m / 15m bar age + share of 15m bars older than 30 min (same quantities as s1_snapshot_fresh_gate).
+    `symbols`: restrict to this set - S1/S2 carry ~330 symbols (dead ones included) against the Mac's ~200 tradeable ones, and
+    comparing across different universes made a healthy S1 look 35 % stale."""
     ages = {"3m": [], "15m": []}
-    for values in data.values():
+    for symbol, values in data.items():
+        if symbols is not None and symbol not in symbols:
+            continue
         if isinstance(values, dict):
             for tf in ages:
                 age = iso_age(values.get("timestamp_" + tf), now)
@@ -152,19 +170,21 @@ def content_stats(data, now):
         return xs[len(xs) // 2] if xs else None
     n15 = len(ages["15m"])
     return {"m3": med(ages["3m"]), "m15": med(ages["15m"]),
-            "stale15_frac": (sum(1 for a in ages["15m"] if a > 1800) / n15) if n15 else None, "n": len(data)}
+            "stale15_frac": (sum(1 for a in ages["15m"] if a > 1800) / n15) if n15 else None, "n": (len(ages["3m"]) if symbols is not None else len(data))}
 
 
 _content_cache = {}
 
 
 def mac_content(path, mtime, now):
-    key = (path, mtime)
+    key = (path, mtime, int(now // 15))
     if key in _content_cache:
         return _content_cache[key]
     try:
         with open(path, "rb") as handle:
-            stats = content_stats(jloads(handle.read()), now)
+            data = jloads(handle.read())
+        stats = content_stats(data, now)
+        stats["symbols"] = {k for k, v in data.items() if isinstance(v, dict)}
     except (OSError, ValueError):
         stats = None
     _content_cache.clear()
@@ -232,19 +252,23 @@ def gate(cand_stats, mac_stats):
     return (not failed), f"{txt} failed={','.join(failed) or 'none'}"
 
 
-def install(tmp, cand):
-    """Atomically publish tmp as market_data_<write time>_s1.json + latest_market_data.json, mtime = the real write time."""
+def install(tmp, cand, override_floor=None):
+    """Atomically publish tmp as market_data_<write time>_s1.json + latest_market_data.json, mtime = the real write time.
+    override_floor (content override only): the newest mtime of the Mac's own stale-content file; the installed mtime/label is
+    max(real write time, floor + 1 s) capped at now, because ez_manage picks the newest MTIME and the cold loaders the highest NAME."""
     mt = min(cand["local_mtime"], time.time())
+    if override_floor is not None:
+        mt = min(max(mt, override_floor + 1.0), time.time())
     label = time.strftime("%Y%m%d_%H%M%S", time.gmtime(mt))
     target = DATA / f"market_data_{label}_s1.json"
     latest = DATA / "latest_market_data.json"
     # last look: the Mac's own producer may have written while we transferred - never replace newer with older.
-    _, every = engine_visible_files()
+    _, every, _st = engine_visible_files()
     newest = max((m for m, _ in every), default=0.0)
-    if newest >= mt - 1.0 and target.exists():
+    if override_floor is None and newest >= mt - 1.0 and target.exists():
         tmp.unlink(missing_ok=True)
         return False, "already_installed_or_newer_now"
-    if newest > mt + MARGIN_S:
+    if override_floor is None and newest > mt + MARGIN_S:
         tmp.unlink(missing_ok=True)
         return False, f"a newer file appeared during transfer ({int(newest - mt)}s newer)"
     os.utime(tmp, (mt, mt))
@@ -263,8 +287,10 @@ def install(tmp, cand):
         cur = latest.stat().st_mtime
     except OSError:
         cur = 0.0
-    if cur <= mt:
+    wrote_latest = WRITE_LATEST and cur <= mt
+    if wrote_latest:
         os.replace(twin, latest)
+        LATEST_MINE["mtime"] = mt
     else:
         twin.unlink(missing_ok=True)
     mine = sorted(DATA.glob("market_data_2*_s1.json"), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -287,18 +313,33 @@ class Run:
             self.state = json.load(open(STATUS))
         except (OSError, ValueError):
             self.state = {}
+        if self.state.get("latest_mine_mtime"):
+            LATEST_MINE["mtime"] = float(self.state["latest_mine_mtime"])
         self.last_alert = float(self.state.get("last_alert_ts", 0))
         self.last_notify = float(self.state.get("last_notify_ts", 0))
         self.last_hb = 0.0
         self.last_content_check = 0.0
+        self.last_mac_stats = None
+        self.last_lag_log = 0.0
+        self.last_override = None
+        self.last_override_reject = 0.0
+        self.last_override_log = 0.0
+
+    def snapshot_view(self):
+        own, every, stamped = engine_visible_files(LATEST_MINE["mtime"])
+        own_m = max((m for m, _ in own), default=0.0)
+        best_m, best_path = max(every, default=(0.0, ""))
+        st_m, st_path = max(stamped, default=(0.0, ""))
+        return {"own_m": own_m, "best_m": best_m, "best_path": best_path, "stamped_m": st_m, "stamped_path": st_path}
+
+    def visible_age(self, now):
+        return now - self.snapshot_view()["best_m"]
 
     def one_round(self):
         now = time.time()
-        own, every = engine_visible_files()
-        own_m = max((m for m, _ in own), default=0.0)
-        best_m, best_path = max(every, default=(0.0, ""))
+        view = self.snapshot_view()
+        own_m, best_m, best_path = view["own_m"], view["best_m"], view["best_path"]
         own_age, best_age = now - own_m, now - best_m
-        probes = []
         with cf.ThreadPoolExecutor(max_workers=max(1, len(SOURCES))) as pool:
             probes = list(pool.map(probe, SOURCES))
         status = {"ts": now, "max_age_s": MAX_AGE, "mac_own_age_s": round(own_age, 1), "mac_visible_age_s": round(best_age, 1),
@@ -307,14 +348,18 @@ class Run:
             status["sources"][p["name"]] = {"host": p["host"], "age_s": p["age"], "size": p["size"], "errors": p["errors"]}
         if own_age <= MAX_AGE:
             status["action"] = "mac_producer_fresh"
-            if now - self.last_content_check > 60:
-                self.last_content_check = now
-                stats = mac_content(best_path, best_m, now)
-                status["mac_content"] = stats
-                if stats and stats["m3"] is not None and stats["m3"] > 600:
-                    log(f"CONTENT_LAG: Mac snapshot {os.path.basename(best_path)} written {int(best_age)}s ago but its median 3m bar is {int(stats['m3'])}s old, 15m {int(stats['m15'] or 0)}s (producer still warming?)")
-                    self.alert("market_data_content_lag", own_age, best_age, status, f"Mac snapshot written {int(best_age)}s ago but median 3m bar is {int(stats['m3'])}s old")
-            self.finish(status, best_age, now)
+            picked = view["stamped_path"]
+            engines_on_own = bool(picked) and not picked.endswith("_s1.json")
+            stats = mac_content(picked, view["stamped_m"], now) if engines_on_own else None
+            status["mac_content"] = {k: v for k, v in stats.items() if k != "symbols"} if stats else None
+            lagging = bool(stats) and stats["m3"] is not None and stats["m3"] > LAG_S
+            if lagging and now - self.last_lag_log > 60:
+                self.last_lag_log = now
+                log(f"CONTENT_LAG: Mac snapshot {os.path.basename(picked)} written {int(now - view['stamped_m'])}s ago but its median 3m bar is {int(stats['m3'])}s old, 15m {int(stats['m15'] or 0)}s (producer warming up or starved)")
+                self.alert("market_data_content_lag", own_age, best_age, status, f"Mac snapshot written {int(now - view['stamped_m'])}s ago but median 3m bar is {int(stats['m3'])}s old")
+            if lagging and OVERRIDE and not DRY:
+                self.content_override(probes, stats, picked, now, status)
+            self.finish(status, self.visible_age(now), now)
             return
         # ---- Mac producer silent > MAX_AGE: fallback mode ----
         cands = [p for p in probes if p["age"] is not None and p["local_mtime"] > best_m + MARGIN_S]
@@ -322,8 +367,6 @@ class Run:
         status["action"] = "fallback_no_fresher_source" if not cands else "fallback_try"
         mac_stats = None
         for cand in cands:
-            if cand["age"] > best_age - MARGIN_S:
-                continue
             if DRY:
                 status["action"] = f"DRY would pull {cand['name']}@{cand['host']} age={cand['age']:.0f}s"
                 break
@@ -332,20 +375,13 @@ class Run:
                 status["sources"][cand["name"]]["pull_error"] = err
                 log(f"PULL_FAIL {cand['name']}@{cand['host']}: {err}")
                 continue
-            try:
-                with open(tmp, "rb") as handle:
-                    data = jloads(handle.read())
-                if not isinstance(data, dict) or not data:
-                    raise ValueError("not a non-empty dict")
-                stats = content_stats(data, now)
-            except (OSError, ValueError) as exc:
-                tmp.unlink(missing_ok=True)
-                status["sources"][cand["name"]]["pull_error"] = f"invalid_json:{exc}"
-                log(f"REJECTED {cand['name']}@{cand['host']}: not valid non-empty JSON ({exc})")
-                continue
             if mac_stats is None:
-                mac_stats = mac_content(best_path, best_m, now) if best_path else None
-            ok, why = gate(stats, mac_stats)
+                mac_stats = mac_content(view["stamped_path"] or best_path, view["stamped_m"] or best_m, now)
+            cstats, why = self.validate(tmp, cand, now, mac_stats["symbols"] if mac_stats else None)
+            if cstats is None:
+                status["sources"][cand["name"]]["pull_error"] = why
+                continue
+            ok, why = gate(cstats, mac_stats)
             status["sources"][cand["name"]]["gate"] = why
             if not ok:
                 tmp.unlink(missing_ok=True)
@@ -357,9 +393,64 @@ class Run:
                 log(f"INSTALLED {what} from {cand['name']}@{cand['host']}: source write age {int(cand['age'])}s, Mac visible age was {int(best_age)}s, Mac own {int(own_age)}s | {why}")
                 break
             log(f"SKIP install {cand['name']}: {what}")
-        _, every2 = engine_visible_files()
-        best2 = max((m for m, _ in every2), default=0.0)
-        self.finish(status, now - best2, now)
+        self.finish(status, self.visible_age(now), now)
+
+    def validate(self, tmp, cand, now, symbols=None):
+        try:
+            with open(tmp, "rb") as handle:
+                data = jloads(handle.read())
+            if not isinstance(data, dict) or not data:
+                raise ValueError("not a non-empty dict")
+            return content_stats(data, now, symbols), ""
+        except (OSError, ValueError) as exc:
+            tmp.unlink(missing_ok=True)
+            log(f"REJECTED {cand['name']}@{cand['host']}: not valid non-empty JSON ({exc})")
+            return None, f"invalid_json:{exc}"
+
+    def content_override(self, probes, mac_stats, picked, now, status):
+        """The Mac wrote a snapshot just now (mtime says fresh) but its bars are old. Make the engines see a fallback snapshot whose
+        bars are materially newer. ez_manage takes the newest MTIME and the cold loaders the highest NAME, so the installed file
+        takes max(real write time, the Mac file's mtime + 1 s), capped at now - never in the future, never older than its source."""
+        fresh = sorted((p for p in probes if p["age"] is not None and p["age"] <= MAX_AGE), key=lambda p: p["age"])
+        for cand in fresh:
+            reuse = self.last_override
+            if reuse and reuse["name"] == cand["name"] and abs(reuse["remote_mtime"] - cand["local_mtime"]) <= 3.0 and Path(reuse["path"]).exists():
+                tmp = DATA / f".md_pull.{os.getpid()}.reuse.tmp"
+                with open(reuse["path"], "rb") as src, open(tmp, "wb") as dst:
+                    while True:
+                        chunk = src.read(1 << 20)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+                cstats, why = reuse["stats"], "re-bump of the already-gated file"
+            else:
+                tmp, err = pull(cand)
+                if tmp is None:
+                    status["sources"][cand["name"]]["pull_error"] = err
+                    log(f"OVERRIDE pull failed {cand['name']}@{cand['host']}: {err}")
+                    continue
+                cstats, why = self.validate(tmp, cand, now, mac_stats["symbols"])
+                if cstats is None:
+                    continue
+                ok, why = gate(cstats, mac_stats)
+                better = cstats["m3"] is not None and cstats["m3"] + BETTER_S < mac_stats["m3"]
+                status["sources"][cand["name"]]["gate"] = why + f" better_by={int(mac_stats['m3'] - (cstats['m3'] or 0))}s"
+                if not (ok and better):
+                    tmp.unlink(missing_ok=True)
+                    if now - self.last_override_reject > 60:
+                        self.last_override_reject = now
+                        log(f"OVERRIDE_REJECT {cand['name']}@{cand['host']}: {why} (needs gate ok AND 3m median better by >{int(BETTER_S)}s) ok={ok} better={better}")
+                    continue
+            own, _every, _st = engine_visible_files(LATEST_MINE["mtime"])
+            floor = max((m for m, _ in own), default=now)
+            done, what = install(tmp, cand, override_floor=floor)
+            if done:
+                self.last_override = {"name": cand["name"], "remote_mtime": cand["local_mtime"], "path": str(DATA / what), "stats": cstats}
+                status["action"] = f"content_override installed {what} from {cand['name']}@{cand['host']}"
+                if now - self.last_override_log > 30:
+                    self.last_override_log = now
+                    log(f"CONTENT_OVERRIDE {what} from {cand['name']}@{cand['host']} (source write age {int(cand['age'])}s): {why} | Mac file {os.path.basename(picked)} had median 3m bar {int(mac_stats['m3'])}s old")
+                return
 
     def alert(self, kind, own_age, best_age, status, msg):
         now = time.time()
@@ -407,6 +498,7 @@ class Run:
                 self.last_hb = now
                 log(f"ok: engines see a {int(visible_age)}s old snapshot (Mac own {int(status['mac_own_age_s'])}s) action={status['action'][:120]}")
         self.state.update(status)
+        self.state["latest_mine_mtime"] = LATEST_MINE["mtime"]
         self.state["last_alert_ts"] = self.last_alert
         self.state["last_notify_ts"] = self.last_notify
         try:

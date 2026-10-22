@@ -2731,6 +2731,8 @@ class IndicatorOrchestrator:
         self._warming_up = False
         self._warm_high_water = 0
         self._gen_full_computes = 0
+        self._shm_batch_task: Optional[asyncio.Task] = None
+        self._shm_batch_started = 0.0
         self._warm_first_save_ts: Optional[float] = None
         self._warm_start_ts = time.time()
         self._stage_seconds: Dict[str, float] = {}
@@ -3335,6 +3337,14 @@ class IndicatorOrchestrator:
         logger.info("[TF_TIMING] %s wall=%.1fs cpu=%.1fs (%.0f%%) get_latest=%.1fs get_price=%.1fs run_full=%.1fs reactive_mid=%.1fs symbols=%d", timeframe, _pass_wall, _pass_cpu, 100.0 * _pass_cpu / _pass_wall if _pass_wall > 0 else 0.0, stage["get_latest"], stage["get_price"], stage["run_full"], stage["reactive_mid"], total)
 
         # OPTIMIZATION: Push to Shared Memory in a single BATCH
+        # USER 2026-10-22: this batch is no longer AWAITED. It runs off-loop already (asyncio.to_thread), so it never
+        # froze the event loop — but awaiting it held the warm-up loop and every steady-state pass hostage to the
+        # shared store's response time. MEASURED on the 05:04:00Z generation, as the gap between each [TF_TIMING]
+        # line and its [<tf>] full= line (this block is the only code between them): D 57 s, 4h 37 s, 1h 41 s,
+        # 15m 72 s, 3m 77 s = 284 s of a 348.7 s warm-up, 81 %, against 63.4 s of actual indicator work
+        # (2.2+11.9+10.1+11.0+28.2 s, all at 88-93 % CPU). Fire-and-forget with a single-flight guard: the store
+        # still receives every symbol of every pass, a slow store can never again delay the snapshot, and batches
+        # cannot pile up because a pass whose predecessor is still in flight skips rather than queues.
         if self.shared_proxy:
             try:
                 batch_payload = {}
@@ -3347,10 +3357,13 @@ class IndicatorOrchestrator:
                         payload['_hot_source'] = 'ez_indicators'
                         batch_payload[symbol] = payload
                 if batch_payload:
-                    # Run IPC call in thread to avoid blocking loop
-                    await asyncio.to_thread(self.shared_proxy.update_batch, batch_payload)
+                    if self._shm_batch_task is not None and not self._shm_batch_task.done():
+                        logger.info("[SharedMem] previous batch still in flight after %.0fs — skipping %s batch", time.time() - self._shm_batch_started, timeframe)
+                    else:
+                        self._shm_batch_started = time.time()
+                        self._shm_batch_task = asyncio.create_task(self._push_batch_bg(timeframe, batch_payload))
             except Exception as e:
-                logger.warning(f"[SharedMem] Batch update error: {e}")
+                logger.warning(f"[SharedMem] Batch build error: {e}")
                 self._shared_mem_last_attempt = 0.0
                 self.shared_proxy = None
 
@@ -3359,6 +3372,16 @@ class IndicatorOrchestrator:
         if timeframe == self._schedule_order[-1]:
             self._sentiment_dirty = True
             self._save_due = True
+
+    async def _push_batch_bg(self, timeframe: str, batch_payload: Dict[str, Any]) -> None:
+        started = time.time()
+        try:
+            await asyncio.to_thread(self.shared_proxy.update_batch, batch_payload)
+            logger.info("[SharedMem] %s batch of %d symbols delivered in %.1fs (off the snapshot path)", timeframe, len(batch_payload), time.time() - started)
+        except Exception as e:
+            logger.warning("[SharedMem] %s batch update error after %.1fs: %s", timeframe, time.time() - started, e)
+            self._shared_mem_last_attempt = 0.0
+            self.shared_proxy = None
 
     async def _run_full(self, symbol: str, timeframe: str, df: pd.DataFrame, close_ts: datetime, mark_price: Optional[float], state: SymbolTimeframeState) -> None:
         required_keys = self.required_by_timeframe.get(timeframe, [])
