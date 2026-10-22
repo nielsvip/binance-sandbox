@@ -2195,6 +2195,291 @@ def _order_audit(order_by_host, launched, explain, rule_of, age_of, top_n=10, cl
     return {"top": top, "checks": checks, "violations": viol, "mode_per_launch": mpl}
 
 
+_SS_BUDGET = {}  # per tick: sym_side -> V15_BOARD_BUDGET (0 = full board) from board_budget(); empty = not computed this tick (legacy global flag applies)
+_PCLASS = {}  # per tick: sym -> selection class of its best side (0 violator / 1 gainer-due / 1.5 never-boarded / 2 everyone else)
+_BUDGET_EVALS_DEFAULT = 12000
+_FULL_MODES = ("slow", "full")  # manifest.mode values that count as a full-course board; catchup / budget:<n> / missing never do
+_STRUCTURAL_REFUSALS = frozenset({"DEAD_VEC_PATH", "NOT_A_TEMPLATE_KEY", "GLOBAL_ONLY", "ABLATION_NEVER_ON", "TYPE_LAW"})
+_COMPLETION_CRITERION = ("every tradeable sym_side (tradeable_universe()) has complete_at = newest PUBLISHED board with manifest.mode in "
+                         f"{list(_FULL_MODES)} on an NPZ <= npz_min old (the _qualifying_ages rule), AND this round's progress JSON for it is finished "
+                         "(result_done_utc set) with v18.must n_carried_over == 0 and every refusal reason code in v18.must.refused_sample within "
+                         f"{sorted(_STRUCTURAL_REFUSALS)} (a SAMPLE of refusals, not all of them); OR it is listed in data/round_exclusions.json with a reason. "
+                         "A budget/catch-up board never counts.")
+
+
+def board_budget(age_h, trading, never, coverage, slow_forced=False, any_h=216.0, trading_h=96.0, evals=_BUDGET_EVALS_DEFAULT):
+    """V15_BOARD_BUDGET for ONE launch (spec 22 §7.2(1)/(5)): 0 = full board. Full while the round forces slow or coverage >= 0.95; never-boarded
+    sym_sides get a full first board (they are not age violators); only a genuine violator (trading and older than trading_h, or older than any_h)
+    gets `evals`. Pure (tested)."""
+    if slow_forced or never or age_h is None:
+        return 0
+    try:
+        if coverage is not None and float(coverage) >= 0.95:
+            return 0
+        a = float(age_h)
+    except (TypeError, ValueError):
+        return 0
+    if (trading and a > float(trading_h)) or a > float(any_h):
+        return max(0, int(evals))
+    return 0
+
+
+def _budget_mode_label(budget):
+    """'full' for 0, 'budget:<n>' otherwise — the manifest vocabulary of spec 22 §7.2(4). Pure."""
+    return "full" if not budget else f"budget:{int(budget)}"
+
+
+def _round_forces_slow(round_id, path=None):
+    """True when data/v15_round_env.json is for THIS round and pins V18_CATCHUP=0 (or V15_BOARD_BUDGET=0) — the operator's 'full slow round'.
+    A file naming another round has expired (round_env_inline's own rule). Never raises."""
+    doc = _jload(path or (ROOT / "data" / "v15_round_env.json"), None)
+    if not isinstance(doc, dict) or not round_id or str(doc.get("round") or "") != str(round_id):
+        return False
+    env = doc.get("env") or {}
+    return str(env.get("V18_CATCHUP", "")).strip() == "0" or str(env.get("V15_BOARD_BUDGET", "")).strip() == "0"
+
+
+def _completion_round_id(cur_pdir, env_path=None, home=None):
+    """(round_id, source, round_env_round). Precedence: the round of the progress dir the fleet is writing NOW (the scheduler's own truth);
+    then data/v15_round_env.json `round`; then the newest ~/v15_run<N>_* dir. round_env_round is reported separately because that file is
+    not rewritten at a roll (measured 2026-10-22: it said run34 while every host wrote run35). Never raises."""
+    import glob as _glob
+
+    doc = _jload(env_path or (ROOT / "data" / "v15_round_env.json"), None)
+    env_round = str(doc.get("round") or "") if isinstance(doc, dict) else ""
+    rid = _round_id_of(cur_pdir)
+    if rid:
+        return rid, "current_progress_dir", env_round or None
+    if env_round:
+        return env_round, "v15_round_env.json", env_round
+    best = (-1, "")
+    for d in _glob.glob(os.path.join(home or os.path.expanduser("~"), "v15_run*")):
+        m = re.search(r"v15_run(\d+)", os.path.basename(d))
+        if m and int(m.group(1)) > best[0]:
+            best = (int(m.group(1)), f"run{m.group(1)}")
+    return (best[1] or None), ("newest_run_dir" if best[1] else "none"), None
+
+
+def tradeable_universe(allowed=None, full_sets=None, symbol_level=None):
+    """THE universe of the round-completion record — ONE source, never a union. Precedence (first non-empty wins):
+      1. `allowed` = the scheduler's own tradeable rule this tick (v15_universe allowed_sym_sides — the exact set _coverage counts);
+      2. _reachable_sym_sides() = the side-exact dispatch law (tradeable_keys.json crypto sides + trb/mandatory stock sides).
+    The other universes in circulation are COUNTED in `alternatives`, never merged: per_sym_full_sets.json side-suffixed keys and the
+    symbol-level expansion (both sides of every _tradeable_universe() symbol). full_sets / symbol_level may be injected (tests); None = read.
+    -> {"sym_sides": sorted list, "source": str, "n": int, "alternatives": {...}}"""
+    if allowed:
+        ss, src = sorted({str(x).upper() for x in allowed}), "scheduler allowed_sym_sides (v15_universe)"
+    else:
+        sides, ssrc = _reachable_sym_sides()
+        ss, src = (sorted(sides), "_reachable_sym_sides (" + ", ".join(ssrc) + ")") if sides else ([], "none (both sources empty/unreadable)")
+    alt = {}
+    if full_sets is None:
+        _fp = ROOT / "data" / "per_sym_full_sets.json"
+        full_sets = _jload(_fp, None) if _fp.exists() else False
+    if full_sets is False or not isinstance(full_sets, dict):
+        alt["per_sym_full_sets_keys"] = {"n": None, "status": "file missing/unreadable on this host"}
+    else:
+        fk = {str(k).upper() for k in full_sets if str(k).upper().endswith(("_LONG", "_SHORT"))}
+        alt["per_sym_full_sets_keys"] = {"n": len(fk), "in_chosen": len(fk & set(ss)), "not_in_chosen": len(fk - set(ss))}
+    if symbol_level is None:
+        try:
+            symbol_level = _tradeable_universe()[0]
+        except Exception:
+            symbol_level = None
+    if symbol_level:
+        ex = {f"{str(s).upper()}_{sd}" for s in symbol_level for sd in ("LONG", "SHORT")}
+        alt["symbol_level_both_sides"] = {"n": len(ex), "n_symbols": len(symbol_level), "in_chosen": len(ex & set(ss)), "not_in_chosen": len(ex - set(ss))}
+    else:
+        alt["symbol_level_both_sides"] = {"n": None, "status": "symbol lists unavailable"}
+    return {"sym_sides": ss, "source": src, "n": len(ss), "alternatives": alt}
+
+
+def _load_round_exclusions(round_id, path=None):
+    """{SYM_SIDE: reason} from data/round_exclusions.json. Accepted shapes: {"round": "runN"?, "exclusions": {SS: reason} | [{"sym_side", "reason"}]}
+    or a flat {SS: reason}. An entry without a non-empty reason is ignored (the criterion demands a reason); a file naming another round is
+    ignored. Missing file -> {}. Never raises."""
+    doc = _jload(path or (ROOT / "data" / "round_exclusions.json"), None)
+    if not isinstance(doc, dict):
+        return {}
+    if doc.get("round") and round_id and str(doc["round"]) != str(round_id):
+        return {}
+    ex = doc["exclusions"] if "exclusions" in doc else {k: v for k, v in doc.items() if k not in ("round", "note")}
+    out = {}
+    if isinstance(ex, dict):
+        items = ex.items()
+    elif isinstance(ex, list):
+        items = [((e or {}).get("sym_side"), (e or {}).get("reason")) for e in ex if isinstance(e, dict)]
+    else:
+        items = []
+    for k, v in items:
+        if k and isinstance(v, str) and v.strip():
+            out[str(k).upper()] = v.strip()
+    return out
+
+
+def _row_epoch(r):
+    try:
+        return datetime.datetime.fromisoformat(str(r[1]).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def _rget(r, i):
+    return r[i] if isinstance(r, (list, tuple)) and len(r) > i else None
+
+
+def build_round_completion(round_id, universe, rows, must_by_host, exclusions, now_ts, npz_min=20.0, hosts_not_visible=(), round_meta=None):
+    """The full-course round record (brief 20 §4, spec 22 §6.1). Pure (tested).
+    universe = tradeable_universe() dict; rows = _manifest_rows (merged hosts, fields 0-10); must_by_host = {host: {SS: _progress_must dict}} from
+    each host's CURRENT progress dir (the probe channel); exclusions = {SS: reason}; hosts_not_visible = hosts whose probe failed this tick."""
+    best_full, best_any, counts = {}, {}, {}
+    for r in rows or []:
+        ss, ts = _rget(r, 0), _row_epoch(r)
+        if not ss or ts is None:
+            continue
+        lag = _board_npz_age_min(r, venue_of(str(ss).rsplit("_", 1)[0]))
+        if lag is None or lag > npz_min:
+            continue
+        full = str(_rget(r, 6) or "") in _FULL_MODES
+        c = counts.setdefault(ss, {"full": 0, "not_full": 0})
+        c["full" if full else "not_full"] += 1
+        if ts > (best_any.get(ss) or (0.0, None))[0]:
+            best_any[ss] = (ts, r)
+        if full and ts > (best_full.get(ss) or (0.0, None))[0]:
+            best_full[ss] = (ts, r)
+    must = {}
+    for hn, per in (must_by_host or {}).items():
+        for ss, m in (per or {}).items():
+            if not isinstance(m, dict):
+                continue
+            cur = must.get(ss)
+            key = (1 if m.get("result_done_utc") else 0, str(m.get("result_done_utc") or ""))
+            if cur is None or key > cur[0]:
+                must[ss] = (key, hn, m)
+    blind = sorted(set(hosts_not_visible or ()))
+    iso = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    per_ss, per_cat = {}, {}
+    for ss in universe.get("sym_sides") or []:
+        cat = cat_of_ss(ss)
+        pc = per_cat.setdefault(cat, {"n": 0, "complete": 0, "pending": 0, "excluded": 0, "refused_only": 0})
+        pc["n"] += 1
+        bf, ba = best_full.get(ss), best_any.get(ss)
+        brow = (bf or ba or (None, None))[1]
+        e = {"complete_at": (iso(bf[0]) if bf else None), "host": _rget(brow, 2), "pilot_md5": _rget(brow, 7), "npz_last_bar_ts": (_rget(brow, 10) if _rget(brow, 10) is not None else _rget(brow, 3)),
+             "mode": _rget(brow, 6), "start_gain": _rget(brow, 8), "published_gain": _rget(brow, 9),
+             "board_published_at": (iso(ba[0]) if ba else None), "qualifying_boards": counts.get(ss, {"full": 0, "not_full": 0})}
+        mm = must.get(ss)
+        why = []
+        if mm:
+            m = mm[2]
+            e.update({"progress_host": mm[1], "progress_done_utc": m.get("result_done_utc"), "board_verdict": m.get("verdict"),
+                      "must_items_total": m.get("n_items"), "must_evaluated": m.get("n_evaluated"), "must_carried": m.get("n_carried_over"),
+                      "must_refused": m.get("n_refused"), "refusal_reasons_sample": m.get("refusal_codes"), "refused_sample_n": m.get("refused_sample_n")})
+            if e["start_gain"] is None:
+                e["start_gain"] = m.get("initial_baseline_gain")
+            if e["pilot_md5"] is None:
+                e["pilot_md5"] = m.get("pilot_md5")
+            if not m.get("must_present"):
+                why.append("no v18.must block in progress")
+            elif m.get("n_carried_over") != 0:
+                why.append(f"must_carried={m.get('n_carried_over')}")
+            if not m.get("result_done_utc"):
+                why.append("board unfinished this round")
+            bad = sorted(set(m.get("refusal_codes") or []) - _STRUCTURAL_REFUSALS)
+        else:
+            nv = "not_visible" if blind else "no_progress_this_round"
+            e.update({k: nv for k in ("must_items_total", "must_evaluated", "must_carried", "must_refused")})
+            why.append(nv + (f" (hosts {blind})" if blind else ""))
+            bad = []
+        if not bf:
+            why.append("no full board on a fresh NPZ" + (f" (newest qualifying mode={e['mode']})" if ba else ""))
+        if ss in (exclusions or {}):
+            e["verdict"], e["exclusion_reason"] = "EXCLUDED", exclusions[ss]
+            pc["excluded"] += 1
+        elif not why and not bad:
+            e["verdict"] = "COMPLETE"
+            pc["complete"] += 1
+        elif not why and bad:
+            e["verdict"] = "REFUSED_ONLY: non-structural refusal codes " + ",".join(bad)
+            pc["refused_only"] += 1
+        else:
+            e["verdict"] = "PENDING: " + "; ".join(why + ([f"non-structural refusal codes {','.join(bad)}"] if bad else []))
+            pc["pending"] += 1
+        per_ss[ss] = e
+    n = len(per_ss)
+    n_ok = sum(c["complete"] + c["excluded"] for c in per_cat.values())
+    return {"round": round_id, "generated_at": iso(now_ts), "criterion": _COMPLETION_CRITERION, "universe_source": universe.get("source"), "universe_n": n,
+            "universe_alternatives": universe.get("alternatives") or {}, "npz_min": npz_min, "hosts_not_visible": blind, "round_meta": round_meta or {},
+            "complete": bool(n and n_ok == n), "n_complete": sum(c["complete"] for c in per_cat.values()), "n_excluded": sum(c["excluded"] for c in per_cat.values()),
+            "n_pending": sum(c["pending"] for c in per_cat.values()), "n_refused_only": sum(c["refused_only"] for c in per_cat.values()),
+            "per_cat_side": per_cat, "sym_sides": per_ss}
+
+
+def write_round_completion(record, out_dir=None):
+    """Atomic write of data/reports/full_course_round_<round>.json (tmp + os.replace). Returns the path, None when there is no round id."""
+    if not record or not record.get("round"):
+        return None
+    d = pathlib.Path(out_dir or (ROOT / "data" / "reports"))
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / f"full_course_round_{record['round']}.json"
+    tmp = p.with_name(p.name + f".tmp{os.getpid()}")
+    tmp.write_text(json.dumps(record, indent=1, default=str))
+    os.replace(tmp, p)
+    return p
+
+
+def round_roll_decision(record, force=False, now_ts=None, max_age_s=1800.0):
+    """(allowed, message) for rolling the round (spec 22 §6.1). Allowed only when the record is present, fresh (<= max_age_s) and complete,
+    or when force (V15_ROUND_ROLL_FORCE=1). The message carries the per-cat_side pending counts. Pure (tested)."""
+    if not isinstance(record, dict):
+        return bool(force), ("FORCED: " if force else "REFUSED: ") + "no completion record"
+    pcs = {k: {x: v.get(x) for x in ("pending", "refused_only", "complete", "excluded", "n")} for k, v in sorted((record.get("per_cat_side") or {}).items())}
+    age = None
+    try:
+        age = (float(now_ts) - datetime.datetime.fromisoformat(str(record.get("generated_at")).replace("Z", "+00:00")).timestamp()) if now_ts is not None else None
+    except Exception:
+        age = float("inf")
+    stale = age is not None and age > max_age_s
+    ok = bool(record.get("complete")) and not stale
+    msg = f"round {record.get('round')} complete={bool(record.get('complete'))} record_age_s={None if age is None else round(age)}{' STALE' if stale else ''} per_cat_side={json.dumps(pcs, sort_keys=True)}"
+    if ok:
+        return True, "ALLOWED: " + msg
+    return bool(force), ("FORCED (V15_ROUND_ROLL_FORCE=1): " if force else "REFUSED: ") + msg
+
+
+def _append_decision_log(path, rec, now_ts, keep_d=14.0, prune_every_s=21600.0, state=None):
+    """Durable scheduler decision log (one JSON line per tick) OUTSIDE /tmp — /tmp is emptied on every S1 boot (systemd tmp.conf `D /tmp`),
+    which is how the 2026-10-22 forensics lost every catch-up-era decision. Lines older than keep_d days are pruned at most every prune_every_s
+    (state dict keeps the last prune epoch). keep_d < 7 is raised to 7. Never raises; returns True when the line was written."""
+    keep_d = max(7.0, float(keep_d))
+    p = pathlib.Path(path)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, default=str) + "\n")
+    except Exception:
+        return False
+    st = state if state is not None else {}
+    if now_ts - float(st.get("decisions_pruned_at") or 0.0) < prune_every_s:
+        return True
+    st["decisions_pruned_at"] = now_ts
+    try:
+        keep, cut = [], now_ts - keep_d * 86400.0
+        for ln in p.read_text(encoding="utf-8").splitlines():
+            try:
+                t = float(json.loads(ln).get("ts_epoch") or 0.0)
+            except Exception:
+                t = now_ts
+            if t >= cut:
+                keep.append(ln)
+        tmp = p.with_name(p.name + ".tmp")
+        tmp.write_text("\n".join(keep) + ("\n" if keep else ""), encoding="utf-8")
+        os.replace(tmp, p)
+    except Exception:
+        pass
+    return True
+
+
 _ORDER_BY_HOST = {}  # per tick: host -> [sym] of the NEW-launch order (needs_slot entries only)
 
 
@@ -2206,8 +2491,9 @@ def side_cmd(host, sym, side, window, pdir, attempt, workers):
         env = f"V15_START_OVERRIDES=$(test -f ~/v15_autopsy_first/{ss}_autopsy_base.json -a \"$(python3 -c \"import json;d=json.load(open(\\\"{pdir}/{ss}_v14_progress.json\\\"));print(int(bool(d.get('done'))))\" 2>/dev/null||echo 0)\" = 0 && echo ~/v15_autopsy_first/{ss}_autopsy_base.json) V15_FRESH_RUN=$(python3 -c \"import json;d=json.load(open(\\\"{pdir}/{ss}_v14_progress.json\\\"));print(int(not d.get('done')))\" 2>/dev/null||echo 1) V15_TEMPLATE_DEFAULTS=1 V15_ADAPT_BASELINE=0 V15_SKIP_LIVE_AT_DONE=1 V15_POSSYM_SAMPLING=0 V15_INERT_SAMPLE_EVERY=100 V15_POSSYM_MIN_N=1 V15_FILL_SLICE_S=4200 V15_DIAG_REPAIR_S=150 V15_ENDGAME_S=120 V15_FOCUS_S_WINNER=600 V15_FOCUS_S_MEDIOCRE=150 V15_FOCUS_S_LOSER=60 V15_TIER_BIG_MOVER=8 V15_FOCUS_S_BHCHASE=600 V15_FOCUS_TOP_K_BHCHASE=48 V15_POOL_BATCH_N=8 V15_UNWIRED_SKIP=0 V12_NPZ_CACHE=4 MALLOC_ARENA_MAX=2 V15_PROGRESS_DIR={pdir} V12_ALLOW_STALE_NPZ=$(test -s {pdir}/{ss}_v14_progress.json && echo 1 || echo 0) V15_DEFAULTS_ROUND=$(cat ~/v15_defaults_round.txt 2>/dev/null) CAT_SIDE_DEFAULTS_PATH=$(test -f ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json && echo ~/binance-sandbox/data/sweep_defaults/per_sym_settings.json)"  # USER 2026-10-09: V15_SKIP_CAT_PERSYM_BASELINE REMOVED — worst2best boards run defaults+best simultaneously and START from the best-gain set (Oct-2 winner-select). Boards with autopsy/REDO base keep it (Oct-9 REDO ruling); TEMPLATE_DEFAULTS still never ingests mid-run (§64), only the E3 start may be per_sym best. USER 2026-10-10 throughput: sampling stays ON (reverted 0->1 within the hour — sample-free fills run ~9 rows/min vs ~80 sampled; the 10-min board comes from a per-row yellow cap + prior-ranked selection in the pilot, not from disabling sampling). USER 2026-10-10 pace emergency (measured <6/hr strict over 03:00-05:00Z vs 10/hr demand; user ordered lower low-n test frequency): INERT yellows 1/100, n_sym 1-2 join pos sampling; naked evals untouched, running pilots unaffected (env read at pilot startup).
         if os.environ.get("V15_SCHED_V17", "1") == "1":
             env += " V15_V17_ROUNDS=1"  # USER 2026-10-13: >=12 finalized V17 boards per hour per server (V15_SCHED_V17=0 = old pilot)
-        if _CATCHUP_MODE[0]:
-            env += " V18_CATCHUP=1"  # USER LAW 2026-10-20: coverage below V15_SCHED_CATCHUP_BELOW -> every new launch is a catch-up board (unknown env = harmless to an older pilot)
+        if _CATCHUP_MODE[0] and (not _SS_BUDGET or _SS_BUDGET.get(ss.upper(), 0) > 0):
+            env += " V18_CATCHUP=1"  # USER LAW 2026-10-20: coverage below V15_SCHED_CATCHUP_BELOW -> every new launch is a catch-up board (unknown env = harmless to an older pilot); 2026-10-22 spec 22 §7.2(5): per launch — only a sym_side with a budget (genuine violator) carries it once budgets are computed
+        env += f" V15_BOARD_BUDGET={int(_SS_BUDGET.get(ss.upper(), 0))}"  # 2026-10-22 spec 22 §7.2(1): per-launch eval budget, 0 = full board (pilot reader: separate agent)
         env += gate_env_inline()  # USER 2026-10-16: the gate-benched launch env is authoritative (appended last = it wins)
         env += round_env_inline(_round_id_of(pdir))  # USER 2026-10-19: self-expiring, round-scoped override (see round_env_inline)
         body = f"{env} /home/niels/.conda/envs/binance_env_mac/bin/python -u v15_pilot.py --sym-side {ss} --template {t} --seq-mode worst2best --window-days 30 --vector-only --workers {workers}"
@@ -3531,15 +3817,20 @@ def tick(args, cfg, now):
         if os.environ.get("V15_SCHED_TRADING_FILES", "1") == "1":
             _trading |= _trading_file_sides()  # folded in from the retired V15_TRADING_CATCHUP cron
         _any_h, _tr_h = float(os.environ.get("V15_SCHED_CATCHUP_ANY_D", "9")) * 24.0, float(os.environ.get("V15_SCHED_CATCHUP_TRADING_D", "4")) * 24.0
-        _rules = _catchup_rules(_ages, _trading, _any_h, _tr_h)
+        _nev = os.environ.get("V15_SCHED_NEVER_CLASS", "1") == "1"  # 2026-10-22 spec 22 §7.2(5): never-boarded = own class, not an inf age (0 = legacy)
+        _rules = _catchup_rules(_ages, _trading, _any_h, _tr_h, count_never=not _nev)
+        _cov_hyst = _select_catchup_mode(bool(st.get("coverage_hysteresis")), _cov["coverage"], n=(_cov["n"] if _nev else None), n_never=_rules["n_never_qualifying"])
+        st["coverage_hysteresis"] = _cov_hyst  # informational: the coverage hysteresis with never-boarded sym_sides out of the denominator
         _now_mode = bool(_rules["mode"])
         st["catchup_mode"] = _now_mode
         _CATCHUP_MODE[0] = _now_mode
         _bgain = {k: v.get("final_gain") for k, v in (_ledger or {}).items() if isinstance(v, dict)} if isinstance(_ledger, dict) else {}
-        _prio, _gtable, _cad = _refresh_priority(_ages, _live, _trading, _any_h, _tr_h, _bgain)
+        _lact = {k: v.get("last_close_ts") for k, v in _live.items() if isinstance(v, dict) and v.get("last_close_ts")}
+        _prio, _gtable, _cad = _refresh_priority(_ages, _live, _trading, _any_h, _tr_h, _bgain, never_class=_nev, last_activity=_lact)
         _ORDER_BY_HOST.clear()
         _PLABEL.clear()
         _PAGE.clear()
+        _PCLASS.clear()
         _psym = {}
         for _k, _v in _prio.items():
             _sy = _k.rsplit("_", 1)[0]
@@ -3547,12 +3838,24 @@ def tick(args, cfg, now):
                 _psym[_sy] = _v
                 _PLABEL[_sy] = _rule_label(_v, _cad.get(_k))
                 _PAGE[_sy] = None if _ages.get(_k) is None else round(_ages[_k], 1)
+                _PCLASS[_sy] = _v[0]
+        _SS_BUDGET.clear()
+        _slow_forced = _round_forces_slow(_round_id_of(cur_pdir))
+        try:
+            _bev = int(float(os.environ.get("V15_BUDGET_EVALS", str(_BUDGET_EVALS_DEFAULT))))
+        except ValueError:
+            _bev = _BUDGET_EVALS_DEFAULT
+        for _k in _allowed_l:
+            _SS_BUDGET[str(_k).upper()] = board_budget(_ages.get(_k), _k in _trading, _ages.get(_k) is None, _cov["coverage"], _slow_forced, _any_h, _tr_h, _bev)
+        _nb = sum(1 for _x in _SS_BUDGET.values() if _x > 0)
         _AGE_KEY[0] = (lambda b, _m=_psym: _m.get(b, (2, 0.0, 0.0)))
         _thr = _throughput(_mrows, _now_ts)
         log["coverage"] = {"coverage": _cov["coverage"], "covered": _cov["covered"], "n": _cov["n"], "published_24h": _cov["published_24h"], "median_board_age_h": _cov["median_board_age_h"],
                            "mode": "catchup" if _now_mode else "slow", "per_cat": _cov["per_cat"], "throughput": _thr,
                            "rules": {k: v for k, v in _rules.items() if k not in ("over_any", "over_trading")}, "over_trading_sample": _rules["over_trading"][:12], "over_any_sample": _rules["over_any"][:12],
-                           "top_gainers": _gtable, "live_gain": {"file_age_h": (None if _live_age_h is None else round(_live_age_h, 1)), "sym_sides": len(_live), "trading": len(_trading)}}
+                           "top_gainers": _gtable, "live_gain": {"file_age_h": (None if _live_age_h is None else round(_live_age_h, 1)), "sym_sides": len(_live), "trading": len(_trading)},
+                           "never_class": _nev, "n_never": _rules["n_never_qualifying"], "coverage_hysteresis_excl_never": _cov_hyst,
+                           "budget": {"slow_forced_by_round_env": _slow_forced, "evals": _bev, "n_budget_launch_sides": _nb, "n_full_sides": len(_SS_BUDGET) - _nb}}
         print(f"[sched] mode={'CATCHUP' if _now_mode else 'slow'} max_age_any={_rules['max_age_any_h']}h max_age_trading={_rules['max_age_trading_h']}h "
               f"behind>{_any_h/24:.0f}d={_rules['n_over_any']}/{_rules['n_tradeable']} (never-qualifying {_rules['n_never_qualifying']}) trading>{_tr_h/24:.0f}d={_rules['n_trading_over']}/{_rules['n_trading']}; "
               f"coverage(info)={_cov['coverage']:.3f}; published/h per host {_thr['published_per_host']} target {_thr['target_per_host']}/h/host; both-sides symbols (1h) {_thr['symbols_both_sides']}; "
@@ -3565,6 +3868,20 @@ def tick(args, cfg, now):
             os.replace(_tmp, _fp)
     except Exception as _e_cov:
         print(f"[sched] coverage FAILED (non-fatal): {_e_cov}", flush=True)
+    try:  # 2026-10-22 spec 22 §6.1 / brief 20 §4: the full-course round-completion record, every tick
+        if not (args.dry_run or sim):
+            _rid, _rsrc, _renv = _completion_round_id(cur_pdir)
+            _uni1 = tradeable_universe(uni.get("allowed_sym_sides") or [])
+            _mbh = {_hn: (_sx.get("must") or {}) for _hn, _sx in stats.items() if isinstance(_sx, dict)}
+            _blind = [_hn for _hn, _sx in stats.items() if not isinstance(_sx, dict) or "must" not in _sx]
+            _rec = build_round_completion(_rid, _uni1, _mrows, _mbh, _load_round_exclusions(_rid), _now_ts, npz_min=float(os.environ.get("V15_SCHED_COVERAGE_NPZ_MIN", "20")),
+                                          hosts_not_visible=_blind, round_meta={"round_source": _rsrc, "round_env_round": _renv, "current_progress_dir": cur_pdir})
+            _wp = write_round_completion(_rec)
+            log["round_completion"] = {"path": str(_wp), "round": _rid, "complete": _rec["complete"], "universe_n": _rec["universe_n"], "n_complete": _rec["n_complete"], "n_pending": _rec["n_pending"],
+                                       "n_refused_only": _rec["n_refused_only"], "n_excluded": _rec["n_excluded"], "hosts_not_visible": _blind}
+            print(f"[sched] ROUND-COMPLETION {_rid} ({_rsrc}) complete={_rec['complete']} universe={_rec['universe_n']} ({_uni1['source']}) complete={_rec['n_complete']} pending={_rec['n_pending']} refused_only={_rec['n_refused_only']} excluded={_rec['n_excluded']} not_visible_hosts={_blind}", flush=True)
+    except Exception as _e_rc:
+        print(f"[sched] round completion record FAILED (non-fatal): {_e_rc}", flush=True)
     _ph("candidates_coverage")
     log["venue_phase"] = _phase_log
     log["npz_dead"] = sorted(_npz_dead)
@@ -4414,12 +4731,13 @@ def tick(args, cfg, now):
                     pass
             return None
 
-        _aud = _order_audit(_ORDER_BY_HOST, _lh2, _explain, lambda sy: _PLABEL.get(sy, "oldest"), lambda sy: _PAGE.get(sy))
-        log["order_audit"] = {"top": _aud["top"], "violations": _aud["violations"], "launches_checked": len(_aud["checks"])}
+        _mode_of = lambda hn, sy: {_sd: _budget_mode_label(_SS_BUDGET.get(f"{sy}_{_sd}".upper(), 0)) + ("+V18_CATCHUP" if _CATCHUP_MODE[0] and (not _SS_BUDGET or _SS_BUDGET.get(f"{sy}_{_sd}".upper(), 0) > 0) else "") for _sd in ("LONG", "SHORT")}
+        _aud = _order_audit(_ORDER_BY_HOST, _lh2, _explain, lambda sy: _PLABEL.get(sy, "oldest"), lambda sy: _PAGE.get(sy), class_of=lambda sy: _PCLASS.get(sy, 2), mode_of=_mode_of)
+        log["order_audit"] = {"top": _aud["top"], "violations": _aud["violations"], "launches_checked": len(_aud["checks"]), "mode_per_launch": _aud["mode_per_launch"]}
         for _hn, _tp in _aud["top"].items():
-            print(f"[sched] ORDER-AUDIT {_hn}: " + " | ".join(f"{i + 1}.{e['sym']}({e['rule']}, age {e['board_age_h']}h)" for i, e in enumerate(_tp)), flush=True)
+            print(f"[sched] ORDER-AUDIT {_hn}: " + " | ".join(f"{i + 1}.{e['sym']}({e['rule']}, class {e['class']}, age {e['board_age_h']}h)" for i, e in enumerate(_tp)), flush=True)
         for _c in _aud["checks"]:
-            print(f"[sched] ORDER-CHECK {_c['host']}: launched {_c['launched']} at rank {_c['rank']}; skipped ahead {_c['skipped_ahead']}", flush=True)
+            print(f"[sched] ORDER-CHECK {_c['host']}: launched {_c['launched']} at rank {_c['rank']} class {_c['class']} mode_per_launch {_c['mode_per_launch']}; skipped ahead {_c['skipped_ahead']}", flush=True)
         for _v in _aud["violations"]:
             print(f"[sched] ORDER_VIOLATION {_v['host']}: launched {_v['launched']} (rank {_v['rank']}) ahead of unlaunched {_v['unlaunched_ahead']}: {_v['cause']}", flush=True)
         if not (args.dry_run or sim):
@@ -4427,6 +4745,11 @@ def tick(args, cfg, now):
             _ft = _fo.with_suffix(".json.tmp")
             _ft.write_text(json.dumps({"now": now.isoformat(), "mode": "catchup" if _CATCHUP_MODE[0] else "slow", **log["order_audit"], "checks": _aud["checks"]}, indent=1))
             os.replace(_ft, _fo)
+            _append_decision_log(os.environ.get("V15_SCHED_DECISION_LOG", str(ROOT / "logs" / "v15_fleet_sched_decisions.jsonl")),
+                                 {"now": now.isoformat(), "ts_epoch": now.timestamp(), "mode": "catchup" if _CATCHUP_MODE[0] else "slow", "launched": [f"{h_}:{s_}" for h_, s_ in _lh2],
+                                  "mode_per_launch": _aud["mode_per_launch"], "checks": _aud["checks"], "violations": _aud["violations"], "top": _aud["top"],
+                                  "coverage": {k: (log.get("coverage") or {}).get(k) for k in ("coverage", "n", "covered", "n_never", "budget", "rules")}, "round_completion": log.get("round_completion")},
+                                 now.timestamp(), keep_d=float(os.environ.get("V15_SCHED_DECISION_KEEP_D", "14")), state=st)
     except Exception as _e_aud:
         print(f"[sched] order audit FAILED (non-fatal): {_e_aud}", flush=True)
     if log["stocks_chain_left"] and not is_open and mto < 60:
@@ -4476,6 +4799,21 @@ def kill_out_of_universe(args, cfg, now):
         print(json.dumps({"host": h["name"], "pdir": p["pdir"], "out_of_universe_symbols": bad, "kill": res, "left_alone_other_pdir": other, "in_universe_running": sorted(ss for ss in p["running"] if ss.rsplit('_', 1)[0] in keep)}))
 
 
+def _round_roll_check_cli(home=None, reports=None, now_ts=None):
+    """--round-roll-check (called by tools/v15_round_watchdog.sh before it rolls): 0 = roll allowed, 3 = refused. Never raises."""
+    pd = None
+    try:
+        pd = open(os.path.join(home or os.path.expanduser("~"), "v15_current_progress_dir.txt")).read().strip() or None
+    except Exception:
+        pass
+    rid = _completion_round_id(pd, home=home)[0]
+    rec = _jload(pathlib.Path(reports or (ROOT / "data" / "reports")) / f"full_course_round_{rid}.json", None) if rid else None
+    ok, msg = round_roll_decision(rec, os.environ.get("V15_ROUND_ROLL_FORCE", "0") == "1", time.time() if now_ts is None else now_ts,
+                                  float(os.environ.get("V15_ROUND_ROLL_RECORD_MAX_AGE_S", "1800")))
+    print(f"[round-roll-check] {msg}", flush=True)
+    return 0 if ok else 3
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
@@ -4492,7 +4830,10 @@ def main():
     ap.add_argument("--extend-universe", action="store_true", help="after the base universe is fully terminal, emit the legacy-order extension list (OFF by default)")
     ap.add_argument("--kill-out-of-universe", action="store_true", help="list pilots of the current progress dir whose symbol is not in the universe")
     ap.add_argument("--apply-kill", action="store_true", help="with --kill-out-of-universe: actually SIGTERM them")
+    ap.add_argument("--round-roll-check", action="store_true", help="exit 0 when the round may roll (completion record complete, or V15_ROUND_ROLL_FORCE=1), else 3; prints per-cat_side pending counts")
     args = ap.parse_args()
+    if args.round_roll_check:
+        sys.exit(_round_roll_check_cli())
     cfg = json.load(open(args.hosts))
     # 2026-10-13 USER full capacity: the hosts file is rewritten by the autopilot self-heal; an env floor keeps the cpu target
     # (50 there idled s1/s5/s6 at 13-69% busy). V15_SCHED_CPU_TARGET_MIN=0 restores the file value.
