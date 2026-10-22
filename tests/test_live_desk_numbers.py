@@ -89,6 +89,25 @@ def test_intent_validation():
         assert err, bad
 
 
+def test_low_funds_boundary():
+    assert srv.low_funds(10000.0, 400.0) is True
+    assert srv.low_funds(10000.0, 500.0) is False
+    assert srv.low_funds(10000.0, 9000.0) is False
+    assert srv.low_funds(None, 10.0) is False
+    assert srv.low_funds(100.0, None) is False
+    assert srv.low_funds(0.0, 0.0) is False
+
+
+def test_binance_sign_shape():
+    import re
+    s1 = srv._binance_sign("secretA", "timestamp=123&recvWindow=10000")
+    s2 = srv._binance_sign("secretA", "timestamp=123&recvWindow=10000")
+    s3 = srv._binance_sign("secretB", "timestamp=123&recvWindow=10000")
+    assert re.fullmatch(r"[0-9a-f]{64}", s1)
+    assert s1 == s2
+    assert s1 != s3
+
+
 def test_write_intent_ttl_and_audit(repo):
     before = time.time()
     intent = srv.write_intent("fin", "DOGEUSDT", "LONG", 5.0)
