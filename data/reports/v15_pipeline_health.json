@@ -1,10 +1,10 @@
 {
- "at": "2026-10-22T07:31:04Z",
+ "at": "2026-10-22T07:46:40Z",
  "s1": {
-  "error": "s1-int: no output | s1-pub: no output"
+  "error": "s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: no output"
  },
  "red": [
-  "s1 unreachable: s1-int: no output | s1-pub: no output"
+  "s1 unreachable: s1-int: ssh: connect to host 127.0.0.1 port 2201: Connection refused | s1-pub: no output"
  ],
  "warn": [],
  "ok": false
