@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T11:12:02.353980+00:00",
+ "generated_utc": "2026-10-22T12:12:01.971558+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 164,
+  "exit_promises": 166,
   "exit_kept_in_bar": 19,
   "entry_promises": 64,
   "entry_broken_no_delivery": 64,
   "exit_skipped_inflight": 51,
   "exit_kept_late": 5,
-  "exit_broken_no_delivery": 140
+  "exit_broken_no_delivery": 142
  },
  "per_key": {
   "inf:RLCUSDT_LONG": {
@@ -31,9 +31,9 @@
    "exit_broken_no_delivery": 1
   },
   "inf:COTIUSDT_SHORT": {
-   "exit_promises": 6,
+   "exit_promises": 7,
    "exit_kept_in_bar": 2,
-   "exit_broken_no_delivery": 4,
+   "exit_broken_no_delivery": 5,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
@@ -227,8 +227,8 @@
    "entry_broken_no_delivery": 2
   },
   "inf:ATOMUSDT_SHORT": {
-   "exit_promises": 5,
-   "exit_broken_no_delivery": 4,
+   "exit_promises": 6,
+   "exit_broken_no_delivery": 5,
    "exit_kept_late": 1
   },
   "ang:EDUUSDT_LONG": {
@@ -2481,6 +2481,26 @@
    "late_min": null,
    "action": "CLOSE",
    "reason": "EXIT_VELOCITY_WT against-short g-0.29%",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "ATOMUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 10:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "MTF_GR_WT_EXIT_1h_grTFs=3",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "COTIUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 10:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "FIXED_STOP",
    "outcome": "NO_DELIVERY"
   }
  ],
