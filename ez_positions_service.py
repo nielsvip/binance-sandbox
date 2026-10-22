@@ -7459,8 +7459,22 @@ class PositionService:
                     await asyncio.sleep(3600) 
                 now = datetime.now(timezone.utc)
                 updated_count = 0
+                # USER 2026-10-22 (3-minute rule): this pass walks EVERY position of EVERY account on the event loop
+                # thread with no yield, and ez_manage's faulthandler loop-lag dump caught men parked right here —
+                # `update_pnl_deterioration_periodically` -> `deteriorate_realized_pnl` -> dateutil `utcoffset` —
+                # during a >20 s freeze. A dump only arms after 20 s of no loop tick, so that stack IS a blocker, not
+                # a sample. While the loop is parked nothing trades: men and fin (the accounts with the most
+                # positions, 407 and 581 rows) sat at 2-4% CPU with 5-9 minute log gaps and never reached their
+                # vec-driven sweep, while ang/inf/flz converged. Yielding every _PNL_YIELD_EVERY positions caps the
+                # block to a few milliseconds without moving shared Position objects off the loop thread (a thread
+                # would race the writer). Arithmetic and results are unchanged.
+                _PNL_YIELD_EVERY = 25
+                _pnl_seen = 0
                 for account_key, account_positions in self.positions_by_account.items():
-                    for position_key, position in account_positions.items():
+                    for position_key, position in list(account_positions.items()):
+                        _pnl_seen += 1
+                        if _pnl_seen % _PNL_YIELD_EVERY == 0:
+                            await asyncio.sleep(0)
                         if position and position.positionAmt == 0.0:
                             updated = False
                             if position.realized_pnl != 0.0:

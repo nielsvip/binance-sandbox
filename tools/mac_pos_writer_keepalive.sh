@@ -81,7 +81,12 @@ LOCK="/tmp/.mac_pos_writer_keepalive.lock"
 # guarantee off — measured 2026-10-16: 63 of the last 200 log lines were "another run holds the lock". Break the lock
 # by AGE as well (the same pattern crypto_watchdog_cron.sh already uses), and kill the stuck holder so it cannot run
 # on in parallel with us. A healthy pass takes well under a second after the python removals above.
-LOCK_STALE_S="${MAC_POS_LOCK_STALE_S:-75}"  # > RUN_MAX_S (45 s) + margin: a lock older than this cannot be a live run
+# USER 2026-10-22: 75 s was BELOW the script's own measured worst case — the comment at the spawn site records a pass
+# that sat 73 s inside a single spawn, so under Mac load (239 at 03:30Z) a healthy slow pass was declared stale and
+# kill -9'd mid-spawn every 75 s. Each replacement pass then saw "no writer" and spawned again: 13 live subshells
+# carrying this script's argv and a steady stream of "reap duplicate" lines. 170 s keeps the lock inside the 3-minute
+# bound this layer guarantees while sitting well above the 73 s spawn block, so only a genuinely hung holder is broken.
+LOCK_STALE_S="${MAC_POS_LOCK_STALE_S:-170}"  # < the 3-min guarantee, > the measured 73 s spawn block
 if [ -f "$LOCK" ]; then
   _lh=$(cat "$LOCK" 2>/dev/null | tr -d ' \000')
   _lm=$(stat -f %m "$LOCK" 2>/dev/null || echo 0)

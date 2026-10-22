@@ -26157,7 +26157,10 @@ class MultiAccountTradeManager:
                     else:
                         logger.critical(f"🛑 [VEC_DRIVEN] LIVE mode DISARMED ({_live_why}, expiry {_exp_txt}) — all sym_sides SHADOW, positions handed back to native management (nothing force-closed)")
                     last_live_ok = _live_ok
-                intents = _vdm.load_intents(base / "intents")
+                # USER 2026-10-22: off the event loop. Even memoised this stats ~4,200 spool files per cycle, and the
+                # loop-freeze dumps blamed this one call for 22% of all freezes. The consumer is the only caller and
+                # calls it once per awaited cycle, so the module memo cannot be mutated concurrently.
+                intents = await asyncio.to_thread(_vdm.load_intents, base / "intents")
                 now = time.time()
                 for account_key in list(self.accounts):
                     modes = registry.sym_sides_for(account_key, True)

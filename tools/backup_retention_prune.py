@@ -47,7 +47,7 @@ def mtime_day(p: Path) -> str:
     return dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone.utc).strftime("%Y-%m-%d")
 
 
-def plan(keep_recent: int, keep_tars: int, min_age_h: float):
+def plan(keep_recent: int, keep_tars: int, min_age_h: float, keep_days: int = 0):
     now = dt.datetime.now(dt.timezone.utc).timestamp()
     keep, drop = [], []
     groups = collections.defaultdict(list)
@@ -72,6 +72,14 @@ def plan(keep_recent: int, keep_tars: int, min_age_h: float):
                 keep.append((p, f"younger than {min_age_h:.0f}h"))
                 continue
             if day not in seen_days:
+                # USER 2026-10-22: "last snapshot of every day" had NO horizon, so the dailies grew 2.6 GB/day forever
+                # (2 x 1.37 GB families). Measured 03:30Z: the boot volume was at 257 MB free and this tool was deleting
+                # 1.36 GB/h against the 2.74 GB/h the :25/:55 h2h crons create — a guard that loses ground every hour.
+                # Files are sorted newest-first, so seen_days fills with the most recent days and anything past
+                # --keep-days is an old daily that the monthly /Volumes/E3T snapshot (BIBLE §107) already covers.
+                if keep_days and len(seen_days) >= keep_days:
+                    drop.append((p, f"daily of {day} beyond --keep-days {keep_days} ({age_h / 24:.0f}d old)"))
+                    continue
                 seen_days.add(day)
                 keep.append((p, f"last snapshot of {day}"))
                 continue
@@ -96,8 +104,9 @@ def main():
     ap.add_argument("--keep-recent", type=int, default=3, help="newest N snapshots per artifact family always kept")
     ap.add_argument("--keep-tars", type=int, default=10)
     ap.add_argument("--min-age-h", type=float, default=6.0, help="never delete a snapshot younger than this")
+    ap.add_argument("--keep-days", type=int, default=0, help="keep the last snapshot of only the newest N days (0 = every day, the old unbounded behaviour)")
     a = ap.parse_args()
-    keep, drop = plan(a.keep_recent, a.keep_tars, a.min_age_h)
+    keep, drop = plan(a.keep_recent, a.keep_tars, a.min_age_h, a.keep_days)
     k_sz = sum(p.stat().st_size for p, _ in keep if p.exists())
     d_sz = sum(p.stat().st_size for p, _ in drop if p.exists())
     print(f"[retention] keep {len(keep)} files ({human(k_sz)}) · delete {len(drop)} files ({human(d_sz)}) · {'APPLYING' if a.apply else 'DRY RUN'}")
@@ -108,7 +117,7 @@ def main():
     for p, why in sorted(drop, key=lambda x: -x[0].stat().st_size)[:12]:
         print(f"  {human(p.stat().st_size):>9s}  {p.name[:64]:64s} {why}")
     rec = {"generated_utc": dt.datetime.now(dt.timezone.utc).isoformat(), "applied": bool(a.apply),
-           "keep_recent": a.keep_recent, "keep_tars": a.keep_tars, "min_age_h": a.min_age_h,
+           "keep_recent": a.keep_recent, "keep_tars": a.keep_tars, "min_age_h": a.min_age_h, "keep_days": a.keep_days,
            "reclaim_bytes": d_sz, "kept": [{"f": str(p), "why": w, "bytes": p.stat().st_size} for p, w in keep],
            "deleted": [{"f": str(p), "why": w, "bytes": p.stat().st_size,
                         "mtime_utc": dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone.utc).isoformat()} for p, w in drop]}
