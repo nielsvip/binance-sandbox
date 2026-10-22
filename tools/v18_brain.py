@@ -1657,6 +1657,7 @@ class CatBrain:
         self.run_set = {}
         self.board_src = {}
         self.mb_cap = {h: array.array("d") for h in BIND_HEADS}
+        self.mb_f0 = array.array("d")
         self.g = Graph(cs)
         self.T = Tables(graph=self.g)
         self.h = Heads()
@@ -1911,7 +1912,7 @@ class CatBrain:
             mm, w, dabs = c[4:9], c[9] or 1.0, c[10]
             x_f, cn = featurize(T, self.bk, "F", sym, sheet, row_key, hdr, nd, regime, tc, bc, eb, et)
             x0 = x_f[:17] + [0.0, 0.0] + x_f[19:]
-            self._mb(x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, str(hdr).strip() in nzset, test, w)
+            self._mb(x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, str(hdr).strip() in nzset, test, w, H.p("F0", x0))
             pf = H.p("F", x_f)
             p0 = H.p("F0", x0)
             y = 1.0 if (valid and md is not None and md > EPS) else 0.0
@@ -1934,7 +1935,7 @@ class CatBrain:
                     continue
                 x_f, _cn = featurize(T, self.bk, "F", sym, sheet, row_key, z[0], nd, regime, tc, bc, eb, et)
                 x0 = x_f[:17] + [0.0, 0.0] + x_f[19:]
-                self._mb(x0, sheet, sw, cand, z[0], z[1] - naked[0], bool(z[2]), rs, rc, nvalid, bknown, True, test, 1.0)
+                self._mb(x0, sheet, sw, cand, z[0], z[1] - naked[0], bool(z[2]), rs, rc, nvalid, bknown, True, test, 1.0, H.p("F0", x0))
         # graph after the predictions (prequential)
         if naked is not None:
             nmet = naked[3:8]
@@ -1992,7 +1993,7 @@ class CatBrain:
             rs[sw] = cand
         self.c["rows"] += 1
 
-    def _mb(self, x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, noop_listed, test, w):
+    def _mb(self, x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, noop_listed, test, w, p_f0=0.0):
         """heads M (cell beats its naked: valid cell, valid naked, cell - naked > 1e-9) and B (cell binds = NOT noop; noop = the
         source listed it (fingerprint equal to the naked's / progress noop_yellows) or valid cell + valid naked with |cell - naked|
         <= 1e-9, the pilot's own rule). Predict-then-learn; B only where the source can tell noop (logs, progress with nzk)."""
@@ -2001,18 +2002,20 @@ class CatBrain:
         H = self.h
         t = 1.0 if test else 0.0
         self.c["bind_verdict_" + bf["bind_verdict"]] += 1
+        noop = noop_listed or bool(valid and nvalid and md is not None and abs(md) <= EPS)
+        nflag = (1.0 if noop else 0.0) if bknown else -1.0
         if nvalid and md is not None:
             y = 1.0 if (valid and md > EPS) else 0.0
             p = H.p("M", xm)
-            self.mb_cap["M"].extend((p, y, t))
+            self.mb_cap["M"].extend((p, y, t, nflag))
+            self.mb_f0.append(p_f0)
             H.learn("M", xm, y, p, W_FIT * w)
             self.c["M_labels"] += 1
             self.c["M_pos"] += int(y)
         if bknown:
-            noop = noop_listed or bool(valid and nvalid and md is not None and abs(md) <= EPS)
             y = 0.0 if noop else 1.0
             p = H.p("B", xm)
-            self.mb_cap["B"].extend((p, y, t))
+            self.mb_cap["B"].extend((p, y, t, nflag))
             H.learn("B", xm, y, p, W_FIT * w)
             self.c["B_labels"] += 1
             self.c["B_binds"] += int(y)
@@ -2023,14 +2026,21 @@ class CatBrain:
         out = {}
         for h in BIND_HEADS:
             A = self.mb_cap[h]
-            n = len(A) // 3
+            n = len(A) // 4
             if not n or np is None:
                 out[h] = {"n": n}
                 continue
-            P = np.frombuffer(A, dtype=np.float64).reshape(n, 3)
+            P = np.frombuffer(A, dtype=np.float64).reshape(n, 4)
             te = P[:, 2] > 0.5
             r = {"n": int(n), "pos": int(P[:, 1].sum()), "n_test": int(te.sum()), "pos_test": int(P[te, 1].sum()), "auc_prequential_all": _auc_np(P[:, 0], P[:, 1]),
-                 "auc_test": _auc_np(P[te, 0], P[te, 1]) if te.any() else None, "mean_p_test": round(float(P[te, 0].mean()), 4) if te.any() else None}
+                 "auc_test": _auc_np(P[te, 0], P[te, 1]) if te.any() else None, "mean_p_test": round(float(P[te, 0].mean()), 4) if te.any() else None,
+                 "n_noop_test": int((te & (P[:, 3] == 1.0)).sum()), "n_noop_unknown_test": int((te & (P[:, 3] < 0)).sum())}
+            if h == "M":
+                nb = te & (P[:, 3] != 1.0)
+                f0 = np.frombuffer(self.mb_f0, dtype=np.float64)
+                r.update({"n_test_non_noop": int(nb.sum()), "pos_test_non_noop": int(P[nb, 1].sum()), "auc_test_non_noop": _auc_np(P[nb, 0], P[nb, 1]) if nb.any() else None,
+                          "auc_test_non_noop_F0_same_cells": _auc_np(f0[nb], P[nb, 1]) if nb.any() and len(f0) == n else None,
+                          "auc_test_F0_same_cells": _auc_np(f0[te], P[te, 1]) if te.any() and len(f0) == n else None})
             out[h] = r
         out["labels"] = {"M": "valid cell and valid naked of the same row; y = cell - naked > 1e-9",
                          "B": "y = NOT noop; noop = listed by the source (fp == naked fp in delta logs, progress noop_yellows) or valid cell + valid naked with |cell - naked| <= 1e-9; xlsx boards carry no noop list -> not labelled"}
