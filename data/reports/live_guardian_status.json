@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-22T00:39:33Z",
+ "ts": "2026-10-22T00:44:41Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 50,
    "open_positions": 1,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,12 +111,12 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 292,
+  "total": 312,
   "per_acct": {
-   "ang": 50,
    "men": 96,
-   "fin": 82,
    "inf": 40,
+   "fin": 82,
+   "ang": 70,
    "flz": 24
   }
  },
@@ -127,116 +127,102 @@
     "99304"
    ],
    "starts_30m": 1,
-   "log_age_s": 35.0
+   "log_age_s": 199.0
   },
   "men": {
    "pids": [
     "93091"
    ],
-   "starts_30m": 2,
-   "log_age_s": 1.0
+   "starts_30m": 1,
+   "log_age_s": 0.0
   },
   "ang": {
    "pids": [
     "53140"
    ],
    "starts_30m": 2,
-   "log_age_s": 9.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "18762"
    ],
    "starts_30m": 1,
-   "log_age_s": 23.0
+   "log_age_s": 31.0
   },
   "flz": {
    "pids": [
     "50378"
    ],
    "starts_30m": 1,
-   "log_age_s": 12.0
+   "log_age_s": 98.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16710.0
+   "log_age_s": 17018.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 16713.0
+   "log_age_s": 17021.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-22T00:39:33Z",
+   "ts": "2026-10-22T00:44:42Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.3 @ 2026-10-21T21:24:01Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T00:39:33Z",
+   "ts": "2026-10-22T00:44:42Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.5 @ 2026-10-21T21:24:10Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T00:39:33Z",
+   "ts": "2026-10-22T00:44:42Z",
    "severity": "CRITICAL",
    "kind": "FILL_WITHOUT_VEC_DECISION",
    "key": "fin:KSMUSDT_LONG",
    "evidence": "REDUCE 0.9 @ 2026-10-21T21:24:31Z tagged VEC_EXACT but no logged vec decision in the preceding 1800s"
   },
   {
-   "ts": "2026-10-22T00:39:33Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:WLDUSDC_LONG",
-   "evidence": "entry notional $24.91 (median $6.97, MAX_ORDER_VALUE $300) @ 2026-10-22T00:26:18Z VEC_DRIVEN_OPEN_RNTRY_HIGHER_LOW"
-  },
-  {
-   "ts": "2026-10-22T00:39:33Z",
+   "ts": "2026-10-22T00:44:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:CRVUSDC_LONG",
    "evidence": "entry notional $24.96 (median $6.99, MAX_ORDER_VALUE $300) @ 2026-10-22T00:32:34Z QUICK_OPEN_STRONG_BUY_k1:95/d195/k3:78.88081766688627/d3:53."
   },
   {
-   "ts": "2026-10-22T00:39:33Z",
+   "ts": "2026-10-22T00:44:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "men:CRVUSDC_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 298.739->896.217 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 298.739)"
   },
   {
-   "ts": "2026-10-22T00:39:34Z",
+   "ts": "2026-10-22T00:44:42Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "inf:XMRUSDT_LONG",
    "evidence": "BREAKOUT_SIZE_LADDER resized qty 0.192397->0.57719 = $360.00 > MAX_ORDER_VALUE $300 (executed qty would exceed the validated qty 0.192397)"
   },
   {
-   "ts": "2026-10-22T00:39:34Z",
+   "ts": "2026-10-22T00:44:43Z",
    "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:HYPEUSDT_SHORT",
-   "evidence": "22 00:29:05 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:HYPEUSDT_SHORT: bypass MAX_ORDER_VALUE $120 / MAX_POSITION_SIZE $140 \u2014 restoring $735 on bounce (prior max 0.3400)"
-  },
-  {
-   "ts": "2026-10-22T00:39:34Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:HYPEUSDT_SHORT",
-   "evidence": "order notional $735.34 > MAX_ORDER_VALUE $300: 22 00:29:05 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:HYPEUSDT_SHORT @ 80.705000 qty=9.111411 ($735.34) side=SELL | CRYPTO_REENTRY_PATHWAY_HTF_WT_CHURN_SHORT_px80.705000_exit81.01357"
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 199s"
   }
  ],
  "alert_counts": {
   "FILL_WITHOUT_VEC_DECISION": 3,
-  "SIZE_ANOMALY": 5,
-  "CAP_BYPASS": 1
+  "SIZE_ANOMALY": 3,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -291,5 +277,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.83
+ "sweep_s": 1.54
 }
