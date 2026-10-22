@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T00:12:04.155365+00:00",
+ "generated_utc": "2026-10-22T01:12:03.273217+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 6,
-  "exit_kept_in_bar": 4,
-  "entry_promises": 1,
-  "entry_broken_no_delivery": 1,
+  "exit_promises": 8,
+  "exit_kept_in_bar": 5,
+  "entry_promises": 4,
+  "entry_broken_no_delivery": 4,
   "exit_skipped_inflight": 3,
   "exit_kept_late": 1,
-  "exit_broken_no_delivery": 1
+  "exit_broken_no_delivery": 2
  },
  "per_key": {
   "inf:RLCUSDT_LONG": {
@@ -31,12 +31,26 @@
    "exit_broken_no_delivery": 1
   },
   "inf:COTIUSDT_SHORT": {
-   "exit_promises": 1,
-   "exit_kept_in_bar": 1
+   "exit_promises": 2,
+   "exit_kept_in_bar": 2
   },
   "inf:XMRUSDT_LONG": {
    "exit_promises": 1,
-   "exit_kept_in_bar": 1
+   "exit_kept_in_bar": 1,
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "men:ALGOUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "men:ARUSDT_LONG": {
+   "entry_promises": 1,
+   "entry_broken_no_delivery": 1
+  },
+  "men:CRVUSDC_LONG": {
+   "exit_promises": 1,
+   "exit_broken_no_delivery": 1
   }
  },
  "detail": [
@@ -68,6 +82,46 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bear",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "inf",
+   "sym_side": "XMRUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-22 00:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B_KZONE",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ALGOUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-22 00:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "REENTRY_EXIT_PRICE_BREAK",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "ARUSDT_LONG",
+   "kind": "entry",
+   "bar": "10-22 00:00",
+   "late_min": null,
+   "action": "OPEN",
+   "reason": "B10",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "CRVUSDC_LONG",
+   "kind": "exit",
+   "bar": "10-22 00:15",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "MTF_DC_REJECT_1h_px0.4029",
    "outcome": "NO_DELIVERY"
   }
  ],

@@ -14289,6 +14289,23 @@ def _parity_vec_order(reason) -> bool:
     return "|VEC_EXACT" in r or u.startswith(("VEC_DRIVEN_", "BOARD_CONVERGE_")) or "PURE_BOARD" in u
 
 
+def _parity_breach_record(position_key, action, reason, result) -> None:
+    """USER 2026-10-22 BACKSTOP AUDIT: a vector decision that live REFUSED is a parity breach — the position sets
+    diverge on that bar. Logged CRITICAL, appended to data/vector_parity_breaches.jsonl, and the refusing gate is
+    filed as a work order (vector_enforce's retrace queue) so it is exempted, or vectorized with its own TEMPLATE_*
+    switch, before parity can be claimed. The ledger is the proof that nothing the vector decided was refused."""
+    try:
+        _p = Path(getattr(config, "BASE_PATH", ".")) / "data" / "vector_parity_breaches.jsonl"
+        _p.parent.mkdir(parents=True, exist_ok=True)
+        with open(_p, "a") as fh:
+            fh.write(json.dumps({"ts": time.time(), "position_key": position_key, "action": action, "reason": str(reason)[:160], "gate": str(result)[:80]}) + "\n")
+        logger.critical(f"🧨 [VECTOR_PARITY_BREACH] {position_key}: the vector decided {action} and live REFUSED it — {str(result)[:60]} (reason={str(reason)[:60]}). The gate must be exempted or vectorized: data/vector_parity_breaches.jsonl")
+        from live_twins.vector_enforce import _queue_retrace as _qr
+        _qr(f"GATE:{str(result)[:40]}", action, position_key, reason)
+    except Exception:
+        pass
+
+
 def _parity_forward_holds(position_key) -> bool:
     """USER 2026-10-22: anything OPEN in the forward best-settings paper lane MUST have a live position, so no
     converge/stale flatten may close a key whose published forward target is LONG/SHORT (data/vec_live/state)."""
@@ -32443,6 +32460,8 @@ class MultiAccountTradeManager:
         except Exception as _rq_e:  # a stop failure must never unwind or mask a real fill
             logger.critical(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: post-fill stop requirement ERRORED after {_res}: {_rq_e}")
             self._mark_entry_unprotected(position_key, account_key, symbol, position_side, f"requirement_error:{_rq_e}")
+        if str(_res or "").upper().startswith(("BLOCKED", "REFUSED")) and _parity_vec_order(reason):
+            _parity_breach_record(position_key, action, reason, _res)
         return _res
 
     def _mark_entry_unprotected(self, position_key, account_key, symbol, position_side, why):
@@ -32981,6 +33000,8 @@ class MultiAccountTradeManager:
                     _vg_rec, _vg_rec_why = ez_vigilance_try_recover(symbol, position_side, _vg_ind)
                     if _vg_rec:
                         logger.critical(f"✅ [VIGILANCE_RECOVERED_ENTRY_ALLOWED] {position_key}: {_vg_rec_why} — {action} proceeds")
+                    elif _vd_exempt or _parity_vec_order(reason):
+                        logger.warning(f"[VIGILANCE_PARITY_EXEMPT] {position_key}: {_vg_why} — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused)")
                     else:
                         logger.critical(f"🚨 [VIGILANCE_ENTRY_BLOCK] {position_key}: {_vg_why} — awaiting recovery (bounce or price>exit). action={action} reason={(reason or '')[:60]}")
                         return "BLOCKED_VIGILANCE"
@@ -33080,7 +33101,9 @@ class MultiAccountTradeManager:
                         _eb_ok, _eb_agree, _eb_found = (not _eb_blocked), (0 if _eb_blocked else 1), 1
                     else:
                         _eb_ok, _eb_agree, _eb_found = _eb_pass(await ii(self, symbol) or {}, position_side == "LONG", _eb_cfg)
-                    if not _eb_ok:
+                    if not _eb_ok and (_vd_exempt or _parity_vec_order(reason)):
+                        logger.warning(f"[EMA_BLANKET_PARITY_EXEMPT] {position_key}: ema9>21 agrees on {_eb_agree}/{_eb_found} TFs — vec-dictated {action} proceeds (USER 2026-10-22)")
+                    elif not _eb_ok:
                         logger.warning(f"🚫 [EMA_BLANKET_FILTER] {position_key}: BLOCKED {action} — ema9>21 agrees on {_eb_agree}/{_eb_found} TFs < {_eb_cfg.EMA_BLANKET_FILTER_MIN_TFS}. reason={(reason or '')[:50]}")
                         return f"BLOCKED_EMA_BLANKET_FILTER_{position_side}"
         except Exception as _ebe:
@@ -35054,10 +35077,10 @@ class MultiAccountTradeManager:
                         _flags_map = _fjmod.load(_ff)
                     _flag_entry = _flags_map.get(position_key, {})
                     _flag_count = int(_flag_entry.get("count", 0) or 0)
-                    if _flag_count >= 3:
-                        logger.critical(
-                            f"🚫 [FLAGGED_ORIGIN_BLOCK] {position_key}: flagged {_flag_count}× — entry BLOCKED. reasons={_flag_entry.get('reasons', [])[:3]}"
-                        )
+                    if _flag_count >= 3 and (_vd_exempt or _parity_vec_order(reason)):
+                        logger.warning(f"[FLAGGED_ORIGIN_PARITY_EXEMPT] {position_key}: flagged {_flag_count}× — vec-dictated {action} proceeds (USER 2026-10-22: no vector decision is refused)")
+                    elif _flag_count >= 3:
+                        logger.critical(f"🚫 [FLAGGED_ORIGIN_BLOCK] {position_key}: flagged {_flag_count}× — entry BLOCKED. reasons={_flag_entry.get('reasons', [])[:3]}")
                         return f"BLOCKED_FLAGGED_ORIGIN_{_flag_count}x"
             except Exception:
                 pass
