@@ -13454,39 +13454,7 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
     if bool(getattr(cfg, "MTF_GR_EXIT_GATE_ENABLED", False)) and bool(
         getattr(cfg, "MTF_WT_CROSS_EXIT_ENABLED", True)
     ):
-        gr_min_tfs = int(float(getattr(cfg, "MTF_GR_EXIT_MIN_TFS", 3)))
-        wt1_15m_arr2 = _safe(npz, "wt1_15m", n)
-        wt2_15m_arr2 = _safe(npz, "wt2_15m", n)
-        wt1_1h_arr2 = _safe(npz, "wt1_1h", n)
-        wt2_1h_arr2 = _safe(npz, "wt2_1h", n)
-        wt1_4h_arr2 = _safe(npz, "wt1_4h", n)
-        wt2_4h_arr2 = _safe(npz, "wt2_4h", n)
-        wt1_D_arr2 = _safe(npz, "wt1_D", n)
-        wt2_D_arr2 = _safe(npz, "wt2_D", n)
-        wt1_W_arr2 = _safe(npz, "wt1_W", n)
-        wt2_W_arr2 = _safe(npz, "wt2_W", n)
-
-        def _mtf_against(a1, a2):
-            nz = (a1 != 0) & (a2 != 0)
-            return (nz & ((a1 < a2) if is_long else (a1 > a2))).astype(int)
-
-        # USER 2026-10-22 MTF venue split: the two live lanes count different
-        # TF sets (ez 54706: 15m/1h/4h/D; tradier 18055: 1h/4h/D/W). One leg
-        # cannot mirror both, so branch on QuickConfig.MODE like the engines.
-        if str(getattr(cfg, "MODE", "crypto")) == "tradier":
-            gr_cnt2 = (
-                _mtf_against(wt1_1h_arr2, wt2_1h_arr2)
-                + _mtf_against(wt1_4h_arr2, wt2_4h_arr2)
-                + _mtf_against(wt1_D_arr2, wt2_D_arr2)
-                + _mtf_against(wt1_W_arr2, wt2_W_arr2)
-            )
-        else:
-            gr_cnt2 = (
-                _mtf_against(wt1_15m_arr2, wt2_15m_arr2)
-                + _mtf_against(wt1_1h_arr2, wt2_1h_arr2)
-                + _mtf_against(wt1_4h_arr2, wt2_4h_arr2)
-                + _mtf_against(wt1_D_arr2, wt2_D_arr2)
-            )
+        import vec_decisions.process_position_stocks__mtf_gr_wt_exit as _mtf_core
         _mtf_tf = str(getattr(cfg, "MTF_WT_CROSS_EXIT_TF", "15m") or "15m")
         _mtf_pair = {
             "5m": ("wt1_5m", "wt2_5m"),
@@ -13496,16 +13464,28 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
             "3m": ("wt1", "wt2"),
         }.get(_mtf_tf)
         if _mtf_pair is None:
-            wt_ltf_against2 = np.zeros(n, dtype=bool)
+            mtf_gr_exit = np.zeros(n, dtype=bool)
         else:
             _c1 = _safe(npz, _mtf_pair[0], n)
             _c2 = _safe(npz, _mtf_pair[1], n)
             if _c1.sum() == 0 and _c2.sum() == 0 and _mtf_tf == "5m":
                 _c1, _c2 = wt1_3m, wt2_3m
-            wt_ltf_against2 = (
-                (_c1 < _c2) if is_long else (_c1 > _c2)
+            # USER 2026-10-22 MTF venue split: the two live lanes count
+            # different TF sets (ez 54706: 15m/1h/4h/D with the wt1!=0 guard;
+            # tradier 18055: 1h/4h/D/W). The shared core takes any TF set, so
+            # branch on QuickConfig.MODE like the engines do.
+            if str(getattr(cfg, "MODE", "crypto")) == "tradier":
+                _gr_keys = (("wt1_1h", "wt2_1h"), ("wt1_4h", "wt2_4h"))
+                _gr_keys = _gr_keys + (("wt1_D", "wt2_D"), ("wt1_W", "wt2_W"))
+            else:
+                _gr_keys = (("wt1_15m", "wt2_15m"), ("wt1_1h", "wt2_1h"))
+                _gr_keys = _gr_keys + (("wt1_4h", "wt2_4h"), ("wt1_D", "wt2_D"))
+            _gr1 = [_safe(npz, _k1, n) for _k1, _ in _gr_keys]
+            _gr2 = [_safe(npz, _k2, n) for _, _k2 in _gr_keys]
+            mtf_gr_exit = np.asarray(
+                _mtf_core.check_mtf_gr_wt_exit_vec(cfg, _c1, _c2, _gr1, _gr2, is_long),
+                dtype=bool,
             )
-        mtf_gr_exit = (gr_cnt2 >= gr_min_tfs) & wt_ltf_against2
 
     # --- GR_HTF_DIRECT_EXIT — W2-GR5M STAGED faithful twin (ONE call site) ---
     # Live: tradier_manage.py ~19298 — opposite-direction 6-TF x 11-ind score

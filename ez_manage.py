@@ -54727,6 +54727,28 @@ async def process_position(
                         if _mtfce_gr_count >= _mtfce_gr_min_tfs:
                             _mtfce_fire = True
                             _mtfce_reason = f"MTF_GR_WT_EXIT_{_mtfce_wt_tf}_grTFs={_mtfce_gr_count}"
+                            # USER 2026-10-22 MTF structural parity: the vector
+                            # ANDs STRUCTURAL_EXIT_GATE over _all_exit (v12
+                            # post-OR gates, twin of structural_exit_permitted)
+                            # and the tradier MTF lane applies the same veto
+                            # inline — the ez lane had none and could exit into
+                            # a favorable move the vector holds. Per-sym flag,
+                            # default True = vector default; False boards skip
+                            # exactly like the vector skips the AND.
+                            if _mtfce_fire and bool(_psym_get(symbol, position_side, "STRUCTURAL_EXIT_GATE_ENABLED", True)):
+                                try:
+                                    from wt_dc_delta import structural_exit_permitted as _mtfgr_struct
+                                    _mtfgr_ltf = "15m"
+                                    if f"high_{_mtfgr_ltf}" not in (_mtfce_ind or {}):
+                                        _mtfgr_ltf = str(_psym_get(symbol, position_side, "BASE_TF", "15m") or "15m")
+                                    _mtfgr_ind = dict(_mtfce_ind or {})
+                                    _mtfgr_ind["current_price"] = safe_fetch_float(current_price, 0.0)
+                                    _mtfgr_ok, _mtfgr_why = _mtfgr_struct(_mtfgr_ind, _mtfce_is_long, {"rz_ltf_micro": _mtfgr_ltf})
+                                except Exception:
+                                    _mtfgr_ok, _mtfgr_why = False, "STRUCT_VETO_exception"
+                                if not _mtfgr_ok:
+                                    logger.info(f"[MTF_GR_STRUCT_VETO] {position_key}: hold {_mtfce_reason} — {_mtfgr_why}")
+                                    _mtfce_fire, _mtfce_reason = False, ""
                 # LANE-H3 2026-10-05 WT_SIMPLE_GUARANTEE exit leg crypto twin of G2 stocks (tradier_manage.py MTF compound; vec v12 compute_exit_signals: opposite-WT 15m close, no structural check by design). Default False = inert. Fail-open.
                 if not _mtfce_fire:
                     try:
