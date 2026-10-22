@@ -34,13 +34,6 @@
     "symbol": "ALTUSDT",
     "side": "LONG"
   },
-  "inf:BNBUSDC_LONG": {
-    "orderId": "2000001530852003",
-    "stopPrice": 739.35,
-    "entry_sig": "2026-10-22 02:23:35.787000+00:00",
-    "symbol": "BNBUSDC",
-    "side": "LONG"
-  },
   "inf:AVAXUSDC_SHORT": {
     "orderId": "2000001530814865",
     "stopPrice": 9.907,
@@ -54,5 +47,12 @@
     "entry_sig": "2026-10-22 02:10:07.484000+00:00",
     "symbol": "COTIUSDT",
     "side": "SHORT"
+  },
+  "inf:ENAUSDC_LONG": {
+    "orderId": "2000001530867972",
+    "stopPrice": 0.207,
+    "entry_sig": "2026-10-22 02:30:36.242000+00:00",
+    "symbol": "ENAUSDC",
+    "side": "LONG"
   }
 }

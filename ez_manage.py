@@ -64597,31 +64597,43 @@ async def main():
                 trade_manager, tracker_manager, data_manager, config
             )
             tracker_manager.registry = registry
-            hedge_engine = HedgeEngine(
-                trade_manager=trade_manager,
-                tracker_manager=tracker_manager,
-                data_manager=data_manager,
-                config=config,
-                redis_manager=redis_manager,
-                positions_service=positions_service,
-                registry=registry,
-            )
-            trade_manager.hedge_engine = hedge_engine
-            logger.info("[ez_manage] HedgeEngine initialized and attached.")
-            logger.info("⏳ [STARTUP] Loading hedge records...")
-            for account_key in sorted(list(trade_manager._allowed_accounts)):
-                try:
-                    await asyncio.wait_for(
-                        hedge_engine.load_hedge_records(account_key), timeout=22.0
-                    )
-                except asyncio.TimeoutError:
-                    logger.error(
-                        f"❌ [STARTUP] TIMEOUT loading hedges for {account_key} - Skipping"
-                    )
-                except Exception as hedge_load_err:
-                    logger.warning(
-                        f"⚠️ [ez_manage] Failed to load hedges for {account_key}: {hedge_load_err}"
-                    )
+            # USER 2026-10-22: "hedgeengine has been disabled for over a year — if it is still running that is a waste
+            # of resources". HEDGE_MODE=False, OBLIGATORY_HEDGE_ENABLED=False, and the obligatory hedge loop was
+            # killed 2026-03-30, yet the engine was still constructed and its records loaded (22 s timeout PER
+            # account) on every single start, purely to sit idle. Every consumer reads it as
+            # getattr(..., "hedge_engine", None) and falls through when absent (e.g. R3_HEDGE_REFUSED
+            # "no_hedge_engine", AGENT_FORCE_HEDGE_NO_ENGINE), and None is already the attribute's default, so not
+            # building it is the supported state. Flip either switch and it builds exactly as before.
+            _hedge_on = bool(getattr(config, "HEDGE_MODE", False)) or bool(getattr(config, "OBLIGATORY_HEDGE_ENABLED", False))
+            if not _hedge_on:
+                trade_manager.hedge_engine = None
+                logger.warning("[ez_manage] HedgeEngine SKIPPED — HEDGE_MODE=False and OBLIGATORY_HEDGE_ENABLED=False (USER 2026-10-22: disabled for over a year; not constructed, no hedge records loaded)")
+            else:
+                hedge_engine = HedgeEngine(
+                    trade_manager=trade_manager,
+                    tracker_manager=tracker_manager,
+                    data_manager=data_manager,
+                    config=config,
+                    redis_manager=redis_manager,
+                    positions_service=positions_service,
+                    registry=registry,
+                )
+                trade_manager.hedge_engine = hedge_engine
+                logger.info("[ez_manage] HedgeEngine initialized and attached.")
+                logger.info("⏳ [STARTUP] Loading hedge records...")
+                for account_key in sorted(list(trade_manager._allowed_accounts)):
+                    try:
+                        await asyncio.wait_for(
+                            hedge_engine.load_hedge_records(account_key), timeout=22.0
+                        )
+                    except asyncio.TimeoutError:
+                        logger.error(
+                            f"❌ [STARTUP] TIMEOUT loading hedges for {account_key} - Skipping"
+                        )
+                    except Exception as hedge_load_err:
+                        logger.warning(
+                            f"⚠️ [ez_manage] Failed to load hedges for {account_key}: {hedge_load_err}"
+                        )
             # OBLIGATORY_HEDGE_LOOP KILLED 2026-03-30: Created 15,378 rogue hedge opens in ONE DAY (Mar 29). Hedge via HEDGE_MODE only, controlled by ez_positions_quick. NEVER autonomous loops.
             logger.info("⏳ [STARTUP] Ensuring symbol set...")
             try:
