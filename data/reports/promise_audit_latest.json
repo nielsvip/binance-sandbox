@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T10:12:01.987514+00:00",
+ "generated_utc": "2026-10-22T11:12:02.353980+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 163,
+  "exit_promises": 164,
   "exit_kept_in_bar": 19,
   "entry_promises": 64,
   "entry_broken_no_delivery": 64,
   "exit_skipped_inflight": 51,
   "exit_kept_late": 5,
-  "exit_broken_no_delivery": 139
+  "exit_broken_no_delivery": 140
  },
  "per_key": {
   "inf:RLCUSDT_LONG": {
@@ -305,8 +305,8 @@
   "men:MOVEUSDT_SHORT": {
    "entry_promises": 3,
    "entry_broken_no_delivery": 3,
-   "exit_promises": 1,
-   "exit_broken_no_delivery": 1
+   "exit_promises": 2,
+   "exit_broken_no_delivery": 2
   },
   "men:BBUSDT_SHORT": {
    "exit_promises": 1,
@@ -2471,6 +2471,16 @@
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "men",
+   "sym_side": "MOVEUSDT_SHORT",
+   "kind": "exit",
+   "bar": "10-22 10:00",
+   "late_min": null,
+   "action": "CLOSE",
+   "reason": "EXIT_VELOCITY_WT against-short g-0.29%",
    "outcome": "NO_DELIVERY"
   }
  ],
