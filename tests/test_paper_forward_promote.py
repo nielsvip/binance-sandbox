@@ -64,7 +64,14 @@ def test_gate_map_has_bool_and_inv_kinds():
 def test_gate_lookup_prefix_fallback():
     gm = pp.gate_map()
     assert pp.gate_lookup(gm, "VEC_DRIVEN_OPEN_RECONCILE") == ("VEC_DRIVEN_ENABLED", "bool")
-    assert pp.gate_lookup(gm, "NO_SUCH_PATH_XYZ") == (None, None)
+    assert pp.gate_lookup(gm, "NO_SUCH_PATH_XYZ", set()) == (None, None)
+
+
+def test_gate_lookup_knob_fallback_for_blocked_switch():
+    gm = pp.gate_map()
+    blocked = {"RULE_B_5M_EXIT_ENABLED"}
+    assert pp.gate_lookup(gm, "RULE_B_5M_EXIT", blocked) == ("RULE_B_5M_EXIT_ENABLED", "bool")
+    assert pp.gate_lookup(gm, "RULE_B_5M_EXIT", set()) == (None, None)
 
 
 def test_eligible_gates_on_days_events_and_sign():

@@ -160,9 +160,11 @@ def gate_map() -> dict:
     return m
 
 
-def gate_lookup(gm: dict, path: str):
+def gate_lookup(gm: dict, path: str, blocked: set = None):
     """Exact canon hit, else longest registry-token prefix (rows like VEC_DRIVEN_
-    only carry a prefix token; the observed path keeps its full name)."""
+    only carry a prefix token; the observed path keeps its full name), else a
+    knob-derived bool fallback when path+'_ENABLED' is itself parity-blocked
+    (SUB15M/NONVEC switches with no registry row — enabling means True)."""
     if path in gm:
         return gm[path]
     best, bestn = None, -1
@@ -172,7 +174,14 @@ def gate_lookup(gm: dict, path: str):
         tok = pfc.canon_family(r["token"])
         if tok and path.startswith(tok) and len(tok) > bestn:
             best, bestn = (r["gate"], r["kind"]), len(tok)
-    return best or (None, None)
+    if best:
+        return best
+    if blocked is None:
+        blocked = blocked_knobs()
+    knob = f"{path}_ENABLED"
+    if knob in blocked:
+        return knob, "bool"
+    return None, None
 
 
 def eligible(
@@ -189,7 +198,7 @@ def eligible(
             or r.get("scored", 0) < min_events
         ):
             continue
-        knob, gate_kind = gate_lookup(gm, r["path"])
+        knob, gate_kind = gate_lookup(gm, r["path"], blocked)
         if not knob or gate_kind not in ("bool", "inv"):
             continue
         if _protective(r["path"], knob):
