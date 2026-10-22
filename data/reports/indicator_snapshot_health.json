@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T21:30:09Z",
+ "generated_utc": "2026-10-22T21:34:13Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 782.3,
+  "age_s": 1033.3,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 65078,
-  "proc_age_s": 3116.0,
-  "log_age_s": 2.1,
+  "proc_age_s": 3367.0,
+  "log_age_s": 200.3,
   "warmup_done": true,
   "timeframes_since_restart": [
    "4h"
@@ -22,6 +22,7 @@
   "written": 0,
   "lines": [],
   "decisions": [
+   "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
    "warm-up already complete (steady state is self-sustaining)",
@@ -46,12 +47,13 @@
   "lease_since": "2026-10-22T21:29:45Z",
   "lease_reason": "Mac reachable but NOT TRADING: crypto: account_dead 1/5 (ang) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, indicators_unproducible latest_market_data.json age 759s > 300s \u2014 the Mac is not producing the indicator snapshot its engines read, not_trading_account: ang idle 17805s (56 live keys), inf idle 14342s (11 live keys), flz idle 14212s (26 live keys), men idle 6898s (50 live keys), fin idle 7255s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 869s) for 45s",
   "now": 1792704607.1367407,
+  "from_cache_age_s": 244.2,
   "heartbeat_age_s": 7.5,
   "active_s": 102424.9,
   "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-22T21:29:45Z, reason 'Mac reachable but NOT TRADING: crypto: account_dead 1/5 (ang) no ez_manage process and/or no engine log line for >= 240s while other accounts still trade \u2014 local repair failed, indicators_unproducible latest_market_data.json age 759s > 300s \u2014 the Mac is not producing the indicator snapshot its engines read, not_trading_account: ang idle 17805s (56 live keys), inf idle 14342s (11 live keys), flz idle 14212s (26 live keys), men idle 6898s (50 live keys), fin idle 7255s (42 live keys) \u2014 no vec decision executed for >30s while the board lane is live (registry age 869s) for 45s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 782s old (> 600s). ez_indicators pid=65078 warmup_done=True tfs_since_restart=['4h'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1033s old (> 600s). ez_indicators pid=65078 warmup_done=True tfs_since_restart=['4h'] restarts_last_hour=1. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }

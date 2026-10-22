@@ -56992,6 +56992,21 @@ async def process_position(
                 ):
                     _pct_exit = True
             if _pct_exit:
+                # USER 2026-10-22 parity hardening (batch-1 follow-up): the
+                # vector ANDs STRUCTURAL_EXIT_GATE over _all_exit incl. this
+                # leg — live fired into favorable moves the vector holds.
+                if bool(_psym_get(symbol, position_side, "STRUCTURAL_EXIT_GATE_ENABLED", True)):
+                    try:
+                        from wt_dc_delta import structural_exit_permitted as _pct_struct
+                        _pct_ind = dict(i or {})
+                        _pct_ind["current_price"] = safe_fetch_float(current_price, 0.0)
+                        _pct_ok, _pct_why = _pct_struct(_pct_ind, is_long, {"rz_ltf_micro": "15m"})
+                    except Exception:
+                        _pct_ok, _pct_why = False, "STRUCT_VETO_exception"
+                    if not _pct_ok:
+                        logger.info(f"[WT_PERCENTILE_STRUCT_VETO] {position_key}: hold pct_D={_pct_D:.0f} — {_pct_why}")
+                        _pct_exit = False
+            if _pct_exit:
                 _pct_g = safe_fetch_float(getattr(position, "gain", 0), 0)
                 logger.warning(
                     f"[WT_PERCENTILE_EXIT] {position_key}: pct_D={_pct_D:.0f} pct_4h={_pct_4h:.0f} g={_pct_g:.2f}%"
@@ -57058,6 +57073,20 @@ async def process_position(
                     _e1_fire = (is_long and _e1_delta < -_e1_thr) or (
                         (not is_long) and _e1_delta > _e1_thr
                     )
+                if _e1_fire:
+                    # USER 2026-10-22 parity hardening (batch-1 follow-up):
+                    # same structural veto as the WT lane above.
+                    if bool(_psym_get(symbol, position_side, "STRUCTURAL_EXIT_GATE_ENABLED", True)):
+                        try:
+                            from wt_dc_delta import structural_exit_permitted as _e1_struct
+                            _e1_ind = dict(i or {})
+                            _e1_ind["current_price"] = safe_fetch_float(current_price, 0.0)
+                            _e1_ok, _e1_why = _e1_struct(_e1_ind, is_long, {"rz_ltf_micro": "15m"})
+                        except Exception:
+                            _e1_ok, _e1_why = False, "STRUCT_VETO_exception"
+                        if not _e1_ok:
+                            logger.info(f"[E_1_STRUCT_VETO] {position_key}: hold delta={_e1_delta:+.0f} — {_e1_why}")
+                            _e1_fire = False
                 if _e1_fire:
                     _e1_g = safe_fetch_float(getattr(position, "gain", 0), 0)
                     logger.warning(

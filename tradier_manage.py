@@ -16378,6 +16378,24 @@ async def process_position(
                             )
                         if _tsr_fire:
                             _gx_fire, _gx_reason = True, _tsr_reason
+                        if _tsr_fire and _tsr_reason.startswith(("E_1_WT_DELTA_EXIT", "WT_PERCENTILE_")):
+                            # USER 2026-10-22 parity hardening (batch-1
+                            # follow-up): the vector ANDs STRUCTURAL_EXIT_GATE
+                            # over these two legs — live fired into favorable
+                            # moves the vector holds. Newborn/htf arms
+                            # untouched (protective / unmodeled).
+                            if bool(_gx_c("STRUCTURAL_EXIT_GATE_ENABLED", True)):
+                                try:
+                                    from wt_dc_delta import structural_exit_permitted as _tsr_struct
+                                    _tsr_sind = dict(_tsr_ind or {})
+                                    _tsr_sind["current_price"] = safe_fetch_float(current_price, 0.0)
+                                    _tsr_sok, _tsr_swhy = _tsr_struct(_tsr_sind, is_long, {"rz_ltf_micro": "15m"})
+                                except Exception:
+                                    _tsr_sok, _tsr_swhy = False, "STRUCT_VETO_exception"
+                                if not _tsr_sok:
+                                    logger.info(f"[TSR_STRUCT_VETO] {position_key}: hold {_tsr_reason} — {_tsr_swhy}")
+                                    _tsr_fire = False
+                                    _gx_fire, _gx_reason = False, ""
                         if not _gx_fire:
                             _ctp_fired = (
                                 getattr(trade_manager, "_tiered_tp_hit_stocks", {})
