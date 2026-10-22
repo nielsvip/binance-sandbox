@@ -20,6 +20,7 @@ PY="/opt/anaconda3/envs/binance_env/bin/python"
 ACCOUNTS="${MAC_POS_ACCOUNTS:-ang inf flz fin men}"
 MAX_HB_AGE="${MAC_POS_MAX_HB_AGE:-180}"   # seconds without a successful save before the writer is replaced
 BOOT_GRACE="${MAC_POS_BOOT_GRACE:-240}"   # a freshly started writer gets this long to produce its first heartbeat
+HB_STUCK_PASSES="${MAC_POS_HB_STUCK_PASSES:-10}"   # consecutive 1-min passes with ZERO heartbeat progress before a kill
 MAX_MGR_LOG_AGE="${MAC_MGR_MAX_LOG_AGE:-300}"  # ez_manage silent (no log write) this long = replace it.
 # 2026-10-16: MEASURED, DO NOT LOWER. Log age is a WEAK liveness signal for ez_manage — a healthy engine with few or
 # no positions legitimately writes nothing for minutes. Inter-line gaps in the last 3 MB of ez_manage_{inf,ang}.log:
@@ -302,14 +303,27 @@ for A in $ACCOUNTS; do
   reap_extras "$RT"
   pids=$(procs_for "$SVC")
   hb_age=$(age_of "$BASE/$A/.positions_service_heartbeat.json")
+  # USER 2026-10-22: a STALE heartbeat is not the same as a STUCK one. Measured 03:18-03:31Z at Mac load 239: every
+  # writer was SIGKILLed ~300s after its own start ("heartbeat 945s > 180s, up 302s" — a heartbeat OLDER than the
+  # process) and the ages FELL between passes (945s -> 484s), so the writers were saving, just slower than
+  # MAX_HB_AGE under load; the restart added load and bought another kill. 32 WEDGED/reap events in 30 min, no
+  # convergence. This pass runs every minute, so demand NO FORWARD PROGRESS for HB_STUCK_PASSES consecutive passes
+  # before killing: any advance of the heartbeat mtime resets the counter, a genuinely frozen writer still dies
+  # within ~HB_STUCK_PASSES minutes, and a slow-but-alive writer is left alone to finish its save.
+  hb_mtime=$(stat -f %m "$BASE/$A/.positions_service_heartbeat.json" 2>/dev/null || echo 0)
+  hb_state="/tmp/.mac_pos_hb_state_$A"
+  hb_prev=$(awk '{print $1}' "$hb_state" 2>/dev/null || echo "")
+  hb_stall=$(awk '{print $2+0}' "$hb_state" 2>/dev/null || echo 0)
+  if [ "$hb_mtime" = "$hb_prev" ]; then hb_stall=$((hb_stall + 1)); else hb_stall=0; fi
+  echo "$hb_mtime $hb_stall" > "$hb_state"
   stamp_file="/tmp/.mac_pos_started_$A"
   started=0
   [ -f "$stamp_file" ] && started=$(cat "$stamp_file" 2>/dev/null || echo 0)
   if [ "$started" -gt 0 ]; then since_start=$(( now - started )); else since_start=999999; fi  # no stamp = not started by us = no boot grace
   if [ -z "$pids" ]; then
     klog "$A: no writer -> start"
-  elif [ "$hb_age" -gt "$MAX_HB_AGE" ] && [ "$since_start" -gt "$BOOT_GRACE" ]; then
-    klog "$A: writer WEDGED (heartbeat ${hb_age}s > ${MAX_HB_AGE}s, up ${since_start}s) -> kill $pids and restart"
+  elif [ "$hb_age" -gt "$MAX_HB_AGE" ] && [ "$since_start" -gt "$BOOT_GRACE" ] && [ "$hb_stall" -ge "$HB_STUCK_PASSES" ]; then
+    klog "$A: writer WEDGED (heartbeat ${hb_age}s > ${MAX_HB_AGE}s, up ${since_start}s, no progress for ${hb_stall} passes) -> kill $pids and restart"
     for p in $pids; do kill -9 "$p" 2>/dev/null; done
     pids=""
   fi
