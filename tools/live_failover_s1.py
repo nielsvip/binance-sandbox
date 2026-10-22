@@ -147,14 +147,21 @@ NT_POS_S = float(os.environ.get("LF_NT_POSITIONS_S", "0"))  # 2026-10-19 USER ("
 # this takes over only the dead engine and never its healthy siblings — the "Mac down -> S1 takes everything" half
 # still runs through the absent-heartbeat path below. Measured 2026-10-22: men and fin executed nothing for hours
 # while the lease sat holder=mac and 34.6 h stale, because no kind existed for "this account is not trading".
-TAKEOVER_KINDS = set(filter(None, (os.environ.get("LF_TAKEOVER_KINDS") or "indicators_unproducible,not_trading_account").split(",")))
+TAKEOVER_KINDS = set(filter(None, (os.environ.get("LF_TAKEOVER_KINDS") or "indicators_unproducible,not_trading_account,broker_unreachable_account").split(",")))
+# 2026-10-22 USER ("if EVEN ONE unreachable warning is fired s1 should take over immediately as it would mean the
+# macbook is offline"): the Mac refresher marks GENUINE_SLOT_STALE only when the broker is truly unreachable from
+# the Mac (loop timing cannot cause it), and the Mac raises broker_unreachable_account on the FIRST mark naming the
+# account. S1-side dwell is 0 — the 4-tick confirm (~60 s) + the S1 self-probe stay as the anti-flap.
 # The Mac being off/offline is NOT a kind: it is the absent-heartbeat path (hb_absent / unreachable / pushes_stopped),
 # which is evaluated separately and deliberately left untouched — that is the other half of the operator's rule.
 NT_NEED = {"broker_unreachable": NT_BROKER_S, "order_path_dead": NT_ORDER_S, "traders_dead": TRADING_DEAD_S, "account_dead": NT_ACCT_S,
            "indicators_stale": NT_IND_S, "positions_stale": NT_POS_S, "stock_account_dead": 0.0,
            # The Mac side already required LF_NOT_TRADING_S (180 s) of silence before raising this, so the S1-side
            # dwell is small: the operator's bar is 3 minutes total, not 3 minutes plus another confirmation window.
-           "not_trading_account": float(os.environ.get("LF_NT_NOT_TRADING_S", "30"))}
+           "not_trading_account": float(os.environ.get("LF_NT_NOT_TRADING_S", "30")),
+           # broker_unreachable_account fires on the Mac on the FIRST genuine miss, so no S1-side dwell on top:
+           # the 4-tick confirm is the whole delay (~60 s first-warning to takeover).
+           "broker_unreachable_account": float(os.environ.get("LF_NT_BROKER_UNREACHABLE_S", "0"))}
 STOCK_ACCT_MISSING_S = float(os.environ.get("LF_STOCK_ACCT_MISSING_S", "240"))  # S1-side dwell for a
 # vanished single stock engine (no Mac-side age exists for a dead process; 240 s clears ordinary restarts,
 # mirroring LF_ACCT_DEAD_S on crypto).
@@ -618,6 +625,10 @@ class Watchdog:
             # the Mac itself is the problem, and taking the venue is then correct.
             if "not_trading_account" in kinds:
                 named = sorted(set(named) | {a for a in (reading.get("not_trading_account_accounts") or [])})
+            # 2026-10-22: same account-scoping for the genuine-miss kind, so S1 starts ONLY the blind
+            # account's engines. Empty list would mean whole-venue (see not_trading_account above).
+            if "broker_unreachable_account" in kinds:
+                named = sorted(set(named) | {a for a in (reading.get("broker_unreachable_accounts") or [])})
             # 2026-10-20 ONLY TAKEOVER_KINDS may move the lease (see the block above). Everything else is kept in
             # `kinds` for the log/alert and handed to LOCAL repair; it must not fence the host that can fix it.
             _tk = [k for k in kinds if k in TAKEOVER_KINDS]

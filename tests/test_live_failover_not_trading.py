@@ -211,6 +211,47 @@ def test_no_takeover_when_s1_shares_the_ban(world, monkeypatch):
     assert 2 <= len(probes) <= 7  # re-probed every LF_NT_PROBE_EVERY_S (120 s), not every tick
 
 
+def _genuine_miss(world, now, acct="men"):
+    append(
+        world.logs / f"ez_manage_{acct}.log",
+        f"{_ez(now)} - CRITICAL - [{acct}] 🛑 [POSITIONS_BROKER_FETCH_FAILED] binance:{acct} "
+        f"GENUINE_SLOT_STALE no broker snapshot for >20s (background refresher starved/failed) reason=pre {acct}:X",
+    )
+
+
+# ---------------------------------------------------------------- S1: first genuine broker miss takes over that account only
+def test_crypto_genuine_miss_takeover_account_scoped(world):
+    """USER 2026-10-22: EVEN ONE genuine unreachable warning -> S1 takes over that account.
+    The refresher proves the slot stale (loop timing cannot cause it), so the Mac raises
+    broker_unreachable_account on the FIRST mark naming the account; S1 confirms ~60 s +
+    probes its own access, then starts only that account's engines."""
+    arm(world)
+    t0 = T_SATURDAY
+    agent, watchdog = start(world, t0)
+    taken = None
+    for k in range(1, 20):
+        now = t0 + 15 * k
+        world.mac_produce(now)
+        world.s1_produce(now)
+        crypto_poll(world, now)
+        _genuine_miss(world, now)
+        run_pair(world, agent, watchdog, now)
+        if k == 2:
+            r = hb(world)["trading_health"]["crypto"]
+            assert "broker_unreachable_account" in r["kinds"], r["kinds"]
+            assert r["broker_unreachable_accounts"] == ["men"], r
+        if world.lease()["holder"] == "s1":
+            taken = now - t0
+            break
+    assert taken is not None and 45 <= taken <= 120, taken
+    lease = world.lease()
+    assert lease["venues"] == "crypto"
+    scope = (lease.get("accounts") or {}).get("crypto") or []
+    assert "men" in scope and "ang" not in scope, lease
+    assert ("probe", "crypto") in watchdog.actions.calls
+    assert "MAC_NOT_TRADING" in [a["kind"] for a in alerts(world)]
+
+
 def test_pin_mac_and_disarm_block_not_trading_takeover(world):
     t0 = T_SATURDAY
     agent, watchdog = start(world, t0)

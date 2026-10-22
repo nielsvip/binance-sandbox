@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -46,9 +47,13 @@ def main():
     syms = [s.strip().upper() for s in a.syms.split(",") if s.strip()] or stocks_universe(a.limit)
     import backtest_v8_precompute as pc
 
+    def _alarm(_s, _f):
+        raise TimeoutError("warmer per-symbol budget 720s")
     ok, fail, t_all = 0, [], time.time()
     for i, sym in enumerate(syms, 1):
         t0 = time.time()
+        signal.signal(signal.SIGALRM, _alarm)
+        signal.alarm(720)
         try:
             raw = pc.compute_symbol(sym, "tradier", return_arrays=True)
             n = len((raw or {}).get("timestamps", []) or [])
@@ -58,6 +63,8 @@ def main():
         except Exception as exc:
             print(f"[{i}/{len(syms)}] {sym} FAIL {type(exc).__name__}: {str(exc)[:120]}", flush=True)
             fail.append(sym)
+        finally:
+            signal.alarm(0)
     print(f"DONE {ok} ok, {len(fail)} failed {fail[:10]} in {(time.time()-t_all)/60:.0f}min", flush=True)
 
 

@@ -563,6 +563,10 @@ def _crypto_manage_events(line):
         out.append(("blocked", None))
     if "POSITIONS_BROKER_FETCH_FAILED" in line:
         out.append(("fetch_failed", classify_error(line)))
+    if "GENUINE_SLOT_STALE" in line:
+        # USER 2026-10-22: the refresher proved the slot stale = the broker is genuinely unreachable from this
+        # host (never loop timing). First mark fires the per-account kind below — S1 takes over on it.
+        out.append(("genuine", None))
     return out
 
 
@@ -710,6 +714,7 @@ class TradingHealth:
     def _crypto(self, now, alive, fenced, ages=None):
         ages = ages or {}
         accounts, dead, considered = {}, [], 0
+        bun_acct = []
         for acct, f in self.crypto.items():
             for follower in f.values():
                 follower.poll(now)
@@ -740,8 +745,15 @@ class TradingHealth:
             considered += 1 if active else 0
             if broker_dead:
                 dead.append(acct)
+            _genuine = len(mgr.window(now, ORDER_WINDOW_S, "genuine"))
+            # USER 2026-10-22: EVEN ONE genuine miss fires — the refresher only marks GENUINE_SLOT_STALE when the
+            # slot is truly stale (loop timing cannot cause it), so no dwell here is honest. S1 still confirms
+            # 4 ticks + probes its own broker access before moving the lease (anti-flap stays S1-side).
+            if active and not starting and _genuine >= 1:
+                bun_acct.append(acct)
             accounts[acct] = {"trader_alive": n_alive, "last_broker_ok_age_s": None if last_ok is None else round(now - last_ok, 1),
                               "no_broker_ok_s": None if no_ok_s is None else round(no_ok_s, 1), "consec_broker_errors": consec,
+                              "genuine_slot_stale_window": _genuine,
                               "writer_log_silent_s": None if silent_s is None else round(silent_s, 1), "error_classes_window": classes,
                               "opens_blocked_broker_unreachable_window": len(mgr.window(now, ORDER_WINDOW_S, "blocked")),
                               "manage_broker_fetch_failed_window": len(mgr.window(now, ORDER_WINDOW_S, "fetch_failed")), "broker_dead": broker_dead,
@@ -775,9 +787,17 @@ class TradingHealth:
         if not fenced and traders and acct_dead:
             kinds.append("account_dead")
             reasons.append(f"account_dead {len(acct_dead)}/{len(accounts)} ({','.join(acct_dead)}) no ez_manage process and/or no engine log line for >= {int(ACCT_DEAD_S)}s while other accounts still trade — local repair failed")
+        # USER 2026-10-22: EVEN ONE genuine broker miss takes over. The refresher marks GENUINE_SLOT_STALE only
+        # when the slot is truly stale (loop timing cannot cause it), so unlike broker_unreachable (3-of-5 +
+        # 120 s dwell) this kind fires on the FIRST mark and names the account, letting S1 take over that
+        # account only (~60 s S1 confirm + self-probe still apply). Fenced venues stay silent (self-lock rule).
+        bun_acct = sorted(set(bun_acct))
+        if not fenced and traders and bun_acct:
+            kinds.append("broker_unreachable_account")
+            reasons.append(f"broker_unreachable_account ({','.join(bun_acct)}) genuine broker-truth miss — broker unreachable from this host")
         return {"applicable": True, "fenced": fenced, "not_trading": bool(kinds), "kinds": kinds, "reasons": reasons,
                 "traders_alive": traders, "accounts_considered": considered, "broker_dead_accounts": dead,
-                "account_dead_accounts": acct_dead, "accounts": accounts}
+                "account_dead_accounts": acct_dead, "broker_unreachable_accounts": bun_acct, "accounts": accounts}
 
     def _stocks(self, now, alive, fenced, ages=None):
         ages = ages or {}

@@ -47,6 +47,8 @@ DEFAULTS: Dict[str, Any] = {
     "POSITIONS_BROKER_CACHE_S": 1.0,  # broker snapshot reuse window (rate-limit safety)
     "POSITIONS_WS_ALIVE_S": 90.0,  # a user-data WS heard from within this window IS the freshness proof (see _ez_local)
     "POSITIONS_BROKER_TIMEOUT_S": 8.0,
+    "POSITIONS_BROKER_REFRESH_S": 5.0,  # background broker-truth poll interval per account (refresher thread)
+    "POSITIONS_BROKER_SLOT_STALE_S": 20.0,  # refresher slot older than this = GENUINELY unreachable (failover signal, not loop timing)
     "POSITIONS_CONFIRM_ENABLED": True,  # (c) SUCCESS only after broker-confirmed position change
     "POSITIONS_CONFIRM_TIMEOUT_S": 8.0,
     "POSITIONS_CONFIRM_POLL_S": 0.5,
@@ -377,7 +379,7 @@ class BrokerPositions:
     <= POSITIONS_BROKER_CACHE_S, refuses to call while an IP ban is active. fetch() returns the raw row list,
     [] for a CONFIRMED empty account, None (or raises) on failure -> snapshot None (callers fail closed)."""
 
-    def __init__(self, broker: str, account: str, fetch: Callable[[], Awaitable[Optional[List[Dict[str, Any]]]]], config: Any = None, clock: Callable[[], float] = time.time, ban_remaining: Optional[Callable[[], float]] = None, logger: Optional[logging.Logger] = None):
+    def __init__(self, broker: str, account: str, fetch: Callable[[], Awaitable[Optional[List[Dict[str, Any]]]]], config: Any = None, clock: Callable[[], float] = time.time, ban_remaining: Optional[Callable[[], float]] = None, logger: Optional[logging.Logger] = None, sync_fetch: Optional[Callable[[], Any]] = None):
         self.broker = broker
         self.account = account
         self.fetch = fetch
@@ -388,6 +390,15 @@ class BrokerPositions:
         self.last: Optional[BrokerSnapshot] = None
         self.calls = 0
         self._lock: Optional[asyncio.Lock] = None
+        # USER 2026-10-22 BROKER_UNREACHABLE lie: the event loop can starve 9s+ under CPU load while the broker
+        # answers in 0.75s, so loop-timed single-flight timeouts misfire and every open is refused as "unreachable".
+        # The refresher thread polls broker truth OFF-loop into the same self.last slot; snapshot() then serves it
+        # without awaiting anything loop-timed. A stale slot is GENUINE unreachability (failover signal), never timing.
+        self.sync_fetch = sync_fetch
+        self._slot_lock = _threading.Lock()
+        self._refresher: Optional[_threading.Thread] = None
+        self._refresh_fails = 0
+        self._miss_since = 0.0
 
     def _alock(self) -> asyncio.Lock:
         if self._lock is None:
@@ -397,7 +408,69 @@ class BrokerPositions:
     def _fresh(self) -> bool:
         return self.last is not None and (self.clock() - self.last.fetched_at) <= float(cfg(self.config, "POSITIONS_BROKER_CACHE_S"))
 
+    def _slot_stale_s(self) -> float:
+        return max(float(cfg(self.config, "POSITIONS_BROKER_CACHE_S")), float(cfg(self.config, "POSITIONS_BROKER_SLOT_STALE_S")))
+
+    def ensure_refresher(self) -> None:
+        """Start the off-loop broker-truth refresher once (daemon; dies with the process)."""
+        if self.sync_fetch is None or self._refresher is not None:
+            return
+        try:
+            t = _threading.Thread(target=self._refresh_loop, name=f"ptruth-{self.broker}-{self.account}", daemon=True)
+            self._refresher = t
+            t.start()
+        except Exception as e:
+            self.log.warning(f"[POSITIONS_REFRESHER_START_FAIL] {self.broker}:{self.account} {e!r}")
+
+    def _refresh_loop(self) -> None:
+        import time as _t
+        interval = max(1.0, float(cfg(self.config, "POSITIONS_BROKER_REFRESH_S")))
+        while True:
+            try:
+                try:
+                    ban = float(self.ban_remaining()) if self.ban_remaining else 0.0
+                except Exception:
+                    ban = 0.0
+                if ban <= 0:
+                    rows = self.sync_fetch()
+                    if isinstance(rows, list):
+                        amounts, entries = (normalize_binance if self.broker == "binance" else normalize_tradier)(rows)
+                        with self._slot_lock:
+                            self.last = BrokerSnapshot(self.broker, self.account, self.clock(), amounts, entries)
+                        self._refresh_fails = 0
+                    # unparseable: leave the slot (goes stale naturally, no log storm)
+                # banned: skip the poll (ban extension risk); the slot goes stale and signals genuinely
+            except Exception as e:
+                self._refresh_fails += 1
+                if self._refresh_fails == 1 or self._refresh_fails % 12 == 0:
+                    try:
+                        self.log.warning(f"[POSITIONS_REFRESH_FAIL] {self.broker}:{self.account} background poll failed x{self._refresh_fails} ({e!r})"[:220])
+                    except Exception:
+                        pass
+            _t.sleep(interval)
+
+    def _note_genuine_miss(self, reason: str) -> None:
+        """A stale slot is GENUINE unreachability (failover signal), never loop timing: edge + 60 s re-fire."""
+        now = self.clock()
+        if now - self._miss_since < 60.0:
+            return
+        self._miss_since = now
+        try:
+            self.log.critical(f"🛑 [POSITIONS_BROKER_FETCH_FAILED] {self.broker}:{self.account} GENUINE_SLOT_STALE no broker snapshot for >{self._slot_stale_s():.0f}s (background refresher starved/failed) reason={str(reason or '')[:60]}")
+        except Exception:
+            pass
+
     async def snapshot(self, force: bool = False, reason: str = "") -> Optional[BrokerSnapshot]:
+        if not force and self.sync_fetch is not None:
+            # Refresher path: serve the off-loop slot with NO loop-timed waiting, so a starved
+            # event loop can never manufacture an "unreachable". Stale slot = genuinely unreachable.
+            self.ensure_refresher()
+            with self._slot_lock:
+                last = self.last
+            if last is not None and (self.clock() - float(last.fetched_at or 0.0)) <= self._slot_stale_s():
+                return last
+            self._note_genuine_miss(reason)
+            return None
         if not force and self._fresh():
             return self.last
         _slock = self._alock()
@@ -735,7 +808,17 @@ def _ez_local(mgr: Any, position_key: str) -> Tuple[Optional[float], Optional[fl
 
 
 def ez_broker(mgr: Any, account_key: str, config: Any = None, logger: Optional[logging.Logger] = None) -> BrokerPositions:
-    return get_broker_positions("binance", account_key, binance_fetcher(_ez_client(mgr, account_key), config), config=config, ban_remaining=_ban_remaining_binance, logger=logger)
+    _cli = _ez_client(mgr, account_key)
+    def _sync_fetch() -> Any:
+        _c = _ez_client(mgr, account_key)
+        _i = getattr(_c, "odg_inner", _c)
+        if _i is None:
+            raise RuntimeError("no binance client")
+        return _i.futures_position_information()
+    bp = get_broker_positions("binance", account_key, binance_fetcher(_cli, config), config=config, ban_remaining=_ban_remaining_binance, logger=logger)
+    bp.sync_fetch = _sync_fetch
+    bp.ensure_refresher()
+    return bp
 
 
 def _ez_resync(mgr: Any, account_key: str) -> None:
@@ -769,6 +852,8 @@ async def ez_pre_order_check(mgr: Any, account_key: str, symbol: str, position_k
         snap = None  # 2026-10-13: a stale snapshot may never veto an exit as "broker flat" (NEAR ang 25h stranding)
     if snap is None:
         store[position_key] = {"pre": None, "local": local_amt, "source": "none", "ts": t, **({"call": _call} if _call is not None else {})}
+        if not exit_like:
+            log.warning(f"[POSITIONS_PREORDER_NO_TRUTH] {position_key}: no broker truth for {action} — refused (genuine miss already signaled separately)")
         if exit_like:
             log.critical(f"⚠️ [POSITIONS_BROKER_UNREACHABLE] {position_key}: broker poll failed — EXIT {action} proceeds (exits never blocked); result must still be broker-confirmed")
             return None
