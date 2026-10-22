@@ -41,6 +41,7 @@ Usage: python3 tools/paper_forward_comprehensive.py [--days 14] [--horizon-bars 
 Cron (6-hourly, next to PAPER_NONVEC_EVAL / PAPER_SHADOW):
   45 2,8,14,20 * * * cd /Users/niels/Documents/binance && /opt/anaconda3/envs/binance_env/bin/python tools/paper_forward_comprehensive.py >> /tmp/paper_forward_comprehensive.log 2>&1 # PAPER_FORWARD_COMPREHENSIVE
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,7 +60,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
-OUT = ROOT / "data" / "paper_forward_comprehensive"  # NOT data/paper_forward (broken ext-drive symlink, 2026-06 archive)
+OUT = (
+    ROOT / "data" / "paper_forward_comprehensive"
+)  # NOT data/paper_forward (broken ext-drive symlink, 2026-06 archive)
 NONVEC_DIR = ROOT / "data" / "paper_nonvec"
 COST = {"crypto": 0.10, "stocks": 0.02}
 BAR = 900
@@ -82,21 +85,32 @@ def canon_family(fn: str) -> str:
     """Grouping key = loss_prone.fn_family + param-value fold.
 
     fn_family is the ONE classifier (flag lookups use it raw); the fold only
-    collapses embedded key=value params (vel=16.1, g=0.36%, k3m=100) that
-    otherwise explode into one family per event. Only =values are folded, so
-    TF tokens (3M/5M) and B-names (B12) are untouched.
+    collapses embedded numeric params that otherwise explode into one family
+    per event: -/=values (vel=16.1, g=0.36%, move-3.29), digits glued to a
+    lowercase key (adx63->adx), and standalone _NN tokens (ENTRY_57). Kept:
+    TF tokens (3M/5M: digit follows _ or uppercase), B-names (B12: single
+    uppercase + digits), single-digit structure ids (E_1 vs E_3 stay distinct).
     """
     try:
         from loss_prone import fn_family as _ff
 
         r = _ff(fn)
     except Exception:
-        r = re.sub(r"^VEC_EXACT_(OPEN|AUGMENT|REDUCE|CLOSE)_", "", str(fn or "").strip())
+        r = re.sub(
+            r"^VEC_EXACT_(OPEN|AUGMENT|REDUCE|CLOSE)_", "", str(fn or "").strip()
+        )
         r = re.split(r"[ |:(]", r)[0] if r else ""
-        r = re.sub(r"_(px|lvl|g|cur|k3m|k15m|qty|mult|arm|leg|tgt|act|dev|pct|gain|age|m)[-+]?[\d.].*$", "", r, flags=re.I)
+        r = re.sub(
+            r"_(px|lvl|g|cur|k3m|k15m|qty|mult|arm|leg|tgt|act|dev|pct|gain|age|m)[-+]?[\d.].*$",
+            "",
+            r,
+            flags=re.I,
+        )
         r = re.sub(r"_(LONG|SHORT)$", "", r)
         r = re.sub(r"_[-+]?\d+(\.\d+)?%?$", "", r).rstrip("_")
-    r = re.sub(r"=[-+]?\d+(\.\d+)?%?[a-z]?", "", str(r or ""))
+    r = re.sub(r"[-=][-+]?\d+(\.\d+)?%?[a-z]?", "", str(r or ""))
+    r = re.sub(r"(?<!\d)([a-z]{2,})\d+(\.\d+)?(?![a-z])", r"\1", r)
+    r = re.sub(r"_\d{2,}(?=_|$)", "", r)
     r = re.sub(r"_+", "_", r).strip("_")
     return r or "UNKNOWN"
 
@@ -122,7 +136,11 @@ def closes(venue: str, symbol: str):
         ts, cl = [], []
         try:
             rows = json.loads(p.read_text())
-            rows = rows if isinstance(rows, list) else (rows.get("data") or rows.get("klines") or [])
+            rows = (
+                rows
+                if isinstance(rows, list)
+                else (rows.get("data") or rows.get("klines") or [])
+            )
             for r in rows:
                 ts.append(_ep(r["timestamp"]))
                 cl.append(float(r["close"]))
@@ -160,13 +178,16 @@ def real_closes(account, sym_side):
 
 # ── inventory ──
 
+
 def _frozen_set_from_py(path: Path, var: str) -> list:
     """Names inside VAR = frozenset([...]) / {...} in a live file (regex, never import)."""
     try:
         txt = path.read_text(errors="ignore")
     except OSError:
         return []
-    m = re.search(rf"{re.escape(var)}\s*=\s*(?:frozenset\(\[|\{{)(.*?)(?:\]\)|\}})", txt, re.S)
+    m = re.search(
+        rf"{re.escape(var)}\s*=\s*(?:frozenset\(\[|\{{)(.*?)(?:\]\)|\}})", txt, re.S
+    )
     if not m:
         return []
     return sorted(set(re.findall(r'"([A-Z][A-Z0-9_]{5,})"', m.group(1))))
@@ -184,9 +205,20 @@ def _families_registry() -> list:
         if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "FAMILIES":
             for e in getattr(n.value, "elts", []):
                 try:
-                    vals = [c.value if isinstance(c, ast.Constant) else None for c in e.elts]
+                    vals = [
+                        c.value if isinstance(c, ast.Constant) else None for c in e.elts
+                    ]
                     if len(vals) >= 6 and vals[0]:
-                        rows.append({"token": vals[0], "family": vals[1], "tf": vals[2], "vec_twin": bool(vals[3]), "gate": vals[4], "kind": vals[5]})
+                        rows.append(
+                            {
+                                "token": vals[0],
+                                "family": vals[1],
+                                "tf": vals[2],
+                                "vec_twin": bool(vals[3]),
+                                "gate": vals[4],
+                                "kind": vals[5],
+                            }
+                        )
                 except Exception:
                     continue
     return rows
@@ -197,7 +229,17 @@ def build_inventory() -> dict:
     inv: dict = {}
 
     def add(pid, **kw):
-        d = inv.setdefault(pid, {"sources": [], "kind": "", "venue": "both", "gate_knob": None, "tf": None, "vec_twin": None})
+        d = inv.setdefault(
+            pid,
+            {
+                "sources": [],
+                "kind": "",
+                "venue": "both",
+                "gate_knob": None,
+                "tf": None,
+                "vec_twin": None,
+            },
+        )
         for s in kw.pop("sources", []):
             if s not in d["sources"]:
                 d["sources"].append(s)
@@ -210,12 +252,32 @@ def build_inventory() -> dict:
         low_tf = tf in ("1m", "3m", "5m")
         kind = "low_tf" if low_tf else ("nonvec" if not r["vec_twin"] else "disabled")
         fam = canon_family(r["family"] or r["token"])
-        add(fam, sources=["families.py"], kind=kind, gate_knob=r["gate"], tf=tf or None, vec_twin=r["vec_twin"])
+        add(
+            fam,
+            sources=["families.py"],
+            kind=kind,
+            gate_knob=r["gate"],
+            tf=tf or None,
+            vec_twin=r["vec_twin"],
+        )
     for knob in _frozen_set_from_py(ROOT / "ez_manage.py", "_NON_VEC_KNOBS_EZ"):
-        add(canon_family(knob.replace("_ENABLED", "")), sources=["_NON_VEC_KNOBS_EZ"], kind="nonvec", venue="crypto", gate_knob=knob)
+        add(
+            canon_family(knob.replace("_ENABLED", "")),
+            sources=["_NON_VEC_KNOBS_EZ"],
+            kind="nonvec",
+            venue="crypto",
+            gate_knob=knob,
+        )
     for f, venue in (("ez_manage.py", "crypto"), ("tradier_manage.py", "stocks")):
         for knob in _frozen_set_from_py(ROOT / f, "SUB15M_BLOCKED_SWITCHES"):
-            add(canon_family(knob.replace("_ENABLED", "")), sources=[f"SUB15M:{f}"], kind="low_tf", venue=venue, gate_knob=knob, tf="1m/3m/5m")
+            add(
+                canon_family(knob.replace("_ENABLED", "")),
+                sources=[f"SUB15M:{f}"],
+                kind="low_tf",
+                venue=venue,
+                gate_knob=knob,
+                tf="1m/3m/5m",
+            )
     try:
         kills = json.loads((ROOT / "data" / "vector_kills.json").read_text())
         for fam in kills:
@@ -245,17 +307,25 @@ def build_inventory() -> dict:
                 cf = canon_family(fn)
                 if cf and cf != "UNKNOWN":
                     n_obs += 1
-                    add(cf, sources=["observed:paper_nonvec"], kind=inv.get(cf, {}).get("kind") or "disabled")
+                    add(
+                        cf,
+                        sources=["observed:paper_nonvec"],
+                        kind=inv.get(cf, {}).get("kind") or "disabled",
+                    )
         except OSError:
             continue
     for f in sorted(glob.glob(str(ROOT / "SPREADSHEETS" / "SWITCH_COVERAGE_*.xlsx"))):
         add("__coverage_workbook__", sources=[Path(f).name], kind="meta")
         break
-    inv["_meta"] = {"observed_raw_events": n_obs, "built_at": datetime.now(timezone.utc).isoformat()}
+    inv["_meta"] = {
+        "observed_raw_events": n_obs,
+        "built_at": datetime.now(timezone.utc).isoformat(),
+    }
     return inv
 
 
 # ── scoring ──
+
 
 def load_events(days: int):
     now = datetime.now(timezone.utc).timestamp()
@@ -301,7 +371,9 @@ def score(events, horizon_bars: int):
                 rc_cache[(acct, ss)] = real_closes(acct, ss)
             rcs = rc_cache[(acct, ss)]
             i = bisect.bisect_right([t for t, _ in rcs], e["_t"])
-            lifecycle = f"{acct}:{ss}@{rcs[i][0]}" if i < len(rcs) else f"{acct}:{ss}@open"
+            lifecycle = (
+                f"{acct}:{ss}@{rcs[i][0]}" if i < len(rcs) else f"{acct}:{ss}@open"
+            )
             dk = (lifecycle, fam)
             if dk in seen_exit:
                 continue
@@ -329,6 +401,7 @@ def score(events, horizon_bars: int):
 
 # ── aggregation + persistence ──
 
+
 def aggregate(per, first_seen, now, min_days, min_syms, min_events):
     per_sym_rows = []
     by_path: dict = collections.defaultdict(list)
@@ -339,8 +412,17 @@ def aggregate(per, first_seen, now, min_days, min_syms, min_events):
             mean = None
         else:
             mean = sum(scored) / len(scored)
-        row = {"path": fam, "venue": venue, "kind": kind, "sym_side": ss, "events": len(vals), "scored": len(scored),
-               "pending": pending, "mean_delta": mean, "pos": mean is not None and mean > 0}
+        row = {
+            "path": fam,
+            "venue": venue,
+            "kind": kind,
+            "sym_side": ss,
+            "events": len(vals),
+            "scored": len(scored),
+            "pending": pending,
+            "mean_delta": mean,
+            "pos": mean is not None and mean > 0,
+        }
         per_sym_rows.append(row)
         if scored:
             by_path[(fam, venue, kind)].append(row)
@@ -348,7 +430,9 @@ def aggregate(per, first_seen, now, min_days, min_syms, min_events):
     for (fam, venue, kind), rows in sorted(by_path.items()):
         syms = len(rows)
         pos = sum(1 for r in rows if r["pos"])
-        pooled = sum(r["mean_delta"] * r["scored"] for r in rows) / max(1, sum(r["scored"] for r in rows))
+        pooled = sum(r["mean_delta"] * r["scored"] for r in rows) / max(
+            1, sum(r["scored"] for r in rows)
+        )
         days = (now - first_seen.get((venue, kind, fam), now)) / 86400.0
         if days >= min_days and syms >= min_syms and pos > syms / 2 and pooled > 0:
             verdict = "PROMOTE_CANDIDATE"
@@ -356,11 +440,29 @@ def aggregate(per, first_seen, now, min_days, min_syms, min_events):
             verdict = "REJECT"
         else:
             verdict = "WATCH"
-        path_rows.append({"path": fam, "venue": venue, "kind": kind, "sym_sides": syms, "pos_syms": pos,
-                          "events": sum(r["events"] for r in rows), "scored": sum(r["scored"] for r in rows),
-                          "pooled_delta": pooled, "days": round(days, 1), "verdict": verdict})
-    path_rows.sort(key=lambda r: (r["verdict"] != "PROMOTE_CANDIDATE", -(r["pooled_delta"] or -9e9)))
-    per_sym_rows.sort(key=lambda r: (-(r["mean_delta"] or -9e9), r["path"], r["sym_side"]))
+        path_rows.append(
+            {
+                "path": fam,
+                "venue": venue,
+                "kind": kind,
+                "sym_sides": syms,
+                "pos_syms": pos,
+                "events": sum(r["events"] for r in rows),
+                "scored": sum(r["scored"] for r in rows),
+                "pooled_delta": pooled,
+                "days": round(days, 1),
+                "verdict": verdict,
+            }
+        )
+    path_rows.sort(
+        key=lambda r: (
+            r["verdict"] != "PROMOTE_CANDIDATE",
+            -(r["pooled_delta"] or -9e9),
+        )
+    )
+    per_sym_rows.sort(
+        key=lambda r: (-(r["mean_delta"] or -9e9), r["path"], r["sym_side"])
+    )
     return per_sym_rows, path_rows
 
 
@@ -379,58 +481,154 @@ def persist(inv, per_sym_rows, path_rows, args, n_events):
     (OUT / "per_sym").mkdir(parents=True, exist_ok=True)
     now_iso = datetime.now(timezone.utc).isoformat()
     (OUT / "inventory.json").write_text(json.dumps(inv, indent=1, sort_keys=True))
-    scores = {"generated_at": now_iso, "criteria": {"days": args.days, "horizon_bars": args.horizon_bars,
-                "min_days": args.min_days, "min_syms": args.min_syms, "min_events": args.min_events},
-              "n_events": n_events, "n_paths": len([k for k in inv if not k.startswith("_")]),
-              "per_sym": per_sym_rows, "paths": path_rows, "shadow_leg": shadow_leg_status()}
+    scores = {
+        "generated_at": now_iso,
+        "criteria": {
+            "days": args.days,
+            "horizon_bars": args.horizon_bars,
+            "min_days": args.min_days,
+            "min_syms": args.min_syms,
+            "min_events": args.min_events,
+        },
+        "n_events": n_events,
+        "n_paths": len([k for k in inv if not k.startswith("_")]),
+        "per_sym": per_sym_rows,
+        "paths": path_rows,
+        "shadow_leg": shadow_leg_status(),
+    }
     (OUT / "scores.json").write_text(json.dumps(scores, indent=1))
     cands: dict = collections.defaultdict(list)
     for r in per_sym_rows:
-        if r["mean_delta"] is not None and r["mean_delta"] > 0 and r["scored"] >= args.min_events:
-            cands[r["sym_side"]].append({"path": r["path"], "venue": r["venue"], "kind": r["kind"],
-                                         "mean_delta": round(r["mean_delta"], 6), "scored": r["scored"]})
+        if (
+            r["mean_delta"] is not None
+            and r["mean_delta"] > 0
+            and r["scored"] >= args.min_events
+        ):
+            cands[r["sym_side"]].append(
+                {
+                    "path": r["path"],
+                    "venue": r["venue"],
+                    "kind": r["kind"],
+                    "mean_delta": round(r["mean_delta"], 6),
+                    "scored": r["scored"],
+                }
+            )
     for ss in cands:
         cands[ss].sort(key=lambda d: -d["mean_delta"])
-        (OUT / "per_sym" / f"{ss}.json").write_text(json.dumps({"sym_side": ss, "generated_at": now_iso,
-            "paths": cands[ss], "note": "candidate enable list for v15_version_gate submit on S2; never auto-applied live"}, indent=1))
-    (OUT / "promote_candidates.json").write_text(json.dumps({"generated_at": now_iso,
-        "blanket": [r for r in path_rows if r["verdict"] == "PROMOTE_CANDIDATE"],
-        "per_sym_sides": len(cands),
-        "note": "blanket = pooled rule (>=min_days, >=min_syms, >half pos, pooled>0); per_sym/*.json = per-sym_side pos-delta enable lists"}, indent=1))
-    lines = [f"# Paper forward comprehensive — {now_iso}", "",
-             f"events={n_events} window={args.days}d horizon={args.horizon_bars} bars paths={scores['n_paths']}",
-             f"shadow leg (paper_shadow timing): {scores['shadow_leg']}", "",
-             "| path | venue | kind | sym_sides | pos | pooled Δ | days | verdict |",
-             "|---|---|---|---|---|---|---|---|"]
+        (OUT / "per_sym" / f"{ss}.json").write_text(
+            json.dumps(
+                {
+                    "sym_side": ss,
+                    "generated_at": now_iso,
+                    "paths": cands[ss],
+                    "note": "candidate enable list for v15_version_gate submit on S2; never auto-applied live",
+                },
+                indent=1,
+            )
+        )
+    (OUT / "promote_candidates.json").write_text(
+        json.dumps(
+            {
+                "generated_at": now_iso,
+                "blanket": [
+                    r for r in path_rows if r["verdict"] == "PROMOTE_CANDIDATE"
+                ],
+                "per_sym_sides": len(cands),
+                "note": "blanket = pooled rule (>=min_days, >=min_syms, >half pos, pooled>0); per_sym/*.json = per-sym_side pos-delta enable lists",
+            },
+            indent=1,
+        )
+    )
+    lines = [
+        f"# Paper forward comprehensive — {now_iso}",
+        "",
+        f"events={n_events} window={args.days}d horizon={args.horizon_bars} bars paths={scores['n_paths']}",
+        f"shadow leg (paper_shadow timing): {scores['shadow_leg']}",
+        "",
+        "| path | venue | kind | sym_sides | pos | pooled Δ | days | verdict |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
     for r in path_rows[:120]:
         pd = f"{r['pooled_delta']:+.4f}" if r["pooled_delta"] is not None else "n/a"
-        lines.append(f"| {r['path']} | {r['venue']} | {r['kind']} | {r['sym_sides']} | {r['pos_syms']} | {pd} | {r['days']} | {r['verdict']} |")
+        lines.append(
+            f"| {r['path']} | {r['venue']} | {r['kind']} | {r['sym_sides']} | {r['pos_syms']} | {pd} | {r['days']} | {r['verdict']} |"
+        )
     if len(path_rows) > 120:
         lines.append(f"| … {len(path_rows) - 120} more in scores.json | | | | | | | |")
-    lines += ["", "## Per-sym_side positive deltas (top 60)",
-              "| path | sym_side | mean Δ | scored |", "|---|---|---|---|"]
-    pos_rows = [r for r in per_sym_rows if r["mean_delta"] is not None and r["mean_delta"] > 0][:60]
+    lines += [
+        "",
+        "## Per-sym_side positive deltas (top 60)",
+        "| path | sym_side | mean Δ | scored |",
+        "|---|---|---|---|",
+    ]
+    pos_rows = [
+        r for r in per_sym_rows if r["mean_delta"] is not None and r["mean_delta"] > 0
+    ][:60]
     for r in pos_rows:
-        lines.append(f"| {r['path']} | {r['sym_side']} | {r['mean_delta']:+.4f} | {r['scored']} |")
+        lines.append(
+            f"| {r['path']} | {r['sym_side']} | {r['mean_delta']:+.4f} | {r['scored']} |"
+        )
     if not pos_rows:
         lines.append("| (none yet — needs days of forward data) | | | |")
     (OUT / "verdict.md").write_text("\n".join(lines) + "\n")
     con = sqlite3.connect(str(OUT / "forward.db"))
     try:
-        con.execute("CREATE TABLE IF NOT EXISTS inventory (path TEXT PRIMARY KEY, kind TEXT, venue TEXT, gate_knob TEXT, tf TEXT, sources TEXT)")
-        con.execute("CREATE TABLE IF NOT EXISTS per_sym_delta (path TEXT, venue TEXT, kind TEXT, sym_side TEXT, events INT, scored INT, pending INT, mean_delta REAL, PRIMARY KEY (path, venue, kind, sym_side))")
-        con.execute("CREATE TABLE IF NOT EXISTS path_summary (path TEXT, venue TEXT, kind TEXT, sym_sides INT, pos_syms INT, events INT, scored INT, pooled_delta REAL, days REAL, verdict TEXT, PRIMARY KEY (path, venue, kind))")
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS inventory (path TEXT PRIMARY KEY, kind TEXT, venue TEXT, gate_knob TEXT, tf TEXT, sources TEXT)"
+        )
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS per_sym_delta (path TEXT, venue TEXT, kind TEXT, sym_side TEXT, events INT, scored INT, pending INT, mean_delta REAL, PRIMARY KEY (path, venue, kind, sym_side))"
+        )
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS path_summary (path TEXT, venue TEXT, kind TEXT, sym_sides INT, pos_syms INT, events INT, scored INT, pooled_delta REAL, days REAL, verdict TEXT, PRIMARY KEY (path, venue, kind))"
+        )
         con.execute("DELETE FROM inventory")
         con.execute("DELETE FROM per_sym_delta")
         con.execute("DELETE FROM path_summary")
         for pid, d in inv.items():
             if pid.startswith("_"):
                 continue
-            con.execute("INSERT INTO inventory VALUES (?,?,?,?,?,?)", (pid, d.get("kind"), d.get("venue"), d.get("gate_knob"), d.get("tf"), ",".join(d.get("sources", []))))
+            con.execute(
+                "INSERT INTO inventory VALUES (?,?,?,?,?,?)",
+                (
+                    pid,
+                    d.get("kind"),
+                    d.get("venue"),
+                    d.get("gate_knob"),
+                    d.get("tf"),
+                    ",".join(d.get("sources", [])),
+                ),
+            )
         for r in per_sym_rows:
-            con.execute("INSERT INTO per_sym_delta VALUES (?,?,?,?,?,?,?,?)", (r["path"], r["venue"], r["kind"], r["sym_side"], r["events"], r["scored"], r["pending"], r["mean_delta"]))
+            con.execute(
+                "INSERT INTO per_sym_delta VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    r["path"],
+                    r["venue"],
+                    r["kind"],
+                    r["sym_side"],
+                    r["events"],
+                    r["scored"],
+                    r["pending"],
+                    r["mean_delta"],
+                ),
+            )
         for r in path_rows:
-            con.execute("INSERT INTO path_summary VALUES (?,?,?,?,?,?,?,?,?,?)", (r["path"], r["venue"], r["kind"], r["sym_sides"], r["pos_syms"], r["events"], r["scored"], r["pooled_delta"], r["days"], r["verdict"]))
+            con.execute(
+                "INSERT INTO path_summary VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (
+                    r["path"],
+                    r["venue"],
+                    r["kind"],
+                    r["sym_sides"],
+                    r["pos_syms"],
+                    r["events"],
+                    r["scored"],
+                    r["pooled_delta"],
+                    r["days"],
+                    r["verdict"],
+                ),
+            )
         con.commit()
     finally:
         con.close()
@@ -453,25 +651,37 @@ def main():
             print("no scores yet — run without --report first")
             return
         filt = (a.report or "").upper()
-        rows = [r for r in scores["per_sym"] if not filt or filt in r["path"].upper() or filt in r["sym_side"].upper()]
-        print(f"per_sym avg-delta rows: {len(rows)} (generated {scores['generated_at']})")
+        rows = [
+            r
+            for r in scores["per_sym"]
+            if not filt or filt in r["path"].upper() or filt in r["sym_side"].upper()
+        ]
+        print(
+            f"per_sym avg-delta rows: {len(rows)} (generated {scores['generated_at']})"
+        )
         for r in rows[:80]:
             md = f"{r['mean_delta']:+.4f}" if r["mean_delta"] is not None else "n/a"
-            print(f"{r['path'][:44]:44s} {r['sym_side'][:22]:22s} {r['kind']:5s} mean={md} n={r['scored']}/{r['events']} pend={r['pending']}")
+            print(
+                f"{r['path'][:44]:44s} {r['sym_side'][:22]:22s} {r['kind']:5s} mean={md} n={r['scored']}/{r['events']} pend={r['pending']}"
+            )
         return
     inv = build_inventory()
     events = load_events(a.days)
     per, first_seen = score(events, a.horizon_bars)
     now = datetime.now(timezone.utc).timestamp()
-    per_sym_rows, path_rows = aggregate(per, first_seen, now, a.min_days, a.min_syms, a.min_events)
+    per_sym_rows, path_rows = aggregate(
+        per, first_seen, now, a.min_days, a.min_syms, a.min_events
+    )
     scores = persist(inv, per_sym_rows, path_rows, a, len(events))
     n_prom = sum(1 for r in path_rows if r["verdict"] == "PROMOTE_CANDIDATE")
-    n_pos_sym = sum(1 for r in per_sym_rows if r["mean_delta"] is not None and r["mean_delta"] > 0)
-    print(f"[paper_forward] events={len(events)} paths={scores['n_paths']} per_sym_rows={len(per_sym_rows)} "
-          f"pos_sym_rows={n_pos_sym} blanket_promote={n_prom} shadow={scores['shadow_leg']} -> {OUT}")
+    n_pos_sym = sum(
+        1 for r in per_sym_rows if r["mean_delta"] is not None and r["mean_delta"] > 0
+    )
+    print(
+        f"[paper_forward] events={len(events)} paths={scores['n_paths']} per_sym_rows={len(per_sym_rows)} "
+        f"pos_sym_rows={n_pos_sym} blanket_promote={n_prom} shadow={scores['shadow_leg']} -> {OUT}"
+    )
 
 
 if __name__ == "__main__":
     main()
-
-

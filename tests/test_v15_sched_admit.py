@@ -269,7 +269,7 @@ class SideGrowthDebtTest(unittest.TestCase):
         full = (13200.0 - 4600.0)
         self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, 2.0), full)
         self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, -1.0), 0.0)
-        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, "bogus"), 0.25 * full)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, "bogus"), 0.15 * full)
 
     def test_junk_safe(self):
         from v15_fleet_scheduler import _side_growth_debt_mb

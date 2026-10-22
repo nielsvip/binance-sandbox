@@ -1,27 +1,26 @@
 {
- "at": "2026-10-22T16:00:11Z",
+ "at": "2026-10-22T16:15:13Z",
  "s1": {
   "host": "niels",
-  "now": 1792684807.7173805,
+  "now": 1792685709.7536242,
   "merge_crypto": {
    "n": 12,
-   "max_lag_min": 30.0,
-   "median_lag_min": 15.0,
-   "worst": "1000BONKUSDC",
+   "max_lag_min": 15.0,
+   "median_lag_min": 0.0,
+   "worst": "1000LUNCUSDT",
    "dead": []
   },
   "merge_stocks": {
-   "n": 0,
-   "max_lag_min": null,
-   "median_lag_min": null,
-   "worst": null,
+   "n": 1,
+   "max_lag_min": 1200.0,
+   "median_lag_min": 1200.0,
+   "worst": "ADBE",
    "dead": [
     "A",
     "AAPL",
     "ABBV",
     "ABT",
     "ACN",
-    "ADBE",
     "ADP",
     "AEM",
     "AG",
@@ -36,25 +35,27 @@
    "WLFIUSDC",
    "XVGUSDT"
   ],
-  "append_log_age_min": 17.4,
-  "append_last_secs": 1057.4,
-  "append_last_stats": "'appended': 652, 'created': 0, 'up_to_date': 5407, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
+  "append_log_age_min": 9.9,
+  "append_last_secs": 1213.5,
+  "append_last_stats": "'appended': 926, 'created': 0, 'up_to_date': 5133, 'no_fresh': 4, 'dry:appended': 0, 'dry:created': 0",
   "npz_loop_pids": 9,
-  "npz_cycle_last_utc": "15:43:01",
-  "npz_cycle_installed": 109,
+  "npz_cycle_last_utc": "16:09:11",
+  "npz_cycle_installed": 94,
   "npz_cycle_not_ready": 0,
-  "npz_cycle_no_new": 88,
+  "npz_cycle_no_new": 89,
   "npz_loop_has_settle": true,
-  "sched_tick_age_min": 2.1,
-  "sched_launched": 0,
+  "sched_tick_age_min": 1.1,
+  "sched_launched": 2,
   "archive_n": 190,
   "archive_mb": 2266.6,
-  "archive_newest_min": 81.4,
+  "archive_newest_min": 96.4,
   "_via": "s1-int"
  },
- "red": [],
+ "red": [
+  "L2 merge stocks: 1200 min behind (worst ADBE) \u2014 check the tradier/ subdir path"
+ ],
  "warn": [
   "L3 4 crypto NPZ(s) carry no htf_align so the append loop refuses them forever \u2014 they need a full rebuild: HBARUSDC NEOUSDC WLFIUSDC XVGUSDT"
  ],
- "ok": true
+ "ok": false
 }

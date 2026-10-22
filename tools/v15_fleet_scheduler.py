@@ -1463,14 +1463,14 @@ def _growth_debt_mb(pairs_pss, est_pair):
     return debt
 
 
-def _side_growth_debt_mb(units, est_by_venue, frac=0.25):
+def _side_growth_debt_mb(units, est_by_venue, frac=0.15):
     """Growth debt of running sides, venue-grouped through the tested _growth_debt_mb contract (only sides under half their venue est count; mature sides are steady-state, the OOM reaper covers spikes).
 
-    USER 2026-10-22 (fleet trickle: 0-1 launches/tick with ~48GB free fleet-wide): the 2026-10-17 peak-admit rewrite counted full peak-minus-current for EVERY side, so two young crypto sides reserved ~15GB of growth that never materialises at once and blocked every admission while CPUs idled. Boards mature and finish at different times, so simultaneous peaks don't happen; `frac` (V15_SCHED_GROWTH_DEBT_FRAC, default 0.25) reserves the multiplexed share. The OOM reaper stays the hard backstop (refill-safe victim ranking bounds loss to newest startups). Never raises."""
+    USER 2026-10-22 (fleet trickle: 0-1 launches/tick with ~48GB free fleet-wide): the 2026-10-17 peak-admit rewrite counted full peak-minus-current for EVERY side, so two young crypto sides reserved ~15GB of growth that never materialises at once and blocked every admission while CPUs idled. Boards mature and finish at different times, so simultaneous peaks don't happen; `frac` (V15_SCHED_GROWTH_DEBT_FRAC, default 0.15) reserves the multiplexed share. The OOM reaper stays the hard backstop (refill-safe victim ranking bounds loss to newest startups). Never raises."""
     try:
         f = float(frac)
     except (TypeError, ValueError):
-        f = 0.25
+        f = 0.15
     f = min(1.0, max(0.0, f))
     if f <= 0:
         return 0.0
@@ -3589,9 +3589,9 @@ def tick(args, cfg, now):
             # (a mature side holds steady; the OOM reaper covers spikes) at the multiplexed share — every
             # side reserved to its full peak assumed simultaneous peaks that never happen and idled the fleet.
             try:
-                _debt_frac = float(os.environ.get("V15_SCHED_GROWTH_DEBT_FRAC", "0.25"))
+                _debt_frac = float(os.environ.get("V15_SCHED_GROWTH_DEBT_FRAC", "0.15"))
             except (TypeError, ValueError):
-                _debt_frac = 0.25
+                _debt_frac = 0.15
             _debt_frac = min(1.0, max(0.0, _debt_frac))
             _debt = _side_growth_debt_mb(_units, est_v, _debt_frac)
             proj_mem = s["mem_avail_mb"] - reserve - _debt
