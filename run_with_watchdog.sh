@@ -213,7 +213,13 @@ if [ -f "$WATCHDOG_LOCK" ]; then
     fi
 fi
 echo "$$" > "$WATCHDOG_LOCK"
-trap 'rm -f "$WATCHDOG_LOCK"; kill -TERM ${CHILD_PID:-0} 2>/dev/null; exit' EXIT INT TERM
+# 2026-10-22: `kill -TERM ${CHILD_PID:-0}` degenerates to `kill -TERM 0` whenever CHILD_PID is still unset, and
+# pid 0 means "every process in MY process group". crypto_watchdog_cron.sh starts its wrappers with `nohup … &`
+# from a non-interactive shell, so a whole cron run shares one group — one early exit there would TERM every
+# sibling wrapper and its child. Unreachable today (this trap is replaced by cleanup/handle_sigterm at :905-:906
+# before `main` runs, and nothing exits at top level in between), but "signal my entire process group" can never
+# be the intent of "kill my child", so it is spelled out rather than left to ${VAR:-0}.
+trap 'rm -f "$WATCHDOG_LOCK"; [ -n "${CHILD_PID:-}" ] && kill -TERM "$CHILD_PID" 2>/dev/null; exit' EXIT INT TERM
 
 # Only the watchdog that owns the lock may clean up a stale Python child.
 # Previously this ran before the lock check, so every duplicate watchdog
@@ -849,8 +855,23 @@ main() {
             # (>= WD_STABLE_RUN_S, default 120 s: a rolling restart TERMs a long-running child -> exit 1).
             # The failure counter only grows for crash loops (exits within WD_STABLE_RUN_S of launch).
             local _req="$WORKDIR/data/restart_requests/${SCRIPT_BASE}${ACCT_SUFFIX}.request"
+            # 2026-10-22 (USER "UNLOCK make sure no unnecessary restarts take place"): only an exit this box can
+            # ACCOUNT FOR may be called INTENTIONAL. A bare `_run_duration >= WD_STABLE_RUN_S` meant any kill of a
+            # child that had merely been up >120 s was logged "[INTENTIONAL_RESTART] … sigterm=0 request=0", which
+            # is a lie — nobody intended it — and it was never counted, so an outside killer could recycle a
+            # producer indefinitely and every line said the restart was deliberate. Measured on ez_indicators
+            # 2026-10-22: three exit=143 at 05:02:18/05:11:42/05:17:44 (after 7425/462/356 s) all wore that label
+            # while this watchdog had logged NO kill of its own — no [SINGLETON], no RSS recycle, no no-output kill
+            # — and the sender was never identified because nothing recorded it. Behaviour is UNCHANGED (immediate
+            # relaunch, counter reset, no backoff: a dead producer is never left dead to chase an attribution);
+            # only the label is now truthful and the event is recorded so repeated unnecessary restarts surface.
             if [[ "${WD_INTENTIONAL:-0}" == "1" || -f "$_req" || "$_run_duration" -ge "${WD_STABLE_RUN_S:-120}" ]]; then
-                log "[INTENTIONAL_RESTART] exit=$_last_exit after ${_run_duration}s (sigterm=${WD_INTENTIONAL:-0} request=$([[ -f "$_req" ]] && echo 1 || echo 0)) — failure counter reset (was $consecutive_fail), relaunching in 1s"
+                local _why="sigterm" _tag="INTENTIONAL_RESTART"
+                if [[ "${WD_INTENTIONAL:-0}" != "1" ]]; then
+                    if [[ -f "$_req" ]]; then _why="request"; else _why="unexplained"; _tag="EXTERNAL_TERM"; fi
+                fi
+                log "[$_tag] exit=$_last_exit after ${_run_duration}s (cause=$_why sigterm=${WD_INTENTIONAL:-0} request=$([[ -f "$_req" ]] && echo 1 || echo 0)) — failure counter reset (was $consecutive_fail), relaunching in 1s"
+                if [[ "$_why" == "unexplained" ]]; then record_unexplained_term "$_last_exit" "$_run_duration"; fi
                 rm -f "$_req"
                 WD_INTENTIONAL=0
                 consecutive_fail=0
@@ -880,6 +901,24 @@ main() {
             fi
         fi
     done
+}
+
+# 2026-10-22: record an exit this watchdog cannot account for, so an outside killer is attributable instead of
+# being silently relabelled "intentional". Pure bookkeeping — it never signals, never delays, never fails the
+# caller. Repeated entries are the signal: a producer recycled by nobody-knows-what is an unnecessary restart.
+record_unexplained_term() {
+    local _exit="$1" _dur="$2" _sink="$WORKDIR/data/reports/watchdog_unexplained_restarts.jsonl"
+    local _now _suspects _n24
+    _now=$(date +%s)
+    mkdir -p "$(dirname "$_sink")" 2>/dev/null || true
+    _suspects=$(ps -eo pid,command 2>/dev/null | grep -iE "guardian|keepalive|crypto_watchdog|pkill" | grep -vE "grep|TCPKeepAlive|ServerAlive" | sed -E 's#^ *([0-9]+) .*/([^/ ]+).*#\1:\2#' | tr '\n' ' ' | cut -c1-240)
+    printf '{"ts":%s,"script":"%s","acct":"%s","exit":%s,"run_s":%s,"wd_pid":%s,"live_suspects":"%s"}\n' \
+        "$_now" "$SCRIPT_BASE" "${ACCT_SUFFIX#_}" "$_exit" "$_dur" "$$" "$_suspects" >> "$_sink" 2>/dev/null || true
+    _n24=$(awk -v c=$((_now - 86400)) -v s="\"script\":\"$SCRIPT_BASE\"" 'index($0,s) && match($0,/"ts":[0-9]+/) && substr($0,RSTART+5,RLENGTH-5)+0 >= c {n++} END {print n+0}' "$_sink" 2>/dev/null || echo 0)
+    log "[EXTERNAL_TERM] recorded: ${_n24} unexplained restart(s) of ${SCRIPT_BASE}${ACCT_SUFFIX} in the last 24h — see data/reports/watchdog_unexplained_restarts.jsonl"
+    if [[ "${_n24:-0}" -ge "${WD_UNEXPLAINED_ALERT_24H:-4}" ]]; then
+        log "⚠️ [EXTERNAL_TERM_STORM] ${_n24} unexplained external SIGTERMs of ${SCRIPT_BASE}${ACCT_SUFFIX} in 24h (threshold ${WD_UNEXPLAINED_ALERT_24H:-4}) — an outside process is recycling this producer; live suspects: ${_suspects:-none}"
+    fi
 }
 
 # Cleanup on exit (only on true exit, not SIGTERM of child)

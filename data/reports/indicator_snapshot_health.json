@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T06:18:47Z",
+ "generated_utc": "2026-10-22T06:23:48Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 33.9,
+  "age_s": 12.6,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 43436,
-  "proc_age_s": 3657.0,
-  "log_age_s": 1.6,
+  "proc_age_s": 3958.0,
+  "log_age_s": 9.4,
   "warmup_done": true,
   "timeframes_since_restart": [
    "1h",
@@ -135,10 +135,32 @@
    "15m",
    "3m",
    "1h",
-   "15m"
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "15m",
+   "3m",
+   "1h",
+   "3m",
+   "1h",
+   "3m"
   ],
-  "last_timeframe": "15m",
-  "last_timeframe_utc": "2026-10-22T06:18:37Z",
+  "last_timeframe": "3m",
+  "last_timeframe_utc": "2026-10-22T06:23:35Z",
   "last_restart_utc": "2026-10-22T05:17:50Z",
   "restarts_last_hour": 0
  },
@@ -164,21 +186,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792649735.2687693,
-  "mac_snapshot_age_s": 17.54089665412903,
-  "mac_stale": true,
+  "hb_mtime": 1792650109.508858,
+  "mac_snapshot_age_s": 1.5315380096435547,
+  "mac_stale": false,
   "lease_holder": "s1",
   "lease_venues": "crypto",
-  "lease_since": "2026-10-22T06:15:12Z",
-  "lease_reason": "yield stable scoped account(s) back to Mac",
-  "now": 1792649756.3059714,
-  "from_cache_age_s": 171.7,
-  "heartbeat_age_s": 21.0,
-  "active_s": 47574.1,
-  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-22T06:15:12Z, reason 'yield stable scoped account(s) back to Mac'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
+  "lease_since": "2026-10-22T06:19:46Z",
+  "lease_reason": "Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 313s (70 live keys), inf idle 275s (40 live keys), flz idle 297s (24 live keys), men idle 1828s (93 live keys), fin idle 2198s (82 live keys) \u2014 no vec decision executed for >180s while the board lane is live (registry age 267s) for 49s",
+  "now": 1792650110.6626325,
+  "from_cache_age_s": 118.4,
+  "heartbeat_age_s": 1.2,
+  "active_s": 47928.5,
+  "note": "producers are CORRECT: S1 holds the TRADING lease (venues='crypto', since 2026-10-22T06:19:46Z, reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 313s (70 live keys), inf idle 275s (40 live keys), flz idle 297s (24 live keys), men idle 1828s (93 live keys), fin idle 2198s (82 live keys) \u2014 no vec decision executed for >180s while the board lane is live (registry age 267s) for 49s'), so S1 must produce crypto data. Do NOT stop the producers. The question to chase is the LEASE/failback, not this unit."
  },
  "alerts": [
-  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-22T06:15:12Z (reason 'yield stable scoped account(s) back to Mac'), Mac heartbeat 21s, Mac snapshot 33s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
+  "S1 HOLDS THE LIVE CRYPTO LEASE WHILE THE MAC LOOKS HEALTHY: lease venues='crypto' since 2026-10-22T06:19:46Z (reason 'Mac reachable but NOT TRADING: crypto: not_trading_account: ang idle 313s (70 live keys), inf idle 275s (40 live keys), flz idle 297s (24 live keys), men idle 1828s (93 live keys), fin idle 2198s (82 live keys) \u2014 no vec decision executed for >180s while the board lane is live (registry age 267s) for 49s'), Mac heartbeat 1s, Mac snapshot 12s. S1 is therefore running the live engines AND the producers instead of backtests. This is a LEASE/failback question \u2014 do NOT stop the producers (that would leave the trading host blind). Operator decision: hand the lease back to the Mac only after confirming the Mac's pushes and heartbeat are stable."
  ],
  "verdict": "ALERT"
 }
