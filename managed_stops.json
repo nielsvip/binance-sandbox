@@ -20,53 +20,46 @@
     "symbol": "ONEUSDT",
     "side": "SHORT"
   },
-  "ang:GALAUSDT_SHORT": {
-    "orderId": "4000001986974340",
-    "stopPrice": 0.002031,
-    "entry_sig": "2026-10-22 07:18:30.388000+00:00",
-    "symbol": "GALAUSDT",
-    "side": "SHORT"
-  },
-  "ang:KAVAUSDT_LONG": {
-    "orderId": "4000001986975634",
-    "stopPrice": 0.06926,
-    "entry_sig": "2026-10-22 08:58:30.047257+00:00",
-    "symbol": "KAVAUSDT",
-    "side": "LONG"
-  },
-  "ang:BLURUSDT_SHORT": {
-    "orderId": "4000001986974469",
-    "stopPrice": 0.00904,
-    "entry_sig": "2026-10-22 08:39:13.646000+00:00",
-    "symbol": "BLURUSDT",
-    "side": "SHORT"
-  },
-  "ang:FARTCOINUSDT_SHORT": {
-    "orderId": "4000001986974470",
-    "stopPrice": 0.1598,
-    "entry_sig": "2026-10-22 11:12:15.974000+00:00",
-    "symbol": "FARTCOINUSDT",
+  "ang:BCHUSDC_SHORT": {
+    "orderId": "4000001986994369",
+    "stopPrice": 284.1,
+    "entry_sig": "2026-10-22 11:12:14.414000+00:00",
+    "symbol": "BCHUSDC",
     "side": "SHORT"
   },
   "ang:NMRUSDT_SHORT": {
-    "orderId": "4000001986975635",
+    "orderId": "4000001986994384",
     "stopPrice": 10.981,
     "entry_sig": "2026-10-22 09:03:07.349397+00:00",
     "symbol": "NMRUSDT",
     "side": "SHORT"
   },
+  "ang:BLURUSDT_SHORT": {
+    "orderId": "4000001986994383",
+    "stopPrice": 0.00904,
+    "entry_sig": "2026-10-22 08:39:13.646000+00:00",
+    "symbol": "BLURUSDT",
+    "side": "SHORT"
+  },
+  "ang:KAVAUSDT_LONG": {
+    "orderId": "4000001986994385",
+    "stopPrice": 0.06926,
+    "entry_sig": "2026-10-22 08:58:30.047257+00:00",
+    "symbol": "KAVAUSDT",
+    "side": "LONG"
+  },
   "ang:ZILUSDT_SHORT": {
-    "orderId": "4000001986986008",
+    "orderId": "4000001986995802",
     "stopPrice": 0.002281,
     "entry_sig": "2026-10-22 11:59:01.112000+00:00",
     "symbol": "ZILUSDT",
     "side": "SHORT"
   },
-  "ang:EGLDUSDT_SHORT": {
-    "orderId": "4000001986991070",
-    "stopPrice": 3.761,
-    "entry_sig": "2026-10-22 06:27:25.429000+00:00",
-    "symbol": "EGLDUSDT",
+  "ang:GALAUSDT_SHORT": {
+    "orderId": "4000001986999743",
+    "stopPrice": 0.002031,
+    "entry_sig": "2026-10-22 07:18:30.388000+00:00",
+    "symbol": "GALAUSDT",
     "side": "SHORT"
   }
 }

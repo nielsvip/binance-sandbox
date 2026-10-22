@@ -1,12 +1,13 @@
 {
- "generated_utc": "2026-10-22T11:59:23Z",
+ "generated_utc": "2026-10-22T12:00:02Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": false,
  "verdict": "FAIL",
  "failed_critical": [
   "defaults_chain_completed",
-  "live_set_matches_selection"
+  "live_set_matches_selection",
+  "indicators_fresh"
  ],
  "checks": [
   {
@@ -204,16 +205,25 @@
   },
   {
    "name": "indicators_fresh",
-   "ok": true,
+   "ok": false,
    "critical": true,
    "measured": {
     "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 89.4,
-    "sample": []
+    "stale_over_90min": 109,
+    "stale_pct": 54.2,
+    "median_age_min": 90.0,
+    "sample": [
+     "1000BONKUSDC",
+     "1000CHEEMSUSDT",
+     "1000FLOKIUSDT",
+     "1000LUNCUSDT",
+     "1000PEPEUSDC",
+     "1000SATSUSDT",
+     "1000SHIBUSDC",
+     "1000XECUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "109/201 symbols past the live 90-min entry gate (54.2%)"
   },
   {
    "name": "s1_sets_synced",
