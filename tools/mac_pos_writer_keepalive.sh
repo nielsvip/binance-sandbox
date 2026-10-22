@@ -37,6 +37,27 @@ cd "$BASE" || exit 1
 # from the watchdog logs because this one carried no times at all.
 klog() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [keepalive] $*"; }
 
+# USER 2026-10-22: a restart this script declines to make must be ALERTED IMMEDIATELY, not silently skipped — an
+# engine that is genuinely wedged past its 24 h budget needs a human or a code fix, and silence is how men spent a
+# day not trading. Writes the keepalive log, a machine-readable row, and a per-account sentinel file. Rate-limited
+# to one alert per account per ALERT_EVERY_S so the cron minute does not spam, but the FIRST one is immediate.
+ALERT_EVERY_S="${MAC_MGR_ALERT_EVERY_S:-600}"
+engine_alert() {
+  local A="$1" MSG="$2" st="$HOME/logs/.ez_manage_${A}_alert_last" last=0 age=999999 nowt
+  nowt=$(date +%s)
+  [ -f "$st" ] && last=$(cat "$st" 2>/dev/null || echo 0)
+  case "$last" in ''|*[!0-9]*) last=0 ;; esac
+  [ "$last" -gt 0 ] && age=$(( nowt - last ))
+  if [ "$age" -ge "$ALERT_EVERY_S" ]; then
+    echo "$nowt" > "$st" 2>/dev/null || true
+    klog "🚨 ALERT $A: $MSG"
+    local ad="$BASE/data/reports"
+    mkdir -p "$ad" 2>/dev/null || true
+    printf '{"ts":%s,"account":"%s","kind":"engine_restart_suppressed","msg":"%s"}\n' "$nowt" "$A" "$MSG" >> "$ad/engine_restart_alerts.jsonl" 2>/dev/null || true
+    printf '%s\n' "$MSG" > "$BASE/data/ENGINE_ALERT_${A}" 2>/dev/null || true
+  fi
+}
+
 # ═══ HARD RUN BOUND (2026-10-16 USER 3-MINUTE INVARIANT) ═══
 # Spawning a writer or realtime worker BLOCKS this script — measured: cron pass 63180 sat 73 s inside a spawn
 # subshell (04:30:00 -> 04:31:13Z) while holding the single-flight lock below, so every following */1 pass exited with
@@ -142,6 +163,18 @@ reap_extras() {  # exactly one process per pattern: keep the OLDEST (it is furth
 engine_keepalive() {
   local A="$1" MGR mgr_log mgr_age mgr_mtime mgr_pids mgr_stamp mgr_started mgr_since
   local child_pids nochild_stamp gated first_gone gone plvl p
+  # USER 2026-10-22: "dont restart again by watchdogs or anything unless there is a code change or code error that
+  # needs fixing and gets alerted immediately — so no more than 1 'flap' per 24 hours." An ez_manage start costs
+  # minutes of no trading (measured 10 s to 13 min depending on the account), so a restart is never cheap and this
+  # script spent the day proving it: men 30 launches, flz 19, ang 9. One automatic restart per account per 24 h is
+  # the budget; past it this script ALERTS and leaves the engine alone. Clearing the stamp is the deliberate
+  # "I changed code, a restart is expected" action:  rm ~/logs/.ez_manage_<acct>_restart_budget
+  local rb_stamp="$HOME/logs/.ez_manage_${A}_restart_budget"
+  local rb_window="${MAC_MGR_RESTART_WINDOW_S:-86400}"
+  local rb_last=0 rb_age=999999
+  [ -f "$rb_stamp" ] && rb_last=$(cat "$rb_stamp" 2>/dev/null || echo 0)
+  case "$rb_last" in ''|*[!0-9]*) rb_last=0 ;; esac
+  [ "$rb_last" -gt 0 ] && rb_age=$(( now - rb_last ))
   MGR="run_with_watchdog.sh ez_manage.py --account $A"
   # 2026-10-22 USER ("a 300 s silence kill is FINE if you monitor the correct logs that produce output >once per
   # second"): liveness is the FRESHEST of the engine's two logs, not ez_manage_$A.log alone. Measured on inf in
@@ -186,10 +219,15 @@ engine_keepalive() {
     plvl=$(/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo 1)
     case "$plvl" in ''|*[!0-9]*) plvl=1 ;; esac
     if [ "$gated" = 0 ] && [ "$gone" -ge "$MAX_MGR_NOCHILD" ] && [ "$plvl" -le 2 ] && [ "$mgr_since" -gt 90 ]; then
-      klog "$A: ez_manage watchdog ALIVE BUT NO ENGINE CHILD for ${gone}s (pressure_level=$plvl, not gated) -> replace watchdog $mgr_pids"
-      for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
-      mgr_pids=""
-      rm -f "$nochild_stamp"
+      if [ "$rb_age" -lt "$rb_window" ]; then
+        engine_alert "$A" "NO ENGINE CHILD for ${gone}s but the 24h restart budget is spent (last ${rb_age}s ago) — NOT restarting, needs a human/code fix"
+      else
+        klog "$A: ez_manage watchdog ALIVE BUT NO ENGINE CHILD for ${gone}s (pressure_level=$plvl, not gated) -> replace watchdog $mgr_pids"
+        echo "$now" > "$rb_stamp"
+        for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
+        mgr_pids=""
+        rm -f "$nochild_stamp"
+      fi
     fi
   else
     rm -f "$nochild_stamp" 2>/dev/null
@@ -219,8 +257,11 @@ engine_keepalive() {
   local mgr_boot_grace="${MAC_MGR_BOOT_GRACE:-600}"
   if [ -z "$mgr_pids" ]; then
     klog "$A: NO ez_manage watchdog -> start (decision engine was down)"
+  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ] && [ "$rb_age" -lt "$rb_window" ]; then
+    engine_alert "$A" "ez_manage SILENT (${mgr_age}s > ${max_age}s) but the 24h restart budget is spent (last restart ${rb_age}s ago) — NOT restarting; a genuinely wedged engine now needs a human/code fix"
   elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
-    klog "$A: ez_manage SILENT (freshest of quick+manage logs ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart"
+    klog "$A: ez_manage SILENT (freshest of quick+manage logs ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart (24h budget consumed)"
+    echo "$now" > "$rb_stamp"
     for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
     for p in $(pgrep -f "bin/python -u ez_manage.py --account $A"); do kill -9 "$p" 2>/dev/null; done
     mgr_pids=""

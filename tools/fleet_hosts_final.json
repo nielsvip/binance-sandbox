@@ -28,12 +28,12 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 2000,
-   "max_pairs": 6,
+   "mem_reserve_mb": 4000,
+   "max_pairs": 8,
    "workers_per_side": 4,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
-   "_note": "2026-10-10: 4->3 (s2 OOM-murdered APEUSDT_LONG at 02:38, 4x12GB peaks exceed 31GB)"
+   "_note": "2026-10-22 MEASURED under a full 6/6 load (free -m): total 31280 MB, avail 16960 (s2) / 16124 (s5) / 13895 (s6) MB, cpu 51-66%, 16 cores. The 6-pair cap -- not memory -- was the limiter: every worker reported \"slots full\" with ~15 GB idle while 3 of 4 billed hosts had sat at 0/6 for 17 h. max_pairs 6->8 (8 pairs x 2 sides = 16 sides = 1 per core) and mem_reserve 4000 MB so the scheduler's measured-PSS gate (est_gate = PSS x1.2) and the OOM reaper are the real limiter instead of an arbitrary cap. Crypto peaks 5-10 GB/pair are why the reserve went UP as the cap went up."
   },
   {
    "name": "s5",
@@ -45,12 +45,12 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 1500,
-   "max_pairs": 6,
+   "mem_reserve_mb": 4000,
+   "max_pairs": 8,
    "workers_per_side": 3,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
-   "_note": "2026-10-20 WP1 (V19 full-course round): revived as S1 image, 16C/30G/245G. max_pairs 4 (user floor: >=4 symbols per host; someone set 3 on S1 at 19:12Z, 5 was the first value): measured 19:20Z PSS 2.1-4.3 GB per board early in the board, crypto peaks 5-10 GB -> 4 x ~6 GB fits 30 GB - 5 GB reserve; the PSS peak guard (est_gate) and the OOM reaper bound it further. workers 3 (crypto 2 via V15_SCHED_WORKERS_PER_SIDE_CRYPTO). Backtest-only: no NPZ builder/ingest, no Binance fetch, no live stack; NPZ arrives per launch from S1 (dispatch JIT tail refresh + md5 push)."
+   "_note": "2026-10-22 MEASURED under a full 6/6 load (free -m): total 31280 MB, avail 16960 (s2) / 16124 (s5) / 13895 (s6) MB, cpu 51-66%, 16 cores. The 6-pair cap -- not memory -- was the limiter: every worker reported \"slots full\" with ~15 GB idle while 3 of 4 billed hosts had sat at 0/6 for 17 h. max_pairs 6->8 (8 pairs x 2 sides = 16 sides = 1 per core) and mem_reserve 4000 MB so the scheduler's measured-PSS gate (est_gate = PSS x1.2) and the OOM reaper are the real limiter instead of an arbitrary cap. Crypto peaks 5-10 GB/pair are why the reserve went UP as the cap went up."
   },
   {
    "name": "s6",
@@ -62,12 +62,12 @@
     "stocks",
     "crypto"
    ],
-   "mem_reserve_mb": 1500,
-   "max_pairs": 6,
+   "mem_reserve_mb": 4000,
+   "max_pairs": 8,
    "workers_per_side": 3,
    "oom_mb": 1500,
    "template_dir": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
-   "_note": "2026-10-20 WP1 (V19 full-course round): revived as S1 image, 16C/30G/245G. max_pairs 4 (user floor: >=4 symbols per host; someone set 3 on S1 at 19:12Z, 5 was the first value): measured 19:20Z PSS 2.1-4.3 GB per board early in the board, crypto peaks 5-10 GB -> 4 x ~6 GB fits 30 GB - 5 GB reserve; the PSS peak guard (est_gate) and the OOM reaper bound it further. workers 3 (crypto 2 via V15_SCHED_WORKERS_PER_SIDE_CRYPTO). Backtest-only: no NPZ builder/ingest, no Binance fetch, no live stack; NPZ arrives per launch from S1 (dispatch JIT tail refresh + md5 push)."
+   "_note": "2026-10-22 MEASURED under a full 6/6 load (free -m): total 31280 MB, avail 16960 (s2) / 16124 (s5) / 13895 (s6) MB, cpu 51-66%, 16 cores. The 6-pair cap -- not memory -- was the limiter: every worker reported \"slots full\" with ~15 GB idle while 3 of 4 billed hosts had sat at 0/6 for 17 h. max_pairs 6->8 (8 pairs x 2 sides = 16 sides = 1 per core) and mem_reserve 4000 MB so the scheduler's measured-PSS gate (est_gate = PSS x1.2) and the OOM reaper are the real limiter instead of an arbitrary cap. Crypto peaks 5-10 GB/pair are why the reserve went UP as the cap went up."
   }
  ],
  "cpu_target_pct": 200,

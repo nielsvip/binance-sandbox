@@ -1,16 +1,30 @@
 {
-  "inf:XMRUSDT_LONG": {
-    "orderId": "2000001530880272",
-    "stopPrice": 569.3,
-    "entry_sig": "2026-10-22 02:31:26.818000+00:00",
-    "symbol": "XMRUSDT",
-    "side": "LONG"
-  },
   "inf:BTCDOMUSDT_LONG": {
     "orderId": "2000001530816506",
     "stopPrice": 5501.5,
     "entry_sig": "2026-10-22 02:08:16.488000+00:00",
     "symbol": "BTCDOMUSDT",
+    "side": "LONG"
+  },
+  "inf:BBUSDT_LONG": {
+    "orderId": "2000001530907987",
+    "stopPrice": 0.008668,
+    "entry_sig": "2026-10-22 02:50:21.725000+00:00",
+    "symbol": "BBUSDT",
+    "side": "LONG"
+  },
+  "inf:MELANIAUSDT_SHORT": {
+    "orderId": "2000001530880301",
+    "stopPrice": 0.08955,
+    "entry_sig": "2026-10-22 02:34:06.055000+00:00",
+    "symbol": "MELANIAUSDT",
+    "side": "SHORT"
+  },
+  "inf:XMRUSDT_LONG": {
+    "orderId": "2000001530880272",
+    "stopPrice": 569.3,
+    "entry_sig": "2026-10-22 02:31:26.818000+00:00",
+    "symbol": "XMRUSDT",
     "side": "LONG"
   },
   "inf:AVAXUSDC_SHORT": {
@@ -20,25 +34,18 @@
     "symbol": "AVAXUSDC",
     "side": "SHORT"
   },
-  "inf:MELANIAUSDT_SHORT": {
-    "orderId": "2000001530880301",
-    "stopPrice": 0.08955,
-    "entry_sig": "2026-10-22 02:34:06.055000+00:00",
-    "symbol": "MELANIAUSDT",
+  "inf:FARTCOINUSDT_SHORT": {
+    "orderId": "2000001530929214",
+    "stopPrice": 0.1579,
+    "entry_sig": "2026-10-22 03:01:33.821000+00:00",
+    "symbol": "FARTCOINUSDT",
     "side": "SHORT"
   },
-  "inf:BBUSDT_LONG": {
-    "orderId": "2000001530907987",
-    "stopPrice": 0.008668,
-    "entry_sig": "2026-10-22 02:50:21.725000+00:00",
-    "symbol": "BBUSDT",
-    "side": "LONG"
-  },
-  "inf:DOTUSDT_SHORT": {
-    "orderId": "2000001530914294",
-    "stopPrice": 1.1883,
-    "entry_sig": "2026-10-22 02:53:44.261000+00:00",
-    "symbol": "DOTUSDT",
+  "inf:ZENUSDT_SHORT": {
+    "orderId": "2000001530931250",
+    "stopPrice": 6.379,
+    "entry_sig": "2026-10-22 03:02:12.484000+00:00",
+    "symbol": "ZENUSDT",
     "side": "SHORT"
   }
 }

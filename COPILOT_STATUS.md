@@ -1,4 +1,4 @@
-# Copilot Status — 2026-10-22 03:00:13 UTC
+# Copilot Status — 2026-10-22 03:04:56 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -8,6 +8,11 @@
 
 - **STALE_INDICATORS** [tradier]  — 2026-10-22T02:59:51
 - **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T02:59:51
+- **STALE_INDICATORS** [tradier]  — 2026-10-22T03:01:58
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T03:01:58
+- **STALE_INDICATORS** [tradier]  — 2026-10-22T03:04:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-10-22T03:04:03
+- **RATIO_IMBALANCE** [crypto] ang — 2026-10-22T03:04:04
 
 ## Missed Trades (trader comparison)
 
@@ -23,11 +28,11 @@ _None_
 
 - HELD: **CLF** LONG (tradier) peak +16.5%, now +-0.7%
 - HELD: **ADP** LONG (tradier) peak +5.5%, now +-0.7%
-- HELD: **ZECUSDC** SHORT (crypto) peak +5.5%, now +2.3%
 - HELD: **U** SHORT (tradier) peak +4.8%, now +0.7%
 - HELD: **EXEL** LONG (tradier) peak +4.4%, now +0.0%
 - HELD: **TMO** LONG (tradier) peak +3.7%, now +0.5%
-- HELD: **SOLUSDC** SHORT (crypto) peak +3.6%, now +1.8%
+- HELD: **SOLUSDC** SHORT (crypto) peak +3.6%, now +1.5%
+- HELD: **HYPEUSDT** SHORT (crypto) peak +3.6%, now +-0.1%
 
 - WATCHING: **ACN** LONG (tradier) peaked +5.4%, exited 0m ago
 
@@ -35,9 +40,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 6
+**Issues (last 1h):** 22
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
