@@ -6308,7 +6308,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         except Exception as _v20le:
             _v20_on, _v20_why = False, f"OFF: {_v20le}"[:200]
     _v20_budget = int(_V20_BUDGET) if _v20_on else 0
-    _v20_tot = {"rows": 0, "never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "budget_skipped": 0}
+    # V20_BINDS_P (default OFF; its own gate candidate): the brain v3 B head (P(cell changes the ledger), AUC 0.89-0.95 prequential on
+    # the union corpus) settles a cell whose p_binds < V20_BINDS_P_MAX (0.02) as PREDICTED_NOOP at the floor — evidence / MUST /
+    # ESSENTIAL cells are never touched; only models that carry heads.B return p_binds, older models leave this inert
+    _v20_binds_on = bool(_v20_on and _V18P.flag_on("V20_BINDS_P"))
+    _v20_binds_max = float(os.environ.get("V20_BINDS_P_MAX", "0.02") or 0.02)
+    _v20_tot = {"rows": 0, "never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "budget_skipped": 0, "predicted_noop": 0}
     _v20_indirect_seen: set = set()
     if _V20 is not None:
         print(f"[V20] {new_symside} {_v18_floor_cs} selector={'ON' if _v20_on else 'off'} budget={_v20_budget} ({_v20_why}; losing_switches={len(_v20_losing)} template_switches={len(_v20_tpl_cands)} clusters={len(_v20_clusters)})", flush=True)
@@ -6704,7 +6709,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                 _v20_ev |= {str(h).strip() for h in ((((_v18_prof or {}).get("proposals") or {}).get(_v20_rk)) or [])}
                 _v20_ev |= {str(h).strip() for h in (_v18_prof_sib.get(_v20_rk) or [])}
                 _v20_must = {h for (_c0, h) in _v18_must_cells if _c0 == _v20_rk}
-                _v20_pm, _v20_untried = {}, set()
+                _v20_pm, _v20_untried, _v20_pnoop = {}, set(), set()
                 if _v18_brain is not None:
                     for _h in info["hdrs"]:
                         try:
@@ -6713,10 +6718,12 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
                                 _v20_untried.add(str(_h).strip())
                             else:
                                 _v20_pm[str(_h).strip()] = float(_d0.get("p"))
+                            if _v20_binds_on and _d0.get("p_binds") is not None and float(_d0.get("n") or 0.0) >= 3 and float(_d0["p_binds"]) < _v20_binds_max:
+                                _v20_pnoop.add(str(_h).strip())  # V20_BINDS_P: B head (cell binds) below the max -> PREDICTED_NOOP at the floor
                         except Exception:
                             pass
                 _v20_prow = (_v18_prof_rows or {}).get(_v20_rk) or {}
-                _v20_dec = _V20.decide_cells(info["hdrs"], _v20_bm, sname, switch, cand, cumulative_overrides, cat_side=_v18_floor_cs, symside=new_symside, rid=_v18_round, essential=str(switch).strip() in ESSENTIAL_GATE_SWITCHES, must_cells=_v20_must, evidence_cells=_v20_ev, model_p=_v20_pm, floor_p=_v18_floor_p, untried_p=_v18_untried_p, untried_cells=_v20_untried, indirect_seen=_v20_indirect_seen, dead_end_row=_V20.dead_end_state(_v20_prow, _v18_floor_cs))
+                _v20_dec = _V20.decide_cells(info["hdrs"], _v20_bm, sname, switch, cand, cumulative_overrides, cat_side=_v18_floor_cs, symside=new_symside, rid=_v18_round, essential=str(switch).strip() in ESSENTIAL_GATE_SWITCHES, must_cells=_v20_must, evidence_cells=_v20_ev, model_p=_v20_pm, floor_p=_v18_floor_p, untried_p=_v18_untried_p, untried_cells=_v20_untried, indirect_seen=_v20_indirect_seen, dead_end_row=_V20.dead_end_state(_v20_prow, _v18_floor_cs), predicted_noop_cells=_v20_pnoop)
                 if _v20_budget and _V18_ACTIVITY.get("evals", 0) >= _v20_budget:  # budget spent: only ESSENTIAL / MUST / evidence cells still run (law)
                     for _h in list(_v20_dec["keep"]):
                         if (_v20_dec["settled"].get(_h) or {}).get("reason_code") in (_V20.RC_KEEP_MODEL, _V20.RC_KEEP_FLOOR):
@@ -9920,7 +9927,7 @@ def _spec_fill_workbook(new_symside: str, wb_path: Path, progress: dict, progres
         print(f"[V18-CATCHUP] {new_symside} naked-only main pass: rows {_v18_cu_tot['rows']} cells settled CATCHUP_SKIPPED {_v18_cu_tot['cells_skipped']}", flush=True)
     if _v20_on:
         progress.setdefault("v18", {})["v20"] = {**dict(_v20_tot), "budget": _v20_budget, "evals": int(_V18_ACTIVITY.get("evals", 0)), "why": _v20_why}
-        print(f"[V20] {new_symside} main pass rows={_v20_tot['rows']} kept={_v20_tot['kept']} structural_identity={_v20_tot['never']} master_off={_v20_tot['master_off']} indirect_tab_level={_v20_tot['indirect']} model_out={_v20_tot['model_out']} dead_end={_v20_tot['dead_end']} floor_rescued={_v20_tot['floor_rescued']} budget_skipped={_v20_tot.get('budget_skipped', 0)} budget={_v20_budget} evals={_V18_ACTIVITY.get('evals', 0)}", flush=True)
+        print(f"[V20] {new_symside} main pass rows={_v20_tot['rows']} kept={_v20_tot['kept']} structural_identity={_v20_tot['never']} master_off={_v20_tot['master_off']} indirect_tab_level={_v20_tot['indirect']} model_out={_v20_tot['model_out']} predicted_noop={_v20_tot.get('predicted_noop', 0)} dead_end={_v20_tot['dead_end']} floor_rescued={_v20_tot['floor_rescued']} budget_skipped={_v20_tot.get('budget_skipped', 0)} budget={_v20_budget} evals={_V18_ACTIVITY.get('evals', 0)}", flush=True)
     if _v18_ln_on:
         progress.setdefault("v18", {})["linknet_first"] = {**dict(_v18_ln_tot), "booked_cells": len(_v18_ln_book), "why": _v18_ln_why}
         print(f"[V18-LINKNET] {new_symside} proposals={_v18_ln_tot['proposals']} cells evaluated with a linknet rank={len(_v18_ln_book)} forced={_v18_ln_tot['cells_forced']}", flush=True)

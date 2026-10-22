@@ -521,8 +521,16 @@ def test_mtf_gr_restore(tmp_path, monkeypatch):
         "GR_HTF_DIRECT_EXIT_HTF_VETO",
         "GR_HTF_DIRECT_EXIT_STRUCT_VETO",
         "MTF_GR_STRUCT_VETO",
+        "WT_PERCENTILE_STRUCT_VETO",
+        "E_1_STRUCT_VETO",
     ):
         assert marker in ez_src, marker
+    tr_src = (ROOT / "tradier_manage.py").read_text()
+    assert "TSR_STRUCT_VETO" in tr_src
+    # Veto precedes the order in every hardened lane (a veto after the send is no veto).
+    assert ez_src.index("WT_PERCENTILE_STRUCT_VETO") < ez_src.index("WT_PERCENTILE_pctD=")
+    assert ez_src.index("E_1_STRUCT_VETO") < ez_src.index("E_1_WT_DELTA_EXIT_delta=")
+    assert tr_src.index("TSR_STRUCT_VETO") < tr_src.index("_tiered_tp_hit_stocks")
     assert not (tmp_path / "vector_kills.json").exists()
 
 
@@ -554,3 +562,62 @@ def test_gr_twin_two_bar_staging():
         want = np.zeros(n, dtype=bool)
         want[1:] = ok[1:] & ok[:-1]
         assert (twin == want).all(), is_long
+
+
+def test_dc_daytrade_restore(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore: DC_HOPELESS (killed 10-22 13:33Z on
+    trb:BNO_LONG, board-authorized) and DAYTRADE_TARGET (killed 10-22 13:31Z
+    on trb:LRCX_SHORT, +10.32% winner refused exit) flow in-window — both
+    booked in v12 via shared twins + live lanes both venues."""
+    _iso(tmp_path, monkeypatch)
+    assert "DC" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert "DAYTRADE_TARGET" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert ve.family_of("DC_HOPELESS_entry=68.7591_dc=[64.0000,68.7400]_g0.00") == "DC"
+    assert ve.family_of("DC_HOPELESS_TWIN_entry68.7591_g0.00%") == "DC"
+    ok, verdict = ve.check("CLOSE", "trb:BNO_LONG", "DC_HOPELESS_entry=68.7591_dc=[64.0000,68.7400]_g0.00")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    ok2, verdict2 = ve.check("CLOSE", "trb:LRCX_SHORT", "DAYTRADE_TARGET_dc_1h_low_+0.10%_TARGET_BUF_g10.32")
+    assert (ok2, verdict2) == (True, "VEC_SWITCH_EXIT")
+    assert not (tmp_path / "vector_kills.json").exists()
+
+
+def test_dc_hopeless_twin_grid():
+    """USER 2026-10-22 parity restore: the shared dc_hopeless twin fires iff
+    entry is outside the dc_4h channel on the hopeless side AND age beats the
+    minimum — the exact live predicate, both sides, boundary included."""
+    from vec_decisions.grey_wire_exits import dc_hopeless
+    get = lambda k, d=None: {"DC_HOPELESS_EXIT_MIN_AGE_S": 900}.get(k, d)
+    g = lambda k, d=None: {"dc_high_4h": 68.74, "dc_low_4h": 64.00}.get(k, d)
+    cases = [
+        # (is_long, entry, age_s, want)
+        (True, 68.7591, 901.0, True),
+        (True, 68.7591, 900.0, False),
+        (True, 68.74, 5000.0, False),
+        (True, 60.00, 5000.0, False),
+        (False, 63.99, 901.0, True),
+        (False, 63.99, 899.0, False),
+        (False, 64.00, 5000.0, False),
+        (False, 70.00, 5000.0, False),
+    ]
+    for is_long, entry, age, want in cases:
+        fire, reason = dc_hopeless(get, g, {"entry_px": entry, "age_s": age}, is_long)
+        assert fire is want, (is_long, entry, age)
+        if want:
+            assert reason.startswith("DC_HOPELESS_entry="), reason
+
+
+def test_daytrade_target_twin_boundaries():
+    """USER 2026-10-22 parity restore: the shared daytrade_dc_exit twin fires
+    a 1h TARGET exactly at px >= dc_high_1h*(1-buf) LONG / px <= dc_low_1h*
+    (1+buf) SHORT — the killed LRCX dc_1h shape, boundary-probed."""
+    from vec_decisions.dc_channel_exits import daytrade_dc_exit
+    spec = {"tf": "1h", "field_long": "dc_high_1h", "field_short": "dc_low_1h", "buf": 0.001, "mode": "day", "tag": "dc_1h"}
+    lv = lambda f: {"dc_high_1h": 100.0, "dc_low_1h": 90.0}.get(f, 0.0)
+    fire, reason = daytrade_dc_exit(99.95, True, [], [spec], lv)
+    assert fire is True and reason.startswith("DAYTRADE_TARGET dc_1h_high -0.10%"), reason
+    fire2, _ = daytrade_dc_exit(99.85, True, [], [spec], lv)
+    assert fire2 is False
+    fire3, reason3 = daytrade_dc_exit(90.05, False, [], [spec], lv)
+    assert fire3 is True and reason3.startswith("DAYTRADE_TARGET dc_1h_low +0.10%"), reason3
+    fire4, _ = daytrade_dc_exit(90.15, False, [], [spec], lv)
+    assert fire4 is False

@@ -23,6 +23,7 @@ RC_INDIRECT_TAB_LEVEL = "INDIRECT_TAB_LEVEL"
 RC_BUDGET_SKIPPED = "BUDGET_SKIPPED"
 RC_DEAD_END_ROW = "DEAD_END_ROW"
 RC_MODEL_SAMPLED_OUT = "MODEL_SAMPLED_OUT"
+RC_PREDICTED_NOOP = "PREDICTED_NOOP"
 RC_KEEP_EVIDENCE = "KEEP_EVIDENCE"
 RC_KEEP_MUST = "KEEP_MUST"
 RC_KEEP_ESSENTIAL = "KEEP_ESSENTIAL"
@@ -129,7 +130,7 @@ def floor_draw(cat_side, symside, tab, key, rid) -> float:
     return int(h[:12], 16) / float(16**12)
 
 
-def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict, *, cat_side: str, symside: str, rid: str, essential: bool = False, must_cells=(), evidence_cells=(), model_p=None, floor_p: float = 0.005, untried_p: float = 0.05, untried_cells=(), indirect_seen=None, dead_end_row: bool = False) -> dict:
+def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict, *, cat_side: str, symside: str, rid: str, essential: bool = False, must_cells=(), evidence_cells=(), model_p=None, floor_p: float = 0.005, untried_p: float = 0.05, untried_cells=(), indirect_seen=None, dead_end_row: bool = False, predicted_noop_cells=()) -> dict:
     """ONE decision per cell. Returns {'keep': [hdr...], 'settled': {hdr: {'reason_code', 'verdict', 'why', 'p'}}, 'counts': {...}}.
     Order: ESSENTIAL rows keep everything evaluable; MUST and evidence-backed cells are always kept (CDE_SHORT guard); NEVER ->
     STRUCTURAL_IDENTITY (no engine call, floor draw may still rescue 1/1000 to re-verify wiring); MASTER_OFF -> settled unless the
@@ -141,7 +142,8 @@ def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict,
     must_cells = set(must_cells or ())
     evidence_cells = set(evidence_cells or ())
     untried_cells = set(untried_cells or ())
-    keep, settled, counts = [], {}, {"never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0}
+    predicted_noop_cells = set(predicted_noop_cells or ())  # V20_BINDS_P: cells the B head says will not change the ledger (p_binds < max)
+    keep, settled, counts = [], {}, {"never": 0, "master_off": 0, "indirect": 0, "model_out": 0, "floor_rescued": 0, "kept": 0, "dead_end": 0, "predicted_noop": 0}
     rk = row_key(tab, switch, cand)
     for h in list(hdrs or []):
         h = str(h).strip()
@@ -193,6 +195,15 @@ def decide_cells(hdrs: list, bm, tab: str, switch: str, cand, running_set: dict,
             keep.append(h)
             settled[h] = {"reason_code": RC_KEEP_MODEL, "verdict": verdict, "why": "INDIRECT_FIRST_OF_TAB", "p": 1.0}
             counts["kept"] += 1
+            continue
+        if h in predicted_noop_cells:  # learned, not structural: settled at the floor, reason-coded, audited nightly against measured noop
+            if draw < floor_p:
+                keep.append(h)
+                settled[h] = {"reason_code": RC_KEEP_FLOOR, "verdict": verdict, "why": "PREDICTED_NOOP", "p": floor_p}
+                counts["floor_rescued"] += 1
+            else:
+                settled[h] = {"reason_code": RC_PREDICTED_NOOP, "verdict": verdict, "why": why, "p": floor_p}
+                counts["predicted_noop"] += 1
             continue
         if dead_end_row:
             if draw < floor_p:

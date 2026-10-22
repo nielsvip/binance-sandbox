@@ -491,8 +491,26 @@ def _eval_one(job):
         return ss, {"status": f"EVAL_ERROR:{type(exc).__name__}", "actions": [], "err": str(exc)[:160]}
 
 
+def _die_together(signum, frame):
+    """USER 2026-10-22: forked pool workers share the driver's process group
+    (setsid lane) but survive its SIGTERM as orphans, grinding stale code for
+    hours while the keepalive's pgrep mistakes them for a live lane and never
+    respawns. A TERM to any member takes the whole group down together."""
+    try:
+        import signal as _sig
+        os.killpg(os.getpgid(0), _sig.SIGTERM)
+    except Exception:
+        pass
+    sys.exit(128 + int(signum))
+
+
 def run_bar(uni, bds, book, bar_ts, live_tm=None, ledger=None, workers=4, held=None, close_only=False, vec_driven=False):
     from concurrent.futures import ProcessPoolExecutor
+    try:
+        import signal as _sig
+        _sig.signal(_sig.SIGTERM, _die_together)
+    except Exception:
+        pass
 
     stats = collections.Counter()
     intents = []

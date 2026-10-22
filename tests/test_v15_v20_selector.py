@@ -179,3 +179,21 @@ def test_load_clusters_prefers_residual_and_rank_uses_pos_syms_names(tmp_path):
         {"key": "SW=2", "filter": "F=o", "lift_ci": [0.2, 1.0], "pos_syms": ["A_LONG"]}]}  # same residual cluster as ME_LONG
     assert S.rank_must(["SW=1@F=o", "SW=2@F=o"], pa, "ME_LONG", co) == ["SW=2@F=o", "SW=1@F=o"]
     assert S.rank_must(["SW=1@F=o", "SW=2@F=o"], pa, "ME_LONG", None) == ["SW=1@F=o", "SW=2@F=o"]
+
+
+def test_predicted_noop_cells_settle_at_floor_but_never_protected(tmp_path):
+    bm = json.loads(_bm(tmp_path, rows=ROWS).read_text())
+    hdrs = ["DC_BREAK_FILTER_TF=1h", "ADX_REGIME_FILTER_ENABLED=True"]
+    outs = 0
+    for i in range(400):
+        d = _decide(bm, hdrs, predicted_noop_cells={"DC_BREAK_FILTER_TF=1h"}, rid=f"n{i}")
+        st = d["settled"]["DC_BREAK_FILTER_TF=1h"]
+        assert st["reason_code"] in (S.RC_PREDICTED_NOOP, S.RC_KEEP_FLOOR) and st["p"] >= S.HARD_MIN_FLOOR
+        outs += 1 if st["reason_code"] == S.RC_PREDICTED_NOOP else 0
+    assert outs > 380
+    d = _decide(bm, hdrs, predicted_noop_cells={"DC_BREAK_FILTER_TF=1h"}, evidence_cells={"DC_BREAK_FILTER_TF=1h"})
+    assert d["settled"]["DC_BREAK_FILTER_TF=1h"]["reason_code"] == S.RC_KEEP_EVIDENCE
+    d = _decide(bm, hdrs, predicted_noop_cells={"DC_BREAK_FILTER_TF=1h"}, must_cells={"DC_BREAK_FILTER_TF=1h"})
+    assert d["settled"]["DC_BREAK_FILTER_TF=1h"]["reason_code"] == S.RC_KEEP_MUST
+    d = _decide(bm, hdrs, predicted_noop_cells={"DC_BREAK_FILTER_TF=1h"}, essential=True)
+    assert d["settled"]["DC_BREAK_FILTER_TF=1h"]["reason_code"] == S.RC_KEEP_ESSENTIAL
