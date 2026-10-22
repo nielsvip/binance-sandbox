@@ -1,150 +1,122 @@
 {
- "at": "2026-10-22T09:11:04Z",
+ "at": "2026-10-22T10:11:07Z",
  "window_hours": 1.0,
  "target_per_host_per_hour": 12,
  "hosts": {
   "s1": {
-   "improved": 3,
-   "improved_per_hour": 3.0,
-   "published_n": 3,
+   "improved": 1,
+   "improved_per_hour": 1.0,
+   "published_n": 1,
    "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "BEAMXUSDT_LONG"
+    "BEAMXUSDT_LONG",
+    "STORJUSDT_SHORT"
    ],
-   "mem_avail_mb": 13445,
-   "load1": 41.24,
+   "mem_avail_mb": 18473,
+   "load1": 32.52,
    "nproc": 16,
-   "slots": "1/8",
-   "binding_reason": "scheduler mem guard (disk 25227 MB, mem 13988 MB, est_pair 8638 MB) \u2014 slots 1/8",
+   "slots": "2/8",
+   "binding_reason": "scheduler mem guard (disk 26186 MB, mem 17402 MB, est_pair 8638 MB) \u2014 slots 2/8",
    "error": null,
    "published": [
     {
-     "symside": "BIDU_SHORT",
-     "at": "2026-10-22T08:21:46Z",
-     "baseline": 26.523048881129323,
-     "final": 26.832540852620117,
-     "state": "improved"
-    },
-    {
-     "symside": "CAT_SHORT",
-     "at": "2026-10-22T08:33:00Z",
-     "baseline": 18.20664322310189,
-     "final": 19.609400692290805,
-     "state": "improved"
-    },
-    {
-     "symside": "ENSUSDT_SHORT",
-     "at": "2026-10-22T08:12:52Z",
-     "baseline": 39.46684293559277,
-     "final": 65.35569013040048,
+     "symside": "1000LUNCUSDT_SHORT",
+     "at": "2026-10-22T09:58:01Z",
+     "baseline": 9.519238762128024,
+     "final": 22.159188299805006,
      "state": "improved"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 5.6,
-   "last_improved_symside": "1000LUNCUSDT_SHORT",
+   "minutes_since_last_improved": 9.3,
+   "last_improved_symside": "RRC_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 14.9,
    "improved_gap_min_max_24h": 124.4,
-   "improved_finishes_24h": 12,
-   "board_cpu_s_median_24h": 2467.8,
-   "board_wall_s_median_24h": 2133.5178689956665,
-   "board_cores": 3.83,
-   "nonboard_cores_competing": 7.47,
-   "nonboard_cores_niced": 4.06,
+   "improved_finishes_24h": 13,
+   "board_cpu_s_median_24h": 1997.5,
+   "board_wall_s_median_24h": 1788.2114691734314,
+   "board_cores": 6.56,
+   "nonboard_cores_competing": 5.03,
+   "nonboard_cores_niced": 4.02,
    "cores_by_bucket": {
-    "other": 5.3,
-    "live_helpers": 1.48,
-    "boards": 3.83,
-    "klines_append": 0.69
+    "other": 3.06,
+    "live_helpers": 1.12,
+    "boards": 6.56,
+    "klines_append": 0.85
    },
    "cores_by_bucket_niced": {
-    "klines_vault": 0.25,
-    "other": 2.84,
-    "npz_precompute": 0.97
+    "klines_vault": 0.48,
+    "npz_precompute": 0.75,
+    "other": 2.79
    }
   },
   "s2": {
    "improved": 4,
    "improved_per_hour": 4.0,
-   "published_n": 6,
-   "flat_or_worse": 2,
+   "published_n": 4,
+   "flat_or_worse": 0,
    "unknown": 0,
    "boards_running": [
-    "MAGICUSDT_LONG",
-    "QNTUSDT_LONG",
-    "STRKUSDT_LONG"
+    "MAGICUSDT_SHORT",
+    "STRKUSDT_SHORT"
    ],
-   "mem_avail_mb": 12294,
-   "load1": 24.24,
+   "mem_avail_mb": 13545,
+   "load1": 18.68,
    "nproc": 16,
-   "slots": "3/8",
-   "binding_reason": "scheduler mem guard (disk 22797 MB, mem 12766 MB, est_pair 9223 MB) \u2014 slots 3/8",
+   "slots": "2/8",
+   "binding_reason": "scheduler mem guard (disk 22211 MB, mem 13818 MB, est_pair 9223 MB) \u2014 slots 2/8",
    "error": null,
    "published": [
     {
-     "symside": "BTCUSDC_LONG",
-     "at": "2026-10-22T08:39:50Z",
-     "baseline": 0.8890771375012017,
-     "final": 12.547066917209268,
+     "symside": "A_LONG",
+     "at": "2026-10-22T09:59:05Z",
+     "baseline": 31.33612040044193,
+     "final": 31.55883115686987,
      "state": "improved"
     },
     {
-     "symside": "BTCUSDC_SHORT",
-     "at": "2026-10-22T08:34:40Z",
-     "baseline": 6.795726938569653,
-     "final": 12.772713080312533,
+     "symside": "MAGICUSDT_LONG",
+     "at": "2026-10-22T09:30:28Z",
+     "baseline": 171.48104486158203,
+     "final": 173.54691041071032,
      "state": "improved"
     },
     {
-     "symside": "CRWV_SHORT",
-     "at": "2026-10-22T08:13:05Z",
-     "baseline": 65.46264673604782,
-     "final": 66.14291872160605,
+     "symside": "QNTUSDT_LONG",
+     "at": "2026-10-22T09:36:05Z",
+     "baseline": 99.47509811971759,
+     "final": 229.98802467114464,
      "state": "improved"
     },
     {
-     "symside": "GE_SHORT",
-     "at": "2026-10-22T08:24:49Z",
-     "baseline": 23.66345533048023,
-     "final": 24.116756489802686,
+     "symside": "STRKUSDT_LONG",
+     "at": "2026-10-22T09:36:03Z",
+     "baseline": 40.90680331044184,
+     "final": 114.1386591965603,
      "state": "improved"
-    },
-    {
-     "symside": "HP_SHORT",
-     "at": "2026-10-22T08:21:00Z",
-     "baseline": 28.63827420303821,
-     "final": 28.63827420303821,
-     "state": "flat_or_worse"
-    },
-    {
-     "symside": "MSFT_LONG",
-     "at": "2026-10-22T08:32:38Z",
-     "baseline": 14.641375289856917,
-     "final": 14.641375289856917,
-     "state": "flat_or_worse"
     }
    ],
    "cadence_target_min": 5.0,
-   "minutes_since_last_improved": 31.0,
-   "last_improved_symside": "BTCUSDC_LONG",
+   "minutes_since_last_improved": 12.0,
+   "last_improved_symside": "A_LONG",
    "cadence_ok": false,
    "improved_gap_min_median_24h": 5.9,
    "improved_gap_min_max_24h": 149.9,
-   "improved_finishes_24h": 127,
-   "board_cpu_s_median_24h": 1940.3,
-   "board_wall_s_median_24h": 1083.1536900997162,
-   "board_cores": 10.3,
-   "nonboard_cores_competing": 1.2,
-   "nonboard_cores_niced": 3.09,
+   "improved_finishes_24h": 128,
+   "board_cpu_s_median_24h": 2003.0,
+   "board_wall_s_median_24h": 1112.4933500289917,
+   "board_cores": 9.69,
+   "nonboard_cores_competing": 1.24,
+   "nonboard_cores_niced": 3.0,
    "cores_by_bucket": {
-    "other": 0.08,
-    "live_helpers": 1.12,
-    "boards": 10.3
+    "other": 0.01,
+    "live_helpers": 1.23,
+    "boards": 9.69
    },
    "cores_by_bucket_niced": {
-    "other": 3.09
+    "other": 3.0
    }
   }
  },

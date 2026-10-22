@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T09:12:03.314724+00:00",
+ "generated_utc": "2026-10-22T10:12:01.987514+00:00",
  "days": 1.0,
  "totals": {
-  "exit_promises": 162,
+  "exit_promises": 163,
   "exit_kept_in_bar": 19,
   "entry_promises": 64,
   "entry_broken_no_delivery": 64,
   "exit_skipped_inflight": 51,
   "exit_kept_late": 5,
-  "exit_broken_no_delivery": 138
+  "exit_broken_no_delivery": 139
  },
  "per_key": {
   "inf:RLCUSDT_LONG": {
@@ -159,9 +159,9 @@
    "exit_broken_no_delivery": 6
   },
   "flz:SOLUSDC_SHORT": {
-   "exit_promises": 4,
+   "exit_promises": 5,
    "exit_skipped_inflight": 1,
-   "exit_broken_no_delivery": 4,
+   "exit_broken_no_delivery": 5,
    "entry_promises": 1,
    "entry_broken_no_delivery": 1
   },
@@ -2458,6 +2458,16 @@
    "sym_side": "FARTCOINUSDT_SHORT",
    "kind": "exit",
    "bar": "10-22 08:30",
+   "late_min": null,
+   "action": "REDUCE",
+   "reason": "WT_CROSS_EXIT_1h_bull",
+   "outcome": "NO_DELIVERY"
+  },
+  {
+   "acct": "flz",
+   "sym_side": "SOLUSDC_SHORT",
+   "kind": "exit",
+   "bar": "10-22 09:30",
    "late_min": null,
    "action": "REDUCE",
    "reason": "WT_CROSS_EXIT_1h_bull",
