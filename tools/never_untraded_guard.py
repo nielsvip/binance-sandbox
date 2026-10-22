@@ -53,6 +53,14 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "reports" / "never_untraded"
 STATE = OUT / "state.json"
 LOG = Path("/Users/niels/logs/never_untraded_guard.log")
+LAW_FORCE_COOLDOWN_S = float(os.environ.get("NEVER_UNTRADED_LAW_COOLDOWN_S", "120"))
+# Rate limit for the "S1 may hold nothing it does not trade" force-back. One pin per 2 min per account: long
+# enough that a hand-back in progress is not re-pinned on the next 30 s tick, short enough to stay inside the
+# 3-minute rule if S1 grabs it again.
+MIN_STABLE_S = float(os.environ.get("NEVER_UNTRADED_MIN_STABLE_S", "120"))
+# How old an engine must be before its mere existence is allowed to clear an outage clock. ez_manage takes ~80 s to
+# reach its task set (run_with_watchdog.sh:275 notes "300 s backoff cap + ~80 s startup"), so anything younger has
+# not yet proven it can trade. 120 s is that startup plus margin, and still inside the 3-minute rule.
 GRACE_S = float(os.environ.get("NEVER_UNTRADED_GRACE_S", "90"))  # 90 s + a 30 s cadence = act within ~2 min,
 # inside the operator's 3-minute rule with room for the start itself to complete. 150 s would have left only
 # 30 s of margin once cron granularity is counted.
@@ -238,21 +246,66 @@ def main() -> int:
                 rep["accounts"][a] = {"venue": venue, "mac": h, "s1": t, "untraded_s": 0, "note": "market closed"}
                 continue
             both = h > 0 and bool(t)
+            # ═══ THE LAW (USER 2026-10-22, verbatim): "NOTHING CAN EVER RUN ON S1 unless mac can not trade it as
+            # soon as it can mac takes over". S1 HOLDING AN ACCOUNT IT RUNS NO ENGINE FOR IS NEVER CORRECT, and it
+            # is strictly worse than leaving it on the Mac: the holder trades nothing and the Mac is at best
+            # racing a fence. This fires with NO grace window, because there is nothing to wait for — S1 is
+            # demonstrably not trading it (t == 0, S1 reachable) and this host demonstrably has an engine (h > 0).
+            # It also cannot cause the 2026-10-17 failback flap that FAILBACK_S documents: that flap came from
+            # yanking a venue S1 was still STARTING, and an S1 with zero engines has nothing to tear down.
+            # Measured today: lease gen 170 held crypto:[fin,flz] nt=true with 0 engines on S1 while all 5 Mac
+            # engines and brokers were healthy (fin 5.8s, flz 8.8s), and gen 178 did the same for men 4 min after
+            # a manual force-mac. The pre-existing arm below only fires when NOBODY has an engine (h == 0), so
+            # this case — the common one — was invisible to it.
+            scoped = (lease.get("accounts") or {}).get(venue) if isinstance(lease.get("accounts"), dict) else None
+            in_s1_scope = (a in scoped) if isinstance(scoped, list) and scoped else not (lease.get("accounts") or {})
+            if holder == "s1" and in_s1_scope and not s1_unknown and t == 0 and h > 0:
+                ck = f"lawforce_{a}"
+                if now - float(st.get(ck) or 0) >= LAW_FORCE_COOLDOWN_S:
+                    why = f"{a}: S1 holds it with 0 engines while this host has {h} — S1 may hold nothing it does not trade"
+                    act = _force_lease_back(why) if apply else "WOULD force lease back (law)"
+                    st[ck] = now
+                    rep["actions"].append({"account": a, "action": act, "law": "s1_holds_untraded"})
+                    log(f"LAW s1_holds_untraded {why} -> {act}")
             key = f"down_{a}"
+            flapping = False
             if nobody:
                 since = st.get(key) or now
                 st[key] = since
                 down_s = now - since
+            elif st.get(key) and not t and here_age.get(a, 0.0) < MIN_STABLE_S:
+                # 2026-10-22: an outage already in progress may NOT be forgotten because of one sighting of a
+                # brand-new engine. Only this host has an engine (`not t`), it is younger than MIN_STABLE_S, and a
+                # clock is already running -> it is being respawned, not trading. Keep counting. This never STARTS
+                # a clock (that is the `nobody` arm above), so it cannot invent an alarm; it only refuses to erase
+                # one. Without it, fin read untraded_s=0 for ~50 min while being restarted 8 times and executing
+                # nothing for 54 min, because the keepalive orphan storm made the count flap 0<->1 every sample.
+                flapping = True
+                down_s = now - st[key]
             else:
                 st.pop(key, None)
                 down_s = 0.0
-            rep["accounts"][a] = {"venue": venue, "mac": h, "s1": t, "untraded_s": round(down_s), **({"s1_unknown": True} if s1_unknown else {})}
+            rep["accounts"][a] = {"venue": venue, "mac": h, "s1": t, "untraded_s": round(down_s),
+                                  "mac_engine_age_s": round(here_age.get(a, 0.0)),
+                                  **({"flapping": True} if flapping else {}),
+                                  **({"s1_unknown": True} if s1_unknown else {})}
             if both:
                 rep["double"].append(a)
-            if not nobody:
+            if not nobody and not flapping:
                 continue
-            rep["untraded"].append({"account": a, "venue": venue, "untraded_s": round(down_s)})
+            rep["untraded"].append({"account": a, "venue": venue, "untraded_s": round(down_s),
+                                    **({"flapping": True} if flapping else {})})
             if down_s < GRACE_S:
+                continue
+            if flapping:
+                # A trader IS present, it is just being respawned faster than it can trade. Starting another would
+                # put two engines on one live account (FIXED_STOP wars, double closes) and forcing the lease would
+                # hand it to a host with no engine at all. Neither helps, so this arm only ALARMS — the fix is
+                # upstream, in whatever is killing the engine.
+                rep["actions"].append({"account": a, "action": "ALARM_ENGINE_CHURN (no start: a trader is present)"})
+                log(f"ENGINE CHURN {a} ({venue}) untraded {int(down_s)}s — engine present but only "
+                    f"{int(here_age.get(a, 0.0))}s old (< {int(MIN_STABLE_S)}s) and respawning; something is killing it")
+                st.pop(key, None)
                 continue
             # Past the grace window: somebody must start trading this account NOW.
             if holder == "s1" and t == 0:
