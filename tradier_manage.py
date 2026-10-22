@@ -48638,8 +48638,8 @@ class TradierTradeManager:
         """
         _t0 = time.time()
         _timeout = float(getattr(config, "TRADIER_ENTRY_STOP_REQUIRE_TIMEOUT_S", 25.0) or 25.0)
-        _pos = await self.get_position(position_key)
-        if _pos is None:
+        _pos = self.get_position(position_key)  # USER 2026-10-22 await-fix: get_position is sync (def,
+        if _pos is None:  # not async) — awaiting its TradierPosition ERRORED every post-fill stop check.
             logger.warning(f"🛡️ [ENTRY_STOP_REQUIRED] {position_key}: {result} but position unreadable — the 10s reconcile will pick it up")
             self._mark_entry_unprotected_tradier(position_key, account_key, symbol, position_side, "position_unreadable")
             return "SKIPPED_NO_POSITION"

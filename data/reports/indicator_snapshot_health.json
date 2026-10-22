@@ -1,14 +1,14 @@
 {
- "generated_utc": "2026-10-22T17:15:50Z",
+ "generated_utc": "2026-10-22T17:23:03Z",
  "snapshot": {
   "path": "/Users/niels/Documents/binance/data/latest_market_data.json",
-  "age_s": 879.6,
+  "age_s": 1312.4,
   "stale_alert_s": 600
  },
  "ez_indicators": {
   "pid": 45502,
-  "proc_age_s": 35255.0,
-  "log_age_s": 629.7,
+  "proc_age_s": 35687.0,
+  "log_age_s": 182.6,
   "warmup_done": true,
   "timeframes_since_restart": [
    "3m",
@@ -55,21 +55,21 @@
   "mode": "ACTIVE",
   "since_epoch": 1792602182.2042153,
   "activations": 163,
-  "hb_mtime": 1792689070.9920347,
-  "mac_snapshot_age_s": 124.87268018722534,
+  "hb_mtime": 1792689562.4407732,
+  "mac_snapshot_age_s": 29.03743290901184,
   "mac_stale": true,
   "lease_holder": "mac",
   "lease_venues": null,
-  "lease_since": "2026-10-22T16:30:02Z",
-  "lease_reason": "yield: Mac never fenced for 461s \u2014 accounts must never be unattended",
-  "now": 1792689083.4488382,
-  "from_cache_age_s": 267.6,
-  "heartbeat_age_s": 12.5,
-  "active_s": 86901.2,
+  "lease_since": "2026-10-22T17:19:04Z",
+  "lease_reason": "yield: Mac never fenced for 180s \u2014 accounts must never be unattended",
+  "now": 1792689580.928895,
+  "from_cache_age_s": 202.9,
+  "heartbeat_age_s": 18.5,
+  "active_s": 87398.7,
   "note": "ACTIVE is CORRECT while the Mac snapshot is stale \u2014 fix the Mac, S1 returns to NORMAL on its own"
  },
  "alerts": [
-  "SNAPSHOT STALE: latest_market_data.json is 879s old (> 600s). ez_indicators pid=45502 warmup_done=True tfs_since_restart=['3m', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
+  "SNAPSHOT STALE: latest_market_data.json is 1312s old (> 600s). ez_indicators pid=45502 warmup_done=True tfs_since_restart=['3m', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h', '1h', '15m', '3m', '4h'] restarts_last_hour=0. Live crypto decisions are reading a stale indicator snapshot."
  ],
  "verdict": "ALERT"
 }
