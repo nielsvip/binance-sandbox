@@ -1013,6 +1013,32 @@ def _clean_requested_orphan_sync_transport() -> None:
         pass
 
 
+def _broker_bans_s():
+    """{acct: seconds left on this account's Binance IP ban} for every account whose writer reports one.
+
+    2026-10-22 (USER: "'blocked by binance' BULLSHIT the moment that happens s1 needs to start the script and kick
+    the info into macbook immediately"): a Binance IP ban is the ONE fault the Mac cannot repair locally — the IP
+    itself is refused, so restarting anything here changes nothing, and only a host with a different IP (S1) can
+    fetch. It was invisible to every failover layer because the ban lived in an in-memory global inside the banned
+    process (ez_positions_service._GLOBAL_BAN_UNTIL_MS); position_writer_guard.write_heartbeat now publishes it as
+    ban_remaining_s per account. Measured today: fin 70x HTTP 418 + 23 "IP ban", men 67x 429 + 41 -1003, while fin
+    held ZERO positions against 671 pending OPEN intents and every layer read both accounts as healthy.
+    Never raises; an unreadable heartbeat simply contributes nothing.
+    """
+    out = {}
+    for acct in CRYPTO_ACCOUNTS:
+        try:
+            p = Path(BASE_PATH) / acct / ".positions_service_heartbeat.json"
+            if not p.exists():
+                continue
+            rem = float(json.loads(p.read_text()).get("ban_remaining_s") or 0.0)
+            if rem > 0:
+                out[acct] = round(rem, 1)
+        except Exception:
+            continue
+    return out
+
+
 def _position_ages_s():
     """(min_age, max_age) content age (s) of open crypto positions per account from last_updated; None when flat/missing. Never raises."""
     mins, maxs = {}, {}
@@ -1148,6 +1174,10 @@ def main():
         "accounts": accounts,
         "position_max_age_s": _pos_max,
         "position_min_age_s": _pos_min,
+        # 2026-10-22: a Binance IP ban is not locally repairable — S1 reads this to raise
+        # s1_posfailover_active_<acct> and fetch positions from its own IP, which the Mac then pulls
+        # (tools/mac_posfailover_pull.sh). Empty dict = no account is banned.
+        "broker_ban_s": _broker_bans_s(),
     }
     with open(OUT_PATH, "w") as fh:
         json.dump(payload, fh, indent=2)

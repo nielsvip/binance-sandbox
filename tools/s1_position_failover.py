@@ -107,13 +107,22 @@ def in_order_window(order_age):
     return order_age is not None and order_age < ORDER_WINDOW_S
 
 
-def decide(hb_ok, max_ages, active, healthy_streaks, order_age=None, breach_streaks=None):
+def decide(hb_ok, max_ages, active, healthy_streaks, order_age=None, breach_streaks=None, bans=None):
     """Pure decision: returns (to_start, to_stop, new_streaks, new_breaches).
 
     max_ages: {acct: float|None}. order_age: seconds since Mac's last confirmed order
     (None = unknown -> QUIET). POST_ORDER window: threshold ORDER_FRESH_S (3s, the live
     OrderExecutionMonitor contract) with ORDER_GRACE_LOOPS consecutive breaches to fire.
     QUIET: threshold POS_STALE_AFTER_S, fires on first breach (unchanged legacy path).
+
+    bans: {acct: seconds left on a Binance IP ban} from the Mac heartbeat's broker_ban_s
+    (2026-10-22, USER: "'blocked by binance' BULLSHIT the moment that happens s1 needs to start the script and
+    kick the info into macbook immediately"). A banned account is stale IMMEDIATELY and with NO dwell, because
+    unlike every other trigger here a ban cannot resolve on the Mac at all — Binance is refusing that IP, so no
+    amount of waiting or local restarting changes it, and S1's different IP is the only thing that can fetch.
+    It also blocks stand-down: while the ban stands, S1 keeps producing. Measured today: fin took 70x HTTP 418
+    and 23 "IP ban" and held ZERO positions against 671 pending OPEN intents, because the ban was invisible
+    (in-memory only) and position age alone never crossed the 90 s QUIET threshold.
     """
     breach_streaks = breach_streaks or {}
     post_order = in_order_window(order_age)
@@ -121,12 +130,16 @@ def decide(hb_ok, max_ages, active, healthy_streaks, order_age=None, breach_stre
     to_start, to_stop, new_streaks, new_breaches = [], [], {}, {}
     for acct in CRYPTO_ACCOUNTS:
         age = (max_ages or {}).get(acct)
-        stale = (not hb_ok) or (age is not None and age > threshold)
+        try:
+            banned = float((bans or {}).get(acct) or 0.0) > 0.0
+        except Exception:
+            banned = False
+        stale = (not hb_ok) or banned or (age is not None and age > threshold)
         if stale:
             new_streaks[acct] = 0
             breach = breach_streaks.get(acct, 0) + 1
             new_breaches[acct] = breach
-            need = ORDER_GRACE_LOOPS if post_order else 1
+            need = 1 if banned else (ORDER_GRACE_LOOPS if post_order else 1)
             if acct not in active and breach >= need:
                 to_start.append(acct)
         else:
@@ -191,10 +204,11 @@ def run_loop():
             hb = load_heartbeat()
             ok = heartbeat_ok(hb, now)
             ages = (hb.get("position_max_age_s") or {}) if isinstance(hb, dict) else {}
+            bans = (hb.get("broker_ban_s") or {}) if isinstance(hb, dict) else {}
             order_age = last_order_age_s(load_pulse(), now)
             post_order = in_order_window(order_age)
             tick = ORDER_LOOP_S if post_order else LOOP_S
-            to_start, to_stop, streaks, breaches = decide(ok, ages, active_set(), streaks, order_age, breaches)
+            to_start, to_stop, streaks, breaches = decide(ok, ages, active_set(), streaks, order_age, breaches, bans)
             for acct in to_start:
                 if realtime_running(acct):
                     Path(FLAG_FMT.format(acct=acct)).touch()
@@ -219,8 +233,9 @@ if __name__ == "__main__":
         hb = load_heartbeat()
         ok = heartbeat_ok(hb, now)
         ages = (hb.get("position_max_age_s") or {}) if isinstance(hb, dict) else {}
+        bans = (hb.get("broker_ban_s") or {}) if isinstance(hb, dict) else {}
         order_age = last_order_age_s(load_pulse(), now)
-        to_start, to_stop, _, _ = decide(ok, ages, active_set(), {}, order_age, {})
-        print(json.dumps({"hb_ok": ok, "ages": ages, "order_age": order_age, "post_order": in_order_window(order_age), "to_start": to_start, "to_stop": to_stop}))
+        to_start, to_stop, _, _ = decide(ok, ages, active_set(), {}, order_age, {}, bans)
+        print(json.dumps({"hb_ok": ok, "ages": ages, "bans": bans, "order_age": order_age, "post_order": in_order_window(order_age), "to_start": to_start, "to_stop": to_stop}))
     else:
         run_loop()
