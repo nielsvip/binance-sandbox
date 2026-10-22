@@ -3867,7 +3867,11 @@ class TradierConfig:
     TR_HIGH_GAIN_REOPEN_RSI_SHORT_MIN: float = 25.0
     REENTRY_OVERDUE_MODEL_ENABLED: bool = False
     REENTRY_OVERDUE_MIN_BARS: int = 8
-    ENABLE_TR_SWING_ENTRIES: bool = False
+    ENABLE_TR_SWING_ENTRIES: bool = (  # USER 2026-10-22 force-open stocks parity: swing entries were the only
+        True  # afternoon entry wing and every signal died here (SWING_ENTRIES_OFF_PARITY, 11 syms 10-22). Budgets
+        # (SWING_LONG/SHORT_BUDGET, ratio-adjusted) still cap exposure; entries still pass vector_enforce +
+        # hermetic + board gates through execute_now. ROLLBACK: False restores the block (book drifts flat again).
+    )
     ENABLE_TR_SYMGATE_REENTRY: bool = False
     ENABLE_TR_REENTRY_PERIODIC: bool = False
     UVE_LIVE_ENABLED: bool = False  # PIN 2026-10-21: was absent (fallback False); 5m UVE leg stays off. Per-sym read kept.
