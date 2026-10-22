@@ -102,9 +102,10 @@ def test_vec_reasons_pass_native_blocked():
     for r in NATIVE_REASONS:
         assert _gate_passes(r) == em._voe_reason_is_vec(r), r
     blocked = [r for r in NATIVE_REASONS if not em._voe_reason_is_vec(r)]
+    # USER 2026-10-22 parity restore: MTF_GR_WT_EXIT_* flows (leg booked both
+    # venues, twin faithful) so it left the blocked set; the rest stay refused.
     assert set(blocked) == {
         "DC_15M_HOLD_OVERRIDE",
-        "MTF_GR_WT_EXIT_15m",
         "ORPHANED_HEDGE",
         "VIGILANCE_2_CONSECUTIVE_LOSING",
         "CB_HTF_EXHAUST_X",
@@ -209,13 +210,18 @@ def test_vec_switch_exit_families_pass_backstop():
         "EXIT_VELOCITY_WT_1h_vel37.4-against-short_g0.00",
         "TECHNICAL_TARGET_dc_15m_high_-0.10%_TARGET_BUF_g0.03",
         "BB_TAKE_15m_g-0.16",
+        # USER 2026-10-22 parity restores (legs booked, twins faithful).
+        "MTF_GR_WT_EXIT_15m",
+        "MTF_GR_WT_EXIT_1h_grTFs=3_g-0.44%",
+        "GR_HTF_DIRECT_EXIT_8_g1.72%",
+        "DC_HOPELESS_entry=68.7591_dc=[64.0000,68.7400]_g0.00",
+        "DAYTRADE_TARGET_dc_1h_low_+0.10%_TARGET_BUF_g10.32",
     ):
         assert em._voe_reason_is_vec(r) is True, r
     assert (
         em._voe_reason_is_vec("QUICK_BB_RECOVERY_EXIT_TRADIER_SHORT_px0.6450_k7")
         is False
     )
-    assert em._voe_reason_is_vec("MTF_GR_WT_EXIT_15m") is False
 
 
 def test_mirror_matches_implementation_on_corpus():
