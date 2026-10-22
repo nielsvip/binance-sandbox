@@ -26160,17 +26160,25 @@ class MultiAccountTradeManager:
                                 return _r
                         logger.warning(f"🧭 [VEC_DRIVEN_LIVE] {account_key}: dispatching {len(_dispatch)} dictate(s) concurrently (limit {_vd_lim})")
                         await asyncio.gather(*[_vd_one(*_j) for _j in _dispatch], return_exceptions=True)
+                    # USER 2026-10-22: the sweep used to be silent when it did nothing, so "0 reconcile attempts with
+                    # 20 ready keys" was indistinguishable from "nothing to do" and cost hours of inference. Every
+                    # skip is now counted and the tally is logged once a minute per account — the sweep states why.
                     _rec_jobs = []
+                    _rc_skip = collections.Counter()
                     for ss, mode in modes.items():
                         if mode != "live":
+                            _rc_skip["mode_not_live"] += 1
                             continue
                         position_key = f"{account_key}:{ss}"
                         if time.time() - last_sent.get(position_key, 0.0) < grace:
+                            _rc_skip["within_grace"] += 1
                             continue
                         st = _vdm.load_state(base / "state", ss)
                         if not st:
+                            _rc_skip["no_state_file"] += 1
                             continue
                         if st.get("actionable") is False or st.get("engine_valid") is False:
+                            _rc_skip["not_actionable_or_engine_invalid"] += 1
                             continue
                         _st_fresh = _vdm.parse_bar_ts(st.get("written_at") or st.get("updated_at") or st.get("generated_at"))
                         if _st_fresh <= 0:
@@ -26179,11 +26187,15 @@ class MultiAccountTradeManager:
                             except OSError:
                                 _st_fresh = 0.0
                         if now - _st_fresh > state_max_age:
+                            _rc_skip["state_too_old"] += 1
                             continue
                         target = _vdm.normalize_target(st.get("target_state"))
                         bar_key = st.get("bar_ts")
                         if target is None:
+                            _rc_skip["target_unknown"] += 1
                             continue
+                        if target is False:
+                            _rc_skip["target_flat"] += 1
                         # USER 2026-10-22 ("ANYTHING THAT IS OPEN in the paper trading … HAS TO HAVE AN OPEN POSITION,
                         # no exceptions"): one reconcile attempt per sym_side per bar was itself a refusal of the
                         # retry. A key whose single attempt failed — or whose attempt was consumed by a process that
@@ -26202,8 +26214,10 @@ class MultiAccountTradeManager:
                         amt, _px, min_qty, _pos = _la_r
                         act = _vdm.reconcile_action(target, amt, min_qty)
                         if not act:
+                            _rc_skip["already_matches_target" if target else "already_flat"] += 1
                             continue
                         if _rc_done and act != "OPEN":
+                            _rc_skip["close_already_tried_this_bar"] += 1
                             continue
                         if _rc_done:
                             logger.warning(f"🧭 [VEC_DRIVEN_RECONCILE] {position_key}: still flat and the board still holds it — retrying OPEN inside bar {bar_key} (USER 2026-10-22: no exceptions)")

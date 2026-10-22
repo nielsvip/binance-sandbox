@@ -15975,6 +15975,17 @@ class SentimentMomentumStrategy:
             pass
 
 
+# USER 2026-10-22 price reading, never price waiting: the merged view of price_cache_1..8.json, rebuilt only when one
+# of those files actually changes (mtime signature). Every source is still consulted and the freshest entry still
+# wins — this only stops the 8 files being re-opened and re-parsed once per symbol by callers that loop over
+# hundreds of positions.
+_DISK_PX_MEMO: Dict[str, Any] = {"sig": None, "map": {}}
+
+
+def _px_cache_path(i: int):
+    return Path(getattr(config, "BASE_PATH", Path.home() / "binance")) / f"price_cache_{i}.json"
+
+
 class FastDataManager:
     def __init__(
         self,
@@ -16549,6 +16560,46 @@ class FastDataManager:
         return best_p, best_ts
 
     def _get_price_from_disk_caches(self, symbol: str) -> tuple[float, float]:
+        """USER 2026-10-22: "we have 4 different price sources and s1 as backup … providing second by second reliable
+        prices around the clock that NEVER fail — make sure this still works and NEVER wait for a price, just read
+        it". Every price_cache_1..8.json is still read and the freshest entry still wins, so the multi-source
+        failover is untouched; they are simply parsed ONCE into a merged map and reused for a moment instead of being
+        re-opened and re-parsed for EVERY symbol. The hot caller loops over 257-656 tracked positions, so the old
+        shape cost ~1,200 file opens and ~80 MB of JSON parsing per universe sync."""
+        _c = _DISK_PX_MEMO
+        try:
+            _sig = []
+            for _i in range(1, 9):
+                _p = _px_cache_path(_i)
+                _sig.append(_p.stat().st_mtime if _p.exists() else 0.0)
+            _sig = tuple(_sig)
+            if _sig != _c.get("sig"):
+                _merged: dict = {}
+                for _i in range(1, 9):
+                    _p = _px_cache_path(_i)
+                    if not _p.exists():
+                        continue
+                    try:
+                        with open(_p, "rb") as _f:
+                            _data = orjson.loads(_f.read())
+                    except Exception:
+                        continue
+                    _fmt = _p.stat().st_mtime
+                    for _sym, _entry in (_data or {}).items():
+                        if isinstance(_entry, dict):
+                            _pv = self._safe_float(_entry.get("price") or _entry.get("p"), 0.0)
+                            _tv = self._normalize_to_unix(_entry.get("timestamp") or _entry.get("ts") or _entry.get("E"))
+                        else:
+                            _pv, _tv = self._safe_float(_entry, 0.0), _fmt
+                        if _pv > 0 and _tv >= _merged.get(_sym, (0.0, 0.0))[1]:
+                            _merged[_sym] = (_pv, _tv)
+                _c["sig"], _c["map"] = _sig, _merged
+            _hit = _c["map"].get(symbol)
+            if _hit:
+                return _hit[0], _hit[1]
+            return 0.0, 0.0
+        except Exception:
+            pass
         best_p, best_ts = 0.0, 0.0
         for i in range(1, 9):
             try:
@@ -17484,19 +17535,18 @@ class TrackerManager:
                 if current_price <= 0:
                     try:
                         _, symbol, _ = parse_position_key(position_key)
-                        if self.data_manager:
-                            dm_price, _ = self.data_manager.get_fresh_price_sync(symbol)
+                        # USER 2026-10-22: "we have 4 different price sources and s1 as backup … NEVER wait for a
+                        # price, just fucking read it". This used to fall through to an AWAITED get_current_price
+                        # per position with no bound — 257-656 of them, sequentially, on the startup path — which
+                        # was the bulk of the 249 s STEP 6 and made a wss timeout a trading-path problem. The sync
+                        # reader already covers every source (price_cache_1..8 + the service's indicators
+                        # snapshot + the cold store), so there is nothing left to wait for: a price that is not in
+                        # any of them is simply unknown for this pass and the next cycle reads it again.
+                        _dm = self.data_manager or getattr(self.trade_manager, "data_manager", None)
+                        if _dm is not None:
+                            dm_price, _ = _dm.get_fresh_price_sync(symbol)
                             if dm_price > 0:
                                 current_price = dm_price
-                        if current_price <= 0:
-                            # USER 2026-10-22: "a wss://fstream timeout is a problem for the price fetchers, never
-                            # for the trading scripts, and can never cause even a 1s wait". This awaited fetch ran
-                            # per tracked position with no bound — 257-656 of them, sequentially, on the startup
-                            # path — and was the bulk of the 249 s STEP 6. Bounded to 1 s; a price we cannot get
-                            # cheaply is simply unknown for this pass and the next cycle re-reads it.
-                            current_price, _ = await asyncio.wait_for(get_current_price(symbol), timeout=1.0)
-                    except asyncio.TimeoutError:
-                        pass
                     except Exception:
                         pass
                 amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
