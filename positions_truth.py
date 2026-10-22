@@ -45,6 +45,7 @@ DEFAULTS: Dict[str, Any] = {
     "POSITIONS_TRUTH_ENABLED": True,  # master switch (False = legacy behaviour, logged CRITICAL on every order)
     "POSITIONS_MAX_AGE_S": 1.0,  # decisions that send orders: local data older than this is STALE
     "POSITIONS_BROKER_CACHE_S": 1.0,  # broker snapshot reuse window (rate-limit safety)
+    "POSITIONS_WS_ALIVE_S": 90.0,  # a user-data WS heard from within this window IS the freshness proof (see _ez_local)
     "POSITIONS_BROKER_TIMEOUT_S": 8.0,
     "POSITIONS_CONFIRM_ENABLED": True,  # (c) SUCCESS only after broker-confirmed position change
     "POSITIONS_CONFIRM_TIMEOUT_S": 8.0,
@@ -699,6 +700,37 @@ def _ez_local(mgr: Any, position_key: str) -> Tuple[Optional[float], Optional[fl
             pos = None
     amt = abs(_f(getattr(pos, "positionAmt", 0.0))) if pos is not None else 0.0
     sync_ts = _epoch(getattr(svc, "positions_last_sync", None)) if svc is not None else None
+    # ═══ WEBSOCKET IS THE PRIMARY TRUTH; REST IS THE FALLBACK (USER 2026-10-22: "ez_positions never is more than
+    # 1s behind on actual positions from broker by websocket and api fallback" / "ez_positions_service ALWAYS has
+    # the right positions data it NEVER failed in 6 years") ═══
+    # `positions_last_sync` is stamped by fetch_positions (REST) and by process_account_update (the WS
+    # ACCOUNT_UPDATE handler) — but Binance only SENDS an ACCOUNT_UPDATE when a position CHANGES. So on a quiet
+    # account the stamp ages even though the WS is connected and the data is exactly right, and _pre_order's
+    # `age <= POSITIONS_MAX_AGE_S` (1.0 s) then declares good data stale on EVERY order. Measured 2026-10-22: local
+    # age 14.9-17.3 s on every account all day (stale-fallback counts ang 33 / inf 56 / men 37 / flz 19 / fin 28),
+    # so the REST poll was the NORM, not the exception — which is the weight that earns the ban that
+    # ez_positions_service.py:6684 already documents ("~275 position fetches/min across the fleet -> -1003 IP ban
+    # cascade"), and the failed poll then returned BLOCKED_POSITIONS_BROKER_UNREACHABLE on 187 of 400 fin decisions
+    # while fin held ZERO positions against 671 pending OPEN intents.
+    # A LIVE WS SUBSCRIPTION IS ITSELF THE FRESHNESS PROOF: no update means nothing changed. This reuses the
+    # service's OWN liveness measure (`_ws_update_timestamps`, `ws_alive = ws_age < 90` at :6683) rather than a
+    # second opinion, so the two can never disagree. WS dead -> this adds nothing and the REST fallback stands.
+    try:
+        stamps = getattr(svc, "_ws_update_timestamps", None) if svc is not None else None
+        if isinstance(stamps, dict) and stamps:
+            acct = str(position_key).split(":", 1)[0]
+            ws_ts = max(_f(stamps.get(position_key)), _f(stamps.get(acct)), _f(stamps.get(f"{acct}_connected")))
+            _nowt = time.time()
+            if ws_ts > 0 and (_nowt - ws_ts) < float(DEFAULTS["POSITIONS_WS_ALIVE_S"]):
+                # A LIVE subscription means the store reflects the broker AS OF NOW, so the age is ~0 — not the age
+                # of the last event. Returning the event age would be useless: POSITIONS_MAX_AGE_S is 1.0 s and a
+                # healthy quiet account's last ACCOUNT_UPDATE is routinely seconds or minutes old, so it would
+                # still take the REST path on every order. REST still reconciles in the background every
+                # POSITION_REFRESH_MIN_INTERVAL (3 s), and a WS that goes quiet past POSITIONS_WS_ALIVE_S stops
+                # qualifying here and the REST fallback returns.
+                sync_ts = _nowt
+    except Exception:
+        pass
     return amt, entry_written_at(pos, sync_ts)
 
 

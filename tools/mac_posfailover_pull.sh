@@ -36,11 +36,10 @@ EOF
         HB_AGE=$(( $(date +%s) - ${HB_TS:-0} ))
         HB_BANNED=$(/usr/bin/python3 -c "import sys;print(1 if float(sys.argv[1])>0 else 0)" "${HB_BAN:-0}" 2>/dev/null || echo 0)
         if [ "$HB_AGE" -le 90 ] && [ "$HB_BANNED" = "0" ]; then
-            echo "$(date -u +%FT%TZ) SKIP $acct pull — Mac ez_positions_service alive (heartbeat ${HB_AGE}s) and broker-reachable (ban 0s)" >>"$LOG"
-            continue
+            MERGE_OK=0
         fi
         if [ "$HB_BANNED" = "1" ]; then
-            echo "$(date -u +%FT%TZ) PULL $acct ANYWAY — Mac writer is alive (heartbeat ${HB_AGE}s) but BINANCE-BANNED for ${HB_BAN}s; S1 has a different IP and can fetch" >>"$LOG"
+            echo "$(date -u +%FT%TZ) $acct Mac writer alive (heartbeat ${HB_AGE}s) but BINANCE-BANNED ${HB_BAN}s — S1 has a different IP; staging + merge allowed" >>"$LOG"
         fi
     fi
     # USER 2026-10-14 "opened_at can NEVER be overwritten by a positions pull": never copy over the live files — pull into a
