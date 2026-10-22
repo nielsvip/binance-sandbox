@@ -182,17 +182,13 @@ def test_rule_b_route_gated_per_sym():
 
 
 def test_backstop_catches_stay_killed(tmp_path, monkeypatch):
-    """2026-10-21 backstop audit round 2: ALL_TF_AGAINST_CLOSE has vector code
-    with zero callers (dead template wiring, never books); STRONG_REDUCE is a
-    06-02-mandate stochastic trap whose PANIC sanction hole is now closed.
-    Both stay killed."""
-    assert "ALL_TF_AGAINST" not in ve.VEC_SWITCH_EXIT_FAMILIES
+    """2026-10-21 backstop audit round 2: STRONG_REDUCE is a 06-02-mandate
+    stochastic trap whose PANIC sanction hole is now closed — stays killed.
+    (ALL_TF_AGAINST was pinned here on a stale zero-callers verdict; 10-22
+    ledger proof — 17 booked rows on KSMUSDT_LONG — restored it with the live
+    lane narrowed to the 4 vector-visible TFs. See test_all_tf_against_restore.)"""
     assert "STRONG_REDUCE" not in ve.VEC_SWITCH_EXIT_FAMILIES
     _iso(tmp_path, monkeypatch)
-    assert (
-        ve.check("CLOSE", "a", "ALL_TF_AGAINST_CLOSE_3m-53_15m1_1h65_4h69_D-28")[0]
-        is False
-    )
     assert (
         ve.check(
             "STRONG_REDUCE", "a", "QUICK_REDUCE_STRONG_REDUCE_k_1m:98_SIMPLE_TP_0.16%"
@@ -508,6 +504,15 @@ def test_mtf_tradier_walk_arm_wired():
     assert "_mtftr_w1 is not None" in v12_src
     assert "gr_wt_exit_fires(" in v12_src
     assert '"MTF_GR_WT_EXIT_{_mtftr_tf}_grTFs={_mtftr_cnt}"' in v12_src
+    # Round 2: tradier DC + BB arms (16 stocks syms hold the combo live).
+    # Measured 10-22 on MINAUSDT MODE=tradier SHORT alongside the GR arm:
+    # all-off 0 MTF rows / 773 trades; all-on DC 14 + BB 5 + GR 10.
+    assert "_mtftrdc_band is not None" in v12_src
+    assert "_mtftrdc_stepfn(" in v12_src
+    assert '"MTF_DC_REJECT_{_mtftrdc_tf}_px{px:.4f}"' in v12_src
+    assert "_mtftrbb_u is not None" in v12_src
+    assert "bb_reject_step(" in v12_src
+    assert '"MTF_BB_REJECT_{_mtftrbb_tf}"' in v12_src
     # Tradier arm follows live defaults (COMPOUND/GATE/CROSS False): it must
     # NOT ride the True-default crypto master, or unpromoted syms diverge.
     assert "MTF_EXIT_USE_COMPOUND\", False" in v12_src

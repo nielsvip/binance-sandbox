@@ -17736,6 +17736,82 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _mtftr_lad = []
         _mtftr_min = 3
         _mtftr_tf = "1h"
+    # USER 2026-10-22 MTF parity: tradier-mode DC/BB_REJECT arms. The crypto
+    # compound arms are crypto-only while 16 stocks syms hold COMPOUND+DC+BB
+    # live — their fires flowed (broad MTF listing) unbooked. Same switches
+    # with live defaults (COMPOUND/DC/BB False), tradier TF resolution
+    # (yellow-filtered, default 1h) like tradier_manage 17775ff. The DC step
+    # is the shared timestamp-windowed mtf_exit_timing.dc_reject_step (the
+    # live tradier predicate — NOT the bar-latching crypto twin, which would
+    # overfire on stale outside); the BB step is the shared
+    # mtf_compound_exits.bb_reject_step (identical to the live tradier arm).
+    _mtftrdc_tf = "OFF"
+    _mtftrbb_tf = "OFF"
+    try:
+        from vec_decisions.twin_yellow_filters import (
+            mtf_dc_reject_tf as _mtftr_dc_filt,
+        )
+        _mtftrdc_tf = str(
+            _mtftr_dc_filt(
+                getattr(cfg, "MTF_DC_REJECT_FILTER_TF", "15m"),
+                getattr(cfg, "MTF_DC_REJECT_EXIT_TF", "1h"),
+            )
+            or getattr(cfg, "MTF_DC_REJECT_EXIT_TF", "1h")
+        )
+    except Exception:
+        _mtftrdc_tf = str(getattr(cfg, "MTF_DC_REJECT_EXIT_TF", "1h") or "1h")
+    _mtftrdc_use4 = bool(getattr(cfg, "MTF_DC_REJECT_USE_DC4", False))
+    _mtftrdc_stepfn = None
+    _mtftrdc_lb = 5
+    _mtftrdc_on = (
+        is_tradier
+        and bool(getattr(cfg, "MTF_EXIT_USE_COMPOUND", False))
+        and bool(getattr(cfg, "MTF_DC_REJECT_EXIT_ENABLED", False))
+        and _mtftrdc_tf.upper() != "OFF"
+    )
+    if _mtftrdc_on:
+        _mtftrdc_key = (
+            ("dc_high4_" if _mtftrdc_use4 else "dc_high_")
+            if is_long
+            else ("dc_low4_" if _mtftrdc_use4 else "dc_low_")
+        ) + _mtftrdc_tf
+        _mtftrdc_band = _safe(npz, _mtftrdc_key, n, 0)
+        _mtftrdc_lb = max(
+            1, int(getattr(cfg, "MTF_DC_REJECT_EXIT_LOOKBACK", 5))
+        )
+        try:
+            from mtf_exit_timing import dc_reject_step as _mtftrdc_stepfn
+        except Exception:
+            _mtftrdc_stepfn = None
+        if _mtftrdc_stepfn is None:
+            _mtftrdc_band = None
+    else:
+        _mtftrdc_band = None
+    _mtftrbb_tf = str(getattr(cfg, "MTF_BB_REJECT_EXIT_TF", "1h") or "1h")
+    _mtftrbb_lb = 5
+    _mtftrbb_tfsec = 3600
+    _mtftrbb_on = (
+        is_tradier
+        and bool(getattr(cfg, "MTF_EXIT_USE_COMPOUND", False))
+        and bool(getattr(cfg, "MTF_BB_REJECT_EXIT_ENABLED", False))
+        and _mtftrbb_tf.upper() != "OFF"
+    )
+    if _mtftrbb_on:
+        _mtftrbb_u = _safe(npz, f"bb_upper_{_mtftrbb_tf}", n, 0)
+        _mtftrbb_l = _safe(npz, f"bb_lower_{_mtftrbb_tf}", n, 0)
+        _mtftrbb_h = _safe(npz, f"high_{_mtftrbb_tf}", n, 0)
+        _mtftrbb_lo = _safe(npz, f"low_{_mtftrbb_tf}", n, 0)
+        _mtftrbb_lb = int(getattr(cfg, "MTF_BB_REJECT_EXIT_LOOKBACK", 5))
+        try:
+            from mtf_exit_timing import timeframe_seconds as _mtftrbb_secs
+            _mtftrbb_tfsec = int(_mtftrbb_secs(_mtftrbb_tf))
+        except Exception:
+            _mtftrbb_tfsec = 3600
+    else:
+        _mtftrbb_u = None
+        _mtftrbb_l = None
+        _mtftrbb_h = None
+        _mtftrbb_lo = None
     _vig_block_px = 0.0
     _vig_scan_start = 0
     _qs_on = _qq.streak_on(cfg)  # 2026-10-16 QTY_STREAK quantizer: state folded from full CLOSE rows at each new open
@@ -22488,6 +22564,131 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "qty": float(pos["qty"]),
                         "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
                         "exit_reason": _cmp_reason,
+                        "bars_held": int(i - pos["entry_bar"]),
+                    }
+                )
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
+        # USER 2026-10-22 MTF parity: tradier DC arm (setup above). Shared
+        # timestamp-windowed step (mtf_exit_timing.dc_reject_step — the live
+        # tradier predicate) on bar timestamps; per-position outside_ts dies
+        # with the position like the live lifecycle state. Live order is
+        # trail → dc → bb → wt; this arm sits in the same slot. NOLOSS-
+        # bypassed like the live lane.
+        if (
+            pos is not None
+            and held_bars >= min_hold
+            and _mtftrdc_band is not None
+            and _mtftrdc_stepfn is not None
+        ):
+            _mtftrdc_now = float(ts[i]) if i < len(ts) else 0.0
+            _mtftrdc_b = float(_mtftrdc_band[i]) if i < len(_mtftrdc_band) else 0.0
+            pos["_dc_outside_ts_tr"], _mtftrdc_f = _mtftrdc_stepfn(
+                float(pos.get("_dc_outside_ts_tr", 0) or 0),
+                now_ts=_mtftrdc_now,
+                price=float(px),
+                band=_mtftrdc_b,
+                lookback_bars=_mtftrdc_lb,
+                timeframe=_mtftrdc_tf,
+                is_long=is_long,
+            )
+            if _mtftrdc_f:
+                _mtftrdc_reason = f"MTF_DC_REJECT_{_mtftrdc_tf}_px{px:.4f}"
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _mtftrdc_pnl = (
+                    pos["realized"]
+                    + (
+                        (px - pos["avg_price"]) * pos["qty"]
+                        if is_long
+                        else (pos["avg_price"] - px) * pos["qty"]
+                    )
+                    - pos["fees"]
+                )
+                _mtftrdc_pct = _mtftrdc_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _mtftrdc_tsc = (
+                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                )
+                trades.append(
+                    {
+                        "pnl_dollars": _mtftrdc_pnl,
+                        "pnl_pct": float(_mtftrdc_pct),
+                        "deployed": pos["deployed"],
+                        "reason": _mtftrdc_reason,
+                        "type": "CLOSE",
+                        "ts": _mtftrdc_tsc,
+                        "price": float(px),
+                        "bar_entry": int(pos["entry_bar"]),
+                        "bar_exit": int(i),
+                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                        "exit_price": float(px),
+                        "qty": float(pos["qty"]),
+                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                        "exit_reason": _mtftrdc_reason,
+                        "bars_held": int(i - pos["entry_bar"]),
+                    }
+                )
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
+                continue
+        # USER 2026-10-22 MTF parity: tradier BB arm (setup above). Shared
+        # mtf_compound_exits.bb_reject_step — identical tag/fail/window logic
+        # to the live tradier arm — on bar high/low with the px fallback live
+        # uses when the TF high/low is missing. Per-position tag list dies
+        # with the position. NOLOSS-bypassed like the live lane.
+        if pos is not None and held_bars >= min_hold and _mtftrbb_u is not None:
+            _mtftrbb_now = float(ts[i]) if i < len(ts) else 0.0
+            _mtftrbb_bh = float(_mtftrbb_h[i]) if i < len(_mtftrbb_h) else 0.0
+            _mtftrbb_bl = float(_mtftrbb_lo[i]) if i < len(_mtftrbb_lo) else 0.0
+            _mtftrbb_bh = _mtftrbb_bh if _mtftrbb_bh > 0 else float(px)
+            _mtftrbb_bl = _mtftrbb_bl if _mtftrbb_bl > 0 else float(px)
+            pos["_bb_tags_tr"], _mtftrbb_f = (
+                vec_decisions.mtf_compound_exits.bb_reject_step(
+                    pos.get("_bb_tags_tr", []),
+                    _mtftrbb_now,
+                    _mtftrbb_bh,
+                    _mtftrbb_bl,
+                    float(_mtftrbb_u[i]) if i < len(_mtftrbb_u) else 0.0,
+                    float(_mtftrbb_l[i]) if i < len(_mtftrbb_l) else 0.0,
+                    _mtftrbb_lb,
+                    is_long,
+                    tf_secs=_mtftrbb_tfsec,
+                )
+            )
+            if _mtftrbb_f:
+                _mtftrbb_reason = f"MTF_BB_REJECT_{_mtftrbb_tf}"
+                pos["fees"] += abs(pos["qty"] * px) * half_fee
+                _mtftrbb_pnl = (
+                    pos["realized"]
+                    + (
+                        (px - pos["avg_price"]) * pos["qty"]
+                        if is_long
+                        else (pos["avg_price"] - px) * pos["qty"]
+                    )
+                    - pos["fees"]
+                )
+                _mtftrbb_pct = _mtftrbb_pnl / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _mtftrbb_tsc = (
+                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                )
+                trades.append(
+                    {
+                        "pnl_dollars": _mtftrbb_pnl,
+                        "pnl_pct": float(_mtftrbb_pct),
+                        "deployed": pos["deployed"],
+                        "reason": _mtftrbb_reason,
+                        "type": "CLOSE",
+                        "ts": _mtftrbb_tsc,
+                        "price": float(px),
+                        "bar_entry": int(pos["entry_bar"]),
+                        "bar_exit": int(i),
+                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                        "exit_price": float(px),
+                        "qty": float(pos["qty"]),
+                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                        "exit_reason": _mtftrbb_reason,
                         "bars_held": int(i - pos["entry_bar"]),
                     }
                 )

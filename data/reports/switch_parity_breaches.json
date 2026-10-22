@@ -35,6 +35,14 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
      ]
     },
+    "DELTA_MAX_HOLD_BARS": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!GLOBAL_RISK_GATES"
+     ]
+    },
     "GAP_PER_SYMBOL_AVG_THRESH_PCT": {
      "class": "WRONG_TEMPLATE_LEAK",
      "other_config_has_it": true,
@@ -147,6 +155,14 @@
       "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
      ]
     },
+    "WIN_TRAIL_EROSION_PCT": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
     "WT_DC_DETAILED_TF": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -156,7 +172,7 @@
      ]
     }
    },
-   "missing_count": 19,
+   "missing_count": 21,
    "switch_keys_checked": 1109,
    "templates": [
     "TEMPLATE_CRYPTO_LONG.xlsx",
@@ -188,6 +204,14 @@
      "sheets": [
       "TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
       "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+     ]
+    },
+    "DELTA_MAX_HOLD_BARS": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!GLOBAL_RISK_GATES",
+      "TEMPLATE_STOCKS_SHORT.xlsx!GLOBAL_RISK_GATES"
      ]
     },
     "FUNDING_GATE_LONG_MAX": {
@@ -298,6 +322,14 @@
       "TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_REVERSAL_BOUNCE"
      ]
     },
+    "WIN_TRAIL_EROSION_PCT": {
+     "class": "UNDEFINED_SWITCH",
+     "other_config_has_it": false,
+     "sheets": [
+      "TEMPLATE_STOCKS_LONG.xlsx!EXIT_STRUCTURAL",
+      "TEMPLATE_STOCKS_SHORT.xlsx!EXIT_STRUCTURAL"
+     ]
+    },
     "WT_DC_DETAILED_TF": {
      "class": "UNDEFINED_SWITCH",
      "other_config_has_it": false,
@@ -307,7 +339,7 @@
      ]
     }
    },
-   "missing_count": 17,
+   "missing_count": 19,
    "switch_keys_checked": 1223,
    "templates": [
     "TEMPLATE_STOCKS_LONG.xlsx",
@@ -315,5 +347,5 @@
    ]
   }
  },
- "generated": "2026-10-22T19:48:15.965250+00:00"
+ "generated": "2026-10-22T22:17:40.253727+00:00"
 }

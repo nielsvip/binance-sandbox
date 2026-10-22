@@ -10,7 +10,10 @@ from vec_decisions.stock_live_frames import _code_version
 v=_code_version()
 print(sum(1 for f in glob.glob('data/pure_board/step_cache/*.pkl') if pickle.load(open(f,'rb')).get('version')==v))" 2>/dev/null)
 [ -z "$H2" ] && exit 0
-if [ "$H2" -ge 10 ]; then
+# Time fallback: never enter the RTH open (2026-10-23 13:30Z) frozen — thaw by
+# 06:00Z unconditionally so vector coverage is trying at the open even if thin.
+NOW=$(date -u +%s); OPEN_FALLBACK=$(date -u -d "2026-10-23 06:00:00" +%s 2>/dev/null || date -u -j -f "%Y-%m-%d %H:%M:%S" "2026-10-23 06:00:00" +%s)
+if [ "$H2" -ge 10 ] || { [ -n "$OPEN_FALLBACK" ] && [ "$NOW" -ge "$OPEN_FALLBACK" ]; }; then
   for p in $(pgrep -f "pure_board_trader.py --loop"); do kill -CONT $p 2>/dev/null; done
   for p in $(pgrep -f "spawn_main"); do kill -CONT $p 2>/dev/null; done
   echo "$(date -u +%FT%TZ) THAW H2=$H2"
