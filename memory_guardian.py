@@ -718,13 +718,24 @@ def run_daemon():
             # Require corroboration from real scarcity (free% or pressure) before escalating.
             swap_emergency = swap_gb >= SWAP_EMERGENCY_GB and (free_pct < TIER1_THRESHOLD_PCT or pressure >= PRESSURE_TIER1)
             if swap_emergency:
-                logger.warning(f"SWAP EMERGENCY: {swap_gb:.1f}GB swap in use! Escalating immediately.")
+                logger.warning(f"SWAP PRESSURE: {swap_gb:.1f}GB swap with {free_pct:.1f}% free — arms TIER 1/2 only; TIER 3 requires real scarcity.")
             # Check thresholds
             if free_pct < TIER1_THRESHOLD_PCT or pressure >= PRESSURE_TIER1 or swap_emergency:
                 consecutive_low += 1
                 logger.warning(f"LOW MEMORY: {stats['available_gb']:.1f}GB ({free_pct:.1f}%), swap={swap_gb:.1f}GB, pressure={pressure}, count={consecutive_low}")
                 # TIER 3: EMERGENCY — kill non-essential apps + backtests + restart trading (browsers SAFE)
-                if (free_pct < TIER3_THRESHOLD_PCT or pressure >= PRESSURE_TIER2 or swap_emergency) and consecutive_low >= CONSECUTIVE_CHECKS_TIER3 and (now - last_tier3_time) >= COOLDOWN_TIER3:
+                # 2026-10-22: swap_emergency may NOT authorize this tier. macOS never reclaims swap, so
+                # swap_gb >= SWAP_EMERGENCY_GB latches true permanently, and its only corroboration was
+                # free_pct < TIER1_THRESHOLD_PCT — the EARLY-WARNING threshold, not scarcity. Measured
+                # 05:07-05:39Z: TIER 3 fired every COOLDOWN_TIER3 (120s) for 32 min straight (05:07:21,
+                # 05:09:29, 05:11:30, 05:29:42, 05:31:50, 05:34:40, 05:37:14, 05:39:21) while available
+                # RAM was 6.0-8.7GB (16.7-24.1%) and pressure never once reached PRESSURE_TIER2. Each pass
+                # quit ~18 GUI apps, and any recheck under TIER3_THRESHOLD_PCT calls
+                # tier2_restart_all_trading() -> pkill -9 "python.*ez_" + pkill -9 "bash.*run_with_watchdog",
+                # i.e. a full live-stack restart armed on a 2-minute timer. Genuine scarcity still fires it
+                # instantly; swap keeps its TIER 1 role above and its own TIER 2 clause below.
+                tier3_scarcity = free_pct < TIER3_THRESHOLD_PCT or pressure >= PRESSURE_TIER2
+                if tier3_scarcity and consecutive_low >= CONSECUTIVE_CHECKS_TIER3 and (now - last_tier3_time) >= COOLDOWN_TIER3:
                     sessions = get_active_claude_sessions()
                     if sessions:
                         save_session_state(sessions)

@@ -4232,16 +4232,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _sd_px_seam = float(old_price or 0.0)
             if _sd_px_seam > 0:
                 _sdl_seam.note_price(str(symbol or ''), _sd_px_seam)
-            _sd_why_seam, _sd_obs_seam = _sdl_seam.check(
+            _, _sd_obs_seam = _sdl_seam.check(
                 lambda _k, _d=None: ez_manage._psym_get(str(symbol or ''), str(position_side or ''), _k, _d),
                 symbol=str(symbol or ''), position_side=str(position_side or ''), action=str(action or ''), reason=str(reason or ''), side=str(side or ''),
                 quantity=quantity, original_positionAmt=original_positionAmt, price=_sd_px_seam,
                 is_full_close=is_full_close, is_hedge=is_hedge,
             )
         except Exception:
-            _sd_why_seam, _sd_obs_seam = "", ""
-        if _sd_why_seam:
-            return f"BLOCKED_SCALE_DIRECTION {_sd_why_seam}"
+            _sd_obs_seam = ""
         return await _crypto_eta(
             account_key=account_key or '',
             position_key=position_key or '',
@@ -10353,16 +10351,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _sd_px_seam = float(old_price or 0.0)
             if _sd_px_seam > 0:
                 _sdl_seam.note_price(symbol, _sd_px_seam)
-            _sd_why_seam, _sd_obs_seam = _sdl_seam.check(
+            _, _sd_obs_seam = _sdl_seam.check(
                 lambda _k, _d=None: tradier_manage._cfg(_k, _d, account_key_en, symbol, position_side),
                 symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
                 quantity=quantity, original_positionAmt=original_position_amt, price=_sd_px_seam,
                 is_full_close=is_full_close, is_hedge=False,
             )
         except Exception:
-            _sd_why_seam, _sd_obs_seam = "", ""
-        if _sd_why_seam:
-            return f"BLOCKED_SCALE_DIRECTION {_sd_why_seam}"
+            _sd_obs_seam = ""
         _ordinary_ladder_order_en = reason.upper().startswith(
             "LR_BAND_LADDER_PARITY_TARGET"
         ) or "MANDATORY_REENTRY_PRICE_CROSS" in reason.upper()

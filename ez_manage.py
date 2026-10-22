@@ -32769,14 +32769,14 @@ class MultiAccountTradeManager:
             _sd_px = safe_fetch_float(old_price, 0.0)
             if _sd_px > 0:
                 _sdl.note_price(symbol, _sd_px)
-            _sd_why, _sd_obs = _sdl.check(
+            _, _sd_obs = _sdl.check(
                 lambda _k, _d: _psym_get(symbol, position_side, _k, _d),
                 symbol=symbol, position_side=position_side, action=action, reason=reason, side=side,
                 quantity=quantity, original_positionAmt=original_positionAmt, price=_sd_px,
                 is_full_close=is_full_close, is_hedge=is_hedge,
             )
         except Exception:
-            _sd_why, _sd_obs = "", ""
+            _sd_obs = ""
         if _sd_obs:
             # Never silent: the disagreement lands in the non-vector paper ledger the parity watcher reads, beside
             # the vector's own trades — the same sink the VECTOR-ONLY EXITS BACKSTOP uses for a refused native exit.
@@ -32785,9 +32785,7 @@ class MultiAccountTradeManager:
                     _paper_nv.record("crypto", account_key, position_key, _paper_nv.kind_of(action, side, position_side), action, reason, "SCALE_DIRECTION_WRONG_WAY", old_price, quantity)
             except Exception:
                 pass
-            logger.warning(f"🧭 [SCALE_DIRECTION] {position_key} {action} — {'REFUSED' if _sd_why else 'observed (not refused)'}: {_sd_obs}")
-        if _sd_why:
-            return f"BLOCKED_SCALE_DIRECTION {_sd_why}"
+            logger.warning(f"🧭 [SCALE_DIRECTION] {position_key} {action} — observed, NOT refused (USER 2026-10-22: live reduce/augment are never vector-gated): {_sd_obs}")
         _res = await self._execute_now_inner(
             position_key=position_key, account_key=account_key, symbol=symbol,
             original_positionAmt=original_positionAmt, side=side, position_side=position_side,
@@ -32949,7 +32947,20 @@ class MultiAccountTradeManager:
             _voe_disabled = bool(getattr(_ezm_base_config, "NATIVE_EXITS_DISABLED", getattr(config, "NATIVE_EXITS_DISABLED", True)))
         except Exception:
             _voe_disabled = True
-        if _voe_disabled and _xg.is_exit_action(action, is_full_close):
+        # USER 2026-10-22: "reduce and augment orders on live trading should not be gated by vector as l/s ratio
+        # rebalancing uses it and it is not vectorizable but essential". exit_guarantee.is_exit_action counts
+        # REDUCE as an exit, so this backstop was refusing the rebalancer's trim leg outright on every call
+        # (measured: RATIO_REDUCE -> POLICY_NON_VECTOR_EXIT_DISABLED, because no RATIO reason is vec-dictated).
+        # A RATIO-family PARTIAL reduce is position scaling, not a discretionary exit — exempt. A RATIO full
+        # CLOSE is still an exit and still falls under the law.
+        _voe_ratio_scale = False
+        try:
+            if not is_full_close and "REDUCE" in str(action or "").upper() and "CLOSE" not in str(action or "").upper():
+                from live_twins.vector_enforce import family_of as _ve_fam
+                _voe_ratio_scale = _ve_fam(reason) == "RATIO"
+        except Exception:
+            _voe_ratio_scale = False
+        if _voe_disabled and _xg.is_exit_action(action, is_full_close) and not _voe_ratio_scale:
             _voe_vec = _voe_reason_is_vec(reason)
             if not _voe_vec:
                 logger.critical(f"🛑 [NON_VECTOR_EXIT_DISABLED] {position_key} {action} reason={str(reason)[:80]} — refused (USER 2026-10-21 backstop; NATIVE_EXITS_DISABLED=0 restores)")
@@ -64486,6 +64497,19 @@ async def main():
         accounts_to_init = all_possible_accounts
         print(f"🌍 Running in GLOBAL mode for accounts: {accounts_to_init}")
     logger = setup_logger_per_account("TradeLogger", getattr(config, 'BASE_PATH', __import__('pathlib').Path.home() / 'binance'), accounts_to_init)
+    # USER 2026-10-22: "event loop can NEVER be frozen". It was, repeatedly, and INVISIBLY: fin logged
+    # `[LOOP_LAG] event loop frozen 503.8s` plus nine more (232.0s, 150.9s, 89.4s …) and ang 79.2s on 2026-10-22,
+    # while `[LOOP_LAG]` only reports the lag and never says WHICH frame holds the loop. The positions service has had
+    # this dumper since 2026-10-14 (ez_positions_realtime.py:192) and it is how the per_sym_store full-table prime was
+    # caught on the loop; the trading engine — the one process whose stall means no orders at all — had nothing. Now a
+    # freeze writes every thread's stack to ~/logs/loop_stall_ez_manage_<acct>.log and names its own culprit.
+    # Diagnostic only: a daemon thread plus a 1 s ticker task, no trading behaviour touched.
+    try:
+        import loop_stall_watch
+        _lsw_path = loop_stall_watch.start(f"ez_manage_{selected_account or 'global'}")
+        logger.warning(f"[LOOP_STALL_WATCH] armed — thread stacks on any loop freeze -> {_lsw_path}")
+    except Exception as _lsw_e:
+        logger.warning(f"[LOOP_STALL_WATCH] not armed: {_lsw_e}")
     for acct in accounts_to_init:
         try:
             check_pid_file(acct)

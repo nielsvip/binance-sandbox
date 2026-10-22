@@ -55,13 +55,6 @@
     "symbol": "DASHUSDT",
     "side": "SHORT"
   },
-  "flz:XRPUSDC_SHORT": {
-    "orderId": "1000002636456618",
-    "stopPrice": 1.3637,
-    "entry_sig": "2026-10-22 05:38:38.865000+00:00",
-    "symbol": "XRPUSDC",
-    "side": "SHORT"
-  },
   "flz:ZECUSDC_SHORT": {
     "orderId": "1000002636458330",
     "stopPrice": 1277.24,
@@ -75,5 +68,12 @@
     "entry_sig": "2026-10-22 05:41:14.181000+00:00",
     "symbol": "XRPUSDC",
     "side": "LONG"
+  },
+  "flz:XRPUSDC_SHORT": {
+    "orderId": "1000002636461644",
+    "stopPrice": 1.3637,
+    "entry_sig": "2026-10-22 05:38:38.865000+00:00",
+    "symbol": "XRPUSDC",
+    "side": "SHORT"
   }
 }

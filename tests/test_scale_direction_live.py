@@ -20,20 +20,15 @@ def _get(**kw):
 
 
 def _refusal(get, **kw):
-    """Tests were written against the refusing shape; enforcement is now opt-in, so wrap it."""
-    return SDL.check(_enforce(get), **kw)[0]
-
-
-def _observation(get, **kw):
-    return SDL.check(get, **kw)[1]
+    """USER 2026-10-22: live reduce/augment are never vector-gated, so the twin OBSERVES. These tests assert the
+    law's verdict, which is now the observation; the refusal slot must stay empty for every single input."""
+    refusal, obs = SDL.check(get, **kw)
+    assert refusal == "", f"the twin refused a live order: {refusal}"
+    return obs
 
 
 def _enforce(get):
-    def g(k, d=None):
-        if k == "SCALE_DIRECTION_LIVE_ENFORCE":
-            return True
-        return get(k, d)
-    return g
+    return get
 
 
 ON = _get(SCALE_DIRECTION_LAW_ENABLED=True)
@@ -220,8 +215,8 @@ def test_both_trading_scripts_gate_inside_execute_now():
         assert "from live_twins import scale_direction_live as _sdl" in head, f"{name}: gate not in execute_now"
         assert "_sdl.check(" in head, name
         assert "_paper_nv" in src or "_paper_nv_sd" in src, f"{name}: a disagreement must never be silent"
-        assert getter in head, f"{name}: the gate must resolve per sym_side"
-        assert 'return f"BLOCKED_SCALE_DIRECTION' in head, name
+        assert getter in head, f"{name}: the observation must resolve per sym_side"
+        assert "BLOCKED_SCALE_DIRECTION" not in head, f"{name}: must not refuse a live scaling order"
 
 
 def test_both_trading_scripts_feed_the_close_ring_off_the_price_path():
@@ -236,20 +231,20 @@ def test_the_live_faithful_verifier_mirrors_the_gate_at_both_seams():
     invisible to the LIVE_DELTA column — the same trap that made the KINDERGARTEN/EMA veto need a mirror."""
     src = (ROOT / "backtest_v12_engine.py").read_text()
     assert src.count("scale_direction_live as _sdl_seam") == 2, "both seams (crypto + stocks) must mirror it"
-    assert src.count('return f"BLOCKED_SCALE_DIRECTION') == 2
+    assert "BLOCKED_SCALE_DIRECTION" not in src, "the verifier must not refuse a scaling order either"
     assert "ez_manage._psym_get(" in src and "tradier_manage._cfg(" in src
     c = src.index("async def _v8_execute_now_crypto")
-    assert src.index("_sdl_seam", c) < src.index("return await _crypto_eta(", c), "crypto seam: gate before the fill"
+    assert src.index("_sdl_seam", c) < src.index("return await _crypto_eta(", c), "crypto seam: observed before the fill"
 
 
-def test_the_gate_runs_before_the_order_and_returns_without_placing_it():
-    """A refusal must short-circuit — never place and then complain."""
+def test_the_observation_is_recorded_before_the_order_is_placed():
+    """The disagreement is written beside the trade, not after it — and it never short-circuits the order."""
     for name in ("ez_manage.py", "tradier_manage.py"):
         src = (ROOT / name).read_text()
         i = src.index("async def execute_now")
-        blocked_at = src.index('return f"BLOCKED_SCALE_DIRECTION', i)
+        obs_at = src.index("_sdl.check(", i)
         inner_at = src.index("_res = await self._execute_now_inner(", i)
-        assert blocked_at < inner_at, f"{name}: the gate must sit ABOVE the order call"
+        assert obs_at < inner_at, f"{name}: the observation must sit ABOVE the order call"
 
 
 # ── the vector-copy law: live executes what the vector dictated, it never caps it ────────────────
@@ -291,18 +286,38 @@ def test_is_vec_dictated_is_never_stricter_than_either_live_definition():
     assert not SDL.is_vec_dictated("PPL_TP_g3.05%"), "a native take-profit is not a vector order"
 
 
-def test_a_native_wrong_way_scale_is_observed_by_default_and_refused_only_on_opt_in():
+def test_the_twin_has_no_refusal_path_at_all():
+    """USER 2026-10-22: "reduce and augment orders on live trading should not be gated by vector as l/s ratio
+    rebalancing uses it and it is not vectorizable but essential". This twin classifies ONLY reduce/augment."""
     _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
-    kw = dict(symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP_g3.05%",
-              side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
-    refusal, obs = SDL.check(ON, **kw)
-    assert obs and not refusal, "default must OBSERVE — the vector already enforces the law"
-    refusal, obs = SDL.check(_enforce(ON), **kw)
-    assert refusal and refusal == obs, "SCALE_DIRECTION_LIVE_ENFORCE turns the observation into a refusal"
+    refusal, obs = SDL.check(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP_g3.05%",
+                             side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
+    assert obs and refusal == "", "a wrong-way scale is observed and recorded, never refused"
+    src = (ROOT / "live_twins" / "scale_direction_live.py").read_text()
+    assert "SCALE_DIRECTION_LIVE_ENFORCE" not in src, "a knob that would gate live reduce/augment must not exist"
+    for name in ("ez_manage.py", "tradier_manage.py", "backtest_v12_engine.py", "config.py", "config_tradier.py"):
+        t = (ROOT / name).read_text()
+        assert "BLOCKED_SCALE_DIRECTION" not in t, f"{name} can still refuse a live scaling order"
+        assert "SCALE_DIRECTION_LIVE_ENFORCE" not in t, name
 
 
-def test_live_enforce_ships_off_in_both_configs():
-    import config
-    import config_tradier
-    assert config.Config().SCALE_DIRECTION_LIVE_ENFORCE is False
-    assert config_tradier.TradierConfig().SCALE_DIRECTION_LIVE_ENFORCE is False
+def test_the_ls_rebalancer_is_not_vector_gated_on_either_leg():
+    """RATIO has no vector model and is essential: its trim/add must pass every vector gate."""
+    from live_twins import vector_enforce as ve
+    import exit_guarantee as xg
+    for act, reason in (("RATIO_REDUCE", "RATIO_REBALANCE_TRIM"), ("RATIO_AUGMENT", "RATIO_REBALANCE_ADD")):
+        assert ve.family_of(reason) == "RATIO"
+        ok, verdict = ve._check_inner(act, "BTCUSDT_LONG", reason)
+        assert ok, f"{act}: vector_enforce said {verdict}"
+        assert verdict != "OFF_BAR_WINDOW"
+    # the vec-only-exits backstop counts REDUCE as an exit; ez_manage must exempt the RATIO partial
+    ez = (ROOT / "ez_manage.py").read_text()
+    assert "_voe_ratio_scale" in ez and "not _voe_ratio_scale" in ez
+
+
+def test_open_and_full_close_keep_the_bar_window():
+    """Lifting the window is for POSITION SCALING only — law #2 still holds for entries and full exits."""
+    from live_twins import vector_enforce as ve
+    assert ve._is_scaling_act("RATIO_REDUCE") and ve._is_scaling_act("AUGMENT")
+    assert not ve._is_scaling_act("OPEN") and not ve._is_scaling_act("CLOSE")
+    assert not ve._is_scaling_act("REDUCE_TO_CLOSE")
