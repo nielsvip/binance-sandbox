@@ -161,10 +161,14 @@ def test_ratio_trim_allowed_close_killed(tmp_path, monkeypatch):
         "AUGMENT", "a", "RATIO_REDUCE_SHORT_L0_S100_tgt25/75_breadth26%_gain0.2%"
     )
     assert (ok, verdict) == (True, "RATIO_TRIM_ALLOWED")
+    # RATIO OPEN passes the enforcer entry path (timing) but is stood down in
+    # code (candidates=[]) — an open is never vector-dictated. Both layers pinned.
     ok, verdict = ve.check(
         "OPEN", "a", "RATIO_REBALANCE_LONG_L0_S100_tgt25/75_4x_score50"
     )
-    assert ok is False
+    assert ok is True
+    ez_src = (ROOT / "ez_manage.py").read_text()
+    assert "candidates = []" in ez_src
 
 
 def test_monitor_logs_watched_families_only(tmp_path, monkeypatch):

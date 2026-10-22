@@ -167,9 +167,12 @@ def test_new_exit_legs_stood_down():
         "if tp_reason and not _voe_native_exits_disabled()",
         "[OVERRIDE_REDUCE_STOOD_DOWN]",
         "([] if _voe_native_exits_disabled() else _ss_stalled)",
-        "([] if _voe_native_exits_disabled() else _reduce_candidates)",
-        "([] if _voe_native_exits_disabled() else _close_candidates)",
-        "([] if _voe_native_exits_disabled() else _ow_candidates)",
+        # USER 2026-10-22 (operator: ratio ON): the three RATIO overweight
+        # arms flow — their stand-downs were lifted, opens stay stood down.
+        "for _rpk, _rpos, _rgain in _reduce_candidates:",
+        "for _cpk2, _cpos2, _cgain2 in _close_candidates:",
+        "for _ow_pk, _ow_pos, _ow_gain, _ow_delta in _ow_candidates:",
+        "RATIO opens/augments stay stood down",
         "and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits: emergency exit stood down",
         "[DC_BREACH_STOOD_DOWN]",
         "[BREAK_EVEN_GUARD_STOOD_DOWN]",
