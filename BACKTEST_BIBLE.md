@@ -4710,3 +4710,23 @@ reconciles exactly: 138 queueable + the 8 `CAT_SIDE_DEFAULTS_ENABLED` rows whose
 (cleared cells are unqueueable via the `cand is None` test at `:3279`, before the grey test at `:3283`).
 Supporting detail: `SIZING_FALSE_ALPHA_SWITCHES = {"START_POSITION_SIZE", "MIN_POSITION_SIZE"}` (`:860`) already
 blocked PROMOTION for two of these — greying additionally stops the COMPUTE, which promotion-blocking never did.
+
+### 118.16 TONIGHT'S `per_sym_store` CHANGE IS MAC-ONLY — WHICH IS CORRECT, AND IT CLEARS A SUSPICION
+After the template push, S1's `logs/vec_live_executor.log` showed repeated
+`{"status": "NO_SET", "why": "no overrides resolved"}`, which is exactly the signature §118.11's change would
+produce (an absent `full_config` now returns `None` where it used to fall back to `e["overrides"]`). **It is not
+the cause.** S1's `per_sym_store.py` is md5 `b2546eb7bb3721a6c76cd8425b7e3943`, mtime 2026-10-20 18:16 — and
+that is **byte-identical to the Mac's pre-edit backup** `backups/before_erase_override_model_202610210538_per_sym_store.py`.
+The Mac's current file is `ff38fb1db15b8fab2716bc5dbedac3ae`. So the edit never left the Mac, the `NO_SET`
+entries predate it, and the fleet is in the state gate discipline requires (nothing ships without
+`v15_version_gate submit` on S2). A subagent's claim that it had "rsynced per_sym_store to s1, md5-verified"
+does not match what is on S1; what is there is the older file.
+**ALWAYS compare a remote file against BOTH the current local file and the local pre-change backup** — matching
+the backup tells you the change did not ship, which is a different fact from "the hosts agree".
+
+**OPEN, NOT INVESTIGATED (pre-existing, S1 is backtest-only):** that log is 236 MB and its cumulative status
+tally is `NO_SET` **428,158**, `EXCEPTION` **202,604**, `FABRICATION_SET` **192,019**, `NO_NPZ` 148,541,
+`STALE` 19,342, `ENGINE_ERROR` 5,100 against `OK` **20,853** — i.e. OK is ~2% of all entries. Also
+`logs/stall_watch_alert.log` records `TRACEBACK STXUSDT_SHORT ModuleNotFoundError: No module named
+'vec_decisions.scale_di…'` on S1 at 01:40 and 01:50Z, which is the signature of an incomplete module push.
+Both deserve their own pass; neither was touched here.
