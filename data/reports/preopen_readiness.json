@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T07:00:31Z",
+ "generated_utc": "2026-10-22T07:20:29Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": false,
@@ -16,10 +16,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 283,
-    "filled_before_open": 283
+    "filled_today": 300,
+    "filled_before_open": 300
    },
-   "detail": "283 boards filled before the open (283 today)"
+   "detail": "300 boards filled before the open (300 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -64,8 +64,8 @@
    "measured": {
     "selection_n": 508,
     "exact": 45,
-    "benign_divergence_only": 388,
-    "material_divergence": 74,
+    "benign_divergence_only": 394,
+    "material_divergence": 68,
     "no_live_row": [
      "LEXX_SHORT"
     ],
@@ -202,7 +202,7 @@
      }
     ]
    },
-   "detail": "45 exact, 388 benign-only, 74 with material divergence, 1 with no live row"
+   "detail": "45 exact, 394 benign-only, 68 with material divergence, 1 with no live row"
   },
   {
    "name": "indicators_fresh",
