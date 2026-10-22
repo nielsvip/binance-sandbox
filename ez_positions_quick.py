@@ -19111,11 +19111,27 @@ class TrackerManager:
                     return True
                 else:
                     del self._processing_orders[key]
+        # USER 2026-10-22: "event loop can NEVER be frozen". This cross-process check was freezing it. CAUGHT RED-
+        # HANDED by the new ez_manage stall dumper, 2026-10-22 06:02:57Z, fin pid 99239, loop blocked 19.2 s, main
+        # thread innermost frames:
+        #   is_processing (:19117) <- worker (:29312) <- redis.asyncio execute_command <- get_connection <-
+        #   ensure_connection <- connect <- _connect <- asyncio open_connection <- sock_connect <- _add_writer
+        # i.e. a hot-path GET that found no pooled connection and opened a new one ON the loop. Redis itself is
+        # healthy (PING 0.02 s) but the pool is not: `connected_clients` 348 and `total_connections_received`
+        # 2,171,252 — connections created and dropped continuously, so nearly every command pays a connect.
+        # The in-memory `_processing_orders` check above already answered for THIS account, and one ez_manage owns
+        # one account, so this leg is a cross-process courtesy, never the authority. It is now time-boxed: if Redis
+        # cannot answer inside PROCESSING_REDIS_TIMEOUT_S the in-memory answer stands. A slow Redis can cost this
+        # path a few ms; it can no longer cost the account its event loop.
         if self.redis_manager and hasattr(self.redis_manager, "connections"):
             try:
                 client = self.redis_manager.connections.get("local")
-                if client and await client.get(f"processing:{key}"):
-                    return True
+                if client:
+                    _t = float(os.environ.get("PROCESSING_REDIS_TIMEOUT_S") or 0.1)
+                    if await asyncio.wait_for(client.get(f"processing:{key}"), timeout=_t):
+                        return True
+            except asyncio.TimeoutError:
+                pass
             except Exception:
                 pass
         return False
@@ -19127,7 +19143,12 @@ class TrackerManager:
             try:
                 client = self.redis_manager.connections.get("local")
                 if client:
-                    await client.set(f"processing:{key}", "1", ex=45)
+                    # Same time-box as is_processing: the in-memory dict above is already set, so this publish is a
+                    # courtesy to other processes and may never park the loop on a pool that is re-connecting.
+                    _t = float(os.environ.get("PROCESSING_REDIS_TIMEOUT_S") or 0.1)
+                    await asyncio.wait_for(client.set(f"processing:{key}", "1", ex=45), timeout=_t)
+            except asyncio.TimeoutError:
+                pass
             except Exception:
                 pass
 
@@ -19139,7 +19160,12 @@ class TrackerManager:
             try:
                 client = self.redis_manager.connections.get("local")
                 if client:
-                    await client.delete(f"processing:{key}")
+                    # Time-boxed like its siblings; the in-memory entry is already gone, which is what this account
+                    # reads. A re-connecting pool may not hold the loop (2026-10-22 19.2 s freeze, fin).
+                    _t = float(os.environ.get("PROCESSING_REDIS_TIMEOUT_S") or 0.1)
+                    await asyncio.wait_for(client.delete(f"processing:{key}"), timeout=_t)
+            except asyncio.TimeoutError:
+                pass
             except Exception:
                 pass
 

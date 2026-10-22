@@ -2614,9 +2614,30 @@ class SimpleRedisManager:
             try:
                 target = '127.0.0.1' if host in ['localhost', '::1'] else host
                 # Use instant timeouts as requested
+                # BOUNDED POOL, 2026-10-22. USER: "event loop can NEVER be frozen". With no max_connections the
+                # asyncio pool is effectively unbounded, so every concurrent command that finds no free connection
+                # OPENS A SOCKET instead of waiting for one — and with socket_timeout=1 a slow command discards its
+                # connection, so the next one reconnects. Self-feeding: measured 2026-10-22 06:0xZ,
+                # connected_clients=348 and total_connections_received=**2,171,252** against a Redis answering PING
+                # in 0.02 s. The ez_manage stall dumper caught the cost on the loop itself — fin pid 99239 blocked
+                # 19.2 s with the main thread inside
+                # is_processing <- redis get_connection <- ensure_connection <- connect <- sock_connect <- _add_writer.
+                # A bounded pool makes the 129th concurrent command AWAIT a free connection (the loop keeps ticking)
+                # instead of creating a socket, which is the whole difference between queueing and a storm.
+                # A plain max_connections is the WRONG bound here: redis-py 8.1.0 raises MaxConnectionsError past the
+                # cap instead of waiting (verified), which would turn a storm into failed commands across every
+                # caller. BlockingConnectionPool bounds the sockets AND waits for a free one, so the 129th concurrent
+                # command awaits (loop keeps ticking) instead of opening socket 129 or raising.
+                _rmax = int(os.environ.get("REDIS_MAX_CONNECTIONS") or 128)
+                # USER 2026-10-22: "redis reads can never wait >0.1s then they use json" — the pool wait is part of
+                # that budget, so it is 0.1 s and a caller that cannot get a connection falls back.
+                _rwait = float(os.environ.get("REDIS_POOL_WAIT_S") or 0.1)
                 self.connections[name] = redis.Redis(
-                    host=target, port=port, db=0, decode_responses=True,
-                    socket_connect_timeout=1, socket_timeout=1, health_check_interval=30
+                    connection_pool=redis.BlockingConnectionPool(
+                        max_connections=_rmax, timeout=_rwait,
+                        host=target, port=port, db=0, decode_responses=True,
+                        socket_connect_timeout=1, socket_timeout=1, health_check_interval=30,
+                    )
                 )
             except Exception as e:
                 logger.warning(f"Redis link {name} creation failed: {e}")

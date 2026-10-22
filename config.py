@@ -1850,7 +1850,15 @@ class Config:
     ZERO_PASS_TRADE_ALL: bool = True  # USER 2026-10-21 zero-pass goes completely: ANY per_sym calculation (published board or backtest <9d) trades live; board-gate refusals (NO_LATEST_BOARD/LIVE_SET_NE_BOARD/BOARD_TOO_OLD) become allow-with-log at entries. Risk carried by size, never refusal. Kill switch: False restores the old refusals.
     ZERO_PASS_NEG_FLOOR: bool = True  # USER 2026-10-21: calculated sym_side with negative latest gain trades at the floor (crypto exchange minimum, stocks 1 share). Positive gains untouched (RANKED tiers to x6 stay). Kill switch: False.
     VECTOR_ENFORCE_ENABLED: bool = True  # USER 2026-10-21 vector-copy-trading law: entries+exits only at 15m bar change, exits only on cross/board-intent/stop, violating families disabled+flagged until manual restore (tools/vector_violations.py). Kill switch: False restores pre-law behavior.
-    VECTOR_BAR_WINDOW_S: float = 180.0  # execution window after each 15m bar close (:00/:15/:30/:45 UTC) during which vector decisions may execute.
+    # 180 -> 900 (the whole bar, i.e. NO window) on 2026-10-22. USER: "BAR_SECONDS is only in v15_pilot NEVER in real
+    # life trading - it was just a safety net so live would not stupidly trade against the switches" and "the system
+    # trades every ms". At 180 of every 900 s live could only enter 20% OF THE TIME, which is the paralysis itself:
+    # 412 BLOCKED_VECTOR_EXEC_OFF_BAR_WINDOW refusals today, and `in_bar_window()` was False at 471 s into the bar
+    # while 3,218 admitted dictates sat unexecuted. The safety net's real job — never trade AGAINST the switches — is
+    # done by the vec-provenance checks in live_twins/vector_enforce (_is_vec_reason / _is_board_confirmed): a
+    # vector-dictated act IS the switches. Setting this to the full bar makes `(t % 900) < 900` always true, so the
+    # gate is inert without removing the mechanism; drop it back to 180 to restore the pilot-era window.
+    VECTOR_BAR_WINDOW_S: float = 900.0  # whole bar = no execution window; vector decisions execute whenever they arrive.
     PARITY_VEC_EXACT_FAMILIES: str = (
         "ENTRY,EXIT,AUGMENT"  # comma list of twinned families under PARITY_VEC_EXACT_MODE: ENTRY (vec OPENs), EXIT (vec CLOSE/REDUCE), AUGMENT
     )
