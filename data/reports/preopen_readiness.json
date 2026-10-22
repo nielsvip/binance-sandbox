@@ -1,5 +1,5 @@
 {
- "generated_utc": "2026-10-22T22:20:04Z",
+ "generated_utc": "2026-10-22T22:40:04Z",
  "host": "MacBook-Pro.local",
  "session_open_utc": "2026-10-22T13:30:00Z",
  "market_open": true,
@@ -14,10 +14,10 @@
    "ok": true,
    "critical": true,
    "measured": {
-    "filled_today": 667,
+    "filled_today": 670,
     "filled_before_open": 417
    },
-   "detail": "417 boards filled before the open (667 today)"
+   "detail": "417 boards filled before the open (670 today)"
   },
   {
    "name": "defaults_chain_completed",
@@ -61,12 +61,11 @@
    "critical": true,
    "measured": {
     "selection_n": 522,
-    "exact": 130,
-    "benign_divergence_only": 315,
-    "material_divergence": 70,
+    "exact": 131,
+    "benign_divergence_only": 320,
+    "material_divergence": 65,
     "no_live_row": [
      "LEXX_SHORT",
-     "FCX_SHORT",
      "MCD_LONG",
      "SCRUSDT_SHORT",
      "WOOUSDT_SHORT",
@@ -153,19 +152,6 @@
       ]
      },
      {
-      "sym_side": "GDX_SHORT",
-      "published_at": "2026-10-22T18:38:43Z",
-      "material": 95,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_TF",
-       "AUGMENT_INTO_REENTRY_ENABLED",
-       "BB_PULLBACK_GATE_FILTER_TF",
-       "BB_PULLBACK_GATE_TF"
-      ]
-     },
-     {
       "sym_side": "MRVL_SHORT",
       "published_at": "2026-10-22T16:19:54Z",
       "material": 93,
@@ -176,19 +162,6 @@
        "AUGMENTATION_COOLDOWN_SECONDS",
        "AUGMENT_TYPED_MIN_GAIN_ENABLED",
        "BB_PULLBACK_GATE_TF"
-      ]
-     },
-     {
-      "sym_side": "DAR_SHORT",
-      "published_at": "2026-10-22T20:25:15Z",
-      "material": 88,
-      "sample": [
-       "ADX_REGIME_FILTER_ENABLED",
-       "ATR_ADAPTIVE_STOP_ENABLED",
-       "ATR_ADAPTIVE_STOP_MULT",
-       "ATR_ADAPTIVE_STOP_TF",
-       "BB_PULLBACK_GATE_TF",
-       "BREAKOUT_LEASH_REENTRY_MULT"
       ]
      },
      {
@@ -203,23 +176,51 @@
        "BB_BOUNCE_ENTRY_FILTER_ENABLED",
        "CIRCUIT_SHARPE_GATES_FILTER_TF"
       ]
+     },
+     {
+      "sym_side": "CMC_LONG",
+      "published_at": "2026-10-14T06:21:31Z",
+      "material": 76,
+      "sample": [
+       "ADX_RANGING_THRESHOLD",
+       "ADX_REGIME_FILTER_ENABLED",
+       "ATR_ADAPTIVE_SIZING_ENABLED",
+       "ATR_ADAPTIVE_STOP_TF",
+       "BB_BOUNCE_ENTRY_FILTER_ENABLED",
+       "BB_PULLBACK_GATE_TF"
+      ]
+     },
+     {
+      "sym_side": "ICPUSDT_LONG",
+      "published_at": "2026-10-13T08:02:23Z",
+      "material": 72,
+      "sample": [
+       "ALL_TF_AGAINST_BLOCK_ENTRY_ENABLED",
+       "BB_BREAKOUT_ENTRY_TF",
+       "BB_FROZEN_STOP_ENABLED",
+       "BB_PROFIT_TAKE_TF",
+       "BB_PULLBACK_GATE_ON_FINAL",
+       "BB_PULLBACK_GATE_TF"
+      ]
      }
     ]
    },
-   "detail": "130 exact, 315 benign-only, 70 with material divergence, 7 with no live row"
+   "detail": "131 exact, 320 benign-only, 65 with material divergence, 6 with no live row"
   },
   {
    "name": "indicators_fresh",
    "ok": true,
    "critical": true,
    "measured": {
-    "symbols": 201,
-    "stale_over_90min": 0,
-    "stale_pct": 0.0,
-    "median_age_min": 50.1,
-    "sample": []
+    "symbols": 202,
+    "stale_over_90min": 1,
+    "stale_pct": 0.5,
+    "median_age_min": 70.1,
+    "sample": [
+     "DYDXUSDT"
+    ]
    },
-   "detail": "0/201 symbols past the live 90-min entry gate (0.0%)"
+   "detail": "1/202 symbols past the live 90-min entry gate (0.5%)"
   },
   {
    "name": "s1_sets_synced",

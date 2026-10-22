@@ -136,8 +136,10 @@ class TestV12UncondTwin(unittest.TestCase):
     def test_twin_block(self):
         for marker in ("UNCOND_DC_HIGH_4H", "UNCOND_DC_HIGH_1H", "UNCOND_DC_HIGH_15M", "UNCOND_DC_LOW_4H", "UNCOND_DC_LOW_1H", "UNCOND_DC_LOW_15M"):
             self.assertIn(marker, self.src)
-        self.assertGreaterEqual(self.src.count("1.0025"), 3)
-        self.assertGreaterEqual(self.src.count("0.9975"), 3)
+        # 2026-10-22 USER: the ±0.25% literals became UNCOND_DC_HARD_STOP_BUFFER_PCT (default returns 0.9975/1.0025 exactly)
+        self.assertIn("_uh_lo_f, _uh_hi_f = _udcs.buffer_factors(cfg)", self.src)
+        self.assertEqual(self.src.count("* _uh_lo_f"), 3)
+        self.assertEqual(self.src.count("* _uh_hi_f"), 3)
 
     def test_twin_precedes_ultimate(self):
         ui = self.src.index("2026-09-19 USER MANDATE — ABSOLUTE ULTIMATE STOP")
@@ -180,6 +182,9 @@ class TestUncondTwinBehavioral(unittest.TestCase):
               "bmin": 15, "is_tradier": True,
               "_uh_h4": arr(highs[0]), "_uh_h1": arr(highs[1]), "_uh_h15": arr(highs[2]),
               "_uh_l4": arr(lows[0]), "_uh_l1": arr(lows[1]), "_uh_l15": arr(lows[2])}
+        import vec_decisions.uncond_dc_stop as _udcs
+
+        ns["_udcs"] = _udcs
         exec(self.twin, {}, ns)
         return ns
 

@@ -4750,6 +4750,8 @@ class Config:
     PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(
         default_factory=lambda: ["ang", "inf", "flz", "men", "fin"]
     )
+    PPL_REAUGMENT_ENABLED: bool = False  # USER 2026-10-22: re-add locked profit when price reclaims the 15m DC band after a PPL TP. Pilot-swept per sym_side; inert until a board holds True.
+    PPL_REAUGMENT_SIZE_MULT: float = 1.0  # USER 2026-10-22: re-augment qty = MULT x qty taken at the TP. Pilot candidates 1.0/1.5/2.0.
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = (
         1.5  # 2026-05-26 GRID WINNER (was 0.5). 1.5% > 1.0% > 0.5% monotonic; lets winners run before harvesting.
     )
