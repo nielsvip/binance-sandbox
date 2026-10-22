@@ -6203,8 +6203,12 @@ class QuickConfig:
     PARTIAL_PROFIT_LOCK_SWEEP_ARM_PCT: float = 0.5  # auto-wired 625
     PARTIAL_PROFIT_LOCK_SWEEP_ENABLED: bool = False  # auto-wired 625
     PARTIAL_PROFIT_LOCK_SWEEP_GAIN_PCT: float = 0.3  # auto-wired 625
-    PPL_REAUGMENT_ENABLED: bool = False  # USER 2026-10-22: pilot-swept per sym_side; inert default
-    PPL_REAUGMENT_SIZE_MULT: float = 1.0  # USER 2026-10-22: pilot candidates 1.0/1.5/2.0
+    PPL_REAUGMENT_ENABLED: bool = (
+        False  # USER 2026-10-22: pilot-swept per sym_side; inert default
+    )
+    PPL_REAUGMENT_SIZE_MULT: float = (
+        1.0  # USER 2026-10-22: pilot candidates 1.0/1.5/2.0
+    )
     PEAK_GIVEBACK_DROP_PCT: float = 0.5  # auto-wired 625
     PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False  # auto-wired 625
     PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.5  # auto-wired 625
@@ -21845,7 +21849,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 }
             )
             pos["last_reduce_bar"] = int(i)
-            if _ppl_reaug_on:  # USER 2026-10-22: every PPL tap arms the DC-reclaim re-augment (one-shot)
+            if (
+                _ppl_reaug_on
+            ):  # USER 2026-10-22: every PPL tap arms the DC-reclaim re-augment (one-shot)
                 pos["_ppl_armed"] = 1
                 pos["_ppl_armed_bar"] = int(i)
                 pos["_ppl_tp_qty"] = float(_ppl_qty)
@@ -21868,7 +21874,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _reaug_qty = 0.0
             if _reaug_qty > 0:
                 _reaug_new = pos["qty"] + _reaug_qty
-                pos["avg_price"] = (pos["avg_price"] * pos["qty"] + px * _reaug_qty) / _reaug_new
+                pos["avg_price"] = (
+                    pos["avg_price"] * pos["qty"] + px * _reaug_qty
+                ) / _reaug_new
                 pos["deployed"] += abs(_reaug_qty * px)
                 pos["fees"] += abs(_reaug_qty * px) * half_fee
                 pos["qty"] = _reaug_new
@@ -21877,7 +21885,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos["n_augments"] = int(pos.get("n_augments", 0)) + 1
                 pos["last_aug_qty"] = float(_reaug_qty)
                 pos["_ppl_armed"] = 0
-                _ts_reaug = float(ts[i]) if i < len(ts) else (float(ts[-1]) if len(ts) else 0.0)
+                _ts_reaug = (
+                    float(ts[i]) if i < len(ts) else (float(ts[-1]) if len(ts) else 0.0)
+                )
                 events.append(
                     {
                         "type": "AUGMENT",

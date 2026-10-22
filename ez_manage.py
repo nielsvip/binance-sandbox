@@ -58212,9 +58212,29 @@ async def process_position(
                                 * (1.0 - _ppl_frac * (1.0 - _pp_gain / 100.0))
                                 / (1.0 - _ppl_frac)
                             )
-                            _ppl_reaug_arm = bool(_psym_get(symbol, position_side, "PPL_REAUGMENT_ENABLED", False))
+                            _ppl_reaug_arm = bool(
+                                _psym_get(
+                                    symbol,
+                                    position_side,
+                                    "PPL_REAUGMENT_ENABLED",
+                                    False,
+                                )
+                            )
                             try:
-                                _ppl_reaug_m = min(2.0, max(0.0, float(_psym_get(symbol, position_side, "PPL_REAUGMENT_SIZE_MULT", 1.0))))
+                                _ppl_reaug_m = min(
+                                    2.0,
+                                    max(
+                                        0.0,
+                                        float(
+                                            _psym_get(
+                                                symbol,
+                                                position_side,
+                                                "PPL_REAUGMENT_SIZE_MULT",
+                                                1.0,
+                                            )
+                                        ),
+                                    ),
+                                )
                             except (TypeError, ValueError):
                                 _ppl_reaug_m = 1.0
                             trade_manager.partial_profit_lock_state[position_key] = {
@@ -58224,7 +58244,9 @@ async def process_position(
                                 "stop_upgraded": False,
                                 "effective_entry": _ppl_eff_entry,
                                 "reaug_armed": _ppl_reaug_arm,
-                                "reaug_tp_qty": float(_ppl_reduce_qty) if _ppl_reaug_arm else 0.0,
+                                "reaug_tp_qty": (
+                                    float(_ppl_reduce_qty) if _ppl_reaug_arm else 0.0
+                                ),
                                 "reaug_mult": _ppl_reaug_m if _ppl_reaug_arm else 0.0,
                             }
                             logger.info(
@@ -58287,20 +58309,55 @@ async def process_position(
                 try:
                     if _pp_shared_ind is None:
                         _pp_shared_ind = await ii(trade_manager, symbol) or {}
-                    _rg_wt = safe_fetch_float(_pp_shared_ind.get("wt1_15m", 0), 0.0) + safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
+                    _rg_wt = safe_fetch_float(
+                        _pp_shared_ind.get("wt1_15m", 0), 0.0
+                    ) + safe_fetch_float(_pp_shared_ind.get("wt2_15m", 0), 0.0)
                     _rg_dc = safe_fetch_float(_pp_shared_ind.get("dc_low_15m", 0), 0.0)
-                    _rg_pw = safe_fetch_float(_pp_shared_ind.get("wt1_15m_prev", 0), 0.0) + safe_fetch_float(_pp_shared_ind.get("wt2_15m_prev", 0), 0.0)
-                    _rg_pd = safe_fetch_float(_pp_shared_ind.get("dc_low_15m_prev", 0), 0.0)
-                    if _rg_dc > 0 and _rg_pd > 0 and _rg_pw <= _rg_pd and _rg_wt > _rg_dc:
-                        _rg_qty = float(_ppl_state.get("reaug_tp_qty", 0.0)) * float(_ppl_state.get("reaug_mult", 0.0))
+                    _rg_pw = safe_fetch_float(
+                        _pp_shared_ind.get("wt1_15m_prev", 0), 0.0
+                    ) + safe_fetch_float(_pp_shared_ind.get("wt2_15m_prev", 0), 0.0)
+                    _rg_pd = safe_fetch_float(
+                        _pp_shared_ind.get("dc_low_15m_prev", 0), 0.0
+                    )
+                    if (
+                        _rg_dc > 0
+                        and _rg_pd > 0
+                        and _rg_pw <= _rg_pd
+                        and _rg_wt > _rg_dc
+                    ):
+                        _rg_qty = float(_ppl_state.get("reaug_tp_qty", 0.0)) * float(
+                            _ppl_state.get("reaug_mult", 0.0)
+                        )
                         if _rg_qty > pos_min_qty:
                             _rg_side = "BUY" if is_long else "SELL"
                             _rg_uid = f"PPL_REAUGMENT_{position_key}_{int(time.time())}"
                             _rg_reason = f"PPL_REAUGMENT_DC_RECLAIM_wt{_rg_wt:.1f}>dc{_rg_dc:.4f}"
-                            logger.warning(f"[PPL_REAUGMENT] {position_key}: {_rg_reason} — firing AUGMENT qty={_rg_qty:.6f} mult={float(_ppl_state.get('reaug_mult', 0.0)):.1f}")
-                            _rg_res = await trade_manager.execute_now(position_key, account_key, symbol, _ppl_pos_amt, _rg_side, position_side, _rg_qty, current_price, _rg_uid, _rg_reason, False, "QUICK_AUGMENT")
+                            logger.warning(
+                                f"[PPL_REAUGMENT] {position_key}: {_rg_reason} — firing AUGMENT qty={_rg_qty:.6f} mult={float(_ppl_state.get('reaug_mult', 0.0)):.1f}"
+                            )
+                            _rg_res = await trade_manager.execute_now(
+                                position_key,
+                                account_key,
+                                symbol,
+                                _ppl_pos_amt,
+                                _rg_side,
+                                position_side,
+                                _rg_qty,
+                                current_price,
+                                _rg_uid,
+                                _rg_reason,
+                                False,
+                                "QUICK_AUGMENT",
+                            )
                             if "SUCCESS" in str(_rg_res or "").upper():
-                                trade_manager.partial_profit_lock_state[position_key] = {**trade_manager.partial_profit_lock_state.get(position_key, {}), "reaug_armed": False}
+                                trade_manager.partial_profit_lock_state[
+                                    position_key
+                                ] = {
+                                    **trade_manager.partial_profit_lock_state.get(
+                                        position_key, {}
+                                    ),
+                                    "reaug_armed": False,
+                                }
                                 return f"{EvalStatus.ACTION_TAKEN}:PPL_REAUGMENT_DC_RECLAIM"
                 except Exception as _rg_e:
                     logger.warning(f"[PPL_REAUGMENT_ERR] {position_key}: {_rg_e}")
