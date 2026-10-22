@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import hashlib
 import json
 import math
 import os
@@ -670,6 +671,249 @@ class ContextEncoder:
     def filter_signature(feats):
         """the ACTIVE-FILTER SET of a context (its X.f features) -> the 'never-tried context' split key."""
         return tuple(f for f in feats if f.startswith("X.f:"))
+
+
+# ------------------------------------------------------------------------------------------------ binding features (V20 v3, 2026-10-22)
+# Source: data/learn/binding_map_<CS>.json (tools/v18_binding_map.py, contract binding_map_v1) + the RUNNING SET (the chain in force:
+# a board's start set overlaid with its promotions so far; at decision time the pilot's chain). No outcome is read here (no leakage).
+
+BIND_CONTRACT = "binding_map_v1"
+BIND_VERDICTS = ("BINDS", "CONDITIONAL_ARMED", "CONDITIONAL_OFF", "INDIRECT", "NEVER", "UNKNOWN")
+BIND_STAGES = ("ENTRY", "REENTRY", "EXIT_STOP", "EXIT_TARGET", "EXIT_VEL", "EXIT_STRUCT", "AUGMENT", "REDUCE", "SIZING", "GLOBAL")
+FILTER_STAGE_ALIAS = {"EXIT_SIG": "EXIT_VEL", "REDUCE_SIG": "REDUCE", "WIN_TRAIL_EROSION": "EXIT_STOP"}
+ENTRY_BLOCKER_GATES = ("ADX_REGIME_FILTER_ENABLED", "COUNTER_TREND_ADD_BLOCK_ENABLED", "HTF_DIRECTION_GATE_ENABLED", "GR_FILTER_ALL_ENTRIES")
+TR4H_GATE_RE = re.compile(r"^TR_[A-Z0-9_]*4H[A-Z0-9_]*GATE")
+TAB_DIGEST_DIM = 16
+BIND_DIM = len(BIND_VERDICTS) + (len(BIND_STAGES) + 1) + (len(BIND_STAGES) + 2) + 1 + 2 + 1 + 1 + TAB_DIGEST_DIM
+BIND_FEATURE_NAMES = ([f"bind_verdict:{v}" for v in BIND_VERDICTS] + [f"stage_switch:{s}" for s in BIND_STAGES + ("UNKNOWN",)]
+                      + [f"stage_filter:{s}" for s in BIND_STAGES + ("NONE", "UNKNOWN")] + ["same_stage", "masters_armed", "masters_known", "dead_row",
+                                                                                            "upstream_gate_active"] + [f"tab_digest:{i}" for i in range(TAB_DIGEST_DIM)])
+
+
+def _truthy(v):
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    if isinstance(v, (int, float)):
+        return v != 0
+    return str(v).strip().lower() not in ("", "off", "false", "0", "0.0", "none", "null")
+
+
+def _filter_stage(stages):
+    s = str((stages or ["UNKNOWN"])[0] or "UNKNOWN").split("+", 1)[0].strip().upper()
+    s = FILTER_STAGE_ALIAS.get(s, s)
+    return s if (s in BIND_STAGES or s == "NONE") else "UNKNOWN"
+
+
+def _tf_bucket(cv):
+    if cv in ("OFF", "False", "0", "None", ""):
+        return "off"
+    if cv in ("True",):
+        return "bool"
+    parts = [norm_tf(x) for x in re.split(r"[,+]", cv) if x]
+    if parts and all(parts):
+        if len(parts) > 1:
+            return "multi"
+        return "htf" if parts[0] in HTF else "ltf"
+    return "num" if is_num(cv) else "enum"
+
+
+class BindingIndex:
+    """Read-only lookups over ONE cat_side's binding map: cells by (tab, switch, canon cand, filter, canon opt), switch/filter
+    stages, master defaults, the filters of each tab and the entry-blocker gate keys. Static parts are memoised per cell."""
+
+    def __init__(self, bm, path=None):
+        self.meta = bm.get("meta") or {}
+        self.cs = self.meta.get("cat_side")
+        self.path = str(path) if path else None
+        self.switches = bm.get("switches") or {}
+        self.filters = bm.get("filters") or {}
+        self.defaults = {k: (v or {}).get("value") for k, v in (self.meta.get("masters_default") or {}).items()}
+        self.rows = {}
+        self.tab_filters = {}
+        for key, row in (bm.get("rows") or {}).items():
+            tab, _, kc = key.partition("!")
+            sw, _, cand = kc.partition("=")
+            cells = {}
+            for hdr, c in (row.get("cells") or {}).items():
+                f, _, o = hdr.partition("=")
+                cells[(f.strip(), canon_value(o))] = c
+                self.tab_filters.setdefault(tab, set()).add(f.strip())
+            self.rows.setdefault((tab, sw, canon_value(cand)), (row, cells))
+        self.gates = tuple(ENTRY_BLOCKER_GATES) + tuple(sorted(f for f, v in self.filters.items() if v.get("class") == "ENTRY_BOOL_GATE" and TR4H_GATE_RE.match(f) and f not in ENTRY_BLOCKER_GATES))
+        self.tab_filters = {t: tuple(sorted(v)) for t, v in self.tab_filters.items()}
+        self.memo = {}
+        self.pair_verdict = None
+        try:
+            from tools import v18_binding_map as BM
+            self.pair_verdict = BM.pair_verdict
+            self._bm = bm
+        except Exception:
+            self._bm = None
+
+    def static(self, tab, sw, cand, hdr):
+        """-> (cell dict or None, stage_switch, stage_filter, dead_row) for one cell, memoised."""
+        f, _, o = str(hdr).strip().partition("=")
+        k = (tab, sw, canon_value(cand), f.strip(), canon_value(o))
+        got = self.memo.get(k)
+        if got is not None:
+            return got
+        hit = self.rows.get((tab, sw, k[2]))
+        cell = hit[1].get((k[3], k[4])) if hit else None
+        if cell is None and self.pair_verdict is not None and self._bm is not None and (sw in self.switches or k[3] in self.filters):
+            try:
+                cell = self.pair_verdict(self._bm, sw, cand, f"{k[3]}={o}", [tab])
+            except Exception:
+                cell = None
+        swi = self.switches.get(sw) or {}
+        fam = swi.get("family")
+        st_sw = fam if fam in BIND_STAGES else "UNKNOWN"
+        fi = self.filters.get(k[3])
+        st_f = _filter_stage(fi.get("stages")) if fi else "UNKNOWN"
+        dead = bool((hit[0].get("dead_row") if hit else False) or swi.get("dead"))
+        got = (cell, st_sw, st_f, dead)
+        if len(self.memo) < 2000000:
+            self.memo[k] = got
+        return got
+
+    def value(self, key, sw, cand, running_set):
+        """effective value of key: the row's own switch=cand, else the running set, else the map's master default (None = unknown)."""
+        if key == sw:
+            return cand
+        if running_set is not None and key in running_set:
+            return running_set[key]
+        return self.defaults.get(key)
+
+    def cond_ok(self, term, sw, cand, running_set):
+        if ">" in term and "=" not in term:
+            k, _, thr = term.partition(">")
+            v = self.value(k.strip(), sw, cand, running_set)
+            try:
+                return v is not None and float(v) > float(thr)
+            except (TypeError, ValueError):
+                return False
+        k, _, want = term.partition("=")
+        v = self.value(k.strip(), sw, cand, running_set)
+        if v is None:
+            return False
+        return canon_value(v) == canon_value(want) or (canon_value(want) == "True" and _truthy(v) and canon_value(v) not in ("False",))
+
+    def row_context(self, tab, sw, cand, running_set):
+        """running-set features shared by every cell of a row: (upstream_gate_active, tab digest Counter)."""
+        if running_set is None:
+            return 0, Counter()
+        gates = sum(1 for g in self.gates if _truthy(self.value(g, sw, cand, running_set)))
+        bag = Counter()
+        for f in self.tab_filters.get(tab, ()):
+            if f != sw and f not in running_set:
+                continue
+            v = self.value(f, sw, cand, running_set)
+            cv = canon_value(v)
+            cls = (self.filters.get(f) or {}).get("class", "UNKNOWN")
+            bag[f"{cls}|{_tf_bucket(cv)}|{'on' if _truthy(v) else 'off'}"] += 1
+        return gates, bag
+
+
+def load_binding_map(cat_side, root=ROOT, learn_dir=None):
+    """-> (BindingIndex | None, why). Own cat_side only: a map built for another cat_side is refused (CAT_SIDE_MISMATCH),
+    a wrong contract is refused (CONTRACT_MISMATCH); absent / unreadable -> None. Fail-open: None = every binding feature UNKNOWN."""
+    p = Path(learn_dir) if learn_dir else Path(root) / "data" / "learn"
+    p = p / f"binding_map_{cat_side}.json"
+    if not p.exists():
+        return None, f"absent {p}"
+    try:
+        bm = json.loads(p.read_text())
+    except Exception as e:
+        return None, f"unreadable {p}: {type(e).__name__}"
+    meta = (bm or {}).get("meta") or {}
+    if meta.get("cat_side") != cat_side:
+        return None, f"CAT_SIDE_MISMATCH want={cat_side} got={meta.get('cat_side')} path={p}"
+    if meta.get("contract") != BIND_CONTRACT:
+        return None, f"CONTRACT_MISMATCH want={BIND_CONTRACT} got={meta.get('contract')} path={p}"
+    return BindingIndex(bm, p), f"ok {p.name} built_at={meta.get('built_at')}"
+
+
+def binding_features(bi, tab, sw, cand, hdr, running_set=None, row_ctx=None):
+    """The v3 binding features of one cell (switch=cand on tab, filter header hdr) under a running set -> dict:
+    bind_verdict, stage_switch, stage_filter, same_stage, masters_armed (None = unknown), dead_row, upstream_gate_active,
+    tab_digest (Counter of class|tf-bucket|on-off of the tab's in-force filters). bi None (no map) -> everything UNKNOWN / 0.
+    running_set None -> CONDITIONAL cells are UNKNOWN, masters_armed unknown, gates 0, empty digest."""
+    out = {"bind_verdict": "UNKNOWN", "stage_switch": "UNKNOWN", "stage_filter": "UNKNOWN", "same_stage": False, "masters_armed": None,
+           "dead_row": False, "upstream_gate_active": 0, "tab_digest": Counter()}
+    if bi is None:
+        return out
+    cell, st_sw, st_f, dead = bi.static(tab, sw, cand, hdr)
+    out.update(stage_switch=st_sw, stage_filter=st_f, dead_row=dead)
+    fi = bi.filters.get(str(hdr).strip().partition("=")[0].strip()) or {}
+    f_stages = {FILTER_STAGE_ALIAS.get(x, x) for s in (fi.get("stages") or []) for x in str(s).upper().split("+")}
+    out["same_stage"] = st_sw != "UNKNOWN" and st_sw in f_stages
+    gates, bag = row_ctx if row_ctx is not None else bi.row_context(tab, sw, cand, running_set)
+    out["upstream_gate_active"], out["tab_digest"] = gates, bag
+    if cell is None:
+        return out
+    v, keys, reason = cell.get("verdict"), list(cell.get("condition_keys") or []), cell.get("reason")
+    master = fi.get("master")
+    if v == "BINDS" and master and running_set is not None and master != sw and master in running_set and not _truthy(running_set[master]):
+        v, keys = "CONDITIONAL", [f"{master}=True"]
+    if v in ("BINDS", "INDIRECT", "NEVER"):
+        out["bind_verdict"] = v
+        out["masters_armed"] = 1.0 if running_set is not None else None
+        return out
+    if reason == "UNKNOWN_FAMILY" or not keys or running_set is None:
+        return out
+    ok = [bi.cond_ok(t, sw, cand, running_set) for t in keys]
+    armed = any(ok) if cell.get("condition_mode") == "any" else all(ok)
+    out["masters_armed"] = (1.0 if armed else 0.0) if cell.get("condition_mode") == "any" else sum(ok) / len(ok)
+    out["bind_verdict"] = "CONDITIONAL_ARMED" if armed else "CONDITIONAL_OFF"
+    return out
+
+
+def _digest_slot(tok):
+    return int.from_bytes(hashlib.blake2b(tok.encode(), digest_size=4).digest(), "big") % TAB_DIGEST_DIM
+
+
+def bind_vector(bf):
+    """binding feature dict -> dense list of BIND_DIM floats (order = BIND_FEATURE_NAMES) for the brain's online heads."""
+    x = [0.0] * BIND_DIM
+    x[BIND_VERDICTS.index(bf["bind_verdict"])] = 1.0
+    o = len(BIND_VERDICTS)
+    stages_sw = BIND_STAGES + ("UNKNOWN",)
+    x[o + stages_sw.index(bf["stage_switch"])] = 1.0
+    o += len(stages_sw)
+    stages_f = BIND_STAGES + ("NONE", "UNKNOWN")
+    x[o + stages_f.index(bf["stage_filter"])] = 1.0
+    o += len(stages_f)
+    x[o] = 1.0 if bf["same_stage"] else 0.0
+    x[o + 1] = bf["masters_armed"] if bf["masters_armed"] is not None else 0.0
+    x[o + 2] = 1.0 if bf["masters_armed"] is not None else 0.0
+    x[o + 3] = 1.0 if bf["dead_row"] else 0.0
+    x[o + 4] = min(4.0, float(bf["upstream_gate_active"])) / 2.0
+    o += 5
+    tot = sum(bf["tab_digest"].values())
+    if tot:
+        s = 1.0 / math.sqrt(tot)
+        for tok, n in bf["tab_digest"].items():
+            x[o + _digest_slot(tok)] += n * s
+    return x
+
+
+def binding_feature_strings(bf):
+    """binding feature dict -> [(feature, x)] in the linknet's sparse string form (prefix B.); tab digest tokens are the
+    attribute bag (class|tf-bucket|on-off), never raw KEY=value ids (E8D §9)."""
+    out = [("B.bv:" + bf["bind_verdict"], 1.0), ("B.ss:" + bf["stage_switch"], 1.0), ("B.sf:" + bf["stage_filter"], 1.0)]
+    if bf["same_stage"]:
+        out.append(("B.same", 1.0))
+    if bf["masters_armed"] is not None:
+        out.append(("B.armed", float(bf["masters_armed"])))
+    if bf["dead_row"]:
+        out.append(("B.dead", 1.0))
+    if bf["upstream_gate_active"]:
+        out.append(("B.gates", min(4.0, float(bf["upstream_gate_active"])) / 2.0))
+    tot = sum(bf["tab_digest"].values())
+    for tok, n in sorted(bf["tab_digest"].items()):
+        out.append(("B.td:" + tok, n / math.sqrt(tot)))
+    return out
 
 
 def cmd_build(a):

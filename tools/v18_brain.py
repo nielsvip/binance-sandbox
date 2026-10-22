@@ -98,6 +98,8 @@ try:
 except Exception:  # pragma: no cover - numpy is present in every training env (S2 .venv, Mac conda)
     np = None
 
+import v18_features as FX  # noqa: E402  binding features (V20 v3): stdlib-only module next to this file
+
 SCHEMA = "v18_brain/1"
 EPS = 1e-9
 CAT_SIDES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
@@ -123,6 +125,8 @@ METRIC_IDX = {"tim": 0, "trades": 1, "dd": 2, "sharpe": 3, "wr": 4}
 METRIC_SIGN = {"tim": 1.0, "trades": 1.0, "dd": -1.0, "sharpe": 1.0, "wr": 1.0}
 TIER_CODE = {"W": 1.0, "WINNER": 1.0, "M": 0.0, "MEDIOCRE": 0.0, "L": -1.0, "LOSER": -1.0, "LOST_CAUSE": -1.0}
 NF = 20
+NBF = FX.BIND_DIM
+BIND_HEADS = ("M", "B")
 P_REFS_REPORT = (0.001, 0.002, 0.005, 0.01, 0.02, 0.05)
 
 
@@ -411,9 +415,15 @@ class Assembler:
             self.c["identity_only_rows"] += 1
             self.emit({"e": "id", "t": b["t0"], "s": self.sym, "k": f"{sw}={cand}", "ni": b["ni"], "rk": rk})
             return
-        self.emit({"e": "row", "t": b["t0"], "s": self.sym, "b": self.board, "sh": b["key"][0], "k": f"{sw}={cand}", "cb": _r(b["cb"]), "n": nrec,
-                   "y": ys, "ni": b["ni"], "sy": syn, "p": promoted, "ps": how, "g": regime_of(self.ctx.get("bh")), "ti": self.ctx.get("tier"),
-                   "bh": _r(self.ctx.get("bh"), 3), "rk": rk})
+        ev = {"e": "row", "t": b["t0"], "s": self.sym, "b": self.board, "sh": b["key"][0], "k": f"{sw}={cand}", "cb": _r(b["cb"]), "n": nrec,
+              "y": ys, "ni": b["ni"], "sy": syn, "p": promoted, "ps": how, "g": regime_of(self.ctx.get("bh")), "ti": self.ctx.get("tier"),
+              "bh": _r(self.ctx.get("bh"), 3), "rk": rk}
+        nfp = b.get("naked_fp")
+        if nfp and naked is not None:
+            nz = [[hdr, _r(rec[0]), rec[1]] for hdr, rec in b["y"].items() if (b.get("yfp") or {}).get(hdr) == nfp]
+            if nz:
+                ev["nz"] = nz
+        self.emit(ev)
 
     def feed(self, r, line):
         label = r.get("label")
@@ -476,6 +486,7 @@ class Assembler:
             if lab == "naked":
                 self.buf["naked"] = rec
                 fp = r.get("fp")
+                self.buf["naked_fp"] = fp
                 self.buf["naked_cached"] = cached and (fp is None or self.ref_fp is None or fp == self.ref_fp)
                 self.buf["naked_was_cached"] = cached
                 if cached:
@@ -486,6 +497,7 @@ class Assembler:
                     self.buf["ni"] += 1
                 else:
                     self.buf["y"][lab] = rec
+                    self.buf.setdefault("yfp", {})[lab] = r.get("fp")
             return
         if lab == "hustle":
             self.c["hustle_lines"] += 1
@@ -959,6 +971,7 @@ class BoardEmitter:
         self.src_id = src_id
         self.content_rk = content_rk
         self.out = emit
+        self._noop = None
         self.asm = Assembler(sym, src_id, self._emit, counters)
 
     def _emit(self, ev):
@@ -970,13 +983,18 @@ class BoardEmitter:
             ev["rk"] = h64(f"src={self.kind}|R|{self.sym}|{ev['sh']}|{ev['k']}|{ev['cb']}|{json.dumps(ev['n'])}|{json.dumps(ev['y'])}|{json.dumps(ev.get('ya'))}")
         else:
             ev["rk"] = h64(f"src={self.kind}|{e}|{self.src_id}|{ev.get('rk')}")
+        if e == "row" and self._noop is not None and ev.get("n") is not None:
+            ev["nzk"] = 1
+            if self._noop:
+                ev["nz"] = self._noop
         self.out(ev)
 
     def start(self, bh, tier, rnd):
         self.asm.feed({"label": "BOARD_CTX", "ts": self.t0, "bh": bh, "tier": tier, "round": rnd}, 0)
 
-    def row(self, sheet, row, sw, cand, cb, naked, cells, promoted, identity, valid=True, trades=None):
-        """naked: delta vs cb or None (unknown); cells: [(hdr, delta, valid)] already stripped of settled cells."""
+    def row(self, sheet, row, sw, cand, cb, naked, cells, promoted, identity, valid=True, trades=None, noop=None):
+        """naked: delta vs cb or None (unknown); cells: [(hdr, delta, valid)] already stripped of settled cells; noop: None (the
+        source does not say which cells were noop) or [[hdr, delta, valid]] of the cells the pilot marked noop (B-head labels)."""
         base = {"ts": self.t0, "sheet": sheet, "row": row, "switch": sw, "cand": cand, "cum_before": cb}
         if naked is None and not identity:
             self.asm.close_row(None)
@@ -990,7 +1008,9 @@ class BoardEmitter:
         self.asm.feed(dict(base, label="naked", delta=nd, valid=bool(valid) if not identity else True, cached=bool(identity), trades=trades), row)
         for hdr, d, v in cells:
             self.asm.feed(dict(base, label=hdr, delta=d, valid=bool(v), cached=False), row)
+        self._noop = noop
         self.asm.feed(dict(base, label="ROW_DONE", promoted=bool(promoted)), row)
+        self._noop = None
 
     def finish(self):
         self.asm.finish()
@@ -1146,7 +1166,12 @@ def _progress_row(be, key, rec, counters, cs):
     counters[f"{cs}:rows"] += 1
     counters[f"{cs}:identity_rows" if identity else (f"{cs}:naked_unknown" if nd is None else f"{cs}:naked_known")] += 1
     row_no = int(rown) if rown.isdigit() else rown
-    be.row(tab, row_no, sw, cand, _f(rec.get("cumulative_before")), nd, cells, bool(rec.get("promoted")), identity, valid, rec.get("trades"))
+    noop = None
+    if isinstance(rec.get("noop_yellows"), list):
+        ys_all = rec.get("yellows") or {}
+        noop = [[str(h), _r(_num(ys_all.get(h))), 0 if h in yr else 1] for h in rec["noop_yellows"] if _num(ys_all.get(h)) is not None and YELLOW_RE.match(str(h))]
+        counters[f"{cs}:noop_cells_labelled"] += len(noop)
+    be.row(tab, row_no, sw, cand, _f(rec.get("cumulative_before")), nd, cells, bool(rec.get("promoted")), identity, valid, rec.get("trades"), noop=noop)
 
 
 def _xlsx_meta(path):
@@ -1597,6 +1622,8 @@ class Heads:
     def __init__(self, lr=0.03, l2=1e-5):
         self.w = {h: [(-4.0 if i == 0 else 0.0) for i in range(NF)] for h in self.NAMES}
         self.w["FWD"][0] = 0.0
+        self.w["M"] = [(-4.0 if i == 0 else 0.0) for i in range(NF + NBF)]
+        self.w["B"] = [0.0] * (NF + NBF)
         self.lr, self.l2 = lr, l2
         self.n = collections.Counter()
 
@@ -1610,7 +1637,7 @@ class Heads:
         g = (y - p) * sw
         w = self.w[h]
         lr, l2 = self.lr, self.l2
-        for i in range(NF):
+        for i in range(len(w)):
             xi = x[i]
             if xi != 0.0 or w[i] != 0.0:
                 w[i] += lr * (g * xi - l2 * w[i])
@@ -1623,8 +1650,13 @@ class Heads:
 class CatBrain:
     """Graph + heads + prequential capture of ONE cat_side."""
 
-    def __init__(self, cs, buckets, cut):
+    def __init__(self, cs, buckets, cut, bind=None, bind_why="not loaded"):
         self.cs = cs
+        self.bi = bind
+        self.bind_why = bind_why
+        self.run_set = {}
+        self.board_src = {}
+        self.mb_cap = {h: array.array("d") for h in BIND_HEADS}
         self.g = Graph(cs)
         self.T = Tables(graph=self.g)
         self.h = Heads()
@@ -1660,6 +1692,9 @@ class CatBrain:
         if self.pending[sym]:
             self.inforce[sym] = {sw: v["cand"] for sw, v in self.pending[sym].items()}
         self.board_of[sym] = ev["b"]
+        s0 = ev.get("set0")
+        self.run_set[sym] = {str(k): v for k, v in s0.items()} if isinstance(s0, dict) else {}
+        self.board_src[sym] = ev.get("src")
         self.c["boards"] += 1
 
     def _resolve(self, sym):
@@ -1864,11 +1899,19 @@ class CatBrain:
                     H.learn(f"{m}:R", x_r, 1.0 if METRIC_SIGN[m] * v > EPS else 0.0, None, W_FIT * naked[8])
             self.c["evidence_naked"] += 1
         cells = ev.get("y") or []
+        rs = self.run_set.setdefault(sym, {})
+        rc = self.bi.row_context(sheet, sw, cand, rs) if self.bi is not None else None
+        nvalid = bool(naked is not None and naked[1] and naked[0] is not None)
+        src = self.board_src.get(sym)
+        bknown = src is None or (src == "progress" and bool(ev.get("nzk")))
+        nz = ev.get("nz") or []
+        nzset = {str(z[0]).strip() for z in nz}
         for c in cells:
             hdr, md, valid, secs = c[0], c[1], c[2], c[3]
             mm, w, dabs = c[4:9], c[9] or 1.0, c[10]
             x_f, cn = featurize(T, self.bk, "F", sym, sheet, row_key, hdr, nd, regime, tc, bc, eb, et)
             x0 = x_f[:17] + [0.0, 0.0] + x_f[19:]
+            self._mb(x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, str(hdr).strip() in nzset, test, w)
             pf = H.p("F", x_f)
             p0 = H.p("F0", x0)
             y = 1.0 if (valid and md is not None and md > EPS) else 0.0
@@ -1884,6 +1927,14 @@ class CatBrain:
                     if v is not None:
                         H.learn(f"{m}:F0", x0, 1.0 if METRIC_SIGN[m] * v > EPS else 0.0, None, W_FIT * w)
             self.c["evidence_cells"] += 1
+        if nz and naked is not None and naked[0] is not None:
+            seen_h = {str(c[0]).strip() for c in cells}
+            for z in nz:
+                if str(z[0]).strip() in seen_h or z[1] is None:
+                    continue
+                x_f, _cn = featurize(T, self.bk, "F", sym, sheet, row_key, z[0], nd, regime, tc, bc, eb, et)
+                x0 = x_f[:17] + [0.0, 0.0] + x_f[19:]
+                self._mb(x0, sheet, sw, cand, z[0], z[1] - naked[0], bool(z[2]), rs, rc, nvalid, bknown, True, test, 1.0)
         # graph after the predictions (prequential)
         if naked is not None:
             nmet = naked[3:8]
@@ -1938,7 +1989,52 @@ class CatBrain:
                 p_fit = H.p("R", x_r)
             self.cur_promos[sym][sw] = {"cand": cand, "x": x_r, "p_fwd": H.p("FWD", x_r), "p_fit": p_fit, "ts": ts}
             self.c["promotions_" + str(ev.get("ps"))] += 1
+            rs[sw] = cand
         self.c["rows"] += 1
+
+    def _mb(self, x0, sheet, sw, cand, hdr, md, valid, rs, rc, nvalid, bknown, noop_listed, test, w):
+        """heads M (cell beats its naked: valid cell, valid naked, cell - naked > 1e-9) and B (cell binds = NOT noop; noop = the
+        source listed it (fingerprint equal to the naked's / progress noop_yellows) or valid cell + valid naked with |cell - naked|
+        <= 1e-9, the pilot's own rule). Predict-then-learn; B only where the source can tell noop (logs, progress with nzk)."""
+        bf = FX.binding_features(self.bi, sheet, sw, cand, hdr, rs, rc)
+        xm = x0 + FX.bind_vector(bf)
+        H = self.h
+        t = 1.0 if test else 0.0
+        self.c["bind_verdict_" + bf["bind_verdict"]] += 1
+        if nvalid and md is not None:
+            y = 1.0 if (valid and md > EPS) else 0.0
+            p = H.p("M", xm)
+            self.mb_cap["M"].extend((p, y, t))
+            H.learn("M", xm, y, p, W_FIT * w)
+            self.c["M_labels"] += 1
+            self.c["M_pos"] += int(y)
+        if bknown:
+            noop = noop_listed or bool(valid and nvalid and md is not None and abs(md) <= EPS)
+            y = 0.0 if noop else 1.0
+            p = H.p("B", xm)
+            self.mb_cap["B"].extend((p, y, t))
+            H.learn("B", xm, y, p, W_FIT * w)
+            self.c["B_labels"] += 1
+            self.c["B_binds"] += int(y)
+            self.c[f"B_{'binds' if y else 'noop'}_{bf['bind_verdict']}"] += 1
+
+    def mb_report(self):
+        """prequential AUC of heads M and B (every label scored before it was learned), all events and the test slice (>= cut)."""
+        out = {}
+        for h in BIND_HEADS:
+            A = self.mb_cap[h]
+            n = len(A) // 3
+            if not n or np is None:
+                out[h] = {"n": n}
+                continue
+            P = np.frombuffer(A, dtype=np.float64).reshape(n, 3)
+            te = P[:, 2] > 0.5
+            r = {"n": int(n), "pos": int(P[:, 1].sum()), "n_test": int(te.sum()), "pos_test": int(P[te, 1].sum()), "auc_prequential_all": _auc_np(P[:, 0], P[:, 1]),
+                 "auc_test": _auc_np(P[te, 0], P[te, 1]) if te.any() else None, "mean_p_test": round(float(P[te, 0].mean()), 4) if te.any() else None}
+            out[h] = r
+        out["labels"] = {"M": "valid cell and valid naked of the same row; y = cell - naked > 1e-9",
+                         "B": "y = NOT noop; noop = listed by the source (fp == naked fp in delta logs, progress noop_yellows) or valid cell + valid naked with |cell - naked| <= 1e-9; xlsx boards carry no noop list -> not labelled"}
+        return out
 
     def _record(self, kind, p, secs, y, dpos, n_ev, node, row_node):
         self.cap[kind].extend((p, secs or 0.0, y, dpos or 0.0))
@@ -2011,6 +2107,19 @@ def auc(scores, labels):
         rank_sum += avg * sum(1 for k in range(i, j + 1) if pairs[k][1] > 0.5)
         i = j + 1
     return (rank_sum - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+
+def _auc_np(p, y):
+    """rank AUC with tied scores averaged (numpy); None when a class is missing."""
+    p = np.asarray(p, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64) > 0.5
+    n_pos = int(y.sum())
+    n_neg = int(len(y) - n_pos)
+    if not n_pos or not n_neg:
+        return None
+    ps = np.sort(p, kind="mergesort")
+    rk = (np.searchsorted(ps, p, "left") + np.searchsorted(ps, p, "right") + 1) / 2.0
+    return round(float((rk[y].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)), 4)
 
 
 def _ranks(v):
@@ -2090,7 +2199,10 @@ def cmd_train(a):
     files = sorted_events(a.spill_dir, tmp, srt)
     t_sort = time.time() - t0
     buckets, tidx = load_buckets(a.template_cache)
-    brains = {cs: CatBrain(cs, buckets[cs], a.cut) for cs in CAT_SIDES}
+    binds = {cs: ((None, "disabled (--no-binding-map)") if a.no_binding_map else FX.load_binding_map(cs, ROOT, a.binding_map_dir)) for cs in CAT_SIDES}
+    for cs, (_bi, why) in binds.items():
+        print(f"[train] binding map {cs}: {why}", flush=True)
+    brains = {cs: CatBrain(cs, buckets[cs], a.cut, binds[cs][0], binds[cs][1]) for cs in CAT_SIDES}
     seen = set()
     cnt = collections.Counter()
     n = 0
@@ -2155,7 +2267,9 @@ def _state_dump(state):
                              "ledger_key": {k: {f: list(t) for f, t in v.items()} for k, v in b.ledger_key.items()},
                              "live_fam": {k: list(v) for k, v in b.live_fam.items()}, "remedy": {k: list(v) for k, v in b.remedy.items()},
                              "quart": {"|".join(k): list(v) for k, v in b.quart.items()}, "sheet_of": b.sheet_of, "first_ts": b.first_ts, "last_ts": b.last_ts,
-                             "buckets": b.bk.cands}
+                             "buckets": b.bk.cands, "mb": b.mb_report(),
+                             "bind": {"why": b.bind_why, "path": getattr(b.bi, "path", None), "built_at": (getattr(b.bi, "meta", None) or {}).get("built_at"),
+                                      "dim": NBF, "names": list(FX.BIND_FEATURE_NAMES)}}
     return out
 
 
@@ -2285,7 +2399,10 @@ def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES, mi
                       "m_shrink": M_SHRINK, "cs_cols": ["node", "wpos", "wn", "n", "pos", "neg", "inv", "sum_pos", "d_tim", "d_trades", "d_dd", "d_sharpe", "d_wr",
                                                         "n_sym", "fwd_n", "fwd_pos", "live_n", "live_pos", "n_ident", "mean_secs", "live_pnl_pp"],
                       "pair_cols": ["filter", "row", "wpos", "wn", "n", "pos", "n_rescue", "n_kill", "n_syn", "syn_sum", "n_sym", "abl_n", "abl_kill"],
-                      "regime_cols": ["node", "regime", "wpos", "wn"], "sym_cols": ["node", "wpos", "wn"], "trimmed": {}},
+                      "regime_cols": ["node", "regime", "wpos", "wn"], "sym_cols": ["node", "wpos", "wn"], "trimmed": {},
+                      "bind": sb.get("bind"), "heads_mb": {"M": "P(cell beats its naked) on x(F0) + binding features", "B": "P(cell binds = not noop) on x(F0) + binding features",
+                                                            "weights": f"len {NF} + {NBF} (bind order = bind.names)"}},
+            "prequential_mb": sb.get("mb"),
             "heads": sb["w"], "buckets": sb.get("buckets") or {}, "ema": {k: round(v, 4) for k, v in sb["ema"].items()},
             "cs": cs_rows, "regime": reg_rows, "pair": pair_rows, "sym": sym_rows, "coverage": coverage,
             "exits": {"live": sb["live_fam"], "ledger": sb["ledger"]}, "prequential": sb["capture"], "forward_eval": sb["forward"]}
@@ -2432,7 +2549,8 @@ def build_report(st, floor=DEFAULT_FLOOR):
         for (s, na, nb), i in V.k.items():
             ekinds["cat_side_unary" if (s == 0 and nb == -1) else ("cat_side_pair" if s == 0 else "sym_side")] += 1
         per[cs] = {"counters": sb["c"], "nodes": len(V.nodes), "node_kinds": dict(kinds), "edges": len(V.k), "edge_kinds": dict(ekinds),
-                   "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "prequential": sb["capture"], "forward": sb["forward"]}
+                   "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "prequential": sb["capture"], "forward": sb["forward"],
+                   "heads_mb": sb.get("mb"), "binding_map": (sb.get("bind") or {}).get("why")}
         try:
             board, live = losing_exit_families(sb, 3)
             per[cs]["exit_families_board"] = board
@@ -2582,12 +2700,40 @@ def cmd_report(a):
     return 0
 
 
+def explain_mb(sb, switch, ex, bi, top=20):
+    """heads M / B on the pairs explain_switch lists (neutral board, running set unknown) + their prequential AUCs."""
+    w = sb["w"]
+    if not all(h in w for h in BIND_HEADS):
+        return {"note": "state has no M/B heads (trained before V20 v3)"}
+    V = get_view(sb)
+    T = _ViewTables(V)
+    bk = Buckets(sb.get("buckets") or {})
+    sheet = sb["sheet_of"].get(switch) or ""
+    rows, seen = [], set()
+    for item in (ex.get("suffocating_filters") or []) + (ex.get("companions") or []):
+        key = (item["filter"], item["row"])
+        if key in seen:
+            continue
+        seen.add(key)
+        x, _cn = featurize(T, bk, "F0", "", sheet, item["row"], item["filter"], None, "UNK", 0.0, 0.0, 0.02, 0.02)
+        sw, _, cand = item["row"].partition("=")
+        bf = FX.binding_features(bi, sheet, sw, cand, item["filter"], None)
+        xm = x + FX.bind_vector(bf)
+        rows.append({"filter": item["filter"], "row": item["row"], "p_marginal": round(sig(sum(p * q for p, q in zip(w["M"], xm))), 4),
+                     "p_binds": round(sig(sum(p * q for p, q in zip(w["B"], xm))), 4), "bind_verdict": bf["bind_verdict"], "stage_switch": bf["stage_switch"],
+                     "stage_filter": bf["stage_filter"], "dead_row": bf["dead_row"]})
+    return {"context": "neutral board (EMA 0.02, no regime), running set unknown -> CONDITIONAL cells read UNKNOWN", "pairs": rows[:top], "prequential": sb.get("mb")}
+
+
 def cmd_explain(a):
     sb = _state_sb(a)
     if a.family:
         out = explain_family(sb, a.family, a.top)
+        out["heads_mb_prequential"] = sb.get("mb")
     else:
         out = explain_switch(sb, a.switch, a.top)
+        bi, why = FX.load_binding_map(a.cat_side, ROOT, a.binding_map_dir)
+        out["heads_mb"] = dict(explain_mb(sb, a.switch, out, bi, a.top), binding_map=why)
     print(json.dumps(out, indent=1, default=str))
     return 0
 
@@ -2671,6 +2817,23 @@ class PilotBrainV18:
             self.ema[sym_side] = float(e0)
         self.ctx = {"tier": 0.0, "bh": 0.0, "regime": "UNK"}
         self.booked = collections.Counter()
+        self.bi, self.bind_why = None, "model has no M/B heads"
+        if all(h in self.w for h in BIND_HEADS):
+            try:
+                self.bi, self.bind_why = FX.load_binding_map(cs, ROOT, os.environ.get("V18_BINDING_MAP_DIR") or None)
+            except Exception as e:  # fail-open: every binding feature UNKNOWN
+                self.bi, self.bind_why = None, f"load error {type(e).__name__}"
+
+    def mb(self, sheet, row_key, filter_key, running_set=None, x0=None):
+        """-> (p_marginal, p_binds, bind_verdict) of one cell; (None, None, None) when the model carries no M/B heads."""
+        if not all(h in self.w for h in BIND_HEADS):
+            return None, None, None
+        if x0 is None:
+            x0, _cn = self._x("F0", sheet, row_key, filter_key)
+        sw, _, cand = row_key.partition("=")
+        bf = FX.binding_features(self.bi, sheet, sw, cand, str(filter_key).strip(), running_set)
+        xm = x0 + FX.bind_vector(bf)
+        return sig(sum(a * b for a, b in zip(self.w["M"], xm))), sig(sum(a * b for a, b in zip(self.w["B"], xm))), bf["bind_verdict"]
 
     def observe_ctx(self, tier=None, bh=None):
         self.ctx = {"tier": tier_code(tier), "bh": bh_code(bh), "regime": regime_of(bh)}
@@ -2679,7 +2842,8 @@ class PilotBrainV18:
         return featurize(self.T, self.bk, kind, self.sym_side, sheet, row_key, hdr, naked_d, self.ctx["regime"], self.ctx["tier"], self.ctx["bh"],
                          self.ema[self.sym_side], self.ema[(self.sym_side, sheet)])
 
-    def decide(self, sheet, row_key, filter_key=None, round_id="", naked_d=None):
+    def decide(self, sheet, row_key, filter_key=None, round_id="", naked_d=None, running_set=None):
+        pm = pb = bv = None
         if filter_key is None:
             x, cn = self._x("R", sheet, row_key, None)
             p = sig(sum(a * b for a, b in zip(self.w["R"], x)))
@@ -2689,15 +2853,18 @@ class PilotBrainV18:
         else:
             if naked_d is not None and naked_d > EPS:
                 pe, p, cn, u, why = 1.0, 1.0, 0, 0.0, "V18_BRAIN revive (naked > 0)"
+                pm, pb, bv = self.mb(sheet, row_key, filter_key, running_set)
             else:
                 x, cn = self._x("F0", sheet, row_key, filter_key)
                 p = sig(sum(a * b for a, b in zip(self.w["F0"], x)))
                 pe = p_eval(p, self.p_ref["F"], self.floor, cn)
                 u = draw(self.sym_side, sheet, row_key + "|" + str(filter_key), round_id)
                 why = "V18_BRAIN cell"
+                pm, pb, bv = self.mb(sheet, row_key, filter_key, running_set, x)
         keep = u < pe
         self.booked["keep" if keep else "skip"] += 1
-        return {"keep": keep, "p": pe, "p_pos": p, "n": cn, "u": u, "why": f"{why} p_pos={p:.4f} n={cn:g} p_eval={pe:.4f}"}
+        return {"keep": keep, "p": pe, "p_pos": p, "n": cn, "u": u, "why": f"{why} p_pos={p:.4f} n={cn:g} p_eval={pe:.4f}", "p_marginal": pm, "p_binds": pb,
+                "bind_verdict": bv}
 
     def observe(self, sheet, row_key, delta, alpha=0.02):
         y = 1.0 if (delta is not None and delta > EPS) else 0.0
@@ -2827,6 +2994,8 @@ def main(argv=None):
     t.add_argument("--p-ref-r", type=float, default=DEFAULT_PREF_R)
     t.add_argument("--p-ref-f", type=float, default=DEFAULT_PREF_F)
     t.add_argument("--keep-sorted", action="store_true")
+    t.add_argument("--binding-map-dir", help="dir holding binding_map_<CS>.json for the v3 binding features (default data/learn; absent = UNKNOWN, fail-open)")
+    t.add_argument("--no-binding-map", action="store_true", help="train the M/B heads with every binding feature UNKNOWN (ablation)")
     e = sub.add_parser("export")
     e.add_argument("--state", required=True)
     e.add_argument("--out-dir", default=str(ROOT / "data" / "brain"))
@@ -2848,6 +3017,7 @@ def main(argv=None):
     xp.add_argument("--family")
     xp.add_argument("--state", required=True)
     xp.add_argument("--top", type=int, default=20)
+    xp.add_argument("--binding-map-dir", help="dir holding binding_map_<CS>.json (default data/learn)")
     c = sub.add_parser("compare")
     c.add_argument("--champ", required=True)
     c.add_argument("--chal", required=True)

@@ -201,7 +201,8 @@ def test_export_size_and_schema(corpus):
         for k in ("nodes", "heads", "cs", "regime", "pair", "sym", "coverage", "exits", "prequential", "forward_eval"):
             assert k in blob
         assert set(blob["heads"]) >= {"R", "F", "F0", "FWD", "dd:R", "wr:F0"}
-        assert all(len(w) == B.NF for w in blob["heads"].values())
+        assert all(len(w) == (B.NF + B.NBF if k in B.BIND_HEADS else B.NF) for k, w in blob["heads"].items())
+        assert set(B.BIND_HEADS) <= set(blob["heads"])
         assert all(s.endswith(("_LONG", "_SHORT")) and B.cat_side_of(s) == cs for s in blob["sym"])
     full, ftxt = B.export_one(corpus["state"]["brains"]["CRYPTO_LONG"], None, 5.0, 0.001, 0.002)
     blob, txt = B.export_one(corpus["state"]["brains"]["CRYPTO_LONG"], None, 5.0, 0.001, 0.002, max_bytes=len(ftxt) - 200, min_keep=1)
