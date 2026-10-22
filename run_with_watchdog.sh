@@ -219,7 +219,18 @@ WD_LOG="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_watchdog.log"
 # Per-script NO_OUTPUT_TIMEOUT and log file selection
 # Each script has different output frequency — tight timeouts catch failures fast
 case "$SCRIPT_BASE" in
-    ez_indicators)       NO_OUTPUT_TIMEOUT=120  ;;  # writes every ~1s
+    # 2026-10-22: 120 -> 900. The 120 s bar is right for steady state (it writes every ~1s) but it is UNSURVIVABLE
+    # during warm-up, and warm-up is where this process dies: the [WARMUP] loop emits one line per 25 symbols, and
+    # measured today those lines were 79-118 s apart against a 120 s limit. The NO-OUTPUT CPU GATE cannot shield it
+    # either — it needs NO_OUTPUT_CPU_MIN_S=2 s of CPU per 120 s window, while the warm-up heartbeats measured
+    # `cpu +0.14s in 10.0s` (~1.7 s/120 s) because the pass is I/O-bound, not CPU-bound. So a healthy warming
+    # process looks silent AND idle and gets killed, which restarts warm-up from zero — the trap the 2026-10-19
+    # comment in ez_indicators.py describes (38 kills in six hours, "cannot be escaped once entered"). Measured
+    # consequence today: data/latest_market_data.json — the snapshot EVERY engine reads for entry AND exit
+    # decisions — went unwritten from 00:59 to past 04:20 while every account traded on 3-hour-old indicators.
+    # A genuinely dead process is still caught: tools/ez_indicators_warmup_guard.py only emits [WARMUP_HEARTBEAT]
+    # while the pid is alive and making progress, so the log goes truly silent when it wedges.
+    ez_indicators)       NO_OUTPUT_TIMEOUT=900  ;;  # ~1s in steady state; 900 so a warm-up pass cannot be killed
     ez_indicators_merger) NO_OUTPUT_TIMEOUT=120  ;;  # writes every ~3s
     ez_market_data)      NO_OUTPUT_TIMEOUT=180  ;;  # writes every ~30s
     ez_crosses)          NO_OUTPUT_TIMEOUT=300  ;;  # writes every ~3min (signal save cycle)
