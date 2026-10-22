@@ -92,7 +92,13 @@ def test_kill_switch_documented():
 
 def test_vec_reason_helper_single_definition():
     assert "def _voe_reason_is_vec(reason)" in SRC
-    for tok in ["VEC_DRIVEN_", "RECONCILE_", "|VEC_EXACT", "BOARD_CONVERGE_", "EXIT_OWED"]:
+    for tok in [
+        "VEC_DRIVEN_",
+        "RECONCILE_",
+        "|VEC_EXACT",
+        "BOARD_CONVERGE_",
+        "EXIT_OWED",
+    ]:
         assert tok in SRC.split("def _voe_reason_is_vec(reason)")[1].split("def ")[0]
 
 
