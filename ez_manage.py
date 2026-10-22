@@ -26038,13 +26038,25 @@ class MultiAccountTradeManager:
                 position = position or _mem
         except Exception:
             pass
-        if amt <= 0.0:
+        if amt <= 0.0 or position is None:
             try:
                 _acct, _sym_pk, _side_pk = position_key.split(":", 1)[0], symbol, position_key.rsplit("_", 1)[-1]
                 _snap = Path(getattr(self.config, "BASE_PATH", ".")) / _acct / f"{_side_pk.lower()}_positions.json"
                 _rows = json.loads(_snap.read_text()) if _snap.exists() else {}
                 _row = (_rows or {}).get(position_key) or {}
                 amt = max(amt, abs(safe_fetch_float(_row.get("positionAmt"), 0.0)))
+                # USER 2026-10-22: "position is legitimately None <- can NEVER happen we hold
+                # <acct>/long_positions.json positions for EVERY symbol in symbols.json no matter how big they are so
+                # position None is IMPOSSIBLE." Correct — ang holds 200 long rows against 201 symbols — and this block
+                # was taking the row's positionAmt while THROWING THE ROW AWAY, so whenever the broker read and this
+                # process's dict both missed, `position` stayed None on a key whose record was right here on disk.
+                # A None then reached calculate_final_order_quantity, which dereferences position_side 11 times and
+                # mark_price once: "[VEC_DRIVEN] consumer cycle error: 'NoneType' object has no attribute
+                # 'mark_price'" (men, 32 kills in the 17:00Z hour on 2026-10-21), and an aborted cycle drops every
+                # remaining dictate in that pass. The writer is the authority, so its row IS the position.
+                if position is None and _row:
+                    from ez_positions_service import Position as _EzPosition
+                    position = _EzPosition.from_dict(dict(_row))
             except Exception:
                 pass
         price = 0.0
@@ -26102,6 +26114,11 @@ class MultiAccountTradeManager:
             else:
                 prelim = max(2 * float(self.config.START_POSITION_SIZE) / price, 0.6 * amt)
             reason_probe = _vdm.make_reason(action, vec_reason)
+            if position is None:
+                # Not a flat key — every symbol has a row in <acct>/{side}_positions.json, so this is a resolution
+                # defect upstream in _vec_driven_live_amt. Name it instead of masking it with a synthetic position.
+                logger.critical(f"🛑 [VEC_DRIVEN_NO_POSITION_RECORD] {position_key}: writer row missing for a symbol that must always have one — sizing cannot proceed; fix the writer/snapshot, do not synthesise")
+                return "BLOCKED_NO_POSITION_RECORD"
             normal_qty = await calculate_final_order_quantity(position_key, account_key, symbol, position, action, self, 0.5, prelim, reason_probe, None)
         final_action, qty = _vdm.order_qty(action, qty_frac, amt, normal_qty)
         reason = _vdm.make_reason(final_action, vec_reason)
@@ -45815,6 +45832,11 @@ async def calculate_final_order_quantity(
         pass
     i = await ii(trade_manager, symbol)
     now, config = datetime.now(timezone.utc), trade_manager.config
+    # A None `position` here is NOT a flat key and must never be papered over: every symbol in symbols.json has a row
+    # in <acct>/{side}_positions.json (USER 2026-10-22: "position None is IMPOSSIBLE"). The real defect was upstream in
+    # _vec_driven_live_amt, which read the row's positionAmt and discarded the row; it now rebuilds the Position from
+    # that row, and the vec caller refuses with BLOCKED_NO_POSITION_RECORD if one is somehow still missing. So this
+    # stays a plain read — if it ever raises again, the resolution defect is real and must be seen, not absorbed.
     current_price = (
         float(position.mark_price)
         if position.mark_price > 0
