@@ -39059,6 +39059,9 @@ class MultiAccountTradeManager:
                                 action="CLOSE",
                             )
                             result = "QUEUED"
+                        elif _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: would-fire leg stood down, no reduce
+                            logger.info(f"[DC_BREACH_STOOD_DOWN] {position_key}: native exit disabled — no trade, decision unchanged")
+                            result = "SKIPPED_NON_VECTOR_EXIT_DISABLED"
                         else:
                             pos_min_qty = max(
                                 config.MIN_POSITION_SIZE / current_price,
@@ -39358,20 +39361,23 @@ class MultiAccountTradeManager:
                                     close_qty = primary_amt
                                     side = "SELL" if is_long_dir else "BUY"
                                     _exit_side = "SELL" if is_long_dir else "BUY"
-                                    await self.execute_now(
-                                        primary_pk,
-                                        acct,
-                                        sym,
-                                        primary_amt,
-                                        _exit_side,
-                                        direction,
-                                        primary_amt,
-                                        cp,
-                                        f"MR_{int(now)}",
-                                        f"MOMENTUM_RIDER_EXIT_PROFIT_{primary_gain:.2f}pct",
-                                        True,
-                                        "CLOSE",
-                                    )
+                                    if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: rider close stood down
+                                        pass
+                                    else:
+                                        await self.execute_now(
+                                            primary_pk,
+                                            acct,
+                                            sym,
+                                            primary_amt,
+                                            _exit_side,
+                                            direction,
+                                            primary_amt,
+                                            cp,
+                                            f"MR_{int(now)}",
+                                            f"MOMENTUM_RIDER_EXIT_PROFIT_{primary_gain:.2f}pct",
+                                            True,
+                                            "CLOSE",
+                                        )
                                     state["exit_price"] = cp
                                     state["state"] = "COOLDOWN"
                                     state["last_flip"] = now
@@ -39460,38 +39466,44 @@ class MultiAccountTradeManager:
                                     side = "BUY" if is_long_dir else "SELL"
                                     _hc_side = "BUY" if is_long_dir else "SELL"
                                     _hc_ps = "SHORT" if is_long_dir else "LONG"
-                                    await self.execute_now(
-                                        hedge_pk,
-                                        acct,
-                                        sym,
-                                        hedge_amt,
-                                        _hc_side,
-                                        _hc_ps,
-                                        hedge_amt,
-                                        cp,
-                                        f"MR_{int(now)}",
-                                        f"MOMENTUM_RIDER_HEDGE_CLOSE_profit{hedge_gain:.2f}",
-                                        True,
-                                        "CLOSE",
-                                    )
+                                    if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: rider close stood down
+                                        pass
+                                    else:
+                                        await self.execute_now(
+                                            hedge_pk,
+                                            acct,
+                                            sym,
+                                            hedge_amt,
+                                            _hc_side,
+                                            _hc_ps,
+                                            hedge_amt,
+                                            cp,
+                                            f"MR_{int(now)}",
+                                            f"MOMENTUM_RIDER_HEDGE_CLOSE_profit{hedge_gain:.2f}",
+                                            True,
+                                            "CLOSE",
+                                        )
                                 else:
                                     side = "BUY" if is_long_dir else "SELL"
                                     _hk_side = "BUY" if is_long_dir else "SELL"
                                     _hk_ps = "SHORT" if is_long_dir else "LONG"
-                                    await self.execute_now(
-                                        hedge_pk,
-                                        acct,
-                                        sym,
-                                        hedge_amt,
-                                        _hk_side,
-                                        _hk_ps,
-                                        hedge_amt,
-                                        cp,
-                                        f"MR_{int(now)}",
-                                        f"MOMENTUM_RIDER_HEDGE_KILL_loss{hedge_gain:.2f}",
-                                        True,
-                                        "CLOSE",
-                                    )
+                                    if _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits: rider close stood down
+                                        pass
+                                    else:
+                                        await self.execute_now(
+                                            hedge_pk,
+                                            acct,
+                                            sym,
+                                            hedge_amt,
+                                            _hk_side,
+                                            _hk_ps,
+                                            hedge_amt,
+                                            cp,
+                                            f"MR_{int(now)}",
+                                            f"MOMENTUM_RIDER_HEDGE_KILL_loss{hedge_gain:.2f}",
+                                            True,
+                                            "CLOSE",
+                                        )
                                 # Reenter primary at 120% if HTF still aligned
                                 if htf_aligned:
                                     reentry_qty = (
@@ -41047,7 +41059,7 @@ class MultiAccountTradeManager:
                             key=lambda x: x[3], reverse=True
                         )  # oldest first
                         _ss_closed = 0
-                        for _spk, _spos, _sg, _sage, _sspd in _ss_stalled:
+                        for _spk, _spos, _sg, _sage, _sspd in ([] if _voe_native_exits_disabled() else _ss_stalled):  # USER 2026-10-21 vec-only exits: stall closes stood down, scan intact
                             if _ss_closed >= _ss_max_closes:
                                 break
                             _ss_reason = f"STALL_SUB_age={_sage:.0f}min_gain={_sg:.2f}%_deltaspd={_sspd:.2f}"
@@ -42886,7 +42898,7 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
             if bool(_twin_af.augment_fallback_fires(_af_get, gain, _af_peak)):
                 _af_frac = float(_twin_af.augment_fallback_reduce_frac(_af_get) or 0.0)
                 _af_last = safe_fetch_float(getattr(position, "last_augment_qty", 0), 0)
-                if _af_frac > 0 and _af_last > 0:
+                if _af_frac > 0 and _af_last > 0 and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits (inert by config today: frac stays 0.0)
                     return Signal(action="REDUCE", reason=f"AUGMENT_FALLBACK_g{gain:.2f}%_peak{_af_peak:.2f}%_frac{_af_frac:.2f}", conviction=80.0, quantity=0.0, reduction_amount=_af_last * _af_frac)
         except Exception:
             pass
@@ -58566,7 +58578,7 @@ async def process_position(
                             position.positionAmt * 0.99,
                         ),
                     )
-                    if reduce_qty_kill1 > 0 and reduce_qty_kill1 < position.positionAmt:
+                    if reduce_qty_kill1 > 0 and reduce_qty_kill1 < position.positionAmt and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         reason = f"STOP_FUNCTIONS_KILL_1 time_since_entry={time_since_entry}min >= 3min, k_1m={k_1m} > d_1m={d_1m} k_3m={k_3m} > d_3m={d_3m} k_15m={k_15m} > d_15m={d_15m} gain {current_gain}"
                         await trade_manager.execute_now(
                             position_key,
@@ -58600,6 +58612,7 @@ async def process_position(
                         reduce_qty_kill2 > 0
                         and reduce_qty_kill2 < position.positionAmt
                         and config.MANAGE_REDUCE
+                        and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits
                     ):
                         reason = f"STOP_FUNCTIONS_KILL_2 time_since_entry={time_since_entry}min >= 3min, k_1m={k_1m:} > d_1m={d_1m} k_3m={k_3m} > d_3m={d_3m} k_15m={k_15m} > d_15m={d_15m:} gain {current_gain}"
                         await trade_manager.execute_now(
@@ -58684,7 +58697,7 @@ async def process_position(
                     else (close_3m_prev if close_3m_prev > 0 else current_price)
                 )
                 tp_reason = f"HARD_RISE_ABOVE_PREV_HIGH:{current_price:.2f}>hi3prev:{high_3m_prev:.2f}{'_CLIFF_dc' if cliff else '_BOUNCE_WAIT'}"
-            if tp_reason:
+            if tp_reason and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                 logger.warning(
                     f"💰 [MOMENTUM_TP] {position_key}: Gain {current_gain:.2f}% tp_price={tp_price:.4f} reason={tp_reason}. Executing REDUCE."
                 )
@@ -59270,7 +59283,7 @@ async def process_position(
                             reason=f"FALLBACK_{fallback_action}_{event_hint} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}",
                             conviction=fallback_conviction,
                         )
-                    elif position_side == "SHORT" and pos_amt > pos_min_qty:
+                    elif position_side == "SHORT" and pos_amt > pos_min_qty and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         fallback_signal = Signal(
                             action="CLOSE",
                             reason=f"FALLBACK_CLOSE_{event_hint}",
@@ -59286,7 +59299,7 @@ async def process_position(
                             reason=f"FALLBACK_{fallback_action}_{event_hint} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}",
                             conviction=fallback_conviction,
                         )
-                    elif position_side == "LONG" and pos_amt > pos_min_qty:
+                    elif position_side == "LONG" and pos_amt > pos_min_qty and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
                         fallback_signal = Signal(
                             action="CLOSE",
                             reason=f"FALLBACK_CLOSE_{event_hint} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}",

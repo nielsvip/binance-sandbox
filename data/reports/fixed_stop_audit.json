@@ -1,7 +1,56 @@
 {
- "findings": [],
- "n_findings": 0,
- "n_positions": 0,
- "positions": [],
- "ts": "2026-10-22T00:11:27.693414+00:00"
+ "findings": [
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 608.1957000000001,
+   "key": "inf:XMRUSDT_LONG",
+   "live_level": 574.3372,
+   "mark": 625.82561111,
+   "opened_at": "2026-10-22T00:17:44.719000Z",
+   "resting_trigger": 569.3
+  },
+  {
+   "armed": true,
+   "code": "LEVEL_NOT_ENTRY_BAR",
+   "entry_bar_level": 0.0114094525,
+   "key": "inf:COTIUSDT_SHORT",
+   "live_level": 0.011426495,
+   "mark": 0.01123,
+   "opened_at": "2026-10-22T00:16:09.804000Z",
+   "resting_trigger": 0.011427
+  }
+ ],
+ "n_findings": 2,
+ "n_positions": 3,
+ "positions": [
+  {
+   "armed": true,
+   "entry_bar_level": 0.025092575,
+   "key": "ang:1000FLOKIUSDT_SHORT",
+   "live_level": 0.025092575,
+   "mark": 0.02459,
+   "opened_at": "2026-10-22T00:20:08.641000Z",
+   "resting_trigger": 0.02514
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 608.1957000000001,
+   "key": "inf:XMRUSDT_LONG",
+   "live_level": 574.3372,
+   "mark": 625.82561111,
+   "opened_at": "2026-10-22T00:17:44.719000Z",
+   "resting_trigger": 569.3
+  },
+  {
+   "armed": true,
+   "entry_bar_level": 0.0114094525,
+   "key": "inf:COTIUSDT_SHORT",
+   "live_level": 0.011426495,
+   "mark": 0.01123,
+   "opened_at": "2026-10-22T00:16:09.804000Z",
+   "resting_trigger": 0.011427
+  }
+ ],
+ "ts": "2026-10-22T00:22:39.168181+00:00"
 }
