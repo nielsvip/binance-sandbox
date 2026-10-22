@@ -108,25 +108,22 @@ trap 'rm -f "$LOCK"' EXIT INT TERM
 
 now=$(date +%s)
 
-# RESPECT THE FENCE (USER 2026-10-15 live takeover test). While S1 holds the crypto lease, S1 runs these accounts and
-# the Mac must not: the writer is an order path (its FIXED_STOP leg calls execute_now), so restarting it here would
-# re-open the two-hosts-one-position window the fence exists to close — and this keepalive runs every minute, so it
-# would win against the fence every time. lease_local.json is written by mac_failover_agent BEFORE it fences.
+# THE LEASE NEVER BLOCKS THE MAC (USER 2026-10-22: "s1 is an EMERGENCY system that runs as long as macbook is DEAD
+# but it can NEVER block any mac action it needs to STAND DOWN as soon as mac trades").
+#
+# This script used to `exit 0` whenever S1 held the crypto lease, on the two-hosts-one-position argument. That had the
+# authority backwards and it cost real trading: MEASURED 2026-10-22 04:32:04-04:35:03Z, four consecutive passes logged
+# "crypto lease held by S1 — Mac writers stay DOWN (fenced); not starting anything" while S1 ran **zero** ez_manage
+# processes (pgrep -cf 'ez_manage.py --account' = 0 on s1-int). So nobody was trading those accounts: the Mac was
+# forbidden and the standby was empty. fin's engine stayed down through the whole window for exactly this reason.
+#
+# The dedup that the fence was protecting is S1's job, not the Mac's: the Mac is always authoritative, and S1 stands
+# down the moment the Mac trades. So this layer now always keeps the Mac's writers and engines up and merely records
+# who holds the lease, leaving the yield to live_failover_s1 / mac_failover_agent.
 LEASE="$BASE/data/live_failover/lease_local.json"
 if [ -f "$LEASE" ]; then
-  holder=$(/usr/bin/python3 -c "
-import json,sys
-try:
-    d=json.load(open('$LEASE'))
-    v=str(d.get('venues') or '')
-    print(d.get('holder','') if (not v or 'crypto' in v) else '')
-except Exception:
-    print('')
-" 2>/dev/null)
-  if [ "$holder" = "s1" ]; then
-    klog "crypto lease held by S1 — Mac writers stay DOWN (fenced); not starting anything"
-    exit 0
-  fi
+  holder=$(/usr/bin/sed -n 's/.*"holder"[[:space:]]*:[[:space:]]*"\([a-z0-9_]*\)".*/\1/p' "$LEASE" 2>/dev/null | head -1)
+  [ "$holder" = "s1" ] && klog "crypto lease held by S1 — starting Mac writers ANYWAY (S1 is emergency-only and must stand down once the Mac trades); S1 yield is live_failover's job"
 fi
 
 age_of() {  # heartbeat age in seconds, or 999999 when missing/unreadable
@@ -224,16 +221,19 @@ engine_keepalive() {
     gone=$(( now - first_gone ))
     plvl=$(/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo 1)
     case "$plvl" in ''|*[!0-9]*) plvl=1 ;; esac
-    if [ "$gated" = 0 ] && [ "$gone" -ge "$MAX_MGR_NOCHILD" ] && [ "$plvl" -le 2 ] && [ "$mgr_since" -gt 90 ]; then
-      if [ "$rb_age" -lt "$rb_window" ]; then
-        engine_alert "$A" "NO ENGINE CHILD for ${gone}s but the 24h restart budget is spent (last ${rb_age}s ago) — NOT restarting, needs a human/code fix"
-      else
-        klog "$A: ez_manage watchdog ALIVE BUT NO ENGINE CHILD for ${gone}s (pressure_level=$plvl, not gated) -> replace watchdog $mgr_pids"
-        echo "$now" > "$rb_stamp"
-        for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
-        mgr_pids=""
-        rm -f "$nochild_stamp"
-      fi
+    # 2026-10-22: NEITHER the restart budget NOR the lease may leave an account with no engine. A missing child is not
+    # a "flap" — there is no running engine to preserve, so starting one costs nothing and not starting one means the
+    # account is simply unattended. MEASURED: fin sat with watchdog 49999 alive and child NONE while this branch
+    # alerted "NO ENGINE CHILD ... budget is spent — NOT restarting". The budget guards against storms (below), never
+    # against existing; and $gated (LEASE_FENCED/FAILOVER_IDLE) is no longer consulted, because S1 holding the lease
+    # must never stop the Mac from running its own engine (USER 2026-10-22).
+    if [ "$gone" -ge "$MAX_MGR_NOCHILD" ] && [ "$plvl" -le 2 ] && [ "$mgr_since" -gt 90 ]; then
+      klog "$A: ez_manage watchdog ALIVE BUT NO ENGINE CHILD for ${gone}s (pressure_level=$plvl) -> replace watchdog $mgr_pids"
+      [ "$rb_age" -lt "$rb_window" ] && engine_alert "$A" "NO ENGINE CHILD for ${gone}s and the 24h budget was already spent (last ${rb_age}s ago) — starting anyway: an account is never left without an engine"
+      echo "$now" > "$rb_stamp"
+      for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
+      mgr_pids=""
+      rm -f "$nochild_stamp"
     fi
   else
     rm -f "$nochild_stamp" 2>/dev/null
