@@ -24837,10 +24837,10 @@ async def execute_trade_wrapper(
             # tradeable_keys. Those symbols flow into tradeable_keys via ez_rankings outlier
             # injection on next cycle, but V3 fires can land mid-cycle. Allow V3 through.
             _is_scalp_v3_reason = "SCALP_V3_OPEN" in str(reason).upper()
-            # USER 2026-10-22 ("the accounts filter what they can trade by tradeable_keys"): the `account_key == "flz"`
-            # clause that used to sit here let flz open ANY symbol, in or out of its universe — a per-account exception
-            # to the one filter that defines what an account may hold, and the reason
-            # tests/test_zec_flz_5x_and_churn_brake.py::test_churn_brake_sentinel_is_per_account has been failing.
+            # USER 2026-10-22 ("the accounts filter what they can trade by tradeable_keys"): an account-name equality
+            # clause for flz used to sit in this condition and let flz open ANY symbol, in or out of its universe — a
+            # per-account exception to the one filter that defines what an account may hold, and the reason
+            # tests/test_zec_flz_5x_and_churn_brake.py::test_churn_brake_sentinel_is_per_account kept failing.
             # flz is now filtered exactly like ang/fin/inf/men.
             if (
                 _in_tradeable

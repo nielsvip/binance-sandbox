@@ -1,78 +1,90 @@
 {
- "generated_at": "2026-10-22 01:27 UTC",
- "total_capital_usd": 182.49,
+ "generated_at": "2026-10-22 01:34 UTC",
+ "total_capital_usd": 189.73,
  "tier_capital": {
-  "A": 6.24,
-  "B": 176.25,
+  "A": 13.89,
+  "B": 175.84,
   "C": 0.0
  },
  "tier_count": {
-  "A": 1,
+  "A": 2,
   "B": 4,
   "C": 0
  },
  "winners": [],
- "losers": [],
+ "losers": [
+  "inf:ALGOUSDT_LONG",
+  "inf:RAYSOLUSDT_LONG"
+ ],
  "mediocre": [
-  "inf:EGLDUSDT_SHORT",
-  "inf:DUSKUSDT_LONG",
-  "inf:ALGOUSDT_LONG"
+  "inf:EGLDUSDT_SHORT"
  ],
  "positions": [
   {
    "pk": "inf:EGLDUSDT_SHORT",
    "symbol": "EGLDUSDT",
    "account": "inf",
-   "value_usd": 120.14,
-   "gain_pct": -0.249,
+   "value_usd": 119.69,
+   "gain_pct": 0.104,
    "tier": "B",
    "perf_mult": 0.64,
    "amt": 32.2,
-   "mark": 3.73103333
+   "mark": 3.71711667
   },
   {
    "pk": "inf:DUSKUSDT_LONG",
    "symbol": "DUSKUSDT",
    "account": "inf",
-   "value_usd": 24.94,
-   "gain_pct": -0.085,
+   "value_usd": 25.15,
+   "gain_pct": 0.756,
    "tier": "B",
    "perf_mult": 1.0,
    "amt": 215.0,
-   "mark": 0.11602158
+   "mark": 0.11699826
   },
   {
    "pk": "inf:RAYSOLUSDT_LONG",
    "symbol": "RAYSOLUSDT",
    "account": "inf",
-   "value_usd": 24.93,
-   "gain_pct": -0.036,
+   "value_usd": 24.81,
+   "gain_pct": -0.53,
    "tier": "B",
    "perf_mult": 2.26,
    "amt": 12.6,
-   "mark": 1.97858784
+   "mark": 1.9688
+  },
+  {
+   "pk": "inf:STRKUSDT_LONG",
+   "symbol": "STRKUSDT",
+   "account": "inf",
+   "value_usd": 7.68,
+   "gain_pct": -0.131,
+   "tier": "A",
+   "perf_mult": 10.0,
+   "amt": 133.0,
+   "mark": 0.05774
   },
   {
    "pk": "inf:ENJUSDT_LONG",
    "symbol": "ENJUSDT",
    "account": "inf",
-   "value_usd": 6.24,
-   "gain_pct": -0.027,
+   "value_usd": 6.21,
+   "gain_pct": -0.493,
    "tier": "A",
    "perf_mult": 9.05,
    "amt": 220.0,
-   "mark": 0.02837
+   "mark": 0.02824
   },
   {
    "pk": "inf:ALGOUSDT_LONG",
    "symbol": "ALGOUSDT",
    "account": "inf",
-   "value_usd": 6.24,
-   "gain_pct": -0.114,
+   "value_usd": 6.19,
+   "gain_pct": -0.851,
    "tier": "B",
    "perf_mult": 0.42,
    "amt": 54.8,
-   "mark": 0.1138
+   "mark": 0.11295
   }
  ]
 }

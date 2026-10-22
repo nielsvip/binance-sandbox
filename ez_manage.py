@@ -8384,11 +8384,21 @@ def _vec_exact_reason_ok(reason) -> bool:
     return " |VEC_EXACT" in str(reason or "")
 
 
-def _voe_native_exits_disabled() -> bool:
+def _voe_native_exits_disabled(kind: str = "discretionary") -> bool:
     """USER 2026-10-21 vec-only exits: every NATIVE exit leg checks this at its decision
     point and stands down when True (default). NATIVE_EXITS_DISABLED=0 restores legacy
     behavior leg by leg. Vec-dictated exits (VEC_DRIVEN_*/RECONCILE_/|VEC_EXACT) never
-    consult it. Fail-closed toward NO native exit."""
+    consult it. Fail-closed toward NO native exit.
+
+    USER 2026-10-22: `kind="stop"` is NEVER stood down. Price protection is not a discretionary exit — CLAUDE.md
+    ("exits never blocked"), the operator's own vector-copy law #1 (the exchange backstop is exempt) and
+    live_twins/vector_enforce (`_is_stop_reason` -> STOP_PROTECTION) all exempt it. Measured this day: with the
+    software FIXED_STOP leg stood down, a position's only protection was the FROZEN exchange stop placed at entry,
+    while `[FIXED_STOP_TIGHTEN]` kept advancing the software level ("exchange backstop stays frozen") that no leg
+    could act on — i.e. the trailing stop was dead on every open position. Stop legs stay armed; the vector decides
+    which DISCRETIONARY exits fire, never whether a stop may."""
+    if str(kind or "").lower() == "stop":
+        return False
     try:
         return bool(getattr(_ezm_base_config, "NATIVE_EXITS_DISABLED", getattr(config, "NATIVE_EXITS_DISABLED", True)))
     except Exception:
@@ -52475,7 +52485,7 @@ async def process_position(
                 position.fixed_stop_armed = True
                 logger.critical(f"🛡️ [FIXED_STOP_ARMED] {position_key}: price {current_price:.6f} back on the protected side of {_fx_lvl:.6f} — stop is live again")
             _fx_chk = _fixed_stop_effective_level(trade_manager, position_key, symbol, position_side, _fx_is_long, _fx_lvl, _fx_ep, safe_fetch_float(getattr(position, "max_gain", 0), 0.0), _pp_shared_ind, _fx_oa_ep, current_price)  # E7 tighten mode (off -> _fx_lvl)
-            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)) and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
+            if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)) and not _voe_native_exits_disabled("stop"):  # USER 2026-10-22: price protection, never stood down
                 _fx_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _fx_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _fx_side = "SELL" if _fx_is_long else "BUY"
@@ -52535,7 +52545,7 @@ async def process_position(
                             _ult_breached = False
                     except Exception:
                         pass
-            if _ult_breached and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
+            if _ult_breached and not _voe_native_exits_disabled("stop"):  # USER 2026-10-22: ULTIMATE_DC hard stop, price protection, never stood down
                 _ult_amt = abs(safe_float(getattr(position, "positionAmt", 0)))
                 _ult_gain = safe_fetch_float(getattr(position, "gain", 0), 0)
                 _ult_side = "SELL" if _ult_is_long else "BUY"
@@ -57589,7 +57599,7 @@ async def process_position(
                     logger.warning(
                         f"[PPL_STOP_UPGRADED] {position_key}: gain={_pp_gain:.2f}% ≥ {_ppl_arm_gain}% — stop upgraded BE→first_exit {_ppl_first_exit_px:.6f} (locks +0.5% scalp)"
                     )
-                if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled():  # USER 2026-10-21 vec-only exits
+                if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled("stop"):  # USER 2026-10-22: PPL stop level, price protection, never stood down
                     _sl_hit = (is_long and current_price <= _ppl_stop_level) or (
                         not is_long and current_price >= _ppl_stop_level
                     )

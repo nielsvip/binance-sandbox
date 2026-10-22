@@ -115,7 +115,7 @@ def test_new_exit_legs_stood_down():
         "[NEWBORN_LOSS_KILL_STOOD_DOWN]",
         '"_uh_force_close") and not _voe_native_exits_disabled()',
         "if _ms_gain >= _ms_threshold and _ms_gain < _ms_prev and not _voe_native_exits_disabled()",
-        "if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled()",
+        'if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled("stop")',
         "and not _voe_native_exits_disabled()  # USER 2026-10-21 vec-only exits\n        ):",
         'result = "SKIPPED_NON_VECTOR_EXIT_DISABLED"',
         "if reduce_qty_kill1 > 0 and reduce_qty_kill1 < position.positionAmt and not _voe_native_exits_disabled()",
@@ -137,3 +137,15 @@ def test_new_exit_legs_stood_down():
         assert leg in SRC, leg
     assert SRC.count("vec-only exits: rider close stood down") == 3
     assert SRC.count("_voe_native_exits_disabled()") >= 50
+    # USER 2026-10-22: price protection is NOT a discretionary exit and is never stood down. The software FIXED_STOP
+    # (the one [FIXED_STOP_TIGHTEN] trails), the ULTIMATE_DC hard stop and the PPL stop level all pass kind="stop",
+    # which the helper answers False for whatever NATIVE_EXITS_DISABLED says.
+    for _stop_leg in (
+        'if _fixed_stop_core.breached(_fx_is_long, current_price, _fx_chk) and bool(getattr(position, "fixed_stop_armed", True)) and not _voe_native_exits_disabled("stop")',
+        'if _ult_breached and not _voe_native_exits_disabled("stop")',
+        'if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty and not _voe_native_exits_disabled("stop")',
+    ):
+        assert _stop_leg in SRC, _stop_leg
+    import ez_manage as _ezm
+    assert _ezm._voe_native_exits_disabled("stop") is False
+    assert _ezm._voe_native_exits_disabled() is True

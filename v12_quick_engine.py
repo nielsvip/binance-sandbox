@@ -19785,9 +19785,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # reducing when the price is falling"): a PARTIAL scaling act must point the way price is moving —
         # favourable -> AUGMENT, adverse -> REDUCE. Exits (to_flat) are never touched. Default OFF: the engine
         # is byte-identical until a board promotes SCALE_DIRECTION_LAW_ENABLED. See vec_decisions/scale_direction.py.
-        _sd_ref = close[vec_decisions.scale_direction.ref_index(i, vec_decisions.scale_direction.params(cfg)[1])]
-        def _sd_ok(kind, to_flat=False, _ref=_sd_ref):
-            return vec_decisions.scale_direction.scale_allowed(cfg, kind, is_long, px, float(_ref), to_flat)[0]
+        _sd_on = bool(getattr(cfg, "SCALE_DIRECTION_LAW_ENABLED", False))
+        _sd_ref = float(close[vec_decisions.scale_direction.ref_index(i, vec_decisions.scale_direction.params(cfg)[1])]) if _sd_on else 0.0
+        def _sd_ok(kind, to_flat=False, _ref=_sd_ref, _on=_sd_on):
+            return (not _on) or vec_decisions.scale_direction.scale_allowed(cfg, kind, is_long, px, _ref, to_flat)[0]
+        def _sd_flat(cut_qty, _q=None):
+            """The engine's own dust rule: a cut that leaves under 10% of the entry size IS an exit."""
+            _held = pos["qty"] if _q is None else _q
+            return (_held - float(cut_qty)) < 0.10 * float(pos.get("entry_qty", _held))
         # VIGILANCE (USER 2026-09-28, 3rd mandate): STRUCTURAL stop, NO fixed % — losing position AND
         # px breach of dc_low4_{TF} (long) / dc_high4_{TF} (short) → immediate close + block until
         # recovery. Runs before every other exit (live parity).
@@ -21081,7 +21086,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             )  # lane-D: live AUGMENT refused by STRICT_VEC_PARITY
             if _hq_act == "AUGMENT" and _hq_qty > 0:
                 _hq_fire = True
-            elif _hq_act == "REDUCE" and _hq_qty > 0 and _sd_ok("REDUCE", min(float(_hq_qty), pos["qty"]) >= pos["qty"]):
+            elif _hq_act == "REDUCE" and _hq_qty > 0 and _sd_ok("REDUCE", _sd_flat(min(float(_hq_qty), pos["qty"]))):
                 _hq_rq = min(float(_hq_qty), pos["qty"])
                 _realized_hq = (
                     (px - pos["avg_price"]) * _hq_rq
@@ -21605,7 +21610,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # SCALE_DIRECTION: the take-profit ladder is the single largest wrong-way producer — 2,145 of 12,936
         # measured reduces, 95.4% of them while price was still rising in the position's favour. Refused the
         # same way the whole-share rule refuses: state rolled back, so the leg is retried on a falling bar.
-        if _ppl_action == "REDUCE" and not _ppl_skip and min(_ppl_frac, 1.0) < 1.0 and not _sd_ok("REDUCE"):
+        if _ppl_action == "REDUCE" and not _ppl_skip and not _sd_ok("REDUCE", _sd_flat(pos["qty"] * min(_ppl_frac, 1.0))):
             _ppl_skip = True
             pos["ppl"] = _ppl_prev
         if _ppl_action == "REDUCE" and pos["qty"] > 0 and not _ppl_skip:
@@ -21679,7 +21684,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     bool(_n4_qr_macd[1][i]),
                 )
             # SCALE_DIRECTION: SIMPLE_TP_EXIT / MACD_EXIT are take-profit partials — refused on a favourable move.
-            if _qr_fire and pos["qty"] > 0 and _sd_ok("REDUCE"):
+            if _qr_fire and pos["qty"] > 0 and _sd_ok("REDUCE", _sd_flat(pos["qty"] * (1.0 - vec_decisions.quick_reduce_sources.DUST_FRAC))):
                 _qr_qty = pos["qty"] * (
                     1.0 - vec_decisions.quick_reduce_sources.DUST_FRAC
                 )
@@ -22088,7 +22093,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             except Exception:
                 _w2_tpq, _w2_tpr = 0.0, ""
             # SCALE_DIRECTION: the OB/OS take-profit is a scale-out into strength — refused on a favourable move.
-            if _w2_tpq > 0 and not _sd_ok("REDUCE", min(float(_w2_tpq), float(pos["qty"])) >= pos["qty"]):
+            if _w2_tpq > 0 and not _sd_ok("REDUCE", _sd_flat(min(float(_w2_tpq), float(pos["qty"])))):
                 _w2_tpq = 0.0
             if _w2_tpq > 0:
                 _w2_tpq = min(float(_w2_tpq), float(pos["qty"]))
@@ -22164,7 +22169,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # REDUCE_TO_FLAT keep firing — and the refusal falls through to the technical exits below exactly as
         # it would if reduce_sig were 0, so no protective path is skipped.
         _sd_rb_frac = 1.0 if _qr_fire else min(float(reduce_frac[i]), 1.0)
-        _sd_rb_flat = _sd_rb_frac >= 1.0 or (pos["qty"] - pos["qty"] * _sd_rb_frac) < 0.10 * float(pos.get("entry_qty", pos["qty"]))
+        _sd_rb_flat = _sd_rb_frac >= 1.0 or _sd_flat(pos["qty"] * _sd_rb_frac)
         if (
             pos["qty"] > 0
             and _rc_ok

@@ -4558,3 +4558,83 @@ backups DO exist each time, but the name in the report has been wrong three time
 (`…0015…` vs `…0430…` for `tradier_manage`, and here). **Verify a backup by `ls`, never by the sentence that
 claims it** — a backup you cannot find is a backup you do not have.
 8. **3m year on ext = Binance bulk zips (USER 2026-10-21 "mac has only 1899 ext has a year").** MEASURED that day it did NOT: the ext 3m archive began 2026-10-12 (9 days), `klines_ext_archive --deepen` never covers 3m (and pages fapi at limit 1500), SSD2T + TOSHIBA_EXT were **100 % full** (SSD2T's archive stalled 10-20 20:45; both are personal drives — nothing deleted), WD25 not mounted, E3T 11 GB free. Now: `tools/klines_3m_vision_backfill.py` (cron `KLINES_3M_VISION` 03:35 daily, log `~/logs/klines_3m_vision_backfill.log`) keeps the last 12 months + current-month dailies of every live crypto symbol as Binance's own monthly/daily zips from data.binance.vision (no API weight), sha256-verified against `.CHECKSUM`, append-only, at `<freest drive>/binance_archive/vision_3m/<SYM>/` (~10 MB/symbol, ~2 GB total).
+
+### 118.12 THE CONFIG LITERAL IS MOSTLY SHIELDED — BUT 65 SWITCHES STILL RUN AGAINST THEIR OWN TEMPLATE
+A subagent argued that §118.9's template-vs-config mismatches are now "unreachable, work on a layer with no
+authority", because (a) `ez_manage` / `ez_positions_quick` / `tradier_manage` bind `config` to a per-sym proxy
+and (b) its projection made the cat_side layer a complete template image, so resolution never reaches the config
+literal. **(a) is true. (b) is false** — that projection wrote `data/cat_side_defaults_4.json`, which nothing
+live reads (§118.10); the live layer is `data/per_sym_settings.json` + the SQL `per_sym_settings` row, built by
+`tools/build_cat_side_defaults_4.py`, and it was never touched. So the shielding that does exist comes from the
+canonical daily build, not from that projection.
+
+**Measured against the layer live actually resolves** (2026-10-22, 226 real template-vs-config mismatches):
+
+| | count |
+|---|---|
+| present in the live cat_side layer | 216 |
+| …and it carries the TEMPLATE value → config literal genuinely unreachable | **142** |
+| live cat_side layer DISAGREES with the template bold | **74** |
+| absent from the live layer → falls through to the config literal | **10** |
+| **distinct switches whose template value never applies live** | **65** |
+
+So the dismissal is 63% right and 37% wrong. Examples: `DIRECTION_FAVORABLE_REENTRY_ENABLED` template True /
+live False; `REENTRY_POST_CONSOL_ENABLED` template False / live True; `TECHNICAL_DC_TARGET_TF` template `'4h'` /
+live `'OFF'`; `GOLDEN_RULE_BASE_USD` template 0 / live 5.0; `WT_15M_BOUNCE_HIGH_1H_GT_PREV` /
+`_LOW_1H_GT_PREV` template False / live True (both absent from the live layer).
+
+**THE SUBSYSTEM SPLIT IS THE INTERESTING PART: of the 65, twenty-three are RE-ENTRY keys** (`REENTRY_POST_CONSOL_*`
+across 3 lanes, `REENTRY_ON_DC4_15M_BREAK_ENABLED`, `REENTRY_ON_EXIT_PRICE_BREAK_ENABLED`,
+`DIRECTION_FAVORABLE_REENTRY_ENABLED`, `BTC_GUARANTEED_REENTRY_*`, `STOP_RECLAIM_REENTRY_ENABLED`,
+`REENTRY2_DC_BREAK_FILTER_TF`, …), then OTHER 20, ENTRY 8, SIZING 8, EXIT 6. **Re-entry is also the dominant
+asymmetry family in BOTH parity censuses** — crypto VEC_ONLY `REENTRY_HIGHER_LOW` 54 / LIVE_ONLY 17 (§118.4),
+stocks LIVE_ONLY `MANDATORY_REENTRY_PRICE_CROSS` 1,251 and VEC_ONLY `HARDCODED_RALLY_REENTRY` 873 (§118.7).
+**A mechanism that would produce exactly that:** the vector evaluates re-entry with the TEMPLATE bold (what the
+pilot measured), live resolves the cat_side layer, and for these 23 the two disagree — so for every sym_side
+whose board does not override them, the two engines are asking different re-entry questions by construction.
+**Stated as a hypothesis with a named mechanism, NOT as proven causation** — §97 applies, a reason label is not
+a gate, and the only confirmed stock cause so far remains the `_rally_ok` global leak (§118.7). Testing it is
+cheap and specific: re-run one sym_side's parity with those 23 keys forced to the template value on both legs
+and see whether the re-entry asymmetry collapses.
+
+**AND A CORRECTION OF MY OWN, caught before it was quoted:** my first pass reported 127 unshielded because the
+helper did `float(t)==float(v)` inside a `try` and returned False on `ValueError` — so `'OFF'` vs `'OFF'` and
+`'15m'` vs `'15m'` counted as disagreements. Equality must be tested BEFORE any numeric cast, and `None` vs `''`
+(a blank template cell) treated as equal. The corrected figure is 84 lane-instances / 65 distinct switches.
+Same family of error as the `30` vs `30.0` trap in §118.9, in the opposite direction.
+
+### 118.13 `ez_positions_service` — THE REAL EXPOSURE IS 4 KEYS / 10 SITES, AND THE PRIORITY ONES ARE ALREADY DONE
+A subagent reported `ez_positions_service.py` as "the last unwrapped module: 13 keys, 43 sites", and said the
+five `FIXED_STOP_*` keys were what it would make per-sym first because they decide where a stop sits. Measured
+per key, by how each site actually RESOLVES (not where the literal sits — the §117 trap):
+
+| key | `config.X` / `getattr` | via `_svc_psym_get` | verdict |
+|---|---|---|---|
+| 5× `FIXED_STOP_REF_FIELD/REF_TF/BUFFER_PCT/TIGHTEN_MODE/TIGHTEN_TRIGGER_PCT` | 0 | **5** | **already per-sym** |
+| `MAX_ORDER_VALUE` | 0 | **2** | **already per-sym** |
+| `MIN_POSITION_SIZE` | 17 | 0 | global — SIZING |
+| `START_POSITION_SIZE` | 13 | 0 | global — SIZING |
+| `HIGH_GAIN_AUGMENTATION_MIN_SIZE` | 1 | 0 | global — SIZING |
+| `HEDGE_MODE` | 5 | 0 | global — behaviour |
+| `NEW_POSITION_MAX_LOSS_THRESHOLD` | 3 | 0 | global — behaviour |
+| `DELTA_ENGINE_ENABLED` | 1 | 0 | global — behaviour |
+| `CAT_SIDE_DEFAULTS_ENABLED` | 1 | 0 | global — behaviour |
+
+**`_svc_fixed_stop_spec` (`ez_positions_service.py`) already calls
+`_svc_psym_get(symbol, side, "FIXED_STOP_REF_FIELD", getattr(config, "FIXED_STOP_REF_FIELD", "dc_low"))` and the
+same for the other four** — per-sym > cat_side > global, mirroring `ez_manage._fixed_stop_spec_for`. The
+`getattr(config, …)` is the FALLBACK DEFAULT passed as an argument, not the resolution. Counting those as global
+read sites is the same mistake that turned "151 unwired keys" into 14 (§117): **an auditor must classify a key
+by the call that RESOLVES it, never by a `config` reference appearing on the same line.**
+
+So the genuine remaining parity exposure there is **4 keys / 10 sites** (`HEDGE_MODE`,
+`NEW_POSITION_MAX_LOSS_THRESHOLD`, `DELTA_ENGINE_ENABLED`, `CAT_SIDE_DEFAULTS_ENABLED`), plus ~31 sizing sites
+that are live's domain by the USER's bars-not-quantities rule. And wrapping the module remains the wrong shape:
+it has no single per-position entry point, `parse_position_key` is scattered across 8+ sites that discard
+symbol/side, and it is both the single position writer and an order path via its FIXED_STOP leg.
+
+**ON "SHOULD THE SIZING KNOBS BE REMOVED FROM THE TEMPLATES":** `per_sym_live_set._apply_caps` clamps **8**
+sizing knobs from `CRYPTO_MIN_SIZE_CAPS`, not 4 — and its own docstring says **"Crypto only; a stock sym_side is
+never capped."** So the mode table does NOT own the sizing knobs on stocks, and deleting those rows from
+`TEMPLATE_STOCKS_*` would remove a sweep the stock venue genuinely uses. Any such decision is per-venue, and a
+template row change belongs to the pilot and the S2 gate regardless.

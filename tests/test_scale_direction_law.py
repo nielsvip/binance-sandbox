@@ -139,7 +139,19 @@ def test_engine_calls_the_predicate_at_every_partial_scaling_site():
     src = (ROOT / "v12_quick_engine.py").read_text()
     assert "import vec_decisions.scale_direction" in src
     assert "def _sd_ok(" in src, "the per-bar gate closure must exist"
-    assert src.count("_sd_ok(") >= 8, f"expected a gate at every partial scaling site, found {src.count('_sd_ok(')}"
+    assert "def _sd_flat(" in src, "to_flat must come from the engine's own dust rule, not a literal"
+    # 1 definition + 8 gated scaling sites: exit chain, HAIKU reduce, AUGMENT, PPL, quick-reduce,
+    # w2 OB/OS take-profit, the REGIME/QUICK reduce block, SATOSHIT partial.
+    assert src.count("_sd_ok(") >= 9, f"a gate is missing: found {src.count('_sd_ok(')}"
     assert 'vec_decisions.scale_direction.scale_allowed(' in src
     for marker in ('_sd_ok("AUGMENT")', '_sd_ok("REDUCE")'):
         assert marker in src, marker
+
+
+def test_no_gate_can_block_an_act_that_closes_the_position():
+    """Every REDUCE gate passes a to_flat computed from the engine's dust rule, so an exit is exempt."""
+    src = (ROOT / "v12_quick_engine.py").read_text()
+    bare = [ln.strip() for ln in src.splitlines() if '_sd_ok("REDUCE")' in ln]
+    # the only REDUCE gate allowed to omit to_flat is the exit-chain one (partial legs only, already
+    # filtered by `not _lec_hit[1]`) and the SATOSHIT partial (guarded by `0 < partial < 1.0`)
+    assert len(bare) <= 2, f"a REDUCE gate without a to_flat argument: {bare}"
