@@ -370,11 +370,16 @@ def mac_view(now):
     md_age = newest_mtime_age(LIVE / "data", now, prefix="market_data_2", exclude_suffix="_s1.json")
     kl_age = newest_mtime_age(SANDBOX / "klines_cache_macbook", now)
     crypto_accounts_alive = None
+    mac_engines = None
     if isinstance(live_hb, dict) and live_hb_age is not None and live_hb_age < 180:
         accounts = live_hb.get("accounts") or {}
         crypto_accounts_alive = sum(1 for acct in C.CRYPTO_ACCOUNTS if accounts.get(acct))
+        # 2026-10-22: the PER-ACCOUNT map, not just the count. The fence decision needs to know whether the Mac has
+        # an engine for the accounts in scope — see NOTHING TO FENCE below.
+        mac_engines = dict(accounts)
     return {"hb": hb if isinstance(hb, dict) else None, "hb_age": hb_age, "live_hb_age": live_hb_age, "witness_min_age": min(witnesses) if witnesses else None,
-            "mac_market_data_push_age": md_age, "mac_klines_push_age": kl_age, "crypto_accounts_alive": crypto_accounts_alive}
+            "mac_market_data_push_age": md_age, "mac_klines_push_age": kl_age, "crypto_accounts_alive": crypto_accounts_alive,
+            "mac_engines": mac_engines}
 
 
 def venue_reading(view, venue, now):
@@ -888,7 +893,30 @@ class Watchdog:
             fb["blocked_by"] = ([f"heartbeat age={None if hb_age is None else int(hb_age)}s > {int(HB_FRESH_S)}s"] if hb_stale else []) \
                 + [f"{v} data: {', '.join(readings[v].get('trading_reasons') or readings[v]['reasons'])}" for v in data_stale] \
                 + [f"{v} not_trading: {', '.join(nt.get(v, {}).get('kinds') or [])}" for v in nt_left]
-        if mac_fenced or mac_silent:
+        # ═══ NOTHING TO FENCE (2026-10-22, USER rule 3: "if no trades on 1 of 5 accounts it starts ez_manage and
+        # positions_quick for that account") ═══
+        # The fence handshake exists for exactly ONE reason: never run a trader here while the Mac runs one for the
+        # same account. If the Mac has NO engine for every account in scope, that risk is absent and there is
+        # nothing to acknowledge — waiting for an ack is then pure downtime. And the ack will NEVER come: the Mac
+        # was deliberately changed on 2026-10-22 to ignore the lease ("THE LEASE NEVER BLOCKS THE MAC", USER: "s1 is
+        # an EMERGENCY system that runs as long as macbook is DEAD"), so it no longer stands down and no longer
+        # signals that it has. The two halves therefore deadlocked: S1 waited for an ack the Mac will not send, then
+        # yielded after VENUE_UNRUN_S, and the lease churned gen 170->173->174->178->183->188->191 in ~20 min with
+        # NOBODY trading the scoped accounts. Measured today at 06:40:12-06:43:46Z on gen 178 ("but Mac not yet
+        # fenced (hb_age=27.4)" every 15 s -> LEASE_YIELD_UNFENCED "S1 could not start traders").
+        # This requires a FRESH per-account engine map (live_hb < 180 s, else mac_engines is None and we fall
+        # through to the old wait): a missing map must never be read as "the Mac has no engine".
+        nothing_to_fence = False
+        _eng = view.get("mac_engines")
+        if isinstance(_eng, dict) and _eng:
+            _scoped = (lease.get("accounts") or {})
+            _need = []
+            for _v in scope:
+                _need.extend(_scoped.get(_v) or {"crypto": list(C.CRYPTO_ACCOUNTS), "stocks": list(C.STOCK_ACCOUNTS)}.get(_v, []))
+            if _need and all(not _eng.get(_a) for _a in _need):
+                nothing_to_fence = True
+                log(f"TRADING_FAILOVER: NOTHING TO FENCE — the Mac has no engine for {sorted(set(_need))} (scope={scope}); starting S1 traders without a fence ack")
+        if mac_fenced or mac_silent or nothing_to_fence:
             # The handshake completed, so the unattended-wait timer below starts fresh next time it is needed.
             self.state.pop("unfenced_wait", None)
             if C.lease_venues(dict(venues=lease.get("run_venues"))) != scope or lease.get("run_venues") is None:

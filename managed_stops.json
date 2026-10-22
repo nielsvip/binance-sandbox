@@ -1,37 +1,23 @@
 {
-  "fin:PUMPUSDT_LONG": {
-    "orderId": "3000002265736874",
-    "stopPrice": 0.004763,
-    "entry_sig": "2026-10-22 06:48:45.110000+00:00",
-    "symbol": "PUMPUSDT",
-    "side": "LONG"
-  },
-  "fin:COMPUSDT_LONG": {
-    "orderId": "3000002265743545",
-    "stopPrice": 24.81,
-    "entry_sig": "2026-10-22 06:57:14.920000+00:00",
-    "symbol": "COMPUSDT",
-    "side": "LONG"
-  },
-  "fin:1000PEPEUSDC_LONG": {
-    "orderId": "3000002265746062",
-    "stopPrice": 0.0044491,
-    "entry_sig": "2026-10-22 06:58:57.978000+00:00",
-    "symbol": "1000PEPEUSDC",
-    "side": "LONG"
-  },
-  "fin:KSMUSDT_SHORT": {
-    "orderId": "3000002265746069",
-    "stopPrice": 4.11,
-    "entry_sig": "2026-10-22 06:48:27.962000+00:00",
-    "symbol": "KSMUSDT",
+  "men:MOVEUSDT_SHORT": {
+    "orderId": "2000001531300073",
+    "stopPrice": 0.00761,
+    "entry_sig": "2026-10-22 06:27:39.687000+00:00",
+    "symbol": "MOVEUSDT",
     "side": "SHORT"
   },
-  "fin:DASHUSDT_LONG": {
-    "orderId": "3000002265745850",
-    "stopPrice": 50.75,
-    "entry_sig": "2026-10-22 06:53:06.975000+00:00",
-    "symbol": "DASHUSDT",
+  "men:BIGTIMEUSDT_SHORT": {
+    "orderId": "2000001531327409",
+    "stopPrice": 0.006867,
+    "entry_sig": "2026-10-22 06:49:05.092000+00:00",
+    "symbol": "BIGTIMEUSDT",
+    "side": "SHORT"
+  },
+  "men:PUMPUSDT_LONG": {
+    "orderId": "2000001531338979",
+    "stopPrice": 0.004763,
+    "entry_sig": "2026-10-22 06:56:37.940000+00:00",
+    "symbol": "PUMPUSDT",
     "side": "LONG"
   }
 }
