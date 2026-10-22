@@ -43938,7 +43938,11 @@ class TradierTradeManager:
         ratio=0.7 → long cap ×140%, short cap ×60%. Clamped to ±50% of base.
         Returns (allowed: bool, reason: str).
         """
-        if getattr(config, "ENABLE_TR_SWING_ENTRIES", False) is not True:
+        try:  # USER 2026-10-22: wing master reads GLOBAL — a frozen per-sym False (boards snapshotted
+            _sw_src = object.__getattribute__(config, "_inner")  # while the default was False) must never
+        except Exception:  # out-vote it through _TRPerSymProxy (the 2026-10-15 trap). Budgets stay per-sym.
+            _sw_src = config
+        if getattr(_sw_src, "ENABLE_TR_SWING_ENTRIES", False) is not True:
             return False, "SWING_ENTRIES_OFF_PARITY"
         ratio = self.calculate_unified_market_ratio()
         if side == "LONG":
