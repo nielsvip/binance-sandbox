@@ -53,6 +53,8 @@ CRITICAL_PROCESSES=(
     "ez_indicators.py"
     "ez_market_data.py"
     "ez_klines.py"
+    "ez_prices_ws.py"  # 2026-10-22 added — feeds ez_prices.py its klines:*:3m Redis input (was 0 keys with it down); 1m/3m fallback chain redundancy
+    "ez_mark_price_pub.py"  # 2026-10-22 added — lightweight backup mark_price:* publisher (one !markPrice@arr stream); backup to ez_positions_service marks
     "setup_ssh_tunnels.py"
     "ez_orderbook.py"  # 2026-04-27 added — was dying silently w/o auto-restart, killing V3 OB scanner
     "ez_indicators_merger.py"  # 2026-08-12 added — SIGTERM'd 2026-08-11 23:08:34 and stayed dead 70min+ while cron logged "All healthy"; its death is the direct cause of INDICATOR_SNAPSHOT_STALE growing linearly across ang/flz/fin/men (4520 CRITICAL/hr, age 3900s+) because it is the only publisher of the 326-symbol indicator snapshot broadcast
@@ -71,6 +73,8 @@ WATCHDOG_MANAGED=(
     "ez_indicators.py"
     "ez_market_data.py"
     "ez_klines.py"
+    "ez_prices_ws.py"  # 2026-10-22 added — with CRITICAL_PROCESSES above; wrapped launch + RSS recycle
+    "ez_mark_price_pub.py"  # 2026-10-22 added — with CRITICAL_PROCESSES above; wrapped launch + RSS recycle
     "ez_orderbook.py"  # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog
     "ez_manage.py"     # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog (was bare)
     "ez_indicators_merger.py"  # 2026-08-12 added — run_with_watchdog.sh:154 already defines NO_OUTPUT_TIMEOUT=120 for it

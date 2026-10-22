@@ -113,3 +113,14 @@ def test_no_sync_fetch_keeps_old_path():
     bp = pt.BrokerPositions("binance", "ang", _async_fetch, config=CFG)
     got = asyncio.new_event_loop().run_until_complete(bp.snapshot(reason="pre ang:X OPEN"))
     assert got is not None and got.amount("MANAUSDT", "LONG") == 297.0
+
+
+def test_truth_slot_age_inf_when_absent():
+    assert pt.truth_slot_age_s("binance", "no_such_acct_xyz") == float("inf")
+
+
+def test_truth_slot_age_tracks_seeded_snapshot():
+    assert pt.seed_snapshot("binance", "age_probe_acct", ROWS) is True
+    age = pt.truth_slot_age_s("binance", "age_probe_acct")
+    assert 0.0 <= age < 5.0, age
+    assert pt.truth_slot_age_s("tradier", "age_probe_acct") == float("inf")

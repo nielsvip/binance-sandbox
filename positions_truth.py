@@ -544,6 +544,21 @@ def seed_snapshot(broker: str, account: str, rows: Any, fetched_at: Optional[flo
         return False
 
 
+def truth_slot_age_s(broker: str, account: str, now: Optional[float] = None) -> float:
+    """Age of the shared broker-truth snapshot; inf when none. Sync lock-free read for order gates: the refresher-kept
+    slot is broker-sync evidence even when the local service stamp is stale (USER 2026-10-22: men refused vec OPENs on
+    a 148s service stamp while the truth slot was seconds fresh)."""
+    try:
+        bp = _CACHES.get((broker, account))
+        last = getattr(bp, "last", None) if bp is not None else None
+        ts = float(getattr(last, "fetched_at", 0.0) or 0.0)
+        if ts <= 0:
+            return float("inf")
+        return (time.time() if now is None else now) - ts
+    except Exception:
+        return float("inf")
+
+
 def hang_reconcile(service: Any, account_key: str, rows: Any, where: str, config: Any = None, logger: Optional[logging.Logger] = None) -> bool:
     """INVARIANT 6: a hung / failed position update must NOT os._exit and lose state. Instead: seed broker truth for order
     decisions, age the local sync stamp so every order-bound read falls back to the broker (ez_pre_order_check), and count

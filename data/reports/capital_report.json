@@ -1,55 +1,78 @@
 {
- "generated_at": "2026-10-22 19:21 UTC",
- "total_capital_usd": 70.7,
+ "generated_at": "2026-10-22 19:31 UTC",
+ "total_capital_usd": 143.93,
  "tier_capital": {
   "A": 0.0,
-  "B": 70.69,
-  "C": 0.0
+  "B": 65.76,
+  "C": 78.18
  },
  "tier_count": {
   "A": 0,
-  "B": 3,
-  "C": 0
+  "B": 2,
+  "C": 3
  },
  "winners": [],
- "losers": [],
- "mediocre": [
-  "men:ARBUSDC_LONG",
-  "men:ZILUSDT_SHORT"
+ "losers": [
+  "men:BIOUSDC_SHORT",
+  "men:ETHFIUSDC_LONG",
+  "men:BIGTIMEUSDT_SHORT"
  ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "men:ARBUSDC_LONG",
-   "symbol": "ARBUSDC",
+   "pk": "men:ACTUSDT_SHORT",
+   "symbol": "ACTUSDT",
    "account": "men",
-   "value_usd": 24.99,
+   "value_usd": 45.0,
    "gain_pct": -0.067,
    "tier": "B",
-   "perf_mult": 1.0,
-   "amt": 137.8,
-   "mark": 0.18137932
+   "perf_mult": 1.02,
+   "amt": 5244.0,
+   "mark": 0.00858078
   },
   {
-   "pk": "men:ZILUSDT_SHORT",
-   "symbol": "ZILUSDT",
+   "pk": "men:BIOUSDC_SHORT",
+   "symbol": "BIOUSDC",
    "account": "men",
-   "value_usd": 24.95,
-   "gain_pct": 0.139,
-   "tier": "B",
-   "perf_mult": 0.77,
-   "amt": 11891.0,
-   "mark": 0.00209812
+   "value_usd": 44.86,
+   "gain_pct": -0.167,
+   "tier": "C",
+   "perf_mult": 0.22,
+   "amt": 1909.0,
+   "mark": 0.02349926
+  },
+  {
+   "pk": "men:BIGTIMEUSDT_SHORT",
+   "symbol": "BIGTIMEUSDT",
+   "account": "men",
+   "value_usd": 24.99,
+   "gain_pct": -0.046,
+   "tier": "C",
+   "perf_mult": 0.47,
+   "amt": 3858.0,
+   "mark": 0.006477
   },
   {
    "pk": "men:BATUSDT_LONG",
    "symbol": "BATUSDT",
    "account": "men",
-   "value_usd": 20.75,
-   "gain_pct": 0.743,
+   "value_usd": 20.76,
+   "gain_pct": 0.755,
    "tier": "B",
    "perf_mult": 7.06,
    "amt": 119.6,
-   "mark": 0.17353
+   "mark": 0.17355
+  },
+  {
+   "pk": "men:ETHFIUSDC_LONG",
+   "symbol": "ETHFIUSDC",
+   "account": "men",
+   "value_usd": 8.33,
+   "gain_pct": -0.091,
+   "tier": "C",
+   "perf_mult": 0.42,
+   "amt": 12.7,
+   "mark": 0.6559
   }
  ]
 }

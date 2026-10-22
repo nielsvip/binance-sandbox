@@ -33245,6 +33245,13 @@ class MultiAccountTradeManager:
                         _age = _hb_age_bs
                 except Exception:
                     pass
+                try:
+                    _bs_acct2 = (str(position_key).split(":", 1)[0] if position_key and ":" in str(position_key) else account_key) or ""
+                    _truth_age_bs = min(_ptruth.truth_slot_age_s(_bb, _bs_acct2) for _bb in ("binance", "tradier")) if _bs_acct2 else float("inf")
+                    if _truth_age_bs < _age:
+                        _age = _truth_age_bs
+                except Exception:
+                    pass
                 if _age > 90 and not _is_exit_bs:
                     logger.critical(f"🛑 [BROKER_SYNC_DEMAND] {position_key}: last crypto broker sync {_age:.0f}s ago (>90s) — REFUSING {action} {side} {quantity} until fresh broker positions (80× repeat prevention)")
                     return "BLOCKED_BROKER_SYNC_STALE"
