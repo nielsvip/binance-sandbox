@@ -19,6 +19,23 @@ def _get(**kw):
     return g
 
 
+def _refusal(get, **kw):
+    """Tests were written against the refusing shape; enforcement is now opt-in, so wrap it."""
+    return SDL.check(_enforce(get), **kw)[0]
+
+
+def _observation(get, **kw):
+    return SDL.check(get, **kw)[1]
+
+
+def _enforce(get):
+    def g(k, d=None):
+        if k == "SCALE_DIRECTION_LIVE_ENFORCE":
+            return True
+        return get(k, d)
+    return g
+
+
 ON = _get(SCALE_DIRECTION_LAW_ENABLED=True)
 OFF = _get(SCALE_DIRECTION_LAW_ENABLED=False)
 
@@ -90,35 +107,35 @@ def test_protective_reasons_are_exempt():
 # ── the decision ──────────────────────────────────────────────────────────────────────────────────
 def test_off_by_default_lets_everything_through():
     _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
-    assert SDL.blocked(OFF, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(OFF, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0) == ""
 
 
 def test_long_partial_reduce_refused_while_price_rises():
     _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
-    why = SDL.blocked(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    why = _refusal(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                       side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
     assert why and "augment territory" in why and "X LONG REDUCE" in why
 
 
 def test_long_partial_reduce_allowed_while_price_falls():
     _fill("X", [104.0, 103.0, 102.0, 101.0, 100.0])
-    assert SDL.blocked(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=100.0) == ""
 
 
 def test_long_augment_refused_while_price_falls():
     _fill("X", [104.0, 103.0, 102.0, 101.0, 100.0])
-    why = SDL.blocked(ON, symbol="X", position_side="LONG", action="AUGMENT", reason="UAG_LADDER",
+    why = _refusal(ON, symbol="X", position_side="LONG", action="AUGMENT", reason="UAG_LADDER",
                       side="BUY", quantity=3.0, original_positionAmt=10.0, price=100.0)
     assert why and "reduce territory" in why
 
 
 def test_short_is_the_mirror():
     _fill("S", [104.0, 103.0, 102.0, 101.0, 100.0])  # falling = favourable for a short
-    assert SDL.blocked(ON, symbol="S", position_side="SHORT", action="REDUCE", reason="PPL_TP",
+    assert _refusal(ON, symbol="S", position_side="SHORT", action="REDUCE", reason="PPL_TP",
                        side="BUY", quantity=3.0, original_positionAmt=10.0, price=100.0)
-    assert SDL.blocked(ON, symbol="S", position_side="SHORT", action="AUGMENT", reason="UAG",
+    assert _refusal(ON, symbol="S", position_side="SHORT", action="AUGMENT", reason="UAG",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=100.0) == ""
 
 
@@ -128,24 +145,24 @@ def test_an_exit_is_never_refused_however_fast_price_rises():
         base = dict(symbol="X", position_side="LONG", action="REDUCE", reason="TECHNICAL_DC",
                     side="SELL", quantity=3.0, original_positionAmt=10.0, price=140.0)
         base.update(kw)
-        assert SDL.blocked(ON, **base) == "", kw
-    assert SDL.blocked(ON, symbol="X", position_side="LONG", action="REDUCE", reason="FIXED_STOP breach",
+        assert _refusal(ON, **base) == "", kw
+    assert _refusal(ON, symbol="X", position_side="LONG", action="REDUCE", reason="FIXED_STOP breach",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=140.0) == ""
 
 
 def test_fails_open_without_enough_history_or_a_usable_price():
     SDL.note_price("X", 100.0, 0.0)
-    assert SDL.blocked(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0) == ""
     _fill("Y", [100.0, 101.0, 102.0, 103.0, 104.0])
-    assert SDL.blocked(ON, symbol="Y", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(ON, symbol="Y", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=0.0) == ""
 
 
 def test_env_kill_switch(monkeypatch):
     _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
     monkeypatch.setenv("SCALE_DIRECTION_LIVE", "0")
-    assert SDL.blocked(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(ON, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0) == ""
 
 
@@ -153,7 +170,7 @@ def test_a_broken_getter_can_only_ever_allow():
     def boom(_k, _d=None):
         raise RuntimeError("per-sym store down")
     _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
-    assert SDL.blocked(boom, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(boom, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0) == ""
 
 
@@ -167,7 +184,7 @@ def test_absent_knobs_fall_back_to_the_law_defaults_not_to_falsy_none():
     assert SDL._f(g, "SCALE_DIRECTION_BAND_PCT", 0.0) == 0.0
     assert SDL._flag(_get(SCALE_DIRECTION_LAW_ENABLED="true"), "SCALE_DIRECTION_LAW_ENABLED", False) is True
     _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
-    assert SDL.blocked(g, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(g, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
 
 
@@ -178,18 +195,18 @@ def test_exit_chain_exemption_is_the_same_switch_on_both_sides():
     covered = _get(SCALE_DIRECTION_LAW_ENABLED=True, SCALE_DIRECTION_EXEMPT_EXIT_CHAIN=False)
     kw = dict(symbol="X", position_side="LONG", action="REDUCE", reason="WT_CROSS_EXIT_1h_bear",
               side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
-    assert SDL.blocked(exempt, **kw) == ""
-    assert SDL.blocked(covered, **kw), "with the exemption off the law must cover the exit chain"
+    assert _refusal(exempt, **kw) == ""
+    assert _refusal(covered, **kw), "with the exemption off the law must cover the exit chain"
     assert SDL.is_exit_chain("STDEV_REJECT_EXIT") and not SDL.is_exit_chain("PPL_TP_g3.05%")
 
 
 def test_per_sym_knobs_bind_through_the_shim():
     _fill("X", [100.0, 100.2, 100.4, 100.6, 100.8])   # +0.8% over 4 bars
     tight = _get(SCALE_DIRECTION_LAW_ENABLED=True, SCALE_DIRECTION_BAND_PCT=2.0)
-    assert SDL.blocked(tight, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(tight, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=100.8) == ""
     half = _get(SCALE_DIRECTION_LAW_ENABLED=True, SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE=False)
-    assert SDL.blocked(half, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
+    assert _refusal(half, symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP",
                        side="SELL", quantity=3.0, original_positionAmt=10.0, price=100.8) == ""
 
 
@@ -201,7 +218,8 @@ def test_both_trading_scripts_gate_inside_execute_now():
         j = src.index("_execute_now_inner(", i)
         head = src[i:j]
         assert "from live_twins import scale_direction_live as _sdl" in head, f"{name}: gate not in execute_now"
-        assert "_sdl.blocked(" in head, name
+        assert "_sdl.check(" in head, name
+        assert "_paper_nv" in src or "_paper_nv_sd" in src, f"{name}: a disagreement must never be silent"
         assert getter in head, f"{name}: the gate must resolve per sym_side"
         assert 'return f"BLOCKED_SCALE_DIRECTION' in head, name
 
@@ -232,3 +250,52 @@ def test_the_gate_runs_before_the_order_and_returns_without_placing_it():
         blocked_at = src.index('return f"BLOCKED_SCALE_DIRECTION', i)
         inner_at = src.index("_res = await self._execute_now_inner(", i)
         assert blocked_at < inner_at, f"{name}: the gate must sit ABOVE the order call"
+
+
+# ── the vector-copy law: live executes what the vector dictated, it never caps it ────────────────
+VEC_DICTATED = ("VEC_DRIVEN_REDUCE_PARTIAL", "VEC_DRIVEN_AUGMENT", "BOARD_CONVERGE_REDUCE",
+                "RECONCILE_TRIM", "EXIT_OWED_PARTIAL", "WT_CROSS_EXIT_1h_bear|VEC_EXACT",
+                "FIXED_STOP_HIT", "LIQUIDATION_PROTECT", "EMERGENCY_MARGIN_KILL",
+                "BALANCE_FLOOR_FORCE_REDUCE", "exit_guarantee FORCE", "BROKER_RECONCILED")
+
+
+def test_a_vec_dictated_act_is_never_touched_at_any_setting():
+    """USER 2026-10-20: "live can not make one more or less trade than EXACTLY what the switches dictate ...
+    a live cap that refuses a vector augment is a live-side defect". This is the regression that shipped once."""
+    for reason in VEC_DICTATED:
+        kind = "AUGMENT" if "AUGMENT" in reason else "REDUCE"
+        side = "BUY" if kind == "AUGMENT" else "SELL"
+        _fill("X", [104.0, 103.0, 102.0, 101.0, 100.0] if kind == "AUGMENT" else [100.0, 101.0, 102.0, 103.0, 104.0])
+        px = 100.0 if kind == "AUGMENT" else 104.0
+        kw = dict(symbol="X", position_side="LONG", action=kind, reason=reason, side=side,
+                  quantity=3.0, original_positionAmt=10.0, price=px)
+        for g in (ON, _enforce(ON)):
+            assert SDL.check(g, **kw) == ("", ""), f"{reason} was touched"
+        assert SDL.is_vec_dictated(reason), reason
+
+
+def test_is_vec_dictated_mirrors_the_live_definition_and_is_never_stricter():
+    """It must MIRROR ez_manage._voe_reason_is_vec, never be stricter — two definitions that drift are the bug."""
+    import ez_manage
+    corpus = list(VEC_DICTATED) + ["PPL_TP_g3.05%", "SATOSHIT_EXIT_PARTIAL 0.70", "REGIME_REDUCE",
+                                   "HLR_TOP_EXIT_SELL_TOP_g=2.10%", "UAG_LADDER gain_since_add +6.18%", ""]
+    for r in corpus:
+        mine, theirs = SDL.is_vec_dictated(r), ez_manage._voe_reason_is_vec(r)
+        assert mine == theirs, f"{r!r}: twin={mine} ez_manage={theirs}"
+
+
+def test_a_native_wrong_way_scale_is_observed_by_default_and_refused_only_on_opt_in():
+    _fill("X", [100.0, 101.0, 102.0, 103.0, 104.0])
+    kw = dict(symbol="X", position_side="LONG", action="REDUCE", reason="PPL_TP_g3.05%",
+              side="SELL", quantity=3.0, original_positionAmt=10.0, price=104.0)
+    refusal, obs = SDL.check(ON, **kw)
+    assert obs and not refusal, "default must OBSERVE — the vector already enforces the law"
+    refusal, obs = SDL.check(_enforce(ON), **kw)
+    assert refusal and refusal == obs, "SCALE_DIRECTION_LIVE_ENFORCE turns the observation into a refusal"
+
+
+def test_live_enforce_ships_off_in_both_configs():
+    import config
+    import config_tradier
+    assert config.Config().SCALE_DIRECTION_LIVE_ENFORCE is False
+    assert config_tradier.TradierConfig().SCALE_DIRECTION_LIVE_ENFORCE is False
