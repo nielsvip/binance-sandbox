@@ -889,6 +889,8 @@ class Watchdog:
                 + [f"{v} data: {', '.join(readings[v].get('trading_reasons') or readings[v]['reasons'])}" for v in data_stale] \
                 + [f"{v} not_trading: {', '.join(nt.get(v, {}).get('kinds') or [])}" for v in nt_left]
         if mac_fenced or mac_silent:
+            # The handshake completed, so the unattended-wait timer below starts fresh next time it is needed.
+            self.state.pop("unfenced_wait", None)
             if C.lease_venues(dict(venues=lease.get("run_venues"))) != scope or lease.get("run_venues") is None:
                 lease = set_run_venues(lease, scope)
             self.actions.start(UNITS["trading"])
@@ -922,7 +924,26 @@ class Watchdog:
             except Exception as _uv_e:
                 log(f"unrun-venue check error (ignored): {_uv_e!r}")
         else:
-            log(f"TRADING_FAILOVER: lease gen {lease['gen']} held by S1 (venues={scope}) but Mac not yet fenced (hb_age={hb_age}) — waiting before S1 runs them")
+            # 2026-10-22 NEVER LEAVE AN ACCOUNT UNATTENDED (USER: "you can NEVER FUCKING LEAVE ACCOUNTS UNATTENDED").
+            # This branch means S1 holds the lease but has NOT started the traders, because it is still waiting for
+            # the Mac to acknowledge the fence — while the Mac's own lease gate is already refusing to run them. So
+            # NOBODY is managing those accounts, and the wait was unbounded. MEASURED 04:24:52-04:26:07Z: S1 held
+            # gen 92 for crypto and logged this same line every 15 s while the Mac's heartbeat was perfectly healthy
+            # (hb_age 12-20 s, so it never signalled "fenced"), and four of five accounts traded NOWHERE until a
+            # manual force-mac. The symmetric protection already existed for the fenced path (LEASE_YIELD_UNRUN,
+            # "so it is not fenced on both hosts") — it was simply missing from the one branch where neither host
+            # can trade. Bounded by the same VENUE_UNRUN_S: if the handshake has not completed by then, hand the
+            # lease back, because a degraded Mac managing the account always beats nobody managing it.
+            _unf = self.state.get("unfenced_wait") or now
+            self.state["unfenced_wait"] = _unf
+            _waited = int(now - _unf)
+            if _waited >= VENUE_UNRUN_S:
+                self.state.pop("unfenced_wait", None)
+                alert("LEASE_YIELD_UNFENCED", held_s=_waited, venues=scope, accounts=lease.get("accounts"),
+                      reason="S1 could not start traders (Mac never acknowledged the fence) — yielding so the Mac keeps the accounts attended")
+                log(f"LEASE_YIELD_UNFENCED: held {scope} for {_waited}s with the Mac unfenced -> failback (never leave accounts unattended)")
+                return self.failback(lease, f"yield: Mac never fenced for {_waited}s — accounts must never be unattended")
+            log(f"TRADING_FAILOVER: lease gen {lease['gen']} held by S1 (venues={scope}) but Mac not yet fenced (hb_age={hb_age}) — waiting before S1 runs them ({_waited}s/{int(VENUE_UNRUN_S)}s before yielding)")
         return lease
 
     def failback(self, lease, why):
