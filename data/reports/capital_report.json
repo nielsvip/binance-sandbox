@@ -1,79 +1,55 @@
 {
- "generated_at": "2026-10-22 20:52 UTC",
- "total_capital_usd": 131.53,
+ "generated_at": "2026-10-22 20:55 UTC",
+ "total_capital_usd": 113.79,
  "tier_capital": {
-  "A": 24.34,
-  "B": 52.0,
-  "C": 55.19
+  "A": 0.0,
+  "B": 44.65,
+  "C": 69.14
  },
  "tier_count": {
-  "A": 1,
-  "B": 2,
+  "A": 0,
+  "B": 1,
   "C": 2
  },
- "winners": [
-  "fin:STRKUSDT_SHORT"
- ],
+ "winners": [],
  "losers": [
-  "fin:KSMUSDT_SHORT",
-  "fin:ZKUSDT_SHORT"
+  "men:BIGTIMEUSDT_SHORT",
+  "men:BIOUSDC_SHORT"
  ],
  "mediocre": [],
  "positions": [
   {
-   "pk": "fin:ZKUSDT_SHORT",
-   "symbol": "ZKUSDT",
-   "account": "fin",
-   "value_usd": 27.67,
-   "gain_pct": 1.29,
-   "tier": "C",
-   "perf_mult": 0.64,
-   "amt": 2116.0,
-   "mark": 0.01307609
-  },
-  {
-   "pk": "fin:BOMEUSDC_SHORT",
-   "symbol": "BOMEUSDC",
-   "account": "fin",
-   "value_usd": 27.56,
-   "gain_pct": 1.501,
+   "pk": "men:ACTUSDT_SHORT",
+   "symbol": "ACTUSDT",
+   "account": "men",
+   "value_usd": 44.65,
+   "gain_pct": 0.699,
    "tier": "B",
-   "perf_mult": 1.61,
-   "amt": 46319.0,
-   "mark": 0.00059503
+   "perf_mult": 1.02,
+   "amt": 5244.0,
+   "mark": 0.00851505
   },
   {
-   "pk": "fin:KSMUSDT_SHORT",
-   "symbol": "KSMUSDT",
-   "account": "fin",
-   "value_usd": 27.52,
-   "gain_pct": 0.966,
+   "pk": "men:BIOUSDC_SHORT",
+   "symbol": "BIOUSDC",
+   "account": "men",
+   "value_usd": 44.33,
+   "gain_pct": 1.019,
    "tier": "C",
-   "perf_mult": 0.13,
-   "amt": 7.0,
-   "mark": 3.93165417
+   "perf_mult": 0.22,
+   "amt": 1909.0,
+   "mark": 0.02322087
   },
   {
-   "pk": "fin:ZILUSDT_SHORT",
-   "symbol": "ZILUSDT",
-   "account": "fin",
-   "value_usd": 24.44,
-   "gain_pct": 2.195,
-   "tier": "B",
-   "perf_mult": 0.77,
-   "amt": 11921.0,
-   "mark": 0.00205
-  },
-  {
-   "pk": "fin:STRKUSDT_SHORT",
-   "symbol": "STRKUSDT",
-   "account": "fin",
-   "value_usd": 24.34,
-   "gain_pct": 2.271,
-   "tier": "A",
-   "perf_mult": 10.0,
-   "amt": 456.2,
-   "mark": 0.05335
+   "pk": "men:BIGTIMEUSDT_SHORT",
+   "symbol": "BIGTIMEUSDT",
+   "account": "men",
+   "value_usd": 24.81,
+   "gain_pct": 0.678,
+   "tier": "C",
+   "perf_mult": 0.47,
+   "amt": 3858.0,
+   "mark": 0.00643011
   }
  ]
 }

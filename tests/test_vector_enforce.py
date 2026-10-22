@@ -285,3 +285,110 @@ def test_board_confirmed_and_stops_skip_window(tmp_path, monkeypatch):
     assert ve.check("CLOSE", "a", "FIXED_STOP_HIT_px")[0] is True
     ok, v = ve.check("CLOSE", "a", "WT_LOWER_CROSS_EXIT")
     assert (ok, v) == (False, "OFF_BAR_WINDOW")
+
+
+def test_e1_wt_delta_restore(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore: E_1_WT_DELTA leg booked in v12 +
+    faithful twin both venues + boards hold the switch (96 sym_sides). Killed
+    10-22 13:28Z FOR an E_1 reason (false positive) — restored, never re-kill."""
+    _iso(tmp_path, monkeypatch)
+    assert ve.family_of("E_1_WT_DELTA_EXIT_delta=-19_thr=0_g0.32") == "E_1"
+    assert "E_1" in ve.VEC_SWITCH_EXIT_FAMILIES
+    ok, verdict = ve.check("CLOSE", "trb:SHOP_LONG", "E_1_WT_DELTA_EXIT_delta=-19_thr=0_g0.32")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    assert not (tmp_path / "vector_kills.json").exists()
+    lane_src = (ROOT / "ez_manage.py").read_text()
+    assert "_e1_wt_delta_fires" in lane_src, "E_1 lane must call the shared fire core"
+
+
+def test_bb_band_live_mapping(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore: BB_BAND_EXIT_LIVE_* reasons are the
+    shared-core twin of the booked BB legs — the BB_LOSS/BB_TAKE body names the
+    modeled member even though the head names killed parent BB. Killed 10-22
+    19:35Z FOR a BB_LOSS reason (false positive) — mapping fixed, BB restored."""
+    _iso(tmp_path, monkeypatch)
+    assert ve.family_of("BB_BAND_EXIT_LIVE_BB_LOSS_15m_g=-0.64%") == "BB_LOSS"
+    assert ve.family_of("BB_BAND_EXIT_LIVE_BB_TAKE_15m_g=0.64%") == "BB_TAKE"
+    ok, _ = ve.check("CLOSE", "trb:GE_SHORT", "BB_BAND_EXIT_LIVE_BB_LOSS_15m_g=-0.64%")
+    assert ok is True
+    assert not (tmp_path / "vector_kills.json").exists()
+
+
+def test_oversize_trim_and_non_tradeable_allowed(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore (mandates): OVERSIZE_TRIM_* partial trims
+    (USER 2026-10-17 trim-excess-even-at-loss; 283 boards hold the switch) and
+    NON_TRADEABLE_* exits (USER 2026-10-06 exit-dead-symbols) are never refused
+    and never killed. Killed 10-22 13:35/15:54Z (false positives) — restored."""
+    _iso(tmp_path, monkeypatch)
+    ok, v = ve.check("REDUCE", "trb:BWXT_SHORT", "OVERSIZE_TRIM_LOSS_cap3600")
+    assert (ok, v) == (True, "OVERSIZE_TRIM_ALLOWED")
+    ok2, v2 = ve.check("CLOSE", "trb:SCHW_SHORT", "NON_TRADEABLE_WT15M_EXIT_SHORT_wt27.1_g-0.84")
+    assert (ok2, v2) == (True, "NON_TRADEABLE_EXIT_ALLOWED")
+    assert "OVERSIZE" in ve.NEVER_KILL_FAMILIES
+    assert "NON" in ve.NEVER_KILL_FAMILIES
+    assert not (tmp_path / "vector_kills.json").exists()
+
+
+def test_wt_percentile_twin_matches_vector():
+    """USER 2026-10-22 parity restore: the stocks twin
+    (twin_sizing_reduce.wt_percentile_fires) and the booked v12 leg
+    (check_wt_percentile_exit_vec) agree on a threshold grid, including the 15m
+    turn-confirm boundary both live lanes require. Proves the RESTORE below."""
+    from vec_decisions import twin_sizing_reduce as tsr
+    from vec_decisions.process_position_crypto__wt_percentile_exit import (
+        check_wt_percentile_exit_vec as vec,
+    )
+
+    import numpy as np
+
+    class Cfg:
+        WT_PERCENTILE_EXIT_ENABLED = True
+        WT_PERCENTILE_EXIT_OB_D = 75.0
+        WT_PERCENTILE_EXIT_OB_4H = 55.0
+        WT_PERCENTILE_EXIT_OS_D = 10.0
+        WT_PERCENTILE_EXIT_OS_4H = 25.0
+
+    get = lambda k, d=None: getattr(Cfg, k, d)  # noqa: E731
+    cfg = Cfg()
+    n_agree = n_fire = 0
+    for pd in (74.0, 75.0, 76.0, 9.0, 10.0, 11.0):
+        for p4 in (54.0, 55.0, 56.0, 24.0, 25.0, 26.0):
+            for w1, w2 in ((40.0, 50.0), (50.0, 40.0), (50.0, 50.0)):
+                for is_long in (True, False):
+                    ind = {
+                        "wt_percentile_D": pd,
+                        "wt_percentile_4h": p4,
+                        "wt1_15m": w1,
+                        "wt2_15m": w2,
+                    }
+                    t_fire, _ = tsr.wt_percentile_fires(get, ind, is_long)
+                    v_fire = bool(
+                        vec(
+                            cfg,
+                            np.array([pd]),
+                            np.array([p4]),
+                            is_long,
+                            np.array([w1]),
+                            np.array([w2]),
+                        )[0]
+                    )
+                    assert t_fire == v_fire, (pd, p4, w1, w2, is_long)
+                    n_agree += 1
+                    n_fire += t_fire
+    assert n_fire > 0 and n_agree == 6 * 6 * 3 * 2
+
+
+def test_wt_percentile_restore(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore: WT_PERCENTILE leg booked in v12
+    (wt_percentile_exit OR'd into _all_exit) + faithful twin both venues
+    (fidelity pinned above) + 45 stocks boards hold the switch. The 647
+    10-22 trb/trc refusals (UNATTRIBUTED, never kill) flow in-window."""
+    _iso(tmp_path, monkeypatch)
+    assert "WT" in ve.VEC_SWITCH_EXIT_FAMILIES
+    assert ve.family_of("WT_PERCENTILE_pctD=2_4h=22_g-0.86") == "WT"
+    ok, verdict = ve.check("CLOSE", "trb:SCHW_SHORT", "WT_PERCENTILE_pctD=2_4h=22_g-0.86")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    v12_src = (ROOT / "v12_quick_engine.py").read_text()
+    assert "| wt_percentile_exit" in v12_src, "leg must be OR'd into _all_exit"
+    assert "WT_PERCENTILE_EXIT_ENABLED" in v12_src
+    assert not (tmp_path / "vector_kills.json").exists()

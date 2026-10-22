@@ -13208,6 +13208,30 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
             e1_wt_delta_exit = np.zeros(n, dtype=bool)
     else:
         e1_wt_delta_exit = np.zeros(n, dtype=bool)
+    # USER 2026-10-22 parity restore: WT_PERCENTILE_EXIT — vectorized twin of
+    # vec_decisions/process_position_crypto__wt_percentile_exit (percentile
+    # extremes + 15m WT turn-confirm, same shape as the ez lane and the stocks
+    # TWIN_SIZING_REDUCE twin). Gated by WT_PERCENTILE_EXIT_ENABLED (default
+    # False both venues): inert unless a board enables it. Thresholds resolve
+    # per-eval cfg (75/55/10/25 tradier defaults; crypto OS_D 2.0).
+    _wtp_D = _safe(npz, "wt_percentile_D", n, np.nan)
+    _wtp_4h = _safe(npz, "wt_percentile_4h", n, np.nan)
+    _wtp_w1 = _safe(npz, "wt1_15m", n, np.nan)
+    _wtp_w2 = _safe(npz, "wt2_15m", n, np.nan)
+    if bool(getattr(cfg, "WT_PERCENTILE_EXIT_ENABLED", False)):
+        try:
+            import vec_decisions.process_position_crypto__wt_percentile_exit as _wtp_mod
+
+            wt_percentile_exit = np.asarray(
+                _wtp_mod.check_wt_percentile_exit_vec(
+                    cfg, _wtp_D, _wtp_4h, is_long, _wtp_w1, _wtp_w2
+                ),
+                dtype=bool,
+            )
+        except Exception:
+            wt_percentile_exit = np.zeros(n, dtype=bool)
+    else:
+        wt_percentile_exit = np.zeros(n, dtype=bool)
     # [C2 q007 -> DEF2/001] stocks live DELTA_EXIT_DC_FLOOR (tradier_manage.py:19690): a valid Delta exit is HELD until price breaks the 15m Donchian boundary; gated by STOCKS_LIVE_TWINS_ENABLED (default OFF)
     if (
         str(getattr(cfg, "MODE", "crypto")) == "tradier"
@@ -13631,6 +13655,7 @@ def compute_exit_signals(npz, n, is_long, cfg, entry_sig=None):
     _all_exit = (
         delta_exit
         | e1_wt_delta_exit
+        | wt_percentile_exit
         | vel_exit
         | srs_exit
         | sat_exit

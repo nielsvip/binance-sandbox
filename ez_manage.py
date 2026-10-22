@@ -56771,8 +56771,20 @@ async def process_position(
         # wt_percentile_D=97 in example = daily WT at 97th percentile = extreme OB
         # 2026-04-19: percentile fields confirmed float32 in NPZ
         # ==================================================================
+        # USER 2026-10-22 parity restore: per-sym resolution (was global-only,
+        # so crypto boards holding WT_PERCENTILE_EXIT_ENABLED never fired live
+        # while the vector booked them; and the True/90 fallbacks predated the
+        # config defaults False/75). No behavior change where no board holds it.
+        _pct_on = bool(
+            _psym_get(
+                symbol,
+                position_side,
+                "WT_PERCENTILE_EXIT_ENABLED",
+                getattr(config, "WT_PERCENTILE_EXIT_ENABLED", False),
+            )
+        )
         if (
-            getattr(config, "WT_PERCENTILE_EXIT_ENABLED", True)
+            _pct_on
             and is_active_position
             and position
             and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
@@ -56783,20 +56795,71 @@ async def process_position(
             _pct_exit = False
             wt1_15m = safe_fetch_float(i.get("wt1_15m", 50), 50)
             wt2_15m = safe_fetch_float(i.get("wt2_15m", 50), 50)
-            if (
-                is_long
-                and _pct_D > getattr(config, "WT_PERCENTILE_EXIT_OB_D", 90)
-                and _pct_4h > getattr(config, "WT_PERCENTILE_EXIT_OB_4H", 75)
-                and wt1_15m < wt2_15m
-            ):
-                _pct_exit = True
-            elif (
-                not is_long
-                and _pct_D < getattr(config, "WT_PERCENTILE_EXIT_OS_D", 10)
-                and _pct_4h < getattr(config, "WT_PERCENTILE_EXIT_OS_4H", 25)
-                and wt1_15m > wt2_15m
-            ):
-                _pct_exit = True
+            _pct_ob_d = float(
+                _psym_get(
+                    symbol,
+                    position_side,
+                    "WT_PERCENTILE_EXIT_OB_D",
+                    getattr(config, "WT_PERCENTILE_EXIT_OB_D", 75),
+                )
+            )
+            _pct_ob_4h = float(
+                _psym_get(
+                    symbol,
+                    position_side,
+                    "WT_PERCENTILE_EXIT_OB_4H",
+                    getattr(config, "WT_PERCENTILE_EXIT_OB_4H", 55),
+                )
+            )
+            _pct_os_d = float(
+                _psym_get(
+                    symbol,
+                    position_side,
+                    "WT_PERCENTILE_EXIT_OS_D",
+                    getattr(config, "WT_PERCENTILE_EXIT_OS_D", 10),
+                )
+            )
+            _pct_os_4h = float(
+                _psym_get(
+                    symbol,
+                    position_side,
+                    "WT_PERCENTILE_EXIT_OS_4H",
+                    getattr(config, "WT_PERCENTILE_EXIT_OS_4H", 25),
+                )
+            )
+            try:
+                from vec_decisions.process_position_crypto__wt_percentile_exit import (
+                    _wt_percentile_fires as _pct_core,
+                )
+
+                _pct_exit = bool(
+                    _pct_core(
+                        _pct_D,
+                        _pct_4h,
+                        wt1_15m,
+                        wt2_15m,
+                        is_long,
+                        _pct_ob_d,
+                        _pct_ob_4h,
+                        _pct_os_d,
+                        _pct_os_4h,
+                    )
+                )
+            except Exception:
+                if (
+                    is_long
+                    and _pct_D > _pct_ob_d
+                    and _pct_4h > _pct_ob_4h
+                    and wt1_15m < wt2_15m
+                ):
+                    _pct_exit = True
+                elif (
+                    not is_long
+                    and _pct_D < _pct_os_d
+                    and _pct_4h < _pct_os_4h
+                    and wt1_15m > wt2_15m
+                ):
+                    _pct_exit = True
             if _pct_exit:
                 _pct_g = safe_fetch_float(getattr(position, "gain", 0), 0)
                 logger.warning(
@@ -56827,19 +56890,43 @@ async def process_position(
                 return f"{EvalStatus.ACTION_TAKEN}:BT_EXIT_{_bt_pre}"
         # E-1 WT_EXIT_USE_DELTA (2026-04-19 default OFF) — exit when wt_composite_delta crosses threshold against position.
         # Fires alongside existing exits. LONG exits when delta < -THR, SHORT when delta > +THR.
+        # USER 2026-10-22 parity restore: per-sym resolution (was global-only,
+        # so the 44 crypto boards holding the switch never fired live).
+        _e1_on = bool(
+            _psym_get(
+                symbol,
+                position_side,
+                "E_1_WT_EXIT_USE_DELTA_ENABLED",
+                getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False),
+            )
+        )
         if (
-            bool(getattr(config, "E_1_WT_EXIT_USE_DELTA_ENABLED", False))
+            _e1_on
             and is_active_position
             and position
             and (safe_fetch_float(getattr(position, "positionAmt", 0), 0))
             > pos_min_qty
         ):
             _e1_delta = safe_fetch_float(i.get("wt_composite_delta"), None)
-            _e1_thr = float(getattr(config, "E_1_EXIT_DELTA_THR", 50.0))
-            if _e1_delta is not None:
-                _e1_fire = (is_long and _e1_delta < -_e1_thr) or (
-                    (not is_long) and _e1_delta > _e1_thr
+            _e1_thr = float(
+                _psym_get(
+                    symbol,
+                    position_side,
+                    "E_1_EXIT_DELTA_THR",
+                    getattr(config, "E_1_EXIT_DELTA_THR", 50.0),
                 )
+            )
+            if _e1_delta is not None:
+                try:
+                    from vec_decisions.process_position_crypto__e1_wt_delta_exit import (
+                        _e1_wt_delta_fires as _e1_core,
+                    )
+
+                    _e1_fire = bool(_e1_core(_e1_delta, is_long, _e1_thr))
+                except Exception:
+                    _e1_fire = (is_long and _e1_delta < -_e1_thr) or (
+                        (not is_long) and _e1_delta > _e1_thr
+                    )
                 if _e1_fire:
                     _e1_g = safe_fetch_float(getattr(position, "gain", 0), 0)
                     logger.warning(
