@@ -2316,13 +2316,15 @@ def _budget_mode_label(budget):
 
 
 def _slow_redo_due(entry, slow_forced):
-    """Coordinator 2026-10-22: in a slow-pinned round a sym_side whose NEWEST qualifying board is a catch-up / budget board is need30 (slow
-    re-board), never terminal_ok — the completion criterion rejects that board, so the state machine must agree. entry = the sym_side's row of
-    the last completion record. Pure (tested)."""
+    """Coordinator 2026-10-22: in a slow-pinned round a sym_side whose newest board does NOT qualify for completion for any reason the record
+    names (catch-up / budget mode, or published on an NPZ older than the 20-min law) is need30 (slow re-board), never terminal_ok — the state
+    machine must agree with the completion criterion. entry = the sym_side's row of the last completion record. Pure (tested)."""
     if not slow_forced or not isinstance(entry, dict) or entry.get("complete_at"):
         return False
     md = str(entry.get("mode") or "")
-    return md == "catchup" or md.startswith("budget:")
+    if md == "catchup" or md.startswith("budget:"):
+        return True
+    return bool(entry.get("newest_board_published_at")) and entry.get("newest_board_qualifies") is False
 
 
 def _refund_structural_exits(st, early_by_host, keep=4000):
@@ -2533,11 +2535,14 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
             return False, "mode=None + V18_CATCHUP=1 on its launch (decision log)"
         return True, "mode=None counted full (no catch-up evidence)"
 
+    newest = {}
     for r in rows or []:
         ss, ts = _rget(r, 0), _row_epoch(r)
         if not ss or ts is None:
             continue
         lag = _board_npz_age_min(r, venue_of(str(ss).rsplit("_", 1)[0]))
+        if ts > (newest.get(ss) or (0.0, None, None))[0]:
+            newest[ss] = (ts, r, lag)
         if lag is None or lag > npz_min:
             continue
         full, _why_m = _mode_full(ss, r, ts)
@@ -2559,6 +2564,10 @@ def build_round_completion(round_id, universe, rows, must_by_host, exclusions, n
              "mode": _rget(brow, 6), "start_gain": _rget(brow, 8), "published_gain": _rget(brow, 9),
              "board_published_at": (iso(ba[0]) if ba else None), "qualifying_boards": counts.get(ss, {"full": 0, "not_full": 0}),
              "full_board_rule": (bf[2] if bf else None)}
+        nw = newest.get(ss)
+        if nw:
+            e.update({"newest_board_published_at": iso(nw[0]), "newest_board_mode": _rget(nw[1], 6), "newest_board_npz_age_min": (None if nw[2] is None else round(float(nw[2]), 1)),
+                      "newest_board_qualifies": bool(bf and bf[0] >= nw[0])})
         mm = must.get(ss)
         why = []
         if mm:
@@ -3797,14 +3806,17 @@ def tick(args, cfg, now):
             return "need30", 1
         if _slow_pin and _slow_redo_due(_prev_rec_ss.get(ss), True) and not (args.dry_run or sim) and cur_pdir:
             _sre = _prev_rec_ss.get(ss) or {}
-            _srk = f"{ss}|{_sre.get('board_published_at')}"
+            _srk = f"{ss}|{_sre.get('newest_board_published_at') or _sre.get('board_published_at')}"
             _srd = st.setdefault("slow_redo_marked", {})
-            if _srd.get(_srk) != cur_pdir and _slowredo_n[0] < _slowredo_cap:
+            _src_n = st.setdefault("slow_redo_count", {})
+            _srck = f"{cur_pdir}|{ss}"
+            if _srd.get(_srk) != cur_pdir and _slowredo_n[0] < _slowredo_cap and int(_src_n.get(_srck, 0)) < int(os.environ.get("V15_SCHED_SLOWREDO_MAX_PER_SIDE", "3") or 3):
                 _srh = next((h for h in hosts if h["name"] == done_host.get(ss)), None)
-                _srr = host_py(_srh, "mark_redo", {"pdir": cur_pdir, "ss": ss, "reason": f"slow-pinned round {_cur_round}: newest qualifying board mode={_sre.get('mode')} ({_sre.get('board_published_at')}) never completes the course — slow re-board from its own set"}, timeout=30) if _srh else None
+                _srr = host_py(_srh, "mark_redo", {"pdir": cur_pdir, "ss": ss, "reason": f"slow-pinned round {_cur_round}: newest qualifying board mode={_sre.get('newest_board_mode') or _sre.get('mode')} npz_age_min={_sre.get('newest_board_npz_age_min')} ({_sre.get('newest_board_published_at') or _sre.get('board_published_at')}) does not qualify for completion — slow re-board from its own set"}, timeout=30) if _srh else None
                 _slowredo_n[0] += 1
                 if _srr and _srr.get("ok"):
                     _srd[_srk] = cur_pdir
+                    _src_n[_srck] = int(_src_n.get(_srck, 0)) + 1
                     print(f"[sched] SLOW-REDO {ss} on {_srh['name']}: newest board mode={_sre.get('mode')} -> needs_redo set ({_srr.get('why')}, archive {_srr.get('archive')}) -> need30", flush=True)
                     return "need30", 1
                 print(f"[sched] SLOW-REDO {ss} FAILED on {(_srh or {}).get('name')}: {_srr}", flush=True)

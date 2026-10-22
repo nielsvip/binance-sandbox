@@ -362,3 +362,19 @@ def test_steal30_pick_longest_queue_oldest_first():
     assert S._steal30_pick("s5", 8, False, owner, need, order, running_syms={"C"}) == ("A", "s1")  # DEDUP: a running symbol is never taken
     assert S._steal30_pick("s5", 8, False, owner, need, order, skip={"A", "B", "C"}) == ("E", "s2")
     assert S._steal30_pick("s5", 8, False, {"F": "s5"}, ["F"], order) == (None, None)  # own work is not stolen
+
+
+def test_slow_redo_due_widened_to_stale_npz_board():
+    stale = {"complete_at": None, "mode": None, "newest_board_published_at": "2026-10-22T22:08:45Z", "newest_board_qualifies": False}
+    assert S._slow_redo_due(stale, True) is True
+    assert S._slow_redo_due(dict(stale, newest_board_qualifies=True), True) is False
+    assert S._slow_redo_due({"complete_at": None}, True) is False  # no board at all: not a re-board case
+
+
+def test_record_marks_newest_board_on_stale_npz():
+    uni = _uni(["AAAUSDT_LONG", "BBBUSDT_LONG"])
+    rows = [_row("AAAUSDT_LONG", 5), _row("AAAUSDT_LONG", 1, lag_min=75), _row("BBBUSDT_LONG", 1)]
+    rec = S.build_round_completion("run35", uni, rows, {"s2": {"AAAUSDT_LONG": _must(), "BBBUSDT_LONG": _must()}}, {}, NOW)
+    a, b = rec["sym_sides"]["AAAUSDT_LONG"], rec["sym_sides"]["BBBUSDT_LONG"]
+    assert a["newest_board_qualifies"] is False and a["newest_board_npz_age_min"] == 75.0 and a["complete_at"] == _iso(NOW - 5 * 3600)
+    assert b["newest_board_qualifies"] is True
