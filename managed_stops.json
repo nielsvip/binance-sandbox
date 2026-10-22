@@ -1,11 +1,4 @@
 {
-  "inf:ZENUSDT_SHORT": {
-    "orderId": "2000001531630677",
-    "stopPrice": 6.218,
-    "entry_sig": "2026-10-22 09:27:24.548000+00:00",
-    "symbol": "ZENUSDT",
-    "side": "SHORT"
-  },
   "inf:COTIUSDT_SHORT": {
     "orderId": "2000001531882487",
     "stopPrice": 0.011145,
@@ -27,18 +20,32 @@
     "symbol": "ONEUSDT",
     "side": "SHORT"
   },
-  "inf:ALGOUSDT_LONG": {
-    "orderId": "2000001531921528",
-    "stopPrice": 0.10795,
-    "entry_sig": "2026-10-22 11:28:39.785000+00:00",
-    "symbol": "ALGOUSDT",
-    "side": "LONG"
-  },
   "inf:WUSDT_SHORT": {
     "orderId": "2000001531926855",
     "stopPrice": 0.014376,
     "entry_sig": "2026-10-22 10:57:00.456000+00:00",
     "symbol": "WUSDT",
     "side": "SHORT"
+  },
+  "inf:ETCUSDT_SHORT": {
+    "orderId": "2000001531927131",
+    "stopPrice": 7.922,
+    "entry_sig": "2026-10-22 12:28:44.624000+00:00",
+    "symbol": "ETCUSDT",
+    "side": "SHORT"
+  },
+  "inf:EGLDUSDT_SHORT": {
+    "orderId": "2000001531928743",
+    "stopPrice": 3.751,
+    "entry_sig": "2026-10-22 12:29:47.366000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "inf:ALGOUSDT_LONG": {
+    "orderId": "2000001531928839",
+    "stopPrice": 0.10795,
+    "entry_sig": "2026-10-22 11:28:39.785000+00:00",
+    "symbol": "ALGOUSDT",
+    "side": "LONG"
   }
 }
