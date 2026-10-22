@@ -25933,7 +25933,17 @@ class MultiAccountTradeManager:
         if qty <= 0:
             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: qty<=0 for {src} {final_action} (amt={amt} normal={normal_qty}) — not sent")
             return "SKIPPED_ZERO_QTY"
-        res = await queue_trade_action(self.order_queue, self, position_key, final_action, reason, 0.5, override_qty=qty)
+        # USER 2026-10-22: NO QUEUE. Binance takes many orders per second; the single queue worker was a pure
+        # serialisation point — measured on inf after a restart, 22 vec dictates queued and 3 executed in 8 minutes,
+        # so position parity was unreachable no matter what the gates allowed. The dictate now goes straight to
+        # execute_trade_action -> execute_now, which stays THE one and only order gate (CLAUDE.md), carrying the live
+        # qty as override_qty exactly as the queue path did. ROLLBACK: VEC_DRIVEN_SEND_VIA_QUEUE=True.
+        _opening = final_action in ("OPEN", "AUGMENT")
+        _oside = ("BUY" if side == "LONG" else "SELL") if _opening else ("SELL" if side == "LONG" else "BUY")
+        if bool(getattr(_ezm_base_config, "VEC_DRIVEN_SEND_VIA_QUEUE", False)):
+            res = await queue_trade_action(self.order_queue, self, position_key, final_action, reason, 0.5, override_qty=qty)
+        else:
+            res = await self.execute_trade_action(account_key=account_key, position_key=position_key, symbol=symbol, quantity=abs(float(qty)), current_price=price, side=_oside, position_side=side, unique_id=f"VD{int(time.time() * 1000)}", is_full_close=(final_action == "CLOSE"), action=final_action, reason=reason, override_qty=qty)
         if final_action == "OPEN" and caps is not None and not str(res).upper().startswith(("REFUS", "BLOCKED", "SKIP")):
             caps.record(account_key, ss)
         logger.info(f"🧭 [VEC_DRIVEN_LIVE] {position_key}: {src} {vec_type}->{final_action} qty={qty:.8f} amt={amt:.8f} px={price} reason={reason} -> {res}")
@@ -25977,6 +25987,7 @@ class MultiAccountTradeManager:
                     store = stores.get(account_key) or _vdm.ConsumedStore(base / f"consumed_{account_key}.json")
                     stores[account_key] = store
                     _seen_dictate = set()
+                    _dispatch = []
                     for it in intents:
                         ss = it["ss"]
                         mode = modes.get(ss)
@@ -26029,9 +26040,27 @@ class MultiAccountTradeManager:
                             logger.warning(f"[VEC_DRIVEN_LIVE] {position_key}: intent {it['intent_id']} {it['type']} not sent ({why}, amt={amt:.8f}) — reconcile will act toward target")
                             _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": None, "result": f"SKIPPED_{why}"})
                             continue
-                        res = await self._vec_driven_send(account_key, ss, action, it["type"], it.get("reason"), it.get("qty_frac"), f"intent={it['intent_id']}", caps=caps, modes=modes)
-                        last_sent[position_key] = time.time()
-                        _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": it["intent_id"], "ss": ss, "bar_ts": it.get("bar_ts"), "type": it["type"], "action": action, "result": res})
+                        _dispatch.append((it, ss, action, position_key))
+                    if _dispatch:
+                        # USER 2026-10-22: the bar's dictates go out TOGETHER, not one-after-another. Awaiting each
+                        # order's full round trip made one slow fill delay every other key in the bar; the exchange
+                        # takes many orders per second. Bounded so one account cannot monopolise the event loop, and
+                        # each result is still written to the ledger by its own task, so the ledger stays truthful.
+                        _vd_lim = max(1, int(os.environ.get("VEC_DRIVEN_CONCURRENCY") or getattr(_ezm_base_config, "VEC_DRIVEN_CONCURRENCY", 12) or 1))
+                        _vd_sem = asyncio.Semaphore(_vd_lim)
+
+                        async def _vd_one(_it, _ss, _action, _pk):
+                            async with _vd_sem:
+                                try:
+                                    _r = await self._vec_driven_send(account_key, _ss, _action, _it["type"], _it.get("reason"), _it.get("qty_frac"), f"intent={_it['intent_id']}", caps=caps, modes=modes)
+                                except Exception as _vd_e:
+                                    _r = f"ERROR_{type(_vd_e).__name__}"
+                                    logger.error(f"[VEC_DRIVEN_LIVE] {_pk}: intent {_it['intent_id']} dispatch error: {_vd_e}", exc_info=True)
+                                last_sent[_pk] = time.time()
+                                _vdm.append_jsonl(base / f"live_exec_{account_key}.jsonl", {"ts": time.time(), "intent_id": _it["intent_id"], "ss": _ss, "bar_ts": _it.get("bar_ts"), "type": _it["type"], "action": _action, "result": _r})
+                                return _r
+                        logger.warning(f"🧭 [VEC_DRIVEN_LIVE] {account_key}: dispatching {len(_dispatch)} dictate(s) concurrently (limit {_vd_lim})")
+                        await asyncio.gather(*[_vd_one(*_j) for _j in _dispatch], return_exceptions=True)
                     for ss, mode in modes.items():
                         if mode != "live":
                             continue
@@ -64525,7 +64554,17 @@ async def main():
             background_tasks.append(
                 asyncio.create_task(trade_manager.periodic_zombie_nuke())
             )
-            background_tasks.append(asyncio.create_task(order_queue.process_orders()))
+            # USER 2026-10-22 TOTAL PARITY throughput: the queue had ONE serial worker, so every dictated open waited
+            # for the previous order's full maker chase. Measured the same day on inf after a restart: 22 vec opens
+            # queued, 3 executed in 8 minutes (~3 min/order under load 200) — the forward lane holds ~72 keys and
+            # dictates per 15m bar, so a serial worker can never converge, whatever the gates allow. N workers drain
+            # the same queue; per-position_key serialisation is unchanged (handle_order's own lock retries, the
+            # ABSOLUTE_OPEN_LOCK and the execute_now dedupe claim all key on position_key, and the flood is one order
+            # per key). ORDER_QUEUE_WORKERS=1 restores the old behaviour exactly.
+            _oq_workers = max(1, int(os.environ.get("ORDER_QUEUE_WORKERS") or getattr(_ezm_base_config, "ORDER_QUEUE_WORKERS", 8) or 1))
+            for _oq_i in range(_oq_workers):
+                background_tasks.append(asyncio.create_task(order_queue.process_orders()))
+            logger.warning(f"[process_orders] {_oq_workers} queue worker(s) started (ORDER_QUEUE_WORKERS)")
             background_tasks.append(
                 asyncio.create_task(periodic_tasks(order_queue, trade_manager))
             )

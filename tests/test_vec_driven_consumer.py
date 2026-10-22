@@ -130,7 +130,11 @@ def _mode_live(monkeypatch, on=True, mode="live"):
 
 
 def _run_exec(**kw):
+    """execute_now became a thin wrapper around _execute_now_inner (the 2026-10-17 entry-stop requirement), so the
+    stub self must carry the inner method for the wrapper to call — otherwise every gate assertion below dies on
+    AttributeError before reaching a gate."""
     self = SimpleNamespace()
+    self._execute_now_inner = lambda **a: EZ.MultiAccountTradeManager._execute_now_inner(self, **a)
     args = dict(position_key="men:BTCUSDT_LONG", account_key="men", symbol="BTCUSDT", position_side="LONG", action="OPEN", reason="X", quantity=1.0)
     args.update(kw)
     return asyncio.run(EZ.MultiAccountTradeManager.execute_now(self, **args))
@@ -215,6 +219,12 @@ class _FakeTM:
     async def get_position(self, pk, max_age_s=None):
         return SimpleNamespace(positionAmt=self.amts.get(pk, 0.0), mark_price=10.0, entry_price=10.0, gain=0.0)
 
+    async def execute_trade_action(self, account_key=None, position_key=None, symbol=None, quantity=0.0, current_price=0.0, side=None, position_side=None, unique_id=None, is_full_close=False, action="", reason="", override_qty=None, **kw):
+        """USER 2026-10-22 no-queue path: a vec dictate goes straight to execute_trade_action -> execute_now, so the
+        harness records HERE instead of at queue_trade_action (which only the VEC_DRIVEN_SEND_VIA_QUEUE rollback uses)."""
+        self.calls_sink.append({"pk": position_key, "action": action, "reason": reason, "qty": override_qty if override_qty is not None else quantity, "side": side, "is_full_close": is_full_close})
+        return f"SUCCESS_{action}"
+
 
 def _setup(tmp_path, monkeypatch, registry, amts=None, cycles=1, expires=None):
     base = tmp_path
@@ -239,6 +249,7 @@ def _setup(tmp_path, monkeypatch, registry, amts=None, cycles=1, expires=None):
     monkeypatch.setattr(EZ, "quick_price", fake_price)
     monkeypatch.setattr(EZ, "calculate_final_order_quantity", fake_cfoq)
     tm = _FakeTM(base, amts or {})
+    tm.calls_sink = calls
     return base, vl, tm, calls
 
 

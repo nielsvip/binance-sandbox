@@ -76,6 +76,7 @@ import vec_decisions.high_gain_reopen as _hgr  # 2026-10-21 TR HIGH-GAIN REOPEN 
 import vec_decisions.reentry_overdue as _rovd  # 2026-10-21 TRADIER OVERDUE reentry bypass (2h+ wait bypasses stoch+WT on dc_15m break or GR HL/HH; stocks only, default off)
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
+import vec_decisions.scale_direction  # 2026-10-22 SCALE_DIRECTION law: a partial scale points the way price moves (augment up, reduce down)
 import vec_decisions.stocks_live_session_gates  # lane-D 2026-10-06
 import vec_decisions.stocks_wtdc_scorer_exit  # lane-D 2026-10-06
 import vec_decisions.stocks_disaster_guard  # lane-D 2026-10-06
@@ -4817,6 +4818,14 @@ class QuickConfig:
     SATOSHIT_EXIT_ENABLED: bool = (
         False  # live parity: config_tradier True (was False, caused 0 trades)  # 2026-04-16: off — duplicates existing sat_exit, caused Sharpe regression
     )
+    # SCALE_DIRECTION law (USER 2026-10-22) — a PARTIAL scale points the way price is moving: favourable ->
+    # AUGMENT, adverse -> REDUCE. Exits are never touched. Default OFF = today's engine, byte-identical;
+    # the pilot flips it per sym_side from the REDUCE_PROFIT_LOCK rows. vec_decisions/scale_direction.py.
+    SCALE_DIRECTION_LAW_ENABLED: bool = False
+    SCALE_DIRECTION_LOOKBACK_BARS: float = 4.0
+    SCALE_DIRECTION_BAND_PCT: float = 0.0
+    SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE: bool = True
+    SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE: bool = True
     SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER: float = 55.0
     SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER: float = 60.0
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.7
@@ -19771,6 +19780,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         )
         pos["peak_pnl_pct"] = max(pos["peak_pnl_pct"], live_pnl_pct)
         held_bars = i - pos["entry_bar"]
+        # SCALE_DIRECTION law (USER 2026-10-22 "reducing when it should be augmenting (price rising) but not
+        # reducing when the price is falling"): a PARTIAL scaling act must point the way price is moving —
+        # favourable -> AUGMENT, adverse -> REDUCE. Exits (to_flat) are never touched. Default OFF: the engine
+        # is byte-identical until a board promotes SCALE_DIRECTION_LAW_ENABLED. See vec_decisions/scale_direction.py.
+        _sd_ref = close[vec_decisions.scale_direction.ref_index(i, vec_decisions.scale_direction.params(cfg)[1])]
+        def _sd_ok(kind, to_flat=False, _ref=_sd_ref):
+            return vec_decisions.scale_direction.scale_allowed(cfg, kind, is_long, px, float(_ref), to_flat)[0]
         # VIGILANCE (USER 2026-09-28, 3rd mandate): STRUCTURAL stop, NO fixed % — losing position AND
         # px breach of dc_low4_{TF} (long) / dc_high4_{TF} (short) → immediate close + block until
         # recovery. Runs before every other exit (live parity).
@@ -21051,7 +21067,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             )  # lane-D: live AUGMENT refused by STRICT_VEC_PARITY
             if _hq_act == "AUGMENT" and _hq_qty > 0:
                 _hq_fire = True
-            elif _hq_act == "REDUCE" and _hq_qty > 0:
+            elif _hq_act == "REDUCE" and _hq_qty > 0 and _sd_ok("REDUCE", min(float(_hq_qty), pos["qty"]) >= pos["qty"]):
                 _hq_rq = min(float(_hq_qty), pos["qty"])
                 _realized_hq = (
                     (px - pos["avg_price"]) * _hq_rq
@@ -21447,6 +21463,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 add_qty = _qq.cap_add_qty(cfg, pos["qty"], add_qty, px, is_tradier)  # QTY_LIVE_POSITION_CAP_MULT: live MAX_POSITION_SIZE/START cap
                 if _mvf_on and 0 < add_qty < _qq.min_viable_qty(sym, px, cfg):
                     add_qty = 0.0  # the cap left less than the exchange minimum — the order could not be placed
+                if add_qty > 0 and not _sd_ok("AUGMENT"):
+                    add_qty = 0.0  # SCALE_DIRECTION: price is moving against the position — this is reduce territory
                 if add_qty > 0:
                     new_qty = pos["qty"] + add_qty
                     pos["avg_price"] = (
@@ -21570,6 +21588,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _ppl_wq < 1.0 or _ppl_wq >= pos["qty"] or pos["qty"] - _ppl_wq < 1.0:
                 _ppl_skip = True
                 pos["ppl"] = _ppl_prev
+        # SCALE_DIRECTION: the take-profit ladder is the single largest wrong-way producer — 2,145 of 12,936
+        # measured reduces, 95.4% of them while price was still rising in the position's favour. Refused the
+        # same way the whole-share rule refuses: state rolled back, so the leg is retried on a falling bar.
+        if _ppl_action == "REDUCE" and not _ppl_skip and min(_ppl_frac, 1.0) < 1.0 and not _sd_ok("REDUCE"):
+            _ppl_skip = True
+            pos["ppl"] = _ppl_prev
         if _ppl_action == "REDUCE" and pos["qty"] > 0 and not _ppl_skip:
             _ppl_qty = pos["qty"] * min(_ppl_frac, 1.0)
             if getattr(cfg, "MODE", "crypto") == "tradier" and bool(
@@ -21640,7 +21664,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     bool(_n4_qr_macd[0][i]),
                     bool(_n4_qr_macd[1][i]),
                 )
-            if _qr_fire and pos["qty"] > 0:
+            # SCALE_DIRECTION: SIMPLE_TP_EXIT / MACD_EXIT are take-profit partials — refused on a favourable move.
+            if _qr_fire and pos["qty"] > 0 and _sd_ok("REDUCE"):
                 _qr_qty = pos["qty"] * (
                     1.0 - vec_decisions.quick_reduce_sources.DUST_FRAC
                 )
@@ -22048,6 +22073,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
             except Exception:
                 _w2_tpq, _w2_tpr = 0.0, ""
+            # SCALE_DIRECTION: the OB/OS take-profit is a scale-out into strength — refused on a favourable move.
+            if _w2_tpq > 0 and not _sd_ok("REDUCE", min(float(_w2_tpq), float(pos["qty"])) >= pos["qty"]):
+                _w2_tpq = 0.0
             if _w2_tpq > 0:
                 _w2_tpq = min(float(_w2_tpq), float(pos["qty"]))
                 _w2_real = (
@@ -22117,10 +22145,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             i - int(pos.get("last_reduce_bar", -(10**9)))
         ) >= vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
         _rc_ok = _gftf.get("reduce_confirm") is None or bool(_gftf["reduce_confirm"][i])
+        # SCALE_DIRECTION: refuse only the PARTIAL leg of this block (REGIME_REDUCE / QUICK_REDUCE_STRONG,
+        # 1,439 measured reduces). A frac that takes the position to flat is an exit — HLR sell-the-top and
+        # REDUCE_TO_FLAT keep firing — and the refusal falls through to the technical exits below exactly as
+        # it would if reduce_sig were 0, so no protective path is skipped.
+        _sd_rb_frac = 1.0 if _qr_fire else min(float(reduce_frac[i]), 1.0)
+        _sd_rb_flat = _sd_rb_frac >= 1.0 or (pos["qty"] - pos["qty"] * _sd_rb_frac) < 0.10 * float(pos.get("entry_qty", pos["qty"]))
         if (
             pos["qty"] > 0
             and _rc_ok
             and (_qr_fire or (reduce_sig[i] and reduce_frac[i] > 0 and _red_cd_ok))
+            and _sd_ok("REDUCE", _sd_rb_flat)
         ):
             # HLR_TOP_EXIT = "sell the top": live stores the FULL position qty in
             # _hlr_top_exit_registry and reenters at prev_qty*mult (ez_positions_quick.py:3715-3718,
@@ -22437,6 +22472,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _gftf.get("exit_confirm") is None or bool(_gftf["exit_confirm"][i])
         )
         if exit_sig[i] and held_bars >= min_hold and _xc_ok:
+            if 0 < satoshit_partial < 1.0 and not _sd_ok("REDUCE"):
+                # SCALE_DIRECTION: the SATOSHIT partial sells momentum STRENGTH (long: RSI>=55 + K>=60) —
+                # 2,482 measured reduces. Price rising in favour is augment territory: hold this bar, do not
+                # fall through to the full technical exit below (that would CLOSE instead of scale out).
+                continue
             if 0 < satoshit_partial < 1.0:
                 reduce_qty = pos["qty"] * satoshit_partial
                 realized = (

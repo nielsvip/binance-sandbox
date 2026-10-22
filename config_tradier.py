@@ -3932,6 +3932,15 @@ class TradierConfig:
     SATOSHIT_EXIT_ENABLED: bool = False
     SATOSHIT_EXIT_LONG_RSI_MIN: float = 55.0
     SATOSHIT_EXIT_LONG_STOCH_K_MIN: float = 60.0
+    # SCALE_DIRECTION law (USER 2026-10-22 "reducing when it should be augmenting (price rising) but not reducing
+    # when the price is falling"): a PARTIAL scaling act must point the way price is moving — favourable ->
+    # AUGMENT, adverse -> REDUCE. Full exits (stops, channel exits, WT-cross-against, reduce-to-flat) are never
+    # blocked. Default OFF = today's behaviour; v15_pilot flips it per sym_side. vec_decisions/scale_direction.py.
+    SCALE_DIRECTION_LAW_ENABLED: bool = False
+    SCALE_DIRECTION_LOOKBACK_BARS: float = 4.0
+    SCALE_DIRECTION_BAND_PCT: float = 0.0
+    SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE: bool = True
+    SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE: bool = True
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.70
     SATOSHIT_EXIT_SHORT_RSI_MAX: float = 42.0
     SATOSHIT_EXIT_SHORT_STOCH_K_MAX: float = 50.0

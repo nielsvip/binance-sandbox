@@ -4721,6 +4721,15 @@ class Config:
     SATOSHIT_EXIT_USE_MAKER: bool = (
         True  # Use maker order for partial close (bypasses Finandy full close)
     )
+    # SCALE_DIRECTION law (USER 2026-10-22 "reducing when it should be augmenting (price rising) but not reducing
+    # when the price is falling"): a PARTIAL scaling act must point the way price is moving — favourable ->
+    # AUGMENT, adverse -> REDUCE. Full exits (stops, channel exits, WT-cross-against, reduce-to-flat) are never
+    # blocked. Default OFF = today's behaviour; v15_pilot flips it per sym_side. vec_decisions/scale_direction.py.
+    SCALE_DIRECTION_LAW_ENABLED: bool = False
+    SCALE_DIRECTION_LOOKBACK_BARS: float = 4.0
+    SCALE_DIRECTION_BAND_PCT: float = 0.0
+    SCALE_DIRECTION_BLOCK_REDUCE_ON_FAVOURABLE: bool = True
+    SCALE_DIRECTION_BLOCK_AUGMENT_ON_ADVERSE: bool = True
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.70  # Close 70% of position, keep 30% as runner
     # === PARTIAL_PROFIT_LOCK — 50% close at +0.5% via webhook_url_2/maker, arm SL at first-exit price when +0.7% ===
     # 2026-04-21: Replaces SATOSHIT_PARTIAL_EXIT 70% with deterministic gain-triggered 50% lock.
