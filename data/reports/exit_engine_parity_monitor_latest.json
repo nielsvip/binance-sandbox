@@ -1,19 +1,19 @@
 {
- "now": "2026-10-22T14:45:23.281598+00:00",
+ "now": "2026-10-22T15:45:26.578000+00:00",
  "lookback_hours": 48.0,
- "n_exit_rows": 11948,
- "last_exit_ts": "2026-10-22T14:25:40.408930+00:00",
+ "n_exit_rows": 12212,
+ "last_exit_ts": "2026-10-22T15:43:28.179808+00:00",
  "n_leaks": 3670,
- "n_gate_on": 6547,
+ "n_gate_on": 6795,
  "n_ungated": 15,
- "n_safety": 386,
+ "n_safety": 402,
  "n_unmapped": 160,
  "n_unverified": 1084,
- "since": "2026-10-20T14:45:23.281598+00:00",
+ "since": "2026-10-20T15:45:26.578000+00:00",
  "vec_exact_by_action": {
   "CLOSE": 86
  },
- "native_rows": 11862,
+ "native_rows": 12126,
  "unverified_by_family": {
   "REENTRY_OTHER (ABLATION_DISABLE_REENTRY=False)": 57,
   "GAIN_EROSION_STOP (None=None)": 79,
@@ -84,8 +84,8 @@
   "QUICK_OPEN_STRONG ang:1INCHUSDT_LONG": 23
  },
  "gate_on_by_family": {
-  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 4003,
-  "GOLDEN_RULE": 383,
+  "VEC_DRIVEN_BRIDGE (VEC_DRIVEN_ENABLED)": 4249,
+  "GOLDEN_RULE": 385,
   "DC_DAYTRADE_TARGET (DC_DAYTRADE_ENABLED)": 21,
   "QUICK_REDUCE_STRONG (ABLATION_DISABLE_QUICK_EXIT)": 585,
   "EXIT_VELOCITY_WT (EXIT_VELOCITY_WT_ENABLED)": 185,
@@ -107,7 +107,7 @@
   "BREAK_EVEN_GUARD": 15
  },
  "safety_by_family": {
-  "FIXED_STOP": 386
+  "FIXED_STOP": 402
  },
  "unmapped": {
   "R3_HTF_FLIP_DAILY": 49,
@@ -133,9 +133,9 @@
   "BB_BOUNCE_ENTRY_4h_S": 1
  },
  "actions": {
-  "OPEN": 3921,
+  "OPEN": 4163,
   "QUICK_OPEN": 3758,
-  "CLOSE": 2046,
+  "CLOSE": 2068,
   "QUICK_CLOSE": 26,
   "QUICK_QUICK_CLOSE": 23,
   "STRONG_REDUCE": 585,
