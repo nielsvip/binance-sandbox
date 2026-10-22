@@ -1463,6 +1463,45 @@ def _growth_debt_mb(pairs_pss, est_pair):
     return debt
 
 
+def _side_growth_debt_mb(units, est_by_venue, frac=0.5):
+    """Growth debt of running sides, venue-grouped through the tested _growth_debt_mb contract (only sides under half their venue est count; mature sides are steady-state, the OOM reaper covers spikes).
+
+    USER 2026-10-22 (fleet trickle: 1 launch/tick with 12-23GB free on s2/s5/s6): the 2026-10-17 peak-admit rewrite counted full peak-minus-current for EVERY side, so two young crypto sides reserved ~15GB of growth that never materialises at once and blocked every admission while CPUs idled. Boards mature and finish at different times, so simultaneous peaks don't happen; `frac` (V15_SCHED_GROWTH_DEBT_FRAC, default 0.5) reserves the multiplexed share. The OOM reaper stays the hard backstop (refill-safe victim ranking bounds loss to newest startups). Never raises."""
+    try:
+        f = float(frac)
+    except (TypeError, ValueError):
+        f = 0.5
+    f = min(1.0, max(0.0, f))
+    if f <= 0:
+        return 0.0
+    try:
+        ests = dict(est_by_venue or {})
+        if not ests:
+            return 0.0
+        fb = max(float(v) for v in ests.values())
+    except Exception:
+        return 0.0
+    try:
+        by_venue = {}
+        for k, v in (units or {}).items():
+            try:
+                ks = str(k)
+                sym = ks.rsplit("_", 1)[0] if ks.endswith(("_LONG", "_SHORT")) else ks
+            except Exception:
+                continue
+            by_venue.setdefault(venue_of(sym), {})[k] = v
+        debt = 0.0
+        for vn, vm in by_venue.items():
+            try:
+                est = float(ests.get(vn, fb))
+            except (TypeError, ValueError):
+                continue
+            debt += _growth_debt_mb(vm, est)
+        return f * debt
+    except Exception:
+        return 0.0
+
+
 def _host_peak_pair_mb(st, host, pairs_pss, now_ts, keep_s=86400.0, workers=None):
     """Expected peak PSS of ONE new side on this host, from the book of sizes seen in the last 24 h (state-carried
     across --once ticks; young boards understate their own future). Updates st in place. Never raises.
@@ -3546,15 +3585,20 @@ def tick(args, cfg, now):
         _est_sym = lambda _s: est_v.get(venue_of(_s), est_pair) if _peak_on else est_pair
         reserve = max(h.get("mem_reserve_mb", 3000), int(h.get("oom_mb", 500)) + 2000)
         if _peak_on:
-            _debt = 0.0
-            for _ps_, _m_ in _units.items():
-                # a running pair still grows to the host's measured peak for its venue (not to est, which already
-                # carries the x1.25/x1.1 headroom for an unseen NEW board — counting that twice idled S1 at 2 boards)
-                _p_ = peak_v.get(venue_of(_ps_.rsplit("_", 1)[0] if _per_side else _ps_), _est_sym(_ps_.rsplit("_", 1)[0] if _per_side else _ps_))
-                _debt += max(0.0, float(_p_) - float(_m_ or 0))
+            # USER 2026-10-22 (fleet trickle: 1 launch/tick with 12-23GB free): growth debt is young-only
+            # (a mature side holds steady; the OOM reaper covers spikes) at the multiplexed share — every
+            # side reserved to its full peak assumed simultaneous peaks that never happen and idled the fleet.
+            try:
+                _debt_frac = float(os.environ.get("V15_SCHED_GROWTH_DEBT_FRAC", "0.5"))
+            except (TypeError, ValueError):
+                _debt_frac = 0.5
+            _debt_frac = min(1.0, max(0.0, _debt_frac))
+            _debt = _side_growth_debt_mb(_units, est_v, _debt_frac)
             proj_mem = s["mem_avail_mb"] - reserve - _debt
         else:
-            proj_mem = s["mem_avail_mb"] - reserve - _growth_debt_mb(pairs, est_pair)
+            _debt_frac = 1.0
+            _debt = _growth_debt_mb(pairs, est_pair)
+            proj_mem = s["mem_avail_mb"] - reserve - _debt
         swap_ok = _swap_admit_ok(s)
         disk_ok = _disk_admit_ok(s)
         used = len(held[h["name"]])
@@ -3563,7 +3607,7 @@ def tick(args, cfg, now):
             # debt of running pairs) buys more pair slots up to 12. The cpu target + mem/swap/disk guards still gate each admission.
             cap = max(cap, min(12, used + int(max(0.0, proj_mem) // max(1.0, est_pair))))
         info = {"cpu": round(cpu), "cpu_real": round(float(s.get("busy_pct") or 0)), "mem_avail_mb": s["mem_avail_mb"], "disk_avail_mb": s.get("disk_avail_mb"), "slots": f"{used}/{cap}", "held": sorted(held[h["name"]]), "est_pair_mb": round(est_pair), "est_venue_mb": {k: round(v) for k, v in est_v.items()}, "proj_mem_mb": round(proj_mem),
-                "workers_per_side": workers, "launched_pairs": 0}
+                "growth_debt_mb": round(_debt), "debt_frac": _debt_frac, "workers_per_side": workers, "launched_pairs": 0}
         launched = 0
         new_launched = 0
         chain_launched = 0
@@ -3614,7 +3658,7 @@ def tick(args, cfg, now):
         info["est_gate_mb"] = round(est_gate)
         info["mem_source"] = "rss-fallback" if any(isinstance(_r_m, dict) and _r_m.get("mem_source") == "rss-fallback" for _r_m in s["running"].values()) else "pss(smaps_rollup)"
         info["gate_venues"] = _gate_venues
-        info["gate_inputs"] = {"mem_avail_mb": s["mem_avail_mb"], "reserve_mb": round(reserve), "proj_mem_mb": round(proj_mem), "est_gate_mb": round(est_gate), "floor_crypto_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB", ""), "floor_stocks_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", ""), "phase": _host_phase}
+        info["gate_inputs"] = {"mem_avail_mb": s["mem_avail_mb"], "reserve_mb": round(reserve), "proj_mem_mb": round(proj_mem), "growth_debt_mb": round(_debt), "debt_frac": _debt_frac, "est_gate_mb": round(est_gate), "floor_crypto_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB", ""), "floor_stocks_mb": os.environ.get("V15_SCHED_PAIR_FLOOR_MB_STOCKS", ""), "phase": _host_phase}
         for sym, needs_slot in order:
             _pinned_sym = sym in _pin_syms
             if _pinned_sym and _pin_hosts and h["name"] not in _pin_hosts:

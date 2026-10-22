@@ -244,5 +244,84 @@ class VenueOnlyTest(unittest.TestCase):
         self.assertTrue(_venue_allowed("BTCUSDC", self.NATIVES))
 
 
+class SideGrowthDebtTest(unittest.TestCase):
+    """USER 2026-10-22 (fleet trickle: 1 launch/tick with 12-23GB free): growth debt
+    must follow the young-only contract (mature sides are steady-state), scaled by
+    the multiplexed share — never full peak-minus-current for every side."""
+
+    def test_young_sides_scaled(self):
+        from v15_fleet_scheduler import _side_growth_debt_mb
+        d = _side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0, "ALGOUSDT_SHORT": 4600.0}, {"crypto": 13200.0}, 0.5)
+        self.assertEqual(d, 0.5 * ((13200.0 - 4600.0) * 2))
+
+    def test_mature_sides_exempt(self):
+        from v15_fleet_scheduler import _side_growth_debt_mb
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 11000.0}, {"crypto": 13200.0}, 0.5), 0.0)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 6600.0}, {"crypto": 13200.0}, 1.0), 0.0)
+
+    def test_mixed_venues_grouped(self):
+        from v15_fleet_scheduler import _side_growth_debt_mb
+        d = _side_growth_debt_mb({"ALGOUSDT_LONG": 4000.0, "AAPL_LONG": 2000.0}, {"crypto": 13200.0, "stocks": 7590.0}, 0.5)
+        self.assertEqual(d, 0.5 * ((13200.0 - 4000.0) + (7590.0 - 2000.0)))
+
+    def test_frac_clamped(self):
+        from v15_fleet_scheduler import _side_growth_debt_mb
+        full = (13200.0 - 4600.0)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, 2.0), full)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, -1.0), 0.0)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {"crypto": 13200.0}, "bogus"), 0.5 * full)
+
+    def test_junk_safe(self):
+        from v15_fleet_scheduler import _side_growth_debt_mb
+        self.assertEqual(_side_growth_debt_mb(None, {"crypto": 13200.0}, 0.5), 0.0)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": 4600.0}, {}, 0.5), 0.0)
+        self.assertEqual(_side_growth_debt_mb({"ALGOUSDT_LONG": "x"}, {"crypto": 13200.0}, 0.5), 0.0)
+        self.assertEqual(_side_growth_debt_mb({}, {"crypto": 13200.0}, 0.5), 0.0)
+
+
+class MemGuardFillTest(unittest.TestCase):
+    """USER 2026-10-22: an s5-like host (2 young crypto sides, 21GB free, 2/8 slots)
+    must admit new work — the 2026-10-17 full peak-minus-current debt idled it."""
+
+    HOST = "memtest"
+
+    def _run_tick(self):
+        import os
+        now = datetime.datetime(2026, 10, 22, 15, 30, tzinfo=datetime.timezone.utc)
+        stats = {"nproc": 16, "load1": 2.0, "busy_pct": 25.0, "busy_nonnice_pct": 20.0, "mem_avail_mb": 21360,
+                 "pdir": "/tmp/fake_pdir", "swap_total_mb": 0, "swap_used_mb": 0, "disk_avail_mb": 200000,
+                 "running": {"ALGOUSDT_LONG": {"pss_mb": 4600.0, "pids": [101], "prod_pids": [101], "kind": "v15_pilot.py"},
+                             "ALGOUSDT_SHORT": {"pss_mb": 4600.0, "pids": [102], "prod_pids": [102], "kind": "v15_pilot.py"}},
+                 "started": [], "done": [], "quarantined": [], "redo": [], "v365": {}, "repair": {}, "gs": {}, "gains": {}}
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        sim_p = str(Path(tmp.name) / "sim.json")
+        json.dump({"hosts": {self.HOST: stats}, "ready": {self.HOST: {}}}, open(sim_p, "w"))
+        book = {f"{self.HOST}|crypto|side": [[now.timestamp(), 12000.0, 6]] * 20,
+                f"{self.HOST}|stocks|side": [[now.timestamp(), 6900.0, 4]] * 20}
+        state_p = Path(tmp.name) / "fleet_state.json"
+        state_p.write_text(json.dumps({"date": "20261022", "held": {}, "attempts": {}, "slices": {}, "ready": {},
+                                       "launched_at": {}, "gain_seen": {}, "pair_peak_mb": book, "attempts_pdir": "/tmp/fake_pdir"}))
+        old_state, old_pri, old_wcrypto = _SCHED.STATE, os.environ.get("V15_SCHED_PRIORITY_SYMS"), os.environ.get("V15_SCHED_WORKERS_PER_SIDE_CRYPTO")
+        _SCHED.STATE = state_p
+        os.environ["V15_SCHED_PRIORITY_SYMS"] = "AAPL"
+        os.environ["V15_SCHED_WORKERS_PER_SIDE_CRYPTO"] = "6"
+        self.addCleanup(setattr, _SCHED, "STATE", old_state)
+        self.addCleanup(os.environ.__setitem__, "V15_SCHED_WORKERS_PER_SIDE_CRYPTO", old_wcrypto or "")
+        self.addCleanup(os.environ.__setitem__, "V15_SCHED_PRIORITY_SYMS", old_pri or "")
+        args = types.SimpleNamespace(simulate=sim_p, dry_run=False, no_reap=True, max_launch=10, max_attempts=2,
+                                     repair_cutoff_min=20, extend_universe=False)
+        cfg = {"cpu_target_pct": 200, "pair_floor_mb": 6000,
+               "hosts": [{"name": self.HOST, "ssh": ["127.0.0.1"], "root": "~/binance-sandbox", "venues": ["stocks", "crypto"],
+                          "mem_reserve_mb": 4000, "max_pairs": 8, "workers_per_side": 4, "oom_mb": 1500}]}
+        return tick(args, cfg, now)
+
+    def test_young_boards_do_not_idle_host(self):
+        log = self._run_tick()
+        h = log["hosts"][self.HOST]
+        self.assertNotEqual(h.get("idle_reason"), "mem guard")
+        self.assertGreaterEqual(h.get("launched_pairs", 0), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
