@@ -583,6 +583,41 @@ def test_gr_twin_two_bar_staging():
         assert (twin == want).all(), is_long
 
 
+def test_all_tf_against_restore(tmp_path, monkeypatch):
+    """USER 2026-10-22 parity restore: ALL_TF_AGAINST_CLOSE (killed 10-22 on
+    fin:ALGOUSDT_LONG) flows in-window — booked in v12 via the shared 4-TF
+    twin, live lane narrowed to the same 4 TFs (3m exists in no NPZ)."""
+    import numpy as np
+    from vec_decisions.process_position_crypto__all_tf_against import (
+        check_all_tf_against_vec as core,
+    )
+    _iso(tmp_path, monkeypatch)
+    assert "ALL_TF_AGAINST" in ve.VEC_SWITCH_EXIT_FAMILIES
+    ok, verdict = ve.check("CLOSE", "fin:ALGOUSDT_LONG", "ALL_TF_AGAINST_CLOSE_3m-71_15m-16_1h-49_4h59_D-28")
+    assert (ok, verdict) == (True, "VEC_SWITCH_EXIT")
+    npz, n = _ksm_npz()
+    for is_long in (True, False):
+        got = np.asarray(
+            core(
+                None,
+                {t: npz[f"wt1_{t}"][:n] for t in ("15m", "1h", "4h", "D")},
+                {t: npz[f"wt2_{t}"][:n] for t in ("15m", "1h", "4h", "D")},
+                is_long,
+                min_tfs=4,
+            ),
+            dtype=bool,
+        )
+        cnt = np.zeros(n, dtype=int)
+        for t in ("15m", "1h", "4h", "D"):
+            a1, a2 = npz[f"wt1_{t}"][:n], npz[f"wt2_{t}"][:n]
+            cnt += ((a1 < a2) if is_long else (a1 > a2)).astype(int)
+        assert (got == (cnt >= 4)).all(), is_long
+    ez_src = (ROOT / "ez_manage.py").read_text()
+    assert "int(_at_w1_3m < _at_w2_3m)" not in ez_src
+    assert "int(_at_w1_3m > _at_w2_3m)" not in ez_src
+    assert not (tmp_path / "vector_kills.json").exists()
+
+
 def test_dc_daytrade_restore(tmp_path, monkeypatch):
     """USER 2026-10-22 parity restore: DC_HOPELESS (killed 10-22 13:33Z on
     trb:BNO_LONG, board-authorized) and DAYTRADE_TARGET (killed 10-22 13:31Z

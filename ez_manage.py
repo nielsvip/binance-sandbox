@@ -54997,18 +54997,21 @@ async def process_position(
                 _at_is_long = position_side == "LONG"
                 # 2026-05-09 sweep-exposure: count TFs against; require >= ALL_TF_AGAINST_CLOSE_MIN_TFS.
                 # Default 5 = legacy "all 5 TFs against". Set to 3 or 4 to fire on 3-of-5 / 4-of-5.
+                # USER 2026-10-22 parity: count ONLY the 4 vector-visible TFs
+                # (15m/1h/4h/D). The 3m WT exists in no NPZ, so the vector can
+                # never count it — a 3m vote made live fire where the vector
+                # holds (live-ahead). Boards measured the 4-TF vector behavior.
+                # The 3m values stay in the reason string for the log only.
                 if _at_is_long:
                     _at_count = (
-                        int(_at_w1_3m < _at_w2_3m)
-                        + int(_at_w1_15m < _at_w2_15m)
+                        int(_at_w1_15m < _at_w2_15m)
                         + int(_at_w1_1h < _at_w2_1h)
                         + int(_at_w1_4h < _at_w2_4h)
                         + int(_at_w1_D < _at_w2_D)
                     )
                 else:
                     _at_count = (
-                        int(_at_w1_3m > _at_w2_3m)
-                        + int(_at_w1_15m > _at_w2_15m)
+                        int(_at_w1_15m > _at_w2_15m)
                         + int(_at_w1_1h > _at_w2_1h)
                         + int(_at_w1_4h > _at_w2_4h)
                         + int(_at_w1_D > _at_w2_D)
