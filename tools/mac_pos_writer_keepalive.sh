@@ -143,12 +143,23 @@ engine_keepalive() {
   local A="$1" MGR mgr_log mgr_age mgr_mtime mgr_pids mgr_stamp mgr_started mgr_since
   local child_pids nochild_stamp gated first_gone gone plvl p
   MGR="run_with_watchdog.sh ez_manage.py --account $A"
+  # 2026-10-22 USER ("a 300 s silence kill is FINE if you monitor the correct logs that produce output >once per
+  # second"): liveness is the FRESHEST of the engine's two logs, not ez_manage_$A.log alone. Measured on inf in
+  # steady state: ez_positions_quick_general_$A.log writes 1,555-2,183 lines/MINUTE (26-36/s) and is written by this
+  # very process (the quick loops run embedded inside ez_manage), while ez_manage_$A.log writes only 36-169/min with
+  # routine 300-560 s gaps around PERF_REPORT and the Redis flush. Judging the engine by the slow log is what killed
+  # men 30x, flz 19x and ang 9x on 2026-10-22 while each start costs minutes. The quick log is silent during startup
+  # (QUICK_EMBED starts last), so the slow log still covers boot — hence freshest-of-both plus the boot grace.
   mgr_log="$HOME/logs/ez_manage_$A.log"
-  mgr_age=999999
+  local _qlog="$HOME/logs/ez_positions_quick_general_$A.log"
+  local _qmtime=0 _qage=999999 _mage=999999
+  [ -f "$_qlog" ] && _qmtime=$(stat -f %m "$_qlog" 2>/dev/null || echo 0)
+  [ "$_qmtime" -gt 0 ] && _qage=$(( now - _qmtime ))
   if [ -f "$mgr_log" ]; then
     mgr_mtime=$(stat -f %m "$mgr_log" 2>/dev/null || echo 0)
-    [ "$mgr_mtime" -gt 0 ] && mgr_age=$(( now - mgr_mtime ))
+    [ "$mgr_mtime" -gt 0 ] && _mage=$(( now - mgr_mtime ))
   fi
+  mgr_age="$_mage"
   mgr_pids=$(procs_for "$MGR")
   mgr_stamp="/tmp/.mac_mgr_started_$A"
   mgr_started=0
@@ -187,17 +198,29 @@ engine_keepalive() {
   # 2026-10-22 fin silence limit: fin's engine is legitimately quiet 210-343 s every PERF_REPORT cycle and during
   # STEP 2+3 Redis flushes, so the 300 s limit killed it on every cycle. fin alone gets 900 s; a true wedge is still
   # caught by run_with_watchdog.sh (600 s no-output with a CPU-progress gate).
-  # 2026-10-22 EVERY account, not just fin: measured the same day, flz was SILENT-killed at 00:59:12 (335 s) and the
-  # TERM counts per account were fin 52, men 51, ang 37, inf 29, flz 28 — the quiet gaps are normal everywhere (the
-  # Mac runs at load 164-180 with ~99 python processes, so a PERF_REPORT or Redis-flush gap of 300-560 s is routine).
-  # Killing on silence alone made the board lane restart-churn instead of trade. 900 s for all; a true wedge is still
-  # caught by run_with_watchdog.sh (600 s no-output WITH a CPU-progress gate, which this check does not have).
-  local max_age="${MAC_MGR_MAX_LOG_AGE_ALL:-900}"
-  [ "$A" = "fin" ] && max_age="${MAC_MGR_MAX_LOG_AGE_FIN:-900}"
+  # 2026-10-22, revised the same day per USER: with liveness read from the >1/s quick log above, a short limit is
+  # correct again and detects a real wedge far faster than the old 300 s ever did on the slow log. 120 s is ~3,000
+  # missing quick-log lines in steady state, which is unambiguous. (The earlier 900 s here was compensating for
+  # watching the WRONG log; keeping it would have delayed real wedge detection by 15 minutes.) The boot grace below
+  # still covers startup, when only the slow log is writing.
+  # Which log is authoritative: the >1/s quick log the moment it has produced output for THIS process generation
+  # (quick mtime newer than the watchdog start), otherwise the slow log, which is all that writes during boot.
+  local max_age
+  if [ "$_qmtime" -gt 0 ] && [ "$mgr_started" -gt 0 ] && [ "$_qmtime" -gt "$mgr_started" ]; then
+    mgr_age="$_qage"
+    max_age="${MAC_MGR_MAX_LOG_AGE_ALL:-120}"
+  else
+    max_age="${MAC_MGR_MAX_BOOT_LOG_AGE:-900}"
+  fi
+  # 2026-10-22: the ENGINE gets its own boot grace. The writer's 240 s is far too short for an ez_manage start
+  # (measured 8-13 min before the STEP 6 repair, and only the slow log writes until QUICK_EMBED comes up at the very
+  # end), so a 120 s silence limit would otherwise kill every engine mid-startup — the exact loop that cost men 30
+  # launches. run_with_watchdog.sh still covers this window with its own 600 s no-output + CPU-progress check.
+  local mgr_boot_grace="${MAC_MGR_BOOT_GRACE:-600}"
   if [ -z "$mgr_pids" ]; then
     klog "$A: NO ez_manage watchdog -> start (decision engine was down)"
-  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$BOOT_GRACE" ]; then
-    klog "$A: ez_manage SILENT (log ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart"
+  elif [ "$mgr_age" -gt "$max_age" ] && [ "$mgr_since" -gt "$mgr_boot_grace" ]; then
+    klog "$A: ez_manage SILENT (freshest of quick+manage logs ${mgr_age}s > ${max_age}s) -> kill watchdog $mgr_pids + child and restart"
     for p in $mgr_pids; do kill -9 "$p" 2>/dev/null; done
     for p in $(pgrep -f "bin/python -u ez_manage.py --account $A"); do kill -9 "$p" 2>/dev/null; done
     mgr_pids=""

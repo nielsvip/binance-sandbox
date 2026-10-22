@@ -64566,33 +64566,48 @@ async def main():
             )
             tracker_manager.accounts = accounts
             trade_manager.tracker_manager = tracker_manager
-            for account_key in sorted(list(trade_manager._allowed_accounts)):
-                try:
-                    await tracker_manager.load_tracker(account_key)
-                    await tracker_manager.sync_universe(account_key)
-                    # 2026-04-16: after tracker load + universe sync, scan positions and backfill
-                    # any LONG/SHORT pairs that aren't recorded as hedges in tracker.json.
-                    try:
-                        _added_hedges = (
-                            await tracker_manager.reconcile_hedges_from_positions(
-                                account_key
-                            )
-                        )
-                        if _added_hedges > 0:
-                            logger.warning(
-                                f"[STARTUP_RECONCILE] {account_key}: backfilled {_added_hedges} hedge record(s) into active_hedges from existing positions"
-                            )
-                    except Exception as _rec_e:
-                        logger.warning(f"[STARTUP_RECONCILE] {account_key}: {_rec_e}")
-                except Exception as tracker_err:
-                    logger.warning(
-                        f"[ez_manage] Failed to load tracker for {account_key}: {tracker_err}"
-                    )
+            # USER 2026-10-22 ("Tracker engine seems to be the 4min startup problem — reduce that to <20s"): the
+            # FastDataManager used to be built AFTER this loop, so `sync_universe` ran with self.data_manager=None,
+            # its `get_fresh_price_sync` cache path was skipped, and EVERY position without a mark_price fell through
+            # to an awaited network `get_current_price` — sequentially, over 257-656 tracked positions. That ordering
+            # alone was the 249 s STEP 6 (measured on men 02:04:45->02:08:54). Built first, the sync cache answers.
             data_manager = FastDataManager(
                 redis_manager, data_path, trade_manager=trade_manager
             )
             trade_manager.data_manager = data_manager
             tracker_manager.data_manager = data_manager
+            _t6 = time.time()
+            for account_key in sorted(list(trade_manager._allowed_accounts)):
+                try:
+                    await tracker_manager.load_tracker(account_key)
+                    logger.info(f"[ez_manage] STEP 6: {account_key} tracker loaded in {time.time() - _t6:.1f}s")
+                    _t6 = time.time()
+                    await tracker_manager.sync_universe(account_key)
+                    logger.info(f"[ez_manage] STEP 6: {account_key} universe synced in {time.time() - _t6:.1f}s")
+                    _t6 = time.time()
+                    # 2026-04-16: after tracker load + universe sync, scan positions and backfill
+                    # any LONG/SHORT pairs that aren't recorded as hedges in tracker.json.
+                    # USER 2026-10-22: hedging has been off for over a year, so backfilling hedge records from
+                    # existing LONG/SHORT pairs is startup work for a disabled feature. Skipped unless a hedge
+                    # switch is on; it scans every tracked position, which is 257-656 of them per account.
+                    if bool(getattr(config, "HEDGE_MODE", False)) or bool(getattr(config, "OBLIGATORY_HEDGE_ENABLED", False)):
+                        try:
+                            _added_hedges = (
+                                await tracker_manager.reconcile_hedges_from_positions(
+                                    account_key
+                                )
+                            )
+                            if _added_hedges > 0:
+                                logger.warning(
+                                    f"[STARTUP_RECONCILE] {account_key}: backfilled {_added_hedges} hedge record(s) into active_hedges from existing positions"
+                                )
+                        except Exception as _rec_e:
+                            logger.warning(f"[STARTUP_RECONCILE] {account_key}: {_rec_e}")
+                    logger.info(f"[ez_manage] STEP 6: {account_key} hedge reconcile {'done' if (getattr(config, 'HEDGE_MODE', False) or getattr(config, 'OBLIGATORY_HEDGE_ENABLED', False)) else 'SKIPPED (hedging off)'} in {time.time() - _t6:.1f}s")
+                except Exception as tracker_err:
+                    logger.warning(
+                        f"[ez_manage] Failed to load tracker for {account_key}: {tracker_err}"
+                    )
             registry = RatingRegistry(
                 trade_manager, tracker_manager, data_manager, config
             )

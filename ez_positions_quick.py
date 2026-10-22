@@ -17489,7 +17489,14 @@ class TrackerManager:
                             if dm_price > 0:
                                 current_price = dm_price
                         if current_price <= 0:
-                            current_price, _ = await get_current_price(symbol)
+                            # USER 2026-10-22: "a wss://fstream timeout is a problem for the price fetchers, never
+                            # for the trading scripts, and can never cause even a 1s wait". This awaited fetch ran
+                            # per tracked position with no bound — 257-656 of them, sequentially, on the startup
+                            # path — and was the bulk of the 249 s STEP 6. Bounded to 1 s; a price we cannot get
+                            # cheaply is simply unknown for this pass and the next cycle re-reads it.
+                            current_price, _ = await asyncio.wait_for(get_current_price(symbol), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        pass
                     except Exception:
                         pass
                 amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
